@@ -1,0 +1,16 @@
+{
+  "name": "Puck",
+  "version": "0.0.1",
+  "description": "Opinionated OpenAPI Client",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "exit 1"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "chai": "^4.3.7",
+    "node-fetch": "^3.3.0"
+  }
+}
