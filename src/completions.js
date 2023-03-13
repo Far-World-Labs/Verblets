@@ -27,7 +27,7 @@ const run = async (prompt, {
     'Content-Type': 'application/json'
   };
 
-  console.error(prompt);
+  // console.error(prompt);
 
   const data = {
     prompt,
@@ -52,7 +52,7 @@ const run = async (prompt, {
   }
 
   const result = await response.json();
-  console.error(result);
+  // console.error(result);
 
   if (returnWholeResult) {
     return result;
