@@ -1,6 +1,9 @@
 import fetch from 'node-fetch';
 import chai from 'chai';
 
+import * as dotenv from 'dotenv';
+dotenv.config();
+
 const expect = chai.expect;
 
 const Model = {
