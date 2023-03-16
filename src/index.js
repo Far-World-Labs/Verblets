@@ -1,4 +1,5 @@
 import chatGPT from './completions.js';
+import getRedis from './lib/redis/index.js';
 import {
   asBool,
   asNumber,
@@ -87,3 +88,5 @@ await intent('Give me a flight to Burgas')
 await intent('Lookup a song by the quote "I just gotta tell you how I\'m feeling"')
   .then(response => console.log(JSON.stringify(response, null, 2)))
   .catch(error => console.error(error));
+
+await (await getRedis()).disconnect();
