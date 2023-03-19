@@ -16,6 +16,10 @@ class NullRedisClient {
 
 const createRedisClient = async () => {
   return new Promise((resolve, reject) => {
+    if (process.env.REDIS_DISABLED) {
+      return resolve(new NullRedisClient());
+    }
+
     const client = createClient({
       host: process.env.REDIS_HOST ?? 'localhost',
       port: process.env.REDIS_PORT ?? 6379,

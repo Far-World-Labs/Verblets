@@ -1,5 +1,10 @@
-import chatGPT from './completions.js';
+import chatGPT from './lib/openai/completions.js';
 import getRedis from './lib/redis/index.js';
+import {
+  activities as designSprintActivities,
+  activity as designSprintActivity,
+  askTheExperts as designSprintAskTheExperts,
+} from './problems/design-sprint/index.js';
 import {
   asBool,
   asNumber,
@@ -7,12 +12,14 @@ import {
   asUndefinedByDefault,
   intent as intentPrompt,
   onlyJSON,
-} from './prompts/fragments/index.js';
+} from './prompts/fragment-texts/index.js';
 import {
   asEnum,
   asIntent,
   asSchemaOrgMessage,
   asSchemaOrgType,
+  style as stylePrompt,
+  summarize as summarizePrompt,
 } from './prompts/fragment-functions/index.js';
 import {
   stripNumeric,
@@ -51,7 +58,6 @@ export const schemaOrg = async (object, type) => {
 export const intent = async (message) => {
   return toObject(await chatGPT(`${asIntent(message)}${intentPrompt}`));
 };
-
 
 await bool('Does Mace Windu have a blue lightsaber')
   .then(response => console.log(response))

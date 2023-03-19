@@ -1,0 +1,135 @@
+import fetch from 'node-fetch';
+import crypto from 'crypto'
+import { encoding_for_model as encodingForModel } from '@dqbd/tiktoken';
+
+import {
+  apiKey,
+  cacheTTL,
+  debugPromptGlobally,
+  debugResultGlobally,
+  defaultModel,
+  frequencyPenalty as frequencyPenaltyConfig,
+  maxTokens as maxTokensConfig,
+  models,
+  Model,
+  presencePenalty as presencePenaltyConfig,
+  temperature as temperatureConfig,
+  topP as topPConfig,
+} from '../../constants/openai.js';
+import getRedis from '../redis/index.js';
+
+const shapeOutput = (result, {
+  returnWholeResult,
+  returnAllChoices,
+}) => {
+  if (returnWholeResult) {
+    return result;
+  }
+  if (returnAllChoices) {
+    return result.choices.map(c => c.text)
+  }
+  return result.choices[0].text.trim();
+}
+
+const run = async (prompt, options={}) => {
+  const {
+    debugPrompt,
+    debugResult,
+    model=defaultModel,
+    temperature=temperatureConfig,
+    topP=topPConfig,
+    maxTokens=maxTokensConfig,
+    frequencyPenalty=frequencyPenaltyConfig,
+    presencePenalty=presencePenaltyConfig,
+    returnAllChoices,
+    returnWholeResult,
+  } = options;
+
+  const apiUrl = 'https://api.openai.com/v1/completions';
+  const headers = {
+    'Authorization': `Bearer ${apiKey}`,
+    'Content-Type': 'application/json'
+  };
+
+  const redis = await getRedis();
+
+  const hash = crypto.createHash('sha256').update(prompt+JSON.stringify(options)).digest('hex').toString();
+  let result;
+  let foundInRedis;
+  try {
+    const resultFromRedis = await redis.get(hash);
+    foundInRedis = resultFromRedis !== null;
+    if (foundInRedis) {
+      result = JSON.parse(resultFromRedis);
+    }
+  } catch (error) {
+    console.error(`Completions request [error]: ${error.message}`)
+  }
+
+  if ((debugPrompt || debugPromptGlobally) && !foundInRedis) {
+    console.error(`+++ DEBUG PROMPT +++`);
+    console.error(prompt);
+    console.error('+++ DEBUG PROMPT END +++');
+  }
+
+  if (!foundInRedis) {
+    let modelConfigFound = models
+      .find(m => m.name === model)
+
+    if (!modelConfigFound) {
+      console.error(`Completions request [error]: Model not supported. Falling back to ${defaultModel}. (model: ${model})`);
+      modelConfigFound = models
+        .find(m => m.name === defaultModel);
+
+    }
+
+    // To get the tokeniser corresponding to a specific model in the OpenAI API:
+    const enc = encodingForModel(modelConfigFound.name);
+
+    const promptTokenCount = enc.encode(prompt).length;
+
+    const tokensForCompletionAvailable = modelConfigFound.maxTokens - promptTokenCount;
+
+    const tokensForCompletion = Math.min(tokensForCompletionAvailable, maxTokens);
+
+    const data = {
+      prompt,
+      model: modelConfigFound.name,
+      temperature,
+      max_tokens: tokensForCompletion,
+      top_p: topP,
+      frequency_penalty: frequencyPenalty,
+      presence_penalty: presencePenalty,
+    };
+
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: headers,
+      body: JSON.stringify(data)
+    });
+
+    if (!response.ok) {
+      const body = await response.json();
+      throw new Error(`Completions request [error]: ${body.error.message} (status: ${response.status}, type: ${body.error.type})`);
+    }
+
+    result = await response.json();
+
+    await redis.set(hash, JSON.stringify(result), { EX: cacheTTL });
+  }
+
+  const resultShaped = shapeOutput(result, {
+    returnWholeResult,
+    returnAllChoices,
+  });
+
+  if ((debugResult || debugResultGlobally) && !foundInRedis) {
+    console.error(`+++ DEBUG RESULT +++`);
+    console.log(resultShaped);
+    console.log('+++ DEBUG RESULT END +++');
+  }
+
+  return resultShaped;
+};
+
+export default run;

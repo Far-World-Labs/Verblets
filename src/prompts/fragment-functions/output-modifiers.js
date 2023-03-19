@@ -1,4 +1,4 @@
-import { onlyJSON } from '../fragments/index.js';
+import { onlyJSON } from '../fragment-texts/index.js';
 
 const _asSchemaOrgType = (type) => type ? `Ensure the type is ${type}. ` : '';
 
