@@ -1,26 +1,24 @@
 import chatGPT from './lib/openai/completions.js';
 import getRedis from './lib/redis/index.js';
 import {
-  activities as designSprintActivities,
-  activity as designSprintActivity,
-  askTheExperts as designSprintAskTheExperts,
-} from './problems/design-sprint/index.js';
-import {
   asBool,
   asNumber,
   asNumberWithUnits,
   asUndefinedByDefault,
   intent as intentPrompt,
   onlyJSON,
+  transform,
 } from './prompts/fragment-texts/index.js';
 import {
   asEnum,
   asIntent,
+  asJSONSchema,
   asSchemaOrgMessage,
   asSchemaOrgType,
   style as stylePrompt,
   summarize as summarizePrompt,
 } from './prompts/fragment-functions/index.js';
+import generateCollection from './problems/collection-simple/index.js';
 import {
   stripNumeric,
   stripResponse,
@@ -94,5 +92,13 @@ await intent('Give me a flight to Burgas')
 await intent('Lookup a song by the quote "I just gotta tell you how I\'m feeling"')
   .then(response => console.log(JSON.stringify(response, null, 2)))
   .catch(error => console.error(error));
+
+const jsonSchema = toObject(await chatGPT(asJSONSchema(
+  'make, model, releaseDate (ISO), maxRange (miles), batteryCapacity (kWH), startingCost (USD)'
+)));
+
+const cars = await generateCollection('2022 EV Cars', { jsonSchema });
+
+console.table(cars);
 
 await (await getRedis()).disconnect();

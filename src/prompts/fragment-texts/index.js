@@ -24,3 +24,5 @@ export const onlyJSON = _onlyJSON;
 export const onlyJSONArray = _onlyJSONArray;
 
 export const onlyJSONStringArray = _onlyJSONStringArray;
+
+export const transform = 'Transform the following object: '

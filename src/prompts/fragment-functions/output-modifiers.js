@@ -8,7 +8,41 @@ export const asEnum = (enumVal) => {
   return `${options}. \n\nIf the option doesnt fit, say "undefined".`
 }
 
+export const asJSONSchema = (propertiesDescription) => {
+  return `Give me a JSONSchema definition for the following properties: ${propertiesDescription}
+
+Include per-property metadata as JSON comments.
+
+${onlyJSON}`
+}
+
 export const asIntent = (intent) => `Intent: "${intent}"`;
+
+const jsonSchemaDefault = {
+  type: 'object',
+  properties: {
+    name: {
+      type: 'string',
+    },
+  },
+};
+
+export const asObjectWithSchema = (jsonSchema=jsonSchemaDefault) => {
+  const propertiesJoined = Object.entries(jsonSchema.properties)
+        .map(([k, v]) => {
+          const annotations = Object.entries(v)
+                .filter(([k, v]) => ['format', 'description'].includes(k) && !!v)
+          const annotationsFormatted = annotations
+                .map(([k, v]) => `${k}: ${v}`)
+                .join(', ')
+          const annotationsWrapped = annotations.length ? ` (${annotationsFormatted})` : '';
+          return `"${k}": "<${v.type ?? ''}${annotationsWrapped}>"`
+        })
+        .join(', ');
+
+  return `The returned object must look like the following, including all the same properties: \`{ ${propertiesJoined} }\`. Property values must parse with JSON.parse.
+`;
+};
 
 export const asSchemaOrgMessage = (object, type) => {
   const typeMessage = _asSchemaOrgType(type);

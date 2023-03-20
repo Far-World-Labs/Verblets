@@ -6,7 +6,9 @@ import {
   apiKey,
   cacheTTL,
   debugPromptGlobally,
+  debugPromptGloballyIfChanged,
   debugResultGlobally,
+  debugResultGloballyIfChanged,
   defaultModel,
   frequencyPenalty as frequencyPenaltyConfig,
   maxTokens as maxTokensConfig,
@@ -35,14 +37,15 @@ const run = async (prompt, options={}) => {
   const {
     debugPrompt,
     debugResult,
-    model=defaultModel,
-    temperature=temperatureConfig,
-    topP=topPConfig,
-    maxTokens=maxTokensConfig,
+    forceQuery,
     frequencyPenalty=frequencyPenaltyConfig,
+    maxTokens=maxTokensConfig,
+    model=defaultModel,
     presencePenalty=presencePenaltyConfig,
     returnAllChoices,
     returnWholeResult,
+    temperature=temperatureConfig,
+    topP=topPConfig,
   } = options;
 
   const apiUrl = 'https://api.openai.com/v1/completions';
@@ -53,7 +56,34 @@ const run = async (prompt, options={}) => {
 
   const redis = await getRedis();
 
-  const hash = crypto.createHash('sha256').update(prompt+JSON.stringify(options)).digest('hex').toString();
+  let modelConfigFound = models
+      .find(m => m.name === model)
+
+  if (!modelConfigFound) {
+    console.error(`Completions request [error]: Model not supported. Falling back to ${defaultModel}. (model: ${model})`);
+    modelConfigFound = models
+      .find(m => m.name === defaultModel);
+  }
+
+  // To get the tokeniser corresponding to a specific model in the OpenAI API:
+  const enc = encodingForModel(modelConfigFound.name);
+
+  const promptTokenCount = enc.encode(prompt).length;
+
+  const tokensForCompletionAvailable = modelConfigFound.maxTokens - promptTokenCount;
+
+  const tokensForCompletion = Math.min(tokensForCompletionAvailable, maxTokens);
+
+  const data = {
+    model: modelConfigFound.name,
+    temperature,
+    max_tokens: tokensForCompletion,
+    top_p: topP,
+    frequency_penalty: frequencyPenalty,
+    presence_penalty: presencePenalty,
+  };
+
+  const hash = crypto.createHash('sha256').update(prompt+JSON.stringify(data)).digest('hex').toString();
   let result;
   let foundInRedis;
   try {
@@ -66,46 +96,17 @@ const run = async (prompt, options={}) => {
     console.error(`Completions request [error]: ${error.message}`)
   }
 
-  if ((debugPrompt || debugPromptGlobally) && !foundInRedis) {
+  if (debugPrompt || debugPromptGlobally || (debugPromptGloballyIfChanged && !foundInRedis)) {
     console.error(`+++ DEBUG PROMPT +++`);
     console.error(prompt);
     console.error('+++ DEBUG PROMPT END +++');
   }
 
-  if (!foundInRedis) {
-    let modelConfigFound = models
-      .find(m => m.name === model)
-
-    if (!modelConfigFound) {
-      console.error(`Completions request [error]: Model not supported. Falling back to ${defaultModel}. (model: ${model})`);
-      modelConfigFound = models
-        .find(m => m.name === defaultModel);
-
-    }
-
-    // To get the tokeniser corresponding to a specific model in the OpenAI API:
-    const enc = encodingForModel(modelConfigFound.name);
-
-    const promptTokenCount = enc.encode(prompt).length;
-
-    const tokensForCompletionAvailable = modelConfigFound.maxTokens - promptTokenCount;
-
-    const tokensForCompletion = Math.min(tokensForCompletionAvailable, maxTokens);
-
-    const data = {
-      prompt,
-      model: modelConfigFound.name,
-      temperature,
-      max_tokens: tokensForCompletion,
-      top_p: topP,
-      frequency_penalty: frequencyPenalty,
-      presence_penalty: presencePenalty,
-    };
-
+  if (!foundInRedis || forceQuery) {
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: headers,
-      body: JSON.stringify(data)
+      body: JSON.stringify({ prompt, ...data })
     });
 
     if (!response.ok) {
@@ -123,7 +124,7 @@ const run = async (prompt, options={}) => {
     returnAllChoices,
   });
 
-  if ((debugResult || debugResultGlobally) && !foundInRedis) {
+  if (debugResult || debugResultGlobally || (debugResultGloballyIfChanged && !foundInRedis)) {
     console.error(`+++ DEBUG RESULT +++`);
     console.log(resultShaped);
     console.log('+++ DEBUG RESULT END +++');
