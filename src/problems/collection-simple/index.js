@@ -1,34 +1,75 @@
 import chatGPT from '../../lib/openai/completions.js';
 import {
   asObjectWithSchema as asObjectWithSchemaPrompt,
-  generateCollection as generateCollectionPrompt,
+  generateList as generateListPrompt,
 } from '../../prompts/fragment-functions/index.js'
+import {
+  onlyJSON,
+  transform,
+} from '../../prompts/fragment-texts/index.js'
 import {
   toObject,
 } from '../../response-parsers/index.js';
 
-export default async (message, options) => {
-  const results = await chatGPT(`${generateCollectionPrompt(message, options)}`, { maxTokens: 3000 });
+const shouldSkipNull = (result, resultsAll) => {
+  return resultsAll.includes(result);
+};
 
-  const resultObjects = toObject(results);
-  const resultObjectsEnhanced = [];
-  for (let resultObject of resultObjects) {
-    const resultObjectComplete = (options.properties ?? [])
-      .every(prop => prop in resultObject);
-    if (resultObjectComplete) {
-      resultObjectsEnhanced.push(resultObject);
-      continue;
-    }
+const shouldStopNull = (result, resultsAll, resultsNew, attempts=0) => {
+  return resultsAll.length > 30 || attempts > 20;
+};
 
-    if (!resultObjectComplete) {
-      const resultObjectEnhanced = await chatGPT(`${transform}: ${JSON.stringify(resultObject)}
+const generateList = async function* (message, options={}) {
+  const resultsAll = [];
+  const resultsAllMap = {};
+  let isDone = false;
+  const { shouldSkip=shouldSkipNull, shouldStop=shouldStopNull } = options;
 
-        ${asObjectWithSchemaPrompt(options.jsonSchema)}
+  let attempts = 0;
+  while (!isDone) {
+    const results = await chatGPT(`${generateListPrompt(message, { options, existing: resultsAll })}`, { maxTokens: 3000 });
+    const resultsNew = toObject(results);
+    const resultsNewUnique = resultsNew.filter(item => !(item in resultsAllMap));
 
-${onlyJSON}`);
-      resultObjectsEnhanced.push(toObject(resultObjectEnhanced));
+    attempts = attempts + 1;
+
+    for (let result of resultsNewUnique) {
+      if (await shouldSkip(result, resultsAll)) {
+        continue;
+      }
+
+      if (await shouldStop(result, resultsAll, resultsNew, attempts)) {
+        isDone = true;
+        break;
+      }
+      resultsAllMap[result] = true;
+      resultsAll.push(result);
+      yield result;
     }
   }
+};
 
-  return resultObjectsEnhanced;
+export default async (message, options) => {
+  const generator = generateList(message);
+
+  const results = [];
+  for await (let result of generator) {
+    results.push(result);
+  }
+
+  if (!options.jsonSchema) {
+    return results;
+  }
+
+  const resultObjects = [];
+  for (let result of results) {
+    const resultObject = await chatGPT(`${transform} ${result}
+
+      ${asObjectWithSchemaPrompt(options.jsonSchema)}
+
+${onlyJSON}`);
+    resultObjects.push(toObject(resultObject));
+  }
+
+  return resultObjects;
 };

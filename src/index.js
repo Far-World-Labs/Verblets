@@ -93,11 +93,12 @@ await intent('Lookup a song by the quote "I just gotta tell you how I\'m feeling
   .then(response => console.log(JSON.stringify(response, null, 2)))
   .catch(error => console.error(error));
 
+console.error('Generating a collection. This might take a minute.');
+
 const jsonSchema = toObject(await chatGPT(asJSONSchema(
   'make, model, releaseDate (ISO), maxRange (miles), batteryCapacity (kWH), startingCost (USD)'
 )));
-
-const cars = await generateCollection('2022 EV Cars', { jsonSchema });
+const cars = await generateCollection('2021 EV Cars', { jsonSchema });
 
 console.table(cars);
 
