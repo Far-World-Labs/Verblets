@@ -15,10 +15,12 @@ import {
   asJSONSchema,
   asSchemaOrgMessage,
   asSchemaOrgType,
+  blogPost as blogPostPrompt,
   style as stylePrompt,
   summarize as summarizePrompt,
 } from './prompts/fragment-functions/index.js';
 import generateCollection from './problems/collection-simple/index.js';
+import generateQuestions from './problems/decompose/index.js';
 import {
   stripNumeric,
   stripResponse,
@@ -98,8 +100,16 @@ console.error('Generating a collection. This might take a minute.');
 const jsonSchema = toObject(await chatGPT(asJSONSchema(
   'make, model, releaseDate (ISO), maxRange (miles), batteryCapacity (kWH), startingCost (USD)'
 )));
-const cars = await generateCollection('2021 EV Cars', { jsonSchema });
+await generateCollection('2021 EV Cars', { jsonSchema })
+  .then(response => console.table(response))
+  .catch(error => console.error(error));
 
-console.table(cars);
+console.error('Generating a blog post. This might take a minute.');
+
+const questions = await generateQuestions('Writing a prompt toolkit for ChatGPT', { searchBreadth: 0.5 });
+
+await chatGPT(blogPostPrompt(questions.join('\n')), { maxTokens: 3000, temperature: 1 })
+  .then(response => console.log(response))
+  .catch(error => console.error(error));
 
 await (await getRedis()).disconnect();
