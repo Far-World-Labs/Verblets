@@ -1,14 +1,14 @@
 {
-  "name": "Puck",
+  "name": "@pucklabs/puck",
   "version": "0.0.1",
-  "description": "Opinionated OpenAPI Client",
+  "description": "OpenAI Client",
   "main": "index.js",
   "type": "module",
   "scripts": {
     "test": "exit 1"
   },
   "author": "",
-  "license": "MIT",
+  "license": "All Rights Reserved",
   "dependencies": {
     "@dqbd/tiktoken": "^1.0.2",
     "chai": "^4.3.7",
