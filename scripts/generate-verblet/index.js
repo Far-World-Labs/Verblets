@@ -27,7 +27,7 @@ fs.writeFileSync(indexFile, indexContent);
 
 // Create the test file
 const testContent = `
-import ${verbletName} from './${verbletName}';
+import ${verbletName} from './index.js';
 
 describe('${verbletName} verblet', () => {
   it('should do something', async () => {

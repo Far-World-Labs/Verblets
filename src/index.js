@@ -19,8 +19,8 @@ import {
   style as stylePrompt,
   summarize as summarizePrompt,
 } from './prompts/fragment-functions/index.js';
-import generateCollection from './problems/collection-simple/index.js';
-import generateQuestions from './problems/decompose/index.js';
+import generateCollection from './interplays/collection-simple/index.js';
+import generateQuestions from './interplays/decompose/index.js';
 import {
   stripNumeric,
   stripResponse,
@@ -29,7 +29,7 @@ import {
   toNumber,
   toNumberWithUnits,
   toObject,
-} from './response-parsers/index.js'
+} from './response-parsers/index.js';
 
 export const bool = async (message) => {
   const boolMessage = `Question: ${message} \n\n${asBool}`

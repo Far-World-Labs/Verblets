@@ -9,7 +9,9 @@
     "start": "node src/index.js",
     "dev": "npm run nodemon:cmd -- src/index.js",
     "--": "npm run script -- generate-verblet foo",
-    "script": "./scripts/run.sh"
+    "script": "./scripts/run.sh",
+    "test": "vitest",
+    "examples": "vitest --config .vite.config.examples.js"
   },
   "config": {
     "gen-script": "./scripts/run.sh gen-$1"
@@ -19,8 +21,11 @@
   "dependencies": {
     "@dqbd/tiktoken": "^1.0.2",
     "chai": "^4.3.7",
+    "mocha": "^10.2.0",
     "node-fetch": "^3.3.0",
+    "nodemon": "^2.0.22",
     "ramda": "^0.28.0",
-    "redis": "^4.6.5"
+    "redis": "^4.6.5",
+    "vitest": "^0.29.7"
   }
 }
