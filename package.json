@@ -1,11 +1,18 @@
 {
   "name": "@pucklabs/puck",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "OpenAI Client",
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "test": "exit 1"
+    "nodemon:cmd": "nodemon --no-warnings",
+    "start": "node src/index.js",
+    "dev": "npm run nodemon:cmd -- src/index.js",
+    "--": "npm run script -- generate-verblet foo",
+    "script": "./scripts/run.sh"
+  },
+  "config": {
+    "gen-script": "./scripts/run.sh gen-$1"
   },
   "author": "",
   "license": "All Rights Reserved",
