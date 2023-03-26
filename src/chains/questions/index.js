@@ -41,12 +41,12 @@ const shouldStopNull = (result, resultsAll, resultsNew, attempts=0) => {
   return resultsAll.length > 50 || attempts > 5;
 };
 
-const generateQuestions = async function* (message, options={}) {
+const generateQuestions = async function* (text, options={}) {
   const resultsAll = [];
   const resultsAllMap = {};
   const drilldownResults = [];
   let isDone = false;
-  let messageSelected = message;
+  let textSelected = text;
 
   const {
     searchBreadth=0.5,
@@ -60,15 +60,15 @@ const generateQuestions = async function* (message, options={}) {
       const choices = resultsAll.filter((item) => {
         return !drilldownResults.includes(item);
       });
-      const pickInterestingQuestionPrompt = pickInterestingQuestion(messageSelected, { existing: choices });
-      messageSelected = await chatGPT(pickInterestingQuestionPrompt);
-      drilldownResults.push(messageSelected);
+      const pickInterestingQuestionPrompt = pickInterestingQuestion(textSelected, { existing: choices });
+      textSelected = await chatGPT(pickInterestingQuestionPrompt);
+      drilldownResults.push(textSelected);
     }
     const chatGPTConfig = {
       maxTokens: 3000,
       temperature: 1,
     };
-    const promptGenerated = generateQuestionsPrompt(messageSelected, { existing: resultsAll });
+    const promptGenerated = generateQuestionsPrompt(textSelected, { existing: resultsAll });
     const results = await chatGPT(`${promptGenerated}`, chatGPTConfig);
     let resultsParsed
     try {
@@ -82,7 +82,7 @@ const generateQuestions = async function* (message, options={}) {
     const resultsNew = getRandomSubset(resultsParsed, searchBreadth);
     if (searchBreadth < 0.5) {
       const randomIndex = Math.floor(Math.random() * resultsNew.length)
-      messageSelected = resultsNew[randomIndex];
+      textSelected = resultsNew[randomIndex];
     }
     const resultsNewUnique = resultsNew.filter(item => !(item in resultsAllMap));
 
@@ -104,8 +104,8 @@ const generateQuestions = async function* (message, options={}) {
   }
 };
 
-export default async (message, options) => {
-  const generator = generateQuestions(message, options);
+export default async (text, options) => {
+  const generator = generateQuestions(text, options);
 
   const results = [];
   for await (let result of generator) {

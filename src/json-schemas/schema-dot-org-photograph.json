@@ -1,0 +1,127 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://example.com/schemas/photograph.json",
+  "type": "object",
+  "properties": {
+    "@context": {
+      "type": "string",
+      "pattern": "^http[s]?://schema.org$"
+    },
+    "@type": {
+      "type": "string",
+      "pattern": "^Photograph$"
+    },
+    "name": {
+      "type": "string"
+    },
+    "caption": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "keywords": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "thumbnail": {
+      "type": "object",
+      "properties": {
+        "@type": {
+          "type": "string",
+          "pattern": "^ImageObject$"
+        },
+        "url": {
+          "type": "string"
+        },
+        "width": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": ["url"]
+    },
+    "image": {
+      "type": "object",
+      "properties": {
+        "@type": {
+          "type": "string",
+          "pattern": "^ImageObject$"
+        },
+        "url": {
+          "type": "string"
+        },
+        "width": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": ["url"]
+    },
+    "contentLocation": {
+      "type": "object",
+      "properties": {
+        "@type": {
+          "type": "string",
+          "pattern": "^Place$"
+        },
+        "name": {
+          "type": "string"
+        },
+        "address": {
+          "type": "object",
+          "properties": {
+            "@type": {
+              "type": "string",
+              "pattern": "^PostalAddress$"
+            },
+            "streetAddress": {
+              "type": "string"
+            },
+            "addressLocality": {
+              "type": "string"
+            },
+            "addressRegion": {
+              "type": "string"
+            },
+            "postalCode": {
+              "type": "string"
+            },
+            "addressCountry": {
+              "type": "string"
+            }
+          },
+          "required": ["streetAddress", "addressLocality", "addressRegion", "postalCode", "addressCountry"]
+        },
+        "geo": {
+          "type": "object",
+          "properties": {
+            "@type": {
+              "type": "string",
+              "pattern": "^GeoCoordinates$"
+            },
+            "latitude": {
+              "type": "number"
+            },
+            "longitude": {
+              "type": "number"
+            }
+          },
+          "required": ["latitude", "longitude"]
+        }
+      },
+      "required": ["name"]
+    }
+  },
+  "required": ["@context", "@type", "name"]
+}

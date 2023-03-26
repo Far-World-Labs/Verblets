@@ -7,7 +7,7 @@ export {
   asIntent,
   asJSONSchema,
   asObjectWithSchema,
-  asSchemaOrgMessage,
+  asSchemaOrgText,
   asSchemaOrgType
 } from './output-modifiers.js';
 import _selectFromThreshold from './select-from-threshold.js';

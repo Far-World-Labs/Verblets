@@ -20,7 +20,9 @@
   "license": "All Rights Reserved",
   "dependencies": {
     "@dqbd/tiktoken": "^1.0.2",
+    "ajv": "^8.12.0",
     "chai": "^4.3.7",
+    "change-case": "^4.1.2",
     "mocha": "^10.2.0",
     "node-fetch": "^3.3.0",
     "nodemon": "^2.0.22",

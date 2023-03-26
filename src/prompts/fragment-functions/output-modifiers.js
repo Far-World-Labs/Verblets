@@ -44,9 +44,13 @@ export const asObjectWithSchema = (jsonSchema=jsonSchemaDefault) => {
 `;
 };
 
-export const asSchemaOrgMessage = (object, type) => {
-  const typeMessage = _asSchemaOrgType(type);
-  return `Give me "${object}" in schema.org JSON format with a full set of properties. ${typeMessage}. ${onlyJSON}`;
+export const asSchemaOrgText = (object, type) => {
+  const typeText = _asSchemaOrgType(type);
+  return `Give me "${object}" in schema.org JSON format with a full set of properties. ${typeText}.
+- ensure values meant to be numbers are numbers
+- ensure the type is a real schema.org type
+- ensure the returned object has @context, name
+${onlyJSON}`;
 };
 
 export const asSchemaOrgType = _asSchemaOrgType;

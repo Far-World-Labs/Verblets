@@ -13,7 +13,7 @@ if (!verbletName) {
   process.exit(1);
 }
 
-const verbletDir = `./src/verblets/${paramCase(verbletName)}`;
+const verbletDir = `./src/chains/${paramCase(verbletName)}`;
 const indexFile = `${verbletDir}/index.js`;
 const readmeFile = `${verbletDir}/README.md`;
 const testFile = `${verbletDir}/${paramCase(verbletName)}.spec.js`;
