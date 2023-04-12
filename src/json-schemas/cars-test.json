@@ -1,0 +1,11 @@
+{
+  "type": "object",
+  "properties": {
+    "make": { "type": "string" },
+    "model": { "type": "string" },
+    "releaseDate": { "type": "string", "format": "date-time" },
+    "maxRange": { "type": "number", "description": "Max range in miles" },
+    "batteryCapacity": { "type": "number", "description": "Battery capacity in kWh" },
+    "startingCost": { "type": "number", "description": "Starting cost in USD" }
+  }
+}

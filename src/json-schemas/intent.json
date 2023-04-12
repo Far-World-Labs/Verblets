@@ -1,0 +1,38 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "http://example.com/schemas/intent-schema.json",
+  "type": "object",
+  "properties": {
+    "queryText": {
+      "type": "string",
+      "description": "The user's query text."
+    },
+    "intent": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "type": "string",
+          "description": "The operation associated with the intent."
+        },
+        "displayName": {
+          "type": "string",
+          "description": "The display name of the intent."
+        }
+      },
+      "required": ["operation", "displayName"],
+      "description": "Information about the intent."
+    },
+    "parameters": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Parameters associated with the intent."
+    },
+    "optionalParameters": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Optional parameters associated with the intent."
+    }
+  },
+  "required": ["queryText", "intent"],
+  "description": "Schema for an intent response."
+}

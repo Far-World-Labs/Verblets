@@ -1,17 +1,38 @@
 {
-  "name": "Puck",
-  "version": "0.0.1",
-  "description": "Opinionated OpenAPI Client",
+  "name": "@pucklabs/puck",
+  "version": "0.0.2",
+  "description": "OpenAI Client",
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "test": "node ./src/index.js"
+    "nodemon:cmd": "nodemon --no-warnings",
+    "start": "node src/index.js",
+    "dev": "npm run nodemon:cmd -- src/index.js",
+    "--": "npm run script -- generate-verblet foo",
+    "script": "./scripts/run.sh",
+    "test": "vitest",
+    "examples": "vitest --config .vite.config.examples.js"
+  },
+  "config": {
+    "gen-script": "./scripts/run.sh gen-$1"
   },
   "author": "",
-  "license": "MIT",
+  "license": "All Rights Reserved",
   "dependencies": {
+    "@dqbd/tiktoken": "^1.0.2",
+    "ajv": "^8.12.0",
     "chai": "^4.3.7",
-    "dotenv": "^16.0.3",
-    "node-fetch": "^3.3.0"
+    "change-case": "^4.1.2",
+    "jscodeshift": "^0.14.0",
+    "mocha": "^10.2.0",
+    "node-fetch": "^3.3.0",
+    "nodemon": "^2.0.22",
+    "ramda": "^0.28.0",
+    "redis": "^4.6.5",
+    "uuid": "^9.0.0",
+    "vitest": "^0.29.7"
+  },
+  "devDependencies": {
+    "why-is-node-running": "^2.2.2"
   }
 }

@@ -1,4 +1,7 @@
 import { onlyJSON } from './output-modifiers.js';
+import fs from 'fs/promises';
+
+const intentSchema = JSON.parse(await fs.readFile('./src/json-schemas/intent.json'));
 
 /**
  * Approximates intent recognition like you might find with Wit.ai,
@@ -13,25 +16,27 @@ Ensure the intent is sufficiently abstract.
 Include the full list of supplied parameters.
 Don't include optional parameters under "parameters" unless they were found when the intent was parsed.
 
-For example:
+Make it conform exactly to the following schema:
+\`\`\`
+${intentSchema}
+\`\`\`
+
+This is an example:
 \`\`\`
 {
-  "queryText": "show me flights to New York",
+  "queryText": "play some music",
   "intent": {
-    "operation": "book-flight",
-    "displayName": "Book flights"
+    "operation": "play-music",
+    "displayName": "Play Music"
   },
   "parameters": {
-    "destination": "New York"
+    "genre": "rock"
   },
   "optionalParameters": {
-    "origin": "",
-    "departureDate": "",
-    "returnDate": "",
-    "numPassengers": ""
-  },
-  "fulfillmentText": "Here are some flights to New York.",
+    "artist": "The Beatles"
+  }
 }
+
 \`\`\`
 
 ${onlyJSON}

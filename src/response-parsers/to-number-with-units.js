@@ -5,6 +5,11 @@ import {
 export default (envelope) => {
   const envelopeStripped = stripResponse(envelope);
   let valueExtracted, unitExtracted;
+
+  if (envelopeStripped === 'undefined') {
+    return undefined;
+  }
+
   try {
     const envelopeParsed = JSON.parse(envelopeStripped);
     let { value, unit } = envelopeParsed;
@@ -14,11 +19,11 @@ export default (envelope) => {
     throw new Error(`ChatGPT output [error]: ${error.message}`);
   }
 
-  if (typeof valueExtracted === 'undefined') {
-    throw new Error(`ChatGPT output [error]: No number returned in number query.`);
-  }
-  if (!unitExtracted) {
-    throw new Error(`ChatGPT output [error]: No unit returned in number with units query.`);
+  let unitParsed = unitExtracted;
+  if (unitExtracted === 'undefined') {
+    unitParsed = undefined;
+  } else if (typeof unitExtracted === 'undefined') {
+    unitParsed = undefined;
   }
 
   let valueParsed;
@@ -29,13 +34,15 @@ export default (envelope) => {
     valueParsed = valueExtracted;
   } else if (valueExtracted === 'undefined') {
     valueParsed = undefined;
+  } else if (typeof valueExtracted === 'undefined') {
+    valueParsed = undefined;
   } else {
     throw new Error(`ChatGPT output [error]: Bad datatype returned for number query.`);
   }
 
-  if (isNaN(valueParsed)) {
-    throw new Error(`ChatGPT output [error]: ${error.message}`);
+  if ((typeof valueParsed !== 'undefined') && isNaN(valueParsed)) {
+    throw new Error(`ChatGPT output [error]: Value is not a number`);
   }
 
-  return { value: valueParsed, unit: unitExtracted };
+  return { value: valueParsed, unit: unitParsed };
 };

@@ -34,7 +34,7 @@ export const toEnum = (value, enumValue) => {
 export const toNumber = (val) => {
   const valLower = _stripResponse(val.toLowerCase());
   if (valLower === 'undefined') return undefined;
-  const valParsed = new Number(stripNumeric(val));
+  const valParsed = +(stripNumeric(val));
   if (isNaN(valParsed)) {
     throw new Error(`ChatGPT output [error]: ${error.message}`);
   }
