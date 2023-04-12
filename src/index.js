@@ -1,3 +1,5 @@
+import * as dotenv from 'dotenv/config';
+
 import chatGPT from './lib/openai/completions.js';
 import _getRedis from './lib/redis/index.js';
 import _retry from './lib/utils/retry/index.js';
