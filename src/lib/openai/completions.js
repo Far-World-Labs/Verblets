@@ -33,7 +33,7 @@ const shapeOutput = (result, {
   return result.choices[0].text.trim();
 }
 
-const run = async (prompt, options={}) => {
+export const run = async (prompt, options={}) => {
   const {
     debugPrompt,
     debugResult,

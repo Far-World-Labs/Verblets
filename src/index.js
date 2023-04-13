@@ -10,6 +10,8 @@ export const getRedis = _getRedis;
 export { default as Dismantle } from './chains/dismantle/index.js'
 export { default as list } from './chains/list/index.js'
 export { default as questions } from './chains/questions/index.js';
+export { default as sort } from './chains/sort/index.js';
+
 
 export { default as bool } from './verblets/bool/index.js'
 export { default as enums } from './verblets/enum/index.js';

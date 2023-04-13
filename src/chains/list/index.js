@@ -11,12 +11,12 @@ import {
   toObject,
 } from '../../response-parsers/index.js';
 
-const shouldSkipNull = async (result, resultsAll) => {
+const shouldSkipNull = async ({ result, resultsAll }={}) => {
   return resultsAll.includes(result);
 };
 
-const shouldStopNull = async (result, resultsAll, resultsNew, attempts=0) => {
-  return resultsAll.length > 30 || attempts > 20;
+const shouldStopNull = async ({ result, resultsAll, resultsNew, attempts=0 }={}) => {
+  return resultsAll.length > 30 || attempts > 5;
 };
 
 export const generateList = async function* (text, options={}) {
@@ -29,7 +29,7 @@ export const generateList = async function* (text, options={}) {
   while (!isDone) {
     let resultsNew;
     try {
-      const results = await chatGPT(`${generateListPrompt(text, { options, existing: resultsAll })}`, { maxTokens: 3000 });
+      const results = await chatGPT(`${generateListPrompt(text, { options, existing: resultsAll })}`, { maxTokens: 3000, ...options });
       resultsNew = toObject(results);
     } catch (error) {
       console.error(`Generate list [error]: ${error.message}`);
@@ -41,11 +41,11 @@ export const generateList = async function* (text, options={}) {
     attempts = attempts + 1;
 
     for (let result of resultsNewUnique) {
-      if (await shouldSkip(result, resultsAll)) {
+      if (await shouldSkip({ result, resultsAll })) {
         continue;
       }
 
-      if (await shouldStop(result, resultsAll, resultsNew, attempts)) {
+      if (await shouldStop({ result, resultsAll, resultsNew, attempts })) {
         isDone = true;
         break;
       }
@@ -53,7 +53,12 @@ export const generateList = async function* (text, options={}) {
       resultsAll.push(result);
       yield result;
     }
-    if (await shouldStop(undefined, [], [], attempts)) {
+    if (await shouldStop({
+      result: undefined,
+      resultsAll: [],
+      resultsNew: [],
+      attempts
+    })) {
       isDone = true;
     }
   }

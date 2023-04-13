@@ -112,7 +112,7 @@ export default async (text, options) => {
     results.push(result);
   }
 
-  const resultsSorted = R.sort(R.comparator((a, b) => a.localeCompare(b)), results);
+  const resultsSorted = R.sort((a, b) => a.localeCompare(b), results);
 
   return resultsSorted;
 };
