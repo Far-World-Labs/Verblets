@@ -2,9 +2,13 @@ import chai from 'chai';
 
 const expect = chai.expect;
 
-const _Model = {
-  textDavinci003: 'text-davinci-003',
-};
+const _models = [{
+  name: 'text-davinci-003',
+  maxTokens: 4097,
+}, {
+  name: 'gpt-4-32k-0314',
+  maxTokens: 32768,
+}];
 
 expect(process.env.OPENAI_API_KEY).to.exist;
 export const apiKey = process.env.OPENAI_API_KEY;
@@ -20,18 +24,13 @@ export const debugResultGlobally = process.env.OPENAI_DEBUG_RESULT ?? false;
 
 export const debugResultGloballyIfChanged = process.env.OPENAI_DEBUG_RESULT_IF_CHANGED ?? false;
 
-export const defaultModel = _Model.textDavinci003;
+export const defaultModel = _models[0].name // text-davinci-003
 
 export const frequencyPenalty = process.env.OPENAI_COMPLETIONS_FREQUENCY_PENALTY ?? 0;
 
 export const maxTokens = process.env.OPENAI_COMPLETIONS_MAX_TOKENS ?? 250;
 
-export const models = [{
-  name: _Model.textDavinci003,
-  maxTokens: 4097,
-}];
-
-export const Model = _Model;
+export const models = _models;
 
 export const presencePenalty = process.env.OPENAI_COMPLETIONS_PRESENCE_PENALTY ?? 0;
 

@@ -1,5 +1,5 @@
-import fetch from 'node-fetch';
 import crypto from 'crypto'
+import fetch from 'node-fetch';
 import { encoding_for_model as encodingForModel } from '@dqbd/tiktoken';
 
 import {
@@ -13,7 +13,6 @@ import {
   frequencyPenalty as frequencyPenaltyConfig,
   maxTokens as maxTokensConfig,
   models,
-  Model,
   presencePenalty as presencePenaltyConfig,
   temperature as temperatureConfig,
   topP as topPConfig,

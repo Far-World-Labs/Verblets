@@ -2,6 +2,9 @@ import * as R from 'ramda';
 
 import chatGPT from '../../lib/openai/completions.js';
 import {
+  wrapVariable,
+} from '../../prompts/fragment-functions/index.js'
+import {
   onlyJSONStringArray,
 } from '../../prompts/fragment-texts/index.js'
 import {
@@ -25,13 +28,16 @@ let sortPrompt = ({ description=defaultSortDescription, fixes='' }, list) => {
   const listLines = JSON.stringify(list, undefined, 2);
 
   return `
-Sort the following items by "${description}"
+Sort the following items by ${wrapVariable(description)}
 
+The items to sort:
+======
 ${listLines}
+======
 
 Details:
-- descending order
-${fixes}
+ - descending order
+${wrapVariable(fixes)}
 
 ${onlyJSONStringArray}
 `
@@ -73,8 +79,8 @@ const sort = async (options, listInitial) => {
         description: by
       }, [...batch, ...newTop, ...newBottom]);
 
+      const batchSorted = toObject(await chatGPT(prompt, { maxTokens: 2000 }));
 
-      const batchSorted = toObject(await chatGPT(prompt));
       const batchTop = batchSorted.slice(0, extremeK);
       const batchBottom = batchSorted.slice(-extremeK);
       const remaining = batchSorted.slice(extremeK, -extremeK);

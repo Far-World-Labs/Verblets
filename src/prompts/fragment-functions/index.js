@@ -13,3 +13,5 @@ export { default as intent } from './intent.js';
 export { default as selectFromThreshold } from './select-from-threshold.js';
 export { default as style } from './style.js';
 export { default as summarize } from './summarize.js';
+export { default as wrapList } from './wrap-list.js';
+export { default as wrapVariable } from './wrap-variable.js';
