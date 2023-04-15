@@ -23,5 +23,3 @@ export * as fragmentTexts from './prompts/fragment-texts/index.js';
 export * as fragmentFunctions from './prompts/fragment-functions/index.js';
 
 export default chatGPT;
-
-// await (await getRedis()).disconnect();

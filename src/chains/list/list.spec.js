@@ -28,13 +28,13 @@ vi.mock('../../lib/openai/completions.js', () => ({
 const examples = [
   {
     name: 'Basic usage',
-    inputs: { text: '2021 EV cars' },
+    inputs: { description: '2021 EV cars' },
     want: { listContains: 'Model Y' }
   },
   {
     name: 'Basic usage with schema',
     inputs: {
-      text: '2021 EV cars',
+      description: '2021 EV cars',
       jsonSchema: loadSchema,
     },
     want: { listModelContains: 'Model Y' }
@@ -48,7 +48,12 @@ describe('List verblet', () => {
       if (example.inputs.jsonSchema) {
         jsonSchema = await example.inputs.jsonSchema();
       }
-      const result = await list(example.inputs.text, { jsonSchema });
+      const result = await list(
+        example.inputs.description,
+        {
+          jsonSchema
+        }
+      );
 
       if (example.want.listContains) {
         expect(result.some(item => item.includes(example.want.listContains))).equals(true);

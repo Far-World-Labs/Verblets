@@ -22,7 +22,7 @@ const exampleFile = `${verbletDir}/${paramCase(verbletName)}.examples.js`;
 const createFileIfNotExists = (filePath, fileContent, fileType) => {
   if (!fs.existsSync(filePath)) {
     fs.writeFileSync(filePath, fileContent);
-    console.log(`Created new ${fileType} file: ${filePath}`);
+    console.error(`Created new ${fileType} file: ${filePath}`);
   } else {
     console.error(`Creating ${fileType} file [skipped]: '${filePath}' exists`);
   }
@@ -109,4 +109,4 @@ describe('${sentenceCase(verbletName)} verblet', () => {
 `;
 createFileIfNotExists(exampleFile, exampleContent, 'example');
 
-console.log(`Created new verblet: ${verbletName}`);
+console.error(`Created new verblet: ${verbletName}`);

@@ -126,8 +126,8 @@ export const run = async (prompt, options={}) => {
 
   if (debugResult || debugResultGlobally || (debugResultGloballyIfChanged && !foundInRedis)) {
     console.error(`+++ DEBUG RESULT +++`);
-    console.log(resultShaped);
-    console.log('+++ DEBUG RESULT END +++');
+    console.error(resultShaped);
+    console.error('+++ DEBUG RESULT END +++');
   }
 
   return resultShaped;

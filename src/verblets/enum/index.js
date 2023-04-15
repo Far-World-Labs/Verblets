@@ -8,6 +8,8 @@ import {
 } from '../../response-parsers/index.js';
 
 export default async (text, enumVal) => {
-  const enumText = `Question: ${text}: ${asEnum(enumVal)}`;
+  const enumText = `${text}
+
+${asEnum(enumVal)}`;
   return toEnum(stripResponse(await chatGPT(enumText)), enumVal);
 };

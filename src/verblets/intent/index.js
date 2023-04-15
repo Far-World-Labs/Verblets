@@ -1,17 +1,63 @@
-import chatGPT from '../../lib/openai/completions.js';
+import chatGPT, { enums } from '../../index.js';
 import {
-  intent as intentPrompt,
-} from '../../prompts/fragment-texts/index.js';
-import {
-  asIntent,
+  intent,
 } from '../../prompts/fragment-functions/index.js';
 import {
  stripResponse,
  toObject,
 } from '../../response-parsers/index.js';
 
-export default async (text) => {
-  return toObject(stripResponse(
-    await chatGPT(`${asIntent(text)}${intentPrompt}`)
-  ));
+const completionIntent = (text) => ({
+  queryText: text,
+  intent: {
+    operation: 'completion',
+    displayName: 'Completion'
+  },
+  parameters: {
+    text
+  }
+});
+
+const enumPrompt = (text) => `What is the intent of the following prompt:
+\`\`\`
+${text}
+\`\`\`
+
+=== examples ===
+For example: The intent of "Buy me a flight to Burgas" might be "buy-flight". The intent of "What is the tempature outside" might be "get-temperature".
+=== end examples ===
+`;
+
+export default async ({
+  text,
+  operations,
+  defaultIntent=completionIntent
+}={}) => {
+  let operationsFound;
+  let parametersFound;
+  if (operations) {
+    const operationsEnum = operations
+      .reduce((acc, item, idx) => ({
+        ...acc,
+        [item.name]: idx,
+      }), {});
+
+    const operationNameFound = await enums(enumPrompt(text), operationsEnum);
+
+    const operationFound = operations
+      .find(o => o.name === operationNameFound);
+
+    if (!operationFound) {
+      return defaultIntent(text);
+    }
+
+    operationsFound = [operationFound.name];
+    parametersFound = operationFound.parameters
+  }
+
+  const result = await chatGPT(intent(text, {
+    operations: operationsFound,
+    parameters: parametersFound,
+  }));
+  return toObject(stripResponse(result));
 };

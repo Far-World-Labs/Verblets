@@ -4,8 +4,8 @@ const _asSchemaOrgType = (type) => type ? `Ensure the type is ${type}. ` : '';
 
 export const asEnum = (enumVal) => {
   const keys = Object.keys(enumVal);
-  const options = keys.map((k, i) => (i === (keys.length - 1)) ? `or ${k}` : `${k}`).join(', ');
-  return `${options}. \n\nIf the option doesnt fit, say "undefined".`
+  const options = keys.map((k) => `"${k}"`).join(', ');
+  return `Choose from one of the following options: ${options}. \n\nIf there is no good match, say "undefined"\n\nInclude no additional text.`
 }
 
 export const asJSONSchema = (propertiesDescription) => {
@@ -15,8 +15,6 @@ Include per-property metadata as JSON comments.
 
 ${onlyJSON}`
 }
-
-export const asIntent = (intent) => `Intent: "${intent}"`;
 
 const jsonSchemaDefault = {
   type: 'object',

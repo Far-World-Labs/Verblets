@@ -23,8 +23,7 @@ const examples = [
 describe('Intent verblet', () => {
   examples.forEach((example) => {
     it(example.name, async () => {
-      const result = await intent(example.inputs.text);
-
+      const result = await intent({ text: example.inputs.text });
       if (example.want.typeOfResult) {
         expect(typeof result)
           .toStrictEqual(example.want.typeOfResult);

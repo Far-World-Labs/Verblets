@@ -26,7 +26,7 @@ const examples = [
 describe('Intent verblet', () => {
   examples.forEach((example) => {
     it(example.inputs.text, async () => {
-      const result = await intent(example.inputs.text, example.inputs.type);
+      const result = await intent({ text: example.inputs.text });
 
       if (example.want.resultSchema) {
         const schema = await example.want.resultSchema();

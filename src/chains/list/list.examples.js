@@ -12,12 +12,12 @@ import list from './index.js';
 
 const examples = [
   {
-    inputs: { text: '2021 EV cars' },
+    inputs: { description: '2021 EV cars' },
     want: { minLength: 10, listContains: 'Model Y' }
   },
   {
     inputs: {
-      text: '2021 EV cars',
+      description: '2021 EV cars',
       jsonSchemaQuery: 'make, model, releaseDate (ISO),\
 maxRange (miles), batteryCapacity (kWH), startingCost (USD)',
     },
@@ -39,7 +39,12 @@ describe('List verblet', () => {
           await chatGPT(asJSONSchema(example.inputs.jsonSchemaQuery)));
       }
 
-      const result = await list(example.inputs.text, { jsonSchema });
+      const result = await list(
+        example.inputs.description,
+        {
+          jsonSchema
+        }
+      );
 
       if (example.want.minLength) {
         expect(result.length).gt(10);
