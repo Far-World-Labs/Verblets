@@ -1,14 +1,14 @@
-export default (variable) => {
+export default (variable, { size=6 }={}) => {
   if (!variable) {
     return '';
   }
 
   let variableWrapped = `"${variable}"`;
   if (/\n/.test(variable)) {
-    variableWrapped = `the following:
-======
+    variableWrapped = `
+${'='.repeat(size)}
 ${variable}
-======
+${'='.repeat(size)}
 `;
   }
   return variableWrapped;

@@ -29,7 +29,9 @@ export const generateList = async function* (text, options={}) {
   while (!isDone) {
     let resultsNew;
     try {
-      const results = await chatGPT(`${generateListPrompt(text, { options, existing: resultsAll })}`, { maxTokens: 3000, ...options });
+      const listPrompt = `${generateListPrompt(text, { ...options, existing: resultsAll })}`;
+
+      const results = await chatGPT(listPrompt, { maxTokens: 3000, ...options });
       resultsNew = toObject(results);
     } catch (error) {
       console.error(`Generate list [error]: ${error.message}`);
@@ -65,7 +67,7 @@ export const generateList = async function* (text, options={}) {
 };
 
 export default async (text, options={}) => {
-  const generator = generateList(text);
+  const generator = generateList(text, options);
   const results = [];
   for await (let result of generator) {
     results.push(result);

@@ -115,7 +115,11 @@ export const run = async (prompt, options={}) => {
 
     result = await response.json();
 
-    await redis.set(hash, JSON.stringify(result), { EX: cacheTTL });
+    try {
+      await redis.set(hash, JSON.stringify(result), { EX: cacheTTL });
+    } catch (error) {
+      console.error(`Completions request [error]: ${error.message}`)
+    }
   }
 
   const resultShaped = shapeOutput(result, {

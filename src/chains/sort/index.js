@@ -28,7 +28,7 @@ let sortPrompt = ({ description=defaultSortDescription, fixes='' }, list) => {
   const listLines = JSON.stringify(list, undefined, 2);
 
   return `
-Sort the following items by ${wrapVariable(description)}
+Sort the following items by: ${wrapVariable(description)}
 
 The items to sort:
 ======
@@ -37,6 +37,8 @@ ${listLines}
 
 Details:
  - descending order
+
+Fixes:
 ${wrapVariable(fixes)}
 
 ${onlyJSONStringArray}
