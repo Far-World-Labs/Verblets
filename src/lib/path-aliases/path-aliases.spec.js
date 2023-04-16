@@ -59,17 +59,10 @@ describe('Path aliases', async () => {
 describe('Path aliases - advice', async () => {
   const advices = await testAdvice();
 
-  advices.forEach((advice) => {
-    it(advice.name, async () => {
-      expect(true).toBe(true);
-    });
+  advices.forEach((a) => {
+    it(a.name, () => expect(true).toBe(true));
   });
 
-  it('Deliberately fails in order to show advice', () => {
-    if (advices.length) {
-      throw new Error();
-    } else {
-      expect(true).toBe(true);
-    }
-  })
+  it('Trigger failure', () => expect(advices.length).toBe(0));
+
 }, longTestTimeout);
