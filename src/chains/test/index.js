@@ -62,7 +62,8 @@ export default async (
   filePath,
   instructions='Find specific improvements in the following code, not nitpicks.'
 ) => {
-  if (!(new RegExp(process.env.ENABLE_AI_TESTS)).test(filePath)) {
+  const enableRegex = new RegExp(process.env.ENABLE_AI_TESTS ?? '^$');
+  if (!enableRegex.test(filePath)) {
     return [];
   }
 
