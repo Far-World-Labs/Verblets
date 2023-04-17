@@ -24,7 +24,7 @@ export const debugResultGlobally = process.env.OPENAI_DEBUG_RESULT ?? false;
 
 export const debugResultGloballyIfChanged = process.env.OPENAI_DEBUG_RESULT_IF_CHANGED ?? false;
 
-export const defaultModel = _models[0].name // text-davinci-003
+export const defaultModel = _models[0] // text-davinci-003
 
 export const frequencyPenalty = process.env.OPENAI_COMPLETIONS_FREQUENCY_PENALTY ?? 0;
 

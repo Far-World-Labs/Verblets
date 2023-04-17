@@ -9,7 +9,7 @@ import {
   onlyJSONArray,
   onlyJSONStringArray,
 } from '../../prompts/fragment-texts/index.js'
-import { toObject } from '../../response-parsers/index.js';
+import toObject from '../../verblets/to-object/index.js';
 
 const performChecksPrompt = (text, instructions) => `
 Instructions: ${wrapVariable(instructions)}
@@ -76,7 +76,7 @@ export default async (
       { maxTokens: 2000 }
     );
 
-    const results = toObject(await chatGPT(
+    const results = await toObject(await chatGPT(
       outputForTestsPrompt(text, instructions, checksResult),
       { maxTokens: 2000 }
     ));

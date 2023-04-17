@@ -1,9 +1,7 @@
 import fs from 'fs/promises';
 import { describe, expect, it, vi } from 'vitest';
 
-import {
-  toObject,
-} from '../../response-parsers/index.js';
+import toObject from '../../verblets/to-object/index.js';
 import list from './index.js';
 
 const loadSchema = async () => {

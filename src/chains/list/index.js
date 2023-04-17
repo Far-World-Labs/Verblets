@@ -7,9 +7,7 @@ import {
   onlyJSON,
   transform,
 } from '../../prompts/fragment-texts/index.js'
-import {
-  toObject,
-} from '../../response-parsers/index.js';
+import toObject from '../../verblets/to-object/index.js';
 
 const shouldSkipNull = async ({ result, resultsAll }={}) => {
   return resultsAll.includes(result);
@@ -32,7 +30,7 @@ export const generateList = async function* (text, options={}) {
       const listPrompt = `${generateListPrompt(text, { ...options, existing: resultsAll })}`;
 
       const results = await chatGPT(listPrompt, { maxTokens: 3000, ...options });
-      resultsNew = toObject(results);
+      resultsNew = await toObject(results);
     } catch (error) {
       console.error(`Generate list [error]: ${error.message}`);
       isDone = true;
@@ -84,7 +82,7 @@ export default async (text, options={}) => {
       ${asObjectWithSchemaPrompt(options.jsonSchema)}
 
 ${onlyJSON}`);
-    resultObjects.push(toObject(resultObject));
+    resultObjects.push(await toObject(resultObject));
   }
 
   return resultObjects;

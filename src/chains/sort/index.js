@@ -7,9 +7,7 @@ import {
 import {
   onlyJSONStringArray,
 } from '../../prompts/fragment-texts/index.js'
-import {
-  toObject,
-} from '../../response-parsers/index.js';
+import toObject from '../../verblets/to-object/index.js';
 
 export const defaultSortChunkSize = 20;
 export const defaultSortExtremeK = 20;
@@ -24,22 +22,20 @@ const assertSorted = (list) => {
   };
 };
 
-let sortPrompt = ({ description=defaultSortDescription, fixes='' }, list) => {
+let sortPrompt = ({ description=defaultSortDescription, fixes='None' }, list) => {
   const listLines = JSON.stringify(list, undefined, 2);
 
   return `
-Sort the following items by: ${wrapVariable(description)}
+Sort the following items by: ${wrapVariable(description, {
+  size: 12
+})}
 
-The items to sort:
-======
-${listLines}
-======
+The items to sort: ${wrapVariable(listLines, { size: 12 })}
 
 Details:
  - descending order
 
-Fixes:
-${wrapVariable(fixes)}
+Fixes: ${wrapVariable(fixes, { size: 12 })}
 
 ${onlyJSONStringArray}
 `
@@ -81,7 +77,9 @@ const sort = async (options, listInitial) => {
         description: by
       }, [...batch, ...newTop, ...newBottom]);
 
-      const batchSorted = toObject(await chatGPT(prompt, { maxTokens: 2000 }));
+      const result = await chatGPT(prompt, { maxTokens: 2000 });
+
+      const batchSorted = await toObject(result);
 
       const batchTop = batchSorted.slice(0, extremeK);
       const batchBottom = batchSorted.slice(-extremeK);

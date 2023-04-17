@@ -42,14 +42,3 @@ export const toNumber = (val) => {
 };
 
 export const toNumberWithUnits = _toNumberWithUnits;
-
-export const toObject = (val) => {
-  let valStripped = _stripResponse(val);
-  let valParsed;
-  try {
-    valParsed = JSON.parse(valStripped);
-  } catch (error) {
-    throw new Error(`ChatGPT output [error]: ${error.message}`);
-  }
-  return valParsed;
-};

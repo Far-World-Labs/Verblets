@@ -1,13 +1,11 @@
-export default (list=[], { introText='Consider the following items:' }={}) => {
-  const listText = list.map((f, i) => ` - ${(i+1)}. ${f}\n`).join('');
+import wrapVariable from './wrap-variable.js';
 
-  const listFragment = '';
+export default (list=[], { introText='Consider the following items:' }={}) => {
+  const listText = list.map((f, i) => ` - ${(i+1)}. ${f}`).join('\n');
+
+  let listFragment = wrapVariable('\n');
   if (list.length) {
-    listFragment = `${introText}
-======
-${listText}
-======
-`
+    listFragment = `${introText} ${wrapVariable(listText)}`
   }
   return listFragment;
 };

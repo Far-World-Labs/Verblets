@@ -5,9 +5,8 @@ import chatGPT from '../../lib/openai/completions.js';
 import {
   asJSONSchema,
 } from '../../prompts/fragment-functions/index.js';
-import {
-  toObject,
-} from '../../response-parsers/index.js';
+import toObject from '../../verblets/to-object/index.js';
+
 import list from './index.js';
 
 const examples = [
@@ -35,7 +34,7 @@ describe('List verblet', () => {
     it(`${example.inputs.text}${jsonSchemaDisplay}`, async () => {
       let jsonSchema;
       if (example.inputs.jsonSchemaQuery) {
-        jsonSchema = toObject(
+        jsonSchema = await toObject(
           await chatGPT(asJSONSchema(example.inputs.jsonSchemaQuery)));
       }
 

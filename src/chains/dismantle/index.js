@@ -5,9 +5,7 @@ import {
   onlyJSONArray,
   onlyJSONStringArray,
 } from '../../prompts/fragment-texts/index.js'
-import {
-  toObject,
-} from '../../response-parsers/index.js';
+import toObject from '../../verblets/to-object/index.js';
 
 const subComponentsPrompt = (component, thing, fixes='') => {
   let focus = '';

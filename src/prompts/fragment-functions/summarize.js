@@ -1,12 +1,9 @@
-export default (text, {
-  minWords=5,
-  maxWords=20,
-}) => {
-  return `Summarize the following text:
-\`\`\`
-${text}
-\`\`\`
+import {
+  wrapVariable,
+} from '../fragment-functions/index.js';
 
-Use between ${minWords} and ${maxWords} words in the summary.
-`
+export default (text, fixes='') => {
+  return `You will be asked to summarize text. While doing so, please follow these rules: ${wrapVariable(fixes)}
+
+Summarize this text: ${wrapVariable(text)}`
 }

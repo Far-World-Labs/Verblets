@@ -7,9 +7,7 @@ import {
 import {
   onlyJSON,
 } from '../../prompts/fragment-texts/index.js'
-import {
-  toObject,
-} from '../../response-parsers/index.js';
+import toObject from '../../verblets/to-object/index.js';
 
 // Returns a random subset of a list with length between 1 and the length of the list
 // based on an input value between 0 and 1
@@ -72,11 +70,11 @@ const generateQuestions = async function* (text, options={}) {
     const results = await chatGPT(`${promptGenerated}`, chatGPTConfig);
     let resultsParsed
     try {
-      resultsParsed = toObject(results);
+      resultsParsed = await toObject(results);
     } catch (error) {
       if (/Unexpected string in JSON/.test(error.message)) {
         const resultsUpdated = await chatGPT(`Split the following to a JSON array.${onlyJSON} \`\`\`${results}\`\`\``, chatGPTConfig);
-        resultsParsed = toObject(resultsUpdated);
+        resultsParsed = await toObject(resultsUpdated);
       }
     }
     const resultsNew = getRandomSubset(resultsParsed, searchBreadth);

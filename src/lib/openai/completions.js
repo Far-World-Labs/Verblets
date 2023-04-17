@@ -39,7 +39,7 @@ export const run = async (prompt, options={}) => {
     forceQuery,
     frequencyPenalty=frequencyPenaltyConfig,
     maxTokens=maxTokensConfig,
-    model=defaultModel,
+    model=defaultModel.name,
     presencePenalty=presencePenaltyConfig,
     returnAllChoices,
     returnWholeResult,
@@ -59,9 +59,9 @@ export const run = async (prompt, options={}) => {
       .find(m => m.name === model)
 
   if (!modelConfigFound) {
-    console.error(`Completions request [error]: Model not supported. Falling back to ${defaultModel}. (model: ${model})`);
+    console.error(`Completions request [error]: Model not supported. Falling back to ${defaultModel.name}. (model: ${model})`);
     modelConfigFound = models
-      .find(m => m.name === defaultModel);
+      .find(m => m.name === defaultModel.name);
   }
 
   // To get the tokeniser corresponding to a specific model in the OpenAI API:

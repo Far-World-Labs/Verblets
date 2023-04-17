@@ -4,8 +4,8 @@ import {
 } from '../../prompts/fragment-functions/index.js';
 import {
  stripResponse,
- toObject,
 } from '../../response-parsers/index.js';
+import toObject from '../../verblets/to-object/index.js';
 
 const completionIntent = (text) => ({
   queryText: text,
@@ -59,5 +59,6 @@ export default async ({
     operations: operationsFound,
     parameters: parametersFound,
   }));
+
   return toObject(stripResponse(result));
 };
