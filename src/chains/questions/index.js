@@ -1,5 +1,6 @@
 import * as R from 'ramda';
 
+import budgetTokens from '../../lib/budget-tokens/index.js';
 import chatGPT from '../../lib/openai/completions.js';
 import {
   generateQuestions as generateQuestionsPrompt,
@@ -62,12 +63,15 @@ const generateQuestions = async function* (text, options={}) {
       textSelected = await chatGPT(pickInterestingQuestionPrompt);
       drilldownResults.push(textSelected);
     }
+
+    const promptCreated = generateQuestionsPrompt(textSelected, { existing: resultsAll });
+    const budget = budgetTokens(promptCreated);
     const chatGPTConfig = {
-      maxTokens: 3000,
+      maxTokens: budget.completion,
       temperature: 1,
     };
-    const promptGenerated = generateQuestionsPrompt(textSelected, { existing: resultsAll });
-    const results = await chatGPT(`${promptGenerated}`, chatGPTConfig);
+
+    const results = await chatGPT(`${promptCreated}`, chatGPTConfig);
     let resultsParsed
     try {
       resultsParsed = await toObject(results);

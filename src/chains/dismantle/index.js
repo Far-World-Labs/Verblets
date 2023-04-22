@@ -1,5 +1,6 @@
 import { v4 as uuid } from 'uuid';
 
+import budgetTokens from '../../lib/budget-tokens/index.js'
 import chatGPT from '../../lib/openai/completions.js';
 import {
   onlyJSONArray,
@@ -77,22 +78,30 @@ const search = (node, { match = defaultMatch, matches = [] }={}) => {
 const defaultDecompose = async ({ name, focus, rootName, fixes }={}) => {
   const focusFormatted = focus ? `: ${focus}` : '';
 
+  const promptCreated = subComponentsPrompt(
+    `${name}${focusFormatted}`,
+    rootName,
+  );
+  const budget = budgetTokens(promptCreated);
   return toObject(
     await chatGPT(
-      subComponentsPrompt(
-        `${name}${focusFormatted}`,
-        rootName,
-      ),
-      { maxTokens: 2000, frequencyPenalty: 0.7, temperature: 0.7 }
+      promptCreated,
+      {
+        maxTokens: promptCreated.completion,
+        frequencyPenalty: 0.7,
+        temperature: 0.7
+      }
     )
   );
 };
 
 const defaultEnhance = async ({ name, rootName, fixes }={}) => {
+  const promptCreated = componentOptionsPrompt(name, rootName, fixes);
+  const budget = budgetTokens(promptCreated);
   const options = toObject(
     await chatGPT(
-      componentOptionsPrompt(name, rootName, fixes),
-      { maxTokens: 2000, frequencyPenalty: 0.5, temperature: 0.3 },
+      promptCreated,
+      { maxTokens: budget.completion, frequencyPenalty: 0.5, temperature: 0.3 },
     )
   );
 

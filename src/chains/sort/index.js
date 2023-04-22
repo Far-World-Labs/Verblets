@@ -1,18 +1,16 @@
 import * as R from 'ramda';
 
 import chatGPT from '../../lib/openai/completions.js';
-import {
-  wrapVariable,
-} from '../../prompts/fragment-functions/index.js'
-import {
-  onlyJSONStringArray,
-} from '../../prompts/fragment-texts/index.js'
+import budgetTokens from '../../lib/budget-tokens/index.js';
 import toObject from '../../verblets/to-object/index.js';
+import { sort as sortPromptInitial } from '../../prompts/fragment-functions/index.js';
+
+// redeclared so it's clearer how tests can override the sorter
+let sortPrompt = sortPromptInitial;
 
 export const defaultSortChunkSize = 20;
 export const defaultSortExtremeK = 20;
 export const defaultSortIterations = 1;
-export const defaultSortDescription = 'alphabetically';
 
 // Keeping this here because it's useful for internal debugging
 const assertSorted = (list) => {
@@ -22,29 +20,9 @@ const assertSorted = (list) => {
   };
 };
 
-let sortPrompt = ({ description=defaultSortDescription, fixes='None' }, list) => {
-  const listLines = JSON.stringify(list, undefined, 2);
-
-  return `
-Sort the following items by: ${wrapVariable(description, {
-  size: 12
-})}
-
-The items to sort: ${wrapVariable(listLines, { size: 12 })}
-
-Details:
- - descending order
-
-Fixes: ${wrapVariable(fixes, { size: 12 })}
-
-${onlyJSONStringArray}
-`
-};
-
 export const useTestSortPrompt = () => {
   sortPrompt = (options, list) => ({ options, list });
 }
-
 
 const sanitizeList = (list) => {
   return [...new Set(list.filter((item) => item.trim() !== ''))];
@@ -52,7 +30,7 @@ const sanitizeList = (list) => {
 
 const sort = async (options, listInitial) => {
   const {
-    by = defaultSortDescription,
+    by,
     chunkSize = defaultSortChunkSize,
     extremeK = defaultSortExtremeK,
     iterations = defaultSortIterations,
@@ -77,7 +55,9 @@ const sort = async (options, listInitial) => {
         description: by
       }, [...batch, ...newTop, ...newBottom]);
 
-      const result = await chatGPT(prompt, { maxTokens: 2000 });
+      const budget = budgetTokens(prompt);
+
+      const result = await chatGPT(prompt, { maxTokens: budget.completion });
 
       const batchSorted = await toObject(result);
 

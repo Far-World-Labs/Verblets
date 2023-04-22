@@ -2,6 +2,7 @@ import fs from 'fs/promises';
 import path from 'path';
 
 import chatGPT, { list } from '../../index.js';
+import budgetTokens from '../../lib/budget-tokens/index.js';
 import {
   wrapVariable,
 } from '../../prompts/fragment-functions/index.js'
@@ -71,14 +72,20 @@ export default async (
     const filePathAbsolute = path.resolve(filePath);
     const text = await fs.readFile(filePathAbsolute, 'utf-8');
 
+    const performChecksPromptCreated = performChecksPrompt(text, instructions);
+    const budget = budgetPrompt(performChecksPromptCreated);
+
     const checksResult = await chatGPT(
-      performChecksPrompt(text, instructions),
-      { maxTokens: 2000 }
+      performChecksPromptCreated,
+      { maxTokens: budget.completion }
     );
 
+    const outputForTestsPromptCreated = outputForTestsPrompt(text, instructions, checksResult);
+    const budget = budgetPrompt(outputForTestsPromptCreated);
+
     const results = await toObject(await chatGPT(
-      outputForTestsPrompt(text, instructions, checksResult),
-      { maxTokens: 2000 }
+      outputForTestsPromptCreated,
+      { maxTokens: budget.completion }
     ));
 
     if (!results.length) {

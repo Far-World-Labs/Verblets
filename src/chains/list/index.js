@@ -1,4 +1,6 @@
 import chatGPT from '../../lib/openai/completions.js';
+
+import budgetTokens from '../../lib/budget-tokens/index.js';
 import {
   asObjectWithSchema as asObjectWithSchemaPrompt,
   generateList as generateListPrompt,
@@ -9,56 +11,88 @@ import {
 } from '../../prompts/fragment-texts/index.js'
 import toObject from '../../verblets/to-object/index.js';
 
-const shouldSkipNull = async ({ result, resultsAll }={}) => {
+const defaultTimeout = 30000;
+
+const shouldSkipDefault = async ({ result, resultsAll }={}) => {
   return resultsAll.includes(result);
 };
 
-const shouldStopNull = async ({ result, resultsAll, resultsNew, attempts=0 }={}) => {
-  return resultsAll.length > 30 || attempts > 5;
+const shouldStopDefault = async ({ startTime }={}) => {
+  return ((new Date()) - startTime) > defaultTimeout;
 };
 
 export const generateList = async function* (text, options={}) {
   const resultsAll = [];
   const resultsAllMap = {};
   let isDone = false;
-  const { shouldSkip=shouldSkipNull, shouldStop=shouldStopNull } = options;
+  const {
+    shouldSkip=shouldSkipDefault,
+    shouldStop=shouldStopDefault,
+  } = options;
 
-  let attempts = 0;
+  const startTime = new Date();
+  let queryCount = 0;
+
   while (!isDone) {
-    let resultsNew;
-    try {
-      const listPrompt = `${generateListPrompt(text, { ...options, existing: resultsAll })}`;
+    const listPrompt = generateListPrompt(text, { ...options, existing: resultsAll });
 
-      const results = await chatGPT(listPrompt, { maxTokens: 3000, ...options });
+    let resultsNew = [];
+    try {
+
+      const budget = budgetTokens(listPrompt);
+      const results = await chatGPT(listPrompt, {
+        maxTokens: budget.completion,
+        abortTimeout: 5000,
+        ...options,
+      });
+
       resultsNew = await toObject(results);
     } catch (error) {
-      console.error(`Generate list [error]: ${error.message}`);
-      isDone = true;
+      if (/The operation was aborted/.test(error.message)) {
+        resultsNew = []; // continue
+      } else {
+        console.error(`Generate list [error]: ${error.message}`, listPrompt);
+        isDone = true;
+        break;
+      }
     }
 
     const resultsNewUnique = resultsNew.filter(item => !(item in resultsAllMap));
 
-    attempts = attempts + 1;
+    queryCount = queryCount + 1;
 
     for (let result of resultsNewUnique) {
-      if (await shouldSkip({ result, resultsAll })) {
-        continue;
-      }
+      const perResultControlFactors = {
+        result,
+        resultsAll,
+        resultsNew,
+        queryCount,
+        startTime
+      };
 
-      if (await shouldStop({ result, resultsAll, resultsNew, attempts })) {
+      if (await shouldStop(perResultControlFactors)) {
         isDone = true;
         break;
       }
+
+      if (await shouldSkip(perResultControlFactors)) {
+        continue;
+      }
+
       resultsAllMap[result] = true;
       resultsAll.push(result);
       yield result;
     }
-    if (await shouldStop({
+
+    const perQueryControlFactors = {
       result: undefined,
       resultsAll: [],
       resultsNew: [],
-      attempts
-    })) {
+      queryCount,
+      startTime,
+    };
+
+    if (await shouldStop(perQueryControlFactors)) {
       isDone = true;
     }
   }

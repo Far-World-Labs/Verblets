@@ -1,6 +1,5 @@
 import crypto from 'crypto'
 import fetch from 'node-fetch';
-import { encoding_for_model as encodingForModel } from '@dqbd/tiktoken';
 
 import {
   apiKey,
@@ -30,10 +29,12 @@ const shapeOutput = (result, {
     return result.choices.map(c => c.text)
   }
   return result.choices[0].text.trim();
-}
+};
 
-export const run = async (prompt, options={}) => {
+export const run = async (promptInitial, options) => {
   const {
+    abortSignal: abortSignalInitial,
+    abortTimeout,
     debugPrompt,
     debugResult,
     forceQuery,
@@ -41,18 +42,20 @@ export const run = async (prompt, options={}) => {
     maxTokens=maxTokensConfig,
     model=defaultModel.name,
     presencePenalty=presencePenaltyConfig,
+    prompt: promptOptions,
     returnAllChoices,
     returnWholeResult,
     temperature=temperatureConfig,
     topP=topPConfig,
-  } = options;
+  } = options ?? promptInitial;
+
+  const prompt = promptInitial || promptOptions;
 
   const apiUrl = 'https://api.openai.com/v1/completions';
   const headers = {
     'Authorization': `Bearer ${apiKey}`,
     'Content-Type': 'application/json'
   };
-
   const redis = await getRedis();
 
   let modelConfigFound = models
@@ -64,19 +67,10 @@ export const run = async (prompt, options={}) => {
       .find(m => m.name === defaultModel.name);
   }
 
-  // To get the tokeniser corresponding to a specific model in the OpenAI API:
-  const enc = encodingForModel(modelConfigFound.name);
-
-  const promptTokenCount = enc.encode(prompt).length;
-
-  const tokensForCompletionAvailable = modelConfigFound.maxTokens - promptTokenCount;
-
-  const tokensForCompletion = Math.min(tokensForCompletionAvailable, maxTokens);
-
   const data = {
     model: modelConfigFound.name,
     temperature,
-    max_tokens: tokensForCompletion,
+    max_tokens: maxTokens,
     top_p: topP,
     frequency_penalty: frequencyPenalty,
     presence_penalty: presencePenalty,
@@ -101,19 +95,30 @@ export const run = async (prompt, options={}) => {
     console.error('+++ DEBUG PROMPT END +++');
   }
 
+  // request cancelation
+  let abortSignal;
+  let abortTimeoutId;
+  if (!abortSignalInitial && abortTimeout) {
+    const aborter = new AbortController();
+    abortSignal = aborter.signal;
+    abortTimeoutId = setTimeout(() => aborter.abort(), abortTimeout);
+  }
+
   if (!foundInRedis || forceQuery) {
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: headers,
-      body: JSON.stringify({ prompt, ...data })
+      body: JSON.stringify({ prompt, ...data }),
+      signal: abortSignal,
     });
-
     if (!response.ok) {
       const body = await response.json();
       throw new Error(`Completions request [error]: ${body.error.message} (status: ${response.status}, type: ${body.error.type})`);
     }
 
     result = await response.json();
+
+    clearTimeout(abortTimeoutId);
 
     try {
       await redis.set(hash, JSON.stringify(result), { EX: cacheTTL });

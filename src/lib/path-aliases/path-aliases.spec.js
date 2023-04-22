@@ -57,7 +57,7 @@ describe('Path aliases', async () => {
 }, longTestTimeout);
 
 describe('Path aliases - advice', async () => {
-  const advices = await testAdvice();
+  const advices = await testAdvice('./src/lib/path-aliases/index.js');
 
   advices.forEach((a) => {
     it(a.name, () => expect(true).toBe(true));

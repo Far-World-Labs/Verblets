@@ -18,15 +18,11 @@ const examples = [
 describe('Sort chain', () => {
   examples.forEach((example) => {
     it(example.name, async () => {
-      const listResults = await list(example.inputs.listText, {
-        shouldStop: ({ resultsAll, attempts }) => {
-          return resultsAll.length > 100 || attempts > 20;
-        },
-      });
+      const listResults = await list(example.inputs.listText);
 
       const result = await sort({
         by: example.inputs.sortText,
-        iterations: 3,
+        iterations: 1,
       }, listResults);
 
       expect(true).toStrictEqual(true);

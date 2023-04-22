@@ -1,4 +1,4 @@
-export default (variable, { size=6 }={}) => {
+export default (variable, { delimiterWidth=6 }={}) => {
   if (!variable) {
     return '';
   }
@@ -6,9 +6,9 @@ export default (variable, { size=6 }={}) => {
   let variableWrapped = `"${variable}"`;
   if (/\n/.test(variable)) {
     variableWrapped = `
-${'='.repeat(size)}
+${'='.repeat(delimiterWidth)}
 ${variable}
-${'='.repeat(size)}
+${'='.repeat(delimiterWidth)}
 `;
   }
   return variableWrapped;
