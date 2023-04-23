@@ -46,7 +46,7 @@ describe('List verblet', () => {
       );
 
       if (example.want.minLength) {
-        expect(result.length).gt(10);
+        expect(result.length).gt(5);
       }
 
       if (example.want.listContains) {

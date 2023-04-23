@@ -1,10 +1,6 @@
-import { encoding_for_model as encodingForModel } from '@dqbd/tiktoken';
-
-import {
-  defaultModel,
-} from '../../constants/openai.js';
+import Tokenizer from 'gpt3-tokenizer';
 
 export default (item) => {
-  const enc = encodingForModel(defaultModel.name);
+  const enc = new Tokenizer({ type: 'gpt3' });
   return enc.encode(item);
 };

@@ -12,7 +12,7 @@ import {
 } from '../../prompts/fragment-texts/index.js'
 import toObject from '../../verblets/to-object/index.js';
 
-const performChecksPrompt = (text, instructions) => `
+const checksPrompt = (text, instructions) => `
 Instructions: ${wrapVariable(instructions)}
 
 \`\`\`
@@ -25,7 +25,7 @@ Do not include false information.
 ${onlyJSONStringArray}
 `;
 
-const outputForTestsPrompt = (text, instructions, checks) => `${onlyJSONArray}
+const testsPrompt = (text, instructions, checks) => `${onlyJSONArray}
 
 Gather these discovered issues into a JSON format my tests module can consume.
 
@@ -72,19 +72,19 @@ export default async (
     const filePathAbsolute = path.resolve(filePath);
     const text = await fs.readFile(filePathAbsolute, 'utf-8');
 
-    const performChecksPromptCreated = performChecksPrompt(text, instructions);
-    const budget = budgetPrompt(performChecksPromptCreated);
+    const checksPromptCreated = checksPrompt(text, instructions);
+    const checksBudget = budgetPrompt(checksPromptCreated);
 
     const checksResult = await chatGPT(
-      performChecksPromptCreated,
-      { maxTokens: budget.completion }
+      checksPromptCreated,
+      { maxTokens: checksBudget.completion }
     );
 
-    const outputForTestsPromptCreated = outputForTestsPrompt(text, instructions, checksResult);
-    const budget = budgetPrompt(outputForTestsPromptCreated);
+    const testsPromptCreated = testsPrompt(text, instructions, checksResult);
+    const testsBudget = budgetPrompt(testsPromptCreated);
 
     const results = await toObject(await chatGPT(
-      outputForTestsPromptCreated,
+      testsPromptCreated,
       { maxTokens: budget.completion }
     ));
 

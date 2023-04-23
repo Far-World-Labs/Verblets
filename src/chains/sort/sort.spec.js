@@ -27,6 +27,10 @@ vi.mock('../../lib/openai/completions.js', () => ({
   }),
 }));
 
+vi.mock('../../lib/budget-tokens/index.js', () => ({
+  default: vi.fn().mockImplementation((any) => 0),
+}));
+
 const examples = [
   {
     name: 'Basic usage',

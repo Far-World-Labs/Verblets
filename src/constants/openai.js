@@ -24,7 +24,7 @@ export const debugResultGlobally = process.env.OPENAI_DEBUG_RESULT ?? false;
 
 export const debugResultGloballyIfChanged = process.env.OPENAI_DEBUG_RESULT_IF_CHANGED ?? false;
 
-export const defaultModel = _models[0] // text-davinci-003
+export const defaultModel = _models[0]; // text-davinci-003
 
 export const frequencyPenalty = process.env.OPENAI_COMPLETIONS_FREQUENCY_PENALTY ?? 0;
 
@@ -37,3 +37,5 @@ export const presencePenalty = process.env.OPENAI_COMPLETIONS_PRESENCE_PENALTY ?
 export const temperature = process.env.OPENAI_COMPLETIONS_TEMPERATURE ?? 0;
 
 export const topP = process.env.OPENAI_COMPLETIONS_TOPP ?? 0.5;
+
+export const requestTimeout = process.env.OPENAI_REQUEST_TIMEOUT ?? 10000;

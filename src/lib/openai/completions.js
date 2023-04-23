@@ -13,6 +13,7 @@ import {
   maxTokens as maxTokensConfig,
   models,
   presencePenalty as presencePenaltyConfig,
+  requestTimeout as requestTimeoutConfig,
   temperature as temperatureConfig,
   topP as topPConfig,
 } from '../../constants/openai.js';
@@ -34,15 +35,16 @@ const shapeOutput = (result, {
 export const run = async (promptInitial, options) => {
   const {
     abortSignal: abortSignalInitial,
-    abortTimeout,
     debugPrompt,
     debugResult,
+    deleteCache,
     forceQuery,
     frequencyPenalty=frequencyPenaltyConfig,
     maxTokens=maxTokensConfig,
     model=defaultModel.name,
     presencePenalty=presencePenaltyConfig,
     prompt: promptOptions,
+    requestTimeout=requestTimeoutConfig,
     returnAllChoices,
     returnWholeResult,
     temperature=temperatureConfig,
@@ -80,10 +82,16 @@ export const run = async (promptInitial, options) => {
   let result;
   let foundInRedis;
   try {
-    const resultFromRedis = await redis.get(hash);
+    let resultFromRedis = await redis.get(hash);
+
     foundInRedis = resultFromRedis !== null;
     if (foundInRedis) {
-      result = JSON.parse(resultFromRedis);
+      if (deleteCache) {
+        await redis.del(hash);
+        foundInRedis = false;
+      } else {
+        result = JSON.parse(resultFromRedis);
+      }
     }
   } catch (error) {
     console.error(`Completions request [error]: ${error.message}`)
@@ -97,11 +105,11 @@ export const run = async (promptInitial, options) => {
 
   // request cancelation
   let abortSignal;
-  let abortTimeoutId;
-  if (!abortSignalInitial && abortTimeout) {
+  let requestTimeoutId;
+  if (!abortSignalInitial && requestTimeout) {
     const aborter = new AbortController();
     abortSignal = aborter.signal;
-    abortTimeoutId = setTimeout(() => aborter.abort(), abortTimeout);
+    requestTimeoutId = setTimeout(() => aborter.abort(), requestTimeout);
   }
 
   if (!foundInRedis || forceQuery) {
@@ -118,7 +126,7 @@ export const run = async (promptInitial, options) => {
 
     result = await response.json();
 
-    clearTimeout(abortTimeoutId);
+    clearTimeout(requestTimeoutId);
 
     try {
       await redis.set(hash, JSON.stringify(result), { EX: cacheTTL });

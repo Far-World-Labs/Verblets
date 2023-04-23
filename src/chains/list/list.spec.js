@@ -27,7 +27,7 @@ const examples = [
   {
     name: 'Basic usage',
     inputs: { description: '2021 EV cars' },
-    want: { listContains: 'Model Y' }
+    want: { listContains: /Model Y/ }
   },
   {
     name: 'Basic usage with schema',
@@ -35,7 +35,7 @@ const examples = [
       description: '2021 EV cars',
       jsonSchema: loadSchema,
     },
-    want: { listModelContains: 'Model Y' }
+    want: { listModelContains: /Model Y/ }
   }
 ];
 
@@ -54,15 +54,13 @@ describe('List verblet', () => {
       );
 
       if (example.want.listContains) {
-        expect(result.some(item => item.includes(example.want.listContains))).equals(true);
+        expect(result.some(item => example.want.listContains.test(item))).equals(true);
       }
 
       if (example.want.listModelContains) {
         expect(
           result.some(
-            item => item.model.includes(
-              example.want.listModelContains
-            )
+            item => example.want.listModelContains.test(item.model)
           )
         ).equals(true);
       }
