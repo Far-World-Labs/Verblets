@@ -27,8 +27,8 @@ const shouldSkipDefault = async ({ result, resultsAll }={}) => {
   return resultsAll.includes(result);
 };
 
-const shouldStopDefault = async ({ startTime }={}) => {
-  return ((new Date()) - startTime) > operationTimeout;
+const shouldStopDefault = async ({ queryCount, startTime }={}) => {
+  return queryCount > 5 || ((new Date()) - startTime) > operationTimeout;
 };
 
 export const generateList = async function* (text, options={}) {

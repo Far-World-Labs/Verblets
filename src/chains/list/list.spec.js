@@ -49,6 +49,7 @@ describe('List verblet', () => {
       const result = await list(
         example.inputs.description,
         {
+          shouldStop: ({ queryCount }) => queryCount > 1,
           jsonSchema
         }
       );
