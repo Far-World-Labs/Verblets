@@ -22,11 +22,11 @@ const promptTokens = toTokens(promptFunction).length;
 const solutionTokens = 200;
 const maxTokens = promptTokens + variableTokens + solutionTokens
 
-const summarizerMap = new SummarizingMap(variableTokens);
-summarizerMap.set({ key: 'example.text', value: 'Long text data...', weight: 1, type: 'text' });
-summarizerMap.set({ key: 'example.code', value: 'Long code data...', weight: 0.5, type: 'code' });
+const summarizingMap = new SummarizingMap({ targetTokens: variableTokens });
+summarizingMap.set('example.text', { value: 'Long text data...', weight: 1, type: 'text' });
+summarizingMap.set('example.code', { value: 'Long code data...', weight: 0.5, type: 'code' });
 
-const summarizedData = await summarizerMap.getAll();
+const summarizedData = await summarizingMap.getAll();
 
 const prompt = promptFunction(summarizedData);
 const response = await chatGPT(prompt, { maxTokens });

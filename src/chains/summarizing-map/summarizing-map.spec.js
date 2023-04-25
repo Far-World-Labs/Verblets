@@ -25,7 +25,7 @@ const examples = [
   {
     name: 'Basic usage',
     inputs: {
-      targetTokenSize: 100,
+      targetTokens: 100,
       keys: [
         { key: 'example.text', value: legalText, weight: 1, type: 'text' },
         { key: 'example.code', value: codeText, weight: 0.5, type: 'code' },
@@ -41,10 +41,10 @@ const examples = [
 describe('Summarizing map', () => {
   examples.forEach((example) => {
     it(example.name, async () => {
-      const map = new SummarizingMap(example.inputs.targetTokenSize, example.inputs.model);
+      const map = new SummarizingMap({ targetTokens: example.inputs.targetTokens });
 
       for (const input of example.inputs.keys) {
-        map.set(input);
+        map.set(input.key, input);
       }
 
       const result = await map.getAll();

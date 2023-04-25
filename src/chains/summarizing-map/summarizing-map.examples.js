@@ -33,10 +33,10 @@ function encodeDecode(input, seed) {
 
 describe('Summarizing map', () => {
   it('Example', async () => {
-    const map = new SummarizingMap(100);
+    const map = new SummarizingMap({ targetTokens: 100 });
 
-    map.set({ key: 'a.b.c', value: legalText, weight: 0.2 });
-    map.set({ key: 'a.d', value: codeText, weight: 0.7 });
+    map.set('a.b.c', { value: legalText, weight: 0.2 });
+    map.set('a.d', { value: codeText, weight: 0.7 });
 
     // console.log(await map.getAll())
 
