@@ -1,5 +1,5 @@
 import wrapVariable from './wrap-variable.js';
-import { onlyJSONStringArray } from '../fragment-texts/index.js';
+import { onlyJSONStringArray } from './constants.js';
 
 export const defaultSortDescription = 'alphabetical order';
 export const defaultDelimiterWidth = 12;

@@ -1,7 +1,7 @@
 import chatGPT from '../../lib/openai/completions.js';
 import stripResponse from '../../lib/strip-response/index.js';
 import toEnum from '../../lib/to-enum/index.js';
-import { asEnum } from '../../prompts/fragment-functions/index.js';
+import { asEnum } from '../../prompts/index.js';
 
 export default async (text, enumVal) => {
   const enumText = `${text}

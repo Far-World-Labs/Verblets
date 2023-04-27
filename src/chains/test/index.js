@@ -3,11 +3,11 @@ import path from 'path';
 
 import chatGPT from '../../lib/openai/completions.js';
 import budgetTokens from '../../lib/budget-tokens/index.js';
-import wrapVariable from '../../prompts/fragment-functions/wrap-variable.js';
+import { wrapVariable } from '../../prompts/index.js';
 import {
   onlyJSONArray,
   onlyJSONStringArray,
-} from '../../prompts/fragment-texts/index.js';
+} from '../../prompts/constants.js';
 import toObject from '../../verblets/to-object/index.js';
 
 const checksPrompt = (text, instructions) => `

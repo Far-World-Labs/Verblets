@@ -3,7 +3,7 @@
 import chatGPT from '../../lib/openai/completions.js';
 import pave from '../../lib/pave/index.js';
 import shortenText from '../../lib/shorten-text/index.js';
-import { summarize as basicSummarize } from '../../prompts/fragment-functions/index.js';
+import { summarize as basicSummarize } from '../../prompts/index.js';
 
 const summarize = ({ budget, type, value }) => {
   let fixes = '';

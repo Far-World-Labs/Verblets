@@ -1,7 +1,7 @@
 import chatGPT from '../../lib/openai/completions.js';
 import stripResponse from '../../lib/strip-response/index.js';
 import toNumber from '../../lib/to-number/index.js';
-import { asNumber } from '../../prompts/fragment-texts/index.js';
+import { asNumber } from '../../prompts/constants.js';
 
 export default async (text) => {
   const numberText = `Question: ${text} \n\n${asNumber}`;

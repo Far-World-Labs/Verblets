@@ -1,5 +1,5 @@
 import fs from 'fs/promises';
-import { onlyJSON } from '../fragment-texts/index.js';
+import { onlyJSON } from './constants.js';
 
 const intentSchema = JSON.parse(
   await fs.readFile('./src/json-schemas/intent.json')

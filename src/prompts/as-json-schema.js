@@ -1,4 +1,4 @@
-import { onlyJSON } from '../fragment-texts/index.js';
+import { onlyJSON } from './constants.js';
 
 export default (propertiesDescription) => {
   return `Give me a JSONSchema definition for the following properties: ${propertiesDescription}

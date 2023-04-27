@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { longTestTimeout } from '../../constants/common.js';
 import chatGPT from '../../lib/openai/completions.js';
-import { asJSONSchema } from '../../prompts/fragment-functions/index.js';
+import { asJSONSchema } from '../../prompts/index.js';
 import toObject from '../../verblets/to-object/index.js';
 
 import list from './index.js';

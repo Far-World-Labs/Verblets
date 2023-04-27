@@ -1,4 +1,4 @@
-import { onlyJSONArray } from '../fragment-texts/index.js';
+import { onlyJSONArray } from './constants.js';
 import wrapVariable from './wrap-variable.js';
 
 const targetNewItemsCount = 10;

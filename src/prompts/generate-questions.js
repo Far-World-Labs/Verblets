@@ -1,4 +1,4 @@
-import { onlyJSON } from '../fragment-texts/index.js';
+import { onlyJSON } from './constants.js';
 
 export default (text, { existing = [] } = {}) => {
   const existingJoined = existing.map((item) => `"${item}"`).join(', ');

@@ -1,4 +1,4 @@
-import { onlyJSON } from '../fragment-texts/index.js';
+import { onlyJSON } from './constants.js';
 import asObjectWithSchema from './as-object-with-schema.js';
 
 const jsonSchemaDefault = {

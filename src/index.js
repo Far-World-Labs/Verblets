@@ -21,7 +21,7 @@ export { default as intent } from './verblets/intent/index.js';
 export { default as number } from './verblets/number/index.js';
 export { default as schemaOrg } from './verblets/schema-org/index.js';
 
-export * as fragmentTexts from './prompts/fragment-texts/index.js';
-export * as fragmentFunctions from './prompts/fragment-functions/index.js';
+export * as constants from './prompts/constants.js';
+export * as prompts from './prompts/index.js';
 
 export default chatGPT;

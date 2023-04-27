@@ -3,7 +3,7 @@ import * as R from 'ramda';
 import chatGPT from '../../lib/openai/completions.js';
 import budgetTokens from '../../lib/budget-tokens/index.js';
 import toObject from '../../verblets/to-object/index.js';
-import { sort as sortPromptInitial } from '../../prompts/fragment-functions/index.js';
+import { sort as sortPromptInitial } from '../../prompts/index.js';
 
 // redeclared so it's clearer how tests can override the sorter
 let sortPrompt = sortPromptInitial;

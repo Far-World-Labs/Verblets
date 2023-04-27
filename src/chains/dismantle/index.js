@@ -4,7 +4,7 @@ import { v4 as uuid } from 'uuid';
 
 import budgetTokens from '../../lib/budget-tokens/index.js';
 import chatGPT from '../../lib/openai/completions.js';
-import { onlyJSONStringArray } from '../../prompts/fragment-texts/index.js';
+import { onlyJSONStringArray } from '../../prompts/constants.js';
 import toObject from '../../verblets/to-object/index.js';
 
 const subComponentsPrompt = (component, thing, fixes = '') => {

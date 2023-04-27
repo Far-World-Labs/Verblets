@@ -6,8 +6,8 @@ import budgetTokens from '../../lib/budget-tokens/index.js';
 import {
   asObjectWithSchema as asObjectWithSchemaPrompt,
   generateList as generateListPrompt,
-} from '../../prompts/fragment-functions/index.js';
-import { onlyJSON } from '../../prompts/fragment-texts/index.js';
+} from '../../prompts/index.js';
+import { onlyJSON } from '../../prompts/constants.js';
 import toObject from '../../verblets/to-object/index.js';
 
 export const transform = 'Transform the following object: ';

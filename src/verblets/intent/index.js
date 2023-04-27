@@ -2,7 +2,7 @@ import enums from '../enum/index.js';
 import toObject from '../to-object/index.js';
 import chatGPT from '../../lib/openai/completions.js';
 import stripResponse from '../../lib/strip-response/index.js';
-import { intent } from '../../prompts/fragment-functions/index.js';
+import { intent } from '../../prompts/index.js';
 
 const completionIntent = (text) => ({
   queryText: text,
