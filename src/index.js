@@ -5,7 +5,7 @@ import dotenv from 'dotenv/config';
 import chatGPT from './lib/openai/completions.js';
 
 export { default as getRedis } from './lib/redis/index.js';
-import { default as retry } from './lib/retry/index.js';
+export { default as retry } from './lib/retry/index.js';
 
 export { default as Dismantle } from './chains/dismantle/index.js';
 export { default as list } from './chains/list/index.js';
