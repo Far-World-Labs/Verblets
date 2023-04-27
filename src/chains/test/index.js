@@ -3,12 +3,13 @@ import path from 'path';
 
 import chatGPT from '../../lib/openai/completions.js';
 import budgetTokens from '../../lib/budget-tokens/index.js';
-import { wrapVariable } from '../../prompts/index.js';
 import {
-  onlyJSONArray,
-  onlyJSONStringArray,
-} from '../../prompts/constants.js';
+  constants as promptConstants,
+  wrapVariable,
+} from '../../prompts/index.js';
 import toObject from '../../verblets/to-object/index.js';
+
+const { onlyJSONArray, onlyJSONStringArray } = promptConstants;
 
 const checksPrompt = (text, instructions) => `
 Instructions: ${wrapVariable(instructions)}

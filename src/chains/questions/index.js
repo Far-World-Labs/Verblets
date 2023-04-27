@@ -4,9 +4,13 @@ import * as R from 'ramda';
 
 import budgetTokens from '../../lib/budget-tokens/index.js';
 import chatGPT from '../../lib/openai/completions.js';
-import { generateQuestions as generateQuestionsPrompt } from '../../prompts/index.js';
-import { onlyJSON } from '../../prompts/constants.js';
+import {
+  constants as promptConstants,
+  generateQuestions as generateQuestionsPrompt,
+} from '../../prompts/index.js';
 import toObject from '../../verblets/to-object/index.js';
+
+const { onlyJSON } = promptConstants;
 
 // Returns a random subset of a list with length between 1 and the length of the list
 // based on an input value between 0 and 1

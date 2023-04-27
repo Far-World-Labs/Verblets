@@ -4,13 +4,14 @@ import { operationTimeout } from '../../constants/common.js';
 import chatGPT from '../../lib/openai/completions.js';
 import budgetTokens from '../../lib/budget-tokens/index.js';
 import {
+  constants as promptConstants,
   asObjectWithSchema as asObjectWithSchemaPrompt,
   generateList as generateListPrompt,
 } from '../../prompts/index.js';
-import { onlyJSON } from '../../prompts/constants.js';
 import toObject from '../../verblets/to-object/index.js';
 
-export const transform = 'Transform the following object: ';
+const { onlyJSON } = promptConstants;
+const transform = 'Transform the following object: ';
 
 const outputTransformPrompt = (result, jsonSchema) => {
   return `${transform} ${result}

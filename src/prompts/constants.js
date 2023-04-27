@@ -1,6 +1,7 @@
 const asUndefinedByDefaultText = 'If you are unsure, say "undefined".';
 
-const onlyJSONArrayText = "Output a well-formed JSON array, with no additional text, no punctuation, and no code block.";
+const onlyJSONArrayText =
+  'Output a well-formed JSON array, with no additional text, no punctuation, and no code block.';
 
 export const asBool = `Answer the question either with "true" or "false". ${asUndefinedByDefaultText}`;
 
@@ -10,7 +11,8 @@ export const asNumberWithUnits = `Return the answer as JSON of the form "{ "valu
 
 export const asUndefinedByDefault = asUndefinedByDefaultText;
 
-export const onlyJSON = "Output a well-formed JSON, with no other text and no code block.";
+export const onlyJSON =
+  'Output a well-formed JSON, with no other text and no code block.';
 
 export const onlyJSONArray = onlyJSONArrayText;
 

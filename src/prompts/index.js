@@ -1,3 +1,5 @@
+export * as constants from './constants.js';
+
 export { default as asEnum } from './as-enum.js';
 export { default as asJSONSchema } from './as-json-schema.js';
 export { default as asObjectWithSchema } from './as-object-with-schema.js';

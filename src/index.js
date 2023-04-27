@@ -3,11 +3,9 @@
 import dotenv from 'dotenv/config';
 
 import chatGPT from './lib/openai/completions.js';
-import _getRedis from './lib/redis/index.js';
-import _retry from './lib/retry/index.js';
 
-export const retry = _retry;
-export const getRedis = _getRedis;
+export { default as getRedis } from './lib/redis/index.js';
+import { default as retry } from './lib/retry/index.js';
 
 export { default as Dismantle } from './chains/dismantle/index.js';
 export { default as list } from './chains/list/index.js';
@@ -21,7 +19,6 @@ export { default as intent } from './verblets/intent/index.js';
 export { default as number } from './verblets/number/index.js';
 export { default as schemaOrg } from './verblets/schema-org/index.js';
 
-export * as constants from './prompts/constants.js';
 export * as prompts from './prompts/index.js';
 
 export default chatGPT;
