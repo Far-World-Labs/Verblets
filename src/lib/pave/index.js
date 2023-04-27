@@ -11,18 +11,20 @@ export default (obj, path, value) => {
     throw new Error(`Invalid path: "${path}"`);
   }
 
-  const keys = path.split('.');
-  let objNew = JSON.parse(JSON.stringify(obj));
+  const keys = path.split(".");
+  const objNew = JSON.parse(JSON.stringify(obj));
   let objMutating = objNew;
 
-  for (let i = 0; i < keys.length; i++) {
-    const key = isNaN(parseInt(keys[i])) ? keys[i] : parseInt(keys[i]);
+  for (let i = 0; i < keys.length; i += 1) {
+    const key = Number.isNaN(parseInt(keys[i], 10))
+      ? keys[i]
+      : parseInt(keys[i], 10);
 
     if (i === keys.length - 1) {
       objMutating[key] = value;
     } else {
       if (!objMutating[key]) {
-        objMutating[key] = isNaN(parseInt(keys[i + 1])) ? {} : [];
+        objMutating[key] = Number.isNaN(parseInt(keys[i + 1], 10)) ? {} : [];
       }
       objMutating = objMutating[key];
     }

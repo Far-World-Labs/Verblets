@@ -1,9 +1,24 @@
-import chatGPT from '../../index.js';
-import pave from '../../lib/pave/index.js';
-import shortenText from '../../lib/shorten-text/index.js';
-import {
-  summarize,
-} from '../../prompts/fragment-functions/index.js'
+/* eslint-disable no-await-in-loop */
+
+import chatGPT from "../../lib/openai/completions.js";
+import pave from "../../lib/pave/index.js";
+import shortenText from "../../lib/shorten-text/index.js";
+import { summarize as basicSummarize } from "../../prompts/fragment-functions/index.js";
+
+const summarize = ({ budget, type, value }) => {
+  let fixes = "";
+  if (budget) {
+    fixes += ` - Keep the output within ${budget} tokens.`;
+  }
+
+  if (type === "code") {
+    fixes += ` - Output function signature lines and a closing bracket.
+ - Comment out the bodies of the functions and leave a summary of the implementation.
+ - Remove the function header if it exists.`;
+  }
+
+  return chatGPT(basicSummarize(value, `${fixes}\n`));
+};
 
 /**
  * SummarizingMap is a utility class for managing inputs to prompts,
@@ -14,10 +29,11 @@ import {
 export default class SummarizingMap extends Map {
   constructor({ targetTokens, maxPromptTokens }) {
     super();
-    this.targetTokens = targetTokens;
     this.cache = new Map();
     this.data = new Map();
     this.isCacheValid = false;
+    this.maxPromptTokens = maxPromptTokens;
+    this.targetTokens = targetTokens;
   }
 
   getCache() {
@@ -25,47 +41,43 @@ export default class SummarizingMap extends Map {
   }
 
   calculateBudgets() {
-    const totalSizeWeight = [...this.data.values()].reduce((sum, valueObject) => {
-      return sum + (valueObject.weight * valueObject.value.length)
-    }, 0);
-    const sortedEntries = [...this.data.entries()].sort((a, b) => a[1].weight - b[1].weight);
+    const totalSizeWeight = [...this.data.values()].reduce(
+      (sum, valueObject) => {
+        return sum + valueObject.weight * valueObject.value.length;
+      },
+      0
+    );
+    const sortedEntries = [...this.data.entries()].sort(
+      (a, b) => a[1].weight - b[1].weight
+    );
 
     const budgets = [];
     for (const [entryKey, valueObject] of sortedEntries) {
       const { weight } = valueObject;
       const sizeWeight = valueObject.value.length * weight;
-      const budget = Math.floor((sizeWeight / totalSizeWeight) * this.targetTokens);
+      const budget = Math.floor(
+        (sizeWeight / totalSizeWeight) * this.targetTokens
+      );
       budgets.push({ key: entryKey, budget });
     }
 
     return { totalSizeWeight, budgets };
   }
 
-  async _fillCache() {
+  async myFillCache() {
     const { budgets } = this.calculateBudgets();
 
     for (const { key, budget } of budgets) {
       const valueObject = this.data.get(key);
-      const summarizedValue = await this._summarize({ budget, type: valueObject.type, value: valueObject.value });
+      const summarizedValue = await summarize({
+        budget,
+        type: valueObject.type,
+        value: valueObject.value,
+      });
       this.cache.set(key, summarizedValue);
     }
 
     this.isCacheValid = true;
-  }
-
-  async _summarize({ budget, type, value }) {
-    let fixes = '';
-    if (budget) {
-      fixes = fixes + ` - Keep the output within ${budget} tokens.`;
-    }
-
-    if (type === 'code') {
-      fixes = fixes + ` - Output function signature lines and a closing bracket.
- - Comment out the bodies of the functions and leave a summary of the implementation.
- - Remove the function header if it exists.`
-    }
-
-    return await chatGPT(summarize(value, `${fixes}\n`));
   }
 
   set(key, config) {
@@ -80,6 +92,7 @@ export default class SummarizingMap extends Map {
   delete(key) {
     this.data.delete(key);
     this.isCacheValid = false;
+    s;
   }
 
   clear() {
@@ -93,10 +106,10 @@ export default class SummarizingMap extends Map {
     }
 
     if (!this.isCacheValid) {
-      return this._fillCache()
+      return this.myFillCache()
         .then(() => this.cache.get(key))
         .catch((error) => {
-          logger.error(`SummarizingMap get key [error]: ${error.message}`);
+          console.error(`SummarizingMap get key [error]: ${error.message}`);
           return undefined;
         });
     }
@@ -116,10 +129,10 @@ export default class SummarizingMap extends Map {
 
   values() {
     if (!this.isCacheValid) {
-      return this._fillCache()
+      return this.myFillCache()
         .then(() => this.cache.values())
         .catch((error) => {
-          logger.error(`SummarizingMap values [error]: ${error.message}`);
+          console.error(`SummarizingMap values [error]: ${error.message}`);
           return undefined;
         });
     }
@@ -128,10 +141,10 @@ export default class SummarizingMap extends Map {
 
   entries() {
     if (!this.isCacheValid) {
-      return this._fillCache()
+      return this.myFillCache()
         .then(() => this.cache.entries())
         .catch((error) => {
-          logger.error(`SummarizingMap values [error]: ${error.message}`);
+          console.error(`SummarizingMap values [error]: ${error.message}`);
           return undefined;
         });
     }
@@ -140,13 +153,13 @@ export default class SummarizingMap extends Map {
 
   getAll() {
     if (!this.isCacheValid) {
-      return this._fillCache()
+      return this.myFillCache()
         .then(() => this.getAllStale())
         .catch((error) => {
-          logger.error(`SummarizingMap getAll [error]: ${error.message}`);
+          console.error(`SummarizingMap getAll [error]: ${error.message}`);
           return undefined;
         });
     }
     return Promise.resolve(this.getAllStale());
   }
-};
+}

@@ -1,21 +1,18 @@
-import chatGPT, { enums } from '../../index.js';
-import {
-  intent,
-} from '../../prompts/fragment-functions/index.js';
-import {
- stripResponse,
-} from '../../response-parsers/index.js';
-import toObject from '../../verblets/to-object/index.js';
+import chatGPT from "../../lib/openai/completions.js";
+import enums from "../enum/index.js";
+import { intent } from "../../prompts/fragment-functions/index.js";
+import { stripResponse } from "../../response-parsers/index.js";
+import toObject from "../to-object/index.js";
 
 const completionIntent = (text) => ({
   queryText: text,
   intent: {
-    operation: 'completion',
-    displayName: 'Completion'
+    operation: "completion",
+    displayName: "Completion",
   },
   parameters: {
-    text
-  }
+    text,
+  },
 });
 
 const enumPrompt = (text) => `What is the intent of the following prompt:
@@ -31,34 +28,39 @@ For example: The intent of "Buy me a flight to Burgas" might be "buy-flight". Th
 export default async ({
   text,
   operations,
-  defaultIntent=completionIntent
-}={}) => {
+  defaultIntent = completionIntent,
+} = {}) => {
   let operationsFound;
   let parametersFound;
   if (operations) {
-    const operationsEnum = operations
-      .reduce((acc, item, idx) => ({
+    const operationsEnum = operations.reduce(
+      (acc, item, idx) => ({
         ...acc,
         [item.name]: idx,
-      }), {});
+      }),
+      {}
+    );
 
     const operationNameFound = await enums(enumPrompt(text), operationsEnum);
 
-    const operationFound = operations
-      .find(o => o.name === operationNameFound);
+    const operationFound = operations.find(
+      (o) => o.name === operationNameFound
+    );
 
     if (!operationFound) {
       return defaultIntent(text);
     }
 
     operationsFound = [operationFound.name];
-    parametersFound = operationFound.parameters
+    parametersFound = operationFound.parameters;
   }
 
-  const result = await chatGPT(intent(text, {
-    operations: operationsFound,
-    parameters: parametersFound,
-  }));
+  const result = await chatGPT(
+    intent(text, {
+      operations: operationsFound,
+      parameters: parametersFound,
+    })
+  );
 
   return toObject(stripResponse(result));
 };

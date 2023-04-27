@@ -1,14 +1,12 @@
-import * as R from 'ramda';
+/* eslint-disable no-await-in-loop */
 
-import budgetTokens from '../../lib/budget-tokens/index.js';
-import chatGPT from '../../lib/openai/completions.js';
-import {
-  generateQuestions as generateQuestionsPrompt,
-} from '../../prompts/fragment-functions/index.js'
-import {
-  onlyJSON,
-} from '../../prompts/fragment-texts/index.js'
-import toObject from '../../verblets/to-object/index.js';
+import * as R from "ramda";
+
+import budgetTokens from "../../lib/budget-tokens/index.js";
+import chatGPT from "../../lib/openai/completions.js";
+import { generateQuestions as generateQuestionsPrompt } from "../../prompts/fragment-functions/index.js";
+import { onlyJSON } from "../../prompts/fragment-texts/index.js";
+import toObject from "../../verblets/to-object/index.js";
 
 // Returns a random subset of a list with length between 1 and the length of the list
 // based on an input value between 0 and 1
@@ -18,10 +16,8 @@ const getRandomSubset = (list, value) => {
   return listShuffled.slice(0, numItems);
 };
 
-const pickInterestingQuestion = (originalQuestion, { existing=[] }) => {
-  const existingJoined = existing
-        .map(item => ` - ${item}`)
-        .join('\n');
+const pickInterestingQuestion = (originalQuestion, { existing = [] }) => {
+  const existingJoined = existing.map((item) => ` - ${item}`).join("\n");
 
   return `Choose one interesting question from the following list of questions. The main goal is to determine "${originalQuestion}".
 
@@ -29,18 +25,21 @@ Choose only from the following:
 \`\`\`
 ${existingJoined}
 \`\`\`
-`
+`;
 };
 
 const shouldSkipNull = (result, resultsAll) => {
   return resultsAll.includes(result);
 };
 
-const shouldStopNull = (result, resultsAll, resultsNew, attempts=0) => {
+const shouldStopNull = (result, resultsAll, resultsNew, attempts = 0) => {
   return resultsAll.length > 50 || attempts > 5;
 };
 
-const generateQuestions = async function* (text, options={}) {
+const generateQuestions = async function* generateQuestionsGenerator(
+  text,
+  options = {}
+) {
   const resultsAll = [];
   const resultsAllMap = {};
   const drilldownResults = [];
@@ -48,9 +47,9 @@ const generateQuestions = async function* (text, options={}) {
   let textSelected = text;
 
   const {
-    searchBreadth=0.5,
-    shouldSkip=shouldSkipNull,
-    shouldStop=shouldStopNull,
+    searchBreadth = 0.5,
+    shouldSkip = shouldSkipNull,
+    shouldStop = shouldStopNull,
   } = options;
 
   let attempts = 0;
@@ -59,12 +58,17 @@ const generateQuestions = async function* (text, options={}) {
       const choices = resultsAll.filter((item) => {
         return !drilldownResults.includes(item);
       });
-      const pickInterestingQuestionPrompt = pickInterestingQuestion(textSelected, { existing: choices });
+      const pickInterestingQuestionPrompt = pickInterestingQuestion(
+        textSelected,
+        { existing: choices }
+      );
       textSelected = await chatGPT(pickInterestingQuestionPrompt);
       drilldownResults.push(textSelected);
     }
 
-    const promptCreated = generateQuestionsPrompt(textSelected, { existing: resultsAll });
+    const promptCreated = generateQuestionsPrompt(textSelected, {
+      existing: resultsAll,
+    });
     const budget = budgetTokens(promptCreated);
     const chatGPTConfig = {
       maxTokens: budget.completion,
@@ -72,25 +76,30 @@ const generateQuestions = async function* (text, options={}) {
     };
 
     const results = await chatGPT(`${promptCreated}`, chatGPTConfig);
-    let resultsParsed
+    let resultsParsed;
     try {
       resultsParsed = await toObject(results);
     } catch (error) {
       if (/Unexpected string in JSON/.test(error.message)) {
-        const resultsUpdated = await chatGPT(`Split the following to a JSON array.${onlyJSON} \`\`\`${results}\`\`\``, chatGPTConfig);
+        const resultsUpdated = await chatGPT(
+          `Split the following to a JSON array.${onlyJSON} \`\`\`${results}\`\`\``,
+          chatGPTConfig
+        );
         resultsParsed = await toObject(resultsUpdated);
       }
     }
     const resultsNew = getRandomSubset(resultsParsed, searchBreadth);
     if (searchBreadth < 0.5) {
-      const randomIndex = Math.floor(Math.random() * resultsNew.length)
+      const randomIndex = Math.floor(Math.random() * resultsNew.length);
       textSelected = resultsNew[randomIndex];
     }
-    const resultsNewUnique = resultsNew.filter(item => !(item in resultsAllMap));
+    const resultsNewUnique = resultsNew.filter(
+      (item) => !(item in resultsAllMap)
+    );
 
-    attempts = attempts + 1;
+    attempts += 1;
 
-    for (let result of resultsNewUnique) {
+    for (const result of resultsNewUnique) {
       if (await shouldSkip(result, resultsAll)) {
         continue;
       }
@@ -110,8 +119,10 @@ export default async (text, options) => {
   const generator = generateQuestions(text, options);
 
   const results = [];
-  for await (let result of generator) {
-    results.push(result);
+  for await (const result of generator) {
+    if (!results.includes(result)) {
+      results.push(result);
+    }
   }
 
   const resultsSorted = R.sort((a, b) => a.localeCompare(b), results);

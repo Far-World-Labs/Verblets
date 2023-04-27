@@ -1,5 +1,9 @@
-export default async (fn, { maxRetries=3, retryDelay=1000 }={}) => {
+/* eslint-disable no-await-in-loop */
+
+export default async (fn, { maxRetries = 3, retryDelay = 1000 } = {}) => {
   let retries = 0;
+
+  // eslint-disable-next-line no-promise-executor-return
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
   while (retries < maxRetries) {
@@ -8,7 +12,7 @@ export default async (fn, { maxRetries=3, retryDelay=1000 }={}) => {
       return result;
     } catch (error) {
       if (error.response && error.response.status === 429) {
-        retries++;
+        retries += 1;
         await sleep(retryDelay * retries);
       } else {
         throw error;
@@ -16,5 +20,5 @@ export default async (fn, { maxRetries=3, retryDelay=1000 }={}) => {
     }
   }
 
-  throw new Error('Max retries reached');
-}
+  throw new Error("Max retries reached");
+};

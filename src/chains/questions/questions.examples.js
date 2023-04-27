@@ -1,6 +1,9 @@
-import fs from 'fs/promises';
-import path from 'path';
-import { describe, expect, it, vi } from 'vitest';
+import fs from "fs/promises";
+import path from "path";
+import { describe, expect, it } from "vitest";
+
+import { longTestTimeout } from "../../constants/common.js";
+import questions from "./index.js";
 
 const ensureDirectoryExists = async (directoryPath) => {
   try {
@@ -11,55 +14,55 @@ const ensureDirectoryExists = async (directoryPath) => {
 };
 
 const readFileOrUndefined = async (filePath) => {
-  let result
+  let result;
   try {
     result = (await fs.readFile(filePath)).toString();
+    // eslint-disable-next-line no-empty
   } catch (error) {
-
-  };
+    // do nothing
+  }
   return result;
 };
 
-import { longTestTimeout } from '../../constants/common.js';
-import questions from './index.js';
-
-const cacheDir = path.join(process.env.HOME, '.cache', 'puck');
+const cacheDir = path.join(process.env.HOME, ".cache", "puck");
 const cacheFile = `${cacheDir}/questions-verblet-test-cache-1.json`;
 
 const examples = [
   {
     inputs: {
-      text: 'Writing a prompt toolkit for ChatGPT',
+      text: "Writing a prompt toolkit for ChatGPT",
       searchBreadth: 0.5,
     },
-    want: { minLength: 10 }
-  }
+    want: { minLength: 10 },
+  },
 ];
 
-describe('Questions verblet', () => {
+describe("Questions verblet", () => {
   examples.forEach((example) => {
-    it(example.inputs.text, async () => {
-      const canUseCache = process.env.RUN_TESTS_WITH_RANDOMNESS_ONCE;
+    it(
+      example.inputs.text,
+      async () => {
+        const canUseCache = process.env.RUN_TESTS_WITH_RANDOMNESS_ONCE;
 
-      const cache = await readFileOrUndefined(cacheFile);
+        const cache = await readFileOrUndefined(cacheFile);
 
-      let result;
-      if (canUseCache && cache) {
-        result = JSON.parse(cache);
-      } else {
-        result = await questions(example.inputs.text);
-      }
+        let result;
+        if (canUseCache && cache) {
+          result = JSON.parse(cache);
+        } else {
+          result = await questions(example.inputs.text);
+        }
 
-      if (canUseCache) {
-        await ensureDirectoryExists(cacheDir);
-        await fs.writeFile(cacheFile, JSON.stringify(result));
-      }
+        if (canUseCache) {
+          await ensureDirectoryExists(cacheDir);
+          await fs.writeFile(cacheFile, JSON.stringify(result));
+        }
 
-
-      if (example.want.minLength) {
-        expect(result.length)
-          .gt(example.want.minLength);
-      }
-    }, longTestTimeout);
+        if (example.want.minLength) {
+          expect(result.length).gt(example.want.minLength);
+        }
+      },
+      longTestTimeout
+    );
   });
-})
+});

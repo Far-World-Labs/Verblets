@@ -1,16 +1,14 @@
-import fs from 'fs/promises';
-import path from 'path';
+import fs from "fs/promises";
+import path from "path";
 
-import chatGPT, { list } from '../../index.js';
-import budgetTokens from '../../lib/budget-tokens/index.js';
-import {
-  wrapVariable,
-} from '../../prompts/fragment-functions/index.js'
+import chatGPT from "../../lib/openai/completions.js";
+import budgetTokens from "../../lib/budget-tokens/index.js";
+import wrapVariable from "../../prompts/fragment-functions/wrap-variable.js";
 import {
   onlyJSONArray,
   onlyJSONStringArray,
-} from '../../prompts/fragment-texts/index.js'
-import toObject from '../../verblets/to-object/index.js';
+} from "../../prompts/fragment-texts/index.js";
+import toObject from "../../verblets/to-object/index.js";
 
 const checksPrompt = (text, instructions) => `
 Instructions: ${wrapVariable(instructions)}
@@ -61,32 +59,30 @@ ${onlyJSONArray}
 
 export default async (
   filePath,
-  instructions='Find specific improvements in the following code, not nitpicks.'
+  instructions = "Find specific improvements in the following code, not nitpicks."
 ) => {
-  const enableRegex = new RegExp(process.env.ENABLE_AI_TESTS ?? '^$');
+  const enableRegex = new RegExp(process.env.ENABLE_AI_TESTS ?? "^$");
   if (!enableRegex.test(filePath)) {
     return [];
   }
 
   try {
     const filePathAbsolute = path.resolve(filePath);
-    const text = await fs.readFile(filePathAbsolute, 'utf-8');
+    const text = await fs.readFile(filePathAbsolute, "utf-8");
 
     const checksPromptCreated = checksPrompt(text, instructions);
-    const checksBudget = budgetPrompt(checksPromptCreated);
+    const checksBudget = budgetTokens(checksPromptCreated);
 
-    const checksResult = await chatGPT(
-      checksPromptCreated,
-      { maxTokens: checksBudget.completion }
-    );
+    const checksResult = await chatGPT(checksPromptCreated, {
+      maxTokens: checksBudget.completion,
+    });
 
     const testsPromptCreated = testsPrompt(text, instructions, checksResult);
-    const testsBudget = budgetPrompt(testsPromptCreated);
+    const testsBudget = budgetTokens(testsPromptCreated);
 
-    const results = await toObject(await chatGPT(
-      testsPromptCreated,
-      { maxTokens: budget.completion }
-    ));
+    const results = await toObject(
+      await chatGPT(testsPromptCreated, { maxTokens: testsBudget.completion })
+    );
 
     if (!results.length) {
       return [];
@@ -94,10 +90,12 @@ export default async (
 
     return results;
   } catch (error) {
-    return [{
-      name: 'Error running AI tests',
-      expected: 'tests generated',
-      saw: error.message
-    }];
+    return [
+      {
+        name: "Error running AI tests",
+        expected: "tests generated",
+        saw: error.message,
+      },
+    ];
   }
 };

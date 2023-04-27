@@ -1,44 +1,6 @@
-import { stripResponse as _stripResponse } from './common.js';
-import _toNumberWithUnits from './to-number-with-units.js';
-
-export const stripNumeric = (val) => {
-  const noAnswer = val.replace(/[aA]nswer:?/, '').trim();
-  const onlyNumberParts = noAnswer.replace(/[^0-9.]/g, '').trim();
-  return onlyNumberParts;
-};
-
-export const stripResponse = _stripResponse;
-
-export const toBool = (val) => {
-  const valLower = _stripResponse(val.toLowerCase());
-  if (valLower === 'true') return true;
-  if (valLower === 'false') return false;
-  return undefined;
-};
-
-export const toEnum = (value, enumValue) => {
-  // Clean up the input by removing whitespace and punctuation
-  const valueStripped = _stripResponse(value);
-  const valueCleaned = valueStripped.replace(/[^\w\s-_\/\\]/gi, '').trim();
-
-  // Map the cleaned input to an enum value
-  for (const key of Object.keys(enumValue)) {
-    if (key.toLowerCase() === valueCleaned.toLowerCase()) {
-      return key;
-    }
-  }
-
-  return undefined;
-};
-
-export const toNumber = (val) => {
-  const valLower = _stripResponse(val.toLowerCase());
-  if (valLower === 'undefined') return undefined;
-  const valParsed = +(stripNumeric(val));
-  if (isNaN(valParsed)) {
-    throw new Error(`ChatGPT output [error]: ${error.message}`);
-  }
-  return valParsed;
-};
-
-export const toNumberWithUnits = _toNumberWithUnits;
+export { default as stripNumeric } from "./strip-numeric.js";
+export { default as stripResponse } from "./strip-response.js";
+export { default as toBool } from "./to-bool.js";
+export { default as toEnum } from "./to-enum.js";
+export { default as toNumber } from "./to-number.js";
+export { default as toNumberWithUnits } from "./to-number-with-units.js";

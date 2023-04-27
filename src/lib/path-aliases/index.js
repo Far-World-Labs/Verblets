@@ -1,4 +1,4 @@
-const defaultDelimiter = '/';
+const defaultDelimiter = "/";
 
 /**
  * Splits sequences using the given delimiter.
@@ -7,7 +7,7 @@ const defaultDelimiter = '/';
  * @returns {string[][]} - An array of split sequences.
  */
 const splitSequences = (sequences, delimiter = defaultDelimiter) =>
-  sequences.map(sequence => sequence.split(delimiter));
+  sequences.map((sequence) => sequence.split(delimiter));
 
 /**
  * Creates unique sequence tails for the given sequences.
@@ -22,9 +22,11 @@ export default (sequences, delimiter = defaultDelimiter) => {
   sequences.forEach((sequence, index) => {
     const splitSequence = splitSequencesList[index];
 
-    for (let i = 1; i <= splitSequence.length; i++) {
+    for (let i = 1; i <= splitSequence.length; i += 1) {
       const tail = splitSequence.slice(-i).join(delimiter);
-      const conflictingSequences = sequences.filter(seq => seq.endsWith(tail));
+      const conflictingSequences = sequences.filter((seq) =>
+        seq.endsWith(tail)
+      );
 
       if (conflictingSequences.length === 1) {
         tailsUnique[sequence] = tail;

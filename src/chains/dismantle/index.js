@@ -1,15 +1,14 @@
-import { v4 as uuid } from 'uuid';
+/* eslint-disable no-await-in-loop */
 
-import budgetTokens from '../../lib/budget-tokens/index.js'
-import chatGPT from '../../lib/openai/completions.js';
-import {
-  onlyJSONArray,
-  onlyJSONStringArray,
-} from '../../prompts/fragment-texts/index.js'
-import toObject from '../../verblets/to-object/index.js';
+import { v4 as uuid } from "uuid";
 
-const subComponentsPrompt = (component, thing, fixes='') => {
-  let focus = '';
+import budgetTokens from "../../lib/budget-tokens/index.js";
+import chatGPT from "../../lib/openai/completions.js";
+import { onlyJSONStringArray } from "../../prompts/fragment-texts/index.js";
+import toObject from "../../verblets/to-object/index.js";
+
+const subComponentsPrompt = (component, thing) => {
+  let focus = "";
   if (component !== thing) {
     focus = `"${component}" within "${thing}"`;
   } else {
@@ -29,11 +28,11 @@ Apply the specifics listed here when dealing with component or entity:
 ${fixes}
 
 ${onlyJSONStringArray}
-`
+`;
 };
 
-const componentOptionsPrompt = (component, thing, fixes='') => {
-  let focus = '';
+const componentOptionsPrompt = (component, thing, fixes = "") => {
+  let focus = "";
   if (component !== thing) {
     focus = `Considering "${component}" as a separate component within "${thing}" entity`;
   } else {
@@ -50,16 +49,14 @@ Apply the specifics listed here when dealing with component or entity:
 ${fixes}
 
 ${onlyJSONStringArray}
-`
+`;
 };
-
-let count = 50;
 
 const defaultMatch = () => false;
 
 const deepClone = (obj) => JSON.parse(JSON.stringify(obj));
 
-const search = (node, { match = defaultMatch, matches = [] }={}) => {
+const search = (node, { match = defaultMatch, matches = [] } = {}) => {
   if (match(node)) {
     matches.push(node);
   }
@@ -75,34 +72,32 @@ const search = (node, { match = defaultMatch, matches = [] }={}) => {
   return matches.length > 0 ? matches : undefined;
 };
 
-const defaultDecompose = async ({ name, focus, rootName, fixes }={}) => {
-  const focusFormatted = focus ? `: ${focus}` : '';
+const defaultDecompose = async ({ name, focus, rootName, fixes } = {}) => {
+  const focusFormatted = focus ? `: ${focus}` : "";
 
   const promptCreated = subComponentsPrompt(
     `${name}${focusFormatted}`,
-    rootName,
+    rootName
   );
   const budget = budgetTokens(promptCreated);
   return toObject(
-    await chatGPT(
-      promptCreated,
-      {
-        maxTokens: promptCreated.completion,
-        frequencyPenalty: 0.7,
-        temperature: 0.7
-      }
-    )
+    await chatGPT(promptCreated, {
+      maxTokens: budget.completion,
+      frequencyPenalty: 0.7,
+      temperature: 0.7,
+    })
   );
 };
 
-const defaultEnhance = async ({ name, rootName, fixes }={}) => {
+const defaultEnhance = async ({ name, rootName, fixes } = {}) => {
   const promptCreated = componentOptionsPrompt(name, rootName, fixes);
   const budget = budgetTokens(promptCreated);
   const options = toObject(
-    await chatGPT(
-      promptCreated,
-      { maxTokens: budget.completion, frequencyPenalty: 0.5, temperature: 0.3 },
-    )
+    await chatGPT(promptCreated, {
+      maxTokens: budget.completion,
+      frequencyPenalty: 0.5,
+      temperature: 0.3,
+    })
   );
 
   return {
@@ -113,15 +108,15 @@ const defaultEnhance = async ({ name, rootName, fixes }={}) => {
 };
 
 const makeNode = async ({
-  node={},
+  node = {},
   name: nameInitial,
   rootName,
-  decompose=defaultDecompose,
-  enhance=defaultEnhance,
-  makeId=uuid,
+  decompose = defaultDecompose,
+  enhance = defaultEnhance,
+  makeId = uuid,
   enhanceFixes,
   decomposeFixes,
-}={}) => {
+} = {}) => {
   const name = nameInitial ?? rootName;
 
   let nodeNew = node;
@@ -142,10 +137,10 @@ const makeNode = async ({
       rootName,
       fixes: decomposeFixes,
     });
-    nodeNew.children = childNames.map(name => ({
+    nodeNew.children = childNames.map((childName) => ({
       id: makeId(),
-      name,
-    }))
+      name: childName,
+    }));
   }
 
   if (!node.id) {
@@ -162,13 +157,13 @@ const makeSubtree = async ({
   name,
   rootName,
   tree: treeInitial,
-  depth=0,
+  depth = 0,
   decompose,
   enhance,
   enhanceFixes,
   decomposeFixes,
   makeId,
-}={}) => {
+} = {}) => {
   let tree = { ...(treeInitial ?? {}) };
 
   const nodeNew = await makeNode({
@@ -214,18 +209,18 @@ const makeSubtree = async ({
 
 export const simplifyTree = (node) => {
   if (!node.children || node.children.length === 0) {
-    const parts = (node.children ?? []).map(child => child.name);
+    const parts = (node.children ?? []).map((child) => child.name);
     return {
       id: node.id,
-      name: `${node.name}${node.options?.[0] ? ': ' + node.options?.[0] : ''}`,
+      name: `${node.name}${node.options?.[0] ? `: ${node.options?.[0]}` : ""}`,
       parts: parts.length ? parts : undefined,
     };
   }
 
-  const parts = node.children.map(child => simplifyTree(child));
+  const parts = node.children.map((child) => simplifyTree(child));
   return {
     id: node.id,
-    name: `${node.name}${node.options?.[0] ? ': ' + node.options?.[0] : ''}`,
+    name: `${node.name}${node.options?.[0] ? `: ${node.options?.[0]}` : ""}`,
     parts: parts.length ? parts : undefined,
   };
 };
@@ -233,13 +228,7 @@ export const simplifyTree = (node) => {
 class ChainTree {
   constructor(
     name,
-    {
-      decompose,
-      enhance,
-      makeId,
-      enhanceFixes,
-      decomposeFixes,
-    }={}
+    { decompose, enhance, makeId, enhanceFixes, decomposeFixes } = {}
   ) {
     this.rootName = name;
     this.tree = {};
@@ -254,10 +243,7 @@ class ChainTree {
     return this.tree;
   }
 
-  async attachSubtree({
-    find,
-    depth,
-  }) {
+  async attachSubtree({ find, depth }) {
     const clonedTree = deepClone(this.tree);
 
     // Find the node to attach the subtree to in the cloned tree
@@ -291,7 +277,7 @@ class ChainTree {
     return nodeStripped;
   }
 
-  async makeSubtree (config={}) {
+  async makeSubtree(config = {}) {
     this.tree = await makeSubtree({
       ...this,
       rootName: this.tree.name || this.rootName,
@@ -300,6 +286,6 @@ class ChainTree {
 
     return this.tree;
   }
-};
+}
 
 export default ChainTree;

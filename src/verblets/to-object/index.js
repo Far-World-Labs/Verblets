@@ -1,13 +1,7 @@
-import chatGPT from '../../index.js';
-import {
-  wrapVariable,
-} from '../../prompts/fragment-functions/index.js'
-import {
-  onlyJSON,
-} from '../../prompts/fragment-texts/index.js'
-import {
-  stripResponse,
-} from '../../response-parsers/index.js';
+import chatGPT from "../../lib/openai/completions.js";
+import { wrapVariable } from "../../prompts/fragment-functions/index.js";
+import { onlyJSON } from "../../prompts/fragment-texts/index.js";
+import { stripResponse } from "../../response-parsers/index.js";
 
 export default async (text) => {
   let response;
@@ -15,8 +9,10 @@ export default async (text) => {
   try {
     return JSON.parse(stripResponse(text));
   } catch (error) {
-    if (process.env.NODE_ENV === 'development') {
-      console.warn('Retrying JSON.parse. This usually can be avoided with modifications to your prompt. This message only appears in dev.');
+    if (process.env.NODE_ENV === "development") {
+      console.warn(
+        "Retrying JSON.parse. This usually can be avoided with modifications to your prompt. This message only appears in dev."
+      );
     }
 
     const jsonPrompt = `${onlyJSON}

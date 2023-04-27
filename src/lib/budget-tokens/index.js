@@ -1,9 +1,7 @@
-import toTokens from '../to-tokens/index.js';
-import {
-  defaultModel,
-} from '../../constants/openai.js';
+import toTokens from "../to-tokens/index.js";
+import { defaultModel } from "../../constants/openai.js";
 
-export default (text, { completionMax=Infinity }={}) => {
+export default (text, { completionMax = Infinity } = {}) => {
   const prompt = toTokens(text).length;
   const total = defaultModel.maxTokens;
   const completion = Math.min(total - prompt, completionMax);
@@ -13,4 +11,4 @@ export default (text, { completionMax=Infinity }={}) => {
     prompt,
     total,
   };
-}
+};

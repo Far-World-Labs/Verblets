@@ -1,46 +1,54 @@
-import { createClient } from 'redis';
+import { createClient } from "redis";
 
 let client;
 
 class NullRedisClient {
-  async get(key) {
+  // eslint-disable-next-line class-methods-use-this
+  async get() {
     return null;
   }
 
-  async set(key, value) {
+  // eslint-disable-next-line class-methods-use-this
+  async set() {
     // Do nothing, as this is a null client
   }
 
-  async disconnect() {}
-};
+  // eslint-disable-next-line class-methods-use-this
+  async disconnect() {
+    // Do nothing, as this is a null client
+  }
+}
 
 const createRedisClient = async () => {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     if (process.env.REDIS_DISABLED) {
-      return resolve(new NullRedisClient());
+      resolve(new NullRedisClient());
+      return;
     }
 
-    const client = createClient({
-      host: process.env.REDIS_HOST ?? 'localhost',
+    const redisClient = createClient({
+      host: process.env.REDIS_HOST ?? "localhost",
       port: process.env.REDIS_PORT ?? 6379,
     });
 
-    client.on('error', (error) => {
+    redisClient.on("error", (error) => {
       console.error(`Redis service [error]: ${error.message}`);
-      console.error(`Redis service [warning]: Falling back to mock Redis client. This may incur greater usage costs and have slower response times.`);
+      console.error(
+        `Redis service [warning]: Falling back to mock Redis client. This may incur greater usage costs and have slower response times.`
+      );
 
-      client.disconnect();
+      redisClient.disconnect();
 
       resolve(new NullRedisClient());
     });
 
-    client.on('connect', () => {
-      resolve(client);
+    redisClient.on("connect", () => {
+      resolve(redisClient);
     });
 
-    client.connect();
+    redisClient.connect();
   });
-}
+};
 
 export default async () => {
   if (!client) {
@@ -48,4 +56,4 @@ export default async () => {
   }
 
   return client;
-}
+};

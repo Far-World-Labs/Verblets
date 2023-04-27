@@ -1,19 +1,16 @@
-import * as R from 'ramda';
+/* eslint-disable no-await-in-loop */
 
-import {
-  operationTimeout,
-} from '../../constants/common.js';
-import chatGPT from '../../lib/openai/completions.js';
-import budgetTokens from '../../lib/budget-tokens/index.js';
+import { operationTimeout } from "../../constants/common.js";
+import chatGPT from "../../lib/openai/completions.js";
+import budgetTokens from "../../lib/budget-tokens/index.js";
 import {
   asObjectWithSchema as asObjectWithSchemaPrompt,
   generateList as generateListPrompt,
-} from '../../prompts/fragment-functions/index.js'
-import {
-  onlyJSON,
-  transform,
-} from '../../prompts/fragment-texts/index.js'
-import toObject from '../../verblets/to-object/index.js';
+} from "../../prompts/fragment-functions/index.js";
+import { onlyJSON } from "../../prompts/fragment-texts/index.js";
+import toObject from "../../verblets/to-object/index.js";
+
+export const transform = "Transform the following object: ";
 
 const outputTransformPrompt = (result, jsonSchema) => {
   return `${transform} ${result}
@@ -23,28 +20,32 @@ ${asObjectWithSchemaPrompt(jsonSchema)}
 ${onlyJSON}`;
 };
 
-const shouldSkipDefault = async ({ result, resultsAll }={}) => {
+const shouldSkipDefault = async ({ result, resultsAll } = {}) => {
   return resultsAll.includes(result);
 };
 
-const shouldStopDefault = async ({ queryCount, startTime }={}) => {
-  return queryCount > 5 || ((new Date()) - startTime) > operationTimeout;
+const shouldStopDefault = async ({ queryCount, startTime } = {}) => {
+  return queryCount > 5 || new Date() - startTime > operationTimeout;
 };
 
-export const generateList = async function* (text, options={}) {
+export const generateList = async function* generateListGenerator(
+  text,
+  options = {}
+) {
   const resultsAll = [];
   const resultsAllMap = {};
   let isDone = false;
-  const {
-    shouldSkip=shouldSkipDefault,
-    shouldStop=shouldStopDefault,
-  } = options;
+  const { shouldSkip = shouldSkipDefault, shouldStop = shouldStopDefault } =
+    options;
 
   const startTime = new Date();
   let queryCount = 0;
 
   while (!isDone) {
-    const listPrompt = generateListPrompt(text, { ...options, existing: resultsAll });
+    const listPrompt = generateListPrompt(text, {
+      ...options,
+      existing: resultsAll,
+    });
 
     const budget = budgetTokens(listPrompt);
 
@@ -61,26 +62,31 @@ export const generateList = async function* (text, options={}) {
       resultsNew = await toObject(results);
     } catch (error) {
       if (/The operation was aborted/.test(error.message)) {
-        console.error('Generate list [error]: Aborted');
+        console.error("Generate list [error]: Aborted");
         resultsNew = []; // continue
       } else {
-        console.error(`Generate list [error]: ${error.message}`, listPrompt.slice(0, 100).replace('\n', '\\n'));
+        console.error(
+          `Generate list [error]: ${error.message}`,
+          listPrompt.slice(0, 100).replace("\n", "\\n")
+        );
         isDone = true;
         break;
       }
     }
 
-    const resultsNewUnique = resultsNew.filter(item => !(item in resultsAllMap));
+    const resultsNewUnique = resultsNew.filter(
+      (item) => !(item in resultsAllMap)
+    );
 
-    queryCount = queryCount + 1;
+    queryCount += 1;
 
-    for (let result of resultsNewUnique) {
+    for (const result of resultsNewUnique) {
       const perResultControlFactors = {
         result,
         resultsAll,
         resultsNew,
         queryCount,
-        startTime
+        startTime,
       };
 
       if (await shouldStop(perResultControlFactors)) {
@@ -115,10 +121,10 @@ export const generateList = async function* (text, options={}) {
   }
 };
 
-export default async (text, options={}) => {
+export default async (text, options = {}) => {
   const generator = generateList(text, options);
   const results = [];
-  for await (let result of generator) {
+  for await (const result of generator) {
     results.push(result);
   }
 
@@ -126,28 +132,19 @@ export default async (text, options={}) => {
     return results;
   }
 
-  const resultObjects = [];
-  let i = 0;
-  let result = results[i];
-  while (result) {
-    result = results[i];
-    const prompt = outputTransformPrompt(result, options.jsonSchema);
+  const resultObjects = await Promise.all(
+    results.map(async (result) => {
+      const prompt = outputTransformPrompt(result, options.jsonSchema);
+      const budget = budgetTokens(prompt);
 
-    const budget = budgetTokens(prompt);
+      const resultObject = await chatGPT(prompt, {
+        maxTokens: budget.completion,
+        ...options,
+      });
 
-    const resultObject = await chatGPT(prompt, {
-      maxTokens: budget.completion,
-      ...options,
-    });
-
-    // debug helper
-    // console.log(resultObject);
-
-    resultObjects.push(await toObject(resultObject));
-
-    i = i + 1;
-    result = results[i];
-  }
+      return toObject(resultObject);
+    })
+  );
 
   return resultObjects;
 };

@@ -1,28 +1,29 @@
-import { describe, expect, it, vi } from 'vitest';
+// Testing TBD. Randomness makes it challenging.
 
-import questions from './index.js';
+import { describe } from "vitest";
 
-vi.mock('../../lib/openai/completions.js', () => ({
+/*
+import questions from "./index.js";
+
+vi.mock("../../lib/openai/completions.js", () => ({
   default: vi.fn().mockImplementation((text) => {
     if (/a prompt toolkit/.test(text)) {
-      return '{}';
-    } else {
-      return 'undefined';
+      return "{}";
     }
+    return "undefined";
   }),
 }));
 
 const examples = [
   {
-    name: 'Basic usage',
+    name: "Basic usage",
     inputs: {
-      text: 'Writing a prompt toolkit for ChatGPT',
+      text: "Writing a prompt toolkit for ChatGPT",
       searchBreadth: 0.5,
     },
-    want: {}
-  }
+    want: {},
+  },
 ];
 
-describe.skip('Questions verblet', () => {
-  // Testing TBD. Randomness makes it challenging.
-});
+*/
+describe.skip("Questions verblet", () => {});

@@ -1,9 +1,9 @@
-import {
-  wrapVariable,
-} from '../fragment-functions/index.js';
+import wrapVariable from "./wrap-variable.js";
 
-export default (text, fixes='') => {
-  return `You will be asked to summarize text. While doing so, please follow these rules: ${wrapVariable(fixes)}
+export default (text, fixes = "") => {
+  return `You will be asked to summarize text. While doing so, please follow these rules: ${wrapVariable(
+    fixes
+  )}
 
-Summarize this text: ${wrapVariable(text)}`
-}
+Summarize this text: ${wrapVariable(text)}`;
+};

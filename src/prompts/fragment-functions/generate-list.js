@@ -1,11 +1,12 @@
-import {
-  onlyJSONArray,
-} from '../fragment-texts/index.js';
-import wrapVariable from '../fragment-functions/wrap-variable.js'
+import { onlyJSONArray } from "../fragment-texts/index.js";
+import wrapVariable from "./wrap-variable.js";
 
 const targetNewItemsCount = 10;
 
-export default (description, { existing=[], attachments={}, fixes='' }={}) => {
+export default (
+  description,
+  { existing = [], attachments = {}, fixes = "" } = {}
+) => {
   const existingJoined = JSON.stringify(existing, null, 2);
 
   const attachmentsJoined = Object.entries(attachments).map(([key, value]) => {

@@ -1,4 +1,4 @@
-import * as R from 'ramda';
+import * as R from "ramda";
 
 // Returns a modifier function that generates a prompt fragment based on a given value
 /*
@@ -12,6 +12,7 @@ import * as R from 'ramda';
  * const openEndedPrompt = `Questions ${openEndedDegree} open-ended. `
  */
 export default (value, thresholds = []) => {
-  const threshold = thresholds.find((t) => value <= t.threshold) || R.last(thresholds);
+  const threshold =
+    thresholds.find((t) => value <= t.threshold) || R.last(thresholds);
   return threshold.degree;
 };

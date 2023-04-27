@@ -1,6 +1,7 @@
 {
   "extends": [
     "eslint:recommended",
+    "airbnb",
     "plugin:prettier/recommended"
   ],
   "plugins": ["jest"],
@@ -13,11 +14,13 @@
     "node": true
   },
   "rules": {
-    "no-console": "error",
+    "no-console": "off",
     "no-multi-str": "off",
-    "no-underscore-dangle": ["error", { "allow": ["__dirname"] }],
+    "import/extensions": "off",
+    "no-underscore-dangle": ["warn", { "allow": ["__dirname"] }],
     "no-unused-vars": ["warn", { "argsIgnorePattern": "next" }],
     "object-shorthand": "off",
-    "prettier/prettier": "error"
+    "prettier/prettier": "error",
+    "no-restricted-syntax": "warn"
   }
 }
