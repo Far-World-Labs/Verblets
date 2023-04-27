@@ -1,7 +1,7 @@
 import chatGPT from '../../lib/openai/completions.js';
+import stripResponse from '../../lib/strip-response/index.js';
 import { wrapVariable } from '../../prompts/fragment-functions/index.js';
 import { onlyJSON } from '../../prompts/fragment-texts/index.js';
-import { stripResponse } from '../../response-parsers/index.js';
 
 export default async (text) => {
   let response;

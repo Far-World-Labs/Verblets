@@ -1,5 +1,5 @@
-import stripResponse from './strip-response.js';
-import stripNumeric from './strip-numeric.js';
+import stripResponse from '../strip-response/index.js';
+import stripNumeric from '../strip-numeric/index.js';
 
 export default (val) => {
   const valLower = stripResponse(val.toLowerCase());

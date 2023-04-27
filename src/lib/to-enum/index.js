@@ -1,4 +1,4 @@
-import stripResponse from './strip-response.js';
+import stripResponse from '../strip-response/index.js';
 
 export default (value, enumValue) => {
   // Clean up the input by removing whitespace and punctuation

@@ -1,6 +1,6 @@
 import chatGPT from '../../lib/openai/completions.js';
+import stripResponse from '../../lib/strip-response/index.js';
 import { asSchemaOrgText } from '../../prompts/fragment-functions/index.js';
-import { stripResponse } from '../../response-parsers/index.js';
 import toObject from '../to-object/index.js';
 
 export default async (text, type) => {

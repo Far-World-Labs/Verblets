@@ -1,4 +1,4 @@
-import stripResponse from './strip-response.js';
+import stripResponse from '../strip-response/index.js';
 
 export default (val) => {
   const valLower = stripResponse(val.toLowerCase());

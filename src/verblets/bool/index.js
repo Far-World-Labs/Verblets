@@ -1,6 +1,7 @@
 import chatGPT from '../../lib/openai/completions.js';
+import stripResponse from '../../lib/strip-response/index.js';
+import toBool from '../../lib/to-bool/index.js';
 import { asBool } from '../../prompts/fragment-texts/index.js';
-import { toBool, stripResponse } from '../../response-parsers/index.js';
 
 export default async (text) => {
   const boolText = `Question: ${text} \n\n${asBool}`;
