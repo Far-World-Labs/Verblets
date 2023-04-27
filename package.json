@@ -6,8 +6,8 @@
   "type": "module",
   "scripts": {
     "nodemon:cmd": "nodemon --no-warnings",
-    "start": "node src/index.js",
-    "dev": "npm run nodemon:cmd -- src/index.js",
+    "start": "node scripts/runner/index.js",
+    "dev": "npm run nodemon:cmd -- scripts/runner/index.js",
     "--": "npm run script -- generate-verblet foo",
     "script": "./scripts/run.sh",
     "test": "vitest",
