@@ -1,6 +1,6 @@
 {
   "name": "@pucklabs/puck",
-  "version": "0.0.2",
+  "version": "0.1.0",
   "description": "OpenAI Client",
   "main": "index.js",
   "type": "module",
