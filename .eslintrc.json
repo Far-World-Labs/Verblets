@@ -14,13 +14,14 @@
     "node": true
   },
   "rules": {
+    "import/extensions": "off",
     "no-console": "off",
     "no-multi-str": "off",
-    "import/extensions": "off",
+    "no-restricted-syntax": "warn",
     "no-underscore-dangle": ["warn", { "allow": ["__dirname"] }],
     "no-unused-vars": ["warn", { "argsIgnorePattern": "next" }],
     "object-shorthand": "off",
-    "prettier/prettier": "error",
-    "no-restricted-syntax": "warn"
+    "prettier/prettier": ["error", { "singleQuote": true }],
+    "quotes": ["error", "single", { "allowTemplateLiterals": true }]
   }
 }

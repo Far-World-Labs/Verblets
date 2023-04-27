@@ -11,7 +11,7 @@ export default (obj, path, value) => {
     throw new Error(`Invalid path: "${path}"`);
   }
 
-  const keys = path.split(".");
+  const keys = path.split('.');
   const objNew = JSON.parse(JSON.stringify(obj));
   let objMutating = objNew;
 

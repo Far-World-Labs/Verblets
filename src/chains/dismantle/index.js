@@ -1,14 +1,14 @@
 /* eslint-disable no-await-in-loop */
 
-import { v4 as uuid } from "uuid";
+import { v4 as uuid } from 'uuid';
 
-import budgetTokens from "../../lib/budget-tokens/index.js";
-import chatGPT from "../../lib/openai/completions.js";
-import { onlyJSONStringArray } from "../../prompts/fragment-texts/index.js";
-import toObject from "../../verblets/to-object/index.js";
+import budgetTokens from '../../lib/budget-tokens/index.js';
+import chatGPT from '../../lib/openai/completions.js';
+import { onlyJSONStringArray } from '../../prompts/fragment-texts/index.js';
+import toObject from '../../verblets/to-object/index.js';
 
-const subComponentsPrompt = (component, thing) => {
-  let focus = "";
+const subComponentsPrompt = (component, thing, fixes = '') => {
+  let focus = '';
   if (component !== thing) {
     focus = `"${component}" within "${thing}"`;
   } else {
@@ -31,8 +31,8 @@ ${onlyJSONStringArray}
 `;
 };
 
-const componentOptionsPrompt = (component, thing, fixes = "") => {
-  let focus = "";
+const componentOptionsPrompt = (component, thing, fixes = '') => {
+  let focus = '';
   if (component !== thing) {
     focus = `Considering "${component}" as a separate component within "${thing}" entity`;
   } else {
@@ -73,7 +73,7 @@ const search = (node, { match = defaultMatch, matches = [] } = {}) => {
 };
 
 const defaultDecompose = async ({ name, focus, rootName, fixes } = {}) => {
-  const focusFormatted = focus ? `: ${focus}` : "";
+  const focusFormatted = focus ? `: ${focus}` : '';
 
   const promptCreated = subComponentsPrompt(
     `${name}${focusFormatted}`,
@@ -212,7 +212,7 @@ export const simplifyTree = (node) => {
     const parts = (node.children ?? []).map((child) => child.name);
     return {
       id: node.id,
-      name: `${node.name}${node.options?.[0] ? `: ${node.options?.[0]}` : ""}`,
+      name: `${node.name}${node.options?.[0] ? `: ${node.options?.[0]}` : ''}`,
       parts: parts.length ? parts : undefined,
     };
   }
@@ -220,7 +220,7 @@ export const simplifyTree = (node) => {
   const parts = node.children.map((child) => simplifyTree(child));
   return {
     id: node.id,
-    name: `${node.name}${node.options?.[0] ? `: ${node.options?.[0]}` : ""}`,
+    name: `${node.name}${node.options?.[0] ? `: ${node.options?.[0]}` : ''}`,
     parts: parts.length ? parts : undefined,
   };
 };

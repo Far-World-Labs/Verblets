@@ -1,30 +1,30 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from 'vitest';
 
-import numberWithUnits from "./index.js";
+import numberWithUnits from './index.js';
 
-vi.mock("../../lib/openai/completions.js", () => ({
+vi.mock('../../lib/openai/completions.js', () => ({
   default: vi.fn().mockImplementation((text) => {
     if (/Everest/.test(text)) {
       return '{ "value": 29029, "unit": "feet" }';
     }
-    return "undefined";
+    return 'undefined';
   }),
 }));
 
 const examples = [
   {
-    name: "Basic usage",
-    inputs: { text: "What is the height of Everest in feet" },
-    want: { value: 29029, unit: "feet" },
+    name: 'Basic usage',
+    inputs: { text: 'What is the height of Everest in feet' },
+    want: { value: 29029, unit: 'feet' },
   },
   {
-    name: "Unanswerable question",
-    inputs: { text: "What is my age in years" },
-    want: { typeOfValue: "undefined", typeOfUnit: "undefined" },
+    name: 'Unanswerable question',
+    inputs: { text: 'What is my age in years' },
+    want: { typeOfValue: 'undefined', typeOfUnit: 'undefined' },
   },
 ];
 
-describe("Number with units verblet", () => {
+describe('Number with units verblet', () => {
   examples.forEach((example) => {
     it(example.name, async () => {
       const result = await numberWithUnits(example.inputs.text);

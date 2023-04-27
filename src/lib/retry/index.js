@@ -20,5 +20,5 @@ export default async (fn, { maxRetries = 3, retryDelay = 1000 } = {}) => {
     }
   }
 
-  throw new Error("Max retries reached");
+  throw new Error('Max retries reached');
 };

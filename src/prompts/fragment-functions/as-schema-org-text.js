@@ -1,5 +1,5 @@
-import { onlyJSON } from "../fragment-texts/index.js";
-import asSchemaOrgType from "./as-schema-org-type.js";
+import { onlyJSON } from '../fragment-texts/index.js';
+import asSchemaOrgType from './as-schema-org-type.js';
 
 export default (object, type) => {
   const typeText = asSchemaOrgType(type);

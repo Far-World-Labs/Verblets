@@ -1,4 +1,4 @@
-import * as tokenizer from "gpt3-tokenizer";
+import * as tokenizer from 'gpt3-tokenizer';
 
 // This library really doesn't import well with nodejs
 // This may not be the best solution, but it works
@@ -13,6 +13,6 @@ if (Tokenizer.default) {
 }
 
 export default (item) => {
-  const enc = new Tokenizer({ type: "gpt3" });
+  const enc = new Tokenizer({ type: 'gpt3' });
   return enc.encode(item).text;
 };

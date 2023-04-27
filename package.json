@@ -1,6 +1,6 @@
 {
   "name": "@pucklabs/puck",
-  "version": "0.0.2",
+  "version": "0.1.0",
   "description": "OpenAI Client",
   "main": "index.js",
   "type": "module",
@@ -52,6 +52,7 @@
     "husky": "^8.0.3",
     "install-peerdeps": "^3.0.3",
     "npm-check": "^6.0.1",
+    "prettier": "^2.8.8",
     "release-it": "^15.10.1",
     "why-is-node-running": "^2.2.2"
   },

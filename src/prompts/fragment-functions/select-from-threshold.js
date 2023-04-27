@@ -1,4 +1,4 @@
-import * as R from "ramda";
+import * as R from 'ramda';
 
 // Returns a modifier function that generates a prompt fragment based on a given value
 /*

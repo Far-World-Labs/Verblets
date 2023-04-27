@@ -1,12 +1,12 @@
-import stripResponse from "./strip-response.js";
-import stripNumeric from "./strip-numeric.js";
+import stripResponse from './strip-response.js';
+import stripNumeric from './strip-numeric.js';
 
 export default (envelope) => {
   const envelopeStripped = stripResponse(envelope);
   let valueExtracted;
   let unitExtracted;
 
-  if (envelopeStripped === "undefined") {
+  if (envelopeStripped === 'undefined') {
     return undefined;
   }
 
@@ -20,21 +20,21 @@ export default (envelope) => {
   }
 
   let unitParsed = unitExtracted;
-  if (unitExtracted === "undefined") {
+  if (unitExtracted === 'undefined') {
     unitParsed = undefined;
-  } else if (typeof unitExtracted === "undefined") {
+  } else if (typeof unitExtracted === 'undefined') {
     unitParsed = undefined;
   }
 
   let valueParsed;
-  if (typeof valueExtracted === "string") {
+  if (typeof valueExtracted === 'string') {
     const valueLower = valueExtracted.toLowerCase();
     valueParsed = +stripNumeric(valueLower);
-  } else if (typeof valueExtracted === "number") {
+  } else if (typeof valueExtracted === 'number') {
     valueParsed = valueExtracted;
-  } else if (valueExtracted === "undefined") {
+  } else if (valueExtracted === 'undefined') {
     valueParsed = undefined;
-  } else if (typeof valueExtracted === "undefined") {
+  } else if (typeof valueExtracted === 'undefined') {
     valueParsed = undefined;
   } else {
     throw new Error(
@@ -42,7 +42,7 @@ export default (envelope) => {
     );
   }
 
-  if (typeof valueParsed !== "undefined" && Number.isNaN(valueParsed)) {
+  if (typeof valueParsed !== 'undefined' && Number.isNaN(valueParsed)) {
     throw new Error(`ChatGPT output [error]: Value is not a number`);
   }
 

@@ -1,7 +1,7 @@
-import toTokens from "../to-tokens/index.js";
+import toTokens from '../to-tokens/index.js';
 
 export default (text, targetTokenCount, minCharsToRemove = 10) => {
-  const ellipsis = "...";
+  const ellipsis = '...';
   const textToTokenRatio = text.length / toTokens(text).length;
   let trimmedText = text;
   let tokenCount = toTokens(trimmedText).length;

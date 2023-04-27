@@ -1,12 +1,12 @@
 /* eslint-disable no-await-in-loop */
 
-import * as R from "ramda";
+import * as R from 'ramda';
 
-import budgetTokens from "../../lib/budget-tokens/index.js";
-import chatGPT from "../../lib/openai/completions.js";
-import { generateQuestions as generateQuestionsPrompt } from "../../prompts/fragment-functions/index.js";
-import { onlyJSON } from "../../prompts/fragment-texts/index.js";
-import toObject from "../../verblets/to-object/index.js";
+import budgetTokens from '../../lib/budget-tokens/index.js';
+import chatGPT from '../../lib/openai/completions.js';
+import { generateQuestions as generateQuestionsPrompt } from '../../prompts/fragment-functions/index.js';
+import { onlyJSON } from '../../prompts/fragment-texts/index.js';
+import toObject from '../../verblets/to-object/index.js';
 
 // Returns a random subset of a list with length between 1 and the length of the list
 // based on an input value between 0 and 1
@@ -17,7 +17,7 @@ const getRandomSubset = (list, value) => {
 };
 
 const pickInterestingQuestion = (originalQuestion, { existing = [] }) => {
-  const existingJoined = existing.map((item) => ` - ${item}`).join("\n");
+  const existingJoined = existing.map((item) => ` - ${item}`).join('\n');
 
   return `Choose one interesting question from the following list of questions. The main goal is to determine "${originalQuestion}".
 
@@ -100,17 +100,15 @@ const generateQuestions = async function* generateQuestionsGenerator(
     attempts += 1;
 
     for (const result of resultsNewUnique) {
-      if (await shouldSkip(result, resultsAll)) {
-        continue;
-      }
-
       if (await shouldStop(result, resultsAll, resultsNew, attempts)) {
         isDone = true;
         break;
       }
-      resultsAllMap[result] = true;
-      resultsAll.push(result);
-      yield result;
+      if (!(await shouldSkip(result, resultsAll))) {
+        resultsAllMap[result] = true;
+        resultsAll.push(result);
+        yield result;
+      }
     }
   }
 };

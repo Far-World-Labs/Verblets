@@ -1,14 +1,14 @@
-import chatGPT from "../../lib/openai/completions.js";
-import enums from "../enum/index.js";
-import { intent } from "../../prompts/fragment-functions/index.js";
-import { stripResponse } from "../../response-parsers/index.js";
-import toObject from "../to-object/index.js";
+import chatGPT from '../../lib/openai/completions.js';
+import enums from '../enum/index.js';
+import { intent } from '../../prompts/fragment-functions/index.js';
+import { stripResponse } from '../../response-parsers/index.js';
+import toObject from '../to-object/index.js';
 
 const completionIntent = (text) => ({
   queryText: text,
   intent: {
-    operation: "completion",
-    displayName: "Completion",
+    operation: 'completion',
+    displayName: 'Completion',
   },
   parameters: {
     text,

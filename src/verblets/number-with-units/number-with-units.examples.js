@@ -1,19 +1,19 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from 'vitest';
 
-import numberWithUnits from "./index.js";
+import numberWithUnits from './index.js';
 
 const examples = [
   {
-    inputs: { text: "What is the height of Everest in feet" },
-    want: { value: 29029, unit: "feet" },
+    inputs: { text: 'What is the height of Everest in feet' },
+    want: { value: 29029, unit: 'feet' },
   },
   {
-    inputs: { text: "What is my age in years" },
-    want: { typeOfResult: "undefined" },
+    inputs: { text: 'What is my age in years' },
+    want: { typeOfResult: 'undefined' },
   },
 ];
 
-describe("Number with units verblet", () => {
+describe('Number with units verblet', () => {
   examples.forEach((example) => {
     it(example.inputs.text, async () => {
       const result = await numberWithUnits(example.inputs.text);

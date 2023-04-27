@@ -1,14 +1,14 @@
 export default (variable, { delimiterWidth = 6 } = {}) => {
   if (!variable) {
-    return "";
+    return '';
   }
 
   let variableWrapped = `"${variable}"`;
   if (/\n/.test(variable)) {
     variableWrapped = `
-${"=".repeat(delimiterWidth)}
+${'='.repeat(delimiterWidth)}
 ${variable}
-${"=".repeat(delimiterWidth)}
+${'='.repeat(delimiterWidth)}
 `;
   }
   return variableWrapped;

@@ -1,10 +1,10 @@
-import { onlyJSON } from "../fragment-texts/index.js";
+import { onlyJSON } from '../fragment-texts/index.js';
 
 const jsonSchemaDefault = {
-  type: "object",
+  type: 'object',
   properties: {
     name: {
-      type: "string",
+      type: 'string',
     },
   },
 };
@@ -14,17 +14,17 @@ export default (jsonSchema = jsonSchemaDefault) => {
     .map(([key, val]) => {
       const annotations = Object.entries(val).filter(
         ([annKey, annVal]) =>
-          ["format", "description"].includes(annKey) && !!annVal
+          ['format', 'description'].includes(annKey) && !!annVal
       );
       const annotationsFormatted = annotations
         .map(([k, v]) => `${k}: ${v}`)
-        .join(", ");
+        .join(', ');
       const annotationsWrapped = annotations.length
         ? ` (${annotationsFormatted})`
-        : "";
-      return `"${key}": "<${val.type ?? ""}${annotationsWrapped}>"`;
+        : '';
+      return `"${key}": "<${val.type ?? ''}${annotationsWrapped}>"`;
     })
-    .join(", ");
+    .join(', ');
 
   return `The returned object must look like the following, including all the same properties: \`{ ${propertiesJoined} }\`. ${onlyJSON}.
 `;

@@ -1,16 +1,16 @@
 /* eslint-disable no-await-in-loop */
 
-import { operationTimeout } from "../../constants/common.js";
-import chatGPT from "../../lib/openai/completions.js";
-import budgetTokens from "../../lib/budget-tokens/index.js";
+import { operationTimeout } from '../../constants/common.js';
+import chatGPT from '../../lib/openai/completions.js';
+import budgetTokens from '../../lib/budget-tokens/index.js';
 import {
   asObjectWithSchema as asObjectWithSchemaPrompt,
   generateList as generateListPrompt,
-} from "../../prompts/fragment-functions/index.js";
-import { onlyJSON } from "../../prompts/fragment-texts/index.js";
-import toObject from "../../verblets/to-object/index.js";
+} from '../../prompts/fragment-functions/index.js';
+import { onlyJSON } from '../../prompts/fragment-texts/index.js';
+import toObject from '../../verblets/to-object/index.js';
 
-export const transform = "Transform the following object: ";
+export const transform = 'Transform the following object: ';
 
 const outputTransformPrompt = (result, jsonSchema) => {
   return `${transform} ${result}
@@ -62,12 +62,12 @@ export const generateList = async function* generateListGenerator(
       resultsNew = await toObject(results);
     } catch (error) {
       if (/The operation was aborted/.test(error.message)) {
-        console.error("Generate list [error]: Aborted");
+        console.error('Generate list [error]: Aborted');
         resultsNew = []; // continue
       } else {
         console.error(
           `Generate list [error]: ${error.message}`,
-          listPrompt.slice(0, 100).replace("\n", "\\n")
+          listPrompt.slice(0, 100).replace('\n', '\\n')
         );
         isDone = true;
         break;
@@ -94,17 +94,15 @@ export const generateList = async function* generateListGenerator(
         break;
       }
 
-      if (await shouldSkip(perResultControlFactors)) {
-        continue;
+      if (!(await shouldSkip(perResultControlFactors))) {
+        resultsAllMap[result] = true;
+        resultsAll.push(result);
+
+        // debug helper:
+        // console.error(R.sort((a, b) => a.localeCompare(b), resultsAll));
+
+        yield result;
       }
-
-      resultsAllMap[result] = true;
-      resultsAll.push(result);
-
-      // debug helper:
-      // console.error(R.sort((a, b) => a.localeCompare(b), resultsAll));
-
-      yield result;
     }
 
     const perQueryControlFactors = {

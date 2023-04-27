@@ -1,11 +1,11 @@
-import { onlyJSON } from "../fragment-texts/index.js";
-import asObjectWithSchema from "./as-object-with-schema.js";
+import { onlyJSON } from '../fragment-texts/index.js';
+import asObjectWithSchema from './as-object-with-schema.js';
 
 const jsonSchemaDefault = {
-  type: "object",
+  type: 'object',
   properties: {
     name: {
-      type: "string",
+      type: 'string',
     },
   },
 };

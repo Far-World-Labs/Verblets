@@ -1,17 +1,17 @@
 /* eslint-disable no-await-in-loop */
 
-import chatGPT from "../../lib/openai/completions.js";
-import pave from "../../lib/pave/index.js";
-import shortenText from "../../lib/shorten-text/index.js";
-import { summarize as basicSummarize } from "../../prompts/fragment-functions/index.js";
+import chatGPT from '../../lib/openai/completions.js';
+import pave from '../../lib/pave/index.js';
+import shortenText from '../../lib/shorten-text/index.js';
+import { summarize as basicSummarize } from '../../prompts/fragment-functions/index.js';
 
 const summarize = ({ budget, type, value }) => {
-  let fixes = "";
+  let fixes = '';
   if (budget) {
     fixes += ` - Keep the output within ${budget} tokens.`;
   }
 
-  if (type === "code") {
+  if (type === 'code') {
     fixes += ` - Output function signature lines and a closing bracket.
  - Comment out the bodies of the functions and leave a summary of the implementation.
  - Remove the function header if it exists.`;
@@ -92,7 +92,6 @@ export default class SummarizingMap extends Map {
   delete(key) {
     this.data.delete(key);
     this.isCacheValid = false;
-    s;
   }
 
   clear() {

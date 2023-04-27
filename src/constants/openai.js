@@ -2,20 +2,20 @@
 
 // Importing dotenv config to load environment variables from .env file
 // eslint-disable-next-line no-unused-vars
-import dotenv from "dotenv/config";
+import dotenv from 'dotenv/config';
 
-import chai from "chai";
+import chai from 'chai';
 
 const { expect } = chai;
 
 // eslint-disable-next-line no-underscore-dangle
 const _models = [
   {
-    name: "text-davinci-003",
+    name: 'text-davinci-003',
     maxTokens: 4097,
   },
   {
-    name: "gpt-4-32k-0314",
+    name: 'gpt-4-32k-0314',
     maxTokens: 32768,
   },
 ];

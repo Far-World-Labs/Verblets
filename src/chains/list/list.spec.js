@@ -1,18 +1,18 @@
-import fs from "fs/promises";
-import { describe, expect, it, vi } from "vitest";
+import fs from 'fs/promises';
+import { describe, expect, it, vi } from 'vitest';
 
-import toObject from "../../verblets/to-object/index.js";
-import list from "./index.js";
+import toObject from '../../verblets/to-object/index.js';
+import list from './index.js';
 
 const loadSchema = async () => {
   const file = (
-    await fs.readFile("./src/json-schemas/cars-test.json")
+    await fs.readFile('./src/json-schemas/cars-test.json')
   ).toString();
 
   return toObject(file);
 };
 
-vi.mock("../../lib/openai/completions.js", () => ({
+vi.mock('../../lib/openai/completions.js', () => ({
   default: vi.fn().mockImplementation((text) => {
     if (/Transform/.test(text) && /Model Y/.test(text)) {
       return '{"make":"Tesla", "model": "Model Y"}';
@@ -20,27 +20,27 @@ vi.mock("../../lib/openai/completions.js", () => ({
     if (/EV cars/.test(text)) {
       return '["Tesla Model Y"]';
     }
-    return "undefined";
+    return 'undefined';
   }),
 }));
 
 const examples = [
   {
-    name: "Basic usage",
-    inputs: { description: "2021 EV cars" },
+    name: 'Basic usage',
+    inputs: { description: '2021 EV cars' },
     want: { listContains: /Model Y/ },
   },
   {
-    name: "Basic usage with schema",
+    name: 'Basic usage with schema',
     inputs: {
-      description: "2021 EV cars",
+      description: '2021 EV cars',
       jsonSchema: loadSchema,
     },
     want: { listModelContains: /Model Y/ },
   },
 ];
 
-describe("List verblet", () => {
+describe('List verblet', () => {
   examples.forEach((example) => {
     it(example.name, async () => {
       let jsonSchema;

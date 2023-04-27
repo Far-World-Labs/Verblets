@@ -1,5 +1,5 @@
-import { describe, it } from "vitest";
+import { describe, it } from 'vitest';
 
-describe("Basic examples", () => {
-  it("Begins", () => {});
+describe('Basic examples', () => {
+  it('Begins', () => {});
 });

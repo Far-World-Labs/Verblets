@@ -1,14 +1,14 @@
-import fs from "fs/promises";
-import path from "path";
+import fs from 'fs/promises';
+import path from 'path';
 
-import chatGPT from "../../lib/openai/completions.js";
-import budgetTokens from "../../lib/budget-tokens/index.js";
-import wrapVariable from "../../prompts/fragment-functions/wrap-variable.js";
+import chatGPT from '../../lib/openai/completions.js';
+import budgetTokens from '../../lib/budget-tokens/index.js';
+import wrapVariable from '../../prompts/fragment-functions/wrap-variable.js';
 import {
   onlyJSONArray,
   onlyJSONStringArray,
-} from "../../prompts/fragment-texts/index.js";
-import toObject from "../../verblets/to-object/index.js";
+} from '../../prompts/fragment-texts/index.js';
+import toObject from '../../verblets/to-object/index.js';
 
 const checksPrompt = (text, instructions) => `
 Instructions: ${wrapVariable(instructions)}
@@ -59,16 +59,16 @@ ${onlyJSONArray}
 
 export default async (
   filePath,
-  instructions = "Find specific improvements in the following code, not nitpicks."
+  instructions = 'Find specific improvements in the following code, not nitpicks.'
 ) => {
-  const enableRegex = new RegExp(process.env.ENABLE_AI_TESTS ?? "^$");
+  const enableRegex = new RegExp(process.env.ENABLE_AI_TESTS ?? '^$');
   if (!enableRegex.test(filePath)) {
     return [];
   }
 
   try {
     const filePathAbsolute = path.resolve(filePath);
-    const text = await fs.readFile(filePathAbsolute, "utf-8");
+    const text = await fs.readFile(filePathAbsolute, 'utf-8');
 
     const checksPromptCreated = checksPrompt(text, instructions);
     const checksBudget = budgetTokens(checksPromptCreated);
@@ -92,8 +92,8 @@ export default async (
   } catch (error) {
     return [
       {
-        name: "Error running AI tests",
-        expected: "tests generated",
+        name: 'Error running AI tests',
+        expected: 'tests generated',
         saw: error.message,
       },
     ];

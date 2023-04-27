@@ -1,4 +1,4 @@
-const defaultDelimiter = "/";
+const defaultDelimiter = '/';
 
 /**
  * Splits sequences using the given delimiter.

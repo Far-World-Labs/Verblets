@@ -1,34 +1,34 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from 'vitest';
 
-import { longTestTimeout } from "../../constants/common.js";
-import chatGPT from "../../lib/openai/completions.js";
-import { asJSONSchema } from "../../prompts/fragment-functions/index.js";
-import toObject from "../../verblets/to-object/index.js";
+import { longTestTimeout } from '../../constants/common.js';
+import chatGPT from '../../lib/openai/completions.js';
+import { asJSONSchema } from '../../prompts/fragment-functions/index.js';
+import toObject from '../../verblets/to-object/index.js';
 
-import list from "./index.js";
+import list from './index.js';
 
 const examples = [
   {
-    inputs: { description: "2021 EV cars" },
-    want: { minLength: 10, listContains: "Model Y" },
+    inputs: { description: '2021 EV cars' },
+    want: { minLength: 10, listContains: 'Model Y' },
   },
   {
     inputs: {
-      description: "2021 EV cars",
+      description: '2021 EV cars',
       jsonSchemaQuery:
-        "make, model, releaseDate (ISO),\
-maxRange (miles), batteryCapacity (kWH), startingCost (USD)",
+        'make, model, releaseDate (ISO),\
+maxRange (miles), batteryCapacity (kWH), startingCost (USD)',
     },
-    want: { minLength: 10, listModelContains: "Model Y" },
+    want: { minLength: 10, listModelContains: 'Model Y' },
   },
 ];
 
-describe("List verblet", () => {
+describe('List verblet', () => {
   examples.forEach((example) => {
-    let jsonSchemaDisplay = "";
+    let jsonSchemaDisplay = '';
     if (example.inputs.jsonSchemaQuery) {
       const jsonSchemaEllipsis =
-        example.inputs.jsonSchemaQuery.length > 10 ? "..." : "";
+        example.inputs.jsonSchemaQuery.length > 10 ? '...' : '';
       jsonSchemaDisplay = ` - ${example.inputs.jsonSchemaQuery.slice(
         0,
         10

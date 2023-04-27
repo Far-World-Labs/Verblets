@@ -1,9 +1,9 @@
-import fs from "fs/promises";
-import path from "path";
-import { describe, expect, it } from "vitest";
+import fs from 'fs/promises';
+import path from 'path';
+import { describe, expect, it } from 'vitest';
 
-import { longTestTimeout } from "../../constants/common.js";
-import questions from "./index.js";
+import { longTestTimeout } from '../../constants/common.js';
+import questions from './index.js';
 
 const ensureDirectoryExists = async (directoryPath) => {
   try {
@@ -24,20 +24,20 @@ const readFileOrUndefined = async (filePath) => {
   return result;
 };
 
-const cacheDir = path.join(process.env.HOME, ".cache", "puck");
+const cacheDir = path.join(process.env.HOME, '.cache', 'puck');
 const cacheFile = `${cacheDir}/questions-verblet-test-cache-1.json`;
 
 const examples = [
   {
     inputs: {
-      text: "Writing a prompt toolkit for ChatGPT",
+      text: 'Writing a prompt toolkit for ChatGPT',
       searchBreadth: 0.5,
     },
     want: { minLength: 10 },
   },
 ];
 
-describe("Questions verblet", () => {
+describe('Questions verblet', () => {
   examples.forEach((example) => {
     it(
       example.inputs.text,

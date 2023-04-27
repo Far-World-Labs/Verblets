@@ -1,13 +1,13 @@
-import { describe, expect, it } from "vitest";
-import toTokens from "../to-tokens/index.js";
+import { describe, expect, it } from 'vitest';
+import toTokens from '../to-tokens/index.js';
 
-import shortenText from "./index.js";
+import shortenText from './index.js';
 
 const examples = [
   {
-    name: "Basic usage",
+    name: 'Basic usage',
     inputs: {
-      text: "Hello, world! This is a long text for testing the shortenText function.",
+      text: 'Hello, world! This is a long text for testing the shortenText function.',
       targetTokenCount: 10,
     },
     want: {
@@ -17,19 +17,19 @@ const examples = [
     },
   },
   {
-    name: "No trimming needed",
+    name: 'No trimming needed',
     inputs: {
-      text: "This text is short enough.",
+      text: 'This text is short enough.',
       targetTokenCount: 8,
     },
     want: {
-      result: "This text is short enough.",
+      result: 'This text is short enough.',
     },
   },
   {
-    name: "Minimum characters removal",
+    name: 'Minimum characters removal',
     inputs: {
-      text: "This is another test to check the minimum characters removal feature.",
+      text: 'This is another test to check the minimum characters removal feature.',
       targetTokenCount: 6,
       minCharsToRemove: 5,
     },
@@ -41,7 +41,7 @@ const examples = [
   },
 ];
 
-describe("Shorten text", () => {
+describe('Shorten text', () => {
   examples.forEach((example) => {
     it(example.name, () => {
       const got = shortenText(

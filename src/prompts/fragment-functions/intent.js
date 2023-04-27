@@ -1,8 +1,8 @@
-import fs from "fs/promises";
-import { onlyJSON } from "../fragment-texts/index.js";
+import fs from 'fs/promises';
+import { onlyJSON } from '../fragment-texts/index.js';
 
 const intentSchema = JSON.parse(
-  await fs.readFile("./src/json-schemas/intent.json")
+  await fs.readFile('./src/json-schemas/intent.json')
 );
 
 /**
@@ -14,14 +14,14 @@ export default (text, { operations = [], parameters = [] } = {}) => {
   let operationsSection;
   if (operations.length) {
     operationsSection = `
-The extracted operation must be one of the following: ${operations.join(", ")}
+The extracted operation must be one of the following: ${operations.join(', ')}
 `;
   }
   let parametersSection;
   if (parameters.length) {
     parametersSection = `
 The extracted perameters must be from the following options: ${parameters.join(
-      ", "
+      ', '
     )}
 `;
   }

@@ -1,5 +1,5 @@
-import crypto from "crypto";
-import fetch from "node-fetch";
+import crypto from 'crypto';
+import fetch from 'node-fetch';
 
 import {
   apiKey,
@@ -16,8 +16,8 @@ import {
   requestTimeout as requestTimeoutConfig,
   temperature as temperatureConfig,
   topP as topPConfig,
-} from "../../constants/openai.js";
-import getRedis from "../redis/index.js";
+} from '../../constants/openai.js';
+import getRedis from '../redis/index.js';
 
 const shapeOutput = (result, { returnWholeResult, returnAllChoices }) => {
   if (returnWholeResult) {
@@ -50,10 +50,10 @@ export const run = async (promptInitial, options) => {
 
   const prompt = promptInitial || promptOptions;
 
-  const apiUrl = "https://api.openai.com/v1/completions";
+  const apiUrl = 'https://api.openai.com/v1/completions';
   const headers = {
     Authorization: `Bearer ${apiKey}`,
-    "Content-Type": "application/json",
+    'Content-Type': 'application/json',
   };
   const redis = await getRedis();
 
@@ -76,9 +76,9 @@ export const run = async (promptInitial, options) => {
   };
 
   const hash = crypto
-    .createHash("sha256")
+    .createHash('sha256')
     .update(prompt + JSON.stringify(data))
-    .digest("hex")
+    .digest('hex')
     .toString();
   let result;
   let foundInRedis;
@@ -105,7 +105,7 @@ export const run = async (promptInitial, options) => {
   ) {
     console.error(`+++ DEBUG PROMPT +++`);
     console.error(prompt);
-    console.error("+++ DEBUG PROMPT END +++");
+    console.error('+++ DEBUG PROMPT END +++');
   }
 
   // request cancelation
@@ -119,7 +119,7 @@ export const run = async (promptInitial, options) => {
 
   if (!foundInRedis || forceQuery) {
     const response = await fetch(apiUrl, {
-      method: "POST",
+      method: 'POST',
       headers: headers,
       body: JSON.stringify({ prompt, ...data }),
       signal: abortSignal,
@@ -154,7 +154,7 @@ export const run = async (promptInitial, options) => {
   ) {
     console.error(`+++ DEBUG RESULT +++`);
     console.error(resultShaped);
-    console.error("+++ DEBUG RESULT END +++");
+    console.error('+++ DEBUG RESULT END +++');
   }
 
   return resultShaped;

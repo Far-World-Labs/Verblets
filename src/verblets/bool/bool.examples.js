@@ -1,19 +1,19 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from 'vitest';
 
-import bool from "./index.js";
+import bool from './index.js';
 
 const examples = [
   {
-    inputs: { text: "Does Mace Windu have a blue lightsaber" },
+    inputs: { text: 'Does Mace Windu have a blue lightsaber' },
     want: { result: false },
   },
   {
-    inputs: { text: "Does Mace Windu have a purple lightsaber" },
+    inputs: { text: 'Does Mace Windu have a purple lightsaber' },
     want: { result: true },
   },
 ];
 
-describe("Bool verblet", () => {
+describe('Bool verblet', () => {
   examples.forEach((example) => {
     it(`${example.inputs.text}`, async () => {
       expect(await bool(example.inputs.text)).toStrictEqual(

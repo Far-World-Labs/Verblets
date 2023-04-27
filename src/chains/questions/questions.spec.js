@@ -1,6 +1,6 @@
 // Testing TBD. Randomness makes it challenging.
 
-import { describe } from "vitest";
+import { describe } from 'vitest';
 
 /*
 import questions from "./index.js";
@@ -26,4 +26,4 @@ const examples = [
 ];
 
 */
-describe.skip("Questions verblet", () => {});
+describe.skip('Questions verblet', () => {});

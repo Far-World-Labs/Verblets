@@ -1,7 +1,7 @@
-import { describe, expect, it, vi } from "vitest";
-import * as R from "ramda";
+import { describe, expect, it, vi } from 'vitest';
+import * as R from 'ramda';
 
-import sort, { useTestSortPrompt } from "./index.js";
+import sort, { useTestSortPrompt } from './index.js';
 
 useTestSortPrompt();
 
@@ -10,77 +10,77 @@ const chunkSize = 12;
 const byAB = (a, b) => b.localeCompare(a);
 
 const unsortedStrings = [
-  "zebra",
-  "apple",
-  "quail",
-  "mango",
-  "giraffe",
-  "banana",
-  "dog",
-  "lion",
-  "tiger",
-  "elephant",
-  "kiwi",
-  "raspberry",
-  "grape",
-  "apricot",
-  "kangaroo",
-  "owl",
-  "peacock",
-  "xenon",
-  "uranium",
-  "platinum",
-  "walrus",
-  "fox",
-  "capybara",
-  "iguana",
-  "jaguar",
-  "koi",
-  "lobster",
-  "moose",
-  "nugget",
-  "octopus",
-  "python",
-  "quokka",
-  "raccoon",
-  "starfish",
-  "tortoise",
-  "umbrella",
-  "vulture",
-  "wombat",
-  "xerus",
-  "yak",
-  "zeppelin",
-  "ant",
-  "beaver",
-  "cat",
-  "dolphin",
-  "echidna",
-  "frog",
-  "hamster",
-  "impala",
-  "jellyfish",
+  'zebra',
+  'apple',
+  'quail',
+  'mango',
+  'giraffe',
+  'banana',
+  'dog',
+  'lion',
+  'tiger',
+  'elephant',
+  'kiwi',
+  'raspberry',
+  'grape',
+  'apricot',
+  'kangaroo',
+  'owl',
+  'peacock',
+  'xenon',
+  'uranium',
+  'platinum',
+  'walrus',
+  'fox',
+  'capybara',
+  'iguana',
+  'jaguar',
+  'koi',
+  'lobster',
+  'moose',
+  'nugget',
+  'octopus',
+  'python',
+  'quokka',
+  'raccoon',
+  'starfish',
+  'tortoise',
+  'umbrella',
+  'vulture',
+  'wombat',
+  'xerus',
+  'yak',
+  'zeppelin',
+  'ant',
+  'beaver',
+  'cat',
+  'dolphin',
+  'echidna',
+  'frog',
+  'hamster',
+  'impala',
+  'jellyfish',
 ];
 
-vi.mock("../../lib/openai/completions.js", () => ({
+vi.mock('../../lib/openai/completions.js', () => ({
   default: vi.fn().mockImplementation((text) => {
-    if (text.options.description === "alphabetically") {
+    if (text.options.description === 'alphabetically') {
       const sorted = R.sort((a, b) => b.localeCompare(a), text.list);
       return JSON.stringify(sorted);
     }
-    return "[]";
+    return '[]';
   }),
 }));
 
-vi.mock("../../lib/budget-tokens/index.js", () => ({
+vi.mock('../../lib/budget-tokens/index.js', () => ({
   default: vi.fn().mockImplementation(() => 0),
 }));
 
 const examples = [
   {
-    name: "Basic usage",
+    name: 'Basic usage',
     inputs: {
-      options: { by: "alphabetically", iterations: 3, extremeK, chunkSize },
+      options: { by: 'alphabetically', iterations: 3, extremeK, chunkSize },
       list: [...unsortedStrings],
     },
     want: {
@@ -89,9 +89,9 @@ const examples = [
     },
   },
   {
-    name: "Empty list",
+    name: 'Empty list',
     inputs: {
-      options: { by: "alphabetically", extremeK, chunkSize },
+      options: { by: 'alphabetically', extremeK, chunkSize },
       list: [],
     },
     want: {
@@ -101,7 +101,7 @@ const examples = [
   },
 ];
 
-describe("Sort", () => {
+describe('Sort', () => {
   examples.forEach((example) => {
     it(example.name, async () => {
       const iterations = example.inputs.options.iterations ?? 1;
