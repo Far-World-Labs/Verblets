@@ -77,7 +77,8 @@ const defaultDecompose = async ({ name, focus, rootName, fixes } = {}) => {
 
   const promptCreated = subComponentsPrompt(
     `${name}${focusFormatted}`,
-    rootName
+    rootName,
+    fixes
   );
   const budget = budgetTokens(promptCreated);
   return toObject(
