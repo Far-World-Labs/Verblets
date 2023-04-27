@@ -5,18 +5,23 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "nodemon:cmd": "nodemon --no-warnings",
     "start": "node scripts/runner/index.js",
-    "dev": "npm run nodemon:cmd -- scripts/runner/index.js",
+    "dev": "nodemon --no-warnings scripts/runner/index.js",
+    "editor": "node scripts/simple-editor/index.js",
     "--": "npm run script -- generate-verblet foo",
     "script": "./scripts/run.sh",
     "test": "vitest",
-    "examples": "vitest --config .vite.config.examples.js"
+    "examples": "vitest --config .vite.config.examples.js",
+    "lint": "eslint 'src/**/*.{js,jsx}'",
+    "lint:fix": "eslint 'src/**/*.{js,jsx}' --fix",
+    "husky:install": "husky install",
+    "husky:uninstall": "husky uninstall",
+    "prepare": "npx husky install"
   },
   "config": {
     "gen-script": "./scripts/run.sh gen-$1"
   },
-  "author": "",
+  "author": "PuckLabs",
   "license": "All Rights Reserved",
   "dependencies": {
     "ajv": "^8.12.0",
@@ -27,12 +32,25 @@
     "mocha": "^10.2.0",
     "node-fetch": "^3.3.0",
     "nodemon": "^2.0.22",
-    "ramda": "^0.28.0",
+    "ramda": "^0.29.0",
     "redis": "^4.6.5",
     "uuid": "^9.0.0",
-    "vitest": "^0.29.7"
+    "vitest": "^0.30.1",
+    "yargs": "^17.7.1"
   },
   "devDependencies": {
+    "eslint": "^8.39.0",
+    "eslint-config-prettier": "^8.8.0",
+    "eslint-plugin-jest": "^27.2.1",
+    "eslint-plugin-prettier": "^4.2.1",
+    "husky": "^8.0.3",
+    "npm-check": "^6.0.1",
+    "prettier": "^2.8.8",
     "why-is-node-running": "^2.2.2"
+  },
+  "lint-staged": {
+    "**/*.js": [
+      "npm run lint:fix"
+    ]
   }
 }
