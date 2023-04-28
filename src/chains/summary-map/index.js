@@ -24,12 +24,9 @@ const summarize = ({ budget, type, value }) => {
 };
 
 /**
- * SummarizingMap is a utility class for managing inputs to prompts,
- * which are often too large for the desired token budget
- * This class implements per-variable summarization, whose summarization sizes are computed
- * relative to an overall target token size for an AI prompt.
+ * SummaryMap is a utility class for automatically summarizing prompt inputs  *   to fit within a desired desired token budget.
  */
-export default class SummarizingMap extends Map {
+export default class SummaryMap extends Map {
   constructor({ targetTokens, maxPromptTokens }) {
     super();
     this.cache = new Map();
@@ -111,7 +108,7 @@ export default class SummarizingMap extends Map {
       return this.myFillCache()
         .then(() => this.cache.get(key))
         .catch((error) => {
-          console.error(`SummarizingMap get key [error]: ${error.message}`);
+          console.error(`SummaryMap get key [error]: ${error.message}`);
           return undefined;
         });
     }
@@ -134,7 +131,7 @@ export default class SummarizingMap extends Map {
       return this.myFillCache()
         .then(() => this.cache.values())
         .catch((error) => {
-          console.error(`SummarizingMap values [error]: ${error.message}`);
+          console.error(`SummaryMap values [error]: ${error.message}`);
           return undefined;
         });
     }
@@ -146,7 +143,7 @@ export default class SummarizingMap extends Map {
       return this.myFillCache()
         .then(() => this.cache.entries())
         .catch((error) => {
-          console.error(`SummarizingMap values [error]: ${error.message}`);
+          console.error(`SummaryMap values [error]: ${error.message}`);
           return undefined;
         });
     }
@@ -158,7 +155,7 @@ export default class SummarizingMap extends Map {
       return this.myFillCache()
         .then(() => this.getAllStale())
         .catch((error) => {
-          console.error(`SummarizingMap getAll [error]: ${error.message}`);
+          console.error(`SummaryMap getAll [error]: ${error.message}`);
           return undefined;
         });
     }

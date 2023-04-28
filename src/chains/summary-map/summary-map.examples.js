@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import SummarizingMap from './index.js';
+import SummaryMap from './index.js';
 
 const legalText = `Pursuant to the stipulations delineated herein, the parties hereto, designated as Party A (the "Grantor") and Party B (the "Grantee"), do hereby irrevocably and unconditionally covenant to abide by the complex and intricate provisions associated with the lesser-known subject matter of usufructuary rights in the realm of riparian watercourses, specifically encompassing the doctrine of correlative rights and the principle of reasonable use, in accordance with the heretofore undisclosed specifications set forth in Schedule U-1.
 
@@ -31,9 +31,9 @@ function encodeDecode(input, seed) {
 }
 `;
 
-describe('Summarizing map', () => {
+describe('Summary map', () => {
   it('Example', async () => {
-    const map = new SummarizingMap({ targetTokens: 100 });
+    const map = new SummaryMap({ targetTokens: 100 });
 
     map.set('a.b.c', { value: legalText, weight: 0.2 });
     map.set('a.d', { value: codeText, weight: 0.7 });

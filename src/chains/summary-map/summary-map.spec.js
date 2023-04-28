@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import SummarizingMap from './index.js';
+import SummaryMap from './index.js';
 
 vi.mock('../../lib/chatgpt/index.js', () => ({
   default: vi.fn().mockImplementation((text) => {
@@ -38,10 +38,10 @@ const examples = [
   },
 ];
 
-describe('Summarizing map', () => {
+describe('Summary map', () => {
   examples.forEach((example) => {
     it(example.name, async () => {
-      const map = new SummarizingMap({
+      const map = new SummaryMap({
         targetTokens: example.inputs.targetTokens,
       });
 
