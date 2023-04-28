@@ -2,7 +2,7 @@
 // eslint-disable-next-line no-unused-vars
 import dotenv from 'dotenv/config';
 
-import chatGPT from './lib/openai/completions.js';
+import chatGPT from './lib/chatgpt/index.js';
 
 export { default as getRedis } from './lib/redis/index.js';
 export { default as retry } from './lib/retry/index.js';

@@ -1,6 +1,6 @@
 import * as R from 'ramda';
 
-import chatGPT from '../../lib/openai/completions.js';
+import chatGPT from '../../lib/chatgpt/index.js';
 import budgetTokens from '../../lib/budget-tokens/index.js';
 import toObject from '../../verblets/to-object/index.js';
 import { sort as sortPromptInitial } from '../../prompts/index.js';

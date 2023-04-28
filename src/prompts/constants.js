@@ -52,7 +52,7 @@ export const identifyUnclearInfo =
 export const argueAgainstOutput =
   'Try to argue against your own output and see if you can find any flaws. If so, address them. Walk me through the process';
 export const rateSatisfaction =
-  'Rate on a scale from 0-1 (ie. 0.75) how well you satisfied each point in the initial prompt. Be very critical, no need to justify yourself.';
+  'Rate on a scale in the decimal range from 0-1 how well you satisfied each point in the initial prompt. Be very critical, no need to justify yourself.';
 export const rewriteBasedOnRating = 'If 0.3 or lower, rewrite to address.';
 export const requestAdditionalInput =
   'What additional input do you need from me to help you write better output?';

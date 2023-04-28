@@ -25,8 +25,7 @@ expect(process.env.OPENAI_API_KEY).to.exist;
 export const apiKey = process.env.OPENAI_API_KEY;
 
 const secondsInDay = 60 * 60 * 24;
-export const cacheTTL =
-  process.env.OPENAI_COMPLETIONS_CACHE_TTL ?? secondsInDay;
+export const cacheTTL = process.env.CHATGPT_CACHE_TTL ?? secondsInDay;
 
 export const debugPromptGlobally = process.env.OPENAI_DEBUG_PROMPT ?? false;
 
@@ -40,18 +39,16 @@ export const debugResultGloballyIfChanged =
 
 export const defaultModel = _models[0]; // text-davinci-003
 
-export const frequencyPenalty =
-  process.env.OPENAI_COMPLETIONS_FREQUENCY_PENALTY ?? 0;
+export const frequencyPenalty = process.env.CHATGPT_FREQUENCY_PENALTY ?? 0;
 
-export const maxTokens = process.env.OPENAI_COMPLETIONS_MAX_TOKENS ?? 250;
+export const maxTokens = process.env.CHATGPT_MAX_TOKENS ?? 250;
 
 export const models = _models;
 
-export const presencePenalty =
-  process.env.OPENAI_COMPLETIONS_PRESENCE_PENALTY ?? 0;
+export const presencePenalty = process.env.CHATGPT_PRESENCE_PENALTY ?? 0;
 
-export const temperature = process.env.OPENAI_COMPLETIONS_TEMPERATURE ?? 0;
+export const temperature = process.env.CHATGPT_TEMPERATURE ?? 0;
 
-export const topP = process.env.OPENAI_COMPLETIONS_TOPP ?? 0.5;
+export const topP = process.env.CHATGPT_TOPP ?? 0.5;
 
 export const requestTimeout = process.env.OPENAI_REQUEST_TIMEOUT ?? 15000;

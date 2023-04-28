@@ -1,6 +1,6 @@
 import enums from '../enum/index.js';
 import toObject from '../to-object/index.js';
-import chatGPT from '../../lib/openai/completions.js';
+import chatGPT from '../../lib/chatgpt/index.js';
 import stripResponse from '../../lib/strip-response/index.js';
 
 import { constants, intent, wrapVariable } from '../../prompts/index.js';

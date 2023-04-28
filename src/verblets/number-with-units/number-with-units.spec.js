@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import numberWithUnits from './index.js';
 
-vi.mock('../../lib/openai/completions.js', () => ({
+vi.mock('../../lib/chatgpt/index.js', () => ({
   default: vi.fn().mockImplementation((text) => {
     if (/Everest/.test(text)) {
       return '{ "value": 29029, "unit": "feet" }';

@@ -12,7 +12,7 @@ const loadSchema = async () => {
   return toObject(file);
 };
 
-vi.mock('../../lib/openai/completions.js', () => ({
+vi.mock('../../lib/chatgpt/index.js', () => ({
   default: vi.fn().mockImplementation((text) => {
     if (/Transform/.test(text) && /Model Y/.test(text)) {
       return '{"make":"Tesla", "model": "Model Y"}';

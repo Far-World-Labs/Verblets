@@ -7,7 +7,7 @@ SummarizingMap is a utility class designed to help manage a collection of data e
 ```javascript
 import SummarizingMap from '../lib/summarizing-map/index.js';
 import toTokens from '../lib/to-tokens/index.js';
-import chatGPT from '../../lib/openai/completions.js';
+import chatGPT from '../../lib/chatgpt/index.js';
 
 const promptFunction = (data) => {
   return `Please solve a problem for me with the following input data:

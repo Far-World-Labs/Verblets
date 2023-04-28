@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import SummarizingMap from './index.js';
 
-vi.mock('../../lib/openai/completions.js', () => ({
+vi.mock('../../lib/chatgpt/index.js', () => ({
   default: vi.fn().mockImplementation((text) => {
     if (/Pursuant to the adjudication/.test(text)) {
       return '01234567890123456789012345678901234567890123456789';

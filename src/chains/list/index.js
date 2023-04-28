@@ -1,7 +1,7 @@
 /* eslint-disable no-await-in-loop */
 
 import { operationTimeout } from '../../constants/common.js';
-import chatGPT from '../../lib/openai/completions.js';
+import chatGPT from '../../lib/chatgpt/index.js';
 import budgetTokens from '../../lib/budget-tokens/index.js';
 import {
   constants as promptConstants,

@@ -45,7 +45,7 @@ const testContent = `import { describe, expect, it, vi } from 'vitest';
 
 import ${camelCase(verbletName)} from './index.js';
 
-vi.mock('../../lib/openai/completions.js', () => ({
+vi.mock('../../lib/chatgpt/index.js', () => ({
   default: vi.fn().mockImplementation((text) => {
     if (/prompt text to match/.test(text)) {
       return 'True';

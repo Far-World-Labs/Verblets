@@ -3,7 +3,7 @@
 import * as R from 'ramda';
 
 import budgetTokens from '../../lib/budget-tokens/index.js';
-import chatGPT from '../../lib/openai/completions.js';
+import chatGPT from '../../lib/chatgpt/index.js';
 import {
   constants as promptConstants,
   generateQuestions as generateQuestionsPrompt,

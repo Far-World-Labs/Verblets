@@ -1,4 +1,4 @@
-import chatGPT from '../../lib/openai/completions.js';
+import chatGPT from '../../lib/chatgpt/index.js';
 import stripResponse from '../../lib/strip-response/index.js';
 import toNumberWithUnits from '../../lib/to-number-with-units/index.js';
 import { constants as promptConstants } from '../../prompts/index.js';
