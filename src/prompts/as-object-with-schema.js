@@ -1,4 +1,4 @@
-import { onlyJSON } from './constants.js';
+import { contentIsExampleObject, onlyJSON } from './constants.js';
 
 const jsonSchemaDefault = {
   type: 'object',
@@ -26,6 +26,6 @@ export default (jsonSchema = jsonSchemaDefault) => {
     })
     .join(', ');
 
-  return `The returned object must look like the following, including all the same properties: \`{ ${propertiesJoined} }\`. ${onlyJSON}.
+  return `${contentIsExampleObject} \`{ ${propertiesJoined} }\`. ${onlyJSON}.
 `;
 };

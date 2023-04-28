@@ -25,23 +25,27 @@ const examples = [
 
 describe('Intent verblet', () => {
   examples.forEach((example) => {
-    it(example.inputs.text, async () => {
-      const result = await intent({ text: example.inputs.text });
+    it(
+      example.inputs.text,
+      async () => {
+        const result = await intent({ text: example.inputs.text });
 
-      if (example.want.resultSchema) {
-        const schema = await example.want.resultSchema();
-        const ajv = new Ajv();
-        const validate = ajv.compile(schema);
+        if (example.want.resultSchema) {
+          const schema = await example.want.resultSchema();
+          const ajv = new Ajv();
+          const validate = ajv.compile(schema);
 
-        const isValid = validate(result);
-        if (!isValid) {
-          console.error('Validation errors:');
-          console.error(validate.errors);
-          console.error('Returned result:');
-          console.error(JSON.stringify(result, null, 2));
+          const isValid = validate(result);
+          if (!isValid) {
+            console.error('Validation errors:');
+            console.error(validate.errors);
+            console.error('Returned result:');
+            console.error(JSON.stringify(result, null, 2));
+          }
+          expect(isValid).toStrictEqual(true);
         }
-        expect(isValid).toStrictEqual(true);
-      }
-    });
-  }, longTestTimeout);
+      },
+      longTestTimeout
+    );
+  });
 });

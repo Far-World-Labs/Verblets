@@ -10,7 +10,7 @@ import {
 } from '../../prompts/index.js';
 import toObject from '../../verblets/to-object/index.js';
 
-const { onlyJSON } = promptConstants;
+const { asSplitIntoJSONArray, contentIsChoices, onlyJSON } = promptConstants;
 
 // Returns a random subset of a list with length between 1 and the length of the list
 // based on an input value between 0 and 1
@@ -25,7 +25,7 @@ const pickInterestingQuestion = (originalQuestion, { existing = [] }) => {
 
   return `Choose one interesting question from the following list of questions. The main goal is to determine "${originalQuestion}".
 
-Choose only from the following:
+${contentIsChoices}
 \`\`\`
 ${existingJoined}
 \`\`\`
@@ -86,7 +86,7 @@ const generateQuestions = async function* generateQuestionsGenerator(
     } catch (error) {
       if (/Unexpected string in JSON/.test(error.message)) {
         const resultsUpdated = await chatGPT(
-          `Split the following to a JSON array.${onlyJSON} \`\`\`${results}\`\`\``,
+          `${asSplitIntoJSONArray}${onlyJSON} \`\`\`${results}\`\`\``,
           chatGPTConfig
         );
         resultsParsed = await toObject(resultsUpdated);

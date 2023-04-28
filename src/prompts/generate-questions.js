@@ -1,17 +1,19 @@
-import { onlyJSON } from './constants.js';
+import {
+  contentIsQuestion,
+  contentListToOmit,
+  expertResponse,
+  onlyJSONStringArrayAlt1,
+} from './constants.js';
+import wrapVariable from './wrap-variable.js';
 
 export default (text, { existing = [] } = {}) => {
   const existingJoined = existing.map((item) => `"${item}"`).join(', ');
 
-  return `Instead of answering the following question, I would like you to generate additional questions you might ask. Don't dumb down the questions. Assume you are expert in the topic.
+  return `Instead of answering the following question, I would like you to generate additional questions. Consider interesting perspectives. Consider what information is unknown. ${expertResponse}. Overall, just come up with good questions.
 
-Question: ${text}
+${contentIsQuestion} ${text}
 
-Do not use any of the following questions:
-\`\`\`
-${existingJoined}
-\`\`\`
+${contentListToOmit} ${wrapVariable(existingJoined, { tag: 'omitted' })}
 
-Return the results as a JSON array of strings, one question per string.
-${onlyJSON}`;
+${onlyJSONStringArrayAlt1} One question per string.`;
 };

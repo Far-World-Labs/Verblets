@@ -10,11 +10,10 @@ import {
 } from '../../prompts/index.js';
 import toObject from '../../verblets/to-object/index.js';
 
-const { onlyJSON } = promptConstants;
-const transform = 'Transform the following object: ';
+const { onlyJSON, contentIsTransformationSource } = promptConstants;
 
 const outputTransformPrompt = (result, jsonSchema) => {
-  return `${transform} ${result}
+  return `${contentIsTransformationSource} ${result}
 
 ${asObjectWithSchemaPrompt(jsonSchema)}
 

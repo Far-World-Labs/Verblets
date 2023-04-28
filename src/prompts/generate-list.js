@@ -1,34 +1,48 @@
-import { onlyJSONArray } from './constants.js';
+import {
+  contentIsDetails,
+  contentListCriteria,
+  contentListItemCriteria,
+  contentListToOmit,
+  onlyJSONArray,
+} from './constants.js';
 import wrapVariable from './wrap-variable.js';
 
-const targetNewItemsCount = 10;
+const instruction = 'Please continue building the list.';
+
+const targetNewItemsCountDefault = 10;
 
 export default (
   description,
-  { existing = [], attachments = {}, fixes = '' } = {}
+  {
+    existing = [],
+    attachments = {},
+    fixes = '',
+    targetNewItemsCount = targetNewItemsCountDefault,
+  } = {}
 ) => {
   const existingJoined = JSON.stringify(existing, null, 2);
 
   const attachmentsJoined = Object.entries(attachments).map(([key, value]) => {
-    return `${key}: ${wrapVariable(value)}
+    return `${wrapVariable(value, { tag: 'reference-material', name: key })}
 `;
   });
 
   return `${onlyJSONArray}
-You're helping me create a list of: ${wrapVariable(description)}
+${contentListCriteria} ${wrapVariable(description, { tag: 'criteria' })}
 
 ${attachmentsJoined}
 
-So far, the list contains the following items:
-${existingJoined}
+${contentListToOmit} ${wrapVariable(existingJoined, { tag: 'omitted' })}
 
-Please continue building the list by providing at least ${targetNewItemsCount} more unique items related to the description. Make sure each item is:
-- Relevant to the topic
+${instruction}
+You must return least ${targetNewItemsCount} unless the items are thoroughly exhausted.
+
+${contentListItemCriteria}
+- Meet the description criteria
 - Not already in the list
 - Not a duplicate or a variant of an existing item
 
-More Details:
-${fixes}
+${contentIsDetails} ${wrapVariable(fixes, { tag: 'fixes' })}
 
 ${onlyJSONArray}`;
 };

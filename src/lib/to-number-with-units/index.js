@@ -1,6 +1,9 @@
 import stripResponse from '../strip-response/index.js';
 import stripNumeric from '../strip-numeric/index.js';
 
+const badDatatypeError = 'Bad datatype returned for number query.';
+const valueNotANumberError = 'Value is not a number.';
+
 export default (envelope) => {
   const envelopeStripped = stripResponse(envelope);
   let valueExtracted;
@@ -37,13 +40,11 @@ export default (envelope) => {
   } else if (typeof valueExtracted === 'undefined') {
     valueParsed = undefined;
   } else {
-    throw new Error(
-      `ChatGPT output [error]: Bad datatype returned for number query.`
-    );
+    throw new Error(`ChatGPT output [error]: ${badDatatypeError}`);
   }
 
   if (typeof valueParsed !== 'undefined' && Number.isNaN(valueParsed)) {
-    throw new Error(`ChatGPT output [error]: Value is not a number`);
+    throw new Error(`ChatGPT output [error]: ${valueNotANumberError}`);
   }
 
   return { value: valueParsed, unit: unitParsed };

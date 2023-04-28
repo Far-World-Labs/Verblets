@@ -3,12 +3,15 @@
 import chatGPT from '../../lib/openai/completions.js';
 import pave from '../../lib/pave/index.js';
 import shortenText from '../../lib/shorten-text/index.js';
-import { summarize as basicSummarize } from '../../prompts/index.js';
+import {
+  summarize as basicSummarize,
+  tokenBudget,
+} from '../../prompts/index.js';
 
 const summarize = ({ budget, type, value }) => {
   let fixes = '';
   if (budget) {
-    fixes += ` - Keep the output within ${budget} tokens.`;
+    fixes += ` - ${tokenBudget(budget)}`;
   }
 
   if (type === 'code') {

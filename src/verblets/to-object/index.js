@@ -1,11 +1,13 @@
+import { retryingJSONParse } from '../../constants/messages.js';
 import chatGPT from '../../lib/openai/completions.js';
 import stripResponse from '../../lib/strip-response/index.js';
+
 import {
   constants as promptConstants,
   wrapVariable,
 } from '../../prompts/index.js';
 
-const { onlyJSON } = promptConstants;
+const { contentToJSON, onlyJSON } = promptConstants;
 
 export default async (text) => {
   let response;
@@ -14,14 +16,12 @@ export default async (text) => {
     return JSON.parse(stripResponse(text));
   } catch (error) {
     if (process.env.NODE_ENV === 'development') {
-      console.warn(
-        'Retrying JSON.parse. This usually can be avoided with modifications to your prompt. This message only appears in dev.'
-      );
+      console.error(retryingJSONParse);
     }
 
     const jsonPrompt = `${onlyJSON}
 
-Contents to convert to JSON: ${wrapVariable(stripResponse(text))}
+${contentToJSON} ${wrapVariable(stripResponse(text))}
 
 ${onlyJSON}`;
 

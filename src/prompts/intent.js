@@ -1,45 +1,15 @@
 import fs from 'fs/promises';
-import { onlyJSON } from './constants.js';
 
-const intentSchema = JSON.parse(
-  await fs.readFile('./src/json-schemas/intent.json')
-);
+import { contentIsExample, contentIsSchema, onlyJSON } from './constants.js';
+import wrapVariable from './wrap-variable.js';
 
-/**
- * Approximates intent recognition like you might find with Wit.ai,
- * for tasks where you want the model to extract the intent and parameters
- * so an existing function can compute the result.
- */
-export default (text, { operations = [], parameters = [] } = {}) => {
-  let operationsSection;
-  if (operations.length) {
-    operationsSection = `
-The extracted operation must be one of the following: ${operations.join(', ')}
-`;
-  }
-  let parametersSection;
-  if (parameters.length) {
-    parametersSection = `
-The extracted perameters must be from the following options: ${parameters.join(
-      ', '
-    )}
-`;
-  }
+const contentIsIntent = 'Give me an intent response for the following:';
+const contentIsOperationOption =
+  'The extracted operation must be one of the following:';
+const contentIsParametersOptions =
+  'The extracted perameters must be from the following options:';
 
-  return `
-Give me an intent response for the following:
-\`\`\`
-${text}
-\`\`\`
-
-Make it conform exactly to the following schema:
-\`\`\`
-${intentSchema}
-\`\`\`
-
-This is an example:
-\`\`\`
-{
+const exampleJSON = `{
   "queryText": "play some music",
   "intent": {
     "operation": "play-music",
@@ -51,15 +21,43 @@ This is an example:
   "optionalParameters": {
     "artist": "The Beatles"
   }
-}
-\`\`\`
+}`;
 
+const intentSchema = JSON.parse(
+  await fs.readFile('./src/json-schemas/intent.json')
+);
 
-${operationsSection}
+/**
+ * Approximates intent recognition like you might find with Wit.ai,
+ * for tasks where you want the model to extract the intent and parameters
+ * so an existing function can compute the result.
+ */
+export default (text, { operations = [], parameters = [] } = {}) => {
+  let operationsSection = '';
+  if (operations.length) {
+    operationsSection = `\n${contentIsOperationOption} ${operations.join(
+      ', '
+    )}\n`;
+  }
+  let parametersSection = '';
+  if (parameters.length) {
+    parametersSection = `\n${contentIsParametersOptions} ${parameters.join(
+      ', '
+    )}\n`;
+  }
 
-${parametersSection}
+  return `
+${contentIsIntent} ${wrapVariable(text ?? 'None given', { tag: 'input' })}
 
-Ensure the intent is sufficiently abstract.
+${contentIsSchema} ${wrapVariable(intentSchema ?? 'None given', {
+    tag: 'schema',
+  })}
+
+${contentIsExample} ${wrapVariable(exampleJSON ?? 'None given', {
+    tag: 'example',
+  })}
+${operationsSection ?? ''}${parametersSection ?? ''}
+Ensure the result is sufficiently abstract.
 Include the full list of supplied parameters.
 Don't include optional parameters under "parameters" unless they were found when the intent was parsed.
 

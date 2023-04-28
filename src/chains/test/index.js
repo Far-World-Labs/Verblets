@@ -1,6 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 
+import { errorRunningTests } from '../../constants/messages.js';
 import chatGPT from '../../lib/openai/completions.js';
 import budgetTokens from '../../lib/budget-tokens/index.js';
 import {
@@ -9,36 +10,24 @@ import {
 } from '../../prompts/index.js';
 import toObject from '../../verblets/to-object/index.js';
 
-const { onlyJSONArray, onlyJSONStringArray } = promptConstants;
+const {
+  contentIsExample,
+  contentIsInstructions,
+  noFalseInformation,
+  onlyJSONArray,
+  onlyJSONStringArray,
+  useLineNumber,
+} = promptConstants;
 
-const checksPrompt = (text, instructions) => `
-Instructions: ${wrapVariable(instructions)}
+const contentIsChecksExamined =
+  'These items were checked in an examination of the text:';
+const contentIsExamined = 'The text examined:';
+const findCodeImprovements =
+  'Find specific improvements in the following code, not nitpicks.';
+const gatherAsTestJSON =
+  'Gather these discovered issues into a JSON format my tests module can consume.';
 
-\`\`\`
-${text}
-\`\`\`
-
-Include the line number where each check is performed.
-Do not include false information.
-
-${onlyJSONStringArray}
-`;
-
-const testsPrompt = (text, instructions, checks) => `${onlyJSONArray}
-
-Gather these discovered issues into a JSON format my tests module can consume.
-
-These items were checked in an examination of the text:
-${wrapVariable(checks)}
-
-The text examined:
-\`\`\`
-${text}
-\`\`\`
-
-Use this as example output only. Follow the structure exactly:
-\`\`\`
-[
+const testExamplesJSON = `[
   {
     name: '<copied from the supplied checks>',
     expected: '<what you expected to see, your rationale for the change, give suggestions here, abbreviate to < 100 characters>',
@@ -52,16 +41,33 @@ Use this as example output only. Follow the structure exactly:
     isSuccess: true,
   },
   <many more>
-]
-\`\`\`
+]`;
+
+const checksPrompt = (text, instructions) => `
+${contentIsInstructions} ${wrapVariable(instructions)}
+
+${wrapVariable(text, { tag: 'main-content' })}
+
+${useLineNumber}
+${noFalseInformation}
+
+${onlyJSONStringArray}
+`;
+
+const testsPrompt = (text, instructions, checks) => `${onlyJSONArray}
+
+${gatherAsTestJSON}
+
+${contentIsChecksExamined} ${wrapVariable(checks)}
+
+${contentIsExamined} ${wrapVariable(text, { tag: 'text-examined' })}
+
+${contentIsExample} ${wrapVariable(testExamplesJSON, { tag: 'example' })}
 
 ${onlyJSONArray}
 `;
 
-export default async (
-  filePath,
-  instructions = 'Find specific improvements in the following code, not nitpicks.'
-) => {
+export default async (filePath, instructions = findCodeImprovements) => {
   const enableRegex = new RegExp(process.env.ENABLE_AI_TESTS ?? '^$');
   if (!enableRegex.test(filePath)) {
     return [];
@@ -93,7 +99,7 @@ export default async (
   } catch (error) {
     return [
       {
-        name: 'Error running AI tests',
+        name: errorRunningTests,
         expected: 'tests generated',
         saw: error.message,
       },

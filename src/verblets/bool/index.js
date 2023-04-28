@@ -3,9 +3,9 @@ import stripResponse from '../../lib/strip-response/index.js';
 import toBool from '../../lib/to-bool/index.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 
-const { asBool } = promptConstants;
+const { asBool, asUndefinedByDefault, contentIsQuestion } = promptConstants;
 
 export default async (text) => {
-  const boolText = `Question: ${text} \n\n${asBool}`;
+  const boolText = `${contentIsQuestion} ${text} \n\n${asBool} ${asUndefinedByDefault}`;
   return toBool(stripResponse(await chatGPT(boolText)));
 };

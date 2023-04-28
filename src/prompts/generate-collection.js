@@ -1,4 +1,9 @@
-import { onlyJSON } from './constants.js';
+import {
+  onlyJSON,
+  onlyJSONObjectArray,
+  contentListItemCriteria,
+  tryCompleteData,
+} from './constants.js';
 import asObjectWithSchema from './as-object-with-schema.js';
 
 const jsonSchemaDefault = {
@@ -13,9 +18,9 @@ const jsonSchemaDefault = {
 export default (text, { jsonSchema = jsonSchemaDefault } = {}) => {
   return `Make an array of "${text}" objects.
 
-Do the following with each returned object:
+${contentListItemCriteria}
  - ${asObjectWithSchema(jsonSchema)}
- - Err towards having complete data, even if you have to guess.
+ - ${tryCompleteData}
 
-${onlyJSON} Return an array, not just the objects.`;
+${onlyJSON} ${onlyJSONObjectArray}`;
 };

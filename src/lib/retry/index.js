@@ -1,4 +1,5 @@
 /* eslint-disable no-await-in-loop */
+import { errorMaxRetries } from '../../constants/messages.js';
 
 export default async (fn, { maxRetries = 3, retryDelay = 1000 } = {}) => {
   let retries = 0;
@@ -20,5 +21,5 @@ export default async (fn, { maxRetries = 3, retryDelay = 1000 } = {}) => {
     }
   }
 
-  throw new Error('Max retries reached');
+  throw new Error(errorMaxRetries);
 };

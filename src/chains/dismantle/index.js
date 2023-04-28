@@ -4,7 +4,10 @@ import { v4 as uuid } from 'uuid';
 
 import budgetTokens from '../../lib/budget-tokens/index.js';
 import chatGPT from '../../lib/openai/completions.js';
-import { constants as promptConstants } from '../../prompts/index.js';
+import {
+  constants as promptConstants,
+  outputSuccinctNames,
+} from '../../prompts/index.js';
 import toObject from '../../verblets/to-object/index.js';
 
 const { onlyJSONStringArray } = promptConstants;
@@ -23,7 +26,7 @@ ${onlyJSONStringArray}
 Exhaustively enumerate all physical and logical subcomponents of ${focus}, including containers or abstract components.
 
 Apply the specifics listed here when dealing with component or entity:
- - Provide a (<10 words) descriptive name for each choice.
+ - ${outputSuccinctNames()}
  - If some components are subcomponents of others in the list, don't include them.
  - The output must not include "${thing}" or "${component}" in the list.
  - Only subcomponents, no accessories.
@@ -46,7 +49,7 @@ ${onlyJSONStringArray}
 ${focus}, list specific variants for this component. Only provide known variants, don't speculate. Output an empty list if you must.
 
 Apply the specifics listed here when dealing with component or entity:
- - Provide a (<10 words) descriptive name for each choice.
+ - ${outputSuccinctNames()}
  - Do not list subcomponents, that's not what this is about.
 ${fixes}
 

@@ -1,14 +1,18 @@
 import wrapVariable from './wrap-variable.js';
-import { onlyJSONStringArray } from './constants.js';
+import {
+  contentIsSortCriteria,
+  contentIsMain,
+  contentIsFixes,
+  contentIsDetails,
+  onlyJSONStringArray,
+} from './constants.js';
 
 export const defaultSortDescription = 'alphabetical order';
-export const defaultDelimiterWidth = 12;
 export const defaultFixes = 'none';
 export const defaultSortOrder = 'descending';
 
 export default (
   {
-    delimiterWidth = defaultDelimiterWidth,
     description = defaultSortDescription,
     fixes = defaultFixes,
     sortOrder = defaultSortOrder,
@@ -17,16 +21,15 @@ export default (
 ) => {
   const listLines = JSON.stringify(list, undefined, 2);
 
-  return `
-Sort the following items by: ${wrapVariable(description, { delimiterWidth })}
+  return `${contentIsSortCriteria} ${wrapVariable(description, {
+    tag: 'criteria',
+  })}
 
-The items to sort: ${wrapVariable(listLines, { delimiterWidth })}
+${contentIsMain} ${wrapVariable(listLines, { tag: 'main-content' })}
 
-Details:
- - ${sortOrder} order
+${contentIsDetails} ${sortOrder} order
 
-Fixes: ${wrapVariable(fixes, { delimiterWidth })}
+${contentIsFixes} ${wrapVariable(fixes, { tag: 'fixes' })}
 
-${onlyJSONStringArray}
-`;
+${onlyJSONStringArray}`;
 };
