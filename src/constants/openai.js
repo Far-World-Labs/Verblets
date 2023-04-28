@@ -27,15 +27,15 @@ export const apiKey = process.env.OPENAI_API_KEY;
 const secondsInDay = 60 * 60 * 24;
 export const cacheTTL = process.env.CHATGPT_CACHE_TTL ?? secondsInDay;
 
-export const debugPromptGlobally = process.env.OPENAI_DEBUG_PROMPT ?? false;
+export const debugPromptGlobally = process.env.CHATGPT_DEBUG_PROMPT ?? false;
 
 export const debugPromptGloballyIfChanged =
-  process.env.OPENAI_DEBUG_PROMPT_IF_CHANGED ?? false;
+  process.env.CHATGPT_DEBUG_PROMPT_IF_CHANGED ?? false;
 
-export const debugResultGlobally = process.env.OPENAI_DEBUG_RESULT ?? false;
+export const debugResultGlobally = process.env.CHATGPT_DEBUG_RESULT ?? false;
 
 export const debugResultGloballyIfChanged =
-  process.env.OPENAI_DEBUG_RESULT_IF_CHANGED ?? false;
+  process.env.CHATGPT_DEBUG_RESULT_IF_CHANGED ?? false;
 
 export const defaultModel = _models[0]; // text-davinci-003
 
@@ -51,4 +51,4 @@ export const temperature = process.env.CHATGPT_TEMPERATURE ?? 0;
 
 export const topP = process.env.CHATGPT_TOPP ?? 0.5;
 
-export const requestTimeout = process.env.OPENAI_REQUEST_TIMEOUT ?? 15000;
+export const requestTimeout = process.env.CHATGPT_REQUEST_TIMEOUT ?? 15000;
