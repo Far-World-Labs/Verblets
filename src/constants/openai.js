@@ -28,12 +28,12 @@ const secondsInDay = 60 * 60 * 24;
 export const cacheTTL =
   process.env.OPENAI_COMPLETIONS_CACHE_TTL ?? secondsInDay;
 
-export const debugPromptGlobally = process.env.OPENAI_DEBUG_PROMPT ?? true;
+export const debugPromptGlobally = process.env.OPENAI_DEBUG_PROMPT ?? false;
 
 export const debugPromptGloballyIfChanged =
   process.env.OPENAI_DEBUG_PROMPT_IF_CHANGED ?? false;
 
-export const debugResultGlobally = process.env.OPENAI_DEBUG_RESULT ?? true;
+export const debugResultGlobally = process.env.OPENAI_DEBUG_RESULT ?? false;
 
 export const debugResultGloballyIfChanged =
   process.env.OPENAI_DEBUG_RESULT_IF_CHANGED ?? false;
