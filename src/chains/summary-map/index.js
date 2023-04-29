@@ -1,7 +1,6 @@
 /* eslint-disable no-await-in-loop */
 
 import chatGPT from '../../lib/chatgpt/index.js';
-import pave from '../../lib/pave/index.js';
 import shortenText from '../../lib/shorten-text/index.js';
 import {
   summarize as basicSummarize,
@@ -9,18 +8,22 @@ import {
 } from '../../prompts/index.js';
 
 const summarize = ({ budget, type, value }) => {
-  let fixes = '';
+  const fixes = [];
   if (budget) {
-    fixes += ` - ${tokenBudget(budget)}`;
+    fixes.push(tokenBudget(budget));
   }
 
   if (type === 'code') {
-    fixes += ` - Output function signature lines and a closing bracket.
- - Comment out the bodies of the functions and leave a summary of the implementation.
- - Remove the function header if it exists.`;
+    fixes.push('Output function signature lines and a closing bracket.');
+    fixes.push(
+      'Comment out the bodies of the functions and leave a summary of the implementation.'
+    );
+    fixes.push('Remove the function header if it exists.');
   }
 
-  return chatGPT(basicSummarize(value, `${fixes}\n`));
+  const fixesAsBullets = fixes.map((fix) => ` - ${fix}`);
+
+  return chatGPT(basicSummarize(value, `${fixesAsBullets.join('\n')}`));
 };
 
 /**
@@ -34,10 +37,6 @@ export default class SummaryMap extends Map {
     this.isCacheValid = false;
     this.maxPromptTokens = maxPromptTokens;
     this.targetTokens = targetTokens;
-  }
-
-  getCache() {
-    return this.cache;
   }
 
   calculateBudgets() {
@@ -69,10 +68,13 @@ export default class SummaryMap extends Map {
 
     for (const { key, budget } of budgets) {
       const valueObject = this.data.get(key);
+
+      const value = shortenText(valueObject.value, this.maxPromptTokens);
+
       const summarizedValue = await summarize({
         budget,
         type: valueObject.type,
-        value: valueObject.value,
+        value,
       });
       this.cache.set(key, summarizedValue);
     }
@@ -80,23 +82,30 @@ export default class SummaryMap extends Map {
     this.isCacheValid = true;
   }
 
+  getCache() {
+    return this.cache;
+  }
+
   set(key, config) {
-    const valueNew = shortenText(config.value, this.maxPromptTokens);
-
-    const configNew = { ...config, value: valueNew };
-
-    this.data.set(key, configNew);
+    this.data.set(key, config);
+    this.cache.delete(key);
     this.isCacheValid = false;
   }
 
   delete(key) {
     this.data.delete(key);
+    this.cache.delete(key);
     this.isCacheValid = false;
   }
 
   clear() {
     this.data.clear();
+    this.cache.clear();
     this.isCacheValid = false;
+  }
+
+  getStale(key) {
+    return this.cache.get(key);
   }
 
   get(key) {
@@ -113,17 +122,11 @@ export default class SummaryMap extends Map {
         });
     }
 
-    return Promise.resolve(this.cache.get(key));
+    return Promise.resolve(this.getStale(key));
   }
 
-  getAllStale() {
-    let result = {};
-
-    for (const [path, value] of this.cache.entries()) {
-      result = pave(result, path, value);
-    }
-
-    return result;
+  valuesStale() {
+    return this.cache.values();
   }
 
   values() {
@@ -135,7 +138,11 @@ export default class SummaryMap extends Map {
           return undefined;
         });
     }
-    return Promise.resolve(this.getAllStale());
+    return Promise.resolve(this.valuesStale());
+  }
+
+  entriesStale() {
+    return this.cache.entries();
   }
 
   entries() {
@@ -147,18 +154,6 @@ export default class SummaryMap extends Map {
           return undefined;
         });
     }
-    return Promise.resolve(this.getAllStale());
-  }
-
-  getAll() {
-    if (!this.isCacheValid) {
-      return this.myFillCache()
-        .then(() => this.getAllStale())
-        .catch((error) => {
-          console.error(`SummaryMap getAll [error]: ${error.message}`);
-          return undefined;
-        });
-    }
-    return Promise.resolve(this.getAllStale());
+    return Promise.resolve(this.entriesStale());
   }
 }

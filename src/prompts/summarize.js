@@ -1,9 +1,12 @@
 import wrapVariable from './wrap-variable.js';
 
-export default (text, fixes = '') => {
-  return `You will be asked to summarize text. While doing so, please follow these rules: ${wrapVariable(
-    fixes
-  )}
+export default (text, instructions = '') => {
+  return `Summarize the following content.
 
-Summarize this text: ${wrapVariable(text)}`;
+${wrapVariable(instructions, {
+  forceHTML: true,
+  tag: 'summarization-instructions',
+})}
+
+${wrapVariable(text, { forceHTML: true, tag: 'content-to-summarize' })}`;
 };

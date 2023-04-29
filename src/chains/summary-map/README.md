@@ -8,6 +8,7 @@ SummaryMap is a utility class designed to help manage a collection of data eleme
 import SummaryMap from '../lib/summary-map/index.js';
 import toTokens from '../lib/to-tokens/index.js';
 import chatGPT from '../../lib/chatgpt/index.js';
+import pave from '../../lib/pave/index.js';
 
 const promptFunction = (data) => {
   return `Please solve a problem for me with the following input data:
@@ -26,8 +27,12 @@ const summaryMap = new SummaryMap({ targetTokens: variableTokens });
 summaryMap.set('example.text', { value: 'Long text data...', weight: 1, type: 'text' });
 summaryMap.set('example.code', { value: 'Long code data...', weight: 0.5, type: 'code' });
 
-const summarizedData = await summaryMap.getAll();
 
-const prompt = promptFunction(summarizedData);
+const summaryEntries = await summaryMap.entries();
+const promptInputs = summaryEntries.reduce(
+  (acc, [k, v]) => pave(acc, k, v),
+  {}
+);
+const prompt = promptFunction(promptInputs);
 const response = await chatGPT(prompt, { maxTokens });
 ```

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import SummaryMap from './index.js';
+import pave from '../../lib/pave/index.js';
 
 vi.mock('../../lib/chatgpt/index.js', () => ({
   default: vi.fn().mockImplementation((text) => {
@@ -49,7 +50,8 @@ describe('Summary map', () => {
         map.set(input.key, input);
       }
 
-      const result = await map.getAll();
+      const entries = Array.from(await map.entries());
+      const result = entries.reduce((acc, [k, v]) => pave(acc, k, v), {});
 
       for (const want of example.wants) {
         let value = result;

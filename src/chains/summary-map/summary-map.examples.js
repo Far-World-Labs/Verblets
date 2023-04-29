@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import SummaryMap from './index.js';
+import { longTestTimeout } from '../../constants/common.js';
+import pave from '../../lib/pave/index.js';
 
 const legalText = `Pursuant to the stipulations delineated herein, the parties hereto, designated as Party A (the "Grantor") and Party B (the "Grantee"), do hereby irrevocably and unconditionally covenant to abide by the complex and intricate provisions associated with the lesser-known subject matter of usufructuary rights in the realm of riparian watercourses, specifically encompassing the doctrine of correlative rights and the principle of reasonable use, in accordance with the heretofore undisclosed specifications set forth in Schedule U-1.
 
@@ -32,14 +34,25 @@ function encodeDecode(input, seed) {
 `;
 
 describe('Summary map', () => {
-  it('Example', async () => {
-    const map = new SummaryMap({ targetTokens: 100 });
+  it(
+    'Example',
+    async () => {
+      const map = new SummaryMap({ targetTokens: 600 });
 
-    map.set('a.b.c', { value: legalText, weight: 0.2 });
-    map.set('a.d', { value: codeText, weight: 0.7 });
+      map.set('a.b.c', { value: legalText, weight: 0.01 });
+      map.set('a.d', { value: codeText, type: 'code', weight: 0.7 });
+      map.set('e.0', { value: 'abc', weight: 0.01 });
+      map.set('e.3', {
+        value: 'The quick brown fox jump over the lazy dog',
+        weight: 0.7,
+      });
 
-    // console.log(await map.getAll())
+      const entries = Array.from(await map.entries());
+      const result = entries.reduce((acc, [k, v]) => pave(acc, k, v), {});
+      console.log(result);
 
-    expect(1).toBe(1);
-  });
+      expect(1).toBe(1);
+    },
+    longTestTimeout
+  );
 });

@@ -1,4 +1,7 @@
-export default (variable, { tag = 'data', name } = {}) => {
+export default (
+  variable,
+  { forceHTML = false, name, tag = 'data', title, fit = 'comfortable' } = {}
+) => {
   if (!variable) {
     return '';
   }
@@ -8,14 +11,26 @@ export default (variable, { tag = 'data', name } = {}) => {
     nameAttribute = `name="${name}"`;
   }
 
-  let variableResolved = variable;
+  let variableResolved = typeof variable !== 'undefined' ? variable : '';
   if (typeof variable !== 'string') {
     variableResolved = JSON.stringify(variable, null, 2);
   }
 
-  let variableWrapped = `"${variableResolved}"`;
-  if (/\n/.test(variableResolved)) {
-    variableWrapped = `<${tag}${nameAttribute}>${variableResolved}</${tag}>`;
+  const isHTML = /\n/.test(variableResolved) || forceHTML || name;
+  let variableWrapped = !isHTML ? `"${variableResolved}"` : variableResolved;
+  if (isHTML) {
+    let fitChar = '\n';
+    if (fit !== 'comfortable') {
+      fitChar = '';
+    }
+
+    variableWrapped = `<${tag}${nameAttribute}>${fitChar}${variableResolved}${fitChar}</${tag}>`;
   }
-  return variableWrapped;
+
+  let titlePrefixed = variableWrapped;
+  if (title && variableResolved.length > 0) {
+    titlePrefixed = `${title} ${variableWrapped}`;
+  }
+
+  return titlePrefixed;
 };
