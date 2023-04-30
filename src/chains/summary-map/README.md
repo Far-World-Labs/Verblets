@@ -6,9 +6,9 @@ SummaryMap is a utility class designed to help manage a collection of data eleme
 
 ```javascript
 import SummaryMap from '../lib/summary-map/index.js';
-import toTokens from '../lib/to-tokens/index.js';
 import chatGPT from '../../lib/chatgpt/index.js';
 import pave from '../../lib/pave/index.js';
+import modelService from '../../services/llm-model/index.js';
 
 const promptFunction = (data) => {
   return `Please solve a problem for me with the following input data:
@@ -19,14 +19,13 @@ ${data.example.code}`;
 };
 
 const variableTokens = 100;
-const promptTokens = toTokens(promptFunction).length;
+const promptTokens = modelService.getBestAvailableModel().toTokens(promptFunction).length;
 const solutionTokens = 200;
 const maxTokens = promptTokens + variableTokens + solutionTokens
 
 const summaryMap = new SummaryMap({ targetTokens: variableTokens });
 summaryMap.set('example.text', { value: 'Long text data...', weight: 1, type: 'text' });
 summaryMap.set('example.code', { value: 'Long code data...', weight: 0.5, type: 'code' });
-
 
 const summaryEntries = await summaryMap.entries();
 const promptInputs = summaryEntries.reduce(

@@ -49,9 +49,8 @@ describe('Summary map', () => {
 
       const entries = Array.from(await map.entries());
       const result = entries.reduce((acc, [k, v]) => pave(acc, k, v), {});
-      console.log(result);
 
-      expect(1).toBe(1);
+      expect(result).toBe(result);
     },
     longTestTimeout
   );

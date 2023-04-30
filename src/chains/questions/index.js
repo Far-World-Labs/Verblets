@@ -2,12 +2,12 @@
 
 import * as R from 'ramda';
 
-import budgetTokens from '../../lib/budget-tokens/index.js';
 import chatGPT from '../../lib/chatgpt/index.js';
 import {
   constants as promptConstants,
   generateQuestions as generateQuestionsPrompt,
 } from '../../prompts/index.js';
+import modelService from '../../services/llm-model/index.js';
 import toObject from '../../verblets/to-object/index.js';
 
 const { asSplitIntoJSONArray, contentIsChoices, onlyJSON } = promptConstants;
@@ -54,6 +54,7 @@ const generateQuestions = async function* generateQuestionsGenerator(
     searchBreadth = 0.5,
     shouldSkip = shouldSkipNull,
     shouldStop = shouldStopNull,
+    model = modelService.getBestAvailableModel(),
   } = options;
 
   let attempts = 0;
@@ -73,7 +74,7 @@ const generateQuestions = async function* generateQuestionsGenerator(
     const promptCreated = generateQuestionsPrompt(textSelected, {
       existing: resultsAll,
     });
-    const budget = budgetTokens(promptCreated);
+    const budget = model.budgetTokens(promptCreated);
     const chatGPTConfig = {
       maxTokens: budget.completion,
       temperature: 1,

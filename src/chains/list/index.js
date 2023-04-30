@@ -1,13 +1,13 @@
 /* eslint-disable no-await-in-loop */
 
-import { operationTimeout } from '../../constants/common.js';
+import { operationTimeoutMultiplier } from '../../constants/openai.js';
 import chatGPT from '../../lib/chatgpt/index.js';
-import budgetTokens from '../../lib/budget-tokens/index.js';
 import {
   constants as promptConstants,
   asObjectWithSchema as asObjectWithSchemaPrompt,
   generateList as generateListPrompt,
 } from '../../prompts/index.js';
+import modelService from '../../services/llm-model/index.js';
 import toObject from '../../verblets/to-object/index.js';
 
 const { onlyJSON, contentIsTransformationSource } = promptConstants;
@@ -25,7 +25,12 @@ const shouldSkipDefault = async ({ result, resultsAll } = {}) => {
 };
 
 const shouldStopDefault = async ({ queryCount, startTime } = {}) => {
-  return queryCount > 5 || new Date() - startTime > operationTimeout;
+  return (
+    queryCount > 5 ||
+    new Date() - startTime >
+      operationTimeoutMultiplier *
+        modelService.getBestAvailableModel().requestTimeout
+  );
 };
 
 export const generateList = async function* generateListGenerator(
@@ -35,8 +40,11 @@ export const generateList = async function* generateListGenerator(
   const resultsAll = [];
   const resultsAllMap = {};
   let isDone = false;
-  const { shouldSkip = shouldSkipDefault, shouldStop = shouldStopDefault } =
-    options;
+  const {
+    shouldSkip = shouldSkipDefault,
+    shouldStop = shouldStopDefault,
+    model = modelService.getBestAvailableModel(),
+  } = options;
 
   const startTime = new Date();
   let queryCount = 0;
@@ -47,7 +55,7 @@ export const generateList = async function* generateListGenerator(
       existing: resultsAll,
     });
 
-    const budget = budgetTokens(listPrompt);
+    const budget = model.budgetTokens(listPrompt);
 
     let resultsNew = [];
     try {
@@ -119,21 +127,24 @@ export const generateList = async function* generateListGenerator(
   }
 };
 
-export default async (text, options = {}) => {
+export default async (text, options) => {
   const generator = generateList(text, options);
+  const { jsonSchema, model = modelService.getBestAvailableModel() } =
+    options ?? {};
+
   const results = [];
   for await (const result of generator) {
     results.push(result);
   }
 
-  if (!options.jsonSchema) {
+  if (!jsonSchema) {
     return results;
   }
 
   const resultObjects = await Promise.all(
     results.map(async (result) => {
-      const prompt = outputTransformPrompt(result, options.jsonSchema);
-      const budget = budgetTokens(prompt);
+      const prompt = outputTransformPrompt(result, jsonSchema);
+      const budget = model.budgetTokens(prompt);
 
       const resultObject = await chatGPT(prompt, {
         maxTokens: budget.completion,

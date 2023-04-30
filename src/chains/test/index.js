@@ -3,11 +3,11 @@ import path from 'path';
 
 import { errorRunningTests } from '../../constants/messages.js';
 import chatGPT from '../../lib/chatgpt/index.js';
-import budgetTokens from '../../lib/budget-tokens/index.js';
 import {
   constants as promptConstants,
   wrapVariable,
 } from '../../prompts/index.js';
+import modelService from '../../services/llm-model/index.js';
 import toObject from '../../verblets/to-object/index.js';
 
 const {
@@ -67,7 +67,11 @@ ${contentIsExample} ${wrapVariable(testExamplesJSON, { tag: 'example' })}
 ${onlyJSONArray}
 `;
 
-export default async (filePath, instructions = findCodeImprovements) => {
+export default async (
+  filePath,
+  instructions = findCodeImprovements,
+  model = modelService.getBestAvailableModel()
+) => {
   const enableRegex = new RegExp(process.env.ENABLE_AI_TESTS ?? '^$');
   if (!enableRegex.test(filePath)) {
     return [];
@@ -78,14 +82,14 @@ export default async (filePath, instructions = findCodeImprovements) => {
     const text = await fs.readFile(filePathAbsolute, 'utf-8');
 
     const checksPromptCreated = checksPrompt(text, instructions);
-    const checksBudget = budgetTokens(checksPromptCreated);
+    const checksBudget = model.budgetTokens(checksPromptCreated);
 
     const checksResult = await chatGPT(checksPromptCreated, {
       maxTokens: checksBudget.completion,
     });
 
     const testsPromptCreated = testsPrompt(text, instructions, checksResult);
-    const testsBudget = budgetTokens(testsPromptCreated);
+    const testsBudget = model.budgetTokens(testsPromptCreated);
 
     const results = await toObject(
       await chatGPT(testsPromptCreated, { maxTokens: testsBudget.completion })

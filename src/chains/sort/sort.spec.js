@@ -72,10 +72,6 @@ vi.mock('../../lib/chatgpt/index.js', () => ({
   }),
 }));
 
-vi.mock('../../lib/budget-tokens/index.js', () => ({
-  default: vi.fn().mockImplementation(() => 0),
-}));
-
 const examples = [
   {
     name: 'Basic usage',
@@ -105,7 +101,9 @@ describe('Sort', () => {
   examples.forEach((example) => {
     it(example.name, async () => {
       const iterations = example.inputs.options.iterations ?? 1;
-      const result = await sort(example.inputs.options, example.inputs.list);
+      const result = await sort(example.inputs.options, example.inputs.list, {
+        budgetTokens: () => ({ completion: 0 }),
+      });
       expect(result.slice(0, extremeK * iterations)).toStrictEqual(
         example.want.highest
       );

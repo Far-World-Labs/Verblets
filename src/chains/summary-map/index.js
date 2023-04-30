@@ -1,14 +1,15 @@
 /* eslint-disable no-await-in-loop */
 
 import chatGPT from '../../lib/chatgpt/index.js';
+import pave from '../../lib/pave/index.js';
 import shortenText from '../../lib/shorten-text/index.js';
 import {
   summarize as basicSummarize,
   tokenBudget,
 } from '../../prompts/index.js';
+import modelService from '../../services/llm-model/index.js';
 
-const summarize = ({ budget, type, value }) => {
-  const fixes = [];
+const summarize = ({ budget, type, value, fixes = [] }) => {
   if (budget) {
     fixes.push(tokenBudget(budget));
   }
@@ -27,37 +28,62 @@ const summarize = ({ budget, type, value }) => {
 };
 
 /**
- * SummaryMap is a utility class for automatically summarizing prompt inputs  *   to fit within a desired desired token budget.
+ * SummaryMap is a utility class for automatically summarizing prompt inputs
+ *   to fit within a desired desired token budget.
  */
 export default class SummaryMap extends Map {
-  constructor({ targetTokens, maxPromptTokens }) {
+  constructor({
+    maxTokensPerValue,
+    model = modelService.getBestAvailableModel(),
+    promptText,
+    targetTokens,
+    // used with promptText, when targetTokens isn't supplied
+    targetTokensTotalRatio = 0.3,
+  }) {
     super();
     this.cache = new Map();
     this.data = new Map();
     this.isCacheValid = false;
-    this.maxPromptTokens = maxPromptTokens;
-    this.targetTokens = targetTokens;
+    this.maxTokensPerValue = maxTokensPerValue ?? model.maxTokens;
+
+    if (targetTokens) {
+      this.targetTokens = targetTokens;
+    } else if (promptText && model) {
+      this.promptTokens = model.toTokens(promptText).length;
+      const maxModelTokens = model.maxTokens;
+      const remainingTokens = maxModelTokens - this.promptTokens;
+      this.targetTokens = Math.floor(
+        remainingTokens - remainingTokens * targetTokensTotalRatio
+      );
+    } else {
+      throw new Error(
+        'Either "promptText" and "model" or "targetTokens" must be provided.'
+      );
+    }
   }
 
   calculateBudgets() {
-    const totalSizeWeight = [...this.data.values()].reduce(
-      (sum, valueObject) => {
-        return sum + valueObject.weight * valueObject.value.length;
-      },
-      0
-    );
+    const totalSizeWeight = [...this.data.values()]
+      .filter((obj) => obj?.summary !== false)
+      .reduce((sum, valueObject) => {
+        return sum + (valueObject.weight ?? 1) * valueObject.value.length;
+      }, 0);
     const sortedEntries = [...this.data.entries()].sort(
       (a, b) => a[1].weight - b[1].weight
     );
 
     const budgets = [];
     for (const [entryKey, valueObject] of sortedEntries) {
-      const { weight } = valueObject;
-      const sizeWeight = valueObject.value.length * weight;
+      const sizeWeight = valueObject.value.length * (valueObject.weight ?? 1);
       const budget = Math.floor(
         (sizeWeight / totalSizeWeight) * this.targetTokens
       );
-      budgets.push({ key: entryKey, budget });
+
+      if (valueObject.weight) {
+        budgets.push({ key: entryKey, budget });
+      } else {
+        budgets.push({ key: entryKey });
+      }
     }
 
     return { totalSizeWeight, budgets };
@@ -69,13 +95,21 @@ export default class SummaryMap extends Map {
     for (const { key, budget } of budgets) {
       const valueObject = this.data.get(key);
 
-      const value = shortenText(valueObject.value, this.maxPromptTokens);
-
-      const summarizedValue = await summarize({
-        budget,
-        type: valueObject.type,
-        value,
+      const value = shortenText(valueObject.value, {
+        targetTokenCount: this.maxTokensPerValue,
       });
+
+      // omit weight to skip summarization
+      let summarizedValue = value;
+      if (budget) {
+        summarizedValue = await summarize({
+          budget,
+          fixes: valueObject.fixes,
+          type: valueObject.type,
+          value,
+        });
+      }
+
       this.cache.set(key, summarizedValue);
     }
 
@@ -117,8 +151,7 @@ export default class SummaryMap extends Map {
       return this.myFillCache()
         .then(() => this.cache.get(key))
         .catch((error) => {
-          console.error(`SummaryMap get key [error]: ${error.message}`);
-          return undefined;
+          return Promise.reject(error);
         });
     }
 
@@ -134,8 +167,7 @@ export default class SummaryMap extends Map {
       return this.myFillCache()
         .then(() => this.cache.values())
         .catch((error) => {
-          console.error(`SummaryMap values [error]: ${error.message}`);
-          return undefined;
+          return Promise.reject(error);
         });
     }
     return Promise.resolve(this.valuesStale());
@@ -150,10 +182,27 @@ export default class SummaryMap extends Map {
       return this.myFillCache()
         .then(() => this.cache.entries())
         .catch((error) => {
-          console.error(`SummaryMap values [error]: ${error.message}`);
-          return undefined;
+          return Promise.reject(error);
         });
     }
     return Promise.resolve(this.entriesStale());
+  }
+
+  pavedSummaryResultStale() {
+    return Array.from(this.entriesStale()).reduce(
+      (acc, [k, v]) => pave(acc, k, v),
+      {}
+    );
+  }
+
+  pavedSummaryResult() {
+    if (!this.isCacheValid) {
+      return this.myFillCache()
+        .then(() => this.pavedSummaryResultStale())
+        .catch((error) => {
+          return Promise.reject(error);
+        });
+    }
+    return Promise.resolve(this.pavedSummaryResultStale());
   }
 }

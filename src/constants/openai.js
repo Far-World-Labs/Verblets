@@ -1,4 +1,4 @@
-/* eslint-disable no-unused-expressions */
+/* eslint-disable no-unused-expressions, import/prefer-default-export */
 
 // Importing dotenv config to load environment variables from .env file
 // eslint-disable-next-line no-unused-vars
@@ -9,16 +9,23 @@ import chai from 'chai';
 const { expect } = chai;
 
 // eslint-disable-next-line no-underscore-dangle
-const _models = [
-  {
-    name: 'text-davinci-003',
+const _models = {
+  gpt35Turbo: {
+    endpoint: 'v1/chat/completions',
+    name: 'gpt-3.5-turbo',
     maxTokens: 4097,
+    requestTimeout: 15000,
   },
-  {
-    name: 'gpt-4-32k-0314',
-    maxTokens: 32768,
-  },
-];
+};
+
+if (process.env.CHATGPT_V4_ENABLED) {
+  _models.gpt4 = {
+    endpoint: 'v1/chat/completions',
+    name: 'gpt-4',
+    maxTokens: 8192,
+    requestTimeout: 50000,
+  };
+}
 
 expect(process.env.OPENAI_API_KEY).to.exist;
 
@@ -37,8 +44,6 @@ export const debugResultGlobally = process.env.CHATGPT_DEBUG_RESULT ?? false;
 export const debugResultGloballyIfChanged =
   process.env.CHATGPT_DEBUG_RESULT_IF_CHANGED ?? false;
 
-export const defaultModel = _models[0]; // text-davinci-003
-
 export const frequencyPenalty = process.env.CHATGPT_FREQUENCY_PENALTY ?? 0;
 
 export const maxTokens = process.env.CHATGPT_MAX_TOKENS ?? 250;
@@ -51,4 +56,4 @@ export const temperature = process.env.CHATGPT_TEMPERATURE ?? 0;
 
 export const topP = process.env.CHATGPT_TOPP ?? 0.5;
 
-export const requestTimeout = process.env.CHATGPT_REQUEST_TIMEOUT ?? 15000;
+export const operationTimeoutMultiplier = 2;

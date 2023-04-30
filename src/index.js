@@ -4,7 +4,7 @@ import dotenv from 'dotenv/config';
 
 import chatGPT from './lib/chatgpt/index.js';
 
-export { default as getRedis } from './lib/redis/index.js';
+export { getClient as getRedis } from './services/redis/index.js';
 export { default as retry } from './lib/retry/index.js';
 
 export { default as Dismantle } from './chains/dismantle/index.js';

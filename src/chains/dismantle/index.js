@@ -2,12 +2,12 @@
 
 import { v4 as uuid } from 'uuid';
 
-import budgetTokens from '../../lib/budget-tokens/index.js';
 import chatGPT from '../../lib/chatgpt/index.js';
 import {
   constants as promptConstants,
   outputSuccinctNames,
 } from '../../prompts/index.js';
+import modelService from '../../services/llm-model/index.js';
 import toObject from '../../verblets/to-object/index.js';
 
 const { onlyJSONStringArray } = promptConstants;
@@ -77,7 +77,13 @@ const search = (node, { match = defaultMatch, matches = [] } = {}) => {
   return matches.length > 0 ? matches : undefined;
 };
 
-const defaultDecompose = async ({ name, focus, rootName, fixes } = {}) => {
+const defaultDecompose = async ({
+  name,
+  focus,
+  rootName,
+  fixes,
+  model = modelService.getBestAvailableModel(),
+} = {}) => {
   const focusFormatted = focus ? `: ${focus}` : '';
 
   const promptCreated = subComponentsPrompt(
@@ -85,7 +91,7 @@ const defaultDecompose = async ({ name, focus, rootName, fixes } = {}) => {
     rootName,
     fixes
   );
-  const budget = budgetTokens(promptCreated);
+  const budget = model.budgetTokens(promptCreated);
   return toObject(
     await chatGPT(promptCreated, {
       maxTokens: budget.completion,
@@ -95,9 +101,14 @@ const defaultDecompose = async ({ name, focus, rootName, fixes } = {}) => {
   );
 };
 
-const defaultEnhance = async ({ name, rootName, fixes } = {}) => {
+const defaultEnhance = async ({
+  name,
+  rootName,
+  fixes,
+  model = modelService.getBestAvailableModel(),
+} = {}) => {
   const promptCreated = componentOptionsPrompt(name, rootName, fixes);
-  const budget = budgetTokens(promptCreated);
+  const budget = model.budgetTokens(promptCreated);
   const options = toObject(
     await chatGPT(promptCreated, {
       maxTokens: budget.completion,

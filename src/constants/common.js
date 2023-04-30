@@ -1,3 +1,3 @@
-export const longTestTimeout = 60000;
+/* eslint-disable import/prefer-default-export */
 
-export const operationTimeout = 15000;
+export const longTestTimeout = 60000;

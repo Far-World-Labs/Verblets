@@ -8,16 +8,13 @@ import {
   debugPromptGloballyIfChanged,
   debugResultGlobally,
   debugResultGloballyIfChanged,
-  defaultModel,
   frequencyPenalty as frequencyPenaltyConfig,
-  maxTokens as maxTokensConfig,
-  models,
   presencePenalty as presencePenaltyConfig,
-  requestTimeout as requestTimeoutConfig,
   temperature as temperatureConfig,
   topP as topPConfig,
 } from '../../constants/openai.js';
-import getRedis from '../redis/index.js';
+import modelService from '../../services/llm-model/index.js';
+import { getClient as getRedis } from '../../services/redis/index.js';
 
 const shapeOutput = (result, { returnWholeResult, returnAllChoices }) => {
   if (returnWholeResult) {
@@ -25,6 +22,10 @@ const shapeOutput = (result, { returnWholeResult, returnAllChoices }) => {
   }
   if (returnAllChoices) {
     return result.choices.map((c) => c.text);
+  }
+  // GPT-4
+  if (result.choices[0].message) {
+    return result.choices[0].message.content.trim();
   }
   return result.choices[0].text.trim();
 };
@@ -37,11 +38,11 @@ export const run = async (promptInitial, options) => {
     deleteCache,
     forceQuery,
     frequencyPenalty = frequencyPenaltyConfig,
-    maxTokens = maxTokensConfig,
-    model = defaultModel.name,
+    maxTokens,
+    modelName,
     presencePenalty = presencePenaltyConfig,
     prompt: promptOptions,
-    requestTimeout = requestTimeoutConfig,
+    requestTimeout,
     returnAllChoices,
     returnWholeResult,
     temperature = temperatureConfig,
@@ -50,26 +51,27 @@ export const run = async (promptInitial, options) => {
 
   const prompt = promptInitial || promptOptions;
 
-  const apiUrl = 'https://api.openai.com/v1/completions';
+  const apiUrl = 'https://api.openai.com/';
   const headers = {
     Authorization: `Bearer ${apiKey}`,
     'Content-Type': 'application/json',
   };
   const redis = await getRedis();
 
-  let modelConfigFound = models.find((m) => m.name === model);
+  let modelFound = modelService.getBestAvailableModel();
+  if (modelName) {
+    modelFound = modelService.getModelByName(modelName);
+  }
 
-  if (!modelConfigFound) {
-    console.error(
-      `Completions request [error]: Model not supported. Falling back to ${defaultModel.name}. (model: ${model})`
-    );
-    modelConfigFound = models.find((m) => m.name === defaultModel.name);
+  let maxTokensFound = maxTokens;
+  if (!maxTokens) {
+    maxTokensFound = modelFound.maxTokens - modelFound.toTokens(prompt);
   }
 
   const data = {
-    model: modelConfigFound.name,
+    model: modelFound.name,
     temperature,
-    max_tokens: maxTokens,
+    max_tokens: maxTokensFound,
     top_p: topP,
     frequency_penalty: frequencyPenalty,
     presence_penalty: presencePenalty,
@@ -109,19 +111,29 @@ export const run = async (promptInitial, options) => {
   }
 
   // request cancelation
+  let requestTimeoutFound = requestTimeout;
+  if (!requestTimeout) {
+    requestTimeoutFound = modelFound.requestTimeout;
+  }
+
   let abortSignal;
   let requestTimeoutId;
-  if (!abortSignalInitial && requestTimeout) {
+  if (!abortSignalInitial && requestTimeoutFound) {
     const aborter = new AbortController();
     abortSignal = aborter.signal;
-    requestTimeoutId = setTimeout(() => aborter.abort(), requestTimeout);
+    requestTimeoutId = setTimeout(() => aborter.abort(), requestTimeoutFound);
   }
 
   if (!foundInRedis || forceQuery) {
-    const response = await fetch(apiUrl, {
+    let requestPrompt = { prompt };
+    if (/chat/.test(modelFound.endpoint)) {
+      requestPrompt = { messages: [{ role: 'user', content: prompt }] };
+    }
+
+    const response = await fetch(`${apiUrl}${modelFound.endpoint}`, {
       method: 'POST',
       headers: headers,
-      body: JSON.stringify({ prompt, ...data }),
+      body: JSON.stringify({ ...requestPrompt, ...data }),
       signal: abortSignal,
     });
     if (!response.ok) {

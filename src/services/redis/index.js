@@ -50,7 +50,11 @@ const createRedisClient = async () => {
   });
 };
 
-export default async () => {
+export const setClient = (newClient) => {
+  client = newClient;
+};
+
+export const getClient = () => {
   if (!client) {
     client = createRedisClient();
   }

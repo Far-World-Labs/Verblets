@@ -22,6 +22,8 @@ export const onlyJSONObjectArray =
   'Return an array of obects--not strings, and not just the objects.';
 export const onlyJSONStringArrayAlt1 = 'Output an JSON array of strings.';
 export const asSplitIntoJSONArray = 'Split the following to a JSON array.';
+export const onlyFullCode =
+  'Output only the full code generated, with no other text and no code block.';
 
 // Content headers
 export const contentIsQuestion = 'Question:';

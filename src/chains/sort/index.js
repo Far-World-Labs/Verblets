@@ -1,9 +1,9 @@
 import * as R from 'ramda';
 
 import chatGPT from '../../lib/chatgpt/index.js';
-import budgetTokens from '../../lib/budget-tokens/index.js';
 import toObject from '../../verblets/to-object/index.js';
 import { sort as sortPromptInitial } from '../../prompts/index.js';
+import modelService from '../../services/llm-model/index.js';
 
 // redeclared so it's clearer how tests can override the sorter
 let sortPrompt = sortPromptInitial;
@@ -29,7 +29,11 @@ const sanitizeList = (list) => {
   return [...new Set(list.filter((item) => item.trim() !== ''))];
 };
 
-const sort = async (options, listInitial) => {
+const sort = async (
+  options,
+  listInitial,
+  model = modelService.getBestAvailableModel()
+) => {
   const {
     by,
     chunkSize = defaultSortChunkSize,
@@ -58,7 +62,7 @@ const sort = async (options, listInitial) => {
         [...batch, ...newTop, ...newBottom]
       );
 
-      const budget = budgetTokens(prompt);
+      const budget = model.budgetTokens(prompt);
 
       // eslint-disable-next-line no-await-in-loop
       const result = await chatGPT(prompt, { maxTokens: budget.completion });

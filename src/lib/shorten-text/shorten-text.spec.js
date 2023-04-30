@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import toTokens from '../to-tokens/index.js';
+import modelService from '../../services/llm-model/index.js';
 
 import shortenText from './index.js';
 
@@ -44,11 +44,10 @@ const examples = [
 describe('Shorten text', () => {
   examples.forEach((example) => {
     it(example.name, () => {
-      const got = shortenText(
-        example.inputs.text,
-        example.inputs.targetTokenCount,
-        example.inputs.minCharsToRemove
-      );
+      const got = shortenText(example.inputs.text, {
+        targetTokenCount: example.inputs.targetTokenCount,
+        minCharsToRemove: example.inputs.minCharsToRemove,
+      });
 
       if (example.want.result) {
         expect(got).toEqual(example.want.result);
@@ -60,9 +59,9 @@ describe('Shorten text', () => {
         expect(example.want.end.test(got)).toBe(true);
       }
       if (example.want.maxLength) {
-        expect(toTokens(got).length).toBeLessThanOrEqual(
-          example.want.maxLength
-        );
+        expect(
+          modelService.getBestAvailableModel().toTokens(got).length
+        ).toBeLessThanOrEqual(example.want.maxLength);
       }
     });
   });

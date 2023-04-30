@@ -4,7 +4,7 @@ script_name="$1"
 if [[ "$script_name" =~ ^[a-zA-Z0-9_-]+$ ]]; then
     script_path="./scripts/$script_name/index.js"
     if [[ -f "$script_path" ]]; then
-        node "$script_path" $2
+        node "$script_path" $2 $3 $4 $5 $6 $7 $8 $9 $10
     else
         echo "Script not found: $script_path"
         exit 1
