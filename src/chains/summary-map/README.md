@@ -27,11 +27,7 @@ const summaryMap = new SummaryMap({ targetTokens: variableTokens });
 summaryMap.set('example.text', { value: 'Long text data...', weight: 1, type: 'text' });
 summaryMap.set('example.code', { value: 'Long code data...', weight: 0.5, type: 'code' });
 
-const summaryEntries = await summaryMap.entries();
-const promptInputs = summaryEntries.reduce(
-  (acc, [k, v]) => pave(acc, k, v),
-  {}
-);
+const promptInputs = await summaryMap.pavedSummaryResult();
 const prompt = promptFunction(promptInputs);
 const response = await chatGPT(prompt, { maxTokens });
 ```

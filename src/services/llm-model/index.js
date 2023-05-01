@@ -1,6 +1,6 @@
 import { camelCase, camelCaseTransformMerge } from 'change-case';
 import * as tokenizer3 from 'gpt3-tokenizer';
-import * as tokenizer4 from 'gpt4-tokenizer';
+// import * as tokenizer4 from 'gpt4-tokenizer';
 
 import Model from './model.js';
 import { models } from '../../constants/openai.js';
@@ -17,22 +17,22 @@ if (Tokenizer3.default) {
   Tokenizer3 = Tokenizer3.default;
 }
 
-let Tokenizer4 = { ...tokenizer4 };
-if (Tokenizer4.default) {
-  Tokenizer4 = Tokenizer4.default;
-}
-if (Tokenizer4.default) {
-  Tokenizer4 = Tokenizer4.default;
-}
+// let Tokenizer4 = { ...tokenizer4 };
+// if (Tokenizer4.default) {
+//   Tokenizer4 = Tokenizer4.default;
+// }
+// if (Tokenizer4.default) {
+//   Tokenizer4 = Tokenizer4.default;
+// }
 
 const toTokensChatGPT3 = (item) => {
   const enc = new Tokenizer3({ type: 'gpt3' });
   return enc.encode(item).text;
 };
-const toTokensChatGPT4 = (item) => {
-  const enc = new Tokenizer4({ type: 'gpt3' });
-  return enc.encode(item).text;
-};
+// const toTokensChatGPT4 = (item) => {
+//   const enc = new Tokenizer4({ type: 'gpt3' });
+//   return enc.encode(item).text;
+// };
 
 class ModelService {
   constructor() {
@@ -44,7 +44,7 @@ class ModelService {
           new Model({
             ...modelDef,
             tokenizer: /gpt-4/.test(modelDef.name)
-              ? toTokensChatGPT4
+              ? toTokensChatGPT3
               : toTokensChatGPT3,
           }),
       }),

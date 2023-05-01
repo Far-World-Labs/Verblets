@@ -16,6 +16,12 @@ const _models = {
     maxTokens: 4097,
     requestTimeout: 15000,
   },
+  textDavinci003: {
+    endpoint: 'v1/completions',
+    name: 'text-davinci-003',
+    maxTokens: 4097,
+    requestTimeout: 15000,
+  },
 };
 
 if (process.env.CHATGPT_V4_ENABLED) {
@@ -34,26 +40,24 @@ export const apiKey = process.env.OPENAI_API_KEY;
 const secondsInDay = 60 * 60 * 24;
 export const cacheTTL = process.env.CHATGPT_CACHE_TTL ?? secondsInDay;
 
-export const debugPromptGlobally = process.env.CHATGPT_DEBUG_PROMPT ?? false;
+export const debugPromptGlobally = process.env.CHATGPT_DEBUG_REQUEST ?? false;
 
 export const debugPromptGloballyIfChanged =
-  process.env.CHATGPT_DEBUG_PROMPT_IF_CHANGED ?? false;
+  process.env.CHATGPT_DEBUG_REQUEST_IF_CHANGED ?? false;
 
-export const debugResultGlobally = process.env.CHATGPT_DEBUG_RESULT ?? false;
+export const debugResultGlobally = process.env.CHATGPT_DEBUG_RESPONSE ?? false;
 
 export const debugResultGloballyIfChanged =
-  process.env.CHATGPT_DEBUG_RESULT_IF_CHANGED ?? false;
+  process.env.CHATGPT_DEBUG_RESPONSE_IF_CHANGED ?? false;
 
 export const frequencyPenalty = process.env.CHATGPT_FREQUENCY_PENALTY ?? 0;
 
-export const maxTokens = process.env.CHATGPT_MAX_TOKENS ?? 250;
-
 export const models = _models;
+
+export const operationTimeoutMultiplier = 2;
 
 export const presencePenalty = process.env.CHATGPT_PRESENCE_PENALTY ?? 0;
 
 export const temperature = process.env.CHATGPT_TEMPERATURE ?? 0;
 
 export const topP = process.env.CHATGPT_TOPP ?? 0.5;
-
-export const operationTimeoutMultiplier = 2;

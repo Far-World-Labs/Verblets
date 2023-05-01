@@ -2,7 +2,6 @@ import * as R from 'ramda';
 import { describe, expect, it } from 'vitest';
 
 import testAdvice from '../../chains/test-advice/index.js';
-import { longTestTimeout } from '../../constants/common.js';
 import alias from './index.js';
 
 const examples = [
@@ -43,38 +42,30 @@ const examples = [
   },
 ];
 
-describe(
-  'Path aliases',
-  async () => {
-    examples.forEach((example) => {
-      it(example.name, () => {
-        const got = alias(example.inputs.sequences, example.inputs.delimiter);
-        const gotSorted = R.sort(
-          ([k1], [k2]) => k1.localeCompare(k2),
-          Object.entries(got)
-        );
-        const wantSorted = R.sort(
-          ([k1], [k2]) => k1.localeCompare(k2),
-          Object.entries(example.want)
-        );
+describe('Path aliases', async () => {
+  examples.forEach((example) => {
+    it(example.name, () => {
+      const got = alias(example.inputs.sequences, example.inputs.delimiter);
+      const gotSorted = R.sort(
+        ([k1], [k2]) => k1.localeCompare(k2),
+        Object.entries(got)
+      );
+      const wantSorted = R.sort(
+        ([k1], [k2]) => k1.localeCompare(k2),
+        Object.entries(example.want)
+      );
 
-        expect(gotSorted).toStrictEqual(wantSorted);
-      });
+      expect(gotSorted).toStrictEqual(wantSorted);
     });
-  },
-  longTestTimeout
-);
+  });
+});
 
-describe(
-  'Path aliases - advice',
-  async () => {
-    const advices = await testAdvice('./src/lib/path-aliases/index.js');
+describe('Path aliases - advice', async () => {
+  const advices = await testAdvice('./src/lib/path-aliases/index.js');
 
-    advices.forEach((a) => {
-      it(a.name, () => expect(true).toBe(true));
-    });
+  advices.forEach((a) => {
+    it(a.name, () => expect(true).toBe(true));
+  });
 
-    it('Trigger failure', () => expect(advices.length).toBe(0));
-  },
-  longTestTimeout
-);
+  it('Trigger failure', () => expect(advices.length).toBe(0));
+});

@@ -4,11 +4,11 @@ import bool from './index.js';
 
 const examples = [
   {
-    inputs: { text: 'Does Mace Windu have a blue lightsaber' },
+    inputs: { text: 'A hexagon has ten sides?' },
     want: { result: false },
   },
   {
-    inputs: { text: 'Does Mace Windu have a purple lightsaber' },
+    inputs: { text: 'A hexagon has six sides?' },
     want: { result: true },
   },
 ];
@@ -16,9 +16,8 @@ const examples = [
 describe('Bool verblet', () => {
   examples.forEach((example) => {
     it(`${example.inputs.text}`, async () => {
-      expect(await bool(example.inputs.text)).toStrictEqual(
-        example.want.result
-      );
+      const result = await bool(example.inputs.text);
+      expect(result).toStrictEqual(example.want.result);
     });
   });
 });

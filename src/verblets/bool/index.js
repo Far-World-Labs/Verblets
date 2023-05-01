@@ -7,5 +7,5 @@ const { asBool, asUndefinedByDefault, contentIsQuestion } = promptConstants;
 
 export default async (text) => {
   const boolText = `${contentIsQuestion} ${text} \n\n${asBool} ${asUndefinedByDefault}`;
-  return toBool(stripResponse(await chatGPT(boolText)));
+  return toBool(stripResponse(await chatGPT(boolText, { maxTokens: 20 })));
 };
