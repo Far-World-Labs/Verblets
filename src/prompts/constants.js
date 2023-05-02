@@ -1,7 +1,8 @@
 // Basic
-export const asUndefinedByDefault = 'If you are unsure, say "undefined".';
-export const asBool = `Answer the question either with "true" or "false".`;
-export const asNumber = `Answer the question with a number that could be parsed by the JS Number constructor. Do not include units.`;
+export const asUndefinedByDefault =
+  'If you are unsure, say "undefined" as your answer.';
+export const asBool = `Answer the question either with "true" or "false" as your answer.`;
+export const asNumber = `Answer the question with a number that could be parsed by the JS Number constructor. Do not include units in your answer.`;
 
 // Response steering
 export const useLineNumber =
@@ -11,11 +12,10 @@ export const tryCompleteData =
   'Err towards giving complete data, even if you have to guess.';
 
 // JSON Output
-export const asNumberWithUnits = `Return the answer as JSON of the form "{ "value": 42, "unit": "<SI or other unit name>" }".`;
 export const onlyJSON =
-  'Output a well-formed JSON, with no other text and no code block.';
+  'Output JSON that parses with JSON.parse, with no other text and no code block.';
 const onlyJSONArrayBase =
-  'Output a well-formed JSON array, with no additional text, no punctuation, and no code block.';
+  'Output a JSON array that parses with JSON.parse, with no additional text, no punctuation, and no code block.';
 export const onlyJSONArray = onlyJSONArrayBase;
 export const onlyJSONStringArray = `${onlyJSONArrayBase} The array should only contain text. No additional structure.`;
 export const onlyJSONObjectArray =
@@ -24,6 +24,7 @@ export const onlyJSONStringArrayAlt1 = 'Output an JSON array of strings.';
 export const asSplitIntoJSONArray = 'Split the following to a JSON array.';
 export const onlyFullCode =
   'Output only the full code generated, with no other text and no code block.';
+export const asNumberWithUnits = `${onlyJSON} It should take the form "{ "value": 42, "unit": "<SI or other unit name>" }".`;
 
 // Content headers
 export const contentIsQuestion = 'Question:';
@@ -46,6 +47,10 @@ export const contentIsSchema =
   'Make it conform exactly to the following schema:';
 export const contentHasIntent = 'What is the intent of the following message:';
 export const contentIsSortCriteria = 'Sort the following items by:';
+
+// Give explanation
+export const explainAndSeparate =
+  'Write a thorough explanation of at least 30 words. Following your explanation, insert a row of 20 equal signs (=) to create a clear separation. Then, provide your answer below the dividing line, ensuring that it is clearly presented and stands alone.';
 
 // Reflective
 export const thinkStepByStep = `Let's think step by step`;

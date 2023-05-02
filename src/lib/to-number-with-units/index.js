@@ -37,7 +37,7 @@ export default (envelope) => {
     valueParsed = valueExtracted;
   } else if (valueExtracted === 'undefined') {
     valueParsed = undefined;
-  } else if (typeof valueExtracted === 'undefined') {
+  } else if (typeof valueExtracted === 'undefined' || valueExtracted === null) {
     valueParsed = undefined;
   } else {
     throw new Error(`ChatGPT output [error]: ${badDatatypeError}`);

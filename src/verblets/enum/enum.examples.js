@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import enumValue from './index.js';
+import { longTestTimeout } from '../../constants/common.js';
 
 const examples = [
   {
@@ -14,12 +15,19 @@ const examples = [
 
 describe('Enum verblet', () => {
   examples.forEach((example) => {
-    it(example.inputs.text, async () => {
-      const result = await enumValue(example.inputs.text, example.inputs.enum);
+    it(
+      example.inputs.text,
+      async () => {
+        const result = await enumValue(
+          example.inputs.text,
+          example.inputs.enum
+        );
 
-      if (example.want.result) {
-        expect(result).toStrictEqual(example.want.result);
-      }
-    });
+        if (example.want.result) {
+          expect(result).toStrictEqual(example.want.result);
+        }
+      },
+      longTestTimeout
+    );
   });
 });

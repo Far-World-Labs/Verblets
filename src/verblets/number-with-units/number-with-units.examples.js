@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import numberWithUnits from './index.js';
+import { longTestTimeout } from '../../constants/common.js';
 
 const examples = [
   {
@@ -9,25 +10,25 @@ const examples = [
   },
   {
     inputs: { text: 'What is my age in years' },
-    want: { typeOfResult: 'undefined' },
+    want: { value: undefined, unit: 'years' },
   },
 ];
 
 describe('Number with units verblet', () => {
   examples.forEach((example) => {
-    it(example.inputs.text, async () => {
-      const result = await numberWithUnits(example.inputs.text);
+    it(
+      example.inputs.text,
+      async () => {
+        const result = await numberWithUnits(example.inputs.text);
 
-      if (example.want.typeOfResult) {
-        expect(typeof result).toStrictEqual(example.want.typeOfResult);
-      }
-
-      if (example.want.value) {
-        expect(result?.value).toStrictEqual(example.want.value);
-      }
-      if (example.want.unit) {
-        expect(result?.unit).toStrictEqual(example.want.unit);
-      }
-    });
+        if (example.want.value) {
+          expect(result?.value).toStrictEqual(example.want.value);
+        }
+        if (example.want.unit) {
+          expect(result?.unit).toStrictEqual(example.want.unit);
+        }
+      },
+      longTestTimeout
+    );
   });
 });

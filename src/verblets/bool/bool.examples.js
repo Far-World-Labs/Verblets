@@ -4,11 +4,11 @@ import bool from './index.js';
 
 const examples = [
   {
-    inputs: { text: 'A hexagon has ten sides?' },
+    inputs: { text: 'Does Mace Windu have a blue lightsaber?' },
     want: { result: false },
   },
   {
-    inputs: { text: 'A hexagon has six sides?' },
+    inputs: { text: 'Does Mace Windu have a purple lightsaber?' },
     want: { result: true },
   },
 ];

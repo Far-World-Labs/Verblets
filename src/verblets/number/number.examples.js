@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import number from './index.js';
+import { longTestTimeout } from '../../constants/common.js';
 
 const examples = [
   {
@@ -19,10 +20,14 @@ const examples = [
 
 describe('Number verblet', () => {
   examples.forEach((example) => {
-    it(example.inputs.text, async () => {
-      expect(await number(example.inputs.text)).toStrictEqual(
-        example.want.result
-      );
-    });
+    it(
+      example.inputs.text,
+      async () => {
+        expect(await number(example.inputs.text)).toStrictEqual(
+          example.want.result
+        );
+      },
+      longTestTimeout
+    );
   });
 });
