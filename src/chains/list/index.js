@@ -20,11 +20,11 @@ ${asObjectWithSchemaPrompt(jsonSchema)}
 ${onlyJSON}`;
 };
 
-const shouldSkipDefault = async ({ result, resultsAll } = {}) => {
+const shouldSkipDefault = ({ result, resultsAll } = {}) => {
   return resultsAll.includes(result);
 };
 
-const shouldStopDefault = async ({ queryCount, startTime } = {}) => {
+const shouldStopDefault = ({ queryCount, startTime } = {}) => {
   return (
     queryCount > 5 ||
     new Date() - startTime >

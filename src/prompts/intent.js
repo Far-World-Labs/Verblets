@@ -1,4 +1,4 @@
-import fs from 'fs/promises';
+import fs from 'node:fs/promises';
 
 import { contentIsExample, contentIsSchema, onlyJSON } from './constants.js';
 import wrapVariable from './wrap-variable.js';

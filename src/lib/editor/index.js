@@ -1,7 +1,7 @@
-import fs from 'fs/promises';
-import os from 'os';
-import path from 'path';
-import { spawn } from 'child_process';
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import { spawn } from 'node:child_process';
 
 export default async () => {
   // Create a temporary file for editing

@@ -1,5 +1,5 @@
 import Ajv from 'ajv';
-import fs from 'fs/promises';
+import fs from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
 
 import { longTestTimeout } from '../../constants/common.js';

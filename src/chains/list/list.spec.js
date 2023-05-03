@@ -1,4 +1,4 @@
-import fs from 'fs/promises';
+import fs from 'node:fs/promises';
 import { describe, expect, it, vi } from 'vitest';
 
 import toObject from '../../verblets/to-object/index.js';

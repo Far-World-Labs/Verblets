@@ -1,6 +1,6 @@
 import { parse } from 'acorn';
 import * as walk from 'acorn-walk';
-import path from 'path';
+import path from 'node:path';
 
 const stripRootDir = (filePath, root = process.cwd()) => {
   return path.resolve('./', filePath).replace(new RegExp(`^${root}`), '');
