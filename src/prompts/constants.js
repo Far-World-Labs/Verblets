@@ -3,6 +3,7 @@ export const asUndefinedByDefault =
   'If you are unsure, say "undefined" as your answer.';
 export const asBool = `Answer the question either with "true" or "false" as your answer.`;
 export const asNumber = `Answer the question with a number that could be parsed by the JS Number constructor. Do not include units in your answer.`;
+export const asJSON = `Answer the question with JSON that parses with JSON.parse, with no wrapping code block, and no wrapping XML.`;
 
 // Response steering
 export const useLineNumber =
@@ -50,7 +51,7 @@ export const contentIsSortCriteria = 'Sort the following items by:';
 
 // Give explanation
 export const explainAndSeparate =
-  'Write a thorough explanation of at least 30 words. Following your explanation, insert a row of 20 equal signs (=) to create a clear separation. Then, provide your answer below the dividing line, ensuring that it is clearly presented and stands alone.';
+  'Justify your answer with a thorough explanation of at least 30 words. Following your explanation, insert a row of 20 equal signs (=) to create a clear separation. Then, provide your answer below the dividing line, ensuring that it is clearly presented and stands alone. Nothing but the answer should be below the dividing line.';
 
 // Reflective
 export const thinkStepByStep = `Let's think step by step`;

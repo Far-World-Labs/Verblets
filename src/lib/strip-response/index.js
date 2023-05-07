@@ -1,5 +1,12 @@
+/*
+ * This regex pattern looks for combinations of:
+ *
+ *   { followed by optional whitespace and ",
+ *   [ followed by optional whitespace, {, ", a digit [0-9], or [.
+ */
+const jsonStartRegex = /(?:\s*[\[{]|[{\[]+\s*[\[{])/;
+
 export default (val) => {
-  // eslint-disable-next-line no-unused-vars
   const [questionPart = '', middle, answerPart = ''] = val.split(/(=){11,29}/);
 
   const answerSection = answerPart.trim()?.length
@@ -14,5 +21,13 @@ export default (val) => {
     .replace(/^['"]/, '')
     .replace(/['"]$/, '')
     .trim();
-  return noQuotes;
+
+  if (noQuotes.startsWith('{') || noQuotes.startsWith('[')) {
+    return noQuotes;
+  }
+
+  const match = noQuotes.match(jsonStartRegex);
+  const jsonStart = match ? noQuotes.slice(match.index) : undefined;
+
+  return jsonStart ?? noQuotes;
 };

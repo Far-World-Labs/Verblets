@@ -1,11 +1,14 @@
-import { list, getRedis } from '../../src/index.js';
 
-console.error('Runner [started]');
+import {
+  getRedis,
+  retry as run,
+  jsRepoMapNFR as mapNFRs,
+} from '../../src/index.js';
 
-console.error(await list('muppets'));
-
-// setTimeout(() => process.exit(0), 20000);
-
-console.error('Runner [complete]');
+await run(async () => {
+  await mapNFRs({
+    node: { filename: './src/index.js' },
+  });
+}, { maxRetries: 0 });
 
 await (await getRedis()).disconnect();

@@ -4,13 +4,13 @@ import retry from './index.js';
 
 const retryDelayGlobal = 10;
 
-const mockFn = async () => {
+const mockFn = () => {
   return 'Success';
 };
 
 describe('Retry', () => {
   it('Succeeds on first attempt', async () => {
-    const result = await retry(mockFn);
+    const result = await retry(mockFn, { retryDelay: retryDelayGlobal });
     expect(result).toStrictEqual('Success');
   });
 
@@ -28,6 +28,7 @@ describe('Retry', () => {
 
     const result = await retry(fn, { retryDelay: retryDelayGlobal });
     expect(result).toStrictEqual('Success');
+    expect(callCount).toStrictEqual(2);
   });
 
   it('Fails after maxRetries', async () => {
@@ -44,23 +45,42 @@ describe('Retry', () => {
     try {
       await retry(fn, { maxRetries, retryDelay: retryDelayGlobal });
     } catch (error) {
-      expect(error.message).toStrictEqual('Max retries reached');
-      expect(callCount).toStrictEqual(maxRetries);
+      expect(error.message).toStrictEqual('Error 429');
+      expect(callCount).toStrictEqual(maxRetries + 1);
     }
   });
 
   it('Throws non-retryable error', async () => {
-    const mockFnWithOtherError = async () => {
+    const mockFnWithOtherError = () => {
+      throw new Error('Error 500');
+    };
+
+    try {
+      await retry(mockFnWithOtherError, { retryDelay: retryDelayGlobal });
+    } catch (error) {
+      expect(error.message).toStrictEqual('Error 500');
+    }
+  });
+
+  it('Retries on all errors when retryOnAll is true', async () => {
+    let callCount = 0;
+    const maxRetries = 2;
+    const fn = async () => {
+      callCount += 1;
       const error = new Error('Error 500');
       error.response = { status: 500 };
       throw error;
     };
 
     try {
-      await retry(mockFnWithOtherError);
+      await retry(fn, {
+        maxRetries,
+        retryDelay: retryDelayGlobal,
+        retryOnAll: true,
+      });
     } catch (error) {
       expect(error.message).toStrictEqual('Error 500');
-      expect(error.response.status).toStrictEqual(500);
+      expect(callCount).toStrictEqual(maxRetries + 1);
     }
   });
 });

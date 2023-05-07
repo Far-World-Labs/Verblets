@@ -14,7 +14,7 @@ const _models = {
     endpoint: 'v1/chat/completions',
     name: 'gpt-3.5-turbo',
     maxTokens: 4097,
-    requestTimeout: 15000,
+    requestTimeout: 30000,
   },
   textDavinci003: {
     endpoint: 'v1/completions',

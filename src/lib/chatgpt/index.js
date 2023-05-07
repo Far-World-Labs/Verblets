@@ -121,7 +121,9 @@ export const run = async (promptInitial, options) => {
   if (!abortSignalInitial && requestTimeoutFound) {
     const aborter = new AbortController();
     abortSignal = aborter.signal;
-    requestTimeoutId = setTimeout(() => aborter.abort(), requestTimeoutFound);
+    requestTimeoutId = setTimeout(() => {
+      aborter.abort();
+    }, requestTimeoutFound);
   }
 
   if (!foundInRedis || forceQuery) {
@@ -136,6 +138,7 @@ export const run = async (promptInitial, options) => {
       body: JSON.stringify({ ...requestPrompt, ...data }),
       signal: abortSignal,
     });
+
     if (!response.ok) {
       const body = await response.json();
       throw new Error(

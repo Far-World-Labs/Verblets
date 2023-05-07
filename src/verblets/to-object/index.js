@@ -1,4 +1,6 @@
-import { retryingJSONParse } from '../../constants/messages.js';
+import Ajv from 'ajv';
+
+import { retryJSONParse } from '../../constants/messages.js';
 import chatGPT from '../../lib/chatgpt/index.js';
 import stripResponse from '../../lib/strip-response/index.js';
 
@@ -7,19 +9,44 @@ import {
   wrapVariable,
 } from '../../prompts/index.js';
 
-const { contentToJSON, onlyJSON } = promptConstants;
+const { contentToJSON, onlyJSON, contentIsSchema } = promptConstants;
 
-export default async (text) => {
+class ValidationError extends Error {
+  constructor(message, details) {
+    super(message);
+    this.name = 'ValidationError';
+    this.details = details;
+  }
+}
+
+export default async (text, schema) => {
   let response;
 
   try {
-    return JSON.parse(stripResponse(text));
+    const result = JSON.parse(stripResponse(text));
+    if (schema) {
+      const ajv = new Ajv();
+      const validate = ajv.compile(schema);
+
+      const isValid = validate(result);
+      if (!isValid) {
+        throw new ValidationError(`AJV validation failed`, validate.errors);
+      }
+    }
+    return result;
   } catch (error) {
     if (process.env.NODE_ENV === 'development') {
-      console.error(retryingJSONParse);
+      console.error(`Parse JSON [error]: ${error.message} ${retryJSONParse}`);
+      console.error('+++');
+      console.error(stripResponse(text));
+      console.error('+++');
     }
 
     const jsonPrompt = `${onlyJSON}
+
+${contentIsSchema} ${wrapVariable(JSON.stringify(schema) ?? 'None given', {
+      tag: 'schema',
+    })}
 
 ${contentToJSON} ${wrapVariable(stripResponse(text))}
 
