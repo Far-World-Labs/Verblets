@@ -30,7 +30,7 @@ const shapeOutput = (result, { returnWholeResult, returnAllChoices }) => {
   return result.choices[0].text.trim();
 };
 
-export const run = async (promptInitial, options) => {
+export const run = async (promptInitial, options = {}) => {
   const {
     abortSignal: abortSignalInitial,
     debugPrompt,
@@ -41,15 +41,14 @@ export const run = async (promptInitial, options) => {
     maxTokens,
     modelName,
     presencePenalty = presencePenaltyConfig,
-    prompt: promptOptions,
     requestTimeout,
     returnAllChoices,
     returnWholeResult,
     temperature = temperatureConfig,
     topP = topPConfig,
-  } = options ?? promptInitial;
+  } = options;
 
-  const prompt = promptInitial || promptOptions;
+  const prompt = promptInitial;
 
   const apiUrl = 'https://api.openai.com/';
   const headers = {

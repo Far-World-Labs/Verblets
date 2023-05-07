@@ -6,8 +6,8 @@ import { parse } from 'acorn';
 import * as walk from 'acorn-walk';
 import dependencyTree from 'dependency-tree';
 
-const stripRootDir = (path, root = process.cwd()) => {
-  return path.replace(new RegExp(`^${root}`), '');
+const stripRootDir = (pathStr, root = process.cwd()) => {
+  return pathStr.replace(new RegExp(`^${root}`), '');
 };
 
 const convertImport = (filePath, importPath) => {
@@ -15,19 +15,29 @@ const convertImport = (filePath, importPath) => {
 };
 
 const flatten = (obj) => {
-  let result = {};
+  let result = Object.keys(obj).reduce(
+    (memo, key) => ({
+      ...memo,
+      [key]: 1,
+    }),
+    {}
+  );
 
-  for (const key in obj) {
-    result[key] = 1;
-  }
-
-  for (const key in obj) {
+  result = Object.keys(obj).reduce((acc, key) => {
     if (typeof obj[key] === 'object') {
-      result = Object.entries(flatten(obj[key])).reduce((acc, [key, val]) => {
-        return { ...acc, [key]: (acc[key] ?? 0) + val };
-      }, result);
+      const flattenedValue = flatten(obj[key]);
+      return Object.entries(flattenedValue).reduce(
+        (innerAcc, [innerKey, innerVal]) => {
+          return {
+            ...innerAcc,
+            [innerKey]: (innerAcc[innerKey] ?? 0) + innerVal,
+          };
+        },
+        acc
+      );
     }
-  }
+    return acc;
+  }, result);
 
   return result;
 };
@@ -118,15 +128,15 @@ const parseFiles = (files) => {
           );
         });
 
-        arrowDeclarations.forEach((node) => {
-          functionsSeen[`${node.init.start}:${node.init.end}`] = true;
+        arrowDeclarations.forEach((d) => {
+          functionsSeen[`${d.init.start}:${d.init.end}`] = true;
 
-          functionsMap[`ArrowFunctionExpression:${node.id.name}`] = {
-            start: node.start,
-            end: node.end,
-            name: node.id.name,
-            async: node.init.async,
-            generator: node.init.generator,
+          functionsMap[`ArrowFunctionExpression:${d.id.name}`] = {
+            start: d.start,
+            end: d.end,
+            name: d.id.name,
+            async: d.init.async,
+            generator: d.init.generator,
             type: 'ArrowFunctionExpression',
           };
         });
@@ -139,15 +149,15 @@ const parseFiles = (files) => {
           );
         });
 
-        fnExpDeclarations.forEach((node) => {
-          functionsSeen[`${node.init.start}:${node.init.end}`] = true;
+        fnExpDeclarations.forEach((d) => {
+          functionsSeen[`${d.init.start}:${d.init.end}`] = true;
 
-          functionsMap[`FunctionExpression:${node.id.name}`] = {
-            start: node.start,
-            end: node.end,
-            name: node.id.name,
-            async: node.init.async,
-            generator: node.init.generator,
+          functionsMap[`FunctionExpression:${d.id.name}`] = {
+            start: d.start,
+            end: d.end,
+            name: d.id.name,
+            async: d.init.async,
+            generator: d.init.generator,
             type: 'FunctionExpression',
           };
         });

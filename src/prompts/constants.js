@@ -51,7 +51,7 @@ export const contentIsSortCriteria = 'Sort the following items by:';
 
 // Give explanation
 export const explainAndSeparate =
-  'Justify your answer with a thorough explanation of at least 30 words. Following your explanation, insert a row of 20 equal signs (=) to create a clear separation. Then, provide your answer below the dividing line, ensuring that it is clearly presented and stands alone. Nothing but the answer should be below the dividing line.';
+  'Justify your answer with a thorough explanation of at least 100 words. Following your explanation, insert a row of 20 equal signs (=) to create a clear separation. Then, provide your answer below the dividing line, ensuring that it is clearly presented and stands alone. Nothing but the answer should be below the dividing line. The content below the dividing line should only be valid JSON that can be parsed with JSON.parse.';
 
 // Reflective
 export const thinkStepByStep = `Let's think step by step`;

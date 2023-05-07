@@ -8,6 +8,7 @@ import {
 await run(async () => {
   await mapNFRs({
     node: { filename: './src/index.js' },
+    schemaName:'prompt',
   });
 }, { maxRetries: 0 });
 

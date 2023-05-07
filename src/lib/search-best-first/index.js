@@ -16,6 +16,12 @@ const rankDefault = () => {
   return Promise.reject(new Error('Not Implemented'));
 };
 
+const filterWith = (state) => (nextNode) => {
+  return !state.visited.has(
+    hasOwnToString(nextNode) ? nextNode.toString() : nextNode
+  );
+};
+
 export default async ({
   next = nextDefault,
   node: rootNode,
@@ -27,6 +33,7 @@ export default async ({
   let state = stateInitial;
 
   while (nodesTodo.length > 0) {
+    // eslint-disable-next-line no-await-in-loop
     const nodesRanked = await rank({ nodes: nodesTodo, state });
     const node = nodesRanked.shift();
 
@@ -36,8 +43,10 @@ export default async ({
 
     state.visited.add(hasOwnToString(node) ? node.toString() : node);
 
+    // eslint-disable-next-line no-await-in-loop
     state = await visit({ node, state });
 
+    // eslint-disable-next-line no-await-in-loop
     const nextNodes = await next({ node, state });
 
     nodesTodo = R.unionWith(
@@ -46,11 +55,7 @@ export default async ({
           ? nodeA.toString() === nodeB.toString()
           : nodeA === nodeB,
       nodesTodoNext,
-      nextNodes.filter((nextNode) => {
-        return !state.visited.has(
-          hasOwnToString(nextNode) ? nextNode.toString() : nextNode
-        );
-      })
+      nextNodes.filter(filterWith(state))
     );
   }
 

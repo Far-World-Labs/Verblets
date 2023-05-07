@@ -4,30 +4,32 @@
  *   { followed by optional whitespace and ",
  *   [ followed by optional whitespace, {, ", a digit [0-9], or [.
  */
-const jsonStartRegex = /(?:\s*[\[{]|[{\[]+\s*[\[{])/;
+const jsonStartRegex = /(?:\s*[{[]|[{[]+\s*[{[])/;
 
 export default (val) => {
-  const [questionPart = '', middle, answerPart = ''] = val.split(/(=){11,29}/);
+  const [questionPart = '', , answerPart = ''] = val.split(/(=){11,29}/);
 
-  const answerSection = answerPart.trim()?.length
+  const answerPartTrimmed = answerPart.trim() ?? '';
+
+  const answerSection = answerPartTrimmed.length
     ? answerPart.trim()
     : questionPart.trim();
 
-  const noAnswer = answerSection.replace(/[aA]nswer:?/, '').trim();
+  const answerNoPrefix = answerSection.replace(/[aA]nswer:?/, '').trim();
 
-  const noPunctuation = noAnswer.replace(/[., ]+$/g, '').trim();
+  const answerNoPunctuation = answerNoPrefix.replace(/[., ]+$/g, '').trim();
 
-  const noQuotes = noPunctuation
+  const answerNoQuotes = answerNoPunctuation
     .replace(/^['"]/, '')
     .replace(/['"]$/, '')
     .trim();
 
-  if (noQuotes.startsWith('{') || noQuotes.startsWith('[')) {
-    return noQuotes;
+  if (answerNoQuotes.startsWith('{') || answerNoQuotes.startsWith('[')) {
+    return answerNoQuotes;
   }
 
-  const match = noQuotes.match(jsonStartRegex);
-  const jsonStart = match ? noQuotes.slice(match.index) : undefined;
+  const match = answerNoQuotes.match(jsonStartRegex);
+  const answerJSONStart = match ? answerNoQuotes.slice(match.index) : undefined;
 
-  return jsonStart ?? noQuotes;
+  return answerJSONStart ?? answerNoQuotes;
 };
