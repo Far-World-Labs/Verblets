@@ -14,7 +14,7 @@ import toObject from '../../verblets/to-object/index.js';
 
 const codeFeatureDefinitions = JSON.parse(
   await fs.readFile(
-    './src/prompts/code-features-property-definitions.json',
+    './src/lib/search-js-files/code-features-property-definitions.json',
     'utf-8'
   )
 );
