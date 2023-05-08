@@ -72,7 +72,9 @@ export default async (text, schema) => {
 
   try {
     prompt = buildJsonPrompt(response, schema, errorDetails);
-    response = await chatGPT(prompt);
+    response = await chatGPT(prompt, {
+      modelName: 'gpt35Turbo',
+    });
     result = JSON.parse(stripResponse(response));
 
     if (schema) {
@@ -96,7 +98,9 @@ export default async (text, schema) => {
     }
 
     prompt = buildJsonPrompt(response, schema, errorDetails);
-    response = await chatGPT(prompt);
+    response = await chatGPT(prompt, {
+      modelName: 'gpt35Turbo',
+    });
     result = JSON.parse(stripResponse(response));
   }
 
