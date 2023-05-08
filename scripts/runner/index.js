@@ -2,14 +2,16 @@
 import {
   getRedis,
   retry as run,
-  jsRepoMapNFR as mapNFRs,
+  scanJS,
 } from '../../src/index.js';
 
 await run(async () => {
-  await mapNFRs({
+  const results = await scanJS({
     node: { filename: './src/index.js' },
-    schemaName:'prompt',
+    features: 'prompt engineering',
   });
+
+  console.log(results);
 }, { maxRetries: 0 });
 
 await (await getRedis()).disconnect();

@@ -2,7 +2,7 @@
 export const asUndefinedByDefault =
   'If you are unsure, say "undefined" as your answer.';
 export const asBool = `Answer the question either with "true" or "false" as your answer.`;
-export const asNumber = `Answer the question with a number that could be parsed by the JS Number constructor. Do not include units in your answer.`;
+export const asNumber = `Answer the question with a number that could be parsed by the JS Number constructor. Do not include formatting, units, digit group separators, or spelled-out numbers in your answer.`;
 export const asJSON = `Answer the question with JSON that parses with JSON.parse, with no wrapping code block, and no wrapping XML.`;
 
 // Response steering
@@ -59,6 +59,8 @@ export const identifyUnclearInfo =
   'Identify any unclear or ambiguous information in your response, and rephrase it for clarity.';
 export const argueAgainstOutput =
   'Try to argue against your own output and see if you can find any flaws. If so, address them. Walk me through the process';
+export const rateBasic =
+  'Rate on a scale in the decimal from 0-1 how the content satisfies the following criteria. Be candidly critical and strict in your assessment.';
 export const rateSatisfaction =
   'Rate on a scale in the decimal from 0-1 how well you satisfied each point in the initial prompt. Be very critical, no need to justify yourself.';
 export const rewriteBasedOnRating = 'If 0.3 or lower, rewrite to address.';

@@ -19,24 +19,21 @@ class ValidationError extends Error {
   }
 }
 
-function buildJsonPrompt(text, schema) {
+function buildJsonPrompt(text, schema, errors) {
+  let errorsDisplay = '';
+  if (errors?.length) {
+    errorsDisplay = wrapVariable(JSON.stringify(errors) ?? '', {
+      tag: 'json-schema-errors--do-not-output',
+    });
+  }
+
   return `${onlyJSON}
 
 ${contentIsSchema} ${wrapVariable(JSON.stringify(schema) ?? 'None given', {
     tag: 'json-schema--do-not-output',
   })}
 
-${contentToJSON} ${wrapVariable(stripResponse(text))}
-
-${onlyJSON}`;
-}
-
-function buildSchemaPrompt(text, schema) {
-  return `${onlyJSON}
-
-${contentIsSchema} ${wrapVariable(JSON.stringify(schema) ?? 'None given', {
-    tag: 'json-schema--do-not-output',
-  })}
+${errorsDisplay}
 
 ${contentToJSON} ${wrapVariable(stripResponse(text))}
 
@@ -47,11 +44,23 @@ export default async (text, schema) => {
   let prompt;
   let result;
   let response = text;
+  let errorDetails;
 
   try {
     result = JSON.parse(stripResponse(response));
+    if (schema) {
+      const ajv = new Ajv();
+      const validate = ajv.compile(schema);
+      const isValid = validate(result);
+
+      if (!isValid) {
+        throw new ValidationError('Ajv validation failed', validate.errors);
+      }
+      return result;
+    }
     return result;
   } catch (error) {
+    errorDetails = error.details;
     if (debugToObject) {
       console.error(`Parse JSON [error]: ${error.message} ${retryJSONParse}`);
       console.error('+++');
@@ -62,7 +71,7 @@ export default async (text, schema) => {
   }
 
   try {
-    prompt = buildJsonPrompt(response, schema);
+    prompt = buildJsonPrompt(response, schema, errorDetails);
     response = await chatGPT(prompt);
     result = JSON.parse(stripResponse(response));
 
@@ -77,6 +86,7 @@ export default async (text, schema) => {
       return result;
     }
   } catch (error) {
+    errorDetails = error.details;
     if (debugToObject) {
       console.error(`Parse JSON [error]: ${error.message} ${retryJSONParse}`);
       console.error('+++');
@@ -85,7 +95,7 @@ export default async (text, schema) => {
       console.error('+++');
     }
 
-    prompt = buildSchemaPrompt(response, schema);
+    prompt = buildJsonPrompt(response, schema, errorDetails);
     response = await chatGPT(prompt);
     result = JSON.parse(stripResponse(response));
   }

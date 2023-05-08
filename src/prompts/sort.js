@@ -8,7 +8,7 @@ import {
 } from './constants.js';
 
 export const defaultSortDescription = 'alphabetical order';
-export const defaultFixes = 'none';
+export const defaultFixes = 'Ignore duplicates in the list';
 export const defaultSortOrder = 'descending';
 
 export default (

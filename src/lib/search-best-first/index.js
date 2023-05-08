@@ -26,11 +26,14 @@ export default async ({
   next = nextDefault,
   node: rootNode,
   rank = rankDefault,
-  state: stateInitial = { visited: new Set() },
+  state: stateInitial = {},
   visit = visitDefault,
 }) => {
   let nodesTodo = [rootNode];
   let state = stateInitial;
+  if (!state.visited) {
+    state.visited = new Set();
+  }
 
   while (nodesTodo.length > 0) {
     // eslint-disable-next-line no-await-in-loop

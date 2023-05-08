@@ -9,7 +9,6 @@ const examples = [
     name: 'Basic usage',
     inputs: {
       sequences: ['foo/bar/baz.js', 'foo/biz/baz.js', 'foo/biz/qux.js'],
-      delimiter: '/',
     },
     want: {
       'foo/bar/baz.js': 'bar/baz.js',

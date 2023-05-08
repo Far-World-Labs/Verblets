@@ -2,8 +2,8 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
-import parseJSParts from '../../lib/parse-js-parts/index.js';
-import search from '../../lib/search-best-first/index.js';
+import parseJSParts from '../parse-js-parts/index.js';
+import search from '../search-best-first/index.js';
 
 export class Node {
   constructor(args) {
@@ -64,9 +64,9 @@ const processNpmImport = async (source, includeNodeModules = false) => {
   return [];
 };
 
-const visitDefault = ({ node, state }) => {
+const visitDefault = ({ state }) => {
   if (process.env.NODE_ENV === 'development') {
-    console.error(`Visiting: ${node.filename} - ${node.functionName}`);
+    // console.error(`Visiting: ${node.filename} - ${node.functionName}`);
   }
   return state;
 };
@@ -132,25 +132,27 @@ const prepareNext = async ({ node, includeNodeModules }) => {
   };
 };
 
-const nextDefault = ({ functions, imports }) => {
-  return imports.concat(functions);
+const nextDefault = ({ state }) => {
+  return state.jsElements.imports.concat(state.jsElements.functions);
 };
 
 export default ({
   next: nextExternal = nextDefault,
   node: nodeInitial,
   visit: visitExternal = visitDefault,
+  includeNodeModules,
   ...options
 }) => {
   return search({
+    ...options,
     next: async ({ node, state }) => {
-      const deps = await prepareNext({ ...options, node });
-      return nextExternal({ ...options, ...deps, node, state });
+      const jsElements = await prepareNext({ node, includeNodeModules });
+      return nextExternal({ node, state: { jsElements, ...state } });
     },
     node: new Node(nodeInitial),
     rank,
     visit: ({ node, state }) => {
-      return visitExternal({ ...options, node, state });
+      return visitExternal({ node, state });
     },
   });
 };

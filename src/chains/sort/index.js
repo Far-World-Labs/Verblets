@@ -8,8 +8,8 @@ import modelService from '../../services/llm-model/index.js';
 // redeclared so it's clearer how tests can override the sorter
 let sortPrompt = sortPromptInitial;
 
-export const defaultSortChunkSize = 20;
-export const defaultSortExtremeK = 20;
+export const defaultSortChunkSize = 10;
+export const defaultSortExtremeK = 10;
 export const defaultSortIterations = 1;
 
 // Keeping this here because it's useful for internal debugging
@@ -65,7 +65,10 @@ const sort = async (
       const budget = model.budgetTokens(prompt);
 
       // eslint-disable-next-line no-await-in-loop
-      const result = await chatGPT(prompt, { maxTokens: budget.completion });
+      const result = await chatGPT(prompt, {
+        maxTokens: budget.completion,
+        setTimeout: model.requestTimeout * 1.5,
+      });
 
       // eslint-disable-next-line no-await-in-loop
       const batchSorted = await toObject(result);
