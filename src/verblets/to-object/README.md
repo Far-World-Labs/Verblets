@@ -1,4 +1,4 @@
-# JSON Validator Module
+# to-object - JSON parsing with validation
 
 This JavaScript module is designed to validate JSON data against provided JSON Schemas. It makes use of the [Ajv](https://ajv.js.org/) library for schema validation and [chatGPT](https://github.com/openai/gpt-3) to handle error prompts.
 
