@@ -1,13 +1,14 @@
-# to-object - JSON parsing with validation
+# to-object - JSON repair and validation
 
-This JavaScript module is designed to validate JSON data against provided JSON Schemas. It makes use of the [Ajv](https://ajv.js.org/) library for schema validation and [chatGPT](https://github.com/openai/gpt-3) to handle error prompts.
+This module is designed to take JSON results from ChatGPT calls, which can often be imperfect or malformed, and repair them to create valid JSON. If a JSON Schema is provided, the module also validates the repaired JSON against it. This process ensures that the JSON data is both well-formed and conforms to the expected structure.
 
 ## Features
 
-- Validate JSON data against JSON schemas.
-- Provide detailed error logs when JSON parsing or validation fails.
-- Retry JSON parsing and validation with chatGPT when an error occurs.
-- Custom ValidationError class for detailed error handling.
+- Automatic repair of malformed JSON data returned by ChatGPT.
+- Validation of repaired JSON data against provided JSON Schemas using the [Ajv](https://ajv.js.org/) library.
+- Recursive repair attempts through internal calls to ChatGPT for particularly stubborn cases.
+- Detailed error handling and validation messages
+- Custom ValidationError class for understanding where the returned JSON fails to meet the schema.
 
 ## Installation
 
@@ -25,17 +26,13 @@ Here is an example of how to use the module:
 ```javascript
 import toObject from './path/to/module';
 
-const text = '{"key": "value"}';
-const schema = {
-  type: 'object',
-  properties: { key: { type: 'string' } },
-  required: ['key'],
-};
+const text = '...';  // JSON string returned from a ChatGPT call
+const schema = { ... };  // Optional JSON Schema
 
 try {
   const result = await toObject(text, schema);
-  console.log(result);
+  console.log(result);  // Repaired and validated JSON
 } catch (error) {
-  console.error(error);
+  console.error(error);  // Validation message if JSON doesn't meet the schema
 }
 ```
