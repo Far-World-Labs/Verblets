@@ -60,7 +60,9 @@ export const generateList = async function* generateListGenerator(
     let resultsNew = [];
     try {
       const results = await chatGPT(listPrompt, {
-        maxTokens: budget.completion,
+        modelOptions: {
+          maxTokens: budget.completion,
+        },
         ...options,
       });
 

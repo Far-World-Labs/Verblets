@@ -1,28 +1,23 @@
-import crypto from 'node:crypto';
 import fetch from 'node-fetch';
 
 import {
   apiKey,
-  cacheTTL,
+  apiUrl,
   debugPromptGlobally,
   debugPromptGloballyIfChanged,
   debugResultGlobally,
   debugResultGloballyIfChanged,
-  frequencyPenalty as frequencyPenaltyConfig,
-  presencePenalty as presencePenaltyConfig,
-  temperature as temperatureConfig,
-  topP as topPConfig,
 } from '../../constants/openai.js';
+import anySignal from '../any-signal/index.js';
+import {
+  get as getPromptResult,
+  set as setPromptResult,
+} from '../prompt-cache/index.js';
+import TimedAbortController from '../timed-abort-controller/index.js';
 import modelService from '../../services/llm-model/index.js';
 import { getClient as getRedis } from '../../services/redis/index.js';
 
-const shapeOutput = (result, { returnWholeResult, returnAllChoices }) => {
-  if (returnWholeResult) {
-    return result;
-  }
-  if (returnAllChoices) {
-    return result.choices.map((c) => c.text);
-  }
+const shapeOutputDefault = (result) => {
   // GPT-4
   if (result.choices[0].message) {
     return result.choices[0].message.content.trim();
@@ -30,146 +25,102 @@ const shapeOutput = (result, { returnWholeResult, returnAllChoices }) => {
   return result.choices[0].text.trim();
 };
 
-export const run = async (promptInitial, options = {}) => {
-  const {
-    abortSignal: abortSignalInitial,
-    debugPrompt,
-    debugResult,
-    deleteCache,
-    forceQuery,
-    frequencyPenalty = frequencyPenaltyConfig,
-    maxTokens,
-    modelName,
-    presencePenalty = presencePenaltyConfig,
-    requestTimeout,
-    returnAllChoices,
-    returnWholeResult,
-    temperature = temperatureConfig,
-    topP = topPConfig,
-  } = options;
-
-  const prompt = promptInitial;
-
-  const apiUrl = 'https://api.openai.com/';
-  const headers = {
-    Authorization: `Bearer ${apiKey}`,
-    'Content-Type': 'application/json',
-  };
-  const redis = await getRedis();
-
-  let modelFound = modelService.getBestAvailableModel();
-  if (modelName) {
-    modelFound = modelService.getModelByName(modelName);
-  }
-
-  let maxTokensFound = maxTokens;
-  if (!maxTokens) {
-    maxTokensFound = modelFound.maxTokens - modelFound.toTokens(prompt);
-  }
-
-  const data = {
-    model: modelFound.name,
-    temperature,
-    max_tokens: maxTokensFound,
-    top_p: topP,
-    frequency_penalty: frequencyPenalty,
-    presence_penalty: presencePenalty,
-  };
-
-  const hash = crypto
-    .createHash('sha256')
-    .update(prompt + JSON.stringify(data))
-    .digest('hex')
-    .toString();
-  let result;
-  let foundInRedis;
-  try {
-    const resultFromRedis = await redis.get(hash);
-
-    foundInRedis = resultFromRedis !== null;
-    if (foundInRedis) {
-      if (deleteCache) {
-        await redis.del(hash);
-        foundInRedis = false;
-      } else {
-        result = JSON.parse(resultFromRedis);
-      }
-    }
-  } catch (error) {
-    console.error(`Completions request [error]: ${error.message}`);
-  }
-
+const onBeforeRequestDefault = ({ debugPrompt, isCached, prompt }) => {
   if (
     debugPrompt ||
     debugPromptGlobally ||
-    (debugPromptGloballyIfChanged && !foundInRedis)
+    (debugPromptGloballyIfChanged && !isCached)
   ) {
     console.error(`+++ DEBUG PROMPT +++`);
     console.error(prompt);
     console.error('+++ DEBUG PROMPT END +++');
   }
+};
 
-  // request cancelation
-  let requestTimeoutFound = requestTimeout;
-  if (!requestTimeout) {
-    requestTimeoutFound = modelFound.requestTimeout;
-  }
-
-  let abortSignal;
-  let requestTimeoutId;
-  if (!abortSignalInitial && requestTimeoutFound) {
-    const aborter = new AbortController();
-    abortSignal = aborter.signal;
-    requestTimeoutId = setTimeout(() => {
-      aborter.abort();
-    }, requestTimeoutFound);
-  }
-
-  if (!foundInRedis || forceQuery) {
-    let requestPrompt = { prompt };
-    if (/chat/.test(modelFound.endpoint)) {
-      requestPrompt = { messages: [{ role: 'user', content: prompt }] };
-    }
-
-    const response = await fetch(`${apiUrl}${modelFound.endpoint}`, {
-      method: 'POST',
-      headers: headers,
-      body: JSON.stringify({ ...requestPrompt, ...data }),
-      signal: abortSignal,
-    });
-
-    if (!response.ok) {
-      const body = await response.json();
-      throw new Error(
-        `Completions request [error]: ${body.error.message} (status: ${response.status}, type: ${body.error.type})`
-      );
-    }
-
-    result = await response.json();
-
-    clearTimeout(requestTimeoutId);
-
-    try {
-      await redis.set(hash, JSON.stringify(result), { EX: cacheTTL });
-    } catch (error) {
-      console.error(`Completions request [error]: ${error.message}`);
-    }
-  }
-
-  const resultShaped = shapeOutput(result, {
-    returnWholeResult,
-    returnAllChoices,
-  });
-
+const onAfterRequestDefault = ({ debugResult, isCached, resultShaped }) => {
   if (
     debugResult ||
     debugResultGlobally ||
-    (debugResultGloballyIfChanged && !foundInRedis)
+    (debugResultGloballyIfChanged && !isCached)
   ) {
     console.error(`+++ DEBUG RESULT +++`);
     console.error(resultShaped);
     console.error('+++ DEBUG RESULT END +++');
   }
+};
+
+export const run = async (prompt, options = {}) => {
+  const {
+    abortSignal,
+    debugPrompt,
+    debugResult,
+    forceQuery,
+    modelOptions = {},
+    onBeforeRequest = onBeforeRequestDefault,
+    onAfterRequest = onAfterRequestDefault,
+    shapeOutput = shapeOutputDefault,
+  } = options;
+
+  const modelFound = modelService.getModel(modelOptions.modelName);
+
+  const requestConfig = modelService.getRequestConfig({
+    prompt,
+    ...modelOptions,
+  });
+
+  const cache = await getRedis();
+  const { result: cacheResult } = await getPromptResult(cache, requestConfig);
+
+  onBeforeRequest({
+    isCached: !!cacheResult,
+    debugPrompt,
+    prompt,
+    requestConfig,
+  });
+
+  let result = cacheResult;
+  if (!cacheResult || forceQuery) {
+    const timeoutController = new TimedAbortController(
+      modelService.getModel(modelOptions.modelName).requestTimeout
+    );
+
+    const response = await fetch(`${apiUrl}${modelFound.endpoint}`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestConfig),
+      signal: anySignal([abortSignal, timeoutController.signal]),
+    });
+
+    result = await response.json();
+
+    if (!response.ok) {
+      const vars = [
+        `status: ${response?.status}`,
+        `type: ${result?.error?.type}`,
+      ].join(', ');
+      throw new Error(
+        `Completions request [error]: ${result?.error?.message} (${vars})`
+      );
+    }
+
+    timeoutController.clearTimeout();
+
+    await setPromptResult(cache, requestConfig, result);
+  }
+
+  const resultShaped = shapeOutput(result);
+
+  onAfterRequest({
+    debugResult,
+    isCached: !!cacheResult,
+    prompt,
+    requestConfig,
+    result,
+    resultShaped,
+  });
 
   return resultShaped;
 };

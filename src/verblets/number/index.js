@@ -8,10 +8,13 @@ const {
   asUndefinedByDefault,
   contentIsQuestion,
   explainAndSeparate,
+  explainAndSeparatePrimitive,
 } = promptConstants;
 
 export default async (text) => {
-  const numberText = `${contentIsQuestion} ${text}\n\n${explainAndSeparate}
+  const numberText = `${contentIsQuestion} ${text}
+
+${explainAndSeparate} ${explainAndSeparatePrimitive}
 
 ${asNumber} ${asUndefinedByDefault}`;
 

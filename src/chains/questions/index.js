@@ -76,8 +76,10 @@ const generateQuestions = async function* generateQuestionsGenerator(
     });
     const budget = model.budgetTokens(promptCreated);
     const chatGPTConfig = {
-      maxTokens: budget.completion,
-      temperature: 1,
+      modelOptions: {
+        maxTokens: budget.completion,
+        temperature: 1,
+      },
     };
 
     const results = await chatGPT(`${promptCreated}`, chatGPTConfig);

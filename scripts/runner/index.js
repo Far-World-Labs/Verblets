@@ -11,7 +11,7 @@ await run(async () => {
     features: 'prompt engineering',
   });
 
-  console.log(results);
+  console.error(results);
 }, { maxRetries: 0 });
 
 await (await getRedis()).disconnect();

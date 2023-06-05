@@ -3,7 +3,13 @@ import * as tokenizer3 from 'gpt3-tokenizer';
 // import * as tokenizer4 from 'gpt4-tokenizer';
 
 import Model from './model.js';
-import { models } from '../../constants/openai.js';
+import {
+  frequencyPenalty as frequencyPenaltyConfig,
+  models,
+  presencePenalty as presencePenaltyConfig,
+  temperature as temperatureConfig,
+  topP as topPConfig,
+} from '../../constants/openai.js';
 
 // This library really doesn't import well with nodejs
 // This may not be the best solution, but it works
@@ -51,27 +57,71 @@ class ModelService {
       {}
     );
 
-    this.bestAvailableModel = this.models.gpt4 || this.models.gpt35Turbo;
+    this.bestAvailableModel = this.models.gpt4 ?? this.models.gpt35Turbo;
+    if (process.env.TEST === 'true') {
+      // this.bestAvailableModel = this.models.textDavinci003;
+      this.bestAvailableModel = this.models.gpt35Turbo;
+    }
   }
 
   getBestAvailableModel() {
-    if (process.env.NODE_ENV === 'test') {
-      return this.models.gpt35Turbo;
-    }
     return this.bestAvailableModel;
   }
 
-  updateBestAvailableModel(modelName) {
-    const newModel = this.getModelByName(modelName);
-    this.bestAvailableModel = newModel;
+  updateBestAvailableModel(name) {
+    this.bestAvailableModel = this.getModel(name);
   }
 
-  getModelByName(name) {
-    const modelFound = this.models[name];
-    if (!modelFound) {
-      throw new Error(`Get model by name [error]: '${name}' not found.`);
+  getModel(name) {
+    let modelFound = this.getBestAvailableModel();
+    if (name && process.env.TEST !== 'true') {
+      modelFound = this.models[name];
+      if (!modelFound) {
+        throw new Error(`Get model by name [error]: '${name}' not found.`);
+      }
     }
     return modelFound;
+  }
+
+  getRequestParameters(options = {}) {
+    const frequencyPenalty = options.frequencyPenalty ?? frequencyPenaltyConfig;
+    const presencePenalty = options.presencePenalty ?? presencePenaltyConfig;
+    const temperature = options.temperature ?? temperatureConfig;
+    const topP = options.topP ?? topPConfig;
+    const { maxTokens, modelName, prompt } = options;
+
+    const modelFound = this.getModel(modelName);
+
+    let maxTokensFound = maxTokens;
+    if (!maxTokens) {
+      maxTokensFound = modelFound.maxTokens - modelFound.toTokens(prompt);
+    }
+
+    return {
+      model: modelFound.name,
+      temperature,
+      max_tokens: maxTokensFound,
+      top_p: topP,
+      frequency_penalty: frequencyPenalty,
+      presence_penalty: presencePenalty,
+    };
+  }
+
+  getRequestConfig(options) {
+    const { modelName, prompt } = options;
+
+    const modelFound = this.getModel(modelName);
+
+    let requestPrompt = { prompt: prompt };
+    if (/chat/.test(modelFound.endpoint)) {
+      requestPrompt = { messages: [{ role: 'user', content: prompt }] };
+    }
+    const data = this.getRequestParameters(options);
+
+    return {
+      ...requestPrompt,
+      ...data,
+    };
   }
 }
 

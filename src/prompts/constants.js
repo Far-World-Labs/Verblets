@@ -3,7 +3,7 @@ export const asUndefinedByDefault =
   'If you are unsure, say "undefined" as your answer.';
 export const asBool = `Answer the question either with "true" or "false" as your answer.`;
 export const asNumber = `Answer the question with a number that could be parsed by the JS Number constructor. Do not include formatting, units, digit group separators, or spelled-out numbers in your answer.`;
-export const asJSON = `Answer the question with JSON that parses with JSON.parse, with no wrapping code block, and no wrapping XML.`;
+export const asJSON = `Respond with a JSON object or array that parses with JSON.parse, with no wrapping code block, and no wrapping XML.`;
 
 // Response steering
 export const useLineNumber =
@@ -14,9 +14,9 @@ export const tryCompleteData =
 
 // JSON Output
 export const onlyJSON =
-  'Output JSON that parses with JSON.parse, with no other text and no code block.';
+  'Respond with a JSON object or array that parses with JSON.parse, with no other text and no code block.';
 const onlyJSONArrayBase =
-  'Output a JSON array that parses with JSON.parse, with no additional text, no punctuation, and no code block.';
+  'Respond with a JSON array that parses with JSON.parse, with no additional text, no punctuation, and no code block.';
 export const onlyJSONArray = onlyJSONArrayBase;
 export const onlyJSONStringArray = `${onlyJSONArrayBase} The array should only contain text. No additional structure.`;
 export const onlyJSONObjectArray =
@@ -26,6 +26,8 @@ export const asSplitIntoJSONArray = 'Split the following to a JSON array.';
 export const onlyFullCode =
   'Output only the full code generated, with no other text and no code block.';
 export const asNumberWithUnits = `${onlyJSON} It should take the form "{ "value": 42, "unit": "<SI or other unit name>" }".`;
+export const shapeAsJSON =
+  'Even if the input is not JSON, describe as much as possible in a JSON structure that corresponds to the input.';
 
 // Content headers
 export const contentIsQuestion = 'Question:';
@@ -51,7 +53,10 @@ export const contentIsSortCriteria = 'Sort the following items by:';
 
 // Give explanation
 export const explainAndSeparate =
-  'Justify your answer with a thorough explanation of at least 100 words. Following your explanation, insert a row of 20 equal signs (=) to create a clear separation. Then, provide your answer below the dividing line, ensuring that it is clearly presented and stands alone. Nothing but the answer should be below the dividing line. The content below the dividing line should only be valid JSON that can be parsed with JSON.parse.';
+  'Give an explanation followed by a succinct answer. The explanation part should come first, and should be at least 100 words. Next, insert a row of 20 equal signs (=) to create a clear separation.';
+export const explainAndSeparateJSON =
+  'The content below the dividing line should only be valid JSON that can be parsed with JSON.parse.';
+export const explainAndSeparatePrimitive = `Next insert the succinctly-stated answer should be below the dividing line and work as a primitive datatype in JS. Be as succinct as possible as it will be parsed by a script.`;
 
 // Reflective
 export const thinkStepByStep = `Let's think step by step`;

@@ -43,7 +43,7 @@ const visit = async ({
       extremeK: 4,
     },
     codeFeatureDefinitions.map((d) => d.criteria),
-    modelService.getModelByName('textDavinci003')
+    modelService.getModel('textDavinci003')
   );
   const sortCriteria = sortResults.slice(0, 5);
   const features = codeFeatureDefinitions.filter((def) => {
@@ -67,7 +67,9 @@ const visit = async ({
 
   await retry(async () => {
     const results = await chatGPT(visitPrompt, {
-      modelName: 'gpt35Turbo',
+      modelOptions: {
+        modelName: 'gpt35Turbo',
+      },
     });
 
     const resultParsed = await toObject(stripResponse(results), schema);

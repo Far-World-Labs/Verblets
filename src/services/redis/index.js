@@ -28,7 +28,7 @@ class NullRedisClient {
 }
 
 const constructClient = async () => {
-  if (process.env.NODE_ENV === 'test') {
+  if (process.env.TEST === 'true' && process.env.EXAMPLES !== 'true') {
     client = new NullRedisClient();
     return;
   }

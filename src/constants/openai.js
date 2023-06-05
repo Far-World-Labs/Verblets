@@ -14,7 +14,7 @@ const _models = {
     endpoint: 'v1/chat/completions',
     name: 'gpt-3.5-turbo',
     maxTokens: 4097,
-    requestTimeout: 30000,
+    requestTimeout: 40000,
   },
   textDavinci003: {
     endpoint: 'v1/completions',
@@ -36,6 +36,8 @@ if (process.env.CHATGPT_V4_ENABLED) {
 expect(process.env.OPENAI_API_KEY).to.exist;
 
 export const apiKey = process.env.OPENAI_API_KEY;
+
+export const apiUrl = 'https://api.openai.com/';
 
 const secondsInDay = 60 * 60 * 24;
 export const cacheTTL = process.env.CHATGPT_CACHE_TTL ?? secondsInDay;

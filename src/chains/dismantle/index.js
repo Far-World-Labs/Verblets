@@ -94,9 +94,11 @@ const defaultDecompose = async ({
   const budget = model.budgetTokens(promptCreated);
   return toObject(
     await chatGPT(promptCreated, {
-      maxTokens: budget.completion,
-      frequencyPenalty: 0.7,
-      temperature: 0.7,
+      modelOptions: {
+        maxTokens: budget.completion,
+        frequencyPenalty: 0.7,
+        temperature: 0.7,
+      },
     })
   );
 };

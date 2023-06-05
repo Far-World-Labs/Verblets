@@ -9,7 +9,8 @@ import {
   wrapVariable,
 } from '../../prompts/index.js';
 
-const { contentToJSON, onlyJSON, contentIsSchema } = promptConstants;
+const { contentIsSchema, contentToJSON, onlyJSON, shapeAsJSON } =
+  promptConstants;
 
 class ValidationError extends Error {
   constructor(message, details) {
@@ -27,15 +28,20 @@ function buildJsonPrompt(text, schema, errors) {
     });
   }
 
-  return `${onlyJSON}
+  let schemaPart = '';
+  if (schema) {
+    schemaPart = `${contentIsSchema} ${wrapVariable(JSON.stringify(schema), {
+      tag: 'json-schema--do-not-output',
+    })}`;
+  }
 
-${contentIsSchema} ${wrapVariable(JSON.stringify(schema) ?? 'None given', {
-    tag: 'json-schema--do-not-output',
-  })}
+  return `${onlyJSON} ${shapeAsJSON}
+
+${schemaPart}
 
 ${errorsDisplay}
 
-${contentToJSON} ${wrapVariable(stripResponse(text))}
+${contentToJSON} ${wrapVariable(stripResponse(text), { tag: 'content' })}
 
 ${onlyJSON}`;
 }
@@ -63,17 +69,22 @@ export default async (text, schema) => {
     errorDetails = error.details;
     if (debugToObject) {
       console.error(`Parse JSON [error]: ${error.message} ${retryJSONParse}`);
-      console.error('+++');
-      console.error(stripResponse(text));
+      console.error('<prompt attempt=1 value="unknown" />');
+      console.error('<response>');
+      console.error(stripResponse(response));
+      console.error('</response>');
+      console.error('<error>');
       console.error(error);
-      console.error('+++');
+      console.error('</error>');
     }
   }
 
   try {
     prompt = buildJsonPrompt(response, schema, errorDetails);
     response = await chatGPT(prompt, {
-      modelName: 'gpt35Turbo',
+      modelOptions: {
+        modelName: 'gpt35Turbo',
+      },
     });
     result = JSON.parse(stripResponse(response));
 
@@ -91,17 +102,34 @@ export default async (text, schema) => {
     errorDetails = error.details;
     if (debugToObject) {
       console.error(`Parse JSON [error]: ${error.message} ${retryJSONParse}`);
-      console.error('+++');
+      console.error('<prompt attempt=2>');
+      console.error(prompt);
+      console.error('</prompt>');
+      console.error('<response>');
       console.error(stripResponse(response));
+      console.error('</response>');
+      console.error('<error>');
       console.error(error);
-      console.error('+++');
+      console.error('</error>');
     }
 
     prompt = buildJsonPrompt(response, schema, errorDetails);
     response = await chatGPT(prompt, {
-      modelName: 'gpt35Turbo',
+      modelOptions: {
+        modelName: 'gpt35Turbo',
+      },
     });
     result = JSON.parse(stripResponse(response));
+
+    if (debugToObject) {
+      console.error(`Parse JSON [error]: ${error.message} ${retryJSONParse}`);
+      console.error('<prompt attempt=3>');
+      console.error(prompt);
+      console.error('</prompt>');
+      console.error('<response>');
+      console.error(stripResponse(response));
+      console.error('</response>');
+    }
   }
 
   return result;

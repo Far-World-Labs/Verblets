@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import bool from './index.js';
+import { longTestTimeout } from '../../constants/common.js';
 
 const examples = [
   {
@@ -15,9 +16,13 @@ const examples = [
 
 describe('Bool verblet', () => {
   examples.forEach((example) => {
-    it(`${example.inputs.text}`, async () => {
-      const result = await bool(example.inputs.text);
-      expect(result).toStrictEqual(example.want.result);
-    });
+    it(
+      `${example.inputs.text}`,
+      async () => {
+        const result = await bool(example.inputs.text);
+        expect(result).toStrictEqual(example.want.result);
+      },
+      longTestTimeout
+    );
   });
 });

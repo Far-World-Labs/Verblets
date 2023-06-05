@@ -2,9 +2,6 @@ import { describe, expect, it, vi } from 'vitest';
 
 import toObject from './index.js';
 
-// NODE_ENV is being set incorrectly under test and I'm not sure why
-process.env.NODE_ENV = 'test';
-
 vi.mock('../../lib/chatgpt/index.js', () => ({
   default: vi.fn().mockImplementation((text) => {
     if (/test/.test(text)) {

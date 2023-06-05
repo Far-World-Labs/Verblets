@@ -97,12 +97,12 @@ async function generateTestFile(modulePath) {
 
   const prompt = await generatePrompt(await argsMap.pavedSummaryResult());
 
-  console.log(prompt)
+  console.error(prompt)
 
   const response = await chatGPT(prompt);
 
   // use standard shell IO to apply the generated code
-  console.log(response);
+  console.error(response);
 }
 
 // Example usage:

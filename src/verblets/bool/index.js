@@ -3,11 +3,24 @@ import stripResponse from '../../lib/strip-response/index.js';
 import toBool from '../../lib/to-bool/index.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 
-const { asBool, asUndefinedByDefault, contentIsQuestion, explainAndSeparate } =
-  promptConstants;
+const {
+  asBool,
+  asUndefinedByDefault,
+  contentIsQuestion,
+  explainAndSeparate,
+  explainAndSeparatePrimitive,
+} = promptConstants;
 
 export default async (text) => {
-  const boolText = `${contentIsQuestion} ${text}\n\n${explainAndSeparate}\n\n${asBool} ${asUndefinedByDefault}`;
+  const boolText = `${contentIsQuestion} ${text}
 
-  return toBool(stripResponse(await chatGPT(boolText, { maxTokens: 100 })));
+${explainAndSeparate} ${explainAndSeparatePrimitive}
+
+${asBool} ${asUndefinedByDefault}`;
+
+  const response = await chatGPT(boolText, {
+    modelOptions: { maxTokens: 100 },
+  });
+
+  return toBool(stripResponse(response));
 };

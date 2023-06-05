@@ -18,7 +18,7 @@ const operations = [
   {
     name: 'completion',
     parameters: ['text'],
-    operation: ({ text }) => chatGPT(text, { requestTimeout }),
+    operation: ({ text }) => chatGPT(text, { modelOptions: { requestTimeout }}),
   },
   {
     name: 'list',

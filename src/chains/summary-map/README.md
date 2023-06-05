@@ -29,5 +29,5 @@ summaryMap.set('example.code', { value: 'Long code data...', weight: 0.5, type: 
 
 const promptInputs = await summaryMap.pavedSummaryResult();
 const prompt = promptFunction(promptInputs);
-const response = await chatGPT(prompt, { maxTokens });
+const response = await chatGPT(prompt, { modelOptions: { maxTokens }});
 ```

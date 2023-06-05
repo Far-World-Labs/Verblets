@@ -66,8 +66,10 @@ const sort = async (
 
       // eslint-disable-next-line no-await-in-loop
       const result = await chatGPT(prompt, {
-        maxTokens: budget.completion,
-        setTimeout: model.requestTimeout * 1.5,
+        modelOptions: {
+          maxTokens: budget.completion,
+          requestTimeout: model.requestTimeout * 1.5,
+        },
       });
 
       // eslint-disable-next-line no-await-in-loop

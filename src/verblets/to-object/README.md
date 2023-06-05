@@ -31,7 +31,7 @@ const schema = { ... };  // Optional JSON Schema
 
 try {
   const result = await toObject(text, schema);
-  console.log(result);  // Repaired and validated JSON
+  console.error(result);  // Repaired and validated JSON
 } catch (error) {
   console.error(error);  // Validation message if JSON doesn't meet the schema
 }

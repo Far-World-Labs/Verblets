@@ -85,14 +85,20 @@ export default async (
     const checksBudget = model.budgetTokens(checksPromptCreated);
 
     const checksResult = await chatGPT(checksPromptCreated, {
-      maxTokens: checksBudget.completion,
+      modelOptions: {
+        maxTokens: checksBudget.completion,
+      },
     });
 
     const testsPromptCreated = testsPrompt(text, instructions, checksResult);
     const testsBudget = model.budgetTokens(testsPromptCreated);
 
     const results = await toObject(
-      await chatGPT(testsPromptCreated, { maxTokens: testsBudget.completion })
+      await chatGPT(testsPromptCreated, {
+        modelOptions: {
+          maxTokens: testsBudget.completion,
+        },
+      })
     );
 
     if (!results.length) {
