@@ -37,15 +37,15 @@ describe('List verblet', () => {
     it(
       `${example.inputs.text}${jsonSchemaDisplay}`,
       async () => {
-        let jsonSchema;
+        let schema;
         if (example.inputs.jsonSchemaQuery) {
-          jsonSchema = await toObject(
-            await chatGPT(asJSONSchema(example.inputs.jsonSchemaQuery))
+          schema = await toObject(
+            await chatGPT(asJSONSchema(example.inputs.schemaQuery))
           );
         }
 
         const result = await list(example.inputs.description, {
-          jsonSchema,
+          schema,
         });
 
         if (example.want.minLength) {

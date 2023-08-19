@@ -34,7 +34,7 @@ const examples = [
     name: 'Basic usage with schema',
     inputs: {
       description: '2021 EV cars',
-      jsonSchema: loadSchema,
+      schema: loadSchema,
     },
     want: { listModelContains: /Model Y/ },
   },
@@ -43,13 +43,13 @@ const examples = [
 describe('List verblet', () => {
   examples.forEach((example) => {
     it(example.name, async () => {
-      let jsonSchema;
-      if (example.inputs.jsonSchema) {
-        jsonSchema = await example.inputs.jsonSchema();
+      let schema;
+      if (example.inputs.schema) {
+        schema = await example.inputs.schema();
       }
       const result = await list(example.inputs.description, {
         shouldStop: ({ queryCount }) => queryCount > 1,
-        jsonSchema,
+        schema,
       });
 
       if (example.want.listContains) {

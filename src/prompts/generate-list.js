@@ -3,7 +3,7 @@ import {
   contentListCriteria,
   contentListItemCriteria,
   contentListToOmit,
-  onlyJSONArray,
+  onlyJSONStringArray,
 } from './constants.js';
 import wrapVariable from './wrap-variable.js';
 
@@ -27,7 +27,7 @@ export default (
 `;
   });
 
-  return `${onlyJSONArray}
+  return `${onlyJSONStringArray}
 ${contentListCriteria} ${wrapVariable(description, { tag: 'criteria' })}
 
 ${attachmentsJoined}
@@ -44,5 +44,5 @@ ${contentListItemCriteria}
 
 ${contentIsDetails} ${wrapVariable(fixes, { tag: 'fixes' })}
 
-${onlyJSONArray}`;
+${onlyJSONStringArray}`;
 };

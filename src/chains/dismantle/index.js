@@ -307,4 +307,8 @@ class ChainTree {
   }
 }
 
+export const dismantle = (text, options) => {
+  return new ChainTree(text, options);
+};
+
 export default ChainTree;

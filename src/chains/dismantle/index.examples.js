@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import Dismantle from './index.js';
 import { longTestTimeout } from '../../constants/common.js';
 
-describe('Dismantle verblet', () => {
+describe('Dismantle chain', () => {
   it(
     '2022 Aprilia Tuono 660',
     async () => {

@@ -12,10 +12,10 @@ import toObject from '../../verblets/to-object/index.js';
 
 const { onlyJSON, contentIsTransformationSource } = promptConstants;
 
-const outputTransformPrompt = (result, jsonSchema) => {
+const outputTransformPrompt = (result, schema) => {
   return `${contentIsTransformationSource} ${result}
 
-${asObjectWithSchemaPrompt(jsonSchema)}
+${asObjectWithSchemaPrompt(schema)}
 
 ${onlyJSON}`;
 };
@@ -131,7 +131,7 @@ export const generateList = async function* generateListGenerator(
 
 export default async (text, options) => {
   const generator = generateList(text, options);
-  const { jsonSchema, model = modelService.getBestAvailableModel() } =
+  const { schema, model = modelService.getBestAvailableModel() } =
     options ?? {};
 
   const results = [];
@@ -139,13 +139,13 @@ export default async (text, options) => {
     results.push(result);
   }
 
-  if (!jsonSchema) {
+  if (!schema) {
     return results;
   }
 
   const resultObjects = await Promise.all(
     results.map(async (result) => {
-      const prompt = outputTransformPrompt(result, jsonSchema);
+      const prompt = outputTransformPrompt(result, schema);
       const budget = model.budgetTokens(prompt);
 
       const resultObject = await chatGPT(prompt, {

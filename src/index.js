@@ -1,8 +1,11 @@
 // Importing dotenv config to load environment variables from .env file
 // eslint-disable-next-line no-unused-vars
 import dotenv from 'dotenv/config';
+import fs from 'fs/promises';
 
 import chatGPT from './lib/chatgpt/index.js';
+
+export const schemas = [];
 
 export { getClient as getRedis } from './services/redis/index.js';
 export { default as retry } from './lib/retry/index.js';
@@ -11,11 +14,14 @@ export { default as searchJSFiles } from './lib/search-js-files/index.js';
 
 export { default as Dismantle } from './chains/dismantle/index.js';
 export { default as list } from './chains/list/index.js';
+schemas.push(JSON.parse(await fs.readFile('./src/chains/list/schema.json', 'utf8')));
+
 export { default as questions } from './chains/questions/index.js';
 export { default as scanJS } from './chains/scan-js/index.js';
 export { default as sort } from './chains/sort/index.js';
 export { default as SummaryMap } from './chains/summary-map/index.js';
 
+export { default as auto } from './verblets/auto/index.js';
 export { default as bool } from './verblets/bool/index.js';
 export { default as enums } from './verblets/enum/index.js';
 export { default as intent } from './verblets/intent/index.js';

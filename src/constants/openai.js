@@ -12,7 +12,7 @@ const { expect } = chai;
 const _models = {
   gpt35Turbo: {
     endpoint: 'v1/chat/completions',
-    name: 'gpt-3.5-turbo',
+    name: 'gpt-3.5-turbo-0613',
     maxTokens: 4097,
     requestTimeout: 40000,
   },
@@ -27,7 +27,7 @@ const _models = {
 if (process.env.CHATGPT_V4_ENABLED) {
   _models.gpt4 = {
     endpoint: 'v1/chat/completions',
-    name: 'gpt-4',
+    name: 'gpt-4-0613',
     maxTokens: 8192,
     requestTimeout: 50000,
   };

@@ -6,18 +6,17 @@ import {
   sentenceCase,
 } from 'change-case';
 
-const verbletName = process.argv[2];
+const chainName = process.argv[2];
 
-if (!verbletName) {
-  console.error('Please specify a verblet name.');
+if (!chainName) {
+  console.error('Please specify a chain name.');
   process.exit(1);
 }
 
-const verbletDir = `./src/verblets/${paramCase(verbletName)}`;
-const indexFile = `${verbletDir}/index.js`;
-const readmeFile = `${verbletDir}/README.md`;
-const testFile = `${verbletDir}/${paramCase(verbletName)}.spec.js`;
-const exampleFile = `${verbletDir}/${paramCase(verbletName)}.examples.js`;
+const chainDir = `./src/chains/${paramCase(chainName)}`;
+const indexFile = `${chainDir}/index.js`;
+const testFile = `${chainDir}/index.spec.js`;
+const exampleFile = `${chainDir}/index.examples.js`;
 
 const createFileIfNotExists = (filePath, fileContent, fileType) => {
   if (!fs.existsSync(filePath)) {
@@ -28,22 +27,22 @@ const createFileIfNotExists = (filePath, fileContent, fileType) => {
   }
 }
 
-// Check if the verblet directory already exists
-if (!fs.existsSync(verbletDir)) {
-  // Create the verblet directory
-  fs.mkdirSync(verbletDir, { recursive: true });
+// Check if the chain directory already exists
+if (!fs.existsSync(chainDir)) {
+  // Create the chain directory
+  fs.mkdirSync(chainDir, { recursive: true });
 }
 
 const indexContent = `
 export default async (text) => {
-  // TODO: Implement ${paramCase(verbletName)} verblet
+  // TODO: Implement ${paramCase(chainName)} chain
 };
 `;
 createFileIfNotExists(indexFile, indexContent, 'module file');
 
 const testContent = `import { describe, expect, it, vi } from 'vitest';
 
-import ${camelCase(verbletName)} from './index.js';
+import ${camelCase(chainName)} from './index.js';
 
 vi.mock('../../lib/chatgpt/index.js', () => ({
   default: vi.fn().mockImplementation((text) => {
@@ -63,10 +62,10 @@ const examples = [
   }
 ];
 
-describe('${sentenceCase(verbletName)} verblet', () => {
+describe('${sentenceCase(chainName)} chain', () => {
   examples.forEach((example) => {
     it(example.name, async () => {
-      const result = await ${camelCase(verbletName)}(example.inputs.text);
+      const result = await ${camelCase(chainName)}(example.inputs.text);
 
       if (example.want.typeOfResult) {
         expect(typeof result)
@@ -80,7 +79,7 @@ createFileIfNotExists(testFile, testContent, 'test');
 
 const exampleContent = `import { describe, expect, it, vi } from 'vitest';
 
-import ${camelCase(verbletName)} from './index.js';
+import ${camelCase(chainName)} from './index.js';
 
 const examples = [
   {
@@ -89,10 +88,10 @@ const examples = [
   }
 ];
 
-describe('${sentenceCase(verbletName)} verblet', () => {
+describe('${sentenceCase(chainName)} chain', () => {
   examples.forEach((example) => {
     it(example.inputs.text, async () => {
-      const result = await ${camelCase(verbletName)}(example.inputs.text)
+      const result = await ${camelCase(chainName)}(example.inputs.text)
 
       if (example.want.typeOfResult) {
         expect(typeof result)
@@ -109,4 +108,4 @@ describe('${sentenceCase(verbletName)} verblet', () => {
 `;
 createFileIfNotExists(exampleFile, exampleContent, 'example');
 
-console.error(`Created new verblet: ${verbletName}`);
+console.error(`Created new chain: ${chainName}`);

@@ -43,10 +43,10 @@ const toTokensChatGPT3 = (item) => {
 class ModelService {
   constructor() {
     this.models = {};
-    this.models = Object.values(models).reduce(
-      (acc, modelDef) => ({
+    this.models = Object.entries(models).reduce(
+      (acc, [key, modelDef]) => ({
         ...acc,
-        [camelCase(modelDef.name, { transform: camelCaseTransformMerge })]:
+        [key]:
           new Model({
             ...modelDef,
             tokenizer: /gpt-4/.test(modelDef.name)
@@ -108,13 +108,31 @@ class ModelService {
   }
 
   getRequestConfig(options) {
-    const { modelName, prompt } = options;
+    const {
+      functions,
+      function_call,
+      modelName,
+      prompt,
+      systemPrompt,
+    } = options;
 
     const modelFound = this.getModel(modelName);
 
     let requestPrompt = { prompt: prompt };
     if (/chat/.test(modelFound.endpoint)) {
-      requestPrompt = { messages: [{ role: 'user', content: prompt }] };
+      const userMessage = { role: 'user', content: prompt };
+      const systemMessages = systemPrompt ? [{
+        role: 'system',
+        content: systemPrompt,
+      }] : [];
+      requestPrompt = {
+        messages: [
+          ...systemMessages,
+          userMessage
+        ],
+        functions,
+        function_call,
+      };
     }
     const data = this.getRequestParameters(options);
 

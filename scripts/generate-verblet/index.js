@@ -1,5 +1,4 @@
 import fs from 'node:fs';
-import path from 'node:path';
 import {
   camelCase,
   paramCase,
@@ -15,9 +14,8 @@ if (!verbletName) {
 
 const verbletDir = `./src/verblets/${paramCase(verbletName)}`;
 const indexFile = `${verbletDir}/index.js`;
-const readmeFile = `${verbletDir}/README.md`;
-const testFile = `${verbletDir}/${paramCase(verbletName)}.spec.js`;
-const exampleFile = `${verbletDir}/${paramCase(verbletName)}.examples.js`;
+const testFile = `${verbletDir}/index.spec.js`;
+const exampleFile = `${verbletDir}/index.examples.js`;
 
 const createFileIfNotExists = (filePath, fileContent, fileType) => {
   if (!fs.existsSync(filePath)) {

@@ -1,0 +1,24 @@
+{
+  "name": "list",
+  "description": "Generate a list based on the input text, optionally specifying a JSON schema for the subsequent output to conform to",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "type": "string",
+        "description": "Name or description of the list to be generated"
+      },
+      "options": {
+        "type": "object",
+        "description": "Options for list generation and transformation",
+        "properties": {
+          "jsonSchema": {
+            "type": "object",
+            "description": "The JSONSchema used for transforming list results"
+          }
+        }
+      }
+    },
+    "required": []
+  }
+}

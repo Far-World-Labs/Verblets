@@ -6,7 +6,7 @@ import {
 } from './constants.js';
 import asObjectWithSchema from './as-object-with-schema.js';
 
-const jsonSchemaDefault = {
+const schemaDefault = {
   type: 'object',
   properties: {
     name: {
@@ -15,11 +15,11 @@ const jsonSchemaDefault = {
   },
 };
 
-export default (text, { jsonSchema = jsonSchemaDefault } = {}) => {
+export default (text, { schema = schemaDefault } = {}) => {
   return `Make an array of "${text}" objects.
 
 ${contentListItemCriteria}
- - ${asObjectWithSchema(jsonSchema)}
+ - ${asObjectWithSchema(schema)}
  - ${tryCompleteData}
 
 ${onlyJSON} ${onlyJSONObjectArray}`;

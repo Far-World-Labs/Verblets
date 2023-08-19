@@ -19,6 +19,10 @@ import { getClient as getRedis } from '../../services/redis/index.js';
 
 const shapeOutputDefault = (result) => {
   // GPT-4
+  if (result.choices[0].message.function_call) {
+    const functionCall = result.choices[0].message.function_call
+    return { name: functionCall.name, arguments: JSON.parse(functionCall.arguments) };
+  }
   if (result.choices[0].message) {
     return result.choices[0].message.content.trim();
   }
@@ -40,8 +44,8 @@ const onBeforeRequestDefault = ({ debugPrompt, isCached, prompt }) => {
 const onAfterRequestDefault = ({ debugResult, isCached, resultShaped }) => {
   if (
     debugResult ||
-    debugResultGlobally ||
-    (debugResultGloballyIfChanged && !isCached)
+      debugResultGlobally ||
+      (debugResultGloballyIfChanged && !isCached)
   ) {
     console.error(`+++ DEBUG RESULT +++`);
     console.error(resultShaped);
@@ -55,9 +59,10 @@ export const run = async (prompt, options = {}) => {
     debugPrompt,
     debugResult,
     forceQuery,
+    functions,
     modelOptions = {},
-    onBeforeRequest = onBeforeRequestDefault,
     onAfterRequest = onAfterRequestDefault,
+    onBeforeRequest = onBeforeRequestDefault,
     shapeOutput = shapeOutputDefault,
   } = options;
 
@@ -83,6 +88,8 @@ export const run = async (prompt, options = {}) => {
     const timeoutController = new TimedAbortController(
       modelService.getModel(modelOptions.modelName).requestTimeout
     );
+
+    // console.log(requestConfig, `${apiUrl}${modelFound.endpoint}`)
 
     const response = await fetch(`${apiUrl}${modelFound.endpoint}`, {
       method: 'POST',
