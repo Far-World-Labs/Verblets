@@ -1,25 +1,85 @@
 # Verblets
 
-Verblets rebuild the basic operations of software with language model intelligence. Each verblet takes a natural language input and returns structured data, making complex operations as simple as describing what you want.
+Verblets rebuild the basic operations of software with language model intelligence. Each verblet takes a combination of natural language and structured input and returns structured data. Like applications, verblets are powerful utilities on their own, or they can be strategically applied to in traditional software.  
 
 ## Examples
 
 ```javascript
-// Sort by any criteria you can describe
-await sort(products, "by likelihood of driving business growth in Q3");
+// Make complex decisions with context
+await bool(
+  `Should we deploy this change?
+   <git>
+   Files: 3 changed (150+, 20-)
+   Tests: 247 passing
+   Time: Friday 4:45 PM
+   </git>`
+); // Returns: false (risky deploy time)
 
-// Generate contextual lists
-await list("SaaS tools that would streamline our development workflow");
+// Generate and sort large lists by any criteria
+await sort(list("music merch for teens"), "by likelihood of driving business growth in Q3");
 
-// Extract structured data from natural language
-await intent("find suppliers who can deliver custom PCBs with a 2-week turnaround");
+// Break down complex systems into components
+await dismantle("AirPods Pro");
+/* Returns:
+{
+  "name": "AirPods Pro",
+  "components": [
+    { "name": "H2 Chip", "role": "audio_processing" },
+    { "name": "Drivers", "type": "custom_dynamic" },
+    { "name": "Noise Sensors", "count": 2 },
+    { "name": "Battery", "type": "lithium_ion" }
+  ]
+}
+*/
+
+// Generate intelligent questions to explore topics
+await questions("why isn't my sourdough starter rising?");
+/* Returns:
+[
+  "What's the room temperature where you keep it?",
+  "When was it last fed?",
+  "What type of flour are you using?",
+  "What's the feeding ratio?"
+]
+*/
+
+// Structure natural descriptions into data
+await toObject(
+  "Grandma's chicken soup: simmered for 3 hours with carrots, celery, and love",
+  { type: "Recipe", required: ["cookTime", "ingredients"] }
+);
+/* Returns:
+{
+  "name": "Grandma's Chicken Soup",
+  "cookTime": "PT3H",
+  "ingredients": ["chicken", "carrots", "celery"],
+  "method": "simmer"
+}
+*/
+
+// Structure data in universal formats
+await schemaOrg("WWDC 2024");
+/* Returns:
+{
+  "@type": "Event",
+  "name": "Apple Worldwide Developers Conference 2024",
+  "startDate": "2024-06-10",
+  "endDate": "2024-06-14",
+  "location": {
+    "@type": "Place",
+    "name": "Apple Park",
+    "addressLocality": "Cupertino"
+  }
+}
+*/
 ```
 
 ## Reference
 
 ### Data Extraction
 
-- **enum** - Map language to defined options
+- **enum** - Map language to defined options. LLMs often hallucinate and come up with wildly incorrect output. Many of the verblet functions use the intelligence of an LLM but constrain the output to controlled values that will not break your software.
+
   ```javascript
   // Map natural questions to specific choices
   const color = await enum(
