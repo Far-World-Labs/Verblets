@@ -1,9 +1,13 @@
 {
-  "name": "@pucklabs/puck",
+  "name": "@far-world-labs/verblets",
   "version": "0.1.1",
   "description": "OpenAI Client",
   "main": "index.js",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Far-World-Labs/Verblets.git"
+  },
   "scripts": {
     "start": "node scripts/runner/index.js",
     "dev": "nodemon --no-warnings scripts/runner/index.js",
@@ -11,7 +15,7 @@
     "--": "npm run script -- generate-verblet foo",
     "script": "./scripts/run.sh",
     "test": "vitest",
-    "examples": "EXAMPLES=true vitest --config .vite.config.examples.js",
+    "examples": "source .env && EXAMPLES=true vitest --config .vitest.config.examples.js",
     "lint": "eslint 'src/**/*.{js,jsx}'",
     "lint:fix": "eslint 'src/**/*.{js,jsx}' --fix",
     "husky:install": "husky install",
@@ -21,7 +25,7 @@
   "config": {
     "gen-script": "./scripts/run.sh gen-$1"
   },
-  "author": "PuckLabs",
+  "author": "Far World Labs",
   "license": "All Rights Reserved",
   "dependencies": {
     "acorn": "^8.8.2",
@@ -31,19 +35,22 @@
     "change-case": "^4.1.2",
     "dependency-tree": "^10.0.1",
     "dotenv": "^16.0.3",
-    "gpt3-tokenizer": "^1.1.5",
+    "gpt-tokenizer": "^2.1.2",
     "gpt4-tokenizer": "^1.3.0",
     "mocha": "^10.2.0",
     "node-fetch": "^3.3.0",
+    "node-record-lpcm16": "^1.0.1",
     "nodemon": "^2.0.22",
     "ramda": "^0.29.0",
     "redis": "^4.6.5",
     "uuid": "^9.0.0",
-    "vitest": "^0.30.1",
+    "vitest": "^3.1.3",
+    "whisper-node": "^1.1.1",
     "yargs": "^17.7.1"
   },
   "devDependencies": {
     "@types/node": "^18.16.3",
+    "@vitest/ui": "^3.1.3",
     "eslint": "^8.39.0",
     "eslint-config-airbnb": "^19.0.4",
     "eslint-config-prettier": "^8.8.0",

@@ -6,7 +6,7 @@ import { longTestTimeout } from '../../constants/common.js';
 const examples = [
   {
     inputs: { text: 'What is the height of Everest in feet' },
-    want: { value: 29029, unit: 'feet' },
+    want: { valueRange: [29029, 29032], unit: 'feet' },
   },
   {
     inputs: { text: 'What is my age in years' },
@@ -23,6 +23,12 @@ describe('Number with units verblet', () => {
 
         if (example.want.value) {
           expect(result?.value).toStrictEqual(example.want.value);
+        }
+        if (example.want.valueRange) {
+          expect(result?.value).toBeGreaterThanOrEqual(
+            example.want.valueRange[0]
+          );
+          expect(result?.value).toBeLessThanOrEqual(example.want.valueRange[1]);
         }
         if (example.want.unit) {
           expect(result?.unit).toStrictEqual(example.want.unit);

@@ -25,8 +25,9 @@ describe('Dismantle chain', () => {
       const result = await dismantle(example.inputs.text);
 
       if (example.want.typeOfResult) {
-        expect(JSON.stringify(result.tree))
-          .toStrictEqual(JSON.stringify(example.want.result));
+        expect(JSON.stringify(result.tree)).toStrictEqual(
+          JSON.stringify(example.want.result)
+        );
       }
     });
   });

@@ -6,9 +6,8 @@ vi.mock('../../lib/chatgpt/index.js', () => ({
   default: vi.fn().mockImplementation((text) => {
     if (/prompt text to match/.test(text)) {
       return 'True';
-    } else {
-      return 'undefined';
     }
+    return 'undefined';
   }),
 }));
 
@@ -16,8 +15,8 @@ const examples = [
   {
     name: 'Basic usage',
     inputs: { text: 'test' },
-    want: { result: true }
-  }
+    want: { result: true },
+  },
 ];
 
 describe('Auto verblet', () => {
@@ -26,8 +25,7 @@ describe('Auto verblet', () => {
       const result = await auto(example.inputs.text);
 
       if (example.want.typeOfResult) {
-        expect(typeof result)
-          .toStrictEqual(example.want.typeOfResult);
+        expect(typeof result).toStrictEqual(example.want.typeOfResult);
       }
     });
   });

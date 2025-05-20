@@ -1,15 +1,28 @@
 import chatGPT from '../../lib/chatgpt/index.js';
-import toObject from '../../verblets/to-object/index.js';
+import schemas from '../../json-schemas/index.js';
 
-export default async (text, puckApi) => {
-  // console.log(puckApi)
-  // const functionFound = await chatGPT(text, { functions: puckApi.schemas });
+export default async (text, options = {}) => {
+  const tools = schemas.map((schema) => ({
+    type: 'function',
+    function: schema,
+  }));
 
-  // console.log(functionFound);
-  // const functionArgs = await toObject(functionFound.arguments);
+  const functionFound = await chatGPT(text, {
+    modelOptions: {
+      // toolChoice: 'auto' // by default
+      tools,
+    },
+    ...options,
+  });
 
-  // console.log(functionArgs);
-  // const functionArgsAsArray = Array.isArray(functionArgs) ? functionArgs : [functionArgs];
+  const functionArgs = functionFound.arguments;
 
-  // return await puckApi[functionFound.name](...functionArgsAsArray);
+  const functionArgsAsArray = Array.isArray(functionArgs)
+    ? functionArgs
+    : [functionArgs];
+
+  return {
+    ...functionFound,
+    functionArgsAsArray,
+  };
 };

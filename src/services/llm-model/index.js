@@ -1,6 +1,4 @@
-import { camelCase, camelCaseTransformMerge } from 'change-case';
-import * as tokenizer3 from 'gpt3-tokenizer';
-// import * as tokenizer4 from 'gpt4-tokenizer';
+import * as tokenizer from 'gpt-tokenizer';
 
 import Model from './model.js';
 import {
@@ -11,56 +9,32 @@ import {
   topP as topPConfig,
 } from '../../constants/openai.js';
 
-// This library really doesn't import well with nodejs
-// This may not be the best solution, but it works
-// with the standard way of running the app as well as
-// with 'npm run script'
-let Tokenizer3 = { ...tokenizer3 };
-if (Tokenizer3.default) {
-  Tokenizer3 = Tokenizer3.default;
-}
-if (Tokenizer3.default) {
-  Tokenizer3 = Tokenizer3.default;
-}
-
-// let Tokenizer4 = { ...tokenizer4 };
-// if (Tokenizer4.default) {
-//   Tokenizer4 = Tokenizer4.default;
-// }
-// if (Tokenizer4.default) {
-//   Tokenizer4 = Tokenizer4.default;
-// }
-
-const toTokensChatGPT3 = (item) => {
-  const enc = new Tokenizer3({ type: 'gpt3' });
-  return enc.encode(item).text;
-};
-// const toTokensChatGPT4 = (item) => {
-//   const enc = new Tokenizer4({ type: 'gpt3' });
-//   return enc.encode(item).text;
-// };
-
 class ModelService {
   constructor() {
     this.models = {};
     this.models = Object.entries(models).reduce(
       (acc, [key, modelDef]) => ({
         ...acc,
-        [key]:
-          new Model({
-            ...modelDef,
-            tokenizer: /gpt-4/.test(modelDef.name)
-              ? toTokensChatGPT3
-              : toTokensChatGPT3,
-          }),
+        [key]: new Model({
+          ...modelDef,
+          tokenizer: tokenizer.encode,
+        }),
       }),
       {}
     );
 
-    this.bestAvailableModel = this.models.gpt4 ?? this.models.gpt35Turbo;
+    // Default to gptReasoning if enabled, otherwise fall back to gptBase
+    this.bestAvailableModel =
+      process.env.GPT_REASONING_ENABLED === 'true'
+        ? this.models.gptReasoning
+        : this.models.gptBase;
+
     if (process.env.TEST === 'true') {
-      // this.bestAvailableModel = this.models.textDavinci003;
-      this.bestAvailableModel = this.models.gpt35Turbo;
+      // Use the same model selection logic in test mode
+      this.bestAvailableModel =
+        process.env.GPT_REASONING_ENABLED === 'true'
+          ? this.models.gptReasoning
+          : this.models.gptBase;
     }
   }
 
@@ -108,30 +82,25 @@ class ModelService {
   }
 
   getRequestConfig(options) {
-    const {
-      functions,
-      function_call,
-      modelName,
-      prompt,
-      systemPrompt,
-    } = options;
+    const { tools, toolChoice, modelName, prompt, systemPrompt } = options;
 
     const modelFound = this.getModel(modelName);
 
     let requestPrompt = { prompt: prompt };
     if (/chat/.test(modelFound.endpoint)) {
       const userMessage = { role: 'user', content: prompt };
-      const systemMessages = systemPrompt ? [{
-        role: 'system',
-        content: systemPrompt,
-      }] : [];
+      const systemMessages = systemPrompt
+        ? [
+            {
+              role: 'system',
+              content: systemPrompt,
+            },
+          ]
+        : [];
       requestPrompt = {
-        messages: [
-          ...systemMessages,
-          userMessage
-        ],
-        functions,
-        function_call,
+        messages: [...systemMessages, userMessage],
+        tools,
+        tool_choice: tools && !toolChoice ? 'auto' : toolChoice,
       };
     }
     const data = this.getRequestParameters(options);

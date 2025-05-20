@@ -35,12 +35,12 @@ describe('List verblet', () => {
       )}${jsonSchemaEllipsis}`;
     }
     it(
-      `${example.inputs.text}${jsonSchemaDisplay}`,
+      `${example.inputs.description}${jsonSchemaDisplay}`,
       async () => {
         let schema;
         if (example.inputs.jsonSchemaQuery) {
           schema = await toObject(
-            await chatGPT(asJSONSchema(example.inputs.schemaQuery))
+            await chatGPT(asJSONSchema(example.inputs.jsonSchemaQuery))
           );
         }
 
@@ -60,9 +60,13 @@ describe('List verblet', () => {
 
         if (example.want.listModelContains) {
           expect(
-            result.some((item) =>
-              item.model.includes(example.want.listModelContains)
-            )
+            result.some((item) => {
+              // Handle both string and object results
+              if (typeof item === 'string') {
+                return item.includes(example.want.listModelContains);
+              }
+              return item.model?.includes(example.want.listModelContains);
+            })
           ).equals(true);
         }
       },

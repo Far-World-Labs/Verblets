@@ -1,0 +1,14 @@
+{
+  "name": "bool",
+  "description": "Interpret a question seen as a yes/no question, and return a boolean value answer.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "text": {
+        "type": "string",
+        "description": "A question to be answered."
+      }
+    },
+    "required": ["text"]
+  }
+}

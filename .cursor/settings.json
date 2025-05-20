@@ -1,0 +1,21 @@
+{
+    "vitest.enable": true,
+    "vitest.configPath": ".vitest.config.examples.js",
+    "vitest.env": {
+        "EXAMPLES": "true",
+        "GPT_REASONING_ENABLED": "true"
+    },
+    "testExplorer": {
+        "showOnRun": true,
+        "showOutputOnFailure": true,
+        "configPath": ".vitest.config.examples.js"
+    },
+    "vitest.testExplorer": {
+        "showOutputOnFailure": true,
+        "showOutputOnRun": true,
+        "configPath": ".vitest.config.examples.js"
+    },
+    "vitest.testFiles": ["**/*.examples.js"],
+    "vitest.include": ["src/**/*.examples.js"],
+    "vitest.commandLine": "vitest --config .vitest.config.examples.js"
+} 

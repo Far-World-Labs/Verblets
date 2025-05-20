@@ -6,20 +6,21 @@ import { constants as promptConstants } from '../../prompts/index.js';
 const {
   asBool,
   asUndefinedByDefault,
-  contentIsQuestion,
   explainAndSeparate,
   explainAndSeparatePrimitive,
 } = promptConstants;
 
-export default async (text) => {
-  const boolText = `${contentIsQuestion} ${text}
-
+export default async (text, options = {}) => {
+  const systemPrompt = `
 ${explainAndSeparate} ${explainAndSeparatePrimitive}
 
-${asBool} ${asUndefinedByDefault}`;
-
-  const response = await chatGPT(boolText, {
-    modelOptions: { maxTokens: 100 },
+${asBool} ${asUndefinedByDefault}
+`;
+  const response = await chatGPT(text, {
+    modelOptions: {
+      systemPrompt,
+    },
+    ...options,
   });
 
   return toBool(stripResponse(response));

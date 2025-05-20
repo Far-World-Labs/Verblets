@@ -10,10 +10,10 @@ const { expect } = chai;
 
 // eslint-disable-next-line no-underscore-dangle
 const _models = {
-  gpt35Turbo: {
+  gptBase: {
     endpoint: 'v1/chat/completions',
-    name: 'gpt-3.5-turbo-0613',
-    maxTokens: 4097,
+    name: 'gpt-4o',
+    maxTokens: 16384,
     requestTimeout: 40000,
   },
   textDavinci003: {
@@ -24,11 +24,11 @@ const _models = {
   },
 };
 
-if (process.env.CHATGPT_V4_ENABLED) {
-  _models.gpt4 = {
+if (process.env.GPT_REASONING_ENABLED) {
+  _models.gptReasoning = {
     endpoint: 'v1/chat/completions',
-    name: 'gpt-4-0613',
-    maxTokens: 8192,
+    name: 'gpt-4.1-2025-04-14',
+    maxTokens: 16384,
     requestTimeout: 50000,
   };
 }

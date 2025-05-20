@@ -9,6 +9,7 @@ export const asJSON = `Respond with a JSON object or array that parses with JSON
 export const useLineNumber =
   'Include the line number where each check is performed.';
 export const noFalseInformation = 'Do not include false information.';
+export const strictFormat = 'You MUST follow the format as described.';
 export const tryCompleteData =
   'Err towards giving complete data, even if you have to guess.';
 

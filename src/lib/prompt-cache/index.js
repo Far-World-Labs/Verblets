@@ -7,7 +7,15 @@ const variableKeys = ['created', 'id', 'max_tokens', 'usage'];
 
 const sortKeys = (data) => {
   const sortedData = R.sortBy(R.identity, R.keys(data)).reduce((acc, key) => {
-    acc[key] = key === 'messages' ? data[key]?.[0]?.content : data[key];
+    if (key === 'messages') {
+      // Preserve all messages and their roles
+      acc[key] = data[key].map((msg) => ({
+        role: msg.role,
+        content: msg.content,
+      }));
+    } else {
+      acc[key] = data[key];
+    }
     return acc;
   }, {});
 

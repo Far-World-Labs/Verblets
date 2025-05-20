@@ -19,9 +19,13 @@ import { getClient as getRedis } from '../../services/redis/index.js';
 
 const shapeOutputDefault = (result) => {
   // GPT-4
-  if (result.choices[0].message.function_call) {
-    const functionCall = result.choices[0].message.function_call
-    return { name: functionCall.name, arguments: JSON.parse(functionCall.arguments) };
+  if (result.choices[0].message.tool_calls?.length) {
+    const toolCall = result.choices[0].message.tool_calls[0];
+    return {
+      name: toolCall.function.name,
+      arguments: JSON.parse(toolCall.function.arguments),
+      result: result.choices[0].message.tool_calls[0].function,
+    };
   }
   if (result.choices[0].message) {
     return result.choices[0].message.content.trim();
@@ -44,8 +48,8 @@ const onBeforeRequestDefault = ({ debugPrompt, isCached, prompt }) => {
 const onAfterRequestDefault = ({ debugResult, isCached, resultShaped }) => {
   if (
     debugResult ||
-      debugResultGlobally ||
-      (debugResultGloballyIfChanged && !isCached)
+    debugResultGlobally ||
+    (debugResultGloballyIfChanged && !isCached)
   ) {
     console.error(`+++ DEBUG RESULT +++`);
     console.error(resultShaped);
@@ -59,7 +63,6 @@ export const run = async (prompt, options = {}) => {
     debugPrompt,
     debugResult,
     forceQuery,
-    functions,
     modelOptions = {},
     onAfterRequest = onAfterRequestDefault,
     onBeforeRequest = onBeforeRequestDefault,
