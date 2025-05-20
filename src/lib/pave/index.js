@@ -15,16 +15,16 @@ export default (obj, path, value) => {
   const objNew = JSON.parse(JSON.stringify(obj));
   let objMutating = objNew;
 
+  const isNumeric = (str) => /^\d+$/.test(str);
+
   for (let i = 0; i < keys.length; i += 1) {
-    const key = Number.isNaN(parseInt(keys[i], 10))
-      ? keys[i]
-      : parseInt(keys[i], 10);
+    const key = isNumeric(keys[i]) ? parseInt(keys[i], 10) : keys[i];
 
     if (i === keys.length - 1) {
       objMutating[key] = value;
     } else {
       if (!objMutating[key]) {
-        objMutating[key] = Number.isNaN(parseInt(keys[i + 1], 10)) ? {} : [];
+        objMutating[key] = isNumeric(keys[i + 1]) ? [] : {};
       }
       objMutating = objMutating[key];
     }
