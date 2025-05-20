@@ -43,7 +43,7 @@ const visit = async ({
       extremeK: 4,
     },
     codeFeatureDefinitions.map((d) => d.criteria),
-    modelService.getModel('textDavinci003')
+    modelService.getBestAvailableModel()
   );
   const sortCriteria = sortResults.slice(0, 5);
   const features = codeFeatureDefinitions.filter((def) => {
