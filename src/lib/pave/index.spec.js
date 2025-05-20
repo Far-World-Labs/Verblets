@@ -53,6 +53,11 @@ const examples = [
     inputs: { obj: {}, path: 'a', value: 42 },
     want: { result: { a: 42 } },
   },
+  {
+    name: 'Handle numeric-like string keys',
+    inputs: { obj: {}, path: 'a.1b.c', value: 42 },
+    want: { result: { a: { '1b': { c: 42 } } } },
+  },
 ];
 
 describe('pave', () => {
