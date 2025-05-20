@@ -536,37 +536,128 @@ await intent("find suppliers who can deliver custom PCBs with a 2-week turnaroun
   */
   ```
 
-### Voice & Audio
-
-- **transcribe** - Convert speech to text with smart triggers
+- **shorten-text** - Intelligently compress text while preserving meaning
   ```javascript
-  // Listen for specific words in conversation
-  const transcriber = new Transcriber(
-    "emergency",           // Stop when this word is heard
-    5000,                 // Stop after 5s of silence
-    2000                  // Continue 2s after trigger word
-  );
+  // Shorten long content while keeping key information
+  const story = `Once upon a time, in a bustling city called Metropolis, 
+    there lived a young programmer named Ada. She spent her days writing 
+    elegant code and her nights dreaming of artificial intelligence. 
+    One day, while debugging a particularly tricky neural network, 
+    she discovered something extraordinary...`;
 
-  // Start listening
-  transcriber.startRecording();
-  /* During a conversation:
-  Person 1: "I think we should review the deployment plan."
-  Person 2: "Yes, especially the emergency rollback procedure."
-  [transcriber detects "emergency" and keeps listening for 2 more seconds]
-  Person 1: "Good point, we should..."
-  [transcriber stops and returns]:
-  "I think we should review the deployment plan. Yes, especially 
-   the emergency rollback procedure. Good point, we should"
+  const shortened = await shortenText(story, {
+    targetTokenCount: 20,
+    minCharsToRemove: 15
+  });
+  /* Returns:
+     "Once upon a time, in Metropolis, a programmer named Ada 
+      spent her days writing code... discovered something extraordinary"
   */
 
-  // Get the transcribed text
-  const text = transcriber.getText();
+  // Preserve structure while reducing size
+  const documentation = `# API Reference
+    ## Authentication
+    All requests must include an API key in the header.
+    The key should be prefixed with 'Bearer '.
+    
+    ## Rate Limiting
+    Requests are limited to 100 per minute.
+    Exceeding this will result in a 429 response.
+    
+    ## Endpoints
+    GET /users - Retrieve user list
+    POST /users - Create new user
+    DELETE /users/{id} - Remove user`;
 
-  // Great for:
-  // - Meeting minutes with focus on key topics
-  // - Safety monitoring for trigger words
-  // - Voice-activated documentation
-  // - Automated support call transcription
+  const compact = await shortenText(documentation, {
+    targetTokenCount: 30,
+    minCharsToRemove: 20
+  });
+  /* Returns:
+     "# API Reference
+      ## Authentication
+      All requests need API key... 'Bearer '
+      
+      ## Rate Limiting
+      100 per minute... 429 response
+      
+      ## Endpoints
+      GET /users...DELETE /users/{id}"
+  */
+  ```
+
+- **search-best-first** - Intelligently explore solution spaces
+  ```javascript
+  // Find the best recipe adjustments when ingredients are missing
+  const search = new BestFirstSearch({
+    initialState: {
+      recipe: "Classic Tiramisu",
+      missing: ["mascarpone cheese", "ladyfingers"],
+      available: ["cream cheese", "pound cake", "whipped cream"]
+    },
+    goalTest: state => state.substitutions.complete && state.flavor.preserved,
+    heuristic: state => state.flavor.similarity
+  });
+
+  const path = await search.findPath();
+  /* Returns sequence of steps:
+  [
+    {
+      action: "substitute mascarpone",
+      details: "Mix 8oz cream cheese with 1/4 cup whipped cream",
+      confidence: 0.85
+    },
+    {
+      action: "substitute ladyfingers",
+      details: "Slice pound cake, toast until crisp, soak in coffee",
+      confidence: 0.75
+    },
+    {
+      action: "adjust ratios",
+      details: "Increase coffee soak time to 45 seconds for pound cake",
+      confidence: 0.9
+    }
+  ]
+  */
+
+  // Or find the optimal way to refactor complex code
+  const refactorPath = await new BestFirstSearch({
+    initialState: {
+      file: "src/legacy-parser.js",
+      metrics: {
+        complexity: 85,
+        coverage: 0.4,
+        maintainability: "D"
+      }
+    },
+    goalTest: state => 
+      state.metrics.complexity < 30 && 
+      state.metrics.coverage > 0.8 &&
+      state.metrics.maintainability === "A",
+    heuristic: state => 
+      (1 / state.metrics.complexity) * 
+      state.metrics.coverage *
+      (state.metrics.maintainability === "A" ? 1 : 0.5)
+  }).findPath();
+  /* Returns optimal refactoring sequence:
+  [
+    {
+      action: "extract function",
+      target: "parseNestedBlocks()",
+      benefit: "Reduces complexity by 40%"
+    },
+    {
+      action: "add unit tests",
+      coverage: ["error handling", "edge cases"],
+      benefit: "Coverage increases to 85%"
+    },
+    {
+      action: "implement strategy pattern",
+      components: ["BlockParser", "InlineParser"],
+      benefit: "Maintainability improves to grade A"
+    }
+  ]
+  */
   ```
 
 ## Contributing
