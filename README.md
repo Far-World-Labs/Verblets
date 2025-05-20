@@ -91,39 +91,6 @@ await schemaOrg("WWDC 2024");
     }
   ); // Returns: 'red'
 
-  // Handle complex descriptions
-  const mood = await enum(
-    `How's Spot feeling today?
-     <notes>
-     - Wagging tail non-stop
-     - Brought his favorite toy
-     - Finished his breakfast in record time
-     - Keeps jumping around the house
-     </notes>`,
-    {
-      happy: 1,
-      neutral: 1,
-      anxious: 1,
-      tired: 1
-    }
-  ); // Returns: 'happy'
-
-  // Works with domain-specific options
-  const nextStep = await enum(
-    `Status of patient's fracture:
-     - X-ray shows clean break
-     - Moderate swelling
-     - Patient reports 7/10 pain
-     - No nerve damage detected`,
-    {
-      surgery: 1,
-      cast: 1,
-      splint: 1,
-      'physical therapy': 1
-    }
-  ); // Returns: 'cast'
-  ```
-
 - **number-with-units** - Extract, convert, and standardize measurements
   ```javascript
   // Handles any measurement in any format
@@ -138,24 +105,6 @@ await schemaOrg("WWDC 2024");
     }
   }
   */
-
-  // Works with complex or colloquial descriptions
-  const height = await numberWithUnits("twice the height of the Empire State Building");
-  /* Returns:
-  {
-    "value": 828.8,
-    "unit": "meters",
-    "original": {
-      "value": 2,
-      "unit": "empire_state_heights",
-      "reference": {
-        "value": 414.4,
-        "unit": "meters"
-      }
-    }
-  }
-  */
-  ```
 
 - **schema.org** - Structure data using universal formats, enabling radical system interop.
   ```javascript
@@ -173,18 +122,6 @@ await schemaOrg("WWDC 2024");
     "publicTransport": {...}
   }
   */
-
-  const event = await schemaOrg("PyConJP 2024", "Event");
-  /* Returns:
-  {
-    "@type": "Conference",
-    "name": "PyConJP 2024",
-    "startDate": "2024-10-12",
-    "location": {...},
-    "offers": {...}
-  }
-  */
-  ```
 
 - **to-object** - Transform unstructured text into structured data
   ```javascript
@@ -234,24 +171,6 @@ await schemaOrg("WWDC 2024");
   const isCompatible = await bool(
     `Is Python ${versionA} backwards compatible with Python ${versionB} code?`
   ); // Returns: false
-
-  // Check complex conditions
-  const shouldScale = await bool(
-    `Should we scale our API cluster?
-     <metrics>
-     CPU: 85% sustained
-     Memory: 70% usage
-     Response times: p95 increasing
-     Error rate: 0.1%
-     </metrics>`
-  ); // Returns: true
-
-  // Validate against requirements
-  const meetsSpec = await bool(
-    `Does this resistor meet our specs?
-     Required: 330Ω ±1%, max 1/4W
-     Actual: 331Ω ±0.1%, 1/8W`
-  ); // Returns: true
   ```
 
 - **number** - Extract numerical values from natural language
@@ -290,43 +209,6 @@ await schemaOrg("WWDC 2024");
   //   - Carbon Rim (variants: tubeless, clincher)
   //   - Spokes: DT Swiss Aerolite
   // ...continues with full component breakdown
-  ```
-
-- **test-advice** - Get comprehensive testing and code quality insights
-  ```javascript
-  // Get deep analysis of your code's test coverage and quality
-  const insights = await testAdvice("src/payment-processor.js");
-  /* Returns array of findings across multiple dimensions:
-  [
-    {
-      "name": "Boundary Testing",
-      "expected": "Handle zero-amount transactions",
-      "saw": "No validation for $0.00 payments in processPayment()",
-      "isSuccess": false
-    },
-    {
-      "name": "Success Scenarios",
-      "expected": "Processes standard credit card payment",
-      "saw": "Correctly handles Visa/MC format: line 47 validateCard()",
-      "isSuccess": true
-    },
-    {
-      "name": "Clean Code",
-      "expected": "Single responsibility in transaction logging",
-      "saw": "logPayment() mixing business logic with logging: line 92",
-      "isSuccess": false
-    },
-    // ... analyzes across 8 dimensions:
-    // - Boundary cases
-    // - Success scenarios
-    // - Failure modes
-    // - Potential defects
-    // - Best practices
-    // - Clean code principles
-    // - Code quality
-    // - Refactoring opportunities
-  ]
-  */
   ```
 
 - **summary-map** - Intelligently summarize mixed content within token budgets
@@ -382,51 +264,6 @@ await schemaOrg("WWDC 2024");
   */
   ```
 
-- **scan-js** - Analyze code for quality and maintainability
-  ```javascript
-  // Analyze your codebase for maintainability
-  const analysis = await scanJs({
-    entry: "src/app.js",
-    features: "maintainability"
-  });
-  /* Returns analysis of each function:
-  {
-    "src/app.js:::handlePayment": {
-      "complexity": "low",
-      "documentation": "well-documented",
-      "sideEffects": "isolated to database calls",
-      "errorHandling": "comprehensive",
-      "testability": "high"
-    },
-    "src/app.js:::validateInput": {
-      "complexity": "medium",
-      "documentation": "needs improvement",
-      "sideEffects": "pure function",
-      "errorHandling": "basic validation only",
-      "testability": "high"
-    }
-    // ... continues for all functions ...
-  }
-  */
-
-  // Focus on specific quality aspects
-  const security = await scanJs({
-    entry: "src/auth/",
-    features: "security"
-  });
-  /* Returns security-focused analysis:
-  {
-    "src/auth/login.js:::hashPassword": {
-      "inputValidation": "sanitizes all inputs",
-      "cryptography": "uses current best practices",
-      "dataExposure": "no sensitive data in logs",
-      "authentication": "implements rate limiting"
-    }
-    // ... continues for all security-relevant functions ...
-  }
-  */
-  ```
-
 ### Operations
 
 - **sort** - Sort by any describable criteria
@@ -476,24 +313,6 @@ await schemaOrg("WWDC 2024");
       "destination": "Tokyo",
       "date": "next Friday",
       "class": "business"
-    }
-  }
-  */
-
-  // And can find songs from lyrics
-  const songRequest = await intent({
-    text: 'Find that song that goes "I just gotta tell you how I\'m feeling"',
-    operations
-  });
-  /* Returns:
-  {
-    "queryText": "Find that song that goes \"I just gotta tell you how I'm feeling\"",
-    "intent": {
-      "operation": "find-song",
-      "displayName": "Find Song"
-    },
-    "parameters": {
-      "lyrics": "I just gotta tell you how I'm feeling"
     }
   }
   */
@@ -556,25 +375,7 @@ await schemaOrg("WWDC 2024");
 
 - **questions** - Explore topics through intelligent question generation
   ```javascript
-  // Understand a complex topic through guided questions
-  const questions = await questions(
-    "What's going on with my sourdough starter?"
-  );
-  /* Returns an array of relevant questions to explore:
-  [
-    "What color is your sourdough starter currently?",
-    "When was the last time you fed it?",
-    "What's the room temperature where you keep it?",
-    "Do you see any bubbles on the surface?",
-    "What flour are you using for feeding?",
-    "How does it smell - vinegary, fruity, or off?",
-    "What's the consistency - thick, watery, or just right?",
-    "Are you using chlorinated tap water?",
-    // ... continues with increasingly specific questions ...
-  ]
-  */
 
-  // Investigate system issues methodically
   const investigation = await questions(
     "Why isn't my houseplant thriving?",
     {
@@ -717,6 +518,88 @@ await schemaOrg("WWDC 2024");
       benefit: "Maintainability improves to grade A"
     }
   ]
+  */
+  ```
+
+- **test-advice** - Get comprehensive testing and code quality insights
+  ```javascript
+  // Get deep analysis of your code's test coverage and quality
+  const insights = await testAdvice("src/payment-processor.js");
+  /* Returns array of findings across multiple dimensions:
+  [
+    {
+      "name": "Boundary Testing",
+      "expected": "Handle zero-amount transactions",
+      "saw": "No validation for $0.00 payments in processPayment()",
+      "isSuccess": false
+    },
+    {
+      "name": "Success Scenarios",
+      "expected": "Processes standard credit card payment",
+      "saw": "Correctly handles Visa/MC format: line 47 validateCard()",
+      "isSuccess": true
+    },
+    {
+      "name": "Clean Code",
+      "expected": "Single responsibility in transaction logging",
+      "saw": "logPayment() mixing business logic with logging: line 92",
+      "isSuccess": false
+    },
+    // ... analyzes across 8 dimensions:
+    // - Boundary cases
+    // - Success scenarios
+    // - Failure modes
+    // - Potential defects
+    // - Best practices
+    // - Clean code principles
+    // - Code quality
+    // - Refactoring opportunities
+  ]
+  */
+  ```
+
+- **scan-js** - Analyze code for quality and maintainability
+  ```javascript
+  // Analyze your codebase for maintainability
+  const analysis = await scanJs({
+    entry: "src/app.js",
+    features: "maintainability"
+  });
+  /* Returns analysis of each function:
+  {
+    "src/app.js:::handlePayment": {
+      "complexity": "low",
+      "documentation": "well-documented",
+      "sideEffects": "isolated to database calls",
+      "errorHandling": "comprehensive",
+      "testability": "high"
+    },
+    "src/app.js:::validateInput": {
+      "complexity": "medium",
+      "documentation": "needs improvement",
+      "sideEffects": "pure function",
+      "errorHandling": "basic validation only",
+      "testability": "high"
+    }
+    // ... continues for all functions ...
+  }
+  */
+
+  // Focus on specific quality aspects
+  const security = await scanJs({
+    entry: "src/auth/",
+    features: "security"
+  });
+  /* Returns security-focused analysis:
+  {
+    "src/auth/login.js:::hashPassword": {
+      "inputValidation": "sanitizes all inputs",
+      "cryptography": "uses current best practices",
+      "dataExposure": "no sensitive data in logs",
+      "authentication": "implements rate limiting"
+    }
+    // ... continues for all security-relevant functions ...
+  }
   */
   ```
 
