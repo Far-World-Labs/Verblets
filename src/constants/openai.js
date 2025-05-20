@@ -16,12 +16,6 @@ const _models = {
     maxTokens: 16384,
     requestTimeout: 40000,
   },
-  textDavinci003: {
-    endpoint: 'v1/completions',
-    name: 'text-davinci-003',
-    maxTokens: 4097,
-    requestTimeout: 15000,
-  },
 };
 
 if (process.env.GPT_REASONING_ENABLED) {
