@@ -33,7 +33,10 @@ if (process.env.GPT_REASONING_ENABLED) {
   };
 }
 
-expect(process.env.OPENAI_API_KEY).to.exist;
+// Allow tests to run without requiring an API key
+if (process.env.NODE_ENV !== 'test') {
+  expect(process.env.OPENAI_API_KEY).to.exist;
+}
 
 export const apiKey = process.env.OPENAI_API_KEY;
 
