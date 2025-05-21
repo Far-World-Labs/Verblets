@@ -12,13 +12,9 @@ export default (
 ) => {
   const toneModifiers = `Tone: ${tone.join(', ')}`;
   const vocabularyModifiers = `Vocabulary: ${vocabulary.join(', ')}`;
-  const sentenceStructureModifiers = `Sentence structure: ${sentenceStructure.join(
-    ', '
-  )}`;
+  const sentenceStructureModifiers = `Sentence structure: ${sentenceStructure.join(', ')}`;
   const pointOfViewModifiers = `Point of view: ${pointOfView.join(', ')}`;
-  const lengthModifier = `Use between ${minWords} and ${
-    maxWords ?? 'any number'
-  } of words`;
+  const lengthModifier = `Use between ${minWords} and ${maxWords ?? 'any number'} of words`;
 
   let noiseModifier = '';
   if (noise > 0.5) {

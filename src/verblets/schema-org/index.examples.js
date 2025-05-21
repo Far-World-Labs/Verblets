@@ -7,9 +7,7 @@ import schemaOrg from './index.js';
 
 const resultSchemaWith = (type) => async () => {
   return JSON.parse(
-    await fs.readFile(
-      `./src/json-schemas/schema-dot-org-${type.toLowerCase()}.json`
-    )
+    await fs.readFile(`./src/json-schemas/schema-dot-org-${type.toLowerCase()}.json`)
   );
 };
 
@@ -30,10 +28,7 @@ describe('Schema.org verblet', () => {
     it(
       `${example.inputs.text}${typeDisplay}`,
       async () => {
-        const result = await schemaOrg(
-          example.inputs.text,
-          example.inputs.type
-        );
+        const result = await schemaOrg(example.inputs.text, example.inputs.type);
 
         if (example.want.resultSchema) {
           const schema = await example.want.resultSchema();

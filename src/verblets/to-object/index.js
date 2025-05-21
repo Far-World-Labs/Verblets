@@ -4,13 +4,9 @@ import { debugToObject } from '../../constants/common.js';
 import { retryJSONParse } from '../../constants/messages.js';
 import chatGPT from '../../lib/chatgpt/index.js';
 import stripResponse from '../../lib/strip-response/index.js';
-import {
-  constants as promptConstants,
-  wrapVariable,
-} from '../../prompts/index.js';
+import { constants as promptConstants, wrapVariable } from '../../prompts/index.js';
 
-const { contentIsSchema, contentToJSON, onlyJSON, shapeAsJSON } =
-  promptConstants;
+const { contentIsSchema, contentToJSON, onlyJSON, shapeAsJSON } = promptConstants;
 
 class ValidationError extends Error {
   constructor(message, details) {
@@ -83,7 +79,7 @@ export default async (text, schema) => {
     prompt = buildJsonPrompt(response, schema, errorDetails);
     response = await chatGPT(prompt, {
       modelOptions: {
-        modelName: 'gpt35Turbo',
+        modelName: 'publicBase',
       },
     });
     result = JSON.parse(stripResponse(response));
@@ -116,7 +112,7 @@ export default async (text, schema) => {
     prompt = buildJsonPrompt(response, schema, errorDetails);
     response = await chatGPT(prompt, {
       modelOptions: {
-        modelName: 'gpt35Turbo',
+        modelName: 'publicBase',
       },
     });
     result = JSON.parse(stripResponse(response));

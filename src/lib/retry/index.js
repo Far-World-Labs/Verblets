@@ -27,9 +27,7 @@ export default async (
         const variables = [`retry: ${retry}`].join(', ');
         const startTag = `${retry > 0 ? 'retry' : 'started'}`;
         const startVariablesDisplay = `${retry > 0 ? ` (${variables})` : ''}`;
-        console.error(
-          `Run ${labelDisplay} [${startTag}]${startVariablesDisplay}`
-        );
+        console.error(`Run ${labelDisplay} [${startTag}]${startVariablesDisplay}`);
       }
 
       const result = await fn();
@@ -42,8 +40,7 @@ export default async (
     } catch (error) {
       lastError = error;
 
-      const isRetry =
-        retryOnAll || (error.response && error.response.status === 429);
+      const isRetry = retryOnAll || (error.response && error.response.status === 429);
 
       if (isRetry) {
         await sleep(retryDelay * retry);

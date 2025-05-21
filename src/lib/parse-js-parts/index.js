@@ -44,9 +44,7 @@ const scanFile = (file, code) => {
           return { ...s.imported }.name; // also has local name
         });
       const source = importNode.source.value;
-      const importKey = source.startsWith('.')
-        ? convertImport(file, source)
-        : source;
+      const importKey = source.startsWith('.') ? convertImport(file, source) : source;
       importsMap[importKey] = {
         start: importNode.start,
         end: importNode.end,
@@ -60,9 +58,7 @@ const scanFile = (file, code) => {
       if (expNode.source) {
         // Handle re-exports
         const source = expNode.source.value;
-        const importKey = source.startsWith('.')
-          ? convertImport(file, source)
-          : source;
+        const importKey = source.startsWith('.') ? convertImport(file, source) : source;
 
         // Named exports
         if (expNode.specifiers) {
@@ -128,9 +124,7 @@ const scanFile = (file, code) => {
     ExportAllDeclaration(expNode) {
       if (expNode.source) {
         const source = expNode.source.value;
-        const importKey = source.startsWith('.')
-          ? convertImport(file, source)
-          : source;
+        const importKey = source.startsWith('.') ? convertImport(file, source) : source;
         exportsMap[expNode.exported.name] = {
           start: expNode.start,
           end: expNode.end,
@@ -195,9 +189,7 @@ const scanFile = (file, code) => {
       });
 
       arrowDeclarations.forEach((arrowFnNode) => {
-        functionsSeen[
-          `${arrowFnNode.init.start}:${arrowFnNode.init.end}`
-        ] = true;
+        functionsSeen[`${arrowFnNode.init.start}:${arrowFnNode.init.end}`] = true;
 
         functionsMap[`ArrowFunctionExpression:${arrowFnNode.id.name}`] = {
           start: arrowFnNode.start,
@@ -283,13 +275,9 @@ const scanFile = (file, code) => {
       const className = node.id.name;
       node.body.body.forEach((classElement) => {
         if (classElement.type === 'MethodDefinition') {
-          functionsSeen[
-            `${classElement.value.start}:${classElement.value.end}`
-          ] = true;
+          functionsSeen[`${classElement.value.start}:${classElement.value.end}`] = true;
 
-          functionsMap[
-            `MethodDefinition:${className}.${classElement.key.name}`
-          ] = {
+          functionsMap[`MethodDefinition:${className}.${classElement.key.name}`] = {
             start: node.start,
             end: node.end,
             className: className,

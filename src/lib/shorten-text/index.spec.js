@@ -59,9 +59,9 @@ describe('Shorten text', () => {
         expect(example.want.end.test(got)).toBe(true);
       }
       if (example.want.maxLength) {
-        expect(
-          modelService.getBestAvailableModel().toTokens(got).length
-        ).toBeLessThanOrEqual(example.want.maxLength);
+        expect(modelService.getBestPublicModel().toTokens(got).length).toBeLessThanOrEqual(
+          example.want.maxLength
+        );
       }
     });
   });

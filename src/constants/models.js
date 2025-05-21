@@ -9,27 +9,46 @@ import chai from 'chai';
 const { expect } = chai;
 
 // eslint-disable-next-line no-underscore-dangle
-const _models = {
-  gptBase: {
+const _models = {};
+
+if (process.env.OPENAI_API_KEY) {
+  _models.publicBase = {
     endpoint: 'v1/chat/completions',
     name: 'gpt-4o',
     maxTokens: 16384,
     requestTimeout: 40000,
-  },
-  textDavinci003: {
-    endpoint: 'v1/completions',
-    name: 'text-davinci-003',
-    maxTokens: 4097,
-    requestTimeout: 15000,
-  },
-};
+    apiKey: process.env.OPENAI_API_KEY,
+    apiUrl: 'https://api.openai.com/',
+  };
+}
 
 if (process.env.GPT_REASONING_ENABLED) {
-  _models.gptReasoning = {
+  _models.publicReasoning = {
     endpoint: 'v1/chat/completions',
     name: 'gpt-4.1-2025-04-14',
     maxTokens: 16384,
     requestTimeout: 50000,
+    apiKey: process.env.OPENAI_API_KEY,
+    apiUrl: 'https://api.openai.com/',
+  };
+}
+
+if (process.env.OPENWEBUI_API_URL && process.env.OPENWEBUI_API_KEY) {
+  _models.privateBase = {
+    name: 'llama3.2:latest',
+    endpoint: 'api/chat/completions',
+    maxTokens: 4096,
+    requestTimeout: 120000,
+    apiUrl: process.env.OPENWEBUI_API_URL.endsWith('/')
+      ? process.env.OPENWEBUI_API_URL
+      : `${process.env.OPENWEBUI_API_URL}/`,
+    apiKey: process.env.OPENWEBUI_API_KEY,
+    systemPrompt: `You are a helpful AI assistant powered by Llama 3. 
+                  You aim to be direct, accurate, and helpful.
+                  If you're not sure about something, say so.`,
+    modelOptions: {
+      stop: ['</s>'],
+    },
   };
 }
 
@@ -38,22 +57,16 @@ if (process.env.NODE_ENV !== 'test') {
   expect(process.env.OPENAI_API_KEY).to.exist;
 }
 
-export const apiKey = process.env.OPENAI_API_KEY;
-
-export const apiUrl = 'https://api.openai.com/';
-
 const secondsInDay = 60 * 60 * 24;
 export const cacheTTL = process.env.CHATGPT_CACHE_TTL ?? secondsInDay;
 
 export const debugPromptGlobally = process.env.CHATGPT_DEBUG_REQUEST ?? false;
 
-export const debugPromptGloballyIfChanged =
-  process.env.CHATGPT_DEBUG_REQUEST_IF_CHANGED ?? false;
+export const debugPromptGloballyIfChanged = process.env.CHATGPT_DEBUG_REQUEST_IF_CHANGED ?? false;
 
 export const debugResultGlobally = process.env.CHATGPT_DEBUG_RESPONSE ?? false;
 
-export const debugResultGloballyIfChanged =
-  process.env.CHATGPT_DEBUG_RESPONSE_IF_CHANGED ?? false;
+export const debugResultGloballyIfChanged = process.env.CHATGPT_DEBUG_RESPONSE_IF_CHANGED ?? false;
 
 export const frequencyPenalty = process.env.CHATGPT_FREQUENCY_PENALTY ?? 0;
 

@@ -28,9 +28,7 @@ describe('Number verblet', () => {
           expect(result).toBeGreaterThanOrEqual(example.want.resultRange[0]);
           expect(result).toBeLessThanOrEqual(example.want.resultRange[1]);
         } else {
-          expect(await number(example.inputs.text)).toStrictEqual(
-            example.want.result
-          );
+          expect(await number(example.inputs.text)).toStrictEqual(example.want.result);
         }
       },
       longTestTimeout

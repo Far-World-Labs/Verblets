@@ -14,10 +14,7 @@ import toObject from '../../verblets/to-object/index.js';
 
 const codeFeatureDefinitions = JSON.parse(
   await fs.readFile(
-    new URL(
-      '../../lib/search-js-files/code-features-property-definitions.json',
-      import.meta.url
-    ),
+    new URL('../../lib/search-js-files/code-features-property-definitions.json', import.meta.url),
     'utf-8'
   )
 );
@@ -71,7 +68,7 @@ const visit = async ({
   await retry(async () => {
     const results = await chatGPT(visitPrompt, {
       modelOptions: {
-        modelName: 'gpt35Turbo',
+        modelName: 'publicBase',
       },
     });
 
@@ -87,9 +84,9 @@ const visit = async ({
     const idDisplay = (state.pathAliases[id] ?? id).slice(-50).padStart(50);
 
     console.error(
-      `${`${state.nodesFound}`.padEnd(3, ' ')} ${idDisplay}: ${organizeResult(
-        resultParsed
-      ).join(', ')}`
+      `${`${state.nodesFound}`.padEnd(3, ' ')} ${idDisplay}: ${organizeResult(resultParsed).join(
+        ', '
+      )}`
     );
   });
 

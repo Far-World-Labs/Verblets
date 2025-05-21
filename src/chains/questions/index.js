@@ -40,10 +40,7 @@ const shouldStopNull = (result, resultsAll, resultsNew, attempts = 0) => {
   return resultsAll.length > 50 || attempts > 5;
 };
 
-const generateQuestions = async function* generateQuestionsGenerator(
-  text,
-  options = {}
-) {
+const generateQuestions = async function* generateQuestionsGenerator(text, options = {}) {
   const resultsAll = [];
   const resultsAllMap = {};
   const drilldownResults = [];
@@ -54,7 +51,7 @@ const generateQuestions = async function* generateQuestionsGenerator(
     searchBreadth = 0.5,
     shouldSkip = shouldSkipNull,
     shouldStop = shouldStopNull,
-    model = modelService.getBestAvailableModel(),
+    model = modelService.getBestPublicModel(),
   } = options;
 
   let attempts = 0;
@@ -63,10 +60,9 @@ const generateQuestions = async function* generateQuestionsGenerator(
       const choices = resultsAll.filter((item) => {
         return !drilldownResults.includes(item);
       });
-      const pickInterestingQuestionPrompt = pickInterestingQuestion(
-        textSelected,
-        { existing: choices }
-      );
+      const pickInterestingQuestionPrompt = pickInterestingQuestion(textSelected, {
+        existing: choices,
+      });
       textSelected = await chatGPT(pickInterestingQuestionPrompt);
       drilldownResults.push(textSelected);
     }
@@ -100,9 +96,7 @@ const generateQuestions = async function* generateQuestionsGenerator(
       const randomIndex = Math.floor(Math.random() * resultsNew.length);
       textSelected = resultsNew[randomIndex];
     }
-    const resultsNewUnique = resultsNew.filter(
-      (item) => !(item in resultsAllMap)
-    );
+    const resultsNewUnique = resultsNew.filter((item) => !(item in resultsAllMap));
 
     attempts += 1;
 

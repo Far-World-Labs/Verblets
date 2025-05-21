@@ -1,17 +1,14 @@
 // Basic
-export const asUndefinedByDefault =
-  'If you are unsure, say "undefined" as your answer.';
+export const asUndefinedByDefault = 'If you are unsure, say "undefined" as your answer.';
 export const asBool = `Answer the question either with "true" or "false" as your answer.`;
 export const asNumber = `Answer the question with a number that could be parsed by the JS Number constructor. Do not include formatting, units, digit group separators, or spelled-out numbers in your answer.`;
 export const asJSON = `Respond with a JSON object or array that parses with JSON.parse, with no wrapping code block, and no wrapping XML.`;
 
 // Response steering
-export const useLineNumber =
-  'Include the line number where each check is performed.';
+export const useLineNumber = 'Include the line number where each check is performed.';
 export const noFalseInformation = 'Do not include false information.';
 export const strictFormat = 'You MUST follow the format as described.';
-export const tryCompleteData =
-  'Err towards giving complete data, even if you have to guess.';
+export const tryCompleteData = 'Err towards giving complete data, even if you have to guess.';
 
 // JSON Output
 export const onlyJSON =
@@ -40,15 +37,12 @@ export const contentToJSON = 'Contents to convert to JSON:';
 export const contentIsExample = 'Use this as example output only:';
 export const contentIsChoices = 'Choose only from the following:';
 export const contentIsTransformationSource = 'Transform the following object:';
-export const contentListCriteria =
-  'Create a list of items with the following description:';
-export const contentListItemCriteria =
-  'Make sure each item meets the following conditions:';
+export const contentListCriteria = 'Create a list of items with the following description:';
+export const contentListItemCriteria = 'Make sure each item meets the following conditions:';
 export const contentListToOmit = 'Do not use any of the following items:';
 export const contentIsExampleObject =
   'The returned object must look like the following, including all the same properties:';
-export const contentIsSchema =
-  'Make it conform exactly to the following schema:';
+export const contentIsSchema = 'Make it conform exactly to the following schema:';
 export const contentHasIntent = 'What is the intent of the following message:';
 export const contentIsSortCriteria = 'Sort the following items by:';
 
@@ -76,10 +70,8 @@ export const summarizeRequest =
   'Please summarise what I am asking for you before you begin your answer.';
 
 // Analytical
-export const considerProsCons =
-  'Consider both pros and cons before arriving at a conclusion.';
-export const provideExamples =
-  'Provide specific examples to illustrate your point.';
+export const considerProsCons = 'Consider both pros and cons before arriving at a conclusion.';
+export const provideExamples = 'Provide specific examples to illustrate your point.';
 export const explainReasoning = 'Explain the reasoning behind your answer.';
 export const alternativeSolutions =
   'If there are any alternative solutions or perspectives, please share them.';
@@ -90,12 +82,9 @@ export const alternativeInterpretations = 'How else could this be interpreted?';
 // Evidence-Based
 export const evidenceSupportsView = 'What evidence supports your view?';
 export const expertResponse = 'How would an expert in this field respond?';
-export const limitationsOfApproach =
-  'What are the limitations of your approach?';
+export const limitationsOfApproach = 'What are the limitations of your approach?';
 export const missingInformation = 'What information is still missing?';
 export const evaluateDifferingViews = 'How would you evaluate differing views?';
 export const confidenceInResponse = 'How confident are you in your response?';
-export const lessKnowledgeResponse =
-  'How would you answer this if you knew less about the topic?';
-export const analogyForUnderstanding =
-  'Come up with an analogy to make this easier to understand.';
+export const lessKnowledgeResponse = 'How would you answer this if you knew less about the topic?';
+export const analogyForUnderstanding = 'Come up with an analogy to make this easier to understand.';

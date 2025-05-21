@@ -19,7 +19,7 @@ ${data.example.code}`;
 };
 
 const variableTokens = 100;
-const promptTokens = modelService.getBestAvailableModel().toTokens(promptFunction).length;
+const promptTokens = modelService.getBestPublicModel().toTokens(promptFunction).length;
 const solutionTokens = 200;
 const maxTokens = promptTokens + variableTokens + solutionTokens
 

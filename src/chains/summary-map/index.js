@@ -3,10 +3,7 @@
 import chatGPT from '../../lib/chatgpt/index.js';
 import pave from '../../lib/pave/index.js';
 import shortenText from '../../lib/shorten-text/index.js';
-import {
-  summarize as basicSummarize,
-  tokenBudget,
-} from '../../prompts/index.js';
+import { summarize as basicSummarize, tokenBudget } from '../../prompts/index.js';
 import modelService from '../../services/llm-model/index.js';
 
 const summarize = ({ budget, type, value, fixes = [] }) => {
@@ -34,7 +31,7 @@ const summarize = ({ budget, type, value, fixes = [] }) => {
 export default class SummaryMap extends Map {
   constructor({
     maxTokensPerValue,
-    model = modelService.getBestAvailableModel(),
+    model = modelService.getBestPublicModel(),
     promptText,
     targetTokens,
     // used with promptText, when targetTokens isn't supplied
@@ -52,13 +49,9 @@ export default class SummaryMap extends Map {
       this.promptTokens = model.toTokens(promptText).length;
       const maxModelTokens = model.maxTokens;
       const remainingTokens = maxModelTokens - this.promptTokens;
-      this.targetTokens = Math.floor(
-        remainingTokens - remainingTokens * targetTokensTotalRatio
-      );
+      this.targetTokens = Math.floor(remainingTokens - remainingTokens * targetTokensTotalRatio);
     } else {
-      throw new Error(
-        'Either "promptText" and "model" or "targetTokens" must be provided.'
-      );
+      throw new Error('Either "promptText" and "model" or "targetTokens" must be provided.');
     }
   }
 
@@ -68,16 +61,12 @@ export default class SummaryMap extends Map {
       .reduce((sum, valueObject) => {
         return sum + (valueObject.weight ?? 1) * valueObject.value.length;
       }, 0);
-    const sortedEntries = [...this.data.entries()].sort(
-      (a, b) => a[1].weight - b[1].weight
-    );
+    const sortedEntries = [...this.data.entries()].sort((a, b) => a[1].weight - b[1].weight);
 
     const budgets = [];
     for (const [entryKey, valueObject] of sortedEntries) {
       const sizeWeight = valueObject.value.length * (valueObject.weight ?? 1);
-      const budget = Math.floor(
-        (sizeWeight / totalSizeWeight) * this.targetTokens
-      );
+      const budget = Math.floor((sizeWeight / totalSizeWeight) * this.targetTokens);
 
       if (valueObject.weight) {
         budgets.push({ key: entryKey, budget });
@@ -189,10 +178,7 @@ export default class SummaryMap extends Map {
   }
 
   pavedSummaryResultStale() {
-    return Array.from(this.entriesStale()).reduce(
-      (acc, [k, v]) => pave(acc, k, v),
-      {}
-    );
+    return Array.from(this.entriesStale()).reduce((acc, [k, v]) => pave(acc, k, v), {});
   }
 
   pavedSummaryResult() {

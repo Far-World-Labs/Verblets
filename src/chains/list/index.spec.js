@@ -5,9 +5,7 @@ import toObject from '../../verblets/to-object/index.js';
 import list from './index.js';
 
 const loadSchema = async () => {
-  const file = (
-    await fs.readFile('./src/json-schemas/cars-test.json')
-  ).toString();
+  const file = (await fs.readFile('./src/json-schemas/cars-test.json')).toString();
 
   return toObject(file);
 };
@@ -53,15 +51,11 @@ describe('List verblet', () => {
       });
 
       if (example.want.listContains) {
-        expect(
-          result.some((item) => example.want.listContains.test(item))
-        ).equals(true);
+        expect(result.some((item) => example.want.listContains.test(item))).equals(true);
       }
 
       if (example.want.listModelContains) {
-        expect(
-          result.some((item) => example.want.listModelContains.test(item.model))
-        ).equals(true);
+        expect(result.some((item) => example.want.listModelContains.test(item.model))).equals(true);
       }
     });
   });

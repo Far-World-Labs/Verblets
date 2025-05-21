@@ -29,11 +29,7 @@ const sanitizeList = (list) => {
   return [...new Set(list.filter((item) => item.trim() !== ''))];
 };
 
-const sort = async (
-  options,
-  listInitial,
-  model = modelService.getBestAvailableModel()
-) => {
+const sort = async (options, listInitial, model = modelService.getBestPublicModel()) => {
   const {
     by,
     chunkSize = defaultSortChunkSize,
@@ -78,15 +74,9 @@ const sort = async (
       const batchTop = batchSorted.slice(0, extremeK);
       const batchBottom = batchSorted.slice(-extremeK);
 
-      discardedTop = [
-        ...newTop.filter((x) => !batchTop.includes(x)),
-        ...discardedTop,
-      ];
+      discardedTop = [...newTop.filter((x) => !batchTop.includes(x)), ...discardedTop];
 
-      discardedBottom = [
-        ...discardedBottom,
-        ...newBottom.filter((x) => !batchBottom.includes(x)),
-      ];
+      discardedBottom = [...discardedBottom, ...newBottom.filter((x) => !batchBottom.includes(x))];
 
       newTop = batchTop;
       newBottom = batchBottom;

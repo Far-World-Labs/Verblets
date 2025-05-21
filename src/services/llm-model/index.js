@@ -7,7 +7,7 @@ import {
   presencePenalty as presencePenaltyConfig,
   temperature as temperatureConfig,
   topP as topPConfig,
-} from '../../constants/openai.js';
+} from '../../constants/models.js';
 
 class ModelService {
   constructor() {
@@ -23,36 +23,43 @@ class ModelService {
       {}
     );
 
-    // Default to gptReasoning if enabled, otherwise fall back to gptBase
-    this.bestAvailableModel =
+    // Default to publicReasoning if enabled, otherwise fall back to gptBase
+    this.bestPublicModel =
       process.env.GPT_REASONING_ENABLED === 'true'
-        ? this.models.gptReasoning
-        : this.models.gptBase;
+        ? this.models.publicReasoning
+        : this.models.publicBase;
 
     if (process.env.TEST === 'true') {
       // Use the same model selection logic in test mode
-      this.bestAvailableModel =
+      this.bestPublicModel =
         process.env.GPT_REASONING_ENABLED === 'true'
-          ? this.models.gptReasoning
-          : this.models.gptBase;
+          ? this.models.publicReasoning
+          : this.models.publicBase;
     }
+
+    this.bestPrivateModel = this.models.privateBase;
   }
 
-  getBestAvailableModel() {
-    return this.bestAvailableModel;
+  getBestPublicModel() {
+    return this.bestPublicModel;
   }
 
-  updateBestAvailableModel(name) {
-    this.bestAvailableModel = this.getModel(name);
+  getBestPrivateModel() {
+    return this.bestPrivateModel;
+  }
+
+  updateBestPublicModel(name) {
+    this.bestPublicModel = this.getModel(name);
   }
 
   getModel(name) {
-    let modelFound = this.getBestAvailableModel();
-    if (name && process.env.TEST !== 'true') {
-      modelFound = this.models[name];
-      if (!modelFound) {
-        throw new Error(`Get model by name [error]: '${name}' not found.`);
-      }
+    if (!name) {
+      return this.getBestPublicModel();
+    }
+
+    const modelFound = this.models[name];
+    if (!modelFound) {
+      throw new Error(`Get model by name [error]: '${name}' not found.`);
     }
     return modelFound;
   }

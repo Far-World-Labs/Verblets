@@ -3,10 +3,7 @@ import path from 'node:path';
 
 import { errorRunningTests } from '../../constants/messages.js';
 import chatGPT from '../../lib/chatgpt/index.js';
-import {
-  constants as promptConstants,
-  wrapVariable,
-} from '../../prompts/index.js';
+import { constants as promptConstants, wrapVariable } from '../../prompts/index.js';
 import modelService from '../../services/llm-model/index.js';
 import toObject from '../../verblets/to-object/index.js';
 
@@ -19,11 +16,9 @@ const {
   useLineNumber,
 } = promptConstants;
 
-const contentIsChecksExamined =
-  'These items were checked in an examination of the text:';
+const contentIsChecksExamined = 'These items were checked in an examination of the text:';
 const contentIsExamined = 'The text examined:';
-const findCodeImprovements =
-  'Find specific improvements in the following code, not nitpicks.';
+const findCodeImprovements = 'Find specific improvements in the following code, not nitpicks.';
 const gatherAsTestJSON =
   'Gather these discovered issues into a JSON format my tests module can consume.';
 
@@ -70,7 +65,7 @@ ${onlyJSONArray}
 export default async (
   filePath,
   instructions = findCodeImprovements,
-  model = modelService.getBestAvailableModel()
+  model = modelService.getBestPublicModel()
 ) => {
   const enableRegex = new RegExp(process.env.ENABLE_AI_TESTS ?? '^$');
   if (!enableRegex.test(filePath)) {

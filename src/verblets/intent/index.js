@@ -6,10 +6,8 @@ import stripResponse from '../../lib/strip-response/index.js';
 import { constants, intent, wrapVariable } from '../../prompts/index.js';
 
 const { contentHasIntent } = constants;
-const example1 =
-  'The intent of "Buy me a flight to Burgas" might be "buy-flight"';
-const example2 =
-  'The intent of "What is the tempature outside" might be "get-temperature"';
+const example1 = 'The intent of "Buy me a flight to Burgas" might be "buy-flight"';
+const example2 = 'The intent of "What is the tempature outside" might be "get-temperature"';
 
 const enumPrompt = (text) => `${contentHasIntent} ${wrapVariable(text, {
   tag: 'message',
@@ -29,12 +27,7 @@ const completionIntent = (text) => ({
   },
 });
 
-export default async ({
-  text,
-  operations,
-  defaultIntent = completionIntent,
-  options,
-} = {}) => {
+export default async ({ text, operations, defaultIntent = completionIntent, options } = {}) => {
   let operationsFound;
   let parametersFound;
   if (operations) {
@@ -48,9 +41,7 @@ export default async ({
 
     const operationNameFound = await enums(enumPrompt(text), operationsEnum);
 
-    const operationFound = operations.find(
-      (o) => o.name === operationNameFound
-    );
+    const operationFound = operations.find((o) => o.name === operationNameFound);
 
     if (!operationFound) {
       return defaultIntent(text);

@@ -25,9 +25,7 @@ describe('Number with units verblet', () => {
           expect(result?.value).toStrictEqual(example.want.value);
         }
         if (example.want.valueRange) {
-          expect(result?.value).toBeGreaterThanOrEqual(
-            example.want.valueRange[0]
-          );
+          expect(result?.value).toBeGreaterThanOrEqual(example.want.valueRange[0]);
           expect(result?.value).toBeLessThanOrEqual(example.want.valueRange[1]);
         }
         if (example.want.unit) {

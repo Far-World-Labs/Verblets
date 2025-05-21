@@ -1,18 +1,14 @@
 import fetch from 'node-fetch';
 
 import {
-  apiKey,
-  apiUrl,
   debugPromptGlobally,
   debugPromptGloballyIfChanged,
   debugResultGlobally,
   debugResultGloballyIfChanged,
-} from '../../constants/openai.js';
+  models,
+} from '../../constants/models.js';
 import anySignal from '../any-signal/index.js';
-import {
-  get as getPromptResult,
-  set as setPromptResult,
-} from '../prompt-cache/index.js';
+import { get as getPromptResult, set as setPromptResult } from '../prompt-cache/index.js';
 import TimedAbortController from '../timed-abort-controller/index.js';
 import modelService from '../../services/llm-model/index.js';
 import { getClient as getRedis } from '../../services/redis/index.js';
@@ -34,11 +30,7 @@ const shapeOutputDefault = (result) => {
 };
 
 const onBeforeRequestDefault = ({ debugPrompt, isCached, prompt }) => {
-  if (
-    debugPrompt ||
-    debugPromptGlobally ||
-    (debugPromptGloballyIfChanged && !isCached)
-  ) {
+  if (debugPrompt || debugPromptGlobally || (debugPromptGloballyIfChanged && !isCached)) {
     console.error(`+++ DEBUG PROMPT +++`);
     console.error(prompt);
     console.error('+++ DEBUG PROMPT END +++');
@@ -46,11 +38,7 @@ const onBeforeRequestDefault = ({ debugPrompt, isCached, prompt }) => {
 };
 
 const onAfterRequestDefault = ({ debugResult, isCached, resultShaped }) => {
-  if (
-    debugResult ||
-    debugResultGlobally ||
-    (debugResultGloballyIfChanged && !isCached)
-  ) {
+  if (debugResult || debugResultGlobally || (debugResultGloballyIfChanged && !isCached)) {
     console.error(`+++ DEBUG RESULT +++`);
     console.error(resultShaped);
     console.error('+++ DEBUG RESULT END +++');
@@ -70,6 +58,10 @@ export const run = async (prompt, options = {}) => {
   } = options;
 
   const modelFound = modelService.getModel(modelOptions.modelName);
+
+  // Use model-specific API URL and key if defined, otherwise fall back to defaults
+  const apiUrl = modelFound?.apiUrl || models.publicBase.apiUrl;
+  const apiKey = modelFound?.apiKey || models.publicBase.apiKey;
 
   const requestConfig = modelService.getRequestConfig({
     prompt,
@@ -107,13 +99,8 @@ export const run = async (prompt, options = {}) => {
     result = await response.json();
 
     if (!response.ok) {
-      const vars = [
-        `status: ${response?.status}`,
-        `type: ${result?.error?.type}`,
-      ].join(', ');
-      throw new Error(
-        `Completions request [error]: ${result?.error?.message} (${vars})`
-      );
+      const vars = [`status: ${response?.status}`, `type: ${result?.error?.type}`].join(', ');
+      throw new Error(`Completions request [error]: ${result?.error?.message} (${vars})`);
     }
 
     timeoutController.clearTimeout();

@@ -17,9 +17,7 @@ export default async (text, options = {}) => {
 
   const functionArgs = functionFound.arguments;
 
-  const functionArgsAsArray = Array.isArray(functionArgs)
-    ? functionArgs
-    : [functionArgs];
+  const functionArgsAsArray = Array.isArray(functionArgs) ? functionArgs : [functionArgs];
 
   return {
     ...functionFound,

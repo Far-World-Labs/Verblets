@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import * as R from 'ramda';
 
-import { cacheTTL } from '../../constants/openai.js';
+import { cacheTTL } from '../../constants/models.js';
 
 const variableKeys = ['created', 'id', 'max_tokens', 'usage'];
 
@@ -31,9 +31,7 @@ export const toKey = (data) => {
 };
 
 export const get = async (redis, inputData) => {
-  const resultFromRedis = await redis.get(
-    toKey(R.omit(variableKeys, inputData))
-  );
+  const resultFromRedis = await redis.get(toKey(R.omit(variableKeys, inputData)));
 
   const foundInRedis = !!resultFromRedis;
 
@@ -46,9 +44,7 @@ export const get = async (redis, inputData) => {
 };
 
 export const set = async (redis, inputData, outputData) => {
-  await redis.set(
-    toKey(R.omit(variableKeys, inputData)),
-    JSON.stringify(outputData),
-    { EX: cacheTTL }
-  );
+  await redis.set(toKey(R.omit(variableKeys, inputData)), JSON.stringify(outputData), {
+    EX: cacheTTL,
+  });
 };

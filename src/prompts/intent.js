@@ -4,10 +4,8 @@ import { contentIsExample, contentIsSchema, onlyJSON } from './constants.js';
 import wrapVariable from './wrap-variable.js';
 
 const contentIsIntent = 'Give me an intent response for the following:';
-const contentIsOperationOption =
-  'The extracted operation must be one of the following:';
-const contentIsParametersOptions =
-  'The extracted perameters must be from the following options:';
+const contentIsOperationOption = 'The extracted operation must be one of the following:';
+const contentIsParametersOptions = 'The extracted perameters must be from the following options:';
 
 const exampleJSON = `{
   "queryText": "play some music",
@@ -23,9 +21,7 @@ const exampleJSON = `{
   }
 }`;
 
-const intentSchema = JSON.parse(
-  await fs.readFile('./src/json-schemas/intent.json')
-);
+const intentSchema = JSON.parse(await fs.readFile('./src/json-schemas/intent.json'));
 
 /**
  * Approximates intent recognition like you might find with Wit.ai,
@@ -35,15 +31,11 @@ const intentSchema = JSON.parse(
 export default (text, { operations = [], parameters = [] } = {}) => {
   let operationsSection = '';
   if (operations.length) {
-    operationsSection = `\n${contentIsOperationOption} ${operations.join(
-      ', '
-    )}\n`;
+    operationsSection = `\n${contentIsOperationOption} ${operations.join(', ')}\n`;
   }
   let parametersSection = '';
   if (parameters.length) {
-    parametersSection = `\n${contentIsParametersOptions} ${parameters.join(
-      ', '
-    )}\n`;
+    parametersSection = `\n${contentIsParametersOptions} ${parameters.join(', ')}\n`;
   }
 
   return `

@@ -18,10 +18,7 @@ describe('Enum verblet', () => {
     it(
       example.inputs.text,
       async () => {
-        const result = await enumValue(
-          example.inputs.text,
-          example.inputs.enum
-        );
+        const result = await enumValue(example.inputs.text, example.inputs.enum);
 
         if (example.want.result) {
           expect(result).toStrictEqual(example.want.result);

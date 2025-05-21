@@ -27,9 +27,7 @@ const examples = [
 describe('bool verblet', () => {
   examples.forEach((example) => {
     it(example.name, async () => {
-      expect(await bool(example.inputs.text)).toStrictEqual(
-        example.want.result
-      );
+      expect(await bool(example.inputs.text)).toStrictEqual(example.want.result);
     });
   });
 });

@@ -18,13 +18,11 @@ export class Node {
 const processLocalImport = async (source) => {
   const importedFile = await fs.readFile(source, 'utf8');
   const parsedImport = parseJSParts(source, importedFile);
-  return Object.entries(parsedImport.functionsMap).map(
-    ([importKey, importValue]) => ({
-      filename: source,
-      functionName: importValue?.functionName ?? importKey,
-      functionData: importValue,
-    })
-  );
+  return Object.entries(parsedImport.functionsMap).map(([importKey, importValue]) => ({
+    filename: source,
+    functionName: importValue?.functionName ?? importKey,
+    functionData: importValue,
+  }));
 };
 
 const processNpmImport = async (source, includeNodeModules = false) => {
@@ -32,33 +30,23 @@ const processNpmImport = async (source, includeNodeModules = false) => {
 
   try {
     const packageJson = JSON.parse(await fs.readFile('./package.json', 'utf8'));
-    if (
-      packageJson.dependencies[source] ||
-      packageJson.devDependencies[source]
-    ) {
+    if (packageJson.dependencies[source] || packageJson.devDependencies[source]) {
       const nodeModulePath = `./node_modules/${source}`;
       const npmPackageJson = JSON.parse(
         await fs.readFile(`${nodeModulePath}/package.json`, 'utf8')
       );
       const mainFilePath = npmPackageJson.main || 'index.js';
-      const importedFile = await fs.readFile(
-        `${nodeModulePath}/${mainFilePath}`,
-        'utf-8'
-      );
+      const importedFile = await fs.readFile(`${nodeModulePath}/${mainFilePath}`, 'utf-8');
       const parsedImport = parseJSParts(mainFilePath, importedFile);
 
-      return Object.entries(parsedImport.functionsMap).map(
-        ([importKey, importValue]) => ({
-          filename: `${nodeModulePath}/${mainFilePath}`,
-          functionName: importKey,
-          functionData: importValue,
-        })
-      );
+      return Object.entries(parsedImport.functionsMap).map(([importKey, importValue]) => ({
+        filename: `${nodeModulePath}/${mainFilePath}`,
+        functionName: importKey,
+        functionData: importValue,
+      }));
     }
   } catch (error) {
-    console.error(
-      `Process npm import [error]: ${error.message} (source: ${source})`
-    );
+    console.error(`Process npm import [error]: ${error.message} (source: ${source})`);
   }
 
   return [];
@@ -74,9 +62,7 @@ const visitDefault = ({ state }) => {
 const rank = ({ nodes }) => {
   // Example: Rank by the length of the function name
   return nodes.sort(
-    (a, b) =>
-      (a.functionName ?? a.filename).length -
-      (b.functionName ?? b.filename).length
+    (a, b) => (a.functionName ?? a.filename).length - (b.functionName ?? b.filename).length
   );
 };
 
@@ -84,14 +70,12 @@ const prepareNext = async ({ node, includeNodeModules }) => {
   const code = await fs.readFile(node.filename, 'utf-8');
   const parsed = parseJSParts(node.filename, code);
 
-  const functionsFound = Object.entries(parsed.functionsMap).map(
-    ([, value]) => {
-      return new Node({
-        ...value,
-        filename: node.filename,
-      });
-    }
-  );
+  const functionsFound = Object.entries(parsed.functionsMap).map(([, value]) => {
+    return new Node({
+      ...value,
+      filename: node.filename,
+    });
+  });
 
   const importPromises = Object.values(parsed.importsMap).map((importData) => {
     if (
@@ -99,10 +83,7 @@ const prepareNext = async ({ node, includeNodeModules }) => {
       importData.source.startsWith('../') ||
       importData.source.startsWith('/')
     ) {
-      const resolvedPath = path.resolve(
-        path.dirname(node.filename),
-        importData.source
-      );
+      const resolvedPath = path.resolve(path.dirname(node.filename), importData.source);
 
       return processLocalImport(resolvedPath);
     }

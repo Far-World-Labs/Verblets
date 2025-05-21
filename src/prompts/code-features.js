@@ -1,8 +1,4 @@
-import {
-  asJSON,
-  explainAndSeparate,
-  explainAndSeparateJSON,
-} from './constants.js';
+import { asJSON, explainAndSeparate, explainAndSeparateJSON } from './constants.js';
 
 export default ({ text, schema }) => {
   return `Analyze the following code to provide scores for each of the features described below.

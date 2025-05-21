@@ -66,9 +66,7 @@ describe('pave', () => {
       const { obj } = example.inputs;
 
       if (example.want.throws) {
-        expect(() =>
-          pave(obj, example.inputs.path, example.inputs.value)
-        ).toThrow();
+        expect(() => pave(obj, example.inputs.path, example.inputs.value)).toThrow();
       } else {
         const result = pave(obj, example.inputs.path, example.inputs.value);
         expect(result).toEqual(example.want.result);

@@ -12,11 +12,7 @@ export const defaultFixes = 'Ignore duplicates in the list';
 export const defaultSortOrder = 'descending';
 
 export default (
-  {
-    description = defaultSortDescription,
-    fixes = defaultFixes,
-    sortOrder = defaultSortOrder,
-  },
+  { description = defaultSortDescription, fixes = defaultFixes, sortOrder = defaultSortOrder },
   list
 ) => {
   const listLines = JSON.stringify(list, undefined, 2);

@@ -5,9 +5,7 @@ import { asSchemaOrgText } from '../../prompts/index.js';
 
 const getSchema = async (type) => {
   return JSON.parse(
-    await fs.readFile(
-      `./src/json-schemas/schema-dot-org-${type.toLowerCase()}.json`
-    )
+    await fs.readFile(`./src/json-schemas/schema-dot-org-${type.toLowerCase()}.json`)
   );
 };
 

@@ -45,14 +45,8 @@ describe('Path aliases', async () => {
   examples.forEach((example) => {
     it(example.name, () => {
       const got = alias(example.inputs.sequences, example.inputs.delimiter);
-      const gotSorted = R.sort(
-        ([k1], [k2]) => k1.localeCompare(k2),
-        Object.entries(got)
-      );
-      const wantSorted = R.sort(
-        ([k1], [k2]) => k1.localeCompare(k2),
-        Object.entries(example.want)
-      );
+      const gotSorted = R.sort(([k1], [k2]) => k1.localeCompare(k2), Object.entries(got));
+      const wantSorted = R.sort(([k1], [k2]) => k1.localeCompare(k2), Object.entries(example.want));
 
       expect(gotSorted).toStrictEqual(wantSorted);
     });

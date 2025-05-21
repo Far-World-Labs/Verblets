@@ -27,21 +27,15 @@ describe('List verblet', () => {
   examples.forEach((example) => {
     let jsonSchemaDisplay = '';
     if (example.inputs.jsonSchemaQuery) {
-      const jsonSchemaEllipsis =
-        example.inputs.jsonSchemaQuery.length > 10 ? '...' : '';
-      jsonSchemaDisplay = ` - ${example.inputs.jsonSchemaQuery.slice(
-        0,
-        10
-      )}${jsonSchemaEllipsis}`;
+      const jsonSchemaEllipsis = example.inputs.jsonSchemaQuery.length > 10 ? '...' : '';
+      jsonSchemaDisplay = ` - ${example.inputs.jsonSchemaQuery.slice(0, 10)}${jsonSchemaEllipsis}`;
     }
     it(
       `${example.inputs.description}${jsonSchemaDisplay}`,
       async () => {
         let schema;
         if (example.inputs.jsonSchemaQuery) {
-          schema = await toObject(
-            await chatGPT(asJSONSchema(example.inputs.jsonSchemaQuery))
-          );
+          schema = await toObject(await chatGPT(asJSONSchema(example.inputs.jsonSchemaQuery)));
         }
 
         const result = await list(example.inputs.description, {
@@ -53,9 +47,7 @@ describe('List verblet', () => {
         }
 
         if (example.want.listContains) {
-          expect(
-            result.some((item) => item.includes(example.want.listContains))
-          ).equals(true);
+          expect(result.some((item) => item.includes(example.want.listContains))).equals(true);
         }
 
         if (example.want.listModelContains) {

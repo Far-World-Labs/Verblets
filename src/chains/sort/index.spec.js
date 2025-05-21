@@ -104,12 +104,8 @@ describe('Sort', () => {
       const result = await sort(example.inputs.options, example.inputs.list, {
         budgetTokens: () => ({ completion: 0 }),
       });
-      expect(result.slice(0, extremeK * iterations)).toStrictEqual(
-        example.want.highest
-      );
-      expect(result.slice(-(extremeK * iterations))).toStrictEqual(
-        example.want.lowest
-      );
+      expect(result.slice(0, extremeK * iterations)).toStrictEqual(example.want.highest);
+      expect(result.slice(-(extremeK * iterations))).toStrictEqual(example.want.lowest);
     });
   });
 });

@@ -1,7 +1,6 @@
 import test from '../test/index.js';
 
-const boundaryIssues =
-  'Run the code with 5 boundary value test cases and report any that fail';
+const boundaryIssues = 'Run the code with 5 boundary value test cases and report any that fail';
 
 const successIssues =
   'Identify 5 passing scenarios and significant boundary conditions in this code. Provide minimal input examples for each scenario to demonstrate correctness.';
@@ -11,8 +10,7 @@ const failureIssues = `Identify 5 failing scenarios and significant boundary con
 const defectIssues =
   'Identify 5 defects in this code. Provide minimal input examples to demonstrate each defect.';
 
-const bestPracticesIssues =
-  'Suggest 5 best practices improvements for this code.';
+const bestPracticesIssues = 'Suggest 5 best practices improvements for this code.';
 
 const cleanCodeIssues = 'Suggest 5 "clean code" improvements for this code.';
 

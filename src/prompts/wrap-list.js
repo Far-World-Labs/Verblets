@@ -1,9 +1,6 @@
 import wrapVariable from './wrap-variable.js';
 
-export default (
-  list = [],
-  { introText = 'Consider the following items:' } = {}
-) => {
+export default (list = [], { introText = 'Consider the following items:' } = {}) => {
   const listText = list.map((f, i) => ` - ${i + 1}. ${f}`).join('\n');
 
   let listFragment = wrapVariable('\n');

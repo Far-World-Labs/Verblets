@@ -3,10 +3,7 @@
 import { v4 as uuid } from 'uuid';
 
 import chatGPT from '../../lib/chatgpt/index.js';
-import {
-  constants as promptConstants,
-  outputSuccinctNames,
-} from '../../prompts/index.js';
+import { constants as promptConstants, outputSuccinctNames } from '../../prompts/index.js';
 import modelService from '../../services/llm-model/index.js';
 import toObject from '../../verblets/to-object/index.js';
 
@@ -82,15 +79,11 @@ const defaultDecompose = async ({
   focus,
   rootName,
   fixes,
-  model = modelService.getBestAvailableModel(),
+  model = modelService.getBestPublicModel(),
 } = {}) => {
   const focusFormatted = focus ? `: ${focus}` : '';
 
-  const promptCreated = subComponentsPrompt(
-    `${name}${focusFormatted}`,
-    rootName,
-    fixes
-  );
+  const promptCreated = subComponentsPrompt(`${name}${focusFormatted}`, rootName, fixes);
   const budget = model.budgetTokens(promptCreated);
   return toObject(
     await chatGPT(promptCreated, {
@@ -107,7 +100,7 @@ const defaultEnhance = async ({
   name,
   rootName,
   fixes,
-  model = modelService.getBestAvailableModel(),
+  model = modelService.getBestPublicModel(),
 } = {}) => {
   const promptCreated = componentOptionsPrompt(name, rootName, fixes);
   const budget = model.budgetTokens(promptCreated);
@@ -245,10 +238,7 @@ export const simplifyTree = (node) => {
 };
 
 class ChainTree {
-  constructor(
-    name,
-    { decompose, enhance, makeId, enhanceFixes, decomposeFixes } = {}
-  ) {
+  constructor(name, { decompose, enhance, makeId, enhanceFixes, decomposeFixes } = {}) {
     this.rootName = name;
     this.tree = {};
     this.decompose = decompose;

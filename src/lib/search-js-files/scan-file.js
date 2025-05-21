@@ -26,15 +26,12 @@ const flatten = (obj) => {
   result = Object.keys(obj).reduce((acc, key) => {
     if (typeof obj[key] === 'object') {
       const flattenedValue = flatten(obj[key]);
-      return Object.entries(flattenedValue).reduce(
-        (innerAcc, [innerKey, innerVal]) => {
-          return {
-            ...innerAcc,
-            [innerKey]: (innerAcc[innerKey] ?? 0) + innerVal,
-          };
-        },
-        acc
-      );
+      return Object.entries(flattenedValue).reduce((innerAcc, [innerKey, innerVal]) => {
+        return {
+          ...innerAcc,
+          [innerKey]: (innerAcc[innerKey] ?? 0) + innerVal,
+        };
+      }, acc);
     }
     return acc;
   }, result);
@@ -96,9 +93,7 @@ const parseFiles = (files) => {
             return { ...s.imported }.name; // also has local name
           });
         const source = node.source.value;
-        const importKey = source.startsWith('.')
-          ? convertImport(file, source)
-          : source;
+        const importKey = source.startsWith('.') ? convertImport(file, source) : source;
         importsMap[importKey] = {
           start: node.start,
           end: node.end,
@@ -207,13 +202,9 @@ const parseFiles = (files) => {
         const className = node.id.name;
         node.body.body.forEach((classElement) => {
           if (classElement.type === 'MethodDefinition') {
-            functionsSeen[
-              `${classElement.value.start}:${classElement.value.end}`
-            ] = true;
+            functionsSeen[`${classElement.value.start}:${classElement.value.end}`] = true;
 
-            functionsMap[
-              `MethodDefinition:${className}.${classElement.key.name}`
-            ] = {
+            functionsMap[`MethodDefinition:${className}.${classElement.key.name}`] = {
               start: node.start,
               end: node.end,
               className: className,

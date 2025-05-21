@@ -11,18 +11,13 @@ export default (val) => {
 
   const answerPartTrimmed = answerPart.trim() ?? '';
 
-  const answerSection = answerPartTrimmed.length
-    ? answerPart.trim()
-    : questionPart.trim();
+  const answerSection = answerPartTrimmed.length ? answerPart.trim() : questionPart.trim();
 
   const answerNoPrefix = answerSection.replace(/[aA]nswer:?/, '').trim();
 
   const answerNoPunctuation = answerNoPrefix.replace(/[., ]+$/g, '').trim();
 
-  const answerNoQuotes = answerNoPunctuation
-    .replace(/^['"]/, '')
-    .replace(/['"]$/, '')
-    .trim();
+  const answerNoQuotes = answerNoPunctuation.replace(/^['"]/, '').replace(/['"]$/, '').trim();
 
   if (answerNoQuotes.startsWith('{') || answerNoQuotes.startsWith('[')) {
     return answerNoQuotes;

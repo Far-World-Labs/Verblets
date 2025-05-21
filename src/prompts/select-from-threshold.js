@@ -12,7 +12,6 @@ import * as R from 'ramda';
  * const openEndedPrompt = `Questions ${openEndedDegree} open-ended. `
  */
 export default (value, thresholds = []) => {
-  const threshold =
-    thresholds.find((t) => value <= t.threshold) || R.last(thresholds);
+  const threshold = thresholds.find((t) => value <= t.threshold) || R.last(thresholds);
   return threshold.degree;
 };

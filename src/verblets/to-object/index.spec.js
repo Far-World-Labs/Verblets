@@ -54,10 +54,7 @@ describe('To object verblet', () => {
   examples.forEach((example) => {
     it(example.name, async () => {
       try {
-        const result = await toObject(
-          example.inputs.text,
-          example.inputs.schema
-        );
+        const result = await toObject(example.inputs.text, example.inputs.schema);
 
         if (example.want.typeOfResult) {
           expect(typeof result).toStrictEqual(example.want.typeOfResult);

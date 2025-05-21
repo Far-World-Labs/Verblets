@@ -1,6 +1,6 @@
 /* eslint-disable no-await-in-loop */
 
-import { operationTimeoutMultiplier } from '../../constants/openai.js';
+import { operationTimeoutMultiplier } from '../../constants/models.js';
 import chatGPT from '../../lib/chatgpt/index.js';
 import {
   constants as promptConstants,
@@ -28,22 +28,18 @@ const shouldStopDefault = ({ queryCount, startTime } = {}) => {
   return (
     queryCount > 5 ||
     new Date() - startTime >
-      operationTimeoutMultiplier *
-        modelService.getBestAvailableModel().requestTimeout
+      operationTimeoutMultiplier * modelService.getBestPublicModel().requestTimeout
   );
 };
 
-export const generateList = async function* generateListGenerator(
-  text,
-  options = {}
-) {
+export const generateList = async function* generateListGenerator(text, options = {}) {
   const resultsAll = [];
   const resultsAllMap = {};
   let isDone = false;
   const {
     shouldSkip = shouldSkipDefault,
     shouldStop = shouldStopDefault,
-    model = modelService.getBestAvailableModel(),
+    model = modelService.getBestPublicModel(),
   } = options;
 
   const startTime = new Date();
@@ -84,9 +80,7 @@ export const generateList = async function* generateListGenerator(
       }
     }
 
-    const resultsNewUnique = resultsNew.filter(
-      (item) => !(item in resultsAllMap)
-    );
+    const resultsNewUnique = resultsNew.filter((item) => !(item in resultsAllMap));
 
     queryCount += 1;
 
@@ -131,8 +125,7 @@ export const generateList = async function* generateListGenerator(
 
 export default async (text, options) => {
   const generator = generateList(text, options);
-  const { schema, model = modelService.getBestAvailableModel() } =
-    options ?? {};
+  const { schema, model = modelService.getBestPublicModel() } = options ?? {};
 
   const results = [];
   for await (const result of generator) {

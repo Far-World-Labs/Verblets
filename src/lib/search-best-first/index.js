@@ -17,9 +17,7 @@ const rankDefault = () => {
 };
 
 const filterWith = (state) => (nextNode) => {
-  return !state.visited.has(
-    hasOwnToString(nextNode) ? nextNode.toString() : nextNode
-  );
+  return !state.visited.has(hasOwnToString(nextNode) ? nextNode.toString() : nextNode);
 };
 
 export default async ({
@@ -54,9 +52,7 @@ export default async ({
 
     nodesTodo = R.unionWith(
       (nodeA, nodeB) =>
-        hasOwnToString(nodeA)
-          ? nodeA.toString() === nodeB.toString()
-          : nodeA === nodeB,
+        hasOwnToString(nodeA) ? nodeA.toString() === nodeB.toString() : nodeA === nodeB,
       nodesTodoNext,
       nextNodes.filter(filterWith(state))
     );

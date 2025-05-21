@@ -3,12 +3,8 @@ import stripResponse from '../../lib/strip-response/index.js';
 import toBool from '../../lib/to-bool/index.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 
-const {
-  asBool,
-  asUndefinedByDefault,
-  explainAndSeparate,
-  explainAndSeparatePrimitive,
-} = promptConstants;
+const { asBool, asUndefinedByDefault, explainAndSeparate, explainAndSeparatePrimitive } =
+  promptConstants;
 
 export default async (text, options = {}) => {
   const systemPrompt = `

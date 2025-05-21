@@ -24,9 +24,7 @@ export default (sequences, delimiter = defaultDelimiter) => {
 
     for (let i = 1; i <= splitSequence.length; i += 1) {
       const tail = splitSequence.slice(-i).join(delimiter);
-      const conflictingSequences = sequences.filter((seq) =>
-        seq.endsWith(tail)
-      );
+      const conflictingSequences = sequences.filter((seq) => seq.endsWith(tail));
 
       if (conflictingSequences.length === 1) {
         tailsUnique[sequence] = tail;

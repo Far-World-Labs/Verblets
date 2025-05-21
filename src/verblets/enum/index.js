@@ -3,8 +3,7 @@ import stripResponse from '../../lib/strip-response/index.js';
 import toEnum from '../../lib/to-enum/index.js';
 import { asEnum, constants } from '../../prompts/index.js';
 
-const { asUndefinedByDefault, contentIsQuestion, explainAndSeparate } =
-  constants;
+const { asUndefinedByDefault, contentIsQuestion, explainAndSeparate } = constants;
 
 export default async (text, enumVal) => {
   const enumText = `${contentIsQuestion} ${text}\n\n${explainAndSeparate}

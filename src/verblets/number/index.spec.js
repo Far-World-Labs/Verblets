@@ -27,9 +27,7 @@ const examples = [
 describe('Number verblet', () => {
   examples.forEach((example) => {
     it(example.name, async () => {
-      expect(await number(example.inputs.text)).toStrictEqual(
-        example.want.result
-      );
+      expect(await number(example.inputs.text)).toStrictEqual(example.want.result);
     });
   });
 });
