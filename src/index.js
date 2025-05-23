@@ -11,6 +11,7 @@ export { default as questions } from './chains/questions/index.js';
 export { default as scanJS } from './chains/scan-js/index.js';
 export { default as sort } from './chains/sort/index.js';
 export { default as SummaryMap } from './chains/summary-map/index.js';
+export { default as veiledVariants } from './chains/veiled-variants/index.js';
 
 export { default as schemas } from './json-schemas/index.js';
 
