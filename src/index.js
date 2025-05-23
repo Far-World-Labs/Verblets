@@ -30,5 +30,8 @@ export { default as intent } from './verblets/intent/index.js';
 export { default as number } from './verblets/number/index.js';
 export { default as schemaOrg } from './verblets/schema-org/index.js';
 export { default as toObject } from './verblets/to-object/index.js';
+export { default as Transcriber } from './lib/transcribe/index.js';
+export { default as speak } from './lib/speak/index.js';
+export { default as listen } from './lib/listen/index.js';
 
 export default chatGPT;
