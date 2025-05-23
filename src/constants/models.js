@@ -35,7 +35,7 @@ if (process.env.GPT_REASONING_ENABLED) {
 
 if (process.env.OPENWEBUI_API_URL && process.env.OPENWEBUI_API_KEY) {
   _models.privateBase = {
-    name: 'llama3.2:latest',
+    name: 'cogito:latest',
     endpoint: 'api/chat/completions',
     maxTokens: 4096,
     requestTimeout: 120000,

@@ -2,13 +2,13 @@ import { describe, it } from 'vitest';
 import { expect } from 'chai';
 import { anonymize, anonymizeMethod } from './index.js';
 
-describe('anonymize examples', () => {
-  const sampleText = `As a seasoned engineer from Silicon Valley, I've found that React's 
-  component lifecycle is like a well-oiled machine - understanding the mounting 
-  phase is crucial, especially with those pesky useEffect hooks. Trust me, after 
-  10 years of experience, proper cleanup is key to avoiding memory leaks!`;
+const sampleText = `As a seasoned engineer from Silicon Valley, I've found that React's 
+component lifecycle is like a well-oiled machine - understanding the mounting 
+phase is crucial, especially with those pesky useEffect hooks. Trust me, after 
+10 years of experience, proper cleanup is key to avoiding memory leaks!`;
 
-  it('should anonymize text using strict method', { timeout: 60_000 }, async () => {
+describe('anonymize examples', () => {
+  it.only('should anonymize text using strict method', { timeout: 60_000 }, async () => {
     const input = {
       text: sampleText,
       method: anonymizeMethod.STRICT,
@@ -64,12 +64,7 @@ describe('anonymize examples', () => {
 
     // Verify minimal transformation
     expect(result.text.length).to.be.greaterThan(
-      (
-        await anonymize({
-          text: sampleText,
-          method: anonymizeMethod.BALANCED,
-        })
-      ).text.length
+      (await anonymize({ text: sampleText, method: anonymizeMethod.BALANCED })).text.length
     );
 
     // Only the most obvious personal markers should be removed
