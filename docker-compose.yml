@@ -1,6 +1,11 @@
 version: '3.8'
 
 services:
+  app:
+    build: .
+    volumes:
+      - .:/app
+    command: npm run dev
   redis:
     image: 'redis:latest'
     ports:
