@@ -12,4 +12,6 @@ The functions can generate HTML from their inputs and this structure can be tran
 
 # Constants
 
-Currently it's reasonable to keep the text fragments needed for building prompts in a single constants.js file. It's forseable that the number of text fragments will grow. At that point, it would make sense to maintain them with a CMS such as Strapi.
+The text snippets used by many prompt functions are collected in
+[`constants.js`](./constants.js). As the set of fragments grows it may make sense
+to manage them with a CMS such as Strapi.
