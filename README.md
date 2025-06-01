@@ -607,6 +607,10 @@ await schemaOrg("WWDC 2024");
 
 Help us explore what's possible when we rebuild software primitives with intelligence at their core.
 
+## Audio Transcription
+
+The `Transcriber` class captures speech and converts it to text using local CLI tools. By default it stores temporary audio files in `~/.cache/verblets` on Linux or in the directory specified by `VERBLETS_CACHE_DIR`. Files are removed after processing, and you can call `cleanupCache()` to remove any leftover artifacts.
+
 ## License
 
 All Rights Reserved - Far World Labs 

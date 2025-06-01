@@ -66,3 +66,6 @@ if (!useIntent) {
 console.error(result);
 
 await (await getRedis()).disconnect();
+if (useTranscribe) {
+  await Transcriber.cleanupCache();
+}
