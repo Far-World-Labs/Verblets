@@ -68,7 +68,7 @@ const visit = async ({
   await retry(async () => {
     const results = await chatGPT(visitPrompt, {
       modelOptions: {
-        modelName: 'publicBase',
+        modelName: 'fastGood',
       },
     });
 

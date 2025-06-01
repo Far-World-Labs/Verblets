@@ -57,15 +57,20 @@ export const run = async (prompt, options = {}) => {
     shapeOutput = shapeOutputDefault,
   } = options;
 
-  const modelFound = modelService.getModel(modelOptions.modelName);
+  const modelNameNegotiated = modelOptions.negotiate
+    ? modelService.negotiateModel(modelOptions.modelName, modelOptions.negotiate)
+    : modelOptions.modelName;
+
+  const modelFound = modelService.getModel(modelNameNegotiated);
 
   // Use model-specific API URL and key if defined, otherwise fall back to defaults
-  const apiUrl = modelFound?.apiUrl || models.publicBase.apiUrl;
-  const apiKey = modelFound?.apiKey || models.publicBase.apiKey;
+  const apiUrl = modelFound?.apiUrl || models.fastGood.apiUrl;
+  const apiKey = modelFound?.apiKey || models.fastGood.apiKey;
 
   const requestConfig = modelService.getRequestConfig({
     prompt,
     ...modelOptions,
+    modelName: modelNameNegotiated,
   });
 
   const cache = await getRedis();
@@ -81,7 +86,7 @@ export const run = async (prompt, options = {}) => {
   let result = cacheResult;
   if (!cacheResult || forceQuery) {
     const timeoutController = new TimedAbortController(
-      modelService.getModel(modelOptions.modelName).requestTimeout
+      modelService.getModel(modelNameNegotiated).requestTimeout
     );
 
     // console.log(requestConfig, `${apiUrl}${modelFound.endpoint}`)

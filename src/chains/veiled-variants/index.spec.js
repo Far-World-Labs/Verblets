@@ -26,16 +26,16 @@ describe('veiledVariants', () => {
     expect(result.length).toBe(15);
     expect(runMock).toHaveBeenCalledTimes(3);
     runMock.mock.calls.forEach((callArgs) => {
-      expect(callArgs[1]).toStrictEqual({ modelOptions: { modelName: 'privateBase' } });
+      expect(callArgs[1]).toStrictEqual({ modelOptions: { modelName: 'privacy' } });
     });
   });
 
   it('allows overriding model name', async () => {
     runMock.mockClear();
     call = 0;
-    await veiledVariants({ prompt: 'secret', modelName: 'publicBase' });
+    await veiledVariants({ prompt: 'secret', modelName: 'fastGood' });
     runMock.mock.calls.forEach((callArgs) => {
-      expect(callArgs[1]).toStrictEqual({ modelOptions: { modelName: 'publicBase' } });
+      expect(callArgs[1]).toStrictEqual({ modelOptions: { modelName: 'fastGood' } });
     });
   });
 });

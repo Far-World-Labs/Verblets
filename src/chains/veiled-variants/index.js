@@ -34,7 +34,7 @@ Generate exactly 5 masked alternatives.
 ${wrapVariable(prompt, { tag: 'intent' })}
 ${onlyJSONStringArray}`;
 
-const veiledVariants = async ({ prompt, modelName = 'privateBase' }) => {
+const veiledVariants = async ({ prompt, modelName = 'privacy' }) => {
   const prompts = [
     scientificFramingPrompt(prompt),
     causalFramePrompt(prompt),

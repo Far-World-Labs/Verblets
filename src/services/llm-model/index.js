@@ -17,39 +17,43 @@ class ModelService {
         ...acc,
         [key]: new Model({
           ...modelDef,
+          key,
           tokenizer: tokenizer.encode,
         }),
       }),
       {}
     );
 
-    // Default to publicReasoning if enabled, otherwise fall back to gptBase
-    this.bestPublicModel =
-      process.env.GPT_REASONING_ENABLED === 'true'
-        ? this.models.publicReasoning
-        : this.models.publicBase;
-
-    if (process.env.TEST === 'true') {
-      // Use the same model selection logic in test mode
-      this.bestPublicModel =
-        process.env.GPT_REASONING_ENABLED === 'true'
-          ? this.models.publicReasoning
-          : this.models.publicBase;
+    if (Object.keys(this.models).length === 0) {
+      this.models.fastGood = new Model({
+        name: 'test-model',
+        maxTokens: 1000,
+        requestTimeout: 1000,
+        key: 'fastGood',
+        tokenizer: tokenizer.encode,
+      });
     }
 
-    this.bestPrivateModel = this.models.privateBase;
+    // Default to reasoning model when available
+    this.bestPublicModelKey = this.models.reasoning ? 'reasoning' : 'fastGood';
+
+    if (process.env.TEST === 'true') {
+      this.bestPublicModelKey = this.models.reasoning ? 'reasoning' : 'fastGood';
+    }
+
+    this.bestPrivateModelKey = this.models.privacy ? 'privacy' : this.bestPublicModelKey;
   }
 
   getBestPublicModel() {
-    return this.bestPublicModel;
+    return this.models[this.bestPublicModelKey];
   }
 
   getBestPrivateModel() {
-    return this.bestPrivateModel;
+    return this.models[this.bestPrivateModelKey];
   }
 
   updateBestPublicModel(name) {
-    this.bestPublicModel = this.getModel(name);
+    this.bestPublicModelKey = name;
   }
 
   getModel(name) {
@@ -62,6 +66,28 @@ class ModelService {
       throw new Error(`Get model by name [error]: '${name}' not found.`);
     }
     return modelFound;
+  }
+
+  negotiateModel(preferred, negotiation = {}) {
+    const { privacy, reasoning, fast, cheap } = negotiation;
+
+    if (privacy && this.models.privacy) {
+      return 'privacy';
+    }
+
+    if (reasoning && this.models.reasoning) {
+      return 'reasoning';
+    }
+
+    if (fast && this.models.fastGood) {
+      return 'fastGood';
+    }
+
+    if (cheap && this.models.fastCheap) {
+      return 'fastCheap';
+    }
+
+    return preferred || this.bestPublicModelKey;
   }
 
   getRequestParameters(options = {}) {

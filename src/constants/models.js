@@ -12,7 +12,15 @@ const { expect } = chai;
 const _models = {};
 
 if (process.env.OPENAI_API_KEY) {
-  _models.publicBase = {
+  _models.fastCheap = {
+    endpoint: 'v1/chat/completions',
+    name: 'gpt-3.5-turbo',
+    maxTokens: 4096,
+    requestTimeout: 20000,
+    apiKey: process.env.OPENAI_API_KEY,
+    apiUrl: 'https://api.openai.com/',
+  };
+  _models.fastGood = {
     endpoint: 'v1/chat/completions',
     name: 'gpt-4o',
     maxTokens: 16384,
@@ -20,10 +28,7 @@ if (process.env.OPENAI_API_KEY) {
     apiKey: process.env.OPENAI_API_KEY,
     apiUrl: 'https://api.openai.com/',
   };
-}
-
-if (process.env.GPT_REASONING_ENABLED) {
-  _models.publicReasoning = {
+  _models.reasoning = {
     endpoint: 'v1/chat/completions',
     name: 'gpt-4.1-2025-04-14',
     maxTokens: 16384,

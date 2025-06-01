@@ -2,8 +2,7 @@
     "vitest.enable": true,
     "vitest.configPath": ".vitest.config.examples.js",
     "vitest.env": {
-        "EXAMPLES": "true",
-        "GPT_REASONING_ENABLED": "true"
+        "EXAMPLES": "true"
     },
     "testExplorer": {
         "showOnRun": true,

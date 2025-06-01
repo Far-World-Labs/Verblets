@@ -79,7 +79,7 @@ export default async (text, schema) => {
     prompt = buildJsonPrompt(response, schema, errorDetails);
     response = await chatGPT(prompt, {
       modelOptions: {
-        modelName: 'publicBase',
+        modelName: 'fastGood',
       },
     });
     result = JSON.parse(stripResponse(response));
@@ -112,7 +112,7 @@ export default async (text, schema) => {
     prompt = buildJsonPrompt(response, schema, errorDetails);
     response = await chatGPT(prompt, {
       modelOptions: {
-        modelName: 'publicBase',
+        modelName: 'fastGood',
       },
     });
     result = JSON.parse(stripResponse(response));
