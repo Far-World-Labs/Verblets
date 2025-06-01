@@ -268,58 +268,27 @@ await schemaOrg("WWDC 2024");
   // ...continues with full component breakdown
   ```
 
-- **summary-map** - Intelligently summarize mixed content within token budgets
-  ```javascript
-  // Create a map with a total token budget
-  const map = new SummaryMap({ targetTokens: 600 });
+- **summary-map** - Compress many inputs into one high-cost LLM prompt
+```javascript
+// SummaryMap squeezes unlimited text into the token budget by summarizing each piece
+// Fit entire docs, transcripts and code into a single prompt
+const map = new SummaryMap({ targetTokens: 400 });
 
-  // Add different types of content with weights
-  map.set('contract.terms', {
-    value: `Pursuant to the stipulations delineated herein, 
-    the parties hereto, designated as Party A (the "Grantor") 
-    and Party B (the "Grantee"), do hereby irrevocably...`,
-    weight: 0.3  // Give it 30% of the token budget
-  });
+// Each entry gets a weight – more weight means more of the budget
+map.set('policy', { value: companyPolicyDoc, weight: 0.5 });
+map.set('support.chat', { value: customerChatLog, weight: 0.3 });
+map.set('src.payment', { value: paymentCode, type: 'code', weight: 0.2 });
 
-  map.set('app.encryption', {
-    value: `
-    function encodeDecode(input, seed) {
-      let key = _generateKey(seed, input.length);
-      return _xorStrings(input, key);
-    }
-
-    function _generateKey(seed, length) {
-      let curr = seed;
-      for (let i = 0; i < length; i++) {
-        curr = (1664525 * curr + 1013904223) % 4294967296;
-        key += String.fromCharCode(curr % 256);
-      }
-      return key;
-    }`,
-    type: 'code',  // Special handling for code
-    weight: 0.7    // Give it 70% of the token budget
-  });
-
-  // Get the summarized content
-  const result = await map.pavedSummaryResult();
-  /* Returns:
-  {
-    "contract": {
-      "terms": "Agreement between Grantor (Party A) and Grantee (Party B) 
-                regarding water usage rights, focusing on reasonable use and 
-                ecological balance."
-    },
-    "app": {
-      "encryption": `
-        function encodeDecode(input, seed)
-        function _generateKey(seed, length)
-        // Implements XOR-based encryption using a seeded key generator
-        // Uses linear congruential generator for key stream
-        }`
-    }
-  }
-  */
-  ```
+// The resulting object squeezes everything under ~400 tokens
+const inputs = await map.pavedSummaryResult();
+/* Example shape:
+{
+  policy: "...key obligations...",
+  support: { chat: "...summary of conversation..." },
+  src: { payment: "function processPayment(amount) { ... }" }
+}
+*/
+```
 
 ### Operations
 
