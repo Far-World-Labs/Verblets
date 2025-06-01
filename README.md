@@ -1,6 +1,6 @@
 # Verblets
 
-Verblets rebuild the basic operations of software with language model intelligence. Each verblet takes a combination of natural language and structured input and returns structured data. Like applications, verblets are powerful utilities on their own, or they can be strategically applied to in traditional software.
+Verblets rebuild the basic operations of software with language model intelligence. Each verblet takes a combination of natural language and structured input and returns structured data. Like applications, verblets are powerful utilities on their own, or they can be strategically applied in traditional software.
 
 ## Repository Guide
 
