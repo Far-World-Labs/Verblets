@@ -15,6 +15,9 @@ vi.mock('../../lib/chatgpt/index.js', () => ({
   }),
 }));
 
+// eslint-disable-next-line import/first
+import chatGPT from '../../lib/chatgpt/index.js';
+
 const legalText = `Pursuant to the adjudication of a force majeure clause within the context of contractual`;
 
 const codeText = `import numpy as np
@@ -37,13 +40,36 @@ const examples = [
       { key: 'example.code', resultLength: 25, budget: [20, 40] },
     ],
   },
+  {
+    name: 'Model options and privacy',
+    inputs: {
+      targetTokens: 50,
+      modelOptions: { modelName: 'fastGood' },
+      keys: [
+        {
+          key: 'example.text',
+          value: legalText,
+          weight: 1,
+          type: 'text',
+          privacy: { blacklist: 'names' },
+        },
+        { key: 'example.code', value: codeText, weight: 0.5, type: 'code' },
+      ],
+    },
+    wants: [
+      { key: 'example.text', resultLength: 50 },
+      { key: 'example.code', resultLength: 25 },
+    ],
+  },
 ];
 
 describe('Summary map', () => {
   examples.forEach((example) => {
     it(example.name, async () => {
+      vi.clearAllMocks();
       const map = new SummaryMap({
         targetTokens: example.inputs.targetTokens,
+        ...(example.inputs.modelOptions && { modelOptions: example.inputs.modelOptions }),
       });
 
       for (const input of example.inputs.keys) {
@@ -72,6 +98,13 @@ describe('Summary map', () => {
           expect(found.budget).gt(want.budget[0]);
           expect(found.budget).lt(want.budget[1]);
         }
+      }
+
+      if (example.name === 'Model options and privacy') {
+        const callWithPrivacy = chatGPT.mock.calls.find(
+          (c) => c[1]?.modelOptions?.modelName === 'privacy'
+        );
+        expect(callWithPrivacy).toBeTruthy();
       }
     });
   });

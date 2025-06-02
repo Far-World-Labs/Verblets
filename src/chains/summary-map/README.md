@@ -30,4 +30,12 @@ summaryMap.set('example.code', { value: 'Long code data...', weight: 0.5, type: 
 const promptInputs = await summaryMap.pavedSummaryResult();
 const prompt = promptFunction(promptInputs);
 const response = await chatGPT(prompt, { modelOptions: { maxTokens }});
+
+// Privacy example
+const privacyMap = new SummaryMap({ targetTokens: 50 });
+privacyMap.set('example.text', {
+  value: 'Sensitive text with names',
+  privacy: { blacklist: 'names' },
+});
+const result = await privacyMap.pavedSummaryResult();
 ```
