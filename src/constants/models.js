@@ -75,7 +75,7 @@ if (process.env.OPENAI_API_KEY) {
   // Caution!: $1.1-4.4/1M tokens
   // cutoff: 05/2024
   // supports image inputs, moderate speed
-  _models.fastCheapReasoningMulti = { 
+  _models.fastCheapReasoningMulti = {
     endpoint: 'v1/chat/completions',
     name: 'o4-mini-2025-04-16',
     maxContextWindow: 128_000,
@@ -101,18 +101,20 @@ if (process.env.OPENAI_API_KEY) {
   };
 
   // Full matrix with explicit names (no aliases)
+  _models.fastGoodMulti = _models.fastCheapMulti;
   _models.fastGoodCheapMulti = _models.fastGoodMulti; // Default system model
   _models.fastGoodCheap = _models.fastGoodMulti;
   _models.fastMulti = _models.fastGoodMulti;
   _models.fast = _models.fastGoodMulti;
   _models.fastGood = _models.fastGoodMulti;
   _models.fastReasoningMulti = _models.fastCheapReasoningMulti;
-  _models.fastReasoning = _models.fastCheapReasoningMulti; 
+  _models.fastReasoning = _models.fastCheapReasoningMulti;
 
+  // eslint-disable-next-line no-self-assign
   _models.fastCheapMulti = _models.fastCheapMulti;
   _models.fastCheap = _models.fastCheapMulti;
   _models.fastCheapReasoning = _models.fastCheapReasoningMulti;
-  
+
   _models.cheapMulti = _models.fastCheapMulti;
   _models.cheap = _models.fastCheapMulti;
   _models.cheapGoodMulti = _models.fastGoodMulti;
@@ -120,6 +122,7 @@ if (process.env.OPENAI_API_KEY) {
   _models.cheapReasoningMulti = _models.fastCheapReasoningMulti;
   _models.cheapReasoning = _models.fastCheapReasoningMulti;
 
+  // eslint-disable-next-line no-self-assign
   _models.goodMulti = _models.goodMulti; // Caution: Moderate cost
   _models.good = _models.goodMulti; // Caution: Moderate cost
 

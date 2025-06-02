@@ -9,6 +9,33 @@ import {
   topP as topPConfig,
 } from '../../constants/models.js';
 
+// Prioritized list of models (best to worst, excluding privacy/reasoning which are never auto-invoked)
+const prioritizedModels = [
+  'fastGoodCheap',
+  'fastGoodCheapMulti',
+  'fastGood',
+  'fastGoodMulti',
+  'goodCheap',
+  'goodCheapMulti',
+  'good',
+  'goodMulti',
+  'fastCheap',
+  'fastCheapMulti',
+  'fast',
+  'fastMulti',
+  'cheap',
+  'cheapMulti',
+  'multi',
+  'fastCheapReasoning',
+  'fastCheapReasoningMulti',
+  'fastReasoning',
+  'fastReasoningMulti',
+  'cheapReasoning',
+  'cheapReasoningMulti',
+  'reasoning',
+  'reasoningMulti',
+];
+
 class ModelService {
   constructor() {
     this.models = {};
@@ -24,24 +51,71 @@ class ModelService {
       {}
     );
 
-    if (Object.keys(this.models).length === 0) {
-      this.models.fastGood = new Model({
-        name: 'test-model',
-        maxTokens: 1000,
-        requestTimeout: 1000,
-        key: 'fastGood',
-        tokenizer: tokenizer.encode,
+    // Always default to fastGood for public model
+    this.bestPublicModelKey = 'fastGood';
+
+    // Global overrides
+    this.globalOverrides = {
+      modelName: null, // Force specific model
+      negotiate: null, // Force specific negotiation options
+      temperature: null, // Force specific temperature
+      maxTokens: null, // Force specific max tokens
+      topP: null, // Force specific top_p
+      frequencyPenalty: null, // Force specific frequency penalty
+      presencePenalty: null, // Force specific presence penalty
+    };
+  }
+
+  // Global override management
+  setGlobalOverride(key, value) {
+    if (!(key in this.globalOverrides)) {
+      throw new Error(
+        `Invalid override key: ${key}. Valid keys are: ${Object.keys(this.globalOverrides).join(
+          ', '
+        )}`
+      );
+    }
+    this.globalOverrides[key] = value;
+  }
+
+  clearGlobalOverride(key) {
+    if (key) {
+      if (!(key in this.globalOverrides)) {
+        throw new Error(
+          `Invalid override key: ${key}. Valid keys are: ${Object.keys(this.globalOverrides).join(
+            ', '
+          )}`
+        );
+      }
+      this.globalOverrides[key] = null;
+    } else {
+      // Clear all overrides
+      Object.keys(this.globalOverrides).forEach((k) => {
+        this.globalOverrides[k] = null;
       });
     }
+  }
 
-    // Default to reasoning model when available
-    this.bestPublicModelKey = this.models.reasoning ? 'reasoning' : 'fastGood';
+  getGlobalOverride(key) {
+    return this.globalOverrides[key];
+  }
 
-    if (process.env.TEST === 'true') {
-      this.bestPublicModelKey = this.models.reasoning ? 'reasoning' : 'fastGood';
-    }
+  getAllGlobalOverrides() {
+    return { ...this.globalOverrides };
+  }
 
-    this.bestPrivateModelKey = this.models.privacy ? 'privacy' : this.bestPublicModelKey;
+  // Apply global overrides to model options
+  applyGlobalOverrides(modelOptions) {
+    const result = { ...modelOptions };
+
+    // Apply each override if it's set (not null)
+    Object.entries(this.globalOverrides).forEach(([key, value]) => {
+      if (value !== null) {
+        result[key] = value;
+      }
+    });
+
+    return result;
   }
 
   getBestPublicModel() {
@@ -49,7 +123,12 @@ class ModelService {
   }
 
   getBestPrivateModel() {
-    return this.models[this.bestPrivateModelKey];
+    if (!this.models.privacy) {
+      throw new Error(
+        'No privacy model configured. Configure a privacy model or use a public model instead.'
+      );
+    }
+    return this.models.privacy;
   }
 
   updateBestPublicModel(name) {
@@ -69,25 +148,89 @@ class ModelService {
   }
 
   negotiateModel(preferred, negotiation = {}) {
-    const { privacy, reasoning, fast, cheap } = negotiation;
+    const { privacy, reasoning, fast, cheap, good, multi } = negotiation;
 
-    if (privacy && this.models.privacy) {
+    // Privacy models take absolute priority
+    if (privacy) {
+      if (!this.models.privacy) {
+        return undefined;
+      }
       return 'privacy';
     }
 
-    if (reasoning && this.models.reasoning) {
-      return 'reasoning';
+    // Helper function to check if a model matches all requirements
+    const matchesRequirements = (modelKey) => {
+      if (!this.models[modelKey]) {
+        return false;
+      }
+
+      const lowerModelKey = modelKey.toLowerCase();
+
+      // Check each requirement - support both positive and negative (false) requirements
+      // Only check requirements that are explicitly specified (not undefined)
+      if (fast === true && !/fast/i.test(lowerModelKey)) {
+        return false;
+      }
+      if (fast === false && /fast/i.test(lowerModelKey)) {
+        return false;
+      }
+      if (cheap === true && !/cheap/i.test(lowerModelKey)) {
+        return false;
+      }
+      if (cheap === false && /cheap/i.test(lowerModelKey)) {
+        return false;
+      }
+      if (good === true && !/good/i.test(lowerModelKey)) {
+        return false;
+      }
+      if (good === false && /good/i.test(lowerModelKey)) {
+        return false;
+      }
+      if (reasoning === true && !/reasoning/i.test(lowerModelKey)) {
+        return false;
+      }
+      if (reasoning === false && /reasoning/i.test(lowerModelKey)) {
+        return false;
+      }
+      if (multi === true && !/multi/i.test(lowerModelKey)) {
+        return false;
+      }
+      if (multi === false && /multi/i.test(lowerModelKey)) {
+        return false;
+      }
+      return true;
+    };
+
+    // Check if any specific requirements are given
+    const hasSpecificRequirements =
+      fast !== undefined ||
+      cheap !== undefined ||
+      good !== undefined ||
+      reasoning !== undefined ||
+      multi !== undefined;
+
+    // If no specific requirements are given, return preferred model if available
+    if (!hasSpecificRequirements) {
+      if (preferred && this.models[preferred]) {
+        return preferred;
+      }
+      return this.bestPublicModelKey;
     }
 
-    if (fast && this.models.fastGood) {
-      return 'fastGood';
+    // Find the first model that matches all requirements
+    for (const modelKey of prioritizedModels) {
+      if (matchesRequirements(modelKey)) {
+        return modelKey;
+      }
     }
 
-    if (cheap && this.models.fastCheap) {
-      return 'fastCheap';
+    // Check if specific critical requirements were requested but couldn't be satisfied
+    if (reasoning === true) {
+      return undefined;
     }
 
-    return preferred || this.bestPublicModelKey;
+    // If specific requirements were given but couldn't be satisfied, return undefined
+    return undefined;
   }
 
   getRequestParameters(options = {}) {
@@ -101,7 +244,10 @@ class ModelService {
 
     let maxTokensFound = maxTokens;
     if (!maxTokens) {
-      maxTokensFound = modelFound.maxTokens - modelFound.toTokens(prompt);
+      const promptTokens = modelFound.toTokens(prompt).length;
+      const availableTokens = modelFound.maxContextWindow - promptTokens;
+      // Cap to the model's maximum output tokens
+      maxTokensFound = Math.min(availableTokens, modelFound.maxOutputTokens);
     }
 
     return {

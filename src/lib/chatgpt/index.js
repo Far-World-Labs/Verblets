@@ -57,9 +57,19 @@ export const run = async (prompt, options = {}) => {
     shapeOutput = shapeOutputDefault,
   } = options;
 
-  const modelNameNegotiated = modelOptions.negotiate
-    ? modelService.negotiateModel(modelOptions.modelName, modelOptions.negotiate)
-    : modelOptions.modelName;
+  // Apply global overrides to model options
+  const modelOptionsWithOverrides = modelService.applyGlobalOverrides(modelOptions);
+
+  // Check if negotiation was applied via global override
+  const negotiationFromGlobalOverride = modelService.getGlobalOverride('negotiate');
+
+  const modelNameNegotiated = modelOptionsWithOverrides.negotiate
+    ? modelService.negotiateModel(
+        // If negotiation came from global override, don't use preferred model
+        negotiationFromGlobalOverride ? null : modelOptionsWithOverrides.modelName,
+        modelOptionsWithOverrides.negotiate
+      )
+    : modelOptionsWithOverrides.modelName;
 
   const modelFound = modelService.getModel(modelNameNegotiated);
 
@@ -69,7 +79,7 @@ export const run = async (prompt, options = {}) => {
 
   const requestConfig = modelService.getRequestConfig({
     prompt,
-    ...modelOptions,
+    ...modelOptionsWithOverrides,
     modelName: modelNameNegotiated,
   });
 

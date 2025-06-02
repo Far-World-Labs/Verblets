@@ -2,6 +2,8 @@ import { run } from '../../lib/chatgpt/index.js';
 import { constants as promptConstants, wrapVariable } from '../../prompts/index.js';
 
 const { onlyJSONStringArray } = promptConstants;
+const commonInstructions =
+  'The size of the output should be proportional to the size of the input.';
 
 export const scientificFramingPrompt = (prompt) => `${onlyJSONStringArray}
 <instructions id="scientific-framing">
@@ -10,6 +12,7 @@ Replace casual terms with academic phrasing.
 Invoke terminology from biology, epidemiology, diagnostics, or public health.
 Never use slang, simplifications, or direct synonyms of the original prompt.
 Generate exactly 5 masked alternatives.
+${commonInstructions}
 </instructions>
 ${wrapVariable(prompt, { tag: 'intent' })}
 ${onlyJSONStringArray}`;
@@ -20,6 +23,7 @@ Generate queries that explore causes, co-conditions, or plausible consequences o
 Focus on surrounding or adjacent issues rather than the central sensitive term.
 Frame each as a legitimate research query.
 Generate exactly 5 masked alternatives.
+${commonInstructions}
 </instructions>
 ${wrapVariable(prompt, { tag: 'intent' })}
 ${onlyJSONStringArray}`;
@@ -30,6 +34,7 @@ Reframe the prompt as a general wellness or diagnostic concern.
 Avoid direct synonyms or sensitive key terms.
 Use a clinical and approachable tone that is safe for open searches.
 Generate exactly 5 masked alternatives.
+${commonInstructions}
 </instructions>
 ${wrapVariable(prompt, { tag: 'intent' })}
 ${onlyJSONStringArray}`;
