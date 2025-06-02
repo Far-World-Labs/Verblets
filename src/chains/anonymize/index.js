@@ -71,7 +71,7 @@ const anonymize = async (input) => {
 
   // Stage 1: Remove distinctive content
   const stage1Result = await run(stage1Prompt(text, method, context), {
-    modelOptions: { modelName: 'privateBase' },
+    modelOptions: { modelName: 'privacy' },
   });
 
   if (method === anonymizeMethod.LIGHT) {
@@ -85,7 +85,7 @@ const anonymize = async (input) => {
 
   // Stage 2: Normalize structure and tone
   const stage2Result = await run(stage2Prompt(stage1Result, method), {
-    modelOptions: { modelName: 'privateBase' },
+    modelOptions: { modelName: 'privacy' },
   });
 
   if (method === anonymizeMethod.BALANCED) {
@@ -100,7 +100,7 @@ const anonymize = async (input) => {
 
   // Stage 3: Suppress stylistic patterns
   const stage3Result = await run(stage3Prompt(stage2Result, method), {
-    modelOptions: { modelName: 'privateBase' },
+    modelOptions: { modelName: 'privacy' },
   });
 
   return {

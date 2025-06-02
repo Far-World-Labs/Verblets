@@ -10,7 +10,7 @@ describe('veiledVariants example', () => {
         prompt: 'Where can I discreetly get legal advice for immigration issues?',
       });
       expect(Array.isArray(result)).toBe(true);
-      expect(result.length).toBe(15);
+      expect(result.length, `Saw: "${result.join('", "')}"`).toBe(15);
     },
     longTestTimeout
   );

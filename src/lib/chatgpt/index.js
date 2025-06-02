@@ -57,15 +57,30 @@ export const run = async (prompt, options = {}) => {
     shapeOutput = shapeOutputDefault,
   } = options;
 
-  const modelFound = modelService.getModel(modelOptions.modelName);
+  // Apply global overrides to model options
+  const modelOptionsWithOverrides = modelService.applyGlobalOverrides(modelOptions);
+
+  // Check if negotiation was applied via global override
+  const negotiationFromGlobalOverride = modelService.getGlobalOverride('negotiate');
+
+  const modelNameNegotiated = modelOptionsWithOverrides.negotiate
+    ? modelService.negotiateModel(
+        // If negotiation came from global override, don't use preferred model
+        negotiationFromGlobalOverride ? null : modelOptionsWithOverrides.modelName,
+        modelOptionsWithOverrides.negotiate
+      )
+    : modelOptionsWithOverrides.modelName;
+
+  const modelFound = modelService.getModel(modelNameNegotiated);
 
   // Use model-specific API URL and key if defined, otherwise fall back to defaults
-  const apiUrl = modelFound?.apiUrl || models.publicBase.apiUrl;
-  const apiKey = modelFound?.apiKey || models.publicBase.apiKey;
+  const apiUrl = modelFound?.apiUrl || models.fastGood.apiUrl;
+  const apiKey = modelFound?.apiKey || models.fastGood.apiKey;
 
   const requestConfig = modelService.getRequestConfig({
     prompt,
-    ...modelOptions,
+    ...modelOptionsWithOverrides,
+    modelName: modelNameNegotiated,
   });
 
   const cache = await getRedis();
@@ -81,7 +96,7 @@ export const run = async (prompt, options = {}) => {
   let result = cacheResult;
   if (!cacheResult || forceQuery) {
     const timeoutController = new TimedAbortController(
-      modelService.getModel(modelOptions.modelName).requestTimeout
+      modelService.getModel(modelNameNegotiated).requestTimeout
     );
 
     // console.log(requestConfig, `${apiUrl}${modelFound.endpoint}`)

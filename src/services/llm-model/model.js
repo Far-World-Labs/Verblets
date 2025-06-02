@@ -9,8 +9,8 @@ export default class Model {
 
   budgetTokens(text, { completionMax = Infinity } = {}) {
     const prompt = this.toTokens(text).length;
-    const total = this.maxTokens;
-    const completion = Math.min(total - prompt, completionMax);
+    const total = this.maxContextWindow;
+    const completion = Math.min(Math.min(total - prompt, this.maxOutputTokens), completionMax);
 
     return {
       completion,

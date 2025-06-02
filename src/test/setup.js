@@ -7,11 +7,6 @@ dotenv.config();
 
 let redisClient;
 
-// Ensure environment variables are set for tests
-if (process.env.EXAMPLES === 'true') {
-  process.env.GPT_REASONING_ENABLED = 'true';
-}
-
 beforeEach(async () => {
   // Get a fresh Redis client for each test
   redisClient = await getRedis();
