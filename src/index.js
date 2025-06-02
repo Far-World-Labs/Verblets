@@ -4,9 +4,34 @@ import dotenv from 'dotenv/config';
 
 import chatGPT from './lib/chatgpt/index.js';
 
-// Internal-only lib utilities not exported:
-// anySignal, editor, parseJsParts, pathAliases, pave, TimedAbortController
+// chains are consumed as verblets
+// eslint-disable-next-line import/no-named-as-default
+import anonymize from './chains/anonymize/index.js';
+// eslint-disable-next-line import/no-named-as-default
+import Dismantle from './chains/dismantle/index.js';
+// eslint-disable-next-line import/no-named-as-default
+import list from './chains/list/index.js';
+// eslint-disable-next-line import/no-named-as-default
+import questions from './chains/questions/index.js';
+// eslint-disable-next-line import/no-named-as-default
+import scanJS from './chains/scan-js/index.js';
+// eslint-disable-next-line import/no-named-as-default
+import sort from './chains/sort/index.js';
+// eslint-disable-next-line import/no-named-as-default
+import SummaryMap from './chains/summary-map/index.js';
+// eslint-disable-next-line import/no-named-as-default
+import test from './chains/test/index.js';
+// eslint-disable-next-line import/no-named-as-default
+import testAdvice from './chains/test-advice/index.js';
 
+import schemas from './json-schemas/index.js';
+import * as common from './constants/common.js';
+import * as messages from './constants/messages.js';
+import * as models from './constants/models.js';
+
+// exported lib utilities
+// internal-only: anySignal, editor, parseJsParts, pathAliases, pave, TimedAbortController
+import * as promptCache from './lib/prompt-cache/index.js';
 import retry from './lib/retry/index.js';
 import searchBestFirst from './lib/search-best-first/index.js';
 import searchJSFiles from './lib/search-js-files/index.js';
@@ -18,39 +43,35 @@ import toEnum from './lib/to-enum/index.js';
 import toNumber from './lib/to-number/index.js';
 import toNumberWithUnits from './lib/to-number-with-units/index.js';
 import transcribe from './lib/transcribe/index.js';
-import * as promptCache from './lib/prompt-cache/index.js';
 
-import * as common from './constants/common.js';
-import * as messages from './constants/messages.js';
-import * as models from './constants/models.js';
-
+// prompts
 import * as prompts from './prompts/index.js';
 
+// services
 import * as redis from './services/redis/index.js';
 import modelService from './services/llm-model/index.js';
 
-import anonymizeChain from './chains/anonymize/index.js';
-import Dismantle from './chains/dismantle/index.js';
-import list from './chains/list/index.js';
-import questions from './chains/questions/index.js';
-import scanJS from './chains/scan-js/index.js';
-import sort from './chains/sort/index.js';
-import SummaryMap from './chains/summary-map/index.js';
-import test from './chains/test/index.js';
-import testAdvice from './chains/test-advice/index.js';
-import veiledVariants from './chains/veiled-variants/index.js';
-
+// verblets
+// eslint-disable-next-line import/no-named-as-default
 import auto from './verblets/auto/index.js';
+// eslint-disable-next-line import/no-named-as-default
 import bool from './verblets/bool/index.js';
+// eslint-disable-next-line import/no-named-as-default
 import enums from './verblets/enum/index.js';
+// eslint-disable-next-line import/no-named-as-default
 import intent from './verblets/intent/index.js';
+// eslint-disable-next-line import/no-named-as-default
 import number from './verblets/number/index.js';
+// eslint-disable-next-line import/no-named-as-default
 import numberWithUnits from './verblets/number-with-units/index.js';
+// eslint-disable-next-line import/no-named-as-default
 import schemaOrg from './verblets/schema-org/index.js';
+// eslint-disable-next-line import/no-named-as-default
 import toObject from './verblets/to-object/index.js';
 
-const lib = {
+export const lib = {
   chatGPT,
+  promptCache,
   retry,
   searchBestFirst,
   searchJSFiles,
@@ -62,24 +83,9 @@ const lib = {
   toNumber,
   toNumberWithUnits,
   transcribe,
-  promptCache,
 };
 
-const constants = { common, messages, models };
-
-const services = { redis, modelService };
-
-const verblets = {
-  anonymize: anonymizeChain,
-  Dismantle,
-  list,
-  questions,
-  scanJS,
-  sort,
-  SummaryMap,
-  test,
-  testAdvice,
-  veiledVariants,
+export const verblets = {
   auto,
   bool,
   enums,
@@ -88,8 +94,28 @@ const verblets = {
   numberWithUnits,
   schemaOrg,
   toObject,
+  anonymize,
+  Dismantle,
+  list,
+  questions,
+  scanJS,
+  sort,
+  SummaryMap,
+  test,
+  testAdvice,
 };
 
-export { constants, services, prompts, lib, verblets };
+export const services = {
+  redis,
+  modelService,
+};
+
+export const constants = {
+  common,
+  messages,
+  models,
+};
+
+export { prompts, schemas };
 
 export default chatGPT;
