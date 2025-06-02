@@ -37,9 +37,16 @@ describe('Summary map', () => {
   it(
     'Example',
     async () => {
-      const map = new SummaryMap({ targetTokens: 600 });
+      const map = new SummaryMap({
+        targetTokens: 600,
+        modelOptions: { modelName: 'fastGood' },
+      });
 
-      map.set('a.b.c', { value: legalText, weight: 0.01 });
+      map.set('a.b.c', {
+        value: legalText,
+        weight: 0.01,
+        privacy: { blacklist: 'names and addresses' },
+      });
       map.set('a.d', { value: codeText, type: 'code', weight: 0.7 });
       map.set('e.0', { value: 'abc', weight: 0.01 });
       map.set('e.3', {

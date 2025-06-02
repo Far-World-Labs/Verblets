@@ -6,7 +6,7 @@ import shortenText from '../../lib/shorten-text/index.js';
 import { summarize as basicSummarize, tokenBudget } from '../../prompts/index.js';
 import modelService from '../../services/llm-model/index.js';
 
-const summarize = ({ budget, type, value, fixes = [] }) => {
+const summarize = ({ budget, type, value, fixes = [], modelOptions, privacy }) => {
   if (budget) {
     fixes.push(tokenBudget(budget));
   }
@@ -19,9 +19,19 @@ const summarize = ({ budget, type, value, fixes = [] }) => {
     fixes.push('Remove the function header if it exists.');
   }
 
+  if (privacy?.whitelist) {
+    fixes.push(`Only share information matching: ${privacy.whitelist}.`);
+  }
+
+  if (privacy?.blacklist) {
+    fixes.push(`Do not share information matching: ${privacy.blacklist}.`);
+  }
+
   const fixesAsBullets = fixes.map((fix) => ` - ${fix}`);
 
-  return chatGPT(basicSummarize(value, `${fixesAsBullets.join('\n')}`));
+  return chatGPT(basicSummarize(value, `${fixesAsBullets.join('\n')}`), {
+    modelOptions,
+  });
 };
 
 /**
@@ -32,6 +42,7 @@ export default class SummaryMap extends Map {
   constructor({
     maxTokensPerValue,
     model = modelService.getBestPublicModel(),
+    modelOptions = { modelName: model.name },
     promptText,
     targetTokens,
     // used with promptText, when targetTokens isn't supplied
@@ -42,6 +53,7 @@ export default class SummaryMap extends Map {
     this.data = new Map();
     this.isCacheValid = false;
     this.maxTokensPerValue = maxTokensPerValue ?? model.maxTokens;
+    this.modelOptions = { modelName: model.name, ...modelOptions };
 
     if (targetTokens) {
       this.targetTokens = targetTokens;
@@ -91,9 +103,20 @@ export default class SummaryMap extends Map {
       // omit weight to skip summarization
       let summarizedValue = value;
       if (budget) {
+        const entryModelOptions = {
+          ...this.modelOptions,
+          ...valueObject.modelOptions,
+        };
+
+        if (valueObject.privacy?.whitelist || valueObject.privacy?.blacklist) {
+          entryModelOptions.modelName = 'privacy';
+        }
+
         summarizedValue = await summarize({
           budget,
           fixes: valueObject.fixes,
+          modelOptions: entryModelOptions,
+          privacy: valueObject.privacy,
           type: valueObject.type,
           value,
         });
