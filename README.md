@@ -222,6 +222,18 @@ await schemaOrg("WWDC 2024");
   */
   ```
 
+The `searchBestFirst` function also accepts a `goal` callback for early
+termination and a `returnPath` flag to capture the traversal path.
+
+```javascript
+const { path } = await searchBestFirst({
+  node: start,
+  next: ({ node }) => graph[node] || [],
+  goal: ({ node }) => node === 'finish',
+  returnPath: true,
+});
+```
+
 - **bool** - Transform questions into clear true/false decisions
   ```javascript
   // Evaluate factual queries
@@ -635,4 +647,4 @@ Help us explore what's possible when we rebuild software primitives with intelli
 
 ## License
 
-All Rights Reserved - Far World Labs 
+All Rights Reserved - Far World Labs
