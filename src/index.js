@@ -46,6 +46,10 @@ import transcribe from './lib/transcribe/index.js';
 
 // prompts
 import * as prompts from './prompts/index.js';
+export { default as retry } from './lib/retry/index.js';
+export { default as stripResponse } from './lib/strip-response/index.js';
+export { default as searchJSFiles } from './lib/search-js-files/index.js';
+export { default as searchBestFirst } from './lib/search-best-first/index.js';
 
 // services
 import * as redis from './services/redis/index.js';
@@ -83,6 +87,10 @@ export const lib = {
   toNumber,
   toNumberWithUnits,
   transcribe,
+  retry,
+  stripResponse,
+  searchJSFiles,
+  searchBestFirst,
 };
 
 export const verblets = {
