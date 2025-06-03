@@ -140,7 +140,14 @@ class ModelService {
       return this.getBestPublicModel();
     }
 
-    const modelFound = this.models[name];
+    // First try to find by key
+    let modelFound = this.models[name];
+
+    // If not found by key, try to find by model name
+    if (!modelFound) {
+      modelFound = Object.values(this.models).find((model) => model.name === name);
+    }
+
     if (!modelFound) {
       throw new Error(`Get model by name [error]: '${name}' not found.`);
     }

@@ -113,19 +113,19 @@ export default class SummaryMap extends Map {
       // omit weight to skip summarization
       let summarizedValue = value;
       if (budget) {
-        const entryModelOptions = {
+        const summarizeModelOptions = {
           ...this.modelOptions,
           ...valueObject.modelOptions,
         };
 
         if (valueObject.privacy?.whitelist || valueObject.privacy?.blacklist) {
-          entryModelOptions.modelName = 'privacy';
+          summarizeModelOptions.modelName = 'privacy';
         }
 
         summarizedValue = await summarize({
           budget,
           fixes: valueObject.fixes,
-          modelOptions: entryModelOptions,
+          modelOptions: summarizeModelOptions,
           privacy: valueObject.privacy,
           type: valueObject.type,
           value,

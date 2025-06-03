@@ -153,6 +153,45 @@ if (process.env.OPENWEBUI_API_URL && process.env.OPENWEBUI_API_KEY) {
 // Allow tests to run without requiring an API key
 if (process.env.NODE_ENV !== 'test') {
   expect(process.env.OPENAI_API_KEY).to.exist;
+} else if (Object.keys(_models).length === 0) {
+  // Add mock models for testing when no API key is available
+  const mockTokenizer = (text) => text.split(' ');
+
+  _models.fastGood = {
+    endpoint: 'v1/chat/completions',
+    name: 'mock-fast-good',
+    maxContextWindow: 128_000,
+    maxOutputTokens: 16_384,
+    requestTimeout: 20_000,
+    apiKey: 'mock-key',
+    apiUrl: 'https://mock.api.com/',
+    systemPrompt,
+    tokenizer: mockTokenizer,
+  };
+
+  _models.fastCheap = {
+    endpoint: 'v1/chat/completions',
+    name: 'mock-fast-cheap',
+    maxContextWindow: 128_000,
+    maxOutputTokens: 8_192,
+    requestTimeout: 20_000,
+    apiKey: 'mock-key',
+    apiUrl: 'https://mock.api.com/',
+    systemPrompt,
+    tokenizer: mockTokenizer,
+  };
+
+  _models.privacy = {
+    endpoint: 'v1/chat/completions',
+    name: 'mock-privacy',
+    maxContextWindow: 128_000,
+    maxOutputTokens: 8_192,
+    requestTimeout: 20_000,
+    apiKey: 'mock-key',
+    apiUrl: 'https://mock.api.com/',
+    systemPrompt,
+    tokenizer: mockTokenizer,
+  };
 }
 
 const secondsInDay = 60 * 60 * 24;
