@@ -22,7 +22,7 @@ describe('search-best-first', () => {
       node: 0,
       next: ({ node }) => (node < 2 ? [node + 1] : []),
       rank: ({ nodes }) => nodes,
-      visit: ({ state }) => ({ ...state, count: (state.count || 0) + 1 }),
+      visit: ({ node, state }) => ({ ...state, count: (state.count || 0) + 1 }),
       goal: ({ node }) => node === 5,
       state: {},
       returnPath: true,
