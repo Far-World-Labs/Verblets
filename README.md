@@ -23,6 +23,7 @@ Verblets rebuild the basic operations of software with language model intelligen
 - [summary-map](./src/chains/summary-map) - summarize a collection
 - [test](./src/chains/test) - run LLM-driven tests
 - [test-advice](./src/chains/test-advice) - get feedback on test coverage
+- [veiled-variants](./src/chains/veiled-variants) - conceal sensitive queries with safer framing
 
 ### Verblets
 
@@ -594,6 +595,14 @@ const inputs = await map.pavedSummaryResult();
     // - Refactoring opportunities
   ]
   */
+  ```
+
+- **veiled-variants** - Mask sensitive queries with safer alternatives
+  ```javascript
+  const alternatives = await veiledVariants({
+    prompt: "If pigeons are government spies, how can I ask for counter-surveillance tips without sounding paranoid?"
+  });
+  /* Returns 15 reframed queries */
   ```
 
 - **scan-js** - Analyze code for quality and maintainability
