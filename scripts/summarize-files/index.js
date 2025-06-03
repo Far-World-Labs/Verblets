@@ -1,12 +1,36 @@
 import glob from 'glob';
 import { readFile } from 'fs/promises';
 import SummaryMap from '../../src/chains/summary-map/index.js';
+import modelService from '../../src/services/llm-model/index.js';
+import { Command } from 'commander';
 
-// Define your glob pattern here or pass it as a command line argument
-const globPattern = process.argv[2] || './src/**/*.js';
+const program = new Command();
+program
+  .argument('[globPattern]', 'Glob pattern to summarize', './src/**/*.js')
+  .argument('[targetTokens]', 'Target token count', '4097')
+  .option('-p, --privacy', 'Use privacy model if configured')
+  .option('-m, --model <modelName>', 'Specify model name to use');
 
-// Define your target tokens here or pass it as a command line argument
-const targetTokens = process.argv[3] || 4097;
+program.parse(process.argv);
+
+const options = program.opts();
+const [globPattern, targetTokensInput] = program.args;
+const targetTokens = Number(targetTokensInput);
+
+if (options.privacy) {
+  try {
+    modelService.setGlobalOverride('modelName', 'privacy');
+  } catch (err) {
+    console.error(`Privacy model error: ${err.message}`);
+  }
+}
+if (options.model) {
+  try {
+    modelService.setGlobalOverride('modelName', options.model);
+  } catch (err) {
+    console.error(`Model override error: ${err.message}`);
+  }
+}
 
 // Initialize the SummaryMap with the target tokens
 const map = new SummaryMap({

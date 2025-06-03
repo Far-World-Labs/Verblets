@@ -8,9 +8,35 @@ chatGPT,
   getRedis,
   SummaryMap
 } from '../../src/index.js';
+import modelService from '../../src/services/llm-model/index.js';
+import { Command } from 'commander';
 
-const modulePath = process.argv[2];
-const functionName = process.argv[3];
+const program = new Command();
+program
+  .argument('<modulePath>', 'Module to test')
+  .argument('[functionName]', 'Specific function to test')
+  .option('-p, --privacy', 'Use privacy model if configured')
+  .option('-m, --model <modelName>', 'Specify model name to use');
+
+program.parse(process.argv);
+
+const options = program.opts();
+const [modulePath, functionName] = program.args;
+
+if (options.privacy) {
+  try {
+    modelService.setGlobalOverride('modelName', 'privacy');
+  } catch (err) {
+    console.error(`Privacy model error: ${err.message}`);
+  }
+}
+if (options.model) {
+  try {
+    modelService.setGlobalOverride('modelName', options.model);
+  } catch (err) {
+    console.error(`Model override error: ${err.message}`);
+  }
+}
 
 if (!modulePath) {
   console.error('Please specify a module to test.');

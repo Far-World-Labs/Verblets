@@ -1,25 +1,36 @@
 import dotenv from 'dotenv/config';
-import yargs from 'yargs';
-import { hideBin } from 'yargs/helpers';
+import { Command } from 'commander';
 
 import chatGPT, { getRedis, auto, bool } from '../../src/index.js';
+import modelService from '../../src/services/llm-model/index.js';
 import edit from '../../src/lib/editor/index.js';
 import Transcriber from '../../src/lib/transcribe/index.js';
 
-const argv = yargs(hideBin(process.argv))
-  .option('use-intent', {
-    alias: 'i',
-    default: 'true',
-    type: 'string',
-    description: '"false" to disable intent parsing and just use chatGPT',
-  })
-  .option('transcribe', {
-    alias: 't',
-    default: 'false',
-    type: 'string',
-    description: '"true" to enable audio transcription',
-  })
-  .argv;
+const program = new Command();
+program
+  .option('-t, --transcribe', 'Enable audio transcription')
+  .option('--no-use-intent', 'Disable intent parsing')
+  .option('-p, --privacy', 'Use privacy model if configured')
+  .option('-m, --model <modelName>', 'Specify model name to use');
+
+program.parse(process.argv);
+
+const argv = program.opts();
+
+if (argv.privacy) {
+  try {
+    modelService.setGlobalOverride('modelName', 'privacy');
+  } catch (err) {
+    console.error(`Privacy model error: ${err.message}`);
+  }
+}
+if (argv.model) {
+  try {
+    modelService.setGlobalOverride('modelName', argv.model);
+  } catch (err) {
+    console.error(`Model override error: ${err.message}`);
+  }
+}
 
 const operations = [
   {
@@ -32,7 +43,7 @@ const operations = [
 
 
 let userInput;
-const useTranscribe = ['true', '1'].includes(argv.transcribe)
+const useTranscribe = !!argv.transcribe;
 if (useTranscribe) {
   const transcriber = new Transcriber("stopword"); // Replace "stopword" with the word you want to trigger the stop
   userInput = await transcriber.startRecording()
@@ -40,7 +51,7 @@ if (useTranscribe) {
   userInput = await edit();
 }
 
-const useIntent = !!['true', '1'].includes(argv.useIntent.toLowerCase())
+const useIntent = argv.useIntent !== false;
 
 const commandType = useIntent ? 'Tool selection' : 'Direct ChatGPT';
 console.error(`Command: ${commandType}`);
