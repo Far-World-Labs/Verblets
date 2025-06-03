@@ -96,8 +96,18 @@ export default class SummaryMap extends Map {
     for (const { key, budget } of budgets) {
       const valueObject = this.data.get(key);
 
+      const entryModelOptions = {
+        ...this.modelOptions,
+        ...valueObject.modelOptions,
+      };
+
+      if (valueObject.privacy?.whitelist || valueObject.privacy?.blacklist) {
+        entryModelOptions.modelName = 'privacy';
+      }
+
       const value = shortenText(valueObject.value, {
         targetTokenCount: this.maxTokensPerValue,
+        model: modelService.getModel(entryModelOptions.modelName),
       });
 
       // omit weight to skip summarization
