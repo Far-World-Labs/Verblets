@@ -1,4 +1,3 @@
-/* eslint-disable no-await-in-loop */
 import listMap from '../../verblets/list-map/index.js';
 
 /**

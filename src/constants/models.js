@@ -1,5 +1,3 @@
-/* eslint-disable no-unused-expressions, import/prefer-default-export */
-
 // Importing dotenv config to load environment variables from .env file
 // eslint-disable-next-line no-unused-vars
 import dotenv from 'dotenv/config';

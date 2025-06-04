@@ -1,5 +1,3 @@
-/* eslint-disable no-await-in-loop */
-
 import path from 'path';
 import fs from 'fs';
 import { parse } from 'acorn';

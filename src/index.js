@@ -5,23 +5,23 @@ import dotenv from 'dotenv/config';
 import chatGPT from './lib/chatgpt/index.js';
 
 // chains are consumed as verblets
-// eslint-disable-next-line import/no-named-as-default
+
 import anonymize from './chains/anonymize/index.js';
-// eslint-disable-next-line import/no-named-as-default
+
 import Dismantle from './chains/dismantle/index.js';
-// eslint-disable-next-line import/no-named-as-default
+
 import list from './chains/list/index.js';
-// eslint-disable-next-line import/no-named-as-default
+
 import questions from './chains/questions/index.js';
-// eslint-disable-next-line import/no-named-as-default
+
 import scanJS from './chains/scan-js/index.js';
-// eslint-disable-next-line import/no-named-as-default
+
 import sort from './chains/sort/index.js';
-// eslint-disable-next-line import/no-named-as-default
+
 import SummaryMap from './chains/summary-map/index.js';
-// eslint-disable-next-line import/no-named-as-default
+
 import test from './chains/test/index.js';
-// eslint-disable-next-line import/no-named-as-default
+
 import testAdvice from './chains/test-advice/index.js';
 
 import schemas from './json-schemas/index.js';
@@ -53,23 +53,23 @@ import * as redis from './services/redis/index.js';
 import modelService from './services/llm-model/index.js';
 
 // verblets
-// eslint-disable-next-line import/no-named-as-default
+
 import auto from './verblets/auto/index.js';
-// eslint-disable-next-line import/no-named-as-default
+
 import bool from './verblets/bool/index.js';
-// eslint-disable-next-line import/no-named-as-default
+
 import enums from './verblets/enum/index.js';
-// eslint-disable-next-line import/no-named-as-default
+
 import intent from './verblets/intent/index.js';
-// eslint-disable-next-line import/no-named-as-default
+
 import number from './verblets/number/index.js';
-// eslint-disable-next-line import/no-named-as-default
+
 import numberWithUnits from './verblets/number-with-units/index.js';
-// eslint-disable-next-line import/no-named-as-default
+
 import schemaOrg from './verblets/schema-org/index.js';
-// eslint-disable-next-line import/no-named-as-default
+
 import toObject from './verblets/to-object/index.js';
-// eslint-disable-next-line import/no-named-as-default
+
 import listMap from './verblets/list-map/index.js';
 
 export { default as retry } from './lib/retry/index.js';

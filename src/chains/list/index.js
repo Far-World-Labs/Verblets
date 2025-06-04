@@ -1,5 +1,3 @@
-/* eslint-disable no-await-in-loop */
-
 import { operationTimeoutMultiplier } from '../../constants/models.js';
 import chatGPT from '../../lib/chatgpt/index.js';
 import {

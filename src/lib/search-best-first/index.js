@@ -43,7 +43,6 @@ export default async ({
   let lastNode = rootNode;
 
   while (nodesTodo.length > 0) {
-    // eslint-disable-next-line no-await-in-loop
     const nodesRanked = await rank({ nodes: nodesTodo, state });
     const node = nodesRanked.shift();
     lastNode = node;
@@ -52,7 +51,6 @@ export default async ({
 
     state.visited.add(keyFor(node));
 
-    // eslint-disable-next-line no-await-in-loop
     state = await visit({ node, state });
 
     if (goal({ node, state })) {
@@ -67,7 +65,6 @@ export default async ({
       return state;
     }
 
-    // eslint-disable-next-line no-await-in-loop
     const nextNodes = await next({ node, state });
 
     nextNodes.filter(filterWith(state)).forEach((nextNode) => {

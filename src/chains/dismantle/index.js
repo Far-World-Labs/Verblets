@@ -1,5 +1,3 @@
-/* eslint-disable no-await-in-loop */
-
 import { v4 as uuid } from 'uuid';
 
 import chatGPT from '../../lib/chatgpt/index.js';

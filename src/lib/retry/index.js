@@ -1,4 +1,3 @@
-/* eslint-disable no-await-in-loop */
 import {
   maxRetries as maxRetriesDefault,
   retryDelay as retryDelayDefault,
@@ -16,7 +15,6 @@ export default async (
   let retry = 0;
   let lastError = new Error('Nothing to run');
 
-  // eslint-disable-next-line no-promise-executor-return
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
   const labelDisplay = label ? `"${label}"` : '';
