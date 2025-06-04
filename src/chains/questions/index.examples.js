@@ -8,6 +8,7 @@ import questions from './index.js';
 const ensureDirectoryExists = async (directoryPath) => {
   try {
     await fs.access(directoryPath);
+    // eslint-disable-next-line no-unused-vars
   } catch (error) {
     await fs.mkdir(directoryPath, { recursive: true });
   }
@@ -17,7 +18,7 @@ const readFileOrUndefined = async (filePath) => {
   let result;
   try {
     result = (await fs.readFile(filePath)).toString();
-    // eslint-disable-next-line no-empty
+    // eslint-disable-next-line no-unused-vars
   } catch (error) {
     // do nothing
   }

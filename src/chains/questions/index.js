@@ -1,5 +1,3 @@
-/* eslint-disable no-await-in-loop */
-
 import * as R from 'ramda';
 
 import chatGPT from '../../lib/chatgpt/index.js';

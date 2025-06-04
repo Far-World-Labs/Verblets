@@ -1,7 +1,6 @@
 {
   "extends": [
     "eslint:recommended",
-    "airbnb-base",
     "plugin:prettier/recommended"
   ],
   "plugins": ["jest"],
@@ -12,11 +11,6 @@
   "env": {
     "es2022": true,
     "node": true
-  },
-  "settings": {
-    "react": {
-      "version": "999.999.999"
-    }
   },
   "rules": {
     "import/extensions": "off",

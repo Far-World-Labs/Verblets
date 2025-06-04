@@ -21,7 +21,6 @@ class NullRedisClient {
     this.store[key] = value;
   }
 
-  // eslint-disable-next-line class-methods-use-this, no-empty-function
   async disconnect() {
     // no implementation
   }

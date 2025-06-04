@@ -1,5 +1,3 @@
-/* eslint-disable no-await-in-loop */
-
 import chatGPT from '../../lib/chatgpt/index.js';
 import pave from '../../lib/pave/index.js';
 import shortenText from '../../lib/shorten-text/index.js';

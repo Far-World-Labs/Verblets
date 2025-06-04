@@ -69,7 +69,7 @@ describe('anonymize examples', () => {
 
     // Only the most obvious personal markers should be removed
     expect(result.text).to.not.include('Trust me');
-    // eslint-disable-next-line quotes
+
     expect(result.text).to.not.include("I've found");
   });
 });
