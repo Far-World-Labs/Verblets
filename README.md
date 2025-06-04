@@ -36,7 +36,15 @@ Verblets rebuild the basic operations of software with language model intelligen
 - [schema-org](./src/verblets/schema-org) - create schema.org objects
 - [to-object](./src/verblets/to-object) - convert descriptions to objects
 - [list-map](./src/verblets/list-map) - map lists with custom instructions
+<<<<<<< HEAD
 - [list-reduce](./src/verblets/list-reduce) - reduce lists with custom instructions
+=======
+<<<<<<< HEAD
+- [bulk-map](./src/chains/bulk-map) - map long lists in retryable batches
+=======
+- [list-reduce](./src/verblets/list-reduce) - reduce lists with custom instructions
+>>>>>>> e8b3bc5 (Fix listReduce API and bulkReduce usage)
+>>>>>>> 455c066 (Fix listReduce API and bulkReduce usage)
 
 ### Library Helpers
 
