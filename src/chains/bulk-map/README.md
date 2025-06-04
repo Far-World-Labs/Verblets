@@ -1,12 +1,11 @@
-# bulkmap
+# bulk-map
 
 Chunk large lists and map each chunk with `listMap`. Failed chunks can be retried.
-`bulkMap` is exported as the default entry.
 
 ## Usage
 
 ```javascript
-import bulkMap from './index.js';
+import { bulkMap } from '../../index.js';
 
 const films = [
   'sci-fi epic',
