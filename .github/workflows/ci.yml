@@ -32,7 +32,7 @@ jobs:
           path: |
             node_modules
             ~/.npm
-          key: node-modules-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
+          key: node-modules-${{ runner.os }}-${{ hashFiles('**/package-lock.json', '**/package.json') }}
           restore-keys: |
             node-modules-${{ runner.os }}-
           lookup-only: true
@@ -41,7 +41,13 @@ jobs:
         if: steps.cache-check.outputs.cache-hit != 'true'
         run: |
           echo "::group::Installing dependencies"
-          npm ci --prefer-offline --no-audit
+          if [ -f package-lock.json ]; then
+            echo "📦 Found package-lock.json, using npm ci"
+            npm ci --prefer-offline --no-audit
+          else
+            echo "📦 No package-lock.json found, using npm install"
+            npm install --prefer-offline --no-audit
+          fi
           echo "::endgroup::"
       
       - name: 💾 Cache node_modules
@@ -51,7 +57,7 @@ jobs:
           path: |
             node_modules
             ~/.npm
-          key: node-modules-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
+          key: node-modules-${{ runner.os }}-${{ hashFiles('**/package-lock.json', '**/package.json') }}
       
       - name: 📊 Job Summary
         run: |
@@ -59,6 +65,7 @@ jobs:
           echo "- Node.js version: ${{ env.NODE_VERSION }}" >> $GITHUB_STEP_SUMMARY
           echo "- Cache hit: ${{ steps.cache-check.outputs.cache-hit }}" >> $GITHUB_STEP_SUMMARY
           echo "- Dependencies installed: $([ '${{ steps.cache-check.outputs.cache-hit }}' = 'true' ] && echo 'from cache' || echo 'fresh install')" >> $GITHUB_STEP_SUMMARY
+          echo "- Lock file: $([ -f package-lock.json ] && echo 'package-lock.json found' || echo 'using package.json only')" >> $GITHUB_STEP_SUMMARY
 
   lint:
     name: 🔍 Lint Code
@@ -80,7 +87,7 @@ jobs:
           path: |
             node_modules
             ~/.npm
-          key: node-modules-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
+          key: node-modules-${{ runner.os }}-${{ hashFiles('**/package-lock.json', '**/package.json') }}
           restore-keys: |
             node-modules-${{ runner.os }}-
           fail-on-cache-miss: true
@@ -135,7 +142,7 @@ jobs:
           path: |
             node_modules
             ~/.npm
-          key: node-modules-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
+          key: node-modules-${{ runner.os }}-${{ hashFiles('**/package-lock.json', '**/package.json') }}
           restore-keys: |
             node-modules-${{ runner.os }}-
           fail-on-cache-miss: true
