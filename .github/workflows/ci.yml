@@ -24,14 +24,17 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
       
       - name: 🔍 Check for existing cache
         id: cache-check
         uses: actions/cache@v3
         with:
-          path: node_modules
-          key: node-modules-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          path: |
+            node_modules
+            ~/.npm
+          key: node-modules-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            node-modules-${{ runner.os }}-
           lookup-only: true
       
       - name: 📦 Install dependencies
@@ -45,8 +48,10 @@ jobs:
         if: steps.cache-check.outputs.cache-hit != 'true'
         uses: actions/cache/save@v3
         with:
-          path: node_modules
-          key: node-modules-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          path: |
+            node_modules
+            ~/.npm
+          key: node-modules-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
       
       - name: 📊 Job Summary
         run: |
@@ -72,8 +77,12 @@ jobs:
       - name: 💾 Restore node_modules
         uses: actions/cache/restore@v3
         with:
-          path: node_modules
-          key: node-modules-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          path: |
+            node_modules
+            ~/.npm
+          key: node-modules-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            node-modules-${{ runner.os }}-
           fail-on-cache-miss: true
       
       - name: 🔍 Run ESLint
@@ -123,8 +132,12 @@ jobs:
       - name: 💾 Restore node_modules
         uses: actions/cache/restore@v3
         with:
-          path: node_modules
-          key: node-modules-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          path: |
+            node_modules
+            ~/.npm
+          key: node-modules-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            node-modules-${{ runner.os }}-
           fail-on-cache-miss: true
       
       - name: 🧪 Run tests with coverage
