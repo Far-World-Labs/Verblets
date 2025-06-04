@@ -1,7 +1,7 @@
 import chatGPT from '../../lib/chatgpt/index.js';
 import wrapVariable from '../../prompts/wrap-variable.js';
 
-function buildPrompt(list, instructions, categories) {
+const buildPrompt = (list, instructions, categories) => {
   const instructionsBlock = wrapVariable(instructions, { tag: 'instructions' });
   const listBlock = wrapVariable(list.join('\n'), { tag: 'list' });
   const categoryBlock =
@@ -10,7 +10,7 @@ function buildPrompt(list, instructions, categories) {
       : '';
   const categoryText = categories && categories.length ? 'one of the <categories>' : 'a group';
   return `Assign each line in <list> to ${categoryText} according to <instructions>. Return the same number of lines containing only the group name.\n\n${instructionsBlock}\n${categoryBlock}${listBlock}`;
-}
+};
 
 export default async function listPartition(list, instructions, categories) {
   const output = await chatGPT(buildPrompt(list, instructions, categories));
