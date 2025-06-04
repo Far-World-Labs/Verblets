@@ -21,6 +21,7 @@ Verblets rebuild the basic operations of software with language model intelligen
 - [scan-js](./src/chains/scan-js) - analyze code quality
 - [sort](./src/chains/sort) - order lists by any criteria
 - [summary-map](./src/chains/summary-map) - summarize a collection
+- [bulk-reduce](./src/chains/bulk-reduce) - reduce long lists in batches
 - [test](./src/chains/test) - run LLM-driven tests
 - [test-advice](./src/chains/test-advice) - get feedback on test coverage
 - [veiled-variants](./src/chains/veiled-variants) - conceal sensitive queries with safer framing
@@ -36,6 +37,7 @@ Verblets rebuild the basic operations of software with language model intelligen
 - [schema-org](./src/verblets/schema-org) - create schema.org objects
 - [to-object](./src/verblets/to-object) - convert descriptions to objects
 - [list-map](./src/verblets/list-map) - map lists with custom instructions
+- [list-reduce](./src/verblets/list-reduce) - reduce lists with custom instructions
 
 ### Library Helpers
 
@@ -505,6 +507,19 @@ const inputs = await map.pavedSummaryResult();
   );
   // results[0] === 'Illuminate your world with the sun'
   // results[1] === 'Computing beyond limits'
+  ```
+
+- **bulk-reduce** - Reduce long lists sequentially using `listReduce`
+  ```javascript
+  import bulkReduce from './src/chains/bulk-reduce/index.js';
+
+  const logLines = [
+    'User logged in',
+    'User viewed dashboard',
+    'User logged out'
+  ];
+  const summary = await bulkReduce(logLines, 'Summarize the events');
+  // e.g. 'User session: login, dashboard view and logout'
   ```
 
 - **search-best-first** - Intelligently explore solution spaces
