@@ -272,7 +272,7 @@ class ModelService {
 
     const modelFound = this.getModel(modelName);
 
-    let requestPrompt = { prompt: prompt };
+    let requestPrompt = { prompt };
     if (/chat/.test(modelFound.endpoint)) {
       const userMessage = { role: 'user', content: prompt };
       const systemMessages = systemPrompt

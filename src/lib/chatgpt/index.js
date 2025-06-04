@@ -31,7 +31,7 @@ const shapeOutputDefault = (result) => {
 
 const onBeforeRequestDefault = ({ debugPrompt, isCached, prompt }) => {
   if (debugPrompt || debugPromptGlobally || (debugPromptGloballyIfChanged && !isCached)) {
-    console.error(`+++ DEBUG PROMPT +++`);
+    console.error('+++ DEBUG PROMPT +++');
     console.error(prompt);
     console.error('+++ DEBUG PROMPT END +++');
   }
@@ -39,7 +39,7 @@ const onBeforeRequestDefault = ({ debugPrompt, isCached, prompt }) => {
 
 const onAfterRequestDefault = ({ debugResult, isCached, resultShaped }) => {
   if (debugResult || debugResultGlobally || (debugResultGloballyIfChanged && !isCached)) {
-    console.error(`+++ DEBUG RESULT +++`);
+    console.error('+++ DEBUG RESULT +++');
     console.error(resultShaped);
     console.error('+++ DEBUG RESULT END +++');
   }

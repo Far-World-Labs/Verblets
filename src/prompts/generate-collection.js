@@ -1,7 +1,7 @@
 import {
+  contentListItemCriteria,
   onlyJSON,
   onlyJSONObjectArray,
-  contentListItemCriteria,
   tryCompleteData,
 } from './constants.js';
 import asObjectWithSchema from './as-object-with-schema.js';

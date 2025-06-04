@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import listMap from './index.js';
 import { longTestTimeout } from '../../constants/common.js';
 

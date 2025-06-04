@@ -205,7 +205,7 @@ const parseFiles = (files) => {
             functionsMap[`MethodDefinition:${className}.${classElement.key.name}`] = {
               start: node.start,
               end: node.end,
-              className: className,
+              className,
               name: classElement.key.name,
               async: classElement.value.async,
               generator: classElement.value.generator,

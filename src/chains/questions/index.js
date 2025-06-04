@@ -2,8 +2,8 @@ import * as R from 'ramda';
 
 import chatGPT from '../../lib/chatgpt/index.js';
 import {
-  constants as promptConstants,
   generateQuestions as generateQuestionsPrompt,
+  constants as promptConstants,
 } from '../../prompts/index.js';
 import modelService from '../../services/llm-model/index.js';
 import toObject from '../../verblets/to-object/index.js';
