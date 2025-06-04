@@ -14,5 +14,6 @@ Available verblets:
 - [to-object](./to-object) – see its [README](./to-object/README.md) for details.
 - [list-map](./list-map) - map lists with custom instructions
 - [list-reduce](./list-reduce) - reduce lists with custom instructions
+- [list-partition](./list-partition) - partition lists with custom instructions and optional category list
 
 Use these modules directly or compose them inside [chains](../chains/README.md).
