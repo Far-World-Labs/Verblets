@@ -6,8 +6,43 @@ import chatGPT from '../../lib/chatgpt/index.js';
 vi.mock('../../services/llm-model/index.js', () => ({
   default: {
     negotiateModel: vi.fn().mockReturnValue('fastGood'),
-    getModel: vi.fn().mockReturnValue({
+    getBestPublicModel: vi.fn().mockReturnValue({
+      name: 'fastGood',
       tokenizer: (text) => text.split(' '),
+      maxContextWindow: 128000,
+      maxOutputTokens: 16384,
+      toTokens: function(text) {
+        return this.tokenizer(text);
+      },
+      budgetTokens: function(text, { completionMax = Infinity } = {}) {
+        const prompt = this.toTokens(text).length;
+        const total = this.maxContextWindow;
+        const completion = Math.min(Math.min(total - prompt, this.maxOutputTokens), completionMax);
+        return {
+          completion,
+          prompt,
+          total,
+        };
+      }
+    }),
+    getModel: vi.fn().mockReturnValue({
+      name: 'fastGood',
+      tokenizer: (text) => text.split(' '),
+      maxContextWindow: 128000,
+      maxOutputTokens: 16384,
+      toTokens: function(text) {
+        return this.tokenizer(text);
+      },
+      budgetTokens: function(text, { completionMax = Infinity } = {}) {
+        const prompt = this.toTokens(text).length;
+        const total = this.maxContextWindow;
+        const completion = Math.min(Math.min(total - prompt, this.maxOutputTokens), completionMax);
+        return {
+          completion,
+          prompt,
+          total,
+        };
+      }
     }),
   },
 }));
