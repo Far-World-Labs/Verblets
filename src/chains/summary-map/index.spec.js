@@ -11,10 +11,10 @@ vi.mock('../../services/llm-model/index.js', () => ({
       tokenizer: (text) => text.split(' '),
       maxContextWindow: 128000,
       maxOutputTokens: 16384,
-      toTokens: function(text) {
+      toTokens(text) {
         return this.tokenizer(text);
       },
-      budgetTokens: function(text, { completionMax = Infinity } = {}) {
+      budgetTokens(text, { completionMax = Infinity } = {}) {
         const prompt = this.toTokens(text).length;
         const total = this.maxContextWindow;
         const completion = Math.min(Math.min(total - prompt, this.maxOutputTokens), completionMax);
@@ -23,17 +23,17 @@ vi.mock('../../services/llm-model/index.js', () => ({
           prompt,
           total,
         };
-      }
+      },
     }),
     getModel: vi.fn().mockReturnValue({
       name: 'fastGood',
       tokenizer: (text) => text.split(' '),
       maxContextWindow: 128000,
       maxOutputTokens: 16384,
-      toTokens: function(text) {
+      toTokens(text) {
         return this.tokenizer(text);
       },
-      budgetTokens: function(text, { completionMax = Infinity } = {}) {
+      budgetTokens(text, { completionMax = Infinity } = {}) {
         const prompt = this.toTokens(text).length;
         const total = this.maxContextWindow;
         const completion = Math.min(Math.min(total - prompt, this.maxOutputTokens), completionMax);
@@ -42,7 +42,7 @@ vi.mock('../../services/llm-model/index.js', () => ({
           prompt,
           total,
         };
-      }
+      },
     }),
   },
 }));
