@@ -35,6 +35,7 @@ Verblets rebuild the basic operations of software with language model intelligen
 - [number-with-units](./src/verblets/number-with-units) - parse numbers with units
 - [schema-org](./src/verblets/schema-org) - create schema.org objects
 - [to-object](./src/verblets/to-object) - convert descriptions to objects
+- [list-map](./src/verblets/list-map) - map lists with custom instructions
 
 ### Library Helpers
 
@@ -44,6 +45,7 @@ Verblets rebuild the basic operations of software with language model intelligen
 - [search-best-first](./src/lib/search-best-first) - best-first search
 - [search-js-files](./src/lib/search-js-files) - scan JavaScript sources
 - [shorten-text](./src/lib/shorten-text) - shorten text using a model
+- [bulkmap](./src/lib/bulk-map) - map long lists in retryable batches
 - [strip-numeric](./src/lib/strip-numeric) - remove non-digit characters
 - [strip-response](./src/lib/strip-response) - clean up model responses
 - [to-bool](./src/lib/to-bool) - parse text to boolean
@@ -484,6 +486,25 @@ const inputs = await map.pavedSummaryResult();
       ## Endpoints
       GET /users...DELETE /users/{id}"
   */
+  ```
+
+- **bulkmap** - Map over lists in retryable batches using `listMap`
+  ```javascript
+  import bulkMap from './src/lib/bulk-map/index.js';
+
+  const gadgets = [
+    'solar-powered flashlight',
+    'quantum laptop',
+    'smart refrigerator',
+    // ...more items
+  ];
+  const results = await bulkMap(
+    gadgets,
+    'Give each item a catchphrase worthy of a blockbuster commercial',
+    { chunkSize: 5, maxAttempts: 2 }
+  );
+  // results[0] === 'Illuminate your world with the sun'
+  // results[1] === 'Computing beyond limits'
   ```
 
 - **search-best-first** - Intelligently explore solution spaces

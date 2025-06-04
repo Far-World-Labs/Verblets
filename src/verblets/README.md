@@ -12,5 +12,6 @@ Available verblets:
 - [number-with-units](./number-with-units)
 - [schema-org](./schema-org)
 - [to-object](./to-object) – see its [README](./to-object/README.md) for details.
+- [list-map](./list-map) - map lists with custom instructions
 
 Use these modules directly or compose them inside [chains](../chains/README.md).
