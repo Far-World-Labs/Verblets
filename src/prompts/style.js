@@ -18,7 +18,8 @@ export default (
 
   let noiseModifier = '';
   if (noise > 0.5) {
-    noiseModifier = `Completely reshape the ideas here, don't stick with the original structure. Don't change the meaning of the content though.`;
+    noiseModifier =
+      "Completely reshape the ideas here, don't stick with the original structure. Don't change the meaning of the content though.";
   }
 
   return `Rewrite the following content:

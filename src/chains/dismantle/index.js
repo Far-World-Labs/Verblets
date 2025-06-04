@@ -1,7 +1,7 @@
 import { v4 as uuid } from 'uuid';
 
 import chatGPT from '../../lib/chatgpt/index.js';
-import { constants as promptConstants, outputSuccinctNames } from '../../prompts/index.js';
+import { outputSuccinctNames, constants as promptConstants } from '../../prompts/index.js';
 import modelService from '../../services/llm-model/index.js';
 import toObject from '../../verblets/to-object/index.js';
 

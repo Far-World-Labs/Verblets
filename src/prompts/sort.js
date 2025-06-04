@@ -1,9 +1,9 @@
 import wrapVariable from './wrap-variable.js';
 import {
-  contentIsSortCriteria,
-  contentIsMain,
-  contentIsFixes,
   contentIsDetails,
+  contentIsFixes,
+  contentIsMain,
+  contentIsSortCriteria,
   onlyJSONStringArray,
 } from './constants.js';
 

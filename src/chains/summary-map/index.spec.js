@@ -1,7 +1,51 @@
 import { describe, expect, it, vi } from 'vitest';
-
-import SummaryMap from './index.js';
 import pave from '../../lib/pave/index.js';
+import SummaryMap from './index.js';
+import chatGPT from '../../lib/chatgpt/index.js';
+
+vi.mock('../../services/llm-model/index.js', () => ({
+  default: {
+    negotiateModel: vi.fn().mockReturnValue('fastGood'),
+    getBestPublicModel: vi.fn().mockReturnValue({
+      name: 'fastGood',
+      tokenizer: (text) => text.split(' '),
+      maxContextWindow: 128000,
+      maxOutputTokens: 16384,
+      toTokens(text) {
+        return this.tokenizer(text);
+      },
+      budgetTokens(text, { completionMax = Infinity } = {}) {
+        const prompt = this.toTokens(text).length;
+        const total = this.maxContextWindow;
+        const completion = Math.min(Math.min(total - prompt, this.maxOutputTokens), completionMax);
+        return {
+          completion,
+          prompt,
+          total,
+        };
+      },
+    }),
+    getModel: vi.fn().mockReturnValue({
+      name: 'fastGood',
+      tokenizer: (text) => text.split(' '),
+      maxContextWindow: 128000,
+      maxOutputTokens: 16384,
+      toTokens(text) {
+        return this.tokenizer(text);
+      },
+      budgetTokens(text, { completionMax = Infinity } = {}) {
+        const prompt = this.toTokens(text).length;
+        const total = this.maxContextWindow;
+        const completion = Math.min(Math.min(total - prompt, this.maxOutputTokens), completionMax);
+        return {
+          completion,
+          prompt,
+          total,
+        };
+      },
+    }),
+  },
+}));
 
 vi.mock('../../lib/chatgpt/index.js', () => ({
   default: vi.fn().mockImplementation((text) => {
@@ -15,10 +59,8 @@ vi.mock('../../lib/chatgpt/index.js', () => ({
   }),
 }));
 
-// eslint-disable-next-line import/first
-import chatGPT from '../../lib/chatgpt/index.js';
-
-const legalText = `Pursuant to the adjudication of a force majeure clause within the context of contractual`;
+const legalText =
+  'Pursuant to the adjudication of a force majeure clause within the context of contractual';
 
 const codeText = `import numpy as np
 

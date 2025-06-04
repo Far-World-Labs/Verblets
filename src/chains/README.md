@@ -5,6 +5,7 @@ Chains orchestrate multiple verblets or helper functions to perform more complex
 Available chains:
 
 - [anonymize](./anonymize)
+- [bulk-map](./bulk-map)
 - [dismantle](./dismantle)
 - [list](./list)
 - [questions](./questions)

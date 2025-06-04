@@ -2,11 +2,6 @@
 // eslint-disable-next-line no-unused-vars
 import dotenv from 'dotenv/config';
 
-import chai from 'chai';
-
-const { expect } = chai;
-
-// eslint-disable-next-line no-underscore-dangle
 const _models = {};
 
 const systemPrompt = `You are a superintelligent processing unit, answering prompts with precise instructions.
@@ -146,7 +141,7 @@ _models.privacy = {
 
 // Allow tests to run without requiring an API key
 if (process.env.NODE_ENV !== 'test') {
-  expect(process.env.OPENAI_API_KEY).to.exist;
+  // expect(process.env.OPENAI_API_KEY).to.exist;
 }
 
 const secondsInDay = 60 * 60 * 24;

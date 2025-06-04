@@ -6,7 +6,7 @@ export default (val) => {
   if (valLower === 'undefined') return undefined;
   const valParsed = +stripNumeric(val);
   if (Number.isNaN(valParsed)) {
-    throw new Error(`ChatGPT output [error]`);
+    throw new Error('ChatGPT output [error]');
   }
   return valParsed;
 };

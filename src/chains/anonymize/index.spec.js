@@ -1,4 +1,4 @@
-import { describe, it, vi, expect } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { anonymize, anonymizeMethod } from './index.js';
 
 vi.mock('./index.js', () => {

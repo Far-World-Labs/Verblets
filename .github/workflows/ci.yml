@@ -3,22 +3,60 @@ name: CI
 on:
   pull_request:
     branches: [ main, develop ]
+  pull_request_target:
+    branches: [ main, develop ]
+    types: [opened, synchronize, reopened]
   push:
     branches: [ main, develop ]
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+  statuses: write
 
 env:
   NODE_VERSION: '18'
 
 jobs:
+  security-check:
+    name: 🔒 Security Check
+    if: github.event_name == 'pull_request_target'
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🔍 Validate PR source
+        run: |
+          echo "Checking PR from: ${{ github.actor }}"
+          echo "Event: ${{ github.event_name }}"
+          echo "Repository: ${{ github.event.pull_request.head.repo.full_name }}"
+          
+          # Allow internal PRs and trusted bots
+          if [[ "${{ github.event.pull_request.head.repo.full_name }}" == "${{ github.repository }}" ]] || \
+             [[ "${{ github.actor }}" == "dependabot[bot]" ]] || \
+             [[ "${{ github.actor }}" == "renovate[bot]" ]] || \
+             [[ "${{ github.actor }}" == "chatgpt-connector[bot]" ]] || \
+             [[ "${{ github.actor }}" == "flowgrammer" ]]; then
+            echo "✅ Trusted source - proceeding with workflow"
+            exit 0
+          else
+            echo "❌ External PR detected - manual approval required"
+            echo "This PR is from an external source and requires manual review."
+            exit 1
+          fi
+
   setup:
     name: 🔧 Setup Dependencies
     runs-on: ubuntu-latest
+    needs: [security-check]
+    if: always() && (needs.security-check.result == 'success' || github.event_name != 'pull_request_target')
     outputs:
       cache-hit: ${{ steps.cache-check.outputs.cache-hit }}
     
     steps:
       - name: 📥 Checkout code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
       
       - name: 📦 Setup Node.js ${{ env.NODE_VERSION }}
         uses: actions/setup-node@v4
@@ -75,6 +113,8 @@ jobs:
     steps:
       - name: 📥 Checkout code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
       
       - name: 📦 Setup Node.js ${{ env.NODE_VERSION }}
         uses: actions/setup-node@v4
@@ -130,6 +170,8 @@ jobs:
     steps:
       - name: 📥 Checkout code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
       
       - name: 📦 Setup Node.js ${{ env.NODE_VERSION }}
         uses: actions/setup-node@v4

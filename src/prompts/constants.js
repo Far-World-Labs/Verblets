@@ -1,8 +1,10 @@
 // Basic
 export const asUndefinedByDefault = 'If you are unsure, say "undefined" as your answer.';
-export const asBool = `Answer the question either with "true" or "false" as your answer.`;
-export const asNumber = `Answer the question with a number that could be parsed by the JS Number constructor. Do not include formatting, units, digit group separators, or spelled-out numbers in your answer.`;
-export const asJSON = `Respond with a JSON object or array that parses with JSON.parse, with no wrapping code block, and no wrapping XML.`;
+export const asBool = 'Answer the question either with "true" or "false" as your answer.';
+export const asNumber =
+  'Answer the question with a number that could be parsed by the JS Number constructor. Do not include formatting, units, digit group separators, or spelled-out numbers in your answer.';
+export const asJSON =
+  'Respond with a JSON object or array that parses with JSON.parse, with no wrapping code block, and no wrapping XML.';
 
 // Response steering
 export const useLineNumber = 'Include the line number where each check is performed.';
@@ -51,10 +53,11 @@ export const explainAndSeparate =
   'Give an explanation followed by a succinct answer. The explanation part should come first, and should be at least 100 words. Next, insert a row of 20 equal signs (=) to create a clear separation.';
 export const explainAndSeparateJSON =
   'The content below the dividing line should only be valid JSON that can be parsed with JSON.parse.';
-export const explainAndSeparatePrimitive = `Next insert the succinctly-stated answer should be below the dividing line and work as a primitive datatype in JS. Be as succinct as possible as it will be parsed by a script.`;
+export const explainAndSeparatePrimitive =
+  'Next insert the succinctly-stated answer should be below the dividing line and work as a primitive datatype in JS. Be as succinct as possible as it will be parsed by a script.';
 
 // Reflective
-export const thinkStepByStep = `Let's think step by step`;
+export const thinkStepByStep = "Let's think step by step";
 export const identifyUnclearInfo =
   'Identify any unclear or ambiguous information in your response, and rephrase it for clarity.';
 export const argueAgainstOutput =

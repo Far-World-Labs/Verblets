@@ -11,7 +11,6 @@ Modules include:
 - [search-best-first](./search-best-first) – best-first tree search algorithm.
 - [search-js-files](./search-js-files) – locate and analyze JavaScript files.
 - [shorten-text](./shorten-text) – shorten text using an LLM.
-- [bulkmap](./bulk-map) – map lists in retryable batches.
 - [strip-numeric](./strip-numeric) – remove non-digit characters.
 - [strip-response](./strip-response) – clean up model responses.
 - [to-bool](./to-bool) – parse text into a boolean.

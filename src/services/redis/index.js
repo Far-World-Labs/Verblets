@@ -8,16 +8,16 @@ class NullRedisClient {
     this.store = {};
   }
 
-  async get(key) {
+  get(key) {
     // Redis returns null, not undefined
     return this.store[key] ?? null;
   }
 
-  async del(key) {
+  del(key) {
     delete this.store[key];
   }
 
-  async set(key, value) {
+  set(key, value) {
     this.store[key] = value;
   }
 

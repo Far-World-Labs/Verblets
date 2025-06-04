@@ -10,7 +10,7 @@ import listMap from '../../verblets/list-map/index.js';
  * @param { number } [chunkSize=10] - how many items to send per batch
  * @returns { Promise<(string|undefined)[]> } results aligned with input order
  */
-async function bulkMap(list, instructions, chunkSize = 10) {
+const bulkMap = async function (list, instructions, chunkSize = 10) {
   const results = new Array(list.length);
   const promises = [];
 
@@ -41,7 +41,7 @@ async function bulkMap(list, instructions, chunkSize = 10) {
 
   await Promise.all(promises);
   return results;
-}
+};
 
 /**
  * Retry only the undefined results from `map` until maxAttempts is reached.
@@ -53,7 +53,11 @@ async function bulkMap(list, instructions, chunkSize = 10) {
  * @param { number } [options.maxAttempts=3]
  * @returns { Promise<(string|undefined)[]> }
  */
-export async function bulkMapRetry(list, instructions, { chunkSize = 10, maxAttempts = 3 } = {}) {
+export const bulkMapRetry = async function (
+  list,
+  instructions,
+  { chunkSize = 10, maxAttempts = 3 } = {}
+) {
   const results = await bulkMap(list, instructions, chunkSize);
   for (let attempt = 1; attempt < maxAttempts; attempt += 1) {
     const missingIdx = [];
@@ -71,6 +75,6 @@ export async function bulkMapRetry(list, instructions, { chunkSize = 10, maxAtte
     });
   }
   return results;
-}
+};
 
 export default bulkMap;

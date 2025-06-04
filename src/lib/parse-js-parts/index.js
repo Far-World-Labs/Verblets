@@ -155,7 +155,7 @@ const scanFile = (file, code) => {
           end: expNode.end,
         };
 
-        functionsMap[`ArrowFunctionExpression:default`] = {
+        functionsMap['ArrowFunctionExpression:default'] = {
           start: expNode.declaration.start,
           end: expNode.declaration.end,
           functionName: '<default-export>',
@@ -280,7 +280,7 @@ const scanFile = (file, code) => {
           functionsMap[`MethodDefinition:${className}.${classElement.key.name}`] = {
             start: node.start,
             end: node.end,
-            className: className,
+            className,
             functionName: `${className}.${classElement.key.name}`,
             name: classElement.key.name,
             async: classElement.value.async,
@@ -298,7 +298,7 @@ const scanFile = (file, code) => {
       if (!functionsSeen[`${node.start}:${node.end}`]) {
         functionsMap[`${node.type}:${node.start}`] = {
           start: node.start,
-          functionName: `<exp>`,
+          functionName: '<exp>',
           end: node.end,
           type: node.type,
           async: node.async,

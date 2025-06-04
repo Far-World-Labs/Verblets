@@ -1,9 +1,9 @@
 import { operationTimeoutMultiplier } from '../../constants/models.js';
 import chatGPT from '../../lib/chatgpt/index.js';
 import {
-  constants as promptConstants,
   asObjectWithSchema as asObjectWithSchemaPrompt,
   generateList as generateListPrompt,
+  constants as promptConstants,
 } from '../../prompts/index.js';
 import modelService from '../../services/llm-model/index.js';
 import toObject from '../../verblets/to-object/index.js';

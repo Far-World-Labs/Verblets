@@ -1,4 +1,4 @@
-import { onlyJSON, contentIsSchema } from './constants.js';
+import { contentIsSchema, onlyJSON } from './constants.js';
 import asSchemaOrgType from './as-schema-org-type.js';
 import wrapVariable from './wrap-variable.js';
 

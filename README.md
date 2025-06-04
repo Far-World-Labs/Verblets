@@ -6,28 +6,27 @@ Verblets rebuild the basic operations of software with language model intelligen
 
 ### Quick Links
 
-- [Verblets](./src/verblets/README.md)
-- [Chains](./src/chains/README.md)
-- [Prompts](./src/prompts/README.md)
-- [JSON Schemas](./src/json-schemas/README.md)
-- [Library Helpers](./src/lib/README.md)
+- [Verblets](./src/verblets/)
+- [Chains](./src/chains/)
+- [Prompts](./src/prompts/)
+- [JSON Schemas](./src/json-schemas/)
+- [Library Helpers](./src/lib/)
 
-### Chains
+### Verblets
 
 - [anonymize](./src/chains/anonymize) - scrub personal details from text
+- [bulk-map](./src/chains/bulk-map) - map long lists in retryable batches
 - [dismantle](./src/chains/dismantle) - break systems into components
 - [list](./src/chains/list) - generate contextual lists
 - [questions](./src/chains/questions) - produce clarifying questions
 - [scan-js](./src/chains/scan-js) - analyze code quality
 - [sort](./src/chains/sort) - order lists by any criteria
 - [summary-map](./src/chains/summary-map) - summarize a collection
+- [bulk-map](./src/chains/bulk-map/) - map over long lists in batches
 - [bulk-reduce](./src/chains/bulk-reduce) - reduce long lists in batches
 - [test](./src/chains/test) - run LLM-driven tests
 - [test-advice](./src/chains/test-advice) - get feedback on test coverage
 - [veiled-variants](./src/chains/veiled-variants) - conceal sensitive queries with safer framing
-
-### Verblets
-
 - [auto](./src/verblets/auto) - automatically select the best verblet
 - [bool](./src/verblets/bool) - interpret text as a boolean
 - [enum](./src/verblets/enum) - map text to predefined options
@@ -47,7 +46,6 @@ Verblets rebuild the basic operations of software with language model intelligen
 - [search-best-first](./src/lib/search-best-first) - best-first search
 - [search-js-files](./src/lib/search-js-files) - scan JavaScript sources
 - [shorten-text](./src/lib/shorten-text) - shorten text using a model
-- [bulkmap](./src/lib/bulk-map) - map long lists in retryable batches
 - [strip-numeric](./src/lib/strip-numeric) - remove non-digit characters
 - [strip-response](./src/lib/strip-response) - clean up model responses
 - [to-bool](./src/lib/to-bool) - parse text to boolean
@@ -490,9 +488,9 @@ const inputs = await map.pavedSummaryResult();
   */
   ```
 
-- **bulkmap** - Map over lists in retryable batches using `listMap`
-  ```javascript
-  import bulkMap from './src/lib/bulk-map/index.js';
+- **bulk-map** - Map over lists in retryable batches using the `listMap` verblet
+```javascript
+import { bulkMap } from './src/index.js';
 
   const gadgets = [
     'solar-powered flashlight',

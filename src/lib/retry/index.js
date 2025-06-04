@@ -15,7 +15,10 @@ export default async (
   let retry = 0;
   let lastError = new Error('Nothing to run');
 
-  const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  const sleep = (ms) =>
+    new Promise((resolve) => {
+      setTimeout(resolve, ms);
+    });
 
   const labelDisplay = label ? `"${label}"` : '';
 

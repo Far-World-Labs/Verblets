@@ -1,4 +1,4 @@
-import { beforeEach, afterAll } from 'vitest';
+import { afterAll, beforeEach } from 'vitest';
 import dotenv from 'dotenv';
 import { getClient as getRedis } from '../services/redis/index.js';
 

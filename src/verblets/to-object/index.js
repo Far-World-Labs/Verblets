@@ -16,7 +16,7 @@ class ValidationError extends Error {
   }
 }
 
-function buildJsonPrompt(text, schema, errors) {
+const buildJsonPrompt = function (text, schema, errors) {
   let errorsDisplay = '';
   if (errors?.length) {
     errorsDisplay = wrapVariable(JSON.stringify(errors) ?? '', {
@@ -40,7 +40,7 @@ ${errorsDisplay}
 ${contentToJSON} ${wrapVariable(stripResponse(text), { tag: 'content' })}
 
 ${onlyJSON}`;
-}
+};
 
 export default async (text, schema) => {
   let prompt;

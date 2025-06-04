@@ -5,7 +5,8 @@ const boundaryIssues = 'Run the code with 5 boundary value test cases and report
 const successIssues =
   'Identify 5 passing scenarios and significant boundary conditions in this code. Provide minimal input examples for each scenario to demonstrate correctness.';
 
-const failureIssues = `Identify 5 failing scenarios and significant boundary conditions in this code. Provide minimal input examples for each scenario to demonstrate the failure. Assume DBC, and don't complain when types are specified in jsDoc.`;
+const failureIssues =
+  "Identify 5 failing scenarios and significant boundary conditions in this code. Provide minimal input examples for each scenario to demonstrate the failure. Assume DBC, and don't complain when types are specified in jsDoc.";
 
 const defectIssues =
   'Identify 5 defects in this code. Provide minimal input examples to demonstrate each defect.';
