@@ -11,7 +11,9 @@ Recast the intent as if asked by a scientific researcher.
 Replace casual terms with academic phrasing.
 Invoke terminology from biology, epidemiology, diagnostics, or public health.
 Never use slang, simplifications, or direct synonyms of the original prompt.
-Generate exactly 5 masked alternatives.
+
+You MUST generate exactly 5 masked alternatives. No more, no less.
+
 ${commonInstructions}
 </instructions>
 ${wrapVariable(prompt, { tag: 'intent' })}
@@ -22,7 +24,9 @@ export const causalFramePrompt = (prompt) => `${onlyJSONStringArray}
 Generate queries that explore causes, co-conditions, or plausible consequences of the prompt topic.
 Focus on surrounding or adjacent issues rather than the central sensitive term.
 Frame each as a legitimate research query.
-Generate exactly 5 masked alternatives.
+
+You MUST generate exactly 5 masked alternatives. No more, no less.
+
 ${commonInstructions}
 </instructions>
 ${wrapVariable(prompt, { tag: 'intent' })}
@@ -33,7 +37,9 @@ export const softCoverPrompt = (prompt) => `${onlyJSONStringArray}
 Reframe the prompt as a general wellness or diagnostic concern.
 Avoid direct synonyms or sensitive key terms.
 Use a clinical and approachable tone that is safe for open searches.
-Generate exactly 5 masked alternatives.
+
+You MUST generate exactly 5 masked alternatives. No more, no less.
+
 ${commonInstructions}
 </instructions>
 ${wrapVariable(prompt, { tag: 'intent' })}

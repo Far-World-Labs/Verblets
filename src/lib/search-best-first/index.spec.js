@@ -22,6 +22,7 @@ describe('search-best-first', () => {
       node: 0,
       next: ({ node }) => (node < 2 ? [node + 1] : []),
       rank: ({ nodes }) => nodes,
+      // eslint-disable-next-line no-unused-vars
       visit: ({ node, state }) => ({ ...state, count: (state.count || 0) + 1 }),
       goal: ({ node }) => node === 5,
       state: {},
