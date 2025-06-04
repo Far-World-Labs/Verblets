@@ -24,6 +24,7 @@ Verblets rebuild the basic operations of software with language model intelligen
 - [summary-map](./src/chains/summary-map) - summarize a collection
 - [bulk-map](./src/chains/bulk-map/) - map over long lists in batches
 - [bulk-reduce](./src/chains/bulk-reduce) - reduce long lists in batches
+- [bulk-partition](./src/chains/bulk-partition) - partition long lists in batches
 - [test](./src/chains/test) - run LLM-driven tests
 - [test-advice](./src/chains/test-advice) - get feedback on test coverage
 - [veiled-variants](./src/chains/veiled-variants) - conceal sensitive queries with safer framing
@@ -508,7 +509,7 @@ import { bulkMap } from './src/index.js';
   ```
 
 - **bulk-reduce** - Reduce long lists sequentially using `listReduce`
-  ```javascript
+```javascript
   import bulkReduce from './src/chains/bulk-reduce/index.js';
 
   const logLines = [
@@ -518,7 +519,29 @@ import { bulkMap } from './src/index.js';
   ];
   const summary = await bulkReduce(logLines, 'Summarize the events');
   // e.g. 'User session: login, dashboard view and logout'
-  ```
+```
+
+**bulk-partition** - Discover the best categories and group large lists consistently
+```javascript
+  import bulkPartition from './src/chains/bulk-partition/index.js';
+
+  const feedback = [
+    'Great interface and onboarding',
+    'Price is a bit steep',
+    'Love the mobile app',
+    'Needs more integrations'
+  ];
+  const result = await bulkPartition(
+    feedback,
+    'Is each line praise, criticism, or a feature request?',
+    { chunkSize: 2, topN: 3 }
+  );
+  // {
+  //   praise: ['Great interface and onboarding', 'Love the mobile app'],
+  //   criticism: ['Price is a bit steep'],
+  //   'feature request': ['Needs more integrations']
+  // }
+```
 
 - **search-best-first** - Intelligently explore solution spaces
   ```javascript
