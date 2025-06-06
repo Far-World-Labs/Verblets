@@ -10,10 +10,12 @@ Available verblets:
 - [intent](./intent)
 - [number](./number)
 - [number-with-units](./number-with-units)
+- [sentiment](./sentiment) - classify text sentiment
 - [schema-org](./schema-org)
 - [to-object](./to-object) – see its [README](./to-object/README.md) for details.
 - [list-map](./list-map) - map lists with prompts
 - [list-reduce](./list-reduce) - reduce lists prompts
+- [list-filter](./list-filter) - filter lists with custom instructions
 - [list-group](./list-group) - group lists into categories with prompts
 - [list-expand](./list-expand) - expand lists with similar items with prompts
 
