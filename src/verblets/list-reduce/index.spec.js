@@ -5,8 +5,12 @@ vi.mock('../../lib/chatgpt/index.js', () => ({
   default: vi.fn((prompt) => {
     const listMatch = prompt.match(/<list>\n([\s\S]*?)\n<\/list>/);
     const accMatch = prompt.match(/<accumulator>\n([\s\S]*?)\n<\/accumulator>/);
+<<<<<<< HEAD
     let acc = '';
     let lines = [];
+=======
+
+>>>>>>> 01eb5cf (Add themes chain for dual reduce)
     if (listMatch && accMatch) {
       acc = accMatch[1].trim();
       lines = listMatch[1]

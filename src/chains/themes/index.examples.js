@@ -4,12 +4,13 @@ import { longTestTimeout } from '../../constants/common.js';
 
 describe('themes chain', () => {
   it(
-    'maps themes to sentences',
+    'extracts key themes',
     async () => {
-      const text = `When the rain finally stopped, neighbors emerged to help one another. They shared food and repaired homes, turning hardship into solidarity.`;
-      const result = await themes(text, { sentenceMap: true });
-      expect(Array.isArray(result.themes)).toBe(true);
-      expect(Array.isArray(result.sentenceThemes)).toBe(true);
+      const text = `Coffee shops are opening all over town. People love the
+new flavors but complain about long lines. Local farmers provide beans while
+young entrepreneurs drive innovation.`;
+      const result = await themes(text, { topN: 2 });
+      expect(Array.isArray(result)).toBe(true);
     },
     longTestTimeout
   );

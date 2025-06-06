@@ -61,7 +61,7 @@ Content utilities generate, transform, and analyze text while maintaining struct
 - [name-similar-to](./src/verblets/name-similar-to) - suggest short names that match a style
 - [schema-org](./src/verblets/schema-org) - create schema.org objects
 - [socratic](./src/chains/socratic) - explore assumptions using a Socratic dialogue
-- [themes](./src/chains/themes) - uncover the big ideas in text and where each appears
+- [themes](./src/chains/themes) - identify themes in text
 - [to-object](./src/verblets/to-object) - convert descriptions to objects
 
 ### Utility Operations
@@ -238,7 +238,408 @@ This system demonstrates capabilities that would require thousands of lines of t
 - **Privacy-aware data handling** for compliance
 - **Structured output** that integrates with existing systems
 
+<<<<<<< HEAD
 With verblets, complex AI-powered workflows become as simple as calling functions.
+=======
+- **list** - Generate contextual lists
+  ```javascript
+  await list("potential failure points in our microservices architecture");
+  ```
+
+- **intent** - Understand user intentions and extract structured data
+  ```javascript
+  // Define what operations your system can handle
+  const operations = [
+    {
+      name: "book-flight",
+      parameters: {
+        destination: "string",
+        date: "string",
+        class: "string"
+      }
+    },
+    {
+      name: "find-song",
+      parameters: {
+        lyrics: "string",
+        artist: "string?"
+      }
+    }
+  ];
+
+  // It understands flight booking requests
+  const flightRequest = await intent({
+    text: "I need a business class flight to Tokyo next Friday",
+    operations
+  });
+  /* Returns:
+  {
+    "queryText": "I need a business class flight to Tokyo next Friday",
+    "intent": {
+      "operation": "book-flight",
+      "displayName": "Book Flight"
+    },
+    "parameters": {
+      "destination": "Tokyo",
+      "date": "next Friday",
+      "class": "business"
+    }
+  }
+  */
+
+- **auto** - Use function calling to select and prepare operations
+  ```javascript
+  // First, we have our available functions defined as schemas
+  const availableFunctions = [
+    {
+      "name": "bool",
+      "description": "Answer yes/no questions about facts or situations",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "description": "The question to answer"
+          }
+        }
+      }
+    },
+    {
+      "name": "list",
+      "description": "Generate lists of relevant items",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "description": "What to list"
+          }
+        }
+      }
+    },
+    // ... many more function definitions ...
+  ];
+
+  // When someone has an urgent question
+  const result = await auto(
+    "Help! My dog just ate an avocado! Is this dangerous?"
+  );
+  /* First, auto selects the appropriate function:
+  {
+    "name": "bool",  // Recognizes this needs a yes/no answer
+    "arguments": {
+      "text": "Help! My dog just ate an avocado! Is this dangerous?"
+    },
+    "functionArgsAsArray": [
+      {
+        "text": "Help! My dog just ate an avocado! Is this dangerous?"
+      }
+    ]
+  }
+  */
+
+  // Then it automatically runs the selected function internally, passing arguments it extracts
+  const answer = await bool(result.arguments.text);
+  // Returns: true (yes, it can be dangerous)
+  ```
+
+- **questions** - Explore topics through intelligent question generation
+  ```javascript
+
+  const investigation = await questions(
+    "Why isn't my houseplant thriving?",
+    {
+      searchBreadth: 0.7,  // Explore more broadly (0-1)
+      shouldStop: (q, all) => all.length > 20  // Custom stopping condition
+    }
+  );
+  /* Returns targeted diagnostic questions:
+  [
+    "Which direction does the window face?",
+    "Are the leaves turning yellow or brown?",
+    "Is the soil staying wet for long periods?",
+    "Are there any visible pests on the leaves?",
+    "When was it last repotted?",
+    "Is there good drainage in the pot?",
+    "What's the humidity level in the room?",
+    // ... continues until stopping condition ...
+  ]
+  */
+  ```
+
+- **shorten-text** - Intelligently compress text while preserving meaning
+  ```javascript
+  // Shorten long content while keeping key information
+  const story = `Once upon a time, in a bustling city called Metropolis, 
+    there lived a young programmer named Ada. She spent her days writing 
+    elegant code and her nights dreaming of artificial intelligence. 
+    One day, while debugging a particularly tricky neural network, 
+    she discovered something extraordinary...`;
+
+  const shortened = await shortenText(story, {
+    targetTokenCount: 20,
+    minCharsToRemove: 15
+  });
+  /* Returns:
+     "Once upon a time, in Metropolis, a programmer named Ada 
+      spent her days writing code... discovered something extraordinary"
+  */
+
+  // Preserve structure while reducing size
+  const documentation = `# API Reference
+    ## Authentication
+    All requests must include an API key in the header.
+    The key should be prefixed with 'Bearer '.
+    
+    ## Rate Limiting
+    Requests are limited to 100 per minute.
+    Exceeding this will result in a 429 response.
+    
+    ## Endpoints
+    GET /users - Retrieve user list
+    POST /users - Create new user
+    DELETE /users/{id} - Remove user`;
+
+  const compact = await shortenText(documentation, {
+    targetTokenCount: 30,
+    minCharsToRemove: 20
+  });
+  /* Returns:
+     "# API Reference
+      ## Authentication
+      All requests need API key... 'Bearer '
+      
+      ## Rate Limiting
+      100 per minute... 429 response
+      
+      ## Endpoints
+      GET /users...DELETE /users/{id}"
+  */
+  ```
+
+- **bulk-map** - Map over lists in retryable batches using the `listMap` verblet
+```javascript
+import { bulkMap } from './src/index.js';
+
+  const gadgets = [
+    'solar-powered flashlight',
+    'quantum laptop',
+    'smart refrigerator',
+    // ...more items
+  ];
+  const results = await bulkMap(
+    gadgets,
+    'Give each item a catchphrase worthy of a blockbuster commercial',
+    { chunkSize: 5, maxAttempts: 2 }
+  );
+  // results[0] === 'Illuminate your world with the sun'
+  // results[1] === 'Computing beyond limits'
+  ```
+
+- **bulk-reduce** - Reduce long lists sequentially using `listReduce`
+```javascript
+  import bulkReduce from './src/chains/bulk-reduce/index.js';
+
+  const logLines = [
+    'User logged in',
+    'User viewed dashboard',
+    'User logged out'
+  ];
+  const summary = await bulkReduce(logLines, 'Summarize the events');
+  // e.g. 'User session: login, dashboard view and logout'
+```
+
+**bulk-partition** - Discover the best categories and group large lists consistently
+```javascript
+  import bulkPartition from './src/chains/bulk-partition/index.js';
+
+  const feedback = [
+    'Great interface and onboarding',
+    'Price is a bit steep',
+    'Love the mobile app',
+    'Needs more integrations'
+  ];
+  const result = await bulkPartition(
+    feedback,
+    'Is each line praise, criticism, or a feature request?',
+    { chunkSize: 2, topN: 3 }
+  );
+  // {
+  //   praise: ['Great interface and onboarding', 'Love the mobile app'],
+  //   criticism: ['Price is a bit steep'],
+  //   'feature request': ['Needs more integrations']
+  // }
+```
+
+- **themes** - Extract recurring themes from text
+```javascript
+  const mainThemes = await themes(longReport, { topN: 3 });
+  // ['strategy', 'market challenges', 'team morale']
+```
+- **search-best-first** - Intelligently explore solution spaces
+  ```javascript
+  // Find the best recipe adjustments when ingredients are missing
+  const search = new BestFirstSearch({
+    initialState: {
+      recipe: "Classic Tiramisu",
+      missing: ["mascarpone cheese", "ladyfingers"],
+      available: ["cream cheese", "pound cake", "whipped cream"]
+    },
+    goalTest: state => state.substitutions.complete && state.flavor.preserved,
+    heuristic: state => state.flavor.similarity
+  });
+
+  const path = await search.findPath();
+  /* Returns sequence of steps:
+  [
+    {
+      action: "substitute mascarpone",
+      details: "Mix 8oz cream cheese with 1/4 cup whipped cream",
+      confidence: 0.85
+    },
+    {
+      action: "substitute ladyfingers",
+      details: "Slice pound cake, toast until crisp, soak in coffee",
+      confidence: 0.75
+    },
+    {
+      action: "adjust ratios",
+      details: "Increase coffee soak time to 45 seconds for pound cake",
+      confidence: 0.9
+    }
+  ]
+  */
+
+  // Or find the optimal way to refactor complex code
+  const refactorPath = await new BestFirstSearch({
+    initialState: {
+      file: "src/legacy-parser.js",
+      metrics: {
+        complexity: 85,
+        coverage: 0.4,
+        maintainability: "D"
+      }
+    },
+    goalTest: state => 
+      state.metrics.complexity < 30 && 
+      state.metrics.coverage > 0.8 &&
+      state.metrics.maintainability === "A",
+    heuristic: state => 
+      (1 / state.metrics.complexity) * 
+      state.metrics.coverage *
+      (state.metrics.maintainability === "A" ? 1 : 0.5)
+  }).findPath();
+  /* Returns optimal refactoring sequence:
+  [
+    {
+      action: "extract function",
+      target: "parseNestedBlocks()",
+      benefit: "Reduces complexity by 40%"
+    },
+    {
+      action: "add unit tests",
+      coverage: ["error handling", "edge cases"],
+      benefit: "Coverage increases to 85%"
+    },
+    {
+      action: "implement strategy pattern",
+      components: ["BlockParser", "InlineParser"],
+      benefit: "Maintainability improves to grade A"
+    }
+  ]
+  */
+  ```
+
+- **test-advice** - Get comprehensive testing and code quality insights
+  ```javascript
+  // Get deep analysis of your code's test coverage and quality
+  const insights = await testAdvice("src/payment-processor.js");
+  /* Returns array of findings across multiple dimensions:
+  [
+    {
+      "name": "Boundary Testing",
+      "expected": "Handle zero-amount transactions",
+      "saw": "No validation for $0.00 payments in processPayment()",
+      "isSuccess": false
+    },
+    {
+      "name": "Success Scenarios",
+      "expected": "Processes standard credit card payment",
+      "saw": "Correctly handles Visa/MC format: line 47 validateCard()",
+      "isSuccess": true
+    },
+    {
+      "name": "Clean Code",
+      "expected": "Single responsibility in transaction logging",
+      "saw": "logPayment() mixing business logic with logging: line 92",
+      "isSuccess": false
+    },
+    // ... analyzes across 8 dimensions:
+    // - Boundary cases
+    // - Success scenarios
+    // - Failure modes
+    // - Potential defects
+    // - Best practices
+    // - Clean code principles
+    // - Code quality
+    // - Refactoring opportunities
+  ]
+  */
+  ```
+
+- **veiled-variants** - Mask sensitive queries with safer alternatives
+  ```javascript
+  const alternatives = await veiledVariants({
+    prompt: "If pigeons are government spies, how can I ask for counter-surveillance tips without sounding paranoid?"
+  });
+  /* Returns 15 reframed queries */
+  ```
+
+- **scan-js** - Analyze code for quality and maintainability
+  ```javascript
+  // Analyze your codebase for maintainability
+  const analysis = await scanJs({
+    entry: "src/app.js",
+    features: "maintainability"
+  });
+  /* Returns analysis of each function:
+  {
+    "src/app.js:::handlePayment": {
+      "complexity": "low",
+      "documentation": "well-documented",
+      "sideEffects": "isolated to database calls",
+      "errorHandling": "comprehensive",
+      "testability": "high"
+    },
+    "src/app.js:::validateInput": {
+      "complexity": "medium",
+      "documentation": "needs improvement",
+      "sideEffects": "pure function",
+      "errorHandling": "basic validation only",
+      "testability": "high"
+    }
+    // ... continues for all functions ...
+  }
+  */
+
+  // Focus on specific quality aspects
+  const security = await scanJs({
+    entry: "src/auth/",
+    features: "security"
+  });
+  /* Returns security-focused analysis:
+  {
+    "src/auth/login.js:::hashPassword": {
+      "inputValidation": "sanitizes all inputs",
+      "cryptography": "uses current best practices",
+      "dataExposure": "no sensitive data in logs",
+      "authentication": "implements rate limiting"
+    }
+    // ... continues for all security-relevant functions ...
+  }
+  */
+  ```
+>>>>>>> 01eb5cf (Add themes chain for dual reduce)
 
 ## Contributing
 
