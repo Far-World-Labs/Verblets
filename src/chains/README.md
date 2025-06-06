@@ -12,6 +12,7 @@ Available chains:
 - [scan-js](./scan-js)
 - [sort](./sort)
 - [summary-map](./summary-map)
+- [polysemy](./polysemy)
 - [bulk-reduce](./bulk-reduce)
 - [bulk-partition](./bulk-partition)
 - [test](./test)

@@ -22,6 +22,7 @@ Verblets rebuild the basic operations of software with language model intelligen
 - [scan-js](./src/chains/scan-js) - analyze code quality
 - [sort](./src/chains/sort) - order lists by any criteria
 - [summary-map](./src/chains/summary-map) - summarize a collection
+- [polysemy](./src/chains/polysemy) - extract ambiguous terms
 - [bulk-map](./src/chains/bulk-map/) - map over long lists in batches
 - [bulk-reduce](./src/chains/bulk-reduce) - reduce long lists in batches
 - [bulk-partition](./src/chains/bulk-partition) - partition long lists in batches
