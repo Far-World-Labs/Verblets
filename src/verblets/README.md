@@ -10,9 +10,11 @@ Available verblets:
 - [intent](./intent)
 - [number](./number)
 - [number-with-units](./number-with-units)
+- [sentiment](./sentiment) - classify text sentiment
 - [schema-org](./schema-org)
 - [to-object](./to-object) – see its [README](./to-object/README.md) for details.
 - [list-map](./list-map) - map lists with custom instructions
 - [list-reduce](./list-reduce) - reduce lists with custom instructions
+- [list-filter](./list-filter) - filter lists with custom instructions
 
 Use these modules directly or compose them inside [chains](../chains/README.md).
