@@ -15,5 +15,6 @@ Available verblets:
 - [list-map](./list-map) - map lists with custom instructions
 - [list-reduce](./list-reduce) - reduce lists with custom instructions
 - [list-partition](./list-partition) - partition lists with custom instructions and optional category list
+- [llm-expect](./llm-expect) - make test assertions with an LLM
 
 Use these modules directly or compose them inside [chains](../chains/README.md).
