@@ -1,10 +1,15 @@
 # name
+Generate a short, descriptive name for any text or concept.
 
-Generate a short, memorable name from a description of definition. The verblet asks an LLM to suggest a concise variable-style name.
+This verblet taps into the language model's understanding of nuance to create names that capture the essence of your content. Use it whenever a simple keyword search isn't enough and you want an evocative title.
+
+## Usage
 
 ```javascript
-import name from './index.js';
+import { name } from '@far-world-labs';
 
-const foundName = await name('A spreadsheet of every pastry I ate on my travels across Europe');
-// => 'travelPastryLog'
+const diaryTitle = await name(
+  'Voice memos from friends sharing their hopes and worries'
+);
+console.log(diaryTitle); // "Shared Reflections" (example)
 ```
