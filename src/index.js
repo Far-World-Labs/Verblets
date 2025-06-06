@@ -71,6 +71,7 @@ import schemaOrg from './verblets/schema-org/index.js';
 import toObject from './verblets/to-object/index.js';
 
 import listMap from './verblets/list-map/index.js';
+import listGroupBy from './verblets/list-group-by/index.js';
 
 export { default as retry } from './lib/retry/index.js';
 export { default as stripResponse } from './lib/strip-response/index.js';
@@ -107,6 +108,7 @@ export const verblets = {
   schemaOrg,
   toObject,
   listMap,
+  listGroupBy,
   anonymize,
   Dismantle,
   list,

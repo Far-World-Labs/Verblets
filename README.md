@@ -22,6 +22,7 @@ Verblets rebuild the basic operations of software with language model intelligen
 - [sort](./src/chains/sort) - order lists by any criteria
 - [summary-map](./src/chains/summary-map) - summarize a collection
 - [bulk-reduce](./src/chains/bulk-reduce) - reduce long lists in batches
+- [bulk-group-by](./src/chains/bulk-group-by) - group long lists in batches
 - [test](./src/chains/test) - run LLM-driven tests
 - [test-advice](./src/chains/test-advice) - get feedback on test coverage
 - [veiled-variants](./src/chains/veiled-variants) - conceal sensitive queries with safer framing
@@ -38,6 +39,7 @@ Verblets rebuild the basic operations of software with language model intelligen
 - [to-object](./src/verblets/to-object) - convert descriptions to objects
 - [list-map](./src/verblets/list-map) - map lists with custom instructions
 - [list-reduce](./src/verblets/list-reduce) - reduce lists with custom instructions
+- [list-group-by](./src/verblets/list-group-by) - group lists with custom instructions
 
 ### Library Helpers
 
@@ -521,6 +523,29 @@ const inputs = await map.pavedSummaryResult();
   const summary = await bulkReduce(logLines, 'Summarize the events');
   // e.g. 'User session: login, dashboard view and logout'
   ```
+
+- **bulk-group-by** - Group lists in manageable batches using `listGroupBy`
+```javascript
+import bulkGroupBy from './src/chains/bulk-group-by/index.js';
+
+const journal = [
+  'Lost my keys again on the way to work',
+  'Just booked tickets to see my favorite band',
+  'Spilled coffee all over the car seat',
+  'Adopted the sweetest puppy today'
+];
+const groups = await bulkGroupBy(
+  journal,
+  'Group each entry by the emotion it conveys (joy, frustration, etc.)',
+  { chunkSize: 2 }
+);
+/*
+{
+  joy: ['Just booked tickets to see my favorite band', 'Adopted the sweetest puppy today'],
+  frustration: ['Lost my keys again on the way to work', 'Spilled coffee all over the car seat']
+}
+*/
+```
 
 - **search-best-first** - Intelligently explore solution spaces
   ```javascript
