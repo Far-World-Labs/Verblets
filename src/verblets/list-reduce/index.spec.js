@@ -4,7 +4,7 @@ import listReduce from './index.js';
 vi.mock('../../lib/chatgpt/index.js', () => ({
   default: vi.fn((prompt) => {
     const listMatch = prompt.match(/<list>\n([\s\S]*?)\n<\/list>/);
-    const accMatch = prompt.match(/"([^"]+)"\s*<list>/);
+    const accMatch = prompt.match(/<accumulator>\n([\s\S]*?)\n<\/accumulator>/);
 
     if (listMatch && accMatch) {
       const acc = accMatch[1];

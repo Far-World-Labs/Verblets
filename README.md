@@ -38,6 +38,7 @@ Verblets rebuild the basic operations of software with language model intelligen
 - [to-object](./src/verblets/to-object) - convert descriptions to objects
 - [list-map](./src/verblets/list-map) - map lists with custom instructions
 - [list-reduce](./src/verblets/list-reduce) - reduce lists with custom instructions
+- [llm-expect](./src/verblets/llm-expect) - assert using an LLM
 
 ### Library Helpers
 
