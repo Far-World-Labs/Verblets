@@ -6,6 +6,7 @@ Available verblets:
 
 - [auto](./auto)
 - [bool](./bool)
+- [name](./name) - generate evocative names from text
 - [enum](./enum)
 - [intent](./intent)
 - [number](./number)

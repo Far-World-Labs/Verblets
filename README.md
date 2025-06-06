@@ -30,6 +30,7 @@ Verblets rebuild the basic operations of software with language model intelligen
 
 - [auto](./src/verblets/auto) - automatically select the best verblet
 - [bool](./src/verblets/bool) - interpret text as a boolean
+- [name](./src/verblets/name) - generate evocative names from text
 - [enum](./src/verblets/enum) - map text to predefined options
 - [intent](./src/verblets/intent) - extract user intent
 - [number](./src/verblets/number) - parse numeric values
