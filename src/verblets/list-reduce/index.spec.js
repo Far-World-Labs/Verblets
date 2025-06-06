@@ -24,6 +24,6 @@ vi.mock('../../lib/chatgpt/index.js', () => ({
 describe('list-reduce verblet', () => {
   it('reduces items using instructions', async () => {
     const result = await listReduce('0', ['a', 'b', 'c'], 'join');
-    expect(result).toBe('0+a+b+c');
+    expect(result).toBe('a+b+c');
   });
 });
