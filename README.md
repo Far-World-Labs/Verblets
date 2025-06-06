@@ -28,6 +28,7 @@ Verblets rebuild the basic operations of software with language model intelligen
 - [test](./src/chains/test) - run LLM-driven tests
 - [test-advice](./src/chains/test-advice) - get feedback on test coverage
 - [veiled-variants](./src/chains/veiled-variants) - conceal sensitive queries with safer framing
+- [collect-terms](./src/chains/collect-terms) - extract difficult vocabulary
 - [auto](./src/verblets/auto) - automatically select the best verblet
 - [bool](./src/verblets/bool) - interpret text as a boolean
 - [enum](./src/verblets/enum) - map text to predefined options
@@ -660,6 +661,12 @@ import { bulkMap } from './src/index.js';
     prompt: "If pigeons are government spies, how can I ask for counter-surveillance tips without sounding paranoid?"
   });
   /* Returns 15 reframed queries */
+  ```
+
+- **collect-terms** - Gather challenging terms for later clarification
+  ```javascript
+  const glossary = await collectTerms(documentText, { topN: 10 });
+  // ["usufructuary rights", "hydrological cycle", "quantum decoherence", ...]
   ```
 
 - **scan-js** - Analyze code for quality and maintainability
