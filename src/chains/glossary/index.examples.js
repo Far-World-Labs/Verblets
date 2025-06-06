@@ -29,7 +29,7 @@ describe('glossary examples', () => {
       expect(Array.isArray(result)).toBe(true);
 
       // LLM assertion to validate that extracted terms are technical/complex
-      const [areTermsTechnical] = await aiExpect(
+      const areTermsTechnical = await aiExpect(
         `From the text "${text}", these terms were extracted: ${result.join(', ')}`
       ).toSatisfy(
         'Are these terms technical or complex enough that a casual reader might need definitions?',
@@ -45,7 +45,7 @@ describe('glossary examples', () => {
       ).toBe(true);
 
       // LLM assertion to validate terms are relevant to the source text
-      const [areTermsRelevant] = await aiExpect(
+      const areTermsRelevant = await aiExpect(
         `Original text: "${text}" | Extracted terms: ${result.join(', ')}`
       ).toSatisfy(
         'Are all these extracted terms actually present or directly related to the original text?',
@@ -63,7 +63,7 @@ describe('glossary examples', () => {
       ).toBe(true);
 
       // LLM assertion to validate term selection quality
-      const [isGoodSelection] = await aiExpect(
+      const isGoodSelection = await aiExpect(
         `For a cooking/culinary text, these terms were selected for a glossary: ${result.join(
           ', '
         )}`
@@ -92,7 +92,7 @@ describe('glossary examples', () => {
       expect(result.length).toBeLessThanOrEqual(5);
 
       // LLM assertion for technical term appropriateness
-      const [areTechTermsAppropriate] = await aiExpect(
+      const areTechTermsAppropriate = await aiExpect(
         `From technical documentation, these terms were extracted: ${result.join(', ')}`
       ).toSatisfy(
         'Are these terms technical enough that a non-developer would need explanations?',
@@ -108,7 +108,7 @@ describe('glossary examples', () => {
       ).toBe(true);
 
       // LLM assertion for term diversity and coverage
-      const [goodCoverage] = await aiExpect(
+      const goodCoverage = await aiExpect(
         `Original text covers microservices, authentication, databases, and algorithms. Extracted terms: ${result.join(
           ', '
         )}`
@@ -128,7 +128,7 @@ describe('glossary examples', () => {
       ).toBe(true);
 
       // LLM assertion for ranking quality
-      const [wellRanked] = await aiExpect(
+      const wellRanked = await aiExpect(
         `Terms extracted in this order: ${result.join(' → ')}`
       ).toSatisfy(
         'Does this ranking make reasonable sense for a technical glossary? Consider that architectural concepts often come before specific tools, and authentication concepts before databases. The ranking should help readers understand concepts in a logical progression.',
@@ -160,7 +160,7 @@ describe('glossary examples', () => {
       expect(result.length).toBeGreaterThan(0);
 
       // LLM assertion to ensure no common words are included
-      const [noCommonWords] = await aiExpect(
+      const noCommonWords = await aiExpect(
         `These terms were selected for a glossary: ${result.join(', ')}`
       ).toSatisfy(
         'Are all of these terms specialized/technical rather than common everyday words?',
@@ -178,7 +178,7 @@ describe('glossary examples', () => {
       ).toBe(true);
 
       // LLM assertion for scientific accuracy
-      const [scientificallyAccurate] = await aiExpect(
+      const scientificallyAccurate = await aiExpect(
         `From a quantum physics text, these terms were extracted: ${result.join(', ')}`
       ).toSatisfy(
         'Are these reasonable terms that relate to quantum physics or scientific concepts? They should be legitimate scientific terminology, even if not all are highly technical quantum physics terms.',
@@ -196,7 +196,7 @@ describe('glossary examples', () => {
       ).toBe(true);
 
       // LLM assertion for educational value
-      const [educationalValue] = await aiExpect(
+      const educationalValue = await aiExpect(
         `For someone learning about quantum physics, these glossary terms were provided: ${result.join(
           ', '
         )}`
@@ -229,7 +229,7 @@ describe('glossary examples', () => {
 
       if (result.length > 0) {
         // If any terms are returned, they should still be reasonable
-        const [reasonableForSimpleText] = await aiExpect(
+        const reasonableForSimpleText = await aiExpect(
           `From simple text "${simpleText}", these terms were extracted: ${result.join(', ')}`
         ).toSatisfy(
           'If any terms were extracted from this simple text, are they reasonable choices?',
@@ -247,7 +247,7 @@ describe('glossary examples', () => {
         ).toBe(true);
       } else {
         // LLM assertion that empty result is appropriate for simple text
-        const [appropriatelyEmpty] = await aiExpect(
+        const appropriatelyEmpty = await aiExpect(
           `For the simple text "${simpleText}", no glossary terms were extracted`
         ).toSatisfy(
           'Is it appropriate to extract no glossary terms from this simple, everyday text?',
@@ -278,25 +278,15 @@ describe('glossary examples', () => {
       expect(result.length).toBeLessThanOrEqual(8);
 
       // LLM assertion for philosophical term appropriateness - abstract concepts
-      const [arePhilosophicalConcepts] = await aiExpect(
+      const arePhilosophicalConcepts = await aiExpect(
         `From philosophical text, these terms were extracted: ${result.join(', ')}`
       ).toSatisfy(
-        'Are these terms abstract philosophical concepts, technical phenomenological terms, or fundamental ontological categories that require precise definition for understanding?',
-        {
-          message: `Expected abstract philosophical concepts requiring definition, but got: ${result.join(
-            ', '
-          )}`,
-        }
+        'Are these terms that would genuinely benefit from precise definition to avoid misunderstanding or ambiguity in philosophical discourse?'
       );
-      expect(
-        arePhilosophicalConcepts,
-        `Expected abstract philosophical concepts requiring definition, but got: ${result.join(
-          ', '
-        )}`
-      ).toBe(true);
+      expect(arePhilosophicalConcepts).toBe(true);
 
       // LLM assertion for conceptual precision - terms that need clarification
-      const [needDefinition] = await aiExpect(
+      const needDefinition = await aiExpect(
         `These philosophical terms: ${result.join(', ')}`
       ).toSatisfy(
         'Are these terms that would genuinely benefit from precise definition to avoid misunderstanding or ambiguity in philosophical discourse?',
@@ -312,38 +302,22 @@ describe('glossary examples', () => {
       ).toBe(true);
 
       // LLM assertion for operative significance - terms central to the argument
-      const [operativeTerms] = await aiExpect(
+      const operativeTerms = await aiExpect(
         `In the context of phenomenology and hermeneutics, these terms were selected: ${result.join(
           ', '
         )}`
       ).toSatisfy(
-        'Are these terms operatively significant - meaning they carry specific technical weight and are central to understanding the philosophical arguments being made?',
-        {
-          message: `Expected operatively significant philosophical terms, but got: ${result.join(
-            ', '
-          )}`,
-        }
+        'Are these terms operatively significant - meaning they carry specific technical weight and are central to understanding the philosophical arguments being made?'
       );
-      expect(
-        operativeTerms,
-        `Expected operatively significant philosophical terms, but got: ${result.join(', ')}`
-      ).toBe(true);
+      expect(operativeTerms).toBe(true);
 
       // LLM assertion for avoiding common words - focus on technical terminology
-      const [avoidCommonPhilosophical] = await aiExpect(
+      const avoidCommonPhilosophical = await aiExpect(
         `These terms from philosophical text: ${result.join(', ')}`
       ).toSatisfy(
-        'Are these specialized philosophical terms rather than common words that happen to appear in philosophical contexts?',
-        {
-          message: `Expected specialized philosophical terms, not common words, but got: ${result.join(
-            ', '
-          )}`,
-        }
+        'Are these specialized philosophical terms rather than common words that happen to appear in philosophical contexts?'
       );
-      expect(
-        avoidCommonPhilosophical,
-        `Expected specialized philosophical terms, not common words, but got: ${result.join(', ')}`
-      ).toBe(true);
+      expect(avoidCommonPhilosophical).toBe(true);
     },
     longTestTimeout
   );
@@ -369,7 +343,7 @@ describe('glossary examples', () => {
       expect(result.length).toBeLessThanOrEqual(12);
 
       // LLM assertion for technical tools identification
-      const [includesTools] = await aiExpect(
+      const includesTools = await aiExpect(
         `From tech text, these terms were extracted: ${result.join(', ')}`
       ).toSatisfy(
         'Do these terms include technical tools, technologies, or software systems (like Docker, Kubernetes, Redis, PostgreSQL, Jenkins)?',
@@ -385,7 +359,7 @@ describe('glossary examples', () => {
       ).toBe(true);
 
       // LLM assertion for design patterns identification
-      const [includesPatterns] = await aiExpect(
+      const includesPatterns = await aiExpect(
         `These terms from software development: ${result.join(', ')}`
       ).toSatisfy(
         'Do these terms include software design patterns, architectural patterns, or development patterns (like Repository, CQRS, Strangler Fig, Blue-Green)?',
@@ -401,7 +375,7 @@ describe('glossary examples', () => {
       ).toBe(true);
 
       // LLM assertion for methodologies and practices
-      const [includesMethodologies] = await aiExpect(
+      const includesMethodologies = await aiExpect(
         `From development context, these terms: ${result.join(', ')}`
       ).toSatisfy(
         'Do these terms include software development methodologies, practices, or approaches (like Domain-Driven Design, Test-Driven Development, Clean Architecture, Scrum)?',
@@ -417,7 +391,7 @@ describe('glossary examples', () => {
       ).toBe(true);
 
       // LLM assertion for key people/thought leaders (optional but valuable)
-      const [mayIncludePeople] = await aiExpect(`These tech terms: ${result.join(', ')}`).toSatisfy(
+      const mayIncludePeople = await aiExpect(`These tech terms: ${result.join(', ')}`).toSatisfy(
         'Do these terms appropriately focus on concepts, tools, and patterns rather than just including person names, while potentially including key thought leaders if they are central to understanding specific methodologies?',
         {
           message: `Expected focus on concepts/tools over person names, but got: ${result.join(
@@ -431,7 +405,7 @@ describe('glossary examples', () => {
       ).toBe(true);
 
       // LLM assertion for operative significance in tech context
-      const [operativeTechTerms] = await aiExpect(
+      const operativeTechTerms = await aiExpect(
         `In a software development context, these terms: ${result.join(', ')}`
       ).toSatisfy(
         'Are these terms operatively significant for understanding the technical architecture, development practices, and implementation decisions being described?',
@@ -443,7 +417,7 @@ describe('glossary examples', () => {
       ).toBe(true);
 
       // LLM assertion for practical utility - terms that need definition
-      const [practicalUtility] = await aiExpect(
+      const practicalUtility = await aiExpect(
         `For someone learning about software architecture and development, these terms: ${result.join(
           ', '
         )}`

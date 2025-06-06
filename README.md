@@ -49,18 +49,21 @@ List operations transform, filter, and organize collections using natural langua
 Content utilities generate, transform, and analyze text while maintaining structure and meaning. They excel at creative tasks, system analysis, and privacy-aware text processing.
 
 - [anonymize](./src/chains/anonymize) - scrub personal details from text
-- [dismantle](./src/chains/dismantle) - break complex systems into components
+- [dismantle](./src/chains/dismantle) - break systems into components
 - [disambiguate](./src/chains/disambiguate) - resolve ambiguous word meanings using context
-- [list](./src/chains/list) - generate contextual lists from prompts
-- [questions](./src/chains/questions) - produce clarifying questions for topics
-- [socratic](./src/chains/socratic) - explore assumptions using a Socratic dialogue
-- [glossary](./src/chains/glossary) - collect complex terms with automatic retries
-- [schema-org](./src/verblets/schema-org) - create schema.org-compliant data structures
+- [questions](./src/chains/questions) - produce clarifying questions
+- [scan-js](./src/chains/scan-js) - analyze code quality
+- [summary-map](./src/chains/summary-map) - summarize a collection
+- [test](./src/chains/test) - run LLM-driven tests
+- [test-advice](./src/chains/test-advice) - get feedback on test coverage
+- [veiled-variants](./src/chains/veiled-variants) - conceal sensitive queries with safer framing
+- [collect-terms](./src/chains/collect-terms) - extract difficult vocabulary
 - [name](./src/verblets/name) - name something from a definition or description
 - [name-similar-to](./src/verblets/name-similar-to) - suggest short names that match a style
-- [to-object](./src/verblets/to-object) - convert descriptions to structured objects
-- [veiled-variants](./src/chains/veiled-variants) - rephrase sensitive queries safely
+- [schema-org](./src/verblets/schema-org) - create schema.org objects
+- [socratic](./src/chains/socratic) - explore assumptions using a Socratic dialogue
 - [themes](./src/chains/themes) - uncover the big ideas in text and where each appears
+- [to-object](./src/verblets/to-object) - convert descriptions to objects
 
 ### Utility Operations
 

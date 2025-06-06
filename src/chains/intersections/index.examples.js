@@ -14,15 +14,16 @@ describe('intersections chain examples', () => {
       expect(Object.keys(result).length).toBeGreaterThan(0);
 
       // LLM assertion for overall structure
-      await aiExpect(result).toSatisfy(
+      const hasValidStructure = await aiExpect(result).toSatisfy(
         'should be an object where keys are combination identifiers and values contain intersection analysis',
         {
           context: 'Testing intersections chain output structure for technology devices',
         }
       );
+      expect(hasValidStructure).toBe(true);
 
       // Validate that we have meaningful intersections
-      await aiExpect(Object.keys(result).length).toSatisfy(
+      const hasMeaningfulIntersections = await aiExpect(Object.keys(result).length).toSatisfy(
         'should be greater than 0, representing multiple intersections of technology devices',
         {
           context: `Found ${
@@ -30,6 +31,7 @@ describe('intersections chain examples', () => {
           } intersections from technology devices analysis`,
         }
       );
+      expect(hasMeaningfulIntersections).toBe(true);
 
       // Basic structure validation for intersections
       for (const [, intersection] of Object.entries(result)) {

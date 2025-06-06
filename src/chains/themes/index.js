@@ -1,5 +1,6 @@
 import bulkReduce from '../bulk-reduce/index.js';
 import listReduce from '../../verblets/list-reduce/index.js';
+import parseLLMList from '../../lib/parse-llm-list/index.js';
 
 /**
  * Identify key themes from a long piece of text. The text is first split into
@@ -68,7 +69,34 @@ ${themesList.join(', ')}. Use an empty array if none apply.`,
       { chunkSize, initial: '[]' }
     );
 
-    sentenceThemes = JSON.parse(mappingJson);
+    try {
+      sentenceThemes = JSON.parse(mappingJson);
+    } catch {
+      // If JSON parsing fails, try to parse the response as a list of items
+      const items = parseLLMList(mappingJson);
+      sentenceThemes = items.map((item, index) => {
+        try {
+          // Try to parse each item as JSON
+          const parsed = JSON.parse(item);
+          if (Array.isArray(parsed) && parsed.length === 2) {
+            return parsed;
+          }
+        } catch {
+          // If parsing fails, try to extract offset and themes from the text
+          const match = item.match(/\[(\d+),\s*\[(.*?)\]\]/);
+          if (match) {
+            const offset = parseInt(match[1], 10);
+            const themes = match[2]
+              .split(',')
+              .map((t) => t.trim())
+              .filter(Boolean);
+            return [offset, themes];
+          }
+        }
+        // Fallback: use index as offset and empty themes array
+        return [index, []];
+      });
+    }
   }
 
   if (sentenceMap || explain) {
