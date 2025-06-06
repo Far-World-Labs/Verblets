@@ -16,6 +16,7 @@ Verblets rebuild the basic operations of software with language model intelligen
 
 - [anonymize](./src/chains/anonymize) - scrub personal details from text
 - [dismantle](./src/chains/dismantle) - break systems into components
+- [disambiguate](./src/chains/disambiguate) - resolve ambiguous terms
 - [list](./src/chains/list) - generate contextual lists
 - [questions](./src/chains/questions) - produce clarifying questions
 - [scan-js](./src/chains/scan-js) - analyze code quality
@@ -284,6 +285,15 @@ const { path } = await searchBestFirst({
   //   - Spokes: DT Swiss Aerolite
   // ...continues with full component breakdown
   ```
+
+- **disambiguate** - Resolve the intended meaning of a polysemous term
+```javascript
+const meaning = await disambiguate({
+  term: 'bark',
+  context: 'I heard the bark while walking in the forest.'
+});
+// => { term: 'bark', sense: 'dog sound' }
+```
 
 - **summary-map** - Compress many inputs into one high-cost LLM prompt
 ```javascript

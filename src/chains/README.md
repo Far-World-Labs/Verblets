@@ -6,6 +6,7 @@ Available chains:
 
 - [anonymize](./anonymize)
 - [dismantle](./dismantle)
+- [disambiguate](./disambiguate)
 - [list](./list)
 - [questions](./questions)
 - [scan-js](./scan-js)
