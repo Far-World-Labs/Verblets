@@ -22,6 +22,7 @@ Verblets rebuild the basic operations of software with language model intelligen
 - [scan-js](./src/chains/scan-js) - analyze code quality
 - [sort](./src/chains/sort) - order lists by any criteria
 - [summary-map](./src/chains/summary-map) - summarize a collection
+- [themes](./src/chains/themes) - identify themes in text
 - [bulk-map](./src/chains/bulk-map/) - map over long lists in batches
 - [bulk-reduce](./src/chains/bulk-reduce) - reduce long lists in batches
 - [bulk-partition](./src/chains/bulk-partition) - partition long lists in batches
@@ -543,6 +544,11 @@ import { bulkMap } from './src/index.js';
   // }
 ```
 
+- **themes** - Extract recurring themes from text
+```javascript
+  const mainThemes = await themes(longReport, { topN: 3 });
+  // ['strategy', 'market challenges', 'team morale']
+```
 - **search-best-first** - Intelligently explore solution spaces
   ```javascript
   // Find the best recipe adjustments when ingredients are missing

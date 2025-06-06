@@ -12,6 +12,7 @@ Available chains:
 - [scan-js](./scan-js)
 - [sort](./sort)
 - [summary-map](./summary-map)
+- [themes](./themes)
 - [bulk-reduce](./bulk-reduce)
 - [bulk-partition](./bulk-partition)
 - [test](./test)
@@ -19,3 +20,4 @@ Available chains:
 - [veiled-variants](./veiled-variants)
 
 Chains are free to use any utilities from [`../lib`](../lib/README.md) and often rely on one or more verblets from [`../verblets`](../verblets/README.md).
+
