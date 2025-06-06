@@ -12,6 +12,7 @@ Modules include:
 - [search-js-files](./search-js-files) – locate and analyze JavaScript files.
 - [shorten-text](./shorten-text) – shorten text using an LLM.
 - [bulkmap](./bulk-map) – map lists in retryable batches.
+- [bulk-find](./bulk-find) – find matching items in batches.
 - [strip-numeric](./strip-numeric) – remove non-digit characters.
 - [strip-response](./strip-response) – clean up model responses.
 - [to-bool](./to-bool) – parse text into a boolean.

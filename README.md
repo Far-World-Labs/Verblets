@@ -38,6 +38,7 @@ Verblets rebuild the basic operations of software with language model intelligen
 - [to-object](./src/verblets/to-object) - convert descriptions to objects
 - [list-map](./src/verblets/list-map) - map lists with custom instructions
 - [list-reduce](./src/verblets/list-reduce) - reduce lists with custom instructions
+- [list-find](./src/verblets/list-find) - find the first matching item in a list
 
 ### Library Helpers
 
@@ -48,6 +49,7 @@ Verblets rebuild the basic operations of software with language model intelligen
 - [search-js-files](./src/lib/search-js-files) - scan JavaScript sources
 - [shorten-text](./src/lib/shorten-text) - shorten text using a model
 - [bulkmap](./src/lib/bulk-map) - map long lists in retryable batches
+- [bulk-find](./src/lib/bulk-find) - find matching items in batches
 - [strip-numeric](./src/lib/strip-numeric) - remove non-digit characters
 - [strip-response](./src/lib/strip-response) - clean up model responses
 - [to-bool](./src/lib/to-bool) - parse text to boolean
@@ -520,6 +522,22 @@ const inputs = await map.pavedSummaryResult();
   ];
   const summary = await bulkReduce(logLines, 'Summarize the events');
   // e.g. 'User session: login, dashboard view and logout'
+  ```
+
+- **bulk-find** - Search lists in batches using `listFind`
+  ```javascript
+  import bulkFind, { bulkFindRetry } from './src/lib/bulk-find/index.js';
+
+  const diaryEntries = [
+    'Hiked up the mountains today and saw breathtaking views',
+    'Visited the local market and tried a spicy stew',
+    'Spotted penguins playing on the beach this morning'
+  ];
+  const match = await bulkFindRetry(diaryEntries, 'mentions penguins', {
+    chunkSize: 2,
+    maxAttempts: 2
+  });
+  // => 'Spotted penguins playing on the beach this morning'
   ```
 
 - **search-best-first** - Intelligently explore solution spaces
