@@ -5,18 +5,20 @@ Group large lists in smaller batches using `listGroupBy`. Each batch is grouped 
 ```javascript
 import bulkGroupBy from './index.js';
 
-const notes = [
-  'Lost my keys again on the way to work',
-  'Just booked tickets to see my favorite band',
-  'Spilled coffee all over the car seat',
-  'Adopted the sweetest puppy today'
+const reflections = [
+  'I missed a deadline but learned to ask for help sooner',
+  'Volunteered at a shelter and felt more compassionate',
+  'Admitted a difficult truth to a friend and it hurt our relationship',
+  'Helped a neighbor move and felt our community grow'
 ];
 const groups = await bulkGroupBy(
-  notes,
-  'Group each note by the mood it conveys (joy, frustration, etc.)'
+  reflections,
+  'Group each note by the life lesson it represents (humility, compassion, integrity, community)'
 );
 // => {
-//   joy: ['Just booked tickets to see my favorite band', 'Adopted the sweetest puppy today'],
-//   frustration: ['Lost my keys again on the way to work', 'Spilled coffee all over the car seat']
+//   humility: ['I missed a deadline but learned to ask for help sooner'],
+//   compassion: ['Volunteered at a shelter and felt more compassionate'],
+//   integrity: ['Admitted a difficult truth to a friend and it hurt our relationship'],
+//   community: ['Helped a neighbor move and felt our community grow']
 // }
 ```

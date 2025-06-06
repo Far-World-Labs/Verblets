@@ -528,21 +528,23 @@ const inputs = await map.pavedSummaryResult();
 ```javascript
 import bulkGroupBy from './src/chains/bulk-group-by/index.js';
 
-const journal = [
-  'Lost my keys again on the way to work',
-  'Just booked tickets to see my favorite band',
-  'Spilled coffee all over the car seat',
-  'Adopted the sweetest puppy today'
+const reflections = [
+  'I missed a deadline but learned to ask for help sooner',
+  'Volunteered at a shelter and felt more compassionate',
+  'Admitted a difficult truth to a friend and it hurt our relationship',
+  'Helped a neighbor move and felt our community grow'
 ];
 const groups = await bulkGroupBy(
-  journal,
-  'Group each entry by the emotion it conveys (joy, frustration, etc.)',
+  reflections,
+  'Group each entry by the life lesson it represents (humility, compassion, integrity, community)',
   { chunkSize: 2 }
 );
 /*
 {
-  joy: ['Just booked tickets to see my favorite band', 'Adopted the sweetest puppy today'],
-  frustration: ['Lost my keys again on the way to work', 'Spilled coffee all over the car seat']
+  humility: ['I missed a deadline but learned to ask for help sooner'],
+  compassion: ['Volunteered at a shelter and felt more compassionate'],
+  integrity: ['Admitted a difficult truth to a friend and it hurt our relationship'],
+  community: ['Helped a neighbor move and felt our community grow']
 }
 */
 ```
