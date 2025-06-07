@@ -145,11 +145,19 @@ jobs:
         if: always()
         run: |
           if [ -f lint-output.txt ]; then
-            # Count warnings and errors more robustly
-            WARNINGS=$(grep -c "warning" lint-output.txt 2>/dev/null || true)
-            ERRORS=$(grep -c "error" lint-output.txt 2>/dev/null || true)
+            # Count warnings and errors more precisely to avoid false positives
+            WARNINGS=$(grep -c "warning" lint-output.txt 2>/dev/null | grep -v "problems" || echo "0")
+            ERRORS=$(grep -E "^\s*[0-9]+:[0-9]+\s+error" lint-output.txt 2>/dev/null | wc -l || echo "0")
             
-            # Default to 0 if grep didn't find anything
+            # Fallback: if no line-specific errors found, check if ESLint reported any errors in summary
+            if [ "$ERRORS" -eq 0 ]; then
+              ERROR_SUMMARY=$(grep -o "([0-9]\+ errors\?" lint-output.txt 2>/dev/null | grep -o "[0-9]\+" | head -1 || echo "0")
+              if [ "$ERROR_SUMMARY" -gt 0 ]; then
+                ERRORS=$ERROR_SUMMARY
+              fi
+            fi
+            
+            # Default to 0 if still empty
             WARNINGS=${WARNINGS:-0}
             ERRORS=${ERRORS:-0}
             
