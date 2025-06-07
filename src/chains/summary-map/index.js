@@ -120,6 +120,7 @@ export default class SummaryMap extends Map {
           summarizeModelOptions.modelName = 'privacy';
         }
 
+        // eslint-disable-next-line no-await-in-loop
         summarizedValue = await summarize({
           budget,
           fixes: valueObject.fixes,

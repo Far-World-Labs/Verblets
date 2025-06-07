@@ -53,6 +53,7 @@ export const generateList = async function* generateListGenerator(text, options 
 
     let resultsNew = [];
     try {
+      // eslint-disable-next-line no-await-in-loop
       const results = await chatGPT(listPrompt, {
         modelOptions: {
           maxTokens: budget.completion,
@@ -63,12 +64,15 @@ export const generateList = async function* generateListGenerator(text, options 
       // debug helper:
       // console.error(R.sort((a, b) => a.localeCompare(b), await toObject(results)));
 
+      // eslint-disable-next-line no-await-in-loop
       resultsNew = await toObject(results);
     } catch (error) {
       if (/The operation was aborted/.test(error.message)) {
+        // eslint-disable-next-line no-console
         console.error('Generate list [error]: Aborted');
         resultsNew = []; // continue
       } else {
+        // eslint-disable-next-line no-console
         console.error(
           `Generate list [error]: ${error.message}`,
           listPrompt.slice(0, 100).replace('\n', '\\n')
@@ -91,11 +95,13 @@ export const generateList = async function* generateListGenerator(text, options 
         startTime,
       };
 
+      // eslint-disable-next-line no-await-in-loop
       if (await shouldStop(perResultControlFactors)) {
         isDone = true;
         break;
       }
 
+      // eslint-disable-next-line no-await-in-loop
       if (!(await shouldSkip(perResultControlFactors))) {
         resultsAllMap[result] = true;
         resultsAll.push(result);
@@ -115,6 +121,7 @@ export const generateList = async function* generateListGenerator(text, options 
       startTime,
     };
 
+    // eslint-disable-next-line no-await-in-loop
     if (await shouldStop(perQueryControlFactors)) {
       isDone = true;
     }

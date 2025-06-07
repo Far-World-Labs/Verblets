@@ -28,12 +28,15 @@ export default async (
         const variables = [`retry: ${retry}`].join(', ');
         const startTag = `${retry > 0 ? 'retry' : 'started'}`;
         const startVariablesDisplay = `${retry > 0 ? ` (${variables})` : ''}`;
+        // eslint-disable-next-line no-console
         console.error(`Run ${labelDisplay} [${startTag}]${startVariablesDisplay}`);
       }
 
+      // eslint-disable-next-line no-await-in-loop
       const result = await fn();
 
       if (label) {
+        // eslint-disable-next-line no-console
         console.error(`Run ${labelDisplay} [complete]`);
       }
 
@@ -44,6 +47,7 @@ export default async (
       const isRetry = retryOnAll || (error.response && error.response.status === 429);
 
       if (isRetry) {
+        // eslint-disable-next-line no-await-in-loop
         await sleep(retryDelay * retry);
         retry += 1;
       } else {
@@ -52,6 +56,7 @@ export default async (
       const doneTag = `${retry >= maxRetries ? 'abort' : 'retry'}`;
 
       if (label) {
+        // eslint-disable-next-line no-console
         console.error(`Run ${labelDisplay} [${doneTag}]: ${error.message}`);
       }
     }
