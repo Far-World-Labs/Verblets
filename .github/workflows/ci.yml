@@ -145,9 +145,13 @@ jobs:
         if: always()
         run: |
           if [ -f lint-output.txt ]; then
-            # Count warnings and errors, defaulting to 0 if not found
-            WARNINGS=$(grep -c "warning" lint-output.txt 2>/dev/null || echo "0")
-            ERRORS=$(grep -c "error" lint-output.txt 2>/dev/null || echo "0")
+            # Count warnings and errors more robustly
+            WARNINGS=$(grep -c "warning" lint-output.txt 2>/dev/null || true)
+            ERRORS=$(grep -c "error" lint-output.txt 2>/dev/null || true)
+            
+            # Default to 0 if grep didn't find anything
+            WARNINGS=${WARNINGS:-0}
+            ERRORS=${ERRORS:-0}
             
             echo "## 🔍 Lint Results" >> $GITHUB_STEP_SUMMARY
             echo "- Errors: $ERRORS" >> $GITHUB_STEP_SUMMARY
