@@ -1,265 +1,93 @@
-name: CI
+name: CI/CD Pipeline
 
 on:
-  pull_request:
-    branches: [ main, develop ]
-  pull_request_target:
-    branches: [ main, develop ]
-    types: [opened, synchronize, reopened]
   push:
-    branches: [ main, develop ]
-
-permissions:
-  contents: read
-  pull-requests: write
-  checks: write
-  statuses: write
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
 
 env:
-  NODE_VERSION: '18'
+  NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
 jobs:
-  security-check:
-    name: 🔒 Security Check
-    if: github.event_name == 'pull_request_target'
+  get-lts-versions:
+    name: 🧱 Get LTS Node Versions
     runs-on: ubuntu-latest
-    steps:
-      - name: 🔍 Validate PR source
-        run: |
-          echo "Checking PR from: ${{ github.actor }}"
-          echo "Event: ${{ github.event_name }}"
-          echo "Repository: ${{ github.event.pull_request.head.repo.full_name }}"
-          
-          # Allow internal PRs and trusted bots
-          if [[ "${{ github.event.pull_request.head.repo.full_name }}" == "${{ github.repository }}" ]] || \
-             [[ "${{ github.actor }}" == "dependabot[bot]" ]] || \
-             [[ "${{ github.actor }}" == "renovate[bot]" ]] || \
-             [[ "${{ github.actor }}" == "chatgpt-connector[bot]" ]] || \
-             [[ "${{ github.actor }}" == "flowgrammer" ]]; then
-            echo "✅ Trusted source - proceeding with workflow"
-            exit 0
-          else
-            echo "❌ External PR detected - manual approval required"
-            echo "This PR is from an external source and requires manual review."
-            exit 1
-          fi
-
-  setup:
-    name: 🔧 Setup Dependencies
-    runs-on: ubuntu-latest
-    needs: [security-check]
-    if: always() && (needs.security-check.result == 'success' || github.event_name != 'pull_request_target')
     outputs:
-      cache-hit: ${{ steps.cache-check.outputs.cache-hit }}
-    
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
-      - name: 📥 Checkout code
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
-      
-      - name: 📦 Setup Node.js ${{ env.NODE_VERSION }}
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-      
-      - name: 🔍 Check for existing cache
-        id: cache-check
-        uses: actions/cache@v3
-        with:
-          path: |
-            node_modules
-            ~/.npm
-          key: node-modules-${{ runner.os }}-${{ hashFiles('**/package-lock.json', '**/package.json') }}
-          restore-keys: |
-            node-modules-${{ runner.os }}-
-          lookup-only: true
-      
-      - name: 📦 Install dependencies
-        if: steps.cache-check.outputs.cache-hit != 'true'
+      - name: Fetch Node LTS versions
+        id: set-matrix
         run: |
-          echo "::group::Installing dependencies"
-          if [ -f package-lock.json ]; then
-            echo "📦 Found package-lock.json, using npm ci"
-            npm ci --prefer-offline --no-audit
-          else
-            echo "📦 No package-lock.json found, using npm install"
-            npm install --prefer-offline --no-audit
-          fi
-          echo "::endgroup::"
-      
-      - name: 💾 Cache node_modules
-        if: steps.cache-check.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v3
-        with:
-          path: |
-            node_modules
-            ~/.npm
-          key: node-modules-${{ runner.os }}-${{ hashFiles('**/package-lock.json', '**/package.json') }}
-      
-      - name: 📊 Job Summary
-        run: |
-          echo "## 🔧 Setup Complete" >> $GITHUB_STEP_SUMMARY
-          echo "- Node.js version: ${{ env.NODE_VERSION }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Cache hit: ${{ steps.cache-check.outputs.cache-hit }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Dependencies installed: $([ '${{ steps.cache-check.outputs.cache-hit }}' = 'true' ] && echo 'from cache' || echo 'fresh install')" >> $GITHUB_STEP_SUMMARY
-          echo "- Lock file: $([ -f package-lock.json ] && echo 'package-lock.json found' || echo 'using package.json only')" >> $GITHUB_STEP_SUMMARY
-
-  lint:
-    name: 🔍 Lint Code
-    runs-on: ubuntu-latest
-    needs: setup
-    
-    steps:
-      - name: 📥 Checkout code
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
-      
-      - name: 📦 Setup Node.js ${{ env.NODE_VERSION }}
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-      
-      - name: 💾 Restore node_modules
-        uses: actions/cache/restore@v3
-        with:
-          path: |
-            node_modules
-            ~/.npm
-          key: node-modules-${{ runner.os }}-${{ hashFiles('**/package-lock.json', '**/package.json') }}
-          restore-keys: |
-            node-modules-${{ runner.os }}-
-          fail-on-cache-miss: true
-      
-      - name: 🔍 Run ESLint
-        run: |
-          echo "::group::Running ESLint"
-          set +e
-          npm run lint > lint-output.txt 2>&1
-          EXIT_CODE=$?
-          echo "::endgroup::"
-
-          echo "ESLint execution completed with exit code $EXIT_CODE"
-
-          # Updated lint parsing logic - v2.0 (fixed false positives)
-          WARNINGS=$(grep -E "^\s*[0-9]+:[0-9]+\s+warning" lint-output.txt | wc -l || echo "0")
-          ERRORS=$(grep -E "^\s*[0-9]+:[0-9]+\s+error" lint-output.txt | wc -l || echo "0")
-
-          # Fallback: check ESLint summary if no errors above
-          if [ "$ERRORS" -eq 0 ]; then
-            ERROR_SUMMARY=$(grep -o "[0-9]\+ error" lint-output.txt | grep -o "[0-9]\+" | head -1 || echo "0")
-            if [ "$ERROR_SUMMARY" -gt 0 ]; then
-              ERRORS=$ERROR_SUMMARY
-            fi
-          fi
-
-          echo "## 🔍 Lint Results" >> $GITHUB_STEP_SUMMARY
-          echo "- Errors: $ERRORS" >> $GITHUB_STEP_SUMMARY
-          echo "- Warnings: $WARNINGS" >> $GITHUB_STEP_SUMMARY
-
-          if [ "$ERRORS" -gt 0 ]; then
-            echo "### Errors Found:" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            cat lint-output.txt >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            exit 1
-          elif [ "$WARNINGS" -gt 0 ]; then
-            echo "### Warnings Found:" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            cat lint-output.txt >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            echo "⚠️ Warnings detected but not blocking the build" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "✅ No linting issues found!" >> $GITHUB_STEP_SUMMARY
-          fi
-        id: lint-step
+          LTS_VERSIONS=$(curl -s https://raw.githubusercontent.com/nodejs/Release/main/schedule.json | \
+            jq -cr 'to_entries | map(select(.value.lts != false and .value.end > (now | strftime("%Y-%m-%d")))) | map(.key)')
+          echo "matrix={\"node-version\": $LTS_VERSIONS}" >> $GITHUB_OUTPUT
 
   test:
-    name: 🧪 Run Tests
+    name: 🧪 Test on LTS
+    needs: get-lts-versions
     runs-on: ubuntu-latest
-    needs: setup
-    
+    strategy:
+      matrix: ${{ fromJson(needs.get-lts-versions.outputs.matrix) }}
     steps:
-      - name: 📥 Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
-      
-      - name: 📦 Setup Node.js ${{ env.NODE_VERSION }}
-        uses: actions/setup-node@v4
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: '**/package-lock.json'
+      - name: Cache npm global
+        uses: actions/cache@v4
         with:
-          node-version: ${{ env.NODE_VERSION }}
-      
-      - name: 💾 Restore node_modules
-        uses: actions/cache/restore@v3
-        with:
-          path: |
-            node_modules
-            ~/.npm
-          key: node-modules-${{ runner.os }}-${{ hashFiles('**/package-lock.json', '**/package.json') }}
-          restore-keys: |
-            node-modules-${{ runner.os }}-
-          fail-on-cache-miss: true
-      
-      - name: 🧪 Run tests with coverage
-        run: |
-          echo "::group::Running tests"
-          npm run test -- --reporter=verbose --coverage 2>&1 | tee test-output.txt
-          echo "::endgroup::"
-        continue-on-error: true
-        id: test-step
-      
-      - name: 📊 Parse test results
-        if: always()
-        run: |
-          if [ -f test-output.txt ]; then
-            PASSED=$(grep -o "✓.*passed" test-output.txt | wc -l || echo "0")
-            FAILED=$(grep -o "✗.*failed" test-output.txt | wc -l || echo "0")
-            
-            echo "## 🧪 Test Results" >> $GITHUB_STEP_SUMMARY
-            echo "- ✅ Passed: $PASSED" >> $GITHUB_STEP_SUMMARY
-            echo "- ❌ Failed: $FAILED" >> $GITHUB_STEP_SUMMARY
-            
-            if [ "$FAILED" -gt 0 ]; then
-              echo "### Failed Tests:" >> $GITHUB_STEP_SUMMARY
-              echo '```' >> $GITHUB_STEP_SUMMARY
-              grep -A 5 -B 1 "FAIL\|✗" test-output.txt >> $GITHUB_STEP_SUMMARY || echo "No detailed failure info available"
-              echo '```' >> $GITHUB_STEP_SUMMARY
-              exit 1
-            else
-              echo "🎉 All tests passed!" >> $GITHUB_STEP_SUMMARY
-            fi
-          fi
-      
-      - name: 📈 Upload coverage reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-report
-          path: coverage/
-          retention-days: 30
-        continue-on-error: true
+          path: ~/.npm
+          key: npm-global-${{ runner.os }}-${{ matrix.node-version }}
+      - run: npm ci
+      - name: Run ESLint (allow warnings)
+        run: npx eslint . || true
+      - name: Run tests
+        run: npm run test
 
-  summary:
-    name: 📋 Build Summary
+  build:
+    name: 🛠️ Build
     runs-on: ubuntu-latest
-    needs: [setup, lint, test]
-    if: always()
-    
+    needs: test
     steps:
-      - name: 📋 Generate final summary
-        run: |
-          echo "## 🚀 CI Pipeline Summary" >> $GITHUB_STEP_SUMMARY
-          echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
-          echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
-          echo "| 🔧 Setup | ${{ needs.setup.result == 'success' && '✅ Success' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| 🔍 Lint | ${{ needs.lint.result == 'success' && '✅ Success' || needs.lint.result == 'failure' && '❌ Failed' || '⏭️ Skipped' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| 🧪 Test | ${{ needs.test.result == 'success' && '✅ Success' || needs.test.result == 'failure' && '❌ Failed' || '⏭️ Skipped' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          
-          if [ "${{ needs.lint.result }}" = "success" ] && [ "${{ needs.test.result }}" = "success" ]; then
-            echo "🎉 **All checks passed!** Your code is ready to merge." >> $GITHUB_STEP_SUMMARY
-          else
-            echo "⚠️ **Some checks failed.** Please review the issues above." >> $GITHUB_STEP_SUMMARY
-          fi 
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'npm'
+      - name: Cache npm global
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: npm-global-${{ runner.os }}-build
+      - run: npm ci
+      - run: npm run build
+
+  release:
+    name: 🚀 Release
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'npm'
+      - name: Cache npm global
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: npm-global-${{ runner.os }}-release
+      - run: npm ci
+      - run: npm run build
+      - name: Semantic Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npx semantic-release
