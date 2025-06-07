@@ -135,55 +135,44 @@ jobs:
       - name: 🔍 Run ESLint
         run: |
           echo "::group::Running ESLint"
-          npm run lint > lint-output.txt 2>&1 || echo "ESLint completed with exit code $?"
-          echo "ESLint execution completed" >> lint-output.txt
+          set +e
+          npm run lint > lint-output.txt 2>&1
+          EXIT_CODE=$?
           echo "::endgroup::"
-        continue-on-error: true
-        id: lint-step
-      
-      - name: 📊 Parse lint results
-        if: always()
-        run: |
-          if [ -f lint-output.txt ]; then
-            # Count warnings and errors more precisely to avoid false positives
-            WARNINGS=$(grep -E "^\s*[0-9]+:[0-9]+\s+warning" lint-output.txt 2>/dev/null | wc -l || echo "0")
-            ERRORS=$(grep -E "^\s*[0-9]+:[0-9]+\s+error" lint-output.txt 2>/dev/null | wc -l || echo "0")
-            
-            # Fallback: if no line-specific errors found, check if ESLint reported any errors in summary
-            if [ "$ERRORS" -eq 0 ]; then
-              ERROR_SUMMARY=$(grep -o "([0-9]\+ errors\?" lint-output.txt 2>/dev/null | grep -o "[0-9]\+" | head -1 || echo "0")
-              if [ "$ERROR_SUMMARY" -gt 0 ]; then
-                ERRORS=$ERROR_SUMMARY
-              fi
+
+          echo "ESLint execution completed with exit code $EXIT_CODE"
+
+          WARNINGS=$(grep -E "^\s*[0-9]+:[0-9]+\s+warning" lint-output.txt | wc -l || echo "0")
+          ERRORS=$(grep -E "^\s*[0-9]+:[0-9]+\s+error" lint-output.txt | wc -l || echo "0")
+
+          # Fallback: check ESLint summary if no errors above
+          if [ "$ERRORS" -eq 0 ]; then
+            ERROR_SUMMARY=$(grep -o "[0-9]\+ error" lint-output.txt | grep -o "[0-9]\+" | head -1 || echo "0")
+            if [ "$ERROR_SUMMARY" -gt 0 ]; then
+              ERRORS=$ERROR_SUMMARY
             fi
-            
-            # Default to 0 if still empty
-            WARNINGS=${WARNINGS:-0}
-            ERRORS=${ERRORS:-0}
-            
-            echo "## 🔍 Lint Results" >> $GITHUB_STEP_SUMMARY
-            echo "- Errors: $ERRORS" >> $GITHUB_STEP_SUMMARY
-            echo "- Warnings: $WARNINGS" >> $GITHUB_STEP_SUMMARY
-            
-            if [ "$ERRORS" -gt 0 ]; then
-              echo "### Errors Found:" >> $GITHUB_STEP_SUMMARY
-              echo '```' >> $GITHUB_STEP_SUMMARY
-              cat lint-output.txt >> $GITHUB_STEP_SUMMARY
-              echo '```' >> $GITHUB_STEP_SUMMARY
-              exit 1
-            elif [ "$WARNINGS" -gt 0 ]; then
-              echo "### Warnings Found:" >> $GITHUB_STEP_SUMMARY
-              echo '```' >> $GITHUB_STEP_SUMMARY
-              cat lint-output.txt >> $GITHUB_STEP_SUMMARY
-              echo '```' >> $GITHUB_STEP_SUMMARY
-              echo "⚠️ Warnings detected but not blocking the build" >> $GITHUB_STEP_SUMMARY
-            else
-              echo "✅ No linting issues found!" >> $GITHUB_STEP_SUMMARY
-            fi
-          else
-            echo "❌ lint-output.txt file not found" >> $GITHUB_STEP_SUMMARY
-            exit 1
           fi
+
+          echo "## 🔍 Lint Results" >> $GITHUB_STEP_SUMMARY
+          echo "- Errors: $ERRORS" >> $GITHUB_STEP_SUMMARY
+          echo "- Warnings: $WARNINGS" >> $GITHUB_STEP_SUMMARY
+
+          if [ "$ERRORS" -gt 0 ]; then
+            echo "### Errors Found:" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            cat lint-output.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            exit 1
+          elif [ "$WARNINGS" -gt 0 ]; then
+            echo "### Warnings Found:" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            cat lint-output.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "⚠️ Warnings detected but not blocking the build" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ No linting issues found!" >> $GITHUB_STEP_SUMMARY
+          fi
+        id: lint-step
 
   test:
     name: 🧪 Run Tests

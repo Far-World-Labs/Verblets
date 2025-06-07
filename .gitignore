@@ -3,3 +3,9 @@ node_modules
 # dotenv environment variables file
 .env
 .env.test
+
+# Debugging and test files
+lint-output.txt
+test-lint-output.txt
+github-step-summary*.txt
+test-script*.sh
