@@ -49,28 +49,10 @@ jobs:
       - name: Run tests
         run: npm run test
 
-  build:
-    name: 🛠️ Build
-    runs-on: ubuntu-latest
-    needs: test
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20.x
-          cache: 'npm'
-      - name: Cache npm global
-        uses: actions/cache@v4
-        with:
-          path: ~/.npm
-          key: npm-global-${{ runner.os }}-build
-      - run: npm ci
-      - run: npm run build
-
   release:
     name: 🚀 Release
     runs-on: ubuntu-latest
-    needs: build
+    needs: test
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     steps:
       - uses: actions/checkout@v4
