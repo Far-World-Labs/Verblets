@@ -69,6 +69,7 @@ export const bulkMapRetry = async function (
       }
     });
     if (missingFragments.length === 0) break;
+    // eslint-disable-next-line no-await-in-loop
     const retryResults = await bulkMap(missingFragments, instructions, chunkSize);
     retryResults.forEach((val, i) => {
       results[missingIdx[i]] = val;

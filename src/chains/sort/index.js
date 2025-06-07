@@ -60,6 +60,7 @@ const sort = async (options, listInitial, model = modelService.getBestPublicMode
 
       const budget = model.budgetTokens(prompt);
 
+      // eslint-disable-next-line no-await-in-loop
       const result = await chatGPT(prompt, {
         modelOptions: {
           maxTokens: budget.completion,
@@ -67,6 +68,7 @@ const sort = async (options, listInitial, model = modelService.getBestPublicMode
         },
       });
 
+      // eslint-disable-next-line no-await-in-loop
       const batchSorted = await toObject(result);
 
       const batchTop = batchSorted.slice(0, extremeK);

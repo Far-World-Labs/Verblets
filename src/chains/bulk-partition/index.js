@@ -18,6 +18,7 @@ export default async function bulkPartition(list, instructions, { chunkSize = 10
   for (let i = 0; i < list.length; i += chunkSize) {
     const batch = list.slice(i, i + chunkSize);
 
+    // eslint-disable-next-line no-await-in-loop
     const result = await listPartition(batch, instructions, categories);
     Object.entries(result).forEach(([key, items]) => {
       if (!partitions[key]) partitions[key] = [];
