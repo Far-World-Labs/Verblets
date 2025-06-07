@@ -61,6 +61,7 @@ const generateQuestions = async function* generateQuestionsGenerator(text, optio
       const pickInterestingQuestionPrompt = pickInterestingQuestion(textSelected, {
         existing: choices,
       });
+      // eslint-disable-next-line no-await-in-loop
       textSelected = await chatGPT(pickInterestingQuestionPrompt);
       drilldownResults.push(textSelected);
     }
@@ -76,16 +77,20 @@ const generateQuestions = async function* generateQuestionsGenerator(text, optio
       },
     };
 
+    // eslint-disable-next-line no-await-in-loop
     const results = await chatGPT(`${promptCreated}`, chatGPTConfig);
     let resultsParsed;
     try {
+      // eslint-disable-next-line no-await-in-loop
       resultsParsed = await toObject(results);
     } catch (error) {
       if (/Unexpected string in JSON/.test(error.message)) {
+        // eslint-disable-next-line no-await-in-loop
         const resultsUpdated = await chatGPT(
           `${asSplitIntoJSONArray}${onlyJSON} \`\`\`${results}\`\`\``,
           chatGPTConfig
         );
+        // eslint-disable-next-line no-await-in-loop
         resultsParsed = await toObject(resultsUpdated);
       }
     }
@@ -99,10 +104,12 @@ const generateQuestions = async function* generateQuestionsGenerator(text, optio
     attempts += 1;
 
     for (const result of resultsNewUnique) {
+      // eslint-disable-next-line no-await-in-loop
       if (await shouldStop(result, resultsAll, resultsNew, attempts)) {
         isDone = true;
         break;
       }
+      // eslint-disable-next-line no-await-in-loop
       if (!(await shouldSkip(result, resultsAll))) {
         resultsAllMap[result] = true;
         resultsAll.push(result);

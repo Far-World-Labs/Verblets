@@ -5,6 +5,7 @@ export default async function bulkReduce(list, instructions, { chunkSize = 10, i
   for (let i = 0; i < list.length; i += chunkSize) {
     const batch = list.slice(i, i + chunkSize);
 
+    // eslint-disable-next-line no-await-in-loop
     acc = await listReduce(acc, batch, instructions);
   }
   return acc;
