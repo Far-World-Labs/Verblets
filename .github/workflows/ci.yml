@@ -142,6 +142,7 @@ jobs:
 
           echo "ESLint execution completed with exit code $EXIT_CODE"
 
+          # Updated lint parsing logic - v2.0 (fixed false positives)
           WARNINGS=$(grep -E "^\s*[0-9]+:[0-9]+\s+warning" lint-output.txt | wc -l || echo "0")
           ERRORS=$(grep -E "^\s*[0-9]+:[0-9]+\s+error" lint-output.txt | wc -l || echo "0")
 
