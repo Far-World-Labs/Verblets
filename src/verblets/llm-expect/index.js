@@ -11,6 +11,7 @@ const {
   explainAndSeparatePrimitive,
 } = promptConstants;
 
+// Core LLM expectation verblet - single LLM call
 export default async (actual, expectedOrConstraint, maybeConstraint, options = {}) => {
   let expected;
   let constraint = '';
@@ -38,5 +39,15 @@ export default async (actual, expectedOrConstraint, maybeConstraint, options = {
 
   const prompt = parts.filter(Boolean).join('\n');
   const response = await chatGPT(prompt, { ...options });
-  return toBool(stripResponse(response));
+  const result = toBool(stripResponse(response));
+
+  // Throw by default unless explicitly disabled
+  const shouldThrow = options.throw !== false;
+
+  if (!result && shouldThrow) {
+    const errorMessage = `LLM assertion failed: ${constraint}`;
+    throw new Error(errorMessage);
+  }
+
+  return result;
 };
