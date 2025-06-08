@@ -33,7 +33,7 @@ describe('intersection verblet', () => {
     const result = await intersection(['a', 'b', 'c']);
     expect(result).toStrictEqual([
       'common: a',
-      'common: b', 
+      'common: b',
       'common: c',
       'common: a | b',
       'common: a | c',
