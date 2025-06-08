@@ -39,6 +39,7 @@ Verblets rebuild the basic operations of software with language model intelligen
 - [list-map](./src/verblets/list-map) - map lists with custom instructions
 - [list-reduce](./src/verblets/list-reduce) - reduce lists with custom instructions
 - [list-expand](./src/verblets/list-expand) - expand lists with similar items
+- [list-group-by](./src/verblets/list-group-by) - group lists with custom instructions
 
 ### Library Helpers
 
@@ -526,6 +527,7 @@ import { bulkMap } from './src/index.js';
 ```javascript
   import bulkPartition from './src/chains/bulk-partition/index.js';
 
+<<<<<<< HEAD
   const feedback = [
     'Great interface and onboarding',
     'Price is a bit steep',
@@ -542,6 +544,27 @@ import { bulkMap } from './src/index.js';
   //   criticism: ['Price is a bit steep'],
   //   'feature request': ['Needs more integrations']
   // }
+=======
+const reflections = [
+  'I missed a deadline but learned to ask for help sooner',
+  'Volunteered at a shelter and felt more compassionate',
+  'Admitted a difficult truth to a friend and it hurt our relationship',
+  'Helped a neighbor move and felt our community grow'
+];
+const groups = await bulkGroupBy(
+  reflections,
+  'Group each entry by the life lesson it represents (humility, compassion, integrity, community)',
+  { chunkSize: 2 }
+);
+/*
+{
+  humility: ['I missed a deadline but learned to ask for help sooner'],
+  compassion: ['Volunteered at a shelter and felt more compassionate'],
+  integrity: ['Admitted a difficult truth to a friend and it hurt our relationship'],
+  community: ['Helped a neighbor move and felt our community grow']
+}
+*/
+>>>>>>> b381686 (Revise group-by docs to show deeper semantic grouping)
 ```
 
 - **search-best-first** - Intelligently explore solution spaces

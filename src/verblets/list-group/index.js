@@ -12,9 +12,16 @@ const buildPrompt = (list, instructions, categories) => {
   return `Assign each line in <list> to ${categoryText} according to <instructions>. Return the same number of lines containing only the group name.\n\n${instructionsBlock}\n${categoryBlock}${listBlock}`;
 };
 
-export default async function listPartition(list, instructions, categories) {
+export default async function listGroup(list, instructions, categories) {
   const output = await chatGPT(buildPrompt(list, instructions, categories));
-  const labels = output.split('\n');
+  const allLines = output
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+
+  // Take only the first N lines where N is the expected count
+  const labels = allLines.slice(0, list.length);
+
   if (labels.length !== list.length) {
     throw new Error(
       `Batch output line count mismatch (expected ${list.length}, got ${labels.length})`
