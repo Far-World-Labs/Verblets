@@ -30,6 +30,7 @@ List operations transform, filter, and organize collections using natural langua
 - [bulk-find](./src/chains/bulk-find) - locate the best match in large datasets
 - [bulk-group](./src/chains/bulk-group) - group large datasets efficiently
 - [bulk-filter](./src/chains/bulk-filter) - filter huge lists in batches
+- [intersections](./src/chains/intersections) - find comprehensive intersections for all combinations
 - [list-map](./src/verblets/list-map) - transform each item in a list
 - [list-reduce](./src/verblets/list-reduce) - combine list items using custom logic
 - [list-find](./src/verblets/list-find) - pick the single best item from a list

@@ -10,6 +10,8 @@ import anonymize from './chains/anonymize/index.js';
 
 import Dismantle from './chains/dismantle/index.js';
 
+import intersections from './chains/intersections/index.js';
+
 import list from './chains/list/index.js';
 
 import questions from './chains/questions/index.js';
@@ -124,6 +126,7 @@ export const verblets = {
   bulkFind,
   anonymize,
   Dismantle,
+  intersections,
   list,
   questions,
   scanJS,
