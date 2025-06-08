@@ -16,6 +16,8 @@ import list from './chains/list/index.js';
 
 import questions from './chains/questions/index.js';
 
+import SocraticMethod from './chains/socratic/index.js';
+
 import scanJS from './chains/scan-js/index.js';
 
 import sort from './chains/sort/index.js';
@@ -129,6 +131,7 @@ export const verblets = {
   intersections,
   list,
   questions,
+  SocraticMethod,
   scanJS,
   sort,
   SummaryMap,

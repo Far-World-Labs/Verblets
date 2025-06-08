@@ -13,6 +13,7 @@ Available chains:
 - [intersections](./intersections)
 - [list](./list)
 - [questions](./questions)
+- [socratic](./socratic)
 - [scan-js](./scan-js)
 - [sort](./sort)
 - [summary-map](./summary-map)
