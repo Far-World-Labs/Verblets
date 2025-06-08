@@ -8,8 +8,6 @@ import chatGPT from './lib/chatgpt/index.js';
 
 import anonymize from './chains/anonymize/index.js';
 
-import bulkGroup from './chains/bulk-group/index.js';
-
 import Dismantle from './chains/dismantle/index.js';
 
 import list from './chains/list/index.js';
@@ -64,8 +62,6 @@ import enums from './verblets/enum/index.js';
 
 import intent from './verblets/intent/index.js';
 
-import listGroup from './verblets/list-group/index.js';
-
 import number from './verblets/number/index.js';
 
 import numberWithUnits from './verblets/number-with-units/index.js';
@@ -75,6 +71,10 @@ import schemaOrg from './verblets/schema-org/index.js';
 import toObject from './verblets/to-object/index.js';
 
 import listMap from './verblets/list-map/index.js';
+
+import bulkGroup from './chains/bulk-group/index.js';
+
+import listGroup from './verblets/list-group/index.js';
 
 export { default as retry } from './lib/retry/index.js';
 export { default as stripResponse } from './lib/strip-response/index.js';
@@ -101,10 +101,8 @@ export const lib = {
 export const verblets = {
   auto,
   bool,
-  bulkGroup,
   enums,
   intent,
-  listGroup,
   number,
   numberWithUnits,
   schemaOrg,
@@ -120,6 +118,8 @@ export const verblets = {
   SummaryMap,
   test,
   testAdvice,
+  bulkGroup,
+  listGroup,
 };
 
 export const services = {

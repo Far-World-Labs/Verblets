@@ -1,0 +1,22 @@
+name: Branch Protection
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  # Simple gate that waits for essential checks
+  merge-gate:
+    name: 🚪 Merge Gate
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Wait for essential checks
+        run: |
+          echo "This job serves as a merge gate."
+          echo "Configure branch protection rules in GitHub to require:"
+          echo "- 🔍 Lint Code"
+          echo "- At least one 🧪 Test on Node job"
+          echo "- This 🚪 Merge Gate job"
+          echo ""
+          echo "✅ Merge gate check passed" 

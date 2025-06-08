@@ -1,13 +1,13 @@
-# list-partition
+# list-group
 
-Partition a list into stable groups using custom instructions. Optionally
+Group a list into stable groups using custom instructions. Optionally
 provide a list of categories to maintain consistency across runs.
 
 ```javascript
-import listPartition from './index.js';
+import listGroup from './index.js';
 
 const categories = ['fruit', 'vegetable'];
-await listPartition(
+await listGroup(
   ['apple', 'banana', 'carrot'],
   'Classify each item',
   categories

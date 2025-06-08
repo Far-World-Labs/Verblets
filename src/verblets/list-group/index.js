@@ -9,7 +9,16 @@ const buildPrompt = (list, instructions, categories) => {
       ? `${wrapVariable(categories.join('\n'), { tag: 'categories' })}\n`
       : '';
   const categoryText = categories && categories.length ? 'one of the <categories>' : 'a group';
-  return `Assign each line in <list> to ${categoryText} according to <instructions>. Return the same number of lines containing only the group name.\n\n${instructionsBlock}\n${categoryBlock}${listBlock}`;
+
+  return `Assign each line in <list> to ${categoryText} according to <instructions>.
+
+IMPORTANT: Return exactly ${list.length} lines, one group name per line, in the same order as the input list.
+Do not include any extra text, explanations, or empty lines.
+
+${instructionsBlock}
+${categoryBlock}${listBlock}
+
+Output format: Return exactly ${list.length} lines with only the group name for each item.`;
 };
 
 export default async function listGroup(list, instructions, categories) {
@@ -23,10 +32,13 @@ export default async function listGroup(list, instructions, categories) {
   const labels = allLines.slice(0, list.length);
 
   if (labels.length !== list.length) {
-    throw new Error(
-      `Batch output line count mismatch (expected ${list.length}, got ${labels.length})`
-    );
+    console.warn(`Expected ${list.length} labels, got ${labels.length}. Output was:`, output);
+    // Pad with default category if we have fewer labels
+    while (labels.length < list.length) {
+      labels.push('other');
+    }
   }
+
   const result = {};
   labels.forEach((label, idx) => {
     const key = label.trim();

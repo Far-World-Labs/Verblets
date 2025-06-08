@@ -13,7 +13,7 @@ Available chains:
 - [sort](./sort)
 - [summary-map](./summary-map)
 - [bulk-reduce](./bulk-reduce)
-- [bulk-partition](./bulk-partition)
+- [bulk-group](./bulk-group)
 - [test](./test)
 - [test-advice](./test-advice)
 - [veiled-variants](./veiled-variants)
