@@ -34,12 +34,14 @@ Verblets rebuild the basic operations of software with language model intelligen
 - [intent](./src/verblets/intent) - extract user intent
 - [number](./src/verblets/number) - parse numeric values
 - [number-with-units](./src/verblets/number-with-units) - parse numbers with units
+- [sentiment](./src/verblets/sentiment) - detect tone of text
 - [schema-org](./src/verblets/schema-org) - create schema.org objects
 - [to-object](./src/verblets/to-object) - convert descriptions to objects
-- [list-map](./src/verblets/list-map) - map lists
-- [list-reduce](./src/verblets/list-reduce) - reduce lists
-- [list-expand](./src/verblets/list-expand) - expand lists with similar items
+- [list-map](./src/verblets/list-map) - map over a list
+- [list-reduce](./src/verblets/list-reduce) - reduce over a list
+- [list-filter](./src/verblets/list-filter) - filter a list
 - [list-group](./src/verblets/list-group) - combine list items into groups
+- [list-expand](./src/verblets/list-expand) - expand lists with similar items
 
 ### Library Helpers
 
@@ -49,6 +51,8 @@ Verblets rebuild the basic operations of software with language model intelligen
 - [search-best-first](./src/lib/search-best-first) - best-first search
 - [search-js-files](./src/lib/search-js-files) - scan JavaScript sources
 - [shorten-text](./src/lib/shorten-text) - shorten text using a model
+- [bulk-map](./src/lib/bulk-map) - map long lists in retryable batches
+- [bulk-filter](./src/lib/bulk-filter) - filter long lists in retryable batches
 - [strip-numeric](./src/lib/strip-numeric) - remove non-digit characters
 - [strip-response](./src/lib/strip-response) - clean up model responses
 - [to-bool](./src/lib/to-bool) - parse text to boolean
@@ -543,6 +547,26 @@ import { bulkMap } from './src/index.js';
   //   criticism: ['Price is a bit steep'],
   //   'feature request': ['Needs more integrations']
   // }
+```
+
+- **bulk-filter** - Filter lists in retryable batches using `listFilter`
+```javascript
+import bulkFilter from './src/lib/bulk-filter/index.js';
+
+const reflections = [
+  'Losing that match taught me the value of persistence.',
+  "I hate losing and it proves I'm worthless.",
+  'After failing my exam, I studied harder and passed the retake.',
+  "No matter what I do, I'll never succeed.",
+];
+const growth = await bulkFilter(
+  reflections,
+  'keep only reflections that show personal growth or learning from mistakes'
+);
+// growth === [
+//   'Losing that match taught me the value of persistence.',
+//   'After failing my exam, I studied harder and passed the retake.',
+// ]
 ```
 
 - **search-best-first** - Intelligently explore solution spaces
