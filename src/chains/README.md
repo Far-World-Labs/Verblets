@@ -9,6 +9,7 @@ Available chains:
 - [dismantle](./dismantle)
 - [list](./list)
 - [questions](./questions)
+- [socratic](./socratic)
 - [scan-js](./scan-js)
 - [sort](./sort)
 - [summary-map](./summary-map)
