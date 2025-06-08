@@ -37,6 +37,7 @@ import searchBestFirst from './lib/search-best-first/index.js';
 import searchJSFiles from './lib/search-js-files/index.js';
 import shortenText from './lib/shorten-text/index.js';
 import bulkMap, { bulkMapRetry } from './chains/bulk-map/index.js';
+import bulkFind, { bulkFindRetry } from './chains/bulk-find/index.js';
 import stripNumeric from './lib/strip-numeric/index.js';
 import stripResponse from './lib/strip-response/index.js';
 import toBool from './lib/to-bool/index.js';
@@ -71,6 +72,7 @@ import schemaOrg from './verblets/schema-org/index.js';
 import toObject from './verblets/to-object/index.js';
 
 import listMap from './verblets/list-map/index.js';
+import listFind from './verblets/list-find/index.js';
 
 import bulkGroup from './chains/bulk-group/index.js';
 
@@ -80,7 +82,7 @@ export { default as retry } from './lib/retry/index.js';
 export { default as stripResponse } from './lib/strip-response/index.js';
 export { default as searchJSFiles } from './lib/search-js-files/index.js';
 export { default as searchBestFirst } from './lib/search-best-first/index.js';
-export { bulkMap, bulkMapRetry };
+export { bulkMap, bulkMapRetry, bulkFind, bulkFindRetry };
 
 export const lib = {
   chatGPT,
@@ -108,7 +110,9 @@ export const verblets = {
   schemaOrg,
   toObject,
   listMap,
+  listFind,
   bulkMap,
+  bulkFind,
   anonymize,
   Dismantle,
   list,

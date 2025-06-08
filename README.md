@@ -27,9 +27,11 @@ List operations transform, filter, and organize collections using natural langua
 
 - [bulk-map](./src/chains/bulk-map) - process long lists in retryable batches
 - [bulk-reduce](./src/chains/bulk-reduce) - reduce long lists in manageable chunks
+- [bulk-find](./src/chains/bulk-find) - locate the best match in large datasets
 - [bulk-group](./src/chains/bulk-group) - group large datasets efficiently
 - [list-map](./src/verblets/list-map) - transform each item in a list
 - [list-reduce](./src/verblets/list-reduce) - combine list items using custom logic
+- [list-find](./src/verblets/list-find) - pick the single best item from a list
 - [list-filter](./src/verblets/list-filter) - filter lists with natural language criteria
 - [list-group](./src/verblets/list-group) - categorize list items into groups
 - [list-expand](./src/verblets/list-expand) - generate additional similar items
