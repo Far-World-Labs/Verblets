@@ -45,6 +45,7 @@ Content utilities generate, transform, and analyze text while maintaining struct
 - [schema-org](./src/verblets/schema-org) - create schema.org-compliant data structures
 - [to-object](./src/verblets/to-object) - convert descriptions to structured objects
 - [veiled-variants](./src/chains/veiled-variants) - rephrase sensitive queries safely
+- [themes](./src/chains/themes) - uncover the big ideas in text and where each appears
 
 ### Utility Operations
 Utility operations provide meta-functionality like automatic tool selection, intent parsing, and context compression. They're essential for building intelligent systems that can adapt and scale.
