@@ -14,6 +14,20 @@ Verblets rebuild the basic operations of software with language model intelligen
 
 ### Verblets
 
+- [anonymize](./src/chains/anonymize) - scrub personal details from text
+- [bulk-map](./src/chains/bulk-map) - map long lists in retryable batches
+- [dismantle](./src/chains/dismantle) - break systems into components
+- [list](./src/chains/list) - generate contextual lists
+- [questions](./src/chains/questions) - produce clarifying questions
+- [scan-js](./src/chains/scan-js) - analyze code quality
+- [sort](./src/chains/sort) - order lists by any criteria
+- [summary-map](./src/chains/summary-map) - summarize a collection
+- [bulk-map](./src/chains/bulk-map/) - map over long lists in batches
+- [bulk-reduce](./src/chains/bulk-reduce) - reduce long lists in batches
+- [bulk-group](./src/chains/bulk-group) - group long lists in batches
+- [test](./src/chains/test) - run LLM-driven tests
+- [test-advice](./src/chains/test-advice) - get feedback on test coverage
+- [veiled-variants](./src/chains/veiled-variants) - conceal sensitive queries with safer framing
 - [auto](./src/verblets/auto) - automatically select the best verblet
 - [bool](./src/verblets/bool) - interpret text as a boolean
 - [enum](./src/verblets/enum) - map text to predefined options
@@ -22,28 +36,10 @@ Verblets rebuild the basic operations of software with language model intelligen
 - [number-with-units](./src/verblets/number-with-units) - parse numbers with units
 - [schema-org](./src/verblets/schema-org) - create schema.org objects
 - [to-object](./src/verblets/to-object) - convert descriptions to objects
-- [list-map](./src/verblets/list-map) - map lists with custom instructions
-- [list-reduce](./src/verblets/list-reduce) - reduce lists with custom instructions
+- [list-map](./src/verblets/list-map) - map lists
+- [list-reduce](./src/verblets/list-reduce) - reduce lists
 - [list-expand](./src/verblets/list-expand) - expand lists with similar items
-- [list-group](./src/verblets/list-group) - group lists into categories
-- [llm-expect](./src/verblets/llm-expect) - assert using an LLM
-
-### Chains
-
-- [anonymize](./src/chains/anonymize) - scrub personal details from text
-- [bulk-map](./src/chains/bulk-map) - map long lists in retryable batches
-- [bulk-reduce](./src/chains/bulk-reduce) - reduce long lists in batches
-- [bulk-group](./src/chains/bulk-group) - group long lists in batches
-- [dismantle](./src/chains/dismantle) - break systems into components
-- [list](./src/chains/list) - generate contextual lists
-- [questions](./src/chains/questions) - produce clarifying questions
-- [scan-js](./src/chains/scan-js) - analyze code quality
-- [sort](./src/chains/sort) - order lists by any criteria
-- [summary-map](./src/chains/summary-map) - summarize a collection
-- [test](./src/chains/test) - run LLM-driven tests
-- [test-advice](./src/chains/test-advice) - get feedback on test coverage
-- [veiled-variants](./src/chains/veiled-variants) - conceal sensitive queries with safer framing
-- [llm-expect](./src/chains/llm-expect) - enhanced LLM assertions with debugging
+- [bulk-group](./src/verblets/list-group) - group lists
 
 ### Library Helpers
 
