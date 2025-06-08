@@ -70,6 +70,8 @@ import numberWithUnits from './verblets/number-with-units/index.js';
 
 import schemaOrg from './verblets/schema-org/index.js';
 
+import name from './verblets/name/index.js';
+
 import toObject from './verblets/to-object/index.js';
 
 import listMap from './verblets/list-map/index.js';
@@ -109,6 +111,7 @@ export const verblets = {
   number,
   numberWithUnits,
   schemaOrg,
+  name,
   toObject,
   listMap,
   listFind,
