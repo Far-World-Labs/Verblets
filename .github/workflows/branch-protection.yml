@@ -4,6 +4,11 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
 
+permissions:
+  contents: read
+  checks: read
+  statuses: read
+
 jobs:
   enforce-branch-protection:
     name: 🛡️ Enforce Branch Protection
@@ -14,90 +19,40 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            // Get the PR details
             const pr = context.payload.pull_request;
-            const owner = context.repo.owner;
-            const repo = context.repo.repo;
+            const { owner, repo } = context.repo;
             const sha = pr.head.sha;
             
-            console.log(`Checking status for PR #${pr.number} (${sha})`);
+            console.log(`Checking PR #${pr.number} (${sha})`);
             
-            // Required status checks that must pass
+            // Required checks that must pass before merge
             const requiredChecks = [
               '🔍 Lint Code',
               '🛠️ Build',
               '✅ PR Ready to Merge'
             ];
             
-            // Get all status checks for this commit
-            const { data: statuses } = await github.rest.repos.listCommitStatusesForRef({
-              owner,
-              repo,
-              ref: sha
-            });
+            // Get all status checks and check runs
+            const [statusesResponse, checkRunsResponse] = await Promise.all([
+              github.rest.repos.listCommitStatusesForRef({ owner, repo, ref: sha }),
+              github.rest.checks.listForRef({ owner, repo, ref: sha })
+            ]);
             
-            // Get check runs as well
-            const { data: checkRuns } = await github.rest.checks.listForRef({
-              owner,
-              repo,
-              ref: sha
-            });
-            
-            console.log('Current statuses:', statuses.map(s => `${s.context}: ${s.state}`));
-            console.log('Current check runs:', checkRuns.check_runs.map(c => `${c.name}: ${c.conclusion}`));
+            const statuses = statusesResponse.data;
+            const checkRuns = checkRunsResponse.data.check_runs;
             
             // Check if all required checks are passing
-            const allPassing = requiredChecks.every(checkName => {
-              // Check in statuses
-              const status = statuses.find(s => s.context === checkName);
-              if (status && status.state === 'success') return true;
-              
-              // Check in check runs
-              const checkRun = checkRuns.check_runs.find(c => c.name === checkName);
-              if (checkRun && checkRun.conclusion === 'success') return true;
-              
-              return false;
+            const failedChecks = requiredChecks.filter(checkName => {
+              const status = statuses.find(s => s.context === checkName && s.state === 'success');
+              const checkRun = checkRuns.find(c => c.name === checkName && c.conclusion === 'success');
+              return !status && !checkRun;
             });
             
-            if (allPassing) {
-              console.log('✅ All required checks are passing. Merge is allowed.');
-              
-              // Add a comment to the PR indicating it's ready to merge
-              await github.rest.issues.createComment({
-                owner,
-                repo,
-                issue_number: pr.number,
-                body: `🎉 **All checks passed!** This PR is ready for squash and merge.
-                
-                ✅ Linting passed
-                ✅ Tests passed on all Node.js LTS versions  
-                ✅ Build successful
-                
-                You can now safely squash and merge this PR.`
-              });
+            if (failedChecks.length === 0) {
+              console.log('✅ All required checks passed');
             } else {
-              console.log('❌ Some required checks are still pending or failed.');
-              
-              const failedChecks = requiredChecks.filter(checkName => {
-                const status = statuses.find(s => s.context === checkName);
-                const checkRun = checkRuns.check_runs.find(c => c.name === checkName);
-                return !(status?.state === 'success' || checkRun?.conclusion === 'success');
-              });
-              
-              await github.rest.issues.createComment({
-                owner,
-                repo,
-                issue_number: pr.number,
-                body: `⏳ **Waiting for required checks to pass**
-                
-                The following checks must pass before this PR can be merged:
-                ${failedChecks.map(check => `- ❌ ${check}`).join('\n')}
-                
-                **Squash and merge is disabled** until all checks pass.`
-              });
-              
-              // Fail this check to prevent merge
-              core.setFailed('Required status checks have not passed yet.');
+              console.log(`❌ Failed checks: ${failedChecks.join(', ')}`);
+              core.setFailed(`Required checks not passing: ${failedChecks.join(', ')}`);
             }
 
   # This job will always run and provides a clear gate for merge operations
@@ -107,7 +62,5 @@ jobs:
     needs: enforce-branch-protection
     if: github.event_name == 'pull_request'
     steps:
-      - name: Merge gate passed
-        run: |
-          echo "🎯 Merge gate check completed"
-          echo "This status check serves as a required gate for merge operations" 
+      - name: Gate check
+        run: echo "Merge gate passed" 

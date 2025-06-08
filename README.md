@@ -39,7 +39,7 @@ Verblets rebuild the basic operations of software with language model intelligen
 - [list-map](./src/verblets/list-map) - map lists
 - [list-reduce](./src/verblets/list-reduce) - reduce lists
 - [list-expand](./src/verblets/list-expand) - expand lists with similar items
-- [bulk-group](./src/verblets/list-group) - group lists
+- [list-group](./src/verblets/list-group) - combine list items into groups
 
 ### Library Helpers
 
