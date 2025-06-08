@@ -2,7 +2,7 @@
 
 Make intelligent assertions using natural language. A single LLM call that validates content based on meaning, intent, and context.
 
-## Usage
+## Quick Start
 
 ```javascript
 import llmExpect from './index.js';
@@ -25,80 +25,28 @@ try {
   console.log(error.message);
   // "LLM assertion failed: Does the actual value strictly equal the expected value?"
 }
-
-// Disable throwing with config
-const result = await llmExpect("goodbye", "hello", undefined, { throw: false });
-console.log(result); // false
 ```
 
-## API
+## Enhanced Chain Implementation
 
-### `llmExpect(actual, expected, constraint?, options?)`
+For advanced debugging, detailed error analysis, and enhanced features, use the **[llm-expect chain](../../chains/llm-expect/)**:
 
-**Parameters:**
-- `actual` - The value to test
-- `expected` - Expected value (optional if using constraint)
-- `constraint` - Natural language constraint (optional)
-- `options` - Configuration object
-  - `throw` - Whether to throw on failure (default: `true`)
+### Environment Modes
 
-**Returns:**
-- `boolean` - True if assertion passes, false if it fails and `throw: false`
+```bash
+# Silent operation (default)
+export LLM_EXPECT_MODE=none
 
-**Throws:**
-- `Error` - When assertion fails and `throw` is not `false`
+# Log debugging advice on failures
+export LLM_EXPECT_MODE=info
 
-## Examples
-
-### Content Quality
-```javascript
-// Validate AI-generated content
-await llmExpect(
-  generatedText,
-  "Is this text professional and grammatically correct?"
-);
-```
-
-### Data Validation
-```javascript
-// Check if data makes sense
-await llmExpect(
-  { name: "John", age: 25, city: "New York" },
-  "Does this person data look realistic?"
-);
-```
-
-### Business Logic
-```javascript
-// Validate decisions
-await llmExpect(
-  recommendation,
-  "Is this recommendation specific and actionable?"
-);
-```
-
-### Non-throwing Usage
-```javascript
-// Use in conditional logic
-const isValid = await llmExpect(
-  userInput,
-  "Is this input appropriate for children?",
-  undefined,
-  { throw: false }
-);
-
-if (isValid) {
-  processInput(userInput);
-} else {
-  showWarning();
-}
+# Throw with detailed debugging advice
+export LLM_EXPECT_MODE=error
 ```
 
 ## Best Practices
 
 - **Be specific**: Use clear, detailed constraints
-- **Single purpose**: Each assertion should test one thing
-- **Error handling**: Wrap in try-catch when using default throwing behavior
+- **Test qualitatively**: Verify qualitative details with a clear yes/no answer
+- **Use robust constraints**: Write criteria to pass under a wide range of input hallucinations. Assert cases that classical software can't. Tune the level of rigorousness to the model performing the eval.
 - **Performance**: Remember this makes an LLM call - use judiciously
-
-For advanced features like debugging advice and environment variable modes, see the [llm-expect chain](../../chains/llm-expect/).

@@ -46,7 +46,7 @@ function getCodeContext(filePath, lineNumber) {
       startLine: start + 1,
       assertionLine: lineNumber,
     };
-  } catch (error) {
+  } catch {
     return null;
   }
 }
@@ -83,7 +83,7 @@ Keep your response concise but actionable. Focus on practical solutions.`;
 
   try {
     return await chatgpt(prompt);
-  } catch (error) {
+  } catch {
     return 'Unable to generate debugging advice due to LLM error.';
   }
 }
@@ -97,13 +97,23 @@ export async function expect(actual, expected, constraint) {
 
   // Build the assertion prompt
   let prompt;
-  if (constraint) {
+  if (constraint && expected === undefined) {
+    // Constraint-only mode
     prompt = `Given this constraint: "${constraint}"
     
 Actual value: ${JSON.stringify(actual, null, 2)}
 
 Does the actual value satisfy the constraint? Answer only "True" or "False".`;
+  } else if (constraint && expected !== undefined) {
+    // Both expected and constraint provided - use constraint
+    prompt = `Given this constraint: "${constraint}"
+    
+Actual value: ${JSON.stringify(actual, null, 2)}
+Expected value: ${JSON.stringify(expected, null, 2)}
+
+Does the actual value satisfy the constraint? Answer only "True" or "False".`;
   } else if (expected !== undefined) {
+    // Expected value only
     prompt = `Does the actual value strictly equal the expected value?
 
 Actual: ${JSON.stringify(actual, null, 2)}

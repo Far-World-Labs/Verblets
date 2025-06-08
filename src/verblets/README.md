@@ -12,9 +12,9 @@ Available verblets:
 - [number-with-units](./number-with-units)
 - [schema-org](./schema-org)
 - [to-object](./to-object) – see its [README](./to-object/README.md) for details.
-- [list-map](./list-map) - map lists with custom instructions
-- [list-reduce](./list-reduce) - reduce lists with custom instructions
-- [list-partition](./list-partition) - partition lists with custom instructions and optional category list
-- [llm-expect](./llm-expect) - make test assertions with an LLM
+- [list-map](./list-map) - map lists with prompts
+- [list-reduce](./list-reduce) - reduce lists prompts
+- [list-partition](./list-partition) - partition lists into groups with prompts
+- [list-expand](./list-expand) - expand lists with similar items with prompts
 
 Use these modules directly or compose them inside [chains](../chains/README.md).

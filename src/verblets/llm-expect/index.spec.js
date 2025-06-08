@@ -15,7 +15,7 @@ describe('llm-expect verblet', () => {
   it(
     'should pass for constraint-based validation',
     async () => {
-      const result = await llmExpect('Hello world!', 'Is this a greeting?', undefined, {
+      const result = await llmExpect('Hello world!', undefined, 'Is this a greeting?', {
         throw: false,
       });
       expect(result).toBe(true);
@@ -56,8 +56,8 @@ describe('llm-expect verblet', () => {
     async () => {
       const result = await llmExpect(
         'This is a well-written, professional email with proper grammar.',
-        'Is this text professional and grammatically correct?',
         undefined,
+        'Is this text professional and grammatically correct?',
         { throw: false }
       );
       expect(result).toBe(true);
@@ -70,8 +70,8 @@ describe('llm-expect verblet', () => {
     async () => {
       const result = await llmExpect(
         { name: 'John Doe', age: 30, city: 'New York' },
-        'Does this person data look realistic?',
         undefined,
+        'Does this person data look realistic?',
         { throw: false }
       );
       expect(result).toBe(true);
@@ -84,8 +84,8 @@ describe('llm-expect verblet', () => {
     async () => {
       const result = await llmExpect(
         'Increase marketing budget by 20% for Q4 to boost holiday sales',
-        'Is this recommendation specific and actionable?',
         undefined,
+        'Is this recommendation specific and actionable?',
         { throw: false }
       );
       expect(result).toBe(true);

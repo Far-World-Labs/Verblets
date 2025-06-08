@@ -1,62 +1,109 @@
+import { describe, expect, it } from 'vitest';
+
 import llmExpect from './index.js';
+import { longTestTimeout } from '../../constants/common.js';
 
-// Basic equality check
-console.log('Testing basic equality...');
-try {
-  await llmExpect('hello', 'hello');
-  console.log('✅ Basic equality passed');
-} catch (error) {
-  console.log('❌ Basic equality failed:', error.message);
-}
+const examples = [
+  {
+    inputs: {
+      actual: 'hello',
+      expected: 'hello',
+    },
+    want: { result: true },
+  },
+  {
+    inputs: {
+      actual: 'hello',
+      expected: 'goodbye',
+    },
+    want: { result: false },
+  },
+  {
+    inputs: {
+      actual: 'Hello world!',
+      constraint: 'Is this a greeting?',
+    },
+    want: { result: true },
+  },
+  {
+    inputs: {
+      actual: 'Goodbye cruel world',
+      constraint: 'Is this a greeting?',
+    },
+    want: { result: false },
+  },
+  {
+    inputs: {
+      actual: 'This is a well-written, professional email with proper grammar and clear intent.',
+      constraint: 'Is this text professional and grammatically correct?',
+    },
+    want: { result: true },
+  },
+  {
+    inputs: {
+      actual: { name: 'John Doe', age: 30, city: 'New York' },
+      constraint: 'Does this person data look realistic?',
+    },
+    want: { result: true },
+  },
+];
 
-// Constraint-based validation
-console.log('\nTesting constraint validation...');
-try {
-  await llmExpect('Hello world!', 'Is this a greeting?');
-  console.log('✅ Greeting validation passed');
-} catch (error) {
-  console.log('❌ Greeting validation failed:', error.message);
-}
+describe('LLM Expect Verblet', () => {
+  examples.forEach((example) => {
+    const description = example.inputs.constraint
+      ? `${JSON.stringify(example.inputs.actual).slice(0, 30)}... - ${example.inputs.constraint}`
+      : `${JSON.stringify(example.inputs.actual)} === ${JSON.stringify(example.inputs.expected)}`;
 
-// Content quality check
-console.log('\nTesting content quality...');
-try {
-  await llmExpect(
-    'This is a well-written, professional email with proper grammar and clear intent.',
-    'Is this text professional and grammatically correct?'
+    it(
+      description,
+      async () => {
+        const result = await llmExpect(
+          example.inputs.actual,
+          example.inputs.expected,
+          example.inputs.constraint,
+          { throw: false } // Don't throw for test examples
+        );
+
+        expect(result).toBe(example.want.result);
+      },
+      longTestTimeout
+    );
+  });
+
+  it(
+    'should throw by default on failure',
+    async () => {
+      await expect(async () => {
+        await llmExpect('hello', 'goodbye');
+      }).rejects.toThrow('LLM assertion failed');
+    },
+    longTestTimeout
   );
-  console.log('✅ Content quality passed');
-} catch (error) {
-  console.log('❌ Content quality failed:', error.message);
-}
 
-// Data validation
-console.log('\nTesting data validation...');
-try {
-  await llmExpect(
-    { name: 'John Doe', age: 30, city: 'New York' },
-    'Does this person data look realistic?'
+  it(
+    'should not throw when throw option is false',
+    async () => {
+      const result = await llmExpect('hello', 'goodbye', undefined, { throw: false });
+      expect(result).toBe(false);
+    },
+    longTestTimeout
   );
-  console.log('✅ Data validation passed');
-} catch (error) {
-  console.log('❌ Data validation failed:', error.message);
-}
 
-// Non-throwing usage
-console.log('\nTesting non-throwing mode...');
-const result = await llmExpect('goodbye', 'hello', undefined, { throw: false });
-console.log(`Non-throwing result: ${result}`);
+  it(
+    'should handle business logic validation',
+    async () => {
+      const businessRecommendation =
+        'Increase marketing budget by 20% for Q4 to boost holiday sales and target demographics aged 25-45 through social media campaigns';
 
-// Business logic validation
-console.log('\nTesting business logic...');
-try {
-  await llmExpect(
-    'Increase marketing budget by 20% for Q4 to boost holiday sales',
-    'Is this recommendation specific and actionable?'
+      const result = await llmExpect(
+        businessRecommendation,
+        undefined,
+        'Is this recommendation specific, actionable, and includes measurable targets?',
+        { throw: false }
+      );
+
+      expect(result).toBe(true);
+    },
+    longTestTimeout
   );
-  console.log('✅ Business logic passed');
-} catch (error) {
-  console.log('❌ Business logic failed:', error.message);
-}
-
-console.log('\n🎉 All examples completed!');
+});

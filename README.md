@@ -38,7 +38,9 @@ Verblets rebuild the basic operations of software with language model intelligen
 - [to-object](./src/verblets/to-object) - convert descriptions to objects
 - [list-map](./src/verblets/list-map) - map lists with custom instructions
 - [list-reduce](./src/verblets/list-reduce) - reduce lists with custom instructions
-- [llm-expect](./src/verblets/llm-expect) - assert using an LLM
+- [llm-expect chain](./src/chains/llm-expect) - enhanced LLM assertions with debugging
+- [llm-expect](./src/verblets/llm-expect) - assert using an LLM with a single call
+- [list-expand](./src/verblets/list-expand) - expand lists with similar items
 
 ### Library Helpers
 
@@ -707,6 +709,18 @@ import { bulkMap } from './src/index.js';
   }
   */
   ```
+
+### Testing & Validation
+
+- **llm-expect** - Make assertions using llm evaluation
+  ```javascript
+  import llmExpect from './src/verblets/llm-expect/index.js';
+
+  // Content quality validation
+  await llmExpect(
+    emailDraft,
+    "Is this email professional and grammatically correct?"
+  );
 
 ## Contributing
 

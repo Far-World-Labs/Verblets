@@ -1,53 +1,44 @@
-import chatGPT from '../../lib/chatgpt/index.js';
-import stripResponse from '../../lib/strip-response/index.js';
-import toBool from '../../lib/to-bool/index.js';
-import { constants as promptConstants, wrapVariable } from '../../prompts/index.js';
+import chatgpt from '../../lib/chatgpt/index.js';
 
-const {
-  asBool,
-  asUndefinedByDefault,
-  contentIsQuestion,
-  explainAndSeparate,
-  explainAndSeparatePrimitive,
-} = promptConstants;
+export default async function llmExpect(actual, expected, constraint, options = {}) {
+  // Build the assertion prompt
+  let prompt;
+  if (constraint) {
+    prompt = `Given this constraint: "${constraint}"
+    
+Actual value: ${JSON.stringify(actual, null, 2)}
 
-// Core LLM expectation verblet - single LLM call
-export default async (actual, expectedOrConstraint, maybeConstraint, options = {}) => {
-  let expected;
-  let constraint = '';
+Does the actual value satisfy the constraint? Answer only "True" or "False".`;
+  } else if (expected !== undefined) {
+    prompt = `Does the actual value strictly equal the expected value?
 
-  if (typeof maybeConstraint === 'undefined') {
-    expected = expectedOrConstraint;
+Actual: ${JSON.stringify(actual, null, 2)}
+Expected: ${JSON.stringify(expected, null, 2)}
+
+Answer only "True" or "False".`;
   } else {
-    expected = expectedOrConstraint;
-    constraint = maybeConstraint;
+    throw new Error('Either expected value or constraint must be provided');
   }
 
-  if (!constraint) {
-    constraint = 'Does the actual value strictly equal the expected value?';
+  try {
+    const response = await chatgpt(prompt);
+    const result = response.trim().toLowerCase() === 'true';
+
+    // Throw by default unless explicitly disabled
+    const shouldThrow = options.throw !== false;
+
+    if (!result && shouldThrow) {
+      const errorMessage = `LLM assertion failed: ${
+        constraint || 'Does the actual value strictly equal the expected value?'
+      }`;
+      throw new Error(errorMessage);
+    }
+
+    return result;
+  } catch (error) {
+    if (error.message.includes('LLM assertion failed')) {
+      throw error; // Re-throw our custom errors
+    }
+    throw new Error(`LLM expectation failed due to error: ${error.message}`);
   }
-
-  const parts = [
-    contentIsQuestion,
-    wrapVariable(JSON.stringify(actual), { tag: 'actual' }),
-    expected !== undefined ? wrapVariable(JSON.stringify(expected), { tag: 'expected' }) : '',
-    wrapVariable(constraint, { tag: 'constraint' }),
-    '',
-    `${explainAndSeparate} ${explainAndSeparatePrimitive}`,
-    `${asBool} ${asUndefinedByDefault}`,
-  ];
-
-  const prompt = parts.filter(Boolean).join('\n');
-  const response = await chatGPT(prompt, { ...options });
-  const result = toBool(stripResponse(response));
-
-  // Throw by default unless explicitly disabled
-  const shouldThrow = options.throw !== false;
-
-  if (!result && shouldThrow) {
-    const errorMessage = `LLM assertion failed: ${constraint}`;
-    throw new Error(errorMessage);
-  }
-
-  return result;
-};
+}

@@ -198,6 +198,7 @@ const makeSubtree = async ({
 
   const children = [];
   for (const child of tree.children) {
+    // eslint-disable-next-line no-await-in-loop
     const subtree = await makeSubtree({
       tree: child,
       rootName,

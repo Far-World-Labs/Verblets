@@ -85,7 +85,7 @@ describe('llm-expect chain', () => {
       async () => {
         process.env.LLM_EXPECT_MODE = 'none';
 
-        const [passed, details] = await expect('Hello world!', 'Is this a greeting?');
+        const [passed, details] = await expect('Hello world!', undefined, 'Is this a greeting?');
 
         vitestExpect(passed).toBe(true);
         vitestExpect(details.passed).toBe(true);
@@ -98,6 +98,7 @@ describe('llm-expect chain', () => {
       async () => {
         const [passed, details] = await expect(
           'This is a well-written, professional email with proper grammar and clear intent.',
+          undefined,
           'Is this text professional and grammatically correct?'
         );
 
@@ -113,6 +114,7 @@ describe('llm-expect chain', () => {
       async () => {
         const [passed] = await expect(
           { name: 'John Doe', age: 30, city: 'New York' },
+          undefined,
           'Does this person data look realistic?'
         );
 
@@ -126,6 +128,7 @@ describe('llm-expect chain', () => {
       async () => {
         const [passed] = await expect(
           'Increase marketing budget by 20% for Q4 to boost holiday sales',
+          undefined,
           'Is this recommendation specific and actionable?'
         );
 
@@ -154,7 +157,7 @@ describe('llm-expect chain', () => {
     it(
       'should pass for constraint-based validation',
       async () => {
-        const result = await llmExpect('Hello world!', 'Is this a greeting?');
+        const result = await llmExpect('Hello world!', undefined, 'Is this a greeting?');
         vitestExpect(result).toBe(true);
       },
       longTestTimeout
@@ -174,6 +177,7 @@ describe('llm-expect chain', () => {
       async () => {
         const result = await llmExpect(
           'This is a well-written, professional email with proper grammar.',
+          undefined,
           'Is this text professional and grammatically correct?'
         );
         vitestExpect(result).toBe(true);
@@ -233,6 +237,7 @@ describe('llm-expect chain', () => {
 
         const [passed] = await expect(
           userProfile,
+          undefined,
           'Does this profile represent an experienced software developer with modern skills?'
         );
 
@@ -249,6 +254,7 @@ describe('llm-expect chain', () => {
 
         const [passed] = await expect(
           storyOpening,
+          undefined,
           'Is this story opening engaging and sets up a clear adventure narrative?'
         );
 

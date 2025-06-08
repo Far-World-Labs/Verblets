@@ -1,138 +1,146 @@
-import llmExpect, { expect } from './index.js';
+import { describe, expect, it, beforeAll, afterAll } from 'vitest';
 
-console.log('🧪 LLM Expect Chain Examples\n');
+import { expect as llmExpect } from './index.js';
+import { longTestTimeout } from '../../constants/common.js';
 
-// Example 1: Basic usage with structured results
-console.log('1. Basic usage with structured results');
-const [passed1, details1] = await expect('Hello world!', 'Is this a greeting?');
-console.log(`✅ Passed: ${passed1}`);
-console.log(`📍 Location: ${details1.file}:${details1.line}`);
-console.log(`🔍 Advice: ${details1.advice || 'None (passed)'}\n`);
+const examples = [
+  {
+    inputs: {
+      actual: 'Hello world!',
+      constraint: 'Is this a greeting?',
+    },
+    want: { result: true },
+  },
+  {
+    inputs: {
+      actual: 'Goodbye cruel world',
+      constraint: 'Is this a greeting?',
+    },
+    want: { result: false },
+  },
+  {
+    inputs: {
+      actual: 'hello',
+      expected: 'hello',
+    },
+    want: { result: true },
+  },
+  {
+    inputs: {
+      actual: 'hello',
+      expected: 'goodbye',
+    },
+    want: { result: false },
+  },
+  {
+    inputs: {
+      actual: 'This is a well-written, professional email with proper grammar and clear intent.',
+      constraint: 'Is this text professional and grammatically correct?',
+    },
+    want: { result: true },
+  },
+  {
+    inputs: {
+      actual: { name: 'John Doe', age: 30, city: 'New York' },
+      constraint: 'Does this person data look realistic?',
+    },
+    want: { result: true },
+  },
+];
 
-// Example 2: Environment mode demonstration - info mode
-console.log('2. Environment mode - info mode (logs failures)');
-process.env.LLM_EXPECT_MODE = 'info';
-try {
-  const [passed2] = await expect(
-    'This is terrible content',
-    'Is this high-quality, professional content?'
+describe('LLM Expect Chain', () => {
+  // Set environment mode to 'none' for all tests to avoid throwing
+  const originalMode = process.env.LLM_EXPECT_MODE;
+
+  beforeAll(() => {
+    process.env.LLM_EXPECT_MODE = 'none';
+  });
+
+  afterAll(() => {
+    if (originalMode !== undefined) {
+      process.env.LLM_EXPECT_MODE = originalMode;
+    } else {
+      delete process.env.LLM_EXPECT_MODE;
+    }
+  });
+
+  examples.forEach((example) => {
+    const description = example.inputs.constraint
+      ? `${JSON.stringify(example.inputs.actual).slice(0, 30)}... - ${example.inputs.constraint}`
+      : `${JSON.stringify(example.inputs.actual)} === ${JSON.stringify(example.inputs.expected)}`;
+
+    it(
+      description,
+      async () => {
+        const [result, details] = await llmExpect(
+          example.inputs.actual,
+          example.inputs.expected,
+          example.inputs.constraint
+        );
+
+        expect(result).toBe(example.want.result);
+        expect(details).toHaveProperty('passed', example.want.result);
+        expect(details).toHaveProperty('file');
+        expect(details).toHaveProperty('line');
+        expect(typeof details.line).toBe('number');
+      },
+      longTestTimeout
+    );
+  });
+
+  it(
+    'should provide detailed debugging information on failure',
+    async () => {
+      const [result, details] = await llmExpect(
+        'This is clearly wrong content',
+        undefined,
+        'Is this a professional business email?'
+      );
+
+      expect(result).toBe(false);
+      expect(details.passed).toBe(false);
+      expect(details.file).toBeDefined();
+      expect(details.line).toBeGreaterThan(0);
+
+      // In none mode, advice should be null for failures
+      expect(details.advice).toBeNull();
+    },
+    longTestTimeout
   );
-  console.log(`Result: ${passed2}`);
-} catch (error) {
-  console.log('Unexpected error:', error.message);
-}
-console.log();
 
-// Example 3: Environment mode - error mode
-console.log('3. Environment mode - error mode (throws on failure)');
-process.env.LLM_EXPECT_MODE = 'error';
-try {
-  await expect('goodbye', 'hello');
-} catch (error) {
-  console.log('❌ Caught expected error:');
-  console.log(error.message.split('\n')[0]); // Just the first line
-}
-console.log();
+  it(
+    'should handle complex business logic validation',
+    async () => {
+      const businessRecommendation =
+        'Increase marketing budget by 20% for Q4 to boost holiday sales and target demographics aged 25-45 through social media campaigns';
 
-// Reset to none mode for remaining examples
-process.env.LLM_EXPECT_MODE = 'none';
+      const [result, details] = await llmExpect(
+        businessRecommendation,
+        undefined,
+        'Is this recommendation specific, actionable, and includes measurable targets?'
+      );
 
-// Example 4: Content quality assessment
-console.log('4. Content quality assessment');
-const marketingCopy =
-  'Welcome to our premium service! We offer 24/7 support, a 30-day money-back guarantee, and industry-leading security. Contact us today to get started!';
-const [passed4, details4] = await expect(
-  marketingCopy,
-  'Is this marketing copy professional, includes specific benefits, and has a clear call-to-action?'
-);
-console.log(`✅ Marketing copy quality: ${passed4}`);
-console.log(`📊 Details available: ${Object.keys(details4).join(', ')}\n`);
+      expect(result).toBe(true);
+      expect(details.passed).toBe(true);
+      expect(details.file).toBeDefined();
+    },
+    longTestTimeout
+  );
 
-// Example 5: Data validation
-console.log('5. Data validation');
-const userData = {
-  name: 'Alice Johnson',
-  age: 28,
-  email: 'alice@company.com',
-  role: 'Senior Developer',
-  skills: ['JavaScript', 'Python', 'React', 'Node.js'],
-};
-const [passed5, details5] = await expect(
-  userData,
-  'Does this user profile look realistic and professionally complete?'
-);
-console.log(`✅ User data validation: ${passed5}`);
-console.log(`📍 Validated at: ${details5.file}:${details5.line}\n`);
+  it(
+    'should validate creative content quality',
+    async () => {
+      const storyOpening =
+        'Once upon a time, in a land far away, there lived a brave knight who embarked on a quest to save the kingdom from an ancient curse that had plagued the realm for centuries.';
 
-// Example 6: Business logic validation
-console.log('6. Business logic validation');
-const businessDecision = {
-  action: 'Increase marketing budget by 25% for Q4',
-  reasoning: 'Q3 sales exceeded targets by 40%, customer acquisition cost decreased by 15%',
-  timeline: 'Implement by October 1st',
-  expectedOutcome: 'Capture holiday season demand and maintain growth momentum',
-};
-const [passed6, details6] = await expect(
-  businessDecision,
-  'Is this business decision well-reasoned, specific, and includes clear timeline and expected outcomes?'
-);
-console.log(`✅ Business decision validation: ${passed6}`);
-console.log(`🎯 Decision quality confirmed\n`);
+      const [result] = await llmExpect(
+        storyOpening,
+        undefined,
+        'Is this story opening engaging, sets up clear conflict, and follows good narrative structure?'
+      );
 
-// Example 7: Creative content evaluation
-console.log('7. Creative content evaluation');
-const storyOpening =
-  'In the bustling city of Neo-Tokyo, where neon lights painted the night sky in electric blues and pinks, Maya discovered an ancient artifact that would change everything she thought she knew about reality.';
-const [passed7, details7] = await expect(
-  storyOpening,
-  'Is this story opening engaging, vivid, and sets up an intriguing premise?'
-);
-console.log(`✅ Story opening quality: ${passed7}`);
-console.log(`📝 Creative content validated\n`);
-
-// Example 8: Backward compatibility with simple API
-console.log('8. Backward compatibility - simple API');
-const simpleResult = await llmExpect('Thank you for your inquiry', 'Is this a polite response?');
-console.log(`✅ Simple API result: ${simpleResult}`);
-console.log(`🔄 Fully backward compatible\n`);
-
-// Example 9: Comparative analysis
-console.log('9. Comparative analysis');
-const oldVersion = 'Our product is good and reliable.';
-const newVersion =
-  'Our enterprise-grade solution delivers 99.9% uptime, reduces operational costs by 30%, and includes 24/7 expert support with guaranteed 2-hour response times.';
-const [passed9, details9] = await expect(
-  newVersion,
-  oldVersion,
-  'Is the new version significantly more specific, compelling, and informative than the old version?'
-);
-console.log(`✅ Version comparison: ${passed9}`);
-console.log(`📈 Improvement validated\n`);
-
-// Example 10: Error handling and edge cases
-console.log('10. Error handling');
-try {
-  // This should fail - no expected value or constraint
-  await expect('test value');
-} catch (error) {
-  console.log(`❌ Expected error caught: ${error.message.split(':')[0]}`);
-}
-
-// Valid constraint-only usage
-const [passed10] = await expect(
-  { temperature: 72, humidity: 45, pressure: 1013 },
-  'Do these weather readings look realistic?'
-);
-console.log(`✅ Constraint-only validation: ${passed10}\n`);
-
-console.log('🎉 All chain examples completed!');
-console.log('\n📚 Key Features Demonstrated:');
-console.log('  • Structured results with file/line info');
-console.log('  • Environment variable modes (none/info/error)');
-console.log('  • Advanced debugging capabilities');
-console.log('  • Backward compatibility');
-console.log('  • Content quality assessment');
-console.log('  • Data and business logic validation');
-console.log('  • Creative content evaluation');
-console.log('  • Comparative analysis');
-console.log('  • Robust error handling');
+      expect(result).toBe(true);
+    },
+    longTestTimeout
+  );
+});
