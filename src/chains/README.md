@@ -14,6 +14,7 @@ Available chains:
 - [summary-map](./summary-map)
 - [bulk-reduce](./bulk-reduce)
 - [bulk-group](./bulk-group)
+- [bulk-filter](./bulk-filter)
 - [test](./test)
 - [test-advice](./test-advice)
 - [veiled-variants](./veiled-variants)
