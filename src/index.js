@@ -9,6 +9,7 @@ import chatGPT from './lib/chatgpt/index.js';
 import anonymize from './chains/anonymize/index.js';
 
 import Dismantle from './chains/dismantle/index.js';
+import textUnits from './chains/text-units/index.js';
 
 import list from './chains/list/index.js';
 
@@ -111,6 +112,7 @@ export const verblets = {
   bulkMap,
   anonymize,
   Dismantle,
+  textUnits,
   list,
   questions,
   scanJS,

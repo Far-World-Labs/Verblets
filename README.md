@@ -40,6 +40,7 @@ Content utilities generate, transform, and analyze text while maintaining struct
 
 - [anonymize](./src/chains/anonymize) - scrub personal details from text
 - [dismantle](./src/chains/dismantle) - break complex systems into components
+- [text-units](./src/chains/text-units) - map sentences, paragraphs, and sections
 - [list](./src/chains/list) - generate contextual lists from prompts
 - [questions](./src/chains/questions) - produce clarifying questions for topics
 - [schema-org](./src/verblets/schema-org) - create schema.org-compliant data structures
