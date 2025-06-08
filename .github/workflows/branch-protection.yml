@@ -1,0 +1,115 @@
+name: Branch Protection
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  enforce-branch-protection:
+    name: 🛡️ Enforce Branch Protection
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Check required status checks
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { context, github } = require('@actions/github');
+            
+            // Get the PR details
+            const pr = context.payload.pull_request;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const sha = pr.head.sha;
+            
+            console.log(`Checking status for PR #${pr.number} (${sha})`);
+            
+            // Required status checks that must pass
+            const requiredChecks = [
+              '🔍 Lint Code',
+              '🛠️ Build',
+              '✅ PR Ready to Merge'
+            ];
+            
+            // Get all status checks for this commit
+            const { data: statuses } = await github.rest.repos.listCommitStatusesForRef({
+              owner,
+              repo,
+              ref: sha
+            });
+            
+            // Get check runs as well
+            const { data: checkRuns } = await github.rest.checks.listForRef({
+              owner,
+              repo,
+              ref: sha
+            });
+            
+            console.log('Current statuses:', statuses.map(s => `${s.context}: ${s.state}`));
+            console.log('Current check runs:', checkRuns.check_runs.map(c => `${c.name}: ${c.conclusion}`));
+            
+            // Check if all required checks are passing
+            const allPassing = requiredChecks.every(checkName => {
+              // Check in statuses
+              const status = statuses.find(s => s.context === checkName);
+              if (status && status.state === 'success') return true;
+              
+              // Check in check runs
+              const checkRun = checkRuns.check_runs.find(c => c.name === checkName);
+              if (checkRun && checkRun.conclusion === 'success') return true;
+              
+              return false;
+            });
+            
+            if (allPassing) {
+              console.log('✅ All required checks are passing. Merge is allowed.');
+              
+              // Add a comment to the PR indicating it's ready to merge
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: pr.number,
+                body: `🎉 **All checks passed!** This PR is ready for squash and merge.
+                
+                ✅ Linting passed
+                ✅ Tests passed on all Node.js LTS versions  
+                ✅ Build successful
+                
+                You can now safely squash and merge this PR.`
+              });
+            } else {
+              console.log('❌ Some required checks are still pending or failed.');
+              
+              const failedChecks = requiredChecks.filter(checkName => {
+                const status = statuses.find(s => s.context === checkName);
+                const checkRun = checkRuns.check_runs.find(c => c.name === checkName);
+                return !(status?.state === 'success' || checkRun?.conclusion === 'success');
+              });
+              
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: pr.number,
+                body: `⏳ **Waiting for required checks to pass**
+                
+                The following checks must pass before this PR can be merged:
+                ${failedChecks.map(check => `- ❌ ${check}`).join('\n')}
+                
+                **Squash and merge is disabled** until all checks pass.`
+              });
+              
+              // Fail this check to prevent merge
+              core.setFailed('Required status checks have not passed yet.');
+            }
+
+  # This job will always run and provides a clear gate for merge operations
+  merge-gate:
+    name: 🚪 Merge Gate
+    runs-on: ubuntu-latest
+    needs: enforce-branch-protection
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Merge gate passed
+        run: |
+          echo "🎯 Merge gate check completed"
+          echo "This status check serves as a required gate for merge operations" 

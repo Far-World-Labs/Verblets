@@ -2,6 +2,64 @@ import { describe, expect as vitestExpect, it, vi, beforeEach, afterEach } from 
 import llmExpect, { expect } from './index.js';
 import { longTestTimeout } from '../../constants/common.js';
 
+// Mock the chatgpt function to avoid actual API calls
+vi.mock('../../lib/chatgpt/index.js', () => ({
+  default: vi.fn().mockImplementation((prompt) => {
+    // Handle exact equality checks
+    if (prompt.includes('Does the actual value strictly equal the expected value?')) {
+      if (prompt.includes('Actual: "hello"') && prompt.includes('Expected: "hello"')) {
+        return 'True';
+      }
+      if (prompt.includes('Actual: "goodbye"') && prompt.includes('Expected: "hello"')) {
+        return 'False';
+      }
+      if (prompt.includes('Actual: "hello"') && prompt.includes('Expected: "goodbye"')) {
+        return 'False';
+      }
+    }
+
+    // Handle constraint-based validations (format: "Given this constraint:")
+    if (prompt.includes('Given this constraint:')) {
+      if (prompt.includes('Is this a greeting?') && prompt.includes('Hello world!')) {
+        return 'True';
+      }
+
+      if (prompt.includes('Is this text professional and grammatically correct?')) {
+        if (prompt.includes('well-written, professional email')) {
+          return 'True';
+        }
+      }
+
+      if (prompt.includes('Does this person data look realistic?')) {
+        if (prompt.includes('John Doe') && prompt.includes('"age": 30')) {
+          return 'True';
+        }
+      }
+
+      if (prompt.includes('Is this recommendation specific and actionable?')) {
+        if (prompt.includes('Increase marketing budget by 20%')) {
+          return 'True';
+        }
+      }
+
+      if (prompt.includes('Does this profile represent an experienced software developer')) {
+        if (prompt.includes('Alice Johnson') && prompt.includes('JavaScript')) {
+          return 'True';
+        }
+      }
+
+      if (prompt.includes('Is this story opening engaging')) {
+        if (prompt.includes('Once upon a time')) {
+          return 'True';
+        }
+      }
+    }
+
+    // Default to False for unmatched cases
+    return 'False';
+  }),
+}));
+
 describe('llm-expect chain', () => {
   let originalEnv;
 
