@@ -36,6 +36,7 @@ List operations transform, filter, and organize collections using natural langua
 - [list-filter](./src/verblets/list-filter) - filter lists with natural language criteria
 - [list-group](./src/verblets/list-group) - categorize list items into groups
 - [list-expand](./src/verblets/list-expand) - generate additional similar items
+- [intersection](./src/verblets/intersection) - describe common traits between items
 - [sort](./src/chains/sort) - order lists by any describable criteria
 
 ### Content
@@ -73,6 +74,7 @@ Codebase utilities analyze, test, and improve code quality using AI reasoning. T
 - [retry](./src/lib/retry) - retry asynchronous calls
 - [search-best-first](./src/lib/search-best-first) - best-first search algorithm
 - [search-js-files](./src/lib/search-js-files) - scan JavaScript sources
+- [combinations](./src/lib/combinations) - generate array combinations
 - [shorten-text](./src/lib/shorten-text) - shorten text using a model
 - [strip-numeric](./src/lib/strip-numeric) - remove non-digit characters
 - [strip-response](./src/lib/strip-response) - clean up model responses
