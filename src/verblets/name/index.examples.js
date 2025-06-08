@@ -4,7 +4,7 @@ import { longTestTimeout } from '../../constants/common.js';
 
 describe('name examples', () => {
   it(
-    'suggests dataset titles',
+    'suggests titles',
     async () => {
       const result = await name('Collection of recipes from my grandmother');
       expect(typeof result).toBe('string');

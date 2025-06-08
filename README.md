@@ -43,7 +43,7 @@ Content utilities generate, transform, and analyze text while maintaining struct
 - [list](./src/chains/list) - generate contextual lists from prompts
 - [questions](./src/chains/questions) - produce clarifying questions for topics
 - [schema-org](./src/verblets/schema-org) - create schema.org-compliant data structures
-- [name](./src/verblets/name) - propose short names for datasets
+- [name](./src/verblets/name) - name something from a definition or description
 - [to-object](./src/verblets/to-object) - convert descriptions to structured objects
 - [veiled-variants](./src/chains/veiled-variants) - rephrase sensitive queries safely
 
