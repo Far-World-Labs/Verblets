@@ -7,6 +7,7 @@ Available chains:
 - [anonymize](./anonymize)
 - [bulk-map](./bulk-map)
 - [dismantle](./dismantle)
+- [coreference](./coreference)
 - [list](./list)
 - [questions](./questions)
 - [scan-js](./scan-js)
