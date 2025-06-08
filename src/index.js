@@ -67,6 +67,7 @@ import number from './verblets/number/index.js';
 import numberWithUnits from './verblets/number-with-units/index.js';
 
 import schemaOrg from './verblets/schema-org/index.js';
+import nameSimilarTo from './verblets/name-similar-to/index.js';
 
 import toObject from './verblets/to-object/index.js';
 
@@ -106,6 +107,7 @@ export const verblets = {
   number,
   numberWithUnits,
   schemaOrg,
+  nameSimilarTo,
   toObject,
   listMap,
   bulkMap,

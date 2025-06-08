@@ -12,6 +12,7 @@ Available verblets:
 - [number-with-units](./number-with-units)
 - [sentiment](./sentiment) - classify text sentiment
 - [schema-org](./schema-org)
+- [name-similar-to](./name-similar-to) - suggest short names matching a style
 - [to-object](./to-object) – see its [README](./to-object/README.md) for details.
 - [list-map](./list-map) - map lists with prompts
 - [list-reduce](./list-reduce) - reduce lists prompts
