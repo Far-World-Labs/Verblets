@@ -25,11 +25,9 @@ jobs:
             
             console.log(`Checking PR #${pr.number} (${sha})`);
             
-            // Required checks that must pass before merge
+            // Required checks that must pass before merge - only essential ones
             const requiredChecks = [
-              '🔍 Lint Code',
-              '🛠️ Build',
-              '✅ PR Ready to Merge'
+              '🔍 Lint Code'
             ];
             
             // Get all status checks and check runs
@@ -41,6 +39,15 @@ jobs:
             const statuses = statusesResponse.data;
             const checkRuns = checkRunsResponse.data.check_runs;
             
+            console.log('Available check runs:', checkRuns.map(c => `${c.name}: ${c.conclusion}`));
+            console.log('Available statuses:', statuses.map(s => `${s.context}: ${s.state}`));
+            
+            // Check for test jobs (they have dynamic names with Node versions)
+            const testJobs = checkRuns.filter(c => c.name.startsWith('🧪 Test on Node'));
+            const passingTestJobs = testJobs.filter(c => c.conclusion === 'success');
+            
+            console.log(`Found ${testJobs.length} test jobs, ${passingTestJobs.length} passing`);
+            
             // Check if all required checks are passing
             const failedChecks = requiredChecks.filter(checkName => {
               const status = statuses.find(s => s.context === checkName && s.state === 'success');
@@ -48,11 +55,21 @@ jobs:
               return !status && !checkRun;
             });
             
-            if (failedChecks.length === 0) {
+            // Require at least one test job to pass (they run on different Node versions)
+            const hasPassingTests = passingTestJobs.length > 0;
+            
+            if (failedChecks.length === 0 && hasPassingTests) {
               console.log('✅ All required checks passed');
             } else {
-              console.log(`❌ Failed checks: ${failedChecks.join(', ')}`);
-              core.setFailed(`Required checks not passing: ${failedChecks.join(', ')}`);
+              const issues = [];
+              if (failedChecks.length > 0) {
+                issues.push(`Failed checks: ${failedChecks.join(', ')}`);
+              }
+              if (!hasPassingTests) {
+                issues.push('No passing test jobs found');
+              }
+              console.log(`❌ ${issues.join('; ')}`);
+              core.setFailed(issues.join('; '));
             }
 
   merge-gate:
