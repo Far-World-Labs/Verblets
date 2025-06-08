@@ -8,6 +8,8 @@ import chatGPT from './lib/chatgpt/index.js';
 
 import anonymize from './chains/anonymize/index.js';
 
+import bulkGroup from './chains/bulk-group/index.js';
+
 import Dismantle from './chains/dismantle/index.js';
 
 import list from './chains/list/index.js';
@@ -62,6 +64,8 @@ import enums from './verblets/enum/index.js';
 
 import intent from './verblets/intent/index.js';
 
+import listGroup from './verblets/list-group/index.js';
+
 import number from './verblets/number/index.js';
 
 import numberWithUnits from './verblets/number-with-units/index.js';
@@ -97,8 +101,10 @@ export const lib = {
 export const verblets = {
   auto,
   bool,
+  bulkGroup,
   enums,
   intent,
+  listGroup,
   number,
   numberWithUnits,
   schemaOrg,

@@ -39,6 +39,7 @@ Verblets rebuild the basic operations of software with language model intelligen
 - [list-map](./src/verblets/list-map) - map lists with custom instructions
 - [list-reduce](./src/verblets/list-reduce) - reduce lists with custom instructions
 - [list-expand](./src/verblets/list-expand) - expand lists with similar items
+- [list-group-by](./src/verblets/list-group-by) - group lists with custom instructions
 
 ### Library Helpers
 
