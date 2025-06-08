@@ -12,17 +12,10 @@ vi.mock('../../lib/chatgpt/index.js', () => ({
 
     // Extract list items from <list> tags (with newlines)
     const listMatch = prompt.match(/<list>\n([\s\S]*?)\n<\/list>/);
-<<<<<<< HEAD
     const lines = listMatch ? listMatch[1].split('\n').filter(Boolean) : [];
 
     // Return the joined result as expected
     return [acc, ...lines].join('+');
-=======
-    const lines = listMatch ? listMatch[1].split('\n') : [];
-    const quotes = prompt.match(/"([^"]+)"/g) || [];
-    const acc = quotes[1] ? quotes[1].replace(/"/g, '') : '';
-    return [acc, ...lines].filter(Boolean).join('+');
->>>>>>> 67ea29b (Refine filtering examples for deeper reasoning)
   }),
 }));
 
