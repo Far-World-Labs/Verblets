@@ -21,13 +21,15 @@ ${categoryBlock}${listBlock}
 Output format: Return exactly ${list.length} lines with only the group name for each item.`;
 };
 
-export default async function listPartition(list, instructions, categories) {
+export default async function listGroup(list, instructions, categories) {
   const output = await chatGPT(buildPrompt(list, instructions, categories));
-  const labels = output
+  const allLines = output
     .split('\n')
     .map((line) => line.trim())
-    .filter((line) => line.length > 0)
-    .slice(0, list.length); // Take only the number of labels we need
+    .filter((line) => line.length > 0);
+
+  // Take only the first N lines where N is the expected count
+  const labels = allLines.slice(0, list.length);
 
   if (labels.length !== list.length) {
     console.warn(`Expected ${list.length} labels, got ${labels.length}. Output was:`, output);

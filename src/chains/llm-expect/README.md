@@ -6,10 +6,10 @@ Advanced intelligent assertions with debugging features, environment variable mo
 
 While the verblet provides simple pass/fail assertions, the chain offers:
 
-- **🔍 Advanced Debugging**: Automatic code context analysis and intelligent advice
-- **🎛️ Environment Modes**: Different behaviors for development, testing, and CI
-- **📊 Structured Results**: Detailed information about assertions and failures
-- **🎯 Stack Trace Integration**: Automatic detection of calling file and line
+- **Advanced Debugging**: Automatic code context analysis and intelligent advice
+- **Environment Modes**: Different behaviors for development, testing, and CI
+- **Structured Results**: Detailed information about assertions and failures
+- **Stack Trace Integration**: Automatic detection of calling file and line
 
 ## Environment Variable Modes
 
@@ -71,7 +71,7 @@ const result = await llmExpect("hello", "hello");
 
 ## Real-World Use Cases
 
-### 🎯 Content Quality Assurance with Debugging
+### Content Quality Assurance with Debugging
 
 ```javascript
 import { expect } from './index.js';
@@ -91,114 +91,6 @@ if (!passed) {
   // FIX: Replace casual phrases with professional alternatives and add clear CTA
   // CONTEXT: Marketing copy should maintain professional tone while being engaging
 }
-```
-
-### 📧 Email Template Validation
-
-```javascript
-// CI mode - fail fast with detailed errors
-process.env.LLM_EXPECT_MODE = 'error';
-
-try {
-  const [passed] = await expect(
-    emailTemplate,
-    "Does this email sound friendly, professional, and include a clear call-to-action?"
-  );
-} catch (error) {
-  // Detailed error with code context and advice
-  console.error(error.message);
-  process.exit(1);
-}
-```
-
-### 🔍 Data Extraction Verification
-
-```javascript
-const extractedData = { name: "John Doe", age: 25, city: "New York" };
-
-const [passed, details] = await expect(
-  extractedData,
-  "Does this person data look realistic and properly formatted?"
-);
-
-// Access structured debugging information
-if (!passed) {
-  console.log('Validation failed:', details.advice);
-  console.log('Location:', `${details.file}:${details.line}`);
-}
-```
-
-### 🎨 Creative Content Review
-
-```javascript
-const [passed, details] = await expect(
-  generatedStory,
-  "Is this story engaging, age-appropriate for teens, and has a clear beginning, middle, and end?"
-);
-
-// Use structured results for conditional logic
-if (passed) {
-  publishStory(generatedStory);
-} else {
-  requestRevision(details.advice);
-}
-```
-
-### 🏢 Business Logic Validation
-
-```javascript
-const recommendation = "Increase inventory by 15% for Q4";
-
-const [passed, details] = await expect(
-  recommendation,
-  "Is this business recommendation specific, actionable, and includes a timeframe?"
-);
-
-// Detailed analysis available in all modes
-console.log('Recommendation analysis:', details);
-```
-
-## Integration Examples
-
-### With Vitest
-
-```javascript
-import { describe, it, expect as vitestExpect } from 'vitest';
-import { expect as llmExpect } from '../chains/llm-expect/index.js';
-
-describe('Content Generation', () => {
-  it('should generate professional email responses', async () => {
-    const response = await generateEmailResponse(customerInquiry);
-    
-    const [passed, details] = await llmExpect(
-      response,
-      "Is this email response professional, helpful, and addresses the customer's concern?"
-    );
-    
-    vitestExpect(passed).toBe(true);
-    if (!passed) {
-      console.log('Quality issues:', details.advice);
-    }
-  });
-});
-```
-
-### With Jest
-
-```javascript
-test('AI summary quality with debugging', async () => {
-  const summary = await generateSummary(longArticle);
-  
-  const [passed, details] = await llmExpect(
-    summary,
-    "Is this summary concise, accurate, and captures the main points?"
-  );
-  
-  expect(passed).toBe(true);
-  
-  // Access debugging information even on success
-  console.log(`Assertion at ${details.file}:${details.line}`);
-});
 ```
 
 ## Advanced Features
@@ -226,7 +118,7 @@ Different modes for different environments:
 
 ## Best Practices
 
-### 🎯 **Write Specific Constraints**
+### **Write Specific Constraints**
 ```javascript
 // ❌ Vague
 await expect(text, "Is this good?");
@@ -235,7 +127,7 @@ await expect(text, "Is this good?");
 await expect(text, "Is this text grammatically correct, under 100 words, and written in a professional tone?");
 ```
 
-### 📊 **Use Structured Results**
+### **Use Structured Results**
 ```javascript
 const [passed, details] = await expect(content, constraint);
 
@@ -245,19 +137,7 @@ console.log('Line:', details.line);
 console.log('Advice:', details.advice);
 ```
 
-### 🎛️ **Configure for Environment**
-```javascript
-// Development
-process.env.LLM_EXPECT_MODE = 'info';
-
-// CI/CD
-process.env.LLM_EXPECT_MODE = 'error';
-
-// Production monitoring
-process.env.LLM_EXPECT_MODE = 'none';
-```
-
-### 🔄 **Combine with Traditional Tests**
+### **Combine with Traditional Tests**
 ```javascript
 // Traditional assertion for structure
 expect(response).toHaveProperty('status');
@@ -270,27 +150,22 @@ const [passed] = await llmExpect(
 );
 ```
 
-## Performance Considerations
+### Environment Modes
 
-- Each assertion makes an LLM call - use judiciously
-- Code context analysis reads files from disk
-- Advice generation makes additional LLM calls in `info`/`error` modes
-- Consider caching strategies for repeated assertions
+```bash
+# Silent operation (default)
+export LLM_EXPECT_MODE=none
 
-## Migration from Verblet
+# Log debugging advice on failures
+export LLM_EXPECT_MODE=info
 
-The chain is fully backward compatible:
+# Throw with detailed debugging advice
+export LLM_EXPECT_MODE=error
+```
 
-```javascript
-// Verblet usage
-import llmExpect from '../../verblets/llm-expect/index.js';
-const result = await llmExpect(actual, expected);
+## Best Practices
 
-// Chain usage (same result)
-import llmExpect from './index.js';
-const result = await llmExpect(actual, expected);
-
-// Enhanced chain usage
-import { expect } from './index.js';
-const [result, details] = await expect(actual, expected);
-``` 
+- **Be specific**: Use clear, detailed constraints
+- **Test qualitatively**: Verify qualitative details with a clear yes/no answer
+- **Use robust constraints**: Write criteria to pass under a wide range of input hallucinations. Assert cases that classical software can't. Tune the level of rigorousness to the model performing the eval.
+- **Performance**: Remember this makes an LLM call - use judiciously

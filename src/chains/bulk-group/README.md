@@ -1,10 +1,10 @@
-# bulk-partition
+# bulk-group
 
-Partition long lists by first discovering the best categories and then grouping
+Group long lists by first discovering the best categories and then grouping
 items into those categories in smaller batches.
 
 ```javascript
-import bulkPartition from './index.js';
+import bulkGroup from './index.js';
 
 const feedback = [
   'Great interface and onboarding',
@@ -12,7 +12,7 @@ const feedback = [
   'Love the mobile app',
   'Needs more integrations',
 ];
-const result = await bulkPartition(
+const result = await bulkGroup(
   feedback,
   'Is each line praise, criticism, or a feature request?',
   { chunkSize: 2, topN: 3 }

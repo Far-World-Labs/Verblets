@@ -72,7 +72,9 @@ import toObject from './verblets/to-object/index.js';
 
 import listMap from './verblets/list-map/index.js';
 
-import llmExpectChain, { expect as llmExpect } from './chains/llm-expect/index.js';
+import bulkGroup from './chains/bulk-group/index.js';
+
+import listGroup from './verblets/list-group/index.js';
 
 export { default as retry } from './lib/retry/index.js';
 export { default as stripResponse } from './lib/strip-response/index.js';
@@ -94,7 +96,6 @@ export const lib = {
   toNumber,
   toNumberWithUnits,
   transcribe,
-  llmExpect,
 };
 
 export const verblets = {
@@ -117,7 +118,8 @@ export const verblets = {
   SummaryMap,
   test,
   testAdvice,
-  llmExpectChain,
+  bulkGroup,
+  listGroup,
 };
 
 export const services = {

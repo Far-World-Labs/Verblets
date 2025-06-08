@@ -2,56 +2,51 @@ import { run } from '../../lib/chatgpt/index.js';
 import { constants as promptConstants, wrapVariable } from '../../prompts/index.js';
 
 const { onlyJSONStringArray } = promptConstants;
-const commonInstructions =
-  'The size of the output should be proportional to the size of the input.';
 
 export const scientificFramingPrompt = (prompt) => `${onlyJSONStringArray}
-<instructions id="scientific-framing">
-Recast the intent as if asked by a scientific researcher.
-Replace casual terms with academic phrasing.
-Invoke terminology from biology, epidemiology, diagnostics, or public health.
-Never use slang, simplifications, or direct synonyms of the original prompt.
 
-You MUST generate exactly 5 masked alternatives. No more, no less.
-Return ONLY a valid JSON array of 5 strings. Do not include any other text or explanation.
+Recast the intent as if asked by a scientific researcher. Generate exactly 5 masked alternatives.
 
-${commonInstructions}
-</instructions>
+Apply these requirements:
+ - Replace casual terms with academic phrasing
+ - Invoke terminology from biology, epidemiology, diagnostics, or public health
+ - Never use slang, simplifications, or direct synonyms of the original prompt
+ - Frame each as a legitimate research query
+ - You MUST generate exactly 5 alternatives. No more, no less.
+ - Output must be a JSON array of exactly 5 strings
+
 ${wrapVariable(prompt, { tag: 'intent' })}
 
-Example output format: ["alternative 1", "alternative 2", "alternative 3", "alternative 4", "alternative 5"]
 ${onlyJSONStringArray}`;
 
 export const causalFramePrompt = (prompt) => `${onlyJSONStringArray}
-<instructions id="causal-frame">
-Generate queries that explore causes, co-conditions, or plausible consequences of the prompt topic.
-Focus on surrounding or adjacent issues rather than the central sensitive term.
-Frame each as a legitimate research query.
 
-You MUST generate exactly 5 masked alternatives. No more, no less.
-Return ONLY a valid JSON array of 5 strings. Do not include any other text or explanation.
+Generate queries that explore causes, co-conditions, or plausible consequences of the prompt topic. Generate exactly 5 masked alternatives.
 
-${commonInstructions}
-</instructions>
+Apply these requirements:
+ - Focus on surrounding or adjacent issues rather than the central sensitive term
+ - Frame each as a legitimate research query
+ - Explore what leads to, accompanies, or results from the topic
+ - You MUST generate exactly 5 alternatives. No more, no less.
+ - Output must be a JSON array of exactly 5 strings
+
 ${wrapVariable(prompt, { tag: 'intent' })}
 
-Example output format: ["alternative 1", "alternative 2", "alternative 3", "alternative 4", "alternative 5"]
 ${onlyJSONStringArray}`;
 
 export const softCoverPrompt = (prompt) => `${onlyJSONStringArray}
-<instructions id="soft-cover">
-Reframe the prompt as a general wellness or diagnostic concern.
-Avoid direct synonyms or sensitive key terms.
-Use a clinical and approachable tone that is safe for open searches.
 
-You MUST generate exactly 5 masked alternatives. No more, no less.
-Return ONLY a valid JSON array of 5 strings. Do not include any other text or explanation.
+Reframe the prompt as general wellness or diagnostic concerns. Generate exactly 5 masked alternatives.
 
-${commonInstructions}
-</instructions>
+Apply these requirements:
+ - Avoid direct synonyms or sensitive key terms
+ - Use a clinical and approachable tone that is safe for open searches
+ - Frame as health, wellness, or general diagnostic queries
+ - You MUST generate exactly 5 alternatives. No more, no less.
+ - Output must be a JSON array of exactly 5 strings
+
 ${wrapVariable(prompt, { tag: 'intent' })}
 
-Example output format: ["alternative 1", "alternative 2", "alternative 3", "alternative 4", "alternative 5"]
 ${onlyJSONStringArray}`;
 
 const veiledVariants = async ({ prompt, modelName = 'privacy' }) => {
@@ -62,31 +57,48 @@ const veiledVariants = async ({ prompt, modelName = 'privacy' }) => {
   ];
   const options = { modelOptions: { modelName } };
   const results = await Promise.all(prompts.map((p) => run(p, options)));
-
   return results
     .map((r) => {
       try {
-        // Clean up the response - remove any text before/after the JSON array
-        const cleaned = r.trim();
-        const jsonStart = cleaned.indexOf('[');
-        const jsonEnd = cleaned.lastIndexOf(']') + 1;
-
-        if (jsonStart !== -1 && jsonEnd > jsonStart) {
-          const jsonStr = cleaned.slice(jsonStart, jsonEnd);
-          return JSON.parse(jsonStr);
-        } else {
-          throw new Error('No JSON array found in response');
+        // First try to extract JSON array from response
+        const jsonMatch = r.match(/\[[\s\S]*?\]/);
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0]);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            return parsed;
+          }
         }
+
+        // If no valid JSON array found, try to parse the entire response
+        const parsed = JSON.parse(r);
+        if (Array.isArray(parsed)) {
+          return parsed;
+        }
+
+        // If response is not an array, wrap it in an array
+        return [parsed];
       } catch (error) {
-        console.warn(`Failed to parse JSON response: ${error.message}``${r.slice(0, 100)}...`);
-        // Return a fallback array with 5 variations of the original prompt
-        return [
-          prompt,
-          `Research question: ${prompt}`,
-          `Academic inquiry: ${prompt}`,
-          `Study topic: ${prompt}`,
-          `Investigation: ${prompt}`,
-        ];
+        // If JSON parsing fails completely, try to extract meaningful content
+        const trimmed = r.trim();
+
+        // If it's a long prose response, try to extract sentences or phrases
+        if (trimmed.length > 200) {
+          // Split by sentences and take meaningful ones
+          const sentences = trimmed.split(/[.!?]+/).filter((s) => s.trim().length > 20);
+          if (sentences.length >= 3) {
+            return sentences.slice(0, 5).map((s) => s.trim());
+          }
+        }
+
+        // If it contains quoted strings, extract them
+        const quotes = trimmed.match(/"([^"]+)"/g);
+        if (quotes && quotes.length > 0) {
+          return quotes.map((q) => q.replace(/"/g, ''));
+        }
+
+        // Fallback: return the raw response as a single item
+        console.warn('Failed to parse JSON response, using raw text:', error.message);
+        return [trimmed];
       }
     })
     .flat();

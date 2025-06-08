@@ -14,20 +14,6 @@ Verblets rebuild the basic operations of software with language model intelligen
 
 ### Verblets
 
-- [anonymize](./src/chains/anonymize) - scrub personal details from text
-- [bulk-map](./src/chains/bulk-map) - map long lists in retryable batches
-- [dismantle](./src/chains/dismantle) - break systems into components
-- [list](./src/chains/list) - generate contextual lists
-- [questions](./src/chains/questions) - produce clarifying questions
-- [scan-js](./src/chains/scan-js) - analyze code quality
-- [sort](./src/chains/sort) - order lists by any criteria
-- [summary-map](./src/chains/summary-map) - summarize a collection
-- [bulk-map](./src/chains/bulk-map/) - map over long lists in batches
-- [bulk-reduce](./src/chains/bulk-reduce) - reduce long lists in batches
-- [bulk-partition](./src/chains/bulk-partition) - partition long lists in batches
-- [test](./src/chains/test) - run LLM-driven tests
-- [test-advice](./src/chains/test-advice) - get feedback on test coverage
-- [veiled-variants](./src/chains/veiled-variants) - conceal sensitive queries with safer framing
 - [auto](./src/verblets/auto) - automatically select the best verblet
 - [bool](./src/verblets/bool) - interpret text as a boolean
 - [enum](./src/verblets/enum) - map text to predefined options
@@ -38,9 +24,26 @@ Verblets rebuild the basic operations of software with language model intelligen
 - [to-object](./src/verblets/to-object) - convert descriptions to objects
 - [list-map](./src/verblets/list-map) - map lists with custom instructions
 - [list-reduce](./src/verblets/list-reduce) - reduce lists with custom instructions
-- [llm-expect chain](./src/chains/llm-expect) - enhanced LLM assertions with debugging
-- [llm-expect](./src/verblets/llm-expect) - assert using an LLM with a single call
 - [list-expand](./src/verblets/list-expand) - expand lists with similar items
+- [list-group](./src/verblets/list-group) - group lists into categories
+- [llm-expect](./src/verblets/llm-expect) - assert using an LLM
+
+### Chains
+
+- [anonymize](./src/chains/anonymize) - scrub personal details from text
+- [bulk-map](./src/chains/bulk-map) - map long lists in retryable batches
+- [bulk-reduce](./src/chains/bulk-reduce) - reduce long lists in batches
+- [bulk-group](./src/chains/bulk-group) - group long lists in batches
+- [dismantle](./src/chains/dismantle) - break systems into components
+- [list](./src/chains/list) - generate contextual lists
+- [questions](./src/chains/questions) - produce clarifying questions
+- [scan-js](./src/chains/scan-js) - analyze code quality
+- [sort](./src/chains/sort) - order lists by any criteria
+- [summary-map](./src/chains/summary-map) - summarize a collection
+- [test](./src/chains/test) - run LLM-driven tests
+- [test-advice](./src/chains/test-advice) - get feedback on test coverage
+- [veiled-variants](./src/chains/veiled-variants) - conceal sensitive queries with safer framing
+- [llm-expect](./src/chains/llm-expect) - enhanced LLM assertions with debugging
 
 ### Library Helpers
 
@@ -524,9 +527,9 @@ import { bulkMap } from './src/index.js';
   // e.g. 'User session: login, dashboard view and logout'
 ```
 
-**bulk-partition** - Discover the best categories and group large lists consistently
+**bulk-group** - Discover the best categories and group large lists consistently
 ```javascript
-  import bulkPartition from './src/chains/bulk-partition/index.js';
+  import bulkGroup from './src/chains/bulk-group/index.js';
 
   const feedback = [
     'Great interface and onboarding',
@@ -534,7 +537,7 @@ import { bulkMap } from './src/index.js';
     'Love the mobile app',
     'Needs more integrations'
   ];
-  const result = await bulkPartition(
+  const result = await bulkGroup(
     feedback,
     'Is each line praise, criticism, or a feature request?',
     { chunkSize: 2, topN: 3 }
@@ -712,15 +715,105 @@ import { bulkMap } from './src/index.js';
 
 ### Testing & Validation
 
-- **llm-expect** - Make assertions using llm evaluation
+- **llm-expect** - Make intelligent assertions using natural language
   ```javascript
   import llmExpect from './src/verblets/llm-expect/index.js';
+
+  // Simple equality check (throws on failure)
+  await llmExpect("hello", "hello");
+  // ✅ Passes silently
+
+  // Constraint-based validation
+  await llmExpect(
+    "Hello world!",
+    "Is this a greeting?"
+  );
+  // ✅ Passes silently
 
   // Content quality validation
   await llmExpect(
     emailDraft,
     "Is this email professional and grammatically correct?"
   );
+
+  // Business logic validation
+  await llmExpect(
+    recommendation,
+    "Is this recommendation specific and actionable?"
+  );
+
+  // Non-throwing usage for conditional logic
+  const isValid = await llmExpect(
+    userInput,
+    "Is this input appropriate for children?",
+    undefined,
+    { throw: false }
+  );
+
+  if (isValid) {
+    processInput(userInput);
+  } else {
+    showWarning();
+  }
+  ```
+
+- **llm-expect chain** - Enhanced assertions with debugging and code analysis
+  ```javascript
+  import { expect } from './src/chains/llm-expect/index.js';
+
+  // Get detailed debugging information
+  const [passed, details] = await expect(
+    userInput,
+    "Is this input appropriate for children?"
+  );
+
+  if (!passed) {
+    console.log(`❌ Validation failed at ${details.file}:${details.line}`);
+    console.log(details.advice);
+    /* Returns structured debugging advice:
+    {
+      "issue": "Input contains inappropriate language for children",
+      "fix": "Remove profanity and adjust tone to be more family-friendly",
+      "context": "The assertion was checking child-appropriateness of user-generated content..."
+    }
+    */
+  }
+
+  // Environment modes for different debugging levels
+  process.env.LLM_EXPECT_MODE = 'info';  // Log failures with advice
+  process.env.LLM_EXPECT_MODE = 'error'; // Throw with detailed debugging
+  process.env.LLM_EXPECT_MODE = 'none';  // Silent (default)
+
+  // Advanced debugging with code context analysis
+  const [isQuality, context] = await expect(
+    generatedCode,
+    "Is this code following best practices for error handling?"
+  );
+  /* Returns:
+  {
+    "passed": false,
+    "file": "/src/payment.js",
+    "line": 42,
+    "codeContext": "... 400 lines of surrounding code ...",
+    "advice": {
+      "issue": "Missing try-catch blocks around async operations",
+      "fix": "Wrap database calls in proper error handling",
+      "context": "Payment processing requires robust error handling..."
+    }
+  }
+  */
+  ```
+
+  **Chain Features:**
+  - 🔍 **Code Context**: Automatically reads surrounding code for better debugging
+  - 📍 **Stack Trace**: Identifies exact file and line of failed assertions  
+  - 🤖 **AI Debugging**: Generates specific advice for fixing failed assertions
+  - 📝 **Enhanced Error Messages**: Detailed failure analysis with actionable steps
+  - 🎛️ **Environment Modes**: Control debugging behavior with `LLM_EXPECT_MODE`
+
+  **When to use each:**
+  - **Verblet**: Production assertions, fast validation, simple pass/fail
+  - **Chain**: Development debugging, detailed analysis, code quality checks
 
 ## Contributing
 

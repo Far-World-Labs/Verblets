@@ -3,16 +3,19 @@ import listReduce from './index.js';
 
 vi.mock('../../lib/chatgpt/index.js', () => ({
   default: vi.fn((prompt) => {
-    // Extract accumulator from <accumulator> tags (more precise pattern)
-    const accTagMatch = prompt.match(/<accumulator>\n([^<]*)\n<\/accumulator>/);
-    const acc = accTagMatch ? accTagMatch[1].trim() : '';
+    // Extract accumulator from <accumulator> tags (with newlines)
+    const accMatch = prompt.match(/<accumulator>\n([\s\S]*?)\n<\/accumulator>/);
+    let acc = '';
+    if (accMatch) {
+      acc = accMatch[1].trim();
+    }
 
-    // Extract list items from <list> tags
+    // Extract list items from <list> tags (with newlines)
     const listMatch = prompt.match(/<list>\n([\s\S]*?)\n<\/list>/);
     const lines = listMatch ? listMatch[1].split('\n').filter(Boolean) : [];
 
-    // Return the combined result as ChatGPT would
-    return [acc, ...lines].filter(Boolean).join('+');
+    // Return the joined result as expected
+    return [acc, ...lines].join('+');
   }),
 }));
 
