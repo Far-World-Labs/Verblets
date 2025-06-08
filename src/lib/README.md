@@ -10,6 +10,8 @@ Modules include:
 - [retry](./retry) – generic async retry helper.
 - [search-best-first](./search-best-first) – best-first tree search algorithm.
 - [search-js-files](./search-js-files) – locate and analyze JavaScript files.
+- [combinations](./combinations) – generate array combinations.
+- [rangeCombinations](./combinations) – combinations across multiple sizes.
 - [shorten-text](./shorten-text) – shorten text using an LLM.
 - [bulk-map](./bulk-map) – map lists in retryable batches.
 - [bulk-filter](./bulk-filter) – filter lists in retryable batches.

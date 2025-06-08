@@ -30,12 +30,14 @@ List operations transform, filter, and organize collections using natural langua
 - [bulk-find](./src/chains/bulk-find) - locate the best match in large datasets
 - [bulk-group](./src/chains/bulk-group) - group large datasets efficiently
 - [bulk-filter](./src/chains/bulk-filter) - filter huge lists in batches
+- [intersections](./src/chains/intersections) - find comprehensive intersections for all combinations
 - [list-map](./src/verblets/list-map) - transform each item in a list
 - [list-reduce](./src/verblets/list-reduce) - combine list items using custom logic
 - [list-find](./src/verblets/list-find) - pick the single best item from a list
 - [list-filter](./src/verblets/list-filter) - filter lists with natural language criteria
 - [list-group](./src/verblets/list-group) - categorize list items into groups
 - [list-expand](./src/verblets/list-expand) - generate additional similar items
+- [intersection](./src/verblets/intersection) - describe common traits between items
 - [sort](./src/chains/sort) - order lists by any describable criteria
 
 ### Content
@@ -73,6 +75,7 @@ Codebase utilities analyze, test, and improve code quality using AI reasoning. T
 - [retry](./src/lib/retry) - retry asynchronous calls
 - [search-best-first](./src/lib/search-best-first) - best-first search algorithm
 - [search-js-files](./src/lib/search-js-files) - scan JavaScript sources
+- [combinations](./src/lib/combinations) - generate array combinations
 - [shorten-text](./src/lib/shorten-text) - shorten text using a model
 - [strip-numeric](./src/lib/strip-numeric) - remove non-digit characters
 - [strip-response](./src/lib/strip-response) - clean up model responses

@@ -10,6 +10,8 @@ import anonymize from './chains/anonymize/index.js';
 
 import Dismantle from './chains/dismantle/index.js';
 
+import intersections from './chains/intersections/index.js';
+
 import list from './chains/list/index.js';
 
 import questions from './chains/questions/index.js';
@@ -46,6 +48,7 @@ import toEnum from './lib/to-enum/index.js';
 import toNumber from './lib/to-number/index.js';
 import toNumberWithUnits from './lib/to-number-with-units/index.js';
 import transcribe from './lib/transcribe/index.js';
+import combinations, { rangeCombinations } from './lib/combinations/index.js';
 
 // prompts
 import * as prompts from './prompts/index.js';
@@ -80,12 +83,14 @@ import listFind from './verblets/list-find/index.js';
 import bulkGroup from './chains/bulk-group/index.js';
 
 import listGroup from './verblets/list-group/index.js';
+import intersection from './verblets/intersection/index.js';
 
 export { default as retry } from './lib/retry/index.js';
 export { default as stripResponse } from './lib/strip-response/index.js';
 export { default as searchJSFiles } from './lib/search-js-files/index.js';
 export { default as searchBestFirst } from './lib/search-best-first/index.js';
 export { bulkMap, bulkMapRetry, bulkFind, bulkFindRetry, bulkFilter, bulkFilterRetry };
+export { rangeCombinations } from './lib/combinations/index.js';
 
 export const lib = {
   chatGPT,
@@ -101,6 +106,8 @@ export const lib = {
   toNumber,
   toNumberWithUnits,
   transcribe,
+  combinations,
+  rangeCombinations,
 };
 
 export const verblets = {
@@ -119,6 +126,7 @@ export const verblets = {
   bulkFind,
   anonymize,
   Dismantle,
+  intersections,
   list,
   questions,
   scanJS,
@@ -129,6 +137,7 @@ export const verblets = {
   bulkGroup,
   bulkFilter,
   listGroup,
+  intersection,
 };
 
 export const services = {
