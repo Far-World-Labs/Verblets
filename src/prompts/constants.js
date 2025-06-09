@@ -19,6 +19,8 @@ const onlyJSONArrayBase =
   'Respond with a JSON array that parses with JSON.parse, with no additional text, no punctuation, and no code block.';
 export const onlyJSONArray = onlyJSONArrayBase;
 export const onlyJSONStringArray = `${onlyJSONArrayBase} The array should only contain text. No additional structure.`;
+export const onlyJSONStringArrayPerLine =
+  'For each input line, return exactly one line containing a JSON array of strings. No additional text, no code blocks.';
 export const onlyJSONObjectArray =
   'Return an array of obects--not strings, and not just the objects.';
 export const onlyJSONStringArrayAlt1 = 'Output an JSON array of strings.';

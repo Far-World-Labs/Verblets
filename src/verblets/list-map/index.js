@@ -9,7 +9,10 @@ const buildPrompt = function (list, instructions) {
 
 export default async function listMap(list, instructions) {
   const output = await chatGPT(buildPrompt(list, instructions));
-  const lines = output.split('\n');
+  const lines = output
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
   if (lines.length !== list.length) {
     throw new Error(
       `Batch output line count mismatch (expected ${list.length}, got ${lines.length})`
