@@ -4,9 +4,9 @@ This document explains the internal architecture and development practices for t
 
 ## Architecture Overview
 
-The verblets project has a clear three-tier architecture that separates concerns and enables composable AI-powered functionality:
+The verblets project has two main types of components:
 
-### 1. **Chains** (`src/chains/`)
+### **Chains** (`src/chains/`)
 LLM orchestrations that combine multiple verblets, other chains, and library utilities to perform complex workflows. Chains handle multi-step reasoning, batch processing, and sophisticated AI operations.
 
 **Examples:**
@@ -21,8 +21,8 @@ LLM orchestrations that combine multiple verblets, other chains, and library uti
 - Often include retry logic and error handling
 - May process data in chunks or batches
 
-### 2. **Verblets** (`src/verblets/`)
-Single-call LLM functions with substantial, carefully crafted prompts. Each verblet performs one specific AI task with high reliability and constrained outputs.
+### **Verblets** (`src/verblets/`)
+Single LLM calls with carefully crafted prompts and prompt-supporting functions. Each verblet performs one specific AI task with high reliability and constrained outputs.
 
 **Examples:**
 - `bool` - Extract true/false decisions from natural language
@@ -32,18 +32,19 @@ Single-call LLM functions with substantial, carefully crafted prompts. Each verb
 
 **Characteristics:**
 - Single LLM call per operation
-- Substantial, optimized prompts
+- Substantial, optimized prompts with prompt variables
 - Constrained outputs to prevent hallucination
 - High reliability for specific tasks
 
-### 3. **Library Utilities** (`src/lib/`)
-Supporting utilities that don't use LLMs directly. These include API wrappers, data processing functions, caching, and other infrastructure.
+### **Library Utilities** (`src/lib/`)
+Supporting utilities that don't use LLMs directly. These provide infrastructure, data processing, and reusable functions that support both chains and verblets.
 
 **Examples:**
 - `chatgpt` - OpenAI API wrapper with error handling
 - `prompt-cache` - Caching layer for LLM responses
 - `retry` - Robust retry logic for async operations
 - `parse-js-parts` - JavaScript AST parsing utilities
+- `parse-llm-list` - Parse JSON arrays or CSV from LLM responses with filtering
 
 **Characteristics:**
 - No direct LLM usage

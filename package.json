@@ -42,6 +42,7 @@
     "chai": "^4.3.7",
     "change-case": "^4.1.2",
     "commander": "^11.0.0",
+    "compromise": "^14.14.4",
     "dependency-tree": "^10.0.1",
     "dotenv": "^16.0.3",
     "gpt-tokenizer": "^2.1.2",

@@ -14,6 +14,7 @@ Available chains:
 - [list](./list)
 - [questions](./questions)
 - [socratic](./socratic)
+- [glossary](./glossary)
 - [scan-js](./scan-js)
 - [sort](./sort)
 - [summary-map](./summary-map)
