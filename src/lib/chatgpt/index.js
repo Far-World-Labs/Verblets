@@ -12,6 +12,7 @@ import { get as getPromptResult, set as setPromptResult } from '../prompt-cache/
 import TimedAbortController from '../timed-abort-controller/index.js';
 import modelService from '../../services/llm-model/index.js';
 import { getClient as getRedis } from '../../services/redis/index.js';
+import logger from '../logger/index.js';
 
 const shapeOutputDefault = (result) => {
   // GPT-4
@@ -31,17 +32,17 @@ const shapeOutputDefault = (result) => {
 
 const onBeforeRequestDefault = ({ debugPrompt, isCached, prompt }) => {
   if (debugPrompt || debugPromptGlobally || (debugPromptGloballyIfChanged && !isCached)) {
-    console.error('+++ DEBUG PROMPT +++');
-    console.error(prompt);
-    console.error('+++ DEBUG PROMPT END +++');
+    logger.error('+++ DEBUG PROMPT +++');
+    logger.error(prompt);
+    logger.error('+++ DEBUG PROMPT END +++');
   }
 };
 
 const onAfterRequestDefault = ({ debugResult, isCached, resultShaped }) => {
   if (debugResult || debugResultGlobally || (debugResultGloballyIfChanged && !isCached)) {
-    console.error('+++ DEBUG RESULT +++');
-    console.error(resultShaped);
-    console.error('+++ DEBUG RESULT END +++');
+    logger.error('+++ DEBUG RESULT +++');
+    logger.error(resultShaped);
+    logger.error('+++ DEBUG RESULT END +++');
   }
 };
 

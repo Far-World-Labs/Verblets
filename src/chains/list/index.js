@@ -7,6 +7,7 @@ import {
 } from '../../prompts/index.js';
 import modelService from '../../services/llm-model/index.js';
 import toObject from '../../verblets/to-object/index.js';
+import logger from '../../lib/logger/index.js';
 
 const { onlyJSON, contentIsTransformationSource } = promptConstants;
 
@@ -62,18 +63,18 @@ export const generateList = async function* generateListGenerator(text, options 
       });
 
       // debug helper:
-      // console.error(R.sort((a, b) => a.localeCompare(b), await toObject(results)));
+      // logger.error(R.sort((a, b) => a.localeCompare(b), await toObject(results)));
 
       // eslint-disable-next-line no-await-in-loop
       resultsNew = await toObject(results);
     } catch (error) {
       if (/The operation was aborted/.test(error.message)) {
         // eslint-disable-next-line no-console
-        console.error('Generate list [error]: Aborted');
+        logger.error('Generate list [error]: Aborted');
         resultsNew = []; // continue
       } else {
         // eslint-disable-next-line no-console
-        console.error(
+        logger.error(
           `Generate list [error]: ${error.message}`,
           listPrompt.slice(0, 100).replace('\n', '\\n')
         );
@@ -107,7 +108,7 @@ export const generateList = async function* generateListGenerator(text, options 
         resultsAll.push(result);
 
         // debug helper:
-        // console.error(R.sort((a, b) => a.localeCompare(b), resultsAll));
+        // logger.error(R.sort((a, b) => a.localeCompare(b), resultsAll));
 
         yield result;
       }

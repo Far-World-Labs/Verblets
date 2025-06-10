@@ -5,6 +5,7 @@ import { retryJSONParse } from '../../constants/messages.js';
 import chatGPT from '../../lib/chatgpt/index.js';
 import stripResponse from '../../lib/strip-response/index.js';
 import { constants as promptConstants, wrapVariable } from '../../prompts/index.js';
+import logger from '../../lib/logger/index.js';
 
 const { contentIsSchema, contentToJSON, onlyJSON, shapeAsJSON } = promptConstants;
 
@@ -64,14 +65,14 @@ export default async (text, schema) => {
   } catch (error) {
     errorDetails = error.details;
     if (debugToObject) {
-      console.error(`Parse JSON [error]: ${error.message} ${retryJSONParse}`);
-      console.error('<prompt attempt=1 value="unknown" />');
-      console.error('<response>');
-      console.error(stripResponse(response));
-      console.error('</response>');
-      console.error('<error>');
-      console.error(error);
-      console.error('</error>');
+      logger.error(`Parse JSON [error]: ${error.message} ${retryJSONParse}`);
+      logger.error('<prompt attempt=1 value="unknown" />');
+      logger.error('<response>');
+      logger.error(stripResponse(response));
+      logger.error('</response>');
+      logger.error('<error>');
+      logger.error(error);
+      logger.error('</error>');
     }
   }
 
@@ -97,16 +98,16 @@ export default async (text, schema) => {
   } catch (error) {
     errorDetails = error.details;
     if (debugToObject) {
-      console.error(`Parse JSON [error]: ${error.message} ${retryJSONParse}`);
-      console.error('<prompt attempt=2>');
-      console.error(prompt);
-      console.error('</prompt>');
-      console.error('<response>');
-      console.error(stripResponse(response));
-      console.error('</response>');
-      console.error('<error>');
-      console.error(error);
-      console.error('</error>');
+      logger.error(`Parse JSON [error]: ${error.message} ${retryJSONParse}`);
+      logger.error('<prompt attempt=2>');
+      logger.error(prompt);
+      logger.error('</prompt>');
+      logger.error('<response>');
+      logger.error(stripResponse(response));
+      logger.error('</response>');
+      logger.error('<error>');
+      logger.error(error);
+      logger.error('</error>');
     }
 
     prompt = buildJsonPrompt(response, schema, errorDetails);
@@ -118,13 +119,13 @@ export default async (text, schema) => {
     result = JSON.parse(stripResponse(response));
 
     if (debugToObject) {
-      console.error(`Parse JSON [error]: ${error.message} ${retryJSONParse}`);
-      console.error('<prompt attempt=3>');
-      console.error(prompt);
-      console.error('</prompt>');
-      console.error('<response>');
-      console.error(stripResponse(response));
-      console.error('</response>');
+      logger.error(`Parse JSON [error]: ${error.message} ${retryJSONParse}`);
+      logger.error('<prompt attempt=3>');
+      logger.error(prompt);
+      logger.error('</prompt>');
+      logger.error('<response>');
+      logger.error(stripResponse(response));
+      logger.error('</response>');
     }
   }
 

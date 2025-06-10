@@ -1,5 +1,6 @@
 import whisper from 'whisper-node';
 import record from 'node-record-lpcm16';
+import logger from '../logger/index.js';
 
 export default class Transcriber {
   constructor(targetWord, silenceDuration = 5000, wordPauseDuration = 2000) {
@@ -36,7 +37,7 @@ export default class Transcriber {
         this.handleTranscription(transcription);
       })
       .catch((error) => {
-        console.error(error);
+        logger.error(error);
       });
   }
 

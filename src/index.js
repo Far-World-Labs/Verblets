@@ -24,6 +24,7 @@ import scanJS from './chains/scan-js/index.js';
 import sort from './chains/sort/index.js';
 
 import SummaryMap from './chains/summary-map/index.js';
+import createBufferedLogger from './chains/logger/index.js';
 
 import test from './chains/test/index.js';
 
@@ -143,6 +144,7 @@ export const verblets = {
   bulkFilter,
   listGroup,
   intersection,
+  createBufferedLogger,
 };
 
 export const services = {

@@ -3,6 +3,7 @@ import * as R from 'ramda';
 
 import sort from '../sort/index.js';
 import chatGPT from '../../lib/chatgpt/index.js';
+import logger from '../../lib/logger/index.js';
 import pathAliases from '../../lib/path-aliases/index.js';
 import retry from '../../lib/retry/index.js';
 import search from '../../lib/search-js-files/index.js';
@@ -83,7 +84,7 @@ const visit = async ({
 
     const idDisplay = (state.pathAliases[id] ?? id).slice(-50).padStart(50);
 
-    console.error(
+    logger.error(
       `${`${state.nodesFound}`.padEnd(3, ' ')} ${idDisplay}: ${organizeResult(resultParsed).join(
         ', '
       )}`

@@ -1,5 +1,6 @@
 import chatGPT from '../../lib/chatgpt/index.js';
 import wrapVariable from '../../prompts/wrap-variable.js';
+import logger from '../../lib/logger/index.js';
 
 const buildPrompt = (list, instructions, categories) => {
   const instructionsBlock = wrapVariable(instructions, { tag: 'instructions' });
@@ -32,7 +33,7 @@ export default async function listGroup(list, instructions, categories) {
   const labels = allLines.slice(0, list.length);
 
   if (labels.length !== list.length) {
-    console.warn(`Expected ${list.length} labels, got ${labels.length}. Output was:`, output);
+    logger.warn(`Expected ${list.length} labels, got ${labels.length}. Output was:`, output);
     // Pad with default category if we have fewer labels
     while (labels.length < list.length) {
       labels.push('other');

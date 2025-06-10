@@ -1,4 +1,5 @@
 import { createClient } from 'redis';
+import logger from '../../lib/logger/index.js';
 
 let client;
 let constructingClient;
@@ -37,7 +38,7 @@ class SafeRedisClient {
       return await this.redisClient.get(key);
     } catch (error) {
       if (this.isConnectionError(error)) {
-        console.warn('Redis connection lost, falling back to in-memory cache');
+        logger.warn('Redis connection lost, falling back to in-memory cache');
         return this.fallbackClient.get(key);
       }
       throw error;
@@ -49,7 +50,7 @@ class SafeRedisClient {
       return await this.redisClient.set(key, value, options);
     } catch (error) {
       if (this.isConnectionError(error)) {
-        console.warn('Redis connection lost, falling back to in-memory cache');
+        logger.warn('Redis connection lost, falling back to in-memory cache');
         return this.fallbackClient.set(key, value, options);
       }
       throw error;
@@ -61,7 +62,7 @@ class SafeRedisClient {
       return await this.redisClient.del(key);
     } catch (error) {
       if (this.isConnectionError(error)) {
-        console.warn('Redis connection lost, falling back to in-memory cache');
+        logger.warn('Redis connection lost, falling back to in-memory cache');
         return this.fallbackClient.del(key);
       }
       throw error;
@@ -103,12 +104,12 @@ const constructClient = async () => {
     }
 
     if (/ECONNREFUSED/.test(error.message)) {
-      console.error(
+      logger.error(
         `Redis service [warning]: "${error.message}" Falling back to mock Redis client. This may incur greater usage costs and have slower response times.`
       );
       client = new NullRedisClient();
     } else {
-      console.error(`Redis service [error]: ${error.message}`);
+      logger.error(`Redis service [error]: ${error.message}`);
       client = new NullRedisClient();
     }
 
@@ -122,7 +123,7 @@ const constructClient = async () => {
     await redisClient.connect();
     client = new SafeRedisClient(redisClient);
   } catch (error) {
-    console.error(
+    logger.error(
       `Redis service create [warning]: "${error.message}" Falling back to mock Redis client. This may incur greater usage costs and have slower response times.`
     );
     client = new NullRedisClient();

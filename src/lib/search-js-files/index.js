@@ -3,6 +3,7 @@ import path from 'node:path';
 
 import parseJSParts from '../parse-js-parts/index.js';
 import search from '../search-best-first/index.js';
+import logger from '../logger/index.js';
 
 export class Node {
   constructor(args) {
@@ -45,7 +46,7 @@ const processNpmImport = async (source, includeNodeModules = false) => {
       }));
     }
   } catch (error) {
-    console.error(`Process npm import [error]: ${error.message} (source: ${source})`);
+    logger.error(`Process npm import [error]: ${error.message} (source: ${source})`);
   }
 
   return [];
@@ -53,7 +54,7 @@ const processNpmImport = async (source, includeNodeModules = false) => {
 
 const visitDefault = ({ state }) => {
   if (process.env.NODE_ENV === 'development') {
-    // console.error(`Visiting: ${node.filename} - ${node.functionName}`);
+    // logger.error(`Visiting: ${node.filename} - ${node.functionName}`);
   }
   return state;
 };

@@ -2,6 +2,7 @@ import {
   maxRetries as maxRetriesDefault,
   retryDelay as retryDelayDefault,
 } from '../../constants/common.js';
+import logger from '../logger/index.js';
 
 export default async (
   fn,
@@ -29,7 +30,7 @@ export default async (
         const startTag = `${retry > 0 ? 'retry' : 'started'}`;
         const startVariablesDisplay = `${retry > 0 ? ` (${variables})` : ''}`;
         // eslint-disable-next-line no-console
-        console.error(`Run ${labelDisplay} [${startTag}]${startVariablesDisplay}`);
+        logger.error(`Run ${labelDisplay} [${startTag}]${startVariablesDisplay}`);
       }
 
       // eslint-disable-next-line no-await-in-loop
@@ -37,7 +38,7 @@ export default async (
 
       if (label) {
         // eslint-disable-next-line no-console
-        console.error(`Run ${labelDisplay} [complete]`);
+        logger.error(`Run ${labelDisplay} [complete]`);
       }
 
       return result;
@@ -57,7 +58,7 @@ export default async (
 
       if (label) {
         // eslint-disable-next-line no-console
-        console.error(`Run ${labelDisplay} [${doneTag}]: ${error.message}`);
+        logger.error(`Run ${labelDisplay} [${doneTag}]: ${error.message}`);
       }
     }
   }

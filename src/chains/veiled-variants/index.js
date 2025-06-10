@@ -1,5 +1,6 @@
 import { run } from '../../lib/chatgpt/index.js';
 import { constants as promptConstants, wrapVariable } from '../../prompts/index.js';
+import logger from '../../lib/logger/index.js';
 
 const { onlyJSONStringArray } = promptConstants;
 
@@ -97,7 +98,7 @@ const veiledVariants = async ({ prompt, modelName = 'privacy' }) => {
         }
 
         // Fallback: return the raw response as a single item
-        console.warn('Failed to parse JSON response, using raw text:', error.message);
+        logger.warn('Failed to parse JSON response, using raw text:', error.message);
         return [trimmed];
       }
     })
