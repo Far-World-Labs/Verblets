@@ -10,9 +10,14 @@ import anonymize from './chains/anonymize/index.js';
 
 import Dismantle from './chains/dismantle/index.js';
 
+import intersections from './chains/intersections/index.js';
+
 import list from './chains/list/index.js';
+import glossary from './chains/glossary/index.js';
 
 import questions from './chains/questions/index.js';
+
+import SocraticMethod from './chains/socratic/index.js';
 
 import scanJS from './chains/scan-js/index.js';
 
@@ -37,6 +42,8 @@ import searchBestFirst from './lib/search-best-first/index.js';
 import searchJSFiles from './lib/search-js-files/index.js';
 import shortenText from './lib/shorten-text/index.js';
 import bulkMap, { bulkMapRetry } from './chains/bulk-map/index.js';
+import bulkFind, { bulkFindRetry } from './chains/bulk-find/index.js';
+import bulkFilter, { bulkFilterRetry } from './chains/bulk-filter/index.js';
 import stripNumeric from './lib/strip-numeric/index.js';
 import stripResponse from './lib/strip-response/index.js';
 import toBool from './lib/to-bool/index.js';
@@ -44,6 +51,7 @@ import toEnum from './lib/to-enum/index.js';
 import toNumber from './lib/to-number/index.js';
 import toNumberWithUnits from './lib/to-number-with-units/index.js';
 import transcribe from './lib/transcribe/index.js';
+import combinations, { rangeCombinations } from './lib/combinations/index.js';
 
 // prompts
 import * as prompts from './prompts/index.js';
@@ -69,19 +77,24 @@ import numberWithUnits from './verblets/number-with-units/index.js';
 import schemaOrg from './verblets/schema-org/index.js';
 import nameSimilarTo from './verblets/name-similar-to/index.js';
 
+import name from './verblets/name/index.js';
+
 import toObject from './verblets/to-object/index.js';
 
 import listMap from './verblets/list-map/index.js';
+import listFind from './verblets/list-find/index.js';
 
 import bulkGroup from './chains/bulk-group/index.js';
 
 import listGroup from './verblets/list-group/index.js';
+import intersection from './verblets/intersection/index.js';
 
 export { default as retry } from './lib/retry/index.js';
 export { default as stripResponse } from './lib/strip-response/index.js';
 export { default as searchJSFiles } from './lib/search-js-files/index.js';
 export { default as searchBestFirst } from './lib/search-best-first/index.js';
-export { bulkMap, bulkMapRetry };
+export { bulkMap, bulkMapRetry, bulkFind, bulkFindRetry, bulkFilter, bulkFilterRetry };
+export { rangeCombinations } from './lib/combinations/index.js';
 
 export const lib = {
   chatGPT,
@@ -97,6 +110,8 @@ export const lib = {
   toNumber,
   toNumberWithUnits,
   transcribe,
+  combinations,
+  rangeCombinations,
 };
 
 export const verblets = {
@@ -108,20 +123,28 @@ export const verblets = {
   numberWithUnits,
   schemaOrg,
   nameSimilarTo,
+  name,
   toObject,
   listMap,
+  listFind,
   bulkMap,
+  bulkFind,
   anonymize,
   Dismantle,
+  intersections,
   list,
+  glossary,
   questions,
+  SocraticMethod,
   scanJS,
   sort,
   SummaryMap,
   test,
   testAdvice,
   bulkGroup,
+  bulkFilter,
   listGroup,
+  intersection,
 };
 
 export const services = {
