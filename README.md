@@ -56,6 +56,7 @@ Content utilities generate, transform, and analyze text while maintaining struct
 - [name](./src/verblets/name) - name something from a definition or description
 - [to-object](./src/verblets/to-object) - convert descriptions to structured objects
 - [veiled-variants](./src/chains/veiled-variants) - rephrase sensitive queries safely
+- [themes](./src/chains/themes) - uncover the big ideas in text and where each appears
 
 ### Utility Operations
 
