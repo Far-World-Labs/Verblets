@@ -10,6 +10,7 @@ Available chains:
 - [bulk-filter](./bulk-filter)
 - [bulk-group](./bulk-group)
 - [dismantle](./dismantle)
+- [disambiguate](./disambiguate)
 - [intersections](./intersections)
 - [list](./list)
 - [questions](./questions)
