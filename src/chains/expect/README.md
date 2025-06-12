@@ -1,6 +1,6 @@
 # LLM Expect Chain
 
-Advanced intelligent assertions with debugging features, environment variable modes, and structured results. This chain provides enhanced functionality beyond the basic [llm-expect verblet](../../verblets/llm-expect/).
+Advanced intelligent assertions with debugging features, environment variable modes, and structured results. This chain provides enhanced functionality beyond the basic [expect verblet](../../verblets/expect/).
 
 ## Why Use the Chain?
 
@@ -58,14 +58,14 @@ console.log(details);
 */
 ```
 
-### Simple API: `llmExpect(actual, expected?, constraint?)`
+### Simple API: `expect(actual, expected?, constraint?)`
 
 Backward compatible with the verblet - returns boolean:
 
 ```javascript
-import llmExpect from './index.js';
+import expect from './index.js';
 
-const result = await llmExpect("hello", "hello");
+const result = await expect("hello", "hello");
 // Returns: true
 ```
 
@@ -144,7 +144,7 @@ expect(response).toHaveProperty('status');
 expect(response.status).toBe(200);
 
 // LLM assertion for content quality
-const [passed] = await llmExpect(
+const [passed] = await expect(
   response.message,
   "Is this error message helpful and user-friendly?"
 );

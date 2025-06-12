@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import llmExpect from './index.js';
+import aiExpect from './index.js';
 import { longTestTimeout } from '../../constants/common.js';
 
 // Mock the chatgpt function to avoid actual API calls
@@ -45,11 +45,11 @@ vi.mock('../../lib/chatgpt/index.js', () => ({
   }),
 }));
 
-describe('llm-expect verblet', () => {
+describe('expect verblet', () => {
   it(
     'should pass for exact equality',
     async () => {
-      const result = await llmExpect('hello', 'hello', undefined, { throw: false });
+      const result = await aiExpect('hello').toEqual('hello', { throws: false });
       expect(result).toBe(true);
     },
     longTestTimeout
@@ -58,8 +58,8 @@ describe('llm-expect verblet', () => {
   it(
     'should pass for constraint-based validation',
     async () => {
-      const result = await llmExpect('Hello world!', undefined, 'Is this a greeting?', {
-        throw: false,
+      const result = await aiExpect('Hello world!').toSatisfy('Is this a greeting?', {
+        throws: false,
       });
       expect(result).toBe(true);
     },
@@ -69,26 +69,9 @@ describe('llm-expect verblet', () => {
   it(
     'should fail for non-matching values',
     async () => {
-      const result = await llmExpect('goodbye', 'hello', undefined, { throw: false });
-      expect(result).toBe(false);
-    },
-    longTestTimeout
-  );
-
-  it(
-    'should throw by default on failure',
-    async () => {
-      await expect(async () => {
-        await llmExpect('goodbye', 'hello');
-      }).rejects.toThrow();
-    },
-    longTestTimeout
-  );
-
-  it(
-    'should not throw when throw option is false',
-    async () => {
-      const result = await llmExpect('goodbye', 'hello', undefined, { throw: false });
+      const result = await aiExpect('goodbye').toEqual('hello', {
+        throws: false,
+      });
       expect(result).toBe(false);
     },
     longTestTimeout
@@ -97,12 +80,11 @@ describe('llm-expect verblet', () => {
   it(
     'should validate content quality',
     async () => {
-      const result = await llmExpect(
-        'This is a well-written, professional email with proper grammar.',
-        undefined,
-        'Is this text professional and grammatically correct?',
-        { throw: false }
-      );
+      const result = await aiExpect(
+        'This is a well-written, professional email with proper grammar.'
+      ).toSatisfy('Is this text professional and grammatically correct?', {
+        throws: false,
+      });
       expect(result).toBe(true);
     },
     longTestTimeout
@@ -111,11 +93,9 @@ describe('llm-expect verblet', () => {
   it(
     'should validate data structures',
     async () => {
-      const result = await llmExpect(
-        { name: 'John Doe', age: 30, city: 'New York' },
-        undefined,
+      const result = await aiExpect({ name: 'John Doe', age: 30, city: 'New York' }).toSatisfy(
         'Does this person data look realistic?',
-        { throw: false }
+        { throws: false }
       );
       expect(result).toBe(true);
     },
@@ -125,13 +105,22 @@ describe('llm-expect verblet', () => {
   it(
     'should handle business logic validation',
     async () => {
-      const result = await llmExpect(
-        'Increase marketing budget by 20% for Q4 to boost holiday sales',
-        undefined,
-        'Is this recommendation specific and actionable?',
-        { throw: false }
-      );
+      const result = await aiExpect(
+        'Increase marketing budget by 20% for Q4 to boost holiday sales'
+      ).toSatisfy('Is this recommendation specific and actionable?', {
+        throws: false,
+      });
       expect(result).toBe(true);
+    },
+    longTestTimeout
+  );
+
+  it(
+    'should throw by default on failure',
+    async () => {
+      await expect(async () => {
+        await aiExpect('hello').toEqual('goodbye');
+      }).rejects.toThrow('LLM assertion failed');
     },
     longTestTimeout
   );

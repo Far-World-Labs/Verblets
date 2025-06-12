@@ -82,7 +82,7 @@ Deterministic tests using table-driven examples. These tests:
 Non-deterministic tests using real LLM calls. These tests:
 - Use actual API calls (require API keys)
 - Verify behavior with LLM assertion chains
-- Use the `llm-expect` chain or verblet for intelligent assertions
+- Use the `expect` chain or verblet for intelligent assertions
 - Include `longTestTimeout` for API call delays
 
 **Example:** See [`src/verblets/bool/index.examples.js`](src/verblets/bool/index.examples.js) for LLM assertion usage.
@@ -104,7 +104,7 @@ Documentation with at least one compelling example that demonstrates how LLM pro
 
 2. **Example Tests** (`*.examples.js`)
    - Slow, non-deterministic, real LLM calls
-   - LLM assertions using `llm-expect` chain or verblet
+  - LLM assertions using `expect` chain or verblet
    - Run with `npm run examples` (requires API keys--not possible as an agent)
    - Validate real-world behavior
 
@@ -114,11 +114,11 @@ Documentation with at least one compelling example that demonstrates how LLM pro
 All tests use a consistent `examples` array structure. See [`src/verblets/enum/index.spec.js`](src/verblets/enum/index.spec.js) for the standard pattern.
 
 #### LLM Assertion Chains
-For example tests, use the `llm-expect` chain or verblet for assertions that blind assertions cannot handle:
+For example tests, use the `expect` chain or verblet for assertions that blind assertions cannot handle:
 
-**Chain Usage:** See [`src/chains/llm-expect/index.examples.js`](src/chains/llm-expect/index.examples.js) for enhanced LLM assertions.
+**Chain Usage:** See [`src/chains/expect/index.examples.js`](src/chains/expect/index.examples.js) for enhanced LLM assertions.
 
-**Verblet Usage:** See [`src/verblets/llm-expect/index.examples.js`](src/verblets/llm-expect/index.examples.js) for simple LLM assertions.
+**Verblet Usage:** See [`src/verblets/expect/index.examples.js`](src/verblets/expect/index.examples.js) for simple LLM assertions.
 
 **Real-World Usage:** See [`src/chains/intersections/index.examples.js`](src/chains/intersections/index.examples.js) for LLM assertions in practice.
 

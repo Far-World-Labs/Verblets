@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import intersection from './index.js';
 import { longTestTimeout } from '../../constants/common.js';
-import llmExpected from '../llm-expect/index.js';
+import aiExpect from '../expect/index.js';
 
 describe('intersection examples', () => {
   it(
@@ -11,9 +11,7 @@ describe('intersection examples', () => {
       expect(Array.isArray(result), `Saw: ${JSON.stringify(result)}`).toBe(true);
 
       // LLM assertion to verify the intersection contains meaningful commonalities
-      await llmExpected(
-        result,
-        undefined,
+      await aiExpect(result).toSatisfy(
         'should be an array of strings that could reasonably represent commonalities between technology devices',
         {
           context: 'Testing intersection verblet with electronic devices',
@@ -30,9 +28,7 @@ describe('intersection examples', () => {
       expect(Array.isArray(result), `Saw: ${JSON.stringify(result)}`).toBe(true);
 
       // LLM assertion for animal traits - be more lenient
-      await llmExpected(
-        result,
-        undefined,
+      await aiExpect(result).toSatisfy(
         'should be an array that represents some form of analysis or commonalities related to animals',
         {
           context: 'Testing intersection verblet with animals',
@@ -52,9 +48,7 @@ describe('intersection examples', () => {
       expect(Array.isArray(result), `Saw: ${JSON.stringify(result)}`).toBe(true);
 
       // LLM assertion for abstract concept intersections - be more lenient
-      await llmExpected(
-        result,
-        undefined,
+      await aiExpect(result).toSatisfy(
         'should be an array that represents some form of analysis related to abstract concepts',
         {
           context: 'Testing intersection verblet with abstract concepts',

@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeAll, afterAll } from 'vitest';
 
-import { expect as llmExpect } from './index.js';
+import { expect as aiExpect } from './index.js';
 import { longTestTimeout } from '../../constants/common.js';
 
 const examples = [
@@ -72,7 +72,7 @@ describe('LLM Expect Chain', () => {
     it(
       description,
       async () => {
-        const [result, details] = await llmExpect(
+        const [result, details] = await aiExpect(
           example.inputs.actual,
           example.inputs.expected,
           example.inputs.constraint
@@ -91,7 +91,7 @@ describe('LLM Expect Chain', () => {
   it(
     'should provide detailed debugging information on failure',
     async () => {
-      const [result, details] = await llmExpect(
+      const [result, details] = await aiExpect(
         'This is clearly wrong content',
         undefined,
         'Is this a professional business email?'
@@ -114,7 +114,7 @@ describe('LLM Expect Chain', () => {
       const businessRecommendation =
         'Increase marketing budget by 20% for Q4 to boost holiday sales and target demographics aged 25-45 through social media campaigns';
 
-      const [result, details] = await llmExpect(
+      const [result, details] = await aiExpect(
         businessRecommendation,
         undefined,
         'Is this recommendation specific, actionable, and includes measurable targets?'
@@ -133,7 +133,7 @@ describe('LLM Expect Chain', () => {
       const storyOpening =
         'Once upon a time, in a land far away, there lived a brave knight who embarked on a quest to save the kingdom from an ancient curse that had plagued the realm for centuries.';
 
-      const [result] = await llmExpect(
+      const [result] = await aiExpect(
         storyOpening,
         undefined,
         'Is this story opening engaging, sets up clear conflict, and follows good narrative structure?'

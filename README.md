@@ -33,6 +33,7 @@ List operations transform, filter, and organize collections using natural langua
 - [bulk-group](./src/chains/bulk-group) - group large datasets efficiently
 - [bulk-filter](./src/chains/bulk-filter) - filter huge lists in batches
 - [intersections](./src/chains/intersections) - find comprehensive intersections for all combinations
+- [list](./src/chains/list) - generate contextual lists from prompts
 - [list-map](./src/verblets/list-map) - transform each item in a list
 - [list-reduce](./src/verblets/list-reduce) - combine list items using custom logic
 - [list-find](./src/verblets/list-find) - pick the single best item from a list
@@ -48,12 +49,12 @@ Content utilities generate, transform, and analyze text while maintaining struct
 
 - [anonymize](./src/chains/anonymize) - scrub personal details from text
 - [dismantle](./src/chains/dismantle) - break complex systems into components
-- [list](./src/chains/list) - generate contextual lists from prompts
 - [questions](./src/chains/questions) - produce clarifying questions for topics
 - [socratic](./src/chains/socratic) - explore assumptions using a Socratic dialogue
 - [glossary](./src/chains/glossary) - collect complex terms with automatic retries
 - [schema-org](./src/verblets/schema-org) - create schema.org-compliant data structures
 - [name](./src/verblets/name) - name something from a definition or description
+- [name-similar-to](./src/verblets/name-similar-to) - suggest short names that match a style
 - [to-object](./src/verblets/to-object) - convert descriptions to structured objects
 - [veiled-variants](./src/chains/veiled-variants) - rephrase sensitive queries safely
 - [themes](./src/chains/themes) - uncover the big ideas in text and where each appears
@@ -63,7 +64,8 @@ Content utilities generate, transform, and analyze text while maintaining struct
 Utility operations provide meta-functionality like automatic tool selection, intent parsing, and context compression. They're essential for building intelligent systems that can adapt and scale.
 
 - [auto](./src/verblets/auto) - automatically select the best verblet for a task
-- [expect](./src/chains/llm-expect/) - assert things about data with LLM reasoning
+- [expect](./src/verblets/expect) - simple LLM assertions
+- [expect chain](./src/chains/expect) - assert things about data with LLM reasoning
 - [intent](./src/verblets/intent) - extract user intent and structured parameters
 - [sentiment](./src/verblets/sentiment) - detect emotional tone of text
 - [summary-map](./src/chains/summary-map) - store self-resizing hash table values. Useful for fixed-sized contexts.
