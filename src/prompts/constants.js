@@ -3,6 +3,8 @@ export const asUndefinedByDefault = 'If you are unsure, say "undefined" as your 
 export const asBool = 'Answer the question either with "true" or "false" as your answer.';
 export const asNumber =
   'Answer the question with a number that could be parsed by the JS Number constructor. Do not include formatting, units, digit group separators, or spelled-out numbers in your answer.';
+export const asDate =
+  'Answer the question with a date that can be parsed by the JS Date constructor. ISO format is preferred. Do not include additional text or punctuation.';
 export const asJSON =
   'Respond with a JSON object or array that parses with JSON.parse, with no wrapping code block, and no wrapping XML.';
 

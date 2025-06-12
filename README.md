@@ -22,6 +22,7 @@ Primitive verblets extract basic data types from natural language with high reli
 - [enum](./src/verblets/enum) - map text to predefined options
 - [number](./src/verblets/number) - extract numeric values from text
 - [number-with-units](./src/verblets/number-with-units) - parse numbers with units and conversions
+- [date](./src/chains/date) - return Date objects from natural language prompts
 
 ### Lists
 
@@ -91,6 +92,7 @@ Codebase utilities analyze, test, and improve code quality using AI reasoning. T
 - [to-enum](./src/lib/to-enum) - parse text to enum values
 - [to-number](./src/lib/to-number) - parse text to numbers
 - [to-number-with-units](./src/lib/to-number-with-units) - parse numbers with units
+- [to-date](./src/lib/to-date) - parse text to JavaScript Date objects
 - [transcribe](./src/lib/transcribe) - microphone transcription via Whisper
 
 ## Example: Intelligent Customer Support System

@@ -22,6 +22,7 @@ import SocraticMethod from './chains/socratic/index.js';
 import scanJS from './chains/scan-js/index.js';
 
 import sort from './chains/sort/index.js';
+import date from './chains/date/index.js';
 
 import SummaryMap from './chains/summary-map/index.js';
 
@@ -50,6 +51,7 @@ import toBool from './lib/to-bool/index.js';
 import toEnum from './lib/to-enum/index.js';
 import toNumber from './lib/to-number/index.js';
 import toNumberWithUnits from './lib/to-number-with-units/index.js';
+import toDate from './lib/to-date/index.js';
 import transcribe from './lib/transcribe/index.js';
 import combinations, { rangeCombinations } from './lib/combinations/index.js';
 
@@ -109,6 +111,7 @@ export const lib = {
   toEnum,
   toNumber,
   toNumberWithUnits,
+  toDate,
   transcribe,
   combinations,
   rangeCombinations,
@@ -138,6 +141,7 @@ export const verblets = {
   SocraticMethod,
   scanJS,
   sort,
+  date,
   SummaryMap,
   test,
   testAdvice,

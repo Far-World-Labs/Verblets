@@ -10,6 +10,7 @@ Available verblets:
 - [intent](./intent)
 - [number](./number)
 - [number-with-units](./number-with-units)
+- [date](../chains/date)
 - [sentiment](./sentiment) - classify text sentiment
 - [schema-org](./schema-org)
 - [name-similar-to](./name-similar-to) - suggest short names matching a style
