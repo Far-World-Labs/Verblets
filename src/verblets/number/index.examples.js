@@ -1,7 +1,7 @@
 import { describe, expect, it, beforeAll, afterAll } from 'vitest';
 
 import number from './index.js';
-import { expect as llmExpect } from '../../chains/llm-expect/index.js';
+import aiExpect from '../expect/index.js';
 import { longTestTimeout } from '../../constants/common.js';
 
 const examples = [
@@ -46,11 +46,9 @@ describe('Number verblet', () => {
           expect(result).toBeLessThanOrEqual(example.want.range[1]);
 
           // LLM assertion for range validation
-          const [isReasonableValue] = await llmExpect(
-            `Question: "${example.inputs.text}" Answer: ${result}`,
-            undefined,
-            'Is this a reasonable numeric answer for a geographic question?'
-          );
+          const [isReasonableValue] = await aiExpect(
+            `Question: "${example.inputs.text}" Answer: ${result}`
+          ).toSatisfy('Is this a reasonable numeric answer for a geographic question?');
           expect(isReasonableValue).toBe(true);
         } else if (example.want.result !== undefined) {
           expect(result).toStrictEqual(example.want.result);
@@ -59,11 +57,9 @@ describe('Number verblet', () => {
 
           // LLM assertion for undefined results
           if (example.want.result === undefined) {
-            const [shouldBeUndefined] = await llmExpect(
-              `Question: "${example.inputs.text}"`,
-              undefined,
-              'Does this question lack enough context to give a specific number?'
-            );
+            const [shouldBeUndefined] = await aiExpect(
+              `Question: "${example.inputs.text}"`
+            ).toSatisfy('Does this question lack enough context to give a specific number?');
             expect(shouldBeUndefined).toBe(true);
           }
         }
@@ -82,19 +78,15 @@ describe('Number verblet', () => {
       expect(result).toBeGreaterThan(0);
 
       // LLM assertion to validate recipe number extraction
-      const [isCorrectBakeTime] = await llmExpect(
-        `Recipe: "${recipeText}" Extracted number: ${result}`,
-        undefined,
-        'Is this number related to baking time or temperature?'
-      );
+      const [isCorrectBakeTime] = await aiExpect(
+        `Recipe: "${recipeText}" Extracted number: ${result}`
+      ).toSatisfy('Is this number related to baking time or temperature?');
       expect(isCorrectBakeTime).toBe(true);
 
       // Additional assertion about reasonableness
-      const [isReasonableBakeTime] = await llmExpect(
-        `Extracted number: ${result} from a baking recipe`,
-        undefined,
-        'Is this a reasonable number for cooking?'
-      );
+      const [isReasonableBakeTime] = await aiExpect(
+        `Extracted number: ${result} from a baking recipe`
+      ).toSatisfy('Is this a reasonable number for cooking?');
       expect(isReasonableBakeTime).toBe(true);
     },
     longTestTimeout
@@ -111,19 +103,15 @@ describe('Number verblet', () => {
       expect(result).toBeGreaterThan(1000); // Should be more than principal
 
       // LLM assertion for financial calculation accuracy
-      const [isReasonableReturn] = await llmExpect(
-        `Investment question about $1000 at 5% for 10 years. Answer: $${result}`,
-        undefined,
-        'Is this a reasonable amount for a 10-year investment?'
-      );
+      const [isReasonableReturn] = await aiExpect(
+        `Investment question about $1000 at 5% for 10 years. Answer: $${result}`
+      ).toSatisfy('Is this a reasonable amount for a 10-year investment?');
       expect(isReasonableReturn).toBe(true);
 
       // Validate the calculation makes financial sense
-      const [followsCompoundInterest] = await llmExpect(
-        `Starting with $1000, ending with $${result} after 10 years`,
-        undefined,
-        'Does this show reasonable investment growth?'
-      );
+      const [followsCompoundInterest] = await aiExpect(
+        `Starting with $1000, ending with $${result} after 10 years`
+      ).toSatisfy('Does this show reasonable investment growth?');
       expect(followsCompoundInterest).toBe(true);
     },
     longTestTimeout

@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import { describe, expect, it, beforeAll, afterAll } from 'vitest';
 
 import { longTestTimeout } from '../../constants/common.js';
-import { expect as llmExpect } from '../../chains/llm-expect/index.js';
+import aiExpect from '../expect/index.js';
 import intent from './index.js';
 
 const resultSchema = async () => {
@@ -61,17 +61,13 @@ describe('Intent verblet', () => {
           expect(isValid).toStrictEqual(true);
 
           // LLM assertion to validate intent extraction quality
-          const [intentMakesSense] = await llmExpect(
-            `Original text: "${example.inputs.text}" was parsed into an intent object`,
-            undefined,
-            'Does this seem like a reasonable intent extraction?'
-          );
+          const [intentMakesSense] = await aiExpect(
+            `Original text: "${example.inputs.text}" was parsed into an intent object`
+          ).toSatisfy('Does this seem like a reasonable intent extraction?');
           expect(intentMakesSense).toBe(true);
 
           // Additional assertion for intent completeness
-          const [hasBasicInfo] = await llmExpect(
-            JSON.stringify(result),
-            undefined,
+          const [hasBasicInfo] = await aiExpect(JSON.stringify(result)).toSatisfy(
             'Does this intent object contain some useful information?'
           );
           expect(hasBasicInfo).toBe(true);
@@ -95,16 +91,12 @@ describe('Intent verblet', () => {
       expect(validate(result)).toBe(true);
 
       // LLM assertions for travel-specific validation
-      const [isTravelRelated] = await llmExpect(
-        `Intent extracted from: "${travelRequest}"`,
-        undefined,
-        'Is this request related to travel or transportation?'
-      );
+      const [isTravelRelated] = await aiExpect(
+        `Intent extracted from: "${travelRequest}"`
+      ).toSatisfy('Is this request related to travel or transportation?');
       expect(isTravelRelated).toBe(true);
 
-      const [hasLocationInfo] = await llmExpect(
-        JSON.stringify(result),
-        undefined,
+      const [hasLocationInfo] = await aiExpect(JSON.stringify(result)).toSatisfy(
         'Does this intent mention any locations or destinations?'
       );
       expect(hasLocationInfo).toBe(true);
@@ -126,17 +118,13 @@ describe('Intent verblet', () => {
       expect(validate(result)).toBe(true);
 
       // LLM assertion for entertainment intent
-      const [isEntertainmentRelated] = await llmExpect(
-        `Intent extracted from: "${musicQuery}"`,
-        undefined,
-        'Is this request related to music or entertainment?'
-      );
+      const [isEntertainmentRelated] = await aiExpect(
+        `Intent extracted from: "${musicQuery}"`
+      ).toSatisfy('Is this request related to music or entertainment?');
       expect(isEntertainmentRelated).toBe(true);
 
       // Validate that the intent captures the search criteria
-      const [mentionsLyrics] = await llmExpect(
-        JSON.stringify(result),
-        undefined,
+      const [mentionsLyrics] = await aiExpect(JSON.stringify(result)).toSatisfy(
         'Does this intent mention song lyrics or music search?'
       );
       expect(mentionsLyrics).toBe(true);

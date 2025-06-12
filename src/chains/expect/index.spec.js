@@ -1,5 +1,5 @@
 import { describe, expect as vitestExpect, it, vi, beforeEach, afterEach } from 'vitest';
-import llmExpect, { expect } from './index.js';
+import aiExpectSimple, { expect as aiExpect } from './index.js';
 import { longTestTimeout } from '../../constants/common.js';
 
 // Mock the chatgpt function to avoid actual API calls
@@ -60,7 +60,7 @@ vi.mock('../../lib/chatgpt/index.js', () => ({
   }),
 }));
 
-describe('llm-expect chain', () => {
+describe('expect chain', () => {
   let originalEnv;
 
   beforeEach(() => {
@@ -81,7 +81,7 @@ describe('llm-expect chain', () => {
       async () => {
         process.env.LLM_EXPECT_MODE = 'none';
 
-        const [passed, details] = await expect('hello', 'hello');
+        const [passed, details] = await aiExpect('hello', 'hello');
 
         vitestExpect(passed).toBe(true);
         vitestExpect(details).toHaveProperty('passed', true);
@@ -97,7 +97,7 @@ describe('llm-expect chain', () => {
       async () => {
         process.env.LLM_EXPECT_MODE = 'none';
 
-        const [passed, details] = await expect('hello', 'goodbye');
+        const [passed, details] = await aiExpect('hello', 'goodbye');
 
         vitestExpect(passed).toBe(false);
         vitestExpect(details.passed).toBe(false);
@@ -114,7 +114,7 @@ describe('llm-expect chain', () => {
         process.env.LLM_EXPECT_MODE = 'error';
 
         await vitestExpect(async () => {
-          await expect('hello', 'goodbye');
+          await aiExpect('hello', 'goodbye');
         }).rejects.toThrow('LLM Assertion Failed');
       },
       longTestTimeout
@@ -126,7 +126,7 @@ describe('llm-expect chain', () => {
         process.env.LLM_EXPECT_MODE = 'info';
         const consoleSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
 
-        const [passed] = await expect('hello', 'goodbye');
+        const [passed] = await aiExpect('hello', 'goodbye');
 
         vitestExpect(passed).toBe(false);
         vitestExpect(consoleSpy).toHaveBeenCalledWith(
@@ -143,7 +143,7 @@ describe('llm-expect chain', () => {
       async () => {
         process.env.LLM_EXPECT_MODE = 'none';
 
-        const [passed, details] = await expect('Hello world!', undefined, 'Is this a greeting?');
+        const [passed, details] = await aiExpect('Hello world!', undefined, 'Is this a greeting?');
 
         vitestExpect(passed).toBe(true);
         vitestExpect(details.passed).toBe(true);
@@ -154,7 +154,7 @@ describe('llm-expect chain', () => {
     it(
       'should validate content quality',
       async () => {
-        const [passed, details] = await expect(
+        const [passed, details] = await aiExpect(
           'This is a well-written, professional email with proper grammar and clear intent.',
           undefined,
           'Is this text professional and grammatically correct?'
@@ -170,7 +170,7 @@ describe('llm-expect chain', () => {
     it(
       'should validate data structures',
       async () => {
-        const [passed] = await expect(
+        const [passed] = await aiExpect(
           { name: 'John Doe', age: 30, city: 'New York' },
           undefined,
           'Does this person data look realistic?'
@@ -184,7 +184,7 @@ describe('llm-expect chain', () => {
     it(
       'should handle business logic validation',
       async () => {
-        const [passed] = await expect(
+        const [passed] = await aiExpect(
           'Increase marketing budget by 20% for Q4 to boost holiday sales',
           undefined,
           'Is this recommendation specific and actionable?'
@@ -197,7 +197,7 @@ describe('llm-expect chain', () => {
 
     it('should throw error when neither expected nor constraint provided', async () => {
       await vitestExpect(async () => {
-        await expect('test value');
+        await aiExpect('test value');
       }).rejects.toThrow('Either expected value or constraint must be provided');
     });
   });
@@ -206,7 +206,7 @@ describe('llm-expect chain', () => {
     it(
       'should pass for exact equality',
       async () => {
-        const result = await llmExpect('hello', 'hello');
+        const result = await aiExpectSimple('hello', 'hello');
         vitestExpect(result).toBe(true);
       },
       longTestTimeout
@@ -215,7 +215,7 @@ describe('llm-expect chain', () => {
     it(
       'should pass for constraint-based validation',
       async () => {
-        const result = await llmExpect('Hello world!', undefined, 'Is this a greeting?');
+        const result = await aiExpectSimple('Hello world!', undefined, 'Is this a greeting?');
         vitestExpect(result).toBe(true);
       },
       longTestTimeout
@@ -224,7 +224,7 @@ describe('llm-expect chain', () => {
     it(
       'should fail for non-matching values',
       async () => {
-        const result = await llmExpect('goodbye', 'hello');
+        const result = await aiExpectSimple('goodbye', 'hello');
         vitestExpect(result).toBe(false);
       },
       longTestTimeout
@@ -233,7 +233,7 @@ describe('llm-expect chain', () => {
     it(
       'should validate content quality',
       async () => {
-        const result = await llmExpect(
+        const result = await aiExpectSimple(
           'This is a well-written, professional email with proper grammar.',
           undefined,
           'Is this text professional and grammatically correct?'
@@ -250,7 +250,7 @@ describe('llm-expect chain', () => {
       async () => {
         delete process.env.LLM_EXPECT_MODE;
 
-        const [passed] = await expect('hello', 'goodbye');
+        const [passed] = await aiExpect('hello', 'goodbye');
         vitestExpect(passed).toBe(false);
         // Should not throw in none mode
       },
@@ -262,7 +262,7 @@ describe('llm-expect chain', () => {
       async () => {
         process.env.LLM_EXPECT_MODE = 'invalid';
 
-        const [passed] = await expect('hello', 'goodbye');
+        const [passed] = await aiExpect('hello', 'goodbye');
         vitestExpect(passed).toBe(false);
         // Should default to none mode and not throw
       },
@@ -274,7 +274,7 @@ describe('llm-expect chain', () => {
     it(
       'should provide file and line information',
       async () => {
-        const [, details] = await expect('hello', 'hello');
+        const [, details] = await aiExpect('hello', 'hello');
 
         vitestExpect(details.file).toBeDefined();
         vitestExpect(details.line).toBeTypeOf('number');
@@ -293,7 +293,7 @@ describe('llm-expect chain', () => {
           level: 'Senior Developer',
         };
 
-        const [passed] = await expect(
+        const [passed] = await aiExpect(
           userProfile,
           undefined,
           'Does this profile represent an experienced software developer with modern skills?'
@@ -310,7 +310,7 @@ describe('llm-expect chain', () => {
         const storyOpening =
           'Once upon a time, in a land far away, there lived a brave knight who embarked on a quest to save the kingdom from an ancient curse.';
 
-        const [passed] = await expect(
+        const [passed] = await aiExpect(
           storyOpening,
           undefined,
           'Is this story opening engaging and sets up a clear adventure narrative?'

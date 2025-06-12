@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import llmExpect from './index.js';
+import aiExpect from './index.js';
 import { longTestTimeout } from '../../constants/common.js';
 
 const examples = [
@@ -57,12 +57,14 @@ describe('LLM Expect Verblet', () => {
     it(
       description,
       async () => {
-        const result = await llmExpect(
-          example.inputs.actual,
-          example.inputs.expected,
-          example.inputs.constraint,
-          { throw: false } // Don't throw for test examples
-        );
+        const result =
+          example.inputs.expected !== undefined
+            ? await aiExpect(example.inputs.actual).toEqual(example.inputs.expected, {
+                throws: false,
+              })
+            : await aiExpect(example.inputs.actual).toSatisfy(example.inputs.constraint, {
+                throws: false,
+              });
 
         expect(result).toBe(example.want.result);
       },
@@ -74,16 +76,16 @@ describe('LLM Expect Verblet', () => {
     'should throw by default on failure',
     async () => {
       await expect(async () => {
-        await llmExpect('hello', 'goodbye');
+        await aiExpect('hello').toEqual('goodbye');
       }).rejects.toThrow('LLM assertion failed');
     },
     longTestTimeout
   );
 
   it(
-    'should not throw when throw option is false',
+    'should not throw when throws option is false',
     async () => {
-      const result = await llmExpect('hello', 'goodbye', undefined, { throw: false });
+      const result = await aiExpect('hello').toEqual('goodbye', { throws: false });
       expect(result).toBe(false);
     },
     longTestTimeout
@@ -95,11 +97,9 @@ describe('LLM Expect Verblet', () => {
       const businessRecommendation =
         'Increase marketing budget by 20% for Q4 to boost holiday sales and target demographics aged 25-45 through social media campaigns';
 
-      const result = await llmExpect(
-        businessRecommendation,
-        undefined,
+      const result = await aiExpect(businessRecommendation).toSatisfy(
         'Is this recommendation specific, actionable, and includes measurable targets?',
-        { throw: false }
+        { throws: false }
       );
 
       expect(result).toBe(true);

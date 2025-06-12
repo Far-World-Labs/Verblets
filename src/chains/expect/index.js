@@ -12,7 +12,7 @@ function getCallerInfo() {
   // Find the first line that's not this file
   for (let i = 2; i < lines.length; i++) {
     const line = lines[i];
-    if (line.includes('at ') && !line.includes('llm-expect')) {
+    if (line.includes('at ') && !line.includes('expect')) {
       const match = line.match(/at .* \((.+):(\d+):\d+\)/);
       if (match) {
         return { file: match[1], line: parseInt(match[2]) };
@@ -167,7 +167,7 @@ ${result.advice}`;
 /**
  * Simple LLM expectation (backward compatibility)
  */
-export default async function llmExpect(actual, expected, constraint) {
+export default async function expectSimple(actual, expected, constraint) {
   const [passed] = await expect(actual, expected, constraint);
   return passed;
 }

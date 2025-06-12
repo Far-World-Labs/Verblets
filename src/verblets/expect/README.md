@@ -5,31 +5,43 @@ Make intelligent assertions using natural language. A single LLM call that valid
 ## Quick Start
 
 ```javascript
-import llmExpect from './index.js';
+import expect, { llmAssert } from './index.js';
 
 // Simple equality check (throws on failure)
-await llmExpect("hello", "hello");
+await expect("hello").toEqual("hello");
 // ✅ Passes silently
 
 // Constraint-based validation
-await llmExpect(
-  "Hello world!",
-  "Is this a greeting?"
-);
+await expect("Hello world!").toSatisfy("Is this a greeting?");
 // ✅ Passes silently
 
 // Failed assertion throws
 try {
-  await llmExpect("goodbye", "hello");
+  await expect("goodbye").toEqual("hello");
 } catch (error) {
   console.log(error.message);
   // "LLM assertion failed: Does the actual value strictly equal the expected value?"
 }
+
+// Direct helper with custom options
+const passed = await llmAssert({
+  actual: "hello",
+  equals: "hello",
+  llm: { temperature: 0 },
+  throws: false,
+});
+
+// Custom message when the assertion fails
+await expect("bad").toEqual("good", {
+  message: ({ actual, equals }) => `Expected ${equals} but got ${actual}`,
+});
 ```
+
+Use `throws: false` to return a boolean instead of throwing when the assertion fails.
 
 ## Enhanced Chain Implementation
 
-For advanced debugging, detailed error analysis, and enhanced features, use the **[llm-expect chain](../../chains/llm-expect/)**:
+For advanced debugging, detailed error analysis, and enhanced features, use the **[expect chain](../../chains/expect/)**:
 
 ### Environment Modes
 
