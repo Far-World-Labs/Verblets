@@ -5,11 +5,10 @@ vi.mock('../../lib/chatgpt/index.js', () => ({
   default: vi.fn((prompt) => {
     const listMatch = prompt.match(/<list>\n([\s\S]*?)\n<\/list>/);
     const accMatch = prompt.match(/<accumulator>\n([\s\S]*?)\n<\/accumulator>/);
-    let acc = '';
-    let lines = [];
+
     if (listMatch && accMatch) {
-      acc = accMatch[1].trim();
-      lines = listMatch[1]
+      const acc = accMatch[1].trim();
+      const lines = listMatch[1]
         .split('\n')
         .map((line) => line.trim())
         .filter(Boolean);

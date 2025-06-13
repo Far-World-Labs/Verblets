@@ -39,7 +39,7 @@ describe('Bool verblet', () => {
         expect(result).toStrictEqual(example.want.result);
 
         // Additional LLM assertion to validate the boolean result makes sense
-        const [resultMakesSense] = await aiExpect({
+        const resultMakesSense = await aiExpect({
           question: example.inputs.text,
           answer: result,
         }).toSatisfy('Is this a reasonable yes/no answer to a Star Wars question?');
@@ -64,13 +64,13 @@ describe('Bool verblet', () => {
       expect(typeof result).toBe('boolean');
 
       // LLM assertion to validate the decision reasoning
-      const [decisionIsReasonable] = await aiExpect(
+      const decisionIsReasonable = await aiExpect(
         `The question was about Friday afternoon deployment with passing tests. The decision was: ${result}`
       ).toSatisfy('Does this sound like a reasonable deployment decision?');
       expect(decisionIsReasonable).toBe(true);
 
       // Additional assertion about the decision being conservative
-      const [isConservativeDecision] = await aiExpect(
+      const isConservativeDecision = await aiExpect(
         `A boolean decision of ${result} for Friday afternoon deployment`
       ).toSatisfy('Is this a cautious approach to deployment timing?');
       expect(isConservativeDecision).toBe(true);
