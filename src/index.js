@@ -22,6 +22,8 @@ import SocraticMethod from './chains/socratic/index.js';
 import scanJS from './chains/scan-js/index.js';
 
 import sort from './chains/sort/index.js';
+import bulkScore from './chains/bulk-score/index.js';
+import filterAmbiguous from './chains/filter-ambiguous/index.js';
 
 import SummaryMap from './chains/summary-map/index.js';
 
@@ -141,6 +143,8 @@ export const verblets = {
   SummaryMap,
   test,
   testAdvice,
+  bulkScore,
+  filterAmbiguous,
   bulkGroup,
   bulkFilter,
   listGroup,

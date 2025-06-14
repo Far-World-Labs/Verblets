@@ -41,6 +41,7 @@ List operations transform, filter, and organize collections using natural langua
 - [list-expand](./src/verblets/list-expand) - generate additional similar items
 - [intersection](./src/verblets/intersection) - describe common traits between items
 - [sort](./src/chains/sort) - order lists by any describable criteria
+- [bulk-score](./src/chains/bulk-score) - score lists with calibrated examples
 
 ### Content
 
@@ -57,6 +58,7 @@ Content utilities generate, transform, and analyze text while maintaining struct
 - [to-object](./src/verblets/to-object) - convert descriptions to structured objects
 - [veiled-variants](./src/chains/veiled-variants) - rephrase sensitive queries safely
 - [themes](./src/chains/themes) - uncover the big ideas in text and where each appears
+- [filter-ambiguous](./src/chains/filter-ambiguous) - find and rank unclear terms for disambiguation
 
 ### Utility Operations
 
