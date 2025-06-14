@@ -449,6 +449,7 @@ import { bulkMap } from './src/index.js';
   // e.g. 'User session: login, dashboard view and logout'
 ```
 
+<<<<<<< HEAD
 **bulk-partition** - Discover the best categories and group large lists consistently
 ```javascript
   import bulkPartition from './src/chains/bulk-partition/index.js';
@@ -476,6 +477,24 @@ import { bulkMap } from './src/index.js';
   const mainThemes = await themes(longReport, { topN: 3 });
   // ['strategy', 'market challenges', 'team morale']
 ```
+=======
+- **bulk-find** - Search lists in batches using `listFind`
+  ```javascript
+  import bulkFind, { bulkFindRetry } from './src/lib/bulk-find/index.js';
+
+  const diaryEntries = [
+    'Hiked up the mountains today and saw breathtaking views',
+    'Visited the local market and tried a spicy stew',
+    'Spotted penguins playing on the beach this morning'
+  ];
+  const match = await bulkFindRetry(diaryEntries, 'mentions penguins', {
+    chunkSize: 2,
+    maxAttempts: 2
+  });
+  // => 'Spotted penguins playing on the beach this morning'
+  ```
+
+>>>>>>> f71abac (Restore eslint disable comment)
 - **search-best-first** - Intelligently explore solution spaces
   ```javascript
   // Find the best recipe adjustments when ingredients are missing

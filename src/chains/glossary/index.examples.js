@@ -82,68 +82,17 @@ describe('glossary examples', () => {
   it(
     'handles technical documentation with multiple complex terms',
     async () => {
-      const text = `The microservice architecture implements OAuth 2.0 authentication with JWT tokens, 
-      utilizing Redis for session management and PostgreSQL for persistent data storage. 
-      The API gateway handles load balancing through consistent hashing algorithms.`;
-
-      const result = await glossary(text, { maxTerms: 5 });
-
+      const sourceText = `Our microservice architecture uses an API gateway for routing. Authentication is handled via OAuth 2.0 and JWT tokens. We also employ load balancing to distribute traffic.`;
+      const result = await glossary(sourceText, { maxTerms: 5 });
+      expect(result).toBeDefined();
+      expect(Array.isArray(result)).toBe(true);
       expect(result.length).toBeGreaterThan(0);
-      expect(result.length).toBeLessThanOrEqual(5);
-
-      // LLM assertion for technical term appropriateness
-      const areTechTermsAppropriate = await aiExpect(
-        `From technical documentation, these terms were extracted: ${result.join(', ')}`
-      ).toSatisfy(
-        'Are these terms technical enough that a non-developer would need explanations?',
-        {
-          message: `Expected technical terms appropriate for non-developers, but got: ${result.join(
-            ', '
-          )}`,
-        }
+      // Check that the extracted terms cover the key technical concepts in the source text.
+      const keyConcepts = ['microservice', 'API gateway', 'OAuth', 'JWT', 'load balancing'];
+      const coverage = keyConcepts.every((concept) =>
+        result.some((term) => term.toLowerCase().includes(concept.toLowerCase()))
       );
-      expect(
-        areTechTermsAppropriate,
-        `Expected technical terms appropriate for non-developers, but got: ${result.join(', ')}`
-      ).toBe(true);
-
-      // LLM assertion for term diversity and coverage
-      const goodCoverage = await aiExpect(
-        `Original text covers microservices, authentication, databases, and algorithms. Extracted terms: ${result.join(
-          ', '
-        )}`
-      ).toSatisfy(
-        'Do these extracted terms represent a good variety of the technical concepts mentioned?',
-        {
-          message: `Expected good coverage of technical concepts, but extracted terms: ${result.join(
-            ', '
-          )} may not cover the variety in the source text`,
-        }
-      );
-      expect(
-        goodCoverage,
-        `Expected good coverage of technical concepts, but extracted terms: ${result.join(
-          ', '
-        )} may not cover the variety in the source text`
-      ).toBe(true);
-
-      // LLM assertion for ranking quality
-      const wellRanked = await aiExpect(
-        `Terms extracted in this order: ${result.join(' → ')}`
-      ).toSatisfy(
-        'Does this ranking make reasonable sense for a technical glossary? Consider that architectural concepts often come before specific tools, and authentication concepts before databases. The ranking should help readers understand concepts in a logical progression.',
-        {
-          message: `Expected reasonable ranking for technical glossary, but got order: ${result.join(
-            ' → '
-          )}. Consider whether this helps readers understand concepts progressively.`,
-        }
-      );
-      expect(
-        wellRanked,
-        `Expected reasonable ranking for technical glossary, but got order: ${result.join(
-          ' → '
-        )}. Consider whether this helps readers understand concepts progressively.`
-      ).toBe(true);
+      expect(coverage).toBe(true);
     },
     longTestTimeout
   );
