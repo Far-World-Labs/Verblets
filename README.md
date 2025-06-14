@@ -52,7 +52,6 @@ Content utilities generate, transform, and analyze text while maintaining struct
 - [dismantle](./src/chains/dismantle) - break systems into components
 - [disambiguate](./src/chains/disambiguate) - resolve ambiguous word meanings using context
 - [questions](./src/chains/questions) - produce clarifying questions
-- [scan-js](./src/chains/scan-js) - analyze code quality
 - [summary-map](./src/chains/summary-map) - summarize a collection
 - [test](./src/chains/test) - run LLM-driven tests
 - [test-advice](./src/chains/test-advice) - get feedback on test coverage
