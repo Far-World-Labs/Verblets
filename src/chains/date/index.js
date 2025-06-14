@@ -16,7 +16,7 @@ const {
 
 const expectationPrompt = (question) => `${contentIsQuestion} ${question}
 
-List up to three short yes/no checks that would confirm a date answer is correct. For holiday dates (like Christmas, New Year's, etc.), ensure the date is in UTC/GMT timezone and matches the standard calendar date (e.g. Christmas is always December 25th). If nothing specific comes to mind, respond with ["The result is a valid date"].
+List up to three short yes/no checks that would confirm a date answer is correct. If nothing specific comes to mind, respond with ["The result is a valid date"].
 
 ${onlyJSONArray}`;
 
