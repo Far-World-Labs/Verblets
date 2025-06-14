@@ -20,6 +20,7 @@ Available chains:
 - [sort](./sort)
 - [summary-map](./summary-map)
 - [themes](./themes)
+- [set-interval](./set-interval)
 - [test](./test)
 - [test-advice](./test-advice)
 - [veiled-variants](./veiled-variants)
