@@ -19,6 +19,7 @@ Available chains:
 - [scan-js](./scan-js)
 - [sort](./sort)
 - [summary-map](./summary-map)
+- [set-interval](./set-interval)
 - [test](./test)
 - [test-advice](./test-advice)
 - [veiled-variants](./veiled-variants)

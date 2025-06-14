@@ -23,6 +23,7 @@ import scanJS from './chains/scan-js/index.js';
 
 import sort from './chains/sort/index.js';
 import date from './chains/date/index.js';
+import setInterval from './chains/set-interval/index.js';
 
 import SummaryMap from './chains/summary-map/index.js';
 
@@ -143,6 +144,7 @@ export const verblets = {
   sort,
   date,
   SummaryMap,
+  setInterval,
   test,
   testAdvice,
   bulkGroup,
