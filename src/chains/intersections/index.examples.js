@@ -50,21 +50,28 @@ describe('intersections chain examples', () => {
   it(
     'handles diverse categories with meaningful intersections',
     async () => {
-      const result = await intersections(['books', 'movies', 'music']);
+      // Use simple string categories instead of objects
+      const categories = ['Cloud', 'DevOps', 'Security'];
+      const result = await intersections(categories, { maxIntersections: 3 });
+      expect(result).toBeDefined();
+      expect(typeof result).toBe('object');
+      expect(Object.keys(result).length).toBeGreaterThan(0);
 
-      // Validate entertainment media analysis
-      await aiExpect(Object.keys(result).length).toSatisfy(
-        'should be greater than 0, representing intersections between entertainment media',
-        {
-          context: 'Testing intersections chain with entertainment media categories',
-        }
+      // Check that the result has meaningful intersection keys
+      const intersectionKeys = Object.keys(result);
+      const hasMeaningfulKeys = intersectionKeys.some(
+        (key) => key.includes('Cloud') || key.includes('DevOps') || key.includes('Security')
       );
+      expect(hasMeaningfulKeys).toBe(true);
 
-      // Validate intersection descriptions - just check it's a non-empty string
-      if (Object.keys(result).length > 0) {
-        const firstIntersection = Object.values(result)[0];
-        expect(typeof firstIntersection.description).toBe('string');
-        expect(firstIntersection.description.length).toBeGreaterThan(0);
+      // Validate structure of intersection objects
+      for (const [, intersection] of Object.entries(result)) {
+        expect(intersection).toHaveProperty('combination');
+        expect(intersection).toHaveProperty('description');
+        expect(intersection).toHaveProperty('elements');
+        expect(Array.isArray(intersection.combination)).toBe(true);
+        expect(Array.isArray(intersection.elements)).toBe(true);
+        expect(typeof intersection.description).toBe('string');
       }
     },
     longTestTimeout

@@ -83,8 +83,17 @@ export const run = async (prompt, options = {}) => {
     modelName: modelNameNegotiated,
   });
 
-  const cache = await getRedis();
-  const { result: cacheResult } = await getPromptResult(cache, requestConfig);
+  // Check if caching is disabled via environment variable
+  const cachingDisabled = process.env.DISABLE_CACHE === 'true';
+
+  let cacheResult = null;
+  let cache = null;
+
+  if (!cachingDisabled) {
+    cache = await getRedis();
+    const { result } = await getPromptResult(cache, requestConfig);
+    cacheResult = result;
+  }
 
   onBeforeRequest({
     isCached: !!cacheResult,
@@ -120,7 +129,10 @@ export const run = async (prompt, options = {}) => {
 
     timeoutController.clearTimeout();
 
-    await setPromptResult(cache, requestConfig, result);
+    // Only cache the result if caching is not disabled
+    if (!cachingDisabled && cache) {
+      await setPromptResult(cache, requestConfig, result);
+    }
   }
 
   const resultShaped = shapeOutput(result);

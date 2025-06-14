@@ -147,7 +147,11 @@ if (process.env.NODE_ENV !== 'test') {
 const secondsInDay = 60 * 60 * 24;
 export const cacheTTL = process.env.CHATGPT_CACHE_TTL ?? secondsInDay;
 
-export const debugPromptGlobally = process.env.CHATGPT_DEBUG_REQUEST ?? false;
+// Caching can be disabled by setting DISABLE_CACHE=true
+// By default, caching is enabled when Redis is available and working
+export const cachingEnabled = process.env.DISABLE_CACHE !== 'true';
+
+export const debugPromptGlobally = process.env.CHATGPT_DEBUG_PROMPT ?? false;
 
 export const debugPromptGloballyIfChanged = process.env.CHATGPT_DEBUG_REQUEST_IF_CHANGED ?? false;
 

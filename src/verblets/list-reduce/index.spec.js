@@ -5,19 +5,17 @@ vi.mock('../../lib/chatgpt/index.js', () => ({
   default: vi.fn((prompt) => {
     const listMatch = prompt.match(/<list>\n([\s\S]*?)\n<\/list>/);
     const accMatch = prompt.match(/<accumulator>\n([\s\S]*?)\n<\/accumulator>/);
-    let acc = '';
     let lines = [];
 
     if (listMatch && accMatch) {
-      acc = accMatch[1].trim();
       lines = listMatch[1]
         .split('\n')
         .map((line) => line.trim())
         .filter(Boolean);
-      return `${acc}+${lines.join('+')}`;
+      return lines.join('+');
     }
-    // Return the joined result as expected
-    return [acc, ...lines].join('+');
+    // Return just the joined list items
+    return lines.join('+');
   }),
 }));
 

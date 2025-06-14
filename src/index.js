@@ -43,14 +43,9 @@ import retry from './lib/retry/index.js';
 import searchBestFirst from './lib/search-best-first/index.js';
 import searchJSFiles from './lib/search-js-files/index.js';
 import shortenText from './lib/shorten-text/index.js';
-<<<<<<< HEAD
 import bulkMap, { bulkMapRetry } from './chains/bulk-map/index.js';
 import bulkFind, { bulkFindRetry } from './chains/bulk-find/index.js';
 import bulkFilter, { bulkFilterRetry } from './chains/bulk-filter/index.js';
-=======
-import bulkMap, { bulkMapRetry } from './lib/bulk-map/index.js';
-import bulkFind, { bulkFindRetry } from './lib/bulk-find/index.js';
->>>>>>> f71abac (Restore eslint disable comment)
 import stripNumeric from './lib/strip-numeric/index.js';
 import stripResponse from './lib/strip-response/index.js';
 import toBool from './lib/to-bool/index.js';

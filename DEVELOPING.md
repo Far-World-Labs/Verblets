@@ -35,6 +35,15 @@ npm run examples                # Runs example tests with real LLM calls
 EXAMPLES=true npm run examples  # Automatically set, enables Redis caching
 ```
 
+### Caching Control
+```bash
+# Disable caching for all LLM calls (forces fresh API calls)
+DISABLE_CACHE=true npm run examples
+
+# Enable caching (default behavior when Redis is available)
+npm run examples
+```
+
 ## Caching System
 
 ### Redis Caching for Examples
