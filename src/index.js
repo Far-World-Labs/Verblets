@@ -25,6 +25,7 @@ import sort from './chains/sort/index.js';
 import date from './chains/date/index.js';
 
 import SummaryMap from './chains/summary-map/index.js';
+import themes from './chains/themes/index.js';
 
 import test from './chains/test/index.js';
 
@@ -143,6 +144,7 @@ export const verblets = {
   sort,
   date,
   SummaryMap,
+  themes,
   test,
   testAdvice,
   bulkGroup,

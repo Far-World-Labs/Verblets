@@ -7,6 +7,7 @@ vi.mock('../../lib/chatgpt/index.js', () => ({
     const accMatch = prompt.match(/<accumulator>\n([\s\S]*?)\n<\/accumulator>/);
     let acc = '';
     let lines = [];
+
     if (listMatch && accMatch) {
       acc = accMatch[1].trim();
       lines = listMatch[1]
