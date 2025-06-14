@@ -7,8 +7,12 @@ const buildPrompt = function (list, instructions) {
   return `For each line in <list>, apply the <instructions> to transform it.\nReturn the same number of lines without numbering.\n\n${instructionsBlock}\n${listBlock}`;
 };
 
-export default async function listMap(list, instructions) {
-  const output = await chatGPT(buildPrompt(list, instructions));
+export default async function listMap(list, instructions, config = {}) {
+  const { llm, ...options } = config;
+  const output = await chatGPT(buildPrompt(list, instructions), {
+    modelOptions: { ...llm },
+    ...options,
+  });
   const lines = output
     .split('\n')
     .map((line) => line.trim())

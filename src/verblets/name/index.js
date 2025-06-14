@@ -2,15 +2,14 @@ import chatGPT from '../../lib/chatgpt/index.js';
 import stripResponse from '../../lib/strip-response/index.js';
 import { outputSuccinctNames, constants as promptConstants } from '../../prompts/index.js';
 
-const { asUndefinedByDefault, contentIsQuestion, explainAndSeparate, explainAndSeparatePrimitive } =
-  promptConstants;
+const { asUndefinedByDefault, contentIsQuestion } = promptConstants;
 
-export default async (text, options = {}) => {
-  const namePrompt = `${contentIsQuestion} Suggest a short, evocative name capturing the deeper meaning of: ${text}\n\n${explainAndSeparate} ${explainAndSeparatePrimitive}\n\n${outputSuccinctNames(
-    5
-  )} ${asUndefinedByDefault}`;
-
-  const response = await chatGPT(namePrompt, options);
-
-  return stripResponse(response);
-};
+export default async function name(subject, config = {}) {
+  const { llm, ...options } = config;
+  const prompt = `${contentIsQuestion} Suggest a concise, memorable name for the <subject>.\n\n${wrapVariable(subject, {
+    tag: 'subject',
+  })} ${asUndefinedByDefault}`;
+  const response = await chatGPT(prompt, { modelOptions: { ...llm }, ...options });
+  const [firstLine] = stripResponse(response).split('\n');
+  return firstLine.trim();
+}
