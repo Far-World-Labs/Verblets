@@ -1,11 +1,14 @@
 import fs from 'node:fs/promises';
 
-import { contentIsExample, contentIsSchema, onlyJSON } from './constants.js';
+import {
+  contentIsExample,
+  contentIsSchema,
+  onlyJSON,
+  contentIsIntent,
+  contentIsOperationOption,
+  contentIsParametersOptions,
+} from './constants.js';
 import wrapVariable from './wrap-variable.js';
-
-const contentIsIntent = 'Give me an intent response for the following:';
-const contentIsOperationOption = 'The extracted operation must be one of the following:';
-const contentIsParametersOptions = 'The extracted perameters must be from the following options:';
 
 const exampleJSON = `{
   "queryText": "play some music",
