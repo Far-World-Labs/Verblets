@@ -51,6 +51,10 @@ export const contentIsExampleObject =
 export const contentIsSchema = 'Make it conform exactly to the following schema:';
 export const contentHasIntent = 'What is the intent of the following message:';
 export const contentIsSortCriteria = 'Sort the following items by:';
+export const contentIsIntent = 'Give me an intent response for the following:';
+export const contentIsOperationOption = 'The extracted operation must be one of the following:';
+export const contentIsParametersOptions =
+  'The extracted parameters must be from the following options:';
 
 // Give explanation
 export const explainAndSeparate =
