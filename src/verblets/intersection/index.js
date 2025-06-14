@@ -20,9 +20,12 @@ The array should specify items without context, groupings, or any other data--ju
 ${tryCompleteData} ${onlyJSONStringArray}`;
 };
 
-export default async function intersection(items, options = {}) {
+export default async function intersection(items, config = {}) {
   if (!Array.isArray(items) || items.length < 2) return [];
-  const output = await chatGPT(buildPrompt(items, options));
+  const { llm, ...options } = config;
+  const output = await chatGPT(buildPrompt(items, options), {
+    modelOptions: { ...llm },
+  });
 
   try {
     const parsed = JSON.parse(output.trim());

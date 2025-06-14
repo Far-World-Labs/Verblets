@@ -42,7 +42,8 @@ ${contentToJSON} ${wrapVariable(stripResponse(text), { tag: 'content' })}
 ${onlyJSON}`;
 };
 
-export default async (text, schema) => {
+export default async (text, schema, config = {}) => {
+  const { llm, ...options } = config;
   let prompt;
   let result;
   let response = text;
@@ -78,9 +79,8 @@ export default async (text, schema) => {
   try {
     prompt = buildJsonPrompt(response, schema, errorDetails);
     response = await chatGPT(prompt, {
-      modelOptions: {
-        modelName: 'fastGood',
-      },
+      modelOptions: { modelName: 'fastGood', ...llm },
+      ...options,
     });
     result = JSON.parse(stripResponse(response));
 
@@ -111,9 +111,8 @@ export default async (text, schema) => {
 
     prompt = buildJsonPrompt(response, schema, errorDetails);
     response = await chatGPT(prompt, {
-      modelOptions: {
-        modelName: 'fastGood',
-      },
+      modelOptions: { modelName: 'fastGood', ...llm },
+      ...options,
     });
     result = JSON.parse(stripResponse(response));
 
