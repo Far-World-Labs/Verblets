@@ -2,6 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://example.com/schemas/photograph.json",
   "type": "object",
+  "additionalProperties": false,
   "properties": {
     "@context": {
       "type": "string",
@@ -28,6 +29,7 @@
     },
     "thumbnail": {
       "type": "object",
+      "additionalProperties": false,
       "properties": {
         "@type": {
           "type": "string",
@@ -45,10 +47,11 @@
           "minimum": 1
         }
       },
-      "required": ["url"]
+      "required": ["@type", "url"]
     },
     "image": {
       "type": "object",
+      "additionalProperties": false,
       "properties": {
         "@type": {
           "type": "string",
@@ -66,10 +69,11 @@
           "minimum": 1
         }
       },
-      "required": ["url"]
+      "required": ["@type", "url"]
     },
     "contentLocation": {
       "type": "object",
+      "additionalProperties": false,
       "properties": {
         "@type": {
           "type": "string",
@@ -80,6 +84,7 @@
         },
         "address": {
           "type": "object",
+          "additionalProperties": false,
           "properties": {
             "@type": {
               "type": "string",
@@ -101,10 +106,11 @@
               "type": "string"
             }
           },
-          "required": ["streetAddress", "addressLocality", "addressRegion", "postalCode", "addressCountry"]
+          "required": ["@type", "addressLocality", "addressCountry"]
         },
         "geo": {
           "type": "object",
+          "additionalProperties": false,
           "properties": {
             "@type": {
               "type": "string",
@@ -117,10 +123,10 @@
               "type": "number"
             }
           },
-          "required": ["latitude", "longitude"]
+          "required": ["@type", "latitude", "longitude"]
         }
       },
-      "required": ["name"]
+      "required": ["@type", "name"]
     }
   },
   "required": ["@context", "@type", "name"]

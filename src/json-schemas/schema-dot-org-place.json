@@ -1,7 +1,12 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
+  "additionalProperties": false,
   "properties": {
+    "@context": {
+      "type": "string",
+      "pattern": "^https://schema.org$"
+    },
     "@type": {
       "type": "string",
       "enum": ["Place", "City"]
@@ -9,8 +14,52 @@
     "name": {
       "type": "string"
     },
+    "alternateName": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "population": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "area": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "@type": {
+          "type": "string",
+          "enum": ["QuantitativeValue"]
+        },
+        "value": {
+          "type": "number",
+          "minimum": 0
+        },
+        "unitCode": {
+          "type": "string"
+        }
+      }
+    },
+    "elevation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "@type": {
+          "type": "string",
+          "enum": ["QuantitativeValue"]
+        },
+        "value": {
+          "type": "number"
+        },
+        "unitCode": {
+          "type": "string"
+        }
+      }
+    },
     "address": {
       "type": "object",
+      "additionalProperties": false,
       "properties": {
         "@type": {
           "type": "string",
@@ -31,11 +80,11 @@
         "addressCountry": {
           "type": "string"
         }
-      },
-      "additionalProperties": true
+      }
     },
     "geo": {
       "type": "object",
+      "additionalProperties": false,
       "properties": {
         "@type": {
           "type": "string",
@@ -47,10 +96,34 @@
         "longitude": {
           "type": "number"
         }
-      },
-      "additionalProperties": true
+      }
+    },
+    "areaServed": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "@type": {
+              "type": "string",
+              "enum": ["AdministrativeArea"]
+            },
+            "name": {
+              "type": "string"
+            }
+          }
+        }
+      ]
+    },
+    "additionalType": {
+      "type": "string"
+    },
+    "sameAs": {
+      "type": "string"
     }
   },
-  "additionalProperties": true,
   "required": ["@type", "name"]
 }

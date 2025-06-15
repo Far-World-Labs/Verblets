@@ -6,6 +6,13 @@ import pkg from 'lodash';
 const { shuffle } = pkg;
 import number from '../../verblets/number/index.js';
 import { constants as promptConstants } from '../../prompts/index.js';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+// Get the directory of this module
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const {
   onlyJSONStringArray,
@@ -15,6 +22,15 @@ const {
   explainAndSeparate,
   explainAndSeparatePrimitive,
 } = promptConstants;
+
+/**
+ * Load the JSON schema for intersection results
+ * @returns {Promise<Object>} JSON schema for validation
+ */
+async function getIntersectionSchema() {
+  const schemaPath = path.join(__dirname, 'intersection-result.json');
+  return JSON.parse(await fs.readFile(schemaPath, 'utf8'));
+}
 
 /**
  * Prompt for listing elements that belong to all categories
@@ -143,6 +159,8 @@ const processRemainingCombo = async (combo, instructions, examplePrompts) => {
  * @param {number} options.maxSize - Maximum combination size (default: items.length)
  * @param {number} options.batchSize - Number of combinations to process in parallel (default: 5)
  * @param {number} options.goodnessScore - Minimum score threshold for good examples (default: 7)
+ * @param {string|Object} options.llm - LLM model to use (default: 'fastGoodCheap')
+ * @param {boolean} options.useSchemaValidation - Whether to validate results with JSON schema (default: false)
  * @returns {Object} Results with combinations, elements, and exhaustive intersections
  * @throws {Error} When no combinations score above the goodness threshold
  */
@@ -157,7 +175,14 @@ export default async function intersections(items, options = {}) {
     maxSize = items.length,
     batchSize = 5,
     goodnessScore = 7,
+    llm = 'fastGoodCheap',
+    useSchemaValidation = false, // Disabled by default due to OpenAI API limitations with patternProperties
   } = options;
+
+  // Note: Schema validation is disabled by default because OpenAI's structured output
+  // doesn't handle patternProperties well. The function returns a dynamic object
+  // where keys are combination strings (e.g., "art + science") and values are
+  // intersection objects with combination, description, and elements properties.
 
   // Step 1: Generate and shuffle combinations
   const allCombinations = rangeCombinations(items, minSize, maxSize);
@@ -244,5 +269,79 @@ export default async function intersections(items, options = {}) {
     finalIntersections[result.key] = result.intersection;
   }
 
+  // Step 4: Validate results with JSON schema if enabled
+  if (useSchemaValidation && Object.keys(finalIntersections).length > 0) {
+    return await validateIntersectionResults(finalIntersections, llm);
+  }
+
   return finalIntersections;
+}
+
+/**
+ * Create model options with JSON schema validation
+ * @param {string|Object} llm - LLM model to use
+ * @param {string} schemaName - Name for the JSON schema
+ * @returns {Promise<Object>} Model options with schema validation
+ */
+async function createModelOptions(llm = 'fastGoodCheap', schemaName = 'intersection_result') {
+  const schema = await getIntersectionSchema();
+
+  const responseFormat = {
+    type: 'json_schema',
+    json_schema: {
+      name: schemaName,
+      schema,
+    },
+  };
+
+  if (typeof llm === 'string') {
+    return {
+      modelName: llm,
+      response_format: responseFormat,
+    };
+  } else {
+    return {
+      ...llm,
+      response_format: responseFormat,
+    };
+  }
+}
+
+/**
+ * Validate and structure final results using JSON schema
+ * @param {Object} intersections - Raw intersection results
+ * @param {string|Object} llm - LLM model to use
+ * @returns {Promise<Object>} Schema-validated intersection results
+ */
+async function validateIntersectionResults(intersections, llm = 'fastGoodCheap') {
+  if (!intersections || Object.keys(intersections).length === 0) {
+    return {};
+  }
+
+  const prompt = `Validate and structure these intersection results according to the required schema:
+
+${JSON.stringify(intersections, null, 2)}
+
+Ensure each intersection has:
+- combination: array of category names
+- description: clear explanation of the intersection
+- elements: array of specific examples that belong to ALL categories
+
+Return the properly structured JSON object.`;
+
+  try {
+    const modelOptions = await createModelOptions(llm, 'intersection_result');
+    const response = await chatGPT(prompt, { modelOptions });
+    const parsed = typeof response === 'string' ? JSON.parse(response) : response;
+
+    // Validate that the result is an object
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      return intersections; // Return original if validation fails
+    }
+
+    return parsed;
+  } catch (error) {
+    console.warn('Schema validation failed, returning original results:', error.message);
+    return intersections;
+  }
 }

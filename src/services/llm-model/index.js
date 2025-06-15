@@ -268,7 +268,7 @@ class ModelService {
   }
 
   getRequestConfig(options) {
-    const { tools, toolChoice, modelName, prompt, systemPrompt } = options;
+    const { tools, toolChoice, modelName, prompt, systemPrompt, response_format } = options;
 
     const modelFound = this.getModel(modelName);
 
@@ -291,10 +291,17 @@ class ModelService {
     }
     const data = this.getRequestParameters(options);
 
-    return {
+    const result = {
       ...requestPrompt,
       ...data,
     };
+
+    // Add response_format if provided
+    if (response_format) {
+      result.response_format = response_format;
+    }
+
+    return result;
   }
 }
 

@@ -1,0 +1,171 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import chatGPT from '../../lib/chatgpt/index.js';
+import { onlyJSON, strictFormat } from '../../prompts/constants.js';
+
+// Get the directory of this module
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+/**
+ * Load the JSON schema for central tendency results
+ * @returns {Promise<Object>} JSON schema for validation
+ */
+async function getCentralTendencySchema() {
+  const schemaPath = path.join(__dirname, 'central-tendency-result.json');
+  return JSON.parse(await fs.readFile(schemaPath, 'utf8'));
+}
+
+/**
+ * Core prompt template for central tendency evaluation using cognitive science principles.
+ * Suitable for both individual and bulk processing.
+ */
+export const CENTRAL_TENDENCY_PROMPT = `Use cognitive science principles of prototype theory and family resemblance:
+
+{context}
+{coreFeatures}
+
+COGNITIVE PRINCIPLES:
+1. Prototype Theory: Categories have graded structure with central and peripheral members
+2. Family Resemblance: Members share overlapping features without identical characteristics
+3. Feature Analysis: Consider both core (definitional) and characteristic (typical) features
+4. Functional Centrality: Assess how well the item serves the category's purpose
+
+ASSESSMENT CRITERIA:
+- Feature overlap with seed items
+- Possession of core definitional features
+- Functional alignment with category purpose
+- Typicality relative to category prototype
+
+CENTRALITY SCORING GUIDE (use precise decimals):
+• 0.0-0.1: Not a category member (completely unrelated)
+• 0.1-0.2: Extremely peripheral (minimal connection, metaphorical only)
+• 0.2-0.3: Peripheral member (weak connection, few shared features)
+• 0.3-0.4: Marginal member (some shared features but atypical)
+• 0.4-0.5: Borderline member (mixed typical/atypical features)
+• 0.5-0.6: Atypical but clear member (definitionally belongs but unusual)
+• 0.6-0.7: Moderately typical (good example with some variations)
+• 0.7-0.8: Highly typical (strong example, most expected features)
+• 0.8-0.9: Very prototypical (excellent example, nearly all expected features)
+• 0.9-1.0: Maximally prototypical (perfect/ideal example of the category)
+
+{outputRequirements}`;
+
+/**
+ * Build a prompt for evaluating centrality
+ * @param {string} item - The item to evaluate (for single) or placeholder for bulk
+ * @param {string[]} seedItems - Array of seed items for comparison
+ * @param {Object} config - Configuration options
+ * @returns {string} Complete prompt
+ */
+export function buildCentralTendencyPrompt(
+  item,
+  seedItems,
+  { context = '', coreFeatures = [], outputRequirements = null } = {}
+) {
+  const contextLine = context ? `Context: ${context}` : '';
+  const coreFeaturesLine =
+    coreFeatures.length > 0 ? `Core Features: ${coreFeatures.join(', ')}` : '';
+
+  // Default structured output requirements for individual verblet use
+  const defaultOutputRequirements = `OUTPUT REQUIREMENTS:
+${onlyJSON}
+${strictFormat}
+
+Required JSON structure:
+{
+  "score": <number between 0.0 and 1.0>,
+  "reason": "<brief explanation of the centrality assessment>",
+  "confidence": <number between 0.0 and 1.0 indicating confidence in the assessment>
+}
+
+The "reason" should briefly explain why the item received its centrality score based on feature overlap, typicality, and functional alignment with the seed items.
+The "confidence" should reflect how certain you are about the assessment (higher for clear cases, lower for borderline cases).`;
+
+  const outputRequirementsLine = outputRequirements || defaultOutputRequirements;
+
+  const prompt = CENTRAL_TENDENCY_PROMPT.replace('{context}', contextLine)
+    .replace('{coreFeatures}', coreFeaturesLine)
+    .replace('{outputRequirements}', outputRequirementsLine);
+
+  return `Evaluate how central "${item}" is among these category members: ${seedItems.join(', ')}
+
+${prompt}`;
+}
+
+/**
+ * Create model options for structured outputs
+ * @param {string|Object} llm - LLM model name or configuration object
+ * @param {string} schemaName - Name for the JSON schema
+ * @param {Object} [customSchema] - Custom schema to use instead of default
+ * @returns {Promise<Object>} Model options for chatGPT
+ */
+async function createModelOptions(
+  llm = 'fastGoodCheap',
+  schemaName = 'central_tendency_result',
+  customSchema = null
+) {
+  const schema = customSchema || (await getCentralTendencySchema());
+
+  const responseFormat = {
+    type: 'json_schema',
+    json_schema: {
+      name: schemaName,
+      schema,
+    },
+  };
+
+  if (typeof llm === 'string') {
+    return {
+      modelName: llm,
+      response_format: responseFormat,
+    };
+  } else {
+    return {
+      ...llm,
+      response_format: responseFormat,
+    };
+  }
+}
+
+/**
+ * Parse response from chatGPT
+ * @param {string|Object} response - Response from chatGPT
+ * @returns {Object} Parsed response object
+ */
+function parseResponse(response) {
+  return typeof response === 'string' ? JSON.parse(response) : response;
+}
+
+/**
+ * Evaluate how central an item is among category members using cognitive science principles.
+ *
+ * Based on prototype theory and family resemblance, this function assesses graded typicality
+ * by analyzing feature overlap, core characteristics, and functional alignment with seed items.
+ *
+ * @param {string} item - The item to evaluate for centrality
+ * @param {string[]} seedItems - Array of known category members for comparison
+ * @param {Object} [config={}] - Configuration options
+ * @param {string} [config.context=''] - Context description for evaluation
+ * @param {string[]} [config.coreFeatures=[]] - Known core/definitional features of the category
+ * @param {string} [config.llm='fastGoodCheap'] - LLM model to use
+ * @returns {Promise<{score: number, reason: string, confidence: number}>}
+ */
+export default async function centralTendency(item, seedItems, config = {}) {
+  if (!item || typeof item !== 'string') {
+    throw new Error('Item must be a non-empty string');
+  }
+
+  if (!Array.isArray(seedItems) || seedItems.length === 0) {
+    throw new Error('seedItems must be a non-empty array');
+  }
+
+  const { context = '', coreFeatures = [], llm = 'fastGoodCheap' } = config;
+
+  const prompt = buildCentralTendencyPrompt(item, seedItems, { context, coreFeatures });
+  const modelOptions = await createModelOptions(llm, 'central_tendency_result');
+
+  const response = await chatGPT(prompt, { modelOptions });
+  return parseResponse(response);
+}
