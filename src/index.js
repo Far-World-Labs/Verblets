@@ -24,6 +24,8 @@ import scanJS from './chains/scan-js/index.js';
 import sort from './chains/sort/index.js';
 import date from './chains/date/index.js';
 import setInterval from './chains/set-interval/index.js';
+import bulkScore from './chains/bulk-score/index.js';
+import filterAmbiguous from './chains/filter-ambiguous/index.js';
 
 import SummaryMap from './chains/summary-map/index.js';
 import themes from './chains/themes/index.js';
@@ -164,6 +166,8 @@ export const verblets = {
   setInterval,
   test,
   testAdvice,
+  bulkScore,
+  filterAmbiguous,
   bulkGroup,
   bulkFilter,
   listGroup,

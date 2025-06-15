@@ -43,26 +43,26 @@ List operations transform, filter, and organize collections using natural langua
 - [list-expand](./src/verblets/list-expand) - generate additional similar items
 - [intersection](./src/verblets/intersection) - describe common traits between items
 - [sort](./src/chains/sort) - order lists by any describable criteria
+- [bulk-score](./src/chains/bulk-score) - score lists with calibrated examples
 
 ### Content
 
 Content utilities generate, transform, and analyze text while maintaining structure and meaning. They excel at creative tasks, system analysis, and privacy-aware text processing.
 
 - [anonymize](./src/chains/anonymize) - scrub personal details from text
+- [collect-terms](./src/chains/collect-terms) - extract difficult vocabulary
 - [dismantle](./src/chains/dismantle) - break systems into components
 - [disambiguate](./src/chains/disambiguate) - resolve ambiguous word meanings using context
-- [questions](./src/chains/questions) - produce clarifying questions
-- [summary-map](./src/chains/summary-map) - summarize a collection
-- [test](./src/chains/test) - run LLM-driven tests
-- [test-advice](./src/chains/test-advice) - get feedback on test coverage
-- [veiled-variants](./src/chains/veiled-variants) - conceal sensitive queries with safer framing
-- [collect-terms](./src/chains/collect-terms) - extract difficult vocabulary
+- [filter-ambiguous](./src/chains/filter-ambiguous) - find and rank unclear terms for disambiguation
 - [name](./src/verblets/name) - name something from a definition or description
 - [name-similar-to](./src/verblets/name-similar-to) - suggest short names that match a style
+- [questions](./src/chains/questions) - produce clarifying questions
 - [schema-org](./src/verblets/schema-org) - create schema.org objects
 - [socratic](./src/chains/socratic) - explore assumptions using a Socratic dialogue
+- [summary-map](./src/chains/summary-map) - summarize a collection
 - [themes](./src/chains/themes) - identify themes in text
-- [to-object](./src/verblets/to-object) - convert descriptions to objects
+- [to-object](./src/verblets/to-object) - convert descriptions to structured objects
+- [veiled-variants](./src/chains/veiled-variants) - rephrase sensitive queries safely
 
 ### Utility Operations
 
