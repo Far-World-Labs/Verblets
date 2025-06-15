@@ -74,6 +74,7 @@ Utility operations provide meta-functionality like automatic tool selection, int
 - [intent](./src/verblets/intent) - extract user intent and structured parameters
 - [sentiment](./src/verblets/sentiment) - detect emotional tone of text
 - [summary-map](./src/chains/summary-map) - store self-resizing hash table values. Useful for fixed-sized contexts.
+- [set-interval](./src/chains/set-interval) - Conversational scheduler
 
 ### Codebase
 
