@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "patternProperties": {
+    "^.+ \\+ .+$": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "combination": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 2,
+          "description": "Array of items that form this intersection"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Description of the intersection between the items"
+        },
+        "elements": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 0,
+          "description": "Specific examples or instances that belong to all categories"
+        }
+      },
+      "required": ["combination", "description", "elements"]
+    }
+  },
+  "description": "Object containing intersections between categories, where keys are combination strings and values are intersection details"
+} 

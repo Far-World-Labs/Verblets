@@ -37,7 +37,10 @@ export const generateList = async function* generateListGenerator(text, options 
   const {
     shouldSkip = shouldSkipDefault,
     shouldStop = shouldStopDefault,
-    model = modelService.getBestPublicModel(),
+    model = 'fastGoodCheap',
+    // eslint-disable-next-line no-unused-vars
+    _schema,
+    ...passThroughOptions
   } = options;
 
   const startTime = new Date();
@@ -49,16 +52,14 @@ export const generateList = async function* generateListGenerator(text, options 
       existing: resultsAll,
     });
 
-    const budget = model.budgetTokens(listPrompt);
-
     let resultsNew = [];
     try {
       // eslint-disable-next-line no-await-in-loop
       const results = await chatGPT(listPrompt, {
         modelOptions: {
-          maxTokens: budget.completion,
+          modelName: typeof model === 'string' ? model : model.name,
         },
-        ...options,
+        ...passThroughOptions,
       });
 
       // debug helper:
@@ -128,9 +129,9 @@ export const generateList = async function* generateListGenerator(text, options 
   }
 };
 
-export default async (text, options) => {
+export default async (text, options = {}) => {
+  const { schema, model = 'fastGoodCheap', ...passThroughOptions } = options;
   const generator = generateList(text, options);
-  const { schema, model = modelService.getBestPublicModel() } = options ?? {};
 
   const results = [];
   for await (const result of generator) {
@@ -141,14 +142,20 @@ export default async (text, options) => {
     return results;
   }
 
+  // Get model object for budgeting
+  const modelObj = typeof model === 'string' ? modelService.getModel(model) : model;
+
   const resultObjects = await Promise.all(
     results.map(async (result) => {
       const prompt = outputTransformPrompt(result, schema);
-      const budget = model.budgetTokens(prompt);
+      const budget = modelObj.budgetTokens(prompt);
 
       const resultObject = await chatGPT(prompt, {
         maxTokens: budget.completion,
-        ...options,
+        modelOptions: {
+          modelName: typeof model === 'string' ? model : model.name,
+        },
+        ...passThroughOptions,
       });
 
       return toObject(resultObject);

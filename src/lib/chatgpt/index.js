@@ -45,7 +45,15 @@ const onAfterRequestDefault = ({ debugResult, isCached, resultShaped }) => {
   }
 };
 
-export const run = async (prompt, options = {}) => {
+export const run = async (prompt, config = {}) => {
+  // Handle config parameter - can be string (model name) or object (full options)
+  let options;
+  if (typeof config === 'string') {
+    options = { modelOptions: { modelName: config } };
+  } else {
+    options = config;
+  }
+
   const {
     abortSignal,
     debugPrompt,

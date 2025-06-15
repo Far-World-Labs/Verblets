@@ -11,10 +11,23 @@ const getSchema = async (type) => {
 
 export default async (text, type) => {
   const schema = type ? await getSchema(type) : undefined;
+
+  const modelOptions = schema
+    ? {
+        response_format: {
+          type: 'json_schema',
+          json_schema: {
+            name: `schema_org_${type.toLowerCase()}`,
+            schema,
+          },
+        },
+      }
+    : {
+        response_format: { type: 'json_object' },
+      };
+
   const response = await chatGPT(asSchemaOrgText(text, type, schema), {
-    modelOptions: {
-      response_format: { type: 'json_object', schema },
-    },
+    modelOptions,
   });
   return JSON.parse(stripResponse(response));
 };

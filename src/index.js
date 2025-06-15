@@ -92,11 +92,26 @@ import bulkGroup from './chains/bulk-group/index.js';
 import listGroup from './verblets/list-group/index.js';
 import intersection from './verblets/intersection/index.js';
 
+// # Concept Science
+import centralTendency from './verblets/central-tendency/index.js';
+import bulkCentralTendency, {
+  bulkCentralTendencyRetry,
+} from './chains/bulk-central-tendency/index.js';
+
 export { default as retry } from './lib/retry/index.js';
 export { default as stripResponse } from './lib/strip-response/index.js';
 export { default as searchJSFiles } from './lib/search-js-files/index.js';
 export { default as searchBestFirst } from './lib/search-best-first/index.js';
-export { bulkMap, bulkMapRetry, bulkFind, bulkFindRetry, bulkFilter, bulkFilterRetry };
+export {
+  bulkMap,
+  bulkMapRetry,
+  bulkFind,
+  bulkFindRetry,
+  bulkFilter,
+  bulkFilterRetry,
+  bulkCentralTendency,
+  bulkCentralTendencyRetry,
+};
 export { rangeCombinations } from './lib/combinations/index.js';
 
 export const lib = {
@@ -151,6 +166,9 @@ export const verblets = {
   bulkFilter,
   listGroup,
   intersection,
+  // # Concept Science
+  centralTendency,
+  bulkCentralTendency,
 };
 
 export const services = {
