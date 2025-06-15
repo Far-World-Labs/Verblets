@@ -106,7 +106,7 @@ export default async function generateSeeds(categoryName, options = {}) {
     return results.slice(0, count);
   };
 
-  return retry(generateWithRetry, {
+  return await retry(generateWithRetry, {
     maxRetries,
     retryDelay,
     retryCondition: (error) => {
