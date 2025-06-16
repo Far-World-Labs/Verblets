@@ -39,13 +39,13 @@ const penguinResult = await centralTendency('penguin', birdSeeds, config);
 
 ## Advanced Features
 
-### Seed Generation
+### Sample Generation
 Generate representative category examples:
 
 ```javascript
-import { generateSeeds } from './index.js';
+import categorySamples from '../../chains/category-samples/index.js';
 
-const animalSeeds = await generateSeeds('animal', {
+const animalSamples = await categorySamples('animal', {
   context: 'Diverse animal kingdom representation across phyla',
   count: 6,
   diversityLevel: 'high', // 'high', 'balanced', or 'focused'
@@ -87,7 +87,7 @@ const results = await bulkCentralTendency(
   - **coreFeatures** (string[]): Known core/definitional features of the category (default: [])
   - **llm** (string): LLM model to use (default: 'fastGoodCheap')
 
-### generateSeeds(categoryName, config)
+### categorySamples(categoryName, config)
 
 - **categoryName** (string): Name of the category
 - **config** (Object): Configuration options
@@ -155,12 +155,12 @@ The `centralTendency` verblet integrates seamlessly with other concept science t
 
 ```javascript
 // Generate seeds, then evaluate centrality
-const seeds = await generateSeeds('vehicle', { context: 'Land transportation' });
+const seeds = await categorySamples('vehicle', { context: 'Land transportation' });
 const centrality = await centralTendency('bicycle', seeds, { context: 'Personal transportation' });
 
 // Use in concept hierarchies
-const superordinateSeeds = await generateSeeds('animal');
-const basicLevelSeeds = await generateSeeds('bird');
+const superordinateSeeds = await categorySamples('animal');
+const basicLevelSeeds = await categorySamples('bird');
 const subordinateResult = await centralTendency('robin', basicLevelSeeds);
 ```
 

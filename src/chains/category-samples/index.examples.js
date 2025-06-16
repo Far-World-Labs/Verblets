@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { longTestTimeout } from '../../constants/common.js';
 import { expect as aiExpect } from '../expect/index.js';
-import generateSeeds from './index.js';
+import categorySamples from './index.js';
 
-describe('Generate Seeds Chain', () => {
+describe('Category Samples Chain', () => {
   it(
     'generates basic seed items for a category',
     async () => {
-      const seeds = await generateSeeds('fruit', {
+      const seeds = await categorySamples('fruit', {
         count: 5,
         diversityLevel: 'balanced',
       });
@@ -30,7 +30,7 @@ describe('Generate Seeds Chain', () => {
   it(
     'generates seeds with context',
     async () => {
-      const seeds = await generateSeeds('bird', {
+      const seeds = await categorySamples('bird', {
         context: 'Common backyard birds in North America',
         count: 4,
         diversityLevel: 'focused',
@@ -53,7 +53,7 @@ describe('Generate Seeds Chain', () => {
   it(
     'generates diverse seeds with high diversity level',
     async () => {
-      const seeds = await generateSeeds('vehicle', {
+      const seeds = await categorySamples('vehicle', {
         count: 6,
         diversityLevel: 'high',
       });
@@ -73,15 +73,15 @@ describe('Generate Seeds Chain', () => {
   );
 
   it('throws error for invalid category name', async () => {
-    await expect(generateSeeds('')).rejects.toThrow('categoryName must be a non-empty string');
-    await expect(generateSeeds(null)).rejects.toThrow('categoryName must be a non-empty string');
+    await expect(categorySamples('')).rejects.toThrow('categoryName must be a non-empty string');
+    await expect(categorySamples(null)).rejects.toThrow('categoryName must be a non-empty string');
   });
 
   it(
     'handles retry logic on failures',
     async () => {
       // This test ensures the retry mechanism works
-      const seeds = await generateSeeds('animal', {
+      const seeds = await categorySamples('animal', {
         count: 3,
         maxRetries: 2,
         retryDelay: 100,
