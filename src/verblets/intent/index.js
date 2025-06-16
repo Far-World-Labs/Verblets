@@ -13,4 +13,4 @@ export default async function intent({ text, config = {} } = {}) {
   } catch {
     return { intent: response.trim() };
   }
-}
+};
