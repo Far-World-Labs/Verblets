@@ -3,9 +3,9 @@ import retry from '../../lib/retry/index.js';
 import modelService from '../../services/llm-model/index.js';
 
 /**
- * Core prompt template for seed generation using cognitive science principles
+ * Core prompt template for sample generation using cognitive science principles
  */
-export const SEED_GENERATION_PROMPT = `Generate seed items for the category "{categoryName}" using cognitive science principles.
+export const SAMPLE_GENERATION_PROMPT = `Generate sample items for the category "{categoryName}" using cognitive science principles.
 
 {context}
 
@@ -24,10 +24,10 @@ REQUIREMENTS:
 IMPORTANT: Return only clean item names without numbering, descriptions, or explanations.`;
 
 /**
- * Build seed generation prompt with specific parameters
+ * Build sample generation prompt with specific parameters
  * @param {string} categoryName - Name of the category
  * @param {Object} config - Configuration options
- * @returns {string} Complete prompt for seed generation
+ * @returns {string} Complete prompt for sample generation
  */
 export function buildSeedGenerationPrompt(
   categoryName,
@@ -47,7 +47,7 @@ export function buildSeedGenerationPrompt(
 
   const contextLine = context ? `Context: ${context}` : '';
 
-  return SEED_GENERATION_PROMPT.replace('{categoryName}', categoryName)
+  return SAMPLE_GENERATION_PROMPT.replace('{categoryName}', categoryName)
     .replace('{context}', contextLine)
     .replace(
       '{diversityInstructions}',
@@ -60,20 +60,20 @@ export function buildSeedGenerationPrompt(
 }
 
 /**
- * Generate seed items for a category using cognitive science principles.
+ * Generate sample items for a category using cognitive science principles.
  * Creates diverse, representative examples across the typicality spectrum.
  *
  * @param {string} categoryName - Name of the category
  * @param {Object} [options={}] - Configuration options
- * @param {string} [options.context=''] - Context for seed generation
- * @param {number} [options.count=30] - Number of seed items to generate
+ * @param {string} [options.context=''] - Context for sample generation
+ * @param {number} [options.count=30] - Number of sample items to generate
  * @param {string} [options.diversityLevel='balanced'] - 'high', 'balanced', or 'focused'
  * @param {string|Object} [options.llm='fastGoodCheap'] - LLM model to use
  * @param {number} [options.maxRetries=3] - Maximum number of retry attempts
  * @param {number} [options.retryDelay=1000] - Delay between retries in milliseconds
  * @returns {Promise<string[]>}
  */
-export default async function generateSeeds(categoryName, options = {}) {
+export default async function categorySamples(categoryName, options = {}) {
   if (!categoryName || typeof categoryName !== 'string') {
     throw new Error('categoryName must be a non-empty string');
   }
@@ -99,7 +99,7 @@ export default async function generateSeeds(categoryName, options = {}) {
     });
 
     if (!results || results.length === 0) {
-      throw new Error(`No seed items generated for category: ${categoryName}`);
+      throw new Error(`No sample items generated for category: ${categoryName}`);
     }
 
     // Return only the requested count
@@ -112,7 +112,7 @@ export default async function generateSeeds(categoryName, options = {}) {
     retryCondition: (error) => {
       // Retry on network errors, timeouts, or empty results
       return (
-        error.message.includes('No seed items generated') ||
+        error.message.includes('No sample items generated') ||
         error.message.includes('timeout') ||
         error.message.includes('network') ||
         error.message.includes('ECONNRESET')
@@ -122,13 +122,13 @@ export default async function generateSeeds(categoryName, options = {}) {
 }
 
 /**
- * Generate seed items for a category using list generation
- * @param {string} category - The category to generate seeds for
- * @param {number} _count - Target number of seeds (unused, kept for API compatibility)
+ * Generate sample items for a category using list generation
+ * @param {string} category - The category to generate samples for
+ * @param {number} _count - Target number of samples (unused, kept for API compatibility)
  * @param {Object} options - Additional options
- * @returns {Promise<string[]>} Array of seed items
+ * @returns {Promise<string[]>} Array of sample items
  */
-export function generateSeedsList(category, _count = 10, options = {}) {
-  // Use the list chain to generate seeds for the category
+export function categorySamplesList(category, _count = 10, options = {}) {
+  // Use the list chain to generate samples for the category
   return list(category, options);
 }

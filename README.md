@@ -61,6 +61,7 @@ Content utilities generate, transform, and analyze text while maintaining struct
 - [socratic](./src/chains/socratic) - explore assumptions using a Socratic dialogue
 - [summary-map](./src/chains/summary-map) - summarize a collection
 - [themes](./src/chains/themes) - identify themes in text
+- [category-samples](./src/chains/category-samples) - generate diverse examples for any category
 - [to-object](./src/verblets/to-object) - convert descriptions to structured objects
 - [veiled-variants](./src/chains/veiled-variants) - rephrase sensitive queries safely
 

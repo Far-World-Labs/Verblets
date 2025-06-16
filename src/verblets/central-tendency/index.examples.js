@@ -5,7 +5,7 @@
 
 import { describe, expect, it } from 'vitest';
 import centralTendency from './index.js';
-import generateSeeds from '../../chains/generate-seeds/index.js';
+import categorySamples from '../../chains/category-samples/index.js';
 import bulkCentralTendency from '../../chains/bulk-central-tendency/index.js';
 import { longTestTimeout } from '../../constants/common.js';
 
@@ -88,7 +88,7 @@ describe('centralTendency examples', () => {
     'generates seeds with different diversity levels',
     async () => {
       // High diversity seeds
-      const highDiversitySeeds = await generateSeeds('animal', {
+      const highDiversitySeeds = await categorySamples('animal', {
         context: 'Diverse animal kingdom representation across phyla',
         count: 6,
         diversityLevel: 'high',
@@ -99,7 +99,7 @@ describe('centralTendency examples', () => {
       expect(highDiversitySeeds.length).toBeLessThanOrEqual(6);
 
       // Focused seeds
-      const focusedSeeds = await generateSeeds('bird', {
+      const focusedSeeds = await categorySamples('bird', {
         context: 'Common backyard birds',
         count: 5,
         diversityLevel: 'focused',
