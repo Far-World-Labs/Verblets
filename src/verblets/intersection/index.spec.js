@@ -45,7 +45,10 @@ describe('intersection verblet', () => {
   it('includes custom instructions in the prompt', async () => {
     const chatGPT = (await import('../../lib/chatgpt/index.js')).default;
     await intersection(['x', 'y', 'z'], { instructions: 'focus on features' });
-    expect(chatGPT).toHaveBeenCalledWith(expect.stringContaining('focus on features'));
+    expect(chatGPT).toHaveBeenCalledWith(
+      expect.stringContaining('focus on features'),
+      expect.any(Object)
+    );
   });
 
   it('returns empty array when model returns empty response', async () => {

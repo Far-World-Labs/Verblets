@@ -1,8 +1,8 @@
 import chatGPT from '../../lib/chatgpt/index.js';
 import stripResponse from '../../lib/strip-response/index.js';
 import toDate from '../../lib/to-date/index.js';
-import bool from '../../verblets/bool/index.js';
 import toObject from '../../verblets/to-object/index.js';
+import bool from '../../verblets/bool/index.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 
 const {
@@ -16,8 +16,7 @@ const {
 
 const expectationPrompt = (question) => `${contentIsQuestion} ${question}
 
-List up to three short yes/no checks that would confirm a date answer is correct. For holiday dates (like Christmas, New Year's, etc.), ensure the date is in UTC/GMT timezone and matches the standard calendar date (e.g. Christmas is always December 25th). If nothing specific comes to mind, respond with ["The result is a valid date"].
-
+List up to three short yes/no checks that would confirm a date answer is correct.
 ${onlyJSONArray}`;
 
 const buildCheckPrompt = (dateValue, check) => {
@@ -29,17 +28,20 @@ const buildCheckPrompt = (dateValue, check) => {
   return `Date in ISO: ${iso} (UTC: ${human}, UTC date: ${utcDate.toISOString()}). Does this satisfy "${check}"?`;
 };
 
-export default async function date(text, { maxAttempts = 3 } = {}) {
-  const llmExpectations = (await toObject(await chatGPT(expectationPrompt(text)))) || [
-    'The result is a valid date',
-  ];
+export default async function date(text, config = {}) {
+  const { maxAttempts = 3, llm, ...options } = config;
+  const llmExpectations = (await toObject(
+    await chatGPT(expectationPrompt(text), { modelOptions: { ...llm }, ...options }),
+    null,
+    { llm, ...options }
+  )) || ['The result is a valid date'];
 
   let attemptText = text;
   let response;
   for (let i = 0; i < maxAttempts; i += 1) {
     const datePrompt = `${contentIsQuestion} ${attemptText}\n\n${explainAndSeparate} ${explainAndSeparatePrimitive}\n\n${asDate} ${asUndefinedByDefault}`;
     // eslint-disable-next-line no-await-in-loop
-    response = await chatGPT(datePrompt);
+    response = await chatGPT(datePrompt, { modelOptions: { ...llm }, ...options });
     const value = toDate(stripResponse(response));
     if (value === undefined) return undefined;
 
@@ -51,7 +53,7 @@ export default async function date(text, { maxAttempts = 3 } = {}) {
     let failedCheck;
     for (const check of llmExpectations) {
       // eslint-disable-next-line no-await-in-loop
-      const passed = await bool(buildCheckPrompt(utcValue, check));
+      const passed = await bool(buildCheckPrompt(utcValue, check), { llm, ...options });
       if (!passed) {
         failedCheck = check;
         break;

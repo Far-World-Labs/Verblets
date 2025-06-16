@@ -1,36 +1,30 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
-  "additionalProperties": false,
-  "patternProperties": {
-    "^.+ \\+ .+$": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "combination": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "minItems": 2,
-          "description": "Array of items that form this intersection"
+  "description": "Intersection results between categories",
+  "additionalProperties": {
+    "type": "object",
+    "properties": {
+      "combination": {
+        "type": "array",
+        "items": {
+          "type": "string"
         },
-        "description": {
-          "type": "string",
-          "minLength": 1,
-          "description": "Description of the intersection between the items"
-        },
-        "elements": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "minItems": 0,
-          "description": "Specific examples or instances that belong to all categories"
-        }
+        "description": "Array of category names that form this intersection"
       },
-      "required": ["combination", "description", "elements"]
-    }
-  },
-  "description": "Object containing intersections between categories, where keys are combination strings and values are intersection details"
+      "description": {
+        "type": "string",
+        "description": "Clear explanation of what this intersection represents"
+      },
+      "elements": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Specific examples that belong to ALL categories in the combination"
+      }
+    },
+    "required": ["combination", "description", "elements"],
+    "additionalProperties": false
+  }
 } 

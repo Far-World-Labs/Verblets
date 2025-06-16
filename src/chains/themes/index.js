@@ -7,11 +7,12 @@ const splitText = (text) =>
     .map((p) => p.trim())
     .filter(Boolean);
 
-export default async function themes(text, { chunkSize = 5, topN } = {}) {
+export default async function themes(text, config = {}) {
+  const { chunkSize = 5, topN, llm, ...options } = config;
   const pieces = splitText(text);
   const reducePrompt =
     'Update the accumulator with short themes from this text. Avoid duplicates. Return a comma-separated list of themes.';
-  const firstPass = await bulkReduce(shuffle(pieces), reducePrompt, { chunkSize });
+  const firstPass = await bulkReduce(shuffle(pieces), reducePrompt, { chunkSize, llm, ...options });
   const rawThemes = firstPass
     .split(',')
     .map((t) => t.trim())
@@ -19,7 +20,7 @@ export default async function themes(text, { chunkSize = 5, topN } = {}) {
 
   const limitText = topN ? `Limit to the top ${topN} themes.` : 'Return all meaningful themes.';
   const refinePrompt = `Refine the accumulator by merging similar themes. ${limitText} Return a comma-separated list.`;
-  const final = await bulkReduce(rawThemes, refinePrompt, { chunkSize });
+  const final = await bulkReduce(rawThemes, refinePrompt, { chunkSize, llm, ...options });
   return final
     .split(',')
     .map((t) => t.trim())

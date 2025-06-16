@@ -7,7 +7,7 @@ vi.mock('../bulk-map/index.js', () => ({
 }));
 
 vi.mock('../sort/index.js', () => ({
-  default: vi.fn((opts, list) => Promise.resolve(list)),
+  default: vi.fn((list, _criteria, _config) => Promise.resolve(list)),
 }));
 
 describe('glossary', () => {

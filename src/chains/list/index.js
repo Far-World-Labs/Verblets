@@ -8,7 +8,7 @@ import {
 import modelService from '../../services/llm-model/index.js';
 import toObject from '../../verblets/to-object/index.js';
 
-const { onlyJSON, contentIsTransformationSource } = promptConstants;
+const { onlyJSON, contentIsTransformationSource, onlyJSONArray } = promptConstants;
 
 const outputTransformPrompt = (result, schema) => {
   return `${contentIsTransformationSource} ${result}
@@ -129,38 +129,45 @@ export const generateList = async function* generateListGenerator(text, options 
   }
 };
 
-export default async (text, options = {}) => {
-  const { schema, model = 'fastGoodCheap', ...passThroughOptions } = options;
-  const generator = generateList(text, options);
+export default async function list(prompt, config = {}) {
+  const { llm, schema, ...options } = config;
+  const fullPrompt = `${prompt}\n\n${onlyJSONArray}`;
 
-  const results = [];
-  for await (const result of generator) {
-    results.push(result);
+  const response = await chatGPT(fullPrompt, {
+    modelOptions: {
+      ...llm,
+    },
+    ...options,
+  });
+
+  try {
+    const result = JSON.parse(response);
+    const items = Array.isArray(result) ? result : [];
+
+    // If schema is provided, transform each item to match the schema
+    if (schema && items.length > 0) {
+      const transformedItems = [];
+      for (const item of items) {
+        const transformPrompt = outputTransformPrompt(item, schema);
+        const transformResponse = await chatGPT(transformPrompt, {
+          modelOptions: {
+            ...llm,
+          },
+          ...options,
+        });
+        try {
+          const transformedItem = JSON.parse(transformResponse);
+          transformedItems.push(transformedItem);
+        } catch {
+          // If transformation fails, keep the original item
+          transformedItems.push(item);
+        }
+      }
+      return transformedItems;
+    }
+
+    return items;
+  } catch {
+    throw new Error('List generation did not return valid JSON array');
   }
-
-  if (!schema) {
-    return results;
-  }
-
-  // Get model object for budgeting
-  const modelObj = typeof model === 'string' ? modelService.getModel(model) : model;
-
-  const resultObjects = await Promise.all(
-    results.map(async (result) => {
-      const prompt = outputTransformPrompt(result, schema);
-      const budget = modelObj.budgetTokens(prompt);
-
-      const resultObject = await chatGPT(prompt, {
-        maxTokens: budget.completion,
-        modelOptions: {
-          modelName: typeof model === 'string' ? model : model.name,
-        },
-        ...passThroughOptions,
-      });
-
-      return toObject(resultObject);
-    })
-  );
-
-  return resultObjects;
-};
+}

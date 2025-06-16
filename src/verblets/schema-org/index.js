@@ -9,7 +9,8 @@ const getSchema = async (type) => {
   );
 };
 
-export default async (text, type) => {
+export default async (text, type, config = {}) => {
+  const { llm, ...options } = config;
   const schema = type ? await getSchema(type) : undefined;
 
   const modelOptions = schema
@@ -21,13 +22,16 @@ export default async (text, type) => {
             schema,
           },
         },
+        ...llm,
       }
     : {
         response_format: { type: 'json_object' },
+        ...llm,
       };
 
   const response = await chatGPT(asSchemaOrgText(text, type, schema), {
     modelOptions,
+    ...options,
   });
   return JSON.parse(stripResponse(response));
 };

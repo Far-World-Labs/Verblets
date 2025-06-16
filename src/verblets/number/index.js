@@ -11,12 +11,15 @@ const {
   explainAndSeparatePrimitive,
 } = promptConstants;
 
-export default async (text) => {
+export default async (text, config = {}) => {
+  const { llm, ...options } = config;
   const numberText = `${contentIsQuestion} ${text}
 
 ${explainAndSeparate} ${explainAndSeparatePrimitive}
 
 ${asNumber} ${asUndefinedByDefault}`;
 
-  return toNumber(stripResponse(await chatGPT(numberText)));
+  return toNumber(
+    stripResponse(await chatGPT(numberText, { modelOptions: { ...llm }, ...options }))
+  );
 };

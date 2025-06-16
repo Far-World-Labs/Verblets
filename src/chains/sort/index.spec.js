@@ -101,8 +101,9 @@ describe('Sort', () => {
   examples.forEach((example) => {
     it(example.name, async () => {
       const iterations = example.inputs.options.iterations ?? 1;
-      const result = await sort(example.inputs.options, example.inputs.list, {
-        budgetTokens: () => ({ completion: 0 }),
+      const result = await sort(example.inputs.list, example.inputs.options.by, {
+        model: { budgetTokens: () => ({ completion: 0 }) },
+        ...example.inputs.options,
       });
       expect(result.slice(0, extremeK * iterations)).toStrictEqual(example.want.highest);
       expect(result.slice(-(extremeK * iterations))).toStrictEqual(example.want.lowest);

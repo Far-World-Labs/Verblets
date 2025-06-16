@@ -7,7 +7,11 @@ const buildPrompt = (list, instructions) => {
   return `From the <list>, select the single item that best satisfies the <instructions>. If none apply, return an empty string.\n\n${instructionsBlock}\n${listBlock}`;
 };
 
-export default async function listFind(list, instructions) {
-  const output = await chatGPT(buildPrompt(list, instructions));
+export default async function listFind(list, instructions, config = {}) {
+  const { llm, ...options } = config;
+  const output = await chatGPT(buildPrompt(list, instructions), {
+    modelOptions: { ...llm },
+    ...options,
+  });
   return output.trim();
 }

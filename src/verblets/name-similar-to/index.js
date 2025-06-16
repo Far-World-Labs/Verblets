@@ -1,21 +1,20 @@
 import chatGPT from '../../lib/chatgpt/index.js';
 import wrapVariable from '../../prompts/wrap-variable.js';
-import outputSuccinctNames from '../../prompts/output-succinct-names.js';
 
-const buildPrompt = (description, examples) => {
-  const examplesBlock = examples.length
-    ? `${wrapVariable(examples.join('\n'), { tag: 'example-names' })}\n`
-    : '';
+const buildPrompt = (description, exampleNames) => {
   const descriptionBlock = wrapVariable(description, { tag: 'description' });
+  const exampleNamesBlock = wrapVariable(exampleNames.join('\n'), { tag: 'example-names' });
 
-  return `Suggest a single short name for <description> that matches the style of <example-names>.
-Return only the name without numbering or extra text.
-${outputSuccinctNames(5)}
-${examplesBlock}${descriptionBlock}`;
+  return `Generate a name similar to the <example-names> that fits the <description>. Return only the name, nothing else.
+
+${descriptionBlock}
+
+${exampleNamesBlock}`;
 };
 
-export default async function nameSimilarTo(description, exampleNames = [], options) {
+export default async function nameSimilarTo(description, exampleNames = [], config = {}) {
+  const { llm, ...options } = config;
   const prompt = buildPrompt(description, exampleNames);
-  const output = await chatGPT(prompt, options);
+  const output = await chatGPT(prompt, { modelOptions: { ...llm }, ...options });
   return output.split('\n')[0].trim();
 }

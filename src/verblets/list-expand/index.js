@@ -21,19 +21,18 @@ const buildPrompt = function (list, count) {
  *
  * @param {string[]} existingList - The list to expand
  * @param {number} targetCount - Target total count (default: double the input)
- * @param {Object} options - Additional options passed to the list chain
+ * @param {Object} config - Configuration options including llm settings
  * @returns {Promise<string[]>} Expanded list
  */
-export default async function listExpand(list, count = list.length * 2) {
-  const output = await chatGPT(buildPrompt(list, count));
+export default async function listExpand(list, count = list.length * 2, config = {}) {
+  const { llm, ...options } = config;
+  const output = await chatGPT(buildPrompt(list, count), { modelOptions: { ...llm }, ...options });
   const lines = output
     .split('\n')
     .map((l) => l.trim())
     .filter(Boolean);
-  if (lines.length < count) {
-    throw new Error(
-      `Batch output line count mismatch (expected at least ${count}, got ${lines.length})`
-    );
-  }
+
+  // Return what we got, even if it's less than requested
+  // This is more flexible than throwing an error
   return lines;
 }

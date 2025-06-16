@@ -7,8 +7,12 @@ function buildPrompt(list, instructions) {
   return `From the <list>, select only the items that satisfy the <instructions>. Return one item per line without numbering. If none match, return an empty string.\n\n${instructionsBlock}\n${listBlock}`;
 }
 
-export default async function listFilter(list, instructions) {
-  const output = await chatGPT(buildPrompt(list, instructions));
+export default async function listFilter(list, instructions, config = {}) {
+  const { llm, ...options } = config;
+  const output = await chatGPT(buildPrompt(list, instructions), {
+    modelOptions: { ...llm },
+    ...options,
+  });
   const trimmed = output.trim();
   return trimmed ? trimmed.split('\n') : [];
 }

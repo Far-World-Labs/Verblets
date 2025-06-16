@@ -29,13 +29,20 @@ const sanitizeList = (list) => {
   return [...new Set(list.filter((item) => item.trim() !== ''))];
 };
 
-const sort = async (options, listInitial, model = modelService.getBestPublicModel()) => {
+const sort = async (
+  options,
+  listInitial,
+  model = modelService.getBestPublicModel(),
+  config = {}
+) => {
   const {
     by,
     chunkSize = defaultSortChunkSize,
     extremeK = defaultSortExtremeK,
     iterations = defaultSortIterations,
   } = options;
+
+  const { llm, ...passThroughOptions } = config;
 
   const list = sanitizeList(listInitial);
   let i = iterations;
@@ -65,7 +72,9 @@ const sort = async (options, listInitial, model = modelService.getBestPublicMode
         modelOptions: {
           maxTokens: budget.completion,
           requestTimeout: model.requestTimeout * 1.5,
+          ...llm,
         },
+        ...passThroughOptions,
       });
 
       // eslint-disable-next-line no-await-in-loop
@@ -100,4 +109,7 @@ const sort = async (options, listInitial, model = modelService.getBestPublicMode
   return finalList;
 };
 
-export default sort;
+export default async function sortWrapper(list, criteria, config = {}) {
+  const { model = modelService.getBestPublicModel(), ...options } = config;
+  return await sort({ by: criteria, ...options }, list, model, config);
+}

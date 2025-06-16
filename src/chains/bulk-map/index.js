@@ -7,10 +7,13 @@ import listMap from '../../verblets/list-map/index.js';
  *
  * @param { string[] } list - array of fragments to process
  * @param { string } instructions - mapping instructions passed to `listMap`
- * @param { number } [chunkSize=10] - how many items to send per batch
+ * @param { object } [config={}] - configuration options
+ * @param { number } [config.chunkSize=10] - how many items to send per batch
+ * @param { object } [config.llm] - LLM configuration
  * @returns { Promise<(string|undefined)[]> } results aligned with input order
  */
-const bulkMap = async function (list, instructions, chunkSize = 10) {
+const bulkMap = async function (list, instructions, config = {}) {
+  const { chunkSize = 10, llm, ...options } = config;
   const results = new Array(list.length);
   const promises = [];
 
@@ -19,7 +22,7 @@ const bulkMap = async function (list, instructions, chunkSize = 10) {
     const startIndex = i;
 
     const p = Promise.resolve()
-      .then(() => listMap(batch, instructions))
+      .then(() => listMap(batch, instructions, { llm, ...options }))
       .then((output) => {
         if (output.length !== batch.length) {
           for (let j = 0; j < batch.length; j += 1) {
@@ -48,17 +51,15 @@ const bulkMap = async function (list, instructions, chunkSize = 10) {
  *
  * @param { string[] } list - array of fragments
  * @param { string } instructions - mapping instructions passed to `listMap`
- * @param { object } [options]
- * @param { number } [options.chunkSize=10]
- * @param { number } [options.maxAttempts=3]
+ * @param { object } [config={}] - configuration options
+ * @param { number } [config.chunkSize=10]
+ * @param { number } [config.maxAttempts=3]
+ * @param { object } [config.llm] - LLM configuration
  * @returns { Promise<(string|undefined)[]> }
  */
-export const bulkMapRetry = async function (
-  list,
-  instructions,
-  { chunkSize = 10, maxAttempts = 3 } = {}
-) {
-  const results = await bulkMap(list, instructions, chunkSize);
+export const bulkMapRetry = async function (list, instructions, config = {}) {
+  const { chunkSize = 10, maxAttempts = 3, llm, ...options } = config;
+  const results = await bulkMap(list, instructions, { chunkSize, llm, ...options });
   for (let attempt = 1; attempt < maxAttempts; attempt += 1) {
     const missingIdx = [];
     const missingFragments = [];
@@ -70,7 +71,11 @@ export const bulkMapRetry = async function (
     });
     if (missingFragments.length === 0) break;
     // eslint-disable-next-line no-await-in-loop
-    const retryResults = await bulkMap(missingFragments, instructions, chunkSize);
+    const retryResults = await bulkMap(missingFragments, instructions, {
+      chunkSize,
+      llm,
+      ...options,
+    });
     retryResults.forEach((val, i) => {
       results[missingIdx[i]] = val;
     });

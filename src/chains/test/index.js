@@ -62,11 +62,8 @@ ${contentIsExample} ${wrapVariable(testExamplesJSON, { tag: 'example' })}
 ${onlyJSONArray}
 `;
 
-export default async (
-  filePath,
-  instructions = findCodeImprovements,
-  model = modelService.getBestPublicModel()
-) => {
+export default async (filePath, instructions = findCodeImprovements, config = {}) => {
+  const { model = modelService.getBestPublicModel(), llm, ...options } = config;
   const enableRegex = new RegExp(process.env.ENABLE_AI_TESTS ?? '^$');
   if (!enableRegex.test(filePath)) {
     return [];
@@ -82,7 +79,9 @@ export default async (
     const checksResult = await chatGPT(checksPromptCreated, {
       modelOptions: {
         maxTokens: checksBudget.completion,
+        ...llm,
       },
+      ...options,
     });
 
     const testsPromptCreated = testsPrompt(text, instructions, checksResult);
@@ -92,7 +91,9 @@ export default async (
       await chatGPT(testsPromptCreated, {
         modelOptions: {
           maxTokens: testsBudget.completion,
+          ...llm,
         },
+        ...options,
       })
     );
 

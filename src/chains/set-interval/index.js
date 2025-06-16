@@ -32,23 +32,23 @@ const UNIT_MS = {
 
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/;
 
-async function toMs(text) {
+async function toMs(text, config = {}) {
   const clean = String(text).trim();
   if (ISO_DATE_RE.test(clean)) {
     const diff = new Date(clean).getTime() - Date.now();
     if (diff > 0) return diff;
   }
-  const nu = await numberWithUnits(clean);
+  const nu = await numberWithUnits(clean, config);
   if (nu && nu.value !== undefined) {
     const unit = (nu.unit || 'ms').toLowerCase();
     if (UNIT_MS[unit]) return nu.value * UNIT_MS[unit];
   }
-  const dt = await date(clean);
+  const dt = await date(clean, config);
   if (dt instanceof Date) {
     const diff = dt.getTime() - Date.now();
     if (diff > 0) return diff;
   }
-  const n = await number(clean);
+  const n = await number(clean, config);
   if (typeof n === 'number') return n;
   return 0;
 }
@@ -59,12 +59,15 @@ export default function setInterval({
   historySize = 5,
   firstInterval = '0',
   model,
+  llm,
+  ...options
 } = {}) {
   let timer;
   let count = 0;
   let lastResult;
   const history = [];
   let active = true;
+  const config = { llm, ...options };
 
   const step = async () => {
     if (!active) return;
@@ -78,11 +81,13 @@ History: ${history.join(' | ')}
 Next wait:`;
     const intervalText = await chatGPT(
       prompt,
-      model ? { modelOptions: { modelName: model } } : undefined
+      model
+        ? { modelOptions: { modelName: model, ...llm }, ...options }
+        : { modelOptions: { ...llm }, ...options }
     );
     history.push(intervalText);
     if (history.length > historySize) history.shift();
-    const delay = await toMs(intervalText);
+    const delay = await toMs(intervalText, config);
     lastResult = await fn({
       count,
       delay,
@@ -98,7 +103,7 @@ Next wait:`;
     timer = setTimeout(step, 0);
   } else {
     (async () => {
-      const initialDelay = await toMs(firstInterval);
+      const initialDelay = await toMs(firstInterval, config);
       timer = setTimeout(step, initialDelay);
     })();
   }
