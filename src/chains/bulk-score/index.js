@@ -1,8 +1,53 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import chatGPT from '../../lib/chatgpt/index.js';
 import wrapVariable from '../../prompts/wrap-variable.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 
 const { onlyJSONArray } = promptConstants;
+
+// Get the directory of this module
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+/**
+ * Load the JSON schema for bulk score results
+ * @returns {Promise<Object>} JSON schema for validation
+ */
+async function getBulkScoreSchema() {
+  const schemaPath = path.join(__dirname, 'bulk-score-result.json');
+  return JSON.parse(await fs.readFile(schemaPath, 'utf8'));
+}
+
+/**
+ * Create model options for structured outputs
+ * @param {string|Object} llm - LLM model name or configuration object
+ * @returns {Promise<Object>} Model options for chatGPT
+ */
+async function createModelOptions(llm = 'fastGoodCheap') {
+  const schema = await getBulkScoreSchema();
+
+  const responseFormat = {
+    type: 'json_schema',
+    json_schema: {
+      name: 'bulk_score_result',
+      schema,
+    },
+  };
+
+  if (typeof llm === 'string') {
+    return {
+      modelName: llm,
+      response_format: responseFormat,
+    };
+  } else {
+    return {
+      ...llm,
+      response_format: responseFormat,
+    };
+  }
+}
 
 async function scoreBatch(items, instructions, reference = [], config = {}) {
   const { llm, ...options } = config;
@@ -16,21 +61,20 @@ async function scoreBatch(items, instructions, reference = [], config = {}) {
 
   const prompt =
     `Score each line in <items> from 0 (worst) to 10 (best) based on: ${instructions}.` +
-    `\nRespond only with a JSON array of numbers in the same order.` +
+    `\nRespond with a JSON object containing a "scores" array of numbers in the same order.` +
     `${refBlock}\n${onlyJSONArray}\n${listBlock}`;
 
+  const modelOptions = await createModelOptions(llm);
   const response = await chatGPT(prompt, {
-    modelOptions: {
-      ...llm,
-    },
+    modelOptions,
     ...options,
   });
-  let arr;
-  try {
-    arr = JSON.parse(response);
-  } catch {
-    throw new Error('Score batch did not return valid JSON');
-  }
+
+  // With structured outputs, response should already be parsed and validated
+  const parsed = typeof response === 'string' ? JSON.parse(response) : response;
+  // Extract scores from the object structure
+  const arr = parsed?.scores || parsed;
+
   if (!Array.isArray(arr) || arr.length !== items.length) {
     throw new Error('Score batch mismatch');
   }

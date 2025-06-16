@@ -1,0 +1,18 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "scores": {
+      "type": "array",
+      "description": "Array of numeric scores corresponding to input items",
+      "items": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 10,
+        "description": "Score from 0 (worst) to 10 (best)"
+      }
+    }
+  },
+  "required": ["scores"],
+  "additionalProperties": false
+} 

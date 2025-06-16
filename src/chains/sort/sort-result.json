@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "items": {
+      "type": "array",
+      "description": "Array of sorted items",
+      "items": {
+        "type": "string",
+        "description": "A sorted item"
+      }
+    }
+  },
+  "required": ["items"],
+  "additionalProperties": false
+} 

@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "items": {
+      "type": "array",
+      "description": "Array of common features, instances, or relational links shared by all items",
+      "items": {
+        "type": "string",
+        "description": "A common feature, instance, or relational link"
+      }
+    }
+  },
+  "required": ["items"],
+  "additionalProperties": false
+} 

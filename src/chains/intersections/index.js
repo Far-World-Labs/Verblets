@@ -35,13 +35,17 @@ async function getIntersectionSchema() {
 /**
  * Prompt for listing elements that belong to all categories
  */
-const ELEMENTS_PROMPT = (
-  categories
-) => `${contentIsQuestion} List specific examples, instances, or elements that belong to all of: ${categories.join(
-  ', '
-)}.
+const ELEMENTS_PROMPT = (categories, instructions) => {
+  const basePrompt = `${contentIsQuestion} List specific examples, instances, or elements that belong to all of: ${categories.join(
+    ', '
+  )}.`;
+
+  const instructionsText = instructions ? `\n\nAdditional guidance: ${instructions}` : '';
+
+  return `${basePrompt}${instructionsText}
 
 ${strictFormat} ${onlyJSONStringArray}`;
+};
 
 /**
  * Prompt for scoring intersection results
@@ -65,20 +69,23 @@ ${asNumber}`;
 /**
  * Prompt for generating exhaustive elements using examples
  */
-const EXHAUSTIVE_PROMPT = (
-  examplePrompts,
-  combo
-) => `Here are examples of well-enumerated intersections:
+const EXHAUSTIVE_PROMPT = (examplePrompts, combo, instructions) => {
+  const basePrompt = `Here are examples of well-enumerated intersections:
 
 ${examplePrompts}
 
 ${contentIsQuestion} For the combination: ${combo.join(' + ')}
 
-Provide an exhaustive list of specific examples, instances, or elements that belong to ALL of these categories simultaneously. Be as comprehensive as possible, following the pattern of the examples above.
+Provide an exhaustive list of specific examples, instances, or elements that belong to ALL of these categories simultaneously. Be as comprehensive as possible, following the pattern of the examples above.`;
+
+  const instructionsText = instructions ? `\n\nAdditional guidance: ${instructions}` : '';
+
+  return `${basePrompt}${instructionsText}
 
 ${wrapVariable(combo.join(' | '), { tag: 'combination' })}
 
 ${strictFormat} ${onlyJSONStringArray}`;
+};
 
 /**
  * Parse elements from LLM response (now expects JSON array)
@@ -104,7 +111,7 @@ const processCombo = async (combo, instructions) => {
 
   // Process elements, description, and scoring in parallel
   const [elements, intersectionItems] = await Promise.all([
-    chatGPT(ELEMENTS_PROMPT(combo)),
+    chatGPT(ELEMENTS_PROMPT(combo, instructions)),
     intersection(combo, { instructions }),
   ]);
 
@@ -130,7 +137,7 @@ const processRemainingCombo = async (combo, instructions, examplePrompts) => {
   const comboKey = combo.join(' + ');
 
   const [exhaustiveElements, intersectionItems] = await Promise.all([
-    chatGPT(EXHAUSTIVE_PROMPT(examplePrompts, combo)),
+    chatGPT(EXHAUSTIVE_PROMPT(examplePrompts, combo, instructions)),
     intersection(combo, { instructions }),
   ]);
 
@@ -271,7 +278,9 @@ export default async function intersections(items, options = {}) {
 
   // Step 4: Validate results with JSON schema if enabled
   if (useSchemaValidation && Object.keys(finalIntersections).length > 0) {
-    return await validateIntersectionResults(finalIntersections, llm);
+    const validated = await validateIntersectionResults(finalIntersections, llm);
+    // Extract the intersections from the validated structure and return flat
+    return validated.intersections || finalIntersections;
   }
 
   return finalIntersections;
@@ -315,7 +324,7 @@ async function createModelOptions(llm = 'fastGoodCheap', schemaName = 'intersect
  */
 async function validateIntersectionResults(intersections, llm = 'fastGoodCheap') {
   if (!intersections || Object.keys(intersections).length === 0) {
-    return {};
+    return { intersections: {} };
   }
 
   const prompt = `Validate and structure these intersection results according to the required schema:
@@ -327,21 +336,29 @@ Ensure each intersection has:
 - description: clear explanation of the intersection
 - elements: array of specific examples that belong to ALL categories
 
-Return the properly structured JSON object.`;
+Return the properly structured JSON object with an "intersections" property containing the results.`;
 
   try {
     const modelOptions = await createModelOptions(llm, 'intersection_result');
     const response = await chatGPT(prompt, { modelOptions });
     const parsed = typeof response === 'string' ? JSON.parse(response) : response;
 
+    // Extract intersections from the object structure
+    const resultIntersections = parsed?.intersections || parsed;
+
     // Validate that the result is an object
-    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-      return intersections; // Return original if validation fails
+    if (
+      typeof resultIntersections !== 'object' ||
+      resultIntersections === null ||
+      Array.isArray(resultIntersections)
+    ) {
+      console.warn('Schema validation failed: invalid structure, returning original results');
+      return { intersections };
     }
 
-    return parsed;
+    return { intersections: resultIntersections };
   } catch (error) {
     console.warn('Schema validation failed, returning original results:', error.message);
-    return intersections;
+    return { intersections };
   }
 }

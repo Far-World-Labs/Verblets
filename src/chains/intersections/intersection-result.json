@@ -2,29 +2,37 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
   "description": "Intersection results between categories",
-  "additionalProperties": {
-    "type": "object",
-    "properties": {
-      "combination": {
-        "type": "array",
-        "items": {
-          "type": "string"
+  "properties": {
+    "intersections": {
+      "type": "object",
+      "description": "Map of intersection results keyed by combination identifier",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "combination": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Array of category names that form this intersection"
+          },
+          "description": {
+            "type": "string",
+            "description": "Clear explanation of what this intersection represents"
+          },
+          "elements": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Specific examples that belong to ALL categories in the combination"
+          }
         },
-        "description": "Array of category names that form this intersection"
-      },
-      "description": {
-        "type": "string",
-        "description": "Clear explanation of what this intersection represents"
-      },
-      "elements": {
-        "type": "array",
-        "items": {
-          "type": "string"
-        },
-        "description": "Specific examples that belong to ALL categories in the combination"
+        "required": ["combination", "description", "elements"],
+        "additionalProperties": false
       }
-    },
-    "required": ["combination", "description", "elements"],
-    "additionalProperties": false
-  }
+    }
+  },
+  "required": ["intersections"],
+  "additionalProperties": false
 } 

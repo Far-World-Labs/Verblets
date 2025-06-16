@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "items": {
+      "type": "array",
+      "description": "Array of expanded list items",
+      "items": {
+        "type": "string",
+        "description": "A list item that belongs to the same category and matches the style"
+      }
+    }
+  },
+  "required": ["items"],
+  "additionalProperties": false
+} 
