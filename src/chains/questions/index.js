@@ -1,6 +1,9 @@
 import * as R from 'ramda';
 
 import chatGPT from '../../lib/chatgpt/index.js';
+import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
+const schema = require('./schema.json');
 import {
   generateQuestions as generateQuestionsPrompt,
   constants as promptConstants,
@@ -78,7 +81,13 @@ const generateQuestions = async function* generateQuestionsGenerator(text, optio
     };
 
     // eslint-disable-next-line no-await-in-loop
-    const results = await chatGPT(`${promptCreated}`, chatGPTConfig);
+    const results = await chatGPT(`${promptCreated}`, {
+      ...chatGPTConfig,
+      modelOptions: {
+        ...(chatGPTConfig.modelOptions || {}),
+        response_format: { type: 'json_object', schema },
+      },
+    });
     let resultsParsed;
     try {
       // eslint-disable-next-line no-await-in-loop
@@ -88,7 +97,13 @@ const generateQuestions = async function* generateQuestionsGenerator(text, optio
         // eslint-disable-next-line no-await-in-loop
         const resultsUpdated = await chatGPT(
           `${asSplitIntoJSONArray}${onlyJSON} \`\`\`${results}\`\`\``,
-          chatGPTConfig
+          {
+            ...chatGPTConfig,
+            modelOptions: {
+              ...(chatGPTConfig.modelOptions || {}),
+              response_format: { type: 'json_object', schema },
+            },
+          }
         );
         // eslint-disable-next-line no-await-in-loop
         resultsParsed = await toObject(resultsUpdated);

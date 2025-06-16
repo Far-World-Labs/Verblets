@@ -4,6 +4,9 @@ import chatGPT from '../../lib/chatgpt/index.js';
 import { outputSuccinctNames, constants as promptConstants } from '../../prompts/index.js';
 import modelService from '../../services/llm-model/index.js';
 import toObject from '../../verblets/to-object/index.js';
+import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
+const schema = require('./schema.json');
 
 const { onlyJSONStringArray } = promptConstants;
 
@@ -89,6 +92,7 @@ const defaultDecompose = async ({
         maxTokens: budget.completion,
         frequencyPenalty: 0.7,
         temperature: 0.7,
+        response_format: { type: 'json_object', schema },
       },
     })
   );
@@ -107,6 +111,7 @@ const defaultEnhance = async ({
       maxTokens: budget.completion,
       frequencyPenalty: 0.5,
       temperature: 0.3,
+      modelOptions: { response_format: { type: 'json_object', schema } },
     })
   );
 

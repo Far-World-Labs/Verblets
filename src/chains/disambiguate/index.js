@@ -3,6 +3,9 @@ import listFilter from '../../verblets/list-filter/index.js';
 import toObject from '../../verblets/to-object/index.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 import modelService from '../../services/llm-model/index.js';
+import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
+const schema = require('./schema.json');
 
 const { onlyJSONStringArray } = promptConstants;
 
@@ -15,7 +18,10 @@ ${onlyJSONStringArray}`;
 export const getMeanings = async (term, { model = modelService.getBestPublicModel() } = {}) => {
   const prompt = meaningsPrompt(term);
   const budget = model.budgetTokens(prompt);
-  const response = await chatGPT(prompt, { maxTokens: budget.completion });
+  const response = await chatGPT(prompt, {
+    maxTokens: budget.completion,
+    modelOptions: { response_format: { type: 'json_object', schema } },
+  });
   return toObject(response);
 };
 

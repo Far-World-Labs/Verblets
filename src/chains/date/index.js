@@ -3,6 +3,9 @@ import stripResponse from '../../lib/strip-response/index.js';
 import toDate from '../../lib/to-date/index.js';
 import bool from '../../verblets/bool/index.js';
 import toObject from '../../verblets/to-object/index.js';
+import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
+const schema = require('./schema.json');
 import { constants as promptConstants } from '../../prompts/index.js';
 
 const {
@@ -30,9 +33,11 @@ const buildCheckPrompt = (dateValue, check) => {
 };
 
 export default async function date(text, { maxAttempts = 3 } = {}) {
-  const llmExpectations = (await toObject(await chatGPT(expectationPrompt(text)))) || [
-    'The result is a valid date',
-  ];
+  const llmExpectations = (await toObject(
+    await chatGPT(expectationPrompt(text), {
+      modelOptions: { response_format: { type: 'json_object', schema } },
+    })
+  )) || ['The result is a valid date'];
 
   let attemptText = text;
   let response;

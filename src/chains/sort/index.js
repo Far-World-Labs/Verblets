@@ -4,6 +4,9 @@ import chatGPT from '../../lib/chatgpt/index.js';
 import toObject from '../../verblets/to-object/index.js';
 import { sort as sortPromptInitial } from '../../prompts/index.js';
 import modelService from '../../services/llm-model/index.js';
+import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
+const schema = require('./schema.json');
 
 // redeclared so it's clearer how tests can override the sorter
 let sortPrompt = sortPromptInitial;
@@ -65,6 +68,7 @@ const sort = async (options, listInitial, model = modelService.getBestPublicMode
         modelOptions: {
           maxTokens: budget.completion,
           requestTimeout: model.requestTimeout * 1.5,
+          response_format: { type: 'json_object', schema },
         },
       });
 

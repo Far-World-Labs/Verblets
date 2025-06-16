@@ -6,6 +6,9 @@ import chatGPT from '../../lib/chatgpt/index.js';
 import { constants as promptConstants, wrapVariable } from '../../prompts/index.js';
 import modelService from '../../services/llm-model/index.js';
 import toObject from '../../verblets/to-object/index.js';
+import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
+const schema = require('./schema.json');
 
 const {
   contentIsExample,
@@ -82,6 +85,7 @@ export default async (
     const checksResult = await chatGPT(checksPromptCreated, {
       modelOptions: {
         maxTokens: checksBudget.completion,
+        response_format: { type: 'json_object', schema },
       },
     });
 
@@ -92,6 +96,7 @@ export default async (
       await chatGPT(testsPromptCreated, {
         modelOptions: {
           maxTokens: testsBudget.completion,
+          response_format: { type: 'json_object', schema },
         },
       })
     );

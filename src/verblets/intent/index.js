@@ -2,6 +2,9 @@ import enums from '../enum/index.js';
 import toObject from '../to-object/index.js';
 import chatGPT from '../../lib/chatgpt/index.js';
 import stripResponse from '../../lib/strip-response/index.js';
+import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
+const schema = require('./schema.json');
 
 import { constants, intent, wrapVariable } from '../../prompts/index.js';
 
@@ -56,7 +59,10 @@ export default async ({ text, operations, defaultIntent = completionIntent, opti
       operations: operationsFound,
       parameters: parametersFound,
     }),
-    options
+    {
+      modelOptions: { response_format: { type: 'json_object', schema } },
+      ...options,
+    }
   );
 
   return toObject(stripResponse(result));

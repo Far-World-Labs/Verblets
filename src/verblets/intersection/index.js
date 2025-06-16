@@ -1,6 +1,9 @@
 import chatGPT from '../../lib/chatgpt/index.js';
 import wrapVariable from '../../prompts/wrap-variable.js';
 import { constants as promptConstants } from '../../prompts/index.js';
+import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
+const schema = require('./schema.json');
 
 const { contentIsQuestion, tryCompleteData, onlyJSONStringArray } = promptConstants;
 
@@ -22,7 +25,9 @@ ${tryCompleteData} ${onlyJSONStringArray}`;
 
 export default async function intersection(items, options = {}) {
   if (!Array.isArray(items) || items.length < 2) return [];
-  const output = await chatGPT(buildPrompt(items, options));
+  const output = await chatGPT(buildPrompt(items, options), {
+    modelOptions: { response_format: { type: 'json_object', schema } },
+  });
 
   try {
     const parsed = JSON.parse(output.trim());
