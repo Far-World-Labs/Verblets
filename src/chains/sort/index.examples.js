@@ -22,13 +22,9 @@ describe('Sort chain', () => {
       async () => {
         const listResults = await list(example.inputs.listText);
 
-        const result = await sort(
-          {
-            by: example.inputs.sortText,
-            iterations: 1,
-          },
-          listResults
-        );
+        const result = await sort(listResults, example.inputs.sortText, {
+          iterations: 1,
+        });
 
         // console.error(result);
 

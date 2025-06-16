@@ -66,12 +66,14 @@ ${text}
 
 Return ONLY the final anonymized text, with no explanations or additional content.`;
 
-const anonymize = async (input) => {
+const anonymize = async (input, config = {}) => {
   const { text, method, context } = validateInput(input);
+  const { llm, ...options } = config;
 
   // Stage 1: Remove distinctive content
   const stage1Result = await run(stage1Prompt(text, method, context), {
-    modelOptions: { modelName: 'privacy' },
+    modelOptions: { modelName: 'privacy', ...llm },
+    ...options,
   });
 
   if (method === anonymizeMethod.LIGHT) {
@@ -85,7 +87,8 @@ const anonymize = async (input) => {
 
   // Stage 2: Normalize structure and tone
   const stage2Result = await run(stage2Prompt(stage1Result, method), {
-    modelOptions: { modelName: 'privacy' },
+    modelOptions: { modelName: 'privacy', ...llm },
+    ...options,
   });
 
   if (method === anonymizeMethod.BALANCED) {
@@ -100,7 +103,8 @@ const anonymize = async (input) => {
 
   // Stage 3: Suppress stylistic patterns
   const stage3Result = await run(stage3Prompt(stage2Result, method), {
-    modelOptions: { modelName: 'privacy' },
+    modelOptions: { modelName: 'privacy', ...llm },
+    ...options,
   });
 
   return {

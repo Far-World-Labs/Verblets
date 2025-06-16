@@ -1,6 +1,7 @@
 import listGroup from '../../verblets/list-group/index.js';
 
-export default async function bulkGroup(list, instructions, { chunkSize = 10, topN } = {}) {
+export default async function bulkGroup(list, instructions, config = {}) {
+  const { chunkSize = 10, topN, llm, ...options } = config;
   let categories;
   const groups = {};
 
@@ -8,7 +9,7 @@ export default async function bulkGroup(list, instructions, { chunkSize = 10, to
     const batch = list.slice(i, i + chunkSize);
 
     // eslint-disable-next-line no-await-in-loop
-    const result = await listGroup(batch, instructions, categories);
+    const result = await listGroup(batch, instructions, categories, { llm, ...options });
 
     // Use categories from first batch for consistency
     if (!categories) {

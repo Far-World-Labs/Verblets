@@ -11,7 +11,11 @@ function buildPrompt(acc, list, instructions) {
   return `Start with the given accumulator. Apply the <instructions> to each item in <list> sequentially, using the result as the new accumulator each time. Return only the final accumulator.\n\n${instructionsBlock}\n${accBlock}\n${listBlock}`;
 }
 
-export default async function listReduce(acc, list, instructions) {
-  const output = await chatGPT(buildPrompt(acc, list, instructions));
+export default async function listReduce(acc, list, instructions, config = {}) {
+  const { llm, ...options } = config;
+  const output = await chatGPT(buildPrompt(acc, list, instructions), {
+    modelOptions: { ...llm },
+    ...options,
+  });
   return output.trim();
 }

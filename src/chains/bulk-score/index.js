@@ -4,7 +4,8 @@ import { constants as promptConstants } from '../../prompts/index.js';
 
 const { onlyJSONArray } = promptConstants;
 
-async function scoreBatch(items, instructions, reference = []) {
+async function scoreBatch(items, instructions, reference = [], config = {}) {
+  const { llm, ...options } = config;
   const listBlock = wrapVariable(items.join('\n'), { tag: 'items' });
   const refBlock = reference.length
     ? `\nCalibration examples (score - text):\n${wrapVariable(
@@ -20,11 +21,9 @@ async function scoreBatch(items, instructions, reference = []) {
 
   const response = await chatGPT(prompt, {
     modelOptions: {
-      response_format: {
-        type: 'json_object',
-        schema: { type: 'array', items: { type: 'number' } },
-      },
+      ...llm,
     },
+    ...options,
   });
   let arr;
   try {
@@ -38,7 +37,8 @@ async function scoreBatch(items, instructions, reference = []) {
   return arr.map((n) => Number(n));
 }
 
-export default async function bulkScore(list, instructions, { chunkSize = 10, examples } = {}) {
+export default async function bulkScore(list, instructions, config = {}) {
+  const { chunkSize = 10, examples, llm, ...options } = config;
   if (!Array.isArray(list) || list.length === 0) {
     return { scores: [], reference: [] };
   }
@@ -46,7 +46,10 @@ export default async function bulkScore(list, instructions, { chunkSize = 10, ex
   const firstScores = [];
   for (let i = 0; i < list.length; i += chunkSize) {
     // eslint-disable-next-line no-await-in-loop
-    const scores = await scoreBatch(list.slice(i, i + chunkSize), instructions);
+    const scores = await scoreBatch(list.slice(i, i + chunkSize), instructions, [], {
+      llm,
+      ...options,
+    });
     firstScores.push(...scores);
   }
 
@@ -63,7 +66,7 @@ export default async function bulkScore(list, instructions, { chunkSize = 10, ex
       const mids = valid.slice(midStart, midStart + 3);
       reference = [...lows, ...mids, ...highs];
       const refItems = reference.map((r) => r.item);
-      const rescored = await scoreBatch(refItems, instructions);
+      const rescored = await scoreBatch(refItems, instructions, [], { llm, ...options });
       rescored.forEach((score, idx) => {
         reference[idx].score = score;
       });
@@ -75,7 +78,10 @@ export default async function bulkScore(list, instructions, { chunkSize = 10, ex
   const finalScores = [];
   for (let i = 0; i < list.length; i += chunkSize) {
     // eslint-disable-next-line no-await-in-loop
-    const scores = await scoreBatch(list.slice(i, i + chunkSize), instructions, reference);
+    const scores = await scoreBatch(list.slice(i, i + chunkSize), instructions, reference, {
+      llm,
+      ...options,
+    });
     finalScores.push(...scores);
   }
 

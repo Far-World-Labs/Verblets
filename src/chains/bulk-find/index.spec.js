@@ -12,7 +12,7 @@ beforeEach(() => {
 
 describe('bulk-find chain', () => {
   it('scans batches to find best item', async () => {
-    const result = await bulkFind(['a', 'b', 'c', 'd'], 'find', 2);
+    const result = await bulkFind(['a', 'b', 'c', 'd'], 'find', { chunkSize: 2 });
     expect(result).toBe('d');
     expect(listFind).toHaveBeenCalledTimes(2);
   });

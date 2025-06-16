@@ -94,7 +94,7 @@ export default async function generateSeeds(categoryName, options = {}) {
     const model = typeof llm === 'string' ? modelService.getModel(llm) : llm;
 
     const results = await list(prompt, {
-      model,
+      llm: model,
       shouldStop: ({ resultsAll }) => resultsAll.length >= count,
     });
 

@@ -15,14 +15,14 @@ beforeEach(() => {
 
 describe('bulkmap', () => {
   it('maps fragments in batches', async () => {
-    const result = await bulkMap(['a', 'b', 'c'], 'x', 2);
+    const result = await bulkMap(['a', 'b', 'c'], 'x', { chunkSize: 2 });
     expect(result).toStrictEqual(['a-x', 'b-x', 'c-x']);
     expect(listMap).toHaveBeenCalledTimes(2);
   });
 
   it('leaves undefined on error', async () => {
     listMap.mockRejectedValueOnce(new Error('fail'));
-    const result = await bulkMap(['FAIL', 'oops'], 'x', 2);
+    const result = await bulkMap(['FAIL', 'oops'], 'x', { chunkSize: 2 });
     expect(result).toStrictEqual([undefined, undefined]);
   });
 

@@ -69,7 +69,7 @@ ${onlyJSONStringArrayPerLine}`;
   if (terms.length === 0) return [];
 
   // Sort by importance for understanding the content
-  const sorted = await sort({ by: sortBy }, terms);
+  const sorted = await sort(terms, sortBy);
 
   return sorted.slice(0, maxTerms);
 }

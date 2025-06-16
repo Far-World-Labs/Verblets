@@ -21,8 +21,12 @@ ${categoryBlock}${listBlock}
 Output format: Return exactly ${list.length} lines with only the group name for each item.`;
 };
 
-export default async function listGroup(list, instructions, categories) {
-  const output = await chatGPT(buildPrompt(list, instructions, categories));
+export default async function listGroup(list, instructions, categories, config = {}) {
+  const { llm, ...options } = config;
+  const output = await chatGPT(buildPrompt(list, instructions, categories), {
+    modelOptions: { ...llm },
+    ...options,
+  });
   const allLines = output
     .split('\n')
     .map((line) => line.trim())

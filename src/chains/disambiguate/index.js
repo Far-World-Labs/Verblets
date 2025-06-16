@@ -12,10 +12,15 @@ List all distinct dictionary meanings or common uses of "${term}".
 ${onlyJSONStringArray}`;
 };
 
-export const getMeanings = async (term, { model = modelService.getBestPublicModel() } = {}) => {
+export const getMeanings = async (term, config = {}) => {
+  const { model = modelService.getBestPublicModel(), llm, ...options } = config;
   const prompt = meaningsPrompt(term);
   const budget = model.budgetTokens(prompt);
-  const response = await chatGPT(prompt, { maxTokens: budget.completion });
+  const response = await chatGPT(prompt, {
+    maxTokens: budget.completion,
+    modelOptions: { ...llm },
+    ...options,
+  });
   return toObject(response);
 };
 
@@ -23,11 +28,14 @@ export default async function disambiguate({
   term,
   context,
   model = modelService.getBestPublicModel(),
+  ...config
 } = {}) {
-  const meanings = await getMeanings(term, { model });
+  const { llm, ...options } = config;
+  const meanings = await getMeanings(term, { model, llm, ...options });
   const best = await listFilter(
     meanings,
-    `the meaning of "${term}" in context: ${context}. Keep only the single best matching meaning.`
+    `the meaning of "${term}" in context: ${context}. Keep only the single best matching meaning.`,
+    { llm, ...options }
   );
   return { meaning: best[0], meanings };
 }

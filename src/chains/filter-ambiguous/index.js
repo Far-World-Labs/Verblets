@@ -1,7 +1,8 @@
 import list from '../list/index.js';
 import bulkScore from '../bulk-score/index.js';
 
-export default async function filterAmbiguous(text, { topN = 10, chunkSize = 5 } = {}) {
+export default async function filterAmbiguous(text, config = {}) {
+  const { topN = 10, chunkSize = 5, llm, ...options } = config;
   if (!text) return [];
   const sentences = text
     .split('\n')
@@ -12,7 +13,7 @@ export default async function filterAmbiguous(text, { topN = 10, chunkSize = 5 }
   const { scores: sentenceScores } = await bulkScore(
     sentences,
     'How ambiguous or easily misinterpreted is this sentence?',
-    { chunkSize }
+    { chunkSize, llm, ...options }
   );
 
   const rankedSentences = sentences
@@ -26,6 +27,8 @@ export default async function filterAmbiguous(text, { topN = 10, chunkSize = 5 }
     const terms = await list('Ambiguous words or short phrases', {
       attachments: { text: sentence },
       targetNewItemsCount: 5,
+      llm,
+      ...options,
     });
     terms.forEach((term) => {
       termPairs.push({ term, sentence });
@@ -37,7 +40,7 @@ export default async function filterAmbiguous(text, { topN = 10, chunkSize = 5 }
   const { scores } = await bulkScore(
     termPairs.map((p) => `${p.term} | ${p.sentence}`),
     'Score how ambiguous the term is within the sentence.',
-    { chunkSize }
+    { chunkSize, llm, ...options }
   );
 
   const scored = termPairs.map((p, i) => ({ ...p, score: scores[i] }));

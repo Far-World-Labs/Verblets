@@ -28,8 +28,14 @@ describe('bulk-group chain', () => {
     expect(listGroup).toHaveBeenCalledTimes(3);
 
     // Verify the calls were made with the right parameters
-    expect(listGroup).toHaveBeenNthCalledWith(1, ['a', 'bb'], 'odd or even', undefined);
-    expect(listGroup).toHaveBeenNthCalledWith(2, ['ccc', 'dddd'], 'odd or even', ['odd', 'even']);
-    expect(listGroup).toHaveBeenNthCalledWith(3, ['eeeee'], 'odd or even', ['odd', 'even']);
+    expect(listGroup).toHaveBeenNthCalledWith(1, ['a', 'bb'], 'odd or even', undefined, {
+      llm: undefined,
+    });
+    expect(listGroup).toHaveBeenNthCalledWith(2, ['ccc', 'dddd'], 'odd or even', ['odd', 'even'], {
+      llm: undefined,
+    });
+    expect(listGroup).toHaveBeenNthCalledWith(3, ['eeeee'], 'odd or even', ['odd', 'even'], {
+      llm: undefined,
+    });
   });
 });
