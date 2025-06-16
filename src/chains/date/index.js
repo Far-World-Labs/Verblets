@@ -16,7 +16,8 @@ const {
 
 const expectationPrompt = (question) => `${contentIsQuestion} ${question}
 
-List up to three short yes/no checks that would confirm a date answer is correct.
+List up to three short yes/no checks that would confirm a date answer is correct. If nothing specific comes to mind, respond with ["The result is a valid date"].
+
 ${onlyJSONArray}`;
 
 const buildCheckPrompt = (dateValue, check) => {

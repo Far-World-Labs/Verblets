@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "labels": {
+      "type": "array",
+      "description": "Array of group labels corresponding to input items in the same order",
+      "items": {
+        "type": "string",
+        "description": "Group label for the corresponding item"
+      }
+    }
+  },
+  "required": ["labels"],
+  "additionalProperties": false
+} 

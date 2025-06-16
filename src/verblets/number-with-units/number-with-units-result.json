@@ -1,0 +1,23 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "value": {
+      "oneOf": [
+        { "type": "number" },
+        { "type": "string" },
+        { "type": "null" }
+      ],
+      "description": "The numeric value extracted from the text"
+    },
+    "unit": {
+      "oneOf": [
+        { "type": "string" },
+        { "type": "null" }
+      ],
+      "description": "The unit of measurement, if any"
+    }
+  },
+  "required": ["value", "unit"],
+  "additionalProperties": false
+} 

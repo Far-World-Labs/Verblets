@@ -72,9 +72,7 @@ describe('intersections chain examples', () => {
   it(
     'validates schema compliance and structure quality',
     async () => {
-      const result = await intersections(['music', 'mathematics'], {
-        useSchemaValidation: true,
-      });
+      const result = await intersections(['music', 'mathematics']);
 
       // Schema validation - should be an object
       expect(typeof result).toBe('object');
@@ -191,7 +189,6 @@ describe('intersections chain examples', () => {
     async () => {
       const result = await intersections(['literature', 'psychology'], {
         goodnessScore: 8, // Higher quality threshold
-        useSchemaValidation: true,
       });
 
       // Basic validation - should be an object
@@ -253,7 +250,6 @@ describe('intersections chain examples', () => {
       const result = await intersections(['engineering', 'design'], {
         instructions: customInstructions,
         batchSize: 2,
-        useSchemaValidation: true,
       });
 
       // Basic validation

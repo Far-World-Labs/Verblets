@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "meanings": {
+      "type": "array",
+      "description": "Array of distinct dictionary meanings or common uses of a term",
+      "items": {
+        "type": "string",
+        "description": "A distinct meaning or common use of the term"
+      }
+    }
+  },
+  "required": ["meanings"],
+  "additionalProperties": false
+} 

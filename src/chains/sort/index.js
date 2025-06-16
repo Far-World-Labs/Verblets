@@ -1,9 +1,53 @@
 import * as R from 'ramda';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import chatGPT from '../../lib/chatgpt/index.js';
-import toObject from '../../verblets/to-object/index.js';
 import { sort as sortPromptInitial } from '../../prompts/index.js';
 import modelService from '../../services/llm-model/index.js';
+
+// Get the directory of this module
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+/**
+ * Load the JSON schema for sort results
+ * @returns {Promise<Object>} JSON schema for validation
+ */
+async function getSortSchema() {
+  const schemaPath = path.join(__dirname, 'sort-result.json');
+  return JSON.parse(await fs.readFile(schemaPath, 'utf8'));
+}
+
+/**
+ * Create model options for structured outputs
+ * @param {string|Object} llm - LLM model name or configuration object
+ * @returns {Promise<Object>} Model options for chatGPT
+ */
+async function createModelOptions(llm = 'fastGoodCheap') {
+  const schema = await getSortSchema();
+
+  const responseFormat = {
+    type: 'json_schema',
+    json_schema: {
+      name: 'sort_result',
+      schema,
+    },
+  };
+
+  if (typeof llm === 'string') {
+    return {
+      modelName: llm,
+      response_format: responseFormat,
+    };
+  } else {
+    return {
+      ...llm,
+      response_format: responseFormat,
+    };
+  }
+}
 
 // redeclared so it's clearer how tests can override the sorter
 let sortPrompt = sortPromptInitial;
@@ -66,22 +110,26 @@ const sort = async (
       );
 
       const budget = model.budgetTokens(prompt);
+      const modelOptions = await createModelOptions(llm);
 
       // eslint-disable-next-line no-await-in-loop
       const result = await chatGPT(prompt, {
         modelOptions: {
+          ...modelOptions,
           maxTokens: budget.completion,
           requestTimeout: model.requestTimeout * 1.5,
-          ...llm,
         },
         ...passThroughOptions,
       });
 
-      // eslint-disable-next-line no-await-in-loop
-      const batchSorted = await toObject(result);
+      // With structured outputs, response should already be parsed and validated
+      const batchSorted = typeof result === 'string' ? JSON.parse(result) : result;
+      // Extract items from the object structure
+      const resultArray = batchSorted?.items || batchSorted;
+      const sortedArray = Array.isArray(resultArray) ? resultArray.filter(Boolean) : [];
 
-      const batchTop = batchSorted.slice(0, extremeK);
-      const batchBottom = batchSorted.slice(-extremeK);
+      const batchTop = sortedArray.slice(0, extremeK);
+      const batchBottom = sortedArray.slice(-extremeK);
 
       discardedTop = [...newTop.filter((x) => !batchTop.includes(x)), ...discardedTop];
 

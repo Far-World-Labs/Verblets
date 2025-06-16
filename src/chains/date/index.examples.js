@@ -36,9 +36,7 @@ describe('date examples', () => {
   it(
     'finds Christmas 2025',
     async () => {
-      const result = await date(
-        'What is the exact calendar date of Christmas Day in 2025? Please provide the date in UTC/GMT timezone.'
-      );
+      const result = await date('When is Christmas Day in 2025?');
       expect(result instanceof Date).toBe(true);
       expect(result.getUTCFullYear()).toBe(2025);
       expect(result.getUTCMonth()).toBe(11); // December
