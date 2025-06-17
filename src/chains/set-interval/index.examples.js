@@ -7,9 +7,10 @@ describe('setInterval (example)', () => {
     'adjusts meditation sessions using wearable stress levels',
     async () => {
       const stop = setInterval({
-        intervalPrompt:
-          'Start at 3 min. If lastInvocationResult.stress > 70, shorten by 1 min; if below 30, lengthen by 2 min.',
-        fn: () => {},
+        prompt:
+          'Current stress level: {stress}. Start at 3 min. If stress > 70, shorten by 1 min; if below 30, lengthen by 2 min.',
+        getData: () => ({ stress: Math.floor(Math.random() * 100) }),
+        onTick: ({ data }) => console.log(`Meditation session with stress level: ${data.stress}`),
       });
       await new Promise((r) => setTimeout(r, 5000));
       stop();
@@ -21,9 +22,11 @@ describe('setInterval (example)', () => {
     'paces game events to match player skill',
     async () => {
       const stop = setInterval({
-        intervalPrompt:
-          'Begin at 10 sec. If lastInvocationResult.winRate > 80, decrease by 2 sec; if under 40, increase by 5 sec.',
-        fn: () => {},
+        prompt:
+          'Player win rate: {winRate}%. Begin at 10 sec. If winRate > 80, decrease by 2 sec; if under 40, increase by 5 sec.',
+        getData: () => ({ winRate: Math.floor(Math.random() * 100) }),
+        onTick: ({ data }) =>
+          console.log(`Game event triggered for player with ${data.winRate}% win rate`),
       });
       await new Promise((r) => setTimeout(r, 5000));
       stop();

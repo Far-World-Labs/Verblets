@@ -2,6 +2,8 @@ import chatGPT from '../../lib/chatgpt/index.js';
 import numberWithUnits from '../../verblets/number-with-units/index.js';
 import number from '../../verblets/number/index.js';
 import date from '../date/index.js';
+import wrapVariable from '../../prompts/wrap-variable.js';
+import templateReplace from '../../lib/template-replace/index.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 
 const { contentIsInstructions, explainAndSeparate, explainAndSeparatePrimitive } = promptConstants;
@@ -54,59 +56,73 @@ async function toMs(text, config = {}) {
 }
 
 export default function setInterval({
-  intervalPrompt,
-  fn,
+  prompt,
+  getData,
   historySize = 5,
-  firstInterval = '0',
+  initial = null,
+  onTick,
   model,
   llm,
   ...options
 } = {}) {
   let timer;
   let count = 0;
-  let lastResult;
+  let lastResult = initial;
   const history = [];
   let active = true;
-  const config = { llm, ...options };
 
   const step = async () => {
     if (!active) return;
-    const prompt = `${contentIsInstructions} ${intervalPrompt}
+
+    // Get data for AI decision making
+    lastResult = await getData({
+      count,
+      lastInvocationResult: lastResult,
+      initial,
+    });
+
+    // Replace {variable} placeholders in the prompt with actual values from lastResult
+    const processedPrompt = templateReplace(prompt, lastResult);
+
+    // Always invoke the prompt to determine the next interval
+    const intervalPrompt = `${contentIsInstructions} ${processedPrompt}
 
 ${explainAndSeparate} ${explainAndSeparatePrimitive}
 
 Your response should be an ISO date or a short duration like "10 minutes".
-Last result: ${JSON.stringify(lastResult)}
-History: ${history.join(' | ')}
+${wrapVariable(lastResult, { tag: 'last-result', title: 'Last result:' })}
+${wrapVariable(history, { tag: 'history', title: 'History:', forceHTML: true })}
+${wrapVariable(count, { tag: 'count', title: 'Count:' })}
 Next wait:`;
-    const intervalText = await chatGPT(
-      prompt,
-      model
-        ? { modelOptions: { modelName: model, ...llm }, ...options }
-        : { modelOptions: { ...llm }, ...options }
-    );
+
+    const intervalText = await chatGPT(intervalPrompt, {
+      modelOptions: model ? { modelName: model, ...llm } : { ...llm },
+      ...options,
+    });
+
     history.push(intervalText);
     if (history.length > historySize) history.shift();
-    const delay = await toMs(intervalText, config);
-    lastResult = await fn({
-      count,
-      delay,
-      rawInterval: intervalText,
-      history: [...history],
-      lastInvocationResult: lastResult,
-    });
+
+    const delay = await toMs(intervalText, { llm, ...options });
+
+    // Call onTick callback if provided - this is when the tick happens
+    if (onTick) {
+      const nextTime = new Date(Date.now() + delay);
+      await onTick({
+        timingString: intervalText,
+        data: lastResult,
+        nextDate: nextTime,
+      });
+    }
+
     count += 1;
+
+    // Schedule the next iteration
     timer = setTimeout(step, delay);
   };
 
-  if (firstInterval === '0' || firstInterval === 0) {
-    timer = setTimeout(step, 0);
-  } else {
-    (async () => {
-      const initialDelay = await toMs(firstInterval, config);
-      timer = setTimeout(step, initialDelay);
-    })();
-  }
+  // Start immediately - the prompt will determine the first interval
+  timer = setTimeout(step, 0);
 
   return () => {
     active = false;

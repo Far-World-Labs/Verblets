@@ -112,9 +112,12 @@ export const run = async (prompt, config = {}) => {
 
   let result = cacheResult;
   if (!cacheResult || forceQuery) {
-    const timeoutController = new TimedAbortController(
-      modelService.getModel(modelNameNegotiated).requestTimeout
-    );
+    // Use custom requestTimeout from modelOptions if provided, otherwise use model default
+    const requestTimeout =
+      modelOptionsWithOverrides.requestTimeout ||
+      modelService.getModel(modelNameNegotiated).requestTimeout;
+
+    const timeoutController = new TimedAbortController(requestTimeout);
 
     // console.log(requestConfig, `${apiUrl}${modelFound.endpoint}`)
 

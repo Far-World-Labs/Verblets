@@ -1,0 +1,23 @@
+/**
+ * Simple template replacement utility
+ * Replaces {key} placeholders with values from data object
+ *
+ * @param {string} template - Template string with {key} placeholders
+ * @param {object} data - Data object with key-value pairs
+ * @returns {string} - Template with placeholders replaced
+ */
+export default function templateReplace(template, data) {
+  if (!template || typeof template !== 'string') {
+    return template || '';
+  }
+
+  if (data === undefined || data === null || typeof data !== 'object') {
+    return template;
+  }
+
+  // Replace all {key} placeholders
+  return template.replace(/\{([^}]+)\}/g, (match, key) => {
+    const value = data[key];
+    return String(value != null ? value : '');
+  });
+}
