@@ -30,15 +30,40 @@ describe('setInterval', () => {
     date.mockResolvedValue(undefined);
     number.mockResolvedValue(undefined);
 
-    const cb = vi.fn();
-    const stop = setInterval({ intervalPrompt: 'prompt', fn: cb });
+    const getData = vi.fn().mockResolvedValue('test data');
+    const stop = setInterval({ prompt: 'prompt', getData });
     await Promise.resolve();
     await vi.advanceTimersByTimeAsync(0);
-    expect(cb).toHaveBeenCalledTimes(1);
+    expect(getData).toHaveBeenCalledTimes(1);
     await vi.advanceTimersByTimeAsync(1000);
-    expect(cb).toHaveBeenCalledTimes(2);
+    expect(getData).toHaveBeenCalledTimes(2);
     await vi.advanceTimersByTimeAsync(2000);
-    expect(cb).toHaveBeenCalledTimes(3);
+    expect(getData).toHaveBeenCalledTimes(3);
+    stop();
+    await vi.runOnlyPendingTimersAsync();
+  });
+
+  it('interpolates variables from getData results in prompt', async () => {
+    chatGPT.mockResolvedValueOnce('1 second');
+    numberWithUnits.mockResolvedValueOnce({ value: 1, unit: 'second' });
+    date.mockResolvedValue(undefined);
+    number.mockResolvedValue(undefined);
+
+    const getData = vi.fn().mockResolvedValue({ stress: 85, mood: 'anxious' });
+    const stop = setInterval({
+      prompt: 'Current stress: {stress}, mood: {mood}. Wait time?',
+      getData,
+    });
+
+    await Promise.resolve();
+    await vi.advanceTimersByTimeAsync(0);
+
+    // Check that chatGPT was called with interpolated values
+    expect(chatGPT).toHaveBeenCalledWith(
+      expect.stringContaining('Current stress: 85, mood: anxious. Wait time?'),
+      expect.any(Object)
+    );
+
     stop();
     await vi.runOnlyPendingTimersAsync();
   });

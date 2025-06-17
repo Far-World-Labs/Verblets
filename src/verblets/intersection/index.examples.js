@@ -47,16 +47,18 @@ describe('intersection examples', () => {
       const result = await intersection(['love', 'friendship', 'trust']);
       expect(Array.isArray(result), `Saw: ${JSON.stringify(result)}`).toBe(true);
 
-      // LLM assertion for abstract concept intersections - be more lenient
+      // LLM assertion for abstract concept intersections - be more specific
       await aiExpect(result).toSatisfy(
-        'should be an array that represents some form of analysis related to abstract concepts',
+        'should be an array of strings representing common emotional or relational concepts that love, friendship, and trust share (like emotional connection, mutual respect, care, etc.)',
         {
-          context: 'Testing intersection verblet with abstract concepts',
+          context: 'Testing intersection verblet with abstract concepts: love, friendship, trust',
         }
       );
 
-      // Just verify it's an array
+      // Verify it's a non-empty array with string elements
       expect(Array.isArray(result)).toBe(true);
+      expect(result.length).toBeGreaterThan(0);
+      expect(result.every((item) => typeof item === 'string')).toBe(true);
     },
     longTestTimeout
   );

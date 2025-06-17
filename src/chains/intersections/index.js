@@ -106,20 +106,20 @@ const parseElements = (elementsText) => {
 /**
  * Process a single combination to get elements, description, and score
  */
-const processCombo = async (combo, instructions) => {
+const processCombo = async (combo, instructions, llm) => {
   const comboKey = combo.join(' + ');
 
   // Process elements, description, and scoring in parallel
   const [elements, intersectionItems] = await Promise.all([
-    chatGPT(ELEMENTS_PROMPT(combo, instructions)),
-    intersection(combo, { instructions }),
+    chatGPT(ELEMENTS_PROMPT(combo, instructions), { modelOptions: llm }),
+    intersection(combo, { instructions, llm }),
   ]);
 
   const elementList = parseElements(elements);
   const description = Array.isArray(intersectionItems)
     ? intersectionItems.join(', ')
     : String(intersectionItems);
-  const score = await number(SCORING_PROMPT(combo, description, elementList));
+  const score = await number(SCORING_PROMPT(combo, description, elementList), { llm });
 
   return {
     combo,
@@ -133,12 +133,12 @@ const processCombo = async (combo, instructions) => {
 /**
  * Process remaining combination using top examples as patterns
  */
-const processRemainingCombo = async (combo, instructions, examplePrompts) => {
+const processRemainingCombo = async (combo, instructions, examplePrompts, llm) => {
   const comboKey = combo.join(' + ');
 
   const [exhaustiveElements, intersectionItems] = await Promise.all([
-    chatGPT(EXHAUSTIVE_PROMPT(examplePrompts, combo, instructions)),
-    intersection(combo, { instructions }),
+    chatGPT(EXHAUSTIVE_PROMPT(examplePrompts, combo, instructions), { modelOptions: llm }),
+    intersection(combo, { instructions, llm }),
   ]);
 
   const exhaustiveList = parseElements(exhaustiveElements);
@@ -166,7 +166,7 @@ const processRemainingCombo = async (combo, instructions, examplePrompts) => {
  * @param {number} options.maxSize - Maximum combination size (default: items.length)
  * @param {number} options.batchSize - Number of combinations to process in parallel (default: 5)
  * @param {number} options.goodnessScore - Minimum score threshold for good examples (default: 7)
- * @param {string|Object} options.llm - LLM model to use (default: 'fastGoodCheap')
+ * @param {string|Object} options.llm - LLM model to use (default: 'fastGoodCheap' with extended timeout)
  * @param {boolean} options.useSchemaValidation - Whether to validate results with JSON schema (default: false)
  * @returns {Object} Results with combinations, elements, and exhaustive intersections
  * @throws {Error} When no combinations score above the goodness threshold
@@ -182,7 +182,7 @@ export default async function intersections(items, options = {}) {
     maxSize = items.length,
     batchSize = 5,
     goodnessScore = 7,
-    llm = 'fastGoodCheap',
+    llm = { modelName: 'fastGoodCheap', requestTimeout: 120_000 }, // Extended timeout for complex operations
     useSchemaValidation = false, // Disabled by default due to OpenAI API limitations with patternProperties
   } = options;
 
@@ -204,7 +204,7 @@ export default async function intersections(items, options = {}) {
 
   for (let i = 0; i < combinations.length && topExamples.length < 3; i += batchSize) {
     const batch = combinations.slice(i, i + batchSize);
-    const results = await Promise.all(batch.map((combo) => processCombo(combo, instructions)));
+    const results = await Promise.all(batch.map((combo) => processCombo(combo, instructions, llm)));
 
     for (const result of results) {
       if (result.score > goodnessScore && topExamples.length < 3) {
@@ -224,7 +224,7 @@ export default async function intersections(items, options = {}) {
   if (topExamples.length === 0) {
     const lowerThreshold = Math.max(1, goodnessScore - 3);
     for (let i = 0; i < Math.min(combinations.length, 10) && topExamples.length < 3; i++) {
-      const result = await processCombo(combinations[i], instructions);
+      const result = await processCombo(combinations[i], instructions, llm);
       if (result.score > lowerThreshold) {
         topExamples.push({
           key: result.comboKey,
@@ -260,7 +260,9 @@ export default async function intersections(items, options = {}) {
 
   // Process remaining combinations in parallel
   const remainingResults = await Promise.all(
-    remainingCombinations.map((combo) => processRemainingCombo(combo, instructions, examplePrompts))
+    remainingCombinations.map((combo) =>
+      processRemainingCombo(combo, instructions, examplePrompts, llm)
+    )
   );
 
   // Combine all results
