@@ -1,5 +1,20 @@
-import whisper from 'whisper-node';
-import record from 'node-record-lpcm16';
+// Lazy import whisper to avoid initialization issues
+let whisper;
+let record;
+
+async function getWhisper() {
+  if (!whisper) {
+    whisper = (await import('whisper-node')).default;
+  }
+  return whisper;
+}
+
+async function getRecord() {
+  if (!record) {
+    record = (await import('node-record-lpcm16')).default;
+  }
+  return record;
+}
 
 export default class Transcriber {
   constructor(targetWord, silenceDuration = 5000, wordPauseDuration = 2000) {
@@ -11,8 +26,9 @@ export default class Transcriber {
     this.recording = null;
   }
 
-  startRecording() {
-    this.recording = record.record({
+  async startRecording() {
+    const recordModule = await getRecord();
+    this.recording = recordModule.record({
       sampleRateHertz: 16000,
       threshold: 0,
       recordProgram: 'rec',
@@ -29,8 +45,9 @@ export default class Transcriber {
     }
   }
 
-  transcribe(stream) {
-    whisper
+  async transcribe(stream) {
+    const whisperModule = await getWhisper();
+    whisperModule
       .transcribeStream(stream, { streaming: true })
       .then((transcription) => {
         this.handleTranscription(transcription);

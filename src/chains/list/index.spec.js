@@ -1,11 +1,16 @@
 import fs from 'node:fs/promises';
 import { describe, expect, it, vi } from 'vitest';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 
 import toObject from '../../verblets/to-object/index.js';
 import list from './index.js';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
 const loadSchema = async () => {
-  const file = (await fs.readFile('./src/json-schemas/cars-test.json')).toString();
+  const file = (await fs.readFile(join(__dirname, '../../json-schemas/cars-test.json'))).toString();
 
   return toObject(file);
 };

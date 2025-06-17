@@ -1,21 +1,20 @@
-import fs from 'node:fs/promises';
-
-import {
-  contentIsExample,
-  contentIsSchema,
-  onlyJSON,
-  contentIsIntent,
-  contentIsOperationOption,
-  contentIsParametersOptions,
-} from './constants.js';
+import fs from 'fs/promises';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 import wrapVariable from './wrap-variable.js';
+import { onlyJSON } from './constants.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+const contentIsIntent = 'The intent is:';
+const contentIsSchema = 'The schema is:';
+const contentIsExample = 'An example of the output is:';
+const contentIsOperationOption = 'The possible operations are:';
+const contentIsParametersOptions = 'The possible parameters are:';
 
 const exampleJSON = `{
-  "queryText": "play some music",
-  "intent": {
-    "operation": "play-music",
-    "displayName": "Play Music"
-  },
+  "intent": "play_music",
   "parameters": {
     "genre": "rock"
   },
@@ -24,7 +23,7 @@ const exampleJSON = `{
   }
 }`;
 
-const intentSchema = JSON.parse(await fs.readFile('./src/json-schemas/intent.json'));
+const intentSchema = JSON.parse(await fs.readFile(join(__dirname, '../json-schemas/intent.json')));
 
 /**
  * Approximates intent recognition like you might find with Wit.ai,

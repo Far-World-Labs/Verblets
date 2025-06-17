@@ -1,5 +1,5 @@
-import fs from 'node:fs/promises';
-import path from 'node:path';
+import fs from 'fs/promises';
+import path from 'path';
 
 import parseJSParts from '../parse-js-parts/index.js';
 import search from '../search-best-first/index.js';
@@ -10,12 +10,12 @@ export class Node {
   }
 
   toString() {
-    return `${this.filename}:::${this.functionName ?? ''}`;
+    return `${this.filename}:${this.functionName}`;
   }
 }
 
 const processLocalImport = async (source) => {
-  const importedFile = await fs.readFile(source, 'utf8');
+  const importedFile = await fs.readFile(source, 'utf-8');
   const parsedImport = parseJSParts(source, importedFile);
   return Object.entries(parsedImport.functionsMap).map(([importKey, importValue]) => ({
     filename: source,
@@ -28,18 +28,35 @@ const processNpmImport = async (source, includeNodeModules = false) => {
   if (!includeNodeModules) return [];
 
   try {
-    const packageJson = JSON.parse(await fs.readFile('./package.json', 'utf8'));
+    // Find the project root by looking for package.json
+    let currentDir = process.cwd();
+    let packageJsonPath = path.join(currentDir, 'package.json');
+
+    // If not found in current directory, try to find it in parent directories
+    while (
+      !(await fs
+        .access(packageJsonPath)
+        .then(() => true)
+        .catch(() => false))
+    ) {
+      const parentDir = path.dirname(currentDir);
+      if (parentDir === currentDir) break; // Reached filesystem root
+      currentDir = parentDir;
+      packageJsonPath = path.join(currentDir, 'package.json');
+    }
+
+    const packageJson = JSON.parse(await fs.readFile(packageJsonPath, 'utf8'));
     if (packageJson.dependencies[source] || packageJson.devDependencies[source]) {
-      const nodeModulePath = `./node_modules/${source}`;
+      const nodeModulePath = path.join(currentDir, 'node_modules', source);
       const npmPackageJson = JSON.parse(
-        await fs.readFile(`${nodeModulePath}/package.json`, 'utf8')
+        await fs.readFile(path.join(nodeModulePath, 'package.json'), 'utf8')
       );
       const mainFilePath = npmPackageJson.main || 'index.js';
-      const importedFile = await fs.readFile(`${nodeModulePath}/${mainFilePath}`, 'utf-8');
+      const importedFile = await fs.readFile(path.join(nodeModulePath, mainFilePath), 'utf-8');
       const parsedImport = parseJSParts(mainFilePath, importedFile);
 
       return Object.entries(parsedImport.functionsMap).map(([importKey, importValue]) => ({
-        filename: `${nodeModulePath}/${mainFilePath}`,
+        filename: path.join(nodeModulePath, mainFilePath),
         functionName: importKey,
         functionData: importValue,
       }));
