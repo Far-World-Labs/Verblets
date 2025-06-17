@@ -1,26 +1,31 @@
 import Ajv from 'ajv';
 import fs from 'node:fs/promises';
 import { describe, expect, it, beforeAll, afterAll } from 'vitest';
-
+import { expect as aiExpect } from '../../chains/expect/index.js';
 import { longTestTimeout } from '../../constants/common.js';
-import aiExpect from '../expect/index.js';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
 import intent from './index.js';
 
-const resultSchema = async () => {
-  return JSON.parse(await fs.readFile('./src/json-schemas/intent.json'));
-};
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+async function getIntentSchema() {
+  return JSON.parse(await fs.readFile(join(__dirname, '../../json-schemas/intent.json')));
+}
 
 const examples = [
   {
     inputs: { text: 'Give me a flight to Burgas' },
-    want: { resultSchema },
+    want: { resultSchema: getIntentSchema },
   },
   {
     inputs: {
       text: 'Lookup a song by the quote \
 "I just gotta tell you how I\'m feeling"',
     },
-    want: { resultSchema },
+    want: { resultSchema: getIntentSchema },
   },
 ];
 
@@ -85,7 +90,7 @@ describe('Intent verblet', () => {
       const result = await intent({ text: travelRequest });
 
       // Traditional schema validation
-      const schema = await resultSchema();
+      const schema = await getIntentSchema();
       const ajv = new Ajv();
       const validate = ajv.compile(schema);
       expect(validate(result)).toBe(true);
@@ -112,7 +117,7 @@ describe('Intent verblet', () => {
       const result = await intent({ text: musicQuery });
 
       // Schema validation
-      const schema = await resultSchema();
+      const schema = await getIntentSchema();
       const ajv = new Ajv();
       const validate = ajv.compile(schema);
       expect(validate(result)).toBe(true);

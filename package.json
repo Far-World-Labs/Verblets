@@ -2,7 +2,7 @@
   "name": "@far-world-labs/verblets",
   "version": "0.1.1",
   "description": "OpenAI Client",
-  "main": "index.js",
+  "main": "src/index.js",
   "type": "module",
   "repository": {
     "type": "git",
