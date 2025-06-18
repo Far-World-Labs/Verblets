@@ -1,6 +1,6 @@
 {
   "name": "@far-world-labs/verblets",
-  "version": "0.1.2",
+  "version": "0.1.4",
   "description": "OpenAI Client",
   "main": "src/index.js",
   "type": "module",
