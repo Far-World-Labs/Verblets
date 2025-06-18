@@ -98,18 +98,42 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
       
+      - name: Check if version needs bumping
+        id: check-version
+        run: |
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          PUBLISHED_VERSION=$(npm view @far-world-labs/verblets version 2>/dev/null || echo "0.0.0")
+          echo "Current version: $CURRENT_VERSION"
+          echo "Published version: $PUBLISHED_VERSION"
+          
+          if [ "$CURRENT_VERSION" = "$PUBLISHED_VERSION" ]; then
+            echo "needs_bump=true" >> $GITHUB_OUTPUT
+            echo "Version needs to be bumped"
+          else
+            echo "needs_bump=false" >> $GITHUB_OUTPUT
+            echo "Version already bumped"
+          fi
+      
       - name: Version Bump (No Publish)
+        if: steps.check-version.outputs.needs_bump == 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Ensure we're on the correct branch
           git checkout ${{ github.head_ref }}
           
-          # Use release-it to bump version and create tag, but skip npm publish
-          npx release-it --ci --no-npm.publish --no-github.release
+          # Use npm version to bump patch version
+          npm version patch --no-git-tag-version
           
-          # Push the version bump back to the PR branch
-          git push origin ${{ github.head_ref }}
+          # Commit the version bump (only package.json, package-lock.json may not be updated)
+          git add package.json
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Bump version to $(node -p "require('./package.json').version")"
+            # Push the version bump back to the PR branch
+            git push origin ${{ github.head_ref }}
+          fi
 
   # Required status check that gates merge operations
   pr-ready-to-merge:
