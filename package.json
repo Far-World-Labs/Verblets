@@ -1,6 +1,6 @@
 {
   "name": "@far-world-labs/verblets",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Verblets is a collection of tools for building LLM-powered applications.",
   "main": "src/index.js",
   "type": "module",
