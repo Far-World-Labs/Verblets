@@ -23,12 +23,12 @@
     "husky:install": "husky install",
     "husky:uninstall": "husky uninstall",
     "prepare": "npx husky install",
-    "version:patch": "node scripts/version-bump.js patch",
-    "version:minor": "node scripts/version-bump.js minor",
-    "version:major": "node scripts/version-bump.js major",
-    "release:patch": "node scripts/version-bump.js patch",
-    "release:minor": "node scripts/version-bump.js minor",
-    "release:major": "node scripts/version-bump.js major"
+    "version:patch": "npx release-it patch --ci --no-npm.publish --no-github.release",
+    "version:minor": "npx release-it minor --ci --no-npm.publish --no-github.release",
+    "version:major": "npx release-it major --ci --no-npm.publish --no-github.release",
+    "release:patch": "npx release-it patch --ci",
+    "release:minor": "npx release-it minor --ci",
+    "release:major": "npx release-it major --ci"
   },
   "config": {
     "gen-script": "./scripts/run.sh gen-$1"

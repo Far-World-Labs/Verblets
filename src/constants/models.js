@@ -1,8 +1,9 @@
-// Importing dotenv config to load environment variables from .env file
-// eslint-disable-next-line no-unused-vars
-import dotenv from 'dotenv/config';
+// Environment variables loaded in index.js
 
 const _models = {};
+
+// Function to get API key at runtime
+const getOpenAIKey = () => process.env.OPENAI_API_KEY;
 
 const systemPrompt = `You are a superintelligent processing unit, answering prompts with precise instructions.
 You are a small but critical component in a complex system, so your role in giving quality outputs to your given inputs and instructions is critical. 
@@ -45,7 +46,9 @@ _models.fastCheapMulti = {
   maxContextWindow: 128_000,
   maxOutputTokens: 16_384,
   requestTimeout: 20_000,
-  apiKey: process.env.OPENAI_API_KEY ?? 'undefined',
+  get apiKey() {
+    return getOpenAIKey();
+  },
   apiUrl: 'https://api.openai.com/',
   systemPrompt,
 };
@@ -59,7 +62,9 @@ _models.goodMulti = {
   maxContextWindow: 128_000,
   maxOutputTokens: 16_384,
   requestTimeout: 20_000,
-  apiKey: process.env.OPENAI_API_KEY ?? 'undefined',
+  get apiKey() {
+    return getOpenAIKey();
+  },
   apiUrl: 'https://api.openai.com/',
   systemPrompt,
 };
@@ -73,7 +78,9 @@ _models.fastCheapReasoningMulti = {
   maxContextWindow: 128_000,
   maxOutputTokens: 16_384,
   requestTimeout: 40_000,
-  apiKey: process.env.OPENAI_API_KEY ?? 'undefined',
+  get apiKey() {
+    return getOpenAIKey();
+  },
   apiUrl: 'https://api.openai.com/',
   systemPrompt,
 };
@@ -87,7 +94,9 @@ _models.reasoningNoImage = {
   maxContextWindow: 200_000,
   maxOutputTokens: 100_000,
   requestTimeout: 120_000,
-  apiKey: process.env.OPENAI_API_KEY ?? 'undefined',
+  get apiKey() {
+    return getOpenAIKey();
+  },
   apiUrl: 'https://api.openai.com/',
   systemPrompt,
 };
@@ -132,7 +141,9 @@ _models.privacy = {
   apiUrl: (process.env.OPENWEBUI_API_URL ?? '').endsWith('/')
     ? process.env.OPENWEBUI_API_URL
     : `${process.env.OPENWEBUI_API_URL}/`,
-  apiKey: process.env.OPENWEBUI_API_KEY ?? 'undefined',
+  get apiKey() {
+    return process.env.OPENWEBUI_API_KEY;
+  },
   systemPrompt,
   modelOptions: {
     stop: ['</s>'],
