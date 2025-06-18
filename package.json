@@ -1,7 +1,7 @@
 {
   "name": "@far-world-labs/verblets",
-  "version": "0.1.4",
-  "description": "OpenAI Client",
+  "version": "0.1.5",
+  "description": "Verblets is a collection of tools for building LLM-powered applications.",
   "main": "src/index.js",
   "type": "module",
   "repository": {
@@ -23,12 +23,9 @@
     "husky:install": "husky install",
     "husky:uninstall": "husky uninstall",
     "prepare": "npx husky install",
-    "version:patch": "npx release-it patch --ci --no-npm.publish --no-github.release",
-    "version:minor": "npx release-it minor --ci --no-npm.publish --no-github.release",
-    "version:major": "npx release-it major --ci --no-npm.publish --no-github.release",
-    "release:patch": "npx release-it patch --ci",
-    "release:minor": "npx release-it minor --ci",
-    "release:major": "npx release-it major --ci"
+    "version:patch": "npm version patch",
+    "version:minor": "npm version minor",
+    "version:major": "npm version major"
   },
   "config": {
     "gen-script": "./scripts/run.sh gen-$1"
