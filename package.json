@@ -1,7 +1,7 @@
 {
   "name": "@far-world-labs/verblets",
   "version": "0.1.5",
-  "description": "OpenAI Client",
+  "description": "Verblets is a collection of tools for building LLM-powered applications.",
   "main": "src/index.js",
   "type": "module",
   "repository": {
