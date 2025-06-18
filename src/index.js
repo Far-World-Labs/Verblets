@@ -1,6 +1,6 @@
-// Importing dotenv config to load environment variables from .env file
-// eslint-disable-next-line no-unused-vars
-import dotenv from 'dotenv/config';
+// Load environment variables from .env file FIRST
+import dotenv from 'dotenv';
+dotenv.config();
 
 import chatGPT from './lib/chatgpt/index.js';
 
