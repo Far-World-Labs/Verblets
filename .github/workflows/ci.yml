@@ -72,74 +72,68 @@ jobs:
           echo "✅ ESLint checks completed"
           echo "✅ Library is ready for deployment"
 
-  # Version bump for PRs - creates commit in PR branch
-  version-bump:
-    name: 📦 Version Bump
+  # Validate that version has been properly bumped in PRs
+  version-validation:
+    name: 🔍 Validate Version
     runs-on: ubuntu-latest
     needs: build
     if: github.event_name == 'pull_request'
-    permissions:
-      contents: write
-      pull-requests: write
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
-          ref: ${{ github.head_ref }}
       - uses: actions/setup-node@v4
         with:
           node-version: 20.x
           cache: 'npm'
       - run: npm ci
       
-      - name: Configure Git
+      - name: Check version bump
         run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-      
-      - name: Check if version needs bumping
-        id: check-version
-        run: |
+          # Get current and published versions
           CURRENT_VERSION=$(node -p "require('./package.json').version")
           PUBLISHED_VERSION=$(npm view @far-world-labs/verblets version 2>/dev/null || echo "0.0.0")
-          echo "Current version: $CURRENT_VERSION"
-          echo "Published version: $PUBLISHED_VERSION"
           
+          echo "📦 Current version in package.json: $CURRENT_VERSION"
+          echo "📦 Published version on npm: $PUBLISHED_VERSION"
+          
+          # Check if version has been bumped
           if [ "$CURRENT_VERSION" = "$PUBLISHED_VERSION" ]; then
-            echo "needs_bump=true" >> $GITHUB_OUTPUT
-            echo "Version needs to be bumped"
+            echo "❌ Version has not been bumped!"
+            echo "Please bump the version in package.json before merging."
+            echo "Run: npm version patch (or minor/major as appropriate)"
+            exit 1
           else
-            echo "needs_bump=false" >> $GITHUB_OUTPUT
-            echo "Version already bumped"
+            echo "✅ Version has been bumped from $PUBLISHED_VERSION to $CURRENT_VERSION"
           fi
       
-      - name: Version Bump (No Publish)
-        if: steps.check-version.outputs.needs_bump == 'true'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Check git tag consistency
         run: |
-          # Ensure we're on the correct branch
-          git checkout ${{ github.head_ref }}
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
           
-          # Use npm version to bump patch version
-          npm version patch --no-git-tag-version
-          
-          # Commit the version bump (only package.json, package-lock.json may not be updated)
-          git add package.json
-          if git diff --staged --quiet; then
-            echo "No changes to commit"
+          # Check if there's already a git tag for this version
+          if git tag -l | grep -q "^v$CURRENT_VERSION$"; then
+            echo "❌ Git tag v$CURRENT_VERSION already exists!"
+            echo "This version has already been tagged. Please bump to a new version."
+            exit 1
           else
-            git commit -m "Bump version to $(node -p "require('./package.json').version")"
-            # Push the version bump back to the PR branch
-            git push origin ${{ github.head_ref }}
+            echo "✅ No existing git tag for v$CURRENT_VERSION"
+          fi
+          
+          # Validate version format (semantic versioning)
+          if echo "$CURRENT_VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?(\+[a-zA-Z0-9.-]+)?$'; then
+            echo "✅ Version format is valid: $CURRENT_VERSION"
+          else
+            echo "❌ Invalid version format: $CURRENT_VERSION"
+            echo "Please use semantic versioning (e.g., 1.2.3)"
+            exit 1
           fi
 
   # Required status check that gates merge operations
   pr-ready-to-merge:
     name: ✅ PR Ready to Merge
     runs-on: ubuntu-latest
-    needs: [lint, test, build, version-bump]
+    needs: [lint, test, build, version-validation]
     if: github.event_name == 'pull_request'
     steps:
       - name: All checks passed
@@ -148,11 +142,11 @@ jobs:
           echo "✅ Linting: Passed"
           echo "✅ Tests: Passed on all LTS Node versions"
           echo "✅ Build: Successful"
-          echo "✅ Version: Bumped and ready"
+          echo "✅ Version: Properly bumped and validated"
           echo ""
           echo "This PR is now ready for squash and merge."
 
-  # Publish the already-bumped version on merge to main
+  # Publish to NPM and create git tag
   release:
     name: 🚀 Publish to NPM
     runs-on: ubuntu-latest
@@ -173,11 +167,19 @@ jobs:
           cache: 'npm'
       - run: npm ci
       
+      - name: Create Git Tag
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "v$VERSION" -m "Release v$VERSION"
+          git push origin "v$VERSION"
+      
       - name: Publish to NPM
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          # Simple publish - version is already bumped in package.json from PR
+          # Version was manually bumped and validated in PR
           npm publish --access public
           
       - name: Create GitHub Release
