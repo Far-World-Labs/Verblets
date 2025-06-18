@@ -86,6 +86,7 @@ jobs:
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
+          ref: ${{ github.head_ref }}
       - uses: actions/setup-node@v4
         with:
           node-version: 20.x
@@ -101,11 +102,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # Ensure we're on the correct branch
+          git checkout ${{ github.head_ref }}
+          
           # Use release-it to bump version and create tag, but skip npm publish
           npx release-it --ci --no-npm.publish --no-github.release
           
           # Push the version bump back to the PR branch
-          git push origin HEAD:${{ github.head_ref }}
+          git push origin ${{ github.head_ref }}
 
   # Required status check that gates merge operations
   pr-ready-to-merge:
