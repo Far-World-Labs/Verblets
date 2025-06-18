@@ -72,22 +72,6 @@ jobs:
           echo "✅ ESLint checks completed"
           echo "✅ Library is ready for deployment"
 
-  # Required status check that gates merge operations
-  pr-ready-to-merge:
-    name: ✅ PR Ready to Merge
-    runs-on: ubuntu-latest
-    needs: [lint, test, build]
-    if: github.event_name == 'pull_request'
-    steps:
-      - name: All checks passed
-        run: |
-          echo "🎉 All required checks have passed!"
-          echo "✅ Linting: Passed"
-          echo "✅ Tests: Passed on all LTS Node versions"
-          echo "✅ Build: Successful"
-          echo ""
-          echo "This PR is now ready for squash and merge."
-
   # Version bump for PRs - creates commit in PR branch
   version-bump:
     name: 📦 Version Bump
@@ -122,6 +106,23 @@ jobs:
           
           # Push the version bump back to the PR branch
           git push origin HEAD:${{ github.head_ref }}
+
+  # Required status check that gates merge operations
+  pr-ready-to-merge:
+    name: ✅ PR Ready to Merge
+    runs-on: ubuntu-latest
+    needs: [lint, test, build, version-bump]
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: All checks passed
+        run: |
+          echo "🎉 All required checks have passed!"
+          echo "✅ Linting: Passed"
+          echo "✅ Tests: Passed on all LTS Node versions"
+          echo "✅ Build: Successful"
+          echo "✅ Version: Bumped and ready"
+          echo ""
+          echo "This PR is now ready for squash and merge."
 
   # Publish the already-bumped version on merge to main
   release:
