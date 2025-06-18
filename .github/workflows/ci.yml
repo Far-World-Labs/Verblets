@@ -72,68 +72,11 @@ jobs:
           echo "✅ ESLint checks completed"
           echo "✅ Library is ready for deployment"
 
-  # Validate that version has been properly bumped in PRs
-  version-validation:
-    name: 🔍 Validate Version
-    runs-on: ubuntu-latest
-    needs: build
-    if: github.event_name == 'pull_request'
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20.x
-          cache: 'npm'
-      - run: npm ci
-      
-      - name: Check version bump
-        run: |
-          # Get current and published versions
-          CURRENT_VERSION=$(node -p "require('./package.json').version")
-          PUBLISHED_VERSION=$(npm view @far-world-labs/verblets version 2>/dev/null || echo "0.0.0")
-          
-          echo "📦 Current version in package.json: $CURRENT_VERSION"
-          echo "📦 Published version on npm: $PUBLISHED_VERSION"
-          
-          # Check if version has been bumped
-          if [ "$CURRENT_VERSION" = "$PUBLISHED_VERSION" ]; then
-            echo "❌ Version has not been bumped!"
-            echo "Please bump the version in package.json before merging."
-            echo "Run: npm version patch (or minor/major as appropriate)"
-            exit 1
-          else
-            echo "✅ Version has been bumped from $PUBLISHED_VERSION to $CURRENT_VERSION"
-          fi
-      
-      - name: Check git tag consistency
-        run: |
-          CURRENT_VERSION=$(node -p "require('./package.json').version")
-          
-          # Check if there's already a git tag for this version
-          if git tag -l | grep -q "^v$CURRENT_VERSION$"; then
-            echo "❌ Git tag v$CURRENT_VERSION already exists!"
-            echo "This version has already been tagged. Please bump to a new version."
-            exit 1
-          else
-            echo "✅ No existing git tag for v$CURRENT_VERSION"
-          fi
-          
-          # Validate version format (semantic versioning)
-          if echo "$CURRENT_VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?(\+[a-zA-Z0-9.-]+)?$'; then
-            echo "✅ Version format is valid: $CURRENT_VERSION"
-          else
-            echo "❌ Invalid version format: $CURRENT_VERSION"
-            echo "Please use semantic versioning (e.g., 1.2.3)"
-            exit 1
-          fi
-
   # Required status check that gates merge operations
   pr-ready-to-merge:
     name: ✅ PR Ready to Merge
     runs-on: ubuntu-latest
-    needs: [lint, test, build, version-validation]
+    needs: [lint, test, build]
     if: github.event_name == 'pull_request'
     steps:
       - name: All checks passed
@@ -142,11 +85,11 @@ jobs:
           echo "✅ Linting: Passed"
           echo "✅ Tests: Passed on all LTS Node versions"
           echo "✅ Build: Successful"
-          echo "✅ Version: Properly bumped and validated"
+          echo "ℹ️ Version: Will be checked on merge (publish only if bumped)"
           echo ""
           echo "This PR is now ready for squash and merge."
 
-  # Publish to NPM and create git tag
+  # Publish to NPM and create git tag - only if version was bumped
   release:
     name: 🚀 Publish to NPM
     runs-on: ubuntu-latest
@@ -167,7 +110,25 @@ jobs:
           cache: 'npm'
       - run: npm ci
       
+      - name: Check if version was bumped
+        id: version-check
+        run: |
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          PUBLISHED_VERSION=$(npm view @far-world-labs/verblets version 2>/dev/null || echo "0.0.0")
+          
+          echo "📦 Current version in package.json: $CURRENT_VERSION"
+          echo "📦 Published version on npm: $PUBLISHED_VERSION"
+          
+          if [ "$CURRENT_VERSION" = "$PUBLISHED_VERSION" ]; then
+            echo "should-publish=false" >> $GITHUB_OUTPUT
+            echo "ℹ️ No version bump detected - skipping publish"
+          else
+            echo "should-publish=true" >> $GITHUB_OUTPUT
+            echo "✅ Version bump detected: $PUBLISHED_VERSION → $CURRENT_VERSION - will publish"
+          fi
+      
       - name: Create Git Tag
+        if: steps.version-check.outputs.should-publish == 'true'
         run: |
           VERSION=$(node -p "require('./package.json').version")
           git config --global user.name "github-actions[bot]"
@@ -176,6 +137,7 @@ jobs:
           git push origin "v$VERSION"
       
       - name: Publish to NPM
+        if: steps.version-check.outputs.should-publish == 'true'
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
@@ -183,6 +145,7 @@ jobs:
           npm publish --access public
           
       - name: Create GitHub Release
+        if: steps.version-check.outputs.should-publish == 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -194,3 +157,9 @@ jobs:
             --title "Release v$VERSION" \
             --notes "Automated release of version $VERSION" \
             --latest
+      
+      - name: Skip publish
+        if: steps.version-check.outputs.should-publish == 'false'
+        run: |
+          echo "ℹ️ No version bump detected - publish skipped"
+          echo "This merge completed without triggering a release"
