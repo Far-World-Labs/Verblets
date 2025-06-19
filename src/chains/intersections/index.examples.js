@@ -246,7 +246,8 @@ describe('intersections chain examples', () => {
   it(
     'validates custom instructions and configuration',
     async () => {
-      const customInstructions = 'Focus on practical applications and real-world examples';
+      const customInstructions =
+        'List concrete project ideas that combine these fields. Avoid abstract themes.';
       const result = await intersections(['engineering', 'design'], {
         instructions: customInstructions,
         batchSize: 2,
@@ -269,7 +270,7 @@ describe('intersections chain examples', () => {
         const [followsInstructions] = await aiExpect(
           firstIntersection,
           undefined,
-          'Should contain practical applications and real-world examples as requested in custom instructions'
+          'Should list specific project ideas and avoid abstract themes as requested in custom instructions'
         );
         expect(followsInstructions).toBe(true);
       }

@@ -9,11 +9,14 @@ Imagine you're planning activities that work for different groups of people. Let
 ```javascript
 import intersections from './index.js';
 
-const result = await intersections([
-  'outdoor enthusiasts', 
-  'food lovers', 
-  'budget-conscious friends'
-]);
+
+const result = await intersections(
+  ['outdoor enthusiasts', 'food lovers', 'budget-conscious friends'],
+  {
+    instructions:
+      'Only return real weekend activities and skip abstract themes.',
+  }
+);
 
 console.log(result);
 ```
@@ -118,6 +121,15 @@ const results = await intersections(['hiking', 'photography', 'meditation'], {
   maxSize: 3            // Maximum 3 items per combination
 });
 
+// Restrict the type of elements returned
+const workshopsOnly = await intersections(
+  ['painting', 'sculpture', 'digital art'],
+  {
+    instructions:
+      'List concrete workshop ideas that combine these arts. Avoid themes or vague descriptions.',
+  }
+);
+
 // Error handling
 try {
   const results = await intersections(['incompatible', 'categories'], {
@@ -135,7 +147,9 @@ try {
 - **Higher `goodnessScore`** (8-9) for stricter quality requirements  
 - **Increase `batchSize`** (10-15) for faster processing with good API limits
 - **Decrease `batchSize`** (2-3) to be gentler on API rate limits
-- **Use `instructions`** to guide the AI toward specific types of intersections
+- **Use `instructions`** to tell the AI exactly what kind of elements to return.
+  For example, you can request only hands-on workshop ideas and exclude vague
+  themes or abstract categories.
 
 ## Quality Assurance
 
