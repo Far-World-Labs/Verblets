@@ -154,15 +154,14 @@ export function createLLMLogger(config = {}) {
     trace: (data) => processLog(data, 'trace'),
     fatal: (data) => processLog(data, 'fatal'),
 
-    // Ring buffer access - need to map the data property to preserve logEntry structure
+    // Expose ring buffer with raw log entries
     ringBuffer: {
-      all: () => ringBuffer.all().map((entry) => entry.data),
+      all: () => ringBuffer.all(),
       size: () => ringBuffer.size(),
       clear: () => ringBuffer.clear(),
-      tail: (count) => ringBuffer.tail(count).map((entry) => entry.data),
-      head: (count) => ringBuffer.head(count).map((entry) => entry.data),
-      filter: (predicate) =>
-        ringBuffer.filter((entry) => predicate(entry.data)).map((entry) => entry.data),
+      tail: (count) => ringBuffer.tail(count),
+      head: (count) => ringBuffer.head(count),
+      filter: (predicate) => ringBuffer.filter(predicate),
     },
 
     // Utility methods
