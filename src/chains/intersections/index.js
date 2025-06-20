@@ -35,11 +35,17 @@ async function getIntersectionSchema() {
  * Prompt for listing elements that belong to all categories
  */
 const ELEMENTS_PROMPT = (categories, instructions) => {
-  const basePrompt = `${contentIsQuestion} List specific examples that combine or relate to ALL of these categories: ${categories.join(
+  const basePrompt = `${contentIsQuestion} List specific examples, instances, or elements that represent the intersection of ALL these fields: ${categories.join(
     ', '
   )}.
 
-Provide concrete examples, applications, or concepts that genuinely involve all categories together.`;
+Focus on:
+- Interdisciplinary research areas, techniques, or phenomena
+- Specific technologies, methods, or concepts that combine principles from all fields
+- Real-world applications that require knowledge from all disciplines
+- Breakthrough discoveries or innovations at the intersection
+
+Avoid generic terms that could apply to any single field. Instead, identify what emerges uniquely when these fields combine.`;
 
   const instructionsText = instructions ? `\n\nAdditional guidance: ${instructions}` : '';
 
@@ -52,11 +58,17 @@ ${strictFormat} ${onlyJSONStringArray}`;
  * Prompt for generating meaningful descriptions of intersections
  */
 const DESCRIPTION_PROMPT = (categories, instructions) => {
-  const basePrompt = `${contentIsQuestion} Describe how these categories connect or work together: ${categories.join(
+  const basePrompt = `${contentIsQuestion} Provide a clear, specific description of how these fields intersect: ${categories.join(
     ', '
   )}.
 
-Explain the relationship between these categories in 2-3 sentences.`;
+Focus on:
+- What unique insights or capabilities emerge when these fields combine
+- Specific interdisciplinary research areas or methodologies
+- How practitioners in these fields collaborate or share techniques
+- What problems can only be solved by combining knowledge from all fields
+
+Write 2-3 sentences that capture the essence of this interdisciplinary intersection. Avoid generic statements that could apply to any combination of fields.`;
 
   const instructionsText = instructions ? `\n\nAdditional guidance: ${instructions}` : '';
 
@@ -76,7 +88,14 @@ Combination: ${combo.join(' + ')}
 Description: ${description}
 Elements: ${elements.join(', ')}
 
-Score based on how well the elements and description show genuine connections between all categories.
+Criteria: 
+- Lists specific examples that truly require knowledge from ALL fields simultaneously
+- Describes meaningful interdisciplinary connections, not just overlapping topics
+- Includes real-world applications, research areas, or phenomena that emerge from the intersection
+- Avoids generic terms that apply to individual fields
+
+High scores (8-10): Biochemistry techniques, biophysical modeling, physical chemistry methods
+Low scores (1-3): Generic terms like "research," "analysis," "applications"
 
 ${explainAndSeparate} ${explainAndSeparatePrimitive}
 
@@ -92,7 +111,14 @@ ${examplePrompts}
 
 ${contentIsQuestion} For the combination: ${combo.join(' + ')}
 
-List specific examples that involve all these categories together.`;
+Provide a comprehensive list of specific examples that represent the true intersection of these fields. Focus on:
+
+1. **Interdisciplinary research areas**: Fields of study that require expertise in all disciplines
+2. **Hybrid technologies**: Tools, methods, or techniques that combine principles from all fields
+3. **Cross-disciplinary phenomena**: Natural or artificial processes that can only be understood through multiple lenses
+4. **Collaborative applications**: Real-world solutions that require integrated knowledge
+
+Be specific and avoid generic terms. Each element should represent something that genuinely emerges from the intersection of ALL fields, not just topics that relate to each field individually.`;
 
   const instructionsText = instructions ? `\n\nAdditional guidance: ${instructions}` : '';
 

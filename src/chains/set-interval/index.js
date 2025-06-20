@@ -122,7 +122,7 @@ Next wait:`;
       timer = setTimeout(step, delay);
     } catch (error) {
       console.error('Error in setInterval step:', error);
-
+      
       // Call onTick with the data we have, even if LLM failed
       if (onTick && lastResult) {
         await onTick({
