@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi, afterEach } from 'vitest';
+
+vi.useFakeTimers();
 import { createLLMLogger, createConsoleWriter, createFileWriter } from './index.js';
 import { setLogger, resetLogger } from '../../lib/logger-service/index.js';
 
@@ -76,7 +78,7 @@ describe('LLM Logger - Factory Pattern', () => {
       error('test error');
 
       // Allow flush loops to complete
-      await new Promise((resolve) => setTimeout(resolve, 150));
+      await vi.advanceTimersByTimeAsync(150);
 
       expect(mockConsoleLog).toHaveBeenCalledWith('[GLOBAL] test log');
       expect(mockConsoleLog).toHaveBeenCalledWith('[GLOBAL] test info');
@@ -144,7 +146,7 @@ describe('LLM Logger - Factory Pattern', () => {
       logger.debug('debug message'); // Should not match any lane
 
       // Allow flush loops to complete
-      await new Promise((resolve) => setTimeout(resolve, 150));
+      await vi.advanceTimersByTimeAsync(150);
 
       expect(errorWriter).toHaveBeenCalledWith(['error message']);
       expect(infoWriter).toHaveBeenCalledWith(['info message']);
@@ -166,7 +168,7 @@ describe('LLM Logger - Factory Pattern', () => {
       logger.info({ type: 'object log' });
 
       // Allow flush loops to complete
-      await new Promise((resolve) => setTimeout(resolve, 150));
+      await vi.advanceTimersByTimeAsync(150);
 
       expect(allWriter).toHaveBeenCalledTimes(2);
       expect(allWriter).toHaveBeenCalledWith(['string log']);
@@ -291,7 +293,7 @@ describe('LLM Logger - Factory Pattern', () => {
       logger.log(null);
 
       // Allow flush loops to complete
-      await new Promise((resolve) => setTimeout(resolve, 150));
+      await vi.advanceTimersByTimeAsync(150);
 
       expect(writer).toHaveBeenCalledWith(['string']);
       expect(writer).toHaveBeenCalledWith(['{"object":"data"}']);
@@ -318,7 +320,7 @@ describe('LLM Logger - Factory Pattern', () => {
       }
 
       // Allow flush loops to complete
-      await new Promise((resolve) => setTimeout(resolve, 200));
+      await vi.advanceTimersByTimeAsync(200);
 
       // Should have processed all logs
       expect(writer).toHaveBeenCalledTimes(50);
