@@ -1,7 +1,7 @@
 import Ajv from 'ajv';
 import fs from 'node:fs/promises';
 import { describe, expect, it, beforeAll, afterAll } from 'vitest';
-import { expect as aiExpect } from '../../chains/expect/index.js';
+import { aiExpect } from '../../chains/expect/index.js';
 import { longTestTimeout } from '../../constants/common.js';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';

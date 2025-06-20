@@ -1,0 +1,105 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "LLM Logger Bulk Adjustments Schema",
+  "description": "Schema for bulk log adjustments returned by LLM processors",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "properties": {
+      "logId": {
+        "type": "string",
+        "description": "Unique identifier of the log entry to adjust"
+      },
+      "adjustments": {
+        "type": "object",
+        "description": "Key-value pairs of JSON paths to values for non-destructive enhancement",
+        "patternProperties": {
+          "^[a-zA-Z0-9_.]+$": {
+            "description": "JSON path (e.g., 'analysis.sentiment', 'meta.category') mapped to any value"
+          }
+        },
+        "additionalProperties": true,
+        "examples": [
+          {
+            "analysis.sentiment": "positive",
+            "analysis.confidence": 0.95,
+            "category.type": "user-activity",
+            "metadata.processed": true
+          }
+        ]
+      },
+      "aiMeta": {
+        "type": "object",
+        "description": "AI-specific metadata that controls processing but is not included in output",
+        "properties": {
+          "skip": {
+            "type": "boolean",
+            "description": "Whether this log should be skipped in output lanes",
+            "default": false
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Confidence score for the analysis (0.0 to 1.0)"
+          },
+          "processingOrder": {
+            "type": "integer",
+            "description": "Suggested processing order for multi-stage processing"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Tags for categorization and filtering"
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["low", "medium", "high", "critical"],
+            "description": "Priority level for the log entry"
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "required": ["logId"],
+    "additionalProperties": false
+  },
+  "examples": [
+    [
+      {
+        "logId": "1750305969596-u6n7hyd9v",
+        "adjustments": {
+          "analysis.sentiment": "positive",
+          "analysis.confidence": 0.95,
+          "analysis.keywords": ["user", "authentication", "successful"],
+          "category.type": "user-activity",
+          "category.subcategory": "authentication"
+        },
+        "aiMeta": {
+          "skip": false,
+          "confidence": 0.95,
+          "tags": ["auth", "success"],
+          "priority": "medium"
+        }
+      },
+      {
+        "logId": "1750305969597-6t0ys0zat",
+        "adjustments": {
+          "analysis.sentiment": "negative",
+          "analysis.confidence": 0.88,
+          "analysis.error_type": "connection",
+          "category.type": "system-error",
+          "category.severity": "high"
+        },
+        "aiMeta": {
+          "skip": false,
+          "confidence": 0.88,
+          "tags": ["error", "database", "connection"],
+          "priority": "high"
+        }
+      }
+    ]
+  ]
+} 
