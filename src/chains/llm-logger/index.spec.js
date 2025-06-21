@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi, afterEach } from 'vitest';
+
+vi.useFakeTimers();
 import { createLLMLogger, createConsoleWriter, createFileWriter } from './index.js';
 import { resetLogger } from '../../lib/logger-service/index.js';
 
@@ -71,6 +73,16 @@ describe('LLM Logger - Factory Pattern', () => {
       logger.info('test info');
       logger.error('test error');
 
+      // Use global logger service methods
+      const { log, info, error } = await import('../../lib/logger-service/index.js');
+
+      log('test log');
+      info('test info');
+      error('test error');
+
+      // Allow flush loops to complete
+      await vi.advanceTimersByTimeAsync(150);
+
       // Check that the console writer was called with JSON formatted logs
       // The console writer receives objects and converts them to JSON strings
       expect(mockConsoleLog).toHaveBeenCalledWith(expect.stringContaining('[GLOBAL] {'));
@@ -140,6 +152,9 @@ describe('LLM Logger - Factory Pattern', () => {
       logger.info('info message');
       logger.debug('debug message'); // Should not match any lane
 
+      // Allow flush loops to complete
+      await vi.advanceTimersByTimeAsync(150);
+
       // Check that writers received objects with expected properties
       expect(errorWriter).toHaveBeenCalledWith([
         expect.objectContaining({
@@ -170,6 +185,9 @@ describe('LLM Logger - Factory Pattern', () => {
 
       logger.log('string log');
       logger.info({ type: 'object log' });
+
+      // Allow flush loops to complete
+      await vi.advanceTimersByTimeAsync(150);
 
       expect(allWriter).toHaveBeenCalledTimes(2);
       expect(allWriter).toHaveBeenCalledWith([
@@ -310,6 +328,9 @@ describe('LLM Logger - Factory Pattern', () => {
       logger.log(123);
       logger.log(null);
 
+      // Allow flush loops to complete
+      await vi.advanceTimersByTimeAsync(150);
+
       expect(writer).toHaveBeenCalledWith([
         expect.objectContaining({
           level: 'log',
@@ -354,6 +375,9 @@ describe('LLM Logger - Factory Pattern', () => {
       for (let i = 0; i < 50; i++) {
         logger.log(`message ${i}`);
       }
+
+      // Allow flush loops to complete
+      await vi.advanceTimersByTimeAsync(200);
 
       // Should have processed all logs
       expect(writer).toHaveBeenCalledTimes(50);
