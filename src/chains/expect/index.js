@@ -165,6 +165,40 @@ ${result.advice}`;
 }
 
 /**
+ * Fluent API wrapper for expect function
+ */
+class ExpectWrapper {
+  constructor(actual) {
+    this.actual = actual;
+  }
+
+  async toSatisfy(constraint) {
+    const [passed] = await expect(this.actual, undefined, constraint);
+    return passed;
+  }
+
+  async toEqual(expected) {
+    const [passed] = await expect(this.actual, expected, undefined);
+    return passed;
+  }
+
+  toBe(expected) {
+    const actual = this.actual;
+    if (actual !== expected) {
+      throw new Error(`Expected ${actual} to be ${expected}`);
+    }
+    return true;
+  }
+}
+
+/**
+ * Create a fluent expectation wrapper
+ */
+export function aiExpect(actual) {
+  return new ExpectWrapper(actual);
+}
+
+/**
  * Simple LLM expectation (backward compatibility)
  */
 export default async function expectSimple(actual, expected, constraint) {

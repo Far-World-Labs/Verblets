@@ -1,4 +1,3 @@
-import intersection from '../../verblets/intersection/index.js';
 import { rangeCombinations } from '../../lib/combinations/index.js';
 import chatGPT from '../../lib/chatgpt/index.js';
 import wrapVariable from '../../prompts/wrap-variable.js';
@@ -36,15 +35,44 @@ async function getIntersectionSchema() {
  * Prompt for listing elements that belong to all categories
  */
 const ELEMENTS_PROMPT = (categories, instructions) => {
-  const basePrompt = `${contentIsQuestion} List specific examples, instances, or elements that belong to all of: ${categories.join(
+  const basePrompt = `${contentIsQuestion} List specific examples, instances, or elements that represent the intersection of ALL these fields: ${categories.join(
     ', '
-  )}.`;
+  )}.
+
+Focus on:
+- Interdisciplinary research areas, techniques, or phenomena
+- Specific technologies, methods, or concepts that combine principles from all fields
+- Real-world applications that require knowledge from all disciplines
+- Breakthrough discoveries or innovations at the intersection
+
+Avoid generic terms that could apply to any single field. Instead, identify what emerges uniquely when these fields combine.`;
 
   const instructionsText = instructions ? `\n\nAdditional guidance: ${instructions}` : '';
 
   return `${basePrompt}${instructionsText}
 
 ${strictFormat} ${onlyJSONStringArray}`;
+};
+
+/**
+ * Prompt for generating meaningful descriptions of intersections
+ */
+const DESCRIPTION_PROMPT = (categories, instructions) => {
+  const basePrompt = `${contentIsQuestion} Provide a clear, specific description of how these fields intersect: ${categories.join(
+    ', '
+  )}.
+
+Focus on:
+- What unique insights or capabilities emerge when these fields combine
+- Specific interdisciplinary research areas or methodologies
+- How practitioners in these fields collaborate or share techniques
+- What problems can only be solved by combining knowledge from all fields
+
+Write 2-3 sentences that capture the essence of this interdisciplinary intersection. Avoid generic statements that could apply to any combination of fields.`;
+
+  const instructionsText = instructions ? `\n\nAdditional guidance: ${instructions}` : '';
+
+  return `${basePrompt}${instructionsText}`;
 };
 
 /**
@@ -60,7 +88,14 @@ Combination: ${combo.join(' + ')}
 Description: ${description}
 Elements: ${elements.join(', ')}
 
-Criteria: Correctly lists specific examples, instances, or elements that belong to ALL categories simultaneously, with meaningful description.
+Criteria: 
+- Lists specific examples that truly require knowledge from ALL fields simultaneously
+- Describes meaningful interdisciplinary connections, not just overlapping topics
+- Includes real-world applications, research areas, or phenomena that emerge from the intersection
+- Avoids generic terms that apply to individual fields
+
+High scores (8-10): Biochemistry techniques, biophysical modeling, physical chemistry methods
+Low scores (1-3): Generic terms like "research," "analysis," "applications"
 
 ${explainAndSeparate} ${explainAndSeparatePrimitive}
 
@@ -70,13 +105,20 @@ ${asNumber}`;
  * Prompt for generating exhaustive elements using examples
  */
 const EXHAUSTIVE_PROMPT = (examplePrompts, combo, instructions) => {
-  const basePrompt = `Here are examples of well-enumerated intersections:
+  const basePrompt = `Here are examples of intersections:
 
 ${examplePrompts}
 
 ${contentIsQuestion} For the combination: ${combo.join(' + ')}
 
-Provide an exhaustive list of specific examples, instances, or elements that belong to ALL of these categories simultaneously. Be as comprehensive as possible, following the pattern of the examples above.`;
+Provide a comprehensive list of specific examples that represent the true intersection of these fields. Focus on:
+
+1. **Interdisciplinary research areas**: Fields of study that require expertise in all disciplines
+2. **Hybrid technologies**: Tools, methods, or techniques that combine principles from all fields
+3. **Cross-disciplinary phenomena**: Natural or artificial processes that can only be understood through multiple lenses
+4. **Collaborative applications**: Real-world solutions that require integrated knowledge
+
+Be specific and avoid generic terms. Each element should represent something that genuinely emerges from the intersection of ALL fields, not just topics that relate to each field individually.`;
 
   const instructionsText = instructions ? `\n\nAdditional guidance: ${instructions}` : '';
 
@@ -109,22 +151,21 @@ const parseElements = (elementsText) => {
 const processCombo = async (combo, instructions, llm) => {
   const comboKey = combo.join(' + ');
 
-  // Process elements, description, and scoring in parallel
-  const [elements, intersectionItems] = await Promise.all([
+  // Generate description and elements in parallel
+  const [elements, description] = await Promise.all([
     chatGPT(ELEMENTS_PROMPT(combo, instructions), { modelOptions: llm }),
-    intersection(combo, { instructions, llm }),
+    chatGPT(DESCRIPTION_PROMPT(combo, instructions), { modelOptions: llm }),
   ]);
 
   const elementList = parseElements(elements);
-  const description = Array.isArray(intersectionItems)
-    ? intersectionItems.join(', ')
-    : String(intersectionItems);
-  const score = await number(SCORING_PROMPT(combo, description, elementList), { llm });
+  const descriptionText =
+    typeof description === 'string' ? description.trim() : String(description);
+  const score = await number(SCORING_PROMPT(combo, descriptionText, elementList), { llm });
 
   return {
     combo,
     comboKey,
-    description,
+    description: descriptionText,
     elementList,
     score,
   };
@@ -136,21 +177,20 @@ const processCombo = async (combo, instructions, llm) => {
 const processRemainingCombo = async (combo, instructions, examplePrompts, llm) => {
   const comboKey = combo.join(' + ');
 
-  const [exhaustiveElements, intersectionItems] = await Promise.all([
+  const [exhaustiveElements, description] = await Promise.all([
     chatGPT(EXHAUSTIVE_PROMPT(examplePrompts, combo, instructions), { modelOptions: llm }),
-    intersection(combo, { instructions, llm }),
+    chatGPT(DESCRIPTION_PROMPT(combo, instructions), { modelOptions: llm }),
   ]);
 
   const exhaustiveList = parseElements(exhaustiveElements);
-  const description = Array.isArray(intersectionItems)
-    ? intersectionItems.join(', ')
-    : String(intersectionItems);
+  const descriptionText =
+    typeof description === 'string' ? description.trim() : String(description);
 
   return {
     key: comboKey,
     intersection: {
       combination: combo,
-      description,
+      description: descriptionText,
       elements: exhaustiveList,
     },
   };

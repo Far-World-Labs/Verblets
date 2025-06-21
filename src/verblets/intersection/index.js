@@ -66,7 +66,14 @@ ${tryCompleteData} ${onlyJSONStringArray}`;
 };
 
 export default async function intersection(items, config = {}) {
-  if (!Array.isArray(items) || items.length < 2) return [];
+  if (!Array.isArray(items) || items.length === 0) {
+    return [];
+  }
+
+  // Intersection requires at least 2 items
+  if (items.length < 2) {
+    return [];
+  }
 
   const { llm, ...options } = config;
   const modelOptions = await createModelOptions(llm);
@@ -75,8 +82,42 @@ export default async function intersection(items, config = {}) {
     modelOptions,
   });
 
-  // With structured outputs, response should already be parsed and validated
-  const parsed = typeof output === 'string' ? JSON.parse(output) : output;
+  // Handle JSON parsing with robust error handling
+  let parsed;
+  try {
+    if (typeof output === 'string') {
+      // Try to clean up common JSON issues
+      let cleanedOutput = output.trim();
+
+      // Remove any text before the first { or [
+      const jsonStart = Math.min(
+        cleanedOutput.indexOf('{') !== -1 ? cleanedOutput.indexOf('{') : Infinity,
+        cleanedOutput.indexOf('[') !== -1 ? cleanedOutput.indexOf('[') : Infinity
+      );
+
+      if (jsonStart !== Infinity && jsonStart > 0) {
+        cleanedOutput = cleanedOutput.substring(jsonStart);
+      }
+
+      // Remove any text after the last } or ]
+      const lastBrace = cleanedOutput.lastIndexOf('}');
+      const lastBracket = cleanedOutput.lastIndexOf(']');
+      const jsonEnd = Math.max(lastBrace, lastBracket);
+
+      if (jsonEnd !== -1 && jsonEnd < cleanedOutput.length - 1) {
+        cleanedOutput = cleanedOutput.substring(0, jsonEnd + 1);
+      }
+
+      parsed = JSON.parse(cleanedOutput);
+    } else {
+      parsed = output;
+    }
+  } catch (error) {
+    console.error('Failed to parse JSON response from LLM:', error.message);
+    console.error('Raw output:', output);
+
+    return [];
+  }
 
   // Extract the items array from the object structure
   const resultArray = parsed?.items || parsed;

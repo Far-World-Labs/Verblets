@@ -74,18 +74,19 @@ export default function setInterval({
   const step = async () => {
     if (!active) return;
 
-    // Get data for AI decision making
-    lastResult = await getData({
-      count,
-      lastInvocationResult: lastResult,
-      initial,
-    });
+    try {
+      // Get data for AI decision making
+      lastResult = await getData({
+        count,
+        lastInvocationResult: lastResult,
+        initial,
+      });
 
-    // Replace {variable} placeholders in the prompt with actual values from lastResult
-    const processedPrompt = templateReplace(prompt, lastResult);
+      // Replace {variable} placeholders in the prompt with actual values from lastResult
+      const processedPrompt = templateReplace(prompt, lastResult);
 
-    // Always invoke the prompt to determine the next interval
-    const intervalPrompt = `${contentIsInstructions} ${processedPrompt}
+      // Always invoke the prompt to determine the next interval
+      const intervalPrompt = `${contentIsInstructions} ${processedPrompt}
 
 ${explainAndSeparate} ${explainAndSeparatePrimitive}
 
@@ -95,30 +96,50 @@ ${wrapVariable(history, { tag: 'history', title: 'History:', forceHTML: true })}
 ${wrapVariable(count, { tag: 'count', title: 'Count:' })}
 Next wait:`;
 
-    const intervalText = await chatGPT(intervalPrompt, {
-      modelOptions: model ? { modelName: model, ...llm } : { ...llm },
-      ...options,
-    });
-
-    history.push(intervalText);
-    if (history.length > historySize) history.shift();
-
-    const delay = await toMs(intervalText, { llm, ...options });
-
-    // Call onTick callback if provided - this is when the tick happens
-    if (onTick) {
-      const nextTime = new Date(Date.now() + delay);
-      await onTick({
-        timingString: intervalText,
-        data: lastResult,
-        nextDate: nextTime,
+      const intervalText = await chatGPT(intervalPrompt, {
+        modelOptions: model ? { modelName: model, ...llm } : { ...llm },
+        ...options,
       });
+
+      history.push(intervalText);
+      if (history.length > historySize) history.shift();
+
+      const delay = await toMs(intervalText, { llm, ...options });
+
+      // Call onTick callback if provided - this is when the tick happens
+      if (onTick) {
+        const nextTime = new Date(Date.now() + delay);
+        await onTick({
+          timingString: intervalText,
+          data: lastResult,
+          nextDate: nextTime,
+        });
+      }
+
+      count += 1;
+
+      // Schedule the next iteration
+      timer = setTimeout(step, delay);
+    } catch (error) {
+      console.error('Error in setInterval step:', error);
+
+      // Call onTick with the data we have, even if LLM failed
+      if (onTick && lastResult) {
+        await onTick({
+          timingString: 'error - using fallback',
+          data: lastResult,
+          nextDate: new Date(Date.now() + 1000), // 1 second fallback
+          error: error.message,
+        });
+      }
+
+      count += 1;
+
+      // Continue with a fallback delay of 1 second
+      if (active) {
+        timer = setTimeout(step, 1000);
+      }
     }
-
-    count += 1;
-
-    // Schedule the next iteration
-    timer = setTimeout(step, delay);
   };
 
   // Start immediately - the prompt will determine the first interval
