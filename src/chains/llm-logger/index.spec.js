@@ -83,12 +83,15 @@ describe('LLM Logger - Factory Pattern', () => {
       // Allow flush loops to complete
       await vi.advanceTimersByTimeAsync(150);
 
-      // Check that the console writer was called with JSON formatted logs
-      // The console writer receives objects and converts them to JSON strings
-      expect(mockConsoleLog).toHaveBeenCalledWith(expect.stringContaining('[GLOBAL] {'));
-      expect(mockConsoleLog).toHaveBeenCalledWith(expect.stringContaining('"data":"test log"'));
-      expect(mockConsoleLog).toHaveBeenCalledWith(expect.stringContaining('"data":"test info"'));
-      expect(mockConsoleLog).toHaveBeenCalledWith(expect.stringContaining('"data":"test error"'));
+      expect(mockConsoleLog).toHaveBeenCalledWith(
+        expect.stringContaining('[GLOBAL] {"data":"test log"')
+      );
+      expect(mockConsoleLog).toHaveBeenCalledWith(
+        expect.stringContaining('[GLOBAL] {"data":"test info"')
+      );
+      expect(mockConsoleLog).toHaveBeenCalledWith(
+        expect.stringContaining('[GLOBAL] {"data":"test error"')
+      );
     });
   });
 
@@ -155,7 +158,6 @@ describe('LLM Logger - Factory Pattern', () => {
       // Allow flush loops to complete
       await vi.advanceTimersByTimeAsync(150);
 
-      // Check that writers received objects with expected properties
       expect(errorWriter).toHaveBeenCalledWith([
         expect.objectContaining({
           level: 'error',
