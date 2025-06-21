@@ -7,6 +7,10 @@ dotenv.config()
 export default defineConfig({
   test: {
     exclude: [...configDefaults.exclude],
-    include: ['src/**/*.examples.js']
+    include: ['src/**/*.examples.js'],
+    env: {
+      NODE_ENV: 'test',
+      ...process.env
+    }
   },
 });
