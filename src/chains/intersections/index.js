@@ -1,9 +1,7 @@
+import intersection from '../../verblets/intersection/index.js';
 import { rangeCombinations } from '../../lib/combinations/index.js';
 import chatGPT from '../../lib/chatgpt/index.js';
 import wrapVariable from '../../prompts/wrap-variable.js';
-import pkg from 'lodash';
-const { shuffle } = pkg;
-import number from '../../verblets/number/index.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -13,14 +11,7 @@ import { fileURLToPath } from 'node:url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const {
-  onlyJSONStringArray,
-  asNumber,
-  strictFormat,
-  contentIsQuestion,
-  explainAndSeparate,
-  explainAndSeparatePrimitive,
-} = promptConstants;
+const { onlyJSONStringArray, strictFormat, contentIsQuestion } = promptConstants;
 
 /**
  * Load the JSON schema for intersection results
@@ -32,112 +23,33 @@ async function getIntersectionSchema() {
 }
 
 /**
- * Prompt for listing elements that belong to all categories
+ * Generalized prompt for finding intersection elements
  */
-const ELEMENTS_PROMPT = (categories, instructions) => {
-  const basePrompt = `${contentIsQuestion} List specific examples, instances, or elements that represent the intersection of ALL these fields: ${categories.join(
+const INTERSECTION_PROMPT = (categories, instructions) => {
+  const basePrompt = `${contentIsQuestion} Find specific examples, instances, or elements that belong to all of these categories: ${categories.join(
     ', '
   )}.
 
-Focus on:
-- Interdisciplinary research areas, techniques, or phenomena
-- Specific technologies, methods, or concepts that combine principles from all fields
-- Real-world applications that require knowledge from all disciplines
-- Breakthrough discoveries or innovations at the intersection
+Focus on items that genuinely exist in the intersection of all categories.`;
 
-Avoid generic terms that could apply to any single field. Instead, identify what emerges uniquely when these fields combine.`;
-
-  const instructionsText = instructions ? `\n\nAdditional guidance: ${instructions}` : '';
+  const instructionsText = instructions ? `\n\nAdditional context: ${instructions}` : '';
 
   return `${basePrompt}${instructionsText}
+
+${wrapVariable(categories.join(' | '), { tag: 'categories' })}
 
 ${strictFormat} ${onlyJSONStringArray}`;
 };
 
 /**
- * Prompt for generating meaningful descriptions of intersections
- */
-const DESCRIPTION_PROMPT = (categories, instructions) => {
-  const basePrompt = `${contentIsQuestion} Provide a clear, specific description of how these fields intersect: ${categories.join(
-    ', '
-  )}.
-
-Focus on:
-- What unique insights or capabilities emerge when these fields combine
-- Specific interdisciplinary research areas or methodologies
-- How practitioners in these fields collaborate or share techniques
-- What problems can only be solved by combining knowledge from all fields
-
-Write 2-3 sentences that capture the essence of this interdisciplinary intersection. Avoid generic statements that could apply to any combination of fields.`;
-
-  const instructionsText = instructions ? `\n\nAdditional guidance: ${instructions}` : '';
-
-  return `${basePrompt}${instructionsText}`;
-};
-
-/**
- * Prompt for scoring intersection results
- */
-const SCORING_PROMPT = (
-  combo,
-  description,
-  elements
-) => `${contentIsQuestion} Rate this intersection result on a scale of 1-10:
-
-Combination: ${combo.join(' + ')}
-Description: ${description}
-Elements: ${elements.join(', ')}
-
-Criteria: 
-- Lists specific examples that truly require knowledge from ALL fields simultaneously
-- Describes meaningful interdisciplinary connections, not just overlapping topics
-- Includes real-world applications, research areas, or phenomena that emerge from the intersection
-- Avoids generic terms that apply to individual fields
-
-High scores (8-10): Biochemistry techniques, biophysical modeling, physical chemistry methods
-Low scores (1-3): Generic terms like "research," "analysis," "applications"
-
-${explainAndSeparate} ${explainAndSeparatePrimitive}
-
-${asNumber}`;
-
-/**
- * Prompt for generating exhaustive elements using examples
- */
-const EXHAUSTIVE_PROMPT = (examplePrompts, combo, instructions) => {
-  const basePrompt = `Here are examples of intersections:
-
-${examplePrompts}
-
-${contentIsQuestion} For the combination: ${combo.join(' + ')}
-
-Provide a comprehensive list of specific examples that represent the true intersection of these fields. Focus on:
-
-1. **Interdisciplinary research areas**: Fields of study that require expertise in all disciplines
-2. **Hybrid technologies**: Tools, methods, or techniques that combine principles from all fields
-3. **Cross-disciplinary phenomena**: Natural or artificial processes that can only be understood through multiple lenses
-4. **Collaborative applications**: Real-world solutions that require integrated knowledge
-
-Be specific and avoid generic terms. Each element should represent something that genuinely emerges from the intersection of ALL fields, not just topics that relate to each field individually.`;
-
-  const instructionsText = instructions ? `\n\nAdditional guidance: ${instructions}` : '';
-
-  return `${basePrompt}${instructionsText}
-
-${wrapVariable(combo.join(' | '), { tag: 'combination' })}
-
-${strictFormat} ${onlyJSONStringArray}`;
-};
-
-/**
- * Parse elements from LLM response (now expects JSON array)
+ * Parse elements from LLM response
  */
 const parseElements = (elementsText) => {
   try {
     const parsed = JSON.parse(elementsText.trim());
     return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
   } catch {
-    // Fallback to old parsing method if JSON parsing fails
+    // Fallback to line-by-line parsing if JSON parsing fails
     return elementsText
       .split('\n')
       .map((line) => line.replace(/^[-*•]\s*/, '').trim())
@@ -146,70 +58,44 @@ const parseElements = (elementsText) => {
 };
 
 /**
- * Process a single combination to get elements, description, and score
+ * Process a single combination to get intersection elements and description
  */
-const processCombo = async (combo, instructions, llm) => {
+const processCombo = async (combo, instructions) => {
   const comboKey = combo.join(' + ');
 
-  // Generate description and elements in parallel
-  const [elements, description] = await Promise.all([
-    chatGPT(ELEMENTS_PROMPT(combo, instructions), { modelOptions: llm }),
-    chatGPT(DESCRIPTION_PROMPT(combo, instructions), { modelOptions: llm }),
+  // Get elements and description in parallel
+  const [elements, intersectionItems] = await Promise.all([
+    chatGPT(INTERSECTION_PROMPT(combo, instructions)),
+    intersection(combo, { instructions }),
   ]);
 
   const elementList = parseElements(elements);
-  const descriptionText =
-    typeof description === 'string' ? description.trim() : String(description);
-  const score = await number(SCORING_PROMPT(combo, descriptionText, elementList), { llm });
-
-  return {
-    combo,
-    comboKey,
-    description: descriptionText,
-    elementList,
-    score,
-  };
-};
-
-/**
- * Process remaining combination using top examples as patterns
- */
-const processRemainingCombo = async (combo, instructions, examplePrompts, llm) => {
-  const comboKey = combo.join(' + ');
-
-  const [exhaustiveElements, description] = await Promise.all([
-    chatGPT(EXHAUSTIVE_PROMPT(examplePrompts, combo, instructions), { modelOptions: llm }),
-    chatGPT(DESCRIPTION_PROMPT(combo, instructions), { modelOptions: llm }),
-  ]);
-
-  const exhaustiveList = parseElements(exhaustiveElements);
-  const descriptionText =
-    typeof description === 'string' ? description.trim() : String(description);
+  const description = Array.isArray(intersectionItems)
+    ? intersectionItems.join(', ')
+    : String(intersectionItems);
 
   return {
     key: comboKey,
     intersection: {
       combination: combo,
-      description: descriptionText,
-      elements: exhaustiveList,
+      description,
+      elements: elementList,
     },
   };
 };
 
 /**
- * Find intersections for all combinations of items with consistent, exhaustive results
+ * Find intersections for all combinations of items with consistent results
  *
  * @param {Array} items - Array of items to find intersections between
  * @param {Object} options - Configuration options
  * @param {string} options.instructions - Custom instructions for intersection finding
  * @param {number} options.minSize - Minimum combination size (default: 2)
  * @param {number} options.maxSize - Maximum combination size (default: items.length)
- * @param {number} options.batchSize - Number of combinations to process in parallel (default: 5)
- * @param {number} options.goodnessScore - Minimum score threshold for good examples (default: 7)
- * @param {string|Object} options.llm - LLM model to use (default: 'fastGoodCheap' with extended timeout)
+ * @param {number} options.batchSize - Number of combinations to process in parallel (default: 10)
+ * @param {string|Object} options.llm - LLM model to use (default: 'fastGoodCheap')
  * @param {boolean} options.useSchemaValidation - Whether to validate results with JSON schema (default: false)
- * @returns {Object} Results with combinations, elements, and exhaustive intersections
- * @throws {Error} When no combinations score above the goodness threshold
+ * @returns {Object} Results with combinations, elements, and intersections
  */
 export default async function intersections(items, options = {}) {
   if (!Array.isArray(items) || items.length < 2) {
@@ -220,112 +106,38 @@ export default async function intersections(items, options = {}) {
     instructions,
     minSize = 2,
     maxSize = items.length,
-    batchSize = 5,
-    goodnessScore = 7,
-    llm = { modelName: 'fastGoodCheap', requestTimeout: 120_000 }, // Extended timeout for complex operations
-    useSchemaValidation = false, // Disabled by default due to OpenAI API limitations with patternProperties
+    batchSize = 10,
+    llm = 'fastGoodCheap',
+    useSchemaValidation = false,
   } = options;
 
-  // Note: Schema validation is disabled by default because OpenAI's structured output
-  // doesn't handle patternProperties well. The function returns a dynamic object
-  // where keys are combination strings (e.g., "art + science") and values are
-  // intersection objects with combination, description, and elements properties.
-
-  // Step 1: Generate and shuffle combinations
+  // Generate all combinations
   const allCombinations = rangeCombinations(items, minSize, maxSize);
-  const combinations = shuffle(allCombinations);
 
-  if (combinations.length === 0) {
+  if (allCombinations.length === 0) {
     return {};
   }
 
-  // Step 2: Find first 3 high-quality intersections in parallel
-  const topExamples = [];
+  // Process all combinations in batches
+  const results = {};
 
-  for (let i = 0; i < combinations.length && topExamples.length < 3; i += batchSize) {
-    const batch = combinations.slice(i, i + batchSize);
-    const results = await Promise.all(batch.map((combo) => processCombo(combo, instructions, llm)));
+  for (let i = 0; i < allCombinations.length; i += batchSize) {
+    const batch = allCombinations.slice(i, i + batchSize);
+    const batchResults = await Promise.all(batch.map((combo) => processCombo(combo, instructions)));
 
-    for (const result of results) {
-      if (result.score > goodnessScore && topExamples.length < 3) {
-        topExamples.push({
-          key: result.comboKey,
-          intersection: {
-            combination: result.combo,
-            description: result.description,
-            elements: result.elementList,
-          },
-        });
-      }
+    // Add batch results to final results
+    for (const result of batchResults) {
+      results[result.key] = result.intersection;
     }
   }
 
-  // If no good examples found, lower the threshold and try again
-  if (topExamples.length === 0) {
-    const lowerThreshold = Math.max(1, goodnessScore - 3);
-    for (let i = 0; i < Math.min(combinations.length, 10) && topExamples.length < 3; i++) {
-      const result = await processCombo(combinations[i], instructions, llm);
-      if (result.score > lowerThreshold) {
-        topExamples.push({
-          key: result.comboKey,
-          intersection: {
-            combination: result.combo,
-            description: result.description,
-            elements: result.elementList,
-          },
-        });
-      }
-    }
+  // Validate results with JSON schema if enabled
+  if (useSchemaValidation && Object.keys(results).length > 0) {
+    const validated = await validateIntersectionResults(results, llm);
+    return validated.intersections || results;
   }
 
-  // If still no examples, return empty object
-  if (topExamples.length === 0) {
-    return {};
-  }
-
-  // Step 3: Use top examples to generate all intersections in parallel
-  const examplePrompts = topExamples
-    .map(
-      ({ key, intersection }) =>
-        `${key}: ${intersection.description}\nElements: ${intersection.elements
-          .slice(0, 5)
-          .join(', ')}`
-    )
-    .join('\n\n');
-
-  const remainingCombinations = allCombinations.filter((combo) => {
-    const comboKey = combo.join(' + ');
-    return !topExamples.find((ex) => ex.key === comboKey); // Skip already processed examples
-  });
-
-  // Process remaining combinations in parallel
-  const remainingResults = await Promise.all(
-    remainingCombinations.map((combo) =>
-      processRemainingCombo(combo, instructions, examplePrompts, llm)
-    )
-  );
-
-  // Combine all results
-  const finalIntersections = {};
-
-  // Add top examples
-  for (const example of topExamples) {
-    finalIntersections[example.key] = example.intersection;
-  }
-
-  // Add remaining results
-  for (const result of remainingResults) {
-    finalIntersections[result.key] = result.intersection;
-  }
-
-  // Step 4: Validate results with JSON schema if enabled
-  if (useSchemaValidation && Object.keys(finalIntersections).length > 0) {
-    const validated = await validateIntersectionResults(finalIntersections, llm);
-    // Extract the intersections from the validated structure and return flat
-    return validated.intersections || finalIntersections;
-  }
-
-  return finalIntersections;
+  return results;
 }
 
 /**
