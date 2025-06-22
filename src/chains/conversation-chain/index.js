@@ -4,7 +4,6 @@ import modelService from '../../services/llm-model/index.js';
 /**
  * @typedef {Object} Speaker
  * @property {string} id
- * @property {'participant'|'facilitator'} [role]
  * @property {string} [bio]
  * @property {string} [name]
  * @property {string} [agenda]
@@ -20,8 +19,6 @@ import modelService from '../../services/llm-model/index.js';
 
 /**
  * @typedef {Object} ConversationRules
- * @property {boolean} [facilitatorTurns]
- * @property {boolean} [summaryRound]
  * @property {(round:number, history:Message[]) => string[]} [turnPolicy]
  * @property {(round:number, history:Message[]) => boolean} [shouldContinue]
  * @property {string} [customPrompt]
@@ -31,16 +28,10 @@ const historySnippet = (history) =>
   history.map((m) => `${m.time} ${m.name} (${m.id}): ${m.comment}`).join('\n');
 
 const speakersBlock = (speakers) => {
-  const ordered = speakers.slice();
-  const facIndex = ordered.findIndex((p) => p.role === 'facilitator');
-  if (facIndex > -1) {
-    const [fac] = ordered.splice(facIndex, 1);
-    ordered.unshift(fac);
-  }
-  return ordered
+  return speakers
     .map((p, i) => {
       const name = p.name || `Speaker ${i + 1}`;
-      const parts = [`${name} (${p.role || 'participant'})`];
+      const parts = [name];
       if (p.bio) parts.push(`- ${p.bio}`);
       if (p.agenda) parts.push(`agenda: ${p.agenda}`);
       return parts.join(' ');
@@ -48,12 +39,11 @@ const speakersBlock = (speakers) => {
     .join('\n');
 };
 
-export const FACILITATOR_PROMPT =
-  '{forOthersToReplace}\n{bios}\n{history}Facilitate the conversation on "{topic}". Summarize progress and invite more discussion.';
 export const SPEAK_PROMPT =
-  '{forOthersToReplace}\n{bios}\n{history}{speakerName} on "{topic}": respond to others, push your agenda, note agreement or disagreement in two sentences or less.';
-export const SUMMARY_PROMPT =
-  '{forOthersToReplace}\n{bios}\n{history}Give a short closing statement summarizing {speakerName}\'s perspective on "{topic}".';
+  '{forOthersToReplace}\n{bios}\n{history}{speakerName} on "{topic}": respond to others, engage with the discussion, and contribute your perspective.';
+
+export const BULK_SPEAK_PROMPT =
+  '{forOthersToReplace}\n{bios}\n{history}Multiple speakers are responding to "{topic}". Generate responses for each speaker that engage with the discussion and reflect their unique perspectives. Return responses in order:\n\n{speakerNames}';
 
 const buildPrompt = (template, vars) =>
   template
@@ -61,27 +51,67 @@ const buildPrompt = (template, vars) =>
     .replace('{bios}', vars.bios)
     .replace('{history}', vars.history ? `${vars.history}\n` : '')
     .replace('{topic}', vars.topic)
-    .replace('{speakerName}', vars.speakerName || '');
+    .replace('{speakerName}', vars.speakerName || '')
+    .replace('{speakerNames}', vars.speakerNames || '');
 
-const defaultFacilitatorFn = async ({
-  topic,
-  rules,
+const defaultBulkSpeakFn = async ({
   speakers,
+  topic,
   history,
+  rules,
   model = modelService.getBestPublicModel(),
 }) => {
   const snippet = historySnippet(history);
   const bios = speakersBlock(speakers);
-  const prompt = buildPrompt(FACILITATOR_PROMPT, {
+  const speakerNames = speakers
+    .map((s, i) => `${i + 1}. ${s.name || `Speaker ${i + 1}`}`)
+    .join('\n');
+
+  const prompt = buildPrompt(BULK_SPEAK_PROMPT, {
     customPrompt: rules.customPrompt,
     bios,
     history: snippet,
     topic,
+    speakerNames,
   });
+
   const budget = model.budgetTokens(prompt);
-  return await chatGPT(prompt, { maxTokens: budget.completion });
+  const response = await chatGPT(prompt, { maxTokens: budget.completion });
+
+  // Parse the response into individual comments
+  // Simple parsing: split by numbered lines or speaker names
+  const lines = response.split('\n').filter((line) => line.trim());
+  const comments = [];
+  let currentComment = '';
+
+  for (const line of lines) {
+    // Check if line starts with a number (1., 2., etc.) or speaker name
+    const isNewSpeaker =
+      /^\d+\./.test(line.trim()) || speakers.some((s) => line.includes(s.name || ''));
+
+    if (isNewSpeaker && currentComment) {
+      comments.push(currentComment.trim());
+      currentComment = line.replace(/^\d+\.\s*/, '').replace(/^[^:]*:\s*/, '');
+    } else if (isNewSpeaker) {
+      currentComment = line.replace(/^\d+\.\s*/, '').replace(/^[^:]*:\s*/, '');
+    } else {
+      currentComment += ` ${line}`;
+    }
+  }
+
+  if (currentComment) {
+    comments.push(currentComment.trim());
+  }
+
+  // Ensure we have the right number of comments
+  while (comments.length < speakers.length) {
+    comments.push(`I agree with the previous points made.`);
+  }
+
+  return comments.slice(0, speakers.length);
 };
 
+// Keep the single speaker function for backward compatibility
 const defaultSpeakFn = async ({
   speaker,
   topic,
@@ -93,24 +123,6 @@ const defaultSpeakFn = async ({
   const bios = speakersBlock([speaker]);
   const prompt = buildPrompt(SPEAK_PROMPT, {
     customPrompt: rules.customPrompt,
-    bios,
-    history: snippet,
-    topic,
-    speakerName: speaker.name || 'Speaker',
-  });
-  const budget = model.budgetTokens(prompt);
-  return await chatGPT(prompt, { maxTokens: budget.completion });
-};
-
-const defaultSummaryFn = async ({
-  speaker,
-  topic,
-  history,
-  model = modelService.getBestPublicModel(),
-}) => {
-  const snippet = historySnippet(history);
-  const bios = speakersBlock([speaker]);
-  const prompt = buildPrompt(SUMMARY_PROMPT, {
     bios,
     history: snippet,
     topic,
@@ -136,11 +148,8 @@ export default class ConversationChain {
 
     const {
       rules = {},
-      facilitatorFn = defaultFacilitatorFn,
       speakFn = defaultSpeakFn,
-      summaryFn = defaultSummaryFn,
-      bulkSpeakFn = null,
-      bulkSummaryFn = null,
+      bulkSpeakFn = defaultBulkSpeakFn, // Default to bulk processing
     } = options;
 
     if (rules.shouldContinue && typeof rules.shouldContinue !== 'function') {
@@ -151,17 +160,12 @@ export default class ConversationChain {
     this.speakers = speakers.slice();
     this.rules = Object.assign(
       {
-        facilitatorTurns: true,
-        summaryRound: true,
         shouldContinue: (round) => round < 1,
       },
       rules
     );
-    this.facilitatorFn = facilitatorFn;
     this.speakFn = speakFn;
-    this.summaryFn = summaryFn;
     this.bulkSpeakFn = bulkSpeakFn;
-    this.bulkSummaryFn = bulkSummaryFn;
     this.messages = [];
   }
 
@@ -176,34 +180,23 @@ export default class ConversationChain {
   }
 
   async run() {
-    const facilitator = this.speakers.find((p) => p.role === 'facilitator');
-    const others = this.speakers.filter((p) => p.role !== 'facilitator');
-
     let round = 0;
-    let finalOrder = others.map((p) => p.id);
     while (this.rules.shouldContinue(round, this.messages.slice())) {
       if (round >= 50) break;
-      if (facilitator && this.rules.facilitatorTurns !== false) {
-        // eslint-disable-next-line no-await-in-loop
-        const comment = await this.facilitatorFn({
-          topic: this.topic,
-          speakers: this.speakers,
-          rules: this.rules,
-          history: this.messages.slice(),
-        });
-        this._push(facilitator.id, comment);
-      }
 
       let order;
       if (typeof this.rules.turnPolicy === 'function') {
         order = this.rules.turnPolicy(round, this.messages.slice()) || [];
-        order = order.filter((id) => others.some((p) => p.id === id));
+        order = order.filter((id) => this.speakers.some((p) => p.id === id));
       } else {
-        order = others.map((p) => p.id);
+        order = this.speakers.map((p) => p.id);
       }
-      finalOrder = order.length ? order : others.map((p) => p.id);
 
-      const speakers = finalOrder.map((id) => others.find((p) => p.id === id)).filter(Boolean);
+      if (order.length === 0) {
+        order = this.speakers.map((p) => p.id);
+      }
+
+      const speakers = order.map((id) => this.speakers.find((p) => p.id === id)).filter(Boolean);
 
       if (this.bulkSpeakFn) {
         const comments = await this.bulkSpeakFn({
@@ -229,35 +222,6 @@ export default class ConversationChain {
       }
 
       round += 1;
-    }
-
-    if (this.rules.summaryRound !== false) {
-      const missing = others.filter((p) => !finalOrder.includes(p.id)).map((p) => p.id);
-      const summaryOrder = [...finalOrder, ...missing];
-      const summarySpeakers = summaryOrder
-        .map((id) => others.find((p) => p.id === id))
-        .filter(Boolean);
-
-      if (this.bulkSummaryFn) {
-        const comments = await this.bulkSummaryFn({
-          speakers: summarySpeakers,
-          topic: this.topic,
-          history: this.messages.slice(),
-        });
-        comments.forEach((comment, idx) => {
-          this._push(summarySpeakers[idx].id, comment);
-        });
-      } else {
-        for (const speaker of summarySpeakers) {
-          // eslint-disable-next-line no-await-in-loop
-          const comment = await this.summaryFn({
-            speaker,
-            topic: this.topic,
-            history: this.messages.slice(),
-          });
-          this._push(speaker.id, comment);
-        }
-      }
     }
 
     return this.messages;

@@ -54,13 +54,13 @@ export const buildPrompt = (items, { instructions } = {}) => {
   const itemsBlock = wrapVariable(itemsList, { tag: 'items' });
   const intro =
     instructions ||
-    'List the common features, instances, or relational links that all items share.';
+    'Identify the common elements, shared features, or overlapping aspects that connect all the given items.';
 
   return `${contentIsQuestion} ${intro}
 
 ${itemsBlock}
 
-The array should specify items without context, groupings, or any other data--just names.
+Provide a clear, focused list of items that represent the intersection or commonality between all the given categories.
 
 ${tryCompleteData} ${onlyJSONStringArray}`;
 };
