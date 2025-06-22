@@ -25,6 +25,7 @@ import sort from './chains/sort/index.js';
 import date from './chains/date/index.js';
 import setInterval from './chains/set-interval/index.js';
 import bulkScore from './chains/bulk-score/index.js';
+import bulkConversationResponse from './chains/bulk-conversation-response/index.js';
 import filterAmbiguous from './chains/filter-ambiguous/index.js';
 
 import SummaryMap from './chains/summary-map/index.js';
@@ -33,6 +34,7 @@ import themes from './chains/themes/index.js';
 import test from './chains/test/index.js';
 
 import testAdvice from './chains/test-advice/index.js';
+import ConversationChain from './chains/conversation-chain/index.js';
 
 import schemas from './json-schemas/index.js';
 import * as common from './constants/common.js';
@@ -84,6 +86,7 @@ import schemaOrg from './verblets/schema-org/index.js';
 import nameSimilarTo from './verblets/name-similar-to/index.js';
 
 import name from './verblets/name/index.js';
+import peopleList from './verblets/people-list/index.js';
 
 import toObject from './verblets/to-object/index.js';
 
@@ -146,6 +149,7 @@ export const verblets = {
   schemaOrg,
   nameSimilarTo,
   name,
+  peopleList,
   toObject,
   listMap,
   listFind,
@@ -166,6 +170,8 @@ export const verblets = {
   setInterval,
   test,
   testAdvice,
+  ConversationChain,
+  bulkConversationResponse,
   bulkScore,
   filterAmbiguous,
   bulkGroup,
