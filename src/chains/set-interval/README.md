@@ -58,8 +58,6 @@ const stop = setInterval({
   }
 });
 
-Function to stop the interval timer.
-
 ## API Reference
 
 ### `setInterval(options)`
