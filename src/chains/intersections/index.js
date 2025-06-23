@@ -1,4 +1,4 @@
-import intersection from '../../verblets/intersection/index.js';
+import commonalities from '../../verblets/commonalities/index.js';
 import { rangeCombinations } from '../../lib/combinations/index.js';
 import chatGPT from '../../lib/chatgpt/index.js';
 import wrapVariable from '../../prompts/wrap-variable.js';
@@ -66,7 +66,7 @@ const processCombo = async (combo, instructions) => {
   // Get elements and description in parallel
   const [elements, intersectionItems] = await Promise.all([
     chatGPT(INTERSECTION_PROMPT(combo, instructions)),
-    intersection(combo, { instructions }),
+    commonalities(combo, { instructions }),
   ]);
 
   const elementList = parseElements(elements);

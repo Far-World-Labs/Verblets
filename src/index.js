@@ -99,7 +99,7 @@ import conversationTurnMulti from './verblets/conversation-turn-multi/index.js';
 import bulkGroup from './chains/bulk-group/index.js';
 
 import listGroup from './verblets/list-group/index.js';
-import intersection from './verblets/intersection/index.js';
+import commonalities from './verblets/commonalities/index.js';
 
 // # Concept Science
 import centralTendency from './verblets/central-tendency/index.js';
@@ -181,7 +181,7 @@ export const verblets = {
   bulkGroup,
   bulkFilter,
   listGroup,
-  intersection,
+  commonalities,
   // # Concept Science
   centralTendency,
   bulkCentralTendency,

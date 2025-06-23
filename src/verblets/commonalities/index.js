@@ -12,11 +12,11 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 /**
- * Load the JSON schema for intersection results
+ * Load the JSON schema for commonalities results
  * @returns {Promise<Object>} JSON schema for validation
  */
-async function getIntersectionSchema() {
-  const schemaPath = path.join(__dirname, 'intersection-result.json');
+async function getCommonalitiesSchema() {
+  const schemaPath = path.join(__dirname, 'commonalities-result.json');
   return JSON.parse(await fs.readFile(schemaPath, 'utf8'));
 }
 
@@ -26,12 +26,12 @@ async function getIntersectionSchema() {
  * @returns {Promise<Object>} Model options for chatGPT
  */
 async function createModelOptions(llm = 'fastGoodCheap') {
-  const schema = await getIntersectionSchema();
+  const schema = await getCommonalitiesSchema();
 
   const responseFormat = {
     type: 'json_schema',
     json_schema: {
-      name: 'intersection_result',
+      name: 'commonalities_result',
       schema,
     },
   };
@@ -65,12 +65,12 @@ Provide a clear, focused list of items that represent the intersection or common
 ${tryCompleteData} ${onlyJSONStringArray}`;
 };
 
-export default async function intersection(items, config = {}) {
+export default async function commonalities(items, config = {}) {
   if (!Array.isArray(items) || items.length === 0) {
     return [];
   }
 
-  // Intersection requires at least 2 items
+  // Finding commonalities requires at least 2 items
   if (items.length < 2) {
     return [];
   }
