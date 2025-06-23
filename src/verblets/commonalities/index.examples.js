@@ -9,25 +9,31 @@ describe('commonalities verblet', () => {
     expect(Array.isArray(result)).toBe(true);
     expect(result.length).toBeGreaterThan(0);
     // Should find commonalities like portable electronics, computing devices, etc.
-    expect(result.some(item => 
-      item.toLowerCase().includes('electronic') || 
-      item.toLowerCase().includes('portable') ||
-      item.toLowerCase().includes('computing')
-    )).toBe(true);
+    expect(
+      result.some(
+        (item) =>
+          item.toLowerCase().includes('electronic') ||
+          item.toLowerCase().includes('portable') ||
+          item.toLowerCase().includes('computing')
+      )
+    ).toBe(true);
   });
 
   it('identifies commonalities in transportation methods', async () => {
     const result = await commonalities(['car', 'bicycle', 'motorcycle'], {
-      instructions: 'focus on transportation methods available in a city'
+      instructions: 'focus on transportation methods available in a city',
     });
     expect(Array.isArray(result)).toBe(true);
     expect(result.length).toBeGreaterThan(0);
     // Should find transportation-related commonalities
-    expect(result.some(item => 
-      item.toLowerCase().includes('transport') || 
-      item.toLowerCase().includes('vehicle') ||
-      item.toLowerCase().includes('mobility')
-    )).toBe(true);
+    expect(
+      result.some(
+        (item) =>
+          item.toLowerCase().includes('transport') ||
+          item.toLowerCase().includes('vehicle') ||
+          item.toLowerCase().includes('mobility')
+      )
+    ).toBe(true);
   });
 
   it('handles items with few commonalities', async () => {

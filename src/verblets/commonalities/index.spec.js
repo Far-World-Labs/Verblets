@@ -21,7 +21,7 @@ describe('commonalities', () => {
 
   it('finds common threads between items', async () => {
     mockChatGPT.mockResolvedValueOnce({
-      items: ['Portable electronics', 'Computing devices']
+      items: ['Portable electronics', 'Computing devices'],
     });
 
     const result = await commonalities(['smartphone', 'laptop', 'tablet']);
@@ -53,9 +53,9 @@ describe('commonalities', () => {
     mockChatGPT.mockResolvedValueOnce({ items: ['Urban transport'] });
 
     const result = await commonalities(['bus', 'subway', 'taxi'], {
-      instructions: 'focus on public transportation in cities'
+      instructions: 'focus on public transportation in cities',
     });
-    
+
     expect(result).toEqual(['Urban transport']);
   });
 });
