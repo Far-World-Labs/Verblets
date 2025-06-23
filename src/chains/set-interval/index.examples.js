@@ -1,11 +1,48 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import setInterval from './index.js';
 import { longTestTimeout } from '../../constants/common.js';
+
+// Use synthetic timers for fast testing
+vi.useFakeTimers();
+
+// Mock the dependencies like in the spec file
+vi.mock('../../lib/chatgpt/index.js', () => ({
+  default: vi.fn(),
+}));
+vi.mock('../date/index.js', () => ({
+  default: vi.fn(),
+}));
+vi.mock('../../verblets/number-with-units/index.js', () => ({
+  default: vi.fn(),
+}));
+vi.mock('../../verblets/number/index.js', () => ({
+  default: vi.fn(),
+}));
+
+const chatGPT = (await import('../../lib/chatgpt/index.js')).default;
+const date = (await import('../date/index.js')).default;
+const numberWithUnits = (await import('../../verblets/number-with-units/index.js')).default;
+const number = (await import('../../verblets/number/index.js')).default;
 
 describe('setInterval (example)', () => {
   it(
     'adjusts meditation sessions using wearable stress levels',
     async () => {
+      // Mock the LLM responses for timing decisions
+      chatGPT
+        .mockResolvedValueOnce('3 minutes')
+        .mockResolvedValueOnce('2 minutes')
+        .mockResolvedValueOnce('4 minutes');
+
+      // Mock the time parsing
+      numberWithUnits
+        .mockResolvedValueOnce({ value: 3, unit: 'minutes' })
+        .mockResolvedValueOnce({ value: 2, unit: 'minutes' })
+        .mockResolvedValueOnce({ value: 4, unit: 'minutes' });
+
+      date.mockResolvedValue(undefined);
+      number.mockResolvedValue(undefined);
+
       const results = [];
       const stop = setInterval({
         prompt:
@@ -16,9 +53,14 @@ describe('setInterval (example)', () => {
         },
       });
 
-      // Wait longer to allow for LLM processing time
-      await new Promise((r) => setTimeout(r, 10000));
+      // Use synthetic timer advancement instead of real setTimeout
+      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(0); // First tick
+      await vi.advanceTimersByTimeAsync(180000); // 3 minutes
+      await vi.advanceTimersByTimeAsync(120000); // 2 minutes
+
       stop();
+      await vi.runOnlyPendingTimersAsync();
 
       // Assert that the function executed and collected stress data
       expect(results.length).toBeGreaterThan(0);
@@ -35,6 +77,21 @@ describe('setInterval (example)', () => {
   it(
     'paces game events to match player skill',
     async () => {
+      // Mock the LLM responses for timing decisions
+      chatGPT
+        .mockResolvedValueOnce('10 seconds')
+        .mockResolvedValueOnce('8 seconds')
+        .mockResolvedValueOnce('15 seconds');
+
+      // Mock the time parsing
+      numberWithUnits
+        .mockResolvedValueOnce({ value: 10, unit: 'seconds' })
+        .mockResolvedValueOnce({ value: 8, unit: 'seconds' })
+        .mockResolvedValueOnce({ value: 15, unit: 'seconds' });
+
+      date.mockResolvedValue(undefined);
+      number.mockResolvedValue(undefined);
+
       const results = [];
 
       const stop = setInterval({
@@ -46,9 +103,14 @@ describe('setInterval (example)', () => {
         },
       });
 
-      // Wait longer to allow for LLM processing time
-      await new Promise((r) => setTimeout(r, 10000));
+      // Use synthetic timer advancement instead of real setTimeout
+      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(0); // First tick
+      await vi.advanceTimersByTimeAsync(10000); // 10 seconds
+      await vi.advanceTimersByTimeAsync(8000); // 8 seconds
+
       stop();
+      await vi.runOnlyPendingTimersAsync();
 
       // Assert that the function executed and collected win rate data
       expect(results.length).toBeGreaterThan(0);
