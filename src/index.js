@@ -25,7 +25,6 @@ import sort from './chains/sort/index.js';
 import date from './chains/date/index.js';
 import setInterval from './chains/set-interval/index.js';
 import bulkScore from './chains/bulk-score/index.js';
-import bulkConversationResponse from './chains/bulk-conversation-response/index.js';
 import filterAmbiguous from './chains/filter-ambiguous/index.js';
 
 import SummaryMap from './chains/summary-map/index.js';
@@ -34,7 +33,8 @@ import themes from './chains/themes/index.js';
 import test from './chains/test/index.js';
 
 import testAdvice from './chains/test-advice/index.js';
-import ConversationChain from './chains/conversation-chain/index.js';
+import Conversation from './chains/conversation/index.js';
+import * as turnPolicies from './chains/conversation/turn-policies.js';
 
 import schemas from './json-schemas/index.js';
 import * as common from './constants/common.js';
@@ -92,6 +92,9 @@ import toObject from './verblets/to-object/index.js';
 
 import listMap from './verblets/list-map/index.js';
 import listFind from './verblets/list-find/index.js';
+
+import conversationTurn from './verblets/conversation-turn/index.js';
+import conversationTurnMulti from './verblets/conversation-turn-multi/index.js';
 
 import bulkGroup from './chains/bulk-group/index.js';
 
@@ -170,8 +173,9 @@ export const verblets = {
   setInterval,
   test,
   testAdvice,
-  ConversationChain,
-  bulkConversationResponse,
+  Conversation,
+  conversationTurn,
+  conversationTurnMulti,
   bulkScore,
   filterAmbiguous,
   bulkGroup,
@@ -194,6 +198,6 @@ export const constants = {
   models,
 };
 
-export { prompts, schemas };
+export { prompts, schemas, turnPolicies };
 
 export default chatGPT;

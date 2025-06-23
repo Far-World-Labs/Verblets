@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import intersections from './index.js';
 import { expect as aiExpect } from '../expect/index.js';
-import { longTestTimeout } from '../../constants/common.js';
+import { longTestTimeout, shouldRunLongExamples } from '../../constants/common.js';
 
 describe('intersections chain examples', () => {
-  it(
+  it.skipIf(!shouldRunLongExamples)(
     'analyzes technology categories comprehensively',
     async () => {
       const result = await intersections(['software', 'hardware', 'networking']);
@@ -39,7 +39,7 @@ describe('intersections chain examples', () => {
     longTestTimeout
   );
 
-  it(
+  it.skipIf(!shouldRunLongExamples)(
     'handles diverse categories with meaningful intersections',
     async () => {
       const result = await intersections(['art', 'science']);
@@ -69,7 +69,7 @@ describe('intersections chain examples', () => {
     longTestTimeout
   );
 
-  it(
+  it.skipIf(!shouldRunLongExamples)(
     'validates schema compliance and structure quality',
     async () => {
       const result = await intersections(['music', 'mathematics']);
@@ -114,7 +114,7 @@ describe('intersections chain examples', () => {
     longTestTimeout
   );
 
-  it(
+  it.skipIf(!shouldRunLongExamples)(
     'handles complex multi-category intersections',
     async () => {
       const result = await intersections(['biology', 'chemistry', 'physics'], {
@@ -184,7 +184,7 @@ describe('intersections chain examples', () => {
     longTestTimeout
   );
 
-  it(
+  it.skipIf(!shouldRunLongExamples)(
     'produces consistent and logical results with quality validation',
     async () => {
       const result = await intersections(['literature', 'psychology'], {
