@@ -24,21 +24,8 @@ export default async (
 
   while (retry <= maxRetries) {
     try {
-      if (label) {
-        const variables = [`retry: ${retry}`].join(', ');
-        const startTag = `${retry > 0 ? 'retry' : 'started'}`;
-        const startVariablesDisplay = `${retry > 0 ? ` (${variables})` : ''}`;
-        // eslint-disable-next-line no-console
-        console.error(`Run ${labelDisplay} [${startTag}]${startVariablesDisplay}`);
-      }
-
       // eslint-disable-next-line no-await-in-loop
       const result = await fn();
-
-      if (label) {
-        // eslint-disable-next-line no-console
-        console.error(`Run ${labelDisplay} [complete]`);
-      }
 
       return result;
     } catch (error) {
@@ -55,7 +42,7 @@ export default async (
       }
       const doneTag = `${retry >= maxRetries ? 'abort' : 'retry'}`;
 
-      if (label) {
+      if (label && retry >= maxRetries) {
         // eslint-disable-next-line no-console
         console.error(`Run ${labelDisplay} [${doneTag}]: ${error.message}`);
       }
