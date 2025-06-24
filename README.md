@@ -70,6 +70,7 @@ Content utilities generate, transform, and analyze text while maintaining struct
 - [themes](./src/chains/themes) - identify themes in text
 - [to-object](./src/verblets/to-object) - convert descriptions to structured objects
 - [veiled-variants](./src/chains/veiled-variants) - rephrase sensitive queries safely
+- [split](./src/chains/split) - mark split points in text using LLM insight
 
 ### Utility Operations
 

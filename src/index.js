@@ -30,6 +30,7 @@ import filterAmbiguous from './chains/filter-ambiguous/index.js';
 import SummaryMap from './chains/summary-map/index.js';
 import themes from './chains/themes/index.js';
 
+import split from './chains/split/index.js';
 import test from './chains/test/index.js';
 
 import testAdvice from './chains/test-advice/index.js';
@@ -170,6 +171,7 @@ export const verblets = {
   date,
   SummaryMap,
   themes,
+  split,
   setInterval,
   test,
   testAdvice,
