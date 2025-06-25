@@ -44,15 +44,6 @@ List operations transform, filter, and organize collections using natural langua
 - [list-group](./src/verblets/list-group) - categorize list items into groups
 - [list-map](./src/verblets/list-map) - transform each item in a list
 - [list-reduce](./src/verblets/list-reduce) - combine list items using custom logic
-<<<<<<< HEAD
-=======
-- [list-find](./src/verblets/list-find) - pick the single best item from a list
-- [list-filter](./src/verblets/list-filter) - filter lists with natural language criteria
-- [list-group](./src/verblets/list-group) - categorize list items into groups
-- [list-expand](./src/verblets/list-expand) - generate additional similar items
-- [join](./src/chains/join) - smart `Array.join` that can add AI-crafted segues
-- [intersection](./src/verblets/intersection) - describe common traits between items
->>>>>>> de17fbc (docs: refine join example)
 - [sort](./src/chains/sort) - order lists by any describable criteria
 
 ### Content
@@ -69,17 +60,19 @@ Content utilities generate, transform, and analyze text while maintaining struct
 - [disambiguate](./src/chains/disambiguate) - resolve ambiguous word meanings using context
 - [dismantle](./src/chains/dismantle) - break systems into components
 - [filter-ambiguous](./src/chains/filter-ambiguous) - find and rank unclear terms for disambiguation
+- [join](./src/chains/join) - merge text fragments into coherent sequences
 - [name](./src/verblets/name) - name something from a definition or description
 - [name-similar-to](./src/verblets/name-similar-to) - suggest short names that match a style
 - [people-list](./src/verblets/people-list) - generate diverse lists of people with specified characteristics
 - [questions](./src/chains/questions) - produce clarifying questions
 - [schema-org](./src/verblets/schema-org) - create schema.org objects
 - [socratic](./src/chains/socratic) - explore assumptions using a Socratic dialogue
+- [split](./src/chains/split) - mark split points in text
 - [summary-map](./src/chains/summary-map) - summarize a collection
 - [themes](./src/chains/themes) - identify themes in text
 - [to-object](./src/verblets/to-object) - convert descriptions to structured objects
 - [veiled-variants](./src/chains/veiled-variants) - rephrase sensitive queries safely
-- [split](./src/chains/split) - mark split points in text using LLM insight
+
 
 ### Utility Operations
 
