@@ -1,60 +1,123 @@
 import chatGPT from '../../lib/chatgpt/index.js';
-import wrapVariable from '../../prompts/wrap-variable.js';
+import retry from '../../lib/retry/index.js';
+import windowFor from '../../lib/window-for/index.js';
 
-function buildGroupPrompt(list) {
-  const listBlock = wrapVariable(list.join('\n'), { tag: 'list' });
-  return [
-    'Group contiguous items in <list> that belong together.',
-    `Return a JSON object {"labels": [numbers]} with ${list.length} entries.`,
-    listBlock,
-  ].join('\n');
-}
+/**
+ * Join text fragments using AI with windowed processing for equal context exposure.
+ * The prompt dictates all aspects of joining including style, spacing, and format.
+ *
+ * @param {string[]} list - Array of text fragments to join
+ * @param {string} prompt - Instructions for how to join fragments (dictates all style/format)
+ * @param {object} config - Configuration options
+ * @param {number} config.windowSize - Size of overlapping windows (default: 5)
+ * @param {number} config.overlapPercent - Percentage of overlap between windows (default: 50)
+ * @param {string} config.styleHint - Optional additional style guidance
+ * @param {number} config.maxRetries - Maximum retry attempts (default: 2)
+ * @returns {Promise<string>} Single result as dictated by prompt
+ */
+export default async function join(list, prompt = 'Join these text fragments', config = {}) {
+  if (list.length === 0) return '';
+  if (list.length === 1) return list[0];
 
-function parseLabels(output, length) {
-  let labels;
-  if (typeof output === 'string') {
-    try {
-      const parsed = JSON.parse(output);
-      labels = parsed.labels || parsed;
-    } catch {
-      labels = output
-        .split(/\n|,/)
-        .map((l) => l.trim())
-        .filter(Boolean);
+  const {
+    windowSize = config.chunkSize || 5, // Backward compatibility with chunkSize
+    overlapPercent = 50,
+    styleHint = '',
+    maxRetries = 2,
+    llm,
+    ...options
+  } = config;
+
+  // Create overlapping windows using the windowFor utility
+  const windows = windowFor(list, windowSize, overlapPercent);
+
+  // Process each window
+  const windowResults = [];
+
+  for (const [windowIndex, window] of windows.entries()) {
+    const fragmentList = window.fragments.map((f, idx) => `${idx + 1}. ${f}`).join('\n');
+
+    const instruction = `${prompt}${styleHint ? `\n\nStyle guidance: ${styleHint}` : ''}
+
+Window ${windowIndex + 1} of ${windows.length} - Join these fragments:
+${fragmentList}
+
+Important: This is part of a larger sequence. Join these fragments while being mindful that this result will be combined with other processed windows. Output only the joined result for this window.`;
+
+    const result = await retry(
+      () => chatGPT(instruction, { modelOptions: { ...llm }, ...options }),
+      { label: `join-window-${windowIndex + 1}`, maxRetries }
+    );
+
+    windowResults.push({
+      content: result || window.fragments.join(' '),
+      window,
+    });
+  }
+
+  // Filter valid results
+  const validResults = windowResults.filter((r) => r.content && r.content.trim());
+
+  if (validResults.length === 1) {
+    return validResults[0].content;
+  }
+
+  // Stitch operation: preserve terminals, only process overlapping sections
+  let stitchedResult = validResults[0].content;
+
+  for (let i = 1; i < validResults.length; i++) {
+    const currentResult = validResults[i];
+    const previousWindow = validResults[i - 1].window;
+    const currentWindow = currentResult.window;
+
+    // Find the overlapping region based on original fragment indices
+    const overlapStart = Math.max(previousWindow.startIndex, currentWindow.startIndex);
+    const overlapEnd = Math.min(previousWindow.endIndex, currentWindow.endIndex);
+
+    if (overlapStart <= overlapEnd) {
+      // There's an overlap - process only the overlapping section
+      const overlapFragments = list.slice(overlapStart, overlapEnd + 1);
+
+      const stitchInstruction = `${prompt}${styleHint ? `\n\nStyle guidance: ${styleHint}` : ''}
+
+Stitch these two sections by resolving their overlapping region:
+
+SECTION A (preserve terminals): ${stitchedResult}
+
+SECTION B (preserve terminals): ${currentResult.content}
+
+OVERLAPPING FRAGMENTS (original): ${overlapFragments.join(' | ')}
+
+The terminal ends of both sections should be preserved. Only resolve the overlapping middle region where these fragments appear: ${overlapFragments.join(
+        ', '
+      )}
+
+Output only the final stitched result with terminals preserved.`;
+
+      const stitchResult = await retry(
+        () => chatGPT(stitchInstruction, { modelOptions: { ...llm }, ...options }),
+        { label: `join-stitch-${i}`, maxRetries }
+      );
+
+      stitchedResult = stitchResult || stitchedResult;
+    } else {
+      // No overlap - simple join
+      const joinInstruction = `${prompt}${styleHint ? `\n\nStyle guidance: ${styleHint}` : ''}
+
+Join these two non-overlapping sections:
+1. ${stitchedResult}
+2. ${currentResult.content}
+
+Output only the joined result.`;
+
+      const joinResult = await retry(
+        () => chatGPT(joinInstruction, { modelOptions: { ...llm }, ...options }),
+        { label: `join-nonoverlap-${i}`, maxRetries }
+      );
+
+      stitchedResult = joinResult || stitchedResult;
     }
-  } else {
-    labels = output.labels || output;
-  }
-  if (!Array.isArray(labels) || labels.length !== length) return null;
-  return labels;
-}
-
-export default async function join(list, joinStr = '', prompt, config = {}) {
-  const { llm, ...options } = config;
-  const result = await chatGPT(buildGroupPrompt(list), { modelOptions: { ...llm }, ...options });
-  const labels = parseLabels(result, list.length);
-  if (!labels) {
-    return [list.join(joinStr)];
   }
 
-  const groups = [];
-  let current = labels[0];
-  let segment = [];
-  for (let i = 0; i < list.length; i += 1) {
-    if (labels[i] !== current) {
-      // finalize previous segment
-      // eslint-disable-next-line no-await-in-loop
-      const fused = prompt ? await prompt(segment) : segment.join(joinStr);
-      groups.push(fused);
-      segment = [];
-      current = labels[i];
-    }
-    segment.push(list[i]);
-  }
-  if (segment.length) {
-    // eslint-disable-next-line no-await-in-loop
-    const fused = prompt ? await prompt(segment) : segment.join(joinStr);
-    groups.push(fused);
-  }
-  return groups;
+  return stitchedResult;
 }

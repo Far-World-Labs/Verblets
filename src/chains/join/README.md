@@ -1,28 +1,24 @@
 # join
 
-Use AI to fuse fragments into a coherent sequence. The chain analyzes contiguous items and merges each group using a join string or custom prompt. When all items belong to a single narrative, it behaves like `Array.join` but can add natural transitions in any language.
+Use AI to fuse fragments into a coherent sequence. The chain analyzes contiguous items and merges each group using custom prompt.
 
-## Example: Story with Spanish segues
+## Example: Product Description
 
 ```javascript
 import join from './index.js';
 import chatGPT from '../../lib/chatgpt/index.js';
 
-const fragments = [
-  'The detective woke up late.',
-  'Meanwhile in Tokyo, a festival began.',
-  'An old diary was discovered in the attic.',
-  'Lightning split the sky above the harbor.'
+const features = [
+  'This smartphone has a 6.5-inch display.',
+  'It includes a powerful 5000mAh battery.',
+  'The camera system features a 108MP sensor.',
+  'It supports 5G connectivity for fast internet speeds.'
 ];
 
-const story = await join(fragments, ' ', (parts) =>
-  chatGPT(`Merge these fragments into one story. Insert a short Spanish segue between each: ${parts.join(' || ')}`)
-);
+const productDescription = await join(features, 'Create a compelling product description by merging these features');
 
-console.log(story);
+console.log(productDescription);
 /*
-[
-  'The detective woke up late. Luego, en Tokio comenzó un festival. Después, an old diary was discovered in the attic. Finalmente, lightning split the sky above the harbor.'
-]
+'This smartphone has a 6.5-inch display, offering an immersive viewing experience. Additionally, it includes a powerful 5000mAh battery, ensuring long-lasting usage. The camera system features a 108MP sensor, capturing stunning photos. Moreover, it supports 5G connectivity for fast internet speeds, keeping you connected on the go.'
 */
 ```
