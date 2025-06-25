@@ -54,6 +54,8 @@ import bulkFind, { bulkFindRetry } from './chains/bulk-find/index.js';
 import bulkFilter, { bulkFilterRetry } from './chains/bulk-filter/index.js';
 import stripNumeric from './lib/strip-numeric/index.js';
 import stripResponse from './lib/strip-response/index.js';
+import join from './chains/join/index.js';
+import windowFor from './lib/window-for/index.js';
 import toBool from './lib/to-bool/index.js';
 import toEnum from './lib/to-enum/index.js';
 import toNumber from './lib/to-number/index.js';
@@ -118,6 +120,8 @@ export {
   bulkFind,
   bulkFindRetry,
   bulkFilter,
+  join,
+  windowFor,
   bulkFilterRetry,
   bulkCentralTendency,
   bulkCentralTendencyRetry,
@@ -141,6 +145,7 @@ export const lib = {
   transcribe,
   combinations,
   rangeCombinations,
+  windowFor,
 };
 
 export const verblets = {
@@ -182,6 +187,7 @@ export const verblets = {
   filterAmbiguous,
   bulkGroup,
   bulkFilter,
+  join,
   listGroup,
   commonalities,
   // # Concept Science

@@ -19,18 +19,18 @@ export default async function split(text, instructions, config = {}) {
   } = config;
 
   const chunks = chunkSentences(text, chunkLen);
-  const results = [];
-  for (const chunk of chunks) {
+
+  // Process chunks in parallel instead of sequentially
+  const promises = chunks.map(async (chunk) => {
     const prompt = buildPrompt(chunk, instructions, delimiter);
     const run = () => chatGPT(prompt, { modelOptions: { ...llm }, ...options });
-    let output;
     try {
-      // eslint-disable-next-line no-await-in-loop
-      output = await retry(run, { label: 'split', maxRetries: maxAttempts - 1 });
+      return await retry(run, { label: 'split', maxRetries: maxAttempts - 1 });
     } catch {
-      output = chunk;
+      return chunk;
     }
-    results.push(output);
-  }
+  });
+
+  const results = await Promise.all(promises);
   return results.join('');
 }
