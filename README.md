@@ -63,6 +63,7 @@ Content utilities generate, transform, and analyze text while maintaining struct
 - [themes](./src/chains/themes) - identify themes in text
 - [category-samples](./src/chains/category-samples) - generate diverse examples for any category
 - [to-object](./src/verblets/to-object) - convert descriptions to structured objects
+- [fill-missing](./src/verblets/fill-missing) - infer replacements for censored or corrupted text
 - [veiled-variants](./src/chains/veiled-variants) - rephrase sensitive queries safely
 
 ### Utility Operations
@@ -120,7 +121,7 @@ import {
   sort,
   toObject,
   sentiment,
-  bulkScore
+  bulkScore,
 } from 'verblets';
 
 // Intelligent customer support system that handles complex, contextual requests
@@ -131,8 +132,8 @@ async function handleCustomerRequest(message, history, catalog) {
       { name: 'refund-request', parameters: { reason: 'string', orderNumber: 'string?' } },
       { name: 'product-inquiry', parameters: { productType: 'string', feature: 'string?' } },
       { name: 'technical-support', parameters: { issue: 'string', urgency: 'string' } },
-      { name: 'complaint', parameters: { category: 'string', severity: 'string' } }
-    ]
+      { name: 'complaint', parameters: { category: 'string', severity: 'string' } },
+    ],
   });
 
   const emotion = await sentiment(message);
@@ -142,7 +143,7 @@ async function handleCustomerRequest(message, history, catalog) {
     immediate_escalation: 'Customer is very upset, escalate to human agent',
     detailed_help: 'Customer needs comprehensive assistance',
     quick_resolution: 'Simple issue that can be resolved quickly',
-    educational: 'Customer needs to understand how something works'
+    educational: 'Customer needs to understand how something works',
   });
 
   const followUpQuestions = await questions(
@@ -160,7 +161,7 @@ async function handleCustomerRequest(message, history, catalog) {
   const prioritized = await sort(candidates, `by likelihood score ${scores.join(', ')}`);
 
   const bulletPoints = await bulkMap(
-    prioritized.map(p => p.name),
+    prioritized.map((p) => p.name),
     'Write a friendly one-line apology referencing <list>.'
   );
 
@@ -186,18 +187,17 @@ async function handleCustomerRequest(message, history, catalog) {
         emotion: { type: 'string' },
         strategy: { type: 'string' },
         recommendedSolution: { type: 'string' },
-        followUpQuestions: { type: 'array' }
-      }
+        followUpQuestions: { type: 'array' },
+      },
     }
   );
-
 
   return {
     ...response,
     followUpQuestions: followUpQuestions.slice(0, 3),
     anonymizedCase: caseSummary,
     bulletPoints,
-    sampleReplies
+    sampleReplies,
   };
 }
 
@@ -209,10 +209,10 @@ const result = await handleCustomerRequest(
     {
       name: 'Premium Wireless Headphones',
       category: 'audio',
-      features: ['noise-canceling', 'wireless']
+      features: ['noise-canceling', 'wireless'],
     },
     { name: 'Express Shipping Upgrade', category: 'service', features: ['priority', 'tracking'] },
-    { name: 'Gift Card', category: 'compensation', features: ['flexible', 'immediate'] }
+    { name: 'Gift Card', category: 'compensation', features: ['flexible', 'immediate'] },
   ]
 );
 
@@ -243,7 +243,6 @@ This system demonstrates capabilities that would require thousands of lines of t
 - **Intelligent prioritization** of solutions
 - **Privacy-aware data handling** for compliance
 - **Structured output** that integrates with existing systems
-
 
 ## Contributing
 

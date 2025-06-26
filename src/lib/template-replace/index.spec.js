@@ -25,6 +25,11 @@ describe('templateReplace', () => {
     expect(result).toBe('Hello !');
   });
 
+  it('uses custom missing value when provided', () => {
+    const result = templateReplace('Hello {name}!', {}, 'UNKNOWN');
+    expect(result).toBe('Hello UNKNOWN!');
+  });
+
   it('handles null/undefined values', () => {
     const result = templateReplace('Value: {value}', { value: null });
     expect(result).toBe('Value: ');
