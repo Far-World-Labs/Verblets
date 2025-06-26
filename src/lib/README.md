@@ -13,8 +13,7 @@ Modules include:
 - [combinations](./combinations) – generate array combinations.
 - [rangeCombinations](./combinations) – combinations across multiple sizes.
 - [shorten-text](./shorten-text) – shorten text using an LLM.
-- [bulk-map](./bulk-map) – map lists in retryable batches.
-- [bulk-filter](./bulk-filter) – filter lists in retryable batches.
+- [chunk-sentences](./chunk-sentences) – chunk text at sentence boundaries.
 - [strip-numeric](./strip-numeric) – remove non-digit characters.
 - [strip-response](./strip-response) – clean up model responses.
 - [to-bool](./to-bool) – parse text into a boolean.

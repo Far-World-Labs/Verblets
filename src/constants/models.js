@@ -156,7 +156,8 @@ if (process.env.NODE_ENV !== 'test') {
 }
 
 const secondsInDay = 60 * 60 * 24;
-export const cacheTTL = process.env.CHATGPT_CACHE_TTL ?? secondsInDay;
+const secondsInYear = secondsInDay * 365; // 365 days
+export const cacheTTL = process.env.CHATGPT_CACHE_TTL ?? secondsInYear;
 
 // Caching can be disabled by setting DISABLE_CACHE=true
 // By default, caching is enabled when Redis is available and working

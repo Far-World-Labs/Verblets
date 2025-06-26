@@ -1,6 +1,6 @@
 # Verblets
 
-Verblets is a library of AI-powered utilities that transform natural language and structured data into reliable, structured outputs. Each function uses language model intelligence while constraining outputs to limit hallucination and ensure software reliability.
+Verblets is an LLM-aware standard library that provides AI-powered utilities for transforming natural language and structured data into reliable outputs. Each function leverages language model intelligence while constraining outputs to ensure software reliability.
 
 ## Repository Guide
 
@@ -26,61 +26,71 @@ Primitive verblets extract basic data types from natural language with high reli
 
 ### Lists
 
-List operations transform, filter, and organize collections using natural language criteria. They handle both small lists with individual verblets and large datasets with batch processing chains.
+List operations transform, filter, and organize collections using natural language criteria. They handle both individual items and batch processing for datasets larger than a context window.
 
-- [bulk-map](./src/chains/bulk-map) - process long lists in retryable batches
-- [bulk-reduce](./src/chains/bulk-reduce) - reduce long lists in manageable chunks
-- [bulk-find](./src/chains/bulk-find) - locate the best match in large datasets
-- [bulk-group](./src/chains/bulk-group) - group large datasets efficiently
-- [bulk-filter](./src/chains/bulk-filter) - filter huge lists in batches
-- [intersections](./src/chains/intersections) - find comprehensive intersections for all combinations
+- [bulk-central-tendency](./src/chains/bulk-central-tendency) - evaluate graded family resemblance for datasets in cognitive categories
+- [bulk-filter](./src/chains/bulk-filter) - filter lists via batch processing
+- [bulk-find](./src/chains/bulk-find) - batch find the top match in a given datasets via batch processing
+- [bulk-group](./src/chains/bulk-group) - group datasets via batch processing
+- [bulk-map](./src/chains/bulk-map) - map over lists via batch processing
+- [bulk-reduce](./src/chains/bulk-reduce) - reduce lists in bulk via batch processing
+- [bulk-score](./src/chains/bulk-score) - score lists with calibrated examples via batch processing
+- [central-tendency](./src/verblets/central-tendency) - evaluate graded family resemblance and prototypical membership in cognitive categories
+- [intersections](./src/chains/intersections) - find intersections for all combinations
 - [list](./src/chains/list) - generate contextual lists from prompts
+- [list-expand](./src/verblets/list-expand) - generate additional similar items
+- [list-filter](./src/verblets/list-filter) - filter lists with natural language criteria
+- [list-find](./src/verblets/list-find) - pick the single best item from a list
+- [list-group](./src/verblets/list-group) - categorize list items into groups
 - [list-map](./src/verblets/list-map) - transform each item in a list
 - [list-reduce](./src/verblets/list-reduce) - combine list items using custom logic
-- [list-find](./src/verblets/list-find) - pick the single best item from a list
-- [list-filter](./src/verblets/list-filter) - filter lists with natural language criteria
-- [list-group](./src/verblets/list-group) - categorize list items into groups
-- [list-expand](./src/verblets/list-expand) - generate additional similar items
-- [intersection](./src/verblets/intersection) - describe common traits between items
 - [sort](./src/chains/sort) - order lists by any describable criteria
-- [bulk-score](./src/chains/bulk-score) - score lists with calibrated examples
 
 ### Content
 
-Content utilities generate, transform, and analyze text while maintaining structure and meaning. They excel at creative tasks, system analysis, and privacy-aware text processing.
+Content utilities generate, transform, and analyze text while maintaining structure and meaning. They handle creative tasks, system analysis, and privacy-aware text processing.
 
 - [anonymize](./src/chains/anonymize) - scrub personal details from text
+- [category-samples](./src/chains/category-samples) - generate diverse examples for any category
 - [collect-terms](./src/chains/collect-terms) - extract difficult vocabulary
-- [dismantle](./src/chains/dismantle) - break systems into components
+- [commonalities](./src/verblets/intersection) - find common threads and shared traits between items
+- [conversation](./src/chains/conversation) - orchestrate multi-turn AI conversations with configurable policies
+- [conversation-turn](./src/verblets/conversation-turn) - generate single conversation turns with context awareness
+- [conversation-turn-multi](./src/verblets/conversation-turn-multi) - generate multiple conversation turns simultaneously
 - [disambiguate](./src/chains/disambiguate) - resolve ambiguous word meanings using context
+- [dismantle](./src/chains/dismantle) - break systems into components
 - [filter-ambiguous](./src/chains/filter-ambiguous) - find and rank unclear terms for disambiguation
+- [join](./src/chains/join) - merge text fragments into coherent sequences
 - [name](./src/verblets/name) - name something from a definition or description
 - [name-similar-to](./src/verblets/name-similar-to) - suggest short names that match a style
+- [people-list](./src/verblets/people-list) - generate diverse lists of people with specified characteristics
 - [questions](./src/chains/questions) - produce clarifying questions
 - [schema-org](./src/verblets/schema-org) - create schema.org objects
 - [socratic](./src/chains/socratic) - explore assumptions using a Socratic dialogue
+- [split](./src/chains/split) - mark split points in text
 - [summary-map](./src/chains/summary-map) - summarize a collection
 - [themes](./src/chains/themes) - identify themes in text
-- [category-samples](./src/chains/category-samples) - generate diverse examples for any category
 - [to-object](./src/verblets/to-object) - convert descriptions to structured objects
 - [fill-missing](./src/verblets/fill-missing) - infer replacements for censored or corrupted text
 - [veiled-variants](./src/chains/veiled-variants) - rephrase sensitive queries safely
 
+
 ### Utility Operations
 
-Utility operations provide meta-functionality like automatic tool selection, intent parsing, and context compression. They're essential for building intelligent systems that can adapt and scale.
+Utility operations are uncategorized functionality like automatic tool selection, intent parsing, and context compression.
 
 - [auto](./src/verblets/auto) - automatically select the best verblet for a task
 - [expect](./src/verblets/expect) - simple LLM assertions
 - [expect chain](./src/chains/expect) - assert things about data with LLM reasoning
 - [intent](./src/verblets/intent) - extract user intent and structured parameters
+- [llm-logger](./src/chains/llm-logger) - intelligent logging and monitoring for LLM interactions
 - [sentiment](./src/verblets/sentiment) - detect emotional tone of text
-- [summary-map](./src/chains/summary-map) - store self-resizing hash table values. Useful for fixed-sized contexts.
 - [set-interval](./src/chains/set-interval) - Conversational scheduler
+- [summary-map](./src/chains/summary-map) - store self-resizing hash table values. Useful for fixed-sized contexts.
 
 ### Codebase
 
-Codebase utilities analyze, test, and improve code quality using AI reasoning. They provide insights that traditional static analysis tools miss by understanding context and intent.
+Codebase utilities analyze, test, and improve code quality using AI reasoning.
 
 - [scan-js](./src/chains/scan-js) - analyze JavaScript code quality
 - [test](./src/chains/test) - run AI-driven software tests
@@ -88,20 +98,23 @@ Codebase utilities analyze, test, and improve code quality using AI reasoning. T
 
 ## Library Helpers
 
+Helpers support higher-level operations. They make no LLM calls and are often synchronous.
+
 - [chatgpt](./src/lib/chatgpt) - OpenAI ChatGPT wrapper
+- [combinations](./src/lib/combinations) - generate array combinations
 - [prompt-cache](./src/lib/prompt-cache) - cache prompts and responses
 - [retry](./src/lib/retry) - retry asynchronous calls
+- [ring-buffer](./src/lib/ring-buffer) - circular buffer implementation for running LLMs on streams of of data
 - [search-best-first](./src/lib/search-best-first) - best-first search algorithm
 - [search-js-files](./src/lib/search-js-files) - scan JavaScript sources
-- [combinations](./src/lib/combinations) - generate array combinations
 - [shorten-text](./src/lib/shorten-text) - shorten text using a model
 - [strip-numeric](./src/lib/strip-numeric) - remove non-digit characters
 - [strip-response](./src/lib/strip-response) - clean up model responses
 - [to-bool](./src/lib/to-bool) - parse text to boolean
+- [to-date](./src/lib/to-date) - parse text to JavaScript Date objects
 - [to-enum](./src/lib/to-enum) - parse text to enum values
 - [to-number](./src/lib/to-number) - parse text to numbers
 - [to-number-with-units](./src/lib/to-number-with-units) - parse numbers with units
-- [to-date](./src/lib/to-date) - parse text to JavaScript Date objects
 - [transcribe](./src/lib/transcribe) - microphone transcription via Whisper
 
 ## Example: Intelligent Customer Support System
@@ -235,7 +248,7 @@ const result = await handleCustomerRequest(
 */
 ```
 
-This system demonstrates capabilities that would require thousands of lines of traditional code and extensive machine learning expertise:
+This system demonstrates capabilities that extend traditional programming approaches:
 
 - **Contextual understanding** of customer emotions and intent
 - **Dynamic decision making** based on multiple factors
@@ -246,7 +259,7 @@ This system demonstrates capabilities that would require thousands of lines of t
 
 ## Contributing
 
-Help us explore what's possible when we rebuild software primitives with intelligence at their core.
+Help us explore what's possible when we extend software primitives with language model intelligence.
 
 ## License
 

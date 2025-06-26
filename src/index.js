@@ -30,9 +30,12 @@ import filterAmbiguous from './chains/filter-ambiguous/index.js';
 import SummaryMap from './chains/summary-map/index.js';
 import themes from './chains/themes/index.js';
 
+import split from './chains/split/index.js';
 import test from './chains/test/index.js';
 
 import testAdvice from './chains/test-advice/index.js';
+import Conversation from './chains/conversation/index.js';
+import * as turnPolicies from './chains/conversation/turn-policies.js';
 
 import schemas from './json-schemas/index.js';
 import * as common from './constants/common.js';
@@ -52,6 +55,8 @@ import bulkFilter, { bulkFilterRetry } from './chains/bulk-filter/index.js';
 import stripNumeric from './lib/strip-numeric/index.js';
 import stripResponse from './lib/strip-response/index.js';
 import templateReplace from './lib/template-replace/index.js';
+import join from './chains/join/index.js';
+import windowFor from './lib/window-for/index.js';
 import toBool from './lib/to-bool/index.js';
 import toEnum from './lib/to-enum/index.js';
 import toNumber from './lib/to-number/index.js';
@@ -85,17 +90,22 @@ import schemaOrg from './verblets/schema-org/index.js';
 import nameSimilarTo from './verblets/name-similar-to/index.js';
 
 import name from './verblets/name/index.js';
+import peopleList from './verblets/people-list/index.js';
 
 import toObject from './verblets/to-object/index.js';
 
 import listMap from './verblets/list-map/index.js';
 import listFind from './verblets/list-find/index.js';
 
+import conversationTurn from './verblets/conversation-turn/index.js';
+import conversationTurnMulti from './verblets/conversation-turn-multi/index.js';
+
 import bulkGroup from './chains/bulk-group/index.js';
 
 import listGroup from './verblets/list-group/index.js';
 import intersection from './verblets/intersection/index.js';
 import fillMissing from './verblets/fill-missing/index.js';
+import commonalities from './verblets/commonalities/index.js';
 
 // # Concept Science
 import centralTendency from './verblets/central-tendency/index.js';
@@ -113,6 +123,8 @@ export {
   bulkFind,
   bulkFindRetry,
   bulkFilter,
+  join,
+  windowFor,
   bulkFilterRetry,
   bulkCentralTendency,
   bulkCentralTendencyRetry,
@@ -137,6 +149,7 @@ export const lib = {
   transcribe,
   combinations,
   rangeCombinations,
+  windowFor,
 };
 
 export const verblets = {
@@ -149,6 +162,7 @@ export const verblets = {
   schemaOrg,
   nameSimilarTo,
   name,
+  peopleList,
   toObject,
   listMap,
   listFind,
@@ -166,17 +180,22 @@ export const verblets = {
   date,
   SummaryMap,
   themes,
+  split,
   setInterval,
   test,
   testAdvice,
+  Conversation,
+  conversationTurn,
+  conversationTurnMulti,
   bulkScore,
   filterAmbiguous,
   bulkGroup,
   bulkFilter,
+  join,
   listGroup,
   intersection,
   fillMissing,
-  // # Concept Science
+  commonalities,
   centralTendency,
   bulkCentralTendency,
 };
@@ -192,6 +211,6 @@ export const constants = {
   models,
 };
 
-export { prompts, schemas };
+export { prompts, schemas, turnPolicies };
 
 export default chatGPT;
