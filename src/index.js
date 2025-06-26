@@ -54,6 +54,7 @@ import bulkFind, { bulkFindRetry } from './chains/bulk-find/index.js';
 import bulkFilter, { bulkFilterRetry } from './chains/bulk-filter/index.js';
 import stripNumeric from './lib/strip-numeric/index.js';
 import stripResponse from './lib/strip-response/index.js';
+import templateReplace from './lib/template-replace/index.js';
 import join from './chains/join/index.js';
 import windowFor from './lib/window-for/index.js';
 import toBool from './lib/to-bool/index.js';
@@ -102,6 +103,8 @@ import conversationTurnMulti from './verblets/conversation-turn-multi/index.js';
 import bulkGroup from './chains/bulk-group/index.js';
 
 import listGroup from './verblets/list-group/index.js';
+import intersection from './verblets/intersection/index.js';
+import fillMissing from './verblets/fill-missing/index.js';
 import commonalities from './verblets/commonalities/index.js';
 
 // # Concept Science
@@ -137,6 +140,7 @@ export const lib = {
   shortenText,
   stripNumeric,
   stripResponse,
+  templateReplace,
   toBool,
   toEnum,
   toNumber,
@@ -189,8 +193,9 @@ export const verblets = {
   bulkFilter,
   join,
   listGroup,
+  intersection,
+  fillMissing,
   commonalities,
-  // # Concept Science
   centralTendency,
   bulkCentralTendency,
 };

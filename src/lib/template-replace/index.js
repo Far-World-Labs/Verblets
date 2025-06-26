@@ -4,9 +4,10 @@
  *
  * @param {string} template - Template string with {key} placeholders
  * @param {object} data - Data object with key-value pairs
+ * @param {string} [missingValue=''] - Fallback value for placeholders with no mapping
  * @returns {string} - Template with placeholders replaced
  */
-export default function templateReplace(template, data) {
+export default function templateReplace(template, data, missingValue = '') {
   if (!template || typeof template !== 'string') {
     return template || '';
   }
@@ -18,6 +19,6 @@ export default function templateReplace(template, data) {
   // Replace all {key} placeholders
   return template.replace(/\{([^}]+)\}/g, (match, key) => {
     const value = data[key];
-    return String(value != null ? value : '');
+    return String(value != null ? value : missingValue);
   });
 }
