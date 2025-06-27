@@ -5,12 +5,27 @@ const DELIM = '---763927459---';
 
 vi.mock('../../lib/chatgpt/index.js', () => ({
   default: vi.fn(async (prompt) => {
-    const text = prompt.split('\n\n').pop();
-    const words = Array.from(prompt.matchAll(/"([^"]+)"/g)).map((m) => m[1]);
+    // Extract the instructions and text using XML tags
+    const instructionsMatch = prompt.match(/<instructions>(.*?)<\/instructions>/s);
+    const textMatch = prompt.match(/<text-to-process>(.*?)<\/text-to-process>/s);
+
+    if (!instructionsMatch || !textMatch) {
+      return '';
+    }
+
+    const instructions = instructionsMatch[1].trim();
+    const text = textMatch[1].replace(/^\n|\n$/g, ''); // Only remove leading/trailing newlines, preserve spaces
+
+    // Extract quoted words directly from the instructions
+    const words = Array.from(instructions.matchAll(/"([^"]+)"/g)).map((m) => m[1]);
+
     let out = text;
     words.forEach((word) => {
-      out = out.split(word).join(`${DELIM}${word}`);
+      if (out.includes(word)) {
+        out = out.split(word).join(`${DELIM}${word}`);
+      }
     });
+
     return out;
   }),
 }));

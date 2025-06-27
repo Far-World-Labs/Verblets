@@ -1,7 +1,28 @@
 import chatgpt from '../../lib/chatgpt/index.js';
 import fs from 'fs';
 import path from 'path';
+import { execSync } from 'child_process';
 import wrapVariable from '../../prompts/wrap-variable.js';
+
+/**
+ * Get git-aware file path or full path if not in git repo
+ */
+function getDisplayPath(filePath) {
+  try {
+    // Try to get git root
+    const gitRoot = execSync('git rev-parse --show-toplevel', {
+      cwd: path.dirname(filePath),
+      encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'ignore'], // Suppress stderr
+    }).trim();
+
+    // Return relative path from git root
+    return path.relative(gitRoot, filePath);
+  } catch {
+    // Not in git repo or git not available, return full path
+    return filePath;
+  }
+}
 
 /**
  * Get the calling file and line number from stack trace
@@ -173,9 +194,8 @@ Answer only "True" or "False".`;
         const codeContext = getCodeContext(callerInfo.file, callerInfo.line);
         result.advice = await generateAdvice(actual, expected, constraint, codeContext, callerInfo);
 
-        const message = `LLM Assertion Failed at ${path.basename(callerInfo.file)}:${
-          callerInfo.line
-        }
+        const displayPath = getDisplayPath(callerInfo.file);
+        const message = `LLM Assertion Failed at ${displayPath}:${callerInfo.line}
 ${result.advice}`;
 
         if (mode === 'error') {
