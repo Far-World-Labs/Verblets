@@ -105,6 +105,7 @@ _models.reasoningNoImage = {
 _models.fastGoodMulti = _models.fastCheapMulti;
 _models.fastGoodCheapMulti = _models.fastGoodMulti; // Default system model
 _models.fastGoodCheap = _models.fastGoodMulti;
+_models.fastGoodCheapCoding = _models.fastGoodMulti; // Coding-optimized model
 _models.fastMulti = _models.fastGoodMulti;
 _models.fast = _models.fastGoodMulti;
 _models.fastGood = _models.fastGoodMulti;
