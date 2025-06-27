@@ -1,28 +1,18 @@
 import chatgpt from '../../lib/chatgpt/index.js';
 import fs from 'fs';
 import path from 'path';
+import wrapVariable from '../../prompts/wrap-variable.js';
 
 /**
  * Get the calling file and line number from stack trace
  */
 function getCallerInfo() {
-  const { stack } = new Error();
-  const lines = stack.split('\n');
-
-  // Find the first line that's not this file
-  for (let i = 2; i < lines.length; i++) {
-    const line = lines[i];
-    if (line.includes('at ') && !line.includes('expect')) {
-      const match = line.match(/at .* \((.+):(\d+):\d+\)/);
-      if (match) {
-        return { file: match[1], line: parseInt(match[2]) };
-      }
-      // Handle cases without parentheses
-      const simpleMatch = line.match(/at (.+):(\d+):\d+/);
-      if (simpleMatch) {
-        return { file: simpleMatch[1], line: parseInt(simpleMatch[2]) };
-      }
-    }
+  // stack[0] is Error, stack[1] is this function, stack[2] is expect wrapper,
+  // stack[3] should be the caller
+  const line = new Error().stack.split('\n')[3] || '';
+  const match = line.match(/\((.+):(\d+):\d+\)/) || line.match(/at (.+):(\d+):(\d+)/);
+  if (match) {
+    return { file: match[1], line: parseInt(match[2], 10) };
   }
   return { file: 'unknown', line: 0 };
 }
@@ -51,18 +41,52 @@ function getCodeContext(filePath, lineNumber) {
   }
 }
 
+function getImports(filePath) {
+  try {
+    const content = fs.readFileSync(filePath, 'utf8');
+    return content
+      .split('\n')
+      .filter((l) => l.trim().startsWith('import'))
+      .join('\n');
+  } catch {
+    return '';
+  }
+}
+
+async function findModuleUnderTest(filePath, lineNumber) {
+  const context = getCodeContext(filePath, lineNumber);
+  const imports = getImports(filePath);
+  const prompt = `Given the following code snippet and import list, identify the import path of the function or module under test.\nImports:\n${imports}\n\nSnippet:\n${
+    context?.lines.join('\n') || ''
+  }\n\nRespond with the import path or 'unknown'.`;
+  try {
+    return (await chatgpt(prompt, { modelOptions: { modelName: 'fastGoodCheapCoding' } })).trim();
+  } catch {
+    return 'unknown';
+  }
+}
+
 /**
  * Generate intelligent advice for failed assertions
  */
-async function generateAdvice(actual, expected, constraint, codeContext) {
+async function generateAdvice(actual, expected, constraint, codeContext, callerInfo) {
   const contextInfo = codeContext
-    ? `
-Code context around assertion (line ${codeContext.assertionLine}):
-\`\`\`
-${codeContext.lines.join('\n')}
-\`\`\`
-`
+    ? `\nCode context around assertion (line ${codeContext.assertionLine}):\n${wrapVariable(
+        codeContext.lines.join('\n'),
+        { tag: 'code-context' }
+      )}`
     : '';
+
+  const imports = getImports(callerInfo.file);
+  const modulePath = await findModuleUnderTest(callerInfo.file, callerInfo.line);
+
+  let moduleCode = '';
+  if (modulePath && modulePath !== 'unknown') {
+    const resolved = path.resolve(path.dirname(callerInfo.file), modulePath);
+    if (fs.existsSync(resolved)) {
+      moduleCode = fs.readFileSync(resolved, 'utf8');
+    }
+  }
 
   const prompt = `You are a debugging assistant helping with a failed LLM assertion.
 
@@ -70,8 +94,15 @@ ASSERTION DETAILS:
 - Actual value: ${JSON.stringify(actual, null, 2)}
 - Expected value: ${expected ? JSON.stringify(expected, null, 2) : 'N/A'}
 - Constraint: ${constraint || 'N/A'}
+- File: ${callerInfo.file}:${callerInfo.line}
 
 ${contextInfo}
+
+Imports in the file:\n${wrapVariable(imports, { tag: 'imports' })}
+
+Implementation under test (${modulePath || 'unknown'}):\n${wrapVariable(moduleCode, {
+    tag: 'implementation',
+  })}
 
 Provide structured debugging advice in this format:
 
@@ -82,7 +113,7 @@ CONTEXT: [Additional context about the problem and potential root causes]
 Keep your response concise but actionable. Focus on practical solutions.`;
 
   try {
-    return await chatgpt(prompt);
+    return await chatgpt(prompt, { modelOptions: { modelName: 'fastGoodCheapCoding' } });
   } catch {
     return 'Unable to generate debugging advice due to LLM error.';
   }
@@ -140,7 +171,7 @@ Answer only "True" or "False".`;
     if (!passed) {
       if (mode === 'info' || mode === 'error') {
         const codeContext = getCodeContext(callerInfo.file, callerInfo.line);
-        result.advice = await generateAdvice(actual, expected, constraint, codeContext);
+        result.advice = await generateAdvice(actual, expected, constraint, codeContext, callerInfo);
 
         const message = `LLM Assertion Failed at ${path.basename(callerInfo.file)}:${
           callerInfo.line
