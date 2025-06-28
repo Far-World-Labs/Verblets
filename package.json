@@ -20,6 +20,7 @@
     "examples": "source .env && LLM_EXPECT_MODE=error EXAMPLES=true ENABLE_LONG_EXAMPLES=false vitest --config .vitest.config.examples.js",
     "examples:all": "source .env && LLM_EXPECT_MODE=error EXAMPLES=true ENABLE_LONG_EXAMPLES=true vitest --config .vitest.config.examples.js",
     "examples:fresh": "npm run clear-test-cache && npm run examples:all",
+    "arch": "vitest --config .vitest.config.arch.js",
     "lint": "eslint 'src/**/*.{js,jsx}'",
     "lint:fix": "eslint 'src/**/*.{js,jsx}' --fix",
     "check:deps": "npx npm-deprecated-check current",
