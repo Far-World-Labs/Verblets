@@ -22,7 +22,7 @@ jobs:
         id: set-matrix
         run: |
           LTS_VERSIONS=$(curl -s https://raw.githubusercontent.com/nodejs/Release/main/schedule.json | \
-            jq -cr 'to_entries | map(select(.value.lts != false and .value.end > (now | strftime("%Y-%m-%d")))) | map(.key)')
+            jq -cr 'to_entries | map(select(.value.lts != false and .value.end > (now | strftime("%Y-%m-%d")) and .value.start <= (now | strftime("%Y-%m-%d")))) | map(.key)')
           echo "matrix={\"node-version\": $LTS_VERSIONS}" >> $GITHUB_OUTPUT
 
   lint:

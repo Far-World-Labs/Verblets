@@ -1,9 +1,9 @@
 import chatGPT from '../../lib/chatgpt/index.js';
-import wrapVariable from '../../prompts/wrap-variable.js';
+import { asXML } from '../../prompts/wrap-variable.js';
 
 const buildPrompt = (list, instructions) => {
-  const instructionsBlock = wrapVariable(instructions, { tag: 'instructions' });
-  const listBlock = wrapVariable(list.join('\n'), { tag: 'list' });
+  const instructionsBlock = asXML(instructions, { tag: 'instructions' });
+  const listBlock = asXML(list.join('\n'), { tag: 'list' });
   return `From the <list>, select the single item that best satisfies the <instructions>. If none apply, return an empty string.\n\n${instructionsBlock}\n${listBlock}`;
 };
 

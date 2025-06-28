@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import chatGPT from '../../lib/chatgpt/index.js';
-import wrapVariable from '../../prompts/wrap-variable.js';
+import { asXML } from '../../prompts/wrap-variable.js';
 
 // Get the directory of this module
 const __filename = fileURLToPath(import.meta.url);
@@ -51,7 +51,7 @@ async function createModelOptions(llm = 'fastGoodCheap') {
 // expansion use case without changing the current behavior and test expectations.
 
 const buildPrompt = function (list, count) {
-  const listBlock = wrapVariable(list.join('\n'), { tag: 'list' });
+  const listBlock = asXML(list.join('\n'), { tag: 'list' });
   return (
     `Expand <list> with new items that belong to the same category and ` +
     `match the style of the existing entries. Avoid duplicates or extraneous ` +

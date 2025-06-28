@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import chatGPT from '../../lib/chatgpt/index.js';
 import stripResponse from '../../lib/strip-response/index.js';
-import { constants as promptConstants, wrapVariable } from '../../prompts/index.js';
+import { constants as promptConstants, asXML } from '../../prompts/index.js';
 
 const { tryCompleteData, contentIsMain, asJSON } = promptConstants;
 
@@ -40,7 +40,7 @@ async function createModelOptions(llm = 'fastGoodCheap') {
 }
 
 export const buildPrompt = (text) =>
-  `${tryCompleteData} ${contentIsMain} ${wrapVariable(text, { tag: 'input' })}\n\n` +
+  `${tryCompleteData} ${contentIsMain} ${asXML(text, { tag: 'input' })}\n\n` +
   `Return JSON with "template" and "variables" where each variable has "original", ` +
   `"candidate", and "confidence". ${asJSON}`;
 

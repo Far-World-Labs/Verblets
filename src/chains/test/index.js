@@ -3,7 +3,7 @@ import path from 'node:path';
 
 import { errorRunningTests } from '../../constants/messages.js';
 import chatGPT from '../../lib/chatgpt/index.js';
-import { constants as promptConstants, wrapVariable } from '../../prompts/index.js';
+import { constants as promptConstants, asXML } from '../../prompts/index.js';
 import modelService from '../../services/llm-model/index.js';
 import toObject from '../../verblets/to-object/index.js';
 
@@ -39,9 +39,9 @@ const testExamplesJSON = `[
 ]`;
 
 const checksPrompt = (text, instructions) => `
-${contentIsInstructions} ${wrapVariable(instructions)}
+${contentIsInstructions} ${asXML(instructions)}
 
-${wrapVariable(text, { tag: 'main-content' })}
+${asXML(text, { tag: 'main-content' })}
 
 ${useLineNumber}
 ${noFalseInformation}
@@ -53,11 +53,11 @@ const testsPrompt = (text, instructions, checks) => `${onlyJSONArray}
 
 ${gatherAsTestJSON}
 
-${contentIsChecksExamined} ${wrapVariable(checks)}
+${contentIsChecksExamined} ${asXML(checks)}
 
-${contentIsExamined} ${wrapVariable(text, { tag: 'text-examined' })}
+${contentIsExamined} ${asXML(text, { tag: 'text-examined' })}
 
-${contentIsExample} ${wrapVariable(testExamplesJSON, { tag: 'example' })}
+${contentIsExample} ${asXML(testExamplesJSON, { tag: 'example' })}
 
 ${onlyJSONArray}
 `;

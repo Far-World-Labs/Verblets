@@ -1,13 +1,12 @@
 import chatGPT from '../../lib/chatgpt/index.js';
-import wrapVariable from '../../prompts/wrap-variable.js';
+import { asXML } from '../../prompts/wrap-variable.js';
 
 function buildPrompt(acc, list, instructions) {
-  const instructionsBlock = wrapVariable(instructions, {
+  const instructionsBlock = asXML(instructions, {
     tag: 'instructions',
-    forceHTML: true,
   });
-  const accBlock = wrapVariable(acc, { tag: 'accumulator', forceHTML: true });
-  const listBlock = wrapVariable(list.join('\n'), { tag: 'list' });
+  const accBlock = asXML(acc, { tag: 'accumulator' });
+  const listBlock = asXML(list.join('\n'), { tag: 'list' });
   return `Start with the given accumulator. Apply the <instructions> to each item in <list> sequentially, using the result as the new accumulator each time. Return only the final accumulator.\n\n${instructionsBlock}\n${accBlock}\n${listBlock}`;
 }
 

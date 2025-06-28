@@ -1,7 +1,7 @@
 import commonalities from '../../verblets/commonalities/index.js';
 import { rangeCombinations } from '../../lib/combinations/index.js';
 import chatGPT from '../../lib/chatgpt/index.js';
-import wrapVariable from '../../prompts/wrap-variable.js';
+import { asXML } from '../../prompts/wrap-variable.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -36,7 +36,7 @@ Focus on items that genuinely exist in the intersection of all categories.`;
 
   return `${basePrompt}${instructionsText}
 
-${wrapVariable(categories.join(' | '), { tag: 'categories' })}
+${asXML(categories.join(' | '), { tag: 'categories' })}
 
 ${strictFormat} ${onlyJSONStringArray}`;
 };

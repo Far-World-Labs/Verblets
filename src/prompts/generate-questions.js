@@ -4,7 +4,7 @@ import {
   expertResponse,
   onlyJSONStringArrayAlt1,
 } from './constants.js';
-import wrapVariable from './wrap-variable.js';
+import { asXML } from './wrap-variable.js';
 
 export default (text, { existing = [] } = {}) => {
   const existingJoined = existing.map((item) => `"${item}"`).join(', ');
@@ -13,7 +13,7 @@ export default (text, { existing = [] } = {}) => {
 
 ${contentIsQuestion} ${text}
 
-${contentListToOmit} ${wrapVariable(existingJoined, { tag: 'omitted' })}
+${contentListToOmit} ${asXML(existingJoined, { tag: 'omitted' })}
 
 ${onlyJSONStringArrayAlt1} One question per string.`;
 };

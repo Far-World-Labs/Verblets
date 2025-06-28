@@ -1,5 +1,5 @@
 import { run } from '../../lib/chatgpt/index.js';
-import { constants as promptConstants, wrapVariable } from '../../prompts/index.js';
+import { constants as promptConstants, asXML } from '../../prompts/index.js';
 
 const { onlyJSONStringArray } = promptConstants;
 
@@ -15,7 +15,7 @@ Apply these requirements:
  - You MUST generate exactly 5 alternatives. No more, no less.
  - Output must be a JSON array of exactly 5 strings
 
-${wrapVariable(prompt, { tag: 'intent' })}
+${asXML(prompt, { tag: 'intent' })}
 
 ${onlyJSONStringArray}`;
 
@@ -30,7 +30,7 @@ Apply these requirements:
  - You MUST generate exactly 5 alternatives. No more, no less.
  - Output must be a JSON array of exactly 5 strings
 
-${wrapVariable(prompt, { tag: 'intent' })}
+${asXML(prompt, { tag: 'intent' })}
 
 ${onlyJSONStringArray}`;
 
@@ -45,7 +45,7 @@ Apply these requirements:
  - You MUST generate exactly 5 alternatives. No more, no less.
  - Output must be a JSON array of exactly 5 strings
 
-${wrapVariable(prompt, { tag: 'intent' })}
+${asXML(prompt, { tag: 'intent' })}
 
 ${onlyJSONStringArray}`;
 

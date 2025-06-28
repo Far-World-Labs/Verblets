@@ -1,36 +1,36 @@
-export default (
-  variable,
-  { forceHTML = false, name, tag = 'data', title, fit = 'comfortable' } = {}
-) => {
+export function asXML(variable, { name, tag = 'data', title, fit = 'comfortable' } = {}) {
   if (!variable) {
     return '';
   }
 
-  let nameAttribute = '';
-  if (name) {
-    nameAttribute = `name="${name}"`;
+  const nameAttribute = name ? ` name="${name}"` : '';
+  const variableResolved =
+    typeof variable === 'string' ? variable : JSON.stringify(variable, null, 2);
+  const fitChar = fit === 'comfortable' ? '\n' : '';
+  const wrapped = `<${tag}${nameAttribute}>${fitChar}${variableResolved}${fitChar}</${tag}>`;
+  return title && variableResolved.length > 0 ? `${title} ${wrapped}` : wrapped;
+}
+
+export function quote(variable, { title } = {}) {
+  if (!variable) {
+    return '';
   }
 
-  let variableResolved = typeof variable !== 'undefined' ? variable : '';
-  if (typeof variable !== 'string') {
-    variableResolved = JSON.stringify(variable, null, 2);
+  const variableResolved =
+    typeof variable === 'string' ? variable : JSON.stringify(variable, null, 2);
+  const wrapped = `"${variableResolved}"`;
+  return title && variableResolved.length > 0 ? `${title} ${wrapped}` : wrapped;
+}
+
+export default function wrapVariable(
+  variable,
+  { forceHTML = false, name, tag = 'data', title, fit = 'comfortable' } = {}
+) {
+  const variableResolved =
+    typeof variable === 'string' ? variable : JSON.stringify(variable, null, 2);
+  const needsXML = /\n/.test(variableResolved) || forceHTML || name;
+  if (needsXML) {
+    return asXML(variableResolved, { name, tag, title, fit });
   }
-
-  const isHTML = /\n/.test(variableResolved) || forceHTML || name;
-  let variableWrapped = !isHTML ? `"${variableResolved}"` : variableResolved;
-  if (isHTML) {
-    let fitChar = '\n';
-    if (fit !== 'comfortable') {
-      fitChar = '';
-    }
-
-    variableWrapped = `<${tag}${nameAttribute}>${fitChar}${variableResolved}${fitChar}</${tag}>`;
-  }
-
-  let titlePrefixed = variableWrapped;
-  if (title && variableResolved.length > 0) {
-    titlePrefixed = `${title} ${variableWrapped}`;
-  }
-
-  return titlePrefixed;
-};
+  return quote(variableResolved, { title });
+}

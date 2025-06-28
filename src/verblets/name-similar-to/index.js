@@ -1,9 +1,9 @@
 import chatGPT from '../../lib/chatgpt/index.js';
-import wrapVariable from '../../prompts/wrap-variable.js';
+import { asXML } from '../../prompts/wrap-variable.js';
 
 const buildPrompt = (description, exampleNames) => {
-  const descriptionBlock = wrapVariable(description, { tag: 'description' });
-  const exampleNamesBlock = wrapVariable(exampleNames.join('\n'), { tag: 'example-names' });
+  const descriptionBlock = asXML(description, { tag: 'description' });
+  const exampleNamesBlock = asXML(exampleNames.join('\n'), { tag: 'example-names' });
 
   return `Generate a name similar to the <example-names> that fits the <description>. Return only the name, nothing else.
 

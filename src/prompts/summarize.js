@@ -1,13 +1,12 @@
-import wrapVariable from './wrap-variable.js';
+import { asXML } from './wrap-variable.js';
 import { onlyFullCode } from './constants.js';
 
 export default (text, instructions = '') => {
   return `Summarize the following content. ${onlyFullCode}
 
-${wrapVariable(instructions, {
-  forceHTML: true,
+${asXML(instructions, {
   tag: 'summarization-instructions',
 })}
 
-${wrapVariable(text, { forceHTML: true, tag: 'content-to-summarize' })}`;
+${asXML(text, { tag: 'content-to-summarize' })}`;
 };

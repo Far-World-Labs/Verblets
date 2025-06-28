@@ -12,7 +12,7 @@ export { default as generateQuestions } from './generate-questions.js';
 export { default as intent } from './intent.js';
 export { default as selectFromThreshold } from './select-from-threshold.js';
 export { default as outputSuccinctNames } from './output-succinct-names.js';
-export { default as wrapVariable } from './wrap-variable.js';
+export { asXML, quote, default as wrapVariable } from './wrap-variable.js';
 export { default as sort } from './sort.js';
 export { default as style } from './style.js';
 export { default as tokenBudget } from './token-budget.js';

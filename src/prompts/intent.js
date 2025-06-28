@@ -1,7 +1,7 @@
 import fs from 'fs/promises';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import wrapVariable from './wrap-variable.js';
+import { asXML } from './wrap-variable.js';
 import { onlyJSON } from './constants.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -41,13 +41,13 @@ export default (text, { operations = [], parameters = [] } = {}) => {
   }
 
   return `
-${contentIsIntent} ${wrapVariable(text ?? 'None given', { tag: 'input' })}
+${contentIsIntent} ${asXML(text ?? 'None given', { tag: 'input' })}
 
-${contentIsSchema} ${wrapVariable(intentSchema ?? 'None given', {
+${contentIsSchema} ${asXML(intentSchema ?? 'None given', {
     tag: 'schema',
   })}
 
-${contentIsExample} ${wrapVariable(exampleJSON ?? 'None given', {
+${contentIsExample} ${asXML(exampleJSON ?? 'None given', {
     tag: 'example',
   })}
 ${operationsSection ?? ''}${parametersSection ?? ''}
