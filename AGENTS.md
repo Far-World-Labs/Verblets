@@ -12,7 +12,7 @@ LLM orchestrations that combine multiple verblets, other chains, and library uti
 **Examples:**
 - `anonymize` - Multi-step process to identify and replace sensitive information
 - `socratic` - Iterative questioning dialogue using multiple LLM calls
-- `bulk-map` - Parallel processing of large datasets with retry logic
+- `map` - Parallel processing of large datasets with retry logic
 - `summary-map` - Self-resizing hash table with AI-powered summarization
 
 **Characteristics:**

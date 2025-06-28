@@ -1,6 +1,6 @@
 import nlp from 'compromise';
 import sort from '../sort/index.js';
-import { bulkMapRetry } from '../bulk-map/index.js';
+import map from '../map/index.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 import parseLLMList from '../../lib/parse-llm-list/index.js';
 
@@ -55,7 +55,7 @@ Focus on terms that:
 
 ${onlyJSONStringArrayPerLine}`;
 
-  const mapped = await bulkMapRetry(textChunks, instructions, { chunkSize });
+  const mapped = await map(textChunks, instructions, { chunkSize });
 
   const termSet = new Set();
   mapped.forEach((line) => {

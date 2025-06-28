@@ -21,6 +21,6 @@ console.log(transcript);
 Each message in the transcript has the shape `{ id, name, comment, time }` where
 `time` is in `HH:MM` format.
 
-The conversation engine uses `conversation-turn-multi` and `conversation-turn` verblets internally to generate contextual responses. You can supply custom `bulkSpeakFn` and `speakFn` implementations for specialized conversation behaviors.
+The conversation engine uses `conversation-turn-multi-lines` and `conversation-turn-lines` verblets internally to generate contextual responses. You can supply custom `bulkSpeakFn` and `speakFn` implementations for specialized conversation behaviors.
 
 Perfect for simulating realistic discussions, focus groups, team meetings, or any multi-participant dialogue where each speaker brings their unique perspective and expertise to the conversation.
