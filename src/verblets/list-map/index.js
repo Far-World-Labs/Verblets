@@ -1,9 +1,9 @@
 import chatGPT from '../../lib/chatgpt/index.js';
-import wrapVariable from '../../prompts/wrap-variable.js';
+import { asXML } from '../../prompts/wrap-variable.js';
 
 const buildPrompt = function (list, instructions) {
-  const instructionsBlock = wrapVariable(instructions, { tag: 'instructions' });
-  const listBlock = wrapVariable(list.join('\n'), { tag: 'list' });
+  const instructionsBlock = asXML(instructions, { tag: 'instructions' });
+  const listBlock = asXML(list.join('\n'), { tag: 'list' });
   return `For each line in <list>, apply the <instructions> to transform it.\nReturn the same number of lines without numbering.\n\n${instructionsBlock}\n${listBlock}`;
 };
 

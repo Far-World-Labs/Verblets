@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import chatGPT from '../../lib/chatgpt/index.js';
-import wrapVariable from '../../prompts/wrap-variable.js';
+import { asXML } from '../../prompts/wrap-variable.js';
 
 // Get the directory of this module
 const __filename = fileURLToPath(import.meta.url);
@@ -47,11 +47,11 @@ async function createModelOptions(llm = 'fastGoodCheap') {
 }
 
 const buildPrompt = (list, instructions, categories) => {
-  const instructionsBlock = wrapVariable(instructions, { tag: 'instructions' });
-  const listBlock = wrapVariable(list.join('\n'), { tag: 'list' });
+  const instructionsBlock = asXML(instructions, { tag: 'instructions' });
+  const listBlock = asXML(list.join('\n'), { tag: 'list' });
   const categoryBlock =
     categories && categories.length
-      ? `${wrapVariable(categories.join('\n'), { tag: 'categories' })}\n`
+      ? `${asXML(categories.join('\n'), { tag: 'categories' })}\n`
       : '';
   const categoryText = categories && categories.length ? 'one of the <categories>' : 'a group';
 

@@ -5,7 +5,7 @@ import {
   contentListToOmit,
   onlyJSONStringArray,
 } from './constants.js';
-import wrapVariable from './wrap-variable.js';
+import { asXML } from './wrap-variable.js';
 
 const instruction = 'Please continue building the list.';
 
@@ -23,16 +23,16 @@ export default (
   const existingJoined = JSON.stringify(existing, null, 2);
 
   const attachmentsJoined = Object.entries(attachments).map(([key, value]) => {
-    return `${wrapVariable(value, { tag: 'reference-material', name: key })}
+    return `${asXML(value, { tag: 'reference-material', name: key })}
 `;
   });
 
   return `${onlyJSONStringArray}
-${contentListCriteria} ${wrapVariable(description, { tag: 'criteria' })}
+${contentListCriteria} ${asXML(description, { tag: 'criteria' })}
 
 ${attachmentsJoined}
 
-${contentListToOmit} ${wrapVariable(existingJoined, { tag: 'omitted' })}
+${contentListToOmit} ${asXML(existingJoined, { tag: 'omitted' })}
 
 ${instruction}
 You must return least ${targetNewItemsCount} unless the items are thoroughly exhausted.
@@ -42,7 +42,7 @@ ${contentListItemCriteria}
 - Not already in the list
 - Not a duplicate or a variant of an existing item
 
-${contentIsDetails} ${wrapVariable(fixes, { tag: 'fixes' })}
+${contentIsDetails} ${asXML(fixes, { tag: 'fixes' })}
 
 ${onlyJSONStringArray}`;
 };

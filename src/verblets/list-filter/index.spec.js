@@ -5,8 +5,8 @@ vi.mock('../../lib/chatgpt/index.js', () => ({
   default: vi.fn(async (prompt) => {
     const listMatch = prompt.match(/<list>\n([\s\S]*?)\n<\/list>/);
     const lines = listMatch ? listMatch[1].split('\n') : [];
-    const instMatch = prompt.match(/"([^"]+)"/);
-    const letter = instMatch ? instMatch[1] : '';
+    const instMatch = prompt.match(/<instructions>\n([\s\S]*?)\n<\/instructions>/);
+    const letter = instMatch ? instMatch[1].trim().replace(/^"|"$/g, '') : '';
     return lines.filter((l) => l.includes(letter)).join('\n');
   }),
 }));

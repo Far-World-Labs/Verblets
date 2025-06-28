@@ -2,7 +2,7 @@ import chatGPT from '../../lib/chatgpt/index.js';
 import numberWithUnits from '../../verblets/number-with-units/index.js';
 import number from '../../verblets/number/index.js';
 import date from '../date/index.js';
-import wrapVariable from '../../prompts/wrap-variable.js';
+import { asXML } from '../../prompts/wrap-variable.js';
 import templateReplace from '../../lib/template-replace/index.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 
@@ -91,9 +91,9 @@ export default function setInterval({
 ${explainAndSeparate} ${explainAndSeparatePrimitive}
 
 Your response should be an ISO date or a short duration like "10 minutes".
-${wrapVariable(lastResult, { tag: 'last-result', title: 'Last result:' })}
-${wrapVariable(history, { tag: 'history', title: 'History:', forceHTML: true })}
-${wrapVariable(count, { tag: 'count', title: 'Count:' })}
+${asXML(lastResult, { tag: 'last-result', title: 'Last result:' })}
+${asXML(history, { tag: 'history', title: 'History:' })}
+${asXML(count, { tag: 'count', title: 'Count:' })}
 Next wait:`;
 
       const intervalText = await chatGPT(intervalPrompt, {

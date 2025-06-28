@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import chatGPT from '../../lib/chatgpt/index.js';
-import wrapVariable from '../../prompts/wrap-variable.js';
+import { asXML } from '../../prompts/wrap-variable.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 
 const { contentIsQuestion, tryCompleteData, onlyJSONStringArray } = promptConstants;
@@ -51,7 +51,7 @@ async function createModelOptions(llm = 'fastGoodCheap') {
 
 export const buildPrompt = (items, { instructions } = {}) => {
   const itemsList = items.join(' | ');
-  const itemsBlock = wrapVariable(itemsList, { tag: 'items' });
+  const itemsBlock = asXML(itemsList, { tag: 'items' });
   const intro =
     instructions ||
     'Identify the common elements, shared features, or overlapping aspects that connect all the given items.';

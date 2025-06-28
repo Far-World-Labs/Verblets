@@ -1,6 +1,6 @@
 import { contentIsSchema, onlyJSON } from './constants.js';
 import asSchemaOrgType from './as-schema-org-type.js';
-import wrapVariable from './wrap-variable.js';
+import { asXML } from './wrap-variable.js';
 
 const ensureNumbers = 'ensure values meant to be numbers are numbers';
 const ensureSchemaOrgType = 'ensure the type is a real schema.org type';
@@ -9,7 +9,7 @@ const ensureProperties = 'ensure the returned object has @context, name';
 export default (object, type, schema) => {
   const typeText = `${asSchemaOrgType(type)}`;
   const schemaText = schema
-    ? `\n${contentIsSchema} ${wrapVariable(JSON.stringify(schema), {
+    ? `\n${contentIsSchema} ${asXML(JSON.stringify(schema), {
         tag: 'schema',
       })}`
     : '';

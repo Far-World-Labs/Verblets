@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import chatGPT from '../../lib/chatgpt/index.js';
-import wrapVariable from '../../prompts/wrap-variable.js';
+import { asXML } from '../../prompts/wrap-variable.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 
 const { onlyJSONArray } = promptConstants;
@@ -51,9 +51,9 @@ async function createModelOptions(llm = 'fastGoodCheap') {
 
 async function scoreBatch(items, instructions, reference = [], config = {}) {
   const { llm, ...options } = config;
-  const listBlock = wrapVariable(items.join('\n'), { tag: 'items' });
+  const listBlock = asXML(items.join('\n'), { tag: 'items' });
   const refBlock = reference.length
-    ? `\nCalibration examples (score - text):\n${wrapVariable(
+    ? `\nCalibration examples (score - text):\n${asXML(
         reference.map((r) => `${r.score} - ${r.item}`).join('\n'),
         { tag: 'reference' }
       )}`
