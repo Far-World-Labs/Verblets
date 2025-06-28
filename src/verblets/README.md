@@ -22,5 +22,6 @@ Available verblets:
 - [list-filter](./list-filter) - filter lists with custom instructions
 - [list-group](./list-group) - group lists into categories with prompts
 - [list-expand](./list-expand) - expand lists with similar items with prompts
+- [conversation-turn-multi-lines](./conversation-turn-multi-lines) - generate multiple conversation turns simultaneously
 
 Use these modules directly or compose them inside [chains](../chains/README.md).

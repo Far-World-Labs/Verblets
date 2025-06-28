@@ -1,9 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
 import glossary from './index.js';
 
-vi.mock('../bulk-map/index.js', () => ({
-  bulkMapRetry: vi.fn(() => Promise.resolve(['qubits, entanglement', 'decoherence, qubits'])),
-  default: vi.fn(),
+vi.mock('../map/index.js', () => ({
+  default: vi.fn(() => Promise.resolve(['qubits, entanglement', 'decoherence, qubits'])),
 }));
 
 vi.mock('../sort/index.js', () => ({

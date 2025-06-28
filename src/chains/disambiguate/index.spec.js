@@ -10,7 +10,7 @@ vi.mock('../../lib/chatgpt/index.js', () => ({
   }),
 }));
 
-vi.mock('../../verblets/list-filter/index.js', () => ({
+vi.mock('../../verblets/list-filter-lines/index.js', () => ({
   default: vi.fn(async (list) => {
     return [list[0]];
   }),

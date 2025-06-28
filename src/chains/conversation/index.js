@@ -1,5 +1,5 @@
-import conversationTurn from '../../verblets/conversation-turn/index.js';
-import conversationTurnMulti from '../../verblets/conversation-turn-multi/index.js';
+import conversationTurnLines from '../../verblets/conversation-turn-lines/index.js';
+import conversationTurnMultiLines from '../../verblets/conversation-turn-multi-lines/index.js';
 import { defaultTurnPolicy } from './turn-policies.js';
 
 /**
@@ -41,8 +41,8 @@ export default class Conversation {
 
     const {
       rules = {},
-      speakFn = conversationTurn,
-      bulkSpeakFn = conversationTurnMulti, // Default to bulk processing
+      speakFn = conversationTurnLines,
+      bulkSpeakFn = conversationTurnMultiLines, // Default to bulk processing
     } = options;
 
     if (rules.shouldContinue && typeof rules.shouldContinue !== 'function') {

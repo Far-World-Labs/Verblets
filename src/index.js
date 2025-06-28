@@ -24,7 +24,7 @@ import scanJS from './chains/scan-js/index.js';
 import sort from './chains/sort/index.js';
 import date from './chains/date/index.js';
 import setInterval from './chains/set-interval/index.js';
-import bulkScore from './chains/bulk-score/index.js';
+import score from './chains/score/index.js';
 import filterAmbiguous from './chains/filter-ambiguous/index.js';
 
 import SummaryMap from './chains/summary-map/index.js';
@@ -36,6 +36,15 @@ import test from './chains/test/index.js';
 import testAdvice from './chains/test-advice/index.js';
 import Conversation from './chains/conversation/index.js';
 import * as turnPolicies from './chains/conversation/turn-policies.js';
+
+// Missing chains
+import reduce from './chains/reduce/index.js';
+import collectTerms from './chains/collect-terms/index.js';
+import disambiguate from './chains/disambiguate/index.js';
+import categorySamples from './chains/category-samples/index.js';
+import veiledVariants from './chains/veiled-variants/index.js';
+import expectChain from './chains/expect/index.js';
+import * as llmLogger from './chains/llm-logger/index.js';
 
 import schemas from './json-schemas/index.js';
 import * as common from './constants/common.js';
@@ -49,9 +58,9 @@ import retry from './lib/retry/index.js';
 import searchBestFirst from './lib/search-best-first/index.js';
 import searchJSFiles from './lib/search-js-files/index.js';
 import shortenText from './lib/shorten-text/index.js';
-import bulkMap, { bulkMapRetry } from './chains/bulk-map/index.js';
-import bulkFind, { bulkFindRetry } from './chains/bulk-find/index.js';
-import bulkFilter, { bulkFilterRetry } from './chains/bulk-filter/index.js';
+import map, { mapOnce } from './chains/map/index.js';
+import find, { findOnce } from './chains/find/index.js';
+import filter, { filterOnce } from './chains/filter/index.js';
 import stripNumeric from './lib/strip-numeric/index.js';
 import stripResponse from './lib/strip-response/index.js';
 import templateReplace from './lib/template-replace/index.js';
@@ -94,41 +103,51 @@ import peopleList from './verblets/people-list/index.js';
 
 import toObject from './verblets/to-object/index.js';
 
-import listMap from './verblets/list-map/index.js';
-import listFind from './verblets/list-find/index.js';
+import listMapLines from './verblets/list-map-lines/index.js';
+import listFindLines from './verblets/list-find-lines/index.js';
 
-import conversationTurn from './verblets/conversation-turn/index.js';
-import conversationTurnMulti from './verblets/conversation-turn-multi/index.js';
+import conversationTurnLines from './verblets/conversation-turn-lines/index.js';
+import conversationTurnMultiLines from './verblets/conversation-turn-multi-lines/index.js';
 
-import bulkGroup from './chains/bulk-group/index.js';
+import group from './chains/group/index.js';
 
-import listGroup from './verblets/list-group/index.js';
-import intersection from './verblets/intersection/index.js';
+import listGroupLines from './verblets/list-group-lines/index.js';
 import fillMissing from './verblets/fill-missing/index.js';
 import commonalities from './verblets/commonalities/index.js';
 
+// Missing verblets
+import expect from './verblets/expect/index.js';
+import sentiment from './verblets/sentiment/index.js';
+import listExpand from './verblets/list-expand/index.js';
+import listFilterLines from './verblets/list-filter-lines/index.js';
+import listReduceLines from './verblets/list-reduce-lines/index.js';
+
 // # Concept Science
-import centralTendency from './verblets/central-tendency/index.js';
-import bulkCentralTendency, {
-  bulkCentralTendencyRetry,
-} from './chains/bulk-central-tendency/index.js';
+import centralTendencyLines from './verblets/central-tendency-lines/index.js';
+import centralTendency from './chains/central-tendency/index.js';
 
 export { default as retry } from './lib/retry/index.js';
 export { default as stripResponse } from './lib/strip-response/index.js';
 export { default as searchJSFiles } from './lib/search-js-files/index.js';
 export { default as searchBestFirst } from './lib/search-best-first/index.js';
 export {
-  bulkMap,
-  bulkMapRetry,
-  bulkFind,
-  bulkFindRetry,
-  bulkFilter,
+  map,
+  mapOnce,
+  find,
+  findOnce,
+  filter,
   join,
   windowFor,
-  bulkFilterRetry,
-  bulkCentralTendency,
-  bulkCentralTendencyRetry,
+  filterOnce,
+  centralTendency,
+  reduce,
+  collectTerms,
+  disambiguate,
+  categorySamples,
+  veiledVariants,
+  expectChain,
 };
+export { llmLogger };
 export { rangeCombinations } from './lib/combinations/index.js';
 
 export const lib = {
@@ -164,10 +183,10 @@ export const verblets = {
   name,
   peopleList,
   toObject,
-  listMap,
-  listFind,
-  bulkMap,
-  bulkFind,
+  listMapLines,
+  listFindLines,
+  map,
+  find,
   anonymize,
   Dismantle,
   intersections,
@@ -185,19 +204,31 @@ export const verblets = {
   test,
   testAdvice,
   Conversation,
-  conversationTurn,
-  conversationTurnMulti,
-  bulkScore,
+  conversationTurnLines,
+  conversationTurnMultiLines,
+  score,
   filterAmbiguous,
-  bulkGroup,
-  bulkFilter,
+  group,
+  filter,
   join,
-  listGroup,
-  intersection,
+  listGroupLines,
   fillMissing,
   commonalities,
+  centralTendencyLines,
   centralTendency,
-  bulkCentralTendency,
+  // Missing verblets
+  expect,
+  sentiment,
+  listExpand,
+  listFilterLines,
+  listReduceLines,
+  // Missing chains
+  reduce,
+  collectTerms,
+  disambiguate,
+  categorySamples,
+  veiledVariants,
+  expectChain,
 };
 
 export const services = {

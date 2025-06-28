@@ -26,24 +26,18 @@ Primitive verblets extract basic data types from natural language with high reli
 
 ### Lists
 
-List operations transform, filter, and organize collections using natural language criteria. They handle both individual items and batch processing for datasets larger than a context window.
+List operations transform, filter, and organize collections using natural language criteria. They handle both individual items and batch processing for datasets larger than a context window. Many list operations support bulk operation with built-in retry. Many have alternative single invocation versions in the verblets directory.
 
-- [bulk-central-tendency](./src/chains/bulk-central-tendency) - evaluate graded family resemblance for datasets in cognitive categories
-- [bulk-filter](./src/chains/bulk-filter) - filter lists via batch processing
-- [bulk-find](./src/chains/bulk-find) - batch find the top match in a given datasets via batch processing
-- [bulk-group](./src/chains/bulk-group) - group datasets via batch processing
-- [bulk-map](./src/chains/bulk-map) - map over lists via batch processing
-- [bulk-reduce](./src/chains/bulk-reduce) - reduce lists in bulk via batch processing
-- [bulk-score](./src/chains/bulk-score) - score lists with calibrated examples via batch processing
-- [central-tendency](./src/verblets/central-tendency) - evaluate graded family resemblance and prototypical membership in cognitive categories
+- [central-tendency](./src/chains/central-tendency) - evaluate categories with cognitive science methods
+- [filter](./src/chains/filter) - filter lists via batch processing
+- [find](./src/chains/find) - find the top match in a given dataset via batch processing
+- [group](./src/chains/group) - group datasets via batch processing
+- [map](./src/chains/map) - map over lists via batch processing
+- [reduce](./src/chains/reduce) - reduce lists via batch processing
+- [score](./src/chains/score) - score lists with calibrated examples via batch processing
 - [intersections](./src/chains/intersections) - find intersections for all combinations
 - [list](./src/chains/list) - generate contextual lists from prompts
 - [list-expand](./src/verblets/list-expand) - generate additional similar items
-- [list-filter](./src/verblets/list-filter) - filter lists with natural language criteria
-- [list-find](./src/verblets/list-find) - pick the single best item from a list
-- [list-group](./src/verblets/list-group) - categorize list items into groups
-- [list-map](./src/verblets/list-map) - transform each item in a list
-- [list-reduce](./src/verblets/list-reduce) - combine list items using custom logic
 - [sort](./src/chains/sort) - order lists by any describable criteria
 
 ### Content
@@ -53,10 +47,8 @@ Content utilities generate, transform, and analyze text while maintaining struct
 - [anonymize](./src/chains/anonymize) - scrub personal details from text
 - [category-samples](./src/chains/category-samples) - generate diverse examples for any category
 - [collect-terms](./src/chains/collect-terms) - extract difficult vocabulary
-- [commonalities](./src/verblets/intersection) - find common threads and shared traits between items
+- [commonalities](./src/verblets/commonalities) - find common threads and shared traits between items
 - [conversation](./src/chains/conversation) - orchestrate multi-turn AI conversations with configurable policies
-- [conversation-turn](./src/verblets/conversation-turn) - generate single conversation turns with context awareness
-- [conversation-turn-multi](./src/verblets/conversation-turn-multi) - generate multiple conversation turns simultaneously
 - [disambiguate](./src/chains/disambiguate) - resolve ambiguous word meanings using context
 - [dismantle](./src/chains/dismantle) - break systems into components
 - [filter-ambiguous](./src/chains/filter-ambiguous) - find and rank unclear terms for disambiguation
@@ -122,19 +114,19 @@ Helpers support higher-level operations. They make no LLM calls and are often sy
 This example shows how verblets enable building systems that understand context, make nuanced decisions, and adapt to complex real-world scenarios - capabilities that would be nearly impossible with traditional programming approaches.
 
 ```javascript
-import bulkMap from './src/chains/bulk-map/index.js';
+import map from './src/chains/map/index.js';
 import list from './src/chains/list/index.js';
 import {
   anonymize,
   bool,
   enum,
   intent,
-  listFilter,
+  listFilterLines,
   questions,
   sort,
   toObject,
   sentiment,
-  bulkScore,
+  score,
 } from 'verblets';
 
 // Intelligent customer support system that handles complex, contextual requests
@@ -163,17 +155,17 @@ async function handleCustomerRequest(message, history, catalog) {
     `Customer says: "${message}". What should we ask to help them better?`
   );
 
-  const candidates = await listFilter(
+  const candidates = await listFilterLines(
     catalog,
     `Products that might solve: ${
       customerIntent.parameters.issue || customerIntent.parameters.productType
     }`
   );
 
-  const scores = await bulkScore(candidates, 'resolution likelihood');
+  const { scores } = await score(candidates, 'resolution likelihood');
   const prioritized = await sort(candidates, `by likelihood score ${scores.join(', ')}`);
 
-  const bulletPoints = await bulkMap(
+  const bulletPoints = await map(
     prioritized.map((p) => p.name),
     'Write a friendly one-line apology referencing <list>.'
   );
@@ -256,6 +248,7 @@ This system demonstrates capabilities that extend traditional programming approa
 - **Intelligent prioritization** of solutions
 - **Privacy-aware data handling** for compliance
 - **Structured output** that integrates with existing systems
+
 
 ## Contributing
 
