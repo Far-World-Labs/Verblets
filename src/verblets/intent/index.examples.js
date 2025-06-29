@@ -15,17 +15,60 @@ async function getIntentSchema() {
   return JSON.parse(await fs.readFile(join(__dirname, '../../json-schemas/intent.json')));
 }
 
-const examples = [
+const travelOperations = [
   {
-    inputs: { text: 'Give me a flight to Burgas' },
-    want: { resultSchema: getIntentSchema },
+    name: 'book_flight',
+    description: 'Book a flight ticket',
+    parameters: {
+      from: 'departure location',
+      to: 'destination location',
+      date: 'travel date',
+      class: 'travel class (economy, business, first)',
+    },
   },
   {
-    inputs: {
-      text: 'Lookup a song by the quote \
-"I just gotta tell you how I\'m feeling"',
+    name: 'book_hotel',
+    description: 'Book a hotel room',
+    parameters: {
+      location: 'city or area',
+      checkin: 'check-in date',
+      checkout: 'check-out date',
+      guests: 'number of guests',
     },
-    want: { resultSchema: getIntentSchema },
+  },
+];
+
+const musicOperations = [
+  {
+    name: 'search_song',
+    description: 'Search for a song by lyrics or title',
+    parameters: {
+      lyrics: 'song lyrics',
+      title: 'song title',
+      artist: 'artist name',
+    },
+  },
+  {
+    name: 'play_music',
+    description: 'Play music',
+    parameters: {
+      genre: 'music genre',
+      artist: 'specific artist',
+      playlist: 'playlist name',
+    },
+  },
+];
+
+const examples = [
+  {
+    text: 'Give me a flight to Burgas',
+    operations: travelOperations,
+    schema: getIntentSchema,
+  },
+  {
+    text: 'Lookup a song by the quote "I just gotta tell you how I\'m feeling"',
+    operations: musicOperations,
+    schema: getIntentSchema,
   },
 ];
 
@@ -47,12 +90,12 @@ describe('Intent verblet', () => {
 
   examples.forEach((example) => {
     it(
-      example.inputs.text,
+      example.text,
       async () => {
-        const result = await intent({ text: example.inputs.text });
+        const result = await intent(example.text, example.operations);
 
-        if (example.want.resultSchema) {
-          const schema = await example.want.resultSchema();
+        if (example.schema) {
+          const schema = await example.schema();
           const ajv = new Ajv();
           const validate = ajv.compile(schema);
 
@@ -67,7 +110,7 @@ describe('Intent verblet', () => {
 
           // LLM assertion to validate intent extraction quality
           const intentMakesSense = await aiExpect(
-            `Original text: "${example.inputs.text}" was parsed into an intent object`
+            `Original text: "${example.text}" was parsed into an intent object`
           ).toSatisfy('Does this seem like a reasonable intent extraction?');
           expect(intentMakesSense).toBe(true);
 
@@ -87,7 +130,7 @@ describe('Intent verblet', () => {
     async () => {
       const travelRequest =
         'Book me a round-trip flight from New York to Tokyo for next month, preferably business class';
-      const result = await intent({ text: travelRequest });
+      const result = await intent(travelRequest, travelOperations);
 
       // Traditional schema validation
       const schema = await getIntentSchema();
@@ -114,7 +157,7 @@ describe('Intent verblet', () => {
     async () => {
       const musicQuery =
         'Find that song that goes "Never gonna give you up, never gonna let you down"';
-      const result = await intent({ text: musicQuery });
+      const result = await intent(musicQuery, musicOperations);
 
       // Schema validation
       const schema = await getIntentSchema();

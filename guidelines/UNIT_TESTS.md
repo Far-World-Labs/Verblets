@@ -1,84 +1,62 @@
 # Unit Testing Guidelines
 
-## Philosophy
+## Core Philosophy
+- **Mock all LLM calls** - Tests should be deterministic and fast
+- **Test behavior, not implementation** - Focus on what the function should do
+- **Use realistic mock responses** - Match actual LLM output formats
 
-Unit tests in Verblets should focus on verifying the behavior and reliability of individual functions, especially those that interact with LLMs. Our tests should be practical, maintainable, and focused on real-world usage patterns.
+## Test Organization
+- Group tests by input characteristics (clear vs ambiguous)
+- Use descriptive test names that specify expected behavior
+- One assertion per test for clarity
 
-## Test Structure
+## Essential Coverage
 
-### Descriptive Test Names
-- Use clear, behavior-focused test names that describe what the test verifies
-- Good: `'should extract number from natural language text'`
-- Good: `'should handle empty input gracefully'`
-- Avoid: `'Basic usage'`, `'Test 1'`
+### For All Verblets
+- **Clear inputs** - Unambiguous text that should produce expected results
+- **Ambiguous inputs** - Unclear text requiring fallback behavior
+- **Edge cases** - Empty strings, very long text, special characters
+- **Input validation** - Non-string inputs, null/undefined values
+- **LLM option passing** - Verify temperature, model, etc. are forwarded correctly
 
-### Test Organization
-- Group related tests using `describe` blocks
-- Use nested `describe` blocks for different scenarios or input types
-- Each test should verify one specific behavior
+### For All Chains  
+- **Single item processing** - Verify core transformation logic
+- **Batch processing** - Confirm batching reduces API calls appropriately
+- **Error recovery** - Test retry logic with temporary failures
+- **Configuration options** - Batch size, retry limits, custom functions
 
-### Coverage Expectations
-- **Core functionality**: Test the main use case with typical inputs
-- **Edge cases**: Test with empty inputs, null/undefined, boundary values
-- **Error handling**: Verify graceful handling of invalid inputs
-- **LLM interactions**: Mock external LLM calls for consistent, fast tests
+## Specific Testing Considerations
 
-## LLM-Aware Testing
+### Mock Response Realism
+- **Sentiment verblets**: Use "positive", "negative", "neutral"
+- **Number extraction**: Use actual numeric strings like "42", "3.14"
+- **Boolean extraction**: Use "true"/"false" strings
+- **Object extraction**: Use valid JSON strings
 
-### Mocking Strategy
-- Mock LLM calls to ensure tests are deterministic and fast
-- Use realistic mock responses that match expected output formats
-- Test both successful responses and error scenarios
+### Input Validation Patterns
+- Test type checking (string vs non-string inputs)
+- Test empty string handling (return null or appropriate default)
+- Test extremely long inputs if relevant to the verblet
 
-### Input Validation
-- Test with various natural language inputs that users might provide
-- Verify the function handles ambiguous or unclear inputs appropriately
-- Test with different languages or formats when relevant
+### LLM Integration Testing
+- Verify prompt structure contains expected keywords
+- Confirm model options are passed through correctly
+- Test error handling when LLM calls fail
 
-## What We Don't Require
+### Chain-Specific Considerations
+- **Batch verification**: Count API calls to ensure batching works
+- **Retry testing**: Mock temporary failures followed by success
+- **Memory efficiency**: For large datasets, verify streaming/chunking
 
-### Exhaustive Coverage
-- Not every edge case needs a test if it's handled by underlying libraries
-- Focus on testing the logic specific to your function
-- Integration tests can cover some scenarios better than unit tests
+## What NOT to Test
+- Internal prompt text (too brittle)
+- Exact LLM responses (use mocks instead)
+- Performance benchmarks (separate performance tests)
+- Integration with actual LLM services (separate integration tests)
 
-### Perfect Mocking
-- Simple string returns from mocks are often sufficient
-- Don't over-engineer mock implementations unless testing complex interactions
-
-### Performance Testing
-- Unit tests should focus on correctness, not performance
-- Performance testing belongs in integration or benchmark tests
-
-## Examples of Good Tests
-
-```javascript
-describe('numberVerblet', () => {
-  describe('with valid numeric text', () => {
-    test('should extract whole numbers', async () => {
-      // Test implementation
-    });
-    
-    test('should extract decimal numbers', async () => {
-      // Test implementation
-    });
-  });
-  
-  describe('with ambiguous input', () => {
-    test('should handle multiple numbers by returning the first', async () => {
-      // Test implementation
-    });
-  });
-  
-  describe('error handling', () => {
-    test('should throw descriptive error for non-numeric text', async () => {
-      // Test implementation
-    });
-  });
-});
-```
-
-## File Organization
-- One test file per module: `module-name/index.spec.js`
-- Keep test files close to the code they test
-- Use consistent naming patterns across the project 
+## Anti-Patterns to Avoid
+- **Generic test names**: "basic test", "with options"
+- **Single happy path**: Only testing obvious success cases  
+- **Unrealistic mocks**: Using "ok" or "success" as mock responses
+- **Testing implementation details**: Checking internal variable states
+- **Exhaustive input testing**: Don't test every possible string variation

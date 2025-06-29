@@ -50,7 +50,14 @@ async function createModelOptions(llm = 'fastGoodCheap') {
   }
 }
 
-export default async (text, config = {}) => {
+/**
+ * Extract numeric value and unit from text input
+ * @param {string} text - The text to analyze
+ * @param {Object} [config] - Configuration options
+ * @param {Object} [config.llm] - LLM configuration
+ * @returns {Promise<Object>} Object with value and unit properties
+ */
+export default async function numberWithUnits(text, config = {}) {
   const { llm, ...options } = config;
   const numberText = `${contentIsQuestion} ${text} \n\n${explainAndSeparate} ${explainAndSeparateJSON}
 
@@ -81,4 +88,4 @@ ${asNumberWithUnits}`;
   }
 
   return toNumberWithUnits(JSON.stringify(rawResult));
-};
+}

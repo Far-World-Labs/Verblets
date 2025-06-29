@@ -22,6 +22,7 @@
     "examples:fresh": "npm run clear-test-cache && npm run examples:all",
     "arch": "source .env && vitest --config .vitest.config.arch.js",
     "arch:once": "source .env && vitest --config .vitest.config.arch.js --run",
+    "arch:debug": "source .env && ARCH_DEBUG=true vitest --config .vitest.config.arch.js --run",
     "lint": "eslint 'src/**/*.{js,jsx}'",
     "lint:fix": "eslint 'src/**/*.{js,jsx}' --fix",
     "check:deps": "npx npm-deprecated-check current",

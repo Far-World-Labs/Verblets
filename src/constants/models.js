@@ -1,4 +1,114 @@
-// Environment variables loaded in index.js
+/**
+ * Model Configuration for LLM Services
+ *
+ * This module defines model configurations for various LLM providers including
+ * OpenAI, Anthropic, and other services. It handles environment variable
+ * validation and provides sensible defaults for different use cases.
+ */
+
+// Validate critical environment variables
+function validateEnvironment() {
+  const required = ['OPENAI_API_KEY'];
+  const missing = required.filter((key) => !process.env[key] && process.env.NODE_ENV !== 'test');
+
+  if (missing.length > 0) {
+    console.warn(`Warning: Missing environment variables: ${missing.join(', ')}`);
+    console.warn('Some model configurations may not work properly.');
+  }
+}
+
+// Validate environment on module load (except in tests)
+if (process.env.NODE_ENV !== 'test') {
+  validateEnvironment();
+}
+
+/**
+ * Base model configurations organized by provider and capability
+ */
+
+// OpenAI GPT Models - Primary LLM provider
+export const gpt4o = 'gpt-4o';
+export const gpt4oMini = 'gpt-4o-mini';
+export const gpt4Turbo = 'gpt-4-turbo';
+export const gpt35Turbo = 'gpt-3.5-turbo';
+
+// Anthropic Claude Models - Alternative provider for specific use cases
+export const claude35Sonnet = 'claude-3-5-sonnet-20241022';
+export const claude3Haiku = 'claude-3-haiku-20240307';
+
+// Specialized Models
+export const o1Preview = 'o1-preview'; // Advanced reasoning
+export const o1Mini = 'o1-mini'; // Lightweight reasoning
+
+/**
+ * Capability-based model aliases for consistent usage patterns
+ * These provide semantic meaning to model selection
+ */
+
+// Performance tiers
+export const fast = gpt4oMini; // Quick responses, lower cost
+export const good = gpt4o; // Balanced performance/cost
+export const smart = gpt4Turbo; // High capability tasks
+export const cheap = gpt4oMini; // Cost-optimized
+
+// Combined capability aliases
+export const fastGood = gpt4o; // Fast + Good quality
+export const fastGoodCheap = gpt4oMini; // Optimized for all three
+export const goodCheap = gpt4o; // Quality + Cost balance
+export const smartExpensive = o1Preview; // Maximum capability
+
+// Legacy and compatibility aliases
+export const chatgpt = gpt4o; // Default ChatGPT model
+export const default4o = gpt4o; // Explicit 4o reference
+
+// Provider-specific aliases for consistency
+export const openai = {
+  gpt4o,
+  gpt4oMini,
+  gpt4Turbo,
+  gpt35Turbo,
+  o1Preview,
+  o1Mini,
+};
+
+export const anthropic = {
+  claude35Sonnet,
+  claude3Haiku,
+};
+
+/**
+ * Model selection utilities
+ */
+
+// Get model for specific use case
+export function getModelForUseCase(useCase) {
+  const useCaseMap = {
+    fast,
+    quality: good,
+    reasoning: smart,
+    cost: cheap,
+    balanced: fastGood,
+    default: good,
+  };
+
+  return useCaseMap[useCase] || good;
+}
+
+// Validate model availability
+export function isModelAvailable(model) {
+  const availableModels = [
+    gpt4o,
+    gpt4oMini,
+    gpt4Turbo,
+    gpt35Turbo,
+    claude35Sonnet,
+    claude3Haiku,
+    o1Preview,
+    o1Mini,
+  ];
+
+  return availableModels.includes(model);
+}
 
 const _models = {};
 
