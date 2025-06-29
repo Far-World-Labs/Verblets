@@ -6,7 +6,7 @@ import {
   constants as promptConstants,
 } from '../../prompts/index.js';
 import modelService from '../../services/llm-model/index.js';
-import toObject from '../../verblets/to-object/index.js';
+import toObject from '../to-object/index.js';
 
 const { asSplitIntoJSONArray, contentIsChoices, onlyJSON } = promptConstants;
 

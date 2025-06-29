@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
-import toObject from '../../verblets/to-object/index.js';
+import toObject from '../to-object/index.js';
 import list from './index.js';
 
 const __filename = fileURLToPath(import.meta.url);

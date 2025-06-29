@@ -10,12 +10,12 @@ vi.mock('../../verblets/bool/index.js', () => ({
   default: vi.fn(),
 }));
 
-vi.mock('../../verblets/to-object/index.js', () => ({
+vi.mock('../to-object/index.js', () => ({
   default: vi.fn(),
 }));
 
 const chatGPT = (await import('../../lib/chatgpt/index.js')).default;
-const toObjectMock = (await import('../../verblets/to-object/index.js')).default;
+const toObjectMock = (await import('../to-object/index.js')).default;
 
 describe('date chain', () => {
   beforeEach(() => {

@@ -5,7 +5,7 @@ import { errorRunningTests } from '../../constants/messages.js';
 import chatGPT from '../../lib/chatgpt/index.js';
 import { constants as promptConstants, asXML } from '../../prompts/index.js';
 import modelService from '../../services/llm-model/index.js';
-import toObject from '../../verblets/to-object/index.js';
+import toObject from '../to-object/index.js';
 
 const {
   contentIsExample,

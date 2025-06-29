@@ -1,0 +1,22 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "passed": {
+      "type": "boolean",
+      "description": "Whether the expectation was met"
+    },
+    "actual": {
+      "description": "The actual value that was tested"
+    },
+    "expected": {
+      "description": "The expected value or condition"
+    },
+    "message": {
+      "type": "string",
+      "description": "Detailed explanation of the result"
+    }
+  },
+  "required": ["passed"],
+  "additionalProperties": true
+} 

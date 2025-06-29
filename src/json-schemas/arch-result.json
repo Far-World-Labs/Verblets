@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "passed": {
+      "type": "boolean",
+      "description": "Whether the architecture test passed"
+    },
+    "reason": {
+      "type": "string",
+      "description": "Explanation of the test result"
+    }
+  },
+  "required": ["passed", "reason"],
+  "additionalProperties": false
+} 
