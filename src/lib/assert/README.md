@@ -1,6 +1,17 @@
-# Assert Library
+# Assert Utility
 
-A lightweight assertion library with a fluent interface similar to chai. Provides simple assertions for testing and validation.
+Custom assertion utilities that provide enhanced error reporting and validation capabilities.
+
+## Features
+
+- **Detailed Errors**: Provides meaningful error messages for failed assertions
+- **Type Checking**: Validates data types and structures
+- **Custom Predicates**: Support for custom validation logic
+- **Testing Integration**: Works seamlessly with test frameworks
+
+## Usage
+
+Used throughout the library for validating inputs, ensuring data integrity, and providing clear error messages when expectations are not met.
 
 ## Features
 

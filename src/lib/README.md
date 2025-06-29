@@ -1,6 +1,30 @@
-# Library Helpers
+# Library Utilities
 
-The `lib` directory houses reusable utilities used by verblets and chains. Each subfolder contains a focused helper function or class.
+This directory contains low-level utility functions and services that provide foundational functionality for the Verblets library.
+
+## Purpose
+
+The `lib` directory houses:
+- **Core utilities**: Basic functions for data transformation and validation
+- **Service integrations**: Interfaces to external services like ChatGPT
+- **Helper functions**: Common functionality used across verblets and chains
+
+## Organization
+
+- `chatgpt/` - OpenAI ChatGPT API integration
+- `to-*` utilities - Data type conversion functions
+- `assert/` - Custom assertion utilities
+- `logger-service/` - Logging functionality
+- `retry/` - Retry logic for operations
+- `functional/` - Functional programming utilities
+
+## Architecture
+
+Library utilities should:
+- Have no dependencies on verblets or chains
+- Provide single-responsibility functions
+- Be well-tested and documented
+
 
 Modules include:
 

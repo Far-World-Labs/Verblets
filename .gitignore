@@ -9,3 +9,9 @@ lint-output.txt
 test-lint-output.txt
 github-step-summary*.txt
 test-script*.sh
+
+# Test result files
+test-results.json
+test-results.xml
+coverage/
+*.log

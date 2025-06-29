@@ -1,6 +1,25 @@
 # Chains
 
-Chains orchestrate multiple verblets or helper functions to perform more complex tasks. Each subdirectory exposes a specific workflow that can be imported as a single function.
+Chains are complex, multi-step workflows that combine multiple verblets and utilities to perform sophisticated operations.
+
+## What are Chains?
+
+Chains orchestrate multiple operations to:
+- Process data through multiple stages
+- Handle complex business logic
+- Manage state and context across operations
+- Provide high-level abstractions for common workflows
+
+## Key Features
+
+- **Multi-step Processing**: Execute multiple operations in sequence
+- **Context Management**: Maintain state across processing steps
+- **Error Handling**: Robust error management and recovery
+- **Composability**: Chains can be combined with other chains and verblets
+
+## Usage
+
+Chains are used for complex operations that require multiple steps or sophisticated logic that goes beyond what individual verblets can provide.
 
 Available chains:
 
