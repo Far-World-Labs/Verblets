@@ -69,58 +69,6 @@ describe('Verblets Library Architecture', () => {
     });
   });
 
-
-  test('should have adequate documentation coverage', async () => {
-    await withInactivityTimeout(
-      async (onUpdate) => {
-        const expectation = aiArchExpect(eachDir('src/{chains,verblets,lib}/*'), {
-          maxFailures: 5
-        })
-          .withContext(fileContext('src/chains/DESIGN.md', 'chain-guidelines'))
-          .withContext(fileContext('src/verblets/DESIGN.md', 'verblet-guidelines'))
-          .coverage(0.25)
-          .satisfies('Directory has appropriate documentation based on module complexity and guidelines. Simple modules may not need README files.');
-        
-        expectation.onChunkProcessed = (items, error, metadata) => {
-          const status = error ? 'FAIL' : 'PASS';
-          const itemsStr = (metadata.formattedItems || items).join(', ');
-          debugBatchLog(`[doc-coverage ${metadata.chunkIndex}/${metadata.totalChunks}] ${status}: [${itemsStr}]${error ? ` - ${error.message}` : ''}`);
-          onUpdate(items, error);
-        };
-        
-        return await expectation.start();
-      },
-      10000
-    );
-  }, 600000); // 10 minutes
-
-  test('should have high-quality README documentation', async () => {
-    const startTime = Date.now();
-    await withInactivityTimeout(
-      async (onUpdate) => {
-        const expectation = aiArchExpect(eachDir('src/{chains,verblets,lib}/*'), {
-          maxFailures: 5
-        })
-          .withContext(fileContext('README.md', 'project-readme'))
-          .withContext(fileContext('src/chains/DESIGN.md', 'chain-guidelines'))
-          .withContext(fileContext('src/verblets/DESIGN.md', 'verblet-guidelines'))
-          .withItemContext(dir => fileContext(`${dir}/README.md`, 'readme'))
-          .satisfies('When README.md exists, it should contain appropriate documentation based on module type and complexity guidelines.');
-        
-        expectation.onChunkProcessed = (items, error, metadata) => {
-          const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-          const status = error ? 'FAIL' : 'PASS';
-          const itemsStr = (metadata.formattedItems || items).join(', ');
-          debugBatchLog(`[readme ${metadata.chunkIndex}/${metadata.totalChunks}] ${status} (${elapsed}s): [${itemsStr}]${error ? ` - ${error.message}` : ''}`);
-          onUpdate(items, error);
-        };
-        
-        return await expectation.start();
-      },
-      10000
-    );
-  }, 600000); // 10 minutes
-
   test('should have well-structured package.json', async () => {
     await aiArchExpect(eachFile('package.json'))
       .satisfies('Package.json has proper structure, dependencies, and metadata')
@@ -201,6 +149,58 @@ Apply context-specific expectations from the guidelines. Focus on practical code
           const status = error ? 'FAIL' : 'PASS';
           const itemsStr = (metadata.formattedItems || items).join(', ');
           debugBatchLog(`[examples ${metadata.chunkIndex}/${metadata.totalChunks}] ${status} (${elapsed}s): [${itemsStr}]${error ? ` - ${error.message}` : ''}`);
+          onUpdate(items, error);
+        };
+        
+        return await expectation.start();
+      },
+      10000
+    );
+  }, 600000); // 10 minutes
+
+
+  test('should have high-quality README documentation', async () => {
+    const startTime = Date.now();
+    await withInactivityTimeout(
+      async (onUpdate) => {
+        const expectation = aiArchExpect(eachDir('src/{chains,verblets,lib}/*'), {
+          maxFailures: 5
+        })
+          .withContext(fileContext('README.md', 'project-readme'))
+          .withContext(fileContext('src/chains/DESIGN.md', 'chain-guidelines'))
+          .withContext(fileContext('src/verblets/DESIGN.md', 'verblet-guidelines'))
+          .withItemContext(dir => fileContext(`${dir}/README.md`, 'readme'))
+          .satisfies('When README.md exists, it should contain appropriate documentation based on module type and complexity guidelines.');
+        
+        expectation.onChunkProcessed = (items, error, metadata) => {
+          const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+          const status = error ? 'FAIL' : 'PASS';
+          const itemsStr = (metadata.formattedItems || items).join(', ');
+          debugBatchLog(`[readme ${metadata.chunkIndex}/${metadata.totalChunks}] ${status} (${elapsed}s): [${itemsStr}]${error ? ` - ${error.message}` : ''}`);
+          onUpdate(items, error);
+        };
+        
+        return await expectation.start();
+      },
+      10000
+    );
+  }, 600000); // 10 minutes
+
+  test('should have adequate documentation coverage', async () => {
+    await withInactivityTimeout(
+      async (onUpdate) => {
+        const expectation = aiArchExpect(eachDir('src/{chains,verblets,lib}/*'), {
+          maxFailures: 5
+        })
+          .withContext(fileContext('src/chains/DESIGN.md', 'chain-guidelines'))
+          .withContext(fileContext('src/verblets/DESIGN.md', 'verblet-guidelines'))
+          .coverage(0.25)
+          .satisfies('Directory has appropriate documentation based on module complexity and guidelines. Simple modules may not need README files.');
+        
+        expectation.onChunkProcessed = (items, error, metadata) => {
+          const status = error ? 'FAIL' : 'PASS';
+          const itemsStr = (metadata.formattedItems || items).join(', ');
+          debugBatchLog(`[doc-coverage ${metadata.chunkIndex}/${metadata.totalChunks}] ${status}: [${itemsStr}]${error ? ` - ${error.message}` : ''}`);
           onUpdate(items, error);
         };
         

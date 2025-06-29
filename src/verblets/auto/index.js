@@ -1,11 +1,21 @@
 import chatGPT from '../../lib/chatgpt/index.js';
-import schemas from '../../json-schemas/index.js';
+import { schemas } from '../../json-schemas/index.js';
 
 export default async (text, config = {}) => {
   const { llm, ...options } = config;
-  const tools = schemas.map((schema) => ({
+
+  // Convert JSON schemas to OpenAI function tools format
+  const tools = Object.entries(schemas).map(([schemaName, schema]) => ({
     type: 'function',
-    function: schema,
+    function: {
+      name: schemaName,
+      description: schema.description || `Function for ${schemaName}`,
+      parameters: {
+        type: 'object',
+        properties: schema.properties || {},
+        required: schema.required || [],
+      },
+    },
   }));
 
   const functionFound = await chatGPT(text, {

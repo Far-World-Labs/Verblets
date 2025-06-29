@@ -1,7 +1,7 @@
 import chatGPT from '../../lib/chatgpt/index.js';
 import stripResponse from '../../lib/strip-response/index.js';
 import toDate from '../../lib/to-date/index.js';
-import toObject from '../../verblets/to-object/index.js';
+import toObject from '../to-object/index.js';
 import bool from '../../verblets/bool/index.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 
