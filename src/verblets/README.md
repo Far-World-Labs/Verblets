@@ -1,5 +1,34 @@
 # Verblets
 
+Verblets are simple, focused utilities that perform specific tasks. They are the building blocks of the Verblets library.
+
+## What are Verblets?
+
+Verblets are small, single-purpose functions that:
+- Perform one specific task well. A verblet should invoke chatgpt or an AI no more than once. 
+- Should be fast to respond. Large-context verblets should be treated as a chain.
+- Should not retry and should have minimal processing logic.
+- Have clear, predictable inputs and outputs
+- Can be easily composed together
+- Are lightweight and fast
+
+## Categories
+
+ - **Data Processing**: Transform and manipulate data
+ - **Text Analysis**: Analyze and process text content
+ - **Validation**: Check and validate data formats
+ - **Utilities**: Common helper functions
+
+## Design Principles
+
+ - **Single Responsibility**: Each verblet does one thing well
+ - **Composability**: Verblets can be combined to create complex workflows
+ - **Predictability**: Outputs are constrained to well behaved datatypes and practical value ranges
+
+## Usage
+
+Verblets are typically used as building blocks in chains or as standalone utilities in your applications.
+
 The `verblets` directory contains individual utilities that wrap specific language-model workflows. Each verblet exports a single function and usually includes its own examples, tests and optional JSON schema.
 
 Available verblets:
