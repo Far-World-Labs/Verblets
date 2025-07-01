@@ -6,7 +6,7 @@ const examples = [
     name: 'returns full text when within limit',
     inputs: {
       text: 'Short text',
-      instructions: 'Truncate if needed',
+      instructions: 'Find the best truncation point',
       config: { limit: 100 },
     },
     wants: {
@@ -16,14 +16,14 @@ const examples = [
     },
   },
   {
-    name: 'truncates longer text at semantic boundaries',
+    name: 'truncates based on custom instructions',
     inputs: {
-      text: 'This is a longer piece of text that needs to be truncated. It has multiple sentences to test the LLM truncation logic.',
-      instructions: 'Find the best semantic boundary',
+      text: 'First important sentence. Second less important sentence. Third filler sentence.',
+      instructions: 'Prioritize keeping the most important content',
       config: { limit: 50 },
     },
     wants: {
-      cutType: expect.stringMatching(/sentence|clause|word/),
+      cutType: expect.stringMatching(/sentence|scored/),
       preservationScore: expect.any(Number),
     },
   },
@@ -31,8 +31,20 @@ const examples = [
     name: 'handles word-based limits',
     inputs: {
       text: 'The quick brown fox jumps over the lazy dog and runs through the forest.',
-      instructions: 'Truncate at natural boundaries',
+      instructions: 'Keep complete thoughts',
       config: { limit: 8, unit: 'words' },
+    },
+    wants: {
+      cutType: expect.any(String),
+      cutPoint: expect.any(Number),
+    },
+  },
+  {
+    name: 'handles sentence-based limits',
+    inputs: {
+      text: 'First sentence here. Second sentence here. Third sentence here.',
+      instructions: 'Preserve complete sentences',
+      config: { limit: 2, unit: 'sentences' },
     },
     wants: {
       cutType: expect.any(String),
@@ -43,7 +55,7 @@ const examples = [
     name: 'handles empty input gracefully',
     inputs: {
       text: '',
-      instructions: 'Truncate if needed',
+      instructions: 'Find the best truncation point',
       config: { limit: 10 },
     },
     wants: {
@@ -53,22 +65,22 @@ const examples = [
     },
   },
   {
-    name: 'provides reasoning for truncation decisions',
+    name: 'follows specific truncation criteria',
     inputs: {
-      text: 'First paragraph with important content.\n\nSecond paragraph with additional details that could be removed.',
-      instructions: 'Preserve the most important information',
+      text: 'Introduction paragraph. Technical details with specifications. Conclusion and summary.',
+      instructions: 'Keep only the technical details',
       config: { limit: 60 },
     },
     wants: {
-      reasoning: expect.any(String),
       preservationScore: expect.any(Number),
+      cutType: expect.any(String),
     },
   },
   {
-    name: 'respects character limits with fallback',
+    name: 'uses fallback when scoring fails',
     inputs: {
-      text: 'This text will need to be truncated at character level if LLM fails',
-      instructions: 'Truncate intelligently',
+      text: 'This text will trigger fallback behavior when LLM fails',
+      instructions: 'Find the best cut',
       config: { 
         limit: 20, 
         unit: 'characters',
@@ -76,7 +88,7 @@ const examples = [
       },
     },
     wants: {
-      cutType: expect.any(String),
+      cutType: 'fallback',
       truncated: expect.any(String),
     },
   },
@@ -96,14 +108,12 @@ describe('truncate', () => {
       expect(result).toHaveProperty('cutPoint');
       expect(result).toHaveProperty('cutType');
       expect(result).toHaveProperty('preservationScore');
-      expect(result).toHaveProperty('reasoning');
 
       // Verify types
       expect(typeof result.truncated).toBe('string');
       expect(typeof result.cutPoint).toBe('number');
       expect(typeof result.cutType).toBe('string');
       expect(typeof result.preservationScore).toBe('number');
-      expect(typeof result.reasoning).toBe('string');
 
       // Verify score bounds
       expect(result.preservationScore).toBeGreaterThanOrEqual(0);
@@ -128,8 +138,8 @@ describe('truncate', () => {
           case 'words':
             actualLength = result.truncated.trim().split(/\s+/).filter(Boolean).length;
             break;
-          case 'tokens':
-            actualLength = result.truncated.trim().split(/\s+/).filter(Boolean).length;
+          case 'sentences':
+            actualLength = result.truncated.split(/[.!?]+/).filter(s => s.trim().length > 0).length;
             break;
           default:
             actualLength = result.truncated.length;
@@ -137,6 +147,6 @@ describe('truncate', () => {
         
         expect(actualLength).toBeLessThanOrEqual(limit);
       }
-    }, 30000); // Allow more time for LLM calls
+    }, 30000); // Allow time for LLM calls
   });
 });

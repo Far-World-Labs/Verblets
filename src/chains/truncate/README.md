@@ -1,117 +1,109 @@
 # truncate
 
-Intelligently truncate text using LLM reasoning to find optimal semantic boundaries while preserving maximum meaning within specified length constraints.
+Intelligently truncate text by scoring potential cut points based on custom instructions.
 
-This chain uses language model intelligence to make qualitative decisions about where to truncate text, rather than relying on rigid rules or regex patterns. It understands context and meaning to choose the best truncation points.
+This chain uses the existing `score` chain to evaluate different truncation points and select the best one according to your specific instructions. Rather than making assumptions about "semantic boundaries," it follows whatever criteria you specify in the prompt.
 
 ## Usage
 
 ```javascript
 import truncate from 'verblets/src/chains/truncate/index.js';
 
-const text = `The Verblets project provides AI utilities for building complex systems. 
-It combines language understanding with deterministic code to create powerful tools 
-for developers working with natural language processing tasks.`;
+const text = `The project overview explains core concepts. Technical implementation details follow with code examples. Finally, usage guidelines provide practical guidance.`;
 
-const result = await truncate(text, 'Preserve the most important information', {
-  limit: 100,
+const result = await truncate(text, 'Keep only the technical implementation details', {
+  limit: 80,
   unit: 'characters'
 });
 
 // {
-//   truncated: "The Verblets project provides AI utilities for building complex systems.",
-//   cutPoint: 72,
-//   cutType: "sentence", 
-//   preservationScore: 0.89,
-//   reasoning: "Cut at sentence boundary to preserve complete thought about the project's purpose"
+//   truncated: "Technical implementation details follow with code examples.",
+//   cutPoint: 57,
+//   cutType: "sentence",
+//   preservationScore: 0.92
 // }
 ```
 
 ## Parameters
 
 - `text` (string) - The text to truncate
-- `instructions` (string) - Instructions for how to approach truncation (default: 'Truncate intelligently at natural boundaries')
+- `instructions` (string) - Instructions for evaluating truncation points (default: 'Find the best truncation point')
 - `config` (object) - Configuration options
 
 ## Configuration Options
 
 - `limit` (number) - Maximum length constraint (default: 100)
-- `unit` (string) - Unit type: 'characters', 'words', or 'tokens' (default: 'characters')
-- `chunkLen` (number) - Chunk size for processing very long texts (default: 4000)
-- `maxAttempts` (number) - Maximum retry attempts for LLM calls (default: 2)
-- `llm` (object) - LLM configuration (model name, temperature, etc.)
+- `unit` (string) - Unit type: 'characters', 'words', or 'sentences' (default: 'characters')
+- `chunkSize` (number) - Batch size for scoring potential cut points (default: 5)
+- `llm` (object) - LLM configuration passed to the score chain
 
 ## Return Value
 
 Always returns an object with:
 
-- `truncated` (string) - The intelligently truncated text
+- `truncated` (string) - The selected truncated text
 - `cutPoint` (number) - Position where text was cut (in specified units)
-- `cutType` (string) - Type of boundary used: 'full', 'paragraph', 'sentence', 'clause', 'word', 'character', or 'soft'
-- `preservationScore` (number) - Confidence score 0.0-1.0 representing informativeness preserved
-- `reasoning` (string) - LLM's explanation of the truncation decision
+- `cutType` (string) - How the cut was made: 'full', 'sentence', 'scored', 'exact', 'shortest', 'fallback', or 'none'
+- `preservationScore` (number) - Score from the LLM indicating how well the truncation meets the criteria
 
 ## How It Works
 
-1. **LLM Analysis**: The language model analyzes the text to understand its structure and meaning
-2. **Intelligent Boundaries**: Rather than using regex, the LLM identifies natural semantic boundaries
-3. **Context Awareness**: Considers the overall meaning and importance of different sections
-4. **Qualitative Decisions**: Makes decisions based on understanding, not just syntactic patterns
-5. **Fallback Safety**: If LLM calls fail, falls back to simple truncation methods
+1. **Split Text**: Breaks text into potential cut points (usually at sentence boundaries)
+2. **Create Candidates**: Generates cumulative chunks representing each possible truncation
+3. **Score Options**: Uses the `score` chain to evaluate each potential cut point against your instructions
+4. **Select Best**: Chooses the highest-scoring option that stays within the limit
+5. **Fallback**: If scoring fails, uses simple truncation as backup
 
 ## Examples
 
-**Semantic-aware truncation:**
+**Custom truncation criteria:**
 ```javascript
 const result = await truncate(
-  'Introduction paragraph. Main argument with supporting details. Conclusion.',
-  'Keep the most essential content',
+  'Introduction here. Main argument with evidence. Conclusion and summary.',
+  'Prioritize keeping the main argument',
   { limit: 50 }
 );
-// LLM chooses to keep introduction + start of main argument
+// LLM evaluates which cut point best preserves the main argument
 ```
 
-**Word-based with custom instructions:**
+**Word-based limits:**
 ```javascript
 const result = await truncate(
   'Technical documentation about API endpoints and their parameters.',
-  'Prioritize technical accuracy over completeness',
+  'Keep the most informative content',
   { limit: 8, unit: 'words' }
 );
-// { truncated: 'Technical documentation about API endpoints and', cutType: 'word', ... }
+// Truncates to 8 words based on informativeness
 ```
 
-**Long text chunking:**
+**Sentence-based limits:**
 ```javascript
-const longText = 'Very long document...'.repeat(1000);
-const result = await truncate(longText, 'Preserve introduction', {
-  limit: 200,
-  chunkLen: 2000  // Process in smaller chunks
-});
-// Handles long texts efficiently by chunking
+const result = await truncate(
+  'First sentence. Second sentence. Third sentence.',
+  'Keep complete thoughts only',
+  { limit: 2, unit: 'sentences' }
+);
+// Keeps the 2 most relevant sentences
 ```
 
-**Custom LLM configuration:**
+**Specific content filtering:**
 ```javascript
-const result = await truncate(text, 'Truncate for mobile display', {
-  limit: 140,
-  llm: {
-    temperature: 0.1,  // More deterministic
-    modelName: 'gpt-4'
-  }
-});
+const result = await truncate(
+  'Background info. Key findings from the study. Methodology details.',
+  'Focus on key findings only',
+  { limit: 60 }
+);
+// Scores each section and keeps the part about key findings
 ```
 
-## Advantages Over Regex-Based Truncation
+## Key Advantages
 
-- **Context Understanding**: Knows what's important vs. filler content
-- **Semantic Boundaries**: Finds meaningful break points, not just syntactic ones
-- **Adaptive**: Adjusts approach based on content type and instructions
-- **Quality Preservation**: Optimizes for meaning retention over rigid rules
-- **Flexible**: Can follow complex, nuanced truncation instructions
+- **Flexible Instructions**: Can follow any truncation criteria you specify
+- **Uses Existing Infrastructure**: Leverages the proven `score` chain for evaluation
+- **Bulk Processing**: Efficiently processes multiple cut points simultaneously
+- **No Assumptions**: Doesn't assume what's "important" - follows your prompt
+- **Reliable Fallback**: Always returns a valid result even if LLM scoring fails
 
 ## Error Handling
 
-If LLM calls fail, the function gracefully falls back to simple character/word truncation while maintaining the same return structure. Console warnings are logged for debugging.
-
-The function is designed to always return a valid result, even under error conditions, making it reliable for production use.
+If the scoring chain fails, the function gracefully falls back to simple truncation based on the specified unit type. Console warnings are logged for debugging, but the function always returns a valid result.
