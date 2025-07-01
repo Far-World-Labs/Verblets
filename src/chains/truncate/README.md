@@ -32,7 +32,7 @@ Returns a number representing the character index where to truncate the text.
 ## How It Works
 
 1. **Chunk the text** - Breaks text into ~1000 character chunks at sentence boundaries
-2. **Score each chunk** - Uses the score chain with asXML-formatted instructions
+2. **Score each chunk** - Uses the score chain (0-10 scale) with asXML-formatted instructions
 3. **Find best chunk** - Identifies the highest-scoring chunk that meets criteria
 4. **Return end index** - Returns the character index at the end of that chunk
 
