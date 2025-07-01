@@ -50,6 +50,7 @@ Available chains:
 - [test](./test)
 - [test-advice](./test-advice)
 - [themes](./themes)
+- [truncate](./truncate)
 - [veiled-variants](./veiled-variants)
 
 Chains are free to use any utilities from [`../lib`](../lib/README.md) and often rely on one or more verblets from [`../verblets`](../verblets/README.md).
