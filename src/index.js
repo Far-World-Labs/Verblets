@@ -58,6 +58,7 @@ import retry from './lib/retry/index.js';
 import searchBestFirst from './lib/search-best-first/index.js';
 import searchJSFiles from './lib/search-js-files/index.js';
 import shortenText from './lib/shorten-text/index.js';
+import truncate from './chains/truncate/index.js';
 import map, { mapOnce } from './chains/map/index.js';
 import find, { findOnce } from './chains/find/index.js';
 import filter, { filterOnce } from './chains/filter/index.js';
@@ -146,6 +147,7 @@ export {
   categorySamples,
   veiledVariants,
   expectChain,
+  truncate,
 };
 export { llmLogger };
 export { rangeCombinations } from './lib/combinations/index.js';
@@ -229,6 +231,7 @@ export const verblets = {
   categorySamples,
   veiledVariants,
   expectChain,
+  truncate,
 };
 
 export const services = {
