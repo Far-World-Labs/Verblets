@@ -88,8 +88,6 @@ export default async function score(list, instructions, config = {}) {
   }
 
   const firstScores = [];
-  let stopIndex = -1;
-  
   for (let i = 0; i < list.length; i += chunkSize) {
     // eslint-disable-next-line no-await-in-loop
     const scores = await scoreBatch(list.slice(i, i + chunkSize), instructions, [], {
@@ -98,24 +96,21 @@ export default async function score(list, instructions, config = {}) {
     });
     firstScores.push(...scores);
     
-    // Check for early termination if stopOnThreshold is specified
+    // Simple early termination check
     if (stopOnThreshold !== undefined) {
-      for (let j = 0; j < scores.length; j++) {
-        const globalIndex = i + j;
-        if (scores[j] < stopOnThreshold) {
-          stopIndex = globalIndex;
-          break;
-        }
+      const belowThreshold = scores.findIndex(score => score < stopOnThreshold);
+      if (belowThreshold >= 0) {
+        const stopIndex = i + belowThreshold;
+        return { 
+          scores: firstScores.slice(0, stopIndex + 1), 
+          reference: [],
+          stoppedAt: stopIndex
+        };
       }
-      if (stopIndex >= 0) break;
     }
   }
 
-  // If we stopped early, only process items up to the stop point
-  const processedList = stopIndex >= 0 ? list.slice(0, stopIndex + 1) : list;
-  const processedScores = stopIndex >= 0 ? firstScores.slice(0, stopIndex + 1) : firstScores;
-  
-  const scored = processedList.map((item, idx) => ({ item, score: processedScores[idx] }));
+  const scored = list.map((item, idx) => ({ item, score: firstScores[idx] }));
 
   let reference = examples;
   if (!reference) {
@@ -138,32 +133,14 @@ export default async function score(list, instructions, config = {}) {
   }
 
   const finalScores = [];
-  for (let i = 0; i < processedList.length; i += chunkSize) {
+  for (let i = 0; i < list.length; i += chunkSize) {
     // eslint-disable-next-line no-await-in-loop
-    const scores = await scoreBatch(processedList.slice(i, i + chunkSize), instructions, reference, {
+    const scores = await scoreBatch(list.slice(i, i + chunkSize), instructions, reference, {
       llm,
       ...options,
     });
     finalScores.push(...scores);
-    
-    // Check for early termination in final scoring pass too
-    if (stopOnThreshold !== undefined) {
-      for (let j = 0; j < scores.length; j++) {
-        const globalIndex = i + j;
-        if (scores[j] < stopOnThreshold) {
-          return { 
-            scores: finalScores.slice(0, globalIndex + 1), 
-            reference,
-            stoppedAt: globalIndex
-          };
-        }
-      }
-    }
   }
 
-  const result = { scores: finalScores, reference };
-  if (stopIndex >= 0) {
-    result.stoppedAt = stopIndex;
-  }
-  return result;
+  return { scores: finalScores, reference };
 }
