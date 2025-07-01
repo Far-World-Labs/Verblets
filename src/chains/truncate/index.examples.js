@@ -3,48 +3,63 @@ import truncate from './index.js';
 
 const examples = [
   {
-    name: 'returns truncation point for simple text',
+    name: 'removes off-topic conclusion from article',
     inputs: {
-      text: 'First sentence. Second sentence. Third sentence.',
-      instructions: 'Keep the most important content',
-      config: {},
+      text: 'Technical analysis of renewable energy market trends. Supporting data from industry reports. In conclusion, this reminds me of my childhood. My grandmother always said energy was important.',
+      instructions: 'Keep professional technical content only',
+      config: { threshold: 6 },
     },
     wants: {
-      result: expect.any(Number),
-      resultGreaterThan: 0,
+      shouldTruncate: true,
+      resultLessThan: 150, // Should cut off the personal conclusion
     },
   },
   {
-    name: 'finds truncation point based on specific criteria',
+    name: 'removes boilerplate footer from email',
     inputs: {
-      text: 'Introduction here. Main technical details follow. Conclusion at the end.',
-      instructions: 'Prioritize technical content',
-      config: { chunkSize: 3 },
+      text: 'Thank you for your inquiry about our software. Here are the technical specifications. Our team can schedule a demo. This email was sent automatically. To unsubscribe click here.',
+      instructions: 'Keep relevant business communication',
+      config: { threshold: 5 },
     },
     wants: {
-      result: expect.any(Number),
+      shouldTruncate: true,
+      resultLessThan: 120, // Should cut off automated footer
     },
   },
   {
-    name: 'handles single sentence',
+    name: 'keeps all content when everything is relevant',
     inputs: {
-      text: 'Just one sentence here.',
-      instructions: 'Find best cut point',
-      config: {},
+      text: 'Core documentation about API endpoints. Authentication requirements. Rate limiting details.',
+      instructions: 'Keep technical documentation',
+      config: { threshold: 6 },
     },
     wants: {
-      result: expect.any(Number),
+      shouldTruncate: false,
+      resultEquals: 'fullLength',
     },
   },
   {
-    name: 'works with custom scoring instructions',
+    name: 'handles custom threshold',
     inputs: {
-      text: 'Background information. Key findings from research. Additional context.',
-      instructions: 'Focus on research findings only',
-      config: {},
+      text: 'Main content here. Somewhat related tangent. Completely irrelevant conclusion.',
+      instructions: 'Keep core content only',
+      config: { threshold: 7 }, // Higher threshold
     },
     wants: {
-      result: expect.any(Number),
+      shouldTruncate: true,
+      resultLessThan: 50, // Should be more aggressive
+    },
+  },
+  {
+    name: 'removes appendices from technical document',
+    inputs: {
+      text: 'API documentation and examples. Implementation notes. Appendix A: Legal disclaimers. Appendix B: Contact info.',
+      instructions: 'Keep technical content only',
+      config: { threshold: 6 },
+    },
+    wants: {
+      shouldTruncate: true,
+      resultLessThan: 70, // Should cut off appendices
     },
   },
 ];
@@ -65,22 +80,27 @@ describe('truncate', () => {
       expect(result).toBeGreaterThanOrEqual(0);
       expect(result).toBeLessThanOrEqual(example.inputs.text.length);
 
-      // Verify specific expectations
-      Object.entries(example.wants).forEach(([key, want]) => {
-        if (key === 'result') {
-          if (want && typeof want.asymmetricMatch === 'function') {
-            expect(result).toEqual(want);
-          } else if (want !== undefined) {
-            expect(result).toBe(want);
-          }
-        } else if (key === 'resultGreaterThan') {
-          expect(result).toBeGreaterThan(want);
+      // Test specific expectations
+      if (example.wants.shouldTruncate) {
+        expect(result).toBeLessThan(example.inputs.text.length);
+        
+        if (example.wants.resultLessThan) {
+          expect(result).toBeLessThan(example.wants.resultLessThan);
         }
-      });
+      }
+      
+      if (example.wants.resultEquals === 'fullLength') {
+        expect(result).toBe(example.inputs.text.length);
+      }
 
       // Test that the truncation actually works
       const truncated = example.inputs.text.slice(0, result);
       expect(truncated.length).toBe(result);
+      
+      // For cases where we should truncate, verify we actually removed content
+      if (example.wants.shouldTruncate) {
+        expect(truncated).not.toBe(example.inputs.text);
+      }
     }, 30000); // Allow time for LLM calls
   });
 });

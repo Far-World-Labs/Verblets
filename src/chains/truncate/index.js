@@ -64,37 +64,54 @@ function createChunks(text, chunkSize) {
 }
 
 /**
- * Find the best truncation point in text based on instructions.
+ * Find the best truncation point by working backwards from the end.
  * 
- * Uses the score chain to evaluate text chunks and returns
- * the character index of the best truncation point.
+ * Processes chunks in reverse order to find where content stops meeting
+ * the specified criteria, then truncates at that point.
  *
  * @param {string} text - The text to truncate
- * @param {string} instructions - Instructions for evaluating truncation points
- * @param {object} config - Configuration options passed to score chain
+ * @param {string} instructions - Instructions for what content should be kept
+ * @param {object} config - Configuration options
+ * @param {number} config.threshold - Score threshold below which to truncate (default: 6)
+ * @param {number} config.chunkSize - Target characters per chunk (default: 1000)
  * @returns {number} Character index where to truncate
  */
 export default async function truncate(text, instructions, config = {}) {
   const chunkSize = config.chunkSize ?? 1000;
+  const threshold = config.threshold ?? 6;
   
   // Create chunks with tracked end positions
   const chunks = createChunks(text, chunkSize);
   
-  // Extract just the text for scoring
-  const textsToScore = chunks.map(chunk => chunk.text);
+  // Reverse chunks to process from end to beginning
+  const reversedChunks = [...chunks].reverse();
+  const textsToScore = reversedChunks.map(chunk => chunk.text);
   
-  // Score each chunk using asXML for clear instruction formatting
+  // Score chunks in reverse order with early termination
   const scoringInstructions = `${asXML(instructions, { tag: 'instructions' })}
   
-Score how well each text chunk meets the truncation criteria. Return a score from 0 to 10.`;
+NOTE: These text chunks are presented in REVERSE order (from end to beginning of the document).
+Score how well each chunk meets the criteria for content that should be KEPT. Return a score from 0 to 10.`;
   
-  const { items: scoredItems } = await score(textsToScore, scoringInstructions, config);
+  const result = await score(textsToScore, scoringInstructions, {
+    ...config,
+    stopOnThreshold: threshold
+  });
   
-  // Find the highest scoring chunk
-  const bestIndex = scoredItems.reduce((bestIdx, item, idx) => 
-    item.score > scoredItems[bestIdx].score ? idx : bestIdx
-  , 0);
+  // If we found a chunk below threshold, truncate there
+  if (result.stoppedAt !== undefined) {
+    const failedChunkIndex = result.stoppedAt;
+    const originalIndex = chunks.length - 1 - failedChunkIndex;
+    
+    // Truncate at the start of the failed chunk
+    if (originalIndex > 0) {
+      return chunks[originalIndex - 1].endIndex;
+    } else {
+      // If the very first chunk fails, truncate at beginning
+      return 0;
+    }
+  }
   
-  // Return the end index of the best chunk
-  return chunks[bestIndex].endIndex;
+  // If all chunks meet the criteria, don't truncate
+  return text.length;
 }
