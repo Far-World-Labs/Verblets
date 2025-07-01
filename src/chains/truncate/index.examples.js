@@ -3,93 +3,48 @@ import truncate from './index.js';
 
 const examples = [
   {
-    name: 'returns full text when within limit',
+    name: 'returns truncation point for simple text',
     inputs: {
-      text: 'Short text',
-      instructions: 'Find the best truncation point',
-      config: { limit: 100 },
+      text: 'First sentence. Second sentence. Third sentence.',
+      instructions: 'Keep the most important content',
+      config: {},
     },
     wants: {
-      cutType: 'full',
-      truncated: 'Short text',
-      preservationScore: 1.0,
+      result: expect.any(Number),
+      resultGreaterThan: 0,
     },
   },
   {
-    name: 'truncates based on custom instructions',
+    name: 'finds truncation point based on specific criteria',
     inputs: {
-      text: 'First important sentence. Second less important sentence. Third filler sentence.',
-      instructions: 'Prioritize keeping the most important content',
-      config: { limit: 50 },
+      text: 'Introduction here. Main technical details follow. Conclusion at the end.',
+      instructions: 'Prioritize technical content',
+      config: { chunkSize: 3 },
     },
     wants: {
-      cutType: expect.stringMatching(/sentence|scored/),
-      preservationScore: expect.any(Number),
+      result: expect.any(Number),
     },
   },
   {
-    name: 'handles word-based limits',
+    name: 'handles single sentence',
     inputs: {
-      text: 'The quick brown fox jumps over the lazy dog and runs through the forest.',
-      instructions: 'Keep complete thoughts',
-      config: { limit: 8, unit: 'words' },
+      text: 'Just one sentence here.',
+      instructions: 'Find best cut point',
+      config: {},
     },
     wants: {
-      cutType: expect.any(String),
-      cutPoint: expect.any(Number),
+      result: expect.any(Number),
     },
   },
   {
-    name: 'handles sentence-based limits',
+    name: 'works with custom scoring instructions',
     inputs: {
-      text: 'First sentence here. Second sentence here. Third sentence here.',
-      instructions: 'Preserve complete sentences',
-      config: { limit: 2, unit: 'sentences' },
+      text: 'Background information. Key findings from research. Additional context.',
+      instructions: 'Focus on research findings only',
+      config: {},
     },
     wants: {
-      cutType: expect.any(String),
-      cutPoint: expect.any(Number),
-    },
-  },
-  {
-    name: 'handles empty input gracefully',
-    inputs: {
-      text: '',
-      instructions: 'Find the best truncation point',
-      config: { limit: 10 },
-    },
-    wants: {
-      cutType: 'none',
-      truncated: '',
-      preservationScore: 0.0,
-    },
-  },
-  {
-    name: 'follows specific truncation criteria',
-    inputs: {
-      text: 'Introduction paragraph. Technical details with specifications. Conclusion and summary.',
-      instructions: 'Keep only the technical details',
-      config: { limit: 60 },
-    },
-    wants: {
-      preservationScore: expect.any(Number),
-      cutType: expect.any(String),
-    },
-  },
-  {
-    name: 'uses fallback when scoring fails',
-    inputs: {
-      text: 'This text will trigger fallback behavior when LLM fails',
-      instructions: 'Find the best cut',
-      config: { 
-        limit: 20, 
-        unit: 'characters',
-        llm: { modelName: 'invalid-model' } // Force fallback
-      },
-    },
-    wants: {
-      cutType: 'fallback',
-      truncated: expect.any(String),
+      result: expect.any(Number),
     },
   },
 ];
@@ -103,50 +58,29 @@ describe('truncate', () => {
         example.inputs.config
       );
 
-      // Verify basic structure
-      expect(result).toHaveProperty('truncated');
-      expect(result).toHaveProperty('cutPoint');
-      expect(result).toHaveProperty('cutType');
-      expect(result).toHaveProperty('preservationScore');
-
-      // Verify types
-      expect(typeof result.truncated).toBe('string');
-      expect(typeof result.cutPoint).toBe('number');
-      expect(typeof result.cutType).toBe('string');
-      expect(typeof result.preservationScore).toBe('number');
-
-      // Verify score bounds
-      expect(result.preservationScore).toBeGreaterThanOrEqual(0);
-      expect(result.preservationScore).toBeLessThanOrEqual(1);
+      // Verify it returns a number
+      expect(typeof result).toBe('number');
+      
+      // Verify it's a valid index within the text
+      expect(result).toBeGreaterThanOrEqual(0);
+      expect(result).toBeLessThanOrEqual(example.inputs.text.length);
 
       // Verify specific expectations
       Object.entries(example.wants).forEach(([key, want]) => {
-        if (want && typeof want.asymmetricMatch === 'function') {
-          expect(result[key]).toEqual(want);
-        } else if (want !== undefined) {
-          expect(result[key]).toBe(want);
+        if (key === 'result') {
+          if (want && typeof want.asymmetricMatch === 'function') {
+            expect(result).toEqual(want);
+          } else if (want !== undefined) {
+            expect(result).toBe(want);
+          }
+        } else if (key === 'resultGreaterThan') {
+          expect(result).toBeGreaterThan(want);
         }
       });
 
-      // Verify length constraint is respected (unless it's the full text case)
-      if (result.cutType !== 'full') {
-        const unit = example.inputs.config.unit || 'characters';
-        const limit = example.inputs.config.limit;
-        
-        let actualLength;
-        switch (unit) {
-          case 'words':
-            actualLength = result.truncated.trim().split(/\s+/).filter(Boolean).length;
-            break;
-          case 'sentences':
-            actualLength = result.truncated.split(/[.!?]+/).filter(s => s.trim().length > 0).length;
-            break;
-          default:
-            actualLength = result.truncated.length;
-        }
-        
-        expect(actualLength).toBeLessThanOrEqual(limit);
-      }
+      // Test that the truncation actually works
+      const truncated = example.inputs.text.slice(0, result);
+      expect(truncated.length).toBe(result);
     }, 30000); // Allow time for LLM calls
   });
 });

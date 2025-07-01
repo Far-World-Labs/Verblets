@@ -1,109 +1,80 @@
 # truncate
 
-Intelligently truncate text by scoring potential cut points based on custom instructions.
+Find the best truncation point in text based on custom instructions.
 
-This chain uses the existing `score` chain to evaluate different truncation points and select the best one according to your specific instructions. Rather than making assumptions about "semantic boundaries," it follows whatever criteria you specify in the prompt.
+Uses the existing `score` chain to evaluate text chunks and returns a character index for truncation.
 
 ## Usage
 
 ```javascript
 import truncate from 'verblets/src/chains/truncate/index.js';
 
-const text = `The project overview explains core concepts. Technical implementation details follow with code examples. Finally, usage guidelines provide practical guidance.`;
+const text = `Long document with multiple paragraphs and sections that needs intelligent truncation based on specific criteria...`;
 
-const result = await truncate(text, 'Keep only the technical implementation details', {
-  limit: 80,
-  unit: 'characters'
-});
+const cutPoint = await truncate(text, 'Keep sections about technical implementation');
+// Returns: 1247 (character index)
 
-// {
-//   truncated: "Technical implementation details follow with code examples.",
-//   cutPoint: 57,
-//   cutType: "sentence",
-//   preservationScore: 0.92
-// }
+const truncated = text.slice(0, cutPoint);
 ```
 
 ## Parameters
 
-- `text` (string) - The text to truncate
-- `instructions` (string) - Instructions for evaluating truncation points (default: 'Find the best truncation point')
+- `text` (string) - The text to analyze for truncation
+- `instructions` (string) - Instructions for evaluating which chunks to keep
 - `config` (object) - Configuration options
-
-## Configuration Options
-
-- `limit` (number) - Maximum length constraint (default: 100)
-- `unit` (string) - Unit type: 'characters', 'words', or 'sentences' (default: 'characters')
-- `chunkSize` (number) - Batch size for scoring potential cut points (default: 5)
-- `llm` (object) - LLM configuration passed to the score chain
+  - `chunkSize` (number) - Target characters per chunk (default: 1000)
+  - Other options passed through to the score chain
 
 ## Return Value
 
-Always returns an object with:
-
-- `truncated` (string) - The selected truncated text
-- `cutPoint` (number) - Position where text was cut (in specified units)
-- `cutType` (string) - How the cut was made: 'full', 'sentence', 'scored', 'exact', 'shortest', 'fallback', or 'none'
-- `preservationScore` (number) - Score from the LLM indicating how well the truncation meets the criteria
+Returns a number representing the character index where to truncate the text.
 
 ## How It Works
 
-1. **Split Text**: Breaks text into potential cut points (usually at sentence boundaries)
-2. **Create Candidates**: Generates cumulative chunks representing each possible truncation
-3. **Score Options**: Uses the `score` chain to evaluate each potential cut point against your instructions
-4. **Select Best**: Chooses the highest-scoring option that stays within the limit
-5. **Fallback**: If scoring fails, uses simple truncation as backup
+1. **Chunk the text** - Breaks text into ~1000 character chunks at sentence boundaries
+2. **Score each chunk** - Uses the score chain with asXML-formatted instructions
+3. **Find best chunk** - Identifies the highest-scoring chunk that meets criteria
+4. **Return end index** - Returns the character index at the end of that chunk
 
 ## Examples
 
-**Custom truncation criteria:**
+**Content-specific truncation:**
 ```javascript
-const result = await truncate(
-  'Introduction here. Main argument with evidence. Conclusion and summary.',
-  'Prioritize keeping the main argument',
-  { limit: 50 }
-);
-// LLM evaluates which cut point best preserves the main argument
+const text = 'Introduction... Technical details... Conclusion...';
+const cutPoint = await truncate(text, 'Focus on technical implementation only');
+const result = text.slice(0, cutPoint);
 ```
 
-**Word-based limits:**
+**Custom chunk size:**
 ```javascript
-const result = await truncate(
-  'Technical documentation about API endpoints and their parameters.',
-  'Keep the most informative content',
-  { limit: 8, unit: 'words' }
-);
-// Truncates to 8 words based on informativeness
+const cutPoint = await truncate(text, 'Keep marketing content', {
+  chunkSize: 500  // Smaller chunks for finer control
+});
 ```
 
-**Sentence-based limits:**
+**Pass LLM config:**
 ```javascript
-const result = await truncate(
-  'First sentence. Second sentence. Third sentence.',
-  'Keep complete thoughts only',
-  { limit: 2, unit: 'sentences' }
-);
-// Keeps the 2 most relevant sentences
+const cutPoint = await truncate(text, 'Prioritize research findings', {
+  chunkSize: 800,
+  llm: { temperature: 0.1 }
+});
 ```
 
-**Specific content filtering:**
+## Key Features
+
+- **Proper chunking** - Fills chunks to target size, breaking at sentence boundaries
+- **Clear instructions** - Uses asXML to format scoring instructions clearly
+- **No fallbacks** - Either works or caller must retry (fail fast)
+- **Simple output** - Just returns character index for truncation
+
+## Usage Pattern
+
 ```javascript
-const result = await truncate(
-  'Background info. Key findings from the study. Methodology details.',
-  'Focus on key findings only',
-  { limit: 60 }
-);
-// Scores each section and keeps the part about key findings
+// Get the truncation point
+const cutPoint = await truncate(text, instructions, config);
+
+// Apply the truncation
+const truncated = text.slice(0, cutPoint);
 ```
 
-## Key Advantages
-
-- **Flexible Instructions**: Can follow any truncation criteria you specify
-- **Uses Existing Infrastructure**: Leverages the proven `score` chain for evaluation
-- **Bulk Processing**: Efficiently processes multiple cut points simultaneously
-- **No Assumptions**: Doesn't assume what's "important" - follows your prompt
-- **Reliable Fallback**: Always returns a valid result even if LLM scoring fails
-
-## Error Handling
-
-If the scoring chain fails, the function gracefully falls back to simple truncation based on the specified unit type. Console warnings are logged for debugging, but the function always returns a valid result.
+The function will chunk large texts efficiently and score each chunk against your criteria, returning the end position of the best-matching chunk.
