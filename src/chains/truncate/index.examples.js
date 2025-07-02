@@ -3,124 +3,61 @@ import truncate from './index.js';
 
 const examples = [
   {
-    name: 'truncates at sentence boundary',
+    name: 'removes unwanted content from end',
     inputs: {
-      text: 'First sentence. Second sentence. Third sentence.',
-      options: { limit: 20 },
+      text: 'Technical content about APIs. More technical details. Appendix A: Legal disclaimers. Contact info footer.',
+      instructions: 'Remove appendices and footer content',
+      config: { threshold: 6 },
     },
     wants: {
-      cutType: 'sentence',
-      truncated: 'First sentence.',
-      preservationScore: expect.any(Number),
+      shouldTruncate: true,
     },
   },
   {
-    name: 'preserves paragraphs when possible',
+    name: 'keeps all content when nothing should be removed',
     inputs: {
-      text: 'Short paragraph.\n\nAnother paragraph with more content.',
-      options: { limit: 18 },
+      text: 'Core documentation. Implementation examples. Technical specifications.',
+      instructions: 'Remove marketing content',
+      config: { threshold: 6 },
     },
     wants: {
-      cutType: 'paragraph',
-      truncated: 'Short paragraph.',
+      shouldTruncate: false,
     },
   },
   {
-    name: 'handles word-based limits',
+    name: 'handles custom threshold',
     inputs: {
-      text: 'The quick brown fox jumps over the lazy dog.',
-      options: { limit: 5, unit: 'words' },
+      text: 'Main content. Somewhat relevant content. Completely irrelevant content.',
+      instructions: 'Remove irrelevant content',
+      config: { threshold: 8 },
     },
     wants: {
-      cutType: 'word',
-      truncated: 'The quick brown fox jumps',
-      cutPoint: 5,
-    },
-  },
-  {
-    name: 'cuts at clause boundaries',
-    inputs: {
-      text: 'This is a long sentence with commas, semicolons; and other punctuation.',
-      options: { limit: 40 },
-    },
-    wants: {
-      cutType: 'clause',
-      truncated: expect.stringContaining('commas,'),
-    },
-  },
-  {
-    name: 'preserves code blocks',
-    inputs: {
-      text: 'Here is code:\n\n```js\nfunction test() {\n  return true;\n}\n```\n\nMore text.',
-      options: { limit: 60 },
-    },
-    wants: {
-      cutType: 'code-block',
-      truncated: expect.stringContaining('```'),
-    },
-  },
-  {
-    name: 'returns full text when under limit',
-    inputs: {
-      text: 'Short text',
-      options: { limit: 100 },
-    },
-    wants: {
-      cutType: 'full',
-      truncated: 'Short text',
-      preservationScore: 1.0,
-    },
-  },
-  {
-    name: 'handles empty input',
-    inputs: {
-      text: '',
-      options: { limit: 10 },
-    },
-    wants: {
-      cutType: 'none',
-      truncated: '',
-      preservationScore: 0.0,
-    },
-  },
-  {
-    name: 'uses custom tokenizer',
-    inputs: {
-      text: 'one,two,three,four,five',
-      options: {
-        limit: 3,
-        unit: 'tokens',
-        tokenizer: (text) => text.split(','),
-      },
-    },
-    wants: {
-      cutType: expect.any(String),
-      cutPoint: 3,
+      shouldTruncate: true,
     },
   },
 ];
 
 describe('truncate', () => {
   examples.forEach((example) => {
-    it(example.name, () => {
-      const result = truncate(example.inputs.text, example.inputs.options);
+    it(example.name, async () => {
+      const result = await truncate(
+        example.inputs.text,
+        example.inputs.instructions,
+        example.inputs.config
+      );
 
-      Object.entries(example.wants).forEach(([key, want]) => {
-        if (want && typeof want.asymmetricMatch === 'function') {
-          expect(result[key]).toEqual(want);
-        } else {
-          expect(result[key]).toBe(want);
-        }
-      });
+      expect(typeof result).toBe('number');
+      expect(result).toBeGreaterThanOrEqual(0);
+      expect(result).toBeLessThanOrEqual(example.inputs.text.length);
 
-      // Always verify structure
-      expect(result).toHaveProperty('truncated');
-      expect(result).toHaveProperty('cutPoint');
-      expect(result).toHaveProperty('cutType');
-      expect(result).toHaveProperty('preservationScore');
-      expect(typeof result.preservationScore).toBe('number');
-      expect(result.preservationScore).toBeGreaterThanOrEqual(0);
-      expect(result.preservationScore).toBeLessThanOrEqual(1);
-    });
+      if (example.wants.shouldTruncate) {
+        expect(result).toBeLessThan(example.inputs.text.length);
+      } else {
+        expect(result).toBe(example.inputs.text.length);
+      }
+
+      const truncated = example.inputs.text.slice(0, result);
+      expect(truncated.length).toBe(result);
+    }, 30000);
   });
 });

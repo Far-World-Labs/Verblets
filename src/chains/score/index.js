@@ -82,7 +82,7 @@ async function scoreBatch(items, instructions, reference = [], config = {}) {
 }
 
 export default async function score(list, instructions, config = {}) {
-  const { chunkSize = 10, examples, llm, ...options } = config;
+  const { chunkSize = 10, examples, llm, stopOnThreshold, ...options } = config;
   if (!Array.isArray(list) || list.length === 0) {
     return { scores: [], reference: [] };
   }
@@ -95,6 +95,19 @@ export default async function score(list, instructions, config = {}) {
       ...options,
     });
     firstScores.push(...scores);
+    
+    // Simple early termination check
+    if (stopOnThreshold !== undefined) {
+      const belowThreshold = scores.findIndex(score => score < stopOnThreshold);
+      if (belowThreshold >= 0) {
+        const stopIndex = i + belowThreshold;
+        return { 
+          scores: firstScores.slice(0, stopIndex + 1), 
+          reference: [],
+          stoppedAt: stopIndex
+        };
+      }
+    }
   }
 
   const scored = list.map((item, idx) => ({ item, score: firstScores[idx] }));

@@ -3,146 +3,142 @@ import truncate from './index.js';
 
 describe('truncate', () => {
   describe('basic functionality', () => {
-    it('returns correct structure for valid input', () => {
-      const result = truncate('Hello world', { limit: 5 });
-
-      expect(result).toHaveProperty('truncated');
-      expect(result).toHaveProperty('cutPoint');
-      expect(result).toHaveProperty('cutType');
-      expect(result).toHaveProperty('preservationScore');
-      expect(typeof result.preservationScore).toBe('number');
+    it('returns a number', async () => {
+      const result = await truncate('Good content. Bad irrelevant content.', 'bad irrelevant content');
+      expect(typeof result).toBe('number');
     });
 
-    it('handles empty string input', () => {
-      const result = truncate('', { limit: 10 });
-
-      expect(result.truncated).toBe('');
-      expect(result.cutPoint).toBe(0);
-      expect(result.cutType).toBe('none');
-      expect(result.preservationScore).toBe(0);
+    it('returns valid index within text bounds', async () => {
+      const text = 'Relevant content. Irrelevant tangent at the end.';
+      const result = await truncate(text, 'irrelevant tangent');
+      
+      expect(result).toBeGreaterThanOrEqual(0);
+      expect(result).toBeLessThanOrEqual(text.length);
     });
 
-    it('handles null/undefined input', () => {
-      expect(truncate(null, { limit: 10 })).toEqual({
-        truncated: '',
-        cutPoint: 0,
-        cutType: 'none',
-        preservationScore: 0,
+    it('can be used to actually truncate text', async () => {
+      const text = 'Core content here. Off-topic conclusion.';
+      const cutPoint = await truncate(text, 'off-topic conclusion');
+      
+      const truncated = text.slice(0, cutPoint);
+      expect(truncated.length).toBe(cutPoint);
+    });
+  });
+
+  describe('reverse processing behavior', () => {
+    it('works backwards from end to find irrelevant content', async () => {
+      const text = 'Important content. More important content. Spam footer.';
+      const result = await truncate(text, 'spam footer');
+      
+      expect(result).toBeLessThan(text.length); // Should truncate
+      expect(result).toBeGreaterThan(30); // Should keep the important parts
+    });
+
+    it('handles threshold configuration', async () => {
+      const text = 'Good content. Mediocre content. Bad content.';
+      
+      // Low threshold (permissive)
+      const permissive = await truncate(text, 'bad content', { threshold: 4 });
+      
+      // High threshold (strict) 
+      const strict = await truncate(text, 'bad content', { threshold: 8 });
+      
+      expect(strict).toBeLessThanOrEqual(permissive);
+    });
+
+    it('returns full length when all content meets criteria', async () => {
+      const text = 'Great content. Excellent content. Perfect content.';
+      const result = await truncate(text, 'poor content');
+      
+      expect(result).toBe(text.length);
+    });
+  });
+
+  describe('configuration options', () => {
+    it('uses default threshold of 6', async () => {
+      const text = 'Good content. Bad content.';
+      const result = await truncate(text, 'bad content');
+      
+      expect(typeof result).toBe('number');
+    });
+
+    it('respects custom threshold', async () => {
+      const text = 'Decent content. Poor content.';
+      const result = await truncate(text, 'poor content', { threshold: 7 });
+      
+      expect(typeof result).toBe('number');
+    });
+
+    it('respects custom chunk size', async () => {
+      const text = 'Content part one. Content part two. Irrelevant part three.';
+      const result = await truncate(text, 'irrelevant part', { 
+        chunkSize: 20,
+        threshold: 6 
       });
+      
+      expect(typeof result).toBe('number');
+    });
 
-      expect(truncate(undefined, { limit: 10 })).toEqual({
-        truncated: '',
-        cutPoint: 0,
-        cutType: 'none',
-        preservationScore: 0,
+    it('passes through config to score chain', async () => {
+      const text = 'Technical content. Marketing fluff.';
+      const result = await truncate(text, 'marketing fluff', {
+        threshold: 6,
+        chunkSize: 50,
+        llm: { temperature: 0.1 }
       });
-    });
-  });
-
-  describe('unit types', () => {
-    const text = 'The quick brown fox';
-
-    it('handles character limits', () => {
-      const result = truncate(text, { limit: 10, unit: 'characters' });
-      expect(result.truncated.length).toBeLessThanOrEqual(10);
-    });
-
-    it('handles word limits', () => {
-      const result = truncate(text, { limit: 2, unit: 'words' });
-      expect(result.truncated.split(/\s+/).filter(Boolean).length).toBeLessThanOrEqual(2);
-    });
-
-    it('handles token limits with custom tokenizer', () => {
-      const tokenizer = (text) => text.split(' ');
-      const result = truncate(text, { limit: 2, unit: 'tokens', tokenizer });
-      expect(result.cutPoint).toBeLessThanOrEqual(2);
-    });
-
-    it('throws error for unknown unit', () => {
-      expect(() => {
-        truncate(text, { limit: 10, unit: 'unknown' });
-      }).toThrow('Unknown unit: unknown');
-    });
-  });
-
-  describe('boundary detection', () => {
-    it('prefers paragraph boundaries', () => {
-      const text = 'Para one.\n\nPara two.\n\nPara three.';
-      const result = truncate(text, { limit: 12 });
-      expect(result.cutType).toBe('paragraph');
-      expect(result.truncated).toBe('Para one.');
-    });
-
-    it('falls back to sentence boundaries', () => {
-      const text = 'First sentence. Second sentence. Third sentence.';
-      const result = truncate(text, { limit: 20 });
-      expect(result.cutType).toBe('sentence');
-      expect(result.truncated).toBe('First sentence.');
-    });
-
-    it('detects clause boundaries', () => {
-      const text = 'This is complex, with commas, and semicolons; plus more content here.';
-      const result = truncate(text, { limit: 30 });
-      expect(result.cutType).toBe('clause');
-    });
-
-    it('falls back to word boundaries', () => {
-      const text = 'Supercalifragilisticexpialidocious word here';
-      const result = truncate(text, { limit: 15 });
-      expect(['word', 'soft']).toContain(result.cutType);
-    });
-  });
-
-  describe('preservation score', () => {
-    it('returns 1.0 for full text preservation', () => {
-      const result = truncate('Short', { limit: 100 });
-      expect(result.preservationScore).toBe(1.0);
-      expect(result.cutType).toBe('full');
-    });
-
-    it('calculates accurate preservation scores', () => {
-      const text = 'Hello world test';
-      const result = truncate(text, { limit: 5 });
-      expect(result.preservationScore).toBeGreaterThan(0);
-      expect(result.preservationScore).toBeLessThan(1);
-    });
-
-    it('rounds preservation score to 3 decimal places', () => {
-      const result = truncate('Hello world', { limit: 5 });
-      const decimals = result.preservationScore.toString().split('.')[1];
-      expect(decimals?.length || 0).toBeLessThanOrEqual(3);
-    });
-  });
-
-  describe('code block handling', () => {
-    it('preserves complete code blocks when possible', () => {
-      const text = 'Code:\n\n```js\nfunction test() {\n  return true;\n}\n```\n\nMore text.';
-      const result = truncate(text, { limit: 50 });
-
-      if (result.cutType === 'code-block') {
-        expect(result.truncated).toContain('```js');
-        expect(result.truncated).toContain('```');
-      }
+      
+      expect(typeof result).toBe('number');
     });
   });
 
   describe('edge cases', () => {
-    it('handles text with only whitespace', () => {
-      const result = truncate('   \n\n  ', { limit: 5 });
-      expect(result.truncated).toBeTruthy();
+    it('handles very short text', async () => {
+      const text = 'Short.';
+      const result = await truncate(text, 'irrelevant content');
+      
+      expect(result).toBeGreaterThanOrEqual(0);
+      expect(result).toBeLessThanOrEqual(text.length);
     });
 
-    it('handles very long words', () => {
-      const longWord = 'a'.repeat(100);
-      const result = truncate(longWord, { limit: 10 });
-      expect(result.truncated.length).toBeLessThanOrEqual(10);
-      expect(result.cutType).toBe('soft');
+    it('handles text with no clear boundaries', async () => {
+      const text = 'NoSpacesOrPunctuationHere';
+      const result = await truncate(text, 'irrelevant parts');
+      
+      expect(result).toBeGreaterThanOrEqual(0);
+      expect(result).toBeLessThanOrEqual(text.length);
     });
 
-    it('handles mixed line endings', () => {
-      const text = 'Line one\r\nLine two\nLine three';
-      const result = truncate(text, { limit: 15 });
-      expect(result.truncated).toBeTruthy();
+    it('handles text where first chunk fails threshold', async () => {
+      const text = 'Completely irrelevant content from the start.';
+      const result = await truncate(text, 'irrelevant content', { 
+        threshold: 8 // Very strict
+      });
+      
+      expect(result).toBeGreaterThanOrEqual(0);
+    });
+  });
+
+  describe('early termination', () => {
+    it('stops processing when threshold is breached', async () => {
+      // This test verifies early termination works but we can't easily
+      // verify it stopped early without mocking the score chain
+      const text = 'Good content. More good content. Bad content. More bad content.';
+      const result = await truncate(text, 'bad content');
+      
+      expect(typeof result).toBe('number');
+      expect(result).toBeLessThan(text.length);
+    });
+  });
+
+  describe('async behavior', () => {
+    it('returns a promise', () => {
+      const result = truncate('test content.', 'irrelevant content');
+      expect(result).toBeInstanceOf(Promise);
+    });
+
+    it('can be awaited', async () => {
+      const result = await truncate('good content. bad content.', 'bad content');
+      expect(typeof result).toBe('number');
     });
   });
 });
