@@ -67,7 +67,7 @@ function createChunks(text, chunkSize) {
  * Remove content from the end of text that matches specified criteria.
  * 
  * @param {string} text - The text to truncate
- * @param {string} instructions - Instructions for what content should be removed
+ * @param {string} instructions - Description of content to truncate
  * @param {object} config - Configuration options
  * @param {number} config.threshold - Score threshold above which to remove (default: 6)
  * @param {number} config.chunkSize - Target characters per chunk (default: 1000)
@@ -88,7 +88,7 @@ export default async function truncate(text, instructions, config = {}) {
   const scoringInstructions = `${asXML(instructions, { tag: 'instructions' })}
   
 NOTE: These text chunks are in REVERSE order (from end to beginning of document).
-Score how well each chunk matches the criteria for content that should be REMOVED. Return a score from 0 to 10.`;
+Score how well each chunk matches the criteria for content that should be truncated.`;
   
   const result = await score(textsToScore, scoringInstructions, {
     ...config,
