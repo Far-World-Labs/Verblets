@@ -4,6 +4,7 @@
 - **Mock all LLM calls** - Tests should be deterministic and fast
 - **Test behavior, not implementation** - Focus on what the function should do
 - **Use realistic mock responses** - Match actual LLM output formats
+- **Avoid mocking fs in most cases** - Use real file system operations for simpler, more reliable tests
 
 ## Test Organization
 - Group tests by input characteristics (clear vs ambiguous)
@@ -60,3 +61,33 @@
 - **Unrealistic mocks**: Using "ok" or "success" as mock responses
 - **Testing implementation details**: Checking internal variable states
 - **Exhaustive input testing**: Don't test every possible string variation
+
+## Mocking Strategy
+
+### What TO Mock
+- **LLM calls** - Always mock `chatGPT` and related AI service calls
+- **External APIs** - Mock network requests to third-party services
+- **Time-dependent functions** - Mock `Date.now()`, timers when testing time logic
+
+### What NOT to Mock
+- **File system operations** - Use real files and directories in tests
+- **JSON schema loading** - Let tests use actual schema files
+- **Internal utilities** - Don't mock your own helper functions
+- **Node.js built-ins** - Avoid mocking `fs`, `path`, `process` unless absolutely necessary
+
+### Why Avoid fs Mocking
+- **Complexity** - fs mocks are complex and error-prone
+- **Brittle tests** - Mock expectations often break with refactoring
+- **Real behavior** - Testing with real files catches actual bugs
+- **Simpler setup** - No need to mock file contents and directory structures
+
+```javascript
+// GOOD: Use real files
+import { readFile } from 'fs/promises';
+const schema = JSON.parse(await readFile('./schema.json', 'utf-8'));
+
+// AVOID: Complex fs mocking
+vi.mock('fs/promises', () => ({
+  readFile: vi.fn().mockResolvedValue('{"type": "object"}')
+}));
+```

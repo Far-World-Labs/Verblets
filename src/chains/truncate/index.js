@@ -3,47 +3,47 @@ import { asXML } from '../../prompts/wrap-variable.js';
 
 /**
  * Create chunks of text with tracked end positions.
- * 
+ *
  * @param {string} text - The text to chunk
  * @param {number} chunkSize - Target characters per chunk
  * @returns {Array} Array of {text, endIndex} objects
  */
 function createChunks(text, chunkSize) {
   const chunks = [];
-  
+
   // Split on sentence boundaries while preserving the separators
   const parts = text.split(/(\s+)/); // Split on whitespace, preserving it
   const sentences = [];
   let currentSentence = '';
-  
+
   for (const part of parts) {
     currentSentence += part;
-    
+
     // If this part ends with sentence punctuation, complete the sentence
     if (/[.!?]$/.test(part.trim())) {
       sentences.push(currentSentence);
       currentSentence = '';
     }
   }
-  
+
   // Add any remaining text as final sentence
   if (currentSentence.trim()) {
     sentences.push(currentSentence);
   }
-  
+
   let currentChunk = '';
   let totalIndex = 0;
-  
+
   for (const sentence of sentences) {
     const potentialChunk = currentChunk + sentence;
-    
+
     if (potentialChunk.length > chunkSize && currentChunk.length > 0) {
       // Save current chunk and its end position
       chunks.push({
         text: currentChunk,
-        endIndex: totalIndex + currentChunk.length
+        endIndex: totalIndex + currentChunk.length,
       });
-      
+
       // Start new chunk with this sentence
       currentChunk = sentence;
       totalIndex += currentChunk.length;
@@ -51,21 +51,21 @@ function createChunks(text, chunkSize) {
       currentChunk = potentialChunk;
     }
   }
-  
+
   // Add final chunk if there's remaining text
   if (currentChunk.length > 0) {
     chunks.push({
       text: currentChunk,
-      endIndex: totalIndex + currentChunk.length
+      endIndex: totalIndex + currentChunk.length,
     });
   }
-  
+
   return chunks;
 }
 
 /**
  * Remove content from the end of text that matches specified criteria.
- * 
+ *
  * @param {string} text - The text to truncate
  * @param {string} instructions - Description of content to truncate
  * @param {object} config - Configuration options
@@ -76,30 +76,30 @@ function createChunks(text, chunkSize) {
 export default async function truncate(text, instructions, config = {}) {
   const chunkSize = config.chunkSize ?? 1000;
   const threshold = config.threshold ?? 6;
-  
+
   // Create chunks with tracked end positions
   const chunks = createChunks(text, chunkSize);
-  
+
   // Reverse chunks to process from end to beginning
   const reversedChunks = [...chunks].reverse();
-  const textsToScore = reversedChunks.map(chunk => chunk.text);
-  
+  const textsToScore = reversedChunks.map((chunk) => chunk.text);
+
   // Score chunks in reverse order for content that should be removed
   const scoringInstructions = `${asXML(instructions, { tag: 'instructions' })}
   
 NOTE: These text chunks are in REVERSE order (from end to beginning of document).
 Score how well each chunk matches the criteria for content that should be truncated.`;
-  
+
   const result = await score(textsToScore, scoringInstructions, {
     ...config,
-    stopOnThreshold: threshold
+    stopOnThreshold: threshold,
   });
-  
+
   // If we found content that should be removed, truncate there
   if (result.stoppedAt !== undefined) {
     const removeChunkIndex = result.stoppedAt;
     const originalIndex = chunks.length - 1 - removeChunkIndex;
-    
+
     // Truncate at the start of the chunk that should be removed
     if (originalIndex > 0) {
       return chunks[originalIndex - 1].endIndex;
@@ -108,7 +108,7 @@ Score how well each chunk matches the criteria for content that should be trunca
       return 0;
     }
   }
-  
+
   // If no content should be removed, don't truncate
   return text.length;
 }

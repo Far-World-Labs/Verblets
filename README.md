@@ -78,7 +78,7 @@ Utility operations are uncategorized functionality like automatic tool selection
 - [intent](./src/verblets/intent) - extract user intent and structured parameters
 - [llm-logger](./src/chains/llm-logger) - intelligent logging and monitoring for LLM interactions
 - [sentiment](./src/verblets/sentiment) - detect emotional tone of text
-- [set-interval](./src/chains/set-interval) - Conversational scheduler
+- [set-interval](./src/chains/set-interval) - timer with itelligent interval selection
 - [summary-map](./src/chains/summary-map) - store self-resizing hash table values. Useful for fixed-sized contexts.
 
 ### Codebase

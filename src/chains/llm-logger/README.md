@@ -1,48 +1,26 @@
-# Enhanced LLM Logger
+# llm-logger
 
-Advanced logging system with non-destructive parallel processing, designed for AI/LLM applications that need to enhance logs without modifying original data.
+Advanced logging system with non-destructive parallel processing for AI/LLM applications that need to enhance logs without modifying original data.
 
-## 🚀 Key Features
-
-### Core Innovations
-- **Fully Parallel Processing**: No coordination overhead - processors run independently
-- **Non-Destructive Enhancement**: Original logs remain unchanged, enhancements stored as attachments
-- **NDJSON Bulk Processing**: Efficient batch processing for LLM interaction
-- **Smart Filtering**: AI metadata controls output without affecting stored data
-- **Ordered Adjustments**: Processor order determines adjustment priority
-
-### Architecture
-- **Ring Buffer**: High-performance circular buffer for log storage
-- **Parallel Processors**: Independent processors with individual read offsets
-- **Attachment System**: JSON-path syntax for non-destructive data enhancement
-- **Lane System**: Multiple output channels with independent filtering
-- **AI Metadata**: Separate metadata layer for AI-specific flags
-
-## 📋 Quick Start
+## Basic Usage
 
 ```javascript
 import { createLLMLogger, createConsoleWriter } from './index.js';
 
-// Create logger with processors
+// Create logger with sentiment analysis processor
 const logger = createLLMLogger({
-  ringBufferSize: 1000,
   processors: [
     {
       processorId: 'sentiment-analyzer',
       description: 'Analyzes log sentiment',
       batchSize: 10,
       async process(ndjsonInput) {
-        // Process NDJSON batch and return bulk adjustments
         const logs = parseNDJSON(ndjsonInput);
         return logs.map(log => ({
           logId: log.id,
           adjustments: {
             'analysis.sentiment': analyzeSentiment(log.data),
             'analysis.confidence': 0.95
-          },
-          aiMeta: {
-            skip: shouldSkip(log),
-            confidence: 0.95
           }
         }));
       }
@@ -57,10 +35,128 @@ const logger = createLLMLogger({
   ]
 });
 
-// Use the logger
+// Log messages
 logger.info('User logged in');
-logger.error('Database error');
+logger.error('Database connection failed');
 ```
+
+## Parameters
+
+- **config** (Object): Logger configuration
+  - **ringBufferSize** (number): Ring buffer capacity (default: 5000)
+  - **processors** (LogProcessor[]): Array of log processors for enhancement
+  - **lanes** (LogLaneConfig[]): Output lane configurations
+  - **flushInterval** (number): Flush interval in ms (default: 1000)
+  - **immediateFlush** (boolean): Immediate vs batched flushing (default: false)
+
+## Return Value
+
+Returns a logger instance with standard logging methods (`log`, `info`, `warn`, `error`, `debug`, `trace`, `fatal`) plus enhancement capabilities.
+
+## Key Features
+
+- **Fully Parallel Processing**: No coordination overhead - processors run independently
+- **Non-Destructive Enhancement**: Original logs remain unchanged, enhancements stored as attachments
+- **NDJSON Bulk Processing**: Efficient batch processing for LLM interaction
+- **Smart Filtering**: AI metadata controls output without affecting stored data
+- **Ring Buffer Storage**: High-performance circular buffer for log storage
+
+## Log Processors
+
+```javascript
+{
+  processorId: 'unique-id',
+  description: 'Human readable description',
+  batchSize: 10,
+  async process(ndjsonInput) {
+    // Process NDJSON batch and return bulk adjustments
+    const logs = parseNDJSON(ndjsonInput);
+    return logs.map(log => ({
+      logId: log.id,
+      adjustments: {
+        'path.to.field': 'enhanced-value'
+      },
+      aiMeta: {
+        skip: false,
+        confidence: 0.95
+      }
+    }));
+  }
+}
+```
+
+## Lane Configuration
+
+```javascript
+{
+  laneId: 'unique-lane-id',
+  writer: (logs) => { /* write logs array */ },
+  filters: (log) => { /* return boolean to include/exclude */ }
+}
+```
+
+## Advanced Usage
+
+```javascript
+// Multiple processors with different purposes
+const logger = createLLMLogger({
+  processors: [
+    {
+      processorId: 'sentiment',
+      batchSize: 5,
+      async process(ndjson) {
+        return analyzeSentiment(ndjson);
+      }
+    },
+    {
+      processorId: 'classifier',
+      batchSize: 10,
+      async process(ndjson) {
+        return classifyLogs(ndjson);
+      }
+    }
+  ],
+  lanes: [
+    {
+      laneId: 'file-output',
+      writer: createFileWriter('app.log'),
+      filters: (log) => log.meta.get('level') !== 'trace'
+    },
+    {
+      laneId: 'error-alerts',
+      writer: createAlertWriter(),
+      filters: (log) => log.meta.get('level') === 'error'
+    }
+  ]
+});
+
+// Enhancement API
+logger.attachToLog(logId, 'analysis.category', 'authentication');
+logger.markLogSkippable(logId, true);
+
+// Ring buffer access
+const recentLogs = logger.ringBuffer.tail(100);
+const errorLogs = logger.ringBuffer.filter(log => log.meta.get('level') === 'error');
+```
+
+## Processing Flow
+
+1. Log data enters the ring buffer with metadata
+2. Multiple processors work independently on NDJSON batches
+3. Processors return structured adjustments and AI metadata
+4. Adjustments are applied as non-destructive attachments
+5. Logs are filtered through output lanes based on criteria
+6. AI metadata controls visibility without affecting stored data
+7. Final logs are sent to configured writers
+
+## Use Cases
+
+- Application monitoring with AI-powered log analysis
+- Sentiment analysis of user interaction logs
+- Automated log classification and routing
+- Performance monitoring with intelligent alerting
+- Debug log enhancement without performance impact
+- Multi-tenant logging with separate processing pipelines
 
 ## 🔧 API Reference
 

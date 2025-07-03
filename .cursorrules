@@ -1,0 +1,270 @@
+# Verblets AI Library - Cursor Rules
+
+You are assisting with the Verblets AI library - a collection of tools for building LLM-powered applications using Node.js.
+
+## Project Guidelines
+
+**Architecture & Standards**: Follow guidelines in `guidelines/CODE_QUALITY.md`, `guidelines/DOCUMENTATION.md`, and `guidelines/ARCHITECTURE_TESTS.md`
+
+## File Organization
+
+```
+src/
+├── chains/          # Multi-step AI workflows, model negotiation for optimization
+├── verblets/        # Simple LLM transformations, usually fastGoodCheap default
+├── lib/             # Utilities (chatgpt, model-service, each-file, etc.)
+├── prompts/         # Prompt generation functions
+├── services/        # Core services (llm-model negotiation)
+└── json-schemas/    # Validation schemas for structured outputs
+
+guidelines/          # Architecture and coding standards
+scripts/            # Build and utility scripts
+```
+
+## Available Commands
+
+### Testing & Validation
+```bash
+# Unit tests (mocked LLM calls)
+npm run test
+
+# Example tests (real API calls with proper env setup)
+npm run examples
+
+# Architecture tests (single run with debug output)
+ARCH_LOG=debug npm run arch:once
+
+# Individual architecture test (for performance)
+source .env && ARCH_LOG=debug ARCH_SHUFFLE=true vitest --config .vitest.config.arch.js --run index.arch.js
+```
+
+### Development
+```bash
+# Start interactive runner
+npm run start
+
+# Development with auto-reload
+npm run dev
+
+# Linting
+npm run lint
+npm run lint:fix
+
+# Run custom scripts
+npm run script -- generate-verblet foo
+```
+
+### System Notes
+- Host system aliases `cat` to `bat` - use `\bat` to access original bat command
+- Run paged commands without pager for better output
+- Use `source .env` prefix for commands requiring environment variables
+
+## Core Implementation Patterns
+
+### LLM Integration via ChatGPT
+```javascript
+import chatGPT from '../../lib/chatgpt/index.js';
+
+// Standard call pattern
+const result = await chatGPT(prompt, {
+  modelOptions: { ...llm },
+  ...options
+});
+
+// For structured outputs with JSON schema (REQUIRED - never use toObject)
+const result = await chatGPT(prompt, {
+  modelOptions: {
+    modelName: 'fastGoodCheap',
+    response_format: {
+      type: 'json_schema',
+      json_schema: { name: 'result', schema }
+    }
+  }
+});
+```
+
+## JSON Schema Requirements
+
+**CRITICAL: Always use JSON schemas for structured outputs - NEVER use toObject chain**
+
+- **Structured Outputs**: Use `response_format` with `json_schema` for all LLM calls requiring structured data
+- **Schema Definition**: Define schemas in `src/json-schemas/` directory
+- **Type Safety**: Schemas provide validation and type safety that toObject cannot
+- **Consistency**: All verblets and chains must use schemas for parsing LLM responses
+- **Testing**: Mock responses should return pre-parsed objects matching the schema structure
+
+```javascript
+// CORRECT: Using JSON schema
+const schema = {
+  type: 'object',
+  properties: {
+    items: { type: 'array', items: { type: 'string' } }
+  }
+};
+
+const result = await chatGPT(prompt, {
+  modelOptions: {
+    modelName: 'fastGoodCheap',
+    response_format: {
+      type: 'json_schema',
+      json_schema: { name: 'result', schema }
+    }
+  }
+});
+
+// INCORRECT: Never use toObject
+// const parsed = await toObject(result);
+```
+
+### Model Selection Strategy
+
+**Privacy First Rule - ABSOLUTE PRIORITY:**
+```javascript
+// Always use privacy models for sensitive operations
+{ modelOptions: { modelName: 'privacy' } }
+
+// Operations requiring privacy models:
+// - Personal data anonymization  
+// - Sensitive query rephrasing
+// - Any PII processing
+// - Veiled variants (defaults to privacy)
+```
+
+**Model Negotiation Patterns:**
+```javascript
+// Bulk operations - optimize for speed and cost
+{ modelOptions: { negotiate: { fast: true, cheap: true } } }
+
+// Quality-critical operations
+{ modelOptions: { negotiate: { good: true } } }
+
+// Complex reasoning tasks
+{ modelOptions: { negotiate: { reasoning: true } } }
+
+// Multimodal processing
+{ modelOptions: { negotiate: { multi: true } } }
+
+// Default fallback for most operations
+{ modelOptions: { modelName: 'fastGoodCheap' } }
+```
+
+**Model Capability Mapping:**
+- `fast`: Quick responses, may sacrifice some quality
+- `good`: Balanced performance and quality  
+- `cheap`: Cost-optimized selection
+- `reasoning`: Advanced logical capabilities
+- `multi`: Multimodal (image/text) support
+- `privacy`: Local/private model execution (OVERRIDES ALL OTHERS)
+
+### Function Signatures & Natural Language Programming
+
+**Core Philosophy**: Verblets and chains accept **natural language parameters** that can express complex logic and nuanced reasoning impossible with traditional code.
+
+```javascript
+// Chains: complex workflows with natural language instructions
+export default async function chainName(input, instructions, config = {}) {
+  const { chunkSize = 10, maxAttempts = 3, llm, ...options } = config;
+  // 'instructions' parameter enables natural language logic
+}
+
+// Verblets: transformations with natural language prompts  
+export default async function verbletName(input, prompt, options = {}) {
+  const { llm, ...restOptions } = options;
+  // 'prompt' parameter allows flexible, human-like instructions
+}
+```
+
+**Examples**: 
+
+See [set-interval chain](src/chains/set-interval/) for examples of adaptive behavior through natural language programming.
+
+### Prompt Construction
+```javascript
+import { asXML } from '../../prompts/wrap-variable.js';
+import { constants as promptConstants } from '../../prompts/index.js';
+
+// XML wrapping for structured data
+const listBlock = asXML(items.join('\n'), { tag: 'list' });
+
+// Use prompt constants  
+const { onlyJSON, onlyJSONArray, contentIsQuestion } = promptConstants;
+```
+
+### Response Processing
+```javascript
+// Structured outputs (JSON schema responses are pre-parsed)
+const parsed = typeof response === 'string' ? JSON.parse(response) : response;
+const results = parsed?.items || parsed?.scores || parsed;
+
+// Text outputs
+const output = result.trim();
+return output ? output.split('\n') : [];
+```
+
+## Testing Standards
+
+### Unit Tests (Vitest)
+- **Mock all LLM calls** - Tests should be deterministic and fast
+- **Use ordinary assertions** - Standard expect() assertions throughout
+- **Avoid mocking fs** - Use real files and directories for simpler, more reliable tests
+- Test behavior, not implementation details
+- Use realistic mock responses matching actual LLM formats
+- Cover clear inputs, ambiguous inputs, edge cases, and validation
+- See `guidelines/UNIT_TESTS.md` for complete standards
+
+### Example Tests
+- **Use `aiExpected`** - For validating real LLM responses in examples
+- All chains and complex verblets need `*.examples.js` files
+- Test against real LLM responses for integration validation
+- Examples should demonstrate practical usage patterns
+
+### Architecture Tests
+- Use `aiArchExpect` for AI-powered code quality analysis
+- Use `dependency-cruiser` for fast structural validation
+- Test real code against actual guidelines, never mock
+- Configure bulk processing for performance optimization
+- See `guidelines/ARCHITECTURE_TESTS.md` for complete patterns
+
+## Privacy & Model Selection Guidelines
+
+### Data Classification
+1. **Sensitive Data** → Always use `modelName: 'privacy'`
+2. **Bulk Processing** → Use `negotiate: { fast: true, cheap: true }`
+3. **Quality Critical** → Use `negotiate: { good: true }`
+4. **Complex Analysis** → Use `negotiate: { reasoning: true }`
+5. **Default Operations** → Use `modelName: 'fastGoodCheap'`
+
+### Common Model Configurations
+```javascript
+const MODEL_CONFIGS = {
+  privacy: { modelName: 'privacy' },
+  bulk: { negotiate: { fast: true, cheap: true } },
+  quality: { negotiate: { good: true } },
+  reasoning: { negotiate: { reasoning: true } },
+  multimodal: { negotiate: { multi: true } },
+  default: { modelName: 'fastGoodCheap' }
+};
+```
+
+## Module Dependencies
+
+- **Verblets** cannot import **chains** (architectural boundary)
+- **Chains** can import any module type  
+- **Lib** utilities should minimize dependencies
+
+## Documentation Requirements
+
+See `guidelines/DOCUMENTATION.md` for complete standards:
+- README structure: Title, description, cross-references, usage, API
+- Lead with common use cases, realistic examples
+- Include model selection rationale for privacy-sensitive operations
+
+## Key Implementation Details
+
+- **ES6 Modules**: `import/export` throughout
+- **LLM Calls**: Always through `src/lib/chatgpt/index.js`
+- **Model Service**: Centralized model negotiation in `src/services/llm-model/`
+- **Batch Processing**: Use `chunkSize` config, retry with same model selection
+- **Privacy Override**: Privacy models take absolute precedence over all other selections
+
+When implementing new features, examine existing chains/verblets for model selection patterns and follow privacy-first principles. The architecture tests validate adherence to these guidelines.

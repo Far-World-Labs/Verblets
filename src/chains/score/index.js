@@ -95,16 +95,16 @@ export default async function score(list, instructions, config = {}) {
       ...options,
     });
     firstScores.push(...scores);
-    
+
     // Simple early termination check
     if (stopOnThreshold !== undefined) {
-      const belowThreshold = scores.findIndex(score => score < stopOnThreshold);
+      const belowThreshold = scores.findIndex((score) => score < stopOnThreshold);
       if (belowThreshold >= 0) {
         const stopIndex = i + belowThreshold;
-        return { 
-          scores: firstScores.slice(0, stopIndex + 1), 
+        return {
+          scores: firstScores.slice(0, stopIndex + 1),
           reference: [],
-          stoppedAt: stopIndex
+          stoppedAt: stopIndex,
         };
       }
     }

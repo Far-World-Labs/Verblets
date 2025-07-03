@@ -185,28 +185,28 @@ Set the environment variable when running tests:
 
 ```bash
 # Enable debugging for all architecture tests
-ARCH_DEBUG=true npm run arch
+ARCH_LOG=debug npm run arch
 
 # Or for specific test files
-ARCH_DEBUG=true npx vitest index.arch.js
+ARCH_LOG=debug npx vitest index.arch.js
 ```
 
 ### Enable Debugging for Individual Tests
 
-Use Vitest spies to override the `ARCH_DEBUG` constant within specific tests:
+Use Vitest spies to override the `ARCH_LOG` constant within specific tests:
 
 ```javascript
 import { vi } from 'vitest';
-import { ARCH_DEBUG } from './src/constants/arch-debug.js';
+import { ARCH_LOG } from './src/constants/arch.js';
 
 test('my specific test with debugging', async () => {
-  const debugSpy = vi.spyOn(ARCH_DEBUG, 'enabled', 'get').mockReturnValue(true);
+  const logSpy = vi.spyOn(process.env, 'ARCH_LOG', 'get').mockReturnValue('debug');
   
   await aiArchExpect(eachFile('src/**/*.js'))
     .satisfies('Files meet quality standards')
     .start();
   
-  debugSpy.mockRestore();
+  logSpy.mockRestore();
 });
 ```
 
@@ -216,17 +216,16 @@ Use `beforeEach` and `afterEach` hooks with spies to enable debugging for entire
 
 ```javascript
 import { vi } from 'vitest';
-import { ARCH_DEBUG } from './src/constants/arch-debug.js';
 
 describe('my test suite with debugging', () => {
-  let debugSpy;
+  let logSpy;
   
   beforeEach(() => {
-    debugSpy = vi.spyOn(ARCH_DEBUG, 'enabled', 'get').mockReturnValue(true);
+    logSpy = vi.spyOn(process.env, 'ARCH_LOG', 'get').mockReturnValue('debug');
   });
   
   afterEach(() => {
-    debugSpy.mockRestore();
+    logSpy.mockRestore();
   });
   
   // All tests in this suite will show batch debugging output

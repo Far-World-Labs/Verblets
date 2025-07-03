@@ -1,0 +1,66 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Chain Development Context
+
+You are working on **chains** - complex multi-step AI workflows in the Verblets library.
+
+## Chain Characteristics
+
+- **Complex workflows** with multiple LLM calls
+- **Batch processing** with configurable chunk sizes
+- **Retry logic** with `maxAttempts` configuration
+- **Model negotiation** for optimal performance/cost balance
+- **Always require comprehensive error handling**
+
+## Common Chain Patterns
+
+### Standard Chain Function
+```javascript
+export default async function chainName(input, instructions, config = {}) {
+  const { 
+    chunkSize = 10, 
+    maxAttempts = 3, 
+    llm = { negotiate: { fast: true, cheap: true } },
+    ...options 
+  } = config;
+  
+  // Batch processing logic
+  for (let i = 0; i < input.length; i += chunkSize) {
+    const batch = input.slice(i, i + chunkSize);
+    // eslint-disable-next-line no-await-in-loop
+    const result = await chatGPT(prompt, {
+      modelOptions: { ...llm },
+      ...options
+    });
+  }
+}
+```
+
+### Model Selection for Chains
+TODO
+
+### Required Files
+- `index.js` - Main implementation
+- `index.examples.js` - Real API usage examples with `aiExpect`
+- `index.spec.js` - Unit tests with mocked LLM calls
+- `README.md` - Documentation following guidelines
+- `schema.json` or `*-result.json` - JSON schemas for structured outputs
+
+## Chain-Specific Guidelines
+
+### Batch Processing
+- Use configurable `chunkSize` with sensible defaults
+- Implement progress tracking for long operations
+
+### Error Handling
+- Retry logic with exponential backoff
+- Provide meaningful error messages
+- Use retry to handle LLM call failures 
+
+### Performance Optimization
+- Use appropriate concurrency limits
+
+Reference `guidelines/CODE_QUALITY.md` for error handling requirements and `guidelines/ARCHITECTURE_TESTS.md` for testing patterns.

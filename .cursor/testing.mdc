@@ -1,0 +1,171 @@
+# Testing Development Context
+
+You are working on **tests** for the Verblets AI library.
+
+## Testing Strategy Overview
+
+The Verblets library uses a comprehensive testing approach with different types of tests for different purposes:
+
+### Test Types
+1. **Unit Tests** (`*.spec.js`) - Fast, deterministic, mocked LLM calls
+2. **Example Tests** (`*.examples.js`) - Real API calls with `aiExpect` validation
+3. **Architecture Tests** (`*.arch.js`) - AI-powered code quality validation
+
+## Unit Testing (`*.spec.js`)
+
+### Core Principles
+- **Mock all LLM calls** - Tests should be deterministic and fast
+- **Use ordinary assertions** - Standard `expect()` assertions throughout
+- **Test behavior, not implementation** - Focus on function contracts
+- **Realistic mock responses** - Match actual LLM output formats
+
+### Common Patterns
+```javascript
+import { vi } from 'vitest';
+import { expect, test, describe } from 'vitest';
+import chatGPT from '../../lib/chatgpt/index.js';
+import functionName from './index.js';
+
+// Mock the chatGPT function
+vi.mock('../../lib/chatgpt/index.js');
+
+describe('functionName', () => {
+  test('should handle clear input correctly', async () => {
+    // Arrange
+    const mockResponse = 'expected response format';
+    chatGPT.mockResolvedValue(mockResponse);
+    
+    // Act
+    const result = await functionName('clear input', { llm: 'testModel' });
+    
+    // Assert
+    expect(result).toBe('expected response format');
+    expect(chatGPT).toHaveBeenCalledWith(
+      expect.stringContaining('clear input'),
+      expect.objectContaining({
+        modelOptions: { llm: 'testModel' }
+      })
+    );
+  });
+  
+  test('should return null for invalid input', async () => {
+    const result = await functionName(null);
+    expect(result).toBeNull();
+  });
+});
+```
+
+### Essential Coverage Areas
+- **Clear inputs** - Unambiguous text with expected results
+- **Ambiguous inputs** - Unclear text requiring fallback behavior  
+- **Edge cases** - Empty strings, very long text, special characters
+- **Input validation** - Non-string inputs, null/undefined values
+- **LLM option passing** - Verify model options are forwarded correctly
+
+### Mock Response Guidelines
+- **Sentiment verblets**: Use "positive", "negative", "neutral"
+- **Number extraction**: Use actual numeric strings like "42", "3.14"
+- **Boolean extraction**: Use "true"/"false" strings
+- **Object extraction**: Use valid JSON strings
+- **Array responses**: Use realistic array formats
+
+## Example Testing (`*.examples.js`)
+
+### Core Principles
+- **Use `aiExpect`** for validating real LLM responses
+- **Real API calls** with proper environment setup
+- **Demonstrate practical usage** patterns
+- **Integration validation** against actual LLM behavior
+
+### Common Patterns
+```javascript
+import { test } from 'vitest';
+import aiExpect from '../../chains/ai-expect/index.js';
+import functionName from './index.js';
+
+test('should demonstrate real usage', async () => {
+  const result = await functionName('realistic input text');
+  
+  await aiExpect(result)
+    .toSatisfy('Result should be properly formatted for the intended use case');
+});
+
+test('should handle complex scenarios', async () => {
+  const complexInput = 'Complex real-world scenario text...';
+  const result = await functionName(complexInput, {
+    llm: { negotiate: { good: true } }
+  });
+  
+  await aiExpect({ input: complexInput, output: result })
+    .toSatisfy('Output should correctly transform the complex input');
+});
+```
+
+## Architecture Testing (`*.arch.js`)
+
+### Core Principles
+- **Real code analysis** - Never mock, test actual implementations
+- **AI-powered validation** - Use `aiArchExpect` for code quality
+- **Performance optimization** - Configure bulk processing appropriately
+- **Reference guidelines** - Link to specific guideline sections
+
+### Common Patterns
+```javascript
+import { test } from 'vitest';
+import aiArchExpect, { fileContext } from '../../chains/ai-arch-expect/index.js';
+import eachFile from '../../lib/each-file/index.js';
+
+test('code quality standards', async () => {
+  await aiArchExpect(eachFile('src/chains/**/*.js'), {
+    bulkSize: 25,
+    maxConcurrency: 8,
+    maxFailures: 3
+  })
+    .withContext(fileContext('guidelines/CODE_QUALITY.md'))
+    .satisfies('File follows code quality standards based on its type and purpose')
+    .start();
+});
+```
+
+## Running Tests
+
+### Commands
+```bash
+# Unit tests (fast, mocked)
+npm run test
+
+# Example tests (real API calls)
+npm run examples
+
+# Architecture tests (with debug output)
+ARCH_LOG=debug npm run arch:once
+
+# Individual architecture test
+source .env && ARCH_LOG=debug ARCH_SHUFFLE=true vitest --config .vitest.config.arch.js --run index.arch.js
+```
+
+### Performance Notes
+- Use `ARCH_LOG=debug` for architecture test visibility
+- Run individual tests for better performance
+- Configure appropriate bulk sizes and concurrency
+- Use `source .env` for environment variable setup
+
+## Anti-Patterns to Avoid
+
+### Unit Tests
+- Testing internal prompt text (too brittle)
+- Using unrealistic mock responses like "ok" or "success"
+- Testing implementation details vs. behavior
+- Single happy path testing only
+
+### Example Tests
+- Mocking LLM calls in examples
+- Testing obvious functionality without real complexity
+- Not using `aiExpect` for validation
+
+### Architecture Tests
+- Mocking real code for structural analysis
+- Not providing sufficient context from guidelines
+- Running without debug output for long operations
+
+Reference `guidelines/UNIT_TESTS.md` and `guidelines/ARCHITECTURE_TESTS.md` for complete testing standards.

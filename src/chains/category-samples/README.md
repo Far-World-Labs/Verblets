@@ -1,51 +1,66 @@
-# Category Samples Chain
+# category-samples
 
-Generate diverse, representative examples for any category. This chain applies prototype theory and related cognitive science principles to output a well-rounded set of sample items.
+Generate diverse, representative examples for any category using prototype theory and cognitive science principles.
 
-## Features
+For single category classification, use the [categorize](../../verblets/categorize) verblet.
 
-- **Cognitive Science Foundation**: Uses prototype theory and family resemblance principles
-- **Diversity Control**: Configurable diversity levels (focused, balanced, high)
-- **Context Awareness**: Supports contextual constraints for targeted generation
-- **Robust Retry Logic**: Built-in retry mechanisms for reliable generation
-- **Scalable Architecture**: Leverages the list chain infrastructure for efficient processing
-
-## Usage
-
-### Basic Usage
+## Basic Usage
 
 ```javascript
-import categorySamples from './src/chains/category-samples/index.js';
+import categorySamples from './index.js';
 
-// Generate basic fruit samples
-const fruitSamples = await categorySamples('fruit', {
+const fruits = await categorySamples('fruit', {
   count: 5,
   diversityLevel: 'balanced'
 });
-// Result: ['apple', 'orange', 'durian', 'banana', 'kiwi']
+
+// Returns: ['apple', 'orange', 'durian', 'banana', 'kiwi']
 ```
 
-### With Context
+## Parameters
+
+- **categoryName** (string): The category to generate samples for
+- **options** (Object): Configuration options
+  - **count** (number): Number of samples to generate (default: 10)
+  - **diversityLevel** (string): Sample diversity - 'focused', 'balanced', or 'high' (default: 'balanced')
+  - **context** (string): Additional context to guide generation (optional)
+  - **llm** (Object): LLM model options (default: uses system default)
+
+## Return Value
+
+Returns an array of strings representing diverse examples from the specified category.
+
+## Features
+
+- **Cognitive science foundation**: Uses prototype theory for representative sampling
+- **Configurable diversity**: Control from typical examples to edge cases
+- **Context-aware generation**: Supports contextual constraints for targeted results
+- **Batch processing**: Efficient generation using chain infrastructure
+
+## Use Cases
+
+- Creating test data for category-based algorithms
+- Generating examples for educational content
+- Building diverse datasets for machine learning
+- Brainstorming sessions for creative projects
+
+## Advanced Usage
 
 ```javascript
 // Generate contextually relevant samples
-const birdSamples = await categorySamples('bird', {
+const backyardBirds = await categorySamples('bird', {
   context: 'Common backyard birds in North America',
   count: 4,
   diversityLevel: 'focused'
 });
-// Result: ['robin', 'cardinal', 'blue jay', 'sparrow']
-```
+// Returns: ['robin', 'cardinal', 'blue jay', 'sparrow']
 
-### High Diversity Generation
-
-```javascript
-// Generate diverse vehicle types
-const vehicleSamples = await categorySamples('vehicle', {
+// Generate highly diverse samples
+const vehicles = await categorySamples('vehicle', {
   count: 6,
   diversityLevel: 'high'
 });
-// Result: ['car', 'bicycle', 'helicopter', 'submarine', 'skateboard', 'spaceship']
+// Returns: ['car', 'bicycle', 'helicopter', 'submarine', 'skateboard', 'spaceship']
 ```
 
 ## API Reference
