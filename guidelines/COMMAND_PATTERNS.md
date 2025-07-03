@@ -44,7 +44,7 @@ source .env && npm run examples
 ### Pattern: Simple timeout with basic redirection
 ```bash
 # WORKS - Basic timeout and redirection
-source .env && timeout 60s npm run examples 2>&1
+source .env && timeout 20s npm run examples 2>&1
 ```
 **Success**: Simple timeout with stderr redirection works well
 **Date**: 2024-12-19
