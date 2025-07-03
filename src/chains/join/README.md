@@ -1,12 +1,13 @@
 # join
 
-Use AI to fuse fragments into a coherent sequence. The chain analyzes contiguous items and merges each group using custom prompt.
+Fuse text fragments into coherent sequences using AI-driven analysis and custom merging instructions.
 
-## Example: Product Description
+For simple text concatenation, use the [concat](../../verblets/concat) verblet.
+
+## Basic Usage
 
 ```javascript
 import join from './index.js';
-import chatGPT from '../../lib/chatgpt/index.js';
 
 const features = [
   'This smartphone has a 6.5-inch display.',
@@ -15,10 +16,33 @@ const features = [
   'It supports 5G connectivity for fast internet speeds.'
 ];
 
-const productDescription = await join(features, 'Create a compelling product description by merging these features');
+const description = await join(features, 'Create a compelling product description');
 
-console.log(productDescription);
-/*
-'This smartphone has a 6.5-inch display, offering an immersive viewing experience. Additionally, it includes a powerful 5000mAh battery, ensuring long-lasting usage. The camera system features a 108MP sensor, capturing stunning photos. Moreover, it supports 5G connectivity for fast internet speeds, keeping you connected on the go.'
-*/
+// Returns: "This smartphone features a stunning 6.5-inch display and powerful 5000mAh battery
+// for all-day use. The advanced 108MP camera system captures professional-quality photos,
+// while 5G connectivity ensures lightning-fast internet speeds wherever you go."
 ```
+
+## Parameters
+
+- **fragments** (Array): Text fragments to join together
+- **instructions** (string): Custom instructions for how to merge the fragments
+- **config** (Object): Configuration options
+  - **llm** (Object): LLM model options (default: uses system default)
+
+## Return Value
+
+Returns a string containing the coherently joined text fragments.
+
+## Features
+
+- **AI-driven fusion**: Intelligently merges fragments based on context and instructions
+- **Custom merging logic**: Flexible instructions for different joining styles
+- **Contiguous analysis**: Analyzes relationships between adjacent fragments
+
+## Use Cases
+
+- Creating product descriptions from feature lists
+- Combining research notes into coherent summaries
+- Merging interview transcripts into flowing narratives
+- Assembling documentation from scattered notes

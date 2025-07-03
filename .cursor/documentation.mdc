@@ -1,0 +1,125 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Documentation Development Context
+
+You are working on **documentation** for the Verblets AI library.
+
+## Documentation Philosophy
+
+Documentation should be **clear, concise, and high signal-to-noise ratio**. Each type serves different audiences and purposes.
+
+## Documentation Types
+
+### Module README Files
+**Purpose**: Help developers understand and use individual modules  
+**Audience**: Developers implementing or integrating the module
+
+**Required Structure**:
+1. **Title**: Module name only (no redundant "README" or verbose descriptions)
+2. **Brief description**: One sentence explaining what the module does and when to use it
+3. **Cross-references**: Link to related modules (variants, alternatives) early
+4. **Usage example**: Practical, relatable scenario showing core functionality
+5. **API documentation**: Parameters, return values, configuration options
+6. **Integration patterns**: How it works with other modules (if applicable)
+
+### Examples
+- **Lead with the most common use case**
+- **Use realistic, non-trivial examples** that demonstrate practical value
+- **Show actual return values**, not just parameter lists
+- **Group related configuration options** logically
+- **Avoid redundant explanations** between sections
+- **Link to shared design concepts** rather than repeating them
+- **Each bullet point must add unique value**
+
+### Example README Structure
+```markdown
+# Chain Name
+
+Brief description of what this chain does and when to use it.
+
+Related: [similar-chain](mdc:similar-chain), [alternative-approach](mdc:alternative-approach)
+
+## Usage
+
+```javascript
+import chainName from './src/chains/chain-name/index.js';
+
+const result = await chainName(inputData, 'processing instructions', {
+  chunkSize: 15,
+  llm: { negotiate: { good: true } }
+});
+```
+
+## API
+
+### Parameters
+- `input` (Array|String) - The data to process
+- `instructions` (String) - How to process the data
+- `config` (Object) - Configuration options
+  - `chunkSize` (Number, default: 10) - Items per batch
+  - `llm` (Object|String, default: negotiate fast+cheap) - Model configuration
+
+### Returns
+Array of processed results matching the input structure.
+
+## Integration
+
+Works well with:
+- [filter chain](mdc:filter) for pre-processing
+- [reduce chain](mdc:reduce) for post-processing
+```
+
+## Anti-Patterns to Avoid
+
+### Common Documentation Mistakes
+- **Verbose introductions** explaining obvious concepts
+- **Repeating the module name** unnecessarily
+- **Lists of benefits** where items overlap or are obvious
+- **Copying boilerplate text** between similar modules
+- **Explaining implementation details** users don't need
+- **Generic examples** that don't show real value. Examples are one of the most important. 
+
+## Writing Standards
+
+### Clarity
+- **Write for busy developers** who scan before reading
+- **Lead with the most important information**
+- **Use concrete examples** over abstract descriptions
+- **Prefer active voice and present tense**
+
+### Conciseness
+- **Every sentence must add unique value**
+- **Combine redundant information** rather than repeating it
+- **Use bullet points** for scannable lists
+- **Link to shared concepts** rather than explaining them repeatedly
+
+### Accuracy
+- **Keep examples up-to-date** with actual API
+- **Test code examples** to ensure they work
+- **Maintain consistency** in terminology across files
+- **Update cross-references** when modules change
+
+### Organization
+- **Structure information by user priority**, not internal logic
+- **Group related concepts** together
+- **Use consistent heading hierarchy**
+- **Provide clear navigation** between related documents
+
+## Special Considerations
+
+### Model Selection Documentation
+For chains/verblets that have specific model requirements:
+- **Explain privacy considerations** when relevant
+
+## Maintenance
+
+- **Review documentation** when changing module APIs
+- **Update cross-references** when adding or removing modules
+- **Consolidate information** when multiple files cover similar topics
+- **Remove outdated examples** and references
+- **Ensure architectural tests** validate these guidelines
+
+Reference `guidelines/DOCUMENTATION.md` for complete documentation standards and examples.

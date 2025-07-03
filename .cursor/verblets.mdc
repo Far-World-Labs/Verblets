@@ -1,0 +1,94 @@
+# Verblet Development Context
+
+You are working on **verblets** - single-purpose LLM transformation functions in the Verblets library.
+
+## Verblet Characteristics
+
+- **Simple, focused transformations** of natural language
+- **Single LLM call** with direct response processing
+- **Lightweight** with minimal configuration
+- **Predictable behavior** with clear input/output contracts
+- **Return null** for invalid inputs rather than throwing
+
+## Common Verblet Patterns
+
+### Standard Verblet Function
+```javascript
+export default async function verbletName(input, options = {}) {
+  const { 
+    llm = { modelName: 'fastGoodCheap' },
+    ...restOptions 
+  } = options;
+  
+  // Validation
+  if (!input || typeof input !== 'string') {
+    return null;
+  }
+  
+  // Prompt construction
+  const prompt = `Transform this text: ${input}`;
+  
+  // LLM call
+  const result = await chatGPT(prompt, {
+    modelOptions: { ...llm },
+    ...restOptions
+  });
+  
+  // Response processing
+  return result.trim() || null;
+}
+```
+
+### Model Selection for Verblets
+- **Default**: `{ modelName: 'fastGoodCheap' }` for most operations
+- **Privacy**: `{ modelName: 'privacy' }` when processing sensitive data
+- **Quality**: `{ negotiate: { good: true } }` for critical transformations
+- **Simple**: Let users override via options parameter
+
+### Response Processing Patterns
+```javascript
+// For structured outputs (JSON Schema)
+const parsed = typeof response === 'string' ? JSON.parse(response) : response;
+const results = parsed?.items || parsed?.scores || parsed;
+
+// For simple text outputs
+const output = result.trim();
+return output ? output.split('\n') : [];
+
+// For single values
+return result.trim() || null;
+```
+
+## Verblet-Specific Guidelines
+
+### Input Validation
+- Check for string inputs when required
+- Handle null/undefined gracefully
+- Return null for invalid inputs (don't throw)
+- Validate minimum input requirements
+
+### Error Handling
+- Usually not required for simple string templating
+- Required for complex transformations or external dependencies
+- Use defensive programming for response parsing
+- Handle LLM call failures gracefully
+
+### Testing
+- **Unit tests**: Mock all LLM calls with realistic responses
+- **Examples**: Use `aiExpect` for real API validation
+- Test clear inputs, ambiguous inputs, edge cases
+- Cover input validation scenarios
+
+### Architectural Boundaries
+- **Cannot import from chains** (architectural rule)
+- Keep dependencies minimal
+- Focus on single responsibility
+- Avoid complex state management
+
+## Required Files
+- `index.js` - Main implementation
+- `index.spec.js` - Unit tests with mocked LLM calls
+- `index.examples.js` - Real API examples (for complex verblets)
+- `README.md` - Documentation (for complex verblets)
+
+Reference `guidelines/CODE_QUALITY.md` for error handling requirements and `guidelines/UNIT_TESTS.md` for testing patterns.

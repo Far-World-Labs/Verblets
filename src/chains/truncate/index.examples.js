@@ -39,25 +39,29 @@ const examples = [
 
 describe('truncate', () => {
   examples.forEach((example) => {
-    it(example.name, async () => {
-      const result = await truncate(
-        example.inputs.text,
-        example.inputs.instructions,
-        example.inputs.config
-      );
+    it(
+      example.name,
+      async () => {
+        const result = await truncate(
+          example.inputs.text,
+          example.inputs.instructions,
+          example.inputs.config
+        );
 
-      expect(typeof result).toBe('number');
-      expect(result).toBeGreaterThanOrEqual(0);
-      expect(result).toBeLessThanOrEqual(example.inputs.text.length);
+        expect(typeof result).toBe('number');
+        expect(result).toBeGreaterThanOrEqual(0);
+        expect(result).toBeLessThanOrEqual(example.inputs.text.length);
 
-      if (example.wants.shouldTruncate) {
-        expect(result).toBeLessThan(example.inputs.text.length);
-      } else {
-        expect(result).toBe(example.inputs.text.length);
-      }
+        if (example.wants.shouldTruncate) {
+          expect(result).toBeLessThan(example.inputs.text.length);
+        } else {
+          expect(result).toBe(example.inputs.text.length);
+        }
 
-      const truncated = example.inputs.text.slice(0, result);
-      expect(truncated.length).toBe(result);
-    }, 30000);
+        const truncated = example.inputs.text.slice(0, result);
+        expect(truncated.length).toBe(result);
+      },
+      30000
+    );
   });
 });
