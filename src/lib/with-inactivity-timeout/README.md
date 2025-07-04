@@ -1,117 +1,91 @@
 # with-inactivity-timeout
 
-Wraps async functions with an inactivity timeout that resets when the function signals it's still working.
+Wrap async functions with inactivity timeout protection that requires periodic updates to prevent timeout. The timer resets each time the work function calls the provided update callback, ensuring long-running operations stay active by signaling progress.
 
-## Basic Usage
+## Usage
 
 ```javascript
 import withInactivityTimeout from './index.js';
 
-// Wrap a long-running function with timeout protection
+// Wrap a function that needs to signal progress
 const result = await withInactivityTimeout(
   async (onUpdate) => {
-    // Signal activity to reset the timeout
-    onUpdate('Starting process...');
+    // Long-running operation
+    for (let i = 0; i < 1000; i++) {
+      await processItem(i);
+      
+      // Signal we're still active (resets timeout)
+      onUpdate(`Processing item ${i}`);
+    }
     
-    await someWork();
-    onUpdate('Halfway done...');
-    
-    await moreWork();
-    onUpdate('Almost finished...');
-    
-    return 'Complete!';
+    return 'completed';
   },
-  5000 // 5 second timeout
+  5000 // Timeout after 5 seconds of inactivity
 );
 ```
 
-## Parameters
+## API
 
-- **work** (Function): Async function that receives an `onUpdate` callback
-  - Must call `onUpdate(message, error?)` to signal activity and reset timeout
-  - Should return a Promise with the final result
-- **timeoutMs** (number): Milliseconds to wait for activity before timing out
-- **hook** (Function, optional): Callback to intercept update calls
-  - Receives `(input, error)` parameters
-  - Called before the timeout is reset
+### `withInactivityTimeout(workFunction, timeoutMs, hook)`
 
-## Return Value
+**Parameters:**
+- `workFunction` (Function): Async function that receives `onUpdate` callback
+- `timeoutMs` (number): Milliseconds of inactivity before timeout
+- `hook` (Function, optional): Called on each update for monitoring/logging
 
-Returns a Promise that:
-- Resolves with the work function's result if completed successfully
-- Rejects with timeout error if no activity within the specified time
-- Rejects with the work function's error if it fails
+**Returns:** Promise that resolves with work function result or rejects on timeout
 
 ## Use Cases
 
-- Long-running AI/LLM operations that provide progress updates
-- File processing with periodic status reports
-- Network operations with keep-alive signals
-- Batch processing with progress tracking
-- Any async operation that can signal it's still active
-
-## Examples
-
+### File Processing with Progress
 ```javascript
-// Basic timeout protection
-const processData = async (onUpdate) => {
-  for (let i = 0; i < 100; i++) {
-    await processItem(i);
-    if (i % 10 === 0) {
-      onUpdate(`Processed ${i}/100 items`);
-    }
-  }
-  return 'All items processed';
-};
+import withInactivityTimeout from './index.js';
 
-const result = await withInactivityTimeout(processData, 10000);
-
-// With error handling and hook
-const result = await withInactivityTimeout(
-  async (onUpdate) => {
-    try {
-      const data = await fetchLargeDataset();
-      onUpdate('Data fetched, processing...');
-      
-      const processed = await processDataset(data);
-      onUpdate('Processing complete');
-      
-      return processed;
-    } catch (error) {
-      onUpdate('Error occurred', error);
-      throw error;
-    }
-  },
-  30000, // 30 second timeout
-  (message, error) => {
-    console.log(`Progress: ${message}`);
-    if (error) console.error('Work error:', error);
-  }
-);
-
-// Timeout scenario
-try {
-  await withInactivityTimeout(
+const processLargeFile = async (filePath) => {
+  return withInactivityTimeout(
     async (onUpdate) => {
-      onUpdate('Starting...');
-      // Long operation without calling onUpdate again
-      await new Promise(resolve => setTimeout(resolve, 10000));
-      return 'Done';
+      const lines = await readFileLines(filePath);
+      const results = [];
+      
+      for (let i = 0; i < lines.length; i++) {
+        const processed = await processLine(lines[i]);
+        results.push(processed);
+        
+        // Update progress every 100 lines
+        if (i % 100 === 0) {
+          onUpdate(`Processed ${i}/${lines.length} lines`);
+        }
+      }
+      
+      return results;
     },
-    5000 // Will timeout after 5 seconds
+    10000 // 10 second inactivity timeout
   );
-} catch (error) {
-  console.log(error.message); // "Inactivity timeout: no update within 5000ms"
-}
+};
 ```
 
-## How It Works
+### Network Operations with Monitoring
+```javascript
+import withInactivityTimeout from './index.js';
 
-1. Starts an inactivity timer when the work function begins
-2. The work function must call `onUpdate()` to signal it's still active
-3. Each `onUpdate()` call resets the inactivity timer
-4. If no update occurs within the timeout period, the Promise rejects
-5. Optional hook function can intercept all update calls for logging/monitoring
+const downloadWithProgress = async (url) => {
+  return withInactivityTimeout(
+    async (onUpdate) => {
+      const response = await fetch(url);
+      const chunks = [];
+      
+      for await (const chunk of response.body) {
+        chunks.push(chunk);
+        onUpdate(`Downloaded ${chunks.length} chunks`);
+      }
+      
+      return Buffer.concat(chunks);
+    },
+    5000, // 5 second timeout
+    (message) => console.log(`Download progress: ${message}`) // Monitor updates
+  );
+};
+```
 
 ## Best Practices
 

@@ -21,6 +21,45 @@ Chains orchestrate multiple operations to:
 
 Chains are used for complex operations that require multiple steps or sophisticated logic that goes beyond what individual verblets can provide.
 
+## Model Configuration
+
+All chains support standard model configuration options:
+
+```javascript
+const result = await chainName(input, instructions, {
+  llm: {
+    modelName: 'gpt-4',           // Specific model selection
+    temperature: 0.7,             // Response randomness (0.0-1.0)
+    maxTokens: 1000,              // Maximum response length
+    topP: 0.9,                    // Nucleus sampling parameter
+    frequencyPenalty: 0.0,        // Reduce repetition
+    presencePenalty: 0.0          // Encourage topic diversity
+  },
+  // Chain-specific configuration options vary by chain
+  maxAttempts: 3,                 // Common retry configuration
+  timeout: 30000                  // Common timeout configuration
+});
+```
+
+### Model Selection Strategies
+
+```javascript
+// Privacy-first for sensitive data
+{ llm: { modelName: 'privacy' } }
+
+// Optimized for bulk operations
+{ llm: { negotiate: { fast: true, cheap: true } } }
+
+// Quality-critical operations
+{ llm: { negotiate: { good: true } } }
+
+// Complex reasoning tasks
+{ llm: { negotiate: { reasoning: true } } }
+
+// Default balanced approach
+{ llm: { modelName: 'fastGoodCheap' } }
+```
+
 Available chains:
 
 - [anonymize](./anonymize)

@@ -2,18 +2,9 @@
 
 SummaryMap is a hash table with auto-resizing values that resize upon serialization. It can be used to keep the overall size of a hash of items within a fixed budget. A primary use case for this is keeping prompts full of various pieces of context fixed to a desired size. The chain manages collections of data elements by compressing them based on weights and token budgets, enabling efficient context management for language model interactions.
 
-## Features
-
-- **Token Budget Management**: Automatically compresses data to fit within specified token limits
-- **Weighted Prioritization**: Assigns importance weights to different data elements
-- **Privacy-Aware Processing**: Built-in support for sensitive data handling with blacklists
-- **Multiple Data Types**: Supports text, code, and structured data compression
-- **Flexible Integration**: Works seamlessly with existing prompt functions and model services
-
-## Usage
+## Use Cases
 
 ### Basic Token Management
-
 ```javascript
 import SummaryMap from './src/chains/summary-map/index.js';
 
@@ -37,8 +28,9 @@ summaryMap.set('codeExample', {
 const compressedData = await summaryMap.pavedSummaryResult();
 ```
 
-### Privacy-Aware Processing
+## Advanced Usage
 
+### Privacy-Aware Processing
 ```javascript
 // Handle sensitive data with privacy controls
 const privacyMap = new SummaryMap({ targetTokens: 150 });
@@ -54,7 +46,6 @@ const sanitizedData = await privacyMap.pavedSummaryResult();
 ```
 
 ### Prompt Integration
-
 ```javascript
 // Integrate with existing prompt workflows
 const promptFunction = (data) => `

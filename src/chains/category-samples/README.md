@@ -30,22 +30,9 @@ const fruits = await categorySamples('fruit', {
 
 Returns an array of strings representing diverse examples from the specified category.
 
-## Features
-
-- **Cognitive science foundation**: Uses prototype theory for representative sampling
-- **Configurable diversity**: Control from typical examples to edge cases
-- **Context-aware generation**: Supports contextual constraints for targeted results
-- **Batch processing**: Efficient generation using chain infrastructure
-
 ## Use Cases
 
-- Creating test data for category-based algorithms
-- Generating examples for educational content
-- Building diverse datasets for machine learning
-- Brainstorming sessions for creative projects
-
-## Advanced Usage
-
+### Creating Test Data
 ```javascript
 // Generate contextually relevant samples
 const backyardBirds = await categorySamples('bird', {

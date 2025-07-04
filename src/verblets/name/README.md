@@ -34,13 +34,16 @@ Returns a string containing the generated name.
 - Generating labels for categorized content
 - Creating evocative titles that capture essence beyond keywords
 
-## Advanced Usage
+## API
 
 ```javascript
-// With context for more targeted naming
-const featureName = await name(
-  'Users can save their favorite coffee shop locations and get notified when nearby',
-  { context: 'mobile app feature for coffee enthusiasts' }
-);
-// => "Café Locator" (example)
+await name(description, options = {})
 ```
+
+**Parameters:**
+- `description` (string): Description of what needs to be named
+- `options` (object, optional): Configuration options
+  - `context` (string, optional): Additional context for more targeted naming
+  - `llm` (object, optional): LLM configuration options
+
+**Returns:** Promise resolving to a string containing the generated name

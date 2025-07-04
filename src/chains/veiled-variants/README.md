@@ -65,12 +65,6 @@ Uses clinical and wellness terminology:
 ## Advanced Usage
 
 ```javascript
-// Using specific model for privacy-focused generation
-const alternatives = await veiledVariants({
-  prompt: 'self-harm behaviors in adolescents',
-  modelName: 'medical-privacy'
-});
-
 // Process multiple sensitive topics
 const topics = [
   'eating disorder symptoms',
@@ -81,20 +75,4 @@ const topics = [
 const allAlternatives = await Promise.all(
   topics.map(topic => veiledVariants({ prompt: topic }))
 );
-```
-
-## Output Format
-
-Each call generates approximately 15 alternative phrasings (5 per framing strategy) that:
-- Avoid direct synonyms or sensitive key terms
-- Use professional, clinical, or academic language
-- Maintain the core intent while reducing sensitivity
-- Provide legitimate research or wellness query alternatives
-
-## Error Handling
-
-The function includes robust parsing to handle various LLM response formats:
-- Extracts JSON arrays from responses
-- Falls back to sentence parsing for prose responses
-- Handles quoted strings and malformed JSON
-- Provides meaningful alternatives even when parsing fails 
+``` 

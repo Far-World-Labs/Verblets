@@ -174,157 +174,19 @@ async function batchProcessor() {
 ### Reader Lifecycle Management
 ```javascript
 const buffer = new RingBuffer(100);
+const readerId = buffer.registerReader();
 
-// Register readers dynamically
-const readers = new Set();
-function addReader() {
-  const readerId = buffer.registerReader();
-  readers.add(readerId);
-  return readerId;
-}
+// Use reader...
 
-function removeReader(readerId) {
-  buffer.unregisterReader(readerId);
-  readers.delete(readerId);
-}
-
-// Cleanup on shutdown
-process.on('SIGTERM', () => {
-  readers.forEach(readerId => buffer.unregisterReader(readerId));
-});
+// Cleanup when done
+buffer.unregisterReader(readerId);
 ```
 
 ### Buffer Monitoring
 ```javascript
 function monitorBuffer(buffer) {
   const stats = buffer.getStats();
-  console.log(`Buffer Statistics:
-    - Total items written: ${stats.sequence}
-    - Active readers: ${stats.registeredReaders}
-    - Waiting readers: ${stats.waitingReaders}
-    - Buffer utilization: ${(stats.sequence % buffer.maxSize) / buffer.maxSize * 100}%
-  `);
-}
-
-// Monitor every 5 seconds
-setInterval(() => monitorBuffer(buffer), 5000);
-```
-
-### Graceful Shutdown
-```javascript
-class BufferManager {
-  constructor(maxSize) {
-    this.buffer = new RingBuffer(maxSize);
-    this.readers = new Map();
-    this.shutdown = false;
-  }
-  
-  async gracefulShutdown() {
-    this.shutdown = true;
-    
-    // Wait for all readers to finish current operations
-    const shutdownPromises = Array.from(this.readers.keys()).map(async (readerId) => {
-      // Signal shutdown to reader processes
-      // Wait for clean exit
-    });
-    
-    await Promise.all(shutdownPromises);
-    
-    // Cleanup all readers
-    this.readers.forEach((_, readerId) => {
-      this.buffer.unregisterReader(readerId);
-    });
-  }
+  console.log(`Active readers: ${stats.registeredReaders}, Items: ${stats.sequence}`);
 }
 ```
-
-## Integration Patterns
-
-### With Worker Threads
-```javascript
-import { Worker, isMainThread, parentPort } from 'worker_threads';
-import RingBuffer from './ring-buffer/index.js';
-
-if (isMainThread) {
-  const buffer = new RingBuffer(1000);
-  const worker = new Worker(__filename);
-  
-  // Share buffer reference with worker
-  // Implementation depends on your worker communication strategy
-} else {
-  // Worker thread processes buffer data
-  parentPort.on('message', async (readerId) => {
-    while (true) {
-      const data = await buffer.read(readerId);
-      // Process data in worker thread
-    }
-  });
-}
-```
-
-### With Express.js Middleware
-```javascript
-import express from 'express';
-import RingBuffer from './ring-buffer/index.js';
-
-const app = express();
-const requestBuffer = new RingBuffer(500);
-const analyticsReader = requestBuffer.registerReader();
-
-// Middleware to capture requests
-app.use((req, res, next) => {
-  requestBuffer.write({
-    method: req.method,
-    url: req.url,
-    timestamp: Date.now(),
-    ip: req.ip
-  });
-  next();
-});
-
-// Background analytics processing
-async function processAnalytics() {
-  while (true) {
-    const batch = await requestBuffer.readBatch(analyticsReader, 20);
-    // Analyze request patterns
-    updateAnalyticsDashboard(batch.data);
-  }
-}
-
-processAnalytics();
-```
-
-## Related Modules
-
-- [`queue`](../queue/README.md) - Simple queue implementation
-- [`async-queue`](../async-queue/README.md) - Asynchronous queue with promises
-- [`event-emitter`](../event-emitter/README.md) - Event-driven programming utilities
-
-## Error Handling
-
-```javascript
-try {
-  const buffer = new RingBuffer(100);
-  const reader = buffer.registerReader();
-  
-  // Handle read timeouts (if implemented)
-  const result = await buffer.read(reader);
-  
-} catch (error) {
-  if (error.code === 'BUFFER_OVERFLOW') {
-    console.log('Buffer capacity exceeded');
-  } else if (error.code === 'READER_NOT_FOUND') {
-    console.log('Invalid reader ID');
-  } else {
-    console.log('Unexpected error:', error.message);
-  }
-}
-```
-
-## Performance Considerations
-
-- **Buffer Sizing**: Choose buffer size based on peak write rate and reader processing speed
-- **Batch Processing**: Use `readBatch()` for better throughput when processing multiple items
-- **Reader Management**: Unregister unused readers to prevent memory leaks
-- **Monitoring**: Track buffer statistics to identify bottlenecks and optimize performance
 

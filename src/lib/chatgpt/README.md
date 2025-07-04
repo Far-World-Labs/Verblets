@@ -57,40 +57,6 @@ const blogPost = await chatgpt('Write a blog post about sustainable gardening', 
 });
 ```
 
-### Code Assistance
-```javascript
-const codeExplanation = await chatgpt(`
-  Explain this JavaScript function:
-  function fibonacci(n) {
-    return n <= 1 ? n : fibonacci(n-1) + fibonacci(n-2);
-  }
-`, {
-  temperature: 0.3  // Lower temperature for more focused technical responses
-});
-```
-
-### Creative Writing
-```javascript
-const story = await chatgpt('Write a short story about a time-traveling librarian', {
-  model: 'gpt-4',
-  temperature: 1.0,  // Higher temperature for more creativity
-  maxTokens: 500
-});
-```
-
-### Data Analysis
-```javascript
-const analysis = await chatgpt(`
-  Analyze this sales data and provide insights:
-  Q1: $125,000
-  Q2: $143,000
-  Q3: $138,000
-  Q4: $156,000
-`, {
-  temperature: 0.2  // Low temperature for analytical tasks
-});
-```
-
 ## Advanced Usage
 
 ### Streaming Responses
@@ -155,68 +121,6 @@ const config = {
 };
 
 const response = await chatgpt('Your prompt here', config);
-```
-
-## Integration Patterns
-
-### With Chain Processing
-```javascript
-import chatgpt from './chatgpt/index.js';
-
-async function processContent(text) {
-  const summary = await chatgpt(`Summarize: ${text}`);
-  const keywords = await chatgpt(`Extract keywords: ${summary}`);
-  const sentiment = await chatgpt(`Analyze sentiment: ${summary}`);
-  
-  return { summary, keywords, sentiment };
-}
-```
-
-### With Error Recovery
-```javascript
-async function robustChatGPT(prompt, config = {}) {
-  const maxRetries = 3;
-  let attempt = 0;
-  
-  while (attempt < maxRetries) {
-    try {
-      return await chatgpt(prompt, config);
-    } catch (error) {
-      attempt++;
-      if (attempt === maxRetries) throw error;
-      
-      // Wait before retry with exponential backoff
-      await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
-    }
-  }
-}
-```
-
-## Related Modules
-
-- [`llm-logger`](../llm-logger/README.md) - Log and monitor LLM interactions
-- [`with-inactivity-timeout`](../with-inactivity-timeout/README.md) - Add timeout handling to requests
-- [`ask`](../../chains/ask/README.md) - Higher-level question-answering interface
-
-## Error Handling
-
-```javascript
-try {
-  const response = await chatgpt(prompt, config);
-  console.log('Response received:', response);
-} catch (error) {
-  if (error.message.includes('API key')) {
-    console.error('Invalid or missing OpenAI API key');
-  } else if (error.message.includes('rate limit')) {
-    console.error('Rate limit exceeded, please try again later');
-  } else if (error.message.includes('model')) {
-    console.error('Requested model is not available');
-  } else if (error.message.includes('timeout')) {
-    console.error('Request timed out');
-  } else {
-    console.error('ChatGPT request failed:', error.message);
-  }
-}
 ```
 
 ## Security Considerations

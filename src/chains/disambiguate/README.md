@@ -32,13 +32,6 @@ Returns an object containing:
 - **alternatives** (array): Other possible meanings considered
 - **reasoning** (string): Explanation of why this meaning was selected
 
-## Features
-
-- **Context-aware analysis**: Uses surrounding text to determine meaning
-- **Multiple meaning evaluation**: Considers various interpretations
-- **Confidence scoring**: Provides reliability assessment
-- **Reasoning transparency**: Explains the disambiguation decision
-
 ## Use Cases
 
 ### Clarifying Travel Conversations
@@ -52,44 +45,7 @@ const result = await disambiguate({
 // => { meaning: "economy class seating on an aircraft", confidence: 0.9 }
 ```
 
-### Processing Technical Documentation
-Disambiguate technical terms that have multiple meanings:
-
-```javascript
-const result = await disambiguate({
-  term: 'trunk',
-  context: 'Check the trunk of the repository for the latest changes.'
-});
-// => { meaning: "main branch of a version control system", confidence: 0.95 }
-```
-
-### Understanding Medical Context
-Resolve ambiguous medical terminology:
-
-```javascript
-const result = await disambiguate({
-  term: 'cell',
-  context: 'The patient was placed in a cell for observation.'
-});
-// => { meaning: "a small room in a medical facility", confidence: 0.8 }
-```
-
 ## Advanced Usage
-
-### With Custom LLM Configuration
-
-```javascript
-const result = await disambiguate({
-  term: 'bank',
-  context: 'She walked along the bank of the river.',
-  config: {
-    llm: {
-      temperature: 0.3,
-      maxTokens: 200
-    }
-  }
-});
-```
 
 ### Batch Processing Multiple Terms
 
@@ -103,31 +59,3 @@ const results = await Promise.all(
   terms.map(item => disambiguate(item))
 );
 ```
-
-## Related Modules
-
-- [`clarify`](../clarify/README.md) - Clarify unclear or vague statements
-- [`find`](../find/README.md) - Find specific information in text
-- [`filter`](../filter/README.md) - Filter content based on criteria
-
-## Error Handling
-
-The chain handles various error conditions:
-
-```javascript
-try {
-  const result = await disambiguate({
-    term: 'example',
-    context: 'Very short.'
-  });
-} catch (error) {
-  if (error.message.includes('insufficient context')) {
-    console.log('Context too brief for reliable disambiguation');
-  }
-}
-```
-
-Common error scenarios:
-- **Insufficient context**: Context too brief to determine meaning
-- **Unknown term**: Term not recognized or too specialized
-- **Multiple equally likely meanings**: Unable to confidently choose between options

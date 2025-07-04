@@ -1,93 +1,51 @@
 # find
 
-Scan long lists in manageable batches to locate the item that best matches your instructions. Uses batch processing with automatic retry logic to efficiently search through large datasets.
+Find items in arrays that match specific criteria using AI-powered search with intelligent reasoning and context understanding.
 
-For single-batch finding, use the [list-find-lines](../../verblets/list-find-lines) verblet.
-
-## Basic Usage
+## Usage
 
 ```javascript
 import find from './index.js';
 
-const emails = [
-  'update from accounting',
-  'party invitation', 
-  'weekly newsletter',
-  'urgent security alert',
-  'meeting reminder',
-  'quarterly report ready',
-  // ... potentially thousands more
+const documents = [
+  'Meeting notes from Q1 planning session',
+  'Budget proposal for new marketing campaign',
+  'Technical specification for API endpoints',
+  'Employee handbook updates for remote work',
+  'Security audit report findings'
 ];
-const urgent = await find(emails, 'Which email is most urgent or time-sensitive?');
-// => 'urgent security alert'
+
+const technical = await find(documents, 'technical documentation');
+// Returns: 'Technical specification for API endpoints'
 ```
 
-## Parameters
+## API
 
-- **items** (string[]): Array of items to search through
-- **instructions** (string): Natural language description of what to find
-- **config** (Object): Configuration options
-  - **chunkSize** (number): Items per batch (default: 10)
-  - **maxAttempts** (number): Retry attempts for failed batches (default: 3)
-  - **llm** (Object): LLM model options (default: uses system default)
+### `find(array, criteria, config)`
 
-## Return Value
+**Parameters:**
+- `array` (Array): Items to search through
+- `criteria` (string): Natural language description of what to find
+- `config` (Object): Configuration options
+  - `chunkSize` (number): Items per batch (default: 10)
+  - `llm` (Object): LLM model options
 
-Returns a string containing the single best matching item from the entire list, or `null` if no suitable match is found.
-
-## Features
-
-- **Batch processing**: Handles large datasets by processing items in manageable chunks
-- **Automatic retry**: Failed chunks are automatically retried for improved reliability
-- **Best match selection**: Finds the single best item across all batches
-- **Natural language queries**: Use descriptive text to define search criteria
+**Returns:** Promise<string|null> - First item that matches criteria, or null if none found
 
 ## Use Cases
 
-- Finding the most relevant document in a large collection
-- Locating specific entries in extensive logs or datasets
-- Identifying priority items from long task lists
-- Discovering key information from large text collections
-- Searching for specific patterns or content across multiple items
-
-## Advanced Usage
-
+### Document Search
 ```javascript
-// Finding with custom batch size and retry logic
-const bestMatch = await find(
-  largeDocumentList,
-  'find the document that explains the pricing policy',
-  {
-    chunkSize: 25,
-    maxAttempts: 5,
-    llm: { model: 'gpt-4', temperature: 0.1 }
-  }
-);
+import find from './index.js';
 
-// Finding in different types of content
-const tasks = [
-  'Update website homepage',
-  'Fix critical database bug',
-  'Plan team meeting',
-  'Review quarterly budget'
+const files = [
+  'project-timeline.pdf',
+  'budget-2024.xlsx',
+  'user-manual.docx',
+  'meeting-notes.txt',
+  'invoice-template.pdf'
 ];
-const critical = await find(tasks, 'which task is most critical or urgent?');
-// => 'Fix critical database bug'
-```
 
-## Error Handling
-
-The chain automatically retries failed batches up to `maxAttempts` times. If processing fails for some batches, the function will still return the best match found from successfully processed batches, or `null` if no matches were found.
-
-```javascript
-import bulkFind from './index.js';
-
-const emails = [
-  'update from accounting',
-  'party invitation',
-  'weekly newsletter',
-  // ... potentially thousands more
-];
-const best = await bulkFind(emails, 'Which email is most urgent?');
-// => 'update from accounting'
+const userDoc = await find(files, 'user documentation or manual');
+// Returns: 'user-manual.docx'
 ```
