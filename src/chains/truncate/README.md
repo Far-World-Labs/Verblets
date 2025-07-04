@@ -19,6 +19,12 @@ const cutPoint = await truncate(article, 'advertisements and footer content');
 const cleaned = article.slice(0, cutPoint);
 ```
 
+## Features
+
+- **Backwards Processing**: Analyzes text from end to beginning to identify unwanted content
+- **Threshold-Based Scoring**: Configurable scoring system with early termination when threshold is breached
+- **Sentence-Aware Chunking**: Intelligently splits text on sentence boundaries while preserving context
+
 ## API
 
 ### `truncate(text, removalCriteria, config)`

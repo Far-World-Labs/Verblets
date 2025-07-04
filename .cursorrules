@@ -255,9 +255,15 @@ const MODEL_CONFIGS = {
 ## Documentation Requirements
 
 See `guidelines/DOCUMENTATION.md` for complete standards:
-- README structure: Title, description, cross-references, usage, API
+- README structure: Title, description, cross-references, usage, API, optional features
 - Lead with common use cases, realistic examples
 - Include model selection rationale for privacy-sensitive operations
+
+### Features Section Guidelines
+- **Only include Features sections for modules with genuinely powerful or non-obvious capabilities**
+- **Avoid listing common features**: Basic bulk processing, standard LLM integration, simple retries
+- **Include for exotic features**: Advanced algorithms, sophisticated processing, unique optimizations
+- **Keep concise**: 1-2 lines per feature, focus on what makes the module special
 
 ### Use Cases Section Guidelines
 - **Default**: One compelling example that demonstrates the module's core value proposition

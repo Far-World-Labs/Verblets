@@ -14,7 +14,8 @@ Documentation serves different audiences and purposes across the system. Each ty
 3. **Cross-references**: Link to related modules (variants, alternatives) early
 4. **Usage example**: Practical, relatable scenario showing core functionality
 5. **API documentation**: Parameters, return values, configuration options
-6. **Integration patterns**: How it works with other modules (if applicable)
+6. **Features** (Optional): Only for modules with genuinely powerful or non-obvious capabilities
+7. **Integration patterns**: How it works with other modules (if applicable)
 
 **Quality Standards**:
 - **Lead with salient, differentiating benefits** - what makes this uniquely powerful
@@ -175,3 +176,28 @@ const result = await complexChain(input, {
   fallbackMode: 'graceful'
 });
 ``` 
+
+### Features Section Guidelines
+
+**Only include a Features section when the module has:**
+- Genuinely powerful capabilities not obvious from the description/example
+- Exotic or advanced features that aren't immediately apparent
+- Sophisticated algorithms or processing strategies worth highlighting
+
+**Common features to avoid listing:**
+- Basic bulk processing or parallelism (standard for chains)
+- Standard LLM integration patterns
+- Basic error handling or retries
+- Simple configuration options
+
+**Examples of when to include Features:**
+- Advanced windowing algorithms (like join chain's overlapping windows)
+- Sophisticated scoring or ranking systems
+- Complex multi-step processing workflows
+- Unique optimization strategies
+- Advanced parsing or analysis capabilities
+
+**Format:**
+- Keep features concise (1-2 lines each)
+- Focus on what makes the module special
+- Avoid generic capabilities that apply to most modules 
