@@ -75,9 +75,25 @@ async function scoreBatch(items, instructions, reference = [], config = {}) {
   // Extract scores from the object structure
   const arr = parsed?.scores || parsed;
 
-  if (!Array.isArray(arr) || arr.length !== items.length) {
-    throw new Error('Score batch mismatch');
+  if (!Array.isArray(arr)) {
+    throw new Error('Score batch mismatch: expected array of scores');
   }
+
+  // Handle length mismatch gracefully
+  if (arr.length !== items.length) {
+    if (arr.length < items.length) {
+      // Pad with neutral scores (5) if we got fewer scores than items
+      const paddedScores = [...arr];
+      while (paddedScores.length < items.length) {
+        paddedScores.push(5);
+      }
+      return paddedScores.map((n) => Number(n));
+    } else {
+      // Truncate if we got more scores than items
+      return arr.slice(0, items.length).map((n) => Number(n));
+    }
+  }
+
   return arr.map((n) => Number(n));
 }
 

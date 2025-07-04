@@ -1,8 +1,13 @@
 import * as R from 'ramda';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 import testAdvice from '../../chains/test-advice/index.js';
 import alias from './index.js';
+
+// Mock the testAdvice function to prevent real API calls
+vi.mock('../../chains/test-advice/index.js', () => ({
+  default: vi.fn(),
+}));
 
 const examples = [
   {
@@ -54,6 +59,13 @@ describe('Path aliases', async () => {
 });
 
 describe('Path aliases - advice', async () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  // Mock testAdvice to return empty array for this test case
+  testAdvice.mockResolvedValue([]);
+
   const advices = await testAdvice('./src/lib/path-aliases/index.js');
 
   advices.forEach((a) => {
