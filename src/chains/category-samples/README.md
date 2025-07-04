@@ -18,6 +18,36 @@ const fruits = await categorySamples('fruit', {
 ```
 
 ## Parameters
+<<<<<<< HEAD
+=======
+
+- **categoryName** (string): The category to generate samples for
+- **options** (Object): Configuration options
+  - **count** (number): Number of samples to generate (default: 10)
+  - **diversityLevel** (string): Sample diversity - 'focused', 'balanced', or 'high' (default: 'balanced')
+  - **context** (string): Additional context to guide generation (optional)
+  - **llm** (Object): LLM model options (default: uses system default)
+
+## Return Value
+
+Returns an array of strings representing diverse examples from the specified category.
+
+## Features
+
+- **Cognitive science foundation**: Uses prototype theory for representative sampling
+- **Configurable diversity**: Control from typical examples to edge cases
+- **Context-aware generation**: Supports contextual constraints for targeted results
+- **Batch processing**: Efficient generation using chain infrastructure
+
+## Use Cases
+
+- Creating test data for category-based algorithms
+- Generating examples for educational content
+- Building diverse datasets for machine learning
+- Brainstorming sessions for creative projects
+
+## Advanced Usage
+>>>>>>> origin/main
 
 - **categoryName** (string): The category to generate samples for
 - **options** (Object): Configuration options

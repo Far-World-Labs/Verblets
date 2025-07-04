@@ -24,6 +24,17 @@ const terms = await collectTerms(longText, { topN: 15 });
 
 Returns an array of strings representing the most difficult or technical terms found in the text, ordered by complexity/importance.
 
+<<<<<<< HEAD
+=======
+## Features
+
+- **Intelligent Term Recognition**: Identifies technical jargon, specialized vocabulary, and complex concepts
+- **Complexity Scoring**: Ranks terms by difficulty and technical specificity
+- **Contextual Analysis**: Considers domain-specific terminology and field expertise
+- **Configurable Filtering**: Adjustable thresholds for term selection and exclusion
+- **Multi-domain Support**: Works across various fields including legal, medical, scientific, and technical texts
+
+>>>>>>> origin/main
 ## Use Cases
 
 ### Academic Research
@@ -33,6 +44,29 @@ const terms = await collectTerms(academicText, { topN: 8 });
 // => ['phenomenological', 'consciousness studies', 'intentionality', ...]
 ```
 
+<<<<<<< HEAD
+=======
+### Legal Document Analysis
+```javascript
+const legalText = "The aforementioned usufructuary rights shall be...";
+const terms = await collectTerms(legalText, { 
+  topN: 12, 
+  minComplexity: 4 
+});
+// => ['usufructuary rights', 'aforementioned', 'indemnification', ...]
+```
+
+### Technical Documentation
+```javascript
+const techDoc = "The microservice architecture implements...";
+const terms = await collectTerms(techDoc, { 
+  topN: 10,
+  excludeCommon: true 
+});
+// => ['microservice architecture', 'containerization', 'orchestration', ...]
+```
+
+>>>>>>> origin/main
 ## Advanced Usage
 
 ### Custom Complexity Thresholds
@@ -51,3 +85,54 @@ const allTerms = await Promise.all(
   documents.map(doc => collectTerms(doc, { topN: 5 }))
 );
 ```
+<<<<<<< HEAD
+=======
+
+## Integration Patterns
+
+### With Glossary Generation
+```javascript
+import collectTerms from './collect-terms/index.js';
+import { define } from '../define/index.js';
+
+const terms = await collectTerms(document);
+const glossary = await Promise.all(
+  terms.map(async term => ({
+    term,
+    definition: await define(term)
+  }))
+);
+```
+
+### With Content Analysis
+```javascript
+import collectTerms from './collect-terms/index.js';
+import { analyze } from '../analyze/index.js';
+
+const terms = await collectTerms(content);
+const analysis = await analyze(`Key terms: ${terms.join(', ')}`);
+```
+
+## Related Modules
+
+- [`define`](../define/README.md) - Generate definitions for extracted terms
+- [`analyze`](../analyze/README.md) - Analyze content complexity and readability
+- [`summarize`](../summarize/README.md) - Create summaries highlighting key concepts
+
+## Error Handling
+
+```javascript
+try {
+  const terms = await collectTerms(text, config);
+  console.log(`Extracted ${terms.length} technical terms`);
+} catch (error) {
+  if (error.message.includes('Empty text')) {
+    console.log('No text provided for analysis');
+  } else if (error.message.includes('Invalid config')) {
+    console.log('Configuration parameters are invalid');
+  } else {
+    console.error('Term extraction failed:', error.message);
+  }
+}
+```
+>>>>>>> origin/main

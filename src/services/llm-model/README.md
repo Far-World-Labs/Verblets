@@ -316,6 +316,30 @@ describe('Model Service', () => {
 - [`model.js`](./model.js) - Individual model class definition
 - [`constants/models`](../../constants/models.js) - Model configuration constants
 
+<<<<<<< HEAD
+=======
+## Error Handling
+
+```javascript
+try {
+  const model = modelService.getModel('nonexistent');
+} catch (error) {
+  if (error.message.includes('not found')) {
+    console.log('Model not available, using fallback');
+    const fallback = modelService.getBestPublicModel();
+  }
+}
+
+// Handle negotiation failures
+const modelKey = modelService.negotiateModel(null, { reasoning: true });
+if (!modelKey) {
+  console.log('No reasoning model available');
+  // Fallback to best available model
+  const fallback = modelService.getBestPublicModel();
+}
+```
+
+>>>>>>> origin/main
 ## Configuration
 
 The service automatically loads model configurations from `constants/models.js` and supports:

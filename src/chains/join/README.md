@@ -22,6 +22,12 @@ const story = await join(chapters, 'Merge these chapters into a flowing narrativ
 // Returns: A coherent story that seamlessly blends all chapters with proper transitions
 ```
 
+## Features
+
+- **Windowed Processing**: Processes fragments in overlapping windows to ensure equal context exposure
+- **Intelligent Stitching**: AI-driven overlap resolution preserves terminal sections while seamlessly merging overlapping regions
+- **Configurable Overlap**: Adjustable window size and overlap percentage for different content types
+
 ## API
 
 ### `join(fragments, prompt, config)`

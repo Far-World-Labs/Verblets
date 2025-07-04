@@ -37,6 +37,13 @@ const results = await intersections(categories, {
 // }
 ```
 
+## Features
+
+- **Exhaustive Combination Generation**: Automatically generates all possible combinations within specified size ranges
+- **Parallel Processing**: Processes multiple combinations simultaneously with configurable batch sizes
+- **Dual Analysis**: Combines intersection finding with commonality analysis for comprehensive results
+- **JSON Schema Validation**: Optional structured output validation for consistent results
+
 ## API
 
 ### `intersections(categories, config)`

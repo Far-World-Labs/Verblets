@@ -43,8 +43,50 @@ const moonLanding = await date('Apollo 11 moon landing date');
 // => new Date('1969-07-20')
 ```
 
+<<<<<<< HEAD
 ## Advanced Usage
 
+=======
+### Entertainment and Media
+Get release dates for movies, books, and other media:
+
+```javascript
+const harryPotter = await date('When was the first Harry Potter book published?');
+// => new Date('1997-06-26')
+
+const iphone = await date('Original iPhone announcement date');
+// => new Date('2007-01-09')
+```
+
+### Scientific and Technical Milestones
+Extract dates of important discoveries and inventions:
+
+```javascript
+const dna = await date('When was the structure of DNA discovered?');
+// => new Date('1953-04-25')
+
+const internet = await date('When was the World Wide Web invented?');
+// => new Date('1989-03-12')
+```
+
+## Advanced Usage
+
+### With Custom Configuration
+
+```javascript
+const result = await date('When was the Berlin Wall torn down?', {
+  config: {
+    llm: {
+      temperature: 0.1, // Lower temperature for more precise dates
+      maxTokens: 150
+    },
+    maxAttempts: 5,
+    timezone: 'Europe/Berlin'
+  }
+});
+```
+
+>>>>>>> origin/main
 ### Handling Relative Dates
 
 ```javascript
@@ -79,3 +121,34 @@ Example validation criteria for "When was the iPhone released?":
 - Date should be in the 2000s
 - Should be before widespread smartphone adoption
 - Should align with Apple's product announcement patterns
+<<<<<<< HEAD
+=======
+
+## Related Modules
+
+- [`bool`](../../verblets/bool/README.md) - Boolean validation used internally
+- [`to-number`](../../verblets/to-number/README.md) - Number extraction from text
+- [`with-inactivity-timeout`](../../verblets/with-inactivity-timeout/README.md) - Timeout handling
+
+## Error Handling
+
+The chain provides detailed error information:
+
+```javascript
+try {
+  const result = await date('When will the world end?');
+} catch (error) {
+  if (error.message.includes('validation failed')) {
+    console.log('Could not validate the extracted date');
+  } else if (error.message.includes('max attempts')) {
+    console.log('Exceeded retry limit for date extraction');
+  }
+}
+```
+
+Common error scenarios:
+- **Ambiguous queries**: Questions with multiple possible dates
+- **Fictional events**: Dates for non-historical events
+- **Future uncertainties**: Predictions that cannot be validated
+- **Insufficient context**: Queries lacking enough information for accurate extraction
+>>>>>>> origin/main

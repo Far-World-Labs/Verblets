@@ -295,3 +295,13 @@ See `guidelines/DOCUMENTATION.md` for complete standards:
 - Multi-step workflows that demonstrate advanced capabilities
 - Error handling patterns specific to that module's domain
 - Performance optimization techniques for that specific use case
+
+## Key Implementation Details
+
+- **ES6 Modules**: `import/export` throughout
+- **LLM Calls**: Always through `src/lib/chatgpt/index.js`
+- **Model Service**: Centralized model negotiation in `src/services/llm-model/`
+- **Batch Processing**: Use `chunkSize` config, retry with same model selection
+- **Privacy Override**: Privacy models take absolute precedence over all other selections
+
+When implementing new features, examine existing chains/verblets for model selection patterns and follow privacy-first principles. The architecture tests validate adherence to these guidelines.
