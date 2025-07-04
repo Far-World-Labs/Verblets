@@ -1,69 +1,74 @@
 # intersections
 
-Find comprehensive intersections between all combinations of items using AI-driven quality validation and example-based improvement.
+Find overlapping elements and relationships between multiple categories using AI-powered analysis with intelligent reasoning about commonalities and shared characteristics.
 
-For single intersection analysis, use the [list-intersect](../../verblets/list-intersect) verblet.
-
-## Basic Usage
+## Usage
 
 ```javascript
 import intersections from './index.js';
 
-const groups = ['outdoor enthusiasts', 'food lovers', 'budget-conscious friends'];
-const activities = await intersections(groups, {
-  instructions: 'Return concrete weekend activities, not abstract themes'
+const categories = ['technology', 'healthcare', 'sustainability'];
+const results = await intersections(categories, {
+  instructions: 'Find innovations and solutions that exist in all these areas'
 });
 
-// Returns structured object with all combinations:
+// Returns:
 // {
-//   "outdoor enthusiasts + food lovers": {
-//     combination: ["outdoor enthusiasts", "food lovers"],
-//     description: "Activities combining outdoor adventure with culinary experiences",
-//     elements: ["camping with gourmet cooking", "food truck festivals in parks", ...]
+//   'technology + healthcare': {
+//     combination: ['technology', 'healthcare'],
+//     description: 'Digital health solutions and medical technology',
+//     elements: ['Electronic health records', 'Telemedicine platforms', 'Medical imaging AI']
 //   },
-//   "outdoor enthusiasts + budget-conscious friends": { ... },
-//   ...
+//   'technology + sustainability': {
+//     combination: ['technology', 'sustainability'],
+//     description: 'Green technology and environmental solutions',
+//     elements: ['Smart grid systems', 'Electric vehicle charging', 'Solar panel monitoring']
+//   },
+//   'healthcare + sustainability': {
+//     combination: ['healthcare', 'sustainability'],
+//     description: 'Sustainable healthcare practices',
+//     elements: ['Green hospital design', 'Eco-friendly medical supplies', 'Waste reduction programs']
+//   },
+//   'technology + healthcare + sustainability': {
+//     combination: ['technology', 'healthcare', 'sustainability'],
+//     description: 'Sustainable digital health innovations',
+//     elements: ['Carbon-neutral data centers for health apps', 'Biodegradable medical sensors', 'AI-optimized energy use in hospitals']
+//   }
 // }
 ```
 
-## Parameters
-
-- **items** (Array): Items to find intersections between
-- **options** (Object): Configuration options
-  - **instructions** (string): Custom instructions for intersection finding
-  - **minSize** (number): Minimum combination size (default: 1)
-  - **maxSize** (number): Maximum combination size (default: items.length)
-  - **batchSize** (number): Parallel processing batch size (default: 5)
-  - **goodnessScore** (number): Quality threshold 1-10 (default: 7)
-
-## Return Value
-
-Returns an object where each key is a combination name and the value contains:
-- `combination`: Array of items in this intersection
-- `description`: Natural language explanation
-- `elements`: Array of specific intersection examples
-
 ## Features
 
-- **Quality-driven processing**: Uses AI scoring to identify high-quality examples
-- **Example-based improvement**: Applies patterns from best results to all intersections
-- **Batch processing**: Configurable parallel processing for efficiency
-- **Built-in validation**: Ensures meaningful results or throws descriptive errors
+- **Exhaustive Combination Generation**: Automatically generates all possible combinations within specified size ranges
+- **Parallel Processing**: Processes multiple combinations simultaneously with configurable batch sizes
+- **Dual Analysis**: Combines intersection finding with commonality analysis for comprehensive results
+- **JSON Schema Validation**: Optional structured output validation for consistent results
+
+## API
+
+### `intersections(categories, config)`
+
+**Parameters:**
+- `categories` (Array): Array of categories to find intersections between
+- `config` (Object): Configuration options
+  - `instructions` (string): Custom instructions for intersection finding
+  - `minSize` (number): Minimum combination size (default: 2)
+  - `maxSize` (number): Maximum combination size (default: categories.length)
+  - `batchSize` (number): Number of combinations to process in parallel (default: 10)
+  - `llm` (Object): LLM model options
+
+**Returns:** Promise<Object> - Object with combination keys and intersection details
 
 ## Use Cases
 
-- Planning activities for diverse groups with different interests
-- Product feature analysis across user segments
-- Content categorization with overlapping themes
-- Market research for multi-demographic targeting
-
-## Error Handling
-
+### Market Research
 ```javascript
-try {
-  const results = await intersections(['incompatible', 'items'], {
-    goodnessScore: 9  // Very high threshold
-  });
-} catch (error) {
-  // "No intersections found with score above 9. Consider lowering the goodnessScore threshold."
-}
+import intersections from './index.js';
+
+const markets = ['fitness', 'technology', 'social media'];
+const opportunities = await intersections(markets, {
+  instructions: 'Find business opportunities and product ideas'
+});
+
+// Discovers intersection opportunities like fitness apps, social fitness platforms, etc.
+```

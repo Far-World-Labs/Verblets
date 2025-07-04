@@ -2,19 +2,9 @@
 
 Generate contextual lists from natural language prompts using AI-powered content creation. This chain produces relevant, diverse items based on your specifications, with support for streaming generation and custom filtering.
 
-## Features
-
-- **Contextual Generation**: Creates lists that match your specific requirements and context
-- **Streaming Support**: Generate items progressively with the `generateList` generator function
-- **Duplicate Prevention**: Automatically filters out repeated items across multiple generations
-- **Schema Transformation**: Convert generated items to structured objects with custom schemas
-- **Configurable Control**: Custom stopping conditions and filtering logic
-- **Structured Output**: JSON schema validation ensures consistent, parseable results
-
-## Usage
+## Use Cases
 
 ### Brainstorming Session
-
 ```javascript
 import list from './src/chains/list/index.js';
 
@@ -34,34 +24,49 @@ const activities = await list('Fun team building activities for a remote softwar
 // ]
 ```
 
-### Content Planning
+## Advanced Usage
 
+### Streaming Generation
 ```javascript
-// Generate blog post topics for a marketing blog
-const blogTopics = await list(`
-  Blog post ideas for a B2B SaaS company targeting small business owners.
-  Focus on practical advice and actionable insights.
-`, { count: 10 });
+import { generateList } from './src/chains/list/index.js';
 
-// Result: [
-//   "5 Ways to Automate Your Customer Onboarding Process",
-//   "Small Business Guide to Choosing the Right CRM",
-//   "How to Scale Customer Support Without Hiring More Staff"
-//   // ... more relevant topics
-// ]
+// Generate items progressively for real-time display
+const prompt = "Creative gift ideas for a tech-savvy teenager";
+
+for await (const gift of generateList(prompt, { count: 15 })) {
+  console.log(`New idea: ${gift}`);
+  // Display each item as it's generated
+  // "New idea: Programmable LED strip kit"
+  // "New idea: Raspberry Pi starter bundle"
+  // "New idea: Wireless mechanical keyboard"
+  // ...
+}
 ```
 
-### Product Development
-
+### Custom Control Logic
 ```javascript
-// Generate feature ideas based on user feedback
-const features = await list(`
-  New features for a project management app based on user requests:
-  - Better time tracking
-  - Team collaboration improvements  
-  - Mobile experience enhancements
-`, { count: 6 });
+import { generateList } from './src/chains/list/index.js';
 
+const options = {
+  shouldSkip: ({ result, resultsAll }) => {
+    // Skip items that are too similar to existing ones
+    return resultsAll.some(existing => 
+      existing.toLowerCase().includes(result.toLowerCase().split(' ')[0])
+    );
+  },
+  shouldStop: ({ queryCount, startTime }) => {
+    // Stop after 3 queries or 30 seconds
+    return queryCount > 3 || (Date.now() - startTime) > 30000;
+  }
+};
+
+for await (const item of generateList("Unique startup ideas", options)) {
+  console.log(item);
+}
+```
+
+### Structured Output with Schema
+```javascript
 // Transform to structured objects with schema
 const featureObjects = await list(`
   New features for a project management app
@@ -78,24 +83,6 @@ const featureObjects = await list(`
     required: ['name', 'description', 'priority', 'effort']
   }
 });
-```
-
-### Streaming Generation
-
-```javascript
-import { generateList } from './src/chains/list/index.js';
-
-// Generate items progressively for real-time display
-const prompt = "Creative gift ideas for a tech-savvy teenager";
-
-for await (const gift of generateList(prompt, { count: 15 })) {
-  console.log(`New idea: ${gift}`);
-  // Display each item as it's generated
-  // "New idea: Programmable LED strip kit"
-  // "New idea: Raspberry Pi starter bundle"
-  // "New idea: Wireless mechanical keyboard"
-  // ...
-}
 ```
 
 ## API Reference

@@ -29,6 +29,40 @@ Verblets are small, single-purpose functions that:
 
 Verblets are typically used as building blocks in chains or as standalone utilities in your applications.
 
+## Model Configuration
+
+All verblets support standard model configuration options:
+
+```javascript
+const result = await verbletName(input, prompt, {
+  llm: {
+    modelName: 'gpt-4',           // Specific model selection
+    temperature: 0.7,             // Response randomness (0.0-1.0)
+    maxTokens: 500,               // Maximum response length
+    topP: 0.9,                    // Nucleus sampling parameter
+    frequencyPenalty: 0.0,        // Reduce repetition
+    presencePenalty: 0.0          // Encourage topic diversity
+  }
+  // Most verblets have minimal additional configuration
+});
+```
+
+### Model Selection Strategies
+
+```javascript
+// Privacy-first for sensitive data
+{ llm: { modelName: 'privacy' } }
+
+// Optimized for bulk operations
+{ llm: { negotiate: { fast: true, cheap: true } } }
+
+// Quality-critical operations
+{ llm: { negotiate: { good: true } } }
+
+// Default balanced approach (recommended for most verblets)
+{ llm: { modelName: 'fastGoodCheap' } }
+```
+
 The `verblets` directory contains individual utilities that wrap specific language-model workflows. Each verblet exports a single function and usually includes its own examples, tests and optional JSON schema.
 
 Available verblets:

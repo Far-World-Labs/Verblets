@@ -1,46 +1,61 @@
-# Sort
+# sort
 
-AI-powered sorting that can order items by complex, subjective criteria that traditional sorting cannot handle. Like other chains, the sort chain batches over long lists using a custom algorithm made for LLM processing characteristics.
+Sort arrays using AI-powered intelligent ordering with context-aware ranking and flexible sorting criteria.
 
 ## Usage
 
 ```javascript
-import { sort } from '@far-world-labs/verblets';
+import sort from './index.js';
 
-// Sort by subjective criteria
-const companies = ['Apple', 'Google', 'Microsoft', 'Amazon'];
-const sorted = await sort(companies, 'market influence in AI', {
-  batchSize: 10,
-  iterations: 2
+const tasks = [
+  'Review quarterly reports',
+  'Fix critical bug in user login',
+  'Update team documentation',
+  'Prepare for client presentation'
+];
+
+const sorted = await sort(tasks, {
+  instructions: 'Sort by business priority and urgency'
 });
+
+// Returns tasks ordered by priority:
+// [
+//   'Fix critical bug in user login',
+//   'Prepare for client presentation', 
+//   'Review quarterly reports',
+//   'Update team documentation'
+// ]
 ```
 
-## Parameters
+## API
 
-- `list` (Array) - Items to sort
-- `criteria` (string) - Sorting criteria description
-- `options` (Object) - Configuration options
-  - `batchSize` (number) - Items per batch (default: 10)
-  - `extremeK` (number) - Top/bottom items to track (default: 10)
-  - `iterations` (number) - Sorting iterations for accuracy (default: 1)
-  - `model` (Object) - LLM model configuration
-  - `llm` (Object) - Additional LLM options
+### `sort(items, config)`
 
-## Returns
+**Parameters:**
+- `items` (Array): Array of items to sort
+- `config` (Object): Configuration options
+  - `instructions` (string): Sorting criteria and context
+  - `batchSize` (number): Number of items to process in parallel (default: 20)
+  - `llm` (Object): LLM model options
 
-Array of items sorted according to the specified criteria.
+**Returns:** Promise<Array> - Sorted array of items
 
-## "Vibe Sort" Algorithm
+## Use Cases
 
-Uses an iterative batch sorting approach:
-1. Processes items in configurable batches
-2. Tracks top and bottom ranked items across batches, incrementally extracting both the top and bottom N.
-3. Incrementally moves inward until the entire list is sorted.
-
-## Examples
-
-### Business Analysis
+### Content Prioritization
 ```javascript
-const competitors = ['Netflix', 'Disney+', 'HBO Max', 'Hulu'];
-const sorted = await sort(competitors, 'content quality and user experience');
+import sort from './index.js';
+
+const articles = [
+  'Advanced React Patterns',
+  'Getting Started with JavaScript',
+  'CSS Grid Layout Basics',
+  'Node.js Performance Optimization'
+];
+
+const ordered = await sort(articles, {
+  instructions: 'Sort by learning difficulty, easiest first'
+});
+
+// Returns articles ordered by beginner-friendliness
 ```

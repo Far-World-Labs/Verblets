@@ -255,9 +255,46 @@ const MODEL_CONFIGS = {
 ## Documentation Requirements
 
 See `guidelines/DOCUMENTATION.md` for complete standards:
-- README structure: Title, description, cross-references, usage, API
+- README structure: Title, description, cross-references, usage, API, optional features
 - Lead with common use cases, realistic examples
 - Include model selection rationale for privacy-sensitive operations
+
+### Features Section Guidelines
+- **Only include Features sections for modules with genuinely powerful or non-obvious capabilities**
+- **Avoid listing common features**: Basic bulk processing, standard LLM integration, simple retries
+- **Include for exotic features**: Advanced algorithms, sophisticated processing, unique optimizations
+- **Keep concise**: 1-2 lines per feature, focus on what makes the module special
+
+### Use Cases Section Guidelines
+- **Default**: One compelling example that demonstrates the module's core value proposition
+- **Multiple examples only when**: Module has fundamentally different modes of operation or serves multiple distinct user personas
+- **Quality over quantity**: One excellent example beats multiple mediocre ones
+- **Show unique AI capabilities**: Highlight what makes this module special
+- **Realistic scenarios**: Use relatable, practical examples
+- **Natural configuration**: Integrate configuration options within examples, not separately
+
+### Anti-patterns to Avoid
+- Generic use cases that could apply to any module
+- Excessive lists of similar examples
+- Contrived scenarios that don't reflect real usage
+- Configuration examples without meaningful context
+- Bullet point use cases - always show code examples instead of generic bullet lists
+- Separate "Examples" sections - integrate examples directly into Use Cases
+- Sub-example variations - avoid multiple similar examples within one use case that are variations on the same theme
+- **Generic "Advanced Usage" sections** - don't create Advanced Usage sections that only show basic model configuration (llm options, temperature, etc.) unless there's genuinely advanced functionality beyond standard config
+
+### Advanced Usage Guidelines
+
+**Only include "Advanced Usage" sections when showing functionality that goes beyond basic model configuration.**
+
+**Generic model configuration should be documented in core library docs, not individual module READMEs.**
+
+**Advanced Usage sections should only exist for:**
+- Complex integration patterns specific to that module
+- Specialized configuration options unique to that module  
+- Multi-step workflows that demonstrate advanced capabilities
+- Error handling patterns specific to that module's domain
+- Performance optimization techniques for that specific use case
 
 ## Key Implementation Details
 

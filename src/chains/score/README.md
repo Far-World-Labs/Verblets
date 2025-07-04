@@ -1,97 +1,71 @@
 # score
 
-Score lines of text with automatic calibration. Each batch returns a JSON array so parsing stays reliable even with long lists. The chain first scores everything, then rescores a few low, middle, and high examples to calibrate. Those references feed a second scoring pass so every item is ranked consistently using OpenAI's JSON schema enforcement.
+Assign numeric scores to items in arrays using AI-powered evaluation with intelligent reasoning and consistent scoring criteria.
 
-For single-batch scoring, use the [list-score-lines](../../verblets/list-score-lines) verblet.
-
-## Basic Usage
+## Usage
 
 ```javascript
 import score from './index.js';
 
-const slogans = [
-  'Amazing deals every day!',
-  'Unlock a world of wonder', 
-  'Buy stuff now',
-  'Experience the difference',
-  'Quality you can trust',
-  'Innovation that inspires'
+const proposals = [
+  'Implement AI-powered customer service chatbot',
+  'Redesign company website with modern UI',
+  'Launch social media marketing campaign',
+  'Develop mobile app for existing platform',
+  'Create employee training program'
 ];
 
-const { scores } = await score(slogans, 'How catchy is this marketing slogan?');
-// scores returned as numeric values
+const scores = await score(proposals, 'business impact potential (1-10)', { normalize: true });
+// Returns: [
+//   { item: 'Implement AI-powered customer service chatbot', score: 8.5 },
+//   { item: 'Redesign company website with modern UI', score: 7.2 },
+//   { item: 'Launch social media marketing campaign', score: 6.8 },
+//   { item: 'Develop mobile app for existing platform', score: 9.1 },
+//   { item: 'Create employee training program', score: 5.4 }
+// ]
 ```
 
-## Parameters
+## API
 
-- **items** (string[]): Array of text items to score
-- **instructions** (string): Natural language description of scoring criteria
-- **config** (Object): Configuration options
-  - **chunkSize** (number): Items per batch (default: 10)
-  - **maxAttempts** (number): Retry attempts for failed batches (default: 3)
-  - **llm** (Object): LLM model options (default: uses system default)
+### `score(array, criteria, config)`
 
-## Return Value
+**Parameters:**
+- `array` (Array): Items to score
+- `criteria` (string): Natural language description of scoring criteria
+- `config` (Object): Configuration options
+  - `scale` (string): Scoring scale (default: '1-10')
+  - `normalize` (boolean): Normalize scores across the range (default: false)
+  - `chunkSize` (number): Items per batch (default: 10)
+  - `llm` (Object): LLM model options
 
-Returns an object with:
-- **scores** (number[]): Array of numerical scores (0-10 scale) corresponding to each input item
-- **items** (string[]): Array of original items in the same order as scores
-
-## Features
-
-- **Two-pass calibration**: Initial scoring followed by calibrated rescoring for consistency
-- **Batch processing**: Handles large datasets by processing items in manageable chunks
-- **JSON schema enforcement**: Uses OpenAI's structured output for reliable parsing
-- **Automatic retry**: Failed chunks are automatically retried for improved reliability
-- **Consistent scaling**: Calibration ensures scores are comparable across all items
+**Returns:** Promise<Array<Object>> - Array of objects with `item` and `score` properties
 
 ## Use Cases
 
-- Evaluating content quality at scale
-- Ranking customer feedback by sentiment or urgency
-- Scoring marketing materials for effectiveness
-- Assessing document relevance or importance
-- Rating user-generated content for moderation
-- Comparing product descriptions for quality
-
-## Advanced Usage
-
+### Resume Screening
 ```javascript
-// Custom scoring with specific criteria
-const { scores, items } = await score(
-  customerReviews,
-  'Rate the helpfulness and detail of this product review',
-  {
-    chunkSize: 15,
-    maxAttempts: 5,
-    llm: { model: 'gpt-4', temperature: 0.2 }
-  }
-);
+import score from './index.js';
 
-// Scoring different content types
-const blogPosts = [
-  'How to bake perfect cookies',
-  'The science behind climate change',
-  'Top 10 vacation destinations'
+const resumes = [
+  'Software Engineer with 5 years React experience',
+  'Full-stack developer with Node.js and Python skills',
+  'Recent graduate with internship experience',
+  'Senior developer with team leadership background'
 ];
-const { scores } = await score(blogPosts, 'How engaging and well-written is this title?');
 
-// Processing large datasets
-const massiveList = Array.from({ length: 100 }, (_, i) => `Item ${i}`);
-const { scores } = await score(
-  massiveList, 
-  'rate the uniqueness of this item name',
-  { chunkSize: 20 }
-);
+const ranked = await score(resumes, 'suitability for senior developer role', { scale: '1-100' });
+// Returns scored resumes for hiring decisions
 ```
 
-## Calibration Process
+### Content Quality Assessment
+```javascript
+const articles = [
+  'Comprehensive guide to machine learning basics',
+  'Quick tips for better productivity',
+  'In-depth analysis of market trends',
+  'Simple tutorial on web development'
+];
 
-1. **Initial Scoring**: All items are scored in batches using the provided criteria
-2. **Sample Selection**: Low, medium, and high scoring examples are selected for calibration
-3. **Rescoring**: Selected samples are rescored with additional context for consistency
-4. **Final Adjustment**: All scores are adjusted based on calibration results
-
-## Error Handling
-
-The chain automatically retries failed batches up to `maxAttempts` times. Items from failed batches will be excluded from the final results. The function maintains order correspondence between input items and output scores.
+const quality = await score(articles, 'educational value and depth', { normalize: true });
+// Returns quality scores for content curation
+```

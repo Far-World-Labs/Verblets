@@ -1,116 +1,95 @@
 # retry
 
-Robust retry mechanism for handling transient failures in operations with exponential backoff and intelligent error filtering.
+Executes functions with automatic retry logic and exponential backoff. Returns the result of the operation if successful, or throws the final error if all attempts fail.
 
 ## Usage
 
 ```javascript
-import retry from './retry/index.js';
+import retry from './index.js';
 
-// Retry a network request
+// Basic retry with default settings
 const result = await retry(async () => {
-  const response = await fetch('/api/data');
-  if (!response.ok) throw new Error('Request failed');
+  const response = await fetch('https://api.example.com/data');
+  if (!response.ok) throw new Error('Network error');
   return response.json();
-}, {
-  maxAttempts: 3,
-  baseDelay: 1000
 });
+
+// Custom retry configuration
+const data = await retry(
+  async () => {
+    return await unstableOperation();
+  },
+  {
+    maxAttempts: 5,
+    initialDelay: 1000,
+    maxDelay: 30000,
+    backoffFactor: 2,
+    retryCondition: (error) => error.message.includes('timeout')
+  }
+);
 ```
 
-## Parameters
+## API
 
-- **`operation`** (function, required): Async function to retry
-- **`config`** (object, optional): Configuration options
-  - **`maxAttempts`** (number, default: 3): Maximum number of retry attempts
-  - **`baseDelay`** (number, default: 1000): Initial delay in milliseconds
-  - **`maxDelay`** (number, default: 30000): Maximum delay between attempts
-  - **`backoffMultiplier`** (number, default: 2): Exponential backoff multiplier
-  - **`shouldRetry`** (function, optional): Custom function to determine if error should trigger retry
-  - **`onRetry`** (function, optional): Callback executed before each retry attempt
+### `retry(fn, options)`
 
-## Return Value
+**Parameters:**
+- `fn` (function): Async function to execute with retry logic
+- `options` (object, optional): Configuration options
+  - `maxAttempts` (number): Maximum number of attempts (default: 3)
+  - `initialDelay` (number): Initial delay in milliseconds (default: 1000)
+  - `maxDelay` (number): Maximum delay between attempts (default: 30000)
+  - `backoffFactor` (number): Multiplier for exponential backoff (default: 2)
+  - `retryCondition` (function): Function to determine if error should trigger retry (default: always retry)
 
-Returns the result of the operation if successful, or throws the final error if all attempts fail.
-
-## Features
-
-- **Exponential Backoff**: Intelligent delay scaling to avoid overwhelming failing services
-- **Error Filtering**: Customizable logic to determine which errors warrant retries
-- **Timeout Handling**: Respects operation timeouts and cancellation signals
-- **Retry Callbacks**: Hook into retry attempts for logging or monitoring
+**Returns:** Promise that resolves with the function result or rejects with the final error
 
 ## Use Cases
 
-### API Request Handling
+### Network Operations
 ```javascript
-const apiData = await retry(
-  () => fetch('/api/users').then(r => r.json()),
-  { maxAttempts: 5, baseDelay: 500 }
-);
-```
+import retry from './index.js';
 
-### Database Operations
-```javascript
-const dbResult = await retry(async () => {
-  return await database.query('SELECT * FROM users');
-}, {
-  maxAttempts: 3,
-  shouldRetry: (error) => error.code === 'CONNECTION_LOST'
-});
+// Retry API calls with exponential backoff
+const fetchUserData = async (userId) => {
+  return retry(
+    async () => {
+      const response = await fetch(`/api/users/${userId}`);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return response.json();
+    },
+    {
+      maxAttempts: 3,
+      initialDelay: 500,
+      retryCondition: (error) => error.message.includes('HTTP 5')
+    }
+  );
+};
 ```
-
-### File Operations
-```javascript
-const fileContent = await retry(
-  () => fs.readFile('config.json', 'utf8'),
-  { maxAttempts: 2, baseDelay: 100 }
-);
-```
-
-## Advanced Usage
 
 ### Custom Retry Logic
 ```javascript
-const result = await retry(operation, {
-  maxAttempts: 5,
-  shouldRetry: (error, attempt) => {
-    // Only retry network errors, not validation errors
-    return error.code === 'NETWORK_ERROR' && attempt < 3;
-  },
-  onRetry: (error, attempt) => {
-    console.log(`Retry attempt ${attempt} after error:`, error.message);
-  }
-});
-```
-
-### With Timeout Control
-```javascript
-const controller = new AbortController();
-setTimeout(() => controller.abort(), 10000); // 10 second timeout
-
-const result = await retry(
-  () => longRunningOperation({ signal: controller.signal }),
-  { maxAttempts: 3 }
-);
+// Only retry on specific error types
+const processData = async (data) => {
+  return retry(
+    async () => {
+      return await complexDataProcessing(data);
+    },
+    {
+      maxAttempts: 5,
+      retryCondition: (error) => {
+        // Only retry on transient errors
+        return error.code === 'ECONNRESET' || 
+               error.code === 'ETIMEDOUT' ||
+               error.message.includes('temporary');
+      }
+    }
+  );
+};
 ```
 
 ## Related Modules
 
-- [`with-inactivity-timeout`](../with-inactivity-timeout/README.md) - Add timeout handling to operations
-- [`chatgpt`](../chatgpt/README.md) - Uses retry for API resilience
-- [`llm-logger`](../llm-logger/README.md) - Logging integration for retry operations
-
-## Error Handling
-
-```javascript
-try {
-  const result = await retry(operation, config);
-} catch (error) {
-  if (error.message.includes('Max attempts exceeded')) {
-    console.log('Operation failed after all retry attempts');
-  } else {
-    console.log('Operation failed with non-retryable error');
-  }
-}
-``` 
+- [`with-inactivity-timeout`](../with-inactivity-timeout/README.md) - Timeout handling for long operations
+- [`chatgpt`](../chatgpt/README.md) - LLM integration with built-in retry logic
+- [`llm-logger`](../llm-logger/README.md) - Logging utilities for debugging retry behavior 

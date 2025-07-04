@@ -1,129 +1,98 @@
 # collect-terms
 
-Extract the most difficult or technical terms from any passage. Useful for building a glossary or highlighting vocabulary that needs clarification.
+Extract and organize specialized terminology from text using AI-powered analysis with intelligent categorization and contextual understanding.
 
 ## Usage
 
 ```javascript
-import collectTerms from './collect-terms/index.js';
+import collectTerms from './index.js';
 
-const terms = await collectTerms(longText, { topN: 15 });
-// => ['usufructuary rights', 'riparian', 'hydrological cycle', ...]
+const text = `
+Machine learning algorithms use neural networks to process data. 
+Deep learning models employ backpropagation for training. 
+Supervised learning requires labeled datasets, while unsupervised learning finds patterns without labels.
+`;
+
+const terms = await collectTerms(text, 'machine learning terminology');
+
+// Returns: [
+//   { term: 'machine learning', category: 'field', definition: 'AI technique for pattern recognition' },
+//   { term: 'neural networks', category: 'architecture', definition: 'Computing systems inspired by biological neural networks' },
+//   { term: 'deep learning', category: 'technique', definition: 'ML using deep neural networks' },
+//   { term: 'backpropagation', category: 'algorithm', definition: 'Training algorithm for neural networks' },
+//   { term: 'supervised learning', category: 'approach', definition: 'Learning with labeled training data' },
+//   { term: 'unsupervised learning', category: 'approach', definition: 'Learning without labeled data' }
+// ]
 ```
 
-## Parameters
+## API
 
-- **`text`** (string, required): The text passage to analyze for technical terms
-- **`config`** (object, optional): Configuration options
-  - **`topN`** (number, default: 10): Maximum number of terms to extract
-  - **`minComplexity`** (number, default: 3): Minimum complexity threshold for term selection
-  - **`excludeCommon`** (boolean, default: true): Whether to exclude common words
-  - **`llm`** (object, optional): LLM configuration for analysis
+### `collectTerms(text, domain, config)`
 
-## Return Value
+**Parameters:**
+- `text` (string): Text to extract terms from
+- `domain` (string): Domain or field context for term extraction
+- `config` (Object): Configuration options
+  - `includeDefinitions` (boolean): Include term definitions (default: true)
+  - `categorize` (boolean): Group terms by category (default: true)
+  - `minTermLength` (number): Minimum term length (default: 2)
+  - `maxTerms` (number): Maximum number of terms to extract (default: 50)
+  - `llm` (Object): LLM model options
 
-Returns an array of strings representing the most difficult or technical terms found in the text, ordered by complexity/importance.
+**Returns:** Promise<Array<Object>> - Array of term objects with structure:
+```javascript
+{
+  term: string,       // The extracted term
+  category: string,   // Term category
+  definition: string, // Term definition
+  frequency: number   // Frequency in text
+}
+```
 
 ## Features
 
-- **Intelligent Term Recognition**: Identifies technical jargon, specialized vocabulary, and complex concepts
-- **Complexity Scoring**: Ranks terms by difficulty and technical specificity
-- **Contextual Analysis**: Considers domain-specific terminology and field expertise
-- **Configurable Filtering**: Adjustable thresholds for term selection and exclusion
-- **Multi-domain Support**: Works across various fields including legal, medical, scientific, and technical texts
+- **Domain-Aware Extraction**: Focuses on terminology relevant to specified domains
+- **Intelligent Categorization**: Groups terms by type, concept, or function
+- **Contextual Definitions**: Provides definitions based on usage context
+- **Frequency Analysis**: Tracks term occurrence and importance
+- **Flexible Configuration**: Customizable extraction criteria and output format
 
 ## Use Cases
 
-### Academic Research
+### Technical Documentation Analysis
 ```javascript
-const academicText = "The phenomenological approach to consciousness studies...";
-const terms = await collectTerms(academicText, { topN: 8 });
-// => ['phenomenological', 'consciousness studies', 'intentionality', ...]
+import collectTerms from './index.js';
+
+const documentation = `
+RESTful APIs use HTTP methods for CRUD operations. 
+Authentication tokens secure endpoints, while middleware handles request processing.
+`;
+
+const apiTerms = await collectTerms(documentation, 'web development', { maxTerms: 10 });
+// Returns web development terminology with definitions
+```
+
+### Academic Paper Processing
+```javascript
+const paper = `
+The study employed quantitative methods with statistical significance testing.
+Correlation analysis revealed significant relationships between variables.
+`;
+
+const researchTerms = await collectTerms(paper, 'research methodology', { 
+  categorize: true,
+  includeDefinitions: true 
+});
+// Returns categorized research terminology
 ```
 
 ### Legal Document Analysis
 ```javascript
-const legalText = "The aforementioned usufructuary rights shall be...";
-const terms = await collectTerms(legalText, { 
-  topN: 12, 
-  minComplexity: 4 
-});
-// => ['usufructuary rights', 'aforementioned', 'indemnification', ...]
-```
+const contract = `
+The parties agree to binding arbitration for dispute resolution.
+Confidentiality clauses protect proprietary information.
+`;
 
-### Technical Documentation
-```javascript
-const techDoc = "The microservice architecture implements...";
-const terms = await collectTerms(techDoc, { 
-  topN: 10,
-  excludeCommon: true 
-});
-// => ['microservice architecture', 'containerization', 'orchestration', ...]
-```
-
-## Advanced Usage
-
-### Custom Complexity Thresholds
-```javascript
-const terms = await collectTerms(text, {
-  topN: 20,
-  minComplexity: 2,  // Lower threshold for more inclusive results
-  excludeCommon: false
-});
-```
-
-### Batch Processing
-```javascript
-const documents = [doc1, doc2, doc3];
-const allTerms = await Promise.all(
-  documents.map(doc => collectTerms(doc, { topN: 5 }))
-);
-```
-
-## Integration Patterns
-
-### With Glossary Generation
-```javascript
-import collectTerms from './collect-terms/index.js';
-import { define } from '../define/index.js';
-
-const terms = await collectTerms(document);
-const glossary = await Promise.all(
-  terms.map(async term => ({
-    term,
-    definition: await define(term)
-  }))
-);
-```
-
-### With Content Analysis
-```javascript
-import collectTerms from './collect-terms/index.js';
-import { analyze } from '../analyze/index.js';
-
-const terms = await collectTerms(content);
-const analysis = await analyze(`Key terms: ${terms.join(', ')}`);
-```
-
-## Related Modules
-
-- [`define`](../define/README.md) - Generate definitions for extracted terms
-- [`analyze`](../analyze/README.md) - Analyze content complexity and readability
-- [`summarize`](../summarize/README.md) - Create summaries highlighting key concepts
-
-## Error Handling
-
-```javascript
-try {
-  const terms = await collectTerms(text, config);
-  console.log(`Extracted ${terms.length} technical terms`);
-} catch (error) {
-  if (error.message.includes('Empty text')) {
-    console.log('No text provided for analysis');
-  } else if (error.message.includes('Invalid config')) {
-    console.log('Configuration parameters are invalid');
-  } else {
-    console.error('Term extraction failed:', error.message);
-  }
-}
+const legalTerms = await collectTerms(contract, 'contract law', { minTermLength: 3 });
+// Returns legal terminology relevant to contracts
 ```

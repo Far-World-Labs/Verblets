@@ -14,7 +14,8 @@ Documentation serves different audiences and purposes across the system. Each ty
 3. **Cross-references**: Link to related modules (variants, alternatives) early
 4. **Usage example**: Practical, relatable scenario showing core functionality
 5. **API documentation**: Parameters, return values, configuration options
-6. **Integration patterns**: How it works with other modules (if applicable)
+6. **Features** (Optional): Only for modules with genuinely powerful or non-obvious capabilities
+7. **Integration patterns**: How it works with other modules (if applicable)
 
 **Quality Standards**:
 - **Lead with salient, differentiating benefits** - what makes this uniquely powerful
@@ -37,6 +38,9 @@ Documentation serves different audiences and purposes across the system. Each ty
 - Lists of benefits where items overlap or are obvious
 - Copying boilerplate text between similar modules
 - Explaining implementation details users don't need
+- **Bullet point use cases** - always show code examples instead of generic bullet lists
+- **Separate "Examples" sections** - integrate examples directly into Use Cases
+- **Sub-example variations** - avoid multiple similar examples within one use case that are variations on the same theme
 
 ### Root-Level README
 **Purpose**: Project overview and getting started guide  
@@ -125,3 +129,75 @@ Key practices demonstrated:
 - Consolidate information when multiple files cover similar topics
 - Remove outdated examples and references
 - Ensure architectural tests validate these guidelines 
+
+### Anti-patterns to Avoid
+- Generic use cases that could apply to any module
+- Excessive lists of similar examples
+- Contrived scenarios that don't reflect real usage
+- Configuration examples without meaningful context
+- Bullet point use cases - always show code examples instead of generic bullet lists
+- Separate "Examples" sections - integrate examples directly into Use Cases
+- Sub-example variations - avoid multiple similar examples within one use case that are variations on the same theme
+- **Generic "Advanced Usage" sections** - don't create Advanced Usage sections that only show basic model configuration (llm options, temperature, etc.) unless there's genuinely advanced functionality beyond standard config
+
+### Advanced Usage Guidelines
+
+**Only include "Advanced Usage" sections when showing functionality that goes beyond basic model configuration.**
+
+**Generic model configuration (temperature, maxTokens, modelName, etc.) should be documented in:**
+- Core library documentation (`src/lib/chatgpt/README.md`)
+- Main chains documentation (`src/chains/README.md`) 
+- Main verblets documentation (`src/verblets/README.md`)
+
+**Advanced Usage sections should only exist for:**
+- Complex integration patterns specific to that module
+- Specialized configuration options unique to that module
+- Multi-step workflows that demonstrate advanced capabilities
+- Error handling patterns specific to that module's domain
+- Performance optimization techniques for that specific use case
+
+**Examples of what NOT to include in Advanced Usage:**
+```javascript
+// DON'T - This is just basic model configuration
+const result = await myFunction(input, {
+  llm: {
+    temperature: 0.1,
+    maxTokens: 150
+  }
+});
+```
+
+**Examples of what TO include in Advanced Usage:**
+```javascript
+// DO - This shows module-specific advanced functionality
+const result = await complexChain(input, {
+  stages: ['analyze', 'transform', 'validate'],
+  retryStrategy: 'exponential',
+  fallbackMode: 'graceful'
+});
+``` 
+
+### Features Section Guidelines
+
+**Only include a Features section when the module has:**
+- Genuinely powerful capabilities not obvious from the description/example
+- Exotic or advanced features that aren't immediately apparent
+- Sophisticated algorithms or processing strategies worth highlighting
+
+**Common features to avoid listing:**
+- Basic bulk processing or parallelism (standard for chains)
+- Standard LLM integration patterns
+- Basic error handling or retries
+- Simple configuration options
+
+**Examples of when to include Features:**
+- Advanced windowing algorithms (like join chain's overlapping windows)
+- Sophisticated scoring or ranking systems
+- Complex multi-step processing workflows
+- Unique optimization strategies
+- Advanced parsing or analysis capabilities
+
+**Format:**
+- Keep features concise (1-2 lines each)
+- Focus on what makes the module special
+- Avoid generic capabilities that apply to most modules 

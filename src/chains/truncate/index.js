@@ -84,20 +84,29 @@ export default async function truncate(text, instructions, config = {}) {
   const reversedChunks = [...chunks].reverse();
   const textsToScore = reversedChunks.map((chunk) => chunk.text);
 
-  // Score chunks in reverse order for content that should be removed
-  const scoringInstructions = `${asXML(instructions, { tag: 'instructions' })}
+  // Score chunks in reverse order - score how much content should be KEPT
+  const scoringInstructions = `${asXML(instructions, { tag: 'removal_criteria' })}
   
 NOTE: These text chunks are in REVERSE order (from end to beginning of document).
-Score how well each chunk matches the criteria for content that should be truncated.`;
+Score how important each chunk is to KEEP in the document (0 = should be removed, 10 = must keep).
+Consider the removal criteria above when scoring.`;
 
   const result = await score(textsToScore, scoringInstructions, {
     ...config,
-    stopOnThreshold: threshold,
+    // Don't use stopOnThreshold - we need all scores to find high ones
   });
 
-  // If we found content that should be removed, truncate there
-  if (result.stoppedAt !== undefined) {
-    const removeChunkIndex = result.stoppedAt;
+  // Debug: log the scores to understand what's happening
+  console.log('Truncate debug:', {
+    threshold,
+    scores: result.scores,
+    chunks: textsToScore.map((t, i) => ({ index: i, text: `${t.substring(0, 50)}...` })),
+  });
+
+  // Find the first chunk (from the end) that should be removed (score < threshold)
+  const removeChunkIndex = result.scores.findIndex((score) => score < threshold);
+
+  if (removeChunkIndex >= 0) {
     const originalIndex = chunks.length - 1 - removeChunkIndex;
 
     // Truncate at the start of the chunk that should be removed

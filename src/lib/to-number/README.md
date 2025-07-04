@@ -1,6 +1,6 @@
 # to-number
 
-A utility for converting various input types to numeric values with intelligent parsing and validation.
+A utility for converting LLM response strings to numeric values with intelligent parsing and validation.
 
 ## Basic Usage
 
@@ -66,4 +66,4 @@ toNumber('-Infinity'); // => -Infinity
 - **Validation**: Ensures output is a valid number or null
 - **Type Safety**: Consistent numeric output for valid inputs
 - **Whitespace Handling**: Automatically trims whitespace from strings
-- **Edge Case Support**: Properly handles Infinity, -Infinity, and NaN 
+- **Edge Case Support**: Properly handles Infinity, -Infinity, and NaN
