@@ -1,221 +1,72 @@
 # split
 
-LLM-powered text splitter that intelligently inserts delimiters where your instructions apply. Use it when you need to divide long text by meaning, context, or semantic boundaries rather than exact characters or line breaks.
-<<<<<<< HEAD
-
-## Usage
-=======
->>>>>>> origin/main
+Intelligently split text into meaningful segments using AI-powered analysis with context-aware boundaries and semantic understanding.
 
 ## Usage
 
 ```javascript
 import split from './index.js';
 
-const text = "First paragraph about cats. Second paragraph about dogs. Third paragraph about birds.";
-const result = await split(text, 'between different animal topics', { delimiter: '---SPLIT---' });
-// => "First paragraph about cats.---SPLIT---Second paragraph about dogs.---SPLIT---Third paragraph about birds."
+const article = `
+Machine learning is transforming industries worldwide. Companies are adopting AI solutions to improve efficiency and reduce costs.
+
+The healthcare sector has seen remarkable advances with AI-powered diagnostics. Medical professionals can now detect diseases earlier and more accurately.
+
+Education is also being revolutionized through personalized learning platforms. Students receive customized instruction based on their individual needs and learning styles.
+`;
+
+const sections = await split(article, 'split into topic-based paragraphs');
+// Returns: [
+//   'Machine learning is transforming industries worldwide...',
+//   'The healthcare sector has seen remarkable advances...',
+//   'Education is also being revolutionized...'
+// ]
 ```
 
-## Parameters
+## API
 
-- **`text`** (string, required): The text content to split
-- **`instructions`** (string, required): Natural language description of where to insert delimiters
-- **`config`** (object, optional): Configuration options
-  - **`delimiter`** (string, default: '\n---\n'): The delimiter string to insert at split points
-  - **`maxSplits`** (number, optional): Maximum number of splits to perform
-  - **`preserveWhitespace`** (boolean, default: true): Whether to preserve original whitespace
-  - **`llm`** (object, optional): LLM configuration for analysis
+### `split(text, criteria, config)`
 
-## Return Value
+**Parameters:**
+- `text` (string): Text to split
+- `criteria` (string): Natural language description of how to split
+- `config` (Object): Configuration options
+  - `maxSegments` (number): Maximum number of segments (optional)
+  - `preserveFormatting` (boolean): Keep original formatting (default: true)
+  - `llm` (Object): LLM model options
 
-Returns a string with delimiters inserted at the appropriate split points according to the provided instructions.
-
-## Features
-
-- **Semantic Splitting**: Divides text based on meaning and context rather than arbitrary character counts
-- **Natural Language Instructions**: Uses plain English descriptions to define split criteria
-- **Flexible Delimiters**: Supports custom delimiter strings for different use cases
-- **Context Awareness**: Maintains understanding of document structure and content flow
-- **Preserves Formatting**: Optionally maintains original text formatting and whitespace
+**Returns:** Promise<Array<string>> - Array of text segments
 
 ## Use Cases
 
-### Comedy Routine Analysis
+### Document Processing
 ```javascript
 import split from './index.js';
 
-const text = "First paragraph about cats. Second paragraph about dogs. Third paragraph about birds.";
-const result = await split(text, 'between different animal topics', { delimiter: '---SPLIT---' });
-// => "First paragraph about cats.---SPLIT---Second paragraph about dogs.---SPLIT---Third paragraph about birds."
+const manual = `
+Chapter 1: Getting Started
+This chapter covers the basics of installation and setup.
+
+Chapter 2: Configuration
+Learn how to configure the system for optimal performance.
+
+Chapter 3: Advanced Features
+Explore advanced functionality and customization options.
+`;
+
+const chapters = await split(manual, 'separate by chapters', { maxSegments: 5 });
+// Returns each chapter as a separate segment
 ```
 
-<<<<<<< HEAD
-## Parameters
-
-- **`text`** (string, required): The text content to split
-- **`instructions`** (string, required): Natural language description of where to insert delimiters
-- **`config`** (object, optional): Configuration options
-  - **`delimiter`** (string, default: '\n---\n'): The delimiter string to insert at split points
-  - **`maxSplits`** (number, optional): Maximum number of splits to perform
-  - **`preserveWhitespace`** (boolean, default: true): Whether to preserve original whitespace
-  - **`llm`** (object, optional): LLM configuration for analysis
-
-## Return Value
-
-Returns a string with delimiters inserted at the appropriate split points according to the provided instructions.
-
-## Features
-
-- **Semantic Splitting**: Divides text based on meaning and context rather than arbitrary character counts
-- **Natural Language Instructions**: Uses plain English descriptions to define split criteria
-- **Flexible Delimiters**: Supports custom delimiter strings for different use cases
-- **Context Awareness**: Maintains understanding of document structure and content flow
-- **Preserves Formatting**: Optionally maintains original text formatting and whitespace
-
-## Use Cases
-
-### Document Section Separation
+### Content Analysis
 ```javascript
-const document = "Introduction section... Method section... Results section...";
-const sections = await split(document, 'between major document sections', { delimiter: '\n\n===\n\n' });
-// Split into distinct sections for processing
-```
+const transcript = `
+Speaker A: Welcome to today's meeting. Let's start with the quarterly review.
+Speaker B: Thank you. Our sales numbers show a 15% increase this quarter.
+Speaker A: That's excellent news. What about our marketing initiatives?
+Speaker B: The new campaign launched successfully and generated significant interest.
+`;
 
-## Advanced Usage
-
-### Custom Delimiters with Metadata
-```javascript
-const result = await split(longText, 'at chapter boundaries', { 
-  delimiter: '\n\n<!-- CHAPTER_BREAK -->\n\n',
-  maxSplits: 10
-});
-```
-
-### Preserving Structure
-```javascript
-const result = await split(codeFile, 'between function definitions', {
-  delimiter: '\n\n// === FUNCTION SEPARATOR ===\n\n',
-  preserveWhitespace: true
-});
-```
-
-### Batch Processing
-```javascript
-const documents = [doc1, doc2, doc3];
-const splitResults = await Promise.all(
-  documents.map(doc => split(doc, 'between major sections', { delimiter: '---' }))
-);
-=======
-const TOPIC = '---TOPIC---';
-const PUNCHLINE = '---PUNCHLINE---';
-
-// Split by comedy topics
-const topicsMarked = await split(comedySet, 
-  'between different comedy topics or subject changes', 
-  { delimiter: TOPIC }
-);
-
-const topics = topicsMarked.split(TOPIC);
-
-// Split each topic by punchlines
-const jokes = await Promise.all(
-  topics.map(topic => split(topic, 'after sentences that end with punchlines', { delimiter: PUNCHLINE }))
-);
-```
-
-### Document Section Separation
-```javascript
-const document = "Introduction section... Method section... Results section...";
-const sections = await split(document, 'between major document sections', { delimiter: '\n\n===\n\n' });
-// Split into distinct sections for processing
-```
-
-### Dialogue Parsing
-```javascript
-const script = "Character A: Hello there. Character B: Hi! Character A: How are you?";
-const dialogue = await split(script, 'between different speakers', { delimiter: '\n---SPEAKER---\n' });
-// Separate dialogue by speaker changes
-```
-
-### Email Thread Separation
-```javascript
-const emailThread = "Original message... Reply 1... Reply 2...";
-const messages = await split(emailThread, 'between individual email messages', { delimiter: '\n\n[MESSAGE]\n\n' });
-// Extract individual messages from thread
-```
-
-## Advanced Usage
-
-### Custom Delimiters with Metadata
-```javascript
-const result = await split(longText, 'at chapter boundaries', { 
-  delimiter: '\n\n<!-- CHAPTER_BREAK -->\n\n',
-  maxSplits: 10
-});
-```
-
-### Preserving Structure
-```javascript
-const result = await split(codeFile, 'between function definitions', {
-  delimiter: '\n\n// === FUNCTION SEPARATOR ===\n\n',
-  preserveWhitespace: true
-});
-```
-
-### Batch Processing
-```javascript
-const documents = [doc1, doc2, doc3];
-const splitResults = await Promise.all(
-  documents.map(doc => split(doc, 'between major sections', { delimiter: '---' }))
-);
-```
-
-## Integration Patterns
-
-### With Text Processing Pipeline
-```javascript
-import split from './split/index.js';
-import { summarize } from '../summarize/index.js';
-
-const sections = (await split(longDocument, 'between major sections')).split('\n---\n');
-const summaries = await Promise.all(
-  sections.map(section => summarize(section))
-);
-```
-
-### With Content Analysis
-```javascript
-import split from './split/index.js';
-import { analyze } from '../analyze/index.js';
-
-const paragraphs = (await split(text, 'between paragraphs')).split('\n---\n');
-const analyses = await Promise.all(
-  paragraphs.map(p => analyze(p))
-);
-```
-
-## Related Modules
-
-- [`chunk`](../chunk/README.md) - Split text into fixed-size chunks
-- [`extract`](../extract/README.md) - Extract specific content from text
-- [`parse`](../parse/README.md) - Parse structured content from text
-
-## Error Handling
-
-```javascript
-try {
-  const result = await split(text, instructions, config);
-  const parts = result.split(config.delimiter || '\n---\n');
-  console.log(`Text split into ${parts.length} sections`);
-} catch (error) {
-  if (error.message.includes('Empty text')) {
-    console.log('No text provided for splitting');
-  } else if (error.message.includes('Invalid instructions')) {
-    console.log('Split instructions are unclear or invalid');
-  } else {
-    console.error('Text splitting failed:', error.message);
-  }
-}
->>>>>>> origin/main
+const turns = await split(transcript, 'separate by speaker turns');
+// Returns each speaker's contribution as separate segments
 ```

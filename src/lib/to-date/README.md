@@ -1,261 +1,123 @@
 # to-date
 
-<<<<<<< HEAD
-Convert string values to JavaScript Date objects with intelligent parsing for LLM responses.
-=======
-Simple date parser that converts string values to JavaScript Date objects with response formatting cleanup.
-
-This utility is designed to parse date strings from LLM responses, handling common response formatting and providing clean error handling for invalid dates.
->>>>>>> origin/main
+Converts string values to JavaScript Date objects with intelligent parsing for LLM responses.
 
 ## Usage
 
 ```javascript
-<<<<<<< HEAD
 import toDate from './index.js';
 
-// Convert various date formats
-const date1 = toDate('2024-01-15');           // => Date object
-const date2 = toDate('January 15, 2024');     // => Date object
-const date3 = toDate('2024-01-15T10:30:00Z'); // => Date object
-const date4 = toDate('undefined');            // => undefined
+// Basic date conversion
+const date1 = toDate('2023-12-25');
+console.log(date1); // Mon Dec 25 2023 00:00:00 GMT...
+
+const date2 = toDate('December 25, 2023');
+console.log(date2); // Mon Dec 25 2023 00:00:00 GMT...
 
 // Invalid dates throw errors
 try {
-  const invalid = toDate('not a date');
+  toDate('invalid-date');
 } catch (error) {
-  console.log(error.message); // => 'ChatGPT output [error]'
+  console.log(error.message); // "Invalid date: invalid-date"
 }
 ```
 
 ## Parameters
 
-- **input** (any): The value to convert to a Date
-  - Strings: Parsed using JavaScript's Date constructor
-  - 'undefined' string: Returns undefined
-  - Other types: Converted to string and processed
+- **`value`** (any): The value to convert to a Date object
+  - If `value` is already a Date object, returns it unchanged
+  - If `value` is a string, attempts to parse it as a date
+  - If `value` is a number, treats it as a timestamp
+  - If `value` is null or undefined, returns null
 
 ## Return Value
 
-Returns a Date object if conversion is successful, `undefined` if input is 'undefined', or **throws an error** if the input cannot be converted to a valid date.
+- Returns a JavaScript Date object for valid date inputs
+- Returns `null` for null/undefined inputs
+- Throws an error for invalid date strings or unsupported types
 
 ## Examples
 
 ```javascript
-// Common date formats
-toDate('2024-01-15');                    // => Date object
-toDate('January 15, 2024');              // => Date object
-toDate('2024-01-15T10:30:00Z');          // => Date object
-toDate('Mon Jan 15 2024');               // => Date object
-toDate('undefined');                     // => undefined
+// Various date formats
+toDate('2023-12-25T10:30:00Z');     // ISO format
+toDate('12/25/2023');               // US format
+toDate('25/12/2023');               // UK format (may be ambiguous)
+toDate('Dec 25, 2023');             // Natural language
+toDate('2023-12-25 10:30:00');      // SQL format
+
+// Timestamp conversion
+toDate(1703505600000);              // Unix timestamp
+
+// Existing Date objects
+const existing = new Date();
+toDate(existing);                   // Returns the same Date object
+
+// Null handling
+toDate(null);                       // Returns null
+toDate(undefined);                  // Returns null
 
 // Invalid inputs (throw errors)
-toDate('invalid date');                  // => throws Error('ChatGPT output [error]')
-toDate('2024-13-45');                    // => throws Error('ChatGPT output [error]')
-toDate('');                              // => throws Error('ChatGPT output [error]')
+toDate('not-a-date');               // Error: Invalid date: not-a-date
+toDate({});                         // Error: Invalid date: [object Object]
 ```
-=======
-import toDate from './src/lib/to-date/index.js';
-
-// Parse date strings
-const date1 = toDate('2023-12-25T10:30:00Z');
-// => Date object for December 25, 2023
-
-// Handle response formatting
-const date2 = toDate('Answer: 2023-12-25');
-// => Date object (strips "Answer: " prefix)
-
-// Handle undefined responses
-const date3 = toDate('undefined');
-// => undefined
-```
-
-## API
-
-### `toDate(value)`
-
-**Parameters:**
-- `value` (any): The value to convert to a Date (will be converted to string)
-
-**Returns:**
-- `Date`: Valid JavaScript Date object for parseable inputs
-- `undefined`: When input is the string "undefined" (case-insensitive)
-- **Throws Error**: "ChatGPT output [error]" for invalid date strings
-
-**Features:**
-- **Response Cleanup**: Uses `stripResponse` to remove common LLM response formatting
-- **Undefined Handling**: Returns `undefined` for "undefined" string responses
-- **Error Handling**: Throws descriptive errors for unparseable dates
-- **Type Coercion**: Converts any input to string before processing
->>>>>>> origin/main
 
 ## Use Cases
 
-### LLM Response Processing
+### Processing LLM Date Responses
 ```javascript
-<<<<<<< HEAD
 import toDate from './index.js';
 
-// Process date responses from LLMs
-const llmResponse = await chatGPT("When was the document created?");
-try {
-  const createdDate = toDate(llmResponse);
-  console.log(`Document created on: ${createdDate.toLocaleDateString()}`);
-} catch (error) {
-  console.log('LLM did not return a valid date');
-}
-
-// Handle undefined responses
-const maybeDate = toDate(await chatGPT("What's the deadline?"));
-if (maybeDate === undefined) {
-  console.log('No deadline specified');
-}
-=======
-// Process date responses from ChatGPT
-const extractedDate = toDate(llmResponse);
-if (extractedDate) {
-  console.log('Parsed date:', extractedDate.toISOString());
-}
-```
-
-### Response Validation
-```javascript
-// Validate LLM-generated dates
-try {
-  const scheduledDate = toDate(chatGptResponse);
-  if (scheduledDate < new Date()) {
-    console.warn('Scheduled date is in the past');
-  }
-} catch (error) {
-  console.error('Invalid date from LLM:', error.message);
-}
-```
-
-### Data Pipeline Processing
-```javascript
-// Process multiple date responses
-const dates = llmResponses.map(response => {
-  try {
-    return toDate(response);
-  } catch (error) {
-    console.warn(`Invalid date response: ${response}`);
-    return null;
-  }
-}).filter(Boolean);
-```
-
-## Advanced Usage
-
-### Batch Processing with Error Handling
-```javascript
-function processDateResponses(responses) {
-  const results = [];
-  const errors = [];
-  
-  responses.forEach((response, index) => {
-    try {
-      const date = toDate(response);
-      if (date !== undefined) {
-        results.push({ index, date, original: response });
-      } else {
-        results.push({ index, date: null, original: response, reason: 'undefined' });
-      }
-    } catch (error) {
-      errors.push({ index, original: response, error: error.message });
-    }
-  });
-  
-  return { results, errors };
-}
-```
-
-### Integration with Form Processing
-```javascript
-// Handle form data that may contain LLM-processed dates
-function processFormWithLLMDates(formData) {
-  const processedData = { ...formData };
-  
-  // Process LLM-generated date fields
-  ['startDate', 'endDate', 'deadline'].forEach(field => {
-    if (formData[field]) {
-      try {
-        processedData[field] = toDate(formData[field]);
-      } catch (error) {
-        processedData[field] = null;
-        console.warn(`Invalid ${field}: ${formData[field]}`);
-      }
-    }
-  });
-  
-  return processedData;
-}
-```
-
-### Response Format Handling
-```javascript
-// Handle various LLM response formats
-const testResponses = [
-  'Answer: 2023-12-25',
-  'The date is: 2023-12-25T10:30:00Z',
-  '2023-12-25',
-  'undefined',
-  'UNDEFINED',
-  'invalid-date-string'
+// Convert various date formats from LLM responses
+const responses = [
+  'The event is on December 25, 2023',
+  'Meeting scheduled for 2023-12-25',
+  'Deadline: 12/25/2023'
 ];
 
-testResponses.forEach(response => {
-  try {
-    const result = toDate(response);
-    console.log(`"${response}" -> ${result ? result.toISOString() : 'undefined'}`);
-  } catch (error) {
-    console.log(`"${response}" -> ERROR: ${error.message}`);
-  }
+const dates = responses.map(response => {
+  // Extract date portion (implementation depends on your needs)
+  const dateStr = extractDateFromResponse(response);
+  return toDate(dateStr);
 });
 ```
 
-## Related Modules
-
-- [`strip-response`](../strip-response/) - Response formatting cleanup utility
-- [`to-number`](../to-number/) - Numeric conversion from LLM responses
-- [`to-bool`](../to-bool/) - Boolean conversion from LLM responses
-- [`to-enum`](../to-enum/) - Enum validation from LLM responses
-
-## Error Handling
-
+### Data Validation
 ```javascript
-// Graceful error handling
-function safeToDate(value, defaultValue = null) {
+function validateEventDate(input) {
   try {
-    const result = toDate(value);
-    return result !== undefined ? result : defaultValue;
+    const date = toDate(input);
+    if (date && date > new Date()) {
+      return date;
+    }
+    throw new Error('Date must be in the future');
   } catch (error) {
-    console.warn(`Date parsing failed for "${value}": ${error.message}`);
-    return defaultValue;
+    throw new Error(`Invalid event date: ${error.message}`);
   }
 }
+```
 
-// Usage
-const parsedDate = safeToDate(llmResponse, new Date());
->>>>>>> origin/main
+### Form Processing
+```javascript
+function processForm(formData) {
+  return {
+    name: formData.name,
+    birthDate: toDate(formData.birthDate),
+    startDate: toDate(formData.startDate),
+    endDate: toDate(formData.endDate)
+  };
+}
 ```
 
 ## Implementation Notes
 
-This utility is specifically designed for processing LLM responses and uses:
+- Built specifically for processing LLM responses that may contain dates in various formats
+- Provides consistent error handling with descriptive messages
+- Handles edge cases like null/undefined inputs gracefully
+- Uses JavaScript's native Date parsing with additional validation
 
-1. **String Conversion**: All inputs are converted to strings before processing
-2. **Response Stripping**: Removes common LLM response prefixes and formatting
-3. **Native Date Parsing**: Uses JavaScript's built-in `Date` constructor
-4. **Undefined Detection**: Special handling for "undefined" responses from LLMs
-5. **Error Consistency**: Throws standardized "ChatGPT output [error]" messages
-
-<<<<<<< HEAD
 ## Related Modules
 
-- [`to-number`](../to-number/) - Numeric conversion from LLM responses
-- [`to-bool`](../to-bool/) - Boolean conversion from LLM responses
-- [`to-enum`](../to-enum/) - Enum validation from LLM responses
-
-=======
->>>>>>> origin/main
-The function is optimized for simplicity and reliability when processing date strings from language model outputs rather than being a comprehensive date parsing solution. 
+- [`to-number`](../to-number/README.md) - Convert values to numbers
+- [`to-bool`](../to-bool/README.md) - Convert values to booleans
+- [`to-enum`](../to-enum/README.md) - Convert values to enumerated types 

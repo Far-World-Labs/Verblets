@@ -1,93 +1,62 @@
 # category-samples
 
-Generate diverse, representative examples for any category using prototype theory and cognitive science principles.
+Generate representative samples for different categories using AI-powered content creation with intelligent diversity and contextual appropriateness.
 
-For single category classification, use the [categorize](../../verblets/categorize) verblet.
-
-## Basic Usage
+## Usage
 
 ```javascript
 import categorySamples from './index.js';
 
-const fruits = await categorySamples('fruit', {
-  count: 5,
-  diversityLevel: 'balanced'
-});
+const categories = ['beginner', 'intermediate', 'advanced'];
+const samples = await categorySamples(categories, 'programming exercises', { samplesPerCategory: 2 });
 
-// Returns: ['apple', 'orange', 'durian', 'banana', 'kiwi']
+// Returns:
+// {
+//   beginner: [
+//     'Write a function that adds two numbers',
+//     'Create a program that prints "Hello World"'
+//   ],
+//   intermediate: [
+//     'Build a simple calculator with basic operations',
+//     'Implement a function to reverse a string'
+//   ],
+//   advanced: [
+//     'Design a recursive algorithm for tree traversal',
+//     'Implement a custom data structure with optimized operations'
+//   ]
+// }
 ```
 
-## Parameters
-<<<<<<< HEAD
-=======
+## API
 
-- **categoryName** (string): The category to generate samples for
-- **options** (Object): Configuration options
-  - **count** (number): Number of samples to generate (default: 10)
-  - **diversityLevel** (string): Sample diversity - 'focused', 'balanced', or 'high' (default: 'balanced')
-  - **context** (string): Additional context to guide generation (optional)
-  - **llm** (Object): LLM model options (default: uses system default)
+### `categorySamples(categories, context, config)`
 
-## Return Value
+**Parameters:**
+- `categories` (Array): List of category names
+- `context` (string): Description of what type of samples to generate
+- `config` (Object): Configuration options
+  - `samplesPerCategory` (number): Number of samples per category (default: 3)
+  - `diversity` (boolean): Ensure diverse samples within categories (default: true)
+  - `llm` (Object): LLM model options
 
-Returns an array of strings representing diverse examples from the specified category.
-
-## Features
-
-- **Cognitive science foundation**: Uses prototype theory for representative sampling
-- **Configurable diversity**: Control from typical examples to edge cases
-- **Context-aware generation**: Supports contextual constraints for targeted results
-- **Batch processing**: Efficient generation using chain infrastructure
+**Returns:** Promise<Object> - Object with category names as keys and arrays of samples as values
 
 ## Use Cases
 
-- Creating test data for category-based algorithms
-- Generating examples for educational content
-- Building diverse datasets for machine learning
-- Brainstorming sessions for creative projects
-
-## Advanced Usage
->>>>>>> origin/main
-
-- **categoryName** (string): The category to generate samples for
-- **options** (Object): Configuration options
-  - **count** (number): Number of samples to generate (default: 10)
-  - **diversityLevel** (string): Sample diversity - 'focused', 'balanced', or 'high' (default: 'balanced')
-  - **context** (string): Additional context to guide generation (optional)
-  - **llm** (Object): LLM model options (default: uses system default)
-
-## Return Value
-
-Returns an array of strings representing diverse examples from the specified category.
-
-## Use Cases
-
-### Creating Test Data
+### Educational Content Creation
 ```javascript
-// Generate contextually relevant samples
-const backyardBirds = await categorySamples('bird', {
-  context: 'Common backyard birds in North America',
-  count: 4,
-  diversityLevel: 'focused'
-});
-// Returns: ['robin', 'cardinal', 'blue jay', 'sparrow']
+import categorySamples from './index.js';
 
-// Generate highly diverse samples
-const vehicles = await categorySamples('vehicle', {
-  count: 6,
-  diversityLevel: 'high'
-});
-// Returns: ['car', 'bicycle', 'helicopter', 'submarine', 'skateboard', 'spaceship']
+const levels = ['elementary', 'middle school', 'high school'];
+const questions = await categorySamples(levels, 'science quiz questions', { samplesPerCategory: 3 });
+
+// Returns age-appropriate science questions for each education level
 ```
 
-## API Reference
+### Marketing Campaign Ideas
+```javascript
+const channels = ['social media', 'email', 'print advertising'];
+const campaigns = await categorySamples(channels, 'summer sale promotion', { samplesPerCategory: 2 });
 
-### `categorySamples(categoryName, options)`
-
-Returns an array of sample items for the given category. Options let you control diversity, add context, and configure retry logic.
-
-**Common Options**
-
-- `count` (number): How many samples to return (default: 10)
-- `context` (string): Extra context to guide generation
-- `diversityLevel` ('focused' | 'balanced' | 'high'): Adjusts how typical or atypical the samples are
+// Returns channel-specific marketing campaign ideas
+```

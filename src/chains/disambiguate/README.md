@@ -1,144 +1,65 @@
 # disambiguate
 
-Determine the intended meaning of a polysemous word or short phrase based on surrounding context. The chain analyzes multiple possible meanings and selects the most appropriate one using contextual clues.
+Resolve ambiguous terms and phrases in text using AI-powered analysis with contextual understanding and intelligent clarification.
 
 ## Usage
 
 ```javascript
 import disambiguate from './index.js';
 
-const result = await disambiguate({
-  term: 'bat',
-  context: 'The child swung the bat at the baseball.'
-});
+const text = "The bank was steep and the interest rate was high.";
+const clarified = await disambiguate(text, 'clarify ambiguous terms');
 
-console.log(result.meaning);
-// => "a club used in sports like baseball"
+// Returns: "The riverbank was steep and the loan interest rate was high."
 ```
 
-## Parameters
+## API
 
-- **term** (string, required): The ambiguous word or phrase to disambiguate
-- **context** (string, required): The surrounding text that provides contextual clues
-- **config** (object, optional): Configuration options
-  - **llm** (object): LLM configuration for the analysis
-  - **maxAttempts** (number): Maximum retry attempts (default: 3)
+### `disambiguate(text, instructions, config)`
 
-## Return Value
+**Parameters:**
+- `text` (string): Text containing ambiguous terms
+- `instructions` (string): Natural language description of how to disambiguate
+- `config` (Object): Configuration options
+  - `preserveOriginal` (boolean): Keep original text structure (default: true)
+  - `highlightChanges` (boolean): Mark disambiguated terms (default: false)
+  - `contextWindow` (number): Context size for analysis (default: 50)
+  - `llm` (Object): LLM model options
 
-Returns an object containing:
-- **meaning** (string): The most likely meaning of the term in the given context
-- **confidence** (number): Confidence score between 0 and 1
-- **alternatives** (array): Other possible meanings considered
-- **reasoning** (string): Explanation of why this meaning was selected
+**Returns:** Promise<string> - Disambiguated text with clarified terms
 
-<<<<<<< HEAD
-=======
 ## Features
 
-- **Context-aware analysis**: Uses surrounding text to determine meaning
-- **Multiple meaning evaluation**: Considers various interpretations
-- **Confidence scoring**: Provides reliability assessment
-- **Reasoning transparency**: Explains the disambiguation decision
+- **Context-Aware Analysis**: Uses surrounding text to determine correct meaning
+- **Intelligent Clarification**: Resolves ambiguity while preserving original intent
+- **Flexible Processing**: Handles various types of ambiguity (lexical, syntactic, semantic)
+- **Structure Preservation**: Maintains original text formatting and flow
+- **Configurable Highlighting**: Optional marking of disambiguated terms
 
->>>>>>> origin/main
 ## Use Cases
 
-### Clarifying Travel Conversations
-When a traveler says, "I spoke with the coach about my seat," determine whether they mean a sports instructor or an airline seating class:
-
+### Technical Documentation
 ```javascript
-const result = await disambiguate({
-  term: 'coach',
-  context: 'I spoke with the coach about my seat on the flight to Denver.'
-});
-// => { meaning: "economy class seating on an aircraft", confidence: 0.9 }
+import disambiguate from './index.js';
+
+const technical = "The application crashed when the memory was full.";
+const clarified = await disambiguate(technical, 'clarify technical terms');
+
+// Returns: "The software application crashed when the computer memory was full."
 ```
 
-<<<<<<< HEAD
-## Advanced Usage
-
-=======
-### Processing Technical Documentation
-Disambiguate technical terms that have multiple meanings:
-
+### Legal Document Processing
 ```javascript
-const result = await disambiguate({
-  term: 'trunk',
-  context: 'Check the trunk of the repository for the latest changes.'
-});
-// => { meaning: "main branch of a version control system", confidence: 0.95 }
+const legal = "The party shall provide notice to the other party.";
+const clarified = await disambiguate(legal, 'specify which parties in contract context');
+
+// Returns: "The contracting party shall provide notice to the other contracting party."
 ```
 
-### Understanding Medical Context
-Resolve ambiguous medical terminology:
-
+### Academic Text Analysis
 ```javascript
-const result = await disambiguate({
-  term: 'cell',
-  context: 'The patient was placed in a cell for observation.'
-});
-// => { meaning: "a small room in a medical facility", confidence: 0.8 }
+const academic = "The study examined the relationship between variables.";
+const clarified = await disambiguate(academic, 'specify the research variables');
+
+// Returns: "The study examined the relationship between the independent and dependent variables."
 ```
-
-## Advanced Usage
-
-### With Custom LLM Configuration
-
-```javascript
-const result = await disambiguate({
-  term: 'bank',
-  context: 'She walked along the bank of the river.',
-  config: {
-    llm: {
-      temperature: 0.3,
-      maxTokens: 200
-    }
-  }
-});
-```
-
->>>>>>> origin/main
-### Batch Processing Multiple Terms
-
-```javascript
-const terms = [
-  { term: 'bark', context: 'The dog began to bark loudly.' },
-  { term: 'bark', context: 'The bark of the tree was rough.' }
-];
-
-const results = await Promise.all(
-  terms.map(item => disambiguate(item))
-);
-```
-<<<<<<< HEAD
-=======
-
-## Related Modules
-
-- [`clarify`](../clarify/README.md) - Clarify unclear or vague statements
-- [`find`](../find/README.md) - Find specific information in text
-- [`filter`](../filter/README.md) - Filter content based on criteria
-
-## Error Handling
-
-The chain handles various error conditions:
-
-```javascript
-try {
-  const result = await disambiguate({
-    term: 'example',
-    context: 'Very short.'
-  });
-} catch (error) {
-  if (error.message.includes('insufficient context')) {
-    console.log('Context too brief for reliable disambiguation');
-  }
-}
-```
-
-Common error scenarios:
-- **Insufficient context**: Context too brief to determine meaning
-- **Unknown term**: Term not recognized or too specialized
-- **Multiple equally likely meanings**: Unable to confidently choose between options
->>>>>>> origin/main

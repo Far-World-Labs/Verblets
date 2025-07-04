@@ -1,447 +1,121 @@
 # ring-buffer
 
-High-performance ring buffer for single writer, multiple async readers with blocking semantics and offset tracking.
+Efficient circular buffer implementation for managing fixed-size collections with automatic overflow handling and memory optimization.
 
 ## Usage
 
 ```javascript
-import RingBuffer from './ring-buffer/index.js';
+import RingBuffer from './index.js';
 
-// Create a ring buffer with capacity for 100 items
-const buffer = new RingBuffer(100);
+const buffer = new RingBuffer(3);
 
-// Register readers and start processing
-const reader1 = buffer.registerReader();
-const reader2 = buffer.registerReader();
+buffer.push('first');
+buffer.push('second');
+buffer.push('third');
+buffer.push('fourth');  // Overwrites 'first'
 
-// Write data to buffer
-buffer.write('message1');
-buffer.write('message2');
-
-// Read single items with offset tracking
-const result = await buffer.read(reader1);
-// => { data: 'message1', offset: 0 }
+console.log(buffer.toArray());  // ['second', 'third', 'fourth']
+console.log(buffer.size);       // 3
+console.log(buffer.length);     // 3
 ```
 
-## Parameters
+## API
 
 ### Constructor
-- **`maxSize`** (number, required): Maximum buffer capacity
+
+#### `new RingBuffer(capacity)`
+
+**Parameters:**
+- `capacity` (number): Maximum number of items the buffer can hold
 
 ### Methods
-- **`registerReader()`**: Register a new reader, returns reader ID
-- **`unregisterReader(readerId)`**: Remove a reader from the buffer
-- **`write(data)`**: Write data to buffer, returns sequence number
-- **`read(readerId)`**: Read single item for reader (async, blocks until available)
-- **`readBatch(readerId, batchSize)`**: Read batch of items (async, blocks until full batch available)
-- **`getStats()`**: Get buffer statistics and reader information
 
-## Return Values
+#### `push(item)`
+Add an item to the buffer. If at capacity, overwrites the oldest item.
 
-### Single Read Result
-```javascript
-{
-  data: any,        // The actual data item
-  offset: number    // Sequence offset for coordination
-}
-```
+#### `pop()`
+Remove and return the most recently added item.
 
-### Batch Read Result
-```javascript
-{
-  data: any[],           // Array of data items
-  startOffset: number,   // Offset of first item in batch
-  lastOffset: number     // Offset of last item in batch
-}
-```
+#### `peek()`
+Return the most recently added item without removing it.
+
+#### `get(index)`
+Get item at specific index (0 = oldest, capacity-1 = newest).
+
+#### `toArray()`
+Return all items as an array in insertion order.
+
+#### `clear()`
+Remove all items from the buffer.
+
+#### `isFull()`
+Check if buffer is at maximum capacity.
+
+#### `isEmpty()`
+Check if buffer contains no items.
+
+### Properties
+
+#### `size`
+Current number of items in the buffer.
+
+#### `length`
+Alias for `size` property.
+
+#### `capacity`
+Maximum number of items the buffer can hold.
 
 ## Features
 
-- **Double Buffering**: Eliminates wraparound logic for efficient batch reads
-- **Blocking Reads**: Readers block until data is available
-- **Multiple Independent Readers**: Each reader maintains its own position
-- **Offset Tracking**: Returns offset information for external coordination
-- **Zero-Copy Slicing**: Efficient batch operations using array slicing
-- **Memory Efficient**: Circular buffer design with configurable capacity
+- **Memory Efficient**: Fixed memory allocation regardless of usage patterns
+- **Automatic Overflow**: Seamlessly handles capacity overflow by overwriting oldest items
+- **Array-like Interface**: Familiar methods and properties for easy adoption
+- **Performance Optimized**: O(1) operations for push, pop, and peek
+- **Flexible Access**: Support for both LIFO and indexed access patterns
 
 ## Use Cases
 
-### Message Queue Processing
+### Recent Items Tracking
 ```javascript
-import RingBuffer from './ring-buffer/index.js';
+import RingBuffer from './index.js';
 
-const messageQueue = new RingBuffer(1000);
-const processor1 = messageQueue.registerReader();
-const processor2 = messageQueue.registerReader();
-<<<<<<< HEAD
+const recentFiles = new RingBuffer(10);
 
-// Producer
-async function produceMessages() {
-  for (let i = 0; i < 100; i++) {
-    messageQueue.write({ id: i, data: `message-${i}` });
-  }
+function openFile(filename) {
+  recentFiles.push(filename);
+  updateRecentFilesMenu(recentFiles.toArray());
 }
+```
 
-// Consumer
-async function processMessages(readerId) {
-  while (true) {
-    const batch = await messageQueue.readBatch(readerId, 10);
-    console.log(`Processing batch: ${batch.startOffset}-${batch.lastOffset}`);
-    // Process batch.data
+### Performance Monitoring
+```javascript
+const responseTimeBuffer = new RingBuffer(100);
+
+function recordResponseTime(time) {
+  responseTimeBuffer.push(time);
+  
+  if (responseTimeBuffer.isFull()) {
+    const average = responseTimeBuffer.toArray()
+      .reduce((sum, time) => sum + time, 0) / responseTimeBuffer.size;
+    console.log(`Average response time: ${average}ms`);
   }
 }
 ```
 
-### Event Stream Processing
+### Log Management
 ```javascript
-const eventBuffer = new RingBuffer(500);
-const analyticsReader = eventBuffer.registerReader();
-const loggingReader = eventBuffer.registerReader();
+const logBuffer = new RingBuffer(1000);
 
-// Event producer
-function publishEvent(event) {
-  const sequence = eventBuffer.write({
+function log(message) {
+  logBuffer.push({
     timestamp: Date.now(),
-    type: event.type,
-    payload: event.data
-  });
-  return sequence;
-}
-
-// Analytics processor
-async function processAnalytics() {
-  while (true) {
-    const event = await eventBuffer.read(analyticsReader);
-    updateMetrics(event.data);
-  }
-}
-
-// Logging processor
-async function processLogs() {
-  while (true) {
-    const batch = await eventBuffer.readBatch(loggingReader, 50);
-    writeBatchToLog(batch.data);
-  }
-}
-```
-
-### Data Pipeline Coordination
-```javascript
-const pipeline = new RingBuffer(200);
-const stage1Reader = pipeline.registerReader();
-const stage2Reader = pipeline.registerReader();
-
-// Track processing progress across stages
-const processedOffsets = new Map();
-
-async function stage1Processor() {
-  while (true) {
-    const batch = await pipeline.readBatch(stage1Reader, 5);
-    // Process batch
-    processedOffsets.set(stage1Reader, batch.lastOffset);
-    
-    // Check if we can cleanup old data
-    const minOffset = Math.min(...processedOffsets.values());
-    console.log(`Safe to cleanup data up to offset ${minOffset}`);
-  }
-}
-```
-
-### Real-time Data Streaming
-```javascript
-const streamBuffer = new RingBuffer(1000);
-const realtimeReader = streamBuffer.registerReader();
-const batchReader = streamBuffer.registerReader();
-
-// Real-time processor (single items)
-async function realtimeProcessor() {
-  while (true) {
-    const item = await streamBuffer.read(realtimeReader);
-    processImmediately(item.data);
-  }
-}
-
-// Batch processor (bulk operations)
-async function batchProcessor() {
-  while (true) {
-    const batch = await streamBuffer.readBatch(batchReader, 100);
-    processBatch(batch.data);
-  }
-}
-```
-
-## Advanced Usage
-
-### Reader Lifecycle Management
-```javascript
-const buffer = new RingBuffer(100);
-const readerId = buffer.registerReader();
-
-// Use reader...
-
-// Cleanup when done
-buffer.unregisterReader(readerId);
-```
-
-### Buffer Monitoring
-```javascript
-function monitorBuffer(buffer) {
-  const stats = buffer.getStats();
-  console.log(`Active readers: ${stats.registeredReaders}, Items: ${stats.sequence}`);
-=======
-
-// Producer
-async function produceMessages() {
-  for (let i = 0; i < 100; i++) {
-    messageQueue.write({ id: i, data: `message-${i}` });
-  }
-}
-
-// Consumer
-async function processMessages(readerId) {
-  while (true) {
-    const batch = await messageQueue.readBatch(readerId, 10);
-    console.log(`Processing batch: ${batch.startOffset}-${batch.lastOffset}`);
-    // Process batch.data
-  }
-}
-```
-
-### Event Stream Processing
-```javascript
-const eventBuffer = new RingBuffer(500);
-const analyticsReader = eventBuffer.registerReader();
-const loggingReader = eventBuffer.registerReader();
-
-// Event producer
-function publishEvent(event) {
-  const sequence = eventBuffer.write({
-    timestamp: Date.now(),
-    type: event.type,
-    payload: event.data
-  });
-  return sequence;
-}
-
-// Analytics processor
-async function processAnalytics() {
-  while (true) {
-    const event = await eventBuffer.read(analyticsReader);
-    updateMetrics(event.data);
-  }
-}
-
-// Logging processor
-async function processLogs() {
-  while (true) {
-    const batch = await eventBuffer.readBatch(loggingReader, 50);
-    writeBatchToLog(batch.data);
-  }
-}
-```
-
-### Data Pipeline Coordination
-```javascript
-const pipeline = new RingBuffer(200);
-const stage1Reader = pipeline.registerReader();
-const stage2Reader = pipeline.registerReader();
-
-// Track processing progress across stages
-const processedOffsets = new Map();
-
-async function stage1Processor() {
-  while (true) {
-    const batch = await pipeline.readBatch(stage1Reader, 5);
-    // Process batch
-    processedOffsets.set(stage1Reader, batch.lastOffset);
-    
-    // Check if we can cleanup old data
-    const minOffset = Math.min(...processedOffsets.values());
-    console.log(`Safe to cleanup data up to offset ${minOffset}`);
-  }
-}
-```
-
-### Real-time Data Streaming
-```javascript
-const streamBuffer = new RingBuffer(1000);
-const realtimeReader = streamBuffer.registerReader();
-const batchReader = streamBuffer.registerReader();
-
-// Real-time processor (single items)
-async function realtimeProcessor() {
-  while (true) {
-    const item = await streamBuffer.read(realtimeReader);
-    processImmediately(item.data);
-  }
-}
-
-// Batch processor (bulk operations)
-async function batchProcessor() {
-  while (true) {
-    const batch = await streamBuffer.readBatch(batchReader, 100);
-    processBatch(batch.data);
-  }
-}
-```
-
-## Advanced Usage
-
-### Reader Lifecycle Management
-```javascript
-const buffer = new RingBuffer(100);
-
-// Register readers dynamically
-const readers = new Set();
-function addReader() {
-  const readerId = buffer.registerReader();
-  readers.add(readerId);
-  return readerId;
-}
-
-function removeReader(readerId) {
-  buffer.unregisterReader(readerId);
-  readers.delete(readerId);
-}
-
-// Cleanup on shutdown
-process.on('SIGTERM', () => {
-  readers.forEach(readerId => buffer.unregisterReader(readerId));
-});
-```
-
-### Buffer Monitoring
-```javascript
-function monitorBuffer(buffer) {
-  const stats = buffer.getStats();
-  console.log(`Buffer Statistics:
-    - Total items written: ${stats.sequence}
-    - Active readers: ${stats.registeredReaders}
-    - Waiting readers: ${stats.waitingReaders}
-    - Buffer utilization: ${(stats.sequence % buffer.maxSize) / buffer.maxSize * 100}%
-  `);
-}
-
-// Monitor every 5 seconds
-setInterval(() => monitorBuffer(buffer), 5000);
-```
-
-### Graceful Shutdown
-```javascript
-class BufferManager {
-  constructor(maxSize) {
-    this.buffer = new RingBuffer(maxSize);
-    this.readers = new Map();
-    this.shutdown = false;
-  }
-  
-  async gracefulShutdown() {
-    this.shutdown = true;
-    
-    // Wait for all readers to finish current operations
-    const shutdownPromises = Array.from(this.readers.keys()).map(async (readerId) => {
-      // Signal shutdown to reader processes
-      // Wait for clean exit
-    });
-    
-    await Promise.all(shutdownPromises);
-    
-    // Cleanup all readers
-    this.readers.forEach((_, readerId) => {
-      this.buffer.unregisterReader(readerId);
-    });
-  }
-}
-```
-
-## Integration Patterns
-
-### With Worker Threads
-```javascript
-import { Worker, isMainThread, parentPort } from 'worker_threads';
-import RingBuffer from './ring-buffer/index.js';
-
-if (isMainThread) {
-  const buffer = new RingBuffer(1000);
-  const worker = new Worker(__filename);
-  
-  // Share buffer reference with worker
-  // Implementation depends on your worker communication strategy
-} else {
-  // Worker thread processes buffer data
-  parentPort.on('message', async (readerId) => {
-    while (true) {
-      const data = await buffer.read(readerId);
-      // Process data in worker thread
-    }
+    message: message
   });
 }
-```
 
-### With Express.js Middleware
-```javascript
-import express from 'express';
-import RingBuffer from './ring-buffer/index.js';
-
-const app = express();
-const requestBuffer = new RingBuffer(500);
-const analyticsReader = requestBuffer.registerReader();
-
-// Middleware to capture requests
-app.use((req, res, next) => {
-  requestBuffer.write({
-    method: req.method,
-    url: req.url,
-    timestamp: Date.now(),
-    ip: req.ip
-  });
-  next();
-});
-
-// Background analytics processing
-async function processAnalytics() {
-  while (true) {
-    const batch = await requestBuffer.readBatch(analyticsReader, 20);
-    // Analyze request patterns
-    updateAnalyticsDashboard(batch.data);
-  }
-}
-
-processAnalytics();
-```
-
-## Related Modules
-
-- [`queue`](../queue/README.md) - Simple queue implementation
-- [`async-queue`](../async-queue/README.md) - Asynchronous queue with promises
-- [`event-emitter`](../event-emitter/README.md) - Event-driven programming utilities
-
-## Error Handling
-
-```javascript
-try {
-  const buffer = new RingBuffer(100);
-  const reader = buffer.registerReader();
-  
-  // Handle read timeouts (if implemented)
-  const result = await buffer.read(reader);
-  
-} catch (error) {
-  if (error.code === 'BUFFER_OVERFLOW') {
-    console.log('Buffer capacity exceeded');
-  } else if (error.code === 'READER_NOT_FOUND') {
-    console.log('Invalid reader ID');
-  } else {
-    console.log('Unexpected error:', error.message);
-  }
->>>>>>> origin/main
+function getRecentLogs(count = 50) {
+  const logs = logBuffer.toArray();
+  return logs.slice(-count);
 }
 ```
-
-## Performance Considerations
-
-- **Buffer Sizing**: Choose buffer size based on peak write rate and reader processing speed
-- **Batch Processing**: Use `readBatch()` for better throughput when processing multiple items
-- **Reader Management**: Unregister unused readers to prevent memory leaks
-- **Monitoring**: Track buffer statistics to identify bottlenecks and optimize performance
 

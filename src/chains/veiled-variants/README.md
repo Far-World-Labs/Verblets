@@ -1,107 +1,65 @@
 # veiled-variants
 
-Generate alternative phrasings of sensitive prompts using scientific, causal, and wellness framing to create safer, more appropriate search queries.
+Generate alternative versions of sensitive text that maintain meaning while obscuring identifying details using privacy-preserving transformations.
 
-## Basic Usage
+## Usage
 
 ```javascript
 import veiledVariants from './index.js';
 
-// Generate alternative phrasings for a sensitive topic
-const alternatives = await veiledVariants({
-  prompt: 'symptoms of depression in teenagers'
-});
-// => [
-//   'Adolescent mood disorder diagnostic criteria',
-//   'Factors contributing to teenage emotional dysregulation',
-//   'Mental wellness assessment for young adults',
-//   // ... more alternatives
+const sensitive = "John Smith from Acme Corp called about the merger with TechStart Inc.";
+const variants = await veiledVariants(sensitive, 'business communication', { count: 3 });
+
+// Returns:
+// [
+//   "A representative from a major corporation called about the acquisition with a startup company.",
+//   "The business contact discussed the potential partnership with the technology firm.",
+//   "An executive from the established company mentioned the deal with the emerging business."
 // ]
 ```
 
-## Parameters
+## API
 
-- **prompt** (string): The original prompt to generate alternatives for
-- **modelName** (string): LLM model to use (default: 'privacy')
+### `veiledVariants(text, context, config)`
 
-## Return Value
+**Parameters:**
+- `text` (string): Sensitive text to transform
+- `context` (string): Context description for appropriate transformation
+- `config` (Object): Configuration options
+  - `count` (number): Number of variants to generate (default: 3)
+  - `preserveStructure` (boolean): Keep original sentence structure (default: true)
+  - `llm` (Object): LLM model options (automatically uses privacy model)
 
-Returns an array of alternative phrasings that reframe the original prompt using:
-- Scientific and academic terminology
-- Causal and contextual framing
-- Wellness and diagnostic language
+**Returns:** Promise<Array<string>> - Array of privacy-preserving variants
 
-## Framing Strategies
+## Privacy Model
 
-### Scientific Framing
-Transforms casual language into academic research terminology:
-```javascript
-// Input: "addiction problems"
-// Output: "Substance dependency epidemiological patterns"
-```
-
-### Causal Framing
-Explores causes, co-conditions, and consequences:
-```javascript
-// Input: "anxiety attacks"
-// Output: "Factors leading to acute stress responses"
-```
-
-### Soft Cover Framing
-Uses clinical and wellness terminology:
-```javascript
-// Input: "mental breakdown"
-// Output: "Emotional wellness assessment criteria"
-```
+This function automatically uses privacy-preserving models for all transformations, ensuring sensitive data never leaves your secure environment.
 
 ## Use Cases
 
-- **Content Moderation**: Generate safer alternatives for sensitive search queries
-- **Research Ethics**: Reframe sensitive research topics appropriately
-- **Healthcare Communication**: Transform patient concerns into clinical language
-- **Educational Content**: Create academically appropriate versions of sensitive topics
-- **Privacy Protection**: Mask sensitive intents while preserving meaning
-
-## Advanced Usage
-
+### Legal Document Processing
 ```javascript
-<<<<<<< HEAD
-=======
-// Using specific model for privacy-focused generation
-const alternatives = await veiledVariants({
-  prompt: 'self-harm behaviors in adolescents',
-  modelName: 'medical-privacy'
-});
+import veiledVariants from './index.js';
 
->>>>>>> origin/main
-// Process multiple sensitive topics
-const topics = [
-  'eating disorder symptoms',
-  'substance abuse warning signs',
-  'domestic violence indicators'
-];
+const legal = "The plaintiff, Maria Rodriguez, filed suit against XYZ Medical Center on March 15, 2023.";
+const variants = await veiledVariants(legal, 'legal proceedings', { count: 2 });
 
-const allAlternatives = await Promise.all(
-  topics.map(topic => veiledVariants({ prompt: topic }))
-);
-<<<<<<< HEAD
-``` 
-=======
+// Returns anonymized versions suitable for case studies or training
 ```
 
-## Output Format
+### Customer Support Analysis
+```javascript
+const complaint = "Customer Jane Doe from email jane@example.com complained about delayed delivery to 123 Main St.";
+const anonymous = await veiledVariants(complaint, 'customer service', { count: 1 });
 
-Each call generates approximately 15 alternative phrasings (5 per framing strategy) that:
-- Avoid direct synonyms or sensitive key terms
-- Use professional, clinical, or academic language
-- Maintain the core intent while reducing sensitivity
-- Provide legitimate research or wellness query alternatives
+// Returns versions with identifying details obscured for analysis
+```
 
-## Error Handling
+## Features
 
-The function includes robust parsing to handle various LLM response formats:
-- Extracts JSON arrays from responses
-- Falls back to sentence parsing for prose responses
-- Handles quoted strings and malformed JSON
-- Provides meaningful alternatives even when parsing fails 
->>>>>>> origin/main
+- **Automatic Privacy Protection**: Uses privacy-preserving models exclusively
+- **Context-Aware Transformation**: Maintains appropriate tone and meaning for the domain
+- **Flexible Anonymization**: Generates multiple variants with different levels of abstraction
+- **Structure Preservation**: Optionally maintains original sentence and paragraph structure
+- **Comprehensive Coverage**: Handles names, locations, organizations, dates, and other identifiers

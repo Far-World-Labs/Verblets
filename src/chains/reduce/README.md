@@ -1,78 +1,73 @@
 # reduce
 
-Reduce lists via batch processing with automatic retry logic. Each batch is combined with the accumulated result using `listReduceLines` for reliable processing of large datasets.
+Intelligently reduce large arrays to smaller, more manageable sets using AI-powered selection with sophisticated filtering and prioritization strategies.
 
-For single-line reduce operations, use the [list-reduce-lines](../../verblets/list-reduce-lines) verblet.
-
-## Basic Usage
+## Usage
 
 ```javascript
 import reduce from './index.js';
 
-const logs = ['step one', 'step two', 'step three'];
-const result = await reduce(logs, 'summarize', { chunkSize: 10, maxAttempts: 2 });
-// => 'summary of steps'
-```
-
-## Parameters
-<<<<<<< HEAD
-
-- **items** (string[]): Array of items to reduce
-- **instructions** (string): Natural language description of reduction operation
-- **config** (Object): Configuration options
-  - **chunkSize** (number): Items per batch (default: 10)
-  - **maxAttempts** (number): Retry attempts for failed batches (default: 3)
-  - **llm** (Object): LLM model options (default: uses system default)
-
-## Return Value
-
-Returns a string containing the final reduced result.
-
-## Use Cases
-
-### Summarizing Large Document Collections
-```javascript
-import reduce from './index.js';
-
-const documents = [
-  'Customer feedback shows high satisfaction with product quality...',
-  'Sales data indicates strong performance in Q3 across all regions...',
-  'Technical support reports show common issues with installation...',
-  'Marketing campaign results demonstrate increased brand awareness...'
+const articles = [
+  'Introduction to Machine Learning',
+  'Advanced Neural Networks',
+  'Basic Statistics for Data Science',
+  'Deep Learning Fundamentals',
+  'Linear Algebra Basics',
+  'Python Programming Guide',
+  'Data Visualization Techniques',
+  'SQL Database Management'
 ];
 
-const summary = await reduce(
-  documents,
-  'create a comprehensive executive summary highlighting key insights',
-  { chunkSize: 10 }
-);
-
-// Returns a unified summary combining insights from all documents
+const essential = await reduce(articles, 'most important for ML beginners', { targetSize: 3 });
+// Returns: ['Introduction to Machine Learning', 'Basic Statistics for Data Science', 'Linear Algebra Basics']
 ```
-=======
 
-- **items** (string[]): Array of items to reduce
-- **instructions** (string): Natural language description of reduction operation
-- **config** (Object): Configuration options
-  - **chunkSize** (number): Items per batch (default: 10)
-  - **maxAttempts** (number): Retry attempts for failed batches (default: 3)
-  - **llm** (Object): LLM model options (default: uses system default)
+## API
 
-## Return Value
+### `reduce(array, criteria, config)`
 
-Returns a string containing the final reduced result.
+**Parameters:**
+- `array` (Array): Items to reduce
+- `criteria` (string): Natural language description of selection criteria
+- `config` (Object): Configuration options
+  - `targetSize` (number): Desired number of items (default: 5)
+  - `chunkSize` (number): Items per batch (default: 10)
+  - `llm` (Object): LLM model options
 
-## Features
-
-- **Batch processing**: Handles large datasets by processing items in manageable chunks
-- **Automatic retry**: Failed chunks are automatically retried for improved reliability
-- **Accumulative reduction**: Progressively combines results from each batch
-- **Natural language instructions**: Use descriptive text to define reduction logic
+**Returns:** Promise<Array> - Reduced array containing the most relevant items
 
 ## Use Cases
 
-- Summarizing large document collections
-- Aggregating feedback or survey responses
-- Combining multiple data sources into unified insights
-- Processing logs or event streams for key patterns
->>>>>>> origin/main
+### Content Curation
+```javascript
+import reduce from './index.js';
+
+const blogPosts = [
+  'How to Start a Blog',
+  'SEO Best Practices',
+  'Content Marketing Strategies',
+  'Social Media Tips',
+  'Email Marketing Guide',
+  'Website Design Principles',
+  'Analytics and Metrics',
+  'Monetization Strategies'
+];
+
+const beginner = await reduce(blogPosts, 'essential for new bloggers', { targetSize: 4 });
+// Returns the most important posts for beginners
+```
+
+### Research Paper Selection
+```javascript
+const papers = [
+  'Attention Is All You Need',
+  'BERT: Pre-training of Deep Bidirectional Transformers',
+  'GPT-3: Language Models are Few-Shot Learners',
+  'ImageNet Classification with Deep Convolutional Neural Networks',
+  'Generative Adversarial Networks',
+  'ResNet: Deep Residual Learning for Image Recognition'
+];
+
+const foundational = await reduce(papers, 'foundational papers in deep learning', { targetSize: 3 });
+// Returns the most influential foundational papers
+```

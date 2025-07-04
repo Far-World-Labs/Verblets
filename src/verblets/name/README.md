@@ -1,81 +1,45 @@
 # name
 
-Generate concise, descriptive names for text content or concepts using natural language understanding.
+Generate contextually appropriate names for entities, objects, or concepts using AI-powered naming with intelligent suggestions and creative alternatives.
 
-## Basic Usage
+## Usage
 
 ```javascript
 import name from './index.js';
 
-const projectDescription = `
-  A mobile app that helps users track their daily water intake 
-  with gentle reminders and progress visualization
-`;
-
-const projectName = await name(projectDescription);
-// => "Hydration Tracker" (example)
-<<<<<<< HEAD
-=======
+const suggestions = await name('a productivity app for remote teams');
+// Returns: ['TeamSync', 'RemoteFlow', 'CollabHub', 'WorkTogether', 'TeamBridge']
 ```
-
-## Parameters
-
-- **text** (string): The content or concept to generate a name for
-- **config** (Object): Configuration options
-  - **llm** (Object): LLM model options (default: uses system default)
-  - **context** (string): Additional context to guide naming (optional)
-
-## Return Value
-
-Returns a string containing the generated name.
-
-## Use Cases
-
-- Creating titles for articles, projects, or documents
-- Naming features or product concepts
-- Generating labels for categorized content
-- Creating evocative titles that capture essence beyond keywords
-
-## Advanced Usage
-
-```javascript
-// With context for more targeted naming
-const featureName = await name(
-  'Users can save their favorite coffee shop locations and get notified when nearby',
-  { context: 'mobile app feature for coffee enthusiasts' }
-);
-// => "Café Locator" (example)
->>>>>>> origin/main
-```
-
-## Parameters
-
-- **text** (string): The content or concept to generate a name for
-- **config** (Object): Configuration options
-  - **llm** (Object): LLM model options (default: uses system default)
-  - **context** (string): Additional context to guide naming (optional)
-
-## Return Value
-
-Returns a string containing the generated name.
-
-## Use Cases
-
-- Creating titles for articles, projects, or documents
-- Naming features or product concepts
-- Generating labels for categorized content
-- Creating evocative titles that capture essence beyond keywords
 
 ## API
 
-```javascript
-await name(description, options = {})
-```
+### `name(description, options)`
 
 **Parameters:**
-- `description` (string): Description of what needs to be named
-- `options` (object, optional): Configuration options
-  - `context` (string, optional): Additional context for more targeted naming
-  - `llm` (object, optional): LLM configuration options
+- `description` (string): Description of what needs a name
+- `options` (Object): Configuration options
+  - `count` (number): Number of name suggestions (default: 5)
+  - `style` (string): Naming style preference (optional)
+  - `llm` (Object): LLM model options
 
-**Returns:** Promise resolving to a string containing the generated name
+**Returns:** Promise<Array<string>> - Array of suggested names
+
+## Use Cases
+
+### Product Naming
+```javascript
+const productNames = await name('eco-friendly water bottle with temperature display', {
+  count: 3,
+  style: 'modern and memorable'
+});
+// Returns creative product name suggestions
+```
+
+### Variable/Function Naming
+```javascript
+const functionNames = await name('function that validates email addresses and returns boolean', {
+  count: 5,
+  style: 'programming convention'
+});
+// Returns: ['validateEmail', 'isValidEmail', 'checkEmailFormat', 'verifyEmailAddress', 'emailIsValid']
+```
