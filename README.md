@@ -110,145 +110,138 @@ Helpers support higher-level operations. They make no LLM calls and are often sy
 - [to-number-with-units](./src/lib/to-number-with-units) - parse numbers with units
 - [transcribe](./src/lib/transcribe) - microphone transcription via Whisper
 
-## Example: Intelligent Customer Support System
+## Example: Real Estate Fraud Detection System
 
-This example shows how verblets enable building systems that understand context, make nuanced decisions, and adapt to complex real-world scenarios - capabilities that would be nearly impossible with traditional programming approaches.
+Note this example is currently only fictional and is only meant to represent what's possible with an LLM standard library.
 
 ```javascript
-import map from './src/chains/map/index.js';
-import list from './src/chains/list/index.js';
 import {
   anonymize,
-  bool,
-  enum,
-  intent,
-  listFilterLines,
-  questions,
-  sort,
-  toObject,
-  sentiment,
+  chatgpt,
+  conversation,
+  filter,
+  peopleList,
   score,
 } from 'verblets';
 
-// Intelligent customer support system that handles complex, contextual requests
-async function handleCustomerRequest(message, history, catalog) {
-  const customerIntent = await intent({
-    text: message,
-    operations: [
-      { name: 'refund-request', parameters: { reason: 'string', orderNumber: 'string?' } },
-      { name: 'product-inquiry', parameters: { productType: 'string', feature: 'string?' } },
-      { name: 'technical-support', parameters: { issue: 'string', urgency: 'string' } },
-      { name: 'complaint', parameters: { category: 'string', severity: 'string' } },
-    ],
-  });
-
-  const emotion = await sentiment(message);
-  const urgent = await bool(`Is this urgent? ${message}`);
-
-  const strategy = await enum(message, {
-    immediate_escalation: 'Customer is very upset, escalate to human agent',
-    detailed_help: 'Customer needs comprehensive assistance',
-    quick_resolution: 'Simple issue that can be resolved quickly',
-    educational: 'Customer needs to understand how something works',
-  });
-
-  const followUpQuestions = await questions(
-    `Customer says: "${message}". What should we ask to help them better?`
+async function huntRealEstateFraud(listings) {
+  const fraudScores = await score(
+    listings.map(l => l.description),
+    'fraudulent property listing with pressure tactics and artificial urgency'
   );
 
-  const candidates = await listFilterLines(
-    catalog,
-    `Products that might solve: ${
-      customerIntent.parameters.issue || customerIntent.parameters.productType
-    }`
+  const pricingScores = await score(
+    listings.map(l => `Price: ${l.price}, Area median: ${l.areaMedian}`),
+    'pricing anomaly indicating possible fraud'
   );
 
-  const { scores } = await score(candidates, 'resolution likelihood');
-  const prioritized = await sort(candidates, `by likelihood score ${scores.join(', ')}`);
+  const highRiskListings = listings
+    .map((listing, i) => ({
+      listing,
+      riskScore: fraudScores.scores[i] * 0.6 + pricingScores.scores[i] * 0.4
+    }))
+    .filter(r => r.riskScore >= 8.0);
 
-  const bulletPoints = await map(
-    prioritized.map((p) => p.name),
-    'Write a friendly one-line apology referencing <list>.'
-  );
+  for (const { listing, riskScore } of highRiskListings) {
+    await stingOperation(listing, riskScore);
+  }
+}
 
-  const sampleReplies = await list('3 reassuring follow-up messages for this customer');
+async function stingOperation(listing, riskScore) {
+  const buyers = await peopleList('naive first-time home buyer with cash ready', 1);
+  const buyer = buyers[0];
 
-  const caseSummary = await anonymize(
-    `Customer ${customerIntent.intent.operation}: ${message}.
-     History: ${history}. Resolution: ${prioritized[0]}`
-  );
+  // Generate varied initial email
+  const initialEmail = await chatgpt(`
+    Write an email as this buyer: ${buyer}
 
-  const response = await toObject(
-    `
-    Customer needs ${customerIntent.intent.operation} help.
-    They are ${emotion} and ${urgent ? 'urgent' : 'not urgent'}.
-    Best approach: ${strategy}.
-    Top solution: ${prioritized[0]?.name}
-  `,
-    {
-      type: 'object',
-      properties: {
-        intent: { type: 'string' },
-        urgency: { type: 'string' },
-        emotion: { type: 'string' },
-        strategy: { type: 'string' },
-        recommendedSolution: { type: 'string' },
-        followUpQuestions: { type: 'array' },
-      },
+    Show interest in property: ${listing.address} for ${listing.price}
+    Sound eager and mention having cash ready.
+    Make it unique - don't use template language.
+  `);
+
+  await emailClient.send(listing.contact, `Interest in ${listing.address}`, initialEmail);
+
+  // Wait for fraudster response
+  const startTime = Date.now();
+  await new Promise(resolve => setTimeout(resolve, 30000)); // Wait 30 seconds
+
+  const fraudsterReply = await emailClient.getNewReplies(listing.contact, startTime);
+
+  if (!fraudsterReply) {
+    await notionClient.addPage({
+      listing: listing.address,
+      riskScore,
+      evidenceStrength: 0,
+      fraudBehaviors: ['no_response'],
+      status: 'no_response'
+    });
+    return;
+  }
+
+  // Extract fraudster's message content
+  const fraudsterMessage = fraudsterReply.payload.body.data || fraudsterReply.snippet;
+
+  const fraudIndicators = await score([fraudsterMessage],
+    'fraud response with pressure tactics and verification avoidance');
+
+  if (fraudIndicators.scores[0] >= 7) {
+    // Generate varied trap questions
+    const trapEmail = await chatgpt(`
+      As buyer ${buyer}, write a follow-up email asking verification questions about ${listing.address}.
+
+      Ask specific details that only the real owner would know (neighborhood details, property features, etc.).
+      Sound excited but requesting verification. Make questions unique - vary from these types:
+      - Neighborhood characteristics
+      - Property condition details
+      - Local area knowledge
+      - Recent property changes
+
+      Previous conversation:
+      Me: ${initialEmail}
+      Them: ${fraudsterMessage}
+    `);
+
+    await emailClient.send(listing.contact, `Re: Interest in ${listing.address}`, trapEmail);
+
+    // Wait for trap response
+    await new Promise(resolve => setTimeout(resolve, 30000));
+    const trapReply = await emailClient.getNewReplies(listing.contact, Date.now() - 30000);
+
+    if (trapReply) {
+      const trapMessage = trapReply.payload.body.data || trapReply.snippet;
+
+      const fraudBehaviors = await filter([
+        'refuses property verification',
+        'demands immediate payment',
+        'avoids phone calls',
+        'fake urgency pressure',
+        'no legitimate documentation',
+        'overseas seller claims',
+        'wire transfer only',
+        'no property showings',
+        'evasive responses',
+        'generic property descriptions'
+      ], `behaviors demonstrated in: ${fraudsterMessage} ${trapMessage}`);
+
+      const evidenceAnalysis = await score([
+        `${fraudsterMessage} ${trapMessage}`
+      ], 'strength of fraud evidence for law enforcement');
+
+      // Add to Notion database
+      await notionClient.createFraudCase({
+        listing: listing.address,
+        riskScore,
+        evidenceStrength: evidenceAnalysis.scores[0],
+        fraudBehaviors,
+        status: evidenceAnalysis.scores[0] >= 8 ? 'strong_evidence' : 'moderate_evidence'
+      });
     }
-  );
-
-  return {
-    ...response,
-    followUpQuestions: followUpQuestions.slice(0, 3),
-    anonymizedCase: caseSummary,
-    bulletPoints,
-    sampleReplies,
-  };
+  }
 }
-
-// Usage: Handle a complex customer scenario
-const result = await handleCustomerRequest(
-  "I'm really frustrated! I ordered your premium headphones 2 weeks ago for my daughter's birthday tomorrow and they still haven't arrived. The tracking says 'processing' but I paid for 2-day shipping. This is completely unacceptable and I want my money back immediately!",
-  'Previous orders: 3 successful deliveries, 1 late delivery complaint resolved',
-  [
-    {
-      name: 'Premium Wireless Headphones',
-      category: 'audio',
-      features: ['noise-canceling', 'wireless'],
-    },
-    { name: 'Express Shipping Upgrade', category: 'service', features: ['priority', 'tracking'] },
-    { name: 'Gift Card', category: 'compensation', features: ['flexible', 'immediate'] },
-  ]
-);
-
-/* Returns something like:
-{
-  intent: "refund-request",
-  urgency: "high",
-  emotion: "frustrated",
-  strategy: "immediate_escalation",
-  recommendedSolution: "Express Shipping Upgrade",
-  followUpQuestions: [
-    "What's your order number so I can track this immediately?",
-    "Would you like us to expedite a replacement for tomorrow delivery?",
-    "How can we make this right for your daughter's birthday?"
-  ],
-  anonymizedCase: "Customer refund-request: Customer frustrated about delayed premium headphones order for child's birthday..."
-  bulletPoints: ["Apologies for the delay on Premium Wireless Headphones", ...],
-  sampleReplies: ["We're monitoring shipping updates...", ...]
-}
-*/
 ```
 
-This system demonstrates capabilities that extend traditional programming approaches:
-
-- **Contextual understanding** of customer emotions and intent
-- **Dynamic decision making** based on multiple factors
-- **Adaptive questioning** that changes based on the situation
-- **Intelligent prioritization** of solutions
-- **Privacy-aware data handling** for compliance
-- **Structured output** that integrates with existing systems
+Verblets enable creating entirely new categories of tools that coordinate multiple AI functions with the precision and reliability of traditional software. Like a sophisticated detective, this system can recognize patterns, conduct investigations, adapt strategies based on responses, and document findings - but executes with the deterministic coordination that only software can provide. This hybrid approach unlocks problems that require both human-like reasoning and systematic execution, opening new frontiers in automated security, investigation, and complex decision-making systems.
 
 
 ## Contributing
