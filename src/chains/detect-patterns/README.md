@@ -18,8 +18,6 @@ const patterns = await detectPatterns(objects, {
 Discover what makes community gardens thrive by analyzing successful garden projects.
 
 ```javascript
-import detectPatterns from 'verblets/detect-patterns';
-
 // Data from thriving community gardens worldwide
 const successfulGardens = [
   { volunteers: 25, plotSize: 'medium', workshops: 8, harvestYield: 'high', location: 'urban', funding: 'grants' },
@@ -63,6 +61,6 @@ const successPatterns = await detectPatterns(successfulGardens, { topN: 3 });
 ## Returns
 
 Array of pattern objects with templates containing:
-- Literal values for consistent success factors
-- `{ range: [min, max] }` for optimal numeric ranges
-- `{ values: [...] }` for proven approaches and strategies
+- Literal values
+- `{ range: [min, max] }` 
+- `{ values: [...] }`
