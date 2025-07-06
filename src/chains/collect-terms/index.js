@@ -1,5 +1,5 @@
 import list from '../list/index.js';
-import listReduceLines from '../../verblets/list-reduce-lines/index.js';
+import reduce from '../reduce/index.js';
 
 const splitIntoChunks = (text, maxLen) => {
   const words = text.split(/\s+/);
@@ -30,11 +30,10 @@ export default async function collectTerms(text, config = {}) {
   }
   const uniqueTerms = Array.from(new Set(allTerms.map((t) => t.trim())));
   if (uniqueTerms.length <= topN) return uniqueTerms;
-  const reduced = await listReduceLines(
-    '',
+  const reduced = await reduce(
     uniqueTerms,
     `Return the top ${topN} terms as a comma-separated list`,
-    { llm, ...options }
+    { initial: '', llm, ...options }
   );
   return reduced
     .split(',')

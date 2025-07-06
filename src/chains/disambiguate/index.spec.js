@@ -10,9 +10,12 @@ vi.mock('../../lib/chatgpt/index.js', () => ({
   }),
 }));
 
-vi.mock('../../verblets/list-filter-lines/index.js', () => ({
+vi.mock('../score/index.js', () => ({
   default: vi.fn(async (list) => {
-    return [list[0]];
+    return {
+      scores: list.map((item, index) => (index === 0 ? 9 : 1)), // First item gets highest score
+      reference: [],
+    };
   }),
 }));
 

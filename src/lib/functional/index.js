@@ -26,3 +26,12 @@ export const unhookAll = (list, returnVal) => {
   list.splice(0);
   return returnVal;
 };
+
+export const xmlEscape = (content) => {
+  return content
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+};
