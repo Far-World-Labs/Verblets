@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import chatGPT from '../../lib/chatgpt/index.js';
-import listFilterLines from '../../verblets/list-filter-lines/index.js';
+import score from '../score/index.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 import modelService from '../../services/llm-model/index.js';
 
@@ -83,10 +83,22 @@ export default async function disambiguate({
 } = {}) {
   const { llm, ...options } = config;
   const meanings = await getMeanings(term, { model, llm, ...options });
-  const best = await listFilterLines(
+  const scoreResult = await score(
     meanings,
-    `the meaning of "${term}" in context: ${context}. Keep only the single best matching meaning.`,
+    `how well this meaning of "${term}" matches the context: ${context}`,
     { llm, ...options }
   );
-  return { meaning: best[0], meanings };
+
+  const { scores } = scoreResult;
+  let bestIndex = 0;
+  let bestScore = scores[0];
+
+  for (let i = 1; i < scores.length; i++) {
+    if (scores[i] > bestScore) {
+      bestScore = scores[i];
+      bestIndex = i;
+    }
+  }
+
+  return { meaning: meanings[bestIndex], meanings };
 }

@@ -105,8 +105,7 @@ import peopleList from './verblets/people-list/index.js';
 
 import toObject from './verblets/to-object/index.js';
 
-import listMapLines from './verblets/list-map-lines/index.js';
-import listFindLines from './verblets/list-find-lines/index.js';
+import listBatch from './verblets/list-batch/index.js';
 
 import conversationTurnLines from './verblets/conversation-turn-lines/index.js';
 import conversationTurnMultiLines from './verblets/conversation-turn-multi-lines/index.js';
@@ -121,8 +120,6 @@ import commonalities from './verblets/commonalities/index.js';
 import expect from './verblets/expect/index.js';
 import sentiment from './verblets/sentiment/index.js';
 import listExpand from './verblets/list-expand/index.js';
-import listFilterLines from './verblets/list-filter-lines/index.js';
-import listReduceLines from './verblets/list-reduce-lines/index.js';
 
 // # Concept Science
 import centralTendencyLines from './verblets/central-tendency-lines/index.js';
@@ -187,8 +184,7 @@ export const verblets = {
   name,
   peopleList,
   toObject,
-  listMapLines,
-  listFindLines,
+  listBatch,
   map,
   find,
   anonymize,
@@ -224,8 +220,6 @@ export const verblets = {
   expect,
   sentiment,
   listExpand,
-  listFilterLines,
-  listReduceLines,
   // Missing chains
   reduce,
   collectTerms,
