@@ -56,7 +56,7 @@ describe('truncate', () => {
     });
 
     it('returns full length when all content meets criteria', async () => {
-      score.mockResolvedValueOnce({ scores: [8, 7, 6, 5, 4], reference: [] });
+      score.mockResolvedValueOnce({ scores: [8, 7, 6], reference: [] });
       const text = 'All content is important';
       const result = await truncate(text, 'Remove boring content');
       expect(result).toBe(text.length);
@@ -97,7 +97,6 @@ describe('truncate', () => {
           chunkSize: 5,
           llm: { modelName: 'custom' },
           customOption: 'value',
-          stopOnThreshold: 6,
         })
       );
     });

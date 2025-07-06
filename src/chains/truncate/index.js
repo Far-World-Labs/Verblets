@@ -96,13 +96,6 @@ Consider the removal criteria above when scoring.`;
     // Don't use stopOnThreshold - we need all scores to find high ones
   });
 
-  // Debug: log the scores to understand what's happening
-  console.log('Truncate debug:', {
-    threshold,
-    scores: result.scores,
-    chunks: textsToScore.map((t, i) => ({ index: i, text: `${t.substring(0, 50)}...` })),
-  });
-
   // Find the first chunk (from the end) that should be removed (score < threshold)
   const removeChunkIndex = result.scores.findIndex((score) => score < threshold);
 
