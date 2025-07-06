@@ -29,6 +29,7 @@ Primitive verblets extract basic data types from natural language with high reli
 List operations transform, filter, and organize collections using natural language criteria. They handle both individual items and batch processing for datasets larger than a context window. Many list operations support bulk operation with built-in retry. Many have alternative single invocation versions in the verblets directory.
 
 - [central-tendency](./src/chains/central-tendency) - evaluate categories with cognitive science methods
+- [detect-patterns](./src/chains/detect-patterns) - find recurring patterns in object collections
 - [filter](./src/chains/filter) - filter lists via batch processing
 - [find](./src/chains/find) - find the top match in a given dataset via batch processing
 - [group](./src/chains/group) - group datasets via batch processing
@@ -39,7 +40,6 @@ List operations transform, filter, and organize collections using natural langua
 - [list](./src/chains/list) - generate contextual lists from prompts
 - [list-expand](./src/verblets/list-expand) - generate additional similar items
 - [sort](./src/chains/sort) - order lists by any describable criteria
-- [detect-patterns](./src/chains/detect-patterns) - find recurring patterns in object collections
 
 ### Content
 
@@ -113,7 +113,7 @@ Helpers support higher-level operations. They make no LLM calls and are often sy
 
 ## Example: Real Estate Fraud Detection System
 
-Note this example is currently only fictional and is only meant to represent what's possible with an LLM standard library.
+Note this example is currently only fictional as an illustration of what's possible with an LLM standard library.
 
 ```javascript
 import {
@@ -156,18 +156,24 @@ async function stingOperation(listing, riskScore) {
   const initialEmail = await chatgpt(`
     Write an email as this buyer: ${buyer}
 
-    Show interest in property: ${listing.address} for ${listing.price}
-    Sound eager and mention having cash ready.
-    Make it unique - don't use template language.
+    Show interest in property: ${listing.address} for ${listing.price}.
+    Make it unique.
   `);
 
   await emailClient.send(listing.contact, `Interest in ${listing.address}`, initialEmail);
 
-  // Wait for fraudster response
-  const startTime = Date.now();
-  await new Promise(resolve => setTimeout(resolve, 30000)); // Wait 30 seconds
-
-  const fraudsterReply = await emailClient.getNewReplies(listing.contact, startTime);
+  // Wait for initial response with intelligent timing
+  let fraudsterReply;
+  const initialStop = setInterval({
+    prompt: 'How long should we wait for scammer to reply to initial inquiry?',
+    getData: async () => emailClient.getNewReplies(listing.contact, Date.now()),
+    onTick: async ({ data }) => {
+      if (data) {
+        fraudsterReply = data;
+        initialStop();
+      }
+    }
+  });
 
   if (!fraudsterReply) {
     await notionClient.addPage({
@@ -205,9 +211,18 @@ async function stingOperation(listing, riskScore) {
 
     await emailClient.send(listing.contact, `Re: Interest in ${listing.address}`, trapEmail);
 
-    // Wait for trap response
-    await new Promise(resolve => setTimeout(resolve, 30000));
-    const trapReply = await emailClient.getNewReplies(listing.contact, Date.now() - 30000);
+    // Wait for trap response using intelligent interval checking
+    let trapReply;
+    const trapStop = setInterval({
+      prompt: 'Check email every few hours for fraud investigation response',
+      getData: async () => emailClient.getNewReplies(listing.contact, Date.now() - 30000),
+      onTick: async ({ data }) => {
+        if (data) {
+          trapReply = data;
+          trapStop();
+        }
+      }
+    });
 
     if (trapReply) {
       const trapMessage = trapReply.payload.body.data || trapReply.snippet;
@@ -238,7 +253,7 @@ async function stingOperation(listing, riskScore) {
         status: evidenceAnalysis.scores[0] >= 8 ? 'strong_evidence' : 'moderate_evidence'
       });
     }
-  }
+
 }
 ```
 
