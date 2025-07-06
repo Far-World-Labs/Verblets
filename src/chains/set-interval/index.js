@@ -118,8 +118,10 @@ Next wait:`;
 
       count += 1;
 
-      // Schedule the next iteration
-      timer = setTimeout(step, delay);
+      // Schedule the next iteration only if still active
+      if (active) {
+        timer = setTimeout(step, delay);
+      }
     } catch (error) {
       console.error('Error in setInterval step:', error);
 
@@ -135,7 +137,7 @@ Next wait:`;
 
       count += 1;
 
-      // Continue with a fallback delay of 1 second
+      // Continue with a fallback delay of 1 second only if still active
       if (active) {
         timer = setTimeout(step, 1000);
       }
@@ -145,8 +147,10 @@ Next wait:`;
   // Start immediately - the prompt will determine the first interval
   timer = setTimeout(step, 0);
 
-  return () => {
+  const stop = () => {
     active = false;
     clearTimeout(timer);
   };
+
+  return stop;
 }

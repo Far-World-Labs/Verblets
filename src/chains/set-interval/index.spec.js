@@ -67,4 +67,27 @@ describe('setInterval', () => {
     stop();
     await vi.runOnlyPendingTimersAsync();
   });
+
+  it('prevents new timers after stop is called', async () => {
+    chatGPT.mockResolvedValueOnce('1 second');
+    numberWithUnits.mockResolvedValueOnce({ value: 1, unit: 'second' });
+    date.mockResolvedValue(undefined);
+    number.mockResolvedValue(undefined);
+
+    const getData = vi.fn().mockResolvedValue('test data');
+    const stop = setInterval({ prompt: 'prompt', getData });
+
+    await Promise.resolve();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(getData).toHaveBeenCalledTimes(1);
+
+    // Stop before the next timer would be set
+    stop();
+
+    // Advance time and verify no more calls happen
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(getData).toHaveBeenCalledTimes(1); // Should still be 1
+
+    await vi.runOnlyPendingTimersAsync();
+  });
 });
