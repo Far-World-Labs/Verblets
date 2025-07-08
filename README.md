@@ -40,6 +40,7 @@ List operations transform, filter, and organize collections using natural langua
 - [list-expand](./src/verblets/list-expand) - generate additional similar items
 - [sort](./src/chains/sort) - order lists by any describable criteria
 - [detect-patterns](./src/chains/detect-patterns) - find recurring patterns in object collections
+- [detect-threshold](./src/chains/detect-threshold) - find cutoff values in numeric data based on goals
 
 ### Content
 

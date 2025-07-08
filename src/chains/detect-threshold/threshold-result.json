@@ -1,0 +1,106 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["thresholdCandidates"],
+  "properties": {
+    "thresholdCandidates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "value",
+          "rationale",
+          "percentilePosition",
+          "riskProfile",
+          "falsePositiveRate",
+          "falseNegativeRate",
+          "confidence"
+        ],
+        "properties": {
+          "value": {
+            "type": "number",
+            "description": "The recommended threshold value"
+          },
+          "rationale": {
+            "type": "string",
+            "description": "Human-readable explanation of why this threshold was selected"
+          },
+          "percentilePosition": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Where this threshold falls in the distribution (0-100)"
+          },
+          "riskProfile": {
+            "type": "string",
+            "enum": ["conservative", "balanced", "aggressive"],
+            "description": "The risk stance this threshold represents"
+          },
+          "falsePositiveRate": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Estimated rate of false positives with this threshold"
+          },
+          "falseNegativeRate": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Estimated rate of false negatives with this threshold"
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Model's confidence in this threshold recommendation (0-1)"
+          },
+          "coverageAbove": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Proportion of data points above this threshold"
+          },
+          "coverageBelow": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Proportion of data points below this threshold"
+          },
+          "distributionInsight": {
+            "type": "string",
+            "description": "Key insight about the distribution at this threshold (e.g., 'natural break in bimodal distribution')"
+          }
+        }
+      }
+    },
+    "distributionAnalysis": {
+      "type": "object",
+      "properties": {
+        "mean": {
+          "type": "number"
+        },
+        "median": {
+          "type": "number"
+        },
+        "standardDeviation": {
+          "type": "number"
+        },
+        "skewness": {
+          "type": "string",
+          "enum": ["left", "right", "normal"],
+          "description": "Direction of distribution skew"
+        },
+        "outlierPresence": {
+          "type": "string",
+          "enum": ["none", "low", "moderate", "high"],
+          "description": "Presence of outliers in the distribution"
+        },
+        "distributionType": {
+          "type": "string",
+          "enum": ["normal", "bimodal", "multimodal", "uniform", "exponential", "long-tail"],
+          "description": "Identified distribution pattern"
+        }
+      }
+    }
+  }
+}
