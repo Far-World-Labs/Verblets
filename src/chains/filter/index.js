@@ -1,60 +1,60 @@
-import listFilterLines from '../../verblets/list-filter-lines/index.js';
+import listBatch, { ListStyle, determineStyle } from '../../verblets/list-batch/index.js';
+import createBatches from '../../lib/text-batch/index.js';
+import retry from '../../lib/retry/index.js';
 
-const buildMask = async (list, instructions, chunkSize, config = {}) => {
-  const mask = new Array(list.length);
-  for (let i = 0; i < list.length; i += chunkSize) {
-    const batch = list.slice(i, i + chunkSize);
-    try {
-      // eslint-disable-next-line no-await-in-loop
-      const result = await listFilterLines(batch, instructions, config);
-      const valid = result.every((item) => batch.includes(item));
-      if (!valid) {
-        for (let j = 0; j < batch.length; j += 1) {
-          mask[i + j] = undefined;
-        }
-        continue;
-      }
-      for (let j = 0; j < batch.length; j += 1) {
-        mask[i + j] = result.includes(batch[j]);
-      }
-    } catch {
-      for (let j = 0; j < batch.length; j += 1) {
-        mask[i + j] = undefined;
-      }
+export default async function filter(list, instructions, config = {}) {
+  const { listStyle, autoModeThreshold, llm, ...options } = config;
+
+  const results = [];
+  const batches = createBatches(list, config);
+
+  for (const { items, skip } of batches) {
+    if (skip) {
+      continue;
     }
-  }
-  return mask;
-};
 
-const filter = async (list, instructions, config = {}) => {
-  const { chunkSize = 10, maxAttempts = 3, llm, ...options } = config;
-  const filterConfig = { llm, ...options };
-  let mask = await buildMask(list, instructions, chunkSize, filterConfig);
-  for (let attempt = 1; attempt < maxAttempts; attempt += 1) {
-    const missingIdx = [];
-    const missingItems = [];
-    mask.forEach((val, idx) => {
-      if (val === undefined) {
-        missingIdx.push(idx);
-        missingItems.push(list[idx]);
+    const batchStyle = determineStyle(listStyle, items, autoModeThreshold);
+
+    const filterInstructions = ({ style, count }) => {
+      const baseInstructions = `For each item in the list below, determine if it satisfies the instructions. Return "yes" or "no" for each item, one per line.
+
+<instructions>
+${instructions}
+</instructions>`;
+
+      if (style === ListStyle.NEWLINE) {
+        return `${baseInstructions}
+
+Process exactly ${count} items from the list below and return ${count} yes/no decisions.`;
+      }
+
+      return `${baseInstructions}
+
+Process exactly ${count} items from the XML list below and return ${count} yes/no decisions.`;
+    };
+
+    const decisions = await retry(
+      () =>
+        listBatch(items, filterInstructions, {
+          listStyle: batchStyle,
+          autoModeThreshold,
+          llm,
+          ...options,
+        }),
+      {
+        label: `filter batch ${items.length} items`,
+      }
+    );
+
+    items.forEach((item, i) => {
+      const decision = decisions[i]?.toLowerCase().trim();
+      if (decision === 'yes') {
+        results.push(item);
       }
     });
-    if (missingItems.length === 0) break;
-    // eslint-disable-next-line no-await-in-loop
-    const retryMask = await buildMask(missingItems, instructions, chunkSize, filterConfig);
-    retryMask.forEach((val, i) => {
-      if (val !== undefined) {
-        mask[missingIdx[i]] = val;
-      }
-    });
   }
-  return list.filter((_, idx) => mask[idx]);
-};
 
-export const filterOnce = async function (list, instructions, config = {}) {
-  const { chunkSize = 10, llm, ...options } = config;
-  const mask = await buildMask(list, instructions, chunkSize, { llm, ...options });
-  return list.filter((_, idx) => mask[idx]);
-};
+  return results;
+}
 
-export default filter;
+export const filterOnce = filter;

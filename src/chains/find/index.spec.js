@@ -1,9 +1,36 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import find from './index.js';
-import listFindLines from '../../verblets/list-find-lines/index.js';
+import listBatch from '../../verblets/list-batch/index.js';
 
-vi.mock('../../verblets/list-find-lines/index.js', () => ({
-  default: vi.fn(async (items) => items[items.length - 1]),
+vi.mock('../../verblets/list-batch/index.js', () => ({
+  default: vi.fn(async (items) => {
+    // Simulate finding the "best" item (last one in this case)
+    return items[items.length - 1];
+  }),
+  ListStyle: { AUTO: 'auto', XML: 'xml', NEWLINE: 'newline' },
+  determineStyle: vi.fn(() => 'newline'),
+}));
+
+vi.mock('../../lib/text-batch/index.js', () => ({
+  default: vi.fn((items, config) => {
+    const batchSize = config?.batchSize || 10;
+    const batches = [];
+    for (let i = 0; i < items.length; i += batchSize) {
+      batches.push({ items: items.slice(i, i + batchSize), startIndex: i, skip: false });
+    }
+    return batches;
+  }),
+}));
+
+vi.mock('../../lib/retry/index.js', () => ({
+  default: vi.fn(async (fn) => {
+    try {
+      return await fn();
+    } catch {
+      // Retry once on failure
+      return await fn();
+    }
+  }),
 }));
 
 beforeEach(() => {
@@ -12,15 +39,25 @@ beforeEach(() => {
 
 describe('find chain', () => {
   it('scans batches to find best item', async () => {
-    const result = await find(['a', 'b', 'c', 'd'], 'find', { chunkSize: 2 });
-    expect(result).toBe('d');
-    expect(listFindLines).toHaveBeenCalledTimes(2);
+    // Mock will return 'b' from first batch ['a', 'b'] and 'd' from second batch ['c', 'd']
+    // Since 'b' appears first in the original list, it should be returned
+    const result = await find(['a', 'b', 'c', 'd'], 'find', { batchSize: 2 });
+    expect(result).toBe('b'); // First valid result found
+    expect(listBatch).toHaveBeenCalledTimes(2);
   });
 
   it('retries on failure', async () => {
-    listFindLines.mockRejectedValueOnce(new Error('fail'));
-    const result = await find(['x', 'y'], 'find', { chunkSize: 2, maxAttempts: 2 });
+    let callCount = 0;
+    listBatch.mockImplementation(async (items) => {
+      callCount++;
+      if (callCount === 1) {
+        throw new Error('fail');
+      }
+      return items[items.length - 1];
+    });
+
+    const result = await find(['x', 'y'], 'find', { batchSize: 2 });
     expect(result).toBe('y');
-    expect(listFindLines).toHaveBeenCalledTimes(2);
+    expect(listBatch).toHaveBeenCalledTimes(2);
   });
 });
