@@ -30,6 +30,7 @@ List operations transform, filter, and organize collections using natural langua
 
 - [central-tendency](./src/chains/central-tendency) - evaluate categories with cognitive science methods
 - [detect-patterns](./src/chains/detect-patterns) - find recurring patterns in object collections
+- [detect-threshold](./src/chains/detect-threshold) - find cutoff values in numeric data based on goals
 - [filter](./src/chains/filter) - filter lists via batch processing
 - [find](./src/chains/find) - find the top match in a given dataset via batch processing
 - [group](./src/chains/group) - group datasets via batch processing

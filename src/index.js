@@ -46,6 +46,7 @@ import veiledVariants from './chains/veiled-variants/index.js';
 import expectChain from './chains/expect/index.js';
 import * as llmLogger from './chains/llm-logger/index.js';
 import detectPatterns from './chains/detect-patterns/index.js';
+import detectThreshold from './chains/detect-threshold/index.js';
 
 import schemas from './json-schemas/index.js';
 import * as common from './constants/common.js';
@@ -147,6 +148,7 @@ export {
   expectChain,
   truncate,
   detectPatterns,
+  detectThreshold,
 };
 export { llmLogger };
 export { rangeCombinations } from './lib/combinations/index.js';
@@ -229,6 +231,7 @@ export const verblets = {
   expectChain,
   truncate,
   detectPatterns,
+  detectThreshold,
 };
 
 export const services = {
