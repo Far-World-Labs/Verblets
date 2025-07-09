@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import documentReducer from './index.js';
+import documentShrink from './index.js';
 import { aiExpect } from '../expect/index.js';
 import fs from 'fs';
 import path from 'path';
 
-describe('document-reducer examples', () => {
+describe('document-shrink examples', () => {
   const samplesDir = path.join(process.cwd(), 'src/samples/txt');
 
   it('reduces a long article about climate change to key points for a specific question', async () => {
@@ -15,7 +15,7 @@ describe('document-reducer examples', () => {
 
     const query = 'What can individuals do to help with climate change?';
 
-    const result = await documentReducer(climateArticle, query, {
+    const result = await documentShrink(climateArticle, query, {
       targetSize: 800,
       tokenBudget: 1000,
     });
@@ -49,7 +49,7 @@ describe('document-reducer examples', () => {
 
     const query = 'Why is my hub showing a flashing red light?';
 
-    const result = await documentReducer(technicalManual, query, {
+    const result = await documentShrink(technicalManual, query, {
       targetSize: 600,
       tokenBudget: 800,
     });
@@ -81,7 +81,7 @@ describe('document-reducer examples', () => {
 
     const query = 'How do I make these chocolate chip cookies?';
 
-    const result = await documentReducer(foodBlog, query, {
+    const result = await documentShrink(foodBlog, query, {
       targetSize: 700,
       tokenBudget: 800,
     });
@@ -116,7 +116,7 @@ describe('document-reducer examples', () => {
 
     const query = 'What are the termination terms and fees?';
 
-    const result = await documentReducer(contract, query, {
+    const result = await documentShrink(contract, query, {
       targetSize: 800,
       tokenBudget: 900,
     });
@@ -154,7 +154,7 @@ describe('document-reducer examples', () => {
 
     const query = 'What diabetes medications are available and what are their doses?';
 
-    const result = await documentReducer(medicalDoc, query, {
+    const result = await documentShrink(medicalDoc, query, {
       targetSize: 1000,
       tokenBudget: 1200,
     });
@@ -195,7 +195,7 @@ describe('document-reducer examples', () => {
 
     const query = 'How do I connect to WiFi?';
 
-    const result = await documentReducer(technicalManual, query, {
+    const result = await documentShrink(technicalManual, query, {
       targetSize: 200, // Very small target
       tokenBudget: 600,
     });

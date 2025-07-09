@@ -328,14 +328,14 @@ function getUnselectedChunks(allChunks, selectedChunks) {
 }
 
 // Main function with proper budget planning
-export default async function documentReducer(document, query, options = {}) {
-  // console.log(`[documentReducer] Starting with document length: ${document.length}, query: "${query}"`);
-  // console.log(`[documentReducer] Options:`, options);
+export default async function documentShrink(document, query, options = {}) {
+  // console.log(`[documentShrink] Starting with document length: ${document.length}, query: "${query}"`);
+  // console.log(`[documentShrink] Options:`, options);
 
   const config = { ...DEFAULT_OPTIONS, ...options };
   let tokenBudget = config.tokenBudget;
 
-  // console.log(`[documentReducer] Config:`, config);
+  // console.log(`[documentShrink] Config:`, config);
 
   // Step 1: Create chunks
   const chunks = createChunks(document, config.chunkSize, config.targetSize);
@@ -347,7 +347,7 @@ export default async function documentReducer(document, query, options = {}) {
     tokenBudget,
     document.length
   );
-  // console.log(`[documentReducer] Space allocation:`, allocation);
+  // console.log(`[documentShrink] Space allocation:`, allocation);
 
   // Step 3: Expand query
   const { expansions, tokensUsed: expansionTokens } = await expandQuery(
@@ -356,8 +356,8 @@ export default async function documentReducer(document, query, options = {}) {
     config.llm
   );
   tokenBudget -= expansionTokens;
-  // console.log(`[documentReducer] Token budget after expansion: ${tokenBudget}`);
-  // console.log(`[documentReducer] Expansions:`, expansions);
+  // console.log(`[documentShrink] Token budget after expansion: ${tokenBudget}`);
+  // console.log(`[documentShrink] Expansions:`, expansions);
 
   // Step 4: Score with TF-IDF
   const scoredChunks = scoreChunksWithTfIdf(chunks, expansions);
@@ -367,10 +367,10 @@ export default async function documentReducer(document, query, options = {}) {
     scoredChunks,
     allocation.tfIdfBudget
   );
-  // console.log(`[documentReducer] TF-IDF selected ${selected.length} chunks, ${candidates.length} candidates remain`);
+  // console.log(`[documentShrink] TF-IDF selected ${selected.length} chunks, ${candidates.length} candidates remain`);
 
   // Step 6: Use LLM to find high-value edge chunks
-  // console.log(`[documentReducer] About to score edge chunks...`);
+  // console.log(`[documentShrink] About to score edge chunks...`);
   const { scored, tokensUsed: scoreTokens } = await scoreEdgeChunks(
     candidates,
     query,
@@ -378,7 +378,7 @@ export default async function documentReducer(document, query, options = {}) {
     config.llm
   );
   tokenBudget -= scoreTokens;
-  // console.log(`[documentReducer] Scored ${scored.length} edge chunks, tokens remaining: ${tokenBudget}`);
+  // console.log(`[documentShrink] Scored ${scored.length} edge chunks, tokens remaining: ${tokenBudget}`);
 
   // Step 7: Add scored chunks that fit
   let result = addChunksThatFit(selected, sizeUsed, scored, config.targetSize);
