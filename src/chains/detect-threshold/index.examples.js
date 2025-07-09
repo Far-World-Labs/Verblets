@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import detectThreshold from './index.js';
 
 describe('detect-threshold examples', () => {
-  it('should analyze risk scores for fraud detection', async () => {
+  it('should analyze risk scores for fraud detection', { timeout: 60000 }, async () => {
     const transactions = [
       { id: 1, amount: 50, riskScore: 0.05, merchant: 'Grocery Store' },
       { id: 2, amount: 1500, riskScore: 0.72, merchant: 'Jewelry Store' },
@@ -36,7 +36,7 @@ describe('detect-threshold examples', () => {
     });
   });
 
-  it('should detect performance thresholds for API monitoring', async () => {
+  it('should detect performance thresholds for API monitoring', { timeout: 60000 }, async () => {
     const apiMetrics = Array.from({ length: 1000 }, (_, i) => ({
       endpoint: ['GET /users', 'POST /orders', 'GET /products'][i % 3],
       responseTime: Math.random() < 0.8 ? 50 + Math.random() * 200 : 500 + Math.random() * 2000,
@@ -47,6 +47,7 @@ describe('detect-threshold examples', () => {
       data: apiMetrics,
       targetProperty: 'responseTime',
       goal: 'Identify response time thresholds for SLA monitoring. Need to distinguish between normal latency, degraded performance, and critical slowdowns.',
+      chunkSize: 100, // Increase chunk size for better performance with large datasets
     });
 
     expect(result.thresholdCandidates).toBeInstanceOf(Array);

@@ -3,7 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import reduce from '../reduce/index.js';
 import chatGPT from '../../lib/chatgpt/index.js';
-import asXML from '../../lib/as-xml/index.js';
+import { asXML } from '../../prompts/wrap-variable.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -14,50 +14,58 @@ const thresholdResultSchema = JSON.parse(
 
 function calculateStatistics(data, targetProperty) {
   const values = data
-    .map((record) => record[targetProperty])
-    .filter((val) => val !== undefined && val !== null && !isNaN(val))
-    .map((val) => Number(val))
+    .map((item) => item[targetProperty])
+    .filter((v) => v !== null && v !== undefined && !isNaN(v))
     .sort((a, b) => a - b);
 
   if (values.length === 0) {
     throw new Error(`No valid numeric values found for property: ${targetProperty}`);
   }
 
-  const mean = values.reduce((sum, val) => sum + val, 0) / values.length;
-  const median =
-    values.length % 2 === 0
-      ? (values[values.length / 2 - 1] + values[values.length / 2]) / 2
-      : values[Math.floor(values.length / 2)];
+  const count = values.length;
+  const sum = values.reduce((acc, val) => acc + val, 0);
+  const mean = sum / count;
 
-  const variance = values.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / values.length;
+  const median =
+    count % 2 === 0
+      ? (values[count / 2 - 1] + values[count / 2]) / 2
+      : values[Math.floor(count / 2)];
+
+  const squaredDiffs = values.map((v) => Math.pow(v - mean, 2));
+  const variance = squaredDiffs.reduce((acc, val) => acc + val, 0) / count;
   const stdDev = Math.sqrt(variance);
 
-  const percentiles = {};
-  [5, 10, 25, 50, 75, 90, 95, 99].forEach((p) => {
-    const index = Math.ceil((p / 100) * values.length) - 1;
-    percentiles[p] = values[Math.max(0, index)];
-  });
+  // Calculate percentiles
+  const percentiles = {
+    10: values[Math.floor(count * 0.1)],
+    25: values[Math.floor(count * 0.25)],
+    50: median,
+    75: values[Math.floor(count * 0.75)],
+    90: values[Math.floor(count * 0.9)],
+    95: values[Math.floor(count * 0.95)],
+    99: values[Math.floor(count * 0.99)],
+  };
 
   return {
-    values,
+    count,
     mean,
     median,
     stdDev,
     min: values[0],
     max: values[values.length - 1],
     percentiles,
-    count: values.length,
+    values,
   };
 }
 
-async function detectThreshold({
+export default async function detectThreshold({
   data,
   targetProperty,
   goal,
   chunkSize = 50,
-  llm = {},
+  llm = { negotiate: { good: true } },
   ...options
-} = {}) {
+}) {
   if (!data || !Array.isArray(data) || data.length === 0) {
     throw new Error('Data must be a non-empty array');
   }
@@ -67,19 +75,41 @@ async function detectThreshold({
   }
 
   if (!goal) {
-    throw new Error('Goal description must be provided');
+    throw new Error('Goal must be specified to determine appropriate thresholds');
   }
 
+  // Calculate statistics for context
   const stats = calculateStatistics(data, targetProperty);
 
-  // Prepare data with context for the reduce chain
+  // Enrich data with statistical context
   const enrichedData = data.map((record) => ({
     value: record[targetProperty],
-    percentile: Math.round(
-      (stats.values.indexOf(Number(record[targetProperty])) / stats.values.length) * 100
+    percentileRank: Math.round(
+      (stats.values.filter((v) => v <= record[targetProperty]).length / stats.count) * 100
     ),
     context: record,
   }));
+
+  // Schema for the accumulator
+  const accumulatorSchema = {
+    type: 'object',
+    properties: {
+      observedPatterns: { type: 'array', items: { type: 'string' } },
+      potentialThresholds: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            value: { type: 'number' },
+            rationale: { type: 'string' },
+          },
+          required: ['value', 'rationale'],
+        },
+      },
+      distributionInsights: { type: 'array', items: { type: 'string' } },
+    },
+    required: ['observedPatterns', 'potentialThresholds', 'distributionInsights'],
+  };
 
   // Initial accumulator with schema structure
   const initialAccumulator = {
@@ -106,6 +136,9 @@ ${asXML(
     .join(', ')
 )}
 
+IMPORTANT: Each line contains an ARRAY of data points. Process all items in each array.
+The "value" field contains the ${targetProperty} value to analyze.
+
 For each batch of data:
 1. Look for patterns, clusters, or natural breaks in the values
 2. Identify potential threshold points that align with the goal
@@ -114,23 +147,40 @@ For each batch of data:
 
 Accumulator should track:
 - observedPatterns: Notable patterns or clusters in the data
-- potentialThresholds: Candidate threshold values with rationales
+- potentialThresholds: Candidate threshold values with rationales (must be within Min-Max range shown above)
 - distributionInsights: Key insights about the data distribution
 
-Return the updated accumulator as JSON.`;
+Return the updated accumulator as valid JSON.`;
 
-  // Use reduce to analyze the data in chunks
-  const analysisResult = await reduce({
-    list: enrichedData,
-    template: instructions,
+  // Convert enrichedData to strings for reduce - batch multiple items per line
+  const ITEMS_PER_LINE = 20;
+  const dataStrings = [];
+
+  for (let i = 0; i < enrichedData.length; i += ITEMS_PER_LINE) {
+    const batch = enrichedData.slice(i, i + ITEMS_PER_LINE);
+    dataStrings.push(JSON.stringify(batch));
+  }
+
+  // Use reduce to analyze the data in chunks with JSON schema
+  const analysisResult = await reduce(dataStrings, instructions, {
     initial: JSON.stringify(initialAccumulator),
     chunkSize,
-    llm,
+    llm: {
+      ...llm,
+      response_format: {
+        type: 'json_schema',
+        json_schema: {
+          name: 'analysis_accumulator',
+          schema: accumulatorSchema,
+        },
+      },
+    },
     ...options,
   });
 
-  // Parse the accumulated analysis
-  const accumulated = JSON.parse(analysisResult);
+  // Parse the accumulated analysis - should be valid JSON with schema
+  const accumulated =
+    typeof analysisResult === 'string' ? JSON.parse(analysisResult) : analysisResult;
 
   // Now use chatGPT directly with structured output for final recommendations
   const finalPrompt = `Based on the following analysis of ${
@@ -157,30 +207,30 @@ ${asXML(
   )
 )}
 
-Generate threshold recommendations. Each candidate should include:
-- value: the threshold value
-- rationale: why this threshold is appropriate
-- percentilePosition: where it falls in the distribution (0-100)
-- riskProfile: conservative/balanced/aggressive
-- falsePositiveRate: estimated rate (0-1)
-- falseNegativeRate: estimated rate (0-1)
-- confidence: your confidence in this recommendation (0-1)
-- coverageAbove/Below: proportion of data above/below
-- distributionInsight: key insight about this threshold`;
+CRITICAL: The threshold VALUE must be the actual ${targetProperty} value (between ${
+    stats.min
+  } and ${stats.max}), NOT a percentile position.
+For example, if suggesting a threshold at the 75th percentile where the value is 0.55, the threshold value should be 0.55, not 75.
+
+Generate specific threshold recommendations that:
+1. Align with the stated goal
+2. Are based on natural breaks or patterns in the data
+3. Include clear rationales for each threshold
+4. Consider the statistical distribution
+
+Return threshold candidates with their rationales.`;
 
   const modelOptions = {
     ...llm,
     response_format: {
       type: 'json_schema',
       json_schema: {
-        name: 'threshold_analysis',
-        strict: true,
+        name: 'threshold_result',
         schema: thresholdResultSchema,
       },
     },
   };
 
-  // Get final recommendations using chatGPT with structured output
   const result = await chatGPT(finalPrompt, {
     modelOptions,
     ...options,
@@ -189,21 +239,30 @@ Generate threshold recommendations. Each candidate should include:
   // With structured output, result should already be parsed
   const parsedResult = typeof result === 'string' ? JSON.parse(result) : result;
 
+  // Validate and fix threshold values to be within data range
+  if (parsedResult.thresholdCandidates) {
+    parsedResult.thresholdCandidates = parsedResult.thresholdCandidates.filter((candidate) => {
+      // Ensure threshold value is within the data range
+      if (candidate.value < stats.min || candidate.value > stats.max) {
+        console.warn(
+          `Threshold value ${candidate.value} is outside data range [${stats.min}, ${stats.max}]`
+        );
+        return false;
+      }
+      return true;
+    });
+  }
+
   // Add distribution analysis
   parsedResult.distributionAnalysis = {
     mean: stats.mean,
     median: stats.median,
     standardDeviation: stats.stdDev,
-    skewness: stats.mean > stats.median ? 'right' : stats.mean < stats.median ? 'left' : 'normal',
-    outlierPresence: accumulated.distributionInsights?.some((i) =>
-      i.toLowerCase().includes('outlier')
-    )
-      ? 'moderate'
-      : 'low',
-    distributionType: 'normal', // This could be enhanced based on accumulated insights
+    min: stats.min,
+    max: stats.max,
+    percentiles: stats.percentiles,
+    dataPoints: stats.count,
   };
 
   return parsedResult;
 }
-
-export default detectThreshold;

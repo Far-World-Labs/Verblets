@@ -18,7 +18,8 @@ const DEFAULT_OPTIONS = {
 
 // Pure function: Calculate reduction ratio
 function calculateReductionRatio(targetSize, documentSize) {
-  return targetSize / documentSize;
+  if (documentSize === 0) return 1;
+  return Math.min(1, Math.max(0, targetSize / documentSize));
 }
 
 // Pure function: Calculate adaptive chunk size
@@ -137,26 +138,27 @@ async function expandQuery(query, tokenBudget, llm) {
 // Pure function: Score chunks with TF-IDF
 function scoreChunksWithTfIdf(chunks, expansions) {
   // console.log(`[scoreChunksWithTfIdf] Scoring ${chunks.length} chunks with ${expansions.length} expansions`);
+
+  // Create a TextSimilarity instance
   const similarity = new TextSimilarity();
 
-  // Add both individual terms and the full query for better matching
+  // Add all expansions to the similarity engine
   expansions.forEach((text, i) => {
     similarity.addChunk(text, `exp-${i}`);
-    // console.log(`[scoreChunksWithTfIdf] Added expansion ${i}: "${text.slice(0, 50)}..."`);
   });
 
   return chunks.map((chunk) => {
-    // Find how similar this chunk is to any expansion term
-    const matches = similarity.findNearest(chunk.text, {
-      limit: Math.min(expansions.length, 5),
-      filter: (id) => id.startsWith('exp-'),
-    });
+    // Find similarity scores for this chunk against all expansions
+    const matches = similarity.findMatches(chunk.text, { threshold: 0 });
 
-    // Take the best match score
-    const tfIdfScore = matches.length > 0 ? matches[0].score : 0;
+    // Average the scores from all expansion matches
+    const tfIdfScore =
+      matches.length > 0
+        ? matches.reduce((sum, match) => sum + match.score, 0) / matches.length
+        : 0;
 
-    // if (chunkIdx < 3 || tfIdfScore > 0) {
-    //   console.log(`[scoreChunksWithTfIdf] Chunk ${chunkIdx} score: ${tfIdfScore}, text: "${chunk.text.slice(0, 50)}..."`);
+    // if (chunk.index < 3 || tfIdfScore > 0) {
+    //   console.log(`[scoreChunksWithTfIdf] Chunk ${chunk.index} score: ${tfIdfScore}, text: "${chunk.text.slice(0, 50)}..."`);
     // }
 
     return { ...chunk, tfIdfScore };
@@ -329,10 +331,31 @@ function getUnselectedChunks(allChunks, selectedChunks) {
 
 // Main function with proper budget planning
 export default async function documentShrink(document, query, options = {}) {
+  // Handle edge cases early
+  if (!document || document.length === 0) {
+    return {
+      content: '',
+      metadata: {
+        originalSize: 0,
+        finalSize: 0,
+        reductionRatio: '0.00',
+        allocation: {},
+        chunks: { total: 0, tfIdfSelected: 0, llmSelected: 0, compressed: 0 },
+        tokens: { budget: 0, used: 0, breakdown: {} },
+      },
+    };
+  }
+
   // console.log(`[documentShrink] Starting with document length: ${document.length}, query: "${query}"`);
   // console.log(`[documentShrink] Options:`, options);
 
   const config = { ...DEFAULT_OPTIONS, ...options };
+
+  // Validate and fix config values
+  if (config.targetSize <= 0) config.targetSize = DEFAULT_OPTIONS.targetSize;
+  if (config.chunkSize <= 0) config.chunkSize = DEFAULT_OPTIONS.chunkSize;
+  if (config.tokenBudget <= 0) config.tokenBudget = DEFAULT_OPTIONS.tokenBudget;
+
   let tokenBudget = config.tokenBudget;
 
   // console.log(`[documentShrink] Config:`, config);
@@ -407,11 +430,25 @@ export default async function documentShrink(document, query, options = {}) {
 
   const finalChunks = result.chunks;
 
-  // Final assembly
-  const content = finalChunks
-    .sort((a, b) => a.index - b.index)
-    .map((c) => c.text)
-    .join('\n\n');
+  // Final assembly - join chunks back together
+  const sortedChunks = finalChunks.sort((a, b) => a.index - b.index);
+
+  // Check if chunks are consecutive and cover the whole document
+  let isConsecutive = true;
+  let expectedStart = 0;
+
+  for (const chunk of sortedChunks) {
+    if (chunk.start !== expectedStart) {
+      isConsecutive = false;
+      break;
+    }
+    expectedStart = chunk.start + chunk.size;
+  }
+
+  // If chunks are consecutive slices, just concatenate them
+  const content = isConsecutive
+    ? sortedChunks.map((c) => c.text).join('')
+    : sortedChunks.map((c) => c.text).join('\n\n');
 
   return {
     content,
