@@ -1,0 +1,77 @@
+COMPREHENSIVE TREATMENT PROTOCOL FOR TYPE 2 DIABETES MANAGEMENT
+
+1. INTRODUCTION
+Type 2 diabetes mellitus (T2DM) is a chronic metabolic disorder characterized by insulin resistance and relative insulin deficiency. This protocol outlines evidence-based approaches for managing T2DM in adult patients. The prevalence of T2DM has increased dramatically over the past decades, affecting approximately 10% of the adult population in developed countries.
+
+2. PATHOPHYSIOLOGY
+T2DM develops through a combination of insulin resistance in peripheral tissues and progressive beta-cell dysfunction. Multiple factors contribute including genetics, obesity, sedentary lifestyle, and aging. The disease progression involves initial compensatory hyperinsulinemia followed by beta-cell exhaustion and frank hyperglycemia.
+
+3. DIAGNOSTIC CRITERIA
+Diagnosis is established by any of the following:
+- Fasting plasma glucose ≥126 mg/dL
+- 2-hour plasma glucose ≥200 mg/dL during OGTT
+- HbA1c ≥6.5%
+- Random plasma glucose ≥200 mg/dL with classic symptoms
+
+4. LIFESTYLE MODIFICATIONS
+All patients should receive counseling on:
+- Diet: Mediterranean or DASH diet patterns, carbohydrate counting
+- Exercise: 150 minutes moderate activity weekly
+- Weight loss: 5-10% reduction if overweight
+- Smoking cessation
+- Stress management techniques
+
+5. PHARMACOLOGICAL MANAGEMENT
+
+First-Line Therapy:
+METFORMIN
+- Starting dose: 500mg once or twice daily with meals
+- Target dose: 1000mg twice daily
+- Maximum dose: 2550mg daily
+- Contraindications: eGFR <30, acute illness, contrast procedures
+- Side effects: GI upset, B12 deficiency, rare lactic acidosis
+- Monitoring: Annual B12 levels, renal function every 3-6 months
+
+Second-Line Options (if HbA1c remains >7%):
+
+SULFONYLUREAS (e.g., Glipizide)
+- Starting dose: 2.5-5mg daily
+- Maximum: 20mg daily
+- Risk of hypoglycemia and weight gain
+- Avoid in renal impairment
+
+DPP-4 INHIBITORS (e.g., Sitagliptin)
+- Dose: 100mg daily
+- Renal dose adjustment required
+- Weight neutral, low hypoglycemia risk
+- Monitor for pancreatitis
+
+GLP-1 AGONISTS (e.g., Liraglutide)
+- Starting: 0.6mg subcutaneous daily
+- Increase weekly to 1.2-1.8mg daily
+- Benefits: weight loss, cardiovascular protection
+- Side effects: nausea, injection site reactions
+
+SGLT2 INHIBITORS (e.g., Empagliflozin)
+- Dose: 10-25mg daily
+- Benefits: weight loss, blood pressure reduction, heart/kidney protection
+- Risks: genital infections, DKA, volume depletion
+- Avoid if eGFR <45
+
+Insulin Therapy:
+- Consider when HbA1c >10% or symptomatic
+- Start with basal insulin 0.1-0.2 units/kg/day
+- Titrate by 2 units every 3 days until fasting glucose 80-130 mg/dL
+- Add prandial insulin if HbA1c remains elevated
+
+6. MONITORING
+- HbA1c every 3 months until stable, then every 6 months
+- Annual: lipids, urine albumin, eye exam, foot exam
+- Blood pressure at each visit
+- Self-monitoring of blood glucose as indicated
+
+7. COMPLICATIONS SCREENING
+Regular screening for microvascular and macrovascular complications including retinopathy, nephropathy, neuropathy, and cardiovascular disease is essential for comprehensive care.
+
+8. SPECIAL POPULATIONS
+Elderly patients, pregnant women, and those with significant comorbidities require individualized approaches with modified glycemic targets and medication selections.

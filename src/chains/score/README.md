@@ -1,71 +1,96 @@
 # score
 
-Assign numeric scores to items in arrays using AI-powered evaluation with intelligent reasoning and consistent scoring criteria.
+Score items on a 0-10 scale with automatic calibration for consistent results across batches.
 
 ## Usage
 
 ```javascript
 import score from './index.js';
 
-const proposals = [
-  'Implement AI-powered customer service chatbot',
-  'Redesign company website with modern UI',
-  'Launch social media marketing campaign',
-  'Develop mobile app for existing platform',
-  'Create employee training program'
+const products = [
+  'Premium wireless headphones with noise cancellation',
+  'Basic earbuds',
+  'Professional studio monitors with balanced inputs',
+  'Bluetooth speaker'
 ];
 
-const scores = await score(proposals, 'business impact potential (1-10)', { normalize: true });
-// Returns: [
-//   { item: 'Implement AI-powered customer service chatbot', score: 8.5 },
-//   { item: 'Redesign company website with modern UI', score: 7.2 },
-//   { item: 'Launch social media marketing campaign', score: 6.8 },
-//   { item: 'Develop mobile app for existing platform', score: 9.1 },
-//   { item: 'Create employee training program', score: 5.4 }
-// ]
+const { scores } = await score(products, 'audio quality and professional features');
+// => { scores: [8, 3, 9, 5], reference: [...] }
 ```
 
 ## API
 
-### `score(array, criteria, config)`
+### `score(list, instructions, config)`
+
+Scores a list of items based on given criteria with automatic calibration.
 
 **Parameters:**
-- `array` (Array): Items to score
-- `criteria` (string): Natural language description of scoring criteria
+- `list` (Array<string>): Items to score
+- `instructions` (string): Scoring criteria description
 - `config` (Object): Configuration options
-  - `scale` (string): Scoring scale (default: '1-10')
-  - `normalize` (boolean): Normalize scores across the range (default: false)
   - `chunkSize` (number): Items per batch (default: 10)
-  - `llm` (Object): LLM model options
+  - `examples` (Array): Pre-scored reference examples
+  - `llm` (Object): LLM configuration
+  - `stopOnThreshold` (number): Stop scoring when item scores below threshold
 
-**Returns:** Promise<Array<Object>> - Array of objects with `item` and `score` properties
+**Returns:** Promise<Object>
+- `scores` (Array<number>): Scores from 0-10 for each item
+- `reference` (Array): Calibration examples used
+- `stoppedAt` (number): Index where scoring stopped (if threshold used)
 
-## Use Cases
+## How It Works
+
+1. **Initial Scoring**: Scores items in batches
+2. **Calibration Selection**: Picks low, medium, and high scoring examples
+3. **Rescoring**: Scores calibration examples again for consistency
+4. **Final Pass**: Scores all items with calibration reference
+
+This two-pass approach ensures consistent scoring across large lists.
+
+## Examples
+
+### Content Quality
+```javascript
+const articles = await loadArticles();
+const { scores } = await score(
+  articles.map(a => a.title + ': ' + a.summary),
+  'engaging content with clear value proposition'
+);
+const topArticles = articles.filter((_, i) => scores[i] >= 7);
+```
 
 ### Resume Screening
 ```javascript
-import score from './index.js';
-
-const resumes = [
-  'Software Engineer with 5 years React experience',
-  'Full-stack developer with Node.js and Python skills',
-  'Recent graduate with internship experience',
-  'Senior developer with team leadership background'
-];
-
-const ranked = await score(resumes, 'suitability for senior developer role', { scale: '1-100' });
-// Returns scored resumes for hiring decisions
+const resumes = await parseResumes();
+const { scores } = await score(
+  resumes.map(r => r.experience + ' ' + r.skills),
+  'match for senior JavaScript developer role',
+  { chunkSize: 20 }
+);
 ```
 
-### Content Quality Assessment
+### Priority Ranking
 ```javascript
-const articles = [
-  'Comprehensive guide to machine learning basics',
-  'Quick tips for better productivity',
-  'In-depth analysis of market trends',
-  'Simple tutorial on web development'
-];
-
-const quality = await score(articles, 'educational value and depth', { normalize: true });
-// Returns quality scores for content curation
+const features = ['Dark mode', 'Export to PDF', 'Real-time sync', 'Emoji support'];
+const { scores } = await score(features, 'impact on user experience');
+features.sort((a, b) => scores[features.indexOf(b)] - scores[features.indexOf(a)]);
 ```
+
+### Early Termination
+```javascript
+// Stop scoring when quality drops below threshold
+const { scores, stoppedAt } = await score(
+  searchResults,
+  'relevance to query',
+  { stopOnThreshold: 4 }
+);
+// Only process results up to stoppedAt
+```
+
+## Best Practices
+
+- Write clear, specific scoring instructions
+- Use consistent formatting for similar items
+- Larger chunk sizes (20-30) work well for simple comparisons
+- Smaller chunks (5-10) better for complex evaluations
+- Pre-scored examples improve consistency for domain-specific scoring

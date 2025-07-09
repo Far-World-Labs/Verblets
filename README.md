@@ -53,6 +53,7 @@ Content utilities generate, transform, and analyze text while maintaining struct
 - [conversation](./src/chains/conversation) - orchestrate multi-turn AI conversations with configurable policies
 - [disambiguate](./src/chains/disambiguate) - resolve ambiguous word meanings using context
 - [dismantle](./src/chains/dismantle) - break systems into components
+- [document-shrink](./src/chains/document-shrink) - shrink documents based on query relevance
 - [filter-ambiguous](./src/chains/filter-ambiguous) - find and rank unclear terms for disambiguation
 - [join](./src/chains/join) - merge text fragments into coherent sequences
 - [name](./src/verblets/name) - name something from a definition or description

@@ -1,6 +1,7 @@
 ---
-description: 
+description: Chain Development Context
 globs: 
+  - "src/chains/**/*.js"
 alwaysApply: false
 ---
 # Chain Development Context
@@ -40,7 +41,10 @@ export default async function chainName(input, instructions, config = {}) {
 ```
 
 ### Model Selection for Chains
-TODO
+- **Default**: `{ negotiate: { fast: true, cheap: true } }` for bulk operations
+- **Quality**: `{ negotiate: { good: true } }` for critical analysis
+- **Privacy**: `{ modelName: 'privacy' }` for sensitive data
+- **Reasoning**: `{ negotiate: { reasoning: true } }` for complex logic
 
 ### Required Files
 - `index.js` - Main implementation
@@ -54,6 +58,7 @@ TODO
 ### Batch Processing
 - Use configurable `chunkSize` with sensible defaults
 - Implement progress tracking for long operations
+<<<<<<< HEAD
 
 ### Error Handling
 - Retry logic with exponential backoff
@@ -62,5 +67,21 @@ TODO
 
 ### Performance Optimization
 - Use appropriate concurrency limits
+=======
+- Handle partial failures gracefully
+- Consider memory efficiency for large datasets
+
+### Error Handling
+- Retry logic with exponential backoff
+- Validate intermediate results
+- Provide meaningful error messages
+- Handle LLM call failures gracefully
+
+### Performance Optimization
+- Configure bulk sizes based on complexity
+- Use appropriate concurrency limits
+- Monitor and adjust model selection
+- Implement inactivity timeouts for reliability
+>>>>>>> 2011260 (add document reducer implementation)
 
 Reference `guidelines/CODE_QUALITY.md` for error handling requirements and `guidelines/ARCHITECTURE_TESTS.md` for testing patterns.

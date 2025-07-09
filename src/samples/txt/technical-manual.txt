@@ -1,0 +1,65 @@
+SMART HOME HUB 3000 - COMPLETE MANUAL
+
+Table of Contents:
+1. Introduction and Safety
+2. Initial Setup
+3. Network Configuration
+4. Device Pairing
+5. Troubleshooting
+6. Specifications
+7. Warranty Information
+
+1. INTRODUCTION AND SAFETY
+Welcome to the Smart Home Hub 3000. This device serves as the central control point for all your smart home devices. Please read all safety instructions before use. Keep the device away from water and extreme temperatures. The hub should be placed in a central location for optimal wireless coverage.
+
+2. INITIAL SETUP
+Unpack your Smart Home Hub 3000 and verify all components are included: hub unit, power adapter, ethernet cable, and quick start guide. Connect the power adapter to the hub and plug into a wall outlet. The LED light will flash blue during startup, which takes approximately 2 minutes.
+
+3. NETWORK CONFIGURATION
+Connect the hub to your router using the included ethernet cable. For wireless setup, press and hold the WPS button for 3 seconds. The hub supports both 2.4GHz and 5GHz networks. Ensure your router has DHCP enabled. Port forwarding may be required for remote access.
+
+4. DEVICE PAIRING
+To add devices, open the Smart Home app and tap "Add Device". Put your smart device in pairing mode (refer to device manual). The hub will automatically discover compatible devices. Supported protocols include Zigbee, Z-Wave, and Wi-Fi. Maximum 150 devices can be connected simultaneously.
+
+5. TROUBLESHOOTING
+
+LED Light Indicators:
+- Solid Blue: Normal operation
+- Flashing Blue: Starting up or pairing mode
+- Solid Red: Error condition
+- Flashing Red: Connection error
+- Yellow: Firmware update in progress
+
+Common Issues and Solutions:
+
+Connection Error (Flashing Red Light):
+1. Check ethernet cable connection
+2. Verify router is powered on and functioning
+3. Restart hub by unplugging for 10 seconds
+4. Check if router firewall is blocking hub
+5. Reset network settings: hold reset button for 10 seconds
+
+Devices Not Responding:
+1. Ensure devices are powered on
+2. Check device distance from hub (max 100ft for Zigbee)
+3. Remove and re-pair problematic devices
+4. Update device firmware through app
+5. Check for wireless interference from other devices
+
+App Cannot Find Hub:
+1. Ensure phone is on same network as hub
+2. Disable VPN on your phone
+3. Check router isolation settings
+4. Reinstall the Smart Home app
+5. Manually enter hub IP address in app settings
+
+6. SPECIFICATIONS
+- Processor: Quad-core ARM Cortex-A53
+- Memory: 1GB RAM, 4GB storage
+- Wireless: 802.11ac Wi-Fi, Bluetooth 5.0
+- Protocols: Zigbee 3.0, Z-Wave Plus
+- Power: 5V 2A DC
+- Dimensions: 4.5" x 4.5" x 1.2"
+
+7. WARRANTY INFORMATION
+Your Smart Home Hub 3000 is covered by a 2-year limited warranty. This covers defects in materials and workmanship under normal use. Warranty does not cover damage from misuse, accidents, or unauthorized modifications. For warranty claims, contact support with proof of purchase.
