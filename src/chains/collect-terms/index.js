@@ -1,5 +1,5 @@
 import list from '../list/index.js';
-import reduce from '../reduce/index.js';
+import score from '../score/index.js';
 
 const splitIntoChunks = (text, maxLen) => {
   const words = text.split(/\s+/);
@@ -20,24 +20,36 @@ const splitIntoChunks = (text, maxLen) => {
 export default async function collectTerms(text, config = {}) {
   const { chunkLen = 1000, topN = 20, llm, ...options } = config;
   const chunks = splitIntoChunks(text, chunkLen);
+
+  // Collect terms from each chunk
   const allTerms = [];
   for (const chunk of chunks) {
-    const terms = await list(`important complex or technical terms from: ${chunk}`, {
-      llm,
-      ...options,
-    });
+    const terms = await list(
+      `key words and phrases that would help find documents about: ${chunk}`,
+      {
+        llm,
+        ...options,
+      }
+    );
     allTerms.push(...terms);
   }
-  const uniqueTerms = Array.from(new Set(allTerms.map((t) => t.trim())));
+
+  // Remove duplicates
+  const uniqueTerms = Array.from(new Set(allTerms.map((t) => t.trim()))).filter(Boolean);
+
+  // If we already have fewer terms than requested, return them all
   if (uniqueTerms.length <= topN) return uniqueTerms;
-  const reduced = await reduce(
+
+  // Score each term by relevance to the full text context
+  const { scores } = await score(
     uniqueTerms,
-    `Return the top ${topN} terms as a comma-separated list`,
-    { initial: '', llm, ...options }
+    `relevance as a search term for finding information (1-10, higher is more important)`,
+    { llm, ...options }
   );
-  return reduced
-    .split(',')
-    .map((t) => t.trim())
-    .filter(Boolean)
-    .slice(0, topN);
+
+  // Sort by score and take top N
+  const termsWithScores = uniqueTerms.map((term, i) => ({ term, score: scores[i] }));
+  termsWithScores.sort((a, b) => b.score - a.score);
+
+  return termsWithScores.slice(0, topN).map((item) => item.term);
 }

@@ -50,8 +50,21 @@ async function createModelOptions(llm = 'fastGoodCheap') {
 }
 
 async function scoreBatch(items, instructions, reference = [], config = {}) {
+  // console.log(`[scoreBatch] Scoring ${items.length} items with instructions: "${instructions}"`);
+
+  // Debug: Check what we're actually scoring
+  // items.forEach((item, i) => {
+  //   console.log(`[scoreBatch] Item ${i} length: ${item.length}, contains newline: ${item.includes('\n')}`);
+  //   if (item.includes('\n')) {
+  //     console.log(`[scoreBatch] Item ${i} has newlines! First 100 chars:`, item.slice(0, 100));
+  //   }
+  // });
+
   const { llm, ...options } = config;
-  const listBlock = asXML(items.join('\n'), { tag: 'items' });
+  // Create a numbered list for clearer item separation
+  const itemsList = items.map((item, i) => `${i + 1}. ${item}`).join('\n');
+  const listBlock = asXML(itemsList, { tag: 'items' });
+
   const refBlock = reference.length
     ? `\nCalibration examples (score - text):\n${asXML(
         reference.map((r) => `${r.score} - ${r.item}`).join('\n'),
@@ -60,9 +73,13 @@ async function scoreBatch(items, instructions, reference = [], config = {}) {
     : '';
 
   const prompt =
-    `Score each line in <items> from 0 (worst) to 10 (best) based on: ${instructions}.` +
-    `\nRespond with a JSON object containing a "scores" array of numbers in the same order.` +
+    `Score each numbered item in <items> from 0 (worst) to 10 (best) based on: ${instructions}.` +
+    `\nThere are exactly ${items.length} items to score.` +
+    `\nRespond with a JSON object containing a "scores" array with exactly ${items.length} numbers in the same order.` +
     `${refBlock}\n${onlyJSONArray}\n${listBlock}`;
+
+  // Debug the actual prompt
+  // console.log(`[scoreBatch] Prompt preview:`, prompt.slice(0, 500) + '...');
 
   const modelOptions = await createModelOptions(llm);
   const response = await chatGPT(prompt, {

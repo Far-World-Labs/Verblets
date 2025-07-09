@@ -1,0 +1,52 @@
+SERVICE AGREEMENT
+
+This Service Agreement ("Agreement") is entered into as of January 1, 2024, between TechCorp Solutions Inc. ("Service Provider") and ClientCo LLC ("Client").
+
+ARTICLE 1: DEFINITIONS
+1.1 "Services" means the software development and consulting services described in Exhibit A.
+1.2 "Deliverables" means all work product, code, documentation, and materials created by Service Provider.
+1.3 "Confidential Information" means any non-public information disclosed by either party.
+1.4 "Term" means the period beginning on the Effective Date and continuing for twelve (12) months.
+
+ARTICLE 2: SERVICES
+2.1 Service Provider agrees to provide the Services described in Exhibit A in a professional and workmanlike manner.
+2.2 Service Provider shall assign qualified personnel to perform the Services.
+2.3 Client shall provide timely access to systems, information, and personnel as reasonably required.
+2.4 Any changes to the scope of Services must be agreed in writing by both parties.
+
+ARTICLE 3: COMPENSATION
+3.1 Client shall pay Service Provider a monthly retainer of $25,000.
+3.2 Additional services outside the scope shall be billed at $200 per hour.
+3.3 Invoices are due within thirty (30) days of receipt.
+3.4 Late payments shall accrue interest at 1.5% per month.
+
+ARTICLE 4: INTELLECTUAL PROPERTY
+4.1 All Deliverables created specifically for Client shall be considered work-for-hire.
+4.2 Upon full payment, Client shall own all rights, title, and interest in the Deliverables.
+4.3 Service Provider retains rights to general methodologies, concepts, and know-how.
+4.4 Service Provider may use generalized knowledge gained in future engagements.
+
+ARTICLE 5: TERMINATION
+5.1 Either party may terminate this Agreement with sixty (60) days written notice.
+5.2 Client may terminate immediately for cause upon written notice.
+5.3 Cause includes material breach not cured within fifteen (15) days of notice.
+5.4 Upon termination, Service Provider shall deliver all work product to Client.
+5.5 Client shall pay for all services rendered through the termination date.
+5.6 Early termination by Client without cause requires payment of two months' retainer as a cancellation fee.
+
+ARTICLE 6: CONFIDENTIALITY
+6.1 Each party shall maintain the confidentiality of the other party's Confidential Information.
+6.2 Confidentiality obligations survive termination for five (5) years.
+6.3 Obligations do not apply to information that becomes publicly available through no fault of receiving party.
+
+ARTICLE 7: WARRANTIES AND LIMITATIONS
+7.1 Service Provider warrants Services will be performed in a professional manner.
+7.2 Service Provider disclaims all other warranties, express or implied.
+7.3 Total liability shall not exceed fees paid in the six months preceding the claim.
+7.4 Neither party liable for indirect, consequential, or punitive damages.
+
+ARTICLE 8: GENERAL PROVISIONS
+8.1 This Agreement constitutes the entire agreement between the parties.
+8.2 Governed by the laws of Delaware.
+8.3 Disputes shall be resolved through binding arbitration in San Francisco.
+8.4 Amendments must be in writing and signed by both parties.

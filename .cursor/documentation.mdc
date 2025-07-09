@@ -1,6 +1,8 @@
 ---
-description: 
-globs: 
+description: Documentation Development Context
+globs:
+  - "**/*.md"
+  - "src/**/*.md"
 alwaysApply: false
 ---
 # Documentation Development Context
@@ -25,7 +27,11 @@ Documentation should be **clear, concise, and high signal-to-noise ratio**. Each
 5. **API documentation**: Parameters, return values, configuration options
 6. **Integration patterns**: How it works with other modules (if applicable)
 
+<<<<<<< HEAD
 ### Examples
+=======
+### Quality Standards
+>>>>>>> 2011260 (add document reducer implementation)
 - **Lead with the most common use case**
 - **Use realistic, non-trivial examples** that demonstrate practical value
 - **Show actual return values**, not just parameter lists
@@ -40,7 +46,11 @@ Documentation should be **clear, concise, and high signal-to-noise ratio**. Each
 
 Brief description of what this chain does and when to use it.
 
+<<<<<<< HEAD
 Related: [similar-chain](mdc:similar-chain), [alternative-approach](mdc:alternative-approach)
+=======
+Related: [similar-chain](../similar-chain/), [alternative-approach](../alternative-approach/)
+>>>>>>> 2011260 (add document reducer implementation)
 
 ## Usage
 
@@ -68,8 +78,13 @@ Array of processed results matching the input structure.
 ## Integration
 
 Works well with:
+<<<<<<< HEAD
 - [filter chain](mdc:filter) for pre-processing
 - [reduce chain](mdc:reduce) for post-processing
+=======
+- [filter chain](../filter/) for pre-processing
+- [reduce chain](../reduce/) for post-processing
+>>>>>>> 2011260 (add document reducer implementation)
 ```
 
 ## Anti-Patterns to Avoid
@@ -80,7 +95,42 @@ Works well with:
 - **Lists of benefits** where items overlap or are obvious
 - **Copying boilerplate text** between similar modules
 - **Explaining implementation details** users don't need
+<<<<<<< HEAD
 - **Generic examples** that don't show real value. Examples are one of the most important. 
+=======
+- **Generic examples** that don't show real value
+
+### Bad Example
+```markdown
+# README for the Amazing Data Filter Chain
+
+This is a comprehensive data filtering solution that provides advanced filtering capabilities for your data processing needs. It offers many benefits including:
+
+- Filters data
+- Processes information
+- Provides results
+- Easy to use
+- Flexible configuration
+
+The filter chain is located in the chains directory and implements the standard chain interface...
+```
+
+### Good Example
+```markdown
+# Filter
+
+Removes items from lists based on natural language criteria.
+
+Related: [find](../find/), [score](../score/)
+
+## Usage
+
+```javascript
+const filtered = await filter(todoList, 'incomplete tasks only');
+// Returns: ['Buy groceries', 'Call dentist']
+```
+```
+>>>>>>> 2011260 (add document reducer implementation)
 
 ## Writing Standards
 
@@ -113,6 +163,34 @@ Works well with:
 ### Model Selection Documentation
 For chains/verblets that have specific model requirements:
 - **Explain privacy considerations** when relevant
+<<<<<<< HEAD
+=======
+- **Document model negotiation patterns** used
+- **Justify non-standard model choices**
+
+### Example Documentation
+```markdown
+## Model Configuration
+
+Uses privacy models by default for sensitive data processing:
+
+```javascript
+// Default privacy model
+const result = await anonymize(userData);
+
+// Custom model (use with caution for sensitive data)
+const result = await anonymize(userData, { 
+  llm: { negotiate: { fast: true } } 
+});
+```
+```
+
+### Cross-References
+- **Link early** to related modules
+- **Use relative paths** for internal links
+- **Group related alternatives** together
+- **Explain relationships** between modules
+>>>>>>> 2011260 (add document reducer implementation)
 
 ## Maintenance
 

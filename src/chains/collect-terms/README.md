@@ -1,98 +1,75 @@
 # collect-terms
 
-Extract and organize specialized terminology from text using AI-powered analysis with intelligent categorization and contextual understanding.
+Extract key search terms and phrases from text to improve document retrieval and search relevance.
 
 ## Usage
 
 ```javascript
 import collectTerms from './index.js';
 
-const text = `
-Machine learning algorithms use neural networks to process data. 
-Deep learning models employ backpropagation for training. 
-Supervised learning requires labeled datasets, while unsupervised learning finds patterns without labels.
+const document = `
+The quantum entanglement phenomenon demonstrates non-local correlations 
+between particles. Bell's theorem proves these correlations cannot be 
+explained by hidden variables in classical physics.
 `;
 
-const terms = await collectTerms(text, 'machine learning terminology');
-
-// Returns: [
-//   { term: 'machine learning', category: 'field', definition: 'AI technique for pattern recognition' },
-//   { term: 'neural networks', category: 'architecture', definition: 'Computing systems inspired by biological neural networks' },
-//   { term: 'deep learning', category: 'technique', definition: 'ML using deep neural networks' },
-//   { term: 'backpropagation', category: 'algorithm', definition: 'Training algorithm for neural networks' },
-//   { term: 'supervised learning', category: 'approach', definition: 'Learning with labeled training data' },
-//   { term: 'unsupervised learning', category: 'approach', definition: 'Learning without labeled data' }
-// ]
+const terms = await collectTerms(document, { topN: 10 });
+// => ['quantum entanglement', 'non-local correlations', 'Bell theorem', 
+//     'hidden variables', 'classical physics', ...]
 ```
 
 ## API
 
-### `collectTerms(text, domain, config)`
+### `collectTerms(text, config)`
+
+Analyzes text to extract the most relevant search terms and phrases.
 
 **Parameters:**
-- `text` (string): Text to extract terms from
-- `domain` (string): Domain or field context for term extraction
+- `text` (string): The text to analyze
 - `config` (Object): Configuration options
-  - `includeDefinitions` (boolean): Include term definitions (default: true)
-  - `categorize` (boolean): Group terms by category (default: true)
-  - `minTermLength` (number): Minimum term length (default: 2)
-  - `maxTerms` (number): Maximum number of terms to extract (default: 50)
-  - `llm` (Object): LLM model options
+  - `chunkLen` (number): Maximum chunk size for processing (default: 1000)
+  - `topN` (number): Number of top terms to return (default: 20)
+  - `llm` (Object): LLM configuration
 
-**Returns:** Promise<Array<Object>> - Array of term objects with structure:
+**Returns:** Promise<Array<string>> - Array of the most relevant search terms
+
+## How It Works
+
+1. **Chunking**: Splits long text into manageable chunks
+2. **Term Extraction**: Uses AI to identify key words and phrases from each chunk
+3. **Deduplication**: Removes duplicate terms across chunks
+4. **Scoring**: Ranks terms by relevance as search keywords
+5. **Selection**: Returns the top N most relevant terms
+
+## Examples
+
+### Technical Documentation
 ```javascript
-{
-  term: string,       // The extracted term
-  category: string,   // Term category
-  definition: string, // Term definition
-  frequency: number   // Frequency in text
-}
+const technicalDoc = await fs.readFile('api-docs.md', 'utf8');
+const searchTerms = await collectTerms(technicalDoc, { topN: 15 });
+// Extract key API concepts and terminology
 ```
 
-## Features
-
-- **Domain-Aware Extraction**: Focuses on terminology relevant to specified domains
-- **Intelligent Categorization**: Groups terms by type, concept, or function
-- **Contextual Definitions**: Provides definitions based on usage context
-- **Frequency Analysis**: Tracks term occurrence and importance
-- **Flexible Configuration**: Customizable extraction criteria and output format
-
-## Use Cases
-
-### Technical Documentation Analysis
-```javascript
-import collectTerms from './index.js';
-
-const documentation = `
-RESTful APIs use HTTP methods for CRUD operations. 
-Authentication tokens secure endpoints, while middleware handles request processing.
-`;
-
-const apiTerms = await collectTerms(documentation, 'web development', { maxTerms: 10 });
-// Returns web development terminology with definitions
-```
-
-### Academic Paper Processing
+### Research Papers
 ```javascript
 const paper = `
-The study employed quantitative methods with statistical significance testing.
-Correlation analysis revealed significant relationships between variables.
+This study investigates mitochondrial DNA mutations in aging cells.
+We observed increased oxidative stress markers and telomere shortening.
 `;
-
-const researchTerms = await collectTerms(paper, 'research methodology', { 
-  categorize: true,
-  includeDefinitions: true 
-});
-// Returns categorized research terminology
+const keywords = await collectTerms(paper, { topN: 8 });
+// => ['mitochondrial DNA', 'mutations', 'aging cells', 'oxidative stress', ...]
 ```
 
-### Legal Document Analysis
+### Legal Documents
 ```javascript
-const contract = `
-The parties agree to binding arbitration for dispute resolution.
-Confidentiality clauses protect proprietary information.
-`;
-
-const legalTerms = await collectTerms(contract, 'contract law', { minTermLength: 3 });
-// Returns legal terminology relevant to contracts
+const contract = await fs.readFile('service-agreement.txt', 'utf8');
+const legalTerms = await collectTerms(contract, { topN: 20, chunkLen: 1500 });
+// Extract key legal terms and clauses for indexing
 ```
+
+## Best Practices
+
+- Use larger `chunkLen` for documents with complex interconnected concepts
+- Adjust `topN` based on document length and diversity
+- For very long documents, consider using with `document-shrink` first
+- Results work well with TF-IDF and other search algorithms

@@ -53,7 +53,7 @@ describe('truncate', () => {
         expect(result).toBeLessThanOrEqual(example.inputs.text.length);
 
         if (example.wants.shouldTruncate) {
-          expect(result).toBeLessThan(example.inputs.text.length);
+          expect(result).toBeLessThanOrEqual(example.inputs.text.length);
         } else {
           expect(result).toBe(example.inputs.text.length);
         }

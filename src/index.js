@@ -47,6 +47,7 @@ import expectChain from './chains/expect/index.js';
 import * as llmLogger from './chains/llm-logger/index.js';
 import detectPatterns from './chains/detect-patterns/index.js';
 import detectThreshold from './chains/detect-threshold/index.js';
+import documentShrink from './chains/document-shrink/index.js';
 
 import schemas from './json-schemas/index.js';
 import * as common from './constants/common.js';
@@ -149,6 +150,7 @@ export {
   truncate,
   detectPatterns,
   detectThreshold,
+  documentShrink,
 };
 export { llmLogger };
 export { rangeCombinations } from './lib/combinations/index.js';
@@ -232,6 +234,7 @@ export const verblets = {
   truncate,
   detectPatterns,
   detectThreshold,
+  documentShrink,
 };
 
 export const services = {
