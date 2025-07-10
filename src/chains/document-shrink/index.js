@@ -9,11 +9,13 @@ const TOKENS_PER_CHUNK_SCORE = 80;
 const TOKENS_PER_CHUNK_COMPRESS = 150;
 const COMPRESSION_RATIO = 0.3;
 const LLM_CHUNK_BATCH_SIZE = 20;
+const MAX_ADJACENCY_DISTANCE = 3;
 
 const DEFAULT_OPTIONS = {
   targetSize: 4000,
   chunkSize: 500,
   tokenBudget: 1000,
+  gapFillerBudgetRatio: 0, // Optional: 0-1, portion of target size for gap filling
 };
 
 // Pure function: Calculate reduction ratio
@@ -329,6 +331,102 @@ function getUnselectedChunks(allChunks, selectedChunks) {
     .sort((a, b) => b.tfIdfScore - a.tfIdfScore);
 }
 
+// Pure function: Group consecutive chunks together
+function groupConsecutiveChunks(chunks) {
+  if (chunks.length === 0) return [];
+
+  const sorted = [...chunks].sort((a, b) => a.index - b.index);
+  const groups = [];
+  let currentGroup = [sorted[0]];
+
+  for (let i = 1; i < sorted.length; i++) {
+    const prevChunk = sorted[i - 1];
+    const currentChunk = sorted[i];
+
+    // Check if current chunk is consecutive to previous
+    if (currentChunk.index === prevChunk.index + 1) {
+      currentGroup.push(currentChunk);
+    } else {
+      // Start a new group
+      groups.push(currentGroup);
+      currentGroup = [currentChunk];
+    }
+  }
+
+  // Don't forget the last group
+  if (currentGroup.length > 0) {
+    groups.push(currentGroup);
+  }
+
+  return groups;
+}
+
+// Pure function: Assemble final content from chunk groups
+function assembleContent(chunkGroups) {
+  return chunkGroups.map((group) => group.map((chunk) => chunk.text).join('')).join('\n\n');
+}
+
+// Pure function: Build adjacency scores for gap filling
+function buildAdjacencyScores(allChunks, selectedIndices, decayFactor = 0.5) {
+  const scores = new Array(allChunks.length).fill(0);
+  const selectedSet = new Set(selectedIndices);
+
+  // For each selected chunk, propagate scores to neighbors
+  selectedIndices.forEach((idx) => {
+    const baseScore = allChunks[idx].tfIdfScore || 0;
+
+    // Propagate left
+    for (let dist = 1; dist <= MAX_ADJACENCY_DISTANCE && idx - dist >= 0; dist++) {
+      if (!selectedSet.has(idx - dist)) {
+        scores[idx - dist] = Math.max(scores[idx - dist], baseScore * Math.pow(decayFactor, dist));
+      }
+    }
+
+    // Propagate right
+    for (let dist = 1; dist <= MAX_ADJACENCY_DISTANCE && idx + dist < allChunks.length; dist++) {
+      if (!selectedSet.has(idx + dist)) {
+        scores[idx + dist] = Math.max(scores[idx + dist], baseScore * Math.pow(decayFactor, dist));
+      }
+    }
+  });
+
+  return scores;
+}
+
+// Pure function: Select gap filler chunks efficiently
+function selectGapFillers(allChunks, selectedChunks, gapFillerBudget) {
+  if (gapFillerBudget <= 0) return [];
+
+  const selectedIndices = selectedChunks.map((c) => c.index);
+  const selectedSet = new Set(selectedIndices);
+
+  // Build adjacency scores
+  const adjacencyScores = buildAdjacencyScores(allChunks, selectedIndices);
+
+  // Create candidates with scores
+  const candidates = allChunks
+    .map((chunk, idx) => ({
+      ...chunk,
+      adjacencyScore: adjacencyScores[idx],
+      combinedScore: (chunk.tfIdfScore || 0) + adjacencyScores[idx],
+    }))
+    .filter((_, idx) => !selectedSet.has(idx) && adjacencyScores[idx] > 0)
+    .sort((a, b) => b.combinedScore - a.combinedScore);
+
+  // Select chunks within budget
+  const gapFillers = [];
+  let budgetUsed = 0;
+
+  for (const chunk of candidates) {
+    if (budgetUsed + chunk.size <= gapFillerBudget) {
+      gapFillers.push(chunk);
+      budgetUsed += chunk.size;
+    }
+  }
+
+  return gapFillers;
+}
+
 // Main function with proper budget planning
 export default async function documentShrink(document, query, options = {}) {
   // Handle edge cases early
@@ -340,7 +438,7 @@ export default async function documentShrink(document, query, options = {}) {
         finalSize: 0,
         reductionRatio: '0.00',
         allocation: {},
-        chunks: { total: 0, tfIdfSelected: 0, llmSelected: 0, compressed: 0 },
+        chunks: { total: 0, tfIdfSelected: 0, llmSelected: 0, compressed: 0, gapFillers: 0 },
         tokens: { budget: 0, used: 0, breakdown: {} },
       },
     };
@@ -428,27 +526,27 @@ export default async function documentShrink(document, query, options = {}) {
     result = addChunksThatFit(result.chunks, result.size, compressed, config.targetSize);
   }
 
-  const finalChunks = result.chunks;
+  // Step 9: Apply gap filling if configured
+  let finalChunks = result.chunks;
+  let gapFillerCount = 0;
 
-  // Final assembly - join chunks back together
-  const sortedChunks = finalChunks.sort((a, b) => a.index - b.index);
+  if (config.gapFillerBudgetRatio > 0) {
+    const gapFillerBudget = Math.floor(config.targetSize * config.gapFillerBudgetRatio);
+    const remainingSpace = config.targetSize - result.size;
+    const actualGapBudget = Math.min(gapFillerBudget, remainingSpace);
 
-  // Check if chunks are consecutive and cover the whole document
-  let isConsecutive = true;
-  let expectedStart = 0;
-
-  for (const chunk of sortedChunks) {
-    if (chunk.start !== expectedStart) {
-      isConsecutive = false;
-      break;
+    if (actualGapBudget > 0) {
+      const gapFillers = selectGapFillers(scoredChunks, finalChunks, actualGapBudget);
+      if (gapFillers.length > 0) {
+        finalChunks = [...finalChunks, ...gapFillers];
+        gapFillerCount = gapFillers.length;
+      }
     }
-    expectedStart = chunk.start + chunk.size;
   }
 
-  // If chunks are consecutive slices, just concatenate them
-  const content = isConsecutive
-    ? sortedChunks.map((c) => c.text).join('')
-    : sortedChunks.map((c) => c.text).join('\n\n');
+  // Final assembly - group consecutive chunks and join appropriately
+  const chunkGroups = groupConsecutiveChunks(finalChunks);
+  const content = assembleContent(chunkGroups);
 
   return {
     content,
@@ -466,6 +564,7 @@ export default async function documentShrink(document, query, options = {}) {
         tfIdfSelected: selected.length,
         llmSelected: finalChunks.filter((c) => c.llmScore && !c.compressed).length,
         compressed: finalChunks.filter((c) => c.compressed).length,
+        gapFillers: gapFillerCount,
       },
       tokens: {
         budget: config.tokenBudget,
