@@ -103,18 +103,15 @@ import schemaOrg from './verblets/schema-org/index.js';
 import nameSimilarTo from './verblets/name-similar-to/index.js';
 
 import name from './verblets/name/index.js';
-import peopleList from './verblets/people-list/index.js';
 
 import toObject from './verblets/to-object/index.js';
 
 import listBatch from './verblets/list-batch/index.js';
 
-import conversationTurnLines from './verblets/conversation-turn-lines/index.js';
-import conversationTurnMultiLines from './verblets/conversation-turn-multi-lines/index.js';
-
 import group from './chains/group/index.js';
+import conversationTurnReduce from './chains/conversation-turn-reduce/index.js';
+import people from './chains/people/index.js';
 
-import listGroupLines from './verblets/list-group-lines/index.js';
 import fillMissing from './verblets/fill-missing/index.js';
 import commonalities from './verblets/commonalities/index.js';
 
@@ -133,25 +130,27 @@ export { default as stripResponse } from './lib/strip-response/index.js';
 export { default as searchJSFiles } from './lib/search-js-files/index.js';
 export { default as searchBestFirst } from './lib/search-best-first/index.js';
 export {
-  map,
-  mapOnce,
-  find,
-  findOnce,
-  filter,
-  join,
-  windowFor,
-  filterOnce,
-  centralTendency,
-  reduce,
-  collectTerms,
-  disambiguate,
   categorySamples,
-  veiledVariants,
-  expectChain,
-  truncate,
+  centralTendency,
+  collectTerms,
+  conversationTurnReduce,
   detectPatterns,
   detectThreshold,
+  disambiguate,
   documentShrink,
+  expectChain,
+  filter,
+  filterOnce,
+  find,
+  findOnce,
+  join,
+  map,
+  mapOnce,
+  people,
+  reduce,
+  truncate,
+  veiledVariants,
+  windowFor,
 };
 export { llmLogger };
 export { rangeCombinations } from './lib/combinations/index.js';
@@ -178,65 +177,61 @@ export const lib = {
 };
 
 export const verblets = {
+  anonymize,
   auto,
   bool,
-  enums,
-  intent,
-  number,
-  numberWithUnits,
-  schemaOrg,
-  nameSimilarTo,
-  name,
-  peopleList,
-  toObject,
-  listBatch,
-  map,
-  find,
-  anonymize,
-  Dismantle,
-  intersections,
-  list,
-  glossary,
-  questions,
-  SocraticMethod,
-  scanJS,
-  sort,
-  date,
-  SummaryMap,
-  themes,
-  split,
-  setInterval,
-  test,
-  testAdvice,
-  Conversation,
-  conversationTurnLines,
-  conversationTurnMultiLines,
-  score,
-  filterAmbiguous,
-  group,
-  filter,
-  join,
-  listGroupLines,
-  fillMissing,
-  commonalities,
-  centralTendencyLines,
-  centralTendency,
-  scale,
-  // Missing verblets
-  expect,
-  sentiment,
-  listExpand,
-  // Missing chains
-  reduce,
-  collectTerms,
-  disambiguate,
   categorySamples,
-  veiledVariants,
-  expectChain,
-  truncate,
+  centralTendency,
+  centralTendencyLines,
+  collectTerms,
+  commonalities,
+  Conversation,
+  conversationTurnReduce,
+  date,
   detectPatterns,
   detectThreshold,
+  disambiguate,
+  Dismantle,
   documentShrink,
+  enums,
+  expect,
+  expectChain,
+  fillMissing,
+  filter,
+  filterAmbiguous,
+  find,
+  glossary,
+  group,
+  intent,
+  intersections,
+  join,
+  list,
+  listBatch,
+  listExpand,
+  map,
+  name,
+  nameSimilarTo,
+  number,
+  numberWithUnits,
+  people,
+  questions,
+  reduce,
+  scale,
+  scanJS,
+  schemaOrg,
+  score,
+  sentiment,
+  setInterval,
+  SocraticMethod,
+  sort,
+  split,
+  SummaryMap,
+  test,
+  testAdvice,
+  themes,
+  toObject,
+  truncate,
+  veiledVariants,
 };
 
 export const services = {

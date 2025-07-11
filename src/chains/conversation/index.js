@@ -1,6 +1,6 @@
-import conversationTurnLines from '../../verblets/conversation-turn-lines/index.js';
-import conversationTurnMultiLines from '../../verblets/conversation-turn-multi-lines/index.js';
+import conversationTurnReduce from '../conversation-turn-reduce/index.js';
 import { defaultTurnPolicy } from './turn-policies.js';
+import pLimit from 'p-limit';
 
 /**
  * @typedef {Object} Speaker
@@ -39,11 +39,7 @@ export default class Conversation {
       idSet.add(p.id);
     });
 
-    const {
-      rules = {},
-      speakFn = conversationTurnLines,
-      bulkSpeakFn = conversationTurnMultiLines, // Default to bulk processing
-    } = options;
+    const { rules = {}, speakFn, bulkSpeakFn, maxParallel = 3, llm, ...otherOptions } = options;
 
     if (rules.shouldContinue && typeof rules.shouldContinue !== 'function') {
       throw new Error('shouldContinue must be a function');
@@ -54,15 +50,21 @@ export default class Conversation {
     this.rules = Object.assign(
       {
         shouldContinue: (round) => round < 3, // Default to 3 rounds
+        turnPolicy: rules.turnPolicy || defaultTurnPolicy(this.speakers),
       },
       rules
     );
     this.speakFn = speakFn;
     this.bulkSpeakFn = bulkSpeakFn;
-    this.messages = [];
+    this.maxParallel = maxParallel;
 
-    // Create default turn policy for fallback
-    this.defaultTurnPolicy = defaultTurnPolicy(this.speakers);
+    // If no functions provided, default to our conversationTurnReduce
+    if (!this.speakFn && !this.bulkSpeakFn) {
+      this.bulkSpeakFn = conversationTurnReduce;
+    }
+    this.llm = llm;
+    this.otherOptions = otherOptions;
+    this.messages = [];
   }
 
   _push(id, comment) {
@@ -78,44 +80,61 @@ export default class Conversation {
   async run() {
     let round = 0;
     while (this.rules.shouldContinue(round, this.messages.slice())) {
-      if (round >= 50) break;
+      let order = this.rules.turnPolicy(round, this.messages.slice()) || [];
+      order = order.filter((id) => this.speakers.some((p) => p.id === id));
 
-      let order;
-      if (typeof this.rules.turnPolicy === 'function') {
-        order = this.rules.turnPolicy(round, this.messages.slice()) || [];
-        order = order.filter((id) => this.speakers.some((p) => p.id === id));
-      } else {
-        order = this.defaultTurnPolicy(round, this.messages.slice());
-      }
-
-      // If order is empty, fall back to default sampling policy
+      // If order is empty, use default policy
       if (order.length === 0) {
-        order = this.defaultTurnPolicy(round, this.messages.slice());
+        order = defaultTurnPolicy(this.speakers)(round, this.messages.slice());
       }
 
       const speakers = order.map((id) => this.speakers.find((p) => p.id === id)).filter(Boolean);
 
       if (this.bulkSpeakFn) {
+        // Use bulkSpeakFn (either provided or default conversationTurnReduce)
         const comments = await this.bulkSpeakFn({
           speakers,
           topic: this.topic,
           history: this.messages.slice(),
           rules: this.rules,
+          llm: this.llm,
+          ...this.otherOptions,
         });
         comments.forEach((comment, idx) => {
           this._push(speakers[idx].id, comment);
         });
-      } else {
-        for (const speaker of speakers) {
-          // eslint-disable-next-line no-await-in-loop
-          const comment = await this.speakFn({
-            speaker,
-            topic: this.topic,
-            history: this.messages.slice(),
-            rules: this.rules,
+      } else if (this.speakFn) {
+        // Use provided speakFn with controlled concurrency
+        const limit = pLimit(this.maxParallel);
+
+        const speakerPromises = speakers.map((speaker, index) =>
+          limit(() =>
+            this.speakFn({
+              speaker,
+              topic: this.topic,
+              history: this.messages.slice(),
+              rules: this.rules,
+              llm: this.llm,
+              ...this.otherOptions,
+            })
+              .then((comment) => ({ speaker, comment, index }))
+              .catch((error) => {
+                console.warn(`Speaker ${speaker.id} failed:`, error.message);
+                return { speaker, comment: '', index };
+              })
+          )
+        );
+
+        const results = await Promise.all(speakerPromises);
+
+        // Push comments in original speaker order
+        results
+          .sort((a, b) => a.index - b.index)
+          .forEach(({ speaker, comment }) => {
+            if (comment) {
+              this._push(speaker.id, comment);
+            }
           });
-          this._push(speaker.id, comment);
-        }
       }
 
       round += 1;

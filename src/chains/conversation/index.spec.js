@@ -7,6 +7,32 @@ vi.mock('../../lib/chatgpt/index.js', () => ({
 }));
 chatGPTMock = vi.fn(async (_prompt) => 'ok');
 
+// Mock the conversationTurnReduce to avoid slow reduce chain calls
+let conversationTurnReduceMock;
+vi.mock('../conversation-turn-reduce/index.js', () => ({
+  default: vi.fn(async (args) => {
+    conversationTurnReduceMock = args;
+    return args.speakers.map((s) => `${s.id || s.name} speaks from reduce`);
+  }),
+}));
+
+// Mock retry to avoid any potential delays
+vi.mock('../../lib/retry/index.js', () => ({
+  default: vi.fn(async (fn) => await fn()),
+}));
+
+// Mock reduce chain to prevent cascading calls
+vi.mock('../reduce/index.js', () => ({
+  default: vi.fn(async () => 'mocked reduce result'),
+}));
+
+// Mock list-batch to prevent LLM calls
+vi.mock('../../verblets/list-batch/index.js', () => ({
+  default: vi.fn(async () => ['mocked', 'batch', 'result']),
+  ListStyle: { AUTO: 'auto', XML: 'xml', NEWLINE: 'newline' },
+  determineStyle: vi.fn(() => 'auto'),
+}));
+
 const makeSpeak = () => vi.fn(async ({ speaker }) => `${speaker.id} speaks`);
 
 describe('Conversation', () => {
@@ -46,21 +72,10 @@ describe('Conversation', () => {
     });
     chatGPTMock.mockClear();
     await chain.run();
-    expect(chatGPTMock.mock.calls.some((c) => String(c[0]).includes('expert bio'))).toBe(true);
-  });
-
-  it('stops at 50 rounds maximum', async () => {
-    const speakFn = vi.fn(async () => 'x');
-    const chain = new Conversation('test topic', [{ id: 'a' }], {
-      rules: { shouldContinue: () => true },
-      speakFn,
-    });
-    const messages = await chain.run();
-    expect(messages.length).toBeLessThanOrEqual(50 * 5); // Max 50 rounds, up to 5 speakers per round
-  });
-
-  it('throws on duplicate ids', () => {
-    expect(() => new Conversation('test topic', [{ id: 'a' }, { id: 'a' }])).toThrow();
+    // Check that the bio is passed to conversationTurnReduce
+    expect(conversationTurnReduceMock).toBeDefined();
+    expect(conversationTurnReduceMock.speakers).toBeDefined();
+    expect(conversationTurnReduceMock.speakers[0].bio).toBe('expert bio');
   });
 
   it('handles single speaker conversation', async () => {

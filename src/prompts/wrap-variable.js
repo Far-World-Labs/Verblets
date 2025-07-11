@@ -18,6 +18,7 @@ export function quote(variable, { title } = {}) {
 
   const variableResolved =
     typeof variable === 'string' ? variable : JSON.stringify(variable, null, 2);
+
   const wrapped = `"${variableResolved}"`;
   return title && variableResolved.length > 0 ? `${title} ${wrapped}` : wrapped;
 }

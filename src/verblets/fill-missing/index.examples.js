@@ -13,8 +13,7 @@ describe('fillMissing example', () => {
           .filter(([, v]) => v.confidence > 0.8)
           .map(([k, v]) => [k, v.candidate])
       );
-      const finalText = templateReplace(template, confident, '<unknown>');
-      console.log(finalText);
+      templateReplace(template, confident, '<unknown>');
     },
     longTestTimeout
   );

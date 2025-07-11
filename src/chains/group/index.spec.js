@@ -1,9 +1,31 @@
 import group from './index.js';
-import listGroupLines from '../../verblets/list-group-lines/index.js';
+import listBatch from '../../verblets/list-batch/index.js';
+import reduce from '../reduce/index.js';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 
-vi.mock('../../verblets/list-group-lines/index.js', () => ({
+vi.mock('../../verblets/list-batch/index.js', () => ({
   default: vi.fn(),
+  ListStyle: { AUTO: 'auto', XML: 'xml', NEWLINE: 'newline' },
+  determineStyle: vi.fn(() => 'newline'),
+}));
+
+vi.mock('../reduce/index.js', () => ({
+  default: vi.fn(),
+}));
+
+vi.mock('../../lib/text-batch/index.js', () => ({
+  default: vi.fn((items, config) => {
+    const batchSize = config?.batchSize || 10;
+    const batches = [];
+    for (let i = 0; i < items.length; i += batchSize) {
+      batches.push({ items: items.slice(i, i + batchSize), startIndex: i, skip: false });
+    }
+    return batches;
+  }),
+}));
+
+vi.mock('../../lib/retry/index.js', () => ({
+  default: vi.fn(async (fn) => fn()),
 }));
 
 describe('group chain', () => {
@@ -11,37 +33,33 @@ describe('group chain', () => {
     vi.clearAllMocks();
   });
 
-  it('groups in batches', async () => {
+  it('discovers categories then assigns items', async () => {
     const items = ['a', 'bb', 'ccc', 'dddd', 'eeeee'];
 
-    // Mock the calls in order - with chunkSize=2, we'll have 3 batches: [a,bb], [ccc,dddd], [eeeee]
-    listGroupLines
-      .mockResolvedValueOnce({ odd: ['a'], even: ['bb'] }) // First batch
-      .mockResolvedValueOnce({ odd: ['ccc'], even: ['dddd'] }) // Second batch
-      .mockResolvedValueOnce({ odd: ['eeeee'] }); // Third batch
+    // Mock reduce to return discovered categories
+    reduce.mockResolvedValueOnce('odd, even');
+
+    // Mock listBatch for assignment phase - with batchSize=2, we'll have 3 batches
+    listBatch
+      .mockResolvedValueOnce(['odd', 'even']) // First batch: ['a', 'bb']
+      .mockResolvedValueOnce(['odd', 'even']) // Second batch: ['ccc', 'dddd']
+      .mockResolvedValueOnce(['odd']); // Third batch: ['eeeee']
 
     const result = await group(items, 'odd or even', {
-      chunkSize: 2,
+      batchSize: 2,
     });
 
     expect(result).toStrictEqual({ odd: ['a', 'ccc', 'eeeee'], even: ['bb', 'dddd'] });
-    expect(listGroupLines).toHaveBeenCalledTimes(3);
 
-    // Verify the calls were made with the right parameters
-    expect(listGroupLines).toHaveBeenNthCalledWith(1, ['a', 'bb'], 'odd or even', undefined, {
-      llm: undefined,
-    });
-    expect(listGroupLines).toHaveBeenNthCalledWith(
-      2,
-      ['ccc', 'dddd'],
-      'odd or even',
-      ['odd', 'even'],
-      {
-        llm: undefined,
-      }
+    // Verify reduce was called for category discovery
+    expect(reduce).toHaveBeenCalledTimes(1);
+    expect(reduce).toHaveBeenCalledWith(
+      items,
+      expect.stringContaining('determine what category'),
+      expect.objectContaining({ initial: '' })
     );
-    expect(listGroupLines).toHaveBeenNthCalledWith(3, ['eeeee'], 'odd or even', ['odd', 'even'], {
-      llm: undefined,
-    });
+
+    // Verify listBatch was called for assignment
+    expect(listBatch).toHaveBeenCalledTimes(3);
   });
 });

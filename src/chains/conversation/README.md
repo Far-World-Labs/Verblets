@@ -35,10 +35,10 @@ const transcript = await chain.run();
   - **`name`** (string, optional): Display name (defaults to capitalized id)
 - **`config`** (object, optional): Configuration options
   - **`rules`** (object, optional): Conversation flow rules
-    - **`shouldContinue`** (function, optional): Function to determine if conversation should continue
-    - **`maxRounds`** (number, default: 5): Maximum number of conversation rounds
-  - **`bulkSpeakFn`** (function, optional): Custom function for generating multiple responses
+    - **`shouldContinue`** (function, default: `(round) => round < 3`): Function to determine if conversation should continue
+  - **`bulkSpeakFn`** (function, optional): Custom function for generating multiple responses (defaults to `conversationTurnReduce`)
   - **`speakFn`** (function, optional): Custom function for generating individual responses
+  - **`maxParallel`** (number, default: 3): Maximum concurrent speaker function calls when using `speakFn`
   - **`llm`** (object, optional): LLM configuration for conversation generation
 
 ## Methods
@@ -60,9 +60,12 @@ Executes the full conversation and returns the complete transcript.
 
 - **Intelligent Turn-Taking**: Manages natural conversation flow between multiple speakers
 - **Contextual Responses**: Each speaker responds based on their background and the conversation history
+- **Multiline Responses**: Supports complex, multi-paragraph responses through XML-structured processing
 - **Flexible Speaker Roles**: Supports facilitators, participants, and specialized roles
 - **Customizable Rules**: Define when conversations should continue or conclude
 - **Realistic Timing**: Generates believable timestamps for each contribution
+- **Concurrent Processing**: Parallel execution of speaker functions with configurable concurrency limits
+- **Unified Implementation**: Automatically uses robust reduce-based approach when no custom functions specified
 - **Extensible Functions**: Override default speaking functions for specialized behaviors
 
 ## Use Cases

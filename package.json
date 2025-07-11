@@ -60,6 +60,7 @@
     "natural": "^8.1.0",
     "node-fetch": "^3.3.0",
     "node-record-lpcm16": "^1.0.1",
+    "p-limit": "^6.2.0",
     "ramda": "^0.29.0",
     "redis": "^4.6.5",
     "uuid": "^9.0.0",
