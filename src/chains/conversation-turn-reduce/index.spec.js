@@ -39,11 +39,11 @@ What if we do a minimal viable UX first, then iterate?`,
     expect(responses[1]).toContain('Alice makes a great point');
     expect(responses[1]).toContain('minimal viable UX');
 
-    // Verify map was called once with all speakers
+    // Verify map was called once with speaker descriptions
     expect(map).toHaveBeenCalledTimes(1);
     expect(map).toHaveBeenCalledWith(
-      speakers,
-      expect.any(Function),
+      ['Alice\nBio: software engineer', 'Bob\nBio: product manager'],
+      expect.any(String),
       expect.objectContaining({
         llm: { model: 'test' },
       })
@@ -67,8 +67,8 @@ What if we do a minimal viable UX first, then iterate?`,
     expect(responses[0]).toBe('This is my response to the topic.');
   });
 
-  it('throws error when no speakers provided', async () => {
-    await expect(
+  it('throws error when no speakers provided', () => {
+    expect(() =>
       conversationTurnReduce({
         speakers: [],
         topic: 'test topic',
@@ -76,11 +76,11 @@ What if we do a minimal viable UX first, then iterate?`,
         rules: {},
         llm: { model: 'test' },
       })
-    ).rejects.toThrow('At least one speaker is required');
+    ).toThrow('At least one speaker is required');
   });
 
-  it('throws error when no topic provided', async () => {
-    await expect(
+  it('throws error when no topic provided', () => {
+    expect(() =>
       conversationTurnReduce({
         speakers: [{ id: 'alice', name: 'Alice' }],
         topic: '',
@@ -88,6 +88,6 @@ What if we do a minimal viable UX first, then iterate?`,
         rules: {},
         llm: { model: 'test' },
       })
-    ).rejects.toThrow('Topic is required');
+    ).toThrow('Topic is required');
   });
 });
