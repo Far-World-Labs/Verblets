@@ -1,0 +1,16 @@
+{
+  "type": "object",
+  "properties": {
+    "value": {
+      "description": "The scaled output value according to the scaling instructions",
+      "anyOf": [
+        { "type": "number" },
+        { "type": "string" },
+        { "type": "object" },
+        { "type": "array" }
+      ]
+    }
+  },
+  "required": ["value"],
+  "additionalProperties": false
+}

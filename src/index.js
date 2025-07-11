@@ -127,6 +127,7 @@ import listReduceLines from './verblets/list-reduce-lines/index.js';
 // # Concept Science
 import centralTendencyLines from './verblets/central-tendency-lines/index.js';
 import centralTendency from './chains/central-tendency/index.js';
+import scale from './verblets/scale/index.js';
 
 export { default as retry } from './lib/retry/index.js';
 export { default as stripResponse } from './lib/strip-response/index.js';
@@ -220,6 +221,7 @@ export const verblets = {
   commonalities,
   centralTendencyLines,
   centralTendency,
+  scale,
   // Missing verblets
   expect,
   sentiment,

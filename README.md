@@ -24,6 +24,12 @@ Primitive verblets extract basic data types from natural language with high reli
 - [number-with-units](./src/verblets/number-with-units) - parse numbers with units and conversions
 - [date](./src/chains/date) - return Date objects from natural language prompts
 
+### Math
+
+Math verblets transform values using conceptual reasoning and subjective judgments beyond simple calculations.
+
+- [scale](./src/verblets/scale) - create custom scaling functions with conceptual reasoning
+
 ### Lists
 
 List operations transform, filter, and organize collections using natural language criteria. They handle both individual items and batch processing for datasets larger than a context window. Many list operations support bulk operation with built-in retry. Many have alternative single invocation versions in the verblets directory.
