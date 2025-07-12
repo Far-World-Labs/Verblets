@@ -78,6 +78,7 @@ Available chains:
 - [list](./list)
 - [llm-logger](./llm-logger)
 - [map](./map)
+- [people](./people)
 - [questions](./questions)
 - [reduce](./reduce)
 - [score](./score)

@@ -80,11 +80,7 @@ Available verblets:
 - [name-similar-to](./name-similar-to) - suggest short names matching a style
 - [name](./name) - name something from a definition or description
 - [to-object](./to-object) – see its [README](./to-object/README.md) for details.
-- [list-map](./list-map) - map lists with prompts
-- [list-reduce](./list-reduce) - reduce lists prompts
-- [list-filter](./list-filter) - filter lists with custom instructions
-- [list-group](./list-group) - group lists into categories with prompts
+- [list-batch](./list-batch) - generic batched list operations with XML/newline auto-detection
 - [list-expand](./list-expand) - expand lists with similar items with prompts
-- [conversation-turn-multi-lines](./conversation-turn-multi-lines) - generate multiple conversation turns simultaneously
 
 Use these modules directly or compose them inside [chains](../chains/README.md).
