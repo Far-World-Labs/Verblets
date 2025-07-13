@@ -191,6 +191,82 @@ test('should generate content', async () => {
 - **Consider test isolation** - Examples should work independently
 - **Document expected runtime** - Note if examples are particularly slow
 
+## Using AI Expectations
+
+### Fluent Interface (Preferred)
+
+The `aiExpect` function from the expect chain provides a fluent interface for AI-powered assertions. This is the preferred way to write AI expectations:
+
+```javascript
+import { expect as aiExpect } from '../expect/index.js';
+
+// Fluent interface - PREFERRED
+await aiExpect(result).toSatisfy('Should contain at least 5 events with valid timestamps');
+
+// Also supports equality checks
+await aiExpect(result).toEqual(expectedStructure);
+```
+
+### Traditional Function Call
+
+While the fluent interface is preferred, `aiExpect` can also be called as a function with three parameters:
+
+```javascript
+// Function call style - returns [passed, result]
+const [passed] = await aiExpect(
+  result,
+  undefined, // expected value (optional)
+  'Should contain meaningful intersections'
+);
+expect(passed).toBe(true);
+```
+
+### Best Practices for AI Expectations
+
+1. **Use Standard Assertions First** - Validate basic structure before AI assertions
+2. **Be Specific** - Provide clear constraints about what you're checking
+3. **Handle Empty Results** - Check for valid data before AI assertions
+
+```javascript
+// Good pattern
+expect(result).toBeDefined();
+expect(result.length).toBeGreaterThan(0);
+
+// Then use AI assertion with fluent interface
+await aiExpect(result).toSatisfy('Should extract chronological events with timestamps');
+```
+
+### Writing Reliable AI Assertions
+
+AI assertions can sometimes be inconsistent, so design them to minimize flakiness:
+
+1. **Assert Obvious Patterns** - Focus on things that are clearly present in the data
+2. **Leverage Qualitative Strengths** - Use AI for assertions that would be impossible with traditional tests
+3. **Avoid Brittle Checks** - Don't assert exact wording or overly specific details
+
+```javascript
+// ❌ Too specific - might be flaky
+await aiExpect(result).toSatisfy('Should contain exactly the phrase "sustainable gardening"');
+
+// ✅ Good - checks qualitative patterns
+await aiExpect(result).toSatisfy('Should contain practical gardening advice with environmental focus');
+
+// ✅ Excellent - checks semantic understanding
+await aiExpect(summary).toSatisfy('Should capture the main argument about climate change impacts');
+
+// ✅ Perfect for AI - checks tone and style
+await aiExpect(response).toSatisfy('Should maintain a professional yet friendly tone throughout');
+```
+
+AI assertions excel at:
+- **Semantic understanding** - "Contains an explanation of the concept"
+- **Tone and style** - "Maintains consistent formal tone"
+- **Completeness** - "Covers all major aspects of the topic"
+- **Relevance** - "Examples relate directly to the main point"
+- **Coherence** - "Ideas flow logically from introduction to conclusion"
+
+These are exactly the kinds of qualitative assessments that traditional assertions cannot handle at all!
+
 ## Integration with Architecture Tests
 
 Example files are validated by architecture tests to ensure they:

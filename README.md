@@ -71,6 +71,7 @@ Content utilities generate, transform, and analyze text while maintaining struct
 - [split](./src/chains/split) - mark split points in text
 - [summary-map](./src/chains/summary-map) - summarize a collection
 - [themes](./src/chains/themes) - identify themes in text
+- [timeline](./src/chains/timeline) - extract chronological events from narrative text
 - [to-object](./src/verblets/to-object) - convert descriptions to structured objects
 - [truncate](./src/chains/truncate) - cut all text from the end matching a description
 - [fill-missing](./src/verblets/fill-missing) - infer replacements for censored or corrupted text

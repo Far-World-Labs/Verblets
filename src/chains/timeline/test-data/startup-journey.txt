@@ -1,0 +1,19 @@
+Looking back now, it's hard to believe how far we've come. The IPO in September 2018 was a moment we'd dreamed about since the early days. But let me start from the beginning.
+
+It was late 2009 when Jake and I first discussed the idea in our dorm room. We were both computer science majors, frustrated with the existing tools for collaborative coding. By early 2010, we had dropped out and officially incorporated the company. Those first months were brutal - we lived on ramen and worked 18-hour days from a garage in Palo Alto.
+
+The breakthrough came in March 2012. After countless rejections, Sequoia finally said yes. That $2 million Series A changed everything. We could finally hire real engineers and move out of the garage. But honestly, the money ran out faster than we expected.
+
+2011 had been particularly tough. We nearly shut down in August when our biggest client pulled out. Jake wanted to go back to school, but somehow we pushed through. Looking back, that crisis made us stronger.
+
+By late 2013, we had momentum. Three offices - SF, NYC, and Austin. 150 employees. But we still weren't profitable. The board was getting nervous. Then in 2015, everything clicked. We launched CloudSync, our flagship product, in the spring. By December, we had 10,000 paying customers.
+
+2016 was a blur of growth. Series B in February ($50M), Series C in October ($200M). We acquired two smaller competitors. The team grew to 500 people. But with growth came challenges. We had our first major security breach in early 2017, which nearly destroyed our reputation. We spent months rebuilding trust.
+
+The road to IPO started in January 2018 when we hired Goldman Sachs. The S-1 filing in June was nerve-wracking. We did the roadshow in August - 10 cities in 12 days. Then on September 15, 2018, we rang the bell at NYSE. Stock opened at $45, closed at $67. We were officially public.
+
+But the story doesn't end there. 2019 brought new challenges as a public company. Q2 earnings missed expectations, stock dropped 30%. We had to lay off 100 people in July. By Q4, we'd turned it around with our enterprise product launch.
+
+2020 changed everything. When COVID hit in March, we thought we were doomed. But remote work exploded demand for our tools. Revenue grew 300% that year. We acquired Gitflow for $2 billion in December.
+
+The most recent chapter started in 2021 when we began our AI initiative. The beta launched in early 2022, and by November 2022, our AI-powered features were driving 40% of revenue. Sometimes I think about those garage days and can't believe this is the same company.
