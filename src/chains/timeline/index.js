@@ -126,14 +126,14 @@ async function extractFromChunk(chunk, options = {}) {
  * @returns {Promise<Array>} Array of timeline events with {timestamp, name}
  */
 export default async function timeline(text, options = {}) {
-  const { 
-    chunkSize = 2000, 
-    maxParallel = 3, 
-    onProgress, 
-    llm, 
+  const {
+    chunkSize = 2000,
+    maxParallel = 3,
+    onProgress,
+    llm,
     enrichWithKnowledge = false,
     batchSize,
-    ...remainingOptions 
+    ...remainingOptions
   } = options;
 
   // Create overlapping chunks to avoid missing events at boundaries
@@ -180,9 +180,9 @@ export default async function timeline(text, options = {}) {
       `Timeline: processed ${chunks.length} chunks, found ${allEvents.length} total events`
     );
   }
-  
+
   let mergedEvents = mergeTimelineEvents([allEvents]);
-  
+
   // Enrich with knowledge if requested
   if (enrichWithKnowledge && mergedEvents.length > 0) {
     // First, use reduce to build a knowledge base of known dates
@@ -197,19 +197,15 @@ Given the current knowledge base and a new event, return an updated knowledge ba
 Return as JSON with the same event format, maintaining chronological order.`;
 
     // Convert events to strings for reduce
-    const eventStrings = mergedEvents.map(e => `${e.timestamp}: ${e.name}`);
-    
+    const eventStrings = mergedEvents.map((e) => `${e.timestamp}: ${e.name}`);
+
     // Reduce to build knowledge base
-    const knowledgeBase = await reduce(
-      eventStrings,
-      knowledgeBaseInstructions,
-      { 
-        initialValue: JSON.stringify({ events: [] }),
-        ...(batchSize !== undefined && { batchSize }),
-        llm,
-        ...remainingOptions
-      }
-    );
+    const knowledgeBase = await reduce(eventStrings, knowledgeBaseInstructions, {
+      initialValue: JSON.stringify({ events: [] }),
+      ...(batchSize !== undefined && { batchSize }),
+      llm,
+      ...remainingOptions,
+    });
 
     let knownEvents = [];
     try {
@@ -222,7 +218,7 @@ Return as JSON with the same event format, maintaining chronological order.`;
     }
 
     // Create the enrichment instructions with knowledge base embedded
-    const knowledgeBaseStr = knownEvents.map(e => `- ${e.timestamp}: ${e.name}`).join('\n');
+    const knowledgeBaseStr = knownEvents.map((e) => `- ${e.timestamp}: ${e.name}`).join('\n');
     const enrichmentInstructions = `Given an extracted event, enrich it using this knowledge base:
 
 <knowledge_base>
@@ -239,52 +235,52 @@ Return the enriched event as: "YYYY-MM-DD: Event name" or with the appropriate t
 
     // Map over extracted events to enrich them
     const enrichedResults = await map(
-      mergedEvents.map(event => `${event.timestamp}: ${event.name}`),
+      mergedEvents.map((event) => `${event.timestamp}: ${event.name}`),
       enrichmentInstructions,
       {
         ...(batchSize !== undefined && { batchSize }),
         maxParallel,
         llm,
-        ...remainingOptions
+        ...remainingOptions,
       }
     );
 
     // Parse enriched events
     const enrichedExtractedEvents = enrichedResults.map((enrichedStr, i) => {
       if (!enrichedStr) return mergedEvents[i];
-      
+
       // Parse the enriched format "timestamp: name"
       const colonIndex = enrichedStr.indexOf(':');
       if (colonIndex > 0) {
         const newTimestamp = enrichedStr.substring(0, colonIndex).trim();
         const newName = enrichedStr.substring(colonIndex + 1).trim();
-        
+
         // Only mark as enriched if the timestamp actually changed
         const timestampChanged = newTimestamp !== mergedEvents[i].timestamp;
-        
+
         return {
           timestamp: newTimestamp,
           name: newName,
-          ...(timestampChanged && { enriched: true })
+          ...(timestampChanged && { enriched: true }),
         };
       }
-      
+
       return mergedEvents[i];
     });
-    
+
     // Now merge the enriched extracted events with additional events from knowledge base
     // that weren't in the original text but are important for the timeline
-    const extractedEventNames = new Set(enrichedExtractedEvents.map(e => e.name.toLowerCase()));
-    
+    const extractedEventNames = new Set(enrichedExtractedEvents.map((e) => e.name.toLowerCase()));
+
     // Add knowledge base events that aren't already in extracted events
-    const additionalEvents = knownEvents.filter(knownEvent => {
+    const additionalEvents = knownEvents.filter((knownEvent) => {
       // Check if this event is not already in our extracted events
       return !extractedEventNames.has(knownEvent.name.toLowerCase());
     });
-    
+
     // Combine and sort all events
     mergedEvents = sortTimelineEvents([...enrichedExtractedEvents, ...additionalEvents]);
   }
-  
+
   return mergedEvents;
 }
