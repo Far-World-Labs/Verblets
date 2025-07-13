@@ -5,7 +5,6 @@ import { fileURLToPath } from 'node:url';
 
 import chatGPT from '../../lib/chatgpt/index.js';
 import { sort as sortPromptInitial } from '../../prompts/index.js';
-import modelService from '../../services/llm-model/index.js';
 
 // Get the directory of this module
 const __filename = fileURLToPath(import.meta.url);
@@ -56,108 +55,149 @@ export const defaultSortChunkSize = 10;
 export const defaultSortExtremeK = 10;
 export const defaultSortIterations = 1;
 
-// Keeping this here because it's useful for internal debugging
-// eslint-disable-next-line no-unused-vars
-const assertSorted = (list) => {
-  const pairwiseComparisons = R.aperture(2, list);
-  if (!R.all(([a, b]) => b.localeCompare(a) <= 0, pairwiseComparisons)) {
-    throw new Error(JSON.stringify(list, null, 2));
-  }
-};
-
 export const useTestSortPrompt = () => {
-  sortPrompt = (options, list) => ({ options, list });
+  sortPrompt = (options, list) => {
+    // For testing, return sorted array directly
+    // Sort in descending order (z to a) to match test expectations
+    return [...list].sort((a, b) => b.localeCompare(a));
+  };
 };
 
 const sanitizeList = (list) => {
   return [...new Set(list.filter((item) => item.trim() !== ''))];
 };
 
-const sort = async (
-  options,
-  listInitial,
-  model = modelService.getBestPublicModel(),
-  config = {}
-) => {
+const sort = async (list, criteria, config = {}) => {
   const {
-    by,
     chunkSize = defaultSortChunkSize,
     extremeK = defaultSortExtremeK,
     iterations = defaultSortIterations,
-  } = options;
+    selectBottom = true, // New parameter to control bottom selection
+    onProgress = undefined, // Callback: ({top, bottom, processed, total}) => void
+    llm,
+    ...options
+  } = config;
 
-  const { llm, ...passThroughOptions } = config;
+  const items = sanitizeList(list);
 
-  const list = sanitizeList(listInitial);
-  let i = iterations;
-  let top = [];
-  let bottom = [];
-  let middle = list;
+  // Sort a batch of items with LLM
+  const sortBatch = async (batch) => {
+    const prompt = sortPrompt({ description: criteria }, batch);
 
-  while (i > 0) {
-    let newTop = [];
-    let newBottom = [];
-    let discardedTop = [];
-    let discardedBottom = [];
+    // Handle test mode where sortPrompt returns the list directly
+    if (Array.isArray(prompt)) {
+      return prompt;
+    }
 
-    for (let j = 0; j < middle.length; j += chunkSize) {
-      const batch = middle.slice(j, j + chunkSize);
-      const prompt = sortPrompt(
-        {
-          description: by,
-        },
-        [...batch, ...newTop, ...newBottom]
-      );
+    const modelOptions = await createModelOptions(llm);
 
-      const budget = model.budgetTokens(prompt);
-      const modelOptions = await createModelOptions(llm);
+    const result = await chatGPT(prompt, {
+      modelOptions,
+      ...options,
+    });
+
+    const parsed = typeof result === 'string' ? JSON.parse(result) : result;
+    const resultArray = parsed?.items || parsed;
+    return Array.isArray(resultArray) ? resultArray.filter(Boolean) : [];
+  };
+
+  // Process one complete pass through all items
+  // This maintains running global extremes that compete with each chunk
+  const extractExtremes = async (itemsToProcess) => {
+    const chunks = R.splitEvery(chunkSize, itemsToProcess);
+
+    // Running global extremes - these represent the best/worst we've seen
+    let globalTop = [];
+    let globalBottom = [];
+
+    for (const chunk of chunks) {
+      // Current chunk competes with the global extremes
+      const itemsToSort = [...chunk, ...globalTop, ...(selectBottom ? globalBottom : [])];
 
       // eslint-disable-next-line no-await-in-loop
-      const result = await chatGPT(prompt, {
-        modelOptions: {
-          ...modelOptions,
-          maxTokens: budget.completion,
-          requestTimeout: model.requestTimeout * 1.5,
-        },
-        ...passThroughOptions,
-      });
+      let sorted = await sortBatch(itemsToSort);
 
-      // With structured outputs, response should already be parsed and validated
-      const batchSorted = typeof result === 'string' ? JSON.parse(result) : result;
-      // Extract items from the object structure
-      const resultArray = batchSorted?.items || batchSorted;
-      const sortedArray = Array.isArray(resultArray) ? resultArray.filter(Boolean) : [];
+      // Critical: ensure the sorted output contains exactly the items we sent
+      // LLMs can sometimes duplicate or drop items
+      const inputSet = new Set(itemsToSort);
+      const outputSet = new Set(sorted);
 
-      const batchTop = sortedArray.slice(0, extremeK);
-      const batchBottom = sortedArray.slice(-extremeK);
+      // If sizes don't match, we have duplicates or missing items
+      if (sorted.length !== itemsToSort.length || outputSet.size !== inputSet.size) {
+        // Find what's missing
+        const missing = itemsToSort.filter((item) => !outputSet.has(item));
 
-      discardedTop = [...newTop.filter((x) => !batchTop.includes(x)), ...discardedTop];
+        // Remove duplicates by converting to Set and back to array
+        const dedupedSorted = [...outputSet];
 
-      discardedBottom = [...discardedBottom, ...newBottom.filter((x) => !batchBottom.includes(x))];
+        // Add back missing items at the end
+        sorted = [...dedupedSorted, ...missing];
 
-      newTop = batchTop;
-      newBottom = batchBottom;
+        // Final check
+        if (sorted.length !== itemsToSort.length && process.env.VERBLETS_DEBUG) {
+          console.warn(`Sort mismatch: sent ${itemsToSort.length}, got ${sorted.length}`);
+        }
+      }
+
+      // Update global extremes with the best K from this sort
+      globalTop = sorted.slice(0, Math.min(extremeK, sorted.length));
+      if (selectBottom) {
+        // Take bottom K items, ensuring no overlap with top
+        const availableForBottom = Math.max(0, sorted.length - globalTop.length);
+        const bottomSliceSize = Math.min(extremeK, availableForBottom);
+        globalBottom = bottomSliceSize > 0 ? sorted.slice(-bottomSliceSize) : [];
+      }
     }
-    top = [...top, ...newTop];
-    bottom = [...newBottom, ...bottom];
 
-    const middleOld = middle.filter((x) => {
-      return (
-        !newTop.includes(x) &&
-        !discardedTop.includes(x) &&
-        !discardedBottom.includes(x) &&
-        !newBottom.includes(x)
-      );
-    });
-    middle = [...discardedTop, ...middleOld, ...discardedBottom];
-    i -= 1;
+    // After seeing all chunks, we have the true global extremes
+    return {
+      top: globalTop,
+      bottom: selectBottom ? globalBottom : [],
+      selected: new Set([...globalTop, ...(selectBottom ? globalBottom : [])]),
+    };
+  };
+
+  // Main algorithm: iteratively extract extremes
+  const finalTop = [];
+  const finalBottom = [];
+  let remaining = items;
+
+  for (let iter = 0; iter < iterations && remaining.length > 0; iter++) {
+    // eslint-disable-next-line no-await-in-loop
+    const { top, bottom, selected } = await extractExtremes(remaining);
+
+    // Accumulate results
+    finalTop.push(...top);
+    if (selectBottom) {
+      // For bottom items, prepend to maintain correct order
+      // Items from later iterations are "less bad" than earlier ones
+      finalBottom.unshift(...bottom);
+    }
+
+    // Remove selected items for next iteration
+    remaining = remaining.filter((item) => !selected.has(item));
+
+    // Progress callback after each complete iteration
+    if (onProgress) {
+      onProgress({
+        top: finalTop,
+        bottom: finalBottom,
+        iteration: iter + 1,
+        remaining: remaining.length,
+      });
+    }
   }
 
-  const finalList = [...top, ...middle, ...bottom];
-  return finalList;
+  // Verify we didn't lose any items
+  const totalCount = finalTop.length + finalBottom.length + remaining.length;
+  if (totalCount !== items.length && process.env.VERBLETS_DEBUG) {
+    console.warn(`Sort lost items: started with ${items.length}, ended with ${totalCount}`);
+  }
+
+  // Assemble final result
+  return selectBottom ? [...finalTop, ...remaining, ...finalBottom] : [...finalTop, ...remaining];
 };
 
 export default async function sortWrapper(list, criteria, config = {}) {
-  const { model = modelService.getBestPublicModel(), ...options } = config;
-  return await sort({ by: criteria, ...options }, list, model, config);
+  return await sort(list, criteria, config);
 }
