@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-describe('timeline - integration tests', () => {
+describe('timeline', () => {
   it('extracts events from simple narrative', { timeout: longTestTimeout }, async () => {
     const text = `The company was founded in early 2010 by two college roommates. 
     They secured their first major funding round in March 2012. 
@@ -212,5 +212,47 @@ describe('timeline - integration tests', () => {
 
     expect(hasAncient).toBe(true);
     expect(hasModern).toBe(true);
+  });
+
+  it('enriches timeline with knowledge', { timeout: longTestTimeout }, async () => {
+    const text = `The Wright brothers achieved first flight. 
+    World War II ended with atomic bombs. 
+    The internet transformed communication in the late 20th century.
+    SpaceX launched reusable rockets.`;
+    
+    // First without enrichment
+    const basicResult = await timeline(text, { chunkSize: 5000 });
+    
+    // Then with enrichment - use smaller batch size to test batching
+    const enrichedResult = await timeline(text, { 
+      chunkSize: 5000,
+      enrichWithKnowledge: true,
+      batchSize: 2  // Process 2 events per batch to test batching
+    });
+    
+    expect(enrichedResult).toBeDefined();
+    expect(enrichedResult.length).toBeGreaterThanOrEqual(basicResult.length);
+    
+    // Should have more precise dates
+    const [hasEnrichedDates] = await aiExpect(
+      enrichedResult,
+      undefined,
+      `Should contain precise dates like December 17, 1903 for Wright brothers flight, August 1945 for WWII end, and include additional context events`
+    );
+    
+    expect(hasEnrichedDates).toBe(true);
+    
+    // Check for enriched events
+    const hasEnrichment = enrichedResult.some(e => e.enriched);
+    expect(hasEnrichment).toBe(true);
+    
+    // Should maintain chronological order
+    const parseableDates = enrichedResult
+      .filter(e => !isNaN(new Date(e.timestamp)))
+      .map(e => new Date(e.timestamp));
+    
+    for (let i = 1; i < parseableDates.length; i++) {
+      expect(parseableDates[i].getTime()).toBeGreaterThanOrEqual(parseableDates[i-1].getTime());
+    }
   });
 });

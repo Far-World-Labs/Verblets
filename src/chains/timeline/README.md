@@ -33,6 +33,7 @@ const events = await timeline(newsFragments);
   - `maxParallel` (number): Maximum parallel chunk processing (default: 3)
   - `onProgress` (Function): Progress callback `(current, total) => void`
   - `llm` (Object): LLM model options
+  - `enrichWithKnowledge` (boolean): Enrich dates with LLM's historical knowledge (default: false)
 
 **Returns:** Promise<Array<Event>> - Chronologically sorted timeline events
 
@@ -40,7 +41,8 @@ const events = await timeline(newsFragments);
 ```javascript
 {
   timestamp: string,      // ISO date, relative time, or contextual marker
-  name: string           // Concise event label
+  name: string,          // Concise event label
+  enriched?: boolean,    // Present if LLM corrected/improved the date
 }
 ```
 
@@ -51,3 +53,22 @@ const events = await timeline(newsFragments);
 - **Large document support**: Processes documents of any size through chunking
 - **Deduplication**: Merges duplicate events from overlapping chunks
 - **Chronological sorting**: Orders parseable dates; preserves sequence for relative timestamps
+- **Knowledge enrichment**: Optional LLM knowledge to correct dates and add context
+
+## Knowledge Enrichment
+
+When `enrichWithKnowledge: true`, the chain:
+1. Extracts events normally from the text
+2. Uses reduce to build a knowledge base of accurate historical dates
+3. Maps over extracted events to correct/improve dates based on knowledge
+4. Adds important contextual events that fit within the timeline scope
+
+```javascript
+// Example: Enrich vague dates with precise historical knowledge
+const text = "The Wright brothers flew. Pearl Harbor was attacked. Man landed on moon.";
+const enriched = await timeline(text, { 
+  enrichWithKnowledge: true,
+  batchSize: 2  // Process in smaller batches
+});
+// Returns events with precise dates: 1903-12-17, 1941-12-07, 1969-07-20
+```
