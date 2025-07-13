@@ -29,6 +29,7 @@ import filterAmbiguous from './chains/filter-ambiguous/index.js';
 
 import SummaryMap from './chains/summary-map/index.js';
 import themes from './chains/themes/index.js';
+import timeline from './chains/timeline/index.js';
 
 import split from './chains/split/index.js';
 import test from './chains/test/index.js';
@@ -148,6 +149,7 @@ export {
   mapOnce,
   people,
   reduce,
+  timeline,
   truncate,
   veiledVariants,
   windowFor,
@@ -229,6 +231,7 @@ export const verblets = {
   test,
   testAdvice,
   themes,
+  timeline,
   toObject,
   truncate,
   veiledVariants,
