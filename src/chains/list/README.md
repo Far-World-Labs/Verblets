@@ -1,4 +1,4 @@
-# List Generation Chain
+# list
 
 Generate contextual lists from natural language prompts using AI-powered content creation. This chain produces relevant, diverse items based on your specifications, with support for streaming generation and custom filtering.
 

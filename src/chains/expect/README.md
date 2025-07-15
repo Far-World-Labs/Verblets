@@ -1,4 +1,4 @@
-# LLM Expect Chain
+# expect
 
 Advanced intelligent assertions with debugging features, environment variable modes, and structured results. This chain provides enhanced functionality beyond the basic [expect verblet](../../verblets/expect/).
 

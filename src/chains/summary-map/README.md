@@ -1,4 +1,4 @@
-# Summary Map Chain
+# summary-map
 
 SummaryMap is a hash table with auto-resizing values that resize upon serialization. It can be used to keep the overall size of a hash of items within a fixed budget. A primary use case for this is keeping prompts full of various pieces of context fixed to a desired size. The chain manages collections of data elements by compressing them based on weights and token budgets, enabling efficient context management for language model interactions.
 
