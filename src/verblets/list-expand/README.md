@@ -27,11 +27,8 @@ Returns an array containing the original items plus additional items that fit th
 
 ## Use Cases
 
-- Brainstorming and idea generation
-- Creating comprehensive lists from partial examples
-- Expanding seed data for testing or prototyping
-- Generating variations on a theme
-- Building complete datasets from sample items
+Common scenarios include brainstorming new ideas, expanding small seed lists for testing,
+and building complete datasets from a handful of samples.
 
 ## Advanced Usage
 

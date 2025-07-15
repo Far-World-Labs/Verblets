@@ -1,4 +1,4 @@
-# Questions Chain
+# questions
 
 AI-powered question generator that creates relevant, thought-provoking questions from any input text. Uses an iterative approach to explore different angles and drill down into interesting areas.
 
