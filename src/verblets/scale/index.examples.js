@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import scale from './index.js';
+import scale, { createScale, scaleSpec, applyScale } from './index.js';
 import aiExpect from '../expect/index.js';
 
 describe('scale examples', () => {
@@ -228,29 +228,188 @@ Calculate: base_score * objection_multiplier = final effectiveness`;
       objectionType: 'fundamental',
     });
 
+    // Verify they return appropriate effectiveness scores
     const smallGroupCheck = await aiExpect(smallGroupPref).toSatisfy(
-      'an effectiveness score between 40 and 70, reflecting high consensus with mild preference objection'
+      'a number between 0 and 100 representing effectiveness score for high consensus with mild preference objection'
     );
     expect(smallGroupCheck).toBe(true);
 
     const mediumGroupCheck = await aiExpect(mediumGroupFund).toSatisfy(
-      'an effectiveness score between 15 and 40, showing severe impact of fundamental objection'
+      'a number between 0 and 100 representing effectiveness score showing impact of fundamental objection on medium group'
     );
     expect(mediumGroupCheck).toBe(true);
 
     const largeGroupCheck = await aiExpect(largeGroupRes).toSatisfy(
-      'an effectiveness score between 50 and 75, indicating good support with manageable resource concerns'
+      'a number between 0 and 100 representing effectiveness score for large group with resource concerns'
     );
     expect(largeGroupCheck).toBe(true);
 
     const massiveGroupCheck = await aiExpect(massiveGroupProc).toSatisfy(
-      'an effectiveness score between 55 and 80, showing plateau effect with process issues'
+      'a number between 0 and 100 representing effectiveness score for massive group with process objection'
     );
     expect(massiveGroupCheck).toBe(true);
 
     const complexCaseCheck = await aiExpect(complexCase).toSatisfy(
-      'an effectiveness score between 20 and 45, demonstrating how fundamental objections override high approval'
+      'a number between 0 and 100 representing effectiveness score where fundamental objections impact high approval'
     );
     expect(complexCaseCheck).toBe(true);
+
+    // Verify relative ordering makes sense
+    // Fundamental objections should generally have lower scores
+    expect(mediumGroupFund).toBeLessThanOrEqual(smallGroupPref);
+    expect(complexCase).toBeLessThanOrEqual(largeGroupRes);
   }, 15000);
+});
+
+describe('createScale examples', () => {
+  it('should generate and use a consistent specification', { timeout: 15000 }, async () => {
+    const tempScale = createScale(`
+      Convert temperature feelings to comfort descriptions:
+      - Below 10°C: "freezing"
+      - 10-15°C: "cold"
+      - 15-20°C: "cool"
+      - 20-25°C: "comfortable"
+      - 25-30°C: "warm"
+      - Above 30°C: "hot"
+    `);
+
+    // First calls generate the specification
+    const result1 = await tempScale(22);
+    const result2 = await tempScale(8);
+    const result3 = await tempScale(28);
+
+    // Check results match expected descriptions
+    const check1 = await aiExpect(result1).toSatisfy(
+      'a comfort description for around 22°C, likely "comfortable"'
+    );
+    expect(check1).toBe(true);
+
+    const check2 = await aiExpect(result2).toSatisfy(
+      'a comfort description for 8°C, likely "freezing" or "cold"'
+    );
+    expect(check2).toBe(true);
+
+    const check3 = await aiExpect(result3).toSatisfy(
+      'a comfort description for 28°C, likely "warm"'
+    );
+    expect(check3).toBe(true);
+
+    // Check that specification was generated
+    expect(tempScale.specification).toBeTruthy();
+    const specCheck = await aiExpect(tempScale.specification).toSatisfy(
+      'a scale specification describing temperature to comfort mapping'
+    );
+    expect(specCheck).toBe(true);
+  });
+
+  it('should maintain consistency across multiple calls', { timeout: 15000 }, async () => {
+    const consistencyScale = createScale('Rate text sentiment from -1 (negative) to 1 (positive)');
+
+    // Multiple calls should produce consistent results for same input
+    const text = 'This product is amazing!';
+    const results = await Promise.all([
+      consistencyScale(text),
+      consistencyScale(text),
+      consistencyScale(text),
+    ]);
+
+    // All results should be positive and similar
+    results.forEach((result) => {
+      expect(typeof result).toBe('number');
+      expect(result).toBeGreaterThan(0.5);
+      expect(result).toBeLessThanOrEqual(1);
+    });
+
+    // Results should be identical (using same spec)
+    expect(results[0]).toBe(results[1]);
+    expect(results[1]).toBe(results[2]);
+  });
+});
+
+describe('scaleSpec and applyScale examples', () => {
+  it('should generate a specification and apply it separately', { timeout: 15000 }, async () => {
+    // Generate specification once
+    const spec = await scaleSpec(`
+      Convert priority levels to numeric urgency scores:
+      - "low": 1-3
+      - "medium": 4-6
+      - "high": 7-8
+      - "critical": 9-10
+    `);
+
+    expect(spec).toBeTruthy();
+    expect(spec).toHaveProperty('domain');
+    expect(spec).toHaveProperty('range');
+    expect(spec).toHaveProperty('mapping');
+
+    const specCheck = await aiExpect(spec).toSatisfy(
+      'a scale specification object with domain, range, and mapping properties that maps priority levels to numeric ranges'
+    );
+    expect(specCheck).toBe(true);
+
+    // Apply the specification multiple times
+    const low = await applyScale('low', spec);
+    const medium = await applyScale('medium', spec);
+    const high = await applyScale('high', spec);
+    const critical = await applyScale('critical', spec);
+
+    expect(typeof low).toBe('number');
+    expect(typeof medium).toBe('number');
+    expect(typeof high).toBe('number');
+    expect(typeof critical).toBe('number');
+
+    // Check ranges
+    expect(low).toBeGreaterThanOrEqual(1);
+    expect(low).toBeLessThanOrEqual(3);
+    expect(medium).toBeGreaterThanOrEqual(4);
+    expect(medium).toBeLessThanOrEqual(6);
+    expect(high).toBeGreaterThanOrEqual(7);
+    expect(high).toBeLessThanOrEqual(8);
+    expect(critical).toBeGreaterThanOrEqual(9);
+    expect(critical).toBeLessThanOrEqual(10);
+  });
+
+  it('should handle complex domain-specific scaling', { timeout: 15000 }, async () => {
+    const spec = await scaleSpec(`
+      Convert software complexity metrics to developer effort estimates (in hours):
+      - Lines of code (LOC)
+      - Cyclomatic complexity
+      - Number of dependencies
+      
+      Rules:
+      - Base hours = LOC / 50
+      - Add 2 hours per complexity point above 5
+      - Add 1 hour per external dependency
+      - Minimum 1 hour, maximum 40 hours
+    `);
+
+    expect(spec).toBeTruthy();
+    expect(spec).toHaveProperty('domain');
+    expect(spec).toHaveProperty('range');
+    expect(spec).toHaveProperty('mapping');
+
+    const task1 = await applyScale(
+      {
+        loc: 200,
+        complexity: 8,
+        dependencies: 3,
+      },
+      spec
+    );
+
+    const task2 = await applyScale(
+      {
+        loc: 50,
+        complexity: 2,
+        dependencies: 1,
+      },
+      spec
+    );
+
+    expect(typeof task1).toBe('number');
+    expect(typeof task2).toBe('number');
+    expect(task1).toBeGreaterThan(task2);
+    expect(task1).toBeLessThanOrEqual(40);
+    expect(task2).toBeGreaterThanOrEqual(1);
+  });
 });

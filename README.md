@@ -29,6 +29,7 @@ Primitive verblets extract basic data types from natural language with high reli
 Math verblets transform values using conceptual reasoning and subjective judgments beyond simple calculations.
 
 - [scale](./src/verblets/scale) - create custom scaling functions with conceptual reasoning
+- `createScale` - create stateful scaling functions with generated specifications for consistency
 
 ### Lists
 

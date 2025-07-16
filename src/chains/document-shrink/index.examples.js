@@ -63,7 +63,7 @@ describe('document-shrink examples', () => {
       expect(isRelevantToQuery).toBe(true);
 
       const maintainsCoherence = await aiExpect(result.content).toSatisfy(
-        `The text is coherent and readable, not just random fragments`
+        `The text contains coherent sections of content, even if separated by dividers like "---", and is not just random word fragments`
       );
       expect(maintainsCoherence).toBe(true);
 
@@ -138,12 +138,12 @@ describe('document-shrink examples', () => {
       expect(hasRecipeInfo).toBe(true);
 
       const isCoherent = await aiExpect(result.content).toSatisfy(
-        `The text is coherent and readable, maintaining logical flow`
+        `The text contains coherent sections about making cookies, even if separated by dividers`
       );
       expect(isCoherent).toBe(true);
 
       const reducedContent = await aiExpect(result.content).toSatisfy(
-        `The content has been reduced from the original, focusing on more relevant parts`
+        `The content is shorter than a full blog post and focuses on recipe-related information, though it may include some tips and context`
       );
       expect(reducedContent).toBe(true);
 

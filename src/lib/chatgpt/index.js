@@ -24,7 +24,13 @@ const shapeOutputDefault = (result) => {
     };
   }
   if (result.choices[0].message) {
-    return result.choices[0].message.content.trim();
+    const content = result.choices[0].message.content;
+    // If content is already an object (structured output), return it directly
+    if (typeof content === 'object' && content !== null) {
+      return content;
+    }
+    // Otherwise, it's a string, so trim it
+    return content.trim();
   }
   return result.choices[0].text.trim();
 };
