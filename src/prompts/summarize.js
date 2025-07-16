@@ -1,8 +1,11 @@
 import { asXML } from './wrap-variable.js';
-import { onlyFullCode } from './constants.js';
 
 export default (text, instructions = '') => {
-  return `Summarize the following content. ${onlyFullCode}
+  const basePrompt = instructions
+    ? 'Create a summary of the following content according to the provided instructions.'
+    : 'Create a concise summary of the following content. Focus on key points, main ideas, and essential information. Maintain clarity and coherence while reducing length.';
+
+  return `${basePrompt}
 
 ${asXML(instructions, {
   tag: 'summarization-instructions',

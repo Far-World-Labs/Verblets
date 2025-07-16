@@ -106,7 +106,7 @@ describe('expect verblet', () => {
     'should handle business logic validation',
     async () => {
       const result = await aiExpect(
-        'Increase marketing budget by 20% for Q4 to boost holiday sales'
+        'Increase marketing budget by 20% for next quarter to expand market reach'
       ).toSatisfy('Is this recommendation specific and actionable?', {
         throws: false,
       });

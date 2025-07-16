@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
 import chatGPT from '../../lib/chatgpt/index.js';
+import { asXML } from '../../prompts/wrap-variable.js';
 
 export default async function test(path, instructions) {
   try {
@@ -7,14 +8,17 @@ export default async function test(path, instructions) {
 
     const prompt = `Analyze this code and ${instructions}:
 
-\`\`\`javascript
-${code}
-\`\`\`
+${asXML(code, { tag: 'code-to-analyze' })}
 
-If you find any issues, provide specific, actionable feedback with examples.
-If you find no issues, respond with exactly "NO_ISSUES_FOUND".
+OUTPUT FORMAT:
+- If issues are found: List each issue on a separate line with specific, actionable feedback
+- If no issues are found: Respond with exactly "NO_ISSUES_FOUND"
 
-Provide your response as a list of issues, one per line, or "NO_ISSUES_FOUND" if none exist.`;
+GUIDELINES:
+- Focus only on issues related to the test criteria
+- Provide specific line numbers or code references when possible
+- Suggest concrete fixes for each issue identified
+- Be concise but clear in your feedback`;
 
     const result = await chatGPT(prompt, {
       modelOptions: {

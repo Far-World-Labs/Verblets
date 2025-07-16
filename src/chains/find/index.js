@@ -1,17 +1,23 @@
 import listBatch, { ListStyle, determineStyle } from '../../verblets/list-batch/index.js';
 import createBatches from '../../lib/text-batch/index.js';
 import retry from '../../lib/retry/index.js';
+import { asXML } from '../../prompts/wrap-variable.js';
 
 const find = async function (list, instructions, config = {}) {
   const { maxParallel = 3, listStyle, autoModeThreshold, llm, ...options } = config;
 
   const batches = createBatches(list, config);
   const findInstructions = ({ style, count }) => {
-    const baseInstructions = `From the list below, select the single item that best satisfies the instructions. If none apply, return an empty string.
+    const baseInstructions = `From the list below, identify and return the SINGLE item that BEST matches the search criteria. 
 
-<instructions>
-${instructions}
-</instructions>`;
+${asXML(instructions, { tag: 'search-criteria' })}
+
+IMPORTANT:
+- Evaluate all items before selecting
+- Choose the BEST match, not just any match
+- Return the complete original item text, unchanged
+- If NO items match the criteria, return an empty string
+- Return ONLY ONE item, even if multiple items match`;
 
     if (style === ListStyle.NEWLINE) {
       return `${baseInstructions}

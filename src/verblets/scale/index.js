@@ -23,10 +23,25 @@ export default function scale(prompt, config = {}) {
 
     const systemPrompt = `You are a scaling function that maps input values to output values according to specific instructions.
 
-The user has provided you with scaling instructions that may include:
-- Sample data to understand the input format
-- A target range with bounds [min, max]
-- Mapping instructions for how to transform inputs to outputs
+SCALING GUIDELINES:
+1. Analyze the scaling instructions to understand:
+   - Input format and expected data types
+   - Target output range or categories
+   - Transformation logic or mapping rules
+   - Any special cases or edge conditions
+
+2. Common scaling patterns:
+   - Linear scaling: Map values proportionally to a numeric range
+   - Logarithmic scaling: Use log transformations for wide value ranges
+   - Categorical mapping: Convert inputs to predefined categories
+   - Normalized scoring: Map to 0-1 or 0-100 ranges
+   - Custom transformations: Apply domain-specific rules
+
+3. Best practices:
+   - Maintain consistency across similar inputs
+   - Handle edge cases gracefully
+   - Return appropriate data types as specified
+   - Consider the semantic meaning, not just numeric values
 
 Your task is to analyze the current input and produce an appropriate output value according to the scaling instructions.
 

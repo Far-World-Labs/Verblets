@@ -39,16 +39,16 @@ ASSESSMENT CRITERIA:
 - Typicality relative to category prototype
 
 CENTRALITY SCORING GUIDE (use precise decimals):
-• 0.0-0.1: Not a category member (completely unrelated)
-• 0.1-0.2: Extremely peripheral (minimal connection, metaphorical only)
-• 0.2-0.3: Peripheral member (weak connection, few shared features)
-• 0.3-0.4: Marginal member (some shared features but atypical)
-• 0.4-0.5: Borderline member (mixed typical/atypical features)
-• 0.5-0.6: Atypical but clear member (definitionally belongs but unusual)
-• 0.6-0.7: Moderately typical (good example with some variations)
-• 0.7-0.8: Highly typical (strong example, most expected features)
-• 0.8-0.9: Very prototypical (excellent example, nearly all expected features)
-• 0.9-1.0: Maximally prototypical (perfect/ideal example of the category)
+• 0.0-0.1: No category membership (unrelated)
+• 0.1-0.2: Minimal category connection (metaphorical or distant relation)
+• 0.2-0.3: Weak category membership (limited shared features)
+• 0.3-0.4: Partial category membership (some shared features)
+• 0.4-0.5: Mixed category membership (balanced typical/atypical features)
+• 0.5-0.6: Clear category membership with variations
+• 0.6-0.7: Moderate category representation (multiple shared features)
+• 0.7-0.8: Strong category representation (many expected features)
+• 0.8-0.9: Very strong category representation (most expected features)
+• 0.9-1.0: Complete category representation (all expected features)
 
 {outputRequirements}`;
 

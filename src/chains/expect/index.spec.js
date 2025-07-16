@@ -185,7 +185,7 @@ describe('expect chain', () => {
       'should handle business logic validation',
       async () => {
         const [passed] = await aiExpect(
-          'Increase marketing budget by 20% for Q4 to boost holiday sales',
+          'Increase marketing budget by 20% for next quarter to expand market reach',
           undefined,
           'Is this recommendation specific and actionable?'
         );
