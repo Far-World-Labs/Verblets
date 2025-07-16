@@ -12,7 +12,8 @@ export const asJSON =
 export const useLineNumber = 'Include the line number where each check is performed.';
 export const noFalseInformation = 'Do not include false information.';
 export const strictFormat = 'You MUST follow the format as described.';
-export const tryCompleteData = 'Err towards giving complete data, even if you have to guess.';
+export const tryCompleteData =
+  'Provide as much valid data as possible based on available information. Clearly indicate any uncertainties or missing data.';
 
 // JSON Output
 export const onlyJSON =

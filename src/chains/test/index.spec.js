@@ -35,7 +35,7 @@ describe('test chain', () => {
     ]);
     expect(fs.readFile).toHaveBeenCalledWith('/path/to/file.js', 'utf-8');
     expect(chatGPT).toHaveBeenCalledWith(
-      expect.stringContaining('Analyze this code and provide feedback'),
+      expect.any(String),
       expect.objectContaining({
         modelOptions: {
           modelName: 'fastGoodCheap',

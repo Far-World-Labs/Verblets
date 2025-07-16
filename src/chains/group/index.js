@@ -2,17 +2,29 @@ import listBatch, { ListStyle, determineStyle } from '../../verblets/list-batch/
 import createBatches from '../../lib/text-batch/index.js';
 import retry from '../../lib/retry/index.js';
 import reduce from '../reduce/index.js';
+import { asXML } from '../../prompts/wrap-variable.js';
 
 const createCategoryDiscoveryPrompt = (instructions, categoryPrompt) => {
   const defaultCategoryPrompt =
     'Build a clean, consistent set of categories. Merge similar categories, standardize naming, remove outliers, and ensure consistent abstraction levels.';
   const mergeInstructions = categoryPrompt || defaultCategoryPrompt;
 
-  return `For each item, determine what category it should belong to according to the grouping instructions. Then update the accumulator with the best set of categories discovered so far.
+  return `For each item, determine what category it should belong to according to the grouping instructions. Build and refine a comprehensive category system as you process items.
 
-Grouping instructions: ${instructions}
-Category refinement: ${mergeInstructions}
+${asXML(instructions, { tag: 'grouping-criteria' })}
 
+${asXML(mergeInstructions, { tag: 'category-refinement-guidelines' })}
+
+PROCESS:
+1. Examine each new item against the grouping criteria
+2. Determine what category it belongs to (create new categories as needed)
+3. Update the accumulator with the refined set of categories by:
+   - Merging similar or overlapping categories
+   - Standardizing category names for consistency
+   - Maintaining appropriate abstraction levels
+   - Removing overly specific or rare categories
+
+OUTPUT FORMAT:
 The accumulator should contain a comma-separated list of the current best category names.`;
 };
 

@@ -95,7 +95,7 @@ describe('LLM Expect Verblet', () => {
     'should handle business logic validation',
     async () => {
       const businessRecommendation =
-        'Increase marketing budget by 20% for Q4 to boost holiday sales and target demographics aged 25-45 through social media campaigns';
+        'Increase marketing budget by 20% for next quarter to expand market reach and target demographics aged 25-45 through social media campaigns';
 
       const result = await aiExpect(businessRecommendation).toSatisfy(
         'Is this recommendation specific, actionable, and includes measurable targets?',

@@ -15,7 +15,11 @@ import windowFor from '../../lib/window-for/index.js';
  * @param {number} config.maxRetries - Maximum retry attempts (default: 2)
  * @returns {Promise<string>} Single result as dictated by prompt
  */
-export default async function join(list, prompt = 'Join these text fragments', config = {}) {
+export default async function join(
+  list,
+  prompt = 'Join these text fragments into a coherent, unified text. Preserve key information while ensuring smooth transitions between fragments. Remove redundancy and maintain consistent style throughout.',
+  config = {}
+) {
   if (list.length === 0) return '';
   if (list.length === 1) return list[0];
 

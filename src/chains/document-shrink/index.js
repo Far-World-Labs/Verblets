@@ -159,8 +159,8 @@ function scoreChunksWithTfIdf(chunks, expansions) {
         ? matches.reduce((sum, match) => sum + match.score, 0) / matches.length
         : 0;
 
-    // if (chunk.index < 3 || tfIdfScore > 0) {
-    //   console.log(`[scoreChunksWithTfIdf] Chunk ${chunk.index} score: ${tfIdfScore}, text: "${chunk.text.slice(0, 50)}..."`);
+    // if (chunk.index < 3 || tfIdfScore > 0.1) {
+    //   console.log(`[scoreChunksWithTfIdf] Chunk ${chunk.index} score: ${tfIdfScore.toFixed(3)}, text: "${chunk.text.slice(0, 50)}..."`);
     // }
 
     return { ...chunk, tfIdfScore };
@@ -193,6 +193,9 @@ function selectChunksByTfIdf(scoredChunks, tfIdfBudget) {
   const candidates = scoredChunks.filter((c) => !selectedIndices.has(c.index));
 
   // console.log(`[selectChunksByTfIdf] Selected ${selected.length} chunks (${sizeUsed}/${tfIdfBudget} chars) from ${scoredChunks.length} total`);
+  // if (selected.length > 0) {
+  //   console.log(`[selectChunksByTfIdf] Selected chunk indices:`, selected.map(c => c.index));
+  // }
 
   return { selected, candidates, sizeUsed };
 }
@@ -227,7 +230,7 @@ async function scoreEdgeChunks(candidates, query, maxChunks, llm) {
 
   const { scores } = await score(
     cleanedChunks,
-    `relevance to the query "${query}" (0=completely unrelated, 5=somewhat related, 10=directly answers the question)`,
+    `relevance to query: "${query}" (0=unrelated, 5=partially related, 10=directly answers)`,
     { chunkSize: LLM_CHUNK_BATCH_SIZE, llm }
   );
 
@@ -279,7 +282,7 @@ async function compressHighValueChunks(chunks, query, maxChunks, availableSpace,
 
   const texts = await map(
     cleanedTexts,
-    `Extract only the parts that help answer: "${query}". Keep important details. Aim for ${compressionTarget}% of original length.`,
+    `Extract key parts answering: "${query}". Preserve important details. Target ${compressionTarget}% of original.`,
     { chunkSize: 10, llm }
   );
 
@@ -363,7 +366,15 @@ function groupConsecutiveChunks(chunks) {
 
 // Pure function: Assemble final content from chunk groups
 function assembleContent(chunkGroups) {
-  return chunkGroups.map((group) => group.map((chunk) => chunk.text).join('')).join('\n\n');
+  if (chunkGroups.length === 0) return '';
+
+  // Single group - no separators needed
+  if (chunkGroups.length === 1) {
+    return chunkGroups[0].map((chunk) => chunk.text).join('');
+  }
+
+  // Multiple groups - add clear separators between non-consecutive sections
+  return chunkGroups.map((group) => group.map((chunk) => chunk.text).join('')).join('\n\n---\n\n');
 }
 
 // Pure function: Build adjacency scores for gap filling
@@ -469,6 +480,7 @@ export default async function documentShrink(document, query, options = {}) {
     document.length
   );
   // console.log(`[documentShrink] Space allocation:`, allocation);
+  // console.time(`[documentShrink] Full processing for "${query}"`);
 
   // Step 3: Expand query
   const { expansions, tokensUsed: expansionTokens } = await expandQuery(
@@ -547,6 +559,8 @@ export default async function documentShrink(document, query, options = {}) {
   // Final assembly - group consecutive chunks and join appropriately
   const chunkGroups = groupConsecutiveChunks(finalChunks);
   const content = assembleContent(chunkGroups);
+
+  // console.timeEnd(`[documentShrink] Full processing for "${query}"`);
 
   return {
     content,

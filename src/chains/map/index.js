@@ -1,6 +1,7 @@
 import listBatch, { ListStyle, determineStyle } from '../../verblets/list-batch/index.js';
 import createBatches from '../../lib/text-batch/index.js';
 import retry from '../../lib/retry/index.js';
+import { asXML } from '../../prompts/wrap-variable.js';
 
 /**
  * Map over a list of items by calling `listBatch` on XML-enriched batches.
@@ -33,11 +34,15 @@ const mapOnce = async function (list, instructions, config = {}) {
     const batchStyle = determineStyle(listStyle, items, autoModeThreshold);
 
     const mappingInstructions = ({ style, count }) => {
-      const baseInstructions = `Apply the transformation instructions to each item in the list.
+      const baseInstructions = `Transform each item in the list according to the instructions below. Apply the transformation consistently to every item.
 
-<instructions>
-${instructions}
-</instructions>`;
+${asXML(instructions, { tag: 'transformation-instructions' })}
+
+IMPORTANT:
+- Transform each item independently
+- Apply the same transformation logic to all items
+- Preserve the order of items from the input list
+- Output one transformed result per input item`;
 
       if (style === ListStyle.NEWLINE) {
         return `${baseInstructions}

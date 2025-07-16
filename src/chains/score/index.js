@@ -5,7 +5,7 @@ import chatGPT from '../../lib/chatgpt/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 
-const { onlyJSONArray } = promptConstants;
+const { onlyJSON } = promptConstants;
 
 // Get the directory of this module
 const __filename = fileURLToPath(import.meta.url);
@@ -72,11 +72,19 @@ async function scoreBatch(items, instructions, reference = [], config = {}) {
       )}`
     : '';
 
-  const prompt =
-    `Score each numbered item in <items> from 0 (worst) to 10 (best) based on: ${instructions}.` +
-    `\nThere are exactly ${items.length} items to score.` +
-    `\nRespond with a JSON object containing a "scores" array with exactly ${items.length} numbers in the same order.` +
-    `${refBlock}\n${onlyJSONArray}\n${listBlock}`;
+  const prompt = `Score each item in the list according to the criteria below. Assign a score from 0 to 10 for each item.
+
+${asXML(instructions, { tag: 'scoring-criteria' })}
+
+IMPORTANT:
+- Score each item independently
+- Use the full 0-10 scale appropriately
+- Return exactly ${items.length} scores in the same order as the input list
+- Respond with a JSON object containing a "scores" array${refBlock}
+
+${onlyJSON}
+
+${listBlock}`;
 
   // Debug the actual prompt
   // console.log(`[scoreBatch] Prompt preview:`, prompt.slice(0, 500) + '...');
