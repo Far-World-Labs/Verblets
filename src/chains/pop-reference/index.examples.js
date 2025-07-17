@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import popReference from './index.js';
+import { aiExpect } from '../expect/index.js';
 import { longTestTimeout } from '../../constants/common.js';
 
 describe('popReference examples', () => {
@@ -13,10 +14,16 @@ describe('popReference examples', () => {
 
       expect(result).toBeInstanceOf(Array);
       expect(result.length).toBeGreaterThan(0);
-      expect(result[0]).toHaveProperty('reference');
-      expect(result[0]).toHaveProperty('source');
-      expect(result[0]).toHaveProperty('score');
-      expect(result[0]).toHaveProperty('match');
+
+      const hasRequiredProps = await aiExpect(result[0]).toSatisfy(
+        'Has all required properties: reference (string), source (string), score (number 0-1), and match object with text, start, end'
+      );
+      expect(hasRequiredProps).toBe(true);
+
+      const satisfiesMetaphor = await aiExpect(result).toSatisfy(
+        'Contains metaphorical references that relate to decision-making or pivotal moments'
+      );
+      expect(satisfiesMetaphor).toBe(true);
     },
     longTestTimeout
   );
@@ -34,12 +41,16 @@ describe('popReference examples', () => {
 
       expect(result).toBeInstanceOf(Array);
       expect(result.length).toBeGreaterThan(0);
-      const sources = result.map((r) => r.source);
-      expect(
-        sources.some(
-          (s) => s.includes('Office') || s.includes('Parks') || s.includes('Silicon Valley')
-        )
-      ).toBe(true);
+
+      const satisfiesInclude = await aiExpect(result).toSatisfy(
+        'References come from The Office, Parks and Recreation, or Silicon Valley shows'
+      );
+      expect(satisfiesInclude).toBe(true);
+
+      const satisfiesContext = await aiExpect(result).toSatisfy(
+        'References relate to workplace dysfunction, awkward meetings, or avoidance behavior'
+      );
+      expect(satisfiesContext).toBe(true);
     },
     longTestTimeout
   );
@@ -58,8 +69,16 @@ describe('popReference examples', () => {
 
       expect(result).toBeInstanceOf(Array);
       expect(result.length).toBeGreaterThan(0);
-      expect(result[0].context).toBeDefined();
-      expect(typeof result[0].context).toBe('string');
+
+      const hasContext = await aiExpect(result[0]).toSatisfy(
+        'Has a context property that is a non-empty string describing the reference'
+      );
+      expect(hasContext).toBe(true);
+
+      const satisfiesDenial = await aiExpect(result).toSatisfy(
+        'References relate to denial, pretending everything is fine, or ignoring obvious problems'
+      );
+      expect(satisfiesDenial).toBe(true);
     },
     longTestTimeout
   );
@@ -82,14 +101,16 @@ describe('popReference examples', () => {
 
       expect(result).toBeInstanceOf(Array);
       expect(result.length).toBeGreaterThanOrEqual(1);
-      // Check that references come from the specified sources
-      const sources = result.map((r) => r.source);
-      expect(
-        sources.some(
-          (s) =>
-            s.includes('Lord of the Rings') || s.includes('Star Wars') || s.includes('Harry Potter')
-        )
-      ).toBe(true);
+
+      const satisfiesWeightedSources = await aiExpect(result).toSatisfy(
+        'References come from Lord of the Rings, Star Wars, or Harry Potter'
+      );
+      expect(satisfiesWeightedSources).toBe(true);
+
+      const satisfiesChoice = await aiExpect(result).toSatisfy(
+        'References relate to choices between safety and adventure, or comfort and growth'
+      );
+      expect(satisfiesChoice).toBe(true);
     },
     longTestTimeout
   );
@@ -108,8 +129,16 @@ describe('popReference examples', () => {
 
       expect(result).toBeInstanceOf(Array);
       expect(result.length).toBeGreaterThanOrEqual(2);
-      expect(result.every((r) => r.match.text)).toBe(true);
-      expect(result.every((r) => r.score >= 0 && r.score <= 1)).toBe(true);
+
+      const hasSportsReferences = await aiExpect(result).toSatisfy(
+        'References come from sports movies and relate to underdog victories'
+      );
+      expect(hasSportsReferences).toBe(true);
+
+      const hasValidStructure = await aiExpect(result).toSatisfy(
+        'All references have valid match.text strings and scores between 0 and 1'
+      );
+      expect(hasValidStructure).toBe(true);
     },
     longTestTimeout
   );
