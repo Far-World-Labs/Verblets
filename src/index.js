@@ -125,6 +125,7 @@ import listExpand from './verblets/list-expand/index.js';
 import centralTendencyLines from './verblets/central-tendency-lines/index.js';
 import centralTendency from './chains/central-tendency/index.js';
 import scale, { createScale } from './verblets/scale/index.js';
+import popReference from './chains/pop-reference/index.js';
 
 export { default as retry } from './lib/retry/index.js';
 export { default as stripResponse } from './lib/strip-response/index.js';
@@ -149,6 +150,7 @@ export {
   map,
   mapOnce,
   people,
+  popReference,
   reduce,
   timeline,
   truncate,
@@ -217,6 +219,7 @@ export const verblets = {
   number,
   numberWithUnits,
   people,
+  popReference,
   questions,
   reduce,
   scale,

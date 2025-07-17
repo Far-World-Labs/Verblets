@@ -1,0 +1,56 @@
+{
+  "type": "object",
+  "properties": {
+    "references": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "reference": {
+            "type": "string",
+            "description": "The metaphorical reference"
+          },
+          "source": {
+            "type": "string",
+            "description": "Name of source material"
+          },
+          "context": {
+            "type": "string",
+            "description": "Optional extra context for the reference"
+          },
+          "score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Strength of the fit (0-1)"
+          },
+          "match": {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "string",
+                "description": "Substring of input sentence this metaphor connects to"
+              },
+              "start": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Character offset (inclusive)"
+              },
+              "end": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Character offset (exclusive)"
+              }
+            },
+            "required": ["text", "start", "end"],
+            "additionalProperties": false
+          }
+        },
+        "required": ["reference", "source", "score", "match"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["references"],
+  "additionalProperties": false
+}
