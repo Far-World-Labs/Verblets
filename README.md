@@ -66,6 +66,7 @@ Content utilities generate, transform, and analyze text while maintaining struct
 - [name](./src/verblets/name) - name something from a definition or description
 - [name-similar-to](./src/verblets/name-similar-to) - suggest short names that match a style
 - [people-list](./src/verblets/people-list) - generate diverse lists of people with specified characteristics
+- [pop-reference](./src/chains/pop-reference) - find pop culture metaphors for sentences
 - [questions](./src/chains/questions) - produce clarifying questions
 - [schema-org](./src/verblets/schema-org) - create schema.org objects
 - [socratic](./src/chains/socratic) - explore assumptions using a Socratic dialogue
