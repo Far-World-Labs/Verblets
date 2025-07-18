@@ -10,7 +10,7 @@ You are assisting with the Verblets AI library - a collection of tools for build
 
 ```
 src/
-├── chains/          # Multi-step AI workflows, model negotiation for optimization
+├── chains/          # Multi-step AI workflows, model negotiation for optimization (kebab-case directories)
 ├── verblets/        # Simple LLM transformations, usually fastGoodCheap default
 ├── lib/             # Utilities (chatgpt, model-service, each-file, etc.)
 ├── prompts/         # Prompt generation functions
@@ -20,6 +20,8 @@ src/
 guidelines/          # Architecture and coding standards
 scripts/            # Build and utility scripts
 ```
+
+**Directory Naming**: Use kebab-case for all module directories (e.g., `pop-reference`, `filter-ambiguous`)
 
 ## Available Commands
 
@@ -144,8 +146,8 @@ const result = await chatGPT(prompt, {
 // Multimodal processing
 { modelOptions: { negotiate: { multi: true } } }
 
-// Default fallback for most operations
-{ modelOptions: { modelName: 'fastGoodCheap' } }
+// Default - don't specify modelName, let system use defaults
+{ modelOptions: { ...llm } }  // Pass through llm config from options
 ```
 
 **Model Capability Mapping:**
@@ -188,6 +190,11 @@ const listBlock = asXML(items.join('\n'), { tag: 'list' });
 
 // Use prompt constants  
 const { onlyJSON, onlyJSONArray, contentIsQuestion } = promptConstants;
+
+// Best practices:
+// - Put description/instruction parameters higher in prompts
+// - Wrap all caller-supplied content with asXML() for lengthy inputs
+// - Use structured XML tags (e.g., <sentence>, <description>, <items>)
 ```
 
 ### Response Processing
@@ -213,7 +220,8 @@ return output ? output.split('\n') : [];
 - See `guidelines/UNIT_TESTS.md` for complete standards
 
 ### Example Tests
-- **Use `aiExpected`** - For validating real LLM responses in examples
+- **Use `aiExpect` with fluent interface** - Import as: `import { aiExpect } from '../expect/index.js';`
+- **Use pattern**: `await aiExpect(actual).toSatisfy(constraint)`
 - All chains and complex verblets need `*.examples.js` files
 - Test against real LLM responses for integration validation
 - Examples should demonstrate practical usage patterns
@@ -232,7 +240,7 @@ return output ? output.split('\n') : [];
 2. **Bulk Processing** → Use `negotiate: { fast: true, cheap: true }`
 3. **Quality Critical** → Use `negotiate: { good: true }`
 4. **Complex Analysis** → Use `negotiate: { reasoning: true }`
-5. **Default Operations** → Use `modelName: 'fastGoodCheap'`
+5. **Default Operations** → Don't specify modelName, use system defaults
 
 ### Common Model Configurations
 ```javascript
@@ -241,8 +249,8 @@ const MODEL_CONFIGS = {
   bulk: { negotiate: { fast: true, cheap: true } },
   quality: { negotiate: { good: true } },
   reasoning: { negotiate: { reasoning: true } },
-  multimodal: { negotiate: { multi: true } },
-  default: { modelName: 'fastGoodCheap' }
+  multimodal: { negotiate: { multi: true } }
+  // For default: don't specify modelName, use system defaults
 };
 ```
 
@@ -258,6 +266,7 @@ See `guidelines/DOCUMENTATION.md` for complete standards:
 - README structure: Title, description, cross-references, usage, API, optional features
 - Lead with common use cases, realistic examples
 - Include model selection rationale for privacy-sensitive operations
+- Avoid generic feature lists (bulk processing, retries, etc.)
 
 ### Features Section Guidelines
 - **Only include Features sections for modules with genuinely powerful or non-obvious capabilities**
