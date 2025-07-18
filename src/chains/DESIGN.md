@@ -19,6 +19,12 @@ Chains are AI-powered workflows that handle complex, multi-step processes. They 
 
 ## Module Structure
 
+### Directory Naming
+- Use **kebab-case** for directory names (e.g., `pop-reference`, `filter-ambiguous`)
+- Keep names descriptive but concise
+- Follow existing patterns in the codebase
+
+### Required Files
 Each chain directory contains:
 - `index.js` - Main implementation
 - `index.spec.js` - Unit tests (mock LLM calls)
@@ -27,6 +33,34 @@ Each chain directory contains:
 - `README.md` - **Required for most chains**, optional only for very simple ones
 
 ## Chain-Specific Characteristics
+
+### Model Configuration
+
+- **Use internal default model** - Don't explicitly define model names like `goodCheap`
+- Let the system handle model selection through default configuration
+- Only specify model options when specific capabilities are needed (e.g., `negotiate: { reasoning: true }`)
+
+### Prompt Engineering Best Practices
+
+- **Parameter ordering** - Put description/instruction parameters higher in the prompt since they're more important for guiding LLM interpretation
+- **Content wrapping** - Wrap all caller-supplied content with `asXML()` for lengthy inputs to ensure proper formatting
+- **Structured tags** - Include proper XML tags for structured content (e.g., `<sentence>`, `<description>`, `<items>`)
+- **Clear sections** - Separate instructions, context, and data clearly in the prompt
+
+Example:
+```javascript
+const prompt = `Process the following based on the description.
+
+${asXML(description, { tag: 'description' })}
+
+${asXML(sentence, { tag: 'sentence' })}
+
+Requirements:
+- Be specific about expectations
+- Use the description to guide interpretation
+
+${onlyJSON}`;
+```
 
 ### Batch Processing Strategies
 
@@ -194,6 +228,17 @@ export default chainName;
 - **Orchestration Chains**: Coordinate multiple verblets or external services
 - **Aggregation Chains**: Collect and summarize results from multiple sources
 
+## Integration Requirements
+
+### Adding New Chains
+1. Add entry to `src/index.js` exports
+2. Add entry to main `README.md` under appropriate category
+3. Follow the established export pattern for both named and verblets exports
+
+### Testing Integration
+- Import as: `import { aiExpect } from '../expect/index.js';`
+- Use pattern: `await aiExpect(actual).toSatisfy(constraint)`
+
 ## Chain-Specific Documentation Requirements
 
 **README Always Required For:**
@@ -202,6 +247,7 @@ export default chainName;
 - Complex failure handling logic
 - Multi-step workflows with dependencies
 - Performance considerations for large datasets
+- Avoid generic feature lists (bulk processing, retries, etc.)
 
 **README Structure:**
 ```markdown
