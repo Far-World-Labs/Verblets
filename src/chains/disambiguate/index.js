@@ -83,13 +83,12 @@ export default async function disambiguate({
 } = {}) {
   const { llm, ...options } = config;
   const meanings = await getMeanings(term, { model, llm, ...options });
-  const scoreResult = await score(
+  const scores = await score(
     meanings,
     `how well this meaning of "${term}" matches the context: ${context}`,
     { llm, ...options }
   );
 
-  const { scores } = scoreResult;
   let bestIndex = 0;
   let bestScore = scores[0];
 

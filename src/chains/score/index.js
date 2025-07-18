@@ -4,6 +4,8 @@ import { fileURLToPath } from 'node:url';
 import chatGPT from '../../lib/chatgpt/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { constants as promptConstants } from '../../prompts/index.js';
+import { scaleSpec } from '../../verblets/scale/index.js';
+import map from '../map/index.js';
 
 const { onlyJSON } = promptConstants;
 
@@ -49,139 +51,222 @@ async function createModelOptions(llm = 'fastGoodCheap') {
   }
 }
 
-async function scoreBatch(items, instructions, reference = [], config = {}) {
-  // console.log(`[scoreBatch] Scoring ${items.length} items with instructions: "${instructions}"`);
+// ===== Core Functions =====
 
-  // Debug: Check what we're actually scoring
-  // items.forEach((item, i) => {
-  //   console.log(`[scoreBatch] Item ${i} length: ${item.length}, contains newline: ${item.includes('\n')}`);
-  //   if (item.includes('\n')) {
-  //     console.log(`[scoreBatch] Item ${i} has newlines! First 100 chars:`, item.slice(0, 100));
-  //   }
-  // });
+/**
+ * Default spec generator - uses scaleSpec from scale verblet
+ */
+export const scoreSpec = scaleSpec;
 
+/**
+ * Apply a score specification to a single item
+ * @param {*} item - Item to score
+ * @param {Object} specification - Pre-generated score specification
+ * @param {Object} config - Configuration options
+ * @returns {Promise<*>} Score value (type depends on specification range)
+ */
+export async function applyScore(item, specification, config = {}) {
   const { llm, ...options } = config;
-  // Create a numbered list for clearer item separation
-  const itemsList = items.map((item, i) => `${i + 1}. ${item}`).join('\n');
-  const listBlock = asXML(itemsList, { tag: 'items' });
 
-  const refBlock = reference.length
-    ? `\nCalibration examples (score - text):\n${asXML(
-        reference.map((r) => `${r.score} - ${r.item}`).join('\n'),
-        { tag: 'reference' }
-      )}`
-    : '';
+  const prompt = `Apply the score specification to evaluate this item.
 
-  const prompt = `Score each item in the list according to the criteria below. Assign a score from 0 to 10 for each item.
+${asXML(specification, { tag: 'score-specification' })}
 
-${asXML(instructions, { tag: 'scoring-criteria' })}
-
-IMPORTANT:
-- Score each item independently
-- Use the full 0-10 scale appropriately
-- Return exactly ${items.length} scores in the same order as the input list
-- Respond with a JSON object containing a "scores" array${refBlock}
+Score this item according to the specification.
+Return a JSON object with a "score" property containing the value from the range.
 
 ${onlyJSON}
 
-${listBlock}`;
+${asXML(item, { tag: 'item' })}`;
 
-  // Debug the actual prompt
-  // console.log(`[scoreBatch] Prompt preview:`, prompt.slice(0, 500) + '...');
-
-  const modelOptions = await createModelOptions(llm);
+  const modelOptions = await createModelOptions();
   const response = await chatGPT(prompt, {
     modelOptions,
+    llm,
     ...options,
   });
 
-  // With structured outputs, response should already be parsed and validated
   const parsed = typeof response === 'string' ? JSON.parse(response) : response;
-  // Extract scores from the object structure
-  const arr = parsed?.scores || parsed;
-
-  if (!Array.isArray(arr)) {
-    throw new Error('Score batch mismatch: expected array of scores');
-  }
-
-  // Handle length mismatch gracefully
-  if (arr.length !== items.length) {
-    if (arr.length < items.length) {
-      // Pad with neutral scores (5) if we got fewer scores than items
-      const paddedScores = [...arr];
-      while (paddedScores.length < items.length) {
-        paddedScores.push(5);
-      }
-      return paddedScores.map((n) => Number(n));
-    } else {
-      // Truncate if we got more scores than items
-      return arr.slice(0, items.length).map((n) => Number(n));
-    }
-  }
-
-  return arr.map((n) => Number(n));
+  return parsed.score;
 }
 
-export default async function score(list, instructions, config = {}) {
-  const { chunkSize = 10, examples, llm, stopOnThreshold, ...options } = config;
-  if (!Array.isArray(list) || list.length === 0) {
-    return { scores: [], reference: [] };
-  }
-
-  const firstScores = [];
-  for (let i = 0; i < list.length; i += chunkSize) {
-    // eslint-disable-next-line no-await-in-loop
-    const scores = await scoreBatch(list.slice(i, i + chunkSize), instructions, [], {
-      llm,
-      ...options,
-    });
-    firstScores.push(...scores);
-
-    // Simple early termination check
-    if (stopOnThreshold !== undefined) {
-      const belowThreshold = scores.findIndex((score) => score < stopOnThreshold);
-      if (belowThreshold >= 0) {
-        const stopIndex = i + belowThreshold;
-        return {
-          scores: firstScores.slice(0, stopIndex + 1),
-          reference: [],
-          stoppedAt: stopIndex,
-        };
-      }
-    }
-  }
-
-  const scored = list.map((item, idx) => ({ item, score: firstScores[idx] }));
-
-  let reference = examples;
-  if (!reference) {
-    const valid = scored.filter((s) => Number.isFinite(s.score));
-    if (valid.length) {
-      valid.sort((a, b) => a.score - b.score);
-      const lows = valid.slice(0, 3);
-      const highs = valid.slice(-3);
-      const midStart = Math.max(0, Math.floor(valid.length / 2) - 1);
-      const mids = valid.slice(midStart, midStart + 3);
-      reference = [...lows, ...mids, ...highs];
-      const refItems = reference.map((r) => r.item);
-      const rescored = await scoreBatch(refItems, instructions, [], { llm, ...options });
-      rescored.forEach((score, idx) => {
-        reference[idx].score = score;
-      });
-    } else {
-      reference = [];
-    }
-  }
-
-  const finalScores = [];
-  for (let i = 0; i < list.length; i += chunkSize) {
-    // eslint-disable-next-line no-await-in-loop
-    const scores = await scoreBatch(list.slice(i, i + chunkSize), instructions, reference, {
-      llm,
-      ...options,
-    });
-    finalScores.push(...scores);
-  }
-
-  return { scores: finalScores, reference };
+/**
+ * Score a single item
+ * @param {*} item - Item to score
+ * @param {string} instructions - Scoring instructions
+ * @param {Object} config - Configuration options
+ * @returns {Promise<*>} Score value
+ */
+export async function scoreItem(item, instructions, config = {}) {
+  const spec = await scoreSpec(instructions, config);
+  return await applyScore(item, spec, config);
 }
+
+/**
+ * Score a list of items
+ * @param {Array} list - Array of items
+ * @param {string} instructions - Scoring instructions
+ * @param {Object} config - Configuration options
+ * @returns {Promise<Array>} Array of scores
+ */
+export async function mapScore(list, instructions, config = {}) {
+  const mapInstr = await mapInstructions(instructions, config);
+  const scores = await map(list, mapInstr, config);
+  return scores.map((s) => Number(s));
+}
+
+// ===== Instruction Builders =====
+
+/**
+ * Helper to create instruction with attached specification
+ * @param {string} instructions - The instruction string
+ * @param {Object} specification - The specification object
+ * @param {boolean} returnTuple - Whether to return as tuple
+ * @returns {string|Object} Instructions with specification attached or tuple
+ */
+function createInstructionResult(instructions, specification, returnTuple) {
+  if (returnTuple) {
+    return { value: instructions, specification };
+  }
+  // Attach specification as a property to the string
+  return Object.assign(instructions, { specification });
+}
+
+/**
+ * Create map instructions for scoring
+ * @param {string} scoreInstructions - Base scoring instructions
+ * @param {Object} config - Configuration options
+ * @param {boolean} config.returnTuple - Return {value, specification} instead of string with property
+ * @param {Function} createSpec - Spec generation function (defaults to scoreSpec)
+ * @returns {Promise<string|Object>} Instructions string with specification property, or tuple if configured
+ */
+export async function mapInstructions(scoreInstructions, config = {}, createSpec = scoreSpec) {
+  const { returnTuple, ...specConfig } = config;
+  const specification = await createSpec(scoreInstructions, specConfig);
+
+  const instructions = `Apply this score specification to evaluate each item:
+
+${asXML(specification, { tag: 'score-specification' })}
+
+Return ONLY the score value from the range for each item, nothing else.`;
+
+  return createInstructionResult(instructions, specification, returnTuple);
+}
+
+/**
+ * Create filter instructions for scoring
+ * @param {string} scoreInstructions - Base scoring instructions
+ * @param {Object} config - Configuration options
+ * @param {boolean} config.returnTuple - Return {value, specification} instead of string with property
+ * @param {Function} createSpec - Spec generation function (defaults to scoreSpec)
+ * @returns {Promise<string|Object>} Instructions string with specification property, or tuple if configured
+ */
+export async function filterInstructions(scoreInstructions, config = {}, createSpec = scoreSpec) {
+  const { returnTuple, ...specConfig } = config;
+  const specification = await createSpec(scoreInstructions, specConfig);
+
+  const instructions = `Apply this score specification to evaluate each item:
+
+${asXML(specification, { tag: 'score-specification' })}`;
+
+  return createInstructionResult(instructions, specification, returnTuple);
+}
+
+/**
+ * Create reduce instructions for scoring
+ * @param {string} scoreInstructions - Base scoring instructions
+ * @param {Object} config - Configuration options
+ * @param {boolean} config.returnTuple - Return {value, specification} instead of string with property
+ * @param {Function} createSpec - Spec generation function (defaults to scoreSpec)
+ * @returns {Promise<string|Object>} Instructions string with specification property, or tuple if configured
+ */
+export async function reduceInstructions(scoreInstructions, config = {}, createSpec = scoreSpec) {
+  const { returnTuple, ...specConfig } = config;
+  const specification = await createSpec(scoreInstructions, specConfig);
+
+  const instructions = `Apply this score specification to evaluate each item:
+
+${asXML(specification, { tag: 'score-specification' })}`;
+
+  return createInstructionResult(instructions, specification, returnTuple);
+}
+
+/**
+ * Create find instructions for scoring
+ * @param {string} scoreInstructions - Base scoring instructions
+ * @param {Object} config - Configuration options
+ * @param {boolean} config.returnTuple - Return {value, specification} instead of string with property
+ * @param {Function} createSpec - Spec generation function (defaults to scoreSpec)
+ * @returns {Promise<string|Object>} Instructions string with specification property, or tuple if configured
+ */
+export async function findInstructions(scoreInstructions, config = {}, createSpec = scoreSpec) {
+  const { returnTuple, ...specConfig } = config;
+  const specification = await createSpec(scoreInstructions, specConfig);
+
+  const instructions = `Apply this score specification to evaluate each item:
+
+${asXML(specification, { tag: 'score-specification' })}`;
+
+  return createInstructionResult(instructions, specification, returnTuple);
+}
+
+/**
+ * Create group instructions for scoring
+ * @param {string} scoreInstructions - Base scoring instructions
+ * @param {Object} config - Configuration options
+ * @param {boolean} config.returnTuple - Return {value, specification} instead of string with property
+ * @param {Function} createSpec - Spec generation function (defaults to scoreSpec)
+ * @returns {Promise<string|Object>} Instructions string with specification property, or tuple if configured
+ */
+export async function groupInstructions(scoreInstructions, config = {}, createSpec = scoreSpec) {
+  const { returnTuple, ...specConfig } = config;
+  const specification = await createSpec(scoreInstructions, specConfig);
+
+  const instructions = `Apply this score specification to evaluate each item:
+
+${asXML(specification, { tag: 'score-specification' })}
+
+Group items based on their score ranges from the specification.`;
+
+  return createInstructionResult(instructions, specification, returnTuple);
+}
+
+// ===== Calibration Utilities =====
+
+/**
+ * Build calibration reference from scored items
+ * Selects representative items from low, middle, and high score ranges
+ * @param {Array<{item: *, score: number}>} scoredItems - Items with their scores
+ * @param {number} count - Number of examples per range (default 3)
+ * @returns {Array<{item: *, score: number}>} Calibration reference examples
+ */
+export function buildCalibrationReference(scoredItems, count = 3) {
+  const valid = scoredItems.filter((s) => Number.isFinite(s.score));
+  if (!valid.length) return [];
+
+  valid.sort((a, b) => a.score - b.score);
+
+  const lows = valid.slice(0, count);
+  const highs = valid.slice(-count);
+  const midStart = Math.max(0, Math.floor(valid.length / 2) - Math.floor(count / 2));
+  const mids = valid.slice(midStart, midStart + count);
+
+  return [...lows, ...mids, ...highs];
+}
+
+/**
+ * Format calibration examples as XML block
+ * @param {Array<{item: *, score: number}>} calibration - Calibration examples
+ * @returns {string} Formatted calibration block
+ */
+export function formatCalibrationBlock(calibration) {
+  if (!calibration || !calibration.length) return '';
+
+  return `\nCalibration examples:\n${asXML(
+    calibration.map((c) => `${c.score} - ${c.item}`).join('\n'),
+    { tag: 'calibration' }
+  )}`;
+}
+
+// Default export: Score a list of items
+export default mapScore;

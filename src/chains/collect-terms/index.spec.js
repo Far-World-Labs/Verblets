@@ -24,10 +24,7 @@ describe('collectTerms chain', () => {
     list.mockResolvedValueOnce(['alpha', 'beta']).mockResolvedValueOnce(['beta', 'gamma']);
 
     // Mock score to return scores for the unique terms
-    score.mockResolvedValue({
-      scores: [8, 9, 7], // scores for alpha, beta, gamma
-      reference: [],
-    });
+    score.mockResolvedValue([8, 9, 7]); // scores for alpha, beta, gamma
 
     const text = 'p1\n\np2';
     const result = await collectTerms(text, { chunkLen: 2, topN: 2 });

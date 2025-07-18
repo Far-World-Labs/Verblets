@@ -47,7 +47,10 @@ IMPORTANT:
       if (style === ListStyle.NEWLINE) {
         return `${baseInstructions}
 
-Return exactly ${count} lines of output, one transformed item per line. Do not number the lines.`;
+The input list contains exactly ${count} item${count === 1 ? '' : 's'}, separated by newlines.
+Return exactly ${count} line${
+          count === 1 ? '' : 's'
+        } of output, one transformed item per line. Do not number the lines.`;
       }
 
       return `${baseInstructions}

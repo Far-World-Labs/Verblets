@@ -87,17 +87,18 @@ export default async function truncate(text, instructions, config = {}) {
   // Score chunks in reverse order - score how much content should be KEPT
   const scoringInstructions = `${asXML(instructions, { tag: 'removal_criteria' })}
   
-NOTE: These text chunks are in REVERSE order (from end to beginning of document).
-Score how important each chunk is to KEEP in the document (0 = should be removed, 10 = must keep).
+NOTE: These text blocks are in REVERSE order (from end to beginning of document).
+Score how important THE ENTIRE TEXT BLOCK is to KEEP in the document (0 = should be removed, 10 = must keep).
+Each item in the list is ONE complete text block - evaluate it as a whole unit.
 Consider the removal criteria above when scoring.`;
 
-  const result = await score(textsToScore, scoringInstructions, {
+  const scores = await score(textsToScore, scoringInstructions, {
     ...config,
     // Don't use stopOnThreshold - we need all scores to find high ones
   });
 
   // Find the first chunk (from the end) that should be removed (score < threshold)
-  const removeChunkIndex = result.scores.findIndex((score) => score < threshold);
+  const removeChunkIndex = scores.findIndex((score) => score < threshold);
 
   if (removeChunkIndex >= 0) {
     const originalIndex = chunks.length - 1 - removeChunkIndex;
