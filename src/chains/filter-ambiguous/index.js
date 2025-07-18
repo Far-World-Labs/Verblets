@@ -10,7 +10,7 @@ export default async function filterAmbiguous(text, config = {}) {
     .filter(Boolean);
   if (sentences.length === 0) return [];
 
-  const { scores: sentenceScores } = await score(
+  const sentenceScores = await score(
     sentences,
     'How ambiguous or easily misinterpreted is this sentence?',
     { chunkSize, llm, ...options }
@@ -37,7 +37,7 @@ export default async function filterAmbiguous(text, config = {}) {
 
   if (termPairs.length === 0) return [];
 
-  const { scores } = await score(
+  const scores = await score(
     termPairs.map((p) => `${p.term} | ${p.sentence}`),
     'Score how ambiguous the term is within the sentence.',
     { chunkSize, llm, ...options }

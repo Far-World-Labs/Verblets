@@ -41,7 +41,7 @@ export default async function collectTerms(text, config = {}) {
   if (uniqueTerms.length <= topN) return uniqueTerms;
 
   // Score each term by relevance to the full text context
-  const { scores } = await score(
+  const scores = await score(
     uniqueTerms,
     `relevance as a search term for finding information (1-10, higher is more important)`,
     { llm, ...options }

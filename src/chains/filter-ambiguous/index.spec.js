@@ -16,8 +16,8 @@ beforeEach(() => {
 describe('filterAmbiguous chain', () => {
   it('returns scored ambiguous terms', async () => {
     score
-      .mockResolvedValueOnce({ scores: [1, 9], reference: [] })
-      .mockResolvedValueOnce({ scores: [8, 3], reference: [] });
+      .mockResolvedValueOnce([1, 9]) // sentence scores
+      .mockResolvedValueOnce([8, 3]); // term scores
     list.mockResolvedValueOnce(['alpha', 'beta']).mockResolvedValueOnce([]);
 
     const result = await filterAmbiguous('s1\ns2', { topN: 1 });

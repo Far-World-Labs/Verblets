@@ -12,7 +12,7 @@ describe('score examples', () => {
         "I told my computer I needed a break, and it said 'I'll go to sleep.'",
       ];
 
-      const { scores } = await score(jokes, 'How funny is this joke?');
+      const scores = await score(jokes, 'How funny is this joke?');
 
       expect(scores).toHaveLength(jokes.length);
       scores.forEach((s) => expect(typeof s).toBe('number'));

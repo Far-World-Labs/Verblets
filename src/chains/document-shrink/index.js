@@ -228,7 +228,7 @@ async function scoreEdgeChunks(candidates, query, maxChunks, llm) {
 
   // console.log(`[scoreEdgeChunks] Scoring ${cleanedChunks.length} cleaned chunks`);
 
-  const { scores } = await score(
+  const scores = await score(
     cleanedChunks,
     `relevance to query: "${query}" (0=unrelated, 5=partially related, 10=directly answers)`,
     { chunkSize: LLM_CHUNK_BATCH_SIZE, llm }

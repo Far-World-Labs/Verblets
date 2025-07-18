@@ -87,6 +87,38 @@ const { scores, stoppedAt } = await score(
 // Only process results up to stoppedAt
 ```
 
+## Composing with Collection Chains
+
+### Map
+```javascript
+const instructions = await mapInstructions('rate technical complexity');
+const complexityScores = await map(codeSamples, instructions);
+```
+
+### Filter
+```javascript
+const instructions = await filterInstructions('content appropriateness');
+const filtered = await filter(posts, instructions);
+```
+
+### Reduce
+```javascript
+const instructions = await reduceInstructions('importance to project success');
+const critical = await reduce(tasks, instructions);
+```
+
+### Find
+```javascript
+const instructions = await findInstructions('match to job requirements');
+const bestCandidate = await find(applicants, instructions);
+```
+
+### Group
+```javascript
+const instructions = await groupInstructions('technical skill level');
+const levels = await group(developers, instructions);
+```
+
 ## Best Practices
 
 - Write clear, specific scoring instructions
