@@ -133,6 +133,20 @@ function createInstructionResult(instructions, specification, returnTuple) {
 }
 
 /**
+ * Build scoring instructions with common prefix and specification
+ * @param {Object} specification - The score specification
+ * @param {string} additionalInstructions - Additional instructions for specific operation
+ * @returns {string} Complete instruction string
+ */
+function buildScoringInstructions(specification, additionalInstructions = '') {
+  const base = `Apply this score specification to evaluate each item:
+
+${asXML(specification, { tag: 'score-specification' })}`;
+
+  return additionalInstructions ? `${base}\n\n${additionalInstructions}` : base;
+}
+
+/**
  * Create map instructions for scoring
  * @param {string} scoreInstructions - Base scoring instructions
  * @param {Object} config - Configuration options
@@ -144,11 +158,10 @@ export async function mapInstructions(scoreInstructions, config = {}, createSpec
   const { returnTuple, ...specConfig } = config;
   const specification = await createSpec(scoreInstructions, specConfig);
 
-  const instructions = `Apply this score specification to evaluate each item:
-
-${asXML(specification, { tag: 'score-specification' })}
-
-Return ONLY the score value from the range for each item, nothing else.`;
+  const instructions = buildScoringInstructions(
+    specification,
+    'Return ONLY the score value from the range for each item, nothing else.'
+  );
 
   return createInstructionResult(instructions, specification, returnTuple);
 }
@@ -165,9 +178,7 @@ export async function filterInstructions(scoreInstructions, config = {}, createS
   const { returnTuple, ...specConfig } = config;
   const specification = await createSpec(scoreInstructions, specConfig);
 
-  const instructions = `Apply this score specification to evaluate each item:
-
-${asXML(specification, { tag: 'score-specification' })}`;
+  const instructions = buildScoringInstructions(specification);
 
   return createInstructionResult(instructions, specification, returnTuple);
 }
@@ -184,9 +195,7 @@ export async function reduceInstructions(scoreInstructions, config = {}, createS
   const { returnTuple, ...specConfig } = config;
   const specification = await createSpec(scoreInstructions, specConfig);
 
-  const instructions = `Apply this score specification to evaluate each item:
-
-${asXML(specification, { tag: 'score-specification' })}`;
+  const instructions = buildScoringInstructions(specification);
 
   return createInstructionResult(instructions, specification, returnTuple);
 }
@@ -203,9 +212,7 @@ export async function findInstructions(scoreInstructions, config = {}, createSpe
   const { returnTuple, ...specConfig } = config;
   const specification = await createSpec(scoreInstructions, specConfig);
 
-  const instructions = `Apply this score specification to evaluate each item:
-
-${asXML(specification, { tag: 'score-specification' })}`;
+  const instructions = buildScoringInstructions(specification);
 
   return createInstructionResult(instructions, specification, returnTuple);
 }
@@ -222,11 +229,10 @@ export async function groupInstructions(scoreInstructions, config = {}, createSp
   const { returnTuple, ...specConfig } = config;
   const specification = await createSpec(scoreInstructions, specConfig);
 
-  const instructions = `Apply this score specification to evaluate each item:
-
-${asXML(specification, { tag: 'score-specification' })}
-
-Group items based on their score ranges from the specification.`;
+  const instructions = buildScoringInstructions(
+    specification,
+    'Group items based on their score ranges from the specification.'
+  );
 
   return createInstructionResult(instructions, specification, returnTuple);
 }
