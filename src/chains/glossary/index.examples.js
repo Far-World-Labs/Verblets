@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import glossary from './index.js';
-import aiExpect from '../../verblets/expect/index.js';
+import aiExpect from '../expect/index.js';
 import { longTestTimeout } from '../../constants/common.js';
 
 describe('glossary examples', () => {

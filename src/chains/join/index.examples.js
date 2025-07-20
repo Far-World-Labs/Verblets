@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import join from './index.js';
 import { longTestTimeout } from '../../constants/common.js';
-import { aiExpect } from '../expect/index.js';
+import aiExpect from '../expect/index.js';
 
 describe('join examples', () => {
   it(

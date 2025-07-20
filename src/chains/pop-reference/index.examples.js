@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import popReference from './index.js';
-import { aiExpect } from '../expect/index.js';
+import aiExpect from '../expect/index.js';
 import { longTestTimeout } from '../../constants/common.js';
 
 describe('popReference examples', () => {

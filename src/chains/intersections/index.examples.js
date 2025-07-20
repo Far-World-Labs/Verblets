@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import intersections from './index.js';
-import { expect as aiExpect } from '../expect/index.js';
+import aiExpect from '../expect/index.js';
 import { longTestTimeout, shouldRunLongExamples } from '../../constants/common.js';
 
 describe('intersections chain examples', () => {
@@ -29,9 +29,7 @@ describe('intersections chain examples', () => {
       }
 
       // AI validation of technology intersections
-      const [hasValidTechIntersections] = await aiExpect(
-        result,
-        undefined,
+      const hasValidTechIntersections = await aiExpect(result).toSatisfy(
         'Should contain meaningful intersections between technology categories with relevant examples'
       );
       expect(hasValidTechIntersections).toBe(true);
@@ -58,9 +56,7 @@ describe('intersections chain examples', () => {
         expect(firstIntersection.combination).toContain('science');
 
         // AI validation of meaningful intersections
-        const [hasMeaningfulIntersections] = await aiExpect(
-          result,
-          undefined,
+        const hasMeaningfulIntersections = await aiExpect(result).toSatisfy(
           'Should contain meaningful intersections between art and science with relevant examples'
         );
         expect(hasMeaningfulIntersections).toBe(true);
@@ -103,11 +99,9 @@ describe('intersections chain examples', () => {
         }
 
         // AI validation of music-math intersections
-        const [hasValidMusicMathIntersections] = await aiExpect(
-          Object.values(result)[0].elements,
-          undefined,
-          'Should contain examples that genuinely belong to both music and mathematics'
-        );
+        const hasValidMusicMathIntersections = await aiExpect(
+          Object.values(result)[0].elements
+        ).toSatisfy('Should contain examples that genuinely belong to both music and mathematics');
         expect(hasValidMusicMathIntersections).toBe(true);
       }
     },
@@ -154,9 +148,7 @@ describe('intersections chain examples', () => {
         expect(hasTwoWayIntersection).toBe(true);
 
         // AI validation of scientific intersections
-        const [hasValidScienceIntersections] = await aiExpect(
-          result,
-          undefined,
+        const hasValidScienceIntersections = await aiExpect(result).toSatisfy(
           'Should contain meaningful intersections between scientific disciplines with relevant examples'
         );
         expect(hasValidScienceIntersections).toBe(true);
@@ -174,9 +166,7 @@ describe('intersections chain examples', () => {
       expect(Object.keys(result).length).toBe(0);
 
       // Validate single category handling
-      const [isEmptyObject] = await aiExpect(
-        result,
-        undefined,
+      const isEmptyObject = await aiExpect(result).toSatisfy(
         'Should be an empty object since intersections require multiple categories'
       );
       expect(isEmptyObject).toBe(true);
@@ -213,9 +203,7 @@ describe('intersections chain examples', () => {
         }
 
         // AI validation of literature-psychology intersections
-        const [hasQualityIntersections] = await aiExpect(
-          result,
-          undefined,
+        const hasQualityIntersections = await aiExpect(result).toSatisfy(
           'Should contain high-quality intersections between literature and psychology with meaningful examples'
         );
         expect(hasQualityIntersections).toBe(true);
@@ -230,9 +218,7 @@ describe('intersections chain examples', () => {
       const result = await intersections([]);
 
       // Validate empty input handling
-      const [isEmptyForEmptyInput] = await aiExpect(
-        result,
-        undefined,
+      const isEmptyForEmptyInput = await aiExpect(result).toSatisfy(
         'Should be an empty object for empty input'
       );
       expect(isEmptyForEmptyInput).toBe(true);
@@ -267,9 +253,7 @@ describe('intersections chain examples', () => {
         expect(Array.isArray(firstIntersection.elements)).toBe(true);
 
         // AI validation that results follow custom instructions
-        const [followsInstructions] = await aiExpect(
-          firstIntersection,
-          undefined,
+        const followsInstructions = await aiExpect(firstIntersection).toSatisfy(
           'Should list specific project ideas and avoid abstract themes as requested in custom instructions'
         );
         expect(followsInstructions).toBe(true);

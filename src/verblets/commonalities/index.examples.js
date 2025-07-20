@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import commonalities from './index.js';
 import { longTestTimeout } from '../../constants/common.js';
-import aiExpect from '../expect/index.js';
+import aiExpect from '../../chains/expect/index.js';
 
 describe('commonalities verblet', () => {
   it('finds shared traits between technology devices', async () => {

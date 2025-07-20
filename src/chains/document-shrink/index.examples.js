@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import documentShrink from './index.js';
-import { aiExpect } from '../expect/index.js';
+import aiExpect from '../expect/index.js';
 import fs from 'fs';
 import path from 'path';
 

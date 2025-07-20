@@ -1,7 +1,7 @@
 import { describe, expect, it, beforeAll, afterAll } from 'vitest';
 
 import number from './index.js';
-import aiExpect from '../expect/index.js';
+import aiExpect from '../../chains/expect/index.js';
 import { longTestTimeout } from '../../constants/common.js';
 
 const examples = [

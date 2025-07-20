@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeAll, afterAll } from 'vitest';
 
-import { expect as aiExpect } from './index.js';
+import aiExpect from './index.js';
 import { longTestTimeout } from '../../constants/common.js';
 
 const examples = [
@@ -72,17 +72,14 @@ describe('LLM Expect Chain', () => {
     it(
       description,
       async () => {
-        const [result, details] = await aiExpect(
-          example.inputs.actual,
-          example.inputs.expected,
-          example.inputs.constraint
-        );
+        let result;
+        if (example.inputs.expected !== undefined) {
+          result = await aiExpect(example.inputs.actual).toEqual(example.inputs.expected);
+        } else if (example.inputs.constraint !== undefined) {
+          result = await aiExpect(example.inputs.actual).toSatisfy(example.inputs.constraint);
+        }
 
         expect(result).toBe(example.want.result);
-        expect(details).toHaveProperty('passed', example.want.result);
-        expect(details).toHaveProperty('file');
-        expect(details).toHaveProperty('line');
-        expect(typeof details.line).toBe('number');
       },
       longTestTimeout
     );
@@ -91,19 +88,11 @@ describe('LLM Expect Chain', () => {
   it(
     'should provide detailed debugging information on failure',
     async () => {
-      const [result, details] = await aiExpect(
-        'This is clearly wrong content',
-        undefined,
+      const result = await aiExpect('This is clearly wrong content').toSatisfy(
         'Is this a professional business email?'
       );
 
       expect(result).toBe(false);
-      expect(details.passed).toBe(false);
-      expect(details.file).toBeDefined();
-      expect(details.line).toBeGreaterThan(0);
-
-      // In none mode, advice should be null for failures
-      expect(details.advice).toBeNull();
     },
     longTestTimeout
   );
@@ -114,15 +103,11 @@ describe('LLM Expect Chain', () => {
       const businessRecommendation =
         'Increase marketing budget by 20% for next quarter to expand market reach and target demographics aged 25-45 through social media campaigns';
 
-      const [result, details] = await aiExpect(
-        businessRecommendation,
-        undefined,
+      const result = await aiExpect(businessRecommendation).toSatisfy(
         'Is this recommendation specific, actionable, and includes measurable targets?'
       );
 
       expect(result).toBe(true);
-      expect(details.passed).toBe(true);
-      expect(details.file).toBeDefined();
     },
     longTestTimeout
   );
@@ -133,9 +118,7 @@ describe('LLM Expect Chain', () => {
       const storyOpening =
         'Once upon a time, in a land far away, there lived a brave knight who embarked on a quest to save the kingdom from an ancient curse that had plagued the realm for centuries.';
 
-      const [result] = await aiExpect(
-        storyOpening,
-        undefined,
+      const result = await aiExpect(storyOpening).toSatisfy(
         'Is this story opening engaging, sets up clear conflict, and follows good narrative structure?'
       );
 
