@@ -3,6 +3,7 @@ import { rangeCombinations } from '../../lib/combinations/index.js';
 import chatGPT from '../../lib/chatgpt/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { constants as promptConstants } from '../../prompts/index.js';
+import { intersectionElementsSchema } from './schemas.js';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -11,7 +12,7 @@ import { fileURLToPath } from 'node:url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const { onlyJSONStringArray, strictFormat, contentIsQuestion } = promptConstants;
+const { asJSON, asWrappedArrayJSON, strictFormat, contentIsQuestion } = promptConstants;
 
 /**
  * Load the JSON schema for intersection results
@@ -38,23 +39,19 @@ Focus on items that genuinely exist in the intersection of all categories.`;
 
 ${asXML(categories.join(' | '), { tag: 'categories' })}
 
-${strictFormat} ${onlyJSONStringArray}`;
+${strictFormat} ${asWrappedArrayJSON}
+
+${asJSON}`;
 };
 
 /**
  * Parse elements from LLM response
  */
-const parseElements = (elementsText) => {
-  try {
-    const parsed = JSON.parse(elementsText.trim());
-    return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
-  } catch {
-    // Fallback to line-by-line parsing if JSON parsing fails
-    return elementsText
-      .split('\n')
-      .map((line) => line.replace(/^[-*•]\s*/, '').trim())
-      .filter(Boolean);
+const parseElements = (elements) => {
+  if (Array.isArray(elements)) {
+    return elements.filter(Boolean);
   }
+  return [];
 };
 
 /**
@@ -64,12 +61,22 @@ const processCombo = async (combo, instructions) => {
   const comboKey = combo.join(' + ');
 
   // Get elements and description in parallel
-  const [elements, intersectionItems] = await Promise.all([
-    chatGPT(INTERSECTION_PROMPT(combo, instructions)),
+  const [elementsResponse, intersectionItems] = await Promise.all([
+    chatGPT(INTERSECTION_PROMPT(combo, instructions), {
+      modelOptions: {
+        response_format: {
+          type: 'json_schema',
+          json_schema: {
+            name: 'intersection_elements',
+            schema: intersectionElementsSchema,
+          },
+        },
+      },
+    }),
     commonalities(combo, { instructions }),
   ]);
 
-  const elementList = parseElements(elements);
+  const elementList = parseElements(elementsResponse);
   const description = Array.isArray(intersectionItems)
     ? intersectionItems.join(', ')
     : String(intersectionItems);

@@ -23,12 +23,12 @@ beforeEach(() => {
 
 describe('timeline', () => {
   it('extracts timeline events from short text', async () => {
-    const mockResponse = JSON.stringify({
+    const mockResponse = {
       events: [
         { timestamp: '2010', name: 'Company founded' },
         { timestamp: '2012-03', name: 'First funding' },
       ],
-    });
+    };
 
     chatGPT.mockResolvedValueOnce(mockResponse);
 
@@ -41,7 +41,7 @@ describe('timeline', () => {
   });
 
   it('passes correct schema to chatGPT', async () => {
-    chatGPT.mockResolvedValueOnce('{"events":[]}');
+    chatGPT.mockResolvedValueOnce({ events: [] });
 
     await timeline('some text');
 
@@ -73,7 +73,7 @@ describe('timeline', () => {
   it('chunks text based on chunkSize parameter', async () => {
     const mockText = 'a'.repeat(5000);
     chunkSentences.mockReturnValueOnce(['chunk1', 'chunk2', 'chunk3']);
-    chatGPT.mockResolvedValue('{"events":[]}');
+    chatGPT.mockResolvedValue({ events: [] });
 
     await timeline(mockText, { chunkSize: 1500 });
 
@@ -84,8 +84,8 @@ describe('timeline', () => {
   it('merges results from multiple chunks', async () => {
     chunkSentences.mockReturnValueOnce(['chunk1', 'chunk2']);
     chatGPT
-      .mockResolvedValueOnce('{"events":[{"timestamp": "2020", "name": "Event 1"}]}')
-      .mockResolvedValueOnce('{"events":[{"timestamp": "2021", "name": "Event 2"}]}');
+      .mockResolvedValueOnce({ events: [{ timestamp: '2020', name: 'Event 1' }] })
+      .mockResolvedValueOnce({ events: [{ timestamp: '2021', name: 'Event 2' }] });
 
     const result = await timeline('text', { chunkSize: 100 });
 
@@ -97,8 +97,8 @@ describe('timeline', () => {
   it('deduplicates events with same timestamp and name', async () => {
     chunkSentences.mockReturnValueOnce(['chunk1', 'chunk2']);
     chatGPT
-      .mockResolvedValueOnce('{"events":[{"timestamp": "2020-01-01", "name": "Same Event"}]}')
-      .mockResolvedValueOnce('{"events":[{"timestamp": "2020-01-01", "name": "same event"}]}');
+      .mockResolvedValueOnce({ events: [{ timestamp: '2020-01-01', name: 'Same Event' }] })
+      .mockResolvedValueOnce({ events: [{ timestamp: '2020-01-01', name: 'same event' }] });
 
     const result = await timeline('text');
 
@@ -107,15 +107,13 @@ describe('timeline', () => {
   });
 
   it('sorts ISO dates correctly', async () => {
-    chatGPT.mockResolvedValueOnce(
-      JSON.stringify({
-        events: [
-          { timestamp: '2023-12-01', name: 'December' },
-          { timestamp: '2023-01-15', name: 'January' },
-          { timestamp: '2023-06-30', name: 'June' },
-        ],
-      })
-    );
+    chatGPT.mockResolvedValueOnce({
+      events: [
+        { timestamp: '2023-12-01', name: 'December' },
+        { timestamp: '2023-01-15', name: 'January' },
+        { timestamp: '2023-06-30', name: 'June' },
+      ],
+    });
 
     const result = await timeline('text');
 
@@ -125,15 +123,13 @@ describe('timeline', () => {
   });
 
   it('places parseable dates before non-parseable ones', async () => {
-    chatGPT.mockResolvedValueOnce(
-      JSON.stringify({
-        events: [
-          { timestamp: 'sometime later', name: 'Vague' },
-          { timestamp: '2023-01-01', name: 'Precise' },
-          { timestamp: 'in the beginning', name: 'Story' },
-        ],
-      })
-    );
+    chatGPT.mockResolvedValueOnce({
+      events: [
+        { timestamp: 'sometime later', name: 'Vague' },
+        { timestamp: '2023-01-01', name: 'Precise' },
+        { timestamp: 'in the beginning', name: 'Story' },
+      ],
+    });
 
     const result = await timeline('text');
 
@@ -145,8 +141,8 @@ describe('timeline', () => {
   it('handles parsing errors gracefully', async () => {
     chunkSentences.mockReturnValueOnce(['c1', 'c2', 'c3']);
     chatGPT
-      .mockResolvedValueOnce('{"events":[{"timestamp": "2023", "name": "Good"}]}')
-      .mockResolvedValueOnce('not valid json')
+      .mockResolvedValueOnce({ events: [{ timestamp: '2023', name: 'Good' }] })
+      .mockResolvedValueOnce({ events: [] })
       .mockRejectedValueOnce(new Error('API error'));
 
     const result = await timeline('text');
@@ -172,7 +168,7 @@ describe('timeline', () => {
   });
 
   it('passes through custom options to chatGPT', async () => {
-    chatGPT.mockResolvedValueOnce('{"events":[]}');
+    chatGPT.mockResolvedValueOnce({ events: [] });
 
     await timeline('text', {
       chunkSize: 3000,
@@ -193,7 +189,7 @@ describe('timeline', () => {
   });
 
   it('returns empty array when no events found', async () => {
-    chatGPT.mockResolvedValueOnce('{"events":[]}');
+    chatGPT.mockResolvedValueOnce({ events: [] });
 
     const result = await timeline('text');
 
@@ -212,27 +208,24 @@ describe('timeline', () => {
   });
 
   it('strips response wrapper from results', async () => {
-    stripResponse.mockImplementation((str) => str.replace(/```json\n|\n```/g, ''));
-    chatGPT.mockResolvedValueOnce(
-      '```json\n{"events":[{"timestamp": "2023", "name": "Event"}]}\n```'
-    );
+    // No longer needed since chatGPT handles JSON parsing
+    chatGPT.mockResolvedValueOnce({
+      events: [{ timestamp: '2023', name: 'Event' }],
+    });
 
     const result = await timeline('text');
 
-    expect(stripResponse).toHaveBeenCalled();
     expect(result).toEqual([{ timestamp: '2023', name: 'Event' }]);
   });
 
   it('maintains relative order for non-date timestamps', async () => {
-    chatGPT.mockResolvedValueOnce(
-      JSON.stringify({
-        events: [
-          { timestamp: 'first', name: 'A' },
-          { timestamp: 'then', name: 'B' },
-          { timestamp: 'finally', name: 'C' },
-        ],
-      })
-    );
+    chatGPT.mockResolvedValueOnce({
+      events: [
+        { timestamp: 'first', name: 'A' },
+        { timestamp: 'then', name: 'B' },
+        { timestamp: 'finally', name: 'C' },
+      ],
+    });
 
     const result = await timeline('text');
 

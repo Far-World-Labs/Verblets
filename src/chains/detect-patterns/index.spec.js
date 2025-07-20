@@ -14,7 +14,7 @@ describe('detect-patterns', () => {
   });
 
   it('should return empty array for empty input', async () => {
-    reduce.mockResolvedValueOnce('[]');
+    reduce.mockResolvedValueOnce([]);
     const result = await detectPatterns([]);
     expect(result).to.deep.equal([]);
   });
@@ -33,7 +33,7 @@ describe('detect-patterns', () => {
       },
     ];
 
-    reduce.mockResolvedValueOnce(JSON.stringify(mockResult));
+    reduce.mockResolvedValueOnce(mockResult);
 
     const objects = [
       { theme: 'dark', fontSize: 14 },
@@ -68,8 +68,7 @@ describe('detect-patterns', () => {
       },
     ];
 
-    const mockResponse = `\`\`\`json\n${JSON.stringify(mockResult, null, 2)}\n\`\`\``;
-    reduce.mockResolvedValueOnce(mockResponse);
+    reduce.mockResolvedValueOnce(mockResult);
 
     const objects = [{ theme: 'dark' }];
     const result = await detectPatterns(objects, { topN: 2 });
@@ -79,9 +78,7 @@ describe('detect-patterns', () => {
   });
 
   it('should handle malformed JSON gracefully', async () => {
-    const mockResponse = 'malformed json response';
-
-    reduce.mockResolvedValueOnce(mockResponse);
+    reduce.mockResolvedValueOnce('not an array');
 
     const objects = [{ theme: 'dark' }];
     const result = await detectPatterns(objects, { topN: 2 });
@@ -108,7 +105,7 @@ describe('detect-patterns', () => {
       },
     ];
 
-    reduce.mockResolvedValueOnce(JSON.stringify(mockResult));
+    reduce.mockResolvedValueOnce(mockResult);
 
     const objects = [{ a: 1 }];
     const result = await detectPatterns(objects, { topN: 2 });

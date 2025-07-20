@@ -20,7 +20,7 @@ const examples = [
   {
     name: 'Returns undefined when unsure',
     inputs: { text: '???' },
-    want: { result: 'undefined' },
+    want: { result: undefined },
   },
 ];
 

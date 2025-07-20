@@ -13,7 +13,31 @@ import TimedAbortController from '../timed-abort-controller/index.js';
 import modelService from '../../services/llm-model/index.js';
 import { getClient as getRedis } from '../../services/redis/index.js';
 
-const shapeOutputDefault = (result) => {
+// Helper to detect if a response format schema is a simple collection wrapper
+export const isSimpleCollectionSchema = (responseFormat) => {
+  const schema = responseFormat?.json_schema?.schema;
+  if (!schema || schema.type !== 'object') return false;
+
+  const props = schema.properties;
+  const propKeys = Object.keys(props || {});
+
+  // Single 'items' property that's an array
+  return propKeys.length === 1 && propKeys[0] === 'items' && props.items?.type === 'array';
+};
+
+// Helper to detect if a response format schema is a simple value wrapper
+export const isSimpleValueSchema = (responseFormat) => {
+  const schema = responseFormat?.json_schema?.schema;
+  if (!schema || schema.type !== 'object') return false;
+
+  const props = schema.properties;
+  const propKeys = Object.keys(props || {});
+
+  // Single 'value' property
+  return propKeys.length === 1 && propKeys[0] === 'value';
+};
+
+const shapeOutputDefault = (result, requestConfig, options = {}) => {
   // GPT-4
   if (result.choices[0].message.tool_calls?.length) {
     const toolCall = result.choices[0].message.tool_calls[0];
@@ -28,6 +52,38 @@ const shapeOutputDefault = (result) => {
     // If content is already an object (structured output), return it directly
     if (typeof content === 'object' && content !== null) {
       return content;
+    }
+    // If using response_format and content is a string, parse it as JSON unless disabled
+    if (
+      typeof content === 'string' &&
+      requestConfig?.response_format &&
+      !options.skipResponseParse
+    ) {
+      const trimmed = content.trim();
+      try {
+        const parsed = JSON.parse(trimmed);
+
+        // Auto-unwrap simple collection wrappers (default enabled)
+        const unwrapCollections = options.unwrapCollections !== false;
+        if (unwrapCollections && isSimpleCollectionSchema(requestConfig.response_format)) {
+          if (parsed?.items && Array.isArray(parsed.items)) {
+            return parsed.items;
+          }
+        }
+
+        // Auto-unwrap simple value wrappers (default enabled)
+        const unwrapValues = options.unwrapValues !== false;
+        if (unwrapValues && isSimpleValueSchema(requestConfig.response_format)) {
+          if ('value' in parsed) {
+            return parsed.value;
+          }
+        }
+
+        return parsed;
+      } catch {
+        // If parsing fails, return the trimmed string
+        return trimmed;
+      }
     }
     // Otherwise, it's a string, so trim it
     return content.trim();
@@ -69,6 +125,9 @@ export const run = async (prompt, config = {}) => {
     onAfterRequest = onAfterRequestDefault,
     onBeforeRequest = onBeforeRequestDefault,
     shapeOutput = shapeOutputDefault,
+    skipResponseParse,
+    unwrapValues,
+    unwrapCollections,
   } = options;
 
   // Apply global overrides to model options
@@ -152,7 +211,11 @@ export const run = async (prompt, config = {}) => {
     }
   }
 
-  const resultShaped = shapeOutput(result);
+  const resultShaped = shapeOutput(result, requestConfig, {
+    skipResponseParse,
+    unwrapValues,
+    unwrapCollections,
+  });
 
   onAfterRequest({
     debugResult,

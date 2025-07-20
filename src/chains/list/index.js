@@ -105,10 +105,7 @@ export const generateList = async function* generateListGenerator(text, options 
         ...passThroughOptions,
       });
 
-      // With structured outputs, response should already be parsed and validated
-      const parsed = typeof results === 'string' ? JSON.parse(results) : results;
-      // Extract items from the object structure
-      const resultArray = parsed?.items || parsed;
+      const resultArray = results?.items || results;
       resultsNew = Array.isArray(resultArray) ? resultArray.filter(Boolean) : [];
     } catch (error) {
       if (/The operation was aborted/.test(error.message)) {

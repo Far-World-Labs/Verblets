@@ -2,6 +2,13 @@
 
 You are assisting with the Verblets AI library - a collection of tools for building LLM-powered applications using Node.js.
 
+## ⚠️ NO COMMENTS RULE
+
+**NEVER add comments when making code changes.** Only add comments when:
+1. User explicitly requests comments
+2. Complex algorithms require explanation
+3. Non-obvious edge cases exist
+
 ## Project Guidelines
 
 **Architecture & Standards**: Follow guidelines in `guidelines/CODE_QUALITY.md`, `guidelines/DOCUMENTATION.md`, and `guidelines/ARCHITECTURE_TESTS.md`
@@ -85,6 +92,17 @@ const result = await chatGPT(prompt, {
 });
 ```
 
+**Key API Behaviors:**
+- OpenAI returns JSON **strings** when using `response_format`, not parsed objects
+- Root schema must be object type, cannot be array
+- The `.items` wrapper is an API requirement for collections
+
+**ChatGPT Module Features:**
+- Automatically parses JSON when `response_format` is provided
+- `skipResponseParse` option available for edge cases (e.g., primitive values)
+- Auto-unwraps simple collection schemas by default (single `items` property containing array)
+- Exports `isSimpleCollectionSchema` helper for detecting collection patterns
+
 ## JSON Schema Requirements
 
 **CRITICAL: Always use JSON schemas for structured outputs - NEVER use toObject chain**
@@ -117,6 +135,14 @@ const result = await chatGPT(prompt, {
 // INCORRECT: Never use toObject
 // const parsed = await toObject(result);
 ```
+
+### Response Format Guidelines
+- Include descriptions in schemas to guide LLM behavior
+- Avoid unnecessary nesting (no array of arrays)
+- Design formats based on what chains actually need
+- Keep structured output close to desired data shape
+- Use `responseFormat` naming consistently (not `structuredOutput`)
+- Break and repair when making API changes - no legacy support
 
 ### Model Selection Strategy
 
@@ -207,6 +233,18 @@ const results = parsed?.items || parsed?.scores || parsed;
 const output = result.trim();
 return output ? output.split('\n') : [];
 ```
+
+### Collection Operations Design
+- **Core principle**: Keep `.items` wrapper internal, chains work with arrays
+- **Simple collections**: Single `items` property containing array → auto-unwrap
+- **Map/Filter/Find**: Return arrays directly to consumers
+- **Reduce**: Special case - not a collection operation, builds accumulators
+
+### Reduce Chain Specifics
+- Default format: `{accumulator: string}` for simple string accumulation
+- Consumers provide custom formats for complex accumulators
+- Initial arrays are wrapped transparently when needed
+- Don't use `.items` wrapper for reduce - it's not a collection operation
 
 ## Testing Standards
 

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { longTestTimeout } from '../../constants/common.js';
-import score from './index.js';
+import score, { reduceInstructions } from './index.js';
+import reduce from '../reduce/index.js';
 
 describe('score examples', () => {
   it(
@@ -16,6 +17,29 @@ describe('score examples', () => {
 
       expect(scores).toHaveLength(jokes.length);
       scores.forEach((s) => expect(typeof s).toBe('number'));
+    },
+    longTestTimeout
+  );
+
+  it(
+    'uses score-based reduction',
+    async () => {
+      const products = [
+        'Premium laptop with 32GB RAM',
+        'Basic notebook with 4GB RAM',
+        'Gaming PC with 64GB RAM',
+      ];
+
+      const bestValue = await reduce(
+        products,
+        await reduceInstructions({
+          scoring: 'value for money considering specs',
+          processing: 'find the item with the highest score',
+        })
+      );
+
+      expect(bestValue).toBeDefined();
+      expect(typeof bestValue).toBe('string');
     },
     longTestTimeout
   );

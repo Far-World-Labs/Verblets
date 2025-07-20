@@ -1,7 +1,6 @@
 import chatGPT from '../../lib/chatgpt/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { xmlEscape } from '../../lib/functional/index.js';
-import { XMLParser } from 'fast-xml-parser';
 
 export const ListStyle = {
   NEWLINE: 'newline',
@@ -10,7 +9,10 @@ export const ListStyle = {
 };
 
 function shouldUseXML(list, threshold = 1000) {
-  return list.some((item) => item.includes('\n') || item.length > threshold);
+  return list.some((item) => {
+    const str = String(item);
+    return str.includes('\n') || str.length > threshold;
+  });
 }
 
 export function determineStyle(style, list, threshold) {
@@ -23,51 +25,12 @@ export function determineStyle(style, list, threshold) {
 
 function formatList(list, style) {
   if (style === ListStyle.NEWLINE) {
-    return list.join('\n');
+    return list.map((item) => String(item)).join('\n');
   }
 
-  const items = list.map((item) => `  <item>${xmlEscape(item)}</item>`);
+  const items = list.map((item) => `  <item>${xmlEscape(String(item))}</item>`);
   return `<list>\n${items.join('\n')}\n</list>`;
 }
-
-const OutputParser = {
-  parseNewlineOutput(output) {
-    return output
-      .split('\n')
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0);
-  },
-
-  parseXMLOutput(output) {
-    const parser = new XMLParser({
-      ignoreAttributes: false,
-      preserveOrder: false,
-      parseAttributeValue: false,
-      parseTagValue: false,
-      trimValues: true,
-    });
-
-    const parsed = parser.parse(output);
-
-    if (!parsed.list || !parsed.list.item) {
-      throw new Error('No <list> or <item> elements found in output');
-    }
-
-    const items = Array.isArray(parsed.list.item) ? parsed.list.item : [parsed.list.item];
-    return items.map((item) => (typeof item === 'string' ? item : item['#text'] || ''));
-  },
-
-  parse(output, style, expectedCount) {
-    const items =
-      style === ListStyle.NEWLINE ? this.parseNewlineOutput(output) : this.parseXMLOutput(output);
-
-    if (items.length !== expectedCount) {
-      throw new Error(`Output count mismatch (expected ${expectedCount}, got ${items.length})`);
-    }
-
-    return items;
-  },
-};
 
 const buildPrompt = (list, instructions, style) => {
   const resolvedInstructions =
@@ -84,17 +47,33 @@ Input items:
 ${listBlock}`;
 };
 
+// Default JSON schema for list outputs
+const defaultListSchema = {
+  type: 'object',
+  properties: {
+    items: {
+      type: 'array',
+      items: {
+        type: 'string',
+      },
+    },
+  },
+  required: ['items'],
+  additionalProperties: false,
+};
+
 export default async function listBatch(list, instructions, config = {}) {
   const {
     listStyle = ListStyle.AUTO,
     autoModeThreshold = 1000,
     maxTokens,
-    rawOutput = false,
+    responseFormat,
     llm,
     ...options
   } = config;
 
   if (!list || list.length === 0) {
+    // Return empty array directly - chatGPT unwrapping will handle this consistently
     return [];
   }
 
@@ -102,23 +81,32 @@ export default async function listBatch(list, instructions, config = {}) {
 
   const prompt = buildPrompt(list, instructions, effectiveStyle);
 
+  // Use provided responseFormat or default to list schema
+  const foundResponseFormat = responseFormat ?? {
+    type: 'json_schema',
+    json_schema: {
+      name: 'list_result',
+      schema: defaultListSchema,
+    },
+  };
+
+  // Build model options with response format
+  const modelOptions = {
+    ...llm,
+    ...(maxTokens && { maxTokens }),
+    response_format: foundResponseFormat,
+  };
+
   let output;
   try {
     output = await chatGPT(prompt, {
-      modelOptions: {
-        ...llm,
-        ...(maxTokens && { maxTokens }),
-      },
+      modelOptions,
       ...options,
     });
   } catch (error) {
     throw new Error(`LLM request failed: ${error.message}`);
   }
 
-  // For reduce operations, return raw output instead of parsing as array
-  if (rawOutput) {
-    return output.trim();
-  }
-
-  return OutputParser.parse(output, effectiveStyle, list.length);
+  // chatGPT will auto-unwrap simple collections, so output is already an array
+  return output;
 }

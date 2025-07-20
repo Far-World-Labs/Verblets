@@ -1,9 +1,9 @@
 import chatGPT from '../../lib/chatgpt/index.js';
-import stripResponse from '../../lib/strip-response/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { constants as promptConstants } from '../../prompts/index.js';
+import { nameSchema } from './schema.js';
 
-const { asUndefinedByDefault, contentIsQuestion } = promptConstants;
+const { asUndefinedByDefault, contentIsQuestion, asJSON, asWrappedValueJSON } = promptConstants;
 
 export default async function name(subject, config = {}) {
   const { llm, ...options } = config;
@@ -12,8 +12,21 @@ export default async function name(subject, config = {}) {
     {
       tag: 'subject',
     }
-  )} ${asUndefinedByDefault}`;
-  const response = await chatGPT(prompt, { modelOptions: { ...llm }, ...options });
-  const [firstLine] = stripResponse(response).split('\n');
-  return firstLine.trim();
+  )} ${asUndefinedByDefault}\n\n${asWrappedValueJSON} The value should be the suggested name.\n\n${asJSON}`;
+
+  const response = await chatGPT(prompt, {
+    modelOptions: {
+      ...llm,
+      response_format: {
+        type: 'json_schema',
+        json_schema: {
+          name: 'name_suggestion',
+          schema: nameSchema,
+        },
+      },
+    },
+    ...options,
+  });
+
+  return response === 'undefined' ? undefined : response;
 }

@@ -74,26 +74,8 @@ export default async function listExpand(list, count = list.length * 2, config =
   const modelOptions = await createModelOptions(llm);
   const output = await chatGPT(buildPrompt(list, count), { modelOptions, ...options });
 
-  // With structured outputs, response should already be parsed and validated
-  let parsed;
-  if (typeof output === 'string') {
-    try {
-      parsed = JSON.parse(output);
-    } catch {
-      // Handle non-JSON responses (e.g., from mocks or fallback cases)
-      // Split by newlines and filter out empty lines
-      const lines = output
-        .split('\n')
-        .map((line) => line.trim())
-        .filter((line) => line.length > 0);
-      parsed = { items: lines };
-    }
-  } else {
-    parsed = output;
-  }
-
   // Extract items from the object structure
-  const items = parsed?.items || parsed;
+  const items = output?.items || output;
 
   if (!Array.isArray(items)) {
     console.warn('Expected items array, got:', typeof items);

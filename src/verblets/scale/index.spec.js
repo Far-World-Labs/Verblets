@@ -10,7 +10,7 @@ describe('scale', () => {
   });
 
   it('should create a scaling function that maps numeric values', async () => {
-    vi.mocked(chatGPT).mockResolvedValue({ value: 50 });
+    vi.mocked(chatGPT).mockResolvedValue(50);
 
     const prompt = `
 Sample data:
@@ -42,7 +42,7 @@ Mapping: Map the "stars" field linearly to the quality range.`;
   });
 
   it('should handle text input', async () => {
-    vi.mocked(chatGPT).mockResolvedValue({ value: 75 });
+    vi.mocked(chatGPT).mockResolvedValue(75);
 
     const prompt = 'Map sentiment words to a 0-100 scale where 0 is negative and 100 is positive';
     const scaleFunc = scale(prompt);
@@ -52,7 +52,7 @@ Mapping: Map the "stars" field linearly to the quality range.`;
   });
 
   it('should handle complex object outputs', async () => {
-    vi.mocked(chatGPT).mockResolvedValue({ value: { confidence: 0.8, category: 'high' } });
+    vi.mocked(chatGPT).mockResolvedValue({ confidence: 0.8, category: 'high' });
 
     const prompt = 'Categorize inputs and provide confidence scores';
     const scaleFunc = scale(prompt);
@@ -62,7 +62,7 @@ Mapping: Map the "stars" field linearly to the quality range.`;
   });
 
   it('should pass through config options', async () => {
-    vi.mocked(chatGPT).mockResolvedValue({ value: 42 });
+    vi.mocked(chatGPT).mockResolvedValue(42);
 
     const prompt = 'Scale numbers to 0-100';
     const scaleFunc = scale(prompt, { temperature: 0.2, model: 'gpt-4' });
@@ -80,7 +80,7 @@ Mapping: Map the "stars" field linearly to the quality range.`;
   });
 
   it('should convert object inputs to JSON strings', async () => {
-    vi.mocked(chatGPT).mockResolvedValue({ value: 30 });
+    vi.mocked(chatGPT).mockResolvedValue(30);
 
     const prompt = 'Scale complex objects';
     const scaleFunc = scale(prompt);
@@ -107,8 +107,8 @@ describe('createScale', () => {
   it('should generate specification on first call and reuse it', async () => {
     vi.mocked(chatGPT)
       .mockResolvedValueOnce({ domain: '1-5', range: '0-100', mapping: 'Linear mapping' })
-      .mockResolvedValueOnce({ value: 50 })
-      .mockResolvedValueOnce({ value: 100 });
+      .mockResolvedValueOnce(50)
+      .mockResolvedValueOnce(100);
 
     const scaleFunc = createScale('Map 1-5 to 0-100');
 
@@ -135,7 +135,7 @@ describe('createScale', () => {
         range: 'test range',
         mapping: 'test mapping',
       })
-      .mockResolvedValueOnce({ value: 42 });
+      .mockResolvedValueOnce(42);
 
     const prompt = 'Test scale';
     const scaleFunc = createScale(prompt);
@@ -191,7 +191,7 @@ describe('applyScale', () => {
   });
 
   it('should apply a scale using a specification', async () => {
-    vi.mocked(chatGPT).mockResolvedValue({ value: 75 });
+    vi.mocked(chatGPT).mockResolvedValue(75);
 
     const result = await applyScale(4, 'Domain: 1-5, Range: 0-100');
 
@@ -203,7 +203,7 @@ describe('applyScale', () => {
   });
 
   it('should handle object inputs', async () => {
-    vi.mocked(chatGPT).mockResolvedValue({ value: 'high' });
+    vi.mocked(chatGPT).mockResolvedValue('high');
 
     const result = await applyScale({ score: 0.8 }, 'Convert scores to labels');
 

@@ -130,15 +130,6 @@ async function createModelOptions(
 }
 
 /**
- * Parse response from chatGPT
- * @param {string|Object} response - Response from chatGPT
- * @returns {Object} Parsed response object
- */
-function parseResponse(response) {
-  return typeof response === 'string' ? JSON.parse(response) : response;
-}
-
-/**
  * Evaluate how central an item is among category members using cognitive science principles.
  *
  * Based on prototype theory and family resemblance, this function assesses graded typicality
@@ -167,5 +158,5 @@ export default async function centralTendency(item, seedItems, config = {}) {
   const modelOptions = await createModelOptions(llm, 'central_tendency_result');
 
   const response = await chatGPT(prompt, { modelOptions });
-  return parseResponse(response);
+  return response;
 }

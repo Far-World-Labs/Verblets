@@ -4,6 +4,7 @@ import enumValue from './index.js';
 
 vi.mock('../../lib/chatgpt/index.js', () => ({
   default: vi.fn().mockImplementation((text) => {
+    // When responseFormat is used, auto-unwrapping will return the value directly
     if (/traffic light/.test(text)) {
       return 'red';
     }

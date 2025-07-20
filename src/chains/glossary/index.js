@@ -1,10 +1,13 @@
 import nlp from 'compromise';
 import sort from '../sort/index.js';
 import map from '../map/index.js';
-import { constants as promptConstants } from '../../prompts/index.js';
-import parseLLMList from '../../lib/parse-llm-list/index.js';
+import { glossaryExtractionJsonSchema } from './schemas.js';
 
-const { onlyJSONStringArrayPerLine } = promptConstants;
+// Response format for map: each chunk produces an array of terms
+const GLOSSARY_RESPONSE_FORMAT = {
+  type: 'json_schema',
+  json_schema: glossaryExtractionJsonSchema,
+};
 
 /**
  * Extract uncommon or technical terms from text that would benefit from definition.
@@ -53,16 +56,23 @@ Focus on terms that:
 - Carry precise meaning in their field
 - Are essential for understanding the content
 
-${onlyJSONStringArrayPerLine}`;
+Return a "terms" object containing an array of the extracted terms.`;
 
-  const mapped = await map(textChunks, instructions, { chunkSize });
+  const mapped = await map(textChunks, instructions, {
+    chunkSize,
+    responseFormat: GLOSSARY_RESPONSE_FORMAT,
+  });
 
   const termSet = new Set();
-  mapped.forEach((line) => {
-    const terms = parseLLMList(line);
-    terms.forEach((term) => {
-      termSet.add(term);
-    });
+  mapped.forEach((result) => {
+    // Each mapped item is an object with a 'terms' array
+    if (result && result.terms && Array.isArray(result.terms)) {
+      result.terms.forEach((term) => {
+        if (term && typeof term === 'string') {
+          termSet.add(term);
+        }
+      });
+    }
   });
 
   const terms = Array.from(termSet);

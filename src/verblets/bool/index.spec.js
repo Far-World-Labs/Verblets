@@ -3,22 +3,24 @@ import { describe, expect, it, vi } from 'vitest';
 import bool from './index.js';
 
 vi.mock('../../lib/chatgpt/index.js', () => ({
-  default: vi.fn().mockImplementation((text) => {
-    if (/purple lightsaber/.test(text)) {
-      return 'True';
+  default: vi.fn().mockImplementation((text, options) => {
+    // When responseFormat is used, auto-unwrapping will return the value directly
+    const systemPrompt = options?.modelOptions?.systemPrompt || '';
+    if (/purple lightsaber/.test(text) || /purple lightsaber/.test(systemPrompt)) {
+      return 'true';
     }
-    return 'False';
+    return 'false';
   }),
 }));
 
 const examples = [
   {
-    title: 'True values',
+    name: 'True values',
     inputs: { text: 'Does Mace Windu have a purple lightsaber' },
     want: { result: true },
   },
   {
-    title: 'False values',
+    name: 'False values',
     inputs: { text: 'Does Mace Windu have a blue lightsaber' },
     want: { result: false },
   },

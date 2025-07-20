@@ -7,9 +7,9 @@ vi.mock('../../lib/chatgpt/index.js', () => ({
     if (/Kyoto \(location\)/.test(text)) {
       // Nothing is done with the result
       // so returning something complicated only introduces complexity
-      return '{}';
+      return {};
     }
-    return 'undefined';
+    return undefined;
   }),
 }));
 

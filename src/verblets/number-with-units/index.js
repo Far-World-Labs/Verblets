@@ -66,26 +66,11 @@ Extract the numeric value and unit from the question. If you cannot determine th
 ${asNumberWithUnits}`;
 
   const modelOptions = await createModelOptions(llm);
-  const response = await chatGPT(numberText, { modelOptions, ...options });
+  const response = await chatGPT(numberText, {
+    modelOptions,
+    ...options,
+  });
 
-  // With structured outputs, response should already be parsed, but we still use
-  // toNumberWithUnits for additional validation and processing
-  let rawResult;
-  if (typeof response === 'string') {
-    // Handle the case where response might be "undefined" or other non-JSON strings
-    if (response.trim() === 'undefined') {
-      rawResult = { value: undefined, unit: undefined };
-    } else {
-      try {
-        rawResult = JSON.parse(response);
-      } catch {
-        // If parsing fails, create a default structure
-        rawResult = { value: undefined, unit: undefined };
-      }
-    }
-  } else {
-    rawResult = response;
-  }
-
-  return toNumberWithUnits(JSON.stringify(rawResult));
+  // With structured output, response is already parsed
+  return toNumberWithUnits(JSON.stringify(response));
 }

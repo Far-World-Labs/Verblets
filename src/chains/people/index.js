@@ -1,6 +1,7 @@
 import chatGPT from '../../lib/chatgpt/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
+import { peopleListJsonSchema } from './schemas.js';
 
 export default async function peopleList(description, count = 3, config = {}) {
   const { llm, ...options } = config;
@@ -10,28 +11,14 @@ export default async function peopleList(description, count = 3, config = {}) {
 
 ${instructions}`;
 
-  const schema = {
-    type: 'object',
-    properties: {
-      people: {
-        type: 'array',
-        items: {
-          type: 'object',
-          additionalProperties: true,
-        },
-      },
-    },
-    required: ['people'],
-  };
-
   const response = await retry(
     () =>
       chatGPT(prompt, {
         modelOptions: {
+          ...llm,
           response_format: {
-            type: 'json_object',
-            schema,
-            ...llm,
+            type: 'json_schema',
+            json_schema: peopleListJsonSchema,
           },
         },
         ...options,
@@ -41,6 +28,5 @@ ${instructions}`;
     }
   );
 
-  const parsed = JSON.parse(typeof response === 'string' ? response : JSON.stringify(response));
-  return parsed.people;
+  return response.people;
 }

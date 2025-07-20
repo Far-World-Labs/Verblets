@@ -5,15 +5,15 @@ import numberWithUnits from './index.js';
 vi.mock('../../lib/chatgpt/index.js', () => ({
   default: vi.fn().mockImplementation((text) => {
     if (/Everest/.test(text)) {
-      return '{ "value": 29029, "unit": "feet" }';
+      return { value: 29029, unit: 'feet' };
     }
     if (/speed of light/.test(text)) {
-      return '{ "value": 299792458, "unit": "meters per second" }';
+      return { value: 299792458, unit: 'meters per second' };
     }
     if (/temperature/.test(text)) {
-      return '{ "value": 98.6, "unit": "Fahrenheit" }';
+      return { value: 98.6, unit: 'Fahrenheit' };
     }
-    return 'undefined';
+    return { value: undefined, unit: undefined };
   }),
 }));
 

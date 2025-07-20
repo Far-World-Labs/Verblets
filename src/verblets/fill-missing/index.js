@@ -2,7 +2,6 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import chatGPT from '../../lib/chatgpt/index.js';
-import stripResponse from '../../lib/strip-response/index.js';
 import { constants as promptConstants, asXML } from '../../prompts/index.js';
 
 const { tryCompleteData, contentIsMain, asJSON } = promptConstants;
@@ -49,9 +48,5 @@ export default async function fillMissing(text, config = {}) {
   const prompt = buildPrompt(text);
   const modelOptions = await createModelOptions(llm);
   const response = await chatGPT(prompt, { modelOptions, ...options });
-  try {
-    return JSON.parse(stripResponse(response));
-  } catch {
-    return { template: text, variables: {} };
-  }
+  return response;
 }

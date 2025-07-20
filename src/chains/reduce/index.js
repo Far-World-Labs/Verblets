@@ -1,11 +1,27 @@
 import listBatch, { ListStyle, determineStyle } from '../../verblets/list-batch/index.js';
 import createBatches from '../../lib/text-batch/index.js';
 import retry from '../../lib/retry/index.js';
+import { asXML } from '../../prompts/wrap-variable.js';
+import { isSimpleCollectionSchema } from '../../lib/chatgpt/index.js';
+import { reduceAccumulatorJsonSchema } from './schemas.js';
+
+// Default response format for reduce operations - simple string accumulator
+const DEFAULT_REDUCE_RESPONSE_FORMAT = {
+  type: 'json_schema',
+  json_schema: reduceAccumulatorJsonSchema,
+};
 
 export default async function reduce(list, instructions, config = {}) {
-  const { initial, listStyle, autoModeThreshold, llm, ...options } = config;
+  const { initial, listStyle, autoModeThreshold, responseFormat, llm, ...options } = config;
 
   let acc = initial;
+
+  // If initial is an array and we're using default format, wrap it
+  const needsItemsWrapper = Array.isArray(initial) && !responseFormat;
+  if (needsItemsWrapper) {
+    acc = { items: initial };
+  }
+
   const batches = createBatches(list, config);
 
   for (const { items, skip } of batches) {
@@ -17,33 +33,35 @@ export default async function reduce(list, instructions, config = {}) {
     const batchStyle = determineStyle(listStyle, items, autoModeThreshold);
 
     const reduceInstructions = ({ style, count }) => {
-      const baseInstructions = `Start with the given accumulator. Apply the transformation instructions to each item in the list sequentially, using the result as the new accumulator each time. Return only the final accumulator.
+      const itemFormat = style === ListStyle.XML ? 'XML' : '';
 
-<instructions>
-${instructions}
-</instructions>
+      return `Start with the given accumulator. Apply the transformation instructions to each item in the list sequentially, using the result as the new accumulator each time. Return only the final accumulator.
 
-<accumulator>
-${acc || ''}
-</accumulator>`;
+Example: If reducing ["one", "two", "three"] with "sum the numeric values" and initial value 0:
+- Start: 0
+- Process "one": 0 + 1 = 1
+- Process "two": 1 + 2 = 3
+- Process "three": 3 + 3 = 6
+- Return: 6
 
-      if (style === ListStyle.NEWLINE) {
-        return `${baseInstructions}
+${asXML(instructions, { tag: 'instructions' })}
 
-Process exactly ${count} items from the list below and return the final accumulator value.`;
-      }
+${asXML(
+  acc !== undefined && acc !== null ? acc : 'No initial value - use first item as starting point',
+  { tag: 'accumulator' }
+)}
 
-      return `${baseInstructions}
-
-Process exactly ${count} items from the XML list below and return the final accumulator value.`;
+Process exactly ${count} items from the ${itemFormat} list below and return the final accumulator value.`;
     };
 
-    acc = await retry(
+    const effectiveResponseFormat = responseFormat || DEFAULT_REDUCE_RESPONSE_FORMAT;
+
+    const result = await retry(
       () =>
         listBatch(items, reduceInstructions, {
           listStyle: batchStyle,
           autoModeThreshold,
-          rawOutput: true, // Return raw output instead of parsing as array
+          responseFormat: effectiveResponseFormat,
           llm,
           ...options,
         }),
@@ -51,6 +69,15 @@ Process exactly ${count} items from the XML list below and return the final accu
         label: `reduce batch ${items.length} items`,
       }
     );
+
+    if (!responseFormat && result?.accumulator !== undefined) {
+      acc = result.accumulator;
+    } else if (responseFormat && isSimpleCollectionSchema(responseFormat)) {
+      // Handle simple collection schemas - reduce should work with arrays directly
+      acc = result;
+    } else {
+      acc = result;
+    }
   }
 
   return acc;

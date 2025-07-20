@@ -68,10 +68,7 @@ export const getMeanings = async (term, config = {}) => {
     ...options,
   });
 
-  // With structured outputs, response should already be parsed and validated
-  const parsed = typeof response === 'string' ? JSON.parse(response) : response;
-  // Extract meanings from the object structure
-  const resultArray = parsed?.meanings || parsed;
+  const resultArray = response?.meanings || response;
   return Array.isArray(resultArray) ? resultArray.filter(Boolean) : [];
 };
 

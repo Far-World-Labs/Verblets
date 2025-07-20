@@ -1,73 +1,60 @@
 # reduce
 
-Intelligently reduce large arrays to smaller, more manageable sets using AI-powered selection with sophisticated filtering and prioritization strategies.
+Accumulate values across a collection by applying transformation instructions sequentially, supporting both simple and structured outputs.
 
 ## Usage
 
 ```javascript
 import reduce from './index.js';
 
-const articles = [
-  'Introduction to Machine Learning',
-  'Advanced Neural Networks',
-  'Basic Statistics for Data Science',
-  'Deep Learning Fundamentals',
-  'Linear Algebra Basics',
-  'Python Programming Guide',
-  'Data Visualization Techniques',
-  'SQL Database Management'
-];
+// Simple accumulation
+const items = ['one', 'two', 'three', 'four'];
+const result = await reduce(items, 'concatenate with commas', { initial: '' });
+// Returns: "one, two, three, four"
 
-const essential = await reduce(articles, 'most important for ML beginners', { targetSize: 3 });
-// Returns: ['Introduction to Machine Learning', 'Basic Statistics for Data Science', 'Linear Algebra Basics']
+// Structured output with response format
+const scores = [85, 92, 78, 95, 88];
+const summary = await reduce(
+  scores,
+  'calculate statistics',
+  {
+    initial: { sum: 0, count: 0, max: 0, min: 100 },
+    responseFormat: {
+      type: 'json_schema',
+      json_schema: {
+        name: 'stats',
+        schema: {
+          type: 'object',
+          properties: {
+            sum: { type: 'number' },
+            count: { type: 'number' },
+            max: { type: 'number' },
+            min: { type: 'number' },
+            average: { type: 'number' }
+          },
+          required: ['sum', 'count', 'max', 'min', 'average']
+        }
+      }
+    }
+  }
+);
+// Returns: { sum: 438, count: 5, max: 95, min: 78, average: 87.6 }
 ```
 
 ## API
 
-### `reduce(array, criteria, config)`
+### `reduce(list, instructions, config)`
 
 **Parameters:**
-- `array` (Array): Items to reduce
-- `criteria` (string): Natural language description of selection criteria
+- `list` (Array): Items to reduce
+- `instructions` (string): Transformation instructions for accumulation
 - `config` (Object): Configuration options
-  - `targetSize` (number): Desired number of items (default: 5)
+  - `initial` (*): Initial accumulator value
+  - `responseFormat` (Object): JSON schema for structured outputs
   - `chunkSize` (number): Items per batch (default: 10)
+  - `listStyle` (string): Input format style ('auto', 'newline', 'xml')
+  - `autoModeThreshold` (number): Character threshold for auto XML mode
   - `llm` (Object): LLM model options
 
-**Returns:** Promise<Array> - Reduced array containing the most relevant items
+**Returns:** Promise<*> - Final accumulated value (type depends on instructions and responseFormat)
 
-## Use Cases
-
-### Content Curation
-```javascript
-import reduce from './index.js';
-
-const blogPosts = [
-  'How to Start a Blog',
-  'SEO Best Practices',
-  'Content Marketing Strategies',
-  'Social Media Tips',
-  'Email Marketing Guide',
-  'Website Design Principles',
-  'Analytics and Metrics',
-  'Monetization Strategies'
-];
-
-const beginner = await reduce(blogPosts, 'essential for new bloggers', { targetSize: 4 });
-// Returns the most important posts for beginners
-```
-
-### Research Paper Selection
-```javascript
-const papers = [
-  'Attention Is All You Need',
-  'BERT: Pre-training of Deep Bidirectional Transformers',
-  'GPT-3: Language Models are Few-Shot Learners',
-  'ImageNet Classification with Deep Convolutional Neural Networks',
-  'Generative Adversarial Networks',
-  'ResNet: Deep Residual Learning for Image Recognition'
-];
-
-const foundational = await reduce(papers, 'foundational papers in deep learning', { targetSize: 3 });
-// Returns the most influential foundational papers
-```

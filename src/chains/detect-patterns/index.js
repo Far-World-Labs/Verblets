@@ -1,4 +1,11 @@
 import reduce from '../reduce/index.js';
+import { patternCandidatesJsonSchema } from './schemas.js';
+
+// Response format for pattern detection - uses items wrapper for array
+const PATTERN_RESPONSE_FORMAT = {
+  type: 'json_schema',
+  json_schema: patternCandidatesJsonSchema,
+};
 
 function filterObject(obj, maxStringLength = 50, maxArrayLength = 10) {
   if (typeof obj !== 'object' || obj === null) {
@@ -58,38 +65,22 @@ export default async function detectPatterns(objects, config = {}) {
     
     Sort array by count descending (patterns first, then instances).
     
-    Return the JSON array of all candidates. If the input list is empty, return an empty array [].
+    Return all candidates. If the input list is empty, return an empty array.
   `;
 
-  const ndjsonResult = await reduce(stringifiedObjects, patternInstructions, {
-    initial: '[]',
+  const candidateArray = await reduce(stringifiedObjects, patternInstructions, {
+    initial: [],
+    responseFormat: PATTERN_RESPONSE_FORMAT,
     llm,
     ...options,
   });
 
-  // Parse result array and extract only patterns (not instances)
-  let candidateArray;
-  try {
-    let jsonString = ndjsonResult;
-    if (typeof jsonString === 'string') {
-      // Extract JSON from code blocks if present
-      const codeBlockMatch = jsonString.match(/```json\s*([\s\S]*?)\s*```/);
-      if (codeBlockMatch) {
-        jsonString = codeBlockMatch[1];
-      }
-      candidateArray = JSON.parse(jsonString);
-    } else {
-      candidateArray = ndjsonResult;
-    }
-  } catch {
-    return [];
-  }
-
+  // Since PATTERN_RESPONSE_FORMAT is a simple collection schema,
+  // and reduce should handle it properly
   if (!Array.isArray(candidateArray)) {
     return [];
   }
 
-  // Filter to only patterns (count >= 2) and extract templates
   const patterns = candidateArray
     .filter((item) => item.type === 'pattern' && item.count >= 2)
     .sort((a, b) => b.count - a.count)

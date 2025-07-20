@@ -5,10 +5,11 @@ const SAFETY_MARGIN = 1.2;
 const MAX_ITEM_RATIO = 0.8;
 
 function estimateTokens(text, model) {
+  const str = typeof text === 'string' ? text : JSON.stringify(text);
   if (model?.toTokens) {
-    return model.toTokens(text).length;
+    return model.toTokens(str).length;
   }
-  return Math.ceil(text.length * FALLBACK_TOKENS_PER_CHAR);
+  return Math.ceil(str.length * FALLBACK_TOKENS_PER_CHAR);
 }
 
 function calculateBudget({ model, outputRatio = 2, maxTokenBudget = 4000, contextBuffer = 0.9 }) {

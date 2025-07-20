@@ -1,35 +1,9 @@
 import chatGPT from '../../lib/chatgpt/index.js';
-import stripResponse from '../../lib/strip-response/index.js';
 import chunkSentences from '../../lib/chunk-sentences/index.js';
 import retry from '../../lib/retry/index.js';
 import map from '../map/index.js';
 import reduce from '../reduce/index.js';
-
-const timelineEventSchema = {
-  type: 'object',
-  properties: {
-    events: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          timestamp: {
-            type: 'string',
-            description: 'ISO date (YYYY-MM-DD), relative time, or contextual marker',
-          },
-          name: {
-            type: 'string',
-            description: 'Concise event label (2-5 words)',
-          },
-        },
-        required: ['timestamp', 'name'],
-        additionalProperties: false,
-      },
-    },
-  },
-  required: ['events'],
-  additionalProperties: false,
-};
+import { timelineEventJsonSchema } from './schemas.js';
 
 const extractTimelineInstructions = `Extract timeline events from this text chunk.
 
@@ -98,19 +72,14 @@ async function extractFromChunk(chunk, options = {}) {
       systemPrompt: extractTimelineInstructions,
       response_format: {
         type: 'json_schema',
-        json_schema: {
-          name: 'timeline_events',
-          schema: timelineEventSchema,
-          strict: true,
-        },
+        json_schema: timelineEventJsonSchema,
       },
       ...llm,
     },
     ...remainingOptions,
   });
 
-  const parsed = JSON.parse(stripResponse(response));
-  return parsed.events || [];
+  return response.events || [];
 }
 
 /**

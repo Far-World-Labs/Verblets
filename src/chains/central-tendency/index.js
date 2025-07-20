@@ -1,5 +1,11 @@
 import map from '../map/index.js';
 import { CENTRAL_TENDENCY_PROMPT } from '../../verblets/central-tendency-lines/index.js';
+import { centralTendencyResultsJsonSchema } from './schemas.js';
+
+const centralTendencyResponseFormat = {
+  type: 'json_schema',
+  json_schema: centralTendencyResultsJsonSchema,
+};
 
 /**
  * Build instructions for central tendency evaluation using the core verblet prompt
@@ -11,8 +17,10 @@ function buildCentralTendencyInstructions(seedItems, { context = '', coreFeature
   const contextLine = context ? `Context: ${context}` : '';
   const coreFeaturesLine =
     coreFeatures.length > 0 ? `Core Features: ${coreFeatures.join(', ')}` : '';
-  const outputRequirementsLine = `OUTPUT FORMAT: Return exactly one compact JSON object per line (no line breaks within the JSON):
-{"score": <number>, "reason": "<brief explanation>", "confidence": <number>}`;
+  const outputRequirementsLine = `OUTPUT FORMAT: For each item, provide:
+- score: A number between 0 and 1 indicating centrality
+- reason: A brief explanation of the scoring
+- confidence: A number between 0 and 1 indicating confidence in the assessment`;
 
   // Use the core prompt with all variables replaced
   const corePrompt = CENTRAL_TENDENCY_PROMPT.replace('{context}', contextLine)
@@ -59,31 +67,20 @@ export default async function centralTendency(items, seedItems, config = {}) {
   const instructions = buildCentralTendencyInstructions(seedItems, otherConfig);
 
   // Use map to handle all the complexity
-  const results = await map(items, instructions, { chunkSize, maxAttempts });
+  const results = await map(items, instructions, {
+    chunkSize,
+    maxAttempts,
+    responseFormat: centralTendencyResponseFormat,
+  });
 
-  // Parse JSON responses and handle any parsing errors
-  return results.map((result, _index) => {
+  // Extract results from the structured output
+  // Map returns an array where each element is the response for that item
+  return results.map((result) => {
     if (result === undefined) {
       return undefined;
     }
-
-    try {
-      const parsed = JSON.parse(result);
-
-      // Validate the structure
-      if (
-        parsed &&
-        typeof parsed.score === 'number' &&
-        typeof parsed.reason === 'string' &&
-        typeof parsed.confidence === 'number'
-      ) {
-        return parsed;
-      } else {
-        return undefined;
-      }
-    } catch {
-      return undefined;
-    }
+    // With structured output, we get objects directly
+    return result;
   });
 }
 
