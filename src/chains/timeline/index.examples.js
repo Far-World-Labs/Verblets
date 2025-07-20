@@ -220,9 +220,9 @@ describe('timeline', () => {
     expect(enrichedResult).toBeDefined();
     expect(enrichedResult.length).toBeGreaterThanOrEqual(basicResult.length);
 
-    // Should have dates and events
+    // Should have more precise dates
     const hasEnrichedContent = await aiExpect(enrichedResult).toSatisfy(
-      `Should contain dates for Wright brothers flight (1903), WWII end (1945), and have at least 4 total events`
+      `Should contain precise dates like December 17, 1903 for Wright brothers flight, August 1945 for WWII end, and include additional context events`
     );
 
     expect(hasEnrichedContent).toBe(true);

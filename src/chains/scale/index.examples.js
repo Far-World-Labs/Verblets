@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import scale, { createScale, scaleSpec, applyScale } from './index.js';
-import { aiExpect } from '../expect/index.js';
+import aiExpect from '../expect/index.js';
 
 describe('scale examples', () => {
   it('should handle plain numeric input', async () => {
