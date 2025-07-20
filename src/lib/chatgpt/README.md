@@ -48,6 +48,9 @@ const result = await chatGPT('Generate a JSON list of colors', {
     - `response_format` (object): Structured output format
   - `retryOptions` (object): Retry configuration
   - `timeout` (number): Request timeout in milliseconds
+  - `unwrapValues` (boolean, default: true): Auto-unwrap `{value: ...}` responses
+  - `unwrapCollections` (boolean, default: true): Auto-unwrap `{items: [...]}` responses
+  - `skipResponseParse` (boolean, default: false): Skip JSON parsing
 
 **Returns:** Promise that resolves with the LLM response (string or parsed object for structured outputs)
 
@@ -159,6 +162,7 @@ const anonymized = await chatGPT(
 - **Automatic Retry Logic**: Built-in resilience for transient failures
 - **Timeout Handling**: Configurable request timeouts
 - **Response Validation**: Automatic parsing and validation of structured responses
+- **Smart Unwrapping**: Auto-unwraps `{value: ...}` and `{items: [...]}` patterns
 
 ## Related Modules
 

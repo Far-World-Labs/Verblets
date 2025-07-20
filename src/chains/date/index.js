@@ -1,9 +1,8 @@
 import chatGPT from '../../lib/chatgpt/index.js';
-import stripResponse from '../../lib/strip-response/index.js';
 import toDate from '../../lib/to-date/index.js';
-import toObject from '../to-object/index.js';
 import bool from '../../verblets/bool/index.js';
 import { constants as promptConstants } from '../../prompts/index.js';
+import { dateExpectationsSchema, dateValueSchema } from './schemas.js';
 
 const {
   asDate,
@@ -11,14 +10,18 @@ const {
   contentIsQuestion,
   explainAndSeparate,
   explainAndSeparatePrimitive,
-  onlyJSONArray,
+  asJSON,
+  asWrappedArrayJSON,
+  asWrappedValueJSON,
 } = promptConstants;
 
 const expectationPrompt = (question) => `${contentIsQuestion} ${question}
 
-List up to three short yes/no checks that would confirm a date answer is correct. If nothing specific comes to mind, respond with ["The result is a valid date"].
+List up to three short yes/no checks that would confirm a date answer is correct. If nothing specific comes to mind, include "The result is a valid date".
 
-${onlyJSONArray}`;
+${asWrappedArrayJSON}
+
+${asJSON}`;
 
 const buildCheckPrompt = (dateValue, check) => {
   const iso = dateValue.toISOString();
@@ -31,19 +34,41 @@ const buildCheckPrompt = (dateValue, check) => {
 
 export default async function date(text, config = {}) {
   const { maxAttempts = 3, llm, ...options } = config;
-  const llmExpectations = (await toObject(
-    await chatGPT(expectationPrompt(text), { modelOptions: { ...llm }, ...options }),
-    null,
-    { llm, ...options }
-  )) || ['The result is a valid date'];
+  const expectationsResult = await chatGPT(expectationPrompt(text), {
+    modelOptions: {
+      ...llm,
+      response_format: {
+        type: 'json_schema',
+        json_schema: {
+          name: 'date_expectations',
+          schema: dateExpectationsSchema,
+        },
+      },
+    },
+    ...options,
+  });
+  const llmExpectations =
+    expectationsResult.length > 0 ? expectationsResult : ['The result is a valid date'];
 
   let attemptText = text;
   let response;
   for (let i = 0; i < maxAttempts; i += 1) {
-    const datePrompt = `${contentIsQuestion} ${attemptText}\n\n${explainAndSeparate} ${explainAndSeparatePrimitive}\n\n${asDate} ${asUndefinedByDefault}`;
+    const datePrompt = `${contentIsQuestion} ${attemptText}\n\n${explainAndSeparate} ${explainAndSeparatePrimitive}\n\n${asDate} ${asUndefinedByDefault}\n\n${asWrappedValueJSON} The value should be the date in ISO format or "undefined".\n\n${asJSON}`;
     // eslint-disable-next-line no-await-in-loop
-    response = await chatGPT(datePrompt, { modelOptions: { ...llm }, ...options });
-    const value = toDate(stripResponse(response));
+    response = await chatGPT(datePrompt, {
+      modelOptions: {
+        ...llm,
+        response_format: {
+          type: 'json_schema',
+          json_schema: {
+            name: 'date_extraction',
+            schema: dateValueSchema,
+          },
+        },
+      },
+      ...options,
+    });
+    const value = response === 'undefined' ? undefined : toDate(response);
     if (value === undefined) return undefined;
 
     // Convert to UTC date for consistent checks
@@ -65,7 +90,7 @@ export default async function date(text, config = {}) {
 
     attemptText = `${text} The previous answer (${utcValue.toISOString()}) failed to satisfy: "${failedCheck}". Try again.`;
   }
-  const finalValue = toDate(stripResponse(response));
+  const finalValue = response === 'undefined' ? undefined : toDate(response);
   return finalValue
     ? new Date(
         Date.UTC(finalValue.getUTCFullYear(), finalValue.getUTCMonth(), finalValue.getUTCDate())

@@ -125,9 +125,7 @@ ${onlyJSON}`;
     ...restOptions,
   });
 
-  // Parse response
-  const parsed = typeof response === 'string' ? JSON.parse(response) : response;
-  const references = parsed?.references || parsed;
+  const references = response?.references || response;
 
   if (!Array.isArray(references)) {
     throw new Error('Expected array of references in response');

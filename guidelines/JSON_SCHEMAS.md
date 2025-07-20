@@ -114,20 +114,55 @@ const result = await chatGPT(prompt, {
 // result is already parsed and validated
 ```
 
+## OpenAI API Behavior & Response Handling
+
+### Key API Behaviors
+- OpenAI returns JSON **strings** when using `response_format`, not parsed objects
+- Root schema must be object type, cannot be array
+- The `.items` wrapper is an API requirement for collections
+
+### ChatGPT Module Auto-Handling
+- The chatGPT module automatically parses JSON when `response_format` is provided
+- Simple collection schemas (single `items` property containing array) are auto-unwrapped
+- Use `skipResponseParse: true` in options for edge cases needing raw strings
+- Import `isSimpleCollectionSchema` from chatGPT module to detect collection patterns
+
+### Collection Operations Guidelines
+- **Core principle**: Keep `.items` wrapper internal, chains work with arrays
+- Map/Filter/Find return arrays directly to consumers
+- Reduce is special - it's not a collection operation, it builds accumulators
+- Use default `{accumulator: string}` format for simple reduce operations
+
+## Response Format Design Guidelines
+
+### Best Practices
+- Include descriptions in schemas to guide LLM behavior
+- Avoid unnecessary nesting (no array of arrays)
+- Design formats based on what chains actually need
+- Keep structured output close to desired data shape
+- Use `responseFormat` naming consistently (not `structuredOutput`)
+
+### API Consistency
+- Always name the parameter `responseFormat` in chain/verblet APIs
+- Break and repair when making API changes - no legacy support
+- Chains should work with clean data structures, not wrapped formats
+
 ## Common Schema Patterns
 
-### Array of Strings
+### Array of Strings (Simple Collection)
 ```javascript
 {
   type: 'object',
   properties: {
     items: {
       type: 'array',
+      description: 'List of results',
       items: { type: 'string' }
     }
   },
   required: ['items']
 }
+// Note: This will be auto-unwrapped by chatGPT module
 ```
 
 ### Scored Results

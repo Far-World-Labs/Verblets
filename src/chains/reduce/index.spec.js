@@ -28,9 +28,15 @@ vi.mock('../../verblets/list-batch/index.js', () => ({
 
     // Extract accumulator from the instruction text (simplified for test)
     const accMatch = instructionText.match(/<accumulator>(.*?)<\/accumulator>/s);
-    const acc = accMatch ? accMatch[1].trim() : '';
+    let acc = accMatch ? accMatch[1].trim() : '';
 
-    return [acc, ...items].filter(Boolean).join('-');
+    // Handle the "No initial value" case
+    if (acc.includes('No initial value')) {
+      acc = '';
+    }
+
+    const result = [acc, ...items].filter(Boolean).join('-');
+    return { accumulator: result };
   }),
   ListStyle: {
     NEWLINE: 'newline',

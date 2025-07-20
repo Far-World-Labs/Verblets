@@ -28,8 +28,8 @@ describe('commonalities', () => {
     expect(result).toEqual(['Portable electronics', 'Computing devices']);
   });
 
-  it('handles string response from LLM', async () => {
-    mockChatGPT.mockResolvedValueOnce('{"items": ["Transportation", "Wheeled vehicles"]}');
+  it('handles parsed response from LLM', async () => {
+    mockChatGPT.mockResolvedValueOnce({ items: ['Transportation', 'Wheeled vehicles'] });
 
     const result = await commonalities(['car', 'bicycle', 'motorcycle']);
     expect(result).toEqual(['Transportation', 'Wheeled vehicles']);
@@ -42,8 +42,8 @@ describe('commonalities', () => {
     expect(result).toEqual([]);
   });
 
-  it('handles malformed JSON gracefully', async () => {
-    mockChatGPT.mockResolvedValueOnce('invalid json');
+  it('handles unexpected response gracefully', async () => {
+    mockChatGPT.mockResolvedValueOnce(null);
 
     const result = await commonalities(['item1', 'item2']);
     expect(result).toEqual([]);

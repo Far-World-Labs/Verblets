@@ -2,15 +2,13 @@ import { describe, expect, it, vi } from 'vitest';
 import fillMissing from './index.js';
 
 vi.mock('../../lib/chatgpt/index.js', () => ({
-  default: vi.fn().mockResolvedValue(
-    JSON.stringify({
-      template: 'The {animal} jumps over the {object}.',
-      variables: {
-        animal: { original: '???', candidate: 'fox', confidence: 0.9 },
-        object: { original: '???', candidate: 'fence', confidence: 0.8 },
-      },
-    })
-  ),
+  default: vi.fn().mockResolvedValue({
+    template: 'The {animal} jumps over the {object}.',
+    variables: {
+      animal: { original: '???', candidate: 'fox', confidence: 0.9 },
+      object: { original: '???', candidate: 'fence', confidence: 0.8 },
+    },
+  }),
 }));
 
 describe('fillMissing verblet', () => {

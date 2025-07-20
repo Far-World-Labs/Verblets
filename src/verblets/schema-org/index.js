@@ -1,6 +1,5 @@
 import fs from 'node:fs/promises';
 import chatGPT from '../../lib/chatgpt/index.js';
-import stripResponse from '../../lib/strip-response/index.js';
 import { asSchemaOrgText } from '../../prompts/index.js';
 
 const getSchema = async (type) => {
@@ -33,5 +32,5 @@ export default async (text, type, config = {}) => {
     modelOptions,
     ...options,
   });
-  return JSON.parse(stripResponse(response));
+  return response;
 };

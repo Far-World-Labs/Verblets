@@ -7,6 +7,8 @@ export const asDate =
   'Answer the question with a date that can be parsed by the JS Date constructor. ISO format is preferred. Do not include additional text or punctuation.';
 export const asJSON =
   'Respond with a JSON object or array that parses with JSON.parse, with no wrapping code block, and no wrapping XML.';
+export const asWrappedArrayJSON = 'Return a JSON object with an "items" array property.';
+export const asWrappedValueJSON = 'Return a JSON object with a "value" property.';
 
 // Response steering
 export const useLineNumber = 'Include the line number where each check is performed.';

@@ -77,12 +77,12 @@ describe('centralTendency', () => {
     );
   });
 
-  it('handles JSON string response', async () => {
-    const mockResponse = JSON.stringify({
+  it('handles parsed response from chatGPT', async () => {
+    const mockResponse = {
       score: 0.6,
       reason: 'Moderate centrality',
       confidence: 0.7,
-    });
+    };
 
     chatGPT.mockResolvedValue(mockResponse);
 

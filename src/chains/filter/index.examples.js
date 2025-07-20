@@ -13,7 +13,7 @@ describe('filter examples', () => {
         'Paid the electricity bill',
       ];
       const dreams = await filter(notes, 'keep only lines about aspirations or dreams', {
-        chunkSize: 2,
+        batchSize: 2,
       });
       expect(dreams.length).toBeGreaterThan(0);
     },

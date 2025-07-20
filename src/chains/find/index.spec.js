@@ -5,7 +5,8 @@ import listBatch from '../../verblets/list-batch/index.js';
 vi.mock('../../verblets/list-batch/index.js', () => ({
   default: vi.fn(async (items) => {
     // Simulate finding the "best" item (last one in this case)
-    return items[items.length - 1];
+    // For find, we return a single item in the array
+    return [items[items.length - 1]];
   }),
   ListStyle: { AUTO: 'auto', XML: 'xml', NEWLINE: 'newline' },
   determineStyle: vi.fn(() => 'newline'),
@@ -53,7 +54,7 @@ describe('find chain', () => {
       if (callCount === 1) {
         throw new Error('fail');
       }
-      return items[items.length - 1];
+      return [items[items.length - 1]];
     });
 
     const result = await find(['x', 'y'], 'find', { batchSize: 2 });

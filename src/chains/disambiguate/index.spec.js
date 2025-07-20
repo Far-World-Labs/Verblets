@@ -4,18 +4,15 @@ import disambiguate from './index.js';
 vi.mock('../../lib/chatgpt/index.js', () => ({
   default: vi.fn(async (prompt) => {
     if (/List all distinct dictionary meanings/.test(prompt)) {
-      return '["financial institution","edge of a river"]';
+      return { meanings: ['financial institution', 'edge of a river'] };
     }
-    return '[]';
+    return { meanings: [] };
   }),
 }));
 
 vi.mock('../score/index.js', () => ({
   default: vi.fn(async (list) => {
-    return {
-      scores: list.map((item, index) => (index === 0 ? 9 : 1)), // First item gets highest score
-      reference: [],
-    };
+    return list.map((item, index) => (index === 0 ? 9 : 1)); // First item gets highest score
   }),
 }));
 

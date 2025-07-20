@@ -5,13 +5,13 @@ import intent from './index.js';
 vi.mock('../../lib/chatgpt/index.js', () => ({
   default: vi.fn().mockImplementation((text) => {
     if (/a flight to/.test(text)) {
-      return JSON.stringify({
+      return {
         operation: 'book_flight',
         parameters: { destination: 'Burgas' },
         optional_parameters: {},
-      });
+      };
     }
-    return '{}';
+    return {};
   }),
 }));
 

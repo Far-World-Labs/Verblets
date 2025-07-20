@@ -1,5 +1,12 @@
 # Code Quality Guidelines
 
+## ⚠️ NO COMMENTS RULE
+
+**NEVER add comments when making code changes.** Only add comments when:
+1. User explicitly requests comments
+2. Complex algorithms require explanation
+3. Non-obvious edge cases exist
+
 ## Philosophy
 
 Code quality in Verblets should prioritize clarity, maintainability, and practical error handling. We value pragmatic solutions over perfect adherence to abstract principles.
@@ -50,6 +57,36 @@ Actual configuration files like `.js` config files, not utility functions.
 - **Standards**: Clear variable names, logical organization
 - **Error Handling**: Required for external service connections
 - **Comments**: Explain configuration choices and setup steps
+
+## Collection Operations Guidelines
+
+### Core Design Principles
+- **Keep `.items` wrapper internal**: Chains work with arrays, not wrapped objects
+- **Auto-unwrapping**: chatGPT module handles simple collection schemas automatically
+- **Clean APIs**: Collection functions (map, filter, find) return arrays directly
+- **Special case for reduce**: Not a collection operation - builds accumulators
+
+### Implementation Patterns
+```javascript
+// Map/Filter/Find - return arrays directly
+export default async function map(list, instructions, config = {}) {
+  // ... processing ...
+  return results; // Array, not {items: results}
+}
+
+// Reduce - works with accumulators
+export default async function reduce(list, instructions, config = {}) {
+  const { initial, responseFormat, ...options } = config;
+  // Default format: {accumulator: string}
+  // Custom formats: consumer provides responseFormat
+  return accumulator; // Whatever shape the responseFormat defines
+}
+```
+
+### API Consistency Rules
+- Use `responseFormat` parameter name (not `structuredOutput` or others)
+- Break and repair when making changes - no legacy support
+- Chains should expose clean interfaces without implementation details
 
 ## Error Handling Guidelines
 

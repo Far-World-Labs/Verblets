@@ -96,8 +96,7 @@ const sort = async (list, criteria, config = {}) => {
       ...options,
     });
 
-    const parsed = typeof result === 'string' ? JSON.parse(result) : result;
-    const resultArray = parsed?.items || parsed;
+    const resultArray = result?.items || result;
     return Array.isArray(resultArray) ? resultArray.filter(Boolean) : [];
   };
 

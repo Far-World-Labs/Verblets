@@ -6,7 +6,7 @@ vi.mock('../../lib/chatgpt/index.js', () => ({
     const match = prompt.match(/<list>\n([\s\S]*?)\n<\/list>/);
     const lines = match ? match[1].split('\n') : [];
     const extras = lines.map((l) => `${l}-extra`);
-    return [...lines, ...extras].join('\n');
+    return { items: [...lines, ...extras] };
   }),
 }));
 

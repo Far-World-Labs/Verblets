@@ -41,24 +41,44 @@ Create instructions for use with collection chains:
 
 ```javascript
 // Transform items into scores
-const scorer = await mapInstructions('code quality');
-const scores = await map(functions, scorer);
+const scores = await map(functions, await mapInstructions('code quality'));
 
 // Filter by score threshold
-const highQuality = await filterInstructions('production readiness');
-const ready = await filter(components, highQuality);
+const ready = await filter(
+  components, 
+  await filterInstructions({
+    scoring: 'production readiness',
+    processing: 'keep items with scores >= 7'
+  })
+);
 
-// Reduce to best items
-const topPerformers = await reduceInstructions('performance impact');
-const optimal = await reduce(algorithms, topPerformers);
+// Reduce to aggregate scores
+const totalImpact = await reduce(
+  algorithms,
+  await reduceInstructions({
+    scoring: 'performance impact on system',
+    processing: 'sum all scores to get total impact'
+  }),
+  { initial: 0 }
+);
 
 // Find best match
-const matcher = await findInstructions('user intent alignment');
-const best = await find(responses, matcher);
+const best = await find(
+  responses,
+  await findInstructions({
+    scoring: 'user intent alignment',
+    processing: 'return the highest scoring item'
+  })
+);
 
 // Group by score ranges
-const categorizer = await groupInstructions('complexity level');
-const grouped = await group(tasks, categorizer);
+const grouped = await group(
+  tasks,
+  await groupInstructions({
+    scoring: 'complexity level',
+    processing: 'group into: simple (0-3), moderate (4-7), complex (8-10)'
+  })
+);
 ```
 
 ## Calibration Utilities

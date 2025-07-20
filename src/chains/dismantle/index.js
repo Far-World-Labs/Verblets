@@ -3,9 +3,9 @@ import { v4 as uuid } from 'uuid';
 import chatGPT from '../../lib/chatgpt/index.js';
 import { outputSuccinctNames, constants as promptConstants } from '../../prompts/index.js';
 import modelService from '../../services/llm-model/index.js';
-import toObject from '../to-object/index.js';
+import { subComponentsSchema, componentOptionsSchema } from './schemas.js';
 
-const { onlyJSONStringArray } = promptConstants;
+const { asJSON, asWrappedArrayJSON } = promptConstants;
 
 const subComponentsPrompt = (component, thing, fixes = '') => {
   let focus = '';
@@ -15,10 +15,7 @@ const subComponentsPrompt = (component, thing, fixes = '') => {
     focus = thing;
   }
 
-  return `
-${onlyJSONStringArray}
-
-Exhaustively enumerate all physical and logical subcomponents of ${focus}, including containers or abstract components.
+  return `Exhaustively enumerate all physical and logical subcomponents of ${focus}, including containers or abstract components.
 
 Apply the specifics listed here when dealing with component or entity:
  - ${outputSuccinctNames()}
@@ -27,8 +24,9 @@ Apply the specifics listed here when dealing with component or entity:
  - Only subcomponents, no accessories.
 ${fixes}
 
-${onlyJSONStringArray}
-`;
+${asWrappedArrayJSON}
+
+${asJSON}`;
 };
 
 const componentOptionsPrompt = (component, thing, fixes = '') => {
@@ -38,18 +36,16 @@ const componentOptionsPrompt = (component, thing, fixes = '') => {
   } else {
     focus = `Considering "${component}"`;
   }
-  return `
-${onlyJSONStringArray}
-
-${focus}, list specific variants for this component. Only provide known variants, don't speculate. Output an empty list if you must.
+  return `${focus}, list specific variants for this component. Only provide known variants, don't speculate. Output an empty list if you must.
 
 Apply the specifics listed here when dealing with component or entity:
  - ${outputSuccinctNames()}
  - Do not list subcomponents, that's not what this is about.
 ${fixes}
 
-${onlyJSONStringArray}
-`;
+${asWrappedArrayJSON}
+
+${asJSON}`;
 };
 
 const defaultMatch = () => false;
@@ -83,15 +79,21 @@ const defaultDecompose = async ({
 
   const promptCreated = subComponentsPrompt(`${name}${focusFormatted}`, rootName, fixes);
   const budget = model.budgetTokens(promptCreated);
-  return toObject(
-    await chatGPT(promptCreated, {
-      modelOptions: {
-        maxTokens: budget.completion,
-        frequencyPenalty: 0.7,
-        temperature: 0.7,
+  const result = await chatGPT(promptCreated, {
+    modelOptions: {
+      maxTokens: budget.completion,
+      frequencyPenalty: 0.7,
+      temperature: 0.7,
+      response_format: {
+        type: 'json_schema',
+        json_schema: {
+          name: 'subcomponents',
+          schema: subComponentsSchema,
+        },
       },
-    })
-  );
+    },
+  });
+  return result;
 };
 
 const defaultEnhance = async ({
@@ -102,13 +104,21 @@ const defaultEnhance = async ({
 } = {}) => {
   const promptCreated = componentOptionsPrompt(name, rootName, fixes);
   const budget = model.budgetTokens(promptCreated);
-  const options = toObject(
-    await chatGPT(promptCreated, {
+  const result = await chatGPT(promptCreated, {
+    modelOptions: {
       maxTokens: budget.completion,
       frequencyPenalty: 0.5,
       temperature: 0.3,
-    })
-  );
+      response_format: {
+        type: 'json_schema',
+        json_schema: {
+          name: 'component_options',
+          schema: componentOptionsSchema,
+        },
+      },
+    },
+  });
+  const options = result;
 
   return {
     name,

@@ -2,13 +2,9 @@ import { describe, it, expect, vi } from 'vitest';
 import peopleList from './index.js';
 
 vi.mock('../../lib/chatgpt/index.js', () => ({
-  default: vi.fn(async () =>
-    JSON.stringify({
-      people: [
-        { name: 'Alice Smith', bio: 'Experienced baker specializing in sourdough', age: 32 },
-      ],
-    })
-  ),
+  default: vi.fn(async () => ({
+    people: [{ name: 'Alice Smith', bio: 'Experienced baker specializing in sourdough', age: 32 }],
+  })),
 }));
 
 vi.mock('../../lib/retry/index.js', () => ({

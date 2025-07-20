@@ -82,44 +82,7 @@ export default async function commonalities(items, config = {}) {
     modelOptions,
   });
 
-  // Handle JSON parsing with robust error handling
-  let parsed;
-  try {
-    if (typeof output === 'string') {
-      // Try to clean up common JSON issues
-      let cleanedOutput = output.trim();
-
-      // Remove any text before the first { or [
-      const jsonStart = Math.min(
-        cleanedOutput.indexOf('{') !== -1 ? cleanedOutput.indexOf('{') : Infinity,
-        cleanedOutput.indexOf('[') !== -1 ? cleanedOutput.indexOf('[') : Infinity
-      );
-
-      if (jsonStart !== Infinity && jsonStart > 0) {
-        cleanedOutput = cleanedOutput.substring(jsonStart);
-      }
-
-      // Remove any text after the last } or ]
-      const lastBrace = cleanedOutput.lastIndexOf('}');
-      const lastBracket = cleanedOutput.lastIndexOf(']');
-      const jsonEnd = Math.max(lastBrace, lastBracket);
-
-      if (jsonEnd !== -1 && jsonEnd < cleanedOutput.length - 1) {
-        cleanedOutput = cleanedOutput.substring(0, jsonEnd + 1);
-      }
-
-      parsed = JSON.parse(cleanedOutput);
-    } else {
-      parsed = output;
-    }
-  } catch (error) {
-    console.error('Failed to parse JSON response from LLM:', error.message);
-    console.error('Raw output:', output);
-
-    return [];
-  }
-
   // Extract the items array from the object structure
-  const resultArray = parsed?.items || parsed;
+  const resultArray = output?.items || output;
   return Array.isArray(resultArray) ? resultArray.filter(Boolean) : [];
 }

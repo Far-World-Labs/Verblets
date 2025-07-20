@@ -19,7 +19,7 @@ import { asXML } from '../../prompts/wrap-variable.js';
  * @returns { Promise<(string|undefined)[]> } results aligned with input order
  */
 const mapOnce = async function (list, instructions, config = {}) {
-  const { maxParallel = 3, listStyle, autoModeThreshold, llm, ...options } = config;
+  const { maxParallel = 3, listStyle, autoModeThreshold, responseFormat, llm, ...options } = config;
 
   const results = new Array(list.length);
   const batches = createBatches(list, config);
@@ -70,6 +70,7 @@ Preserve all formatting and newlines within each <item> element.`;
         listBatch(items, mappingInstructions, {
           listStyle: batchStyle,
           autoModeThreshold,
+          responseFormat,
           llm,
           ...options,
         }),
@@ -78,6 +79,11 @@ Preserve all formatting and newlines within each <item> element.`;
       }
     )
       .then((output) => {
+        // listBatch now returns arrays directly
+        if (!Array.isArray(output)) {
+          throw new Error(`Expected array from listBatch, got: ${typeof output}`);
+        }
+
         output.forEach((item, j) => {
           results[startIndex + j] = item;
         });
@@ -125,6 +131,7 @@ const map = async function (list, instructions, config = {}) {
     maxParallel = 3,
     listStyle,
     autoModeThreshold,
+    responseFormat,
     llm,
     ...options
   } = config;
@@ -134,6 +141,7 @@ const map = async function (list, instructions, config = {}) {
     maxParallel,
     listStyle,
     autoModeThreshold,
+    responseFormat,
     llm,
     ...options,
   });
@@ -156,6 +164,7 @@ const map = async function (list, instructions, config = {}) {
       maxParallel,
       listStyle,
       autoModeThreshold,
+      responseFormat,
       llm,
       ...options,
     });

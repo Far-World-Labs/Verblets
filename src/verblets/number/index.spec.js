@@ -4,8 +4,9 @@ import number from './index.js';
 
 vi.mock('../../lib/chatgpt/index.js', () => ({
   default: vi.fn().mockImplementation((text) => {
+    // When responseFormat is used, auto-unwrapping will return the value directly
     if (/Everest/.test(text)) {
-      return '29029';
+      return 29029;
     }
     return 'undefined';
   }),

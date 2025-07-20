@@ -6,11 +6,9 @@ import chatGPT from '../../lib/chatgpt/index.js';
 import pathAliases from '../../lib/path-aliases/index.js';
 import retry from '../../lib/retry/index.js';
 import search from '../../lib/search-js-files/index.js';
-import stripResponse from '../../lib/strip-response/index.js';
 import codeFeaturesPrompt from '../../prompts/code-features.js';
 import makeJSONSchema from '../../prompts/features-json-schema.js';
 import modelService from '../../services/llm-model/index.js';
-import toObject from '../../verblets/to-object/index.js';
 
 const codeFeatureDefinitions = JSON.parse(
   await fs.readFile(
@@ -66,13 +64,18 @@ const visit = async ({
   });
 
   await retry(async () => {
-    const results = await chatGPT(visitPrompt, {
+    const resultParsed = await chatGPT(visitPrompt, {
       modelOptions: {
         modelName: 'fastGood',
+        response_format: {
+          type: 'json_schema',
+          json_schema: {
+            name: 'code_features_analysis',
+            schema,
+          },
+        },
       },
     });
-
-    const resultParsed = await toObject(stripResponse(results), schema);
 
     const id = `${node.filename}:::${node.functionName}`;
 

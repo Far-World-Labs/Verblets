@@ -112,9 +112,7 @@ async function processIndividualItem(item, contextText, itemContextFns, descript
       },
     });
 
-    // Structured output should return proper JSON
-    const result = typeof response === 'string' ? JSON.parse(response) : response;
-    return { item, ...result, error: undefined };
+    return { item, ...response, error: undefined };
   } catch (error) {
     return { item, passed: false, reason: `Analysis failed: ${error.message}`, error };
   }
@@ -178,9 +176,7 @@ async function processBulkChunk(chunk, contextText, description, onProgress, met
       },
     });
 
-    // Parse results - structured output should return proper JSON
-    const parsed = typeof response === 'string' ? JSON.parse(response) : response;
-    const resultArray = parsed.results || parsed;
+    const resultArray = response.results || response;
 
     let parsedResults = [];
     if (Array.isArray(resultArray)) {

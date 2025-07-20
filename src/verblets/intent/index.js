@@ -95,6 +95,5 @@ Return the result as a structured JSON object with the operation name, extracted
   const modelOptions = await createModelOptions(llm);
   const response = await chatGPT(prompt, { modelOptions, ...options });
 
-  // With structured outputs, response should already be parsed
-  return typeof response === 'string' ? JSON.parse(response) : response;
+  return response;
 }

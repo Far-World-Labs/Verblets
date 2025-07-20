@@ -1,14 +1,11 @@
 import * as R from 'ramda';
 
 import chatGPT from '../../lib/chatgpt/index.js';
-import {
-  generateQuestions as generateQuestionsPrompt,
-  constants as promptConstants,
-} from '../../prompts/index.js';
+import { constants as promptConstants, asXML } from '../../prompts/index.js';
 import modelService from '../../services/llm-model/index.js';
-import toObject from '../to-object/index.js';
+import { questionsListSchema, selectedQuestionSchema } from './schemas.js';
 
-const { asSplitIntoJSONArray, contentIsChoices, onlyJSON } = promptConstants;
+const { contentIsChoices, asJSON, asWrappedArrayJSON } = promptConstants;
 
 // Returns a random subset of a list with length between 1 and the length of the list
 // based on an input value between 0 and 1
@@ -27,7 +24,10 @@ ${contentIsChoices}
 \`\`\`
 ${existingJoined}
 \`\`\`
-`;
+
+Return a JSON object with a "question" property containing the selected question.
+
+${asJSON}`;
 };
 
 const shouldSkipNull = (result, resultsAll) => {
@@ -36,6 +36,20 @@ const shouldSkipNull = (result, resultsAll) => {
 
 const shouldStopNull = (result, resultsAll, resultsNew, attempts = 0) => {
   return resultsAll.length > 50 || attempts > 5;
+};
+
+const formatQuestionsPrompt = (text, { existing = [] } = {}) => {
+  const existingJoined = existing.map((item) => `"${item}"`).join(', ');
+
+  return `Instead of answering the following question, I would like you to generate additional questions. Consider interesting perspectives. Consider what information is unknown. Overall, just come up with good questions.
+
+Question: ${text}
+
+${existing.length > 0 ? `Questions to omit: ${asXML(existingJoined, { tag: 'omitted' })}` : ''}
+
+${asWrappedArrayJSON} One question per string.
+
+${asJSON}`;
 };
 
 const generateQuestions = async function* generateQuestionsGenerator(text, options = {}) {
@@ -62,11 +76,22 @@ const generateQuestions = async function* generateQuestionsGenerator(text, optio
         existing: choices,
       });
       // eslint-disable-next-line no-await-in-loop
-      textSelected = await chatGPT(pickInterestingQuestionPrompt);
+      const selectedResult = await chatGPT(pickInterestingQuestionPrompt, {
+        modelOptions: {
+          response_format: {
+            type: 'json_schema',
+            json_schema: {
+              name: 'selected_question',
+              schema: selectedQuestionSchema,
+            },
+          },
+        },
+      });
+      textSelected = selectedResult.question;
       drilldownResults.push(textSelected);
     }
 
-    const promptCreated = generateQuestionsPrompt(textSelected, {
+    const promptCreated = formatQuestionsPrompt(textSelected, {
       existing: resultsAll,
     });
     const budget = model.budgetTokens(promptCreated);
@@ -74,27 +99,19 @@ const generateQuestions = async function* generateQuestionsGenerator(text, optio
       modelOptions: {
         maxTokens: budget.completion,
         temperature: 1,
+        response_format: {
+          type: 'json_schema',
+          json_schema: {
+            name: 'questions_list',
+            schema: questionsListSchema,
+          },
+        },
       },
     };
 
     // eslint-disable-next-line no-await-in-loop
     const results = await chatGPT(`${promptCreated}`, chatGPTConfig);
-    let resultsParsed;
-    try {
-      // eslint-disable-next-line no-await-in-loop
-      resultsParsed = await toObject(results);
-    } catch (error) {
-      if (/Unexpected string in JSON/.test(error.message)) {
-        // eslint-disable-next-line no-await-in-loop
-        const resultsUpdated = await chatGPT(
-          `${asSplitIntoJSONArray}${onlyJSON} \`\`\`${results}\`\`\``,
-          chatGPTConfig
-        );
-        // eslint-disable-next-line no-await-in-loop
-        resultsParsed = await toObject(resultsUpdated);
-      }
-    }
-    const resultsNew = getRandomSubset(resultsParsed, searchBreadth);
+    const resultsNew = getRandomSubset(results, searchBreadth);
     if (searchBreadth < 0.5) {
       const randomIndex = Math.floor(Math.random() * resultsNew.length);
       textSelected = resultsNew[randomIndex];

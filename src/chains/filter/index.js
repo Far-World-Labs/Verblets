@@ -2,9 +2,15 @@ import listBatch, { ListStyle, determineStyle } from '../../verblets/list-batch/
 import createBatches from '../../lib/text-batch/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
+import { filterDecisionsJsonSchema } from './schemas.js';
+
+const filterResponseFormat = {
+  type: 'json_schema',
+  json_schema: filterDecisionsJsonSchema,
+};
 
 export default async function filter(list, instructions, config = {}) {
-  const { listStyle, autoModeThreshold, llm, ...options } = config;
+  const { listStyle, autoModeThreshold, responseFormat, llm, ...options } = config;
 
   const results = [];
   const batches = createBatches(list, config);
@@ -38,11 +44,12 @@ Process exactly ${count} items from the list below and return ${count} yes/no de
 Process exactly ${count} items from the XML list below and return ${count} yes/no decisions.`;
     };
 
-    const decisions = await retry(
+    const response = await retry(
       () =>
         listBatch(items, filterInstructions, {
           listStyle: batchStyle,
           autoModeThreshold,
+          responseFormat: responseFormat ?? filterResponseFormat,
           llm,
           ...options,
         }),
@@ -50,6 +57,9 @@ Process exactly ${count} items from the XML list below and return ${count} yes/n
         label: `filter batch ${items.length} items`,
       }
     );
+
+    // listBatch now returns arrays directly
+    const decisions = response;
 
     items.forEach((item, i) => {
       const decision = decisions[i]?.toLowerCase().trim();

@@ -1,9 +1,9 @@
 import chatGPT from '../../lib/chatgpt/index.js';
-import stripResponse from '../../lib/strip-response/index.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { fileURLToPath } from 'url';
+import { scaleSpecificationJsonSchema } from './schemas.js';
 
 const { asJSON } = promptConstants;
 
@@ -79,38 +79,15 @@ IMPORTANT: Each property must be a simple string value, not a nested object or a
       temperature,
       response_format: {
         type: 'json_schema',
-        json_schema: {
-          name: 'scale_specification',
-          schema: {
-            type: 'object',
-            properties: {
-              domain: {
-                type: 'string',
-                description: 'The expected input types, formats, and valid ranges',
-              },
-              range: {
-                type: 'string',
-                description: 'The output types, formats, and possible values',
-              },
-              mapping: {
-                type: 'string',
-                description: 'A clear description of how inputs map to outputs',
-              },
-            },
-            required: ['domain', 'range', 'mapping'],
-            additionalProperties: false,
-          },
-        },
+        json_schema: scaleSpecificationJsonSchema,
       },
     },
     system: specSystemPrompt,
     ...rest,
   });
 
-  // With structured outputs, response should be an object
-  // But handle string responses for backwards compatibility
-  const parsed = typeof response === 'string' ? JSON.parse(stripResponse(response)) : response;
-  return parsed;
+  // With structured outputs, response is now an object
+  return response;
 }
 
 // Apply a scale transformation with an explicit specification
@@ -159,9 +136,7 @@ Return the scaled result as a JSON object with a "value" property.`;
     ...rest,
   });
 
-  // With structured outputs, response should be an object
-  const parsed = typeof response === 'string' ? JSON.parse(stripResponse(response)) : response;
-  return parsed.value;
+  return response;
 }
 
 // Create a scale function with a pre-generated specification for consistency
@@ -248,9 +223,7 @@ ${asJSON}`;
       ...rest,
     });
 
-    // With structured outputs, response should be an object
-    const parsed = typeof response === 'string' ? JSON.parse(stripResponse(response)) : response;
-    return parsed.value;
+    return response;
   };
 
   // Add prompt property for introspection

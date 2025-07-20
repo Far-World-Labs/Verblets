@@ -22,10 +22,12 @@ beforeEach(() => {
 describe('test chain', () => {
   it('analyzes code and returns feedback when issues found', async () => {
     const mockCode = 'function example() { return "hello"; }';
-    const mockFeedback = 'This function could use JSDoc comments.\nConsider adding error handling.';
 
     fs.readFile.mockResolvedValueOnce(mockCode);
-    chatGPT.mockResolvedValueOnce(mockFeedback);
+    chatGPT.mockResolvedValueOnce({
+      hasIssues: true,
+      issues: ['This function could use JSDoc comments.', 'Consider adding error handling.'],
+    });
 
     const result = await test('/path/to/file.js', 'provide feedback');
 
@@ -37,19 +39,24 @@ describe('test chain', () => {
     expect(chatGPT).toHaveBeenCalledWith(
       expect.any(String),
       expect.objectContaining({
-        modelOptions: {
+        modelOptions: expect.objectContaining({
           modelName: 'fastGoodCheap',
-        },
+          response_format: expect.objectContaining({
+            type: 'json_schema',
+          }),
+        }),
       })
     );
   });
 
   it('returns empty array when no issues found', async () => {
     const mockCode = 'function example() { return "hello"; }';
-    const mockFeedback = 'NO_ISSUES_FOUND';
 
     fs.readFile.mockResolvedValueOnce(mockCode);
-    chatGPT.mockResolvedValueOnce(mockFeedback);
+    chatGPT.mockResolvedValueOnce({
+      hasIssues: false,
+      issues: [],
+    });
 
     const result = await test('/path/to/file.js', 'provide feedback');
 
@@ -58,10 +65,12 @@ describe('test chain', () => {
 
   it('returns empty array when feedback indicates no issues', async () => {
     const mockCode = 'function example() { return "hello"; }';
-    const mockFeedback = 'The code looks good and follows best practices.';
 
     fs.readFile.mockResolvedValueOnce(mockCode);
-    chatGPT.mockResolvedValueOnce(mockFeedback);
+    chatGPT.mockResolvedValueOnce({
+      hasIssues: false,
+      issues: [],
+    });
 
     const result = await test('/path/to/file.js', 'provide feedback');
 

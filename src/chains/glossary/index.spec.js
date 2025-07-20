@@ -2,7 +2,9 @@ import { describe, it, expect, vi } from 'vitest';
 import glossary from './index.js';
 
 vi.mock('../map/index.js', () => ({
-  default: vi.fn(() => Promise.resolve(['qubits, entanglement', 'decoherence, qubits'])),
+  default: vi.fn(() =>
+    Promise.resolve([{ terms: ['qubits', 'entanglement'] }, { terms: ['decoherence', 'qubits'] }])
+  ),
 }));
 
 vi.mock('../sort/index.js', () => ({
