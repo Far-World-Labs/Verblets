@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import scale, { createScale, scaleSpec, applyScale } from './index.js';
-import aiExpect from '../expect/index.js';
+import { aiExpect } from '../expect/index.js';
 
 describe('scale examples', () => {
   it('should handle plain numeric input', async () => {
@@ -263,7 +263,8 @@ Calculate: base_score * objection_multiplier = final effectiveness`;
 
 describe('createScale examples', () => {
   it('should generate and use a consistent specification', { timeout: 15000 }, async () => {
-    const tempScale = createScale(`
+    // First generate the specification
+    const tempSpec = await scaleSpec(`
       Convert temperature feelings to comfort descriptions:
       - Below 10°C: "freezing"
       - 10-15°C: "cold"
@@ -273,7 +274,10 @@ describe('createScale examples', () => {
       - Above 30°C: "hot"
     `);
 
-    // First calls generate the specification
+    // Then create the scale with the specification
+    const tempScale = createScale(tempSpec);
+
+    // Apply the scale to different temperatures
     const result1 = await tempScale(22);
     const result2 = await tempScale(8);
     const result3 = await tempScale(28);
@@ -294,16 +298,15 @@ describe('createScale examples', () => {
     );
     expect(check3).toBe(true);
 
-    // Check that specification was generated
+    // Check that specification is accessible
     expect(tempScale.specification).toBeTruthy();
-    const specCheck = await aiExpect(tempScale.specification).toSatisfy(
-      'a scale specification describing temperature to comfort mapping'
-    );
-    expect(specCheck).toBe(true);
+    expect(tempScale.specification).toBe(tempSpec);
   });
 
   it('should maintain consistency across multiple calls', { timeout: 15000 }, async () => {
-    const consistencyScale = createScale('Rate text sentiment from -1 (negative) to 1 (positive)');
+    // Generate specification first
+    const sentimentSpec = await scaleSpec('Rate text sentiment from -1 (negative) to 1 (positive)');
+    const consistencyScale = createScale(sentimentSpec);
 
     // Multiple calls should produce consistent results for same input
     const text = 'This product is amazing!';

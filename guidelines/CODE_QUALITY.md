@@ -87,6 +87,7 @@ export default async function reduce(list, instructions, config = {}) {
 - Use `responseFormat` parameter name (not `structuredOutput` or others)
 - Break and repair when making changes - no legacy support
 - Chains should expose clean interfaces without implementation details
+- Extract inline JSON schemas to sibling `schema.js` (single) or `schemas.js` (multiple) files
 
 ## Error Handling Guidelines
 
