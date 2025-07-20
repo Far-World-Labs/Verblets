@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import timeline from './index.js';
-import { expect as aiExpect } from '../expect/index.js';
+import aiExpect from '../expect/index.js';
 import { longTestTimeout } from '../../constants/common.js';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -22,9 +22,7 @@ describe('timeline', () => {
     expect(result).toBeDefined();
     expect(result.length).toBeGreaterThan(0);
 
-    const [expectResult] = await aiExpect(
-      result,
-      undefined,
+    const expectResult = await aiExpect(result).toSatisfy(
       `Should extract 5 key events: founding (early 2010), funding (March 2012), expansion (late 2013), product launch (2015), and IPO (September 2018)`
     );
 
@@ -52,9 +50,7 @@ describe('timeline', () => {
     expect(result).toBeDefined();
     expect(result.length).toBeGreaterThan(0);
 
-    const [expectResult] = await aiExpect(
-      result,
-      undefined,
+    const expectResult = await aiExpect(result).toSatisfy(
       `Should extract 4 events: discovery (September 1928), purification start (1940), first trial (February 1941), and D-Day mass production (1944)`
     );
 
@@ -77,9 +73,7 @@ describe('timeline', () => {
     expect(result).toBeDefined();
     expect(result.length).toBeGreaterThan(0);
 
-    const [expectResult] = await aiExpect(
-      result,
-      undefined,
+    const expectResult = await aiExpect(result).toSatisfy(
       `Should extract 5 timestamped events on July 15, 2023 between 9:00 AM and 11:00 AM`
     );
 
@@ -96,9 +90,7 @@ describe('timeline', () => {
     expect(result).toBeDefined();
     expect(result.length).toBeGreaterThan(0);
 
-    const [expectResult] = await aiExpect(
-      result,
-      undefined,
+    const expectResult = await aiExpect(result).toSatisfy(
       `Should extract 4 events with relative timestamps: kickoff (Monday), requirements (3 days later), development (following week), testing (2 months later)`
     );
 
@@ -126,9 +118,7 @@ describe('timeline', () => {
     expect(result.length).toBeGreaterThan(0);
 
     // Should find these events even with chunking and deduplication
-    const [expectResult] = await aiExpect(
-      result,
-      undefined,
+    const expectResult = await aiExpect(result).toSatisfy(
       `Should extract key computing milestones including abacus (2400 BCE), Pascaline (1642), Difference Engine (1822), first algorithm (1843), and ENIAC (1945), with no duplicates despite text repetition`
     );
 
@@ -167,9 +157,7 @@ describe('timeline', () => {
     expect(result).toBeDefined();
     expect(result.length).toBeGreaterThan(0);
 
-    const [expectResult] = await aiExpect(
-      result,
-      undefined,
+    const expectResult = await aiExpect(result).toSatisfy(
       `Should extract major startup milestones including: incorporation (early 2010), near shutdown (August 2011), Series A (March 2012), expansion (late 2013), product launch (2015), IPO (September 2018), COVID impact (March 2020)`
     );
 
@@ -191,9 +179,7 @@ describe('timeline', () => {
     expect(result).toBeDefined();
     expect(result.length).toBeGreaterThan(0);
 
-    const [expectResult] = await aiExpect(
-      result,
-      undefined,
+    const expectResult = await aiExpect(result).toSatisfy(
       `Should extract major computing milestones from ancient times (abacus) through modern era (AI, ChatGPT)`
     );
 
@@ -234,9 +220,7 @@ describe('timeline', () => {
     expect(enrichedResult.length).toBeGreaterThanOrEqual(basicResult.length);
 
     // Should have more precise dates
-    const [hasEnrichedDates] = await aiExpect(
-      enrichedResult,
-      undefined,
+    const hasEnrichedDates = await aiExpect(enrichedResult).toSatisfy(
       `Should contain precise dates like December 17, 1903 for Wright brothers flight, August 1945 for WWII end, and include additional context events`
     );
 

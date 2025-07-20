@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import chatGPT from '../../lib/chatgpt/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { constants as promptConstants } from '../../prompts/index.js';
-import { scaleSpec } from '../../verblets/scale/index.js';
+import { scaleSpec } from '../scale/index.js';
 import map from '../map/index.js';
 
 const { onlyJSON } = promptConstants;

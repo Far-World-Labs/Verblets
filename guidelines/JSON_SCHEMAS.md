@@ -48,22 +48,15 @@ const items = result.items; // Type-safe access
 
 ### Schema Organization
 
-- Store reusable schemas in `src/json-schemas/`
-- Use descriptive names: `question-list.js`, `commonalities-response.js`
-- Export as ES6 modules with clear documentation
+- Extract inline schemas to sibling files: `schema.js` (single) or `schemas.js` (multiple)
+- Export complete JSON schemas with `name` and `schema` properties
+- Store truly reusable schemas in `src/json-schemas/`
 
 ```javascript
-// src/json-schemas/question-list.js
-export default {
-  type: 'object',
-  properties: {
-    questions: {
-      type: 'array',
-      items: { type: 'string' },
-      description: 'List of generated questions'
-    }
-  },
-  required: ['questions']
+// src/chains/questions/schemas.js
+export const questionListJsonSchema = {
+  name: 'question_list',
+  schema: { /* ... */ }
 };
 ```
 

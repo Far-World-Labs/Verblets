@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { longTestTimeout } from '../../constants/common.js';
-import { expect as aiExpect } from '../expect/index.js';
+import aiExpect from '../expect/index.js';
 import categorySamples from './index.js';
 
 describe('Category Samples Chain', () => {
@@ -17,9 +17,7 @@ describe('Category Samples Chain', () => {
       expect(seeds.every((seed) => seed.length > 0)).toBe(true);
 
       // Use expect-chain for loose verification
-      const [isValidFruitList] = await aiExpect(
-        seeds,
-        undefined,
+      const isValidFruitList = await aiExpect(seeds).toSatisfy(
         'Are these reasonable fruit names that represent a balanced mix of typical and moderately typical fruits?'
       );
       expect(isValidFruitList).toBe(true);
@@ -40,9 +38,7 @@ describe('Category Samples Chain', () => {
       expect(seeds.every((seed) => typeof seed === 'string')).toBe(true);
 
       // Use expect-chain for loose verification
-      const [isValidBirdList] = await aiExpect(
-        seeds,
-        undefined,
+      const isValidBirdList = await aiExpect(seeds).toSatisfy(
         'Are these reasonable names of common backyard birds that would be found in North America?'
       );
       expect(isValidBirdList).toBe(true);
@@ -62,9 +58,7 @@ describe('Category Samples Chain', () => {
       expect(seeds.every((seed) => typeof seed === 'string')).toBe(true);
 
       // Use expect-chain for loose verification - check for diversity without being overly specific
-      const [isValidVehicleList] = await aiExpect(
-        seeds,
-        undefined,
+      const isValidVehicleList = await aiExpect(seeds).toSatisfy(
         'Are these vehicle names reasonably diverse, showing variety in the types of vehicles represented?'
       );
       expect(isValidVehicleList).toBe(true);
@@ -91,9 +85,7 @@ describe('Category Samples Chain', () => {
       expect(seeds.every((seed) => typeof seed === 'string')).toBe(true);
 
       // Use expect-chain for loose verification
-      const [isValidAnimalList] = await aiExpect(
-        seeds,
-        undefined,
+      const isValidAnimalList = await aiExpect(seeds).toSatisfy(
         'Are these reasonable animal names?'
       );
       expect(isValidAnimalList).toBe(true);

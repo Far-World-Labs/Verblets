@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { longTestTimeout } from '../../constants/common.js';
-import { expect as aiExpect } from '../expect/index.js';
+import aiExpect from '../expect/index.js';
 import centralTendency from './index.js';
 
 describe('Bulk Central Tendency Chain', () => {
@@ -21,9 +21,7 @@ describe('Bulk Central Tendency Chain', () => {
       expect(results.every((r) => r && typeof r.confidence === 'number')).toBe(true);
 
       // Use expect-chain for loose verification
-      const [isValidCentralityScoring] = await aiExpect(
-        results,
-        undefined,
+      const isValidCentralityScoring = await aiExpect(results).toSatisfy(
         'Do these centrality scores make sense? Common fruits like apple, orange, banana should have higher scores than exotic fruits like durian and jackfruit.'
       );
       expect(isValidCentralityScoring).toBe(true);
@@ -47,9 +45,7 @@ describe('Bulk Central Tendency Chain', () => {
       expect(results.every((r) => r && r.score >= 0 && r.score <= 1)).toBe(true);
 
       // Use expect-chain for loose verification
-      const [isValidToolScoring] = await aiExpect(
-        results,
-        undefined,
+      const isValidToolScoring = await aiExpect(results).toSatisfy(
         'Do these tool centrality scores make sense? Basic hand tools like hammer, screwdriver, wrench should have high scores, while chainsaw (power tool) should have a lower score.'
       );
       expect(isValidToolScoring).toBe(true);
@@ -71,9 +67,7 @@ describe('Bulk Central Tendency Chain', () => {
       expect(results.every((r) => r && typeof r.score === 'number')).toBe(true);
 
       // Use expect-chain for loose verification
-      const [isValidBirdScoring] = await aiExpect(
-        results,
-        undefined,
+      const isValidBirdScoring = await aiExpect(results).toSatisfy(
         'Given the context of "small songbirds commonly seen in backyards", does robin have the highest centrality score, while penguin and ostrich have much lower scores?'
       );
       expect(isValidBirdScoring).toBe(true);
@@ -95,9 +89,7 @@ describe('Bulk Central Tendency Chain', () => {
       expect(results.every((r) => r && typeof r.score === 'number')).toBe(true);
 
       // Use expect-chain for loose verification
-      const [isValidPetScoring] = await aiExpect(
-        results,
-        undefined,
+      const isValidPetScoring = await aiExpect(results).toSatisfy(
         'Are these reasonable centrality scores for pets, with cat and dog having higher scores than elephant?'
       );
       expect(isValidPetScoring).toBe(true);

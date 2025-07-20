@@ -252,7 +252,10 @@ export function aiExpect(actual) {
 /**
  * Simple LLM expectation (backward compatibility)
  */
-export default async function expectSimple(actual, expected, constraint) {
+export async function expectSimple(actual, expected, constraint) {
   const [passed] = await expect(actual, expected, constraint);
   return passed;
 }
+
+// Export aiExpect as default for cleaner imports
+export default aiExpect;

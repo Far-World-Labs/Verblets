@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import split from './index.js';
 import fs from 'fs';
 import path from 'path';
-import { aiExpect } from '../expect/index.js';
+import aiExpect from '../expect/index.js';
 
 describe('split chain examples', () => {
   const comedySet = fs.readFileSync(

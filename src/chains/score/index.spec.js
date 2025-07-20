@@ -12,7 +12,7 @@ import score, {
   formatCalibrationBlock,
 } from './index.js';
 import chatGPT from '../../lib/chatgpt/index.js';
-import { scaleSpec } from '../../verblets/scale/index.js';
+import { scaleSpec } from '../scale/index.js';
 import map from '../map/index.js';
 import filter from '../filter/index.js';
 
@@ -20,7 +20,7 @@ vi.mock('../../lib/chatgpt/index.js', () => ({
   default: vi.fn(),
 }));
 
-vi.mock('../../verblets/scale/index.js', () => ({
+vi.mock('../scale/index.js', () => ({
   scaleSpec: vi.fn(),
 }));
 

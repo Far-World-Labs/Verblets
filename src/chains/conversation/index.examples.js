@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import ConversationChain from './index.js';
-import { expect as aiExpected } from '../expect/index.js';
+import aiExpect from '../expect/index.js';
 import { longTestTimeout, shouldRunLongExamples } from '../../constants/common.js';
 import { roundRobin } from './turn-policies.js';
 
@@ -100,9 +100,7 @@ describe('conversation chain examples', () => {
       expect(foundTerms.length).toBeGreaterThan(0);
 
       // AI validation of conversation quality
-      const [hasPhilosophicalDepth] = await aiExpected(
-        messages,
-        undefined,
+      const hasPhilosophicalDepth = await aiExpect(messages).toSatisfy(
         'Should contain sophisticated philosophical discussion about machine consciousness with each pioneer contributing their unique perspective'
       );
 
@@ -184,9 +182,7 @@ describe('conversation chain examples', () => {
       });
 
       // AI validation of moderated discussion
-      const [hasModeratedDiscussion] = await aiExpected(
-        messages,
-        undefined,
+      const hasModeratedDiscussion = await aiExpect(messages).toSatisfy(
         'Should contain a well-moderated discussion with the moderator guiding the conversation and researchers providing technical insights'
       );
 
@@ -249,9 +245,7 @@ describe('conversation chain examples', () => {
       expect(messages.some((m) => m.id === 'mccarthy')).toBe(true);
 
       // AI validation of philosophical depth
-      const [hasPhilosophicalDepth] = await aiExpected(
-        messages,
-        undefined,
+      const hasPhilosophicalDepth = await aiExpect(messages).toSatisfy(
         'Should contain deep philosophical discussion about machine consciousness and the nature of thinking'
       );
       expect(hasPhilosophicalDepth).toBe(true);
@@ -329,9 +323,7 @@ describe('conversation chain examples', () => {
       }
 
       // AI validation for safety-focused discussion with summary
-      const [focusesOnSafety] = await aiExpected(
-        messages,
-        undefined,
+      const focusesOnSafety = await aiExpect(messages).toSatisfy(
         'Should contain substantive discussion about AI safety, risks, and responsible AGI development, concluding with a clear summary'
       );
       expect(focusesOnSafety).toBe(true);
@@ -403,9 +395,7 @@ describe('conversation chain examples', () => {
       }
 
       // AI validation of Socratic dialogue
-      const [hasSocraticDepth] = await aiExpected(
-        messages,
-        undefined,
+      const hasSocraticDepth = await aiExpect(messages).toSatisfy(
         'Should demonstrate Socratic questioning method with deep philosophical inquiry about machine understanding'
       );
       expect(hasSocraticDepth).toBe(true);
