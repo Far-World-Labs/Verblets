@@ -49,6 +49,7 @@ import * as llmLogger from './chains/llm-logger/index.js';
 import detectPatterns from './chains/detect-patterns/index.js';
 import detectThreshold from './chains/detect-threshold/index.js';
 import documentShrink from './chains/document-shrink/index.js';
+import entities from './chains/entities/index.js';
 
 import schemas from './json-schemas/index.js';
 import * as common from './constants/common.js';
@@ -141,6 +142,7 @@ export {
   detectThreshold,
   disambiguate,
   documentShrink,
+  entities,
   expectChain,
   filter,
   filterOnce,
@@ -198,6 +200,7 @@ export const verblets = {
   disambiguate,
   Dismantle,
   documentShrink,
+  entities,
   enums,
   expect,
   expectChain,
