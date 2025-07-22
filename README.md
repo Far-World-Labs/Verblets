@@ -72,6 +72,7 @@ Content utilities generate, transform, and analyze text while maintaining struct
 - [people](./src/chains/people) - Build artificial person profiles with consistent demographics and traits. Useful as LLM roles.
 - [pop-reference](./src/chains/pop-reference) - Match concepts to movies, songs, memes, or cultural touchstones
 - [questions](./src/chains/questions) - Generate follow-up questions that branch from initial inquiry
+- [relations](./src/chains/relations) - Extract relationship tuples from text
 - [schema-org](./src/verblets/schema-org) - Convert unstructured data to schema.org JSON-LD format
 - [socratic](./src/chains/socratic) - Ask questions that reveal hidden assumptions and logic gaps
 - [split](./src/chains/split) - Find topic boundaries in continuous text

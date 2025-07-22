@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "subject": {
+            "type": "string",
+            "description": "The subject entity (canonical form)"
+          },
+          "predicate": {
+            "type": "string",
+            "description": "The relationship/predicate between subject and object"
+          },
+          "object": {
+            "type": "string",
+            "description": "The object entity (canonical form)"
+          },
+          "metadata": {
+            "type": "object",
+            "description": "Additional metadata about the relation",
+            "additionalProperties": true
+          }
+        },
+        "required": ["subject", "predicate", "object"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["items"],
+  "additionalProperties": false
+}
