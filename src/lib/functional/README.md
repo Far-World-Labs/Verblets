@@ -1,14 +1,27 @@
 # Functional Programming Utilities
 
-A collection of functional programming utilities and higher-order functions for data transformation and composition.
+A set of helper functions for composing callbacks and escaping XML. These utilities make it easy to build small event systems or safely handle HTML snippets without mutating your data.
 
-## Features
+## Example
 
-- **Composition**: Combine functions to create complex transformations
-- **Currying**: Partial application of function arguments
-- **Immutability**: Work with data without mutation
-- **Pipeline Operations**: Chain operations in a readable manner
+```javascript
+import { hook, unhook, xmlEscape } from './index.js';
 
-## Usage
+const listeners = [];
 
-Used throughout the library to enable functional programming patterns, data transformation pipelines, and composable operations. 
+// add listeners
+hook(listeners, () => console.log('clicked'));
+hook(listeners, () => console.log('hovered'));
+
+listeners.forEach(fn => fn());
+// => clicked
+// => hovered
+
+// remove the first listener
+unhook(listeners, listeners[0]);
+
+console.log(xmlEscape('<span>Tom & Jerry</span>'));
+// => '&lt;span&gt;Tom &amp; Jerry&lt;/span&gt;'
+```
+
+These functions are used throughout the library to build composable pipelines without side effects.
