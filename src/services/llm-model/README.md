@@ -152,4 +152,5 @@ const selectModel = async (taskType) => {
       return await negotiate({ good: true });
   }
 };
-``` 
+```
+The `llm-model` service returns the best model configuration for your tasks based on cost, speed, and privacy needs.
