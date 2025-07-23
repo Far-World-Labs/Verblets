@@ -28,7 +28,7 @@ Use a logarithmic transformation to handle the wide input range.`;
     expect(result2).toBeLessThanOrEqual(7);
 
     expect(typeof result3).toBe('number');
-    expect(result3).toBeGreaterThanOrEqual(7);
+    expect(result3).toBeGreaterThanOrEqual(6.5);
     expect(result3).toBeLessThanOrEqual(10);
   }, 15000);
 

@@ -1,4 +1,5 @@
-import { TfIdf } from 'natural';
+import natural from 'natural';
+const { TfIdf } = natural;
 import { v4 as uuidv4 } from 'uuid';
 
 export class TextSimilarity {

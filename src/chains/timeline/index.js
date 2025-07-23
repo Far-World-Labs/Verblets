@@ -7,16 +7,11 @@ import { timelineEventJsonSchema } from './schemas.js';
 
 const extractTimelineInstructions = `Extract timeline events from this text chunk.
 
-Find:
-- Explicitly mentioned dates and events
-- Implicit historical context events
-- Narrative transitions and key moments
-
 For each event provide:
-- timestamp: ISO date, relative time ("early 2020"), or contextual marker ("after the meeting")
-- name: Brief event label that captures the essence of the event
+- timestamp: Date or time reference from the text
+- name: Exact event description as written in the text
 
-Focus on temporally significant events. Include contextual events that help establish chronology.`;
+Use consistent naming - preserve the exact phrasing from the source text.`;
 
 /**
  * Sort timeline events by date parsing only
@@ -46,14 +41,15 @@ function sortTimelineEvents(events) {
 function mergeTimelineEvents(eventArrays) {
   const allEvents = eventArrays.flat();
   const merged = [];
-  const seen = new Set();
+  const seenNames = new Set();
 
   for (const event of allEvents) {
-    // Create a key for deduplication
-    const key = `${event.timestamp}-${event.name}`.toLowerCase();
+    // Use lowercase name for deduplication to handle case variations
+    const normalizedName = event.name.toLowerCase().trim();
 
-    if (!seen.has(key)) {
-      seen.add(key);
+    // Skip if we've already seen this event name (case-insensitive)
+    if (!seenNames.has(normalizedName)) {
+      seenNames.add(normalizedName);
       merged.push(event);
     }
   }
@@ -151,6 +147,35 @@ export default async function timeline(text, options = {}) {
   }
 
   let mergedEvents = mergeTimelineEvents([allEvents]);
+
+  // Always deduplicate using reduce to handle variations in event names
+  if (mergedEvents.length > 0) {
+    const deduplicationInstructions = `Given timeline events, consolidate duplicates:
+1. Merge events that refer to the same occurrence
+2. Keep the most descriptive version of each event
+3. Preserve all unique events
+
+Each event is formatted as "timestamp: name".
+Return JSON with "events" array where each event has "timestamp" and "name" fields.`;
+
+    const eventStrings = mergedEvents.map((e) => `${e.timestamp}: ${e.name}`);
+
+    const deduplicatedResult = await reduce(eventStrings, deduplicationInstructions, {
+      initialValue: JSON.stringify({ events: [] }),
+      ...(batchSize !== undefined && { batchSize }),
+      llm,
+      ...remainingOptions,
+    });
+
+    try {
+      const parsed = JSON.parse(deduplicatedResult);
+      mergedEvents = sortTimelineEvents(parsed.events || []);
+    } catch (e) {
+      if (process.env.VERBLETS_DEBUG) {
+        console.warn('Failed to parse deduplicated timeline:', e.message);
+      }
+    }
+  }
 
   // Enrich with knowledge if requested
   if (enrichWithKnowledge && mergedEvents.length > 0) {

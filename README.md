@@ -37,8 +37,10 @@ List operations transform, filter, and organize collections using natural langua
 - [central-tendency](./src/chains/central-tendency) - evaluate categories with cognitive science methods
 - [detect-patterns](./src/chains/detect-patterns) - find recurring patterns in object collections
 - [detect-threshold](./src/chains/detect-threshold) - find cutoff values in numeric data based on goals
+- [entities](./src/chains/entities) - extract named entities from text
 - [filter](./src/chains/filter) - filter lists via batch processing
 - [find](./src/chains/find) - find the top match in a given dataset via batch processing
+- [glossary](./src/chains/glossary) - create glossaries from text
 - [group](./src/chains/group) - group datasets via batch processing
 - [map](./src/chains/map) - map over lists via batch processing
 - [reduce](./src/chains/reduce) - reduce lists via batch processing
@@ -64,7 +66,7 @@ Content utilities generate, transform, and analyze text while maintaining struct
 - [join](./src/chains/join) - merge text fragments into coherent sequences
 - [name](./src/verblets/name) - name something from a definition or description
 - [name-similar-to](./src/verblets/name-similar-to) - suggest short names that match a style
-- [people-list](./src/verblets/people-list) - generate diverse lists of people with specified characteristics
+- [people](./src/chains/people) - generate diverse lists of people with specified characteristics
 - [pop-reference](./src/chains/pop-reference) - find pop culture metaphors for sentences
 - [questions](./src/chains/questions) - produce clarifying questions
 - [schema-org](./src/verblets/schema-org) - create schema.org objects
@@ -108,7 +110,7 @@ Helpers support higher-level operations. They make no LLM calls and are often sy
 - [combinations](./src/lib/combinations) - generate array combinations
 - [prompt-cache](./src/lib/prompt-cache) - cache prompts and responses
 - [retry](./src/lib/retry) - retry asynchronous calls
-- [ring-buffer](./src/lib/ring-buffer) - circular buffer implementation for running LLMs on streams of of data
+- [ring-buffer](./src/lib/ring-buffer) - circular buffer implementation for running LLMs on streams of data
 - [search-best-first](./src/lib/search-best-first) - best-first search algorithm
 - [search-js-files](./src/lib/search-js-files) - scan JavaScript sources
 - [shorten-text](./src/lib/shorten-text) - shorten text using a model
@@ -131,7 +133,7 @@ import {
   chatgpt,
   conversation,
   filter,
-  peopleList,
+  people,
   score,
 } from 'verblets';
 
@@ -159,7 +161,7 @@ async function huntRealEstateFraud(listings) {
 }
 
 async function stingOperation(listing, riskScore) {
-  const buyers = await peopleList('naive first-time home buyer with cash ready', 1);
+  const buyers = await people('naive first-time home buyer with cash ready', 1);
   const buyer = buyers[0];
 
   // Generate varied initial email

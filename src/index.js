@@ -79,6 +79,7 @@ import toNumberWithUnits from './lib/to-number-with-units/index.js';
 import toDate from './lib/to-date/index.js';
 import transcribe from './lib/transcribe/index.js';
 import combinations, { rangeCombinations } from './lib/combinations/index.js';
+import RingBuffer from './lib/ring-buffer/index.js';
 
 // prompts
 import * as prompts from './prompts/index.js';
@@ -166,6 +167,7 @@ export const lib = {
   chatGPT,
   promptCache,
   retry,
+  RingBuffer,
   searchBestFirst,
   searchJSFiles,
   shortenText,

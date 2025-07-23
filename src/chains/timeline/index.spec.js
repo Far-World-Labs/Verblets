@@ -6,11 +6,13 @@ vi.mock('../../lib/chatgpt/index.js');
 vi.mock('../../lib/strip-response/index.js');
 vi.mock('../../lib/chunk-sentences/index.js');
 vi.mock('../../lib/retry/index.js');
+vi.mock('../reduce/index.js');
 
 import chatGPT from '../../lib/chatgpt/index.js';
 import stripResponse from '../../lib/strip-response/index.js';
 import chunkSentences from '../../lib/chunk-sentences/index.js';
 import retry from '../../lib/retry/index.js';
+import reduce from '../reduce/index.js';
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -19,6 +21,22 @@ beforeEach(() => {
   stripResponse.mockImplementation((str) => str);
   chunkSentences.mockImplementation((text) => [text]); // Single chunk by default
   retry.mockImplementation((fn) => fn()); // Just call the function
+  // Mock reduce to return deduplicated events
+  reduce.mockImplementation(async (events) => {
+    // Simple deduplication for tests
+    const seen = new Set();
+    const deduped = [];
+    for (const event of events) {
+      const [timestamp, ...nameParts] = event.split(': ');
+      const name = nameParts.join(': ');
+      const key = `${timestamp}|${name.toLowerCase()}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        deduped.push({ timestamp, name });
+      }
+    }
+    return JSON.stringify({ events: deduped });
+  });
 });
 
 describe('timeline', () => {
