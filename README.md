@@ -1,6 +1,8 @@
 # Verblets
 
-Verblets is an LLM-aware standard library that provides AI-powered utilities for transforming natural language and structured data into reliable outputs. Each function leverages language model intelligence while constraining outputs to ensure software reliability.
+Verblets is a utility library that provides AI-powered functions for transforming text and structured data into reliable outputs. Each function leverages language model intelligence while constraining outputs to ensure software reliability.
+
+The chief motivation is that modular tools can augment human capability rather than replacing it, in contrast to top-down AI strategies. Algorithmic orchestration enables a new class of software tools that combine structured execution with targeted intelligence to solve problems that exceed context windows, require coordination across multiple AI functions, and benefit from immediate, composable integration of reasoning at strategic points.
 
 ## Repository Guide
 
@@ -12,7 +14,7 @@ Verblets is an LLM-aware standard library that provides AI-powered utilities for
 - [Prompts](./src/prompts/) - Reusable prompt templates
 - [JSON Schemas](./src/json-schemas/) - Data validation schemas
 
-## Verblets
+## Utilities
 
 ### Primitives
 
@@ -32,7 +34,7 @@ Math chains transform values using conceptual reasoning and subjective judgments
 
 ### Lists
 
-List operations transform, filter, and organize collections using natural language criteria. They handle both individual items and batch processing for datasets larger than a context window. Many list operations support bulk operation with built-in retry. Many have alternative single invocation versions in the verblets directory.
+List operations transform, filter, and organize collections. They handle both individual items and batch processing for datasets larger than a context window. Many list operations support bulk operation with built-in retry. Many have alternative single invocation versions in the verblets directory. Many utilities have list support via specification-generators that maintain continuity, or prompt fragments that adapt single-invcation behavior to list processing.
 
 - [central-tendency](./src/chains/central-tendency) - Find the most representative examples from a collection
 - [detect-patterns](./src/chains/detect-patterns) - Identify repeating structures, sequences, or relationships in data
@@ -256,11 +258,6 @@ async function stingOperation(listing, riskScore) {
 
 }
 ```
-
-Verblets supports tool creation over wholesale replacement of humans that the top-down approaches are taking. Many tools can be created that unlock whole new areas of creativity and work that expand our agency in the world rather than minimize it.
-
-LLM orchestrations enable creating new categories of tools that coordinate multiple AI functions with the precision and reliability of traditional software. This hybrid approach is an algorithmic and bottom-up approach that unlocks problems that require both human-like reasoning and systematic execution, making it possible to use larger datasets, use multiple model types together, and routinely perform problem solving that software has never before performed.
-
 
 ## Contributing
 
