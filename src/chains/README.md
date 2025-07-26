@@ -18,6 +18,7 @@ Available chains:
 - [glossary](./glossary)
 - [scan-js](./scan-js)
 - [sort](./sort)
+- [cli-config](./cli-config)
 - [summary-map](./summary-map)
 - [themes](./themes)
 - [set-interval](./set-interval)
