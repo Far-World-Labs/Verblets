@@ -44,6 +44,43 @@ describe('relations examples', () => {
     expect(partnershipRelation).toBeTruthy();
   }, 15000);
 
+  it('should extract relations with primitive values', async () => {
+    const text = `Apple reported revenue of $394.3 billion in fiscal year 2022. 
+    The company was founded on April 1, 1976. 
+    Apple has 164,000 employees worldwide.
+    The iPhone 15 was released on September 22, 2023.
+    Apple's market cap exceeded $3 trillion in 2023.`;
+
+    const extractor = relations({
+      relations: 'Extract company metrics and dates as precise values',
+      predicates: ['revenue', 'founded on', 'employee count', 'released on', 'market cap'],
+    });
+    const result = await extractor(text);
+
+    expect(Array.isArray(result)).toBe(true);
+    expect(result.length).toBeGreaterThan(0);
+
+    // Check for numeric values
+    const revenueRelation = result.find((r) => r.predicate.includes('revenue'));
+    if (revenueRelation) {
+      expect(typeof revenueRelation.object).toBe('number');
+      expect(revenueRelation.object).toBeGreaterThan(300000000000);
+    }
+
+    // Check for date values
+    const foundedRelation = result.find((r) => r.predicate.includes('founded'));
+    if (foundedRelation) {
+      expect(foundedRelation.object instanceof Date).toBe(true);
+    }
+
+    // Check for integer values
+    const employeeRelation = result.find((r) => r.predicate.includes('employee'));
+    if (employeeRelation) {
+      expect(typeof employeeRelation.object).toBe('number');
+      expect(Number.isInteger(employeeRelation.object)).toBe(true);
+    }
+  }, 15000);
+
   it('should extract relations with entity disambiguation', async () => {
     const text = techChunks[2]; // Tim Cook meeting text
     const entities = [
@@ -212,8 +249,9 @@ describe('relationSpec and applyRelations examples', () => {
 
     const result = await applyRelations(historyChunks[7], spec);
 
-    expect(Array.isArray(result)).toBe(true);
-    expect(result.length).toBeGreaterThan(0);
+    expect(result).toBeTruthy();
+    expect(Array.isArray(result.items)).toBe(true);
+    expect(result.items.length).toBeGreaterThan(0);
   }, 15000);
 
   it('should handle complex metadata in relations', async () => {
@@ -225,9 +263,10 @@ describe('relationSpec and applyRelations examples', () => {
 
     const result = await applyRelations(text, spec);
 
-    expect(Array.isArray(result)).toBe(true);
+    expect(result).toBeTruthy();
+    expect(Array.isArray(result.items)).toBe(true);
     // Check for acquisition with metadata
-    const acquisition = result.find((r) => r.predicate.toLowerCase().includes('acquir'));
+    const acquisition = result.items.find((r) => r.predicate.toLowerCase().includes('acquir'));
     if (acquisition && acquisition.metadata) {
       expect(acquisition.metadata).toBeTruthy();
     }

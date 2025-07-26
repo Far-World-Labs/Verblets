@@ -196,6 +196,10 @@ Return as JSON with the same event format, maintaining chronological order.`;
     // Reduce to build knowledge base
     const knowledgeBase = await reduce(eventStrings, knowledgeBaseInstructions, {
       initialValue: JSON.stringify({ events: [] }),
+      responseFormat: {
+        type: 'json_schema',
+        json_schema: timelineEventJsonSchema,
+      },
       ...(batchSize !== undefined && { batchSize }),
       llm,
       ...remainingOptions,

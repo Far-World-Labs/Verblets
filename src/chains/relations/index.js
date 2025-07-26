@@ -22,6 +22,66 @@ const DEFAULT_FIND_INSTRUCTIONS = `Extract relations and select the most signifi
 
 const DEFAULT_GROUP_INSTRUCTIONS = `Group relations by their predicates, subjects, or patterns.`;
 
+// ===== RDF Literal Parsing =====
+
+/**
+ * Parse RDF literal notation to JavaScript primitive
+ * @param {string} value - String that may contain RDF literal notation
+ * @returns {*} Parsed JavaScript value
+ */
+export function parseRDFLiteral(value) {
+  if (typeof value !== 'string') return value;
+
+  // Check if it's an RDF literal (contains ^^)
+  const match = value.match(/^(.+?)\^\^xsd:(.+)$/);
+  if (!match) return value;
+
+  const [, literalValue, dataType] = match;
+
+  switch (dataType) {
+    case 'integer':
+    case 'int':
+    case 'decimal':
+    case 'float':
+    case 'double':
+      return +literalValue;
+
+    case 'boolean':
+      return literalValue === 'true';
+
+    case 'date':
+      return new Date(`${literalValue}T00:00:00Z`);
+
+    case 'dateTime':
+      return new Date(literalValue);
+
+    case 'string':
+      return literalValue;
+
+    default:
+      // Unknown type, return original
+      return value;
+  }
+}
+
+/**
+ * Parse relations array to convert RDF literals to JavaScript primitives
+ * @param {Array<Object>} relations - Array of relation objects
+ * @returns {Array<Object>} Relations with parsed values
+ */
+export function parseRelations(relations) {
+  return relations.map((relation) => ({
+    ...relation,
+    object: parseRDFLiteral(relation.object),
+    // Also parse any metadata values that might be RDF literals
+    metadata: relation.metadata
+      ? Object.fromEntries(
+          Object.entries(relation.metadata).map(([key, value]) => [key, parseRDFLiteral(value)])
+        )
+      : relation.metadata,
+  }));
+}
+
 const REDUCE_PROCESS_STEPS = `Consolidate relations across text chunks:
 1. Merge duplicate relations - same triple mentioned in different chunks
 2. Resolve entity variations - ensure consistent canonical forms
@@ -129,8 +189,18 @@ Return a JSON object with an "items" array containing the relations.
 Each relation should be a tuple with:
 - subject: The subject entity (canonical form)
 - predicate: The relationship/predicate
-- object: The object entity (canonical form)
+- object: EITHER an entity OR a primitive value:
+  - FOR ENTITIES (people, places, organizations, things): use canonical form as plain string
+    Examples: "Apple Inc.", "Tim Cook", "San Francisco"
+  - FOR PRIMITIVE VALUES: use RDF literal notation:
+    * Numbers: 42^^xsd:integer, 3.14^^xsd:decimal, 1.5e10^^xsd:double
+    * Booleans: true^^xsd:boolean, false^^xsd:boolean
+    * Dates: 2024-01-15^^xsd:date, 2024-01-15T14:30:00Z^^xsd:dateTime
+    * Strings (when not entities): plain string or text^^xsd:string for explicit typing
 - metadata: Additional context (optional)
+
+IMPORTANT: In the JSON output, write RDF literals WITHOUT quotes around the value part.
+Example: {"object": "42^^xsd:integer"} NOT {"object": '"42"^^xsd:integer'}
 
 ${onlyJSON}`;
 
@@ -148,6 +218,17 @@ ${onlyJSON}`;
     ...options,
   });
 
+  // Handle auto-unwrapped response (chatGPT unwraps simple collection schemas)
+  // If response is an array, it's already the items array
+  if (Array.isArray(response)) {
+    return { items: parseRelations(response) };
+  }
+
+  // Otherwise handle as normal object with items property
+  if (response && response.items) {
+    response.items = parseRelations(response.items);
+  }
+
   return response;
 }
 
@@ -156,12 +237,13 @@ ${onlyJSON}`;
  * @param {string} text - Text to extract relations from
  * @param {string|Object} instructions - Relation extraction instructions
  * @param {Object} config - Configuration options
- * @returns {Promise<Object>} Object with relations array
+ * @returns {Promise<Array>} Array of relation objects
  */
 export async function extractRelations(text, instructions, config = {}) {
   const spec = await relationSpec(instructions, config);
   const entities = typeof instructions === 'object' ? instructions.entities : config.entities;
-  return await applyRelations(text, spec, { ...config, entities });
+  const result = await applyRelations(text, spec, { ...config, entities });
+  return result.items || [];
 }
 
 // ===== Instruction Builders =====
@@ -367,7 +449,8 @@ ${asXML(specification, { tag: 'relation-specification' })}`;
  */
 export function createRelationExtractor(specification, config = {}) {
   const extractorFunction = async function (input) {
-    return await applyRelations(input, specification, config);
+    const result = await applyRelations(input, specification, config);
+    return result.items || [];
   };
 
   // Add specification property for introspection
