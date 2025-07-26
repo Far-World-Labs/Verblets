@@ -50,6 +50,7 @@ import detectPatterns from './chains/detect-patterns/index.js';
 import detectThreshold from './chains/detect-threshold/index.js';
 import documentShrink from './chains/document-shrink/index.js';
 import entities from './chains/entities/index.js';
+import relations from './chains/relations/index.js';
 
 import schemas from './json-schemas/index.js';
 import * as common from './constants/common.js';
@@ -155,6 +156,7 @@ export {
   people,
   popReference,
   reduce,
+  relations,
   timeline,
   truncate,
   veiledVariants,
