@@ -176,7 +176,7 @@ Each extracted relation follows this structure:
 {
   subject: "Apple Inc.",           // Canonical form of subject entity
   predicate: "acquired",           // Relationship/action
-  object: "Beats Electronics",     // Canonical form of object entity
+  object: "Beats Electronics",     // Entity OR primitive value (see below)
   metadata: {                      // Optional additional context
     date: "2014",
     amount: "$3 billion",
@@ -184,6 +184,17 @@ Each extracted relation follows this structure:
   }
 }
 ```
+
+### Primitive Values in Relations
+
+The relations chain automatically detects and parses primitive values in the object field, converting them to appropriate JavaScript types:
+
+- **Numbers**: Integers, decimals, scientific notation → JavaScript `number`
+- **Booleans**: true/false → JavaScript `boolean`
+- **Dates**: ISO dates, date-times → JavaScript `Date` objects
+- **Strings**: Explicit string values (when not entities)
+
+The chain uses RDF literal notation internally but automatically converts to native JavaScript types for ease of use.
 
 ## Use Cases
 
