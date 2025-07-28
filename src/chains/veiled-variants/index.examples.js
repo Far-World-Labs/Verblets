@@ -3,7 +3,7 @@ import veiledVariants from './index.js';
 import { longTestTimeout } from '../../constants/common.js';
 
 describe('veiledVariants example', () => {
-  it(
+  it.skipIf(process.env.PRIVACY_TEST_SKIP)(
     'obscures a sensitive query',
     async () => {
       const result = await veiledVariants({

@@ -26,7 +26,8 @@ export default class TimedAbortController extends AbortController {
    * @param {number} timeout - The time in milliseconds after which to automatically trigger the abort signal.
    */
   constructor(timeout) {
-    super(`AbortError: The operation timed out after ${timeout}ms`);
+    super();
+    this.timeout = timeout;
     this.timeoutId = setTimeout(() => {
       this.abort();
     }, timeout);

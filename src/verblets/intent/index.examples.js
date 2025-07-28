@@ -1,19 +1,11 @@
 import Ajv from 'ajv';
-import fs from 'node:fs/promises';
 import { describe, expect, it, beforeAll, afterAll } from 'vitest';
 import aiExpect from '../../chains/expect/index.js';
 import { longTestTimeout } from '../../constants/common.js';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
+import { intent as intentSchema } from '../../json-schemas/index.js';
+import { env } from '../../lib/env/index.js';
 
 import intent from './index.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-async function getIntentSchema() {
-  return JSON.parse(await fs.readFile(join(__dirname, '../../json-schemas/intent.json')));
-}
 
 const travelOperations = [
   {
@@ -63,28 +55,28 @@ const examples = [
   {
     text: 'Give me a flight to Burgas',
     operations: travelOperations,
-    schema: getIntentSchema,
+    schema: () => intentSchema,
   },
   {
     text: 'Lookup a song by the quote "I just gotta tell you how I\'m feeling"',
     operations: musicOperations,
-    schema: getIntentSchema,
+    schema: () => intentSchema,
   },
 ];
 
 describe('Intent verblet', () => {
   // Set environment mode to 'none' for all tests to avoid throwing
-  const originalMode = process.env.LLM_EXPECT_MODE;
+  const originalMode = env.LLM_EXPECT_MODE;
 
   beforeAll(() => {
-    process.env.LLM_EXPECT_MODE = 'none';
+    env.LLM_EXPECT_MODE = 'none';
   });
 
   afterAll(() => {
     if (originalMode !== undefined) {
-      process.env.LLM_EXPECT_MODE = originalMode;
+      env.LLM_EXPECT_MODE = originalMode;
     } else {
-      delete process.env.LLM_EXPECT_MODE;
+      delete env.LLM_EXPECT_MODE;
     }
   });
 
@@ -133,7 +125,7 @@ describe('Intent verblet', () => {
       const result = await intent(travelRequest, travelOperations);
 
       // Traditional schema validation
-      const schema = await getIntentSchema();
+      const schema = intentSchema;
       const ajv = new Ajv();
       const validate = ajv.compile(schema);
       expect(validate(result)).toBe(true);
@@ -160,7 +152,7 @@ describe('Intent verblet', () => {
       const result = await intent(musicQuery, musicOperations);
 
       // Schema validation
-      const schema = await getIntentSchema();
+      const schema = intentSchema;
       const ajv = new Ajv();
       const validate = ajv.compile(schema);
       expect(validate(result)).toBe(true);

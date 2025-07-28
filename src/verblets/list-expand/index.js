@@ -1,29 +1,14 @@
-import fs from 'node:fs/promises';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import chatGPT from '../../lib/chatgpt/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
-
-// Get the directory of this module
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-/**
- * Load the JSON schema for list expand results
- * @returns {Promise<Object>} JSON schema for validation
- */
-async function getListExpandSchema() {
-  const schemaPath = path.join(__dirname, 'list-expand-result.json');
-  return JSON.parse(await fs.readFile(schemaPath, 'utf8'));
-}
+import listExpandSchema from './list-expand-result.json';
 
 /**
  * Create model options for structured outputs
  * @param {string|Object} llm - LLM model name or configuration object
- * @returns {Promise<Object>} Model options for chatGPT
+ * @returns {Object} Model options for chatGPT
  */
-async function createModelOptions(llm = 'fastGoodCheap') {
-  const schema = await getListExpandSchema();
+function createModelOptions(llm = 'fastGoodCheap') {
+  const schema = listExpandSchema;
 
   const responseFormat = {
     type: 'json_schema',
@@ -71,7 +56,7 @@ const buildPrompt = function (list, count) {
  */
 export default async function listExpand(list, count = list.length * 2, config = {}) {
   const { llm, ...options } = config;
-  const modelOptions = await createModelOptions(llm);
+  const modelOptions = createModelOptions(llm);
   const output = await chatGPT(buildPrompt(list, count), { modelOptions, ...options });
 
   // Extract items from the object structure

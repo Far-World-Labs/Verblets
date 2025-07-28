@@ -1,6 +1,3 @@
-import fs from 'node:fs/promises';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { operationTimeoutMultiplier } from '../../constants/models.js';
 import chatGPT from '../../lib/chatgpt/index.js';
 import {
@@ -9,35 +6,21 @@ import {
   constants as promptConstants,
 } from '../../prompts/index.js';
 import modelService from '../../services/llm-model/index.js';
+import listResultSchema from './list-result.json';
 
 const { onlyJSON, contentIsTransformationSource, onlyJSONArray } = promptConstants;
-
-// Get the directory of this module
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-/**
- * Load the JSON schema for list results
- * @returns {Promise<Object>} JSON schema for validation
- */
-async function getListSchema() {
-  const schemaPath = path.join(__dirname, 'list-result.json');
-  return JSON.parse(await fs.readFile(schemaPath, 'utf8'));
-}
 
 /**
  * Create model options for structured outputs
  * @param {string|Object} llm - LLM model name or configuration object
  * @returns {Promise<Object>} Model options for chatGPT
  */
-async function createModelOptions(llm = 'fastGoodCheap') {
-  const schema = await getListSchema();
-
+function createModelOptions(llm = 'fastGoodCheap') {
   const responseFormat = {
     type: 'json_schema',
     json_schema: {
       name: 'list_result',
-      schema,
+      schema: listResultSchema,
     },
   };
 
@@ -98,7 +81,7 @@ export const generateList = async function* generateListGenerator(text, options 
 
     let resultsNew = [];
     try {
-      const modelOptions = await createModelOptions(model);
+      const modelOptions = createModelOptions(model);
       // eslint-disable-next-line no-await-in-loop
       const results = await chatGPT(listPrompt, {
         modelOptions,
@@ -173,7 +156,7 @@ export default async function list(prompt, config = {}) {
   const { llm, schema, ...options } = config;
   const fullPrompt = `${prompt}\n\n${onlyJSONArray}`;
 
-  const modelOptions = await createModelOptions(llm);
+  const modelOptions = createModelOptions(llm);
   const response = await chatGPT(fullPrompt, {
     modelOptions,
     ...options,

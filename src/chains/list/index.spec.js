@@ -1,19 +1,18 @@
-import fs from 'node:fs/promises';
 import { describe, expect, it, vi } from 'vitest';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
-
-import toObject from '../to-object/index.js';
 import list from './index.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-const loadSchema = async () => {
-  const file = (await fs.readFile(join(__dirname, '../../json-schemas/cars-test.json'))).toString();
-
-  return toObject(file);
-};
+// Inline schema instead of loading from file for browser compatibility
+const getSchema = () => ({
+  type: 'object',
+  properties: {
+    make: { type: 'string' },
+    model: { type: 'string' },
+    releaseDate: { type: 'string', format: 'date-time' },
+    maxRange: { type: 'number', description: 'Max range in miles' },
+    batteryCapacity: { type: 'number', description: 'Battery capacity in kWh' },
+    startingCost: { type: 'number', description: 'Starting cost in USD' },
+  },
+});
 
 vi.mock('../../lib/chatgpt/index.js', () => ({
   default: vi.fn().mockImplementation((text) => {
@@ -37,7 +36,7 @@ const examples = [
     name: 'Basic usage with schema',
     inputs: {
       description: '2021 EV cars',
-      schema: loadSchema,
+      schema: getSchema,
     },
     want: { listModelContains: /Model Y/ },
   },

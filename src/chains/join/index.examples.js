@@ -92,9 +92,13 @@ describe('join examples', () => {
     'transforms final result with custom function',
     async () => {
       const fragments = ['Hello', 'world', 'today', 'is', 'sunny'];
-      const rawResult = await join(fragments, 'Connect these words into a natural sentence', {
-        chunkSize: 2,
-      });
+      const rawResult = await join(
+        fragments,
+        'Connect these words into a natural, coherent sentence by adding necessary filler words to make it semantically meaningful',
+        {
+          chunkSize: 2,
+        }
+      );
       const result = `[${rawResult}]`; // Apply transformation after join
 
       const hasProperBrackets = result.startsWith('[') && result.endsWith(']');

@@ -1,39 +1,22 @@
-import fs from 'node:fs/promises';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import chatGPT from '../../lib/chatgpt/index.js';
 import score from '../score/index.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 import modelService from '../../services/llm-model/index.js';
+import disambiguateMeaningsSchema from './disambiguate-meanings-result.json';
 
 const { onlyJSONStringArray } = promptConstants;
-
-// Get the directory of this module
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-/**
- * Load the JSON schema for disambiguate meanings results
- * @returns {Promise<Object>} JSON schema for validation
- */
-async function getDisambiguateMeaningsSchema() {
-  const schemaPath = path.join(__dirname, 'disambiguate-meanings-result.json');
-  return JSON.parse(await fs.readFile(schemaPath, 'utf8'));
-}
 
 /**
  * Create model options for structured outputs
  * @param {string|Object} llm - LLM model name or configuration object
- * @returns {Promise<Object>} Model options for chatGPT
+ * @returns {Object} Model options for chatGPT
  */
-async function createModelOptions(llm = 'fastGoodCheap') {
-  const schema = await getDisambiguateMeaningsSchema();
-
+function createModelOptions(llm = 'fastGoodCheap') {
   const responseFormat = {
     type: 'json_schema',
     json_schema: {
       name: 'disambiguate_meanings_result',
-      schema,
+      schema: disambiguateMeaningsSchema,
     },
   };
 
@@ -61,7 +44,7 @@ export const getMeanings = async (term, config = {}) => {
   const { model = modelService.getBestPublicModel(), llm, ...options } = config;
   const prompt = meaningsPrompt(term);
   const budget = model.budgetTokens(prompt);
-  const modelOptions = await createModelOptions(llm);
+  const modelOptions = createModelOptions(llm);
   const response = await chatGPT(prompt, {
     maxTokens: budget.completion,
     modelOptions,

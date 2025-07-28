@@ -1,22 +1,11 @@
-import fs from 'node:fs/promises';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import chatGPT from '../../lib/chatgpt/index.js';
 import { constants as promptConstants, asXML } from '../../prompts/index.js';
+import fillMissingSchema from './fill-missing-result.json';
 
 const { tryCompleteData, contentIsMain, asJSON } = promptConstants;
 
-// Determine directory of this module
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-async function getFillMissingSchema() {
-  const schemaPath = path.join(__dirname, 'fill-missing-result.json');
-  return JSON.parse(await fs.readFile(schemaPath, 'utf8'));
-}
-
-async function createModelOptions(llm = 'fastGoodCheap') {
-  const schema = await getFillMissingSchema();
+function createModelOptions(llm = 'fastGoodCheap') {
+  const schema = fillMissingSchema;
 
   const responseFormat = {
     type: 'json_schema',
@@ -46,7 +35,7 @@ export const buildPrompt = (text) =>
 export default async function fillMissing(text, config = {}) {
   const { llm, ...options } = config;
   const prompt = buildPrompt(text);
-  const modelOptions = await createModelOptions(llm);
+  const modelOptions = createModelOptions(llm);
   const response = await chatGPT(prompt, { modelOptions, ...options });
   return response;
 }

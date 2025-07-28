@@ -1,0 +1,11 @@
+import fs from 'node:fs/promises';
+import { analyzeCode } from './shared.js';
+
+export default async function test(path, instructions) {
+  try {
+    const code = await fs.readFile(path, 'utf-8');
+    return await analyzeCode(code, instructions);
+  } catch (error) {
+    return [`Error analyzing ${path}: ${error.message}`];
+  }
+}

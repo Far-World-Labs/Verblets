@@ -1,5 +1,5 @@
 import { glob } from 'glob';
-import fs from 'fs';
+import fs from 'node:fs';
 
 /**
  * Create a target specification for directories matching a glob pattern

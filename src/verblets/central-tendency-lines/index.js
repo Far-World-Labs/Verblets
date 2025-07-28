@@ -1,21 +1,6 @@
-import fs from 'node:fs/promises';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import chatGPT from '../../lib/chatgpt/index.js';
 import { onlyJSON, strictFormat } from '../../prompts/constants.js';
-
-// Get the directory of this module
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-/**
- * Load the JSON schema for central tendency results
- * @returns {Promise<Object>} JSON schema for validation
- */
-async function getCentralTendencySchema() {
-  const schemaPath = path.join(__dirname, 'central-tendency-result.json');
-  return JSON.parse(await fs.readFile(schemaPath, 'utf8'));
-}
+import centralTendencySchema from './central-tendency-result.json';
 
 /**
  * Core prompt template for central tendency evaluation using cognitive science principles.
@@ -99,14 +84,14 @@ ${prompt}`;
  * @param {string|Object} llm - LLM model name or configuration object
  * @param {string} schemaName - Name for the JSON schema
  * @param {Object} [customSchema] - Custom schema to use instead of default
- * @returns {Promise<Object>} Model options for chatGPT
+ * @returns {Object} Model options for chatGPT
  */
-async function createModelOptions(
+function createModelOptions(
   llm = 'fastGoodCheap',
   schemaName = 'central_tendency_result',
   customSchema = null
 ) {
-  const schema = customSchema || (await getCentralTendencySchema());
+  const schema = customSchema || centralTendencySchema;
 
   const responseFormat = {
     type: 'json_schema',
@@ -155,7 +140,7 @@ export default async function centralTendency(item, seedItems, config = {}) {
   const { context = '', coreFeatures = [], llm = 'fastGoodCheap' } = config;
 
   const prompt = buildCentralTendencyPrompt(item, seedItems, { context, coreFeatures });
-  const modelOptions = await createModelOptions(llm, 'central_tendency_result');
+  const modelOptions = createModelOptions(llm, 'central_tendency_result');
 
   const response = await chatGPT(prompt, { modelOptions });
   return response;

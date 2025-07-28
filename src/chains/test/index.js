@@ -4,7 +4,7 @@ import { asXML } from '../../prompts/wrap-variable.js';
 import { asJSON } from '../../prompts/constants.js';
 import { testResultJsonSchema } from './schemas.js';
 
-export default async function test(path, instructions) {
+export default async function test(path, instructions, options = {}) {
   try {
     const code = await fs.readFile(path, 'utf-8');
 
@@ -26,8 +26,9 @@ GUIDELINES:
 ${asJSON}`;
 
     const result = await chatGPT(prompt, {
+      ...options,
       modelOptions: {
-        modelName: 'fastGoodCheap',
+        ...options.modelOptions,
         response_format: {
           type: 'json_schema',
           json_schema: testResultJsonSchema,

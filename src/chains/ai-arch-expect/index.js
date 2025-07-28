@@ -1,5 +1,5 @@
-import fs from 'fs';
-import path from 'path';
+import fs from 'node:fs';
+import path from 'node:path';
 import { expect } from 'vitest';
 import chatgpt from '../../lib/chatgpt/index.js';
 import reduce from '../reduce/index.js';

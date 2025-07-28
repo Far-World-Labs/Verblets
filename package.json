@@ -4,6 +4,13 @@
   "description": "Verblets is a collection of tools for building LLM-powered applications.",
   "main": "src/index.js",
   "type": "module",
+  "exports": {
+    ".": {
+      "node": "./src/index.js",
+      "browser": "./src/index.browser.js",
+      "default": "./src/index.js"
+    }
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Far-World-Labs/Verblets.git"
@@ -23,6 +30,10 @@
     "arch": "source .env && vitest --config .vitest.config.arch.js",
     "arch:once": "source .env && vitest --config .vitest.config.arch.js --run",
     "arch:debug": "source .env && ARCH_DEBUG=true vitest --config .vitest.config.arch.js --run",
+    "build": "vite build",
+    "build:watch": "vite build --watch",
+    "test:browser": "vitest --config vitest.config.browser.js",
+    "examples:browser": "source .env && vitest --config vitest.config.browser.examples.js",
     "lint": "eslint 'src/**/*.{js,jsx}'",
     "lint:fix": "eslint 'src/**/*.{js,jsx}' --fix",
     "check:deps": "npx npm-deprecated-check current",
@@ -71,7 +82,7 @@
   "devDependencies": {
     "@eslint/js": "^9.28.0",
     "@stylistic/eslint-plugin": "^4.4.0",
-    "@types/node": "^18.16.3",
+    "@types/node": "^20.19.0",
     "@vitest/ui": "^3.1.3",
     "dependency-cruiser": "^16.10.3",
     "eslint": "^9.28.0",
@@ -83,11 +94,13 @@
     "eslint-plugin-vitest": "^0.5.4",
     "husky": "^8.0.3",
     "install-peerdeps": "^3.0.3",
+    "jsdom": "^26.1.0",
     "lint-staged": "^13.2.2",
     "nodemon": "^3.1.10",
     "npm-deprecated-check": "^1.5.0",
     "prettier": "^2.8.8",
     "release-it": "^19.0.3",
+    "vite": "^7.0.6",
     "why-is-node-running": "^2.2.2"
   },
   "lint-staged": {

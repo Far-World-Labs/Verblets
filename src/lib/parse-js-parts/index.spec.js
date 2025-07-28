@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import parseJSParts from './index.js';
+import { runtime } from '../../lib/env/index.js';
 
 const examples = [
   {
@@ -141,14 +142,25 @@ describe('Parse JS parts', () => {
           const found =
             result.functionsMap[`${fn.type}:${fn.name}`]?.name ||
             result.functionsMap[`${fn.type}:${fn.className}.${fn.name}`]?.name;
-          expect(fn.name).equals(found);
+
+          // In browser, parse-js-parts returns empty maps
+          if (runtime === 'browser') {
+            expect(found).toBeUndefined();
+          } else {
+            expect(fn.name).equals(found);
+          }
         });
       }
       if (example.want.importsMap) {
         example.want.importsMap.forEach((importDef) => {
-          expect(importDef.declaration).equals(
-            result.importsMap[`${importDef.source}`]?.declaration
-          );
+          // In browser, parse-js-parts returns empty maps
+          if (runtime === 'browser') {
+            expect(result.importsMap[`${importDef.source}`]?.declaration).toBeUndefined();
+          } else {
+            expect(result.importsMap[`${importDef.source}`]?.declaration).equals(
+              importDef.declaration
+            );
+          }
         });
       }
     });
