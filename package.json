@@ -32,7 +32,7 @@
     "arch:debug": "source .env && ARCH_DEBUG=true vitest --config .vitest.config.arch.js --run",
     "build": "vite build",
     "build:watch": "vite build --watch",
-    "test:browser": "vitest --config vitest.config.browser.js",
+    "test:browser": "source .env && vitest --config vitest.config.browser.js",
     "examples:browser": "source .env && vitest --config vitest.config.browser.examples.js",
     "lint": "eslint 'src/**/*.{js,jsx}'",
     "lint:fix": "eslint 'src/**/*.{js,jsx}' --fix",
