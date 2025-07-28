@@ -1,16 +1,9 @@
-import { readFileSync } from 'fs';
-import { join } from 'path';
-import { fileURLToPath } from 'url';
 import chatGPT from '../../lib/chatgpt/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { constants as promptConstants } from '../../prompts/index.js';
+import relationResultSchema from './relation-result.json';
 
 const { onlyJSON } = promptConstants;
-
-const __dirname = fileURLToPath(new URL('.', import.meta.url));
-const relationResultSchema = JSON.parse(
-  readFileSync(join(__dirname, 'relation-result.json'), 'utf8')
-);
 
 // ===== Default Instructions =====
 
