@@ -61,7 +61,7 @@ jobs:
       - name: Run tests
         run: npm test -- --run
       - name: Run browser tests
-        run: npm run test:browser
+        run: npm run test:browser -- --run
 
   build:
     name: 🛠️ Build
