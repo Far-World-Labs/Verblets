@@ -1,32 +1,17 @@
-import fs from 'node:fs/promises';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import chatGPT from '../../lib/chatgpt/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { constants as promptConstants } from '../../prompts/index.js';
+import commonalitiesSchema from './commonalities-result.json';
 
 const { contentIsQuestion, tryCompleteData, onlyJSONStringArray } = promptConstants;
-
-// Get the directory of this module
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-/**
- * Load the JSON schema for commonalities results
- * @returns {Promise<Object>} JSON schema for validation
- */
-async function getCommonalitiesSchema() {
-  const schemaPath = path.join(__dirname, 'commonalities-result.json');
-  return JSON.parse(await fs.readFile(schemaPath, 'utf8'));
-}
 
 /**
  * Create model options for structured outputs
  * @param {string|Object} llm - LLM model name or configuration object
- * @returns {Promise<Object>} Model options for chatGPT
+ * @returns {Object} Model options for chatGPT
  */
-async function createModelOptions(llm = 'fastGoodCheap') {
-  const schema = await getCommonalitiesSchema();
+function createModelOptions(llm = 'fastGoodCheap') {
+  const schema = commonalitiesSchema;
 
   const responseFormat = {
     type: 'json_schema',
@@ -76,7 +61,7 @@ export default async function commonalities(items, config = {}) {
   }
 
   const { llm, ...options } = config;
-  const modelOptions = await createModelOptions(llm);
+  const modelOptions = createModelOptions(llm);
 
   const output = await chatGPT(buildPrompt(items, options), {
     modelOptions,

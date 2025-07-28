@@ -4,24 +4,9 @@ import chatGPT from '../../lib/chatgpt/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 import { intersectionElementsSchema } from './schemas.js';
-import fs from 'node:fs/promises';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-
-// Get the directory of this module
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import intersectionResultSchema from './intersection-result.json';
 
 const { asJSON, asWrappedArrayJSON, strictFormat, contentIsQuestion } = promptConstants;
-
-/**
- * Load the JSON schema for intersection results
- * @returns {Promise<Object>} JSON schema for validation
- */
-async function getIntersectionSchema() {
-  const schemaPath = path.join(__dirname, 'intersection-result.json');
-  return JSON.parse(await fs.readFile(schemaPath, 'utf8'));
-}
 
 /**
  * Generalized prompt for finding intersection elements
@@ -153,14 +138,12 @@ export default async function intersections(items, options = {}) {
  * @param {string} schemaName - Name for the JSON schema
  * @returns {Promise<Object>} Model options with schema validation
  */
-async function createModelOptions(llm = 'fastGoodCheap', schemaName = 'intersection_result') {
-  const schema = await getIntersectionSchema();
-
+function createModelOptions(llm = 'fastGoodCheap', schemaName = 'intersection_result') {
   const responseFormat = {
     type: 'json_schema',
     json_schema: {
       name: schemaName,
-      schema,
+      schema: intersectionResultSchema,
     },
   };
 
@@ -200,7 +183,7 @@ Ensure each intersection has:
 Return the properly structured JSON object with an "intersections" property containing the results.`;
 
   try {
-    const modelOptions = await createModelOptions(llm, 'intersection_result');
+    const modelOptions = createModelOptions(llm, 'intersection_result');
     const response = await chatGPT(prompt, { modelOptions });
     const parsed = typeof response === 'string' ? JSON.parse(response) : response;
 

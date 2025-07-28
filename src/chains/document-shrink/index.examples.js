@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import documentShrink from './index.js';
 import aiExpect from '../expect/index.js';
-import fs from 'fs';
-import path from 'path';
+import fs from 'node:fs';
+import path from 'node:path';
 
 // Helper to show cache message after 5 seconds
 function withCacheMessage(testFn) {

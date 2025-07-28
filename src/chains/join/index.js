@@ -46,7 +46,7 @@ export default async function join(
 Window ${windowIndex + 1} of ${windows.length} - Join these fragments:
 ${fragmentList}
 
-Important: This is part of a larger sequence. Join these fragments while being mindful that this result will be combined with other processed windows. Output only the joined result for this window.`;
+Important: This is part of a larger sequence. Join these fragments while being mindful that this result will be combined with other processed windows. Add necessary connecting words, prepositions, conjunctions, or other filler text to create a coherent, grammatically correct, and semantically meaningful result. Output only the joined result for this window.`;
 
     const result = await retry(
       () => chatGPT(instruction, { modelOptions: { ...llm }, ...options }),
@@ -96,7 +96,7 @@ The terminal ends of both sections should be preserved. Only resolve the overlap
         ', '
       )}
 
-Output only the final stitched result with terminals preserved.`;
+Add necessary connecting words, prepositions, conjunctions, or other filler text to create a coherent, grammatically correct, and semantically meaningful result. Output only the final stitched result with terminals preserved.`;
 
       const stitchResult = await retry(
         () => chatGPT(stitchInstruction, { modelOptions: { ...llm }, ...options }),
@@ -112,7 +112,7 @@ Join these two non-overlapping sections:
 1. ${stitchedResult}
 2. ${currentResult.content}
 
-Output only the joined result.`;
+Add necessary connecting words, prepositions, conjunctions, or other filler text to create a coherent, grammatically correct, and semantically meaningful result. Output only the joined result.`;
 
       const joinResult = await retry(
         () => chatGPT(joinInstruction, { modelOptions: { ...llm }, ...options }),

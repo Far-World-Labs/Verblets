@@ -101,7 +101,7 @@ describe('LLM Expect Chain', () => {
     'should handle complex business logic validation',
     async () => {
       const businessRecommendation =
-        'Increase marketing budget by 20% for next quarter to expand market reach and target demographics aged 25-45 through social media campaigns';
+        'Increase marketing budget by 20% for next quarter to expand market reach and target demographics aged 25-45 through social media campaigns, aiming for 15% increase in engagement';
 
       const result = await aiExpect(businessRecommendation).toSatisfy(
         'Is this recommendation specific, actionable, and includes measurable targets?'

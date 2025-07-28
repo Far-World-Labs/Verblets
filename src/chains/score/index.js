@@ -1,40 +1,23 @@
-import fs from 'node:fs/promises';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import chatGPT from '../../lib/chatgpt/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 import { scaleSpec } from '../scale/index.js';
 import map from '../map/index.js';
+import scoreSchema from './score-result.json';
 
 const { onlyJSON } = promptConstants;
-
-// Get the directory of this module
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-/**
- * Load the JSON schema for score results
- * @returns {Promise<Object>} JSON schema for validation
- */
-async function getScoreSchema() {
-  const schemaPath = path.join(__dirname, 'score-result.json');
-  return JSON.parse(await fs.readFile(schemaPath, 'utf8'));
-}
 
 /**
  * Create model options for structured outputs
  * @param {string|Object} llm - LLM model name or configuration object
- * @returns {Promise<Object>} Model options for chatGPT
+ * @returns {Object} Model options for chatGPT
  */
-async function createModelOptions(llm = 'fastGoodCheap') {
-  const schema = await getScoreSchema();
-
+function createModelOptions(llm = 'fastGoodCheap') {
   const responseFormat = {
     type: 'json_schema',
     json_schema: {
       name: 'score_result',
-      schema,
+      schema: scoreSchema,
     },
   };
 
@@ -79,7 +62,7 @@ ${onlyJSON}
 
 ${asXML(item, { tag: 'item' })}`;
 
-  const modelOptions = await createModelOptions();
+  const modelOptions = createModelOptions();
   const response = await chatGPT(prompt, {
     modelOptions,
     llm,

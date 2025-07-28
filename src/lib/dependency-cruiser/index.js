@@ -1,7 +1,7 @@
 import { cruise } from 'dependency-cruiser';
 import { asContext } from './src/chains/ai-arch-expect/index.js';
-import fs from 'fs';
-import path from 'path';
+import fs from 'node:fs';
+import path from 'node:path';
 
 // Dependency Cruiser integration for architectural assertions
 // Provides repository structure understanding and dependency analysis

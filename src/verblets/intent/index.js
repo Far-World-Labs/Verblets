@@ -1,29 +1,14 @@
-import fs from 'node:fs/promises';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import chatGPT from '../../lib/chatgpt/index.js';
 import { asXML } from '../../prompts/index.js';
-
-// Get the directory of this module
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-/**
- * Load the JSON schema for intent results
- * @returns {Promise<Object>} JSON schema for validation
- */
-async function getIntentSchema() {
-  const schemaPath = path.resolve(__dirname, '../../json-schemas/intent.json');
-  return JSON.parse(await fs.readFile(schemaPath, 'utf8'));
-}
+import { intent as intentSchema } from '../../json-schemas/index.js';
 
 /**
  * Create model options for structured outputs
  * @param {string|Object} llm - LLM model name or configuration object
- * @returns {Promise<Object>} Model options for chatGPT
+ * @returns {Object} Model options for chatGPT
  */
-async function createModelOptions(llm = 'fastGoodCheap') {
-  const schema = await getIntentSchema();
+function createModelOptions(llm = 'fastGoodCheap') {
+  const schema = intentSchema;
 
   const responseFormat = {
     type: 'json_schema',
@@ -92,7 +77,7 @@ Determine:
 
 Return the result as a structured JSON object with the operation name, extracted parameters, and any optional parameters that might be useful.`;
 
-  const modelOptions = await createModelOptions(llm);
+  const modelOptions = createModelOptions(llm);
   const response = await chatGPT(prompt, { modelOptions, ...options });
 
   return response;

@@ -1,77 +1,90 @@
 import { describe, expect as vitestExpect, it, vi, beforeEach, afterEach } from 'vitest';
-import { expectSimple, expect } from './index.js';
+import { expectSimple, expect } from './entry.js';
 import { longTestTimeout } from '../../constants/common.js';
+import { setTestEnv, saveTestEnv } from '../../../test/utils/env.js';
 
 // Mock the chatgpt function to avoid actual API calls
 vi.mock('../../lib/chatgpt/index.js', () => ({
-  default: vi.fn().mockImplementation((prompt) => {
-    // Handle exact equality checks
-    if (prompt.includes('Does the actual value strictly equal the expected value?')) {
-      if (prompt.includes('Actual: "hello"') && prompt.includes('Expected: "hello"')) {
-        return 'True';
+  default: vi.fn().mockImplementation((config) => {
+    // Handle both string and object API
+    const prompt = typeof config === 'string' ? config : config.messages?.[0]?.content || '';
+
+    // Debug log to see what prompt is being sent
+    // console.log('ChatGPT mock received:', prompt);
+
+    // Handle module identification request
+    if (prompt.includes('identify the import path of the function or module under test')) {
+      return './index.js';
+    }
+
+    // Handle current format: "Does the value satisfy the constraints?"
+    if (prompt.includes('Does the value satisfy the constraints?')) {
+      // Extract value, expected, and constraints from XML format
+      const valueMatch = prompt.match(/<value>(.+?)<\/value>/s);
+      const expectedMatch = prompt.match(/<expected>(.+?)<\/expected>/s);
+      const constraintsMatch = prompt.match(/<constraints>(.+?)<\/constraints>/s);
+
+      const actual = valueMatch?.[1];
+      const expected = expectedMatch?.[1];
+      const constraint = constraintsMatch?.[1];
+
+      // Normalize values by removing quotes if present
+      const normalize = (value) => {
+        if (!value) return '';
+        return value.replace(/^"|"$/g, '');
+      };
+
+      const actualNorm = normalize(actual);
+      const expectedNorm = normalize(expected);
+
+      // Handle equality checks - return boolean since we're using response_format
+      if (expected && constraint?.includes('same identity or meaning')) {
+        return actualNorm === expectedNorm;
       }
-      if (prompt.includes('Actual: "goodbye"') && prompt.includes('Expected: "hello"')) {
-        return 'False';
-      }
-      if (prompt.includes('Actual: "hello"') && prompt.includes('Expected: "goodbye"')) {
-        return 'False';
+
+      // Handle constraint-based validations
+      if (constraint) {
+        // Map of constraint patterns to their validation logic
+        const constraintValidators = {
+          'Is this a greeting?': () => actualNorm === 'Hello world!',
+          'Is this text professional and grammatically correct?': () =>
+            prompt.includes('well-written, professional email'),
+          'Does this person data look realistic?': () =>
+            prompt.includes('John Doe') && prompt.includes('age') && prompt.includes('30'),
+          'Is this recommendation specific and actionable?': () =>
+            prompt.includes('Increase marketing budget by 20%'),
+          'Does this profile represent an experienced software developer': () =>
+            prompt.includes('Alice Johnson') && prompt.includes('JavaScript'),
+          'Is this story opening engaging': () => prompt.includes('Once upon a time'),
+          'Does this represent similar but enhanced functionality?': () =>
+            prompt.includes('firstName') && prompt.includes('fullName'),
+          'Is this an engaging and creative start to a story?': () => true,
+        };
+
+        // Find and execute the matching validator
+        for (const [pattern, validator] of Object.entries(constraintValidators)) {
+          if (constraint.includes(pattern)) {
+            return validator();
+          }
+        }
       }
     }
 
-    // Handle constraint-based validations (format: "Given this constraint:")
-    if (prompt.includes('Given this constraint:')) {
-      if (prompt.includes('Is this a greeting?') && prompt.includes('Hello world!')) {
-        return 'True';
-      }
-
-      if (prompt.includes('Is this text professional and grammatically correct?')) {
-        if (prompt.includes('well-written, professional email')) {
-          return 'True';
-        }
-      }
-
-      if (prompt.includes('Does this person data look realistic?')) {
-        if (prompt.includes('John Doe') && prompt.includes('"age": 30')) {
-          return 'True';
-        }
-      }
-
-      if (prompt.includes('Is this recommendation specific and actionable?')) {
-        if (prompt.includes('Increase marketing budget by 20%')) {
-          return 'True';
-        }
-      }
-
-      if (prompt.includes('Does this profile represent an experienced software developer')) {
-        if (prompt.includes('Alice Johnson') && prompt.includes('JavaScript')) {
-          return 'True';
-        }
-      }
-
-      if (prompt.includes('Is this story opening engaging')) {
-        if (prompt.includes('Once upon a time')) {
-          return 'True';
-        }
-      }
-    }
-
-    // Default to False for unmatched cases
-    return 'False';
+    // Default to false for unmatched cases
+    return false;
   }),
 }));
 
 describe('expect chain', () => {
-  let originalEnv;
+  let restoreEnv;
 
   beforeEach(() => {
-    originalEnv = process.env.LLM_EXPECT_MODE;
+    restoreEnv = saveTestEnv('LLM_EXPECT_MODE');
   });
 
   afterEach(() => {
-    if (originalEnv !== undefined) {
-      process.env.LLM_EXPECT_MODE = originalEnv;
-    } else {
-      delete process.env.LLM_EXPECT_MODE;
+    if (restoreEnv) {
+      restoreEnv();
     }
   });
 
@@ -79,7 +92,7 @@ describe('expect chain', () => {
     it(
       'should return structured results in none mode',
       async () => {
-        process.env.LLM_EXPECT_MODE = 'none';
+        setTestEnv('LLM_EXPECT_MODE', 'none');
 
         const [passed, details] = await expect('hello', 'hello');
 
@@ -95,7 +108,7 @@ describe('expect chain', () => {
     it(
       'should handle failed assertions in none mode',
       async () => {
-        process.env.LLM_EXPECT_MODE = 'none';
+        setTestEnv('LLM_EXPECT_MODE', 'none');
 
         const [passed, details] = await expect('hello', 'goodbye');
 
@@ -111,11 +124,11 @@ describe('expect chain', () => {
     it(
       'should throw errors in error mode',
       async () => {
-        process.env.LLM_EXPECT_MODE = 'error';
+        // Set environment variable before using expect
+        setTestEnv('LLM_EXPECT_MODE', 'error');
 
-        await vitestExpect(async () => {
-          await expect('hello', 'goodbye');
-        }).rejects.toThrow('LLM Assertion Failed');
+        // Expect the promise to reject with the error
+        await vitestExpect(expect('hello', 'goodbye')).rejects.toThrow('LLM Assertion Failed');
       },
       longTestTimeout
     );
@@ -123,7 +136,7 @@ describe('expect chain', () => {
     it(
       'should log in info mode',
       async () => {
-        process.env.LLM_EXPECT_MODE = 'info';
+        setTestEnv('LLM_EXPECT_MODE', 'info');
         const consoleSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
 
         const [passed] = await expect('hello', 'goodbye');
@@ -141,7 +154,7 @@ describe('expect chain', () => {
     it(
       'should handle constraint-based validation',
       async () => {
-        process.env.LLM_EXPECT_MODE = 'none';
+        setTestEnv('LLM_EXPECT_MODE', 'none');
 
         const [passed, details] = await expect('Hello world!', undefined, 'Is this a greeting?');
 
@@ -248,7 +261,7 @@ describe('expect chain', () => {
     it(
       'should default to none mode when env var is not set',
       async () => {
-        delete process.env.LLM_EXPECT_MODE;
+        setTestEnv('LLM_EXPECT_MODE', undefined);
 
         const [passed] = await expect('hello', 'goodbye');
         vitestExpect(passed).toBe(false);
@@ -260,7 +273,7 @@ describe('expect chain', () => {
     it(
       'should handle invalid env var values',
       async () => {
-        process.env.LLM_EXPECT_MODE = 'invalid';
+        setTestEnv('LLM_EXPECT_MODE', 'invalid');
 
         const [passed] = await expect('hello', 'goodbye');
         vitestExpect(passed).toBe(false);
@@ -278,7 +291,12 @@ describe('expect chain', () => {
 
         vitestExpect(details.file).toBeDefined();
         vitestExpect(details.line).toBeTypeOf('number');
-        vitestExpect(details.line).toBeGreaterThan(0);
+        // In browser environment, line number is 0
+        if (typeof window !== 'undefined') {
+          vitestExpect(details.line).toBe(0);
+        } else {
+          vitestExpect(details.line).toBeGreaterThan(0);
+        }
       },
       longTestTimeout
     );

@@ -12,6 +12,7 @@ import { get as getPromptResult, set as setPromptResult } from '../prompt-cache/
 import TimedAbortController from '../timed-abort-controller/index.js';
 import modelService from '../../services/llm-model/index.js';
 import { getClient as getRedis } from '../../services/redis/index.js';
+import { env } from '../env/index.js';
 
 // Helper to detect if a response format schema is a simple collection wrapper
 export const isSimpleCollectionSchema = (responseFormat) => {
@@ -157,7 +158,7 @@ export const run = async (prompt, config = {}) => {
   });
 
   // Check if caching is disabled via environment variable
-  const cachingDisabled = process.env.DISABLE_CACHE === 'true';
+  const cachingDisabled = env.DISABLE_CACHE === 'true';
 
   let cacheResult = null;
   let cache = null;

@@ -1,16 +1,18 @@
-import fs from 'node:fs/promises';
 import chatGPT from '../../lib/chatgpt/index.js';
 import { asSchemaOrgText } from '../../prompts/index.js';
+import { schemaOrgSchemas } from '../../json-schemas/index.js';
 
-const getSchema = async (type) => {
-  return JSON.parse(
-    await fs.readFile(`./src/json-schemas/schema-dot-org-${type.toLowerCase()}.json`)
-  );
+const getSchema = (type) => {
+  const schema = schemaOrgSchemas[type.toLowerCase()];
+  if (!schema) {
+    throw new Error(`Unknown schema.org type: ${type}`);
+  }
+  return schema;
 };
 
 export default async (text, type, config = {}) => {
   const { llm, ...options } = config;
-  const schema = type ? await getSchema(type) : undefined;
+  const schema = type ? getSchema(type) : undefined;
 
   const modelOptions = schema
     ? {

@@ -1,6 +1,6 @@
-import crypto from 'node:crypto';
 import * as R from 'ramda';
 
+import { createHash } from '../crypto/index.js';
 import { cacheTTL } from '../../constants/models.js';
 
 const variableKeys = ['created', 'id', 'max_tokens', 'usage'];
@@ -22,16 +22,14 @@ const sortKeys = (data) => {
   return sortedData;
 };
 
-export const toKey = (data) => {
-  return crypto
-    .createHash('sha256')
-    .update(JSON.stringify(sortKeys(data)))
-    .digest('hex')
-    .toString();
+export const toKey = async (data) => {
+  const hash = await createHash('sha256');
+  return hash.update(JSON.stringify(sortKeys(data))).digest('hex');
 };
 
 export const get = async (redis, inputData) => {
-  const resultFromRedis = await redis.get(toKey(R.omit(variableKeys, inputData)));
+  const key = await toKey(R.omit(variableKeys, inputData));
+  const resultFromRedis = await redis.get(key);
 
   const foundInRedis = !!resultFromRedis;
 
@@ -44,7 +42,8 @@ export const get = async (redis, inputData) => {
 };
 
 export const set = async (redis, inputData, outputData) => {
-  await redis.set(toKey(R.omit(variableKeys, inputData)), JSON.stringify(outputData), {
+  const key = await toKey(R.omit(variableKeys, inputData));
+  await redis.set(key, JSON.stringify(outputData), {
     EX: cacheTTL,
   });
 };

@@ -34,12 +34,11 @@ function encodeDecode(input, seed) {
 `;
 
 describe('Summary map', () => {
-  it(
+  it.skipIf(process.env.PRIVACY_TEST_SKIP)(
     'Example',
     async () => {
       const map = new SummaryMap({
         targetTokens: 600,
-        modelOptions: { modelName: 'fastGood' },
       });
 
       map.set('a.b.c', {

@@ -1,5 +1,5 @@
-import fs from 'fs/promises';
-import path from 'path';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 
 import parseJSParts from '../parse-js-parts/index.js';
 import search from '../search-best-first/index.js';

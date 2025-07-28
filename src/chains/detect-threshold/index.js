@@ -1,16 +1,7 @@
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import reduce from '../reduce/index.js';
 import chatGPT from '../../lib/chatgpt/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-const thresholdResultSchema = JSON.parse(
-  fs.readFileSync(path.join(__dirname, 'threshold-result.json'), 'utf8')
-);
+import thresholdResultSchema from './threshold-result.json';
 
 function calculateStatistics(data, targetProperty) {
   const values = data

@@ -2,14 +2,9 @@ import chatGPT from '../../lib/chatgpt/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 import { scaleSpecificationJsonSchema } from './schemas.js';
-import { readFileSync } from 'fs';
-import { join } from 'path';
-import { fileURLToPath } from 'url';
+import scaleResultSchema from './scale-result.json';
 
 const { onlyJSON } = promptConstants;
-
-const __dirname = fileURLToPath(new URL('.', import.meta.url));
-const scaleResultSchema = JSON.parse(readFileSync(join(__dirname, 'scale-result.json'), 'utf8'));
 
 // ===== Default Instructions =====
 

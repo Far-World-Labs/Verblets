@@ -6,19 +6,29 @@
  * validation and provides sensible defaults for different use cases.
  */
 
+import { env, runtime } from '../lib/env/index.js';
+
 // Validate critical environment variables
 function validateEnvironment() {
   const required = ['OPENAI_API_KEY'];
-  const missing = required.filter((key) => !process.env[key] && process.env.NODE_ENV !== 'test');
+  const missing = required.filter((key) => !env[key] && env.NODE_ENV !== 'test');
 
   if (missing.length > 0) {
     console.warn(`Warning: Missing environment variables: ${missing.join(', ')}`);
     console.warn('Some model configurations may not work properly.');
+
+    // Special warning for browser environments about API keys
+    if (runtime.isBrowser && missing.includes('OPENAI_API_KEY') && env.OPENAI_API_KEY) {
+      console.warn(
+        'WARNING: OpenAI API key detected in browser environment. ' +
+          'For security, please use a proxy endpoint instead and configure it via OPENAI_PROXY_URL env variable.'
+      );
+    }
   }
 }
 
 // Validate environment on module load (except in tests)
-if (process.env.NODE_ENV !== 'test') {
+if (env.NODE_ENV !== 'test') {
   validateEnvironment();
 }
 
@@ -113,7 +123,10 @@ export function isModelAvailable(model) {
 const _models = {};
 
 // Function to get API key at runtime
-const getOpenAIKey = () => process.env.OPENAI_API_KEY;
+const getOpenAIKey = () => env.OPENAI_API_KEY;
+
+// Function to get API URL with proxy support
+const getOpenAIUrl = () => env.OPENAI_PROXY_URL || 'https://api.openai.com/';
 
 const systemPrompt = `You are a superintelligent processing unit, answering prompts with precise instructions.
 You are a small but critical component in a complex system, so your role in giving quality outputs to your given inputs and instructions is critical. 
@@ -133,7 +146,9 @@ Most prompts will ask for a specific output format, so comply with those details
 //   maxOutputTokens: 32_768,
 //   requestTimeout: 20_000,
 //   apiKey: process.env.OPENAI_API_KEY,
-//   apiUrl: 'https://api.openai.com/',
+//   get apiUrl() {
+//     return getOpenAIUrl();
+//   },
 //   systemPrompt,
 // };
 
@@ -147,7 +162,9 @@ Most prompts will ask for a specific output format, so comply with those details
 //   maxOutputTokens: 32_768,
 //   requestTimeout: 20_000,
 //   apiKey: process.env.OPENAI_API_KEY,
-//   apiUrl: 'https://api.openai.com/',
+//   get apiUrl() {
+//     return getOpenAIUrl();
+//   },
 //   systemPrompt,
 // };
 _models.fastCheapMulti = {
@@ -159,7 +176,9 @@ _models.fastCheapMulti = {
   get apiKey() {
     return getOpenAIKey();
   },
-  apiUrl: 'https://api.openai.com/',
+  get apiUrl() {
+    return getOpenAIUrl();
+  },
   systemPrompt,
 };
 
@@ -168,14 +187,16 @@ _models.fastCheapMulti = {
 // supports image inputs, moderate speed
 _models.goodMulti = {
   endpoint: 'v1/chat/completions',
-  name: 'gpt-4o-2024-11-20',
+  name: 'gpt-4o',
   maxContextWindow: 128_000,
   maxOutputTokens: 16_384,
   requestTimeout: 20_000,
   get apiKey() {
     return getOpenAIKey();
   },
-  apiUrl: 'https://api.openai.com/',
+  get apiUrl() {
+    return getOpenAIUrl();
+  },
   systemPrompt,
 };
 
@@ -191,7 +212,9 @@ _models.fastCheapReasoningMulti = {
   get apiKey() {
     return getOpenAIKey();
   },
-  apiUrl: 'https://api.openai.com/',
+  get apiUrl() {
+    return getOpenAIUrl();
+  },
   systemPrompt,
 };
 
@@ -207,7 +230,9 @@ _models.reasoningNoImage = {
   get apiKey() {
     return getOpenAIKey();
   },
-  apiUrl: 'https://api.openai.com/',
+  get apiUrl() {
+    return getOpenAIUrl();
+  },
   systemPrompt,
 };
 
@@ -249,11 +274,12 @@ _models.privacy = {
   maxContextWindow: 128_000,
   maxOutputTokens: 8_192,
   requestTimeout: 120_000,
-  apiUrl: (process.env.OPENWEBUI_API_URL ?? '').endsWith('/')
-    ? process.env.OPENWEBUI_API_URL
-    : `${process.env.OPENWEBUI_API_URL}/`,
+  get apiUrl() {
+    const url = env.OPENWEBUI_API_URL ?? '';
+    return url.endsWith('/') ? url : `${url}/`;
+  },
   get apiKey() {
-    return process.env.OPENWEBUI_API_KEY;
+    return env.OPENWEBUI_API_KEY;
   },
   systemPrompt,
   modelOptions: {
@@ -262,34 +288,34 @@ _models.privacy = {
 };
 
 // Allow tests to run without requiring an API key
-if (process.env.NODE_ENV !== 'test') {
-  // expect(process.env.OPENAI_API_KEY).to.exist;
+if (env.NODE_ENV !== 'test') {
+  // expect(env.OPENAI_API_KEY).to.exist;
 }
 
 const secondsInDay = 60 * 60 * 24;
 const secondsInYear = secondsInDay * 365; // 365 days
-export const cacheTTL = process.env.CHATGPT_CACHE_TTL ?? secondsInYear;
+export const cacheTTL = env.CHATGPT_CACHE_TTL ?? secondsInYear;
 
 // Caching can be disabled by setting DISABLE_CACHE=true
 // By default, caching is enabled when Redis is available and working
-export const cachingEnabled = process.env.DISABLE_CACHE !== 'true';
+export const cachingEnabled = env.DISABLE_CACHE !== 'true';
 
-export const debugPromptGlobally = process.env.CHATGPT_DEBUG_PROMPT ?? false;
+export const debugPromptGlobally = env.CHATGPT_DEBUG_PROMPT ?? false;
 
-export const debugPromptGloballyIfChanged = process.env.CHATGPT_DEBUG_REQUEST_IF_CHANGED ?? false;
+export const debugPromptGloballyIfChanged = env.CHATGPT_DEBUG_REQUEST_IF_CHANGED ?? false;
 
-export const debugResultGlobally = process.env.CHATGPT_DEBUG_RESPONSE ?? false;
+export const debugResultGlobally = env.CHATGPT_DEBUG_RESPONSE ?? false;
 
-export const debugResultGloballyIfChanged = process.env.CHATGPT_DEBUG_RESPONSE_IF_CHANGED ?? false;
+export const debugResultGloballyIfChanged = env.CHATGPT_DEBUG_RESPONSE_IF_CHANGED ?? false;
 
-export const frequencyPenalty = process.env.CHATGPT_FREQUENCY_PENALTY ?? 0;
+export const frequencyPenalty = env.CHATGPT_FREQUENCY_PENALTY ?? 0;
 
 export const models = _models;
 
 export const operationTimeoutMultiplier = 2;
 
-export const presencePenalty = process.env.CHATGPT_PRESENCE_PENALTY ?? 0;
+export const presencePenalty = env.CHATGPT_PRESENCE_PENALTY ?? 0;
 
-export const temperature = process.env.CHATGPT_TEMPERATURE ?? 0;
+export const temperature = env.CHATGPT_TEMPERATURE ?? 0;
 
-export const topP = process.env.CHATGPT_TOPP ?? 0.5;
+export const topP = env.CHATGPT_TOPP ?? 0.5;

@@ -1,14 +1,12 @@
 import Ajv from 'ajv';
-import fs from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
 
 import { longTestTimeout } from '../../constants/common.js';
+import { schemaOrgSchemas } from '../../json-schemas/index.js';
 import schemaOrg from './index.js';
 
-const resultSchemaWith = (type) => async () => {
-  return JSON.parse(
-    await fs.readFile(`./src/json-schemas/schema-dot-org-${type.toLowerCase()}.json`)
-  );
+const resultSchemaWith = (type) => () => {
+  return schemaOrgSchemas[type.toLowerCase()];
 };
 
 const examples = [

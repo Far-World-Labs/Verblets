@@ -1,37 +1,19 @@
 import * as R from 'ramda';
-import fs from 'node:fs/promises';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-
 import chatGPT from '../../lib/chatgpt/index.js';
 import { sort as sortPromptInitial } from '../../prompts/index.js';
-
-// Get the directory of this module
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-/**
- * Load the JSON schema for sort results
- * @returns {Promise<Object>} JSON schema for validation
- */
-async function getSortSchema() {
-  const schemaPath = path.join(__dirname, 'sort-result.json');
-  return JSON.parse(await fs.readFile(schemaPath, 'utf8'));
-}
+import sortSchema from './sort-result.json';
 
 /**
  * Create model options for structured outputs
  * @param {string|Object} llm - LLM model name or configuration object
- * @returns {Promise<Object>} Model options for chatGPT
+ * @returns {Object} Model options for chatGPT
  */
-async function createModelOptions(llm = 'fastGoodCheap') {
-  const schema = await getSortSchema();
-
+function createModelOptions(llm = 'fastGoodCheap') {
   const responseFormat = {
     type: 'json_schema',
     json_schema: {
       name: 'sort_result',
-      schema,
+      schema: sortSchema,
     },
   };
 
@@ -89,7 +71,7 @@ const sort = async (list, criteria, config = {}) => {
       return prompt;
     }
 
-    const modelOptions = await createModelOptions(llm);
+    const modelOptions = createModelOptions(llm);
 
     const result = await chatGPT(prompt, {
       modelOptions,

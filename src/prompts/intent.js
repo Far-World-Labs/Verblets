@@ -1,11 +1,6 @@
-import fs from 'fs/promises';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
 import { asXML } from './wrap-variable.js';
 import { onlyJSON } from './constants.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+import intentSchema from '../json-schemas/intent.json';
 
 const contentIsIntent = 'The intent is:';
 const contentIsSchema = 'The schema is:';
@@ -22,8 +17,6 @@ const exampleJSON = `{
     "artist": "The Beatles"
   }
 }`;
-
-const intentSchema = JSON.parse(await fs.readFile(join(__dirname, '../json-schemas/intent.json')));
 
 /**
  * Approximates intent recognition like you might find with Wit.ai,

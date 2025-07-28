@@ -1,5 +1,5 @@
-import path from 'path';
-import fs from 'fs';
+import path from 'node:path';
+import fs from 'node:fs';
 import { parse } from 'acorn';
 import * as walk from 'acorn-walk';
 import dependencyTree from 'dependency-tree';
