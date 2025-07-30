@@ -2,6 +2,7 @@ import { describe, expect as vitestExpect, it, vi, beforeEach, afterEach } from 
 import { expectSimple, expect } from './entry.js';
 import { longTestTimeout } from '../../constants/common.js';
 import { setTestEnv, saveTestEnv } from '../../../test/utils/env.js';
+import { debug } from '../../lib/debug/index.js';
 
 // Mock the chatgpt function to avoid actual API calls
 vi.mock('../../lib/chatgpt/index.js', () => ({
@@ -10,7 +11,7 @@ vi.mock('../../lib/chatgpt/index.js', () => ({
     const prompt = typeof config === 'string' ? config : config.messages?.[0]?.content || '';
 
     // Debug log to see what prompt is being sent
-    // console.log('ChatGPT mock received:', prompt);
+    debug('ChatGPT mock received:', `${prompt.substring(0, 200)}...`);
 
     // Handle module identification request
     if (prompt.includes('identify the import path of the function or module under test')) {

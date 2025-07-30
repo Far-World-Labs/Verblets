@@ -1,7 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { readFileSync } from 'fs';
-import { join } from 'path';
-import { fileURLToPath } from 'url';
 import relations, { createRelationExtractor, relationSpec, applyRelations } from './index.js';
 import {
   mapInstructions,
@@ -16,11 +13,8 @@ import filter from '../filter/index.js';
 import group from '../group/index.js';
 import find from '../find/index.js';
 import { techCompanyArticle, historicalNarrative } from '../entities/sample-text.js';
-
-const __dirname = fileURLToPath(new URL('.', import.meta.url));
-const relationResultSchema = JSON.parse(
-  readFileSync(join(__dirname, 'relation-result.json'), 'utf8')
-);
+import relationResultSchema from './relation-result.json';
+import { debug } from '../../lib/debug/index.js';
 
 // Split the articles into chunks
 const techChunks = techCompanyArticle.split('\n\n').filter((chunk) => chunk.trim().length > 0);
@@ -137,13 +131,17 @@ describe('relations examples', () => {
     expect(Array.isArray(results)).toBe(true);
 
     // Debug what we got
-    console.log('Results:', JSON.stringify(results, null, 2));
+    debug('Map relations test - found', results.length, 'results');
+    if (results.length > 0) {
+      debug('First result sample:', JSON.stringify(results[0], null, 2));
+    }
 
     // Map returns an array of relations extracted from all chunks
     // Should find acquisition relations
     const acquisitions = results.filter(
       (rel) => rel && rel.predicate && rel.predicate.toLowerCase().includes('acquir')
     );
+    debug('Found', acquisitions.length, 'acquisition relations');
     expect(acquisitions.length).toBeGreaterThan(0);
   }, 20000);
 

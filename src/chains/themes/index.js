@@ -1,5 +1,5 @@
 import reduce from '../reduce/index.js';
-import shuffle from 'lodash/shuffle.js';
+import shuffle from '../../lib/shuffle/index.js';
 
 const splitText = (text) =>
   text
@@ -12,7 +12,8 @@ export default async function themes(text, config = {}) {
   const pieces = splitText(text);
   const reducePrompt =
     'Update the accumulator with short themes from this text. Avoid duplicates. Return ONLY a comma-separated list of themes with no explanation or additional text.';
-  const firstPass = await reduce(shuffle(pieces), reducePrompt, { chunkSize, llm, ...options });
+  const shuffledPieces = shuffle(pieces); // Returns a new shuffled array
+  const firstPass = await reduce(shuffledPieces, reducePrompt, { chunkSize, llm, ...options });
   const rawThemes = firstPass
     .split(',')
     .map((t) => t.trim())

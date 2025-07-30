@@ -4,6 +4,7 @@ import aiExpect from '../../chains/expect/index.js';
 import { longTestTimeout } from '../../constants/common.js';
 import { intent as intentSchema } from '../../json-schemas/index.js';
 import { env } from '../../lib/env/index.js';
+import { debug } from '../../lib/debug/index.js';
 
 import intent from './index.js';
 
@@ -85,6 +86,8 @@ describe('Intent verblet', () => {
       example.text,
       async () => {
         const result = await intent(example.text, example.operations);
+        debug('Intent test:', `${example.text.substring(0, 50)}...`);
+        debug('Result:', `${JSON.stringify(result, null, 2).substring(0, 200)}...`);
 
         if (example.schema) {
           const schema = await example.schema();
@@ -93,10 +96,7 @@ describe('Intent verblet', () => {
 
           const isValid = validate(result);
           if (!isValid) {
-            console.error('Validation errors:');
-            console.error(validate.errors);
-            console.error('Returned result:');
-            console.error(JSON.stringify(result, null, 2));
+            debug('Validation FAILED - errors:', validate.errors);
           }
           expect(isValid).toStrictEqual(true);
 

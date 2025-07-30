@@ -1,6 +1,9 @@
 /**
  * A class that extends AbortController to include a timeout.
  *
+ * This class automatically aborts the signal after a specified timeout period,
+ * which is useful for implementing request timeouts in fetch operations.
+ *
  * @class
  * @extends AbortController
  *
@@ -19,7 +22,14 @@
  *   });
  * timeoutController.clearTimeout(); // Manually clear the timeout
  */
-export default class TimedAbortController extends AbortController {
+
+// Use the global AbortController to ensure compatibility across environments
+// In browsers, this uses the native AbortController
+// In Node.js, this uses the polyfilled AbortController
+const BaseController =
+  (typeof globalThis !== 'undefined' && globalThis.AbortController) || AbortController;
+
+export default class TimedAbortController extends BaseController {
   /**
    * Creates a new TimedAbortController instance.
    *

@@ -1,4 +1,4 @@
-import shuffle from 'lodash/shuffle.js';
+import shuffle from '../../lib/shuffle/index.js';
 
 /**
  * Weighted random sampling with replacement

@@ -3,13 +3,14 @@ import documentShrink from './index.js';
 import aiExpect from '../expect/index.js';
 import fs from 'node:fs';
 import path from 'node:path';
+import { debug } from '../../lib/debug/index.js';
 
 // Helper to show cache message after 5 seconds
 function withCacheMessage(testFn) {
   return async (...args) => {
     let messageShown = false;
     const timer = setTimeout(() => {
-      console.log(
+      debug(
         '\n⏳ This test may take up to 45 seconds on first run, but will be fast on subsequent runs due to caching.\n'
       );
       messageShown = true;
@@ -19,7 +20,7 @@ function withCacheMessage(testFn) {
       const result = await testFn(...args);
       clearTimeout(timer);
       if (messageShown) {
-        console.log('✅ Test completed. Future runs will use cached results.\n');
+        debug('✅ Test completed. Future runs will use cached results.\n');
       }
       return result;
     } catch (error) {
@@ -53,8 +54,8 @@ describe('document-shrink examples', () => {
       expect(result.content.length).toBeLessThan(climateArticle.length);
       expect(result.content.length).toBeLessThanOrEqual(1000); // Some buffer
 
-      // console.log('[Climate Change Test] Result length:', result.content.length);
-      // console.log('[Climate Change Test] First 200 chars:', result.content.substring(0, 200));
+      debug('[Climate Change Test] Result length:', result.content.length);
+      debug('[Climate Change Test] First 200 chars:', result.content.substring(0, 200));
 
       // Use AI to verify content relevance
       const isRelevantToQuery = await aiExpect(result.content).toSatisfy(
@@ -128,8 +129,8 @@ describe('document-shrink examples', () => {
       expect(result.content).toBeDefined();
       expect(result.content.length).toBeLessThan(foodBlog.length);
 
-      // console.log('[Recipe Test] Result length:', result.content.length);
-      // console.log('[Recipe Test] First 200 chars:', result.content.substring(0, 200));
+      debug('[Recipe Test] Result length:', result.content.length);
+      debug('[Recipe Test] First 200 chars:', result.content.substring(0, 200));
 
       // Use AI to verify recipe extraction
       const hasRecipeInfo = await aiExpect(result.content).toSatisfy(
@@ -167,8 +168,8 @@ describe('document-shrink examples', () => {
       expect(result.content).toBeDefined();
       expect(result.content.length).toBeLessThan(contract.length);
 
-      // console.log('[Legal Contract Test] Result length:', result.content.length);
-      // console.log('[Legal Contract Test] First 200 chars:', result.content.substring(0, 200));
+      debug('[Legal Contract Test] Result length:', result.content.length);
+      debug('[Legal Contract Test] First 200 chars:', result.content.substring(0, 200));
 
       // Use AI to verify legal content extraction
       const hasTerminationInfo = await aiExpect(result.content).toSatisfy(
@@ -210,9 +211,9 @@ describe('document-shrink examples', () => {
       expect(result.content).toBeDefined();
       expect(result.content.length).toBeLessThan(medicalDoc.length);
 
-      // console.log('[Medical Doc Test] Result length:', result.content.length);
-      // console.log('[Medical Doc Test] First 200 chars:', result.content.substring(0, 200));
-      // console.log('[Medical Doc Test] Metadata:', result.metadata);
+      debug('[Medical Doc Test] Result length:', result.content.length);
+      debug('[Medical Doc Test] First 200 chars:', result.content.substring(0, 200));
+      debug('[Medical Doc Test] Metadata:', result.metadata);
 
       // Use AI to verify medication information extraction
       const hasDiabetesContent = await aiExpect(result.content).toSatisfy(
@@ -258,10 +259,10 @@ describe('document-shrink examples', () => {
       expect(result.content).toBeDefined();
       expect(result.content.length).toBeLessThanOrEqual(1200); // Allow buffer since chunks may be larger than target
 
-      // console.log('[Edge Case Test] Result length:', result.content.length);
-      // console.log('[Edge Case Test] Target was:', 200);
-      // console.log('[Edge Case Test] Content:', result.content.substring(0, 300));
-      // console.log('[Edge Case Test] Metadata:', result.metadata);
+      debug('[Edge Case Test] Result length:', result.content.length);
+      debug('[Edge Case Test] Target was:', 200);
+      debug('[Edge Case Test] Content:', result.content.substring(0, 300));
+      debug('[Edge Case Test] Metadata:', result.metadata);
 
       // Use AI to verify some relevant information is preserved despite aggressive reduction
       const preservesEssentialInfo = await aiExpect(result.content).toSatisfy(
