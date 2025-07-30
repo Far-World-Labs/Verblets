@@ -26,8 +26,8 @@ if (typeof window !== 'undefined') {
   
   // Set test environment
   window.verblets.env.NODE_ENV = 'test';
-  window.verblets.env.EXAMPLES = 'true';
-  window.verblets.env.TEST = 'true';
+  window.verblets.env.USE_REDIS_CACHE = 'true';
+  
   
   // Enable debug logging if requested
   if (process.env.VERBLETS_DEBUG) {

@@ -91,7 +91,8 @@ class SafeRedisClient {
 }
 
 const constructClient = async () => {
-  if (env.TEST === 'true' && env.EXAMPLES !== 'true') {
+  // Use in-memory cache for tests unless explicitly enabled
+  if (env.NODE_ENV === 'test' && env.USE_REDIS_CACHE !== 'true') {
     client = new NullRedisClient();
     return;
   }

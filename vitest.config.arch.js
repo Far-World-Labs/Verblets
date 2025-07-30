@@ -1,11 +1,11 @@
 import { defineConfig } from 'vitest/config';
 import { baseConfig } from './vitest.config.base.js';
 
-// Default config for npm test - runs *.spec.js and *.test.js in Node
+// Config for npm run arch - runs *.arch.js files
 export default defineConfig({
   test: {
     ...baseConfig,
     environment: 'node',
-    include: ['src/**/*.spec.js', 'src/**/*.test.js'],
+    include: ['**/*.arch.js'],
   },
 });

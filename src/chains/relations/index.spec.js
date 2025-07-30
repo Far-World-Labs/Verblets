@@ -12,17 +12,18 @@ import relations, {
   parseRDFLiteral,
   parseRelations,
 } from './index.js';
+import { debug } from '../../lib/debug/index.js';
 
 // Mock the chatGPT module
 vi.mock('../../lib/chatgpt/index.js', () => ({
   default: vi.fn().mockImplementation((prompt, config) => {
     // For debugging - uncomment to see what's being called
-    // console.log('Mock chatGPT called with:', {
-    //   promptSnippet: prompt.substring(0, 100),
-    //   hasModelOptions: !!config?.modelOptions,
-    //   responseFormat: config?.modelOptions?.response_format?.type,
-    //   schemaName: config?.modelOptions?.response_format?.json_schema?.name
-    // });
+    debug('Mock chatGPT called with:', {
+      promptSnippet: prompt.substring(0, 100),
+      hasModelOptions: !!config?.modelOptions,
+      responseFormat: config?.modelOptions?.response_format?.type,
+      schemaName: config?.modelOptions?.response_format?.json_schema?.name,
+    });
 
     // Check for relation extraction with JSON schema first (more specific)
     if (

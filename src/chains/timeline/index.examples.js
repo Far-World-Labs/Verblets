@@ -5,6 +5,7 @@ import { longTestTimeout } from '../../constants/common.js';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { debug } from '../../lib/debug/index.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -153,7 +154,7 @@ describe('timeline', () => {
       maxParallel: 1,
     });
 
-    console.log(`Extracted ${result.length} events from ${startupStory.length} characters`);
+    debug(`Extracted ${result.length} events from ${startupStory.length} characters`);
 
     expect(result).toBeDefined();
     expect(result.length).toBeGreaterThan(0);

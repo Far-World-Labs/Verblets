@@ -158,9 +158,9 @@ export async function expect(actual, expected, constraint) {
 
   const callerInfo = getCallerInfo();
 
-  // Get code context if mode requires it and not in examples
+  // Get code context if mode requires it
   let codeContext = null;
-  if ((mode === 'warn' || mode === 'info' || mode === 'error') && !env.EXAMPLES) {
+  if (mode === 'warn' || mode === 'info' || mode === 'error') {
     codeContext = getCodeContext(callerInfo.file, callerInfo.line);
   }
 

@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { longTestTimeout } from '../../constants/common.js';
 import { schemaOrgSchemas } from '../../json-schemas/index.js';
 import schemaOrg from './index.js';
+import { debug } from '../../lib/debug/index.js';
 
 const resultSchemaWith = (type) => () => {
   return schemaOrgSchemas[type.toLowerCase()];
@@ -35,10 +36,10 @@ describe('Schema.org verblet', () => {
 
           const isValid = validate(result);
           if (!isValid) {
-            console.error('Validation errors:');
-            console.error(JSON.stringify(validate.errors, null, 2));
-            console.error('Returned result:');
-            console.error(JSON.stringify(result, null, 2));
+            debug('Validation errors:');
+            debug(JSON.stringify(validate.errors, null, 2));
+            debug('Returned result:');
+            debug(JSON.stringify(result, null, 2));
           }
           expect(isValid).toStrictEqual(true);
         }
