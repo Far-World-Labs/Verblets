@@ -1,0 +1,4 @@
+
+> @far-world-labs/verblets@0.2.0 examples
+> source .env && USE_REDIS_CACHE=true vitest --config vitest.config.examples.js --run bool 2
+

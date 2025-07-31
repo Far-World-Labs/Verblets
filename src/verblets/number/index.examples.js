@@ -1,8 +1,23 @@
-import { describe, expect, it, beforeAll, afterAll } from 'vitest';
+import { describe, expect, it, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
 
 import number from './index.js';
 import aiExpect from '../../chains/expect/index.js';
 import { longTestTimeout } from '../../constants/common.js';
+import { logSuiteStart, logTestStart, logTestComplete } from '../../../test/setup.js';
+
+// Create a proxy that forwards to the global logger when it's available
+const logger = new Proxy(
+  {},
+  {
+    get(target, prop) {
+      const actualLogger = globalThis.testLogger;
+      if (!actualLogger) {
+        return () => {}; // Return no-op function
+      }
+      return actualLogger[prop];
+    },
+  }
+);
 
 const examples = [
   {
@@ -22,9 +37,28 @@ const examples = [
 describe('Number verblet', () => {
   // Set environment mode to 'none' for all tests to avoid throwing
   const originalMode = process.env.LLM_EXPECT_MODE;
+  let testIndex = 0;
+  let currentTestStartTime;
 
   beforeAll(() => {
     process.env.LLM_EXPECT_MODE = 'none';
+    logSuiteStart('Number verblet', 'src/verblets/number/index.examples.js');
+  });
+
+  beforeEach((ctx) => {
+    testIndex++;
+    currentTestStartTime = Date.now();
+    const testName = ctx.task.name;
+    const fileName = ctx.task.file?.name || 'unknown';
+
+    logTestStart(testName, testIndex, fileName);
+  });
+
+  afterEach((ctx) => {
+    const duration = Date.now() - currentTestStartTime;
+    const state = ctx.task.result?.state || 'unknown';
+
+    logTestComplete(testIndex, state, duration);
   });
 
   afterAll(() => {
@@ -33,6 +67,15 @@ describe('Number verblet', () => {
     } else {
       delete process.env.LLM_EXPECT_MODE;
     }
+
+    // Log test suite completion
+    logger.info({
+      event: 'test-suite-complete',
+      suite: 'Number verblet',
+    });
+
+    // Flush logs
+    logger.flush();
   });
 
   examples.forEach((example) => {

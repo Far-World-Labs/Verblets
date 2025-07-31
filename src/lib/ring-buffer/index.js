@@ -96,12 +96,13 @@ export default class RingBuffer {
   }
 
   /**
-   * Read batch of data (blocks until batch is full).
+   * Read batch of data (blocks until batch is full or timeout).
    * @param {string} readerId
-   * @param {number} batchSize
+   * @param {number} batchSize - Maximum number of items to read
+   * @param {number} [timeoutMs] - Optional timeout in ms to return partial batch
    * @returns {Promise<{data: any[], startOffset: number, lastOffset: number}>}
    */
-  readBatch(readerId, batchSize) {
+  readBatch(readerId, batchSize, timeoutMs) {
     const lastSeq = this.readers.get(readerId);
     if (lastSeq === undefined) {
       throw new Error(`Reader ${readerId} not registered`);
@@ -109,13 +110,42 @@ export default class RingBuffer {
 
     const availableCount = this.sequence - (lastSeq + 1);
 
+    // If we have enough for a full batch, return immediately
     if (availableCount >= batchSize) {
-      // Batch is ready
       const result = this._readBatchSync(readerId, batchSize);
       return Promise.resolve(result);
     }
 
-    // Wait for full batch
+    // If timeout is specified and we're waiting for more data
+    if (timeoutMs !== undefined) {
+      // If timeout is 0 and we have some data, return immediately
+      if (timeoutMs === 0 && availableCount > 0) {
+        const result = this._readBatchSync(readerId, availableCount);
+        return Promise.resolve(result);
+      }
+
+      // Wait for full batch OR timeout
+      return new Promise((resolve) => {
+        const waiter = { resolve, readerId, batchSize };
+        this.waitingReaders.add(waiter);
+
+        // Set timeout to return partial batch
+        const timeoutId = setTimeout(() => {
+          this.waitingReaders.delete(waiter);
+          const currentAvailable = this.sequence - (this.readers.get(readerId) + 1);
+          if (currentAvailable > 0) {
+            const result = this._readBatchSync(readerId, Math.min(currentAvailable, batchSize));
+            resolve(result);
+          } else {
+            resolve({ data: [], startOffset: 0, lastOffset: -1 });
+          }
+        }, timeoutMs);
+
+        waiter.timeoutId = timeoutId;
+      });
+    }
+
+    // No timeout specified - wait for full batch
     return new Promise((resolve) => {
       this.waitingReaders.add({ resolve, readerId, batchSize });
     });
@@ -166,6 +196,10 @@ export default class RingBuffer {
           const result = this._readBatchSync(readerId, batchSize);
           resolve(result);
           toRemove.push(waiter);
+          // Clear timeout if set
+          if (waiter.timeoutId) {
+            clearTimeout(waiter.timeoutId);
+          }
         }
       } else {
         // Single reader
