@@ -47,19 +47,28 @@ import assert from '../../lib/assert/index.js';
 
 /**
  * Extract file context information from the call stack
+ * @param {number} stackOffset - Additional stack frames to skip (for wrapper functions)
  */
-function extractFileContext() {
+function extractFileContext(stackOffset = 0) {
   const stack = new Error().stack;
   const lines = stack.split('\n');
 
-  // Skip the first few lines (Error, extractFileContext, log function)
-  for (let i = 3; i < lines.length; i++) {
+  // Stack frames to skip:
+  // [0] "Error"
+  // [1] at extractFileContext
+  // [2] at processLog (which calls extractFileContext)
+  // [3] at log/info/warn/error method (which calls processLog)
+  // [4+stackOffset] at the actual caller
+  const skipFrames = 4 + stackOffset;
+
+  for (let i = skipFrames; i < lines.length; i++) {
     const line = lines[i];
-    const match = line.match(/at .* \((.+):(\d+):\d+\)/);
+    // Match both "at functionName (file:line:col)" and "at file:line:col"
+    const match = line.match(/at .* \((.+):(\d+):\d+\)/) || line.match(/at (.+):(\d+):\d+/);
     if (match) {
       return {
         filePath: match[1],
-        line: parseInt(match[2]),
+        line: parseInt(match[2], 10),
       };
     }
   }
@@ -267,7 +276,7 @@ export function createLLMLogger(config = {}) {
     // Fully parallel processing loop - no coordination
     const processLoop = async () => {
       try {
-        const batch = await ringBuffer.readBatch(readerId, batchSize);
+        const batch = await ringBuffer.readBatch(readerId, batchSize, processor.batchTimeout);
 
         // Convert to NDJSON for LLM processing
         const ndjsonData = logsToNDJSON(batch.data);
@@ -376,15 +385,19 @@ export function createLLMLogger(config = {}) {
 
   /**
    * Process a log entry - accepts any structured data
+   * @param {*} data - The data to log
+   * @param {string} level - Log level
+   * @param {number} stackOffset - Additional stack frames to skip
    */
-  function processLog(data, level = 'log') {
+  function processLog(data, level = 'log', stackOffset = 0) {
+    const fileContext = extractFileContext(stackOffset);
     const logEntry = {
       id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       ts: new Date(),
       raw: data, // Store original data as-is (any structure)
       meta: new Map([
         ['level', level],
-        ['fileContext', extractFileContext()],
+        ['fileContext', fileContext],
       ]),
       attachments: {}, // AI enrichments to merge
       aiMeta: {}, // AI metadata (not included in output)
@@ -438,6 +451,9 @@ export function createLLMLogger(config = {}) {
             ...(data.id ? {} : { id: logEntry.id }),
             ...(data.ts ? {} : { ts: logEntry.ts }),
             ...(data.level ? {} : { level }),
+            // Add file context
+            ...(data.file ? {} : { file: fileContext.filePath }),
+            ...(data.line ? {} : { line: fileContext.line }),
           };
         } else {
           // Fallback for other types
@@ -493,13 +509,13 @@ export function createLLMLogger(config = {}) {
   // Return enhanced logger instance
   return {
     // Standard logger interface - accepts any structured data
-    log: (data) => processLog(data, 'log'),
-    info: (data) => processLog(data, 'info'),
-    warn: (data) => processLog(data, 'warn'),
-    error: (data) => processLog(data, 'error'),
-    debug: (data) => processLog(data, 'debug'),
-    trace: (data) => processLog(data, 'trace'),
-    fatal: (data) => processLog(data, 'fatal'),
+    log: (data, stackOffset = 0) => processLog(data, 'log', stackOffset),
+    info: (data, stackOffset = 0) => processLog(data, 'info', stackOffset),
+    warn: (data, stackOffset = 0) => processLog(data, 'warn', stackOffset),
+    error: (data, stackOffset = 0) => processLog(data, 'error', stackOffset),
+    debug: (data, stackOffset = 0) => processLog(data, 'debug', stackOffset),
+    trace: (data, stackOffset = 0) => processLog(data, 'trace', stackOffset),
+    fatal: (data, stackOffset = 0) => processLog(data, 'fatal', stackOffset),
 
     // Enhanced attachment API
     attachToLog: (logId, path, value) => {
@@ -576,6 +592,69 @@ export function createLLMLogger(config = {}) {
         processedOffset: processorOffsets.get(p.processorId),
       })),
     }),
+
+    // Wait for all processors to catch up to current write position
+    waitForProcessing: async (timeoutMs = 30000) => {
+      const startTime = Date.now();
+      const stats = ringBuffer.getStats();
+      const currentWriteOffset = stats.writeOffset;
+
+      // If no logs written yet, nothing to wait for
+      if (currentWriteOffset === 0) {
+        return;
+      }
+
+      // First, flush any pending writes to lanes
+      flushLanes();
+
+      // For each processor, check if they have pending data to process
+      const processorHasPendingData = (processorId, lastProcessedOffset) => {
+        // Check if there's unprocessed data
+        const nextOffset = lastProcessedOffset + 1;
+        return nextOffset < currentWriteOffset;
+      };
+
+      // Poll until all processors have caught up or timeout
+      while (Date.now() - startTime < timeoutMs) {
+        let allCaughtUp = true;
+
+        for (const [processorId, currentOffset] of processorOffsets) {
+          // Check if processor has pending data
+          if (processorHasPendingData(processorId, currentOffset)) {
+            // Processor hasn't processed all available data yet
+            allCaughtUp = false;
+            break;
+          }
+        }
+
+        if (allCaughtUp) {
+          // All processors have processed all available data
+          // Give a bit more time for final lane writes
+          await new Promise((resolve) => setTimeout(resolve, 200));
+          flushLanes(); // Final flush
+          return;
+        }
+
+        // Wait a bit before checking again
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+
+      // Log warning if timeout reached
+      if (internalLogger) {
+        const laggingProcessors = [];
+        for (const [processorId, currentOffset] of processorOffsets) {
+          if (processorHasPendingData(processorId, currentOffset)) {
+            const pending = currentWriteOffset - currentOffset - 1;
+            laggingProcessors.push(`${processorId} (${pending} logs pending)`);
+          }
+        }
+        internalLogger.warn(
+          `waitForProcessing timeout after ${timeoutMs}ms. Lagging processors: ${laggingProcessors.join(
+            ', '
+          )}`
+        );
+      }
+    },
   };
 }
 

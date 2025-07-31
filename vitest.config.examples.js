@@ -7,5 +7,7 @@ export default defineConfig({
     ...baseConfig,
     environment: 'node',
     include: ['src/**/*.examples.js'],
+    setupFiles: ['./test/setup.js'],
+    reporters: ['./test/silent-reporter.js'], // Use custom silent reporter
   },
 });
