@@ -296,7 +296,6 @@ class ModelService {
       ...data,
     };
 
-    // Add response_format if provided
     if (response_format) {
       result.response_format = response_format;
     }

@@ -67,7 +67,6 @@ export default async function commonalities(items, config = {}) {
     modelOptions,
   });
 
-  // Extract the items array from the object structure
   const resultArray = output?.items || output;
   return Array.isArray(resultArray) ? resultArray.filter(Boolean) : [];
 }

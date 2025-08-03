@@ -94,7 +94,7 @@ export const generateList = async function* generateListGenerator(text, options 
       if (/The operation was aborted/.test(error.message)) {
         // eslint-disable-next-line no-console
         console.error('Generate list [error]: Aborted');
-        resultsNew = []; // continue
+        resultsNew = [];
       } else {
         // eslint-disable-next-line no-console
         console.error(
@@ -129,9 +129,6 @@ export const generateList = async function* generateListGenerator(text, options 
       if (!(await shouldSkip(perResultControlFactors))) {
         resultsAllMap[result] = true;
         resultsAll.push(result);
-
-        // debug helper:
-        // console.error(R.sort((a, b) => a.localeCompare(b), resultsAll));
 
         yield result;
       }
@@ -183,7 +180,6 @@ export default async function list(prompt, config = {}) {
         const transformedItem = JSON.parse(transformResponse);
         transformedItems.push(transformedItem);
       } catch {
-        // If transformation fails, keep the original item
         transformedItems.push(item);
       }
     }

@@ -22,13 +22,11 @@ export async function documentationCoverage(threshold, options = {}) {
     console.log('Debug: docPattern:', docPattern);
     console.log('Debug: cwd:', cwd);
 
-    // Get source files
     const sourceFiles = await glob(sourcePattern, { cwd });
     console.log('Debug: sourceFiles result:', sourceFiles);
     console.log('Debug: sourceFiles type:', typeof sourceFiles);
     console.log('Debug: sourceFiles length:', sourceFiles?.length);
 
-    // Get documentation files
     const docFiles = await glob(docPattern, { cwd });
     console.log('Debug: docFiles result:', docFiles);
     console.log('Debug: docFiles type:', typeof docFiles);
@@ -38,7 +36,6 @@ export async function documentationCoverage(threshold, options = {}) {
       throw new Error('Glob patterns did not return arrays');
     }
 
-    // Calculate coverage
     const totalFiles = sourceFiles.length;
     const documentedFiles = docFiles.length;
     const coverage = totalFiles > 0 ? (documentedFiles / totalFiles) * 100 : 0;

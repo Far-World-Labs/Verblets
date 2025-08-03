@@ -52,7 +52,6 @@ export default async function intent(text, operations, config = {}) {
 
   const { llm, ...options } = config;
 
-  // Build operations list with parameters
   const operationsText = operations
     .map((op) => {
       let opText = `${op.name}: ${op.description}`;
@@ -63,7 +62,6 @@ export default async function intent(text, operations, config = {}) {
     })
     .join('\n\n');
 
-  // Create structured prompt using asXML
   const prompt = `Analyze the user input and determine the most appropriate intent and extract relevant parameters.
 
 ${asXML(operationsText, { tag: 'available-operations' })}

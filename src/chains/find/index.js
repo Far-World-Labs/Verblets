@@ -78,7 +78,6 @@ Process exactly ${count} items from the XML list below and return the single bes
       await Promise.all(promises);
       promises.length = 0;
 
-      // Return the item with the earliest index
       if (results.length > 0) {
         const earliest = results.reduce((best, current) =>
           current.index < best.index ? current : best
@@ -92,7 +91,6 @@ Process exactly ${count} items from the XML list below and return the single bes
     await Promise.all(promises);
   }
 
-  // Return the item with the earliest index
   if (results.length > 0) {
     const earliest = results.reduce((best, current) =>
       current.index < best.index ? current : best

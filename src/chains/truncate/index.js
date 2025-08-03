@@ -26,7 +26,6 @@ function createChunks(text, chunkSize) {
     }
   }
 
-  // Add any remaining text as final sentence
   if (currentSentence.trim()) {
     sentences.push(currentSentence);
   }

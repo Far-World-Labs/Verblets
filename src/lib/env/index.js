@@ -23,7 +23,6 @@ const getEnv = () => {
     return process.env;
   }
 
-  // Fallback to empty object
   return {};
 };
 

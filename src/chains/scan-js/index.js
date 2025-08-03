@@ -30,7 +30,6 @@ const visit = async ({
   features: featuresInitial = 'maintainability',
 }) => {
   if (!node.functionName) {
-    // skipping
     return stateInitial;
   }
 

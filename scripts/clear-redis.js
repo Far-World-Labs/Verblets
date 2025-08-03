@@ -70,5 +70,4 @@ async function clearRedisKeys() {
   }
 }
 
-// Run the script
 clearRedisKeys(); 

@@ -81,7 +81,6 @@ export default async function listBatch(list, instructions, config = {}) {
 
   const prompt = buildPrompt(list, instructions, effectiveStyle);
 
-  // Use provided responseFormat or default to list schema
   const foundResponseFormat = responseFormat ?? {
     type: 'json_schema',
     json_schema: {
@@ -90,7 +89,6 @@ export default async function listBatch(list, instructions, config = {}) {
     },
   };
 
-  // Build model options with response format
   const modelOptions = {
     ...llm,
     ...(maxTokens && { maxTokens }),

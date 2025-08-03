@@ -69,9 +69,6 @@ const processNpmImport = async (source, includeNodeModules = false) => {
 };
 
 const visitDefault = ({ state }) => {
-  if (process.env.NODE_ENV === 'development') {
-    // console.error(`Visiting: ${node.filename} - ${node.functionName}`);
-  }
   return state;
 };
 

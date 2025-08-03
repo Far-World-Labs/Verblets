@@ -34,7 +34,6 @@ export default async function collectTerms(text, config = {}) {
     allTerms.push(...terms);
   }
 
-  // Remove duplicates
   const uniqueTerms = Array.from(new Set(allTerms.map((t) => t.trim()))).filter(Boolean);
 
   // If we already have fewer terms than requested, return them all
