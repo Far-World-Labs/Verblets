@@ -22,7 +22,6 @@ export default [
         clearTimeout: 'readonly',
         setInterval: 'readonly',
         clearInterval: 'readonly',
-        // Vitest
         beforeEach: 'readonly',
         afterEach: 'readonly',
         describe: 'readonly',
@@ -46,17 +45,12 @@ export default [
       // TODO: Refactor await-in-loop patterns to use Promise.all()
       'no-await-in-loop': 'off',
 
-      // Customize recommended rules
       'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
-
-      // Additional quality rules not in recommended
       'require-await': 'error',
       'prefer-arrow-callback': 'error',
       'prefer-template': 'error',
       'object-shorthand': 'error',
       'array-callback-return': 'error',
-
-      // Syntax restrictions
       'no-restricted-syntax': [
         'error',
         {
@@ -73,7 +67,7 @@ export default [
   {
     files: ['**/*.spec.js', '**/*.test.js'],
     rules: {
-      'require-await': 'off', // Test functions often don't need await
+      'require-await': 'off',
     },
   },
   prettierConfig,

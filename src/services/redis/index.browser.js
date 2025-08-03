@@ -7,7 +7,6 @@ class NullRedisClient {
   }
 
   get(key) {
-    // Redis returns null, not undefined
     return this.store[key] ?? null;
   }
 

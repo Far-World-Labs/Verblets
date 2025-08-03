@@ -36,6 +36,5 @@ ${asJSON}`;
     ...options,
   });
 
-  // With auto-unwrapping, response should be the value directly
   return response === 'true' ? true : response === 'false' ? false : undefined;
 };

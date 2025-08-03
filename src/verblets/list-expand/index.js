@@ -59,7 +59,6 @@ export default async function listExpand(list, count = list.length * 2, config =
   const modelOptions = createModelOptions(llm);
   const output = await chatGPT(buildPrompt(list, count), { modelOptions, ...options });
 
-  // Extract items from the object structure
   const items = output?.items || output;
 
   if (!Array.isArray(items)) {

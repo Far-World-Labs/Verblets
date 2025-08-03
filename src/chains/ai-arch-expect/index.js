@@ -226,7 +226,6 @@ async function processBulkChunk(chunk, contextText, description, onProgress, met
   }
 }
 
-// Calculate result statistics
 function calculateResultStats(allItems, results) {
   const passed = results.filter((r) => r.passed).length;
   const failed = results.length - passed;
@@ -245,7 +244,6 @@ function calculateResultStats(allItems, results) {
   };
 }
 
-// Generate result message
 function generateResultMessage(stats, description, maxFailures) {
   if (stats.allPassed) {
     return `All ${stats.processed}/${stats.total} items satisfy: ${description}`;
@@ -267,7 +265,6 @@ function generateResultMessage(stats, description, maxFailures) {
   }\n\nFailures:\n${failureDetails}${moreFailures}`;
 }
 
-// Create summary result object
 function createSummaryResult(stats, message) {
   return {
     passed: stats.allPassed,
@@ -282,7 +279,6 @@ function createSummaryResult(stats, message) {
   };
 }
 
-// Create processing strategy configuration
 function createProcessingStrategy(target, onChunkProcessed, itemContextFns, itemCount) {
   const shouldUseIndividual =
     onChunkProcessed || itemContextFns.length > 0 || itemCount <= INDIVIDUAL_MODE_ITEM_THRESHOLD;
@@ -303,7 +299,6 @@ function createProcessingStrategy(target, onChunkProcessed, itemContextFns, item
   };
 }
 
-// Process individual batch (extracted from processIndividually)
 async function processIndividualBatch(batch, contextText, config) {
   const batchPromises = batch.items.map((item) =>
     processIndividualItem(
@@ -317,7 +312,6 @@ async function processIndividualBatch(batch, contextText, config) {
   return await Promise.all(batchPromises);
 }
 
-// Process batch results based on mode
 function processBatchByMode(batchResults, mode, config) {
   if (mode === PROCESSING_MODES.INDIVIDUAL) {
     // Individual mode: process failures and track stopping condition

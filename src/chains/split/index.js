@@ -65,7 +65,6 @@ export default async function split(text, instructions, config = {}) {
     try {
       const output = await retry(run, { label: 'split', maxRetries: maxAttempts - 1 });
 
-      // Validate that output contains the original text
       const outputWithoutDelimiters = output.replace(
         new RegExp(delimiter.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'),
         ''

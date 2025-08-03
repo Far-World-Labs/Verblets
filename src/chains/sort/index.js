@@ -108,7 +108,6 @@ const sort = async (list, criteria, config = {}) => {
         // Find what's missing
         const missing = itemsToSort.filter((item) => !outputSet.has(item));
 
-        // Remove duplicates by converting to Set and back to array
         const dedupedSorted = [...outputSet];
 
         // Add back missing items at the end
