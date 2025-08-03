@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import RingBuffer from './index.js';
 
 describe('RingBuffer', () => {
@@ -338,7 +338,7 @@ describe('RingBuffer', () => {
   describe('error handling', () => {
     it('should throw for invalid timeout', async () => {
       const reader = buffer.reader();
-      await expect(() => reader.takeOrWait(5, -1)).rejects.toThrow(
+      expect(() => reader.takeOrWait(5, -1)).toThrow(
         'Invalid timeout: -1ms. Must be non-negative or undefined.'
       );
     });
@@ -591,7 +591,7 @@ describe('RingBuffer', () => {
     });
 
     it('should throw error with writeSync when reader would overflow', async () => {
-      buffer.reader(); // Create reader but don't read anything
+      buffer.reader();
 
       // Fill buffer completely
       for (let i = 0; i < 10; i++) {
