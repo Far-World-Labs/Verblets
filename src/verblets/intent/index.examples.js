@@ -119,9 +119,6 @@ describe('Intent verblet', () => {
       event: 'test-suite-complete',
       suite: 'Intent verblet',
     });
-
-    // Flush logs
-    logger.flush();
   });
 
   examples.forEach((example) => {

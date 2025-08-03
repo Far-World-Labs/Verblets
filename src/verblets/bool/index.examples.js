@@ -10,7 +10,6 @@ import {
   logAssertion,
   logAIValidation,
 } from '../../../test/setup.js';
-
 // Create a proxy that forwards to the global logger when it's available
 const logger = new Proxy(
   {},
@@ -68,21 +67,30 @@ describe('Bool verblet', () => {
     logTestComplete(testIndex, state, duration);
   });
 
-  afterAll(() => {
+  afterAll(async () => {
     if (originalMode !== undefined) {
       process.env.LLM_EXPECT_MODE = originalMode;
     } else {
       delete process.env.LLM_EXPECT_MODE;
     }
 
-    // Log test suite completion
-    logger.info({
+    // Create promise for analysis work that will be initiated
+    let analysisResolver;
+    const analysisPromise = new Promise((resolve) => {
+      analysisResolver = resolve;
+    });
+
+    // Make the resolver available globally so analysis can resolve it
+    globalThis.suiteAnalysisResolver = analysisResolver;
+
+    // Log test suite completion - this will trigger the analysis
+    await logger.info({
       event: 'test-suite-complete',
       suite: 'Bool verblet',
     });
 
-    // Flush logs
-    logger.flush();
+    // Block until analysis is complete
+    await analysisPromise;
   });
 
   examples.forEach((example) => {
@@ -102,9 +110,9 @@ describe('Bool verblet', () => {
         const result = await bool(example.inputs.text);
         const boolTime = Date.now() - boolStart;
 
-        // Log bool verblet result
+        // Log test result
         logger.info({
-          event: 'bool-result',
+          event: 'test-result',
           testIndex,
           result,
           expected: example.want.result,

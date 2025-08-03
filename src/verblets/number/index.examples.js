@@ -73,9 +73,6 @@ describe('Number verblet', () => {
       event: 'test-suite-complete',
       suite: 'Number verblet',
     });
-
-    // Flush logs
-    logger.flush();
   });
 
   examples.forEach((example) => {

@@ -2,6 +2,9 @@ import { env } from '../lib/env/index.js';
 
 export const longTestTimeout = 10 * 60 * 1000; // 10 minutes
 
+// Timeout for AI analysis operations (not a test, but analysis of test results)
+export const aiAnalysisTimeout = 30 * 1000; // 30 seconds
+
 export const maxRetries = 3;
 
 export const retryDelay = 1000;

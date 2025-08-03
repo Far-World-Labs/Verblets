@@ -1,11 +1,9 @@
 # setInterval
 
-AI-guided replacement for `setInterval`.
-Feed it your own natural-language heuristic; it will keep time, remember history, and supply your callback with rich context so you can build self-tuning workflows, creative generators, or living UIs.
+AI alternative to `setInterval`.
+Feed it your own "next date" prompt; it will keep time, remember history, and supply your callback with rich context so you can build self-tuning workflows, creative generators, or living UIs.
 
 ## Example: Photography Alarm
-
-*Because the universe waits for no one (but this will wait for the universe).*
 
 ```javascript
 import setInterval from './index.js';
