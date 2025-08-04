@@ -1,29 +1,15 @@
-import { describe, expect, it, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
+import { describe, expect as vitestExpect, it as vitestIt, beforeAll, afterAll } from 'vitest';
 
 import bool from './index.js';
-import aiExpect from '../../chains/expect/index.js';
+import vitestAiExpect from '../../chains/expect/index.js';
 import { longTestTimeout } from '../../constants/common.js';
-import {
-  logSuiteStart,
-  logTestStart,
-  logTestComplete,
-  logAssertion,
-  logAIValidation,
-} from '../../../test/setup.js';
+import { logSuiteEnd } from '../../chains/test-analysis/setup.js';
+import { wrapIt, wrapExpect, wrapAiExpect } from '../../chains/test-analysis/test-wrappers.js';
 
-// Create a proxy that forwards to the global logger when it's available
-const logger = new Proxy(
-  {},
-  {
-    get(target, prop) {
-      const actualLogger = globalThis.testLogger;
-      if (!actualLogger) {
-        return () => {}; // Return no-op function
-      }
-      return actualLogger[prop];
-    },
-  }
-);
+// Use wrappers as drop-in replacements
+const it = wrapIt(vitestIt, globalThis.testLogger, 'Bool verblet');
+const expect = wrapExpect(vitestExpect, globalThis.testLogger);
+const aiExpect = wrapAiExpect(vitestAiExpect, globalThis.testLogger);
 
 const examples = [
   {
@@ -36,36 +22,16 @@ const examples = [
   },
   {
     inputs: { text: 'Is Jar Jar Binks a Sith Lord?' },
-    want: { result: true }, // Intentionally wrong to simulate failure
-    simulateFailure: true,
+    want: { result: true }, // Intentionally wrong to test AI analysis
   },
 ];
 
 describe('Bool verblet', () => {
   // Set environment mode to 'none' for all tests to avoid throwing
   const originalMode = process.env.LLM_EXPECT_MODE;
-  let testIndex = 0;
-  let currentTestStartTime;
 
   beforeAll(() => {
     process.env.LLM_EXPECT_MODE = 'none';
-    logSuiteStart('Bool verblet', 'src/verblets/bool/index.examples.js');
-  });
-
-  beforeEach((ctx) => {
-    testIndex++;
-    currentTestStartTime = Date.now();
-    const testName = ctx.task.name;
-    const fileName = ctx.task.file?.name || 'unknown';
-
-    logTestStart(testName, testIndex, fileName);
-  });
-
-  afterEach((ctx) => {
-    const duration = Date.now() - currentTestStartTime;
-    const state = ctx.task.result?.state || 'unknown';
-
-    logTestComplete(testIndex, state, duration);
   });
 
   afterAll(() => {
@@ -75,60 +41,21 @@ describe('Bool verblet', () => {
       delete process.env.LLM_EXPECT_MODE;
     }
 
-    // Log test suite completion
-    logger.info({
-      event: 'test-suite-complete',
-      suite: 'Bool verblet',
-    });
-
-    // Flush logs
-    logger.flush();
+    logSuiteEnd('Bool verblet');
   });
 
   examples.forEach((example) => {
     it(
       `${example.inputs.text}`,
       async () => {
-        // Log what we're testing
-        logAssertion(
-          testIndex,
-          `Testing if bool verblet returns ${example.want.result} for "${example.inputs.text}"`,
-          example.want.result,
-          null,
-          true
-        );
-
-        const boolStart = Date.now();
         const result = await bool(example.inputs.text);
-        const boolTime = Date.now() - boolStart;
-
-        // Log bool verblet result
-        logger.info({
-          event: 'bool-result',
-          testIndex,
-          result,
-          expected: example.want.result,
-          passed: result === example.want.result,
-          duration: boolTime,
-        });
-
         expect(result).toStrictEqual(example.want.result);
 
         // Additional LLM assertion to validate the boolean result makes sense
-        const aiExpectStart = Date.now();
         const resultMakesSense = await aiExpect({
           question: example.inputs.text,
           answer: result,
         }).toSatisfy('Is this a reasonable yes/no answer to a Star Wars question?');
-        const aiExpectTime = Date.now() - aiExpectStart;
-
-        // Log AI expectation result
-        logger.info({
-          event: 'ai-expect-result',
-          testIndex,
-          passed: resultMakesSense,
-          duration: aiExpectTime,
-        });
 
         expect(resultMakesSense).toBe(true);
       },
@@ -145,57 +72,22 @@ describe('Bool verblet', () => {
       Should we deploy this change to production?
     `;
 
-      // Log test context
-      logAssertion(
-        testIndex,
-        'Testing complex contextual decision making for deployment scenario',
-        'boolean result',
-        null,
-        true
-      );
-
-      const boolStart = Date.now();
       const result = await bool(complexQuestion);
-      const boolTime = Date.now() - boolStart;
-
-      // Log bool result
-      logger.info({
-        event: 'bool-result',
-        testIndex,
-        result,
-        duration: boolTime,
-      });
 
       // Traditional assertion
       expect(typeof result).toBe('boolean');
 
       // LLM assertion to validate the decision reasoning
-      const reasonableStart = Date.now();
       const decisionIsReasonable = await aiExpect(
         `The question was about Friday afternoon deployment with passing tests. The decision was: ${result}`
       ).toSatisfy('Does this sound like a reasonable deployment decision?');
 
-      logAIValidation(
-        testIndex,
-        'reasonable-decision',
-        decisionIsReasonable,
-        Date.now() - reasonableStart
-      );
-
       expect(decisionIsReasonable).toBe(true);
 
       // Additional assertion about the decision being conservative
-      const conservativeStart = Date.now();
       const isConservativeDecision = await aiExpect(
         `A boolean decision of ${result} for Friday afternoon deployment`
       ).toSatisfy('Is this a cautious approach to deployment timing?');
-
-      logAIValidation(
-        testIndex,
-        'conservative-approach',
-        isConservativeDecision,
-        Date.now() - conservativeStart
-      );
 
       expect(isConservativeDecision).toBe(true);
     },

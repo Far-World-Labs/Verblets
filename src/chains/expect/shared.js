@@ -70,41 +70,6 @@ Return true if the value satisfies the constraints, false otherwise. Be balanced
     },
   });
 
-  // Debug simple equality tests
-  if (!constraint && actual === 'hello' && expected === 'hello') {
-    console.log('DEBUG - Simple equality test');
-    console.log('Prompt:', prompt);
-    console.log('Response:', response);
-    console.log('Response type:', typeof response);
-    console.log(
-      'ModelOptions:',
-      JSON.stringify(
-        {
-          temperature: 0,
-          response_format: {
-            type: 'json_schema',
-            json_schema: {
-              name: 'assertion_result',
-              strict: true,
-              schema: {
-                type: 'object',
-                properties: {
-                  value: {
-                    type: 'boolean',
-                  },
-                },
-                required: ['value'],
-                additionalProperties: false,
-              },
-            },
-          },
-        },
-        null,
-        2
-      )
-    );
-  }
-
   // chatGPT module returns the value directly when using responseFormat
   return response === true;
 }

@@ -3,7 +3,7 @@ import { describe, expect, it, beforeAll, afterAll, beforeEach, afterEach } from
 import number from './index.js';
 import aiExpect from '../../chains/expect/index.js';
 import { longTestTimeout } from '../../constants/common.js';
-import { logSuiteStart, logTestStart, logTestComplete } from '../../../test/setup.js';
+import { logSuiteStart, logTestStart, logTestComplete } from '../../chains/test-analysis/setup.js';
 
 // Create a proxy that forwards to the global logger when it's available
 const logger = new Proxy(
@@ -73,9 +73,6 @@ describe('Number verblet', () => {
       event: 'test-suite-complete',
       suite: 'Number verblet',
     });
-
-    // Flush logs
-    logger.flush();
   });
 
   examples.forEach((example) => {

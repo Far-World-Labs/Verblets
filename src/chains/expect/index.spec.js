@@ -1,7 +1,7 @@
 import { describe, expect as vitestExpect, it, vi, beforeEach, afterEach } from 'vitest';
 import { expectSimple, expect } from './entry.js';
 import { longTestTimeout } from '../../constants/common.js';
-import { setTestEnv, saveTestEnv } from '../../../test/utils/env.js';
+import { setTestEnv, saveTestEnv } from './test-utils.js';
 import { debug } from '../../lib/debug/index.js';
 
 // Mock the chatgpt function to avoid actual API calls

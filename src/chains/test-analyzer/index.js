@@ -1,161 +1,98 @@
 import chatGPT from '../../lib/chatgpt/index.js';
+import { asXML } from '../../prompts/wrap-variable.js';
+import { extractCodeWindow } from '../../lib/code-extractor/index.js';
 
 /**
- * Build the error analysis prompt with XML structure
+ * Analyzes test failures using AI
  */
-function buildErrorAnalysisPrompt(config) {
-  const { testName, logs = [], testSnippet, failureDetails } = config;
+export default async function analyzeTestError({
+  testName,
+  testFile,
+  testLine,
+  logs,
+  testSnippet,
+  failureDetails,
+}) {
+  // Build structured data for each section
+  const testInfo = {};
+  if (testName) testInfo.name = testName;
+  if (testFile) testInfo.file = testFile;
+  if (testLine) testInfo.line = testLine;
 
-  // Format logs for the prompt - focus on failures
-  const failedLogs = logs.filter((log) => log.passed === false);
-  const formattedLogs = failedLogs
-    .map((log) => {
-      if (log.event === 'assertion') {
-        return `Expected: ${JSON.stringify(log.expected)}
-Actual: ${JSON.stringify(log.actual || log.result)}
-Description: ${log.description}`;
-      } else if (log.event === 'bool-result') {
-        return `Bool verblet returned: ${log.result}
-Expected: ${log.expected !== undefined ? log.expected : 'true'}`;
+  // Extract or use provided test code
+  if (!testSnippet && testFile && testLine) {
+    testSnippet = extractCodeWindow(testFile, testLine, 10);
+  }
+
+  // Build assertion/expectation data with clean defaults
+  const assertion = {
+    expected: failureDetails?.expected,
+    actual: failureDetails?.actual || failureDetails?.result,
+    passed: failureDetails?.passed ?? false,
+    description: failureDetails?.description,
+  };
+
+  // Filter and structure execution logs
+  const executionLogs = [];
+  if (logs && logs.length > 0) {
+    logs.forEach((log) => {
+      if (
+        log.event === 'bool-result' ||
+        log.event === 'assertion' ||
+        log.event === 'ai-validation' ||
+        log.event === 'error' ||
+        log.error
+      ) {
+        executionLogs.push({
+          event: log.event,
+          ...log,
+        });
       }
-      return `${log.event}: expected ${log.expected}, got ${log.result || log.actual}`;
-    })
-    .join('\n\n');
-
-  const xmlBlocks = [];
-
-  xmlBlocks.push(`<test_name>${testName}</test_name>`);
-
-  if (testSnippet) {
-    xmlBlocks.push(`<failing_code>
-${testSnippet}
-</failing_code>`);
-  }
-
-  if (failedLogs.length > 0) {
-    xmlBlocks.push(`<failures>
-${formattedLogs}
-</failures>`);
-  }
-
-  if (failureDetails) {
-    xmlBlocks.push(`<error>
-Expected: ${failureDetails.expected}
-Actual: ${failureDetails.result !== undefined ? failureDetails.result : failureDetails.actual}
-</error>`);
-  }
-
-  return `Analyze this test failure:
-
-${xmlBlocks.join('\n\n')}
-
-In one sentence, explain why it failed and what to change. Be extremely concise.`;
-}
-
-/**
- * Analyzes test failures and provides concise, actionable insights
- *
- * @param {Object} config - Configuration object
- * @param {string} config.testName - Name of the failed test
- * @param {string} config.testFile - File path of the test
- * @param {number} config.testLine - Line number where test is defined
- * @param {Array} config.logs - Array of test logs
- * @param {string} [config.sourceCode] - Source code context around the test
- * @param {Object} [config.failureDetails] - Specific failure information
- * @returns {Promise<string>} Analysis result
- */
-export default async function analyzeTestError(config) {
-  const prompt = buildErrorAnalysisPrompt(config);
-
-  try {
-    const analysis = await chatGPT(prompt);
-    return analysis.trim();
-  } catch (error) {
-    throw new Error(`Test analysis failed: ${error.message}`);
-  }
-}
-
-/**
- * Build the suite summary prompt
- */
-function buildSuiteSummaryPrompt(stats) {
-  const { suiteName, passed, failed, total, duration } = stats;
-
-  const xmlBlocks = [];
-
-  xmlBlocks.push(`<suite_stats>
-Name: ${suiteName}
-Passed: ${passed}
-Failed: ${failed}
-Total: ${total}
-Duration: ${duration}ms
-Success Rate: ${((passed / total) * 100).toFixed(1)}%
-</suite_stats>`);
-
-  if (failed > 0 && stats.failedTests && stats.failedTests.length > 0) {
-    xmlBlocks.push(`<failed_tests>
-${stats.failedTests.map((test, i) => `${i + 1}. ${test}`).join('\n')}
-</failed_tests>`);
-  }
-
-  return `Analyze test suite results and provide insights:
-
-${xmlBlocks.join('\n\n')}
-
-Provide:
-1. One-line health assessment
-2. Key concern if any (or "All tests passing" if none)
-3. Recommendation for next steps`;
-}
-
-/**
- * Analyzes test suite results and provides a summary
- *
- * @param {Object} stats - Test suite statistics
- * @param {string} stats.suiteName - Name of the test suite
- * @param {number} stats.passed - Number of passed tests
- * @param {number} stats.failed - Number of failed tests
- * @param {number} stats.total - Total number of tests
- * @param {number} stats.duration - Suite duration in milliseconds
- * @param {Array} [stats.failedTests] - Array of failed test names
- * @returns {Promise<Object>} Summary object with insights
- */
-export async function analyzeSuiteResults(stats) {
-  const { suiteName, passed, failed, total, duration } = stats;
-
-  // For simple cases, return formatted stats without AI
-  if (failed === 0) {
-    return {
-      summary: `${suiteName}: ${passed}/${total} passed in ${duration}ms`,
-      healthScore: 100,
-      assessment: 'All tests passing',
-      recommendations: [],
-    };
-  }
-
-  // Use AI for more complex analysis when there are failures
-  const prompt = buildSuiteSummaryPrompt(stats);
-
-  try {
-    const analysis = await chatGPT(prompt, {
-      modelOptions: {
-        modelName: 'fastGood',
-        temperature: 0.3,
-        maxTokens: 150,
-      },
     });
+  }
 
-    return {
-      summary: `${suiteName}: ${passed}/${total} passed in ${duration}ms`,
-      healthScore: (passed / total) * 100,
-      analysis: analysis.trim(),
-    };
-  } catch {
-    // Fallback to basic analysis
-    return {
-      summary: `${suiteName}: ${passed}/${total} passed in ${duration}ms`,
-      healthScore: (passed / total) * 100,
-      recommendations: ['Fix failing tests before deployment'],
-    };
+  // Use the detailed analysis format
+  const outputFormat = `Test: ${testName}  
+Expected: ${assertion.expected ?? 'undefined'}
+Actual: ${assertion.actual ?? 'undefined'}
+
+Analysis:
+  Explain exactly what the test is verifying.
+  Explain why the actual result differed (code logic, data flow, env, etc).
+  Identify the locus of failure: code bug, bad test assumption, env/setup, or intentional.
+  Suggest what to inspect or fix first, if resolution is possible from data.
+  Mention any inconsistency across logs/assertion metadata.
+  Highlight any likely red herrings or non-issues.
+  Call out any confusing behavior (e.g. actual: null vs result: false).
+  If relevant, infer possible missing code paths (e.g. early return, exception swallowed).
+
+Goals:
+  Be succinct but diagnostic-grade precise.
+  Do not pad with generic disclaimers.
+  Prioritize signal: what failed, where, why, and what's likely fixable now.
+  Think like a debugging engineer reviewing CI logs under pressure.
+
+If critical information is missing, state exactly what's needed to diagnose further.`;
+
+  const prompt = `You are a diagnostic assistant reviewing the cause of a failed test case in a JavaScript project.
+
+Analyze the following structured test output:
+
+${asXML(testInfo, { tag: 'test-info' })}
+
+${testSnippet ? asXML(testSnippet, { tag: 'test-code' }) : ''}
+
+${asXML(assertion, { tag: 'assertion' })}
+
+${executionLogs.length > 0 ? asXML(executionLogs, { tag: 'execution-logs' }) : ''}
+
+${asXML(outputFormat, { tag: 'output-format' })}`;
+
+  try {
+    const response = await chatGPT(prompt, { modelOptions: { max_tokens: 300 } });
+    return response.trim();
+  } catch (error) {
+    console.error('AI analysis failed:', error.message);
+    return '';
   }
 }
