@@ -12,26 +12,22 @@
  * @param {number} stackOffset - Additional stack frames to skip
  */
 function extractFileContext(stackOffset = 0) {
-  const stack = new Error().stack;
-  const lines = stack.split('\n');
+  const stackLine = new Error().stack.split('\n')[3 + stackOffset]; // Skip Error, extractFileContext, log method, + offset
 
-  // Stack frames to skip:
-  // [0] "Error"
-  // [1] at extractFileContext
-  // [2] at log method (which calls extractFileContext)
-  // [3+stackOffset] at the actual caller
-  const skipFrames = 3 + stackOffset;
+  if (!stackLine) return { file: 'unknown', line: 0 };
 
-  for (let i = skipFrames; i < lines.length; i++) {
-    const line = lines[i];
-    // Match both "at functionName (file:line:col)" and "at file:line:col"
-    const match = line.match(/at .* \((.+):(\d+):\d+\)/) || line.match(/at (.+):(\d+):\d+/);
-    if (match) {
-      return {
-        file: match[1],
-        line: parseInt(match[2], 10),
-      };
-    }
+  // Extract file:line from stack trace line
+  const cleaned = stackLine.trim().replace(/^at\s+/, '');
+  const parts = cleaned.split(':');
+
+  if (parts.length >= 3) {
+    return {
+      file: parts
+        .slice(0, -2)
+        .join(':')
+        .replace(/\s*\(.*$/, ''),
+      line: parseInt(parts[parts.length - 2], 10) || 0,
+    };
   }
 
   return { file: 'unknown', line: 0 };
@@ -186,36 +182,23 @@ export function createLogger(options = {}) {
     streams.forEach((stream) => stream.writeSync(entry));
   }
 
+  const createAsyncLogger =
+    (level) =>
+    (data, options = {}) => {
+      const { lineOffset = 0 } = options;
+      const context = includeFileContext && !data.file ? extractFileContext(lineOffset) : {};
+      return log(level, data, context);
+    };
+
   return {
     // Async logging methods - capture context before async boundary
-    log: (data) => {
-      const context = includeFileContext && !data.file ? extractFileContext(0) : {};
-      return log('log', data, context);
-    },
-    info: (data) => {
-      const context = includeFileContext && !data.file ? extractFileContext(0) : {};
-      return log('info', data, context);
-    },
-    warn: (data) => {
-      const context = includeFileContext && !data.file ? extractFileContext(0) : {};
-      return log('warn', data, context);
-    },
-    error: (data) => {
-      const context = includeFileContext && !data.file ? extractFileContext(0) : {};
-      return log('error', data, context);
-    },
-    debug: (data) => {
-      const context = includeFileContext && !data.file ? extractFileContext(0) : {};
-      return log('debug', data, context);
-    },
-    trace: (data) => {
-      const context = includeFileContext && !data.file ? extractFileContext(0) : {};
-      return log('trace', data, context);
-    },
-    fatal: (data) => {
-      const context = includeFileContext && !data.file ? extractFileContext(0) : {};
-      return log('fatal', data, context);
-    },
+    log: createAsyncLogger('log'),
+    info: createAsyncLogger('info'),
+    warn: createAsyncLogger('warn'),
+    error: createAsyncLogger('error'),
+    debug: createAsyncLogger('debug'),
+    trace: createAsyncLogger('trace'),
+    fatal: createAsyncLogger('fatal'),
 
     // Sync logging methods
     logSync: (data) => logSync('log', data),

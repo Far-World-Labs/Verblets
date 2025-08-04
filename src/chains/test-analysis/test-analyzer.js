@@ -5,7 +5,7 @@
 export function createTestAnalyzer() {
   // Map of suite name to test data
   const suites = new Map();
-  
+
   function getSuiteData(suiteName) {
     if (!suites.has(suiteName)) {
       suites.set(suiteName, {
@@ -17,14 +17,14 @@ export function createTestAnalyzer() {
     }
     return suites.get(suiteName);
   }
-  
+
   return {
     onSuiteStart(log) {
       const suite = getSuiteData(log.suite);
       suite.filePath = log.filePath;
       suite.startTime = new Date(log.ts).getTime();
     },
-    
+
     onTestStart(log) {
       const suite = getSuiteData(log.suite || 'default');
       const test = {
@@ -38,7 +38,7 @@ export function createTestAnalyzer() {
       };
       suite.tests.set(log.testIndex, test);
     },
-    
+
     onTestComplete(log) {
       // Find test across all suites
       for (const suite of suites.values()) {
@@ -54,14 +54,14 @@ export function createTestAnalyzer() {
         }
       }
     },
-    
-    onAssertion(log) {
+
+    onExpect(log) {
       // Find test across all suites
       for (const suite of suites.values()) {
         const test = suite.tests.get(log.testIndex);
         if (test) {
           test.logs.push(log);
-          
+
           // Track failure
           if (log.passed === false) {
             test.failed = true;
@@ -73,19 +73,19 @@ export function createTestAnalyzer() {
         }
       }
     },
-    
+
     getSuiteStats(suiteName) {
       const suite = suites.get(suiteName);
       if (!suite) return null;
-      
+
       const tests = Array.from(suite.tests.values());
-      const completed = tests.filter(t => t.state);
-      const passed = completed.filter(t => t.state === 'pass' && !t.failed);
-      const failed = completed.filter(t => t.state === 'fail' || t.failed);
-      
-      const endTime = Math.max(...completed.map(t => t.endTime || t.startTime));
+      const completed = tests.filter((t) => t.state);
+      const passed = completed.filter((t) => t.state === 'pass' && !t.failed);
+      const failed = completed.filter((t) => t.state === 'fail' || t.failed);
+
+      const endTime = Math.max(...completed.map((t) => t.endTime || t.startTime));
       const duration = endTime - suite.startTime;
-      
+
       return {
         passed: passed.length,
         failed: failed.length,
@@ -93,16 +93,16 @@ export function createTestAnalyzer() {
         duration,
       };
     },
-    
+
     getFailedTests(suiteName) {
       const suite = suites.get(suiteName);
       if (!suite) return [];
-      
+
       return Array.from(suite.tests.values())
-        .filter(t => t.failed || t.state === 'fail')
+        .filter((t) => t.failed || t.state === 'fail')
         .sort((a, b) => a.index - b.index);
     },
-    
+
     clearSuite(suiteName) {
       suites.delete(suiteName);
     },

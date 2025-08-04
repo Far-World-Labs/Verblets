@@ -24,16 +24,13 @@ export default async function analyzeTestError({
     testSnippet = extractCodeWindow(testFile, testLine, 10);
   }
 
-  // Build assertion/expectation data
-  const assertion = {};
-  if (failureDetails) {
-    assertion.expected = failureDetails.expected;
-    assertion.actual = failureDetails.actual || failureDetails.result;
-    assertion.passed = failureDetails.passed;
-    if (failureDetails.description) {
-      assertion.description = failureDetails.description;
-    }
-  }
+  // Build assertion/expectation data with clean defaults
+  const assertion = {
+    expected: failureDetails?.expected,
+    actual: failureDetails?.actual || failureDetails?.result,
+    passed: failureDetails?.passed ?? false,
+    description: failureDetails?.description,
+  };
 
   // Filter and structure execution logs
   const executionLogs = [];
@@ -54,11 +51,10 @@ export default async function analyzeTestError({
     });
   }
 
-  // KEEP THIS DO NOT DELETE - Original detailed format for future use:
-  /* 
+  // Use the detailed analysis format
   const outputFormat = `Test: ${testName}  
-Expected: ${assertion.expected}
-Actual: ${assertion.actual}
+Expected: ${assertion.expected ?? 'undefined'}
+Actual: ${assertion.actual ?? 'undefined'}
 
 Analysis:
   Explain exactly what the test is verifying.
@@ -91,32 +87,6 @@ ${asXML(assertion, { tag: 'assertion' })}
 ${executionLogs.length > 0 ? asXML(executionLogs, { tag: 'execution-logs' }) : ''}
 
 ${asXML(outputFormat, { tag: 'output-format' })}`;
-  */
-
-  // Succinct analysis format - just the analysis part
-  const outputFormat = `Analysis (be succinct):
-- What the test verifies
-- Why it failed (logic/data/env) 
-- Root cause location${testSnippet ? ' (reference line numbers from code)' : ''}
-- Actionable fix
-
-Be diagnostic-precise. No fluff.`;
-
-  const prompt = `Analyze this JavaScript test failure:
-
-Test: ${testName}  
-Expected: ${assertion.expected}
-Actual: ${assertion.actual}
-
-${asXML(testInfo, { tag: 'test-info' })}
-
-${testSnippet ? asXML(testSnippet, { tag: 'test-code' }) : ''}
-
-${asXML(assertion, { tag: 'assertion' })}
-
-${executionLogs.length > 0 ? asXML(executionLogs, { tag: 'execution-logs' }) : ''}
-
-${outputFormat}`;
 
   try {
     const response = await chatGPT(prompt, { modelOptions: { max_tokens: 300 } });

@@ -20,7 +20,8 @@ export function createNoOpHelpers() {
     logSuiteStart: () => {},
     logTestStart: () => {},
     logTestComplete: () => {},
-    logAssertion: () => {},
-    logAIValidation: () => {},
+    logExpect: () => {},
+    logAIExpect: () => {},
+    logSuiteEnd: () => {},
   };
 }

@@ -5,7 +5,7 @@ import { longTestTimeout } from '../../constants/common.js';
 import { intent as intentSchema } from '../../json-schemas/index.js';
 import { env } from '../../lib/env/index.js';
 import { debug } from '../../lib/debug/index.js';
-import { logSuiteStart, logTestStart, logTestComplete } from '../../../test/setup.js';
+import { logSuiteStart, logTestStart, logTestComplete } from '../../chains/test-analysis/setup.js';
 
 import intent from './index.js';
 

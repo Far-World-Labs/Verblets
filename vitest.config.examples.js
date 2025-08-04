@@ -13,9 +13,8 @@ export default defineConfig({
     ...baseConfig,
     environment: 'node',
     include: ['src/**/*.examples.js'],
-    globalSetup: './test/global-setup.js',
-    globalTeardown: './test/global-teardown.js',
-    setupFiles: ['./test/setup.js'],
-    reporters: debugModeEnabled ? ['./test/silent-reporter.js'] : ['default'],
+    // Remove globalSetup/globalTeardown - reporter handles this
+    setupFiles: ['./src/chains/test-analysis/setup.js'],
+    reporters: debugModeEnabled ? ['./src/chains/test-analysis/index.js'] : ['default']
   },
 });

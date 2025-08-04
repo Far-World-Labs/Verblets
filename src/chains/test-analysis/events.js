@@ -10,8 +10,8 @@ export function createLogHelpers(logger) {
       logSuiteStart: noop,
       logTestStart: noop,
       logTestComplete: noop,
-      logAssertion: noop,
-      logAIValidation: noop,
+      logExpect: noop,
+      logAIExpect: noop,
     };
   }
 
@@ -43,9 +43,9 @@ export function createLogHelpers(logger) {
       });
     },
 
-    logAssertion: (testIndex, description, expected, actual, passed) => {
+    logExpect: (testIndex, description, expected, actual, passed) => {
       logger.info({
-        event: 'assertion',
+        event: 'expect',
         testIndex,
         description,
         expected,
@@ -54,13 +54,22 @@ export function createLogHelpers(logger) {
       });
     },
 
-    logAIValidation: (testIndex, validationType, passed, duration) => {
+    logAIExpect: (testIndex, validationType, passed, duration) => {
       logger.info({
-        event: 'ai-validation',
+        event: 'aiExpect',
         testIndex,
-        validation: validationType,
+        description: validationType,
+        expected: true, // AI validations expect success
+        actual: passed,
         passed,
         duration,
+      });
+    },
+
+    logSuiteEnd: (suiteName) => {
+      logger.info({
+        event: 'suite-end',
+        suite: suiteName,
       });
     },
   };

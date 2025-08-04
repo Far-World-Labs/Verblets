@@ -36,12 +36,34 @@ class NullRedisClient {
     this.store[key] = value;
   }
 
+  incr(key) {
+    const current = parseInt(this.store[key] || '0', 10);
+    const newValue = current + 1;
+    this.store[key] = String(newValue);
+    return newValue;
+  }
+
+  incrby(key, increment) {
+    const current = parseInt(this.store[key] || '0', 10);
+    const newValue = current + increment;
+    this.store[key] = String(newValue);
+    return newValue;
+  }
+
+  incrBy(key, increment) {
+    return this.incrby(key, increment);
+  }
+
   // Hash operations
   hset(key, field, value) {
     if (!this.hashes[key]) this.hashes[key] = {};
     const isNew = !this.hashes[key][field];
     this.hashes[key][field] = value;
     return isNew ? 1 : 0;
+  }
+
+  hSet(key, field, value) {
+    return this.hset(key, field, value);
   }
 
   hsetnx(key, field, value) {
@@ -59,6 +81,10 @@ class NullRedisClient {
     return this.hashes[key] || {};
   }
 
+  hGetAll(key) {
+    return this.hgetall(key);
+  }
+
   hvals(key) {
     const hash = this.hashes[key];
     return hash ? Object.values(hash) : [];
@@ -68,6 +94,18 @@ class NullRedisClient {
     if (!this.hashes[key] || this.hashes[key][field] === undefined) return 0;
     delete this.hashes[key][field];
     return 1;
+  }
+
+  hincrby(key, field, increment) {
+    if (!this.hashes[key]) this.hashes[key] = {};
+    const current = parseInt(this.hashes[key][field] || '0', 10);
+    const newValue = current + increment;
+    this.hashes[key][field] = String(newValue);
+    return newValue;
+  }
+
+  hIncrBy(key, field, increment) {
+    return this.hincrby(key, field, increment);
   }
 
   hlen(key) {
@@ -218,6 +256,18 @@ class SafeRedisClient {
     }
   }
 
+  async incrBy(key, increment) {
+    try {
+      return await this.redisClient.incrBy(key, increment);
+    } catch (error) {
+      if (this.isConnectionError(error)) {
+        console.warn('Redis connection lost, falling back to in-memory cache');
+        return this.fallbackClient.incrBy(key, increment);
+      }
+      throw error;
+    }
+  }
+
   // Hash operations
   async hset(key, field, value) {
     try {
@@ -267,6 +317,14 @@ class SafeRedisClient {
     }
   }
 
+  hGetAll(key) {
+    return this.hgetall(key);
+  }
+
+  hSet(key, field, value) {
+    return this.hset(key, field, value);
+  }
+
   async hvals(key) {
     try {
       return await this.redisClient.hVals(key);
@@ -286,6 +344,18 @@ class SafeRedisClient {
       if (this.isConnectionError(error)) {
         console.warn('Redis connection lost, falling back to in-memory cache');
         return this.fallbackClient.hdel(key, field);
+      }
+      throw error;
+    }
+  }
+
+  async hIncrBy(key, field, increment) {
+    try {
+      return await this.redisClient.hIncrBy(key, field, increment);
+    } catch (error) {
+      if (this.isConnectionError(error)) {
+        console.warn('Redis connection lost, falling back to in-memory cache');
+        return this.fallbackClient.hIncrBy(key, field, increment);
       }
       throw error;
     }
