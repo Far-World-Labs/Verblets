@@ -58,7 +58,6 @@ Process exactly ${count} items from the XML list below and return ${count} yes/n
       }
     );
 
-    // listBatch now returns arrays directly
     const decisions = response;
 
     items.forEach((item, i) => {

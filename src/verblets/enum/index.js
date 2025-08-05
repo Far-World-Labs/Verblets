@@ -31,6 +31,5 @@ ${asJSON}`;
     ...options,
   });
 
-  // With auto-unwrapping, result should be the value directly
   return result === 'undefined' ? undefined : result;
 };
