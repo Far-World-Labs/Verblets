@@ -350,7 +350,6 @@ function groupConsecutiveChunks(chunks) {
     if (currentChunk.index === prevChunk.index + 1) {
       currentGroup.push(currentChunk);
     } else {
-      // Start a new group
       groups.push(currentGroup);
       currentGroup = [currentChunk];
     }

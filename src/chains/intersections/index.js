@@ -45,7 +45,6 @@ const parseElements = (elements) => {
 const processCombo = async (combo, instructions) => {
   const comboKey = combo.join(' + ');
 
-  // Get elements and description in parallel
   const [elementsResponse, intersectionItems] = await Promise.all([
     chatGPT(INTERSECTION_PROMPT(combo, instructions), {
       modelOptions: {
@@ -117,7 +116,6 @@ export default async function intersections(items, options = {}) {
     const batch = allCombinations.slice(i, i + batchSize);
     const batchResults = await Promise.all(batch.map((combo) => processCombo(combo, instructions)));
 
-    // Add batch results to final results
     for (const result of batchResults) {
       results[result.key] = result.intersection;
     }

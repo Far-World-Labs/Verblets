@@ -29,7 +29,6 @@ function withInactivityTimeout(work, timeoutMs, hook = null) {
     rejectPromise = reject;
   });
 
-  // Start the timer
   resetTimeout();
 
   const onUpdate = (input, error = null) => {

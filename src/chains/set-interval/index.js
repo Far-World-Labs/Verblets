@@ -118,7 +118,6 @@ Next wait:`;
 
       count += 1;
 
-      // Schedule the next iteration only if still active
       if (active) {
         timer = setTimeout(step, delay);
       }
@@ -137,14 +136,12 @@ Next wait:`;
 
       count += 1;
 
-      // Continue with a fallback delay of 1 second only if still active
       if (active) {
         timer = setTimeout(step, 1000);
       }
     }
   };
 
-  // Start immediately - the prompt will determine the first interval
   timer = setTimeout(step, 0);
 
   const stop = () => {

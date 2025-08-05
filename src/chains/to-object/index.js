@@ -133,7 +133,7 @@ export default async function toObject(text, schema, config = {}) {
     });
 
     const result = parseAndValidate(response, schema);
-    logDebugInfo(3, prompt, response, null); // Log successful attempt
+    logDebugInfo(3, prompt, response, null);
     return result;
   } catch (error) {
     logDebugInfo(3, buildJsonPrompt(text, schema, errorDetails), text, error);

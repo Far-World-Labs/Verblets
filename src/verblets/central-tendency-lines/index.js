@@ -53,7 +53,6 @@ export function buildCentralTendencyPrompt(
   const coreFeaturesLine =
     coreFeatures.length > 0 ? `Core Features: ${coreFeatures.join(', ')}` : '';
 
-  // Default structured output requirements for individual verblet use
   const defaultOutputRequirements = `OUTPUT REQUIREMENTS:
 ${onlyJSON}
 ${strictFormat}
