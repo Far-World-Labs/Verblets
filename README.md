@@ -90,8 +90,7 @@ Utility operations are uncategorized functionality like automatic tool selection
 
 - [ai-arch-expect](./src/chains/ai-arch-expect) - Validate AI architecture constraints and patterns
 - [auto](./src/verblets/auto) - Match task descriptions to available tools using function calling
-- [expect](./src/verblets/expect) - Check if conditions are met and explain why if not
-- [expect chain](./src/chains/expect) - Validate complex data relationships with detailed failure analysis
+- [expect](./src/chains/expect) - Validate complex data relationships with detailed failure analysis
 - [intent](./src/verblets/intent) - Extract action and parameters from natural language commands
 - [llm-logger](./src/chains/llm-logger) - Summarize log patterns and detect anomalies across time windows
 - [sentiment](./src/verblets/sentiment) - Classify as positive, negative, or neutral with nuance detection
