@@ -67,20 +67,21 @@ The `verblets` directory contains individual utilities that wrap specific langua
 
 Available verblets:
 
-- [auto](./auto)
-- [bool](./bool)
-- [name](./name) - generate evocative names from text
-- [enum](./enum)
-- [intent](./intent)
-- [number](./number)
-- [number-with-units](./number-with-units)
-- [date](../chains/date)
-- [sentiment](./sentiment) - classify text sentiment
-- [schema-org](./schema-org)
-- [name-similar-to](./name-similar-to) - suggest short names matching a style
-- [name](./name) - name something from a definition or description
-- [to-object](./to-object) – see its [README](./to-object/README.md) for details.
+- [auto](./auto) - automatically determine and convert to appropriate data type
+- [bool](./bool) - extract boolean true/false values from text
+- [central-tendency-lines](./central-tendency-lines) - find common themes in text
+- [commonalities](./commonalities) - identify shared characteristics across items
+- [enum](./enum) - classify text into predefined categories
+- [expect](./expect) - validate text against expected patterns
+- [fill-missing](./fill-missing) - intelligently complete missing data
+- [intent](./intent) - identify user intent from text
 - [list-batch](./list-batch) - generic batched list operations with XML/newline auto-detection
-- [list-expand](./list-expand) - expand lists with similar items with prompts
+- [list-expand](./list-expand) - expand lists with similar items using prompts
+- [name](./name) - generate names from definitions or descriptions
+- [name-similar-to](./name-similar-to) - suggest short names matching a style
+- [number](./number) - extract numeric values from text
+- [number-with-units](./number-with-units) - parse numbers with their units
+- [schema-org](./schema-org) - extract Schema.org structured data
+- [sentiment](./sentiment) - classify text sentiment (positive/negative/neutral)
 
 Use these modules directly or compose them inside [chains](../chains/README.md).

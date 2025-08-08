@@ -90,6 +90,6 @@ const processData = async (data) => {
 
 ## Related Modules
 
-- [`with-inactivity-timeout`](../with-inactivity-timeout/README.md) - Timeout handling for long operations
-- [`chatgpt`](../chatgpt/README.md) - LLM integration with built-in retry logic
-- [`llm-logger`](../llm-logger/README.md) - Logging utilities for debugging retry behavior 
+- [`with-inactivity-timeout`](../with-inactivity-timeout) - Timeout handling for long operations
+- [`chatgpt`](../chatgpt) - LLM integration with built-in retry logic
+- [`logger`](../logger) - Logging utilities for debugging retry behavior 
