@@ -1,27 +1,30 @@
 import Ajv from 'ajv';
-import { describe, expect, it, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
-import aiExpect from '../../chains/expect/index.js';
+import { describe, expect as vitestExpect, it as vitestIt, beforeAll, afterAll } from 'vitest';
+import vitestAiExpect from '../../chains/expect/index.js';
 import { longTestTimeout } from '../../constants/common.js';
 import { intent as intentSchema } from '../../json-schemas/index.js';
 import { env } from '../../lib/env/index.js';
 import { debug } from '../../lib/debug/index.js';
-import { logSuiteStart, logTestStart, logTestComplete } from '../../chains/test-analysis/setup.js';
+import { logSuiteEnd } from '../../chains/test-analysis/setup.js';
+import { wrapIt, wrapExpect, wrapAiExpect } from '../../chains/test-analysis/test-wrappers.js';
+import { extractFileContext } from '../../lib/logger/index.js';
+import { getConfig } from '../../chains/test-analysis/config.js';
 
 import intent from './index.js';
 
-// Create a proxy that forwards to the global logger when it's available
-const logger = new Proxy(
-  {},
-  {
-    get(target, prop) {
-      const actualLogger = globalThis.testLogger;
-      if (!actualLogger) {
-        return () => {}; // Return no-op function
-      }
-      return actualLogger[prop];
-    },
-  }
-);
+const config = getConfig();
+const it = config?.aiMode ? wrapIt(vitestIt, { baseProps: { suite: 'Intent verblet' } }) : vitestIt;
+const expect = config?.aiMode
+  ? wrapExpect(vitestExpect, { baseProps: { suite: 'Intent verblet' } })
+  : vitestExpect;
+const aiExpect = config?.aiMode
+  ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'Intent verblet' } })
+  : vitestAiExpect;
+const suiteLogEnd = config?.aiMode ? logSuiteEnd : () => {};
+
+afterAll(async () => {
+  await suiteLogEnd('Intent verblet', extractFileContext(2));
+});
 
 const travelOperations = [
   {
@@ -81,46 +84,6 @@ const examples = [
 ];
 
 describe('Intent verblet', () => {
-  // Set environment mode to 'none' for all tests to avoid throwing
-  const originalMode = env.LLM_EXPECT_MODE;
-  let testIndex = 0;
-  let currentTestStartTime;
-
-  beforeAll(() => {
-    env.LLM_EXPECT_MODE = 'none';
-    logSuiteStart('Intent verblet', 'src/verblets/intent/index.examples.js');
-  });
-
-  beforeEach((ctx) => {
-    testIndex++;
-    currentTestStartTime = Date.now();
-    const testName = ctx.task.name;
-    const fileName = ctx.task.file?.name || 'unknown';
-
-    logTestStart(testName, testIndex, fileName);
-  });
-
-  afterEach((ctx) => {
-    const duration = Date.now() - currentTestStartTime;
-    const state = ctx.task.result?.state || 'unknown';
-
-    logTestComplete(testIndex, state, duration);
-  });
-
-  afterAll(() => {
-    if (originalMode !== undefined) {
-      env.LLM_EXPECT_MODE = originalMode;
-    } else {
-      delete env.LLM_EXPECT_MODE;
-    }
-
-    // Log test suite completion
-    logger.info({
-      event: 'test-suite-complete',
-      suite: 'Intent verblet',
-    });
-  });
-
   examples.forEach((example) => {
     it(
       example.text,
@@ -141,16 +104,14 @@ describe('Intent verblet', () => {
           expect(isValid).toStrictEqual(true);
 
           // LLM assertion to validate intent extraction quality
-          const intentMakesSense = await aiExpect(
+          await aiExpect(
             `Original text: "${example.text}" was parsed into an intent object`
           ).toSatisfy('Does this seem like a reasonable intent extraction?');
-          expect(intentMakesSense).toBe(true);
 
           // Additional assertion for intent completeness
-          const hasBasicInfo = await aiExpect(JSON.stringify(result)).toSatisfy(
+          await aiExpect(JSON.stringify(result)).toSatisfy(
             'Does this intent object contain some useful information?'
           );
-          expect(hasBasicInfo).toBe(true);
         }
       },
       longTestTimeout
@@ -171,15 +132,13 @@ describe('Intent verblet', () => {
       expect(validate(result)).toBe(true);
 
       // LLM assertions for travel-specific validation
-      const isTravelRelated = await aiExpect(`Intent extracted from: "${travelRequest}"`).toSatisfy(
+      await aiExpect(`Intent extracted from: "${travelRequest}"`).toSatisfy(
         'Is this request related to travel or transportation?'
       );
-      expect(isTravelRelated).toBe(true);
 
-      const hasLocationInfo = await aiExpect(JSON.stringify(result)).toSatisfy(
+      await aiExpect(JSON.stringify(result)).toSatisfy(
         'Does this intent mention any locations or destinations?'
       );
-      expect(hasLocationInfo).toBe(true);
     },
     longTestTimeout
   );
@@ -198,16 +157,14 @@ describe('Intent verblet', () => {
       expect(validate(result)).toBe(true);
 
       // LLM assertion for entertainment intent
-      const isEntertainmentRelated = await aiExpect(
-        `Intent extracted from: "${musicQuery}"`
-      ).toSatisfy('Is this request related to music or entertainment?');
-      expect(isEntertainmentRelated).toBe(true);
+      await aiExpect(`Intent extracted from: "${musicQuery}"`).toSatisfy(
+        'Is this request related to music or entertainment?'
+      );
 
       // Validate that the intent captures the search criteria
-      const mentionsLyrics = await aiExpect(JSON.stringify(result)).toSatisfy(
+      await aiExpect(JSON.stringify(result)).toSatisfy(
         'Does this intent mention song lyrics or music search?'
       );
-      expect(mentionsLyrics).toBe(true);
     },
     longTestTimeout
   );

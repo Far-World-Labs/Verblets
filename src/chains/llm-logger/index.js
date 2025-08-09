@@ -12,6 +12,7 @@
 
 import RingBuffer from '../../lib/ring-buffer/index.js';
 import assert from '../../lib/assert/index.js';
+import { extractFileContext as extractFileContextMain } from '../../lib/logger/index.js';
 
 /**
  * @typedef {Object} LogEntry
@@ -45,35 +46,12 @@ import assert from '../../lib/assert/index.js';
  * @property {Object} [aiMeta] - AI metadata adjustments
  */
 
-/**
- * Extract file context information from the call stack
- * @param {number} stackOffset - Additional stack frames to skip (for wrapper functions)
- */
 function extractFileContext(stackOffset = 0) {
-  const stack = new Error().stack;
-  const lines = stack.split('\n');
-
-  // Stack frames to skip:
-  // [0] "Error"
-  // [1] at extractFileContext
-  // [2] at processLog (which calls extractFileContext)
-  // [3] at log/info/warn/error method (which calls processLog)
-  // [4+stackOffset] at the actual caller
-  const skipFrames = 4 + stackOffset;
-
-  for (let i = skipFrames; i < lines.length; i++) {
-    const line = lines[i];
-    // Match both "at functionName (file:line:col)" and "at file:line:col"
-    const match = line.match(/at .* \((.+):(\d+):\d+\)/) || line.match(/at (.+):(\d+):\d+/);
-    if (match) {
-      return {
-        filePath: match[1],
-        line: parseInt(match[2], 10),
-      };
-    }
-  }
-
-  return { filePath: 'unknown', line: 0 };
+  const result = extractFileContextMain(4 + stackOffset);
+  return {
+    filePath: result.file,
+    line: result.line,
+  };
 }
 
 /**

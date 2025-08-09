@@ -5,6 +5,7 @@ import { execSync } from 'node:child_process';
 import wrapVariable from '../../prompts/wrap-variable.js';
 import { env } from '../../lib/env/index.js';
 import { expectCore, handleAssertionResult } from './shared.js';
+import { extractFileContext } from '../../lib/logger/index.js';
 
 /**
  * Get git-aware file path or full path if not in git repo
@@ -24,20 +25,6 @@ function getDisplayPath(filePath) {
     // Not in git repo or git not available, return full path
     return filePath;
   }
-}
-
-/**
- * Get the calling file and line number from stack trace
- */
-function getCallerInfo() {
-  // stack[0] is Error, stack[1] is this function, stack[2] is expect wrapper,
-  // stack[3] should be the caller
-  const line = new Error().stack.split('\n')[3] || '';
-  const match = line.match(/\((.+):(\d+):\d+\)/) || line.match(/at (.+):(\d+):(\d+)/);
-  if (match) {
-    return { file: match[1], line: parseInt(match[2], 10) };
-  }
-  return { file: 'unknown', line: 0 };
 }
 
 /**
@@ -153,10 +140,10 @@ Keep your response concise but actionable. Focus on practical solutions.`;
 /**
  * Enhanced LLM expectation with debugging features
  */
-export async function expect(actual, expected, constraint) {
-  const mode = env.LLM_EXPECT_MODE || 'none';
+export async function expect(actual, expected, constraint, options = {}) {
+  const mode = options.mode || env.LLM_EXPECT_MODE || 'none';
 
-  const callerInfo = getCallerInfo();
+  const callerInfo = extractFileContext(5);
 
   // Get code context if mode requires it
   let codeContext = null;
@@ -233,28 +220,14 @@ class ExpectWrapper {
   }
 
   async toSatisfy(constraint, options = {}) {
-    if (options.throws === false) {
-      try {
-        const [passed] = await expect(this.actual, undefined, constraint);
-        return passed;
-      } catch {
-        return false;
-      }
-    }
-    const [passed] = await expect(this.actual, undefined, constraint);
+    const mode = options.mode !== undefined ? options.mode : 'error';
+    const [passed] = await expect(this.actual, undefined, constraint, { mode });
     return passed;
   }
 
   async toEqual(expected, options = {}) {
-    if (options.throws === false) {
-      try {
-        const [passed] = await expect(this.actual, expected, undefined);
-        return passed;
-      } catch {
-        return false;
-      }
-    }
-    const [passed] = await expect(this.actual, expected, undefined);
+    const mode = options.mode !== undefined ? options.mode : 'error';
+    const [passed] = await expect(this.actual, expected, undefined, { mode });
     return passed;
   }
 

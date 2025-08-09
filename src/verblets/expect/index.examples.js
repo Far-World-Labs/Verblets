@@ -1,7 +1,34 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect as vitestExpect, it as vitestIt, afterAll } from 'vitest';
 
-import aiExpect from './index.js';
+import aiExpectVerblet from './index.js';
 import { longTestTimeout } from '../../constants/common.js';
+import vitestAiExpect from '../../chains/expect/index.js';
+import { logSuiteEnd } from '../../chains/test-analysis/setup.js';
+import { wrapIt, wrapExpect, wrapAiExpect } from '../../chains/test-analysis/test-wrappers.js';
+import { extractFileContext } from '../../lib/logger/index.js';
+import { getConfig } from '../../chains/test-analysis/config.js';
+
+//
+// Setup AI test wrappers
+//
+const config = getConfig();
+const it = config?.aiMode
+  ? wrapIt(vitestIt, { baseProps: { suite: 'LLM Expect Verblet' } })
+  : vitestIt;
+const expect = config?.aiMode
+  ? wrapExpect(vitestExpect, { baseProps: { suite: 'LLM Expect Verblet' } })
+  : vitestExpect;
+// Use the original aiExpect when testing aiExpect itself to avoid double logging
+// The outer expect wrapper will handle the logging for these tests
+const aiExpect = vitestAiExpect;
+const suiteLogEnd = config?.aiMode ? logSuiteEnd : () => {};
+
+//
+// Test suite
+//
+afterAll(async () => {
+  await suiteLogEnd('LLM Expect Verblet', extractFileContext(2));
+});
 
 const examples = [
   {
@@ -60,10 +87,10 @@ describe('LLM Expect Verblet', () => {
         const result =
           example.inputs.expected !== undefined
             ? await aiExpect(example.inputs.actual).toEqual(example.inputs.expected, {
-                throws: false,
+                mode: 'none',
               })
             : await aiExpect(example.inputs.actual).toSatisfy(example.inputs.constraint, {
-                throws: false,
+                mode: 'none',
               });
 
         expect(result).toBe(example.want.result);
@@ -83,9 +110,9 @@ describe('LLM Expect Verblet', () => {
   );
 
   it(
-    'should not throw when throws option is false',
+    'should not throw when mode is none',
     async () => {
-      const result = await aiExpect('hello').toEqual('goodbye', { throws: false });
+      const result = await aiExpect('hello').toEqual('goodbye', { mode: 'none' });
       expect(result).toBe(false);
     },
     longTestTimeout
@@ -99,7 +126,7 @@ describe('LLM Expect Verblet', () => {
 
       const result = await aiExpect(businessRecommendation).toSatisfy(
         'Is this recommendation specific, actionable, and includes measurable targets?',
-        { throws: false }
+        { mode: 'none' }
       );
 
       expect(result).toBe(true);

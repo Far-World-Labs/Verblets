@@ -1,49 +1,153 @@
+/**
+ * Test Analysis Reporter for Vitest
+ *
+ * ## Architecture Overview
+ *
+ * This reporter implements a distributed event collection system for Vitest tests running
+ * in parallel across multiple worker processes. The system uses Redis as a shared medium
+ * to collect test events from all workers and process them centrally.
+ *
+ * ## Parallel Test Execution Challenges
+ *
+ * Vitest runs test suites in parallel worker processes for performance. Each worker process
+ * executes independently and terminates when its tests complete. This creates several
+ * challenges for collecting comprehensive test data:
+ *
+ * - Test events are generated across multiple processes simultaneously
+ * - Workers have no awareness of each other's state or progress
+ * - Process termination can occur before events are fully processed
+ * - Race conditions arise when multiple workers write to shared storage
+ *
+ * ## Event Collection Strategy
+ *
+ * ### Redis Ring Buffer
+ *
+ * The system uses a Redis-backed ring buffer as the central event store. This design was
+ * chosen for several reasons:
+ *
+ * - Redis provides atomic operations necessary for concurrent access
+ * - Ring buffer allows bounded memory usage with automatic old event eviction
+ * - Multiple readers can consume events at different rates
+ * - Events persist beyond individual process lifetimes
+ *
+ * ### Atomic Sequence Generation
+ *
+ * The most critical challenge was ensuring no events are lost during concurrent writes.
+ * Initial implementations using Redis GET/SET operations for sequence tracking suffered
+ * from race conditions where multiple workers could obtain the same sequence number.
+ *
+ * The solution uses Redis INCR for atomic sequence generation. Each write operation:
+ * 1. Atomically increments the sequence counter to reserve a position
+ * 2. Calculates the ring buffer position from the reserved sequence
+ * 3. Writes data to the reserved position
+ *
+ * This guarantees each event gets a unique position even under high concurrency.
+ *
+ * ### Lookback vs Consumption
+ *
+ * The reporter uses two different reading strategies:
+ *
+ * - **Consumption**: During test execution, the reporter continuously consumes new events
+ *   from the ring buffer. This moves the reader's offset forward and processes events
+ *   as they arrive.
+ *
+ * - **Lookback**: When a suite completes, the reporter looks back through recent events
+ *   to gather all data for that suite. Critically, lookback reads from the latest
+ *   sequence position rather than the reader's consumption offset, ensuring all events
+ *   are visible even if consumption hasn't caught up.
+ *
+ * ## Event Flow
+ *
+ * 1. **Initialization**: Reporter creates ring buffer and stores key in Redis
+ * 2. **Worker Setup**: Each test worker connects to the same ring buffer
+ * 3. **Test Execution**: Workers write events (test-start, expect, test-complete) to buffer
+ * 4. **Event Processing**: Reporter polls buffer and processes events continuously
+ * 5. **Suite Completion**: Reporter performs lookback to analyze suite results
+ * 6. **Cleanup**: Reporter waits for pending work and cleans up Redis keys
+ *
+ * ## Design Decisions
+ *
+ * ### Event Loop Polling
+ *
+ * The reporter polls the ring buffer reader, which checks if new events have been written
+ * beyond the reader's current offset. When new events are available, the reader retrieves
+ * them from the Redis list that backs the ring buffer. This polling approach:
+ *
+ * - Provides consistent behavior across different Redis configurations
+ * - Allows batched processing of multiple events per poll cycle
+ * - Simplifies error handling and recovery
+ * - Avoids complexity of Redis pub/sub or blocking reads
+ *
+ * The polling is not just checking a simple Redis key - it's comparing the reader's offset
+ * against the buffer's sequence counter and fetching any new events that have been written
+ * to the buffer's Redis list structure since the last poll.
+ *
+ * ### Suite-Level Analysis
+ *
+ * Analysis is triggered at suite completion rather than test completion because:
+ * - Suite boundaries provide natural aggregation points
+ * - Reduces analysis overhead by batching related tests
+ * - Allows comprehensive view of test patterns within a suite
+ * - Suite completion guarantees all tests have finished
+ *
+ * ### Synchronous Critical Path
+ *
+ * Test wrapper functions use async/await to ensure events are written to Redis before
+ * proceeding. This prevents event loss if a test crashes or the process terminates
+ * unexpectedly. While this adds minimal latency, the reliability gain is essential.
+ */
+
 import { getClient } from '../../services/redis/index.js';
 import RedisRingBuffer from '../../lib/ring-buffer-redis/index.js';
-import { createLogger, createRingBufferStream } from '../../lib/logger/index.js';
-import { createTestAnalyzer } from './test-analyzer.js';
-import { getConfig } from './config.js';
-import { formatTestSummary, createSeparator } from './output-utils.js';
+import { getConfig, CONSTANTS } from './config.js';
+import { formatTestSummary, formatAnalysisOutput, createSeparator } from './output-utils.js';
 import { aggregateFromLogs } from './aggregator.js';
 import analyzeTestError from '../test-analyzer/index.js';
+import { extractCodeWindow } from '../../lib/code-extractor/index.js';
 
-async function cleanupTestRedisKeys(redis) {
-  // Clean up locally created test keys
-  const testKeys = [
-    'test:logs-key',
-    'test:processor-active',
-    'test:failed-count',
-    'test:run-complete',
-    'test:suite-status',
-    'test:error-patterns',
-  ];
-
-  await redis.del(testKeys);
+// Pure helper functions
+function shouldProcessEvents(config) {
+  return config?.aiMode;
 }
 
-function extractErrorPattern(errorText) {
-  if (!errorText) return 'unknown';
-
-  return String(errorText)
-    .replace(/\d+/g, 'N')
-    .replace(/0x[0-9a-f]+/gi, '0xHEX')
-    .replace(/["'].*?["']/g, '"..."')
-    .replace(/\/.*?\//g, '/.../')
-    .split('\n')[0]
-    .substring(0, 100);
+function isDebugMode(config) {
+  return config?.aiModeDebug;
 }
 
-function hasTestFailures(files, errors) {
-  const hasErrors = errors && errors.length > 0;
-  const hasFailures =
-    files &&
-    files.some(
-      (file) =>
-        file.result?.state === 'fail' ||
-        (file.tasks && file.tasks.some((task) => task.result?.state === 'fail'))
-    );
-  return hasErrors || hasFailures;
+function shouldAnalyze(config) {
+  return config?.aiModeAnalysis;
 }
+
+async function waitForPendingWork(pendingWork, label) {
+  if (!pendingWork || pendingWork.length === 0) return;
+
+  const config = getConfig();
+  const interval = setInterval(() => {
+    console.log(`[${label}] Waiting for ${pendingWork.length} analyses...`);
+  }, config?.polling?.statusInterval || CONSTANTS.WAIT_STATUS_INTERVAL_MS);
+
+  try {
+    await Promise.all(pendingWork);
+  } finally {
+    clearInterval(interval);
+  }
+}
+
+// Pure predicates
+const isEvent = (event) => (log) => log.event === event;
+const isTestComplete = isEvent('test-complete');
+
+const hasState = (state) => (log) => log.state === state;
+const isFailed = hasState('fail');
+
+const isFailedTest = (log) => isTestComplete(log) && isFailed(log);
+
+const inSuite = (suite) => (log) => log.suite === suite;
+const forTest = (suite, index) => (log) => log.suite === suite && log.testIndex === index;
+
+// Pure sorting functions
+const byTestIndex = (a, b) => a.testIndex - b.testIndex;
+const byTimestamp = (a, b) => new Date(a.timestamp) - new Date(b.timestamp);
 
 function isWatchMode() {
   return process.env.VITEST_MODE === 'WATCH' || process.argv.includes('--watch');
@@ -51,27 +155,76 @@ function isWatchMode() {
 
 export default class SilentReporter {
   constructor() {
-    this.processor = null;
-    this.eventLoopTimer = null;
-    this.eventLoopRunning = true;
+    this.reader = undefined;
+    this.redis = undefined;
+    this.config = undefined;
     this.pendingAnalyses = [];
+    this.failedCount = 0;
   }
 
   // Lifecycle methods in execution order
 
   async onInit() {
+    //
+    // Reporter initialization - check if AI mode is enabled
+    //
     const config = getConfig();
 
-    if (!config?.enabled || !config?.modes?.debugSuiteFirst) return;
+    if (!config?.aiMode) {
+      return;
+    }
 
-    // Clean up any leftover test data from previous runs
-    const redis = await getClient();
-    await cleanupTestRedisKeys(redis);
+    // Store config
+    this.config = config;
 
-    this.processor = await this.createProcessor(config);
-    this.startEventLoop();
+    // Reset counters for each run
+    this.pendingAnalyses = [];
+    this.failedCount = 0;
+
+    // Only initialize Redis and ring buffer on first run
+    if (!this.redis) {
+      // Create the ring buffer here in the reporter
+      this.redis = await getClient();
+
+      // Clean up any existing keys first
+      const prefix = CONSTANTS.REDIS_KEY_PREFIX;
+      const testKeys = [`${prefix}logs-key`, `${prefix}processor-active`];
+      await this.redis.del(testKeys);
+
+      // Create new ring buffer
+      const ringBufferKey = `test-logs-${Date.now()}`;
+      const ringBuffer = new RedisRingBuffer({
+        key: ringBufferKey,
+        redisClient: this.redis,
+        maxSize: config.ringBufferSize,
+      });
+
+      // Initialize the ring buffer before storing the key
+      await ringBuffer.initialize();
+
+      // Store key for test workers to find
+      await this.redis.set(`${CONSTANTS.REDIS_KEY_PREFIX}logs-key`, ringBufferKey);
+      await this.redis.set(`${CONSTANTS.REDIS_KEY_PREFIX}processor-active`, 'true');
+
+      //
+      // Create reader and start event loop to consume test events
+      //
+
+      this.reader = await ringBuffer.createReader('reporter');
+      this.startEventLoop();
+    }
+
+    // Always emit run-start event (for initial run and reruns)
+    if (this.reader) {
+      await this.reader.buffer.push({
+        event: 'run-start',
+        timestamp: new Date().toISOString(),
+        mode: isWatchMode() ? 'watch' : 'single',
+      });
+    }
   }
 
+  // Required Vitest reporter lifecycle methods
   onPathsCollected() {}
   onCollected() {}
   onWatcherStart() {}
@@ -87,276 +240,240 @@ export default class SilentReporter {
   onProcessTimeout() {}
 
   async onWatcherRerun() {
-    await this.waitForPendingAnalyses('Watcher Rerun');
+    // Simple reset - just clear pending work
     this.pendingAnalyses = [];
+    this.failedCount = 0;
+
+    // Log restart event if we have a buffer
+    if (this.reader && this.config?.aiMode) {
+      await this.reader.buffer.push({
+        event: 'run-restart',
+        timestamp: new Date().toISOString(),
+        reason: 'file-change',
+      });
+    }
   }
 
-  async onFinished(files, errors) {
+  async onFinished() {
     const config = getConfig();
 
-    if (config?.enabled && config?.modes?.debugSuiteFirst && this.processor) {
-      await this.emitRunEnd();
-      await this.processRemainingEvents();
-      this.stopEventLoop();
-      await this.shutdown();
+    // Early exit if not processing
+    if (!shouldProcessEvents(config) || !this.reader) {
+      return;
     }
 
-    if (!isWatchMode()) {
-      await Promise.all(this.pendingAnalyses);
-      const exitCode = hasTestFailures(files, errors) ? 1 : 0;
-      process.exit(exitCode);
-    }
+    // Emit run-end and process remaining events
+    await this.emitRunEnd();
+    await this.processRemainingEvents();
 
+    // Wait for all pending work (summaries and/or analyses)
+    await waitForPendingWork(this.pendingAnalyses, 'Finishing');
+
+    // Reset for next run
     this.pendingAnalyses = [];
+
+    // Print separator at end of run
+    console.log(`\n${createSeparator()}\n`);
   }
 
   // Event processing flow
 
-  async startEventLoop() {
-    if (!this.processor || !this.eventLoopRunning) return;
-
-    const logs = await this.processor.reader.consume(50);
-    if (logs.length > 0) {
-      await this.handleEvents(logs);
-    }
-
-    if (this.eventLoopRunning) {
-      this.eventLoopTimer = setTimeout(() => this.startEventLoop(), 100);
-    }
+  startEventLoop() {
+    const config = getConfig();
+    //
+    // Poll ring buffer for new events at configured interval
+    //
+    this.ringBufferPollInterval = setInterval(async () => {
+      try {
+        const logs = await this.reader.consume(config.batch.size);
+        if (logs.length > 0) {
+          //
+          // Process consumed events from ring buffer
+          //
+          await this.handleEvents(logs);
+        }
+      } catch (error) {
+        // Error handler can be configured if needed
+        if (this.config?.onError) {
+          this.config.onError(error);
+        }
+      }
+    }, config.polling.interval);
   }
 
   async handleEvents(logs) {
+    const config = getConfig();
+
     for (const log of logs) {
+      if (config.aiModeDebug) {
+        console.log(JSON.stringify(log));
+      }
+      //
+      // Route event to appropriate handler
+      //
       await this.handleEvent(log);
     }
   }
 
   async handleEvent(log) {
     const handlers = {
-      'test-suite-start': () => this.processor.analyzer.onSuiteStart(log),
-      'test-start': () => this.processor.analyzer.onTestStart(log),
-      'test-complete': () => this.handleTestComplete(log),
-      expect: () => this.handleExpectation(log),
-      aiExpect: () => this.handleExpectation(log),
-      'suite-end': () => this.handleSuiteEnd(log),
-      'run-end': () => this.handleRunEnd(log),
+      'test-complete': this.handleTestComplete.bind(this),
+      expect: this.handleExpectation.bind(this),
+      'ai-expect': this.handleExpectation.bind(this),
+      'suite-end': this.handleSuiteEnd.bind(this),
+      'run-end': this.handleRunEnd.bind(this),
     };
 
     const handler = handlers[log.event];
-    if (handler) await handler();
+    if (handler) await handler(log);
   }
 
-  async handleTestComplete(log) {
-    this.processor.analyzer.onTestComplete(log);
+  handleTestComplete(log) {
     if (log.state === 'fail') {
-      await this.processor.redis.incrBy('test:failed-count', 1);
+      this.failedCount = (this.failedCount || 0) + 1;
+      // TODO: Implement error pattern analysis for failed tests
     }
   }
 
-  async handleExpectation(log) {
-    this.processor.analyzer.onExpect(log);
-    if (!log.passed && log.actual) {
-      await this.updateErrorPatterns(log);
-    }
+  async handleExpectation() {
+    // Just let the log flow through the ring buffer
+    // Analysis will query the buffer when needed
   }
 
-  async handleSuiteEnd(log) {
-    await this.processor.redis.hSet('test:suite-status', log.suite, 'complete');
+  handleSuiteEnd(log) {
+    const config = getConfig();
+
+    // Debug mode shows raw logs only
+    if (isDebugMode(config)) return;
+
+    // Always show suite summary, with or without analysis
     this.pendingAnalyses.push(this.runSuiteAnalysis(log));
   }
 
-  async handleRunEnd(log) {
-    await this.waitForPendingAnalyses('Run End');
-    await this.markRunComplete(log);
+  async handleRunEnd() {
+    const config = getConfig();
+    if (shouldAnalyze(config)) {
+      await waitForPendingWork(this.pendingAnalyses, 'Run End');
+    }
   }
 
   // Analysis methods
 
   async runSuiteAnalysis(log) {
-    // Small delay to ensure all logs are written
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    const config = getConfig();
 
-    const reader = await this.processor.ringBuffer.createReader(
-      `analysis-${log.suite}-${Date.now()}`
+    // Get the latest sequence and lookback from there
+    const latestSequence = await this.reader.buffer.getLatestSequence();
+    const logs = await this.reader.lookback(config.batch.lookbackSize, latestSequence);
+
+    // Filter logs to only include those from the current run
+    // Find the most recent run-start or run-restart event
+    const runStartIndex = logs.findLastIndex(
+      (l) => l.event === 'run-start' || l.event === 'run-restart'
     );
-    const logs = await reader.consume(1000);
 
-    const suites = aggregateFromLogs(logs);
+    // Only use logs after the most recent run start
+    const currentRunLogs = runStartIndex >= 0 ? logs.slice(runStartIndex + 1) : logs;
+
+    const suites = aggregateFromLogs(currentRunLogs);
     const suiteData = suites.find((s) => s.name === log.suite);
 
-    if (suiteData) {
-      // Build output to display all at once
-      const output = [];
-      output.push(
-        formatTestSummary(
-          suiteData.name,
-          suiteData.passedCount,
-          suiteData.testCount,
-          suiteData.avgDuration
-        )
-      );
-      output.push(''); // Just a newline
-
-      // Get failed tests from analyzer
-      const failedTests = this.processor.analyzer.getFailedTests(log.suite);
-
-      if (failedTests.length > 0) {
-        // Analyze the first failed test
-        const failedTest = failedTests[0];
-        const failureLogs = logs.filter((l) => l.testIndex === failedTest.index);
-
-        // Get file/line from the test itself
-        const testFile = failedTest.file;
-        const testLine = failedTest.line;
-
-        // Get file/line from the failed expectation if available
-        const failureFile = failedTest.failureFile || testFile;
-        const failureLine = failedTest.failureLine || testLine;
-
-        // Use the file/line from where the assertion failed, not where the test started
-        const analysis = await analyzeTestError({
-          testName: failedTest.name,
-          testFile: failureFile,
-          testLine: failureLine,
-          logs: failureLogs,
-          failureDetails: failedTest.failureLog,
-        });
-
-        if (analysis) {
-          output.push(analysis);
-        }
-      }
-
-      // Output everything together
-      console.log(output.join('\n'));
+    if (!suiteData) {
+      // No data found, show empty suite completed
+      console.log(formatTestSummary(log.suite, 0, 0, 0));
+      return;
     }
-  }
 
-  async updateErrorPatterns(assertionLog) {
-    const pattern = extractErrorPattern(assertionLog.actual);
-    await this.storeErrorPattern(pattern, assertionLog);
-  }
-
-  async storeErrorPattern(pattern, assertionLog) {
-    await this.processor.redis.hIncrBy('test:error-patterns', pattern, 1);
-    await this.processor.redis.rpush(
-      `test:error-examples:${pattern}`,
-      JSON.stringify({
-        test: assertionLog.testName,
-        testIndex: assertionLog.testIndex,
-        expected: assertionLog.expected,
-        actual: assertionLog.actual,
-        timestamp: assertionLog.ts,
-      })
+    // Build summary but don't print yet
+    const summary = formatTestSummary(
+      suiteData.name,
+      suiteData.passedCount,
+      suiteData.testCount,
+      suiteData.avgDuration
     );
-  }
 
-  async waitForPendingAnalyses(context) {
-    if (this.pendingAnalyses.length > 0) {
-      console.log(
-        `[${context}] Waiting for ${this.pendingAnalyses.length} analyses to complete...`
-      );
-      console.log(createSeparator());
-
-      // Show waiting message every 10 seconds
-      const interval = setInterval(() => {
-        if (this.pendingAnalyses.length > 0) {
-          console.log(`[${context}] Still waiting for ${this.pendingAnalyses.length} analyses...`);
-          console.log(createSeparator());
-        }
-      }, 10000);
-
-      try {
-        await Promise.all(this.pendingAnalyses);
-      } finally {
-        clearInterval(interval);
-      }
+    // Early exit if not analyzing
+    if (!shouldAnalyze(config)) {
+      console.log(summary);
+      return;
     }
-  }
 
-  async markRunComplete() {
-    await this.processor.redis.set('test:run-complete', 'true');
+    // Find first failed test for analysis
+    const firstFailed = currentRunLogs
+      .filter((l) => isFailedTest(l) && inSuite(log.suite)(l))
+      .sort(byTestIndex)[0];
 
-    // Previously collected error patterns and suite statuses
-    // Now just marking completion without collecting stats
+    if (!firstFailed) {
+      // All tests passed, just show summary
+      console.log(summary);
+      return;
+    }
 
-    // Mark run as complete
-    // Result was unused - removed to satisfy linter
+    // Get all logs for the failed test
+    const testLogs = currentRunLogs
+      .filter(forTest(log.suite, firstFailed.testIndex))
+      .sort(byTimestamp);
+
+    // Get test name from test-start event
+    const testStart = testLogs.find((l) => l.event === 'test-start');
+    const testName = testStart?.testName;
+
+    // Get failure location from failed expect event
+    const failedExpect = testLogs.find(
+      (l) => (l.event === 'expect' || l.event === 'ai-expect') && l.passed === false
+    );
+
+    // Skip analysis if no failure location found
+    if (!failedExpect || !failedExpect.file) {
+      console.log(summary);
+      return;
+    }
+
+    // Extract code snippet at failure location
+    const codeSnippet = await extractCodeWindow(failedExpect.file, failedExpect.line, 5);
+
+    // Get analysis before printing anything
+    const analysis = await analyzeTestError(testLogs);
+
+    // Now print everything atomically
+    console.log(summary);
+
+    if (analysis) {
+      console.log(); // Empty line before analysis
+      const formatted = formatAnalysisOutput(
+        analysis,
+        testName,
+        failedExpect.file,
+        failedExpect.line,
+        codeSnippet
+      );
+      console.log(formatted);
+      console.log(); // Empty line after analysis
+    }
   }
 
   // Helper methods
 
-  async createProcessor(config) {
-    const redis = await getClient();
-    const ringBuffer = new RedisRingBuffer({
-      key: `test-logs-${Date.now()}`,
-      redisClient: redis,
-      maxSize: config.ringBufferSize || 1000,
-    });
-
-    await redis.set('test:logs-key', ringBuffer.key);
-    await redis.set('test:processor-active', 'true');
-
-    const reader = await ringBuffer.createReader('processor');
-    const analyzer = createTestAnalyzer();
-
-    return { redis, ringBuffer, reader, config, analyzer };
-  }
-
   async emitRunEnd() {
-    const redis = await getClient();
-    const ringBufferKey = await redis.get('test:logs-key');
-    if (!ringBufferKey) return;
-
-    const ringBuffer = new RedisRingBuffer({
-      key: ringBufferKey,
-      redisClient: redis,
-      maxSize: 1000,
-    });
-
-    const logger = createLogger({
-      streams: [createRingBufferStream(ringBuffer)],
-    });
-
-    await logger.info({
+    // Use the existing ring buffer through the reader
+    await this.reader.buffer.push({
       event: 'run-end',
       timestamp: new Date().toISOString(),
     });
   }
 
   async processRemainingEvents() {
-    let attempts = 0;
-    while (attempts < 10) {
-      const logs = await this.processor.reader.consume(50);
-      if (logs.length > 0) {
-        await this.handleEvents(logs);
-      }
-
-      const runComplete = await this.processor.redis.get('test:run-complete');
-      if (runComplete) break;
-
-      attempts++;
-      await new Promise((resolve) => setTimeout(resolve, 100));
+    const config = getConfig();
+    let logs;
+    while ((logs = await this.reader.consume(config.batch.drainSize)).length > 0) {
+      await this.handleEvents(logs);
     }
   }
 
   stopEventLoop() {
-    this.eventLoopRunning = false;
-    if (this.eventLoopTimer) {
-      clearTimeout(this.eventLoopTimer);
+    if (this.ringBufferPollInterval) {
+      clearInterval(this.ringBufferPollInterval);
+      this.ringBufferPollInterval = undefined;
     }
-  }
-
-  async shutdown() {
-    if (!this.processor) return;
-
-    this.stopEventLoop();
-    await this.cleanupRedis();
-    await this.processor.ringBuffer.close();
-    this.processor = null;
-  }
-
-  async cleanupRedis() {
-    await cleanupTestRedisKeys(this.processor.redis);
   }
 }

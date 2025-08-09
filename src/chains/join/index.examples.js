@@ -1,7 +1,25 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect as vitestExpect, it as vitestIt, afterAll } from 'vitest';
 import join from './index.js';
 import { longTestTimeout } from '../../constants/common.js';
-import aiExpect from '../expect/index.js';
+import vitestAiExpect from '../expect/index.js';
+import { logSuiteEnd } from '../test-analysis/setup.js';
+import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
+import { extractFileContext } from '../../lib/logger/index.js';
+import { getConfig } from '../test-analysis/config.js';
+
+const config = getConfig();
+const it = config?.aiMode ? wrapIt(vitestIt, { baseProps: { suite: 'Join chain' } }) : vitestIt;
+const expect = config?.aiMode
+  ? wrapExpect(vitestExpect, { baseProps: { suite: 'Join chain' } })
+  : vitestExpect;
+const aiExpect = config?.aiMode
+  ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'Join chain' } })
+  : vitestAiExpect;
+const suiteLogEnd = config?.aiMode ? logSuiteEnd : () => {};
+
+afterAll(async () => {
+  await suiteLogEnd('Join chain', extractFileContext(2));
+});
 
 describe('join examples', () => {
   it(

@@ -74,9 +74,13 @@ describe('LLM Expect Chain', () => {
       async () => {
         let result;
         if (example.inputs.expected !== undefined) {
-          result = await aiExpect(example.inputs.actual).toEqual(example.inputs.expected);
+          result = await aiExpect(example.inputs.actual).toEqual(example.inputs.expected, {
+            mode: 'none',
+          });
         } else if (example.inputs.constraint !== undefined) {
-          result = await aiExpect(example.inputs.actual).toSatisfy(example.inputs.constraint);
+          result = await aiExpect(example.inputs.actual).toSatisfy(example.inputs.constraint, {
+            mode: 'none',
+          });
         }
 
         expect(result).toBe(example.want.result);
@@ -89,7 +93,8 @@ describe('LLM Expect Chain', () => {
     'should provide detailed debugging information on failure',
     async () => {
       const result = await aiExpect('This is clearly wrong content').toSatisfy(
-        'Is this a professional business email?'
+        'Is this a professional business email?',
+        { mode: 'none' }
       );
 
       expect(result).toBe(false);

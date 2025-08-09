@@ -1,11 +1,11 @@
 import { defineConfig } from 'vitest/config';
 import { baseConfig } from './vitest.config.base.js';
+import { truthyValues, falsyValues } from './src/constants/common.js';
 
-// Check if debug mode is enabled
-const debugModeEnabled = process.env.VERBLETS_DEBUG_SUITE_FIRST === '1' ||
-                         process.env.VERBLETS_DEBUG_RUNS === '1' ||
-                         process.env.VERBLETS_DEBUG_STREAM === '1' ||
-                         process.env.VERBLETS_DEBUG_LOGS === '1';
+// Check if AI mode should be enabled (matches config.js logic)
+const aiLogsOnly = process.env.VERBLETS_AI_LOGS_ONLY && truthyValues.includes(process.env.VERBLETS_AI_LOGS_ONLY);
+const aiPerSuite = process.env.VERBLETS_AI_PER_SUITE && truthyValues.includes(process.env.VERBLETS_AI_PER_SUITE);
+const aiModeEnabled = aiLogsOnly || aiPerSuite;
 
 // Config for npm run examples - runs *.examples.js in Node
 export default defineConfig({
@@ -13,8 +13,8 @@ export default defineConfig({
     ...baseConfig,
     environment: 'node',
     include: ['src/**/*.examples.js'],
-    // Remove globalSetup/globalTeardown - reporter handles this
-    setupFiles: ['./src/chains/test-analysis/setup.js'],
-    reporters: debugModeEnabled ? ['./src/chains/test-analysis/index.js'] : ['default']
+    // Only include setupFiles when AI mode is enabled
+    ...(aiModeEnabled && { setupFiles: ['./src/chains/test-analysis/setup.js'] }),
+    reporters: aiModeEnabled ? ['./src/chains/test-analysis/index.js'] : ['default']
   },
 });

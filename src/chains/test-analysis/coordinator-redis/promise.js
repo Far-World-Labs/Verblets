@@ -45,9 +45,9 @@ export class RedisPromise {
    * Get value without cleanup - can be called multiple times
    */
   async getValue() {
-    const startTime = Date.now();
+    const end = Date.now() + this.timeout;
 
-    while (true) {
+    while (Date.now() < end) {
       const data = await this.redis.get(this.key);
 
       if (data) {
@@ -62,14 +62,10 @@ export class RedisPromise {
         }
       }
 
-      // Still pending - check timeout
-      if (Date.now() - startTime > this.timeout) {
-        throw new Error(`RedisPromise ${this.id} timed out after ${this.timeout}ms`);
-      }
-
-      // Wait before polling again
       await new Promise((resolve) => setTimeout(resolve, this.pollInterval));
     }
+
+    throw new Error(`RedisPromise ${this.id} timed out after ${this.timeout}ms`);
   }
 
   /**

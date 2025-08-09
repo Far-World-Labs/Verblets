@@ -22,6 +22,6 @@ export function createNoOpHelpers() {
     logTestComplete: () => {},
     logExpect: () => {},
     logAIExpect: () => {},
-    logSuiteEnd: () => {},
+    logSuiteEnd: async () => {},
   };
 }

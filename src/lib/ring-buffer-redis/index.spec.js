@@ -285,19 +285,28 @@ conditionalDescribe('RedisRingBuffer Integration', () => {
         name: 'recent test results',
         got: {
           writes: ['test1', 'test2', 'test3', 'test4'],
+          n: 2,
           fromOffset: 3,
-          count: 2,
         },
-        want: { dataLength: 2, startOffset: 2, endOffset: 3 },
+        want: ['test3', 'test4'],
       },
       {
         name: 'lookback beyond available',
         got: {
           writes: ['a', 'b'],
+          n: 3,
           fromOffset: 5,
-          count: 3,
         },
-        want: { dataLength: 0, startOffset: -1, endOffset: -1 },
+        want: [],
+      },
+      {
+        name: 'lookback without offset uses latest',
+        got: {
+          writes: ['item1', 'item2', 'item3', 'item4', 'item5'],
+          n: 3,
+          fromOffset: undefined,
+        },
+        want: ['item3', 'item4', 'item5'],
       },
     ];
 
@@ -309,12 +318,112 @@ conditionalDescribe('RedisRingBuffer Integration', () => {
           await buffer.push(data);
         }
 
-        const result = await buffer.lookback(got.fromOffset, got.count);
+        const result = await buffer.lookback(got.n, got.fromOffset);
 
-        expect(result.data).toHaveLength(want.dataLength);
-        expect(result.startOffset).toBe(want.startOffset);
-        expect(result.endOffset).toBe(want.endOffset);
+        expect(result).toEqual(want);
       });
+    });
+  });
+
+  describe('reader lookback method', () => {
+    it('should look back from reader current offset by default', async () => {
+      const buffer = createBuffer();
+      const reader = await buffer.createReader('lookback-test');
+
+      // Add messages
+      for (let i = 0; i < 10; i++) {
+        await buffer.push(`item${i}`);
+      }
+
+      // Read 5 items to advance reader offset
+      await reader.consume(5);
+      expect(reader.offset).toBe(4);
+
+      // Look back 3 items from reader's current position
+      const result = await reader.lookback(3);
+      expect(result).toEqual(['item2', 'item3', 'item4']);
+    });
+
+    it('should look back from specified offset', async () => {
+      const buffer = createBuffer();
+      const reader = await buffer.createReader('lookback-test2');
+
+      // Add messages
+      for (let i = 0; i < 10; i++) {
+        await buffer.push(`item${i}`);
+      }
+
+      // Read 5 items to advance reader offset
+      await reader.consume(5);
+      expect(reader.offset).toBe(4);
+
+      // Look back 3 items from offset 7
+      const result = await reader.lookback(3, 7);
+      expect(result).toEqual(['item5', 'item6', 'item7']);
+    });
+
+    it('should work with multiple readers at different positions', async () => {
+      const buffer = createBuffer();
+      const reader1 = await buffer.createReader('reader1');
+      const reader2 = await buffer.createReader('reader2');
+
+      // Add messages
+      for (let i = 0; i < 10; i++) {
+        await buffer.push(`item${i}`);
+      }
+
+      // Advance readers to different positions
+      await reader1.consume(3); // offset 2
+      await reader2.consume(7); // offset 6
+
+      // Each reader lookback uses their own offset by default
+      const result1 = await reader1.lookback(2);
+      const result2 = await reader2.lookback(2);
+
+      expect(result1).toEqual(['item1', 'item2']);
+      expect(result2).toEqual(['item5', 'item6']);
+    });
+
+    it('should handle reader with no reads yet', async () => {
+      const buffer = createBuffer();
+      const reader = await buffer.createReader('new-reader');
+
+      // Add some messages
+      for (let i = 0; i < 5; i++) {
+        await buffer.push(`item${i}`);
+      }
+
+      // Reader starts at offset -1
+      const result = await reader.lookback(3);
+
+      // Should return empty since reader is at -1
+      expect(result).toEqual([]);
+    });
+
+    it('should work after reader branch', async () => {
+      const buffer = createBuffer();
+      const reader = await buffer.createReader('original');
+
+      // Add messages
+      for (let i = 0; i < 10; i++) {
+        await buffer.push(`item${i}`);
+      }
+
+      // Read some items
+      await reader.consume(5);
+
+      // Branch at current position
+      const branchedReader = await reader.branch('branched');
+
+      // Read more with original reader
+      await reader.consume(3);
+
+      // Lookback should use each reader's current offset
+      const originalResult = await reader.lookback(3);
+      const branchedResult = await branchedReader.lookback(3);
+
+      expect(originalResult).toEqual(['item5', 'item6', 'item7']);
+      expect(branchedResult).toEqual(['item2', 'item3', 'item4']);
     });
   });
 
