@@ -4,6 +4,7 @@ export default class Model {
   }
 
   toTokens(text) {
+    // Ensure text is a string
     const textStr = typeof text === 'string' ? text : String(text || '');
     return this.tokenizer(textStr);
   }

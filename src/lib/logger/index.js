@@ -8,25 +8,48 @@
  */
 
 /**
- * Extract file context information from the call stack
- * @param {number} stackOffset - Additional stack frames to skip
+ * Extract file context from stack trace
+ * @param {number} stackOffset - Line number in stack (undefined = debug mode)
  */
-function extractFileContext(stackOffset = 0) {
-  const stackLine = new Error().stack.split('\n')[3 + stackOffset]; // Skip Error, extractFileContext, log method, + offset
+export function extractFileContext(stackOffset) {
+  const stack = new Error().stack;
+  const stackLines = stack.split('\n');
 
+  if (stackOffset === undefined) {
+    //
+    // Debug mode: show full stack trace to determine correct offset
+    //
+    console.error('\n=== Stack Trace for Debugging ===');
+    for (let i = 0; i < stackLines.length; i++) {
+      console.error(`[${i}] ${stackLines[i]}`);
+    }
+    console.error('===\n');
+    return { file: 'debug-mode', line: 0 };
+  }
+
+  const targetLine = stackLines[stackOffset];
+  return targetLine ? parseStackLine(targetLine) : { file: 'unknown', line: 0 };
+}
+
+function parseStackLine(stackLine) {
   if (!stackLine) return { file: 'unknown', line: 0 };
 
-  // Extract file:line from stack trace line
-  const cleaned = stackLine.trim().replace(/^at\s+/, '');
-  const parts = cleaned.split(':');
-
-  if (parts.length >= 3) {
+  // Try format: "at functionName (/path/to/file.js:10:20)"
+  const parenMatch = stackLine.match(/\(([^)]+):(\d+):\d+\)$/);
+  if (parenMatch) {
     return {
-      file: parts
-        .slice(0, -2)
-        .join(':')
-        .replace(/\s*\(.*$/, ''),
-      line: parseInt(parts[parts.length - 2], 10) || 0,
+      file: parenMatch[1],
+      line: parseInt(parenMatch[2], 10) || 0,
+    };
+  }
+
+  // Try format: "at /path/to/file.js:10:20"
+  const cleaned = stackLine.trim().replace(/^at\s+/, '');
+  const directMatch = cleaned.match(/^([^\s]+):(\d+):\d+$/);
+  if (directMatch) {
+    return {
+      file: directMatch[1],
+      line: parseInt(directMatch[2], 10) || 0,
     };
   }
 
@@ -112,15 +135,24 @@ export const noopStream = {
 /**
  * Create a RingBuffer stream
  * @param {RingBuffer} ringBuffer - The RingBuffer instance to write to
+ * @param {Object} config - Configuration options
+ * @param {Function} config.onError - Error callback function
  */
-export function createRingBufferStream(ringBuffer) {
+export function createRingBufferStream(ringBuffer, config = {}) {
+  const { onError } = config;
+
   return {
     name: 'ringbuffer',
     write: async (entry) => {
       try {
+        //
+        // Write log entry to Redis ring buffer
+        //
         await ringBuffer.write(entry);
       } catch (error) {
-        console.error('RingBufferStream write error:', error);
+        if (onError) {
+          onError(error);
+        }
         throw error;
       }
     },
@@ -128,7 +160,9 @@ export function createRingBufferStream(ringBuffer) {
       try {
         ringBuffer.writeSync(entry);
       } catch (error) {
-        console.error('RingBufferStream writeSync error:', error);
+        if (onError) {
+          onError(error);
+        }
         throw error;
       }
     },
@@ -158,13 +192,14 @@ export function createLogger(options = {}) {
     };
 
     // Write to all streams
-    await Promise.all(streams.map((stream) => stream.write(entry)));
+    const results = await Promise.all(streams.map((stream) => stream.write(entry)));
+    return results.length > 0 ? results[0] : true;
   }
 
   /**
    * Core sync logging function
    */
-  function logSync(level, data, { stackOffset = 0 } = {}) {
+  function logSync(level, data, { stackOffset } = {}) {
     const entry = {
       ts: new Date().toISOString(),
       level,
@@ -185,7 +220,7 @@ export function createLogger(options = {}) {
   const createAsyncLogger =
     (level) =>
     (data, options = {}) => {
-      const { lineOffset = 0 } = options;
+      const { lineOffset } = options;
       const context = includeFileContext && !data.file ? extractFileContext(lineOffset) : {};
       return log(level, data, context);
     };

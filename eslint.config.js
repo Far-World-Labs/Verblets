@@ -65,9 +65,13 @@ export default [
     },
   },
   {
-    files: ['**/*.spec.js', '**/*.test.js'],
+    files: ['**/*.spec.js', '**/*.test.js', '**/*.examples.js'],
     rules: {
       'require-await': 'off',
+      'no-unused-vars': ['error', { 
+        argsIgnorePattern: '^_',
+        varsIgnorePattern: '^(aiExpect|beforeAll|longTestTimeout|env|expect|aiExpectVerblet|wrapAiExpect|formatIndentedLines|isRelevantForAnalysis|expectLocation|asXML|isTestStart)$'
+      }],
     },
   },
   prettierConfig,

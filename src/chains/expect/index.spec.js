@@ -18,6 +18,11 @@ vi.mock('../../lib/chatgpt/index.js', () => ({
       return './index.js';
     }
 
+    // Handle advice generation
+    if (prompt.includes('Provide debugging advice')) {
+      return 'Test advice: values do not match';
+    }
+
     // Handle current format: "Does the value satisfy the constraints?"
     if (prompt.includes('Does the value satisfy the constraints?')) {
       // Extract value, expected, and constraints from XML format
@@ -129,7 +134,7 @@ describe('expect chain', () => {
         setTestEnv('LLM_EXPECT_MODE', 'error');
 
         // Expect the promise to reject with the error
-        await vitestExpect(expect('hello', 'goodbye')).rejects.toThrow('LLM Assertion Failed');
+        await vitestExpect(expect('hello', 'goodbye')).rejects.toThrow('LLM assertion failed');
       },
       longTestTimeout
     );
@@ -144,7 +149,7 @@ describe('expect chain', () => {
 
         vitestExpect(passed).toBe(false);
         vitestExpect(consoleSpy).toHaveBeenCalledWith(
-          vitestExpect.stringContaining('LLM Assertion Failed')
+          vitestExpect.stringContaining('LLM assertion failed')
         );
 
         consoleSpy.mockRestore();

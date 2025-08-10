@@ -16,6 +16,7 @@ export default function templateReplace(template, data, missingValue = '') {
     return template;
   }
 
+  // Replace all {key} placeholders
   return template.replace(/\{([^}]+)\}/g, (match, key) => {
     const value = data[key];
     return String(value != null ? value : missingValue);

@@ -2,122 +2,63 @@
  * Redis wait utilities for coordination
  */
 
-// Wait for key to exist
-export async function waitForKey(redis, key, timeoutMs = 30000) {
-  const startTime = Date.now();
+const POLL_INTERVAL_MS = 100;
 
-  while (Date.now() - startTime < timeoutMs) {
-    const value = await redis.get(key);
-    if (value !== null && value !== undefined) return JSON.parse(value);
+// Simple polling
+const poll = async (check, timeout = 30000) => {
+  const end = Date.now() + timeout;
 
-    await new Promise((resolve) => setTimeout(resolve, 100));
+  while (Date.now() < end) {
+    const result = await check();
+    if (result !== undefined) return result;
+    await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
   }
 
   return undefined;
-}
+};
 
-// Wait for key to have specific value
-export async function waitForValue(redis, key, expectedValue, timeoutMs = 30000) {
-  const startTime = Date.now();
-
-  while (Date.now() - startTime < timeoutMs) {
+export const waitForKey = (redis, key, timeoutMs = 30000) =>
+  poll(async () => {
     const value = await redis.get(key);
-    if (value === null || value === undefined) {
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      continue;
-    }
+    return value ? JSON.parse(value) : undefined;
+  }, timeoutMs);
 
-    const parsed = JSON.parse(value);
-    if (parsed === expectedValue) return true;
+export const waitForValue = async (redis, key, expectedValue, timeoutMs = 30000) =>
+  !!(await poll(async () => {
+    const value = await redis.get(key);
+    return (value && JSON.parse(value) === expectedValue) || undefined;
+  }, timeoutMs));
 
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  }
+export const waitForCondition = async (conditionFn, timeoutMs = 30000) =>
+  (await poll(conditionFn, timeoutMs)) || false;
 
-  return false;
-}
-
-// Wait for condition function to return truthy
-export async function waitForCondition(conditionFn, timeoutMs = 30000) {
-  const startTime = Date.now();
-
-  while (Date.now() - startTime < timeoutMs) {
-    const result = await conditionFn();
-    if (result) return result;
-
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  }
-
-  return false;
-}
-
-// Wait for all keys to exist
-export async function waitForAllKeys(redis, keys, timeoutMs = 30000) {
-  const startTime = Date.now();
-
-  while (Date.now() - startTime < timeoutMs) {
+export const waitForAllKeys = async (redis, keys, timeoutMs = 30000) =>
+  (await poll(async () => {
     const values = {};
-    let allExist = true;
-
     for (const key of keys) {
       const value = await redis.get(key);
-      if (value === null || value === undefined) {
-        allExist = false;
-        break;
-      }
+      if (!value) return undefined;
       values[key] = JSON.parse(value);
     }
+    return values;
+  }, timeoutMs)) || null;
 
-    if (allExist) return values;
-
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  }
-
-  return null;
-}
-
-// Wait for hash to have all fields
-export async function waitForHashFields(redis, hashKey, fields, timeoutMs = 30000) {
-  const startTime = Date.now();
-
-  while (Date.now() - startTime < timeoutMs) {
+export const waitForHashFields = async (redis, hashKey, fields, timeoutMs = 30000) =>
+  (await poll(async () => {
     const hash = await redis.hgetall(hashKey);
-    if (!hash) {
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      continue;
-    }
-
-    const hasAllFields = fields.every((field) => hash[field] !== undefined);
-    if (!hasAllFields) {
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      continue;
-    }
+    if (!hash || !fields.every((f) => hash[f] !== undefined)) return undefined;
 
     const result = {};
     for (const field of fields) {
       result[field] = JSON.parse(hash[field]);
     }
     return result;
-  }
+  }, timeoutMs)) || null;
 
-  return null;
-}
-
-// Wait for counter to reach value
-export async function waitForCount(redis, key, targetCount, timeoutMs = 30000) {
-  const startTime = Date.now();
-
-  while (Date.now() - startTime < timeoutMs) {
+export const waitForCount = async (redis, key, targetCount, timeoutMs = 30000) =>
+  (await poll(async () => {
     const value = await redis.get(key);
-    if (value === null || value === undefined) {
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      continue;
-    }
-
+    if (!value) return undefined;
     const count = parseInt(value);
-    if (count >= targetCount) return count;
-
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  }
-
-  return -1;
-}
+    return count >= targetCount ? count : undefined;
+  }, timeoutMs)) || -1;

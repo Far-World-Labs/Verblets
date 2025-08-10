@@ -6,6 +6,7 @@
  * data structures in responses.
  */
 
+// Import schemas directly as JSON modules
 import intentResult from './intent-result.json';
 import intent from './intent.json';
 import archResult from './arch-result.json';
@@ -14,6 +15,7 @@ import scoreResult from './score-result.json';
 import schemaDotOrgPhotograph from './schema-dot-org-photograph.json';
 import schemaDotOrgPlace from './schema-dot-org-place.json';
 
+// Export schemas
 export {
   intentResult,
   intent,
@@ -24,6 +26,7 @@ export {
   schemaDotOrgPlace,
 };
 
+// Export all schemas as a collection for convenience
 export const schemas = {
   intentResult,
   intent,
@@ -34,6 +37,7 @@ export const schemas = {
   schemaDotOrgPlace,
 };
 
+// Export schema.org schemas separately for convenience
 export const schemaOrgSchemas = {
   photograph: schemaDotOrgPhotograph,
   place: schemaDotOrgPlace,

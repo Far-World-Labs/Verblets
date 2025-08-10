@@ -45,9 +45,9 @@ const createPoller = (interval = 10) => {
         } else {
           isRunning = false;
         }
-      } catch (error) {
+      } catch {
         isRunning = false;
-        console.error('Polling error:', error);
+        // Polling error - silently stop to avoid noise
       }
     };
 
@@ -80,7 +80,7 @@ class RedisReader {
   async consume(count = 1) {
     if (count < 1) return [];
 
-    const sequence = await getInt(this.buffer.redis, this.buffer.keys.sequence);
+    const sequence = await getInt(this.buffer.redis, this.buffer.keys.sequence, 0);
     const available = calculateAvailable(sequence, this.offset);
     const actualCount = Math.min(available, count);
 
@@ -139,7 +139,7 @@ class RedisReader {
   }
 
   async getAvailableCount() {
-    const sequence = await getInt(this.buffer.redis, this.buffer.keys.sequence);
+    const sequence = await getInt(this.buffer.redis, this.buffer.keys.sequence, 0);
     return calculateAvailable(sequence, this.offset);
   }
 
@@ -192,6 +192,14 @@ class RedisReader {
     }
   }
 
+  lookback(n, fromOffset) {
+    // If no fromOffset provided, use the reader's current offset
+    if (fromOffset === undefined) {
+      fromOffset = this.offset;
+    }
+    return this.buffer.lookback(n, fromOffset);
+  }
+
   toJSON() {
     return {
       id: this.id,
@@ -230,6 +238,7 @@ export default class RedisRingBuffer {
     const sequence = await this.redis.get(this.keys.sequence);
     if (sequence !== null && sequence !== undefined) return;
 
+    // Initialize sequence to 0 so first incr() gives us 1, making first write at position 0
     await Promise.all([
       this.redis.set(this.keys.sequence, '0'),
       this.redis.set(this.keys.writeIndex, '0'),
@@ -261,7 +270,7 @@ export default class RedisRingBuffer {
   // Get readers (local only by default, or include remote with options)
   async getReaders(options = {}) {
     const { includeRemote = false } = options;
-    const sequence = await getInt(this.redis, this.keys.sequence);
+    const sequence = await getInt(this.redis, this.keys.sequence, 0);
     const readers = [];
 
     // Get local readers
@@ -354,7 +363,7 @@ export default class RedisRingBuffer {
 
   async checkWriteCapacity() {
     const [sequence, oldestOffset] = await Promise.all([
-      getInt(this.redis, this.keys.sequence),
+      getInt(this.redis, this.keys.sequence, 0),
       getOldestReaderOffset(this.redis, this.keys.readerOffsets),
     ]);
 
@@ -363,43 +372,46 @@ export default class RedisRingBuffer {
   }
 
   async writeData(data) {
-    const [sequence, writeIndex] = await Promise.all([
-      getInt(this.redis, this.keys.sequence),
-      getInt(this.redis, this.keys.writeIndex),
-    ]);
+    // Ensure initialization before writing
+    await this.initialize();
 
-    const serializedData = JSON.stringify(data);
-    const newSequence = sequence + 1;
+    // Atomically increment sequence FIRST to reserve our write position
+    const newSequence = await this.redis.incr(this.keys.sequence);
+    const currentSequence = newSequence - 1; // Our actual sequence number
+
+    // Calculate write position based on our reserved sequence
+    const writeIndex = currentSequence % this.maxSize;
     const newWriteIndex = (writeIndex + 1) % this.maxSize;
 
-    // Use Redis transaction for atomicity
-    const multi = this.redis.multi();
+    const serializedData = JSON.stringify(data);
 
     // Ensure buffer list exists and is properly sized
     const bufferLength = await this.redis.llen(this.keys.buffer);
     if (bufferLength < this.maxSize) {
-      // Extend buffer to max size
+      // Extend buffer to max size using multi for efficiency
+      const multi = this.redis.multi();
       for (let i = bufferLength; i < this.maxSize; i++) {
         multi.rpush(this.keys.buffer, '""'); // Empty JSON string placeholder
       }
+      await multi.exec();
     }
 
-    multi.lset(this.keys.buffer, writeIndex, serializedData);
-    multi.set(this.keys.sequence, newSequence.toString());
-    multi.set(this.keys.writeIndex, newWriteIndex.toString());
-
-    await multi.exec();
+    // Write data to our reserved position
+    await Promise.all([
+      this.redis.lset(this.keys.buffer, writeIndex, serializedData),
+      this.redis.set(this.keys.writeIndex, newWriteIndex.toString()),
+    ]);
 
     // Notify waiting readers
     this.readerPoller.start(() => this.processReaders());
 
-    return sequence;
+    return currentSequence;
   }
 
   async processReaders() {
     if (this.pendingReads.size === 0) return false;
 
-    const sequence = await getInt(this.redis, this.keys.sequence);
+    const sequence = await getInt(this.redis, this.keys.sequence, 0);
     const resolved = [];
 
     for (const waiter of this.pendingReads) {
@@ -449,14 +461,21 @@ export default class RedisRingBuffer {
     return this.pendingWrites.length > 0;
   }
 
-  async lookback(fromOffset, count) {
+  async lookback(n, fromOffset) {
     await this.initialize();
 
-    const sequence = await getInt(this.redis, this.keys.sequence);
-    const range = calculateLookbackRange(fromOffset, count, sequence, this.maxSize);
+    const sequence = await getInt(this.redis, this.keys.sequence, 0);
+
+    // If no fromOffset provided, use the latest offset (sequence - 1)
+    if (fromOffset === undefined) {
+      fromOffset = sequence - 1;
+    }
+
+    // Sequence represents the next position to write, so current count is sequence
+    const range = calculateLookbackRange(fromOffset, n, sequence, this.maxSize);
 
     if (range.actualCount === 0) {
-      return { data: [], startOffset: -1, endOffset: -1 };
+      return [];
     }
 
     const startPos = bufferPosition(range.startSeq, this.maxSize);
@@ -464,23 +483,19 @@ export default class RedisRingBuffer {
     const rawData = await this.redis.lrange(this.keys.buffer, startPos, endPos);
     const data = rawData.map((item) => JSON.parse(item));
 
-    return {
-      data,
-      startOffset: range.startOffset,
-      endOffset: range.endOffset,
-    };
+    return data;
   }
 
   async getLatestSequence() {
-    const sequence = await getInt(this.redis, this.keys.sequence);
-    return sequence - 1;
+    const sequence = await getInt(this.redis, this.keys.sequence, 0);
+    return sequence - 1; // Return the last written position
   }
 
   async getStats() {
     await this.initialize();
 
     const [sequence, writeIndex, allReaders] = await Promise.all([
-      getInt(this.redis, this.keys.sequence),
+      getInt(this.redis, this.keys.sequence, 0),
       getInt(this.redis, this.keys.writeIndex),
       this.getAllReaders(),
     ]);

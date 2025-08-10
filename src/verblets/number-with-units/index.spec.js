@@ -37,4 +37,18 @@ describe('numberWithUnits', () => {
       expect(result?.unit).toBe('Fahrenheit');
     });
   });
+
+  // describe('edge cases', () => {
+  //   it('should handle unanswerable questions gracefully', async () => {
+  //     const result = await numberWithUnits('What is my age in years');
+  //     expect(result?.value).toBeUndefined();
+  //     expect(result?.unit).toBeUndefined();
+  //   });
+
+  //   it('should handle questions without specific units', async () => {
+  //     const result = await numberWithUnits('How tall is Mount Everest');
+  //     expect(result?.value).toBeUndefined();
+  //     expect(result?.unit).toBeUndefined();
+  //   });
+  // });
 });

@@ -2,33 +2,53 @@
  * Test system configuration
  */
 
+import { truthyValues } from '../../constants/common.js';
+
+// Shared constants
+export const CONSTANTS = {
+  REDIS_KEY_PREFIX: 'test:',
+  POLL_INTERVAL_MS: 100,
+  WAIT_STATUS_INTERVAL_MS: 10000,
+  RING_BUFFER_DEFAULT_SIZE: 5000,
+  BATCH_SIZE: 50,
+  DRAIN_BATCH_SIZE: 100,
+  LOOKBACK_SIZE: 5000,
+};
+
 export function getConfig() {
-  // Check if any debug mode is enabled
-  const debugModeEnabled =
-    process.env.VERBLETS_DEBUG_SUITE_FIRST === '1' ||
-    process.env.VERBLETS_DEBUG_RUNS === '1' ||
-    process.env.VERBLETS_DEBUG_STREAM === '1' ||
-    process.env.VERBLETS_DEBUG_LOGS === '1';
+  const aiLogsOnly =
+    process.env.VERBLETS_AI_LOGS_ONLY && truthyValues.includes(process.env.VERBLETS_AI_LOGS_ONLY);
+  const aiPerSuite =
+    process.env.VERBLETS_AI_PER_SUITE && truthyValues.includes(process.env.VERBLETS_AI_PER_SUITE);
 
   return {
-    enabled: debugModeEnabled,
-    ringBufferSize: 10_000,
+    // Core functionality flags
+    aiMode: aiLogsOnly || aiPerSuite,
+    aiModeDebug: aiLogsOnly,
+    aiModeAnalysis: aiPerSuite && !aiLogsOnly, // Analysis disabled in logs-only mode
 
+    // Buffer configuration
+    ringBufferSize:
+      parseInt(process.env.VERBLETS_RING_BUFFER_SIZE) || CONSTANTS.RING_BUFFER_DEFAULT_SIZE,
+
+    // Polling configuration
+    polling: {
+      interval: parseInt(process.env.VERBLETS_POLL_INTERVAL) || CONSTANTS.POLL_INTERVAL_MS,
+      statusInterval:
+        parseInt(process.env.VERBLETS_STATUS_INTERVAL) || CONSTANTS.WAIT_STATUS_INTERVAL_MS,
+    },
+
+    // Batch processing
     batch: {
-      size: 10,
-      timeout: 100,
+      size: parseInt(process.env.VERBLETS_BATCH_SIZE) || CONSTANTS.BATCH_SIZE,
+      drainSize: parseInt(process.env.VERBLETS_DRAIN_SIZE) || CONSTANTS.DRAIN_BATCH_SIZE,
+      lookbackSize: parseInt(process.env.VERBLETS_LOOKBACK_SIZE) || CONSTANTS.LOOKBACK_SIZE,
     },
 
-    modes: {
-      debugSuiteFirst: process.env.VERBLETS_DEBUG_SUITE_FIRST === '1',
-      debugRuns: process.env.VERBLETS_DEBUG_RUNS === '1',
-      debugStream: process.env.VERBLETS_DEBUG_STREAM === '1',
-      analysisSilent: process.env.VERBLETS_ANALYSIS_SILENT === '1',
-      debugLogs: process.env.VERBLETS_DEBUG_LOGS === '1',
-    },
-
+    // AI analysis
     ai: {
-      analysisTimeout: parseInt(process.env.VERBLETS_AI_TIMEOUT, 10) || 120000, // 120 seconds
+      enabled: aiPerSuite && !aiLogsOnly,
+      timeout: parseInt(process.env.VERBLETS_AI_TIMEOUT) || 120000,
     },
   };
 }

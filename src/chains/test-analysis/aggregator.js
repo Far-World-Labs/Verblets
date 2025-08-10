@@ -2,38 +2,92 @@
  * Aggregates test data from ring buffer
  */
 
-const aggregateLogs = (logs) =>
-  logs.reduce((suites, log) => {
-    if (!log.event || !log.testIndex) return suites;
+// Pure predicates
+const isTestComplete = (log) => log.event === 'test-complete';
+const hasTestName = (log) => Boolean(log.testName);
 
-    const suite = log.suite || 'default';
-    if (!suites[suite]) suites[suite] = { tests: {}, name: suite };
+// Get unique test identifier
+const getTestKey = (log) => `${log.suite}:${log.testName}`;
 
-    const test = suites[suite].tests[log.testIndex] || {};
+const aggregateLogs = (logs) => {
+  const testMap = new Map();
+  const suiteNames = new Set();
 
-    switch (log.event) {
-      case 'test-complete':
-        test.state = log.state;
-        test.duration = log.duration || 0;
-        break;
-      case 'test-start':
-        test.name = log.testName;
-        break;
+  // Debug: count events
+  const eventCounts = {};
+  const suiteTestNames = {};
+
+  // First pass: collect all unique tests by name
+  for (const log of logs) {
+    // Debug counting
+    if (log.event) {
+      eventCounts[log.event] = (eventCounts[log.event] || 0) + 1;
     }
 
-    suites[suite].tests[log.testIndex] = test;
-    return suites;
-  }, {});
+    if (!hasTestName(log)) continue;
+
+    const key = getTestKey(log);
+    suiteNames.add(log.suite || 'default');
+
+    // Debug: track test names per suite
+    const suite = log.suite || 'default';
+    if (!suiteTestNames[suite]) suiteTestNames[suite] = new Set();
+    suiteTestNames[suite].add(log.testName);
+
+    if (!testMap.has(key)) {
+      testMap.set(key, {
+        suite: log.suite || 'default',
+        name: log.testName,
+        state: undefined,
+        duration: 0,
+      });
+    }
+
+    const test = testMap.get(key);
+
+    if (isTestComplete(log)) {
+      test.state = log.state;
+      test.duration = log.duration || 0;
+    }
+  }
+
+  // Group by suite
+  const suites = {};
+  for (const suiteName of suiteNames) {
+    suites[suiteName] = {
+      name: suiteName,
+      tests: {},
+    };
+  }
+
+  // Assign tests to suites with sequential indices per suite
+  const suiteIndices = new Map();
+  for (const test of testMap.values()) {
+    const suite = suites[test.suite];
+    if (!suiteIndices.has(test.suite)) {
+      suiteIndices.set(test.suite, 0);
+    }
+    const index = suiteIndices.get(test.suite);
+    suite.tests[index] = test;
+    suiteIndices.set(test.suite, index + 1);
+  }
+
+  return suites;
+};
+
+// Pure predicates for stats
+const isCompleted = (test) => Boolean(test.state);
+const isPassed = (test) => test.state === 'pass';
 
 const calculateStats = (suite) => {
   const tests = Object.values(suite.tests);
-  const completed = tests.filter((t) => t.state);
-  const passed = completed.filter((t) => t.state === 'pass');
+  const completed = tests.filter(isCompleted);
+  const passed = completed.filter(isPassed);
   const totalDuration = completed.reduce((sum, t) => sum + t.duration, 0);
 
   return {
     name: suite.name,
-    testCount: tests.length,
+    testCount: tests.length, // Now this is the actual unique test count
     passedCount: passed.length,
     avgDuration: completed.length ? Math.round(totalDuration / completed.length) : 0,
   };

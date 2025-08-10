@@ -159,6 +159,10 @@ function scoreChunksWithTfIdf(chunks, expansions) {
         ? matches.reduce((sum, match) => sum + match.score, 0) / matches.length
         : 0;
 
+    // if (chunk.index < 3 || tfIdfScore > 0.1) {
+    //   console.log(`[scoreChunksWithTfIdf] Chunk ${chunk.index} score: ${tfIdfScore.toFixed(3)}, text: "${chunk.text.slice(0, 50)}..."`);
+    // }
+
     return { ...chunk, tfIdfScore };
   });
 }
@@ -187,6 +191,11 @@ function selectChunksByTfIdf(scoredChunks, tfIdfBudget) {
   // Update candidates list
   const selectedIndices = new Set(selected.map((c) => c.index));
   const candidates = scoredChunks.filter((c) => !selectedIndices.has(c.index));
+
+  // console.log(`[selectChunksByTfIdf] Selected ${selected.length} chunks (${sizeUsed}/${tfIdfBudget} chars) from ${scoredChunks.length} total`);
+  // if (selected.length > 0) {
+  //   console.log(`[selectChunksByTfIdf] Selected chunk indices:`, selected.map(c => c.index));
+  // }
 
   return { selected, candidates, sizeUsed };
 }
@@ -341,6 +350,7 @@ function groupConsecutiveChunks(chunks) {
     if (currentChunk.index === prevChunk.index + 1) {
       currentGroup.push(currentChunk);
     } else {
+      // Start a new group
       groups.push(currentGroup);
       currentGroup = [currentChunk];
     }

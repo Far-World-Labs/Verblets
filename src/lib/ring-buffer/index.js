@@ -123,6 +123,20 @@ class Reader {
   }
 
   /**
+   * Look back at recent messages without consuming them.
+   * @param {number} n - Number of messages to look back
+   * @param {number} [fromOffset] - Offset to look back from (defaults to reader's current offset)
+   * @returns {Array} Array of messages
+   */
+  lookback(n, fromOffset) {
+    // If no fromOffset provided, use the reader's current offset
+    if (fromOffset === undefined) {
+      fromOffset = this.offset;
+    }
+    return this.ringBuffer.lookback(n, fromOffset);
+  }
+
+  /**
    * Close this reader.
    */
   close() {
@@ -221,21 +235,25 @@ export default class RingBuffer {
 
   /**
    * Look backwards from a given offset to retrieve messages.
-   * @param {number} fromOffset - The offset to look backwards from (exclusive)
-   * @param {number} count - Number of messages to retrieve
-   * @returns {Object} Object containing data array, startOffset, and endOffset
-   *                   Returns empty data array if no messages available
+   * @param {number} n - Number of messages to retrieve
+   * @param {number} fromOffset - The offset to look backwards from (exclusive). If not provided, uses latest offset
+   * @returns {Array} Array of messages
    */
-  lookback(fromOffset, count) {
+  lookback(n, fromOffset) {
+    // If no fromOffset provided, use the latest offset
+    if (fromOffset === undefined) {
+      fromOffset = this.sequence - 1;
+    }
+
     // Validate inputs
-    if (count <= 0) {
-      return { data: [], startOffset: -1, endOffset: -1 };
+    if (n <= 0) {
+      return [];
     }
 
     // fromOffset must be within valid range
     const maxOffset = this.sequence - 1;
     if (fromOffset < 0 || fromOffset > maxOffset) {
-      return { data: [], startOffset: -1, endOffset: -1 };
+      return [];
     }
 
     // Calculate the oldest sequence we can access
@@ -243,22 +261,18 @@ export default class RingBuffer {
 
     // Calculate actual start position (looking backwards from fromOffset)
     const endSeq = fromOffset;
-    const startSeq = Math.max(oldestAvailable, fromOffset - count + 1);
+    const startSeq = Math.max(oldestAvailable, fromOffset - n + 1);
     const actualCount = endSeq - startSeq + 1;
 
     if (actualCount <= 0) {
-      return { data: [], startOffset: -1, endOffset: -1 };
+      return [];
     }
 
     // Get the data
     const startPos = bufferPosition(startSeq, this.maxSize);
     const data = this.buffer.slice(startPos, startPos + actualCount);
 
-    return {
-      data,
-      startOffset: startSeq,
-      endOffset: endSeq,
-    };
+    return data;
   }
 
   /**

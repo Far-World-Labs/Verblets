@@ -20,81 +20,82 @@ The chief motivation is that modular tools can augment human capability rather t
 
 Primitive verblets extract basic data types from natural language with high reliability. They constrain LLM outputs to prevent hallucination while handling the complexity of human expression.
 
-- [bool](./src/verblets/bool) - Extract boolean values from yes/no, true/false, and conditional statements
-- [date](./src/chains/date) - Parse dates from relative expressions, natural language, and standard formats
-- [enum](./src/verblets/enum) - Map free-form text to predefined category options
-- [number](./src/verblets/number) - Extract numeric values from text descriptions
-- [number-with-units](./src/verblets/number-with-units) - Parse measurements with units and convert between systems
+- [bool](./src/verblets/bool) - Interpret yes/no, true/false, and conditional statements
+- [date](./src/chains/date) - Parse dates from relative expressions, natural language, standard formats, and longer descriptions
+- [enum](./src/verblets/enum) - Convert free-form input to exactly one of several predefined options
+- [number](./src/verblets/number) - Convert a block of text to a single number
+- [number-with-units](./src/verblets/number-with-units) - Parse measurements and convert between unit systems
 
 ### Math
 
 Math chains transform values using conceptual reasoning and subjective judgments beyond simple calculations.
 
-- [scale](./src/chains/scale) - Convert qualitative descriptions to numeric scales with consistency
+- [scale](./src/chains/scale) - Convert qualitative descriptions to numeric values. Uses a specification generator to maintain consistency across invocations.
 
 ### Lists
 
 List operations transform, filter, and organize collections. They handle both individual items and batch processing for datasets larger than a context window. Many list operations support bulk operation with built-in retry. Many have alternative single invocation versions in the verblets directory. Many utilities have list support via specification-generators that maintain continuity, or prompt fragments that adapt single-invcation behavior to list processing.
 
-- [central-tendency](./src/chains/central-tendency) - Find representative examples from collections
-- [detect-patterns](./src/chains/detect-patterns) - Identify repeating structures and relationships
-- [detect-threshold](./src/chains/detect-threshold) - Find meaningful breakpoints for metrics and alerting
-- [entities](./src/chains/entities) - Extract people, places, organizations, and custom entities
-- [filter](./src/chains/filter) - Keep items matching natural language criteria
-- [find](./src/chains/find) - Return the single best match with early stopping
-- [glossary](./src/chains/glossary) - Extract terms and generate contextual definitions
-- [group](./src/chains/group) - Cluster items by discovering then assigning categories
-- [intersections](./src/chains/intersections) - Find conceptual overlaps between item pairs
-- [list](./src/chains/list) - Extract or generate lists from various formats
-- [list-expand](./src/verblets/list-expand) - Generate similar items matching existing patterns
-- [map](./src/chains/map) - Transform each item with consistent rules in parallel
-- [reduce](./src/chains/reduce) - Combine items sequentially into a single result
-- [score](./src/chains/score) - Rate items on multiple weighted criteria
-- [sort](./src/chains/sort) - Order by complex criteria using comparisons
+- [central-tendency](./src/chains/central-tendency) - Find the most representative examples from a collection
+- [detect-patterns](./src/chains/detect-patterns) - Identify repeating structures, sequences, or relationships in data
+- [detect-threshold](./src/chains/detect-threshold) - Find meaningful breakpoints in numeric values, for use in metrics and alerting
+- [entities](./src/chains/entities) - Extract names, places, organizations, and custom entity types
+- [filter](./src/chains/filter) - Keep items matching natural language criteria through parallel batch processing
+- [find](./src/chains/find) - Return the single best match using parallel evaluation with early stopping
+- [glossary](./src/chains/glossary) - Extract key terms and generate definitions from their usage
+- [group](./src/chains/group) - Cluster items by first discovering categories then assigning members
+- [intersections](./src/chains/intersections) - Find overlapping concepts between all item pairs
+- [list](./src/chains/list) - Extract lists from prose, tables, or generate from descriptions
+- [list-expand](./src/verblets/list-expand) - Add similar items matching the pattern of existing ones
+- [map](./src/chains/map) - Transform each item using consistent rules applied in parallel batches
+- [reduce](./src/chains/reduce) - Combine items sequentially, building up a result across batches
+- [score](./src/chains/score) - Rate items on multiple criteria using weighted evaluation
+- [sort](./src/chains/sort) - Order by complex criteria using tournament-style comparisons
 
 ### Content
 
 Content utilities generate, transform, and analyze text while maintaining structure and meaning. They handle creative tasks, system analysis, and privacy-aware text processing.
 
-- [anonymize](./src/chains/anonymize) - Replace identifying details with privacy-safe placeholders
-- [category-samples](./src/chains/category-samples) - Generate examples from typical to edge cases
-- [collect-terms](./src/chains/collect-terms) - Extract domain-specific vocabulary
-- [commonalities](./src/verblets/commonalities) - Find shared conceptual characteristics
-- [conversation](./src/chains/conversation) - Manage multi-turn dialogues with context
-- [disambiguate](./src/chains/disambiguate) - Resolve ambiguous term meanings from context
-- [dismantle](./src/chains/dismantle) - Decompose systems into components and connections
-- [document-shrink](./src/chains/document-shrink) - Compress documents while preserving key content
-- [fill-missing](./src/verblets/fill-missing) - Intelligently complete redacted sections
-- [filter-ambiguous](./src/chains/filter-ambiguous) - Identify items needing clarification
-- [join](./src/chains/join) - Connect text fragments with smooth transitions
-- [name](./src/verblets/name) - Generate contextually appropriate names
-- [name-similar-to](./src/verblets/name-similar-to) - Create names matching style patterns
-- [people](./src/chains/people) - Generate consistent persona profiles for LLM roles
-- [pop-reference](./src/chains/pop-reference) - Match concepts to cultural references
-- [questions](./src/chains/questions) - Generate insightful follow-up questions
-- [relations](./src/chains/relations) - Extract entity relationships from text
-- [schema-org](./src/verblets/schema-org) - Structure data in schema.org JSON-LD format
-- [socratic](./src/chains/socratic) - Probe assumptions with targeted questions
-- [split](./src/chains/split) - Identify natural topic boundaries in text
-- [summary-map](./src/chains/summary-map) - Create navigable document summaries
-- [themes](./src/chains/themes) - Extract recurring ideas through analysis
-- [timeline](./src/chains/timeline) - Chronologically order scattered events
-- [to-object](./src/chains/to-object) - Parse key-value pairs from descriptions
-- [truncate](./src/chains/truncate) - Cut text at semantic boundaries
-- [veiled-variants](./src/chains/veiled-variants) - Rephrase to bypass content filters
+- [anonymize](./src/chains/anonymize) - Replace names, dates, and identifying details with placeholders
+- [category-samples](./src/chains/category-samples) - Create examples ranging from typical to edge cases
+- [collect-terms](./src/chains/collect-terms) - Find domain-specific or complex vocabulary
+- [commonalities](./src/verblets/commonalities) - Identify what items share conceptually, not just literally
+- [conversation](./src/chains/conversation) - Manage multi-turn dialogues with memory and context tracking
+- [disambiguate](./src/chains/disambiguate) - Determine which meaning of ambiguous terms fits the context
+- [dismantle](./src/chains/dismantle) - Break down systems into parts, subparts, and their connections
+- [document-shrink](./src/chains/document-shrink) - Remove less relevant sections while keeping query-related content
+- [fill-missing](./src/verblets/fill-missing) - Predict likely content for redacted or corrupted sections
+- [filter-ambiguous](./src/chains/filter-ambiguous) - Flag items that need human clarification
+- [join](./src/chains/join) - Connect text fragments by adding transitions and maintaining flow
+- [name](./src/verblets/name) - Parse names handling titles, suffixes, and cultural variations
+- [name-similar-to](./src/verblets/name-similar-to) - Generate names following example patterns
+- [people](./src/chains/people) - Build artificial person profiles with consistent demographics and traits. Useful as LLM roles.
+- [pop-reference](./src/chains/pop-reference) - Match concepts to movies, songs, memes, or cultural touchstones
+- [questions](./src/chains/questions) - Generate follow-up questions that branch from initial inquiry
+- [relations](./src/chains/relations) - Extract relationship tuples from text
+- [schema-org](./src/verblets/schema-org) - Convert unstructured data to schema.org JSON-LD format
+- [socratic](./src/chains/socratic) - Ask questions that reveal hidden assumptions and logic gaps
+- [split](./src/chains/split) - Find topic boundaries in continuous text
+- [summary-map](./src/chains/summary-map) - Build layered summaries for navigating large documents
+- [themes](./src/chains/themes) - Surface recurring ideas through multi-pass extraction and merging
+- [timeline](./src/chains/timeline) - Order events chronologically from scattered mentions
+- [to-object](./src/chains/to-object) - Extract key-value pairs from natural language descriptions
+- [truncate](./src/chains/truncate) - Remove trailing content after a semantic boundary
+- [veiled-variants](./src/chains/veiled-variants) - Reword queries to avoid triggering content filters
 
 
 ### Utility Operations
 
 Utility operations are uncategorized functionality like automatic tool selection, intent parsing, and context compression.
 
-- [ai-arch-expect](./src/chains/ai-arch-expect) - Validate AI architecture patterns
-- [auto](./src/verblets/auto) - Automatically select and apply appropriate tools
-- [expect](./src/chains/expect) - Validate data relationships with detailed analysis
-- [intent](./src/verblets/intent) - Parse commands into actions and parameters
-- [llm-logger](./src/chains/llm-logger) - Analyze logs for patterns and anomalies
-- [sentiment](./src/verblets/sentiment) - Classify emotional tone with nuance
-- [set-interval](./src/chains/set-interval) - Schedule tasks from natural language
+- [ai-arch-expect](./src/chains/ai-arch-expect) - Validate AI architecture constraints and patterns
+- [auto](./src/verblets/auto) - Match task descriptions to available tools using function calling
+- [expect](./src/verblets/expect) - Check if conditions are met and explain why if not
+- [expect chain](./src/chains/expect) - Validate complex data relationships with detailed failure analysis
+- [intent](./src/verblets/intent) - Extract action and parameters from natural language commands
+- [llm-logger](./src/chains/llm-logger) - Summarize log patterns and detect anomalies across time windows
+- [sentiment](./src/verblets/sentiment) - Classify as positive, negative, or neutral with nuance detection
+- [set-interval](./src/chains/set-interval) - Schedule tasks using natural language time descriptions
 
 ### Codebase
 

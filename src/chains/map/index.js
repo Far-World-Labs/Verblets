@@ -79,6 +79,7 @@ Preserve all formatting and newlines within each <item> element.`;
       }
     )
       .then((output) => {
+        // listBatch now returns arrays directly
         if (!Array.isArray(output)) {
           throw new Error(`Expected array from listBatch, got: ${typeof output}`);
         }

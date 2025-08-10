@@ -138,7 +138,7 @@ export function handleAssertionResult(
     const displayPath = callerInfo?.displayPath || callerInfo?.file || 'unknown';
     const line = callerInfo?.line || 0;
 
-    let message = `LLM Assertion Failed at ${displayPath}:${line}`;
+    let message = `LLM assertion failed at ${displayPath}:${line}`;
     if (advice) {
       message += `\n${advice}`;
     }

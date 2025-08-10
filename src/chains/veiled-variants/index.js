@@ -60,6 +60,7 @@ const veiledVariants = async ({ prompt, modelName = 'privacy' }) => {
   return results
     .map((r) => {
       try {
+        // First try to extract JSON array from response
         const jsonMatch = r.match(/\[[\s\S]*?\]/);
         if (jsonMatch) {
           const parsed = JSON.parse(jsonMatch[0]);
@@ -68,16 +69,21 @@ const veiledVariants = async ({ prompt, modelName = 'privacy' }) => {
           }
         }
 
+        // If no valid JSON array found, try to parse the entire response
         const parsed = JSON.parse(r);
         if (Array.isArray(parsed)) {
           return parsed;
         }
 
+        // If response is not an array, wrap it in an array
         return [parsed];
       } catch (error) {
+        // If JSON parsing fails completely, try to extract meaningful content
         const trimmed = r.trim();
 
+        // If it's a long prose response, try to extract sentences or phrases
         if (trimmed.length > 200) {
+          // Split by sentences and take meaningful ones
           const sentences = trimmed.split(/[.!?]+/).filter((s) => s.trim().length > 20);
           if (sentences.length >= 3) {
             return sentences.slice(0, 5).map((s) => s.trim());

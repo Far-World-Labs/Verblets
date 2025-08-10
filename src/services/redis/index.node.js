@@ -244,6 +244,18 @@ class SafeRedisClient {
     }
   }
 
+  async incr(key) {
+    try {
+      return await this.redisClient.incr(key);
+    } catch (error) {
+      if (this.isConnectionError(error)) {
+        console.warn('Redis connection lost, falling back to in-memory cache');
+        return this.fallbackClient.incr(key);
+      }
+      throw error;
+    }
+  }
+
   async del(keys) {
     try {
       return await this.redisClient.del(keys);

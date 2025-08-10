@@ -12,38 +12,36 @@ export function createLogHelpers(logger) {
       logTestComplete: noop,
       logExpect: noop,
       logAIExpect: noop,
+      logSuiteEnd: noop,
     };
   }
 
   return {
-    logSuiteStart: (suiteName, filePath) => {
+    logSuiteStart: (suiteName, filePath) =>
       logger.info({
         event: 'test-suite-start',
         suite: suiteName,
         filePath,
-      });
-    },
+      }),
 
-    logTestStart: (testName, testIndex, fileName, location) => {
+    logTestStart: (testName, testIndex, fileName, location) =>
       logger.info({
         event: 'test-start',
         testName,
         testIndex,
         fileName,
         location,
-      });
-    },
+      }),
 
-    logTestComplete: (testIndex, state, duration) => {
+    logTestComplete: (testIndex, state, duration) =>
       logger.info({
         event: 'test-complete',
         testIndex,
         state,
         duration,
-      });
-    },
+      }),
 
-    logExpect: (testIndex, description, expected, actual, passed) => {
+    logExpect: (testIndex, description, expected, actual, passed) =>
       logger.info({
         event: 'expect',
         testIndex,
@@ -51,26 +49,24 @@ export function createLogHelpers(logger) {
         expected,
         actual,
         passed,
-      });
-    },
+      }),
 
-    logAIExpect: (testIndex, validationType, passed, duration) => {
+    logAIExpect: (testIndex, validationType, passed, duration) =>
       logger.info({
-        event: 'aiExpect',
+        event: 'ai-expect',
         testIndex,
         description: validationType,
         expected: true, // AI validations expect success
         actual: passed,
         passed,
         duration,
-      });
-    },
+      }),
 
-    logSuiteEnd: (suiteName) => {
+    logSuiteEnd: (suiteName, context = {}) =>
       logger.info({
         event: 'suite-end',
         suite: suiteName,
-      });
-    },
+        ...context,
+      }),
   };
 }

@@ -1,12 +1,30 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect as vitestExpect, it as vitestIt, afterAll } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sort from './index.js';
-import { expect as llmExpect } from '../expect/index.js';
+import vitestAiExpect from '../expect/index.js';
 import { longTestTimeout } from '../../constants/common.js';
+import { logSuiteEnd } from '../test-analysis/setup.js';
+import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
+import { extractFileContext } from '../../lib/logger/index.js';
+import { getConfig } from '../test-analysis/config.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+const config = getConfig();
+const it = config?.aiMode ? wrapIt(vitestIt, { baseProps: { suite: 'Sort chain' } }) : vitestIt;
+const expect = config?.aiMode
+  ? wrapExpect(vitestExpect, { baseProps: { suite: 'Sort chain' } })
+  : vitestExpect;
+const aiExpect = config?.aiMode
+  ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'Sort chain' } })
+  : vitestAiExpect;
+const suiteLogEnd = config?.aiMode ? logSuiteEnd : () => {};
+
+afterAll(async () => {
+  await suiteLogEnd('Sort chain', extractFileContext(2));
+});
 
 describe('sort examples', () => {
   it(
@@ -39,15 +57,11 @@ describe('sort examples', () => {
       expect(sorted.length).toBe(movieSuggestions.length);
 
       // Verify sorting quality with LLM
-      await llmExpect(
-        sorted.slice(0, 5).join('\n'),
-        null,
+      await aiExpect(sorted.slice(0, 5).join('\n')).toSatisfy(
         'top movies should be entertaining and accessible for group viewing'
       );
 
-      await llmExpect(
-        sorted.slice(-5).join('\n'),
-        null,
+      await aiExpect(sorted.slice(-5).join('\n')).toSatisfy(
         'bottom movies should be intense, divisive, or require full attention'
       );
     },
@@ -78,15 +92,11 @@ describe('sort examples', () => {
       // Should preserve all items
       expect(sorted.length).toBe(giftIdeas.length);
 
-      await llmExpect(
-        sorted.slice(0, 5).join('\n'),
-        null,
+      await aiExpect(sorted.slice(0, 5).join('\n')).toSatisfy(
         'top gifts should relate to gardening or animals'
       );
 
-      await llmExpect(
-        sorted.slice(-3).join('\n'),
-        null,
+      await aiExpect(sorted.slice(-3).join('\n')).toSatisfy(
         'bottom gifts should be tech items or other non-gardening/animal related items'
       );
     },

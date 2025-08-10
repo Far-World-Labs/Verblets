@@ -17,4 +17,5 @@ export default function shuffle(array, inPlace = false) {
   return result;
 }
 
+// Named export for flexibility
 export { shuffle };

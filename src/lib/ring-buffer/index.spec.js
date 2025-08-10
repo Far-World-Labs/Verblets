@@ -723,52 +723,38 @@ describe('RingBuffer', () => {
 
     it('should look back from a given offset', () => {
       // Looking back 2 items from offset 3 (item3)
-      const result = buffer.lookback(3, 2);
-      expect(result.data).toEqual(['item2', 'item3']);
-      expect(result.startOffset).toBe(2);
-      expect(result.endOffset).toBe(3);
+      const result = buffer.lookback(2, 3);
+      expect(result).toEqual(['item2', 'item3']);
     });
 
-    it('should look back from the latest offset', () => {
-      // Looking back 3 items from offset 4 (item4)
-      const result = buffer.lookback(4, 3);
-      expect(result.data).toEqual(['item2', 'item3', 'item4']);
-      expect(result.startOffset).toBe(2);
-      expect(result.endOffset).toBe(4);
+    it('should look back from the latest offset when not specified', () => {
+      // Looking back 3 items from the latest offset (should get last 3 items)
+      const result = buffer.lookback(3);
+      expect(result).toEqual(['item2', 'item3', 'item4']);
     });
 
     it('should handle looking back more items than available', () => {
       // Looking back 10 items from offset 3, but only 4 items exist (0-3)
-      const result = buffer.lookback(3, 10);
-      expect(result.data).toEqual(['item0', 'item1', 'item2', 'item3']);
-      expect(result.startOffset).toBe(0);
-      expect(result.endOffset).toBe(3);
+      const result = buffer.lookback(10, 3);
+      expect(result).toEqual(['item0', 'item1', 'item2', 'item3']);
     });
 
     it('should return empty when count is 0 or negative', () => {
-      const result1 = buffer.lookback(3, 0);
-      expect(result1.data).toEqual([]);
-      expect(result1.startOffset).toBe(-1);
-      expect(result1.endOffset).toBe(-1);
+      const result1 = buffer.lookback(0, 3);
+      expect(result1).toEqual([]);
 
-      const result2 = buffer.lookback(3, -5);
-      expect(result2.data).toEqual([]);
-      expect(result2.startOffset).toBe(-1);
-      expect(result2.endOffset).toBe(-1);
+      const result2 = buffer.lookback(-5, 3);
+      expect(result2).toEqual([]);
     });
 
     it('should return empty when offset is out of range', () => {
       // Negative offset
-      const result1 = buffer.lookback(-1, 2);
-      expect(result1.data).toEqual([]);
-      expect(result1.startOffset).toBe(-1);
-      expect(result1.endOffset).toBe(-1);
+      const result1 = buffer.lookback(2, -1);
+      expect(result1).toEqual([]);
 
       // Offset beyond sequence
-      const result2 = buffer.lookback(10, 2);
-      expect(result2.data).toEqual([]);
-      expect(result2.startOffset).toBe(-1);
-      expect(result2.endOffset).toBe(-1);
+      const result2 = buffer.lookback(2, 10);
+      expect(result2).toEqual([]);
     });
 
     it('should handle wraparound correctly when buffer is full', async () => {
@@ -779,10 +765,8 @@ describe('RingBuffer', () => {
 
       // Buffer now contains item5 through item14 (item0-4 were overwritten)
       // Looking back 3 items from offset 12 (item12)
-      const result = buffer.lookback(12, 3);
-      expect(result.data).toEqual(['item10', 'item11', 'item12']);
-      expect(result.startOffset).toBe(10);
-      expect(result.endOffset).toBe(12);
+      const result = buffer.lookback(3, 12);
+      expect(result).toEqual(['item10', 'item11', 'item12']);
     });
 
     it('should respect buffer size limits', async () => {
@@ -793,10 +777,10 @@ describe('RingBuffer', () => {
 
       // Buffer can only hold 10 items, so it contains item15-24
       // Try to look back 20 items from offset 24
-      const result = buffer.lookback(24, 20);
+      const result = buffer.lookback(20, 24);
       // Should only get the 10 available items
-      expect(result.data.length).toBe(10);
-      expect(result.data).toEqual([
+      expect(result.length).toBe(10);
+      expect(result).toEqual([
         'item15',
         'item16',
         'item17',
@@ -808,22 +792,91 @@ describe('RingBuffer', () => {
         'item23',
         'item24',
       ]);
-      expect(result.startOffset).toBe(15);
-      expect(result.endOffset).toBe(24);
     });
 
     it('should allow examining data at specific offsets', () => {
       // Look back 1 item from offset 2 to get just item2
-      const result1 = buffer.lookback(2, 1);
-      expect(result1.data).toEqual(['item2']);
-      expect(result1.startOffset).toBe(2);
-      expect(result1.endOffset).toBe(2);
+      const result1 = buffer.lookback(1, 2);
+      expect(result1).toEqual(['item2']);
 
       // Look back 1 item from offset 0 to get just item0
-      const result2 = buffer.lookback(0, 1);
-      expect(result2.data).toEqual(['item0']);
-      expect(result2.startOffset).toBe(0);
-      expect(result2.endOffset).toBe(0);
+      const result2 = buffer.lookback(1, 0);
+      expect(result2).toEqual(['item0']);
+    });
+  });
+
+  describe('reader lookback method', () => {
+    let reader;
+
+    beforeEach(async () => {
+      reader = buffer.reader();
+      // Add messages with known sequence numbers
+      for (let i = 0; i < 10; i++) {
+        await buffer.write(`item${i}`);
+      }
+    });
+
+    it('should look back from reader current offset by default', async () => {
+      // Read 5 items to advance reader offset
+      await reader.take(5);
+      expect(reader.offset).toBe(4);
+
+      // Look back 3 items from reader's current position
+      const result = reader.lookback(3);
+      expect(result).toEqual(['item2', 'item3', 'item4']);
+    });
+
+    it('should look back from specified offset', async () => {
+      // Read 5 items to advance reader offset
+      await reader.take(5);
+      expect(reader.offset).toBe(4);
+
+      // Look back 3 items from offset 7
+      const result = reader.lookback(3, 7);
+      expect(result).toEqual(['item5', 'item6', 'item7']);
+    });
+
+    it('should work with reader at different positions', async () => {
+      const reader1 = buffer.reader();
+      const reader2 = buffer.reader();
+
+      // Advance readers to different positions
+      await reader1.take(3); // offset 2
+      await reader2.take(7); // offset 6
+
+      // Each reader lookback uses their own offset by default
+      const result1 = reader1.lookback(2);
+      const result2 = reader2.lookback(2);
+
+      expect(result1).toEqual(['item1', 'item2']);
+      expect(result2).toEqual(['item5', 'item6']);
+    });
+
+    it('should handle reader with no reads yet', () => {
+      // Reader starts at offset -1
+      const newReader = buffer.reader();
+      const result = newReader.lookback(3);
+
+      // Should return empty since reader is at -1
+      expect(result).toEqual([]);
+    });
+
+    it('should work after reader fork', async () => {
+      // Read some items
+      await reader.take(5);
+
+      // Fork at current position
+      const forkedReader = reader.fork();
+
+      // Read more with original reader
+      await reader.take(3);
+
+      // Lookback should use each reader's current offset
+      const originalResult = reader.lookback(3);
+      const forkedResult = forkedReader.lookback(3);
+
+      expect(originalResult).toEqual(['item5', 'item6', 'item7']);
+      expect(forkedResult).toEqual(['item2', 'item3', 'item4']);
     });
   });
 });

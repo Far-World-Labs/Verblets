@@ -26,6 +26,7 @@ export async function getDependencyAnalysis(options = {}) {
   }
 }
 
+// Create context from DC analysis
 export const asDCContext = {
   // Full dependency analysis as context
   analysis: async (name = 'dc-analysis') => {

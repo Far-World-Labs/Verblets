@@ -1,7 +1,31 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it as vitestIt, expect as vitestExpect, afterAll } from 'vitest';
 import commonalities from './index.js';
 import { longTestTimeout } from '../../constants/common.js';
-import aiExpect from '../../chains/expect/index.js';
+import vitestAiExpect from '../../chains/expect/index.js';
+import { logSuiteEnd } from '../../chains/test-analysis/setup.js';
+import { wrapIt, wrapExpect, wrapAiExpect } from '../../chains/test-analysis/test-wrappers.js';
+import { extractFileContext } from '../../lib/logger/index.js';
+import { getConfig } from '../../chains/test-analysis/config.js';
+
+//
+// Setup AI test wrappers
+//
+const config = getConfig();
+const it = config?.aiMode ? wrapIt(vitestIt, { baseProps: { suite: 'commonalities' } }) : vitestIt;
+const expect = config?.aiMode
+  ? wrapExpect(vitestExpect, { baseProps: { suite: 'commonalities' } })
+  : vitestExpect;
+const aiExpect = config?.aiMode
+  ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'commonalities' } })
+  : vitestAiExpect;
+const suiteLogEnd = config?.aiMode ? logSuiteEnd : () => {};
+
+//
+// Test suite
+//
+afterAll(async () => {
+  await suiteLogEnd('commonalities', extractFileContext(2));
+});
 
 describe('commonalities verblet', () => {
   it('finds shared traits between technology devices', async () => {

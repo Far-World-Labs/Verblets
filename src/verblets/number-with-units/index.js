@@ -56,5 +56,6 @@ ${asNumberWithUnits}`;
     ...options,
   });
 
+  // With structured output, response is already parsed
   return toNumberWithUnits(JSON.stringify(response));
 }

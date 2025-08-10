@@ -25,14 +25,17 @@ export default function parseLLMList(
   const items = [];
 
   try {
+    // First try to parse as JSON array
     const parsed = JSON.parse(response);
     if (Array.isArray(parsed)) {
       items.push(...parsed.filter((item) => typeof item === 'string'));
     }
   } catch {
+    // Fallback to comma-separated parsing if JSON fails
     items.push(...response.split(','));
   }
 
+  // Process the items
   let processedItems = items;
 
   if (trimItems) {
