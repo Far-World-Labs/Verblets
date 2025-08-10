@@ -18,6 +18,11 @@ vi.mock('../../lib/chatgpt/index.js', () => ({
       return './index.js';
     }
 
+    // Handle advice generation
+    if (prompt.includes('Provide debugging advice')) {
+      return 'Test advice: values do not match';
+    }
+
     // Handle current format: "Does the value satisfy the constraints?"
     if (prompt.includes('Does the value satisfy the constraints?')) {
       // Extract value, expected, and constraints from XML format
