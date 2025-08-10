@@ -189,26 +189,18 @@ export async function expect(actual, expected, constraint, options = {}) {
   }
 
   // Handle result based on mode - this may throw an error in 'error' mode
-  try {
-    const result = handleAssertionResult(
-      passes,
-      mode,
-      actual,
-      expected,
-      constraint,
-      advice,
-      callerInfo
-    );
-    // For backward compatibility with existing tests
-    return [result, { passed: result, advice, file: callerInfo.file, line: callerInfo.line }];
-  } catch (error) {
-    // In error mode, handleAssertionResult throws - let it propagate
-    if (mode === 'error') {
-      throw error;
-    }
-    // For other modes, this shouldn't happen but handle gracefully
-    return [false, { passed: false, advice, file: callerInfo.file, line: callerInfo.line }];
-  }
+  const result = handleAssertionResult(
+    passes,
+    mode,
+    actual,
+    expected,
+    constraint,
+    advice,
+    callerInfo
+  );
+
+  // For backward compatibility with existing tests
+  return [result, { passed: result, advice, file: callerInfo.file, line: callerInfo.line }];
 }
 
 /**
