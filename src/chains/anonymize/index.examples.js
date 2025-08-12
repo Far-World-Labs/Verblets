@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect as vitestExpect, it as vitestIt, afterAll } from 'vitest';
 import {
   anonymize,
   anonymizeMethod,
@@ -9,7 +9,27 @@ import {
 } from './index.js';
 import map from '../map/index.js';
 import reduce from '../reduce/index.js';
-import aiExpect from '../expect/index.js';
+import vitestAiExpect from '../expect/index.js';
+import { logSuiteEnd } from '../test-analysis/setup.js';
+import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
+import { extractFileContext } from '../../lib/logger/index.js';
+import { getConfig } from '../test-analysis/config.js';
+
+const config = getConfig();
+const it = config?.aiMode
+  ? wrapIt(vitestIt, { baseProps: { suite: 'Anonymize chain' } })
+  : vitestIt;
+const expect = config?.aiMode
+  ? wrapExpect(vitestExpect, { baseProps: { suite: 'Anonymize chain' } })
+  : vitestExpect;
+const aiExpect = config?.aiMode
+  ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'Anonymize chain' } })
+  : vitestAiExpect;
+const suiteLogEnd = config?.aiMode ? logSuiteEnd : () => {};
+
+afterAll(async () => {
+  await suiteLogEnd('Anonymize chain', extractFileContext(2));
+});
 
 // Test data
 const personalText = `As a seasoned engineer from Silicon Valley, I've found that React's 

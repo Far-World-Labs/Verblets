@@ -1,6 +1,23 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it as vitestIt, expect as vitestExpect, vi, afterAll } from 'vitest';
 import setInterval from './index.js';
 import { longTestTimeout } from '../../constants/common.js';
+import { logSuiteEnd } from '../test-analysis/setup.js';
+import { wrapIt, wrapExpect } from '../test-analysis/test-wrappers.js';
+import { extractFileContext } from '../../lib/logger/index.js';
+import { getConfig } from '../test-analysis/config.js';
+
+const config = getConfig();
+const it = config?.aiMode
+  ? wrapIt(vitestIt, { baseProps: { suite: 'Set interval chain' } })
+  : vitestIt;
+const expect = config?.aiMode
+  ? wrapExpect(vitestExpect, { baseProps: { suite: 'Set interval chain' } })
+  : vitestExpect;
+const suiteLogEnd = config?.aiMode ? logSuiteEnd : () => {};
+
+afterAll(async () => {
+  await suiteLogEnd('Set interval chain', extractFileContext(2));
+});
 
 // Use synthetic timers for fast testing
 vi.useFakeTimers();

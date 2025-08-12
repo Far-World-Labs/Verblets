@@ -1,8 +1,28 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it as vitestIt, expect as vitestExpect, afterAll } from 'vitest';
 import ConversationChain from './index.js';
-import aiExpect from '../expect/index.js';
+import vitestAiExpect from '../expect/index.js';
 import { longTestTimeout, shouldRunLongExamples } from '../../constants/common.js';
 import { roundRobin } from './turn-policies.js';
+import { logSuiteEnd } from '../test-analysis/setup.js';
+import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
+import { extractFileContext } from '../../lib/logger/index.js';
+import { getConfig } from '../test-analysis/config.js';
+
+const config = getConfig();
+const it = config?.aiMode
+  ? wrapIt(vitestIt, { baseProps: { suite: 'Conversation chain' } })
+  : vitestIt;
+const expect = config?.aiMode
+  ? wrapExpect(vitestExpect, { baseProps: { suite: 'Conversation chain' } })
+  : vitestExpect;
+const aiExpect = config?.aiMode
+  ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'Conversation chain' } })
+  : vitestAiExpect;
+const suiteLogEnd = config?.aiMode ? logSuiteEnd : () => {};
+
+afterAll(async () => {
+  await suiteLogEnd('Conversation chain', extractFileContext(2));
+});
 
 describe('conversation chain examples', () => {
   it.skipIf(!shouldRunLongExamples)(

@@ -1,7 +1,22 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it as vitestIt, expect as vitestExpect, afterAll } from 'vitest';
 import { longTestTimeout } from '../../constants/common.js';
 import score, { reduceInstructions } from './index.js';
 import reduce from '../reduce/index.js';
+import { logSuiteEnd } from '../test-analysis/setup.js';
+import { wrapIt, wrapExpect } from '../test-analysis/test-wrappers.js';
+import { extractFileContext } from '../../lib/logger/index.js';
+import { getConfig } from '../test-analysis/config.js';
+
+const config = getConfig();
+const it = config?.aiMode ? wrapIt(vitestIt, { baseProps: { suite: 'Score chain' } }) : vitestIt;
+const expect = config?.aiMode
+  ? wrapExpect(vitestExpect, { baseProps: { suite: 'Score chain' } })
+  : vitestExpect;
+const suiteLogEnd = config?.aiMode ? logSuiteEnd : () => {};
+
+afterAll(async () => {
+  await suiteLogEnd('Score chain', extractFileContext(2));
+});
 
 describe('score examples', () => {
   it(
