@@ -1,7 +1,18 @@
-import { describe, expect, it, beforeAll, afterAll } from 'vitest';
+import { describe, expect as vitestExpect, it as vitestIt, beforeAll, afterAll } from 'vitest';
 
 import aiExpect from './index.js';
 import { longTestTimeout } from '../../constants/common.js';
+import { logSuiteEnd } from '../test-analysis/setup.js';
+import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
+import { extractFileContext } from '../../lib/logger/index.js';
+import { getConfig } from '../test-analysis/config.js';
+
+const config = getConfig();
+const it = config?.aiMode ? wrapIt(vitestIt, { baseProps: { suite: 'Expect chain' } }) : vitestIt;
+const expect = config?.aiMode
+  ? wrapExpect(vitestExpect, { baseProps: { suite: 'Expect chain' } })
+  : vitestExpect;
+const suiteLogEnd = config?.aiMode ? logSuiteEnd : () => {};
 
 const examples = [
   {
@@ -56,12 +67,13 @@ describe('LLM Expect Chain', () => {
     process.env.LLM_EXPECT_MODE = 'none';
   });
 
-  afterAll(() => {
+  afterAll(async () => {
     if (originalMode !== undefined) {
       process.env.LLM_EXPECT_MODE = originalMode;
     } else {
       delete process.env.LLM_EXPECT_MODE;
     }
+    await suiteLogEnd('Expect chain', extractFileContext(2));
   });
 
   examples.forEach((example) => {
