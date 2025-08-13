@@ -1,8 +1,9 @@
 import { describe, expect as vitestExpect, it as vitestIt, afterAll } from 'vitest';
 import detectPatterns from './index.js';
+import vitestAiExpect from '../expect/index.js';
 import { longTestTimeout } from '../../constants/common.js';
 import { logSuiteEnd } from '../test-analysis/setup.js';
-import { wrapIt, wrapExpect } from '../test-analysis/test-wrappers.js';
+import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
 import { extractFileContext } from '../../lib/logger/index.js';
 import { getConfig } from '../test-analysis/config.js';
 
@@ -13,6 +14,9 @@ const it = config?.aiMode
 const expect = config?.aiMode
   ? wrapExpect(vitestExpect, { baseProps: { suite: 'Detect patterns chain' } })
   : vitestExpect;
+const aiExpect = config?.aiMode
+  ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'Detect patterns chain' } })
+  : vitestAiExpect;
 const suiteLogEnd = config?.aiMode ? logSuiteEnd : () => {};
 
 afterAll(async () => {
@@ -43,6 +47,19 @@ describe('detect-patterns examples', () => {
       expect(patterns.length).to.be.at.most(3);
 
       // Should find patterns like dark theme with auto-save, light theme without auto-save
+
+      // AI assertion to validate detected patterns make sense
+      await aiExpect({
+        data: 'user settings with themes, font sizes, auto-save, and languages',
+        patterns,
+      }).toSatisfy(
+        'Do these patterns reveal meaningful correlations in user preferences (e.g., dark theme users preferring auto-save)?'
+      );
+
+      // AI assertion to validate pattern quality
+      await aiExpect(
+        `Detected ${patterns.length} patterns from ${userSettings.length} user settings`
+      ).toSatisfy('Is this a reasonable number of patterns for identifying user behavior trends?');
     },
     longTestTimeout
   );
@@ -68,6 +85,19 @@ describe('detect-patterns examples', () => {
 
       expect(patterns).to.be.an('array');
       expect(patterns.length).to.be.equal(2);
+
+      // AI assertion to validate e-commerce patterns
+      await aiExpect({
+        data: 'product configurations with categories, prices, stock status, shipping, and ratings',
+        patterns,
+      }).toSatisfy(
+        'Do these patterns identify meaningful relationships in product data (e.g., electronics with higher prices, books with free shipping)?'
+      );
+
+      // AI assertion for pattern insights
+      await aiExpect(
+        `Found patterns in ${products.length} products across electronics, books, and clothing categories`
+      ).toSatisfy('Are these patterns useful for understanding product inventory characteristics?');
     },
     longTestTimeout
   );
