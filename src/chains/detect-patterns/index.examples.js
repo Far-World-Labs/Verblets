@@ -50,10 +50,11 @@ describe('detect-patterns examples', () => {
 
       // AI assertion to validate detected patterns make sense
       await aiExpect({
-        data: 'user settings with themes, font sizes, auto-save, and languages',
-        patterns,
+        input: userSettings,
+        detectedPatterns: patterns,
+        patternCount: patterns.length,
       }).toSatisfy(
-        'Do these patterns reveal meaningful correlations in user preferences (e.g., dark theme users preferring auto-save)?'
+        'Given the input user settings data, are the detected patterns reasonable? The patterns should identify recurring combinations like theme+autoSave or fontSize+language correlations.'
       );
 
       // AI assertion to validate pattern quality

@@ -127,7 +127,8 @@ async function waitForPendingWork(pendingWork, label) {
   }, config?.polling?.statusInterval || CONSTANTS.WAIT_STATUS_INTERVAL_MS);
 
   try {
-    await Promise.all(pendingWork);
+    // Use allSettled to avoid hanging on failed promises
+    await Promise.allSettled(pendingWork);
   } finally {
     clearInterval(interval);
   }
@@ -153,20 +154,22 @@ function isWatchMode() {
   return process.env.VITEST_MODE === 'WATCH' || process.argv.includes('--watch');
 }
 
-export default class SilentReporter {
+export default class TestAnalysisReporter {
   constructor() {
     this.reader = undefined;
     this.redis = undefined;
     this.config = undefined;
     this.pendingAnalyses = [];
     this.failedCount = 0;
+    this.pollInterval = undefined;
   }
 
-  // Lifecycle methods in execution order
+  // Vitest v3 lifecycle methods
 
-  async onInit() {
+  async onInit(_vitest) {
     //
     // Reporter initialization - check if AI mode is enabled
+    // onInit runs once per Vitest process start (main process)
     //
     const config = getConfig();
 
@@ -213,48 +216,31 @@ export default class SilentReporter {
       this.reader = await ringBuffer.createReader('reporter');
       this.startEventLoop();
     }
-
-    // Always emit run-start event (for initial run and reruns)
-    if (this.reader) {
-      await this.reader.buffer.push({
-        event: 'run-start',
-        timestamp: new Date().toISOString(),
-        mode: isWatchMode() ? 'watch' : 'single',
-      });
-    }
   }
 
-  // Required Vitest reporter lifecycle methods
-  onPathsCollected() {}
-  onCollected() {}
-  onWatcherStart() {}
-  onTaskUpdate() {}
-  onTestRemoved() {}
+  async onTestRunStart(_specs) {
+    //
+    // Called at the beginning of every run & rerun in watch mode
+    //
+    const config = getConfig();
+    if (!config?.aiMode || !this.reader) return;
 
-  onUserConsoleLog(log) {
-    const stream = log.type === 'stdout' ? process.stdout : process.stderr;
-    stream.write(log.content);
-  }
-
-  onServerRestart() {}
-  onProcessTimeout() {}
-
-  async onWatcherRerun() {
-    // Simple reset - just clear pending work
+    // Reset per-run counters
     this.pendingAnalyses = [];
     this.failedCount = 0;
 
-    // Log restart event if we have a buffer
-    if (this.reader && this.config?.aiMode) {
-      await this.reader.buffer.push({
-        event: 'run-restart',
-        timestamp: new Date().toISOString(),
-        reason: 'file-change',
-      });
-    }
+    // Mark run-start so lookbacks can slice to current run
+    await this.reader.buffer.push({
+      event: 'run-start',
+      timestamp: new Date().toISOString(),
+      mode: isWatchMode() ? 'watch' : 'single',
+    });
   }
 
-  async onFinished() {
+  async onTestRunEnd(results, unhandledErrors, reason) {
+    //
+    // Called after all files for the run are done (replaces onFinished in v2)
+    //
     const config = getConfig();
 
     // Early exit if not processing
@@ -263,17 +249,30 @@ export default class SilentReporter {
     }
 
     // Emit run-end and process remaining events
-    await this.emitRunEnd();
+    await this.reader.buffer.push({
+      event: 'run-end',
+      timestamp: new Date().toISOString(),
+      reason,
+    });
     await this.processRemainingEvents();
 
     // Wait for all pending work (summaries and/or analyses)
-    await waitForPendingWork(this.pendingAnalyses, 'Finishing');
+    // Skip waiting in watch mode to avoid blocking reruns
+    if (!isWatchMode()) {
+      await waitForPendingWork(this.pendingAnalyses, 'Run End');
+    }
 
     // Reset for next run
     this.pendingAnalyses = [];
 
     // Print separator at end of run
     console.log(`\n${createSeparator()}\n`);
+  }
+
+  // Pass through console logs to preserve test output
+  onUserConsoleLog(log) {
+    const stream = log.type === 'stdout' ? process.stdout : process.stderr;
+    stream.write(log.content);
   }
 
   // Event processing flow
@@ -283,7 +282,7 @@ export default class SilentReporter {
     //
     // Poll ring buffer for new events at configured interval
     //
-    this.ringBufferPollInterval = setInterval(async () => {
+    this.pollInterval = setInterval(async () => {
       try {
         const logs = await this.reader.consume(config.batch.size);
         if (logs.length > 0) {
@@ -454,14 +453,6 @@ export default class SilentReporter {
 
   // Helper methods
 
-  async emitRunEnd() {
-    // Use the existing ring buffer through the reader
-    await this.reader.buffer.push({
-      event: 'run-end',
-      timestamp: new Date().toISOString(),
-    });
-  }
-
   async processRemainingEvents() {
     const config = getConfig();
     let logs;
@@ -471,9 +462,9 @@ export default class SilentReporter {
   }
 
   stopEventLoop() {
-    if (this.ringBufferPollInterval) {
-      clearInterval(this.ringBufferPollInterval);
-      this.ringBufferPollInterval = undefined;
+    if (this.pollInterval) {
+      clearInterval(this.pollInterval);
+      this.pollInterval = undefined;
     }
   }
 }

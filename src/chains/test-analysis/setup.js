@@ -4,6 +4,10 @@ import RedisRingBuffer from '../../lib/ring-buffer-redis/index.js';
 import { createLogger, createRingBufferStream, noopStream } from '../../lib/logger/index.js';
 import { getConfig, CONSTANTS } from './config.js';
 
+function isWatchMode() {
+  return process.env.VITEST_MODE === 'WATCH' || process.argv.includes('--watch');
+}
+
 const config = getConfig();
 
 // Only initialize Redis and ring buffer if AI mode is enabled
@@ -35,9 +39,11 @@ if (config.aiMode) {
     // Clean up Redis connection after all tests complete
     afterAll(async () => {
       //
-      // Disconnect Redis to allow process to exit cleanly
+      // Don't disconnect Redis in watch mode - we need it for reruns
       //
-      await redis.disconnect();
+      if (!isWatchMode()) {
+        await redis.disconnect();
+      }
     });
   } else {
     // Reporter hasn't initialized yet, use no-op logger
