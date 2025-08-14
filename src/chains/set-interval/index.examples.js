@@ -1,4 +1,4 @@
-import { describe, it as vitestIt, expect as vitestExpect, vi, afterAll } from 'vitest';
+import { describe, it as vitestIt, expect as vitestExpect, vi, beforeAll, afterAll } from 'vitest';
 import setInterval from './index.js';
 import { longTestTimeout } from '../../constants/common.js';
 import { logSuiteEnd } from '../test-analysis/setup.js';
@@ -15,12 +15,15 @@ const expect = config?.aiMode
   : vitestExpect;
 const suiteLogEnd = config?.aiMode ? logSuiteEnd : () => {};
 
-afterAll(async () => {
-  await suiteLogEnd('Set interval chain', extractFileContext(2));
+beforeAll(() => {
+  // Use synthetic timers for fast testing
+  vi.useFakeTimers();
 });
 
-// Use synthetic timers for fast testing
-vi.useFakeTimers();
+afterAll(async () => {
+  vi.useRealTimers(); // Restore real timers to prevent hanging
+  await suiteLogEnd('Set interval chain', extractFileContext(2));
+});
 
 // Mock the dependencies like in the spec file
 vi.mock('../../lib/chatgpt/index.js', () => ({

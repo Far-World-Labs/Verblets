@@ -59,7 +59,8 @@ describe('detect-threshold examples', () => {
   });
 
   it('should detect performance thresholds for API monitoring', { timeout: 60000 }, async () => {
-    const apiMetrics = Array.from({ length: 1000 }, (_, i) => ({
+    const apiMetrics = Array.from({ length: 400 }, (_, i) => ({
+      // 400 items: enough to test chunking with 4 chunks
       endpoint: ['GET /users', 'POST /orders', 'GET /products'][i % 3],
       responseTime: Math.random() < 0.8 ? 50 + Math.random() * 200 : 500 + Math.random() * 2000,
       timestamp: new Date(2024, 0, 1, 0, i * 5).toISOString(),
@@ -69,7 +70,7 @@ describe('detect-threshold examples', () => {
       data: apiMetrics,
       targetProperty: 'responseTime',
       goal: 'Identify response time thresholds for SLA monitoring. Need to distinguish between normal latency, degraded performance, and critical slowdowns.',
-      chunkSize: 100, // Increase chunk size for better performance with large datasets
+      chunkSize: 100, // Will process in 4 chunks, testing iterative functionality
     });
 
     expect(result.thresholdCandidates).toBeInstanceOf(Array);
