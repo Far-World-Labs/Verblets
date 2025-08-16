@@ -162,6 +162,15 @@ export default class TestAnalysisReporter {
     this.pendingAnalyses = [];
     this.failedCount = 0;
     this.pollInterval = undefined;
+
+    // === COMPLETION DETECTOR START ===
+    // Tracks test completion in watch mode since onTestRunEnd isn't called
+    this.completionDetector = {
+      timeout: undefined,
+      testStarts: new Map(),
+      testCompletes: new Set(),
+    };
+    // === COMPLETION DETECTOR END ===
   }
 
   // Vitest v3 lifecycle methods
@@ -228,6 +237,10 @@ export default class TestAnalysisReporter {
     // Reset per-run counters
     this.pendingAnalyses = [];
     this.failedCount = 0;
+
+    // === COMPLETION DETECTOR START ===
+    this.resetCompletionDetector();
+    // === COMPLETION DETECTOR END ===
 
     // Mark run-start so lookbacks can slice to current run
     await this.reader.buffer.push({
@@ -298,6 +311,9 @@ export default class TestAnalysisReporter {
         }
       }
     }, config.polling.interval);
+
+    // CRITICAL: Unref so the interval doesn't block the event loop
+    this.pollInterval.unref();
   }
 
   async handleEvents(logs) {
@@ -316,6 +332,7 @@ export default class TestAnalysisReporter {
 
   async handleEvent(log) {
     const handlers = {
+      'test-start': this.handleTestStart.bind(this),
       'test-complete': this.handleTestComplete.bind(this),
       expect: this.handleExpectation.bind(this),
       'ai-expect': this.handleExpectation.bind(this),
@@ -327,7 +344,17 @@ export default class TestAnalysisReporter {
     if (handler) await handler(log);
   }
 
+  handleTestStart(log) {
+    // === COMPLETION DETECTOR START ===
+    this.trackTestStart(log);
+    // === COMPLETION DETECTOR END ===
+  }
+
   handleTestComplete(log) {
+    // === COMPLETION DETECTOR START ===
+    this.trackTestComplete(log);
+    // === COMPLETION DETECTOR END ===
+
     if (log.state === 'fail') {
       this.failedCount = (this.failedCount || 0) + 1;
       // TODO: Implement error pattern analysis for failed tests
@@ -347,6 +374,10 @@ export default class TestAnalysisReporter {
 
     // Always show suite summary, with or without analysis
     this.pendingAnalyses.push(this.runSuiteAnalysis(log));
+
+    // === COMPLETION DETECTOR START ===
+    this.debouncedCompletionCheck();
+    // === COMPLETION DETECTOR END ===
   }
 
   async handleRunEnd() {
@@ -467,4 +498,151 @@ export default class TestAnalysisReporter {
       this.pollInterval = undefined;
     }
   }
+
+  // =====================================
+  // === COMPLETION DETECTOR METHODS START ===
+  // =====================================
+  // This section detects when tests complete in watch mode
+  // since Vitest doesn't call onTestRunEnd reliably.
+  // To remove: Delete everything between START and END markers
+
+  resetCompletionDetector() {
+    this.completionDetector.testStarts.clear();
+    this.completionDetector.testCompletes.clear();
+
+    if (this.completionDetector.timeout) {
+      clearTimeout(this.completionDetector.timeout);
+      this.completionDetector.timeout = undefined;
+    }
+  }
+
+  trackTestStart(log) {
+    const key = `${log.suite}-${log.testIndex}`;
+    this.completionDetector.testStarts.set(key, log);
+  }
+
+  trackTestComplete(log) {
+    const key = `${log.suite}-${log.testIndex}`;
+
+    // Only count if we saw the start event
+    if (this.completionDetector.testStarts.has(key)) {
+      this.completionDetector.testCompletes.add(key);
+    } else {
+      // Warn about orphaned complete events
+      console.warn(`⚠️ Test complete without start: ${log.testName} (${log.suite}) - key: ${key}`);
+    }
+  }
+
+  // ViewModel: Builds the data structure for rendering
+  getCompletionViewModel() {
+    const starts = this.completionDetector.testStarts;
+    const completes = this.completionDetector.testCompletes;
+
+    const pendingTests = [];
+    for (const [key, startLog] of starts.entries()) {
+      if (!completes.has(key)) {
+        pendingTests.push({
+          name: startLog.testName,
+          suite: startLog.suite,
+        });
+      }
+    }
+
+    return {
+      totalTests: starts.size,
+      completedTests: completes.size,
+      pendingTests,
+      pendingCount: pendingTests.length,
+      timeoutDuration: 10, // seconds
+    };
+  }
+
+  // View Components: Small, focused rendering functions
+
+  renderBoxLine(content = '') {
+    console.log(`│${content}`);
+  }
+
+  renderBoxContent(text, indent = 2) {
+    const padding = ' '.repeat(indent);
+    this.renderBoxLine(`${padding}${text}`);
+  }
+
+  renderListItem(text, indent = 5) {
+    this.renderBoxContent(`• ${text}`, indent);
+  }
+
+  renderHeader(timeoutDuration) {
+    this.renderBoxContent(`No new suite completions for ${timeoutDuration}s`);
+  }
+
+  renderSummary(completedTests, totalTests, pendingCount) {
+    this.renderBoxContent(
+      `${completedTests}/${totalTests} tests completed (${pendingCount} pending)`
+    );
+  }
+
+  renderPendingTestsList(pendingTests, maxItems = 3) {
+    if (pendingTests.length === 0) return;
+
+    this.renderBoxContent(`⚠️  Top pending tests:`);
+
+    // Render list items
+    pendingTests.slice(0, maxItems).forEach((test) => {
+      this.renderListItem(`${test.name} (${test.suite})`);
+    });
+
+    // Render overflow indicator
+    if (pendingTests.length > maxItems) {
+      this.renderBoxContent(`... and ${pendingTests.length - maxItems} more`, 5);
+    }
+  }
+
+  renderWatchingMessage() {
+    console.log(`\n`);
+    console.log(`Watching for file changes...`);
+    console.log(`\n`);
+  }
+
+  // Main view composer
+  renderCompletionStatus(viewModel) {
+    const { totalTests, completedTests, pendingTests, pendingCount, timeoutDuration } = viewModel;
+
+    // Start box
+    console.log(`\n│`);
+
+    // Header section
+    this.renderHeader(timeoutDuration);
+    this.renderSummary(completedTests, totalTests, pendingCount);
+
+    // Pending tests section
+    if (pendingCount > 0) {
+      this.renderPendingTestsList(pendingTests);
+    }
+
+    // End box
+    this.renderBoxLine();
+
+    // Watching message (outside box)
+    this.renderWatchingMessage();
+  }
+
+  debouncedCompletionCheck() {
+    // Reset timeout on each suite completion
+    if (this.completionDetector.timeout) {
+      clearTimeout(this.completionDetector.timeout);
+    }
+
+    this.completionDetector.timeout = setTimeout(() => {
+      const viewModel = this.getCompletionViewModel();
+      this.renderCompletionStatus(viewModel);
+    }, 10000);
+
+    // CRITICAL: Unref so it doesn't block the event loop
+    this.completionDetector.timeout.unref();
+  }
+
+  // ===================================
+  // === COMPLETION DETECTOR METHODS END ===
+  // ===================================
 }
