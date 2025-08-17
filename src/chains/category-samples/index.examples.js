@@ -1,8 +1,8 @@
-import { describe, expect as vitestExpect, it as vitestIt, afterAll } from 'vitest';
+import { describe, expect as vitestExpect, it as vitestIt, beforeAll, afterAll } from 'vitest';
 import { longTestTimeout } from '../../constants/common.js';
 import vitestAiExpect from '../expect/index.js';
 import categorySamples from './index.js';
-import { logSuiteEnd } from '../test-analysis/setup.js';
+import { logSuiteStart, logSuiteEnd } from '../test-analysis/setup.js';
 import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
 import { extractFileContext } from '../../lib/logger/index.js';
 import { getConfig } from '../test-analysis/config.js';
@@ -17,7 +17,12 @@ const expect = config?.aiMode
 const aiExpect = config?.aiMode
   ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'Category-samples chain' } })
   : vitestAiExpect;
+const suiteLogStart = config?.aiMode ? logSuiteStart : () => {};
 const suiteLogEnd = config?.aiMode ? logSuiteEnd : () => {};
+
+beforeAll(async () => {
+  await suiteLogStart('Category-samples chain', extractFileContext(2));
+});
 
 afterAll(async () => {
   await suiteLogEnd('Category-samples chain', extractFileContext(2));

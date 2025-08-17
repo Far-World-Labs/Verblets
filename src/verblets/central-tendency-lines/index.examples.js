@@ -3,13 +3,13 @@
  * Demonstrates cognitive science applications in prototype theory and graded typicality
  */
 
-import { describe, expect as vitestExpect, it as vitestIt, afterAll } from 'vitest';
+import { describe, expect as vitestExpect, it as vitestIt, beforeAll, afterAll } from 'vitest';
 import centralTendency from './index.js';
 import categorySamples from '../../chains/category-samples/index.js';
 import centralTendencyChain from '../../chains/central-tendency/index.js';
 import { longTestTimeout } from '../../constants/common.js';
 import vitestAiExpect from '../../chains/expect/index.js';
-import { logSuiteEnd } from '../../chains/test-analysis/setup.js';
+import { logSuiteStart, logSuiteEnd } from '../../chains/test-analysis/setup.js';
 import { wrapIt, wrapExpect, wrapAiExpect } from '../../chains/test-analysis/test-wrappers.js';
 import { extractFileContext } from '../../lib/logger/index.js';
 import { getConfig } from '../../chains/test-analysis/config.js';
@@ -27,11 +27,16 @@ const expect = config?.aiMode
 const aiExpect = config?.aiMode
   ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'centralTendency examples' } })
   : vitestAiExpect;
+const suiteLogStart = config?.aiMode ? logSuiteStart : () => {};
 const suiteLogEnd = config?.aiMode ? logSuiteEnd : () => {};
 
 //
 // Test suite
 //
+beforeAll(async () => {
+  await suiteLogStart('centralTendency examples', extractFileContext(2));
+});
+
 afterAll(async () => {
   await suiteLogEnd('centralTendency examples', extractFileContext(2));
 });

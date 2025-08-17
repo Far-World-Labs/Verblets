@@ -23,7 +23,7 @@
     "script": "./scripts/run.sh",
     "test": "vitest",
     "test:browser": "vitest --config vitest.config.browser.js",
-    "examples": "source .env && USE_REDIS_CACHE=true vitest --config vitest.config.examples.js --watch",
+    "examples": "source .env && USE_REDIS_CACHE=true node_modules/.bin/vitest --config vitest.config.examples.js",
     "examples:browser": "source .env && USE_REDIS_CACHE=true vitest --config vitest.config.browser.examples.js",
     "arch": "source .env && vitest --config vitest.config.arch.js",
     "clear-cache": "node scripts/clear-redis.js",

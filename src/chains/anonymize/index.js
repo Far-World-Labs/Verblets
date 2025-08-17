@@ -160,11 +160,23 @@ const anonymize = async (input, config = {}) => {
   const { text, method, context } = validateInput(input);
   const { llm, ...options } = config;
 
+  console.log('[Anonymize] Starting anonymize function, method:', method);
   // Stage 1: Remove distinctive content
-  const stage1Result = await run(stage1Prompt(text, method, context), {
+  console.log('[Anonymize] About to call run() with privacy model');
+
+  // Disable caching for privacy model in test environment to avoid Redis conflicts
+  const runOptions = {
     modelOptions: { modelName: 'privacy', ...llm },
     ...options,
-  });
+  };
+
+  // In test environment with aiMode, disable caching to avoid Redis conflicts
+  if (process.env.NODE_ENV === 'test' && process.env.VERBLETS_AI_LOGS_ONLY) {
+    runOptions.forceQuery = true;
+  }
+
+  const stage1Result = await run(stage1Prompt(text, method, context), runOptions);
+  console.log('[Anonymize] Stage 1 complete');
 
   if (method === anonymizeMethod.LIGHT) {
     return {

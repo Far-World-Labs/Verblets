@@ -1,8 +1,8 @@
-import { describe, it as vitestIt, expect as vitestExpect, afterAll } from 'vitest';
+import { describe, it as vitestIt, expect as vitestExpect, beforeAll, afterAll } from 'vitest';
 import { longTestTimeout } from '../../constants/common.js';
 import score, { reduceInstructions } from './index.js';
 import reduce from '../reduce/index.js';
-import { logSuiteEnd } from '../test-analysis/setup.js';
+import { logSuiteStart, logSuiteEnd } from '../test-analysis/setup.js';
 import { wrapIt, wrapExpect } from '../test-analysis/test-wrappers.js';
 import { extractFileContext } from '../../lib/logger/index.js';
 import { getConfig } from '../test-analysis/config.js';
@@ -12,7 +12,12 @@ const it = config?.aiMode ? wrapIt(vitestIt, { baseProps: { suite: 'Score chain'
 const expect = config?.aiMode
   ? wrapExpect(vitestExpect, { baseProps: { suite: 'Score chain' } })
   : vitestExpect;
+const suiteLogStart = config?.aiMode ? logSuiteStart : () => {};
 const suiteLogEnd = config?.aiMode ? logSuiteEnd : () => {};
+
+beforeAll(async () => {
+  await suiteLogStart('Score chain', extractFileContext(2));
+});
 
 afterAll(async () => {
   await suiteLogEnd('Score chain', extractFileContext(2));

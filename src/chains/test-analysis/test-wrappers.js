@@ -113,9 +113,53 @@ export const wrapIt = (it, config = {}) => {
     );
   };
 
-  // Copy skipIf and other properties
-  wrapped.skipIf = it.skipIf;
-  wrapped.skip = it.skip;
+  // Wrap skip methods to track skipped tests
+  wrapped.skip = (name, fn, ...args) => {
+    const testIndex = testCounter++;
+    registeredTests.push(name);
+    const testLocation = extractFileContext(3);
+
+    // Log skipped test immediately
+    logTestEvent(
+      'test-start',
+      {
+        testName: name,
+        testIndex,
+        suite: baseProps.suite,
+        skipped: true,
+        ...testLocation,
+      },
+      logger
+    );
+
+    logTestEvent(
+      'test-complete',
+      {
+        testName: name,
+        testIndex,
+        state: 'skip',
+        duration: 0,
+        suite: baseProps.suite,
+        ...testLocation,
+      },
+      logger
+    );
+
+    return it.skip(name, fn, ...args);
+  };
+
+  // Wrap skipIf to track conditionally skipped tests
+  wrapped.skipIf = (condition) => {
+    if (condition) {
+      // Return wrapped.skip when condition is true
+      return wrapped.skip;
+    } else {
+      // Return normal wrapped function when condition is false
+      return wrapped;
+    }
+  };
+
+  // Copy only property
   wrapped.only = it.only;
 
   return wrapped;
