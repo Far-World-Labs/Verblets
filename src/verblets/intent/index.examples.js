@@ -5,7 +5,7 @@ import { longTestTimeout } from '../../constants/common.js';
 import { intent as intentSchema } from '../../json-schemas/index.js';
 import { env } from '../../lib/env/index.js';
 import { debug } from '../../lib/debug/index.js';
-import { logSuiteEnd } from '../../chains/test-analysis/setup.js';
+import { logSuiteStart, logSuiteEnd } from '../../chains/test-analysis/setup.js';
 import { wrapIt, wrapExpect, wrapAiExpect } from '../../chains/test-analysis/test-wrappers.js';
 import { extractFileContext } from '../../lib/logger/index.js';
 import { getConfig } from '../../chains/test-analysis/config.js';
@@ -20,7 +20,12 @@ const expect = config?.aiMode
 const aiExpect = config?.aiMode
   ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'Intent verblet' } })
   : vitestAiExpect;
+const suiteLogStart = config?.aiMode ? logSuiteStart : () => {};
 const suiteLogEnd = config?.aiMode ? logSuiteEnd : () => {};
+
+beforeAll(async () => {
+  await suiteLogStart('Intent verblet', extractFileContext(2));
+});
 
 afterAll(async () => {
   await suiteLogEnd('Intent verblet', extractFileContext(2));

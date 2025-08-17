@@ -562,10 +562,18 @@ const constructClient = async () => {
 
 export const getClient = async () => {
   if (client) {
+    // Log when reusing existing client (for debugging)
+    if (process.env.VERBLETS_DEBUG_REDIS) {
+      console.error('[REDIS] Reusing existing client');
+    }
     return client;
   }
 
   if (!constructingClient) {
+    // Log when creating new client (for debugging)
+    if (process.env.VERBLETS_DEBUG_REDIS) {
+      console.error('[REDIS] Creating new client');
+    }
     constructingClient = constructClient();
   }
 

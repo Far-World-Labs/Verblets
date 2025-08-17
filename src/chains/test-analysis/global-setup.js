@@ -20,7 +20,7 @@ export default async function globalSetup() {
   const config = getConfig();
   if (!config?.aiMode) return;
 
-  // Set up Redis and ring buffer
+  // Set up Redis and ring buffer (this is the FIRST Redis connection)
   const redis = await getClient();
   await cleanupTestRedisKeys(redis);
 
@@ -43,9 +43,12 @@ export default async function globalSetup() {
   globalThis.logger = logger;
   globalThis.ringBufferKey = ringBuffer.key;
 
-  // Return a teardown function
+  // Return a teardown function - but don't disconnect in watch mode
   return async () => {
+    const isWatchMode = process.env.VITEST_MODE === 'WATCH' || process.argv.includes('--watch');
     await cleanupTestRedisKeys(redis);
-    await redis.disconnect();
+    if (!isWatchMode) {
+      await redis.disconnect();
+    }
   };
 }

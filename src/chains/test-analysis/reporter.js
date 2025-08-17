@@ -100,10 +100,15 @@
 import { getClient } from '../../services/redis/index.js';
 import RedisRingBuffer from '../../lib/ring-buffer-redis/index.js';
 import { getConfig, CONSTANTS } from './config.js';
-import { formatTestSummary, formatAnalysisOutput, createSeparator } from './output-utils.js';
+
+// Constants
+import { formatTestSummary, formatAnalysisOutput } from './output-utils.js';
 import { aggregateFromLogs } from './aggregator.js';
 import analyzeTestError from '../test-analyzer/index.js';
 import { extractCodeWindow } from '../../lib/code-extractor/index.js';
+import { FirstFailureProcessor } from './processors/first-failure-processor.js';
+import { CompletionTrackingProcessor } from './processors/completion-tracking-processor.js';
+import { DiagnosticProcessor } from './processors/diagnostic-processor.js';
 
 // Pure helper functions
 function shouldProcessEvents(config) {
@@ -162,20 +167,23 @@ export default class TestAnalysisReporter {
     this.pendingAnalyses = [];
     this.failedCount = 0;
     this.pollInterval = undefined;
+    this.currentRunId = null;
+    this.processedSuites = new Set();
+    this.seenSuites = new Set();
 
-    // === COMPLETION DETECTOR START ===
-    // Tracks test completion in watch mode since onTestRunEnd isn't called
-    this.completionDetector = {
-      timeout: undefined,
-      testStarts: new Map(),
-      testCompletes: new Set(),
-    };
-    // === COMPLETION DETECTOR END ===
+    // Stdin monitor removed - was interfering with Vitest's watch mode
+
+    // === PROCESSORS START ===
+    // Ring buffer processors that can be toggled via env flags
+    this.processors = [];
+    // === PROCESSORS END ===
   }
 
   // Vitest v3 lifecycle methods
 
-  async onInit(_vitest) {
+  async onInit(vitest) {
+    // Store vitest instance for debugging
+    this.vitest = vitest;
     //
     // Reporter initialization - check if AI mode is enabled
     // onInit runs once per Vitest process start (main process)
@@ -192,6 +200,8 @@ export default class TestAnalysisReporter {
     // Reset counters for each run
     this.pendingAnalyses = [];
     this.failedCount = 0;
+
+    // Stdin monitor removed - was interfering with Vitest's watch mode input handling
 
     // Only initialize Redis and ring buffer on first run
     if (!this.redis) {
@@ -224,6 +234,11 @@ export default class TestAnalysisReporter {
 
       this.reader = await ringBuffer.createReader('reporter');
       this.startEventLoop();
+
+      // === PROCESSORS START ===
+      // Initialize processors
+      await this.initializeProcessors(ringBuffer);
+      // === PROCESSORS END ===
     }
   }
 
@@ -234,17 +249,21 @@ export default class TestAnalysisReporter {
     const config = getConfig();
     if (!config?.aiMode || !this.reader) return;
 
+    // === DEBUG: Keep these messages - very useful for debugging input errors ===
+    // console.error('[REPORTER] Test run starting...');
+    // === END DEBUG ===
+
     // Reset per-run counters
     this.pendingAnalyses = [];
     this.failedCount = 0;
-
-    // === COMPLETION DETECTOR START ===
-    this.resetCompletionDetector();
-    // === COMPLETION DETECTOR END ===
+    this.currentRunId = Date.now();
+    this.processedSuites.clear();
+    this.seenSuites.clear();
 
     // Mark run-start so lookbacks can slice to current run
     await this.reader.buffer.push({
       event: 'run-start',
+      runId: this.currentRunId,
       timestamp: new Date().toISOString(),
       mode: isWatchMode() ? 'watch' : 'single',
     });
@@ -255,6 +274,10 @@ export default class TestAnalysisReporter {
     // Called after all files for the run are done (replaces onFinished in v2)
     //
     const config = getConfig();
+
+    // === DEBUG: Keep these messages - very useful for debugging input errors ===
+    // console.error('[REPORTER] Test run ending, reason:', reason);
+    // === END DEBUG ===
 
     // Early exit if not processing
     if (!shouldProcessEvents(config) || !this.reader) {
@@ -278,14 +301,31 @@ export default class TestAnalysisReporter {
     // Reset for next run
     this.pendingAnalyses = [];
 
-    // Print separator at end of run
-    console.log(`\n${createSeparator()}\n`);
+    // Don't print anything extra at run end - processor handles it
   }
 
   // Pass through console logs to preserve test output
   onUserConsoleLog(log) {
-    const stream = log.type === 'stdout' ? process.stdout : process.stderr;
-    stream.write(log.content);
+    // Only write if it's actual test output, not stdin echo
+    if (log.content && !log.content.includes('\x1b[')) {
+      const stream = log.type === 'stdout' ? process.stdout : process.stderr;
+      stream.write(log.content);
+    }
+  }
+
+  // Watch mode lifecycle methods - needed for stdin to work
+  onWatcherStart(files, errors) {
+    // This is called when watch mode starts
+    // Without this, Vitest might not set up stdin properly
+    if (errors?.length) {
+      console.error('Errors during watch mode start:', errors);
+    }
+  }
+
+  onWatcherRerun(_files, _trigger) {
+    // Called when tests are rerun in watch mode
+    // Reset our state for the new run
+    this._stdinDebugLogged = false;
   }
 
   // Event processing flow
@@ -336,6 +376,7 @@ export default class TestAnalysisReporter {
       'test-complete': this.handleTestComplete.bind(this),
       expect: this.handleExpectation.bind(this),
       'ai-expect': this.handleExpectation.bind(this),
+      'suite-start': () => {}, // Just track it, don't double-handle
       'suite-end': this.handleSuiteEnd.bind(this),
       'run-end': this.handleRunEnd.bind(this),
     };
@@ -344,17 +385,9 @@ export default class TestAnalysisReporter {
     if (handler) await handler(log);
   }
 
-  handleTestStart(log) {
-    // === COMPLETION DETECTOR START ===
-    this.trackTestStart(log);
-    // === COMPLETION DETECTOR END ===
-  }
+  async handleTestStart(_log) {}
 
   handleTestComplete(log) {
-    // === COMPLETION DETECTOR START ===
-    this.trackTestComplete(log);
-    // === COMPLETION DETECTOR END ===
-
     if (log.state === 'fail') {
       this.failedCount = (this.failedCount || 0) + 1;
       // TODO: Implement error pattern analysis for failed tests
@@ -372,12 +405,13 @@ export default class TestAnalysisReporter {
     // Debug mode shows raw logs only
     if (isDebugMode(config)) return;
 
+    // Only process each suite once per run
+    const suiteKey = `${this.currentRunId}-${log.suite}`;
+    if (this.processedSuites.has(suiteKey)) return;
+    this.processedSuites.add(suiteKey);
+
     // Always show suite summary, with or without analysis
     this.pendingAnalyses.push(this.runSuiteAnalysis(log));
-
-    // === COMPLETION DETECTOR START ===
-    this.debouncedCompletionCheck();
-    // === COMPLETION DETECTOR END ===
   }
 
   async handleRunEnd() {
@@ -499,150 +533,33 @@ export default class TestAnalysisReporter {
     }
   }
 
-  // =====================================
-  // === COMPLETION DETECTOR METHODS START ===
-  // =====================================
-  // This section detects when tests complete in watch mode
-  // since Vitest doesn't call onTestRunEnd reliably.
-  // To remove: Delete everything between START and END markers
+  // ===================================
+  // === PROCESSOR METHODS START ===
+  // ===================================
 
-  resetCompletionDetector() {
-    this.completionDetector.testStarts.clear();
-    this.completionDetector.testCompletes.clear();
+  async initializeProcessors(ringBuffer) {
+    // Create and initialize processors based on env flags
+    const processors = [
+      new FirstFailureProcessor({ ringBuffer }),
+      new CompletionTrackingProcessor({ ringBuffer }),
+      new DiagnosticProcessor({ ringBuffer }),
+      // Add more processors here as they're created
+    ];
 
-    if (this.completionDetector.timeout) {
-      clearTimeout(this.completionDetector.timeout);
-      this.completionDetector.timeout = undefined;
-    }
-  }
-
-  trackTestStart(log) {
-    const key = `${log.suite}-${log.testIndex}`;
-    this.completionDetector.testStarts.set(key, log);
-  }
-
-  trackTestComplete(log) {
-    const key = `${log.suite}-${log.testIndex}`;
-
-    // Only count if we saw the start event
-    if (this.completionDetector.testStarts.has(key)) {
-      this.completionDetector.testCompletes.add(key);
-    } else {
-      // Warn about orphaned complete events
-      console.warn(`⚠️ Test complete without start: ${log.testName} (${log.suite}) - key: ${key}`);
-    }
-  }
-
-  // ViewModel: Builds the data structure for rendering
-  getCompletionViewModel() {
-    const starts = this.completionDetector.testStarts;
-    const completes = this.completionDetector.testCompletes;
-
-    const pendingTests = [];
-    for (const [key, startLog] of starts.entries()) {
-      if (!completes.has(key)) {
-        pendingTests.push({
-          name: startLog.testName,
-          suite: startLog.suite,
-        });
+    // Initialize enabled processors
+    for (const processor of processors) {
+      if (processor.enabled) {
+        await processor.initialize();
+        this.processors.push(processor);
       }
     }
-
-    return {
-      totalTests: starts.size,
-      completedTests: completes.size,
-      pendingTests,
-      pendingCount: pendingTests.length,
-      timeoutDuration: 10, // seconds
-    };
   }
 
-  // View Components: Small, focused rendering functions
-
-  renderBoxLine(content = '') {
-    console.log(`│${content}`);
-  }
-
-  renderBoxContent(text, indent = 2) {
-    const padding = ' '.repeat(indent);
-    this.renderBoxLine(`${padding}${text}`);
-  }
-
-  renderListItem(text, indent = 5) {
-    this.renderBoxContent(`• ${text}`, indent);
-  }
-
-  renderHeader(timeoutDuration) {
-    this.renderBoxContent(`No new suite completions for ${timeoutDuration}s`);
-  }
-
-  renderSummary(completedTests, totalTests, pendingCount) {
-    this.renderBoxContent(
-      `${completedTests}/${totalTests} tests completed (${pendingCount} pending)`
-    );
-  }
-
-  renderPendingTestsList(pendingTests, maxItems = 3) {
-    if (pendingTests.length === 0) return;
-
-    this.renderBoxContent(`⚠️  Top pending tests:`);
-
-    // Render list items
-    pendingTests.slice(0, maxItems).forEach((test) => {
-      this.renderListItem(`${test.name} (${test.suite})`);
-    });
-
-    // Render overflow indicator
-    if (pendingTests.length > maxItems) {
-      this.renderBoxContent(`... and ${pendingTests.length - maxItems} more`, 5);
-    }
-  }
-
-  renderWatchingMessage() {
-    console.log(`\n`);
-    console.log(`Watching for file changes...`);
-    console.log(`\n`);
-  }
-
-  // Main view composer
-  renderCompletionStatus(viewModel) {
-    const { totalTests, completedTests, pendingTests, pendingCount, timeoutDuration } = viewModel;
-
-    // Start box
-    console.log(`\n│`);
-
-    // Header section
-    this.renderHeader(timeoutDuration);
-    this.renderSummary(completedTests, totalTests, pendingCount);
-
-    // Pending tests section
-    if (pendingCount > 0) {
-      this.renderPendingTestsList(pendingTests);
-    }
-
-    // End box
-    this.renderBoxLine();
-
-    // Watching message (outside box)
-    this.renderWatchingMessage();
-  }
-
-  debouncedCompletionCheck() {
-    // Reset timeout on each suite completion
-    if (this.completionDetector.timeout) {
-      clearTimeout(this.completionDetector.timeout);
-    }
-
-    this.completionDetector.timeout = setTimeout(() => {
-      const viewModel = this.getCompletionViewModel();
-      this.renderCompletionStatus(viewModel);
-    }, 10000);
-
-    // CRITICAL: Unref so it doesn't block the event loop
-    this.completionDetector.timeout.unref();
+  async shutdownProcessors() {
+    await Promise.all(this.processors.map((p) => p.shutdown()));
   }
 
   // ===================================
-  // === COMPLETION DETECTOR METHODS END ===
+  // === PROCESSOR METHODS END ===
   // ===================================
 }

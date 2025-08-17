@@ -160,6 +160,10 @@ export const run = async (prompt, config = {}) => {
     unwrapCollections,
   } = options;
 
+  if (modelOptions.modelName === 'privacy') {
+    console.log('[Run] Privacy model requested');
+  }
+
   // Apply global overrides to model options
   const modelOptionsWithOverrides = modelService.applyGlobalOverrides(modelOptions);
 
@@ -174,7 +178,15 @@ export const run = async (prompt, config = {}) => {
       )
     : modelOptionsWithOverrides.modelName;
 
+  if (modelNameNegotiated === 'privacy') {
+    console.log('[Run] Model negotiated to privacy');
+  }
+
   const modelFound = modelService.getModel(modelNameNegotiated);
+
+  if (modelFound?.name === 'privacy' || modelNameNegotiated === 'privacy') {
+    console.log('[Run] Found privacy model:', modelFound?.name);
+  }
 
   // Use model-specific API URL and key if defined, otherwise fall back to defaults
   const apiUrl = modelFound?.apiUrl || models.fastGood.apiUrl;
@@ -193,9 +205,18 @@ export const run = async (prompt, config = {}) => {
   let cache = null;
 
   if (!cachingDisabled) {
+    if (modelNameNegotiated === 'privacy') {
+      console.log('[Run] Getting Redis cache for privacy model');
+    }
     cache = await getRedis();
+    if (modelNameNegotiated === 'privacy') {
+      console.log('[Run] Got Redis cache, checking for cached result');
+    }
     const { result } = await getPromptResult(cache, requestConfig);
     cacheResult = result;
+    if (modelNameNegotiated === 'privacy') {
+      console.log('[Run] Cache check complete, cached:', !!cacheResult);
+    }
   }
 
   onBeforeRequest({
@@ -226,7 +247,11 @@ export const run = async (prompt, config = {}) => {
     // Configure abort signal (see function documentation for browser compatibility notes)
     configureAbortSignal(fetchOptions, abortSignal, timeoutController);
 
-    const response = await fetch(`${apiUrl}${modelFound.endpoint}`, fetchOptions);
+    const fetchUrl = `${apiUrl}${modelFound.endpoint}`;
+    if (modelNameNegotiated === 'privacy') {
+      console.log('[Run] Fetching from privacy model URL:', fetchUrl);
+    }
+    const response = await fetch(fetchUrl, fetchOptions);
 
     result = await response.json();
 
