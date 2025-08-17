@@ -23,24 +23,24 @@ export default defineConfig({
       
       // === CHAINS - Alphabetical ===
       'src/chains/anonymize/*.examples.js', // ISSUE: Hangs with aiMode - privacy model conflicts
-      // 'src/chains/category-samples/*.examples.js',
-      // 'src/chains/central-tendency/*.examples.js', 
-      // 'src/chains/collect-terms/*.examples.js',
+      // 'src/chains/category-samples/*.examples.js', // ENABLED
+      // 'src/chains/central-tendency/*.examples.js', // ENABLED
+      // 'src/chains/collect-terms/*.examples.js', // ENABLED
       'src/chains/conversation/*.examples.js', // KNOWN SLOW: 5+ seconds
-      // 'src/chains/date/*.examples.js',
-      'src/chains/detect-patterns/*.examples.js', // CHECK: May hang
-      'src/chains/detect-threshold/*.examples.js', // CHECK: Was commented before
-      // 'src/chains/disambiguate/*.examples.js',
+      // 'src/chains/date/*.examples.js', // ENABLED
+      'src/chains/detect-patterns/*.examples.js', // ISSUE: Hangs with aiMode
+      // 'src/chains/detect-threshold/*.examples.js', // ENABLED - Was commented before
+      // 'src/chains/disambiguate/*.examples.js', // ENABLED
       // 'src/chains/dismantle/*.examples.js',
-      'src/chains/document-shrink/*.examples.js', // CHECK: Was commented before
-      // 'src/chains/entities/*.examples.js',
+      'src/chains/document-shrink/*.examples.js', // ISSUE: Hangs with aiMode
+      // 'src/chains/entities/*.examples.js', // ENABLED
       // 'src/chains/expect/*.examples.js',
-      // 'src/chains/filter/*.examples.js',
-      // 'src/chains/filter-ambiguous/*.examples.js',
-      // 'src/chains/find/*.examples.js',
+      // 'src/chains/filter/*.examples.js', // ENABLED
+      // 'src/chains/filter-ambiguous/*.examples.js', // ENABLED
+      // 'src/chains/find/*.examples.js', // ENABLED
       // 'src/chains/glossary/*.examples.js',
       // 'src/chains/group/*.examples.js',
-      // 'src/chains/intersections/*.examples.js',
+      // 'src/chains/intersections/*.examples.js', // ENABLED - checking test counts
       // 'src/chains/join/*.examples.js',
       // 'src/chains/list/*.examples.js',
       // 'src/chains/map/*.examples.js',
@@ -48,14 +48,14 @@ export default defineConfig({
       // 'src/chains/questions/*.examples.js',
       // 'src/chains/reduce/*.examples.js',
       // 'src/chains/relations/*.examples.js',
-      'src/chains/scale/*.examples.js', // CHECK: Was commented before
+      'src/chains/scale/*.examples.js', // ISSUE: Hangs with aiMode
       // 'src/chains/score/*.examples.js',
       'src/chains/set-interval/*.examples.js', // CHECK: Timer issues
       // 'src/chains/sort/*.examples.js',
       // 'src/chains/split/*.examples.js',
       // 'src/chains/summary-map/*.examples.js',
       // 'src/chains/themes/*.examples.js',
-      'src/chains/timeline/*.examples.js', // CHECK: May have timer issues
+      'src/chains/timeline/*.examples.js', // ISSUE: Hangs with aiMode
       // 'src/chains/to-object/*.examples.js',
       // 'src/chains/truncate/*.examples.js',
       // 'src/chains/veiled-variants/*.examples.js',

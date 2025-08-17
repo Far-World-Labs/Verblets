@@ -29,13 +29,7 @@ const suiteLogStart = config?.aiMode ? logSuiteStart : () => {};
 const suiteLogEnd = config?.aiMode ? logSuiteEnd : () => {};
 
 beforeAll(async () => {
-  console.log('[Anonymize] beforeAll starting, aiMode:', config?.aiMode);
-  try {
-    await suiteLogStart('Anonymize chain', extractFileContext(2));
-    console.log('[Anonymize] suiteLogStart completed');
-  } catch (e) {
-    console.error('[Anonymize] suiteLogStart error:', e);
-  }
+  await suiteLogStart('Anonymize chain', extractFileContext(2));
 });
 
 afterAll(async () => {
@@ -67,15 +61,12 @@ describe('anonymize core functionality', () => {
     'applies different anonymization methods',
     { timeout: 60_000 },
     async () => {
-      console.log('[Anonymize Test] Starting anonymization test');
       // Test all three methods
-      console.log('[Anonymize Test] About to call anonymize functions');
       const [strict, balanced, light] = await Promise.all([
         anonymize({ text: personalText, method: anonymizeMethod.STRICT }),
         anonymize({ text: personalText, method: anonymizeMethod.BALANCED }),
         anonymize({ text: personalText, method: anonymizeMethod.LIGHT }),
       ]);
-      console.log('[Anonymize Test] Anonymize functions completed');
 
       // Structure validation
       for (const result of [strict, balanced, light]) {

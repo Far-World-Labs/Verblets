@@ -458,7 +458,8 @@ export default class TestAnalysisReporter {
 
     // Early exit if not analyzing
     if (!shouldAnalyze(config)) {
-      console.log(summary);
+      // Don't print suite summaries in logs-only mode
+      // Vitest already provides its own summary
       return;
     }
 
