@@ -151,13 +151,17 @@ export const displayTestFailure = (suiteData, failureData, analysis, codeSnippet
 const COLORS = {
   RED: '\x1b[31m',
   GREEN: '\x1b[32m',
+  YELLOW: '\x1b[33m',
   RESET: '\x1b[0m',
 };
 
-export const formatTestSummary = (name, passed, total, avgDuration) => {
-  const isFullyPassing = passed === total;
+export const formatTestSummary = (name, passed, total, avgDuration, skipped = 0) => {
+  // All non-skipped tests passed if passed count equals (total - skipped)
+  const nonSkippedTotal = total - skipped;
+  const isFullyPassing = passed === nonSkippedTotal && passed > 0;
   const color = isFullyPassing ? COLORS.GREEN : COLORS.RED;
-  return `${color}Suite: ${name} ${passed}/${total} ${avgDuration}ms (avg.)${COLORS.RESET}`;
+  const skipInfo = skipped > 0 ? ` ${COLORS.YELLOW}(${skipped} skipped)${COLORS.RESET}` : '';
+  return `${color}Suite: ${name} ${passed}/${total}${skipInfo} ${avgDuration}ms (avg.)${COLORS.RESET}`;
 };
 
 // Unicode box drawing characters

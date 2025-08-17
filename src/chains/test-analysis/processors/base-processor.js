@@ -21,11 +21,9 @@ const isEnabled = (envFlag, alwaysEnabled = false) => {
   if (alwaysEnabled) return true;
   if (!envFlag) return false;
   const value = process.env[envFlag];
-  // For special flags like VERBLETS_DEBUG that contain values, check if non-empty
   if (envFlag === 'VERBLETS_DEBUG') {
     return value && value.length > 0;
   }
-  // For other flags, use standard truthy check
   return value && truthyValues.includes(value);
 };
 
@@ -61,12 +59,10 @@ const isResetError = (err) =>
 const makeCancellable = (promise) => {
   let cancelled = false;
   const wrapped = promise.then(
-    (result) => (cancelled ? undefined : result),
-    (error) => (cancelled ? undefined : Promise.reject(error))
+    result => cancelled ? undefined : result,
+    error => cancelled ? undefined : Promise.reject(error)
   );
-  wrapped.cancel = () => {
-    cancelled = true;
-  };
+  wrapped.cancel = () => { cancelled = true; };
   return wrapped;
 };
 
@@ -116,23 +112,17 @@ export class BaseProcessor {
   }
 
   resetState() {
-    // Cancel all pending work
     if (this.pendingWork) {
-      this.pendingWork.forEach((work) => work.cancel?.());
+      this.pendingWork.forEach(work => work.cancel?.());
     }
 
-    // Clear all blockers
     if (this.blockers) {
       rejectAllBlockers(this.blockers.suites, 'State reset');
       rejectBlocker(this.blockers.run, 'State reset');
     }
 
-    // Reset state
     this.pendingWork = new Set();
-    this.blockers = {
-      suites: new Map(),
-      run: null,
-    };
+    this.blockers = { suites: new Map(), run: null };
     this.activeSuites = new Set();
     this.activeRun = false;
   }
@@ -177,9 +167,9 @@ export class BaseProcessor {
   async poll() {
     try {
       const events = await this.reader.consume(this.config.batchSize);
-      if (events.length === 0) return;
-
-      await this.processBatch(events);
+      if (events.length > 0) {
+        await this.processBatch(events);
+      }
     } catch (err) {
       error(this.name, 'Poll error:', err);
     }
@@ -235,12 +225,11 @@ export class BaseProcessor {
       return;
     }
 
-    // Suite rerun - reset its state
     const blocker = this.blockers.suites.get(suiteName);
-    if (!blocker) return;
-
-    rejectBlocker(blocker, 'Suite restarted');
-    this.blockers.suites.delete(suiteName);
+    if (blocker) {
+      rejectBlocker(blocker, 'Suite restarted');
+      this.blockers.suites.delete(suiteName);
+    }
   }
 
   routeToHandler(event) {
@@ -358,25 +347,21 @@ export class BaseProcessor {
   async getCurrentRunEvents() {
     const events = await this.lookback();
     const runStartIdx = findLastIndex(events, isRunStart);
-
-    if (runStartIdx === -1) return events;
-    return events.slice(runStartIdx);
+    return runStartIdx === -1 ? events : events.slice(runStartIdx);
   }
 
   async getSuiteEvents(suiteName) {
     const events = await this.getCurrentRunEvents();
-
-    const startIdx = findLastIndex(events, (e) => isSuiteStart(e) && e.suite === suiteName);
-
+    const startIdx = findLastIndex(events, e => isSuiteStart(e) && e.suite === suiteName);
+    
     if (startIdx === -1) return [];
-
+    
     const endIdx = events.findIndex(
       (e, i) => i > startIdx && isSuiteEnd(e) && e.suite === suiteName
     );
-
+    
     const range = endIdx === -1 ? events.slice(startIdx) : events.slice(startIdx, endIdx + 1);
-
-    return range.filter((e) => e.suite === suiteName);
+    return range.filter(e => e.suite === suiteName);
   }
 
   async getTestEvents(suiteName, testIndex) {

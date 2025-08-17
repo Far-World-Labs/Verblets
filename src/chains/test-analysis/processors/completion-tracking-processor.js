@@ -6,6 +6,7 @@
  */
 
 import { BaseProcessor } from './base-processor.js';
+import { getConfig } from '../config.js';
 
 // Constants
 const SUITE_DEBOUNCE_MS = 5000; // Wait 5s for all suites to start
@@ -28,19 +29,14 @@ export class CompletionTrackingProcessor extends BaseProcessor {
     this.suiteDebounceTimeout = null;
     this.statusTimeout = null;
     this.hasShownFinalStatus = false;
+    this.runEnded = false;
   }
 
-  async onInitialize() {
-    // Called by BaseProcessor after reader is created
-    // Processing will start automatically if processAsync is true
-  }
+  async onInitialize() {}
 
-  // Override processBatch to handle events
   async processBatch(events) {
     for (const event of events) {
-      // Let base class handle state resets and routing
       await super.processEvent(event);
-      // Also handle our custom events
       await this.handleEvent(event);
     }
   }
@@ -66,15 +62,19 @@ export class CompletionTrackingProcessor extends BaseProcessor {
   }
 
   handleRunStart(log) {
-    // Reset state for new run
+    // Reset all state for new run (including re-runs)
     this.suites.clear();
     this.suitesCompleted.clear();
     this.expectedSuites.clear();
     this.runStartTime = new Date(log.timestamp);
     this.currentRunId = log.runId || Date.now();
     this.hasShownFinalStatus = false;
+    this.runEnded = false;
 
-    // Clear any existing timeouts
+    this.clearTimeouts();
+  }
+
+  clearTimeouts() {
     if (this.suiteDebounceTimeout) {
       clearTimeout(this.suiteDebounceTimeout);
       this.suiteDebounceTimeout = null;
@@ -92,9 +92,7 @@ export class CompletionTrackingProcessor extends BaseProcessor {
     }
   }
 
-  handleTestStart(_log) {
-    // Don't track suites from test-start anymore, we'll use suite-start events
-  }
+  handleTestStart(_log) {}
 
   handleSuiteEnd(log) {
     if (log.suite) {
@@ -104,14 +102,18 @@ export class CompletionTrackingProcessor extends BaseProcessor {
   }
 
   handleRunEnd(_log) {
-    // Show final status if not already shown
-    if (!this.hasShownFinalStatus && this.checkIfAllComplete()) {
+    // Mark that the run has ended
+    this.runEnded = true;
+    
+    // Run-end means all tests are done, show final status
+    if (!this.hasShownFinalStatus) {
+      // Clear any pending status updates since we're done
+      this.clearTimeouts();
       this.showFinalStatus();
     }
   }
 
   debounceSuiteTracking() {
-    // Reset debounce timer each time a new suite starts
     if (this.suiteDebounceTimeout) {
       clearTimeout(this.suiteDebounceTimeout);
     }
@@ -120,15 +122,13 @@ export class CompletionTrackingProcessor extends BaseProcessor {
       // Lock in the suites we're expecting
       this.expectedSuites = new Set(this.suites);
 
-      // After 1s more, show initial status
       setTimeout(() => {
-        const allComplete = this.checkIfAllComplete();
-
-        if (allComplete) {
-          // Everything done already - show final status
+        // Don't start showing status if already done
+        if (this.hasShownFinalStatus || this.runEnded) return;
+        
+        if (this.checkIfAllComplete()) {
           this.showFinalStatus();
         } else {
-          // Still waiting - show initial status and schedule repeats
           this.showCompletionStatus();
           this.scheduleStatusRepeat();
         }
@@ -137,8 +137,13 @@ export class CompletionTrackingProcessor extends BaseProcessor {
   }
 
   checkIfAllComplete() {
+    // If we haven't locked in expected suites yet, we're not complete
     if (this.expectedSuites.size === 0) return false;
-    return [...this.expectedSuites].every((suite) => this.suitesCompleted.has(suite));
+    
+    // Check if all expected suites have completed
+    // Note: We use expectedSuites not this.suites to avoid race conditions
+    // where new suites start after debounce
+    return [...this.expectedSuites].every(suite => this.suitesCompleted.has(suite));
   }
 
   checkAllSuitesComplete() {
@@ -148,33 +153,28 @@ export class CompletionTrackingProcessor extends BaseProcessor {
   }
 
   showFinalStatus() {
-    // Cancel any pending status updates
     if (this.statusTimeout) {
       clearTimeout(this.statusTimeout);
       this.statusTimeout = null;
     }
-
-    // Show final completion status
     this.hasShownFinalStatus = true;
     this.showCompletionStatus();
   }
 
   scheduleStatusRepeat() {
-    // Clear any existing timeout to avoid duplicates
-    if (this.statusTimeout) {
-      clearTimeout(this.statusTimeout);
-    }
+    if (this.statusTimeout) clearTimeout(this.statusTimeout);
+    if (this.hasShownFinalStatus || this.runEnded) return;
 
-    // Don't schedule if already done
-    if (this.hasShownFinalStatus) return;
-
-    // Schedule next status update
     this.statusTimeout = setTimeout(() => {
+      // Stop if run has ended while we were waiting
+      if (this.runEnded) {
+        this.showFinalStatus();
+        return;
+      }
+      
       if (this.checkIfAllComplete()) {
-        // Tests finished while we were waiting - show final
         this.showFinalStatus();
       } else {
-        // Still waiting - show status and schedule next
         this.showCompletionStatus();
         this.scheduleStatusRepeat();
       }
@@ -187,13 +187,11 @@ export class CompletionTrackingProcessor extends BaseProcessor {
   }
 
   async gatherStatistics() {
-    // Use lookback to gather complete statistics
     const latestSequence = await this.ringBuffer.getLatestSequence();
     const logs = await this.reader.lookback(2000, latestSequence);
 
-    // Find the most recent run-start that matches our current run ID
     const runStartIndex = logs.findLastIndex(
-      (l) => l.event === 'run-start' && (this.currentRunId ? l.runId === this.currentRunId : true)
+      l => l.event === 'run-start' && (!this.currentRunId || l.runId === this.currentRunId)
     );
     const currentRunLogs = runStartIndex >= 0 ? logs.slice(runStartIndex + 1) : logs;
 
@@ -204,59 +202,45 @@ export class CompletionTrackingProcessor extends BaseProcessor {
     const suitesStarted = new Set();
     const suitesComplete = new Set();
 
-    // Count all unique tests and suites
-    currentRunLogs.forEach((log) => {
-      if (log.event === 'suite-start') {
-        // Track suites that have started from explicit suite-start events
-        if (log.suite) suitesStarted.add(log.suite);
-      } else if (log.event === 'test-start') {
-        const key = `${log.suite}-${log.testIndex}`;
-        testStarts.set(key, log);
-        // Track skipped tests from test-start events
-        if (log.skipped) {
+    currentRunLogs.forEach(log => {
+      const key = `${log.suite}-${log.testIndex}`;
+      
+      switch (log.event) {
+        case 'suite-start':
+          if (log.suite) suitesStarted.add(log.suite);
+          break;
+        case 'test-start':
+          testStarts.set(key, log);
+          if (log.skipped) skippedTests.add(key);
+          break;
+        case 'test-skip':
+          testStarts.set(key, log);
+          testCompletes.add(key);
           skippedTests.add(key);
-        }
-      } else if (log.event === 'test-complete') {
-        const key = `${log.suite}-${log.testIndex}`;
-        testCompletes.add(key);
-        if (log.state === 'skip') {
-          skippedTests.add(key);
-        }
-      } else if (log.event === 'suite-end') {
-        if (log.suite) suitesComplete.add(log.suite);
+          break;
+        case 'test-complete':
+          testCompletes.add(key);
+          if (log.state === 'skip') skippedTests.add(key);
+          break;
+        case 'suite-end':
+          if (log.suite) suitesComplete.add(log.suite);
+          break;
       }
     });
 
-    // Calculate pending tests
-    const pendingTests = [];
-    for (const [key, startLog] of testStarts.entries()) {
-      if (!testCompletes.has(key)) {
-        pendingTests.push({
-          name: startLog.testName,
-          suite: startLog.suite,
-        });
-      }
-    }
+    const pendingTests = Array.from(testStarts.entries())
+      .filter(([key]) => !testCompletes.has(key))
+      .map(([, startLog]) => ({
+        name: startLog.testName,
+        suite: startLog.suite,
+      }));
 
-    // Calculate duration
     const duration = this.runStartTime
       ? ((Date.now() - this.runStartTime) / 1000).toFixed(2)
       : '0.00';
 
-    // Format start time
-    const startTime = this.runStartTime
-      ? this.runStartTime.toLocaleTimeString('en-US', {
-          hour12: false,
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit',
-        })
-      : new Date().toLocaleTimeString('en-US', {
-          hour12: false,
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit',
-        });
+    const timeOptions = { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' };
+    const startTime = (this.runStartTime || new Date()).toLocaleTimeString('en-US', timeOptions);
 
     return {
       totalSuites: suitesStarted.size,
@@ -289,14 +273,31 @@ export class CompletionTrackingProcessor extends BaseProcessor {
     console.log(`   Start at  ${stats.startTime}`);
     console.log(`   Duration  ${stats.duration}s`);
 
-    // Determine actual completion status based on pending tests AND suites
-    const hasIncompleteWork = stats.pendingTests.length > 0 || !stats.allComplete;
+    // Determine actual completion status
+    // We're complete if run has ended OR all suites/tests are done
+    const isActuallyComplete = this.runEnded || 
+      (stats.allComplete && stats.pendingTests.length === 0);
+    
+    const hasIncompleteWork = !isActuallyComplete;
 
     // Show status - WAIT if pending, PASS if complete
     const status = hasIncompleteWork ? 'WAIT' : 'PASS';
     const message = hasIncompleteWork
       ? 'Waiting for remaining suites to complete...'
       : 'Waiting for file changes...';
+    
+    // In debug mode, show what we're waiting for
+    const config = getConfig();
+    if (hasIncompleteWork && config.debug?.suites) {
+      const pendingSuites = Array.from(this.expectedSuites).filter(s => !this.suitesCompleted.has(s));
+      if (pendingSuites.length > 0) {
+        console.log(`[DEBUG] Pending suites: ${pendingSuites.join(', ')}`);
+      }
+      if (stats.pendingTests.length > 0) {
+        console.log(`[DEBUG] Pending tests: ${stats.pendingTests.slice(0, 5).map(t => `${t.suite}::${t.name}`).join(', ')}`);
+      }
+    }
+    
     console.log(`\n ${status}  ${message}\n`);
 
     // Show pending tests if not complete and not too many
@@ -313,12 +314,6 @@ export class CompletionTrackingProcessor extends BaseProcessor {
   }
 
   onShutdown() {
-    // Clear any pending timeouts
-    if (this.suiteDebounceTimeout) {
-      clearTimeout(this.suiteDebounceTimeout);
-    }
-    if (this.statusTimeout) {
-      clearTimeout(this.statusTimeout);
-    }
+    this.clearTimeouts();
   }
 }

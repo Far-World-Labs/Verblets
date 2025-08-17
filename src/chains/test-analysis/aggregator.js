@@ -4,6 +4,7 @@
 
 // Pure predicates
 const isTestComplete = (log) => log.event === 'test-complete';
+const isTestSkip = (log) => log.event === 'test-skip';
 const hasTestName = (log) => Boolean(log.testName);
 
 // Get unique test identifier
@@ -48,6 +49,9 @@ const aggregateLogs = (logs) => {
     if (isTestComplete(log)) {
       test.state = log.state;
       test.duration = log.duration || 0;
+    } else if (isTestSkip(log)) {
+      test.state = 'skip';
+      test.duration = 0;
     }
   }
 
@@ -78,18 +82,22 @@ const aggregateLogs = (logs) => {
 // Pure predicates for stats
 const isCompleted = (test) => Boolean(test.state);
 const isPassed = (test) => test.state === 'pass';
+const isSkipped = (test) => test.state === 'skip';
 
 const calculateStats = (suite) => {
   const tests = Object.values(suite.tests);
   const completed = tests.filter(isCompleted);
   const passed = completed.filter(isPassed);
-  const totalDuration = completed.reduce((sum, t) => sum + t.duration, 0);
+  const skipped = tests.filter(isSkipped);
+  const totalDuration = completed.filter(t => !isSkipped(t)).reduce((sum, t) => sum + t.duration, 0);
+  const nonSkippedCompleted = completed.filter(t => !isSkipped(t));
 
   return {
     name: suite.name,
     testCount: tests.length, // Now this is the actual unique test count
     passedCount: passed.length,
-    avgDuration: completed.length ? Math.round(totalDuration / completed.length) : 0,
+    skippedCount: skipped.length,
+    avgDuration: nonSkippedCompleted.length ? Math.round(totalDuration / nonSkippedCompleted.length) : 0,
   };
 };
 

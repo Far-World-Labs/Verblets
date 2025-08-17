@@ -109,6 +109,7 @@ import { extractCodeWindow } from '../../lib/code-extractor/index.js';
 import { FirstFailureProcessor } from './processors/first-failure-processor.js';
 import { CompletionTrackingProcessor } from './processors/completion-tracking-processor.js';
 import { DiagnosticProcessor } from './processors/diagnostic-processor.js';
+import SuiteDetectionProcessor from './processors/suite-detection-processor.js';
 
 // Pure helper functions
 function shouldProcessEvents(config) {
@@ -132,7 +133,6 @@ async function waitForPendingWork(pendingWork, label) {
   }, config?.polling?.statusInterval || CONSTANTS.WAIT_STATUS_INTERVAL_MS);
 
   try {
-    // Use allSettled to avoid hanging on failed promises
     await Promise.allSettled(pendingWork);
   } finally {
     clearInterval(interval);
@@ -332,57 +332,45 @@ export default class TestAnalysisReporter {
 
   startEventLoop() {
     const config = getConfig();
-    //
-    // Poll ring buffer for new events at configured interval
-    //
     this.pollInterval = setInterval(async () => {
       try {
         const logs = await this.reader.consume(config.batch.size);
         if (logs.length > 0) {
-          //
-          // Process consumed events from ring buffer
-          //
           await this.handleEvents(logs);
         }
       } catch (error) {
-        // Error handler can be configured if needed
         if (this.config?.onError) {
           this.config.onError(error);
         }
       }
     }, config.polling.interval);
 
-    // CRITICAL: Unref so the interval doesn't block the event loop
     this.pollInterval.unref();
   }
 
   async handleEvents(logs) {
     const config = getConfig();
-
     for (const log of logs) {
       if (config.aiModeDebug) {
         console.log(JSON.stringify(log));
       }
-      //
-      // Route event to appropriate handler
-      //
       await this.handleEvent(log);
     }
   }
 
   async handleEvent(log) {
     const handlers = {
-      'test-start': this.handleTestStart.bind(this),
-      'test-complete': this.handleTestComplete.bind(this),
-      expect: this.handleExpectation.bind(this),
-      'ai-expect': this.handleExpectation.bind(this),
-      'suite-start': () => {}, // Just track it, don't double-handle
-      'suite-end': this.handleSuiteEnd.bind(this),
-      'run-end': this.handleRunEnd.bind(this),
+      'test-start': this.handleTestStart,
+      'test-complete': this.handleTestComplete,
+      expect: this.handleExpectation,
+      'ai-expect': this.handleExpectation,
+      'suite-start': () => {},
+      'suite-end': this.handleSuiteEnd,
+      'run-end': this.handleRunEnd,
     };
 
     const handler = handlers[log.event];
-    if (handler) await handler(log);
+    if (handler) await handler.call(this, log);
   }
 
   async handleTestStart(_log) {}
@@ -401,16 +389,12 @@ export default class TestAnalysisReporter {
 
   handleSuiteEnd(log) {
     const config = getConfig();
-
-    // Debug mode shows raw logs only
     if (isDebugMode(config)) return;
 
-    // Only process each suite once per run
     const suiteKey = `${this.currentRunId}-${log.suite}`;
     if (this.processedSuites.has(suiteKey)) return;
     this.processedSuites.add(suiteKey);
 
-    // Always show suite summary, with or without analysis
     this.pendingAnalyses.push(this.runSuiteAnalysis(log));
   }
 
@@ -426,24 +410,16 @@ export default class TestAnalysisReporter {
   async runSuiteAnalysis(log) {
     const config = getConfig();
 
-    // Get the latest sequence and lookback from there
     const latestSequence = await this.reader.buffer.getLatestSequence();
     const logs = await this.reader.lookback(config.batch.lookbackSize, latestSequence);
 
-    // Filter logs to only include those from the current run
-    // Find the most recent run-start or run-restart event
-    const runStartIndex = logs.findLastIndex(
-      (l) => l.event === 'run-start' || l.event === 'run-restart'
-    );
-
-    // Only use logs after the most recent run start
+    const runStartIndex = logs.findLastIndex(l => l.event === 'run-start');
     const currentRunLogs = runStartIndex >= 0 ? logs.slice(runStartIndex + 1) : logs;
 
     const suites = aggregateFromLogs(currentRunLogs);
     const suiteData = suites.find((s) => s.name === log.suite);
 
     if (!suiteData) {
-      // No data found, show empty suite completed
       console.log(formatTestSummary(log.suite, 0, 0, 0));
       return;
     }
@@ -453,15 +429,11 @@ export default class TestAnalysisReporter {
       suiteData.name,
       suiteData.passedCount,
       suiteData.testCount,
-      suiteData.avgDuration
+      suiteData.avgDuration,
+      suiteData.skippedCount || 0
     );
 
-    // Early exit if not analyzing
-    if (!shouldAnalyze(config)) {
-      // Don't print suite summaries in logs-only mode
-      // Vitest already provides its own summary
-      return;
-    }
+    if (!shouldAnalyze(config)) return;
 
     // Find first failed test for analysis
     const firstFailed = currentRunLogs
@@ -488,8 +460,7 @@ export default class TestAnalysisReporter {
       (l) => (l.event === 'expect' || l.event === 'ai-expect') && l.passed === false
     );
 
-    // Skip analysis if no failure location found
-    if (!failedExpect || !failedExpect.file) {
+    if (!failedExpect?.file) {
       console.log(summary);
       return;
     }
@@ -544,6 +515,7 @@ export default class TestAnalysisReporter {
       new FirstFailureProcessor({ ringBuffer }),
       new CompletionTrackingProcessor({ ringBuffer }),
       new DiagnosticProcessor({ ringBuffer }),
+      new SuiteDetectionProcessor(ringBuffer),
       // Add more processors here as they're created
     ];
 
