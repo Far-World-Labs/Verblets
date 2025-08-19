@@ -78,7 +78,7 @@ const suitesStarted = new Set();
 export const logSuiteStart = async (suite, context = {}) => {
   if (suitesStarted.has(suite)) return;
   suitesStarted.add(suite);
-  
+
   await globalThis.logger.info({
     event: 'suite-start',
     suite,

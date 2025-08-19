@@ -1,12 +1,10 @@
-import { describe, expect as vitestExpect, it as vitestIt, beforeAll, afterAll } from 'vitest';
+import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
 
 import SummaryMap from './index.js';
 import vitestAiExpect from '../expect/index.js';
 import { longTestTimeout } from '../../constants/common.js';
 import pave from '../../lib/pave/index.js';
-import { logSuiteStart, logSuiteEnd } from '../test-analysis/setup.js';
 import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
-import { extractFileContext } from '../../lib/logger/index.js';
 import { getConfig } from '../test-analysis/config.js';
 
 const config = getConfig();
@@ -19,16 +17,6 @@ const expect = config?.aiMode
 const aiExpect = config?.aiMode
   ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'Summary-map chain' } })
   : vitestAiExpect;
-const suiteLogStart = config?.aiMode ? logSuiteStart : () => {};
-const suiteLogEnd = config?.aiMode ? logSuiteEnd : () => {};
-
-beforeAll(async () => {
-  await suiteLogStart('Summary-map chain', extractFileContext(2));
-});
-
-afterAll(async () => {
-  await suiteLogEnd('Summary-map chain', extractFileContext(2));
-});
 
 const legalText = `Pursuant to the stipulations delineated herein, the parties hereto, designated as Party A (the "Grantor") and Party B (the "Grantee"), do hereby irrevocably and unconditionally covenant to abide by the complex and intricate provisions associated with the lesser-known subject matter of usufructuary rights in the realm of riparian watercourses, specifically encompassing the doctrine of correlative rights and the principle of reasonable use, in accordance with the heretofore undisclosed specifications set forth in Schedule U-1.
 

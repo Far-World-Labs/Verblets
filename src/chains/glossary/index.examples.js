@@ -1,10 +1,9 @@
-import { describe, it as vitestIt, expect as vitestExpect, beforeAll, afterAll } from 'vitest';
+import { beforeAll, afterAll } from 'vitest';
+import { describe, it as vitestIt, expect as vitestExpect } from 'vitest';
 import glossary from './index.js';
 import vitestAiExpect from '../expect/index.js';
 import { longTestTimeout } from '../../constants/common.js';
-import { logSuiteStart, logSuiteEnd } from '../test-analysis/setup.js';
 import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
-import { extractFileContext } from '../../lib/logger/index.js';
 import { getConfig } from '../test-analysis/config.js';
 
 const config = getConfig();
@@ -15,20 +14,16 @@ const expect = config?.aiMode
 const aiExpect = config?.aiMode
   ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'Glossary chain' } })
   : vitestAiExpect;
-const suiteLogStart = config?.aiMode ? logSuiteStart : () => {};
-const suiteLogEnd = config?.aiMode ? logSuiteEnd : () => {};
 
 describe('glossary examples', () => {
   // Set environment mode to 'none' for all tests to avoid throwing
   const originalMode = process.env.LLM_EXPECT_MODE;
 
   beforeAll(async () => {
-    await suiteLogStart('Glossary chain', extractFileContext(2));
     process.env.LLM_EXPECT_MODE = 'none';
   });
 
   afterAll(async () => {
-    await suiteLogEnd('Glossary chain', extractFileContext(2));
     if (originalMode !== undefined) {
       process.env.LLM_EXPECT_MODE = originalMode;
     } else {

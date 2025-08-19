@@ -8,16 +8,16 @@ export default class SuiteDetectionProcessor extends BaseProcessor {
       alwaysEnabled: true,
       ringBuffer,
     });
-    
+
     this.config = getConfig();
     this.suiteData = new Map();
     this.missingTests = new Map();
     this.skipReasons = new Map();
   }
 
-  async processEvent(event) {
+  processEvent(event) {
     const { type, suite, test, reason, status, file } = event;
-    
+
     switch (type) {
       case 'suite-start':
         if (!this.suiteData.has(suite)) {
@@ -31,7 +31,7 @@ export default class SuiteDetectionProcessor extends BaseProcessor {
           });
         }
         break;
-        
+
       case 'test-start':
         if (suite) {
           const suiteInfo = this.suiteData.get(suite);
@@ -46,27 +46,29 @@ export default class SuiteDetectionProcessor extends BaseProcessor {
           }
         }
         break;
-        
+
       case 'test-skip':
-        const testName = event.testName || test;
-        if (suite) {
-          const suiteInfo = this.suiteData.get(suite);
-          if (suiteInfo) {
-            suiteInfo.tests.add(testName);
-            suiteInfo.skippedTests.add(testName);
-          } else {
-            // Suite hasn't started yet but test is being skipped
-            if (!this.missingTests.has(suite)) {
-              this.missingTests.set(suite, new Set());
+        {
+          const testName = event.testName || test;
+          if (suite) {
+            const suiteInfo = this.suiteData.get(suite);
+            if (suiteInfo) {
+              suiteInfo.tests.add(testName);
+              suiteInfo.skippedTests.add(testName);
+            } else {
+              // Suite hasn't started yet but test is being skipped
+              if (!this.missingTests.has(suite)) {
+                this.missingTests.set(suite, new Set());
+              }
+              this.missingTests.get(suite).add(testName);
             }
-            this.missingTests.get(suite).add(testName);
+            // Track skip reasons
+            const key = `${suite}::${testName}`;
+            this.skipReasons.set(key, reason || 'unknown');
           }
-          // Track skip reasons
-          const key = `${suite}::${testName}`;
-          this.skipReasons.set(key, reason || 'unknown');
         }
         break;
-        
+
       case 'test-end':
         if (suite && status === 'skip') {
           const suiteInfo = this.suiteData.get(suite);
@@ -75,7 +77,7 @@ export default class SuiteDetectionProcessor extends BaseProcessor {
           }
         }
         break;
-        
+
       case 'suite-end':
         if (this.suiteData.has(suite)) {
           const suiteInfo = this.suiteData.get(suite);
@@ -86,7 +88,7 @@ export default class SuiteDetectionProcessor extends BaseProcessor {
     }
   }
 
-  async finish() {
+  finish() {
     // Analyze missing suites and tests
     const analysis = {
       totalSuites: this.suiteData.size,
@@ -98,22 +100,22 @@ export default class SuiteDetectionProcessor extends BaseProcessor {
       missingSuiteStarts: [],
       skipPatterns: {},
     };
-    
-    for (const [suiteName, suiteInfo] of this.suiteData) {
+
+    for (const [, suiteInfo] of this.suiteData) {
       if (suiteInfo.status === 'completed') {
         analysis.completedSuites++;
       } else {
         analysis.runningSuites++;
       }
-      
+
       analysis.totalTests += suiteInfo.tests.size;
       analysis.totalSkippedTests += suiteInfo.skippedTests.size;
-      
+
       if (suiteInfo.skippedTests.size > 0) {
         analysis.suitesWithSkippedTests++;
       }
     }
-    
+
     // Check for tests that ran without suite-start
     for (const [suite, tests] of this.missingTests) {
       analysis.missingSuiteStarts.push({
@@ -122,7 +124,7 @@ export default class SuiteDetectionProcessor extends BaseProcessor {
         tests: Array.from(tests),
       });
     }
-    
+
     // Analyze skip patterns
     for (const [key, reason] of this.skipReasons) {
       if (!analysis.skipPatterns[reason]) {
@@ -130,24 +132,23 @@ export default class SuiteDetectionProcessor extends BaseProcessor {
       }
       analysis.skipPatterns[reason].push(key);
     }
-    
+
     // Show analysis if debug.suites is enabled or if we found issues
-    const hasIssues = analysis.missingSuiteStarts.length > 0 || 
-                     analysis.runningSuites > 0;
-    
+    const hasIssues = analysis.missingSuiteStarts.length > 0 || analysis.runningSuites > 0;
+
     if (this.config.debug?.suites || hasIssues) {
       console.log('\n=== Suite Detection Analysis ===');
       console.log(`Total Suites: ${analysis.totalSuites}`);
       console.log(`Completed: ${analysis.completedSuites}, Running: ${analysis.runningSuites}`);
       console.log(`Total Tests: ${analysis.totalTests}, Skipped: ${analysis.totalSkippedTests}`);
-      
+
       if (analysis.missingSuiteStarts.length > 0) {
         console.log('\nWARNING: Tests running without suite-start events:');
         for (const missing of analysis.missingSuiteStarts) {
           console.log(`  - ${missing.suite}: ${missing.testCount} tests`);
         }
       }
-      
+
       if (analysis.runningSuites > 0) {
         console.log('\nWARNING: Suites that never completed:');
         for (const [name, info] of this.suiteData) {
@@ -156,14 +157,14 @@ export default class SuiteDetectionProcessor extends BaseProcessor {
           }
         }
       }
-      
+
       if (Object.keys(analysis.skipPatterns).length > 0) {
         console.log('\nSkip Patterns:');
         for (const [reason, tests] of Object.entries(analysis.skipPatterns)) {
           console.log(`  ${reason}: ${tests.length} tests`);
         }
       }
-      
+
       // In suite debug mode, list all suites
       if (this.config.debug?.suites) {
         console.log('\nAll Suites Detected:');
@@ -176,7 +177,7 @@ export default class SuiteDetectionProcessor extends BaseProcessor {
         }
       }
     }
-    
+
     return analysis;
   }
 }

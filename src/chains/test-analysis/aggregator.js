@@ -25,7 +25,8 @@ const aggregateLogs = (logs) => {
       eventCounts[log.event] = (eventCounts[log.event] || 0) + 1;
     }
 
-    if (!hasTestName(log)) continue;
+    // Include test-skip events even if they don't have testName
+    if (!hasTestName(log) && !isTestSkip(log)) continue;
 
     const key = getTestKey(log);
     suiteNames.add(log.suite || 'default');
@@ -89,15 +90,19 @@ const calculateStats = (suite) => {
   const completed = tests.filter(isCompleted);
   const passed = completed.filter(isPassed);
   const skipped = tests.filter(isSkipped);
-  const totalDuration = completed.filter(t => !isSkipped(t)).reduce((sum, t) => sum + t.duration, 0);
-  const nonSkippedCompleted = completed.filter(t => !isSkipped(t));
+  const totalDuration = completed
+    .filter((t) => !isSkipped(t))
+    .reduce((sum, t) => sum + t.duration, 0);
+  const nonSkippedCompleted = completed.filter((t) => !isSkipped(t));
 
   return {
     name: suite.name,
     testCount: tests.length, // Now this is the actual unique test count
     passedCount: passed.length,
     skippedCount: skipped.length,
-    avgDuration: nonSkippedCompleted.length ? Math.round(totalDuration / nonSkippedCompleted.length) : 0,
+    avgDuration: nonSkippedCompleted.length
+      ? Math.round(totalDuration / nonSkippedCompleted.length)
+      : 0,
   };
 };
 

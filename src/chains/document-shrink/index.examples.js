@@ -1,12 +1,10 @@
-import { describe, it as vitestIt, expect as vitestExpect, beforeAll, afterAll } from 'vitest';
+import { describe, it as vitestIt, expect as vitestExpect } from 'vitest';
 import documentShrink from './index.js';
 import vitestAiExpect from '../expect/index.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { debug } from '../../lib/debug/index.js';
-import { logSuiteStart, logSuiteEnd } from '../test-analysis/setup.js';
 import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
-import { extractFileContext } from '../../lib/logger/index.js';
 import { getConfig } from '../test-analysis/config.js';
 
 const config = getConfig();
@@ -19,16 +17,6 @@ const expect = config?.aiMode
 const aiExpect = config?.aiMode
   ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'Document shrink chain' } })
   : vitestAiExpect;
-const suiteLogStart = config?.aiMode ? logSuiteStart : () => {};
-const suiteLogEnd = config?.aiMode ? logSuiteEnd : () => {};
-
-beforeAll(async () => {
-  await suiteLogStart('Document shrink chain', extractFileContext(2));
-});
-
-afterAll(async () => {
-  await suiteLogEnd('Document shrink chain', extractFileContext(2));
-});
 
 // Helper to show cache message after 5 seconds
 function withCacheMessage(testFn) {

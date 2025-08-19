@@ -20,8 +20,7 @@ export function getConfig() {
     process.env.VERBLETS_AI_LOGS_ONLY && truthyValues.includes(process.env.VERBLETS_AI_LOGS_ONLY);
   const aiPerSuite =
     process.env.VERBLETS_AI_PER_SUITE && truthyValues.includes(process.env.VERBLETS_AI_PER_SUITE);
-  const debugMode =
-    process.env.VERBLETS_DEBUG && truthyValues.includes(process.env.VERBLETS_DEBUG);
+  const debugMode = process.env.VERBLETS_DEBUG && truthyValues.includes(process.env.VERBLETS_DEBUG);
   const debugSuites =
     process.env.VERBLETS_DEBUG_SUITES && truthyValues.includes(process.env.VERBLETS_DEBUG_SUITES);
 
@@ -30,7 +29,7 @@ export function getConfig() {
     aiMode: aiLogsOnly || aiPerSuite,
     aiModeDebug: aiLogsOnly || debugMode,
     aiModeAnalysis: aiPerSuite && !aiLogsOnly, // Analysis disabled in logs-only mode
-    
+
     // Debug flags
     debug: {
       suites: debugSuites || debugMode,

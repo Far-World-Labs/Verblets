@@ -102,61 +102,32 @@ import RedisRingBuffer from '../../lib/ring-buffer-redis/index.js';
 import { getConfig, CONSTANTS } from './config.js';
 
 // Constants
-import { formatTestSummary, formatAnalysisOutput } from './output-utils.js';
-import { aggregateFromLogs } from './aggregator.js';
-import analyzeTestError from '../test-analyzer/index.js';
-import { extractCodeWindow } from '../../lib/code-extractor/index.js';
 import { FirstFailureProcessor } from './processors/first-failure-processor.js';
 import { CompletionTrackingProcessor } from './processors/completion-tracking-processor.js';
 import { DiagnosticProcessor } from './processors/diagnostic-processor.js';
 import SuiteDetectionProcessor from './processors/suite-detection-processor.js';
+import { SuiteOutputProcessor } from './processors/suite-output-processor.js';
 
 // Pure helper functions
 function shouldProcessEvents(config) {
   return config?.aiMode;
 }
 
-function isDebugMode(config) {
-  return config?.aiModeDebug;
-}
-
-function shouldAnalyze(config) {
-  return config?.aiModeAnalysis;
-}
-
-async function waitForPendingWork(pendingWork, label) {
-  if (!pendingWork || pendingWork.length === 0) return;
-
-  const config = getConfig();
-  const interval = setInterval(() => {
-    console.log(`[${label}] Waiting for ${pendingWork.length} analyses...`);
-  }, config?.polling?.statusInterval || CONSTANTS.WAIT_STATUS_INTERVAL_MS);
-
-  try {
-    await Promise.allSettled(pendingWork);
-  } finally {
-    clearInterval(interval);
-  }
-}
-
 // Pure predicates
-const isEvent = (event) => (log) => log.event === event;
-const isTestComplete = isEvent('test-complete');
-
-const hasState = (state) => (log) => log.state === state;
-const isFailed = hasState('fail');
-
-const isFailedTest = (log) => isTestComplete(log) && isFailed(log);
-
-const inSuite = (suite) => (log) => log.suite === suite;
-const forTest = (suite, index) => (log) => log.suite === suite && log.testIndex === index;
-
-// Pure sorting functions
-const byTestIndex = (a, b) => a.testIndex - b.testIndex;
-const byTimestamp = (a, b) => new Date(a.timestamp) - new Date(b.timestamp);
 
 function isWatchMode() {
-  return process.env.VITEST_MODE === 'WATCH' || process.argv.includes('--watch');
+  // Vitest defaults to watch mode unless --run is specified
+  // or when running in CI
+  const hasRunFlag = process.argv.includes('--run');
+  const isCI = process.env.CI === 'true';
+  const hasWatchFlag = process.argv.includes('--watch');
+  const vitestMode = process.env.VITEST_MODE === 'WATCH';
+
+  // We're in watch mode if:
+  // 1. Explicit --watch flag, OR
+  // 2. VITEST_MODE is WATCH, OR
+  // 3. No --run flag and not in CI (Vitest's default is watch)
+  return hasWatchFlag || vitestMode || (!hasRunFlag && !isCI);
 }
 
 export default class TestAnalysisReporter {
@@ -164,12 +135,8 @@ export default class TestAnalysisReporter {
     this.reader = undefined;
     this.redis = undefined;
     this.config = undefined;
-    this.pendingAnalyses = [];
-    this.failedCount = 0;
-    this.pollInterval = undefined;
     this.currentRunId = null;
-    this.processedSuites = new Set();
-    this.seenSuites = new Set();
+    this.lastEndedRunId = null;
 
     // Stdin monitor removed - was interfering with Vitest's watch mode
 
@@ -197,9 +164,7 @@ export default class TestAnalysisReporter {
     // Store config
     this.config = config;
 
-    // Reset counters for each run
-    this.pendingAnalyses = [];
-    this.failedCount = 0;
+    // Store current run ID for processors
 
     // Stdin monitor removed - was interfering with Vitest's watch mode input handling
 
@@ -228,12 +193,8 @@ export default class TestAnalysisReporter {
       await this.redis.set(`${CONSTANTS.REDIS_KEY_PREFIX}logs-key`, ringBufferKey);
       await this.redis.set(`${CONSTANTS.REDIS_KEY_PREFIX}processor-active`, 'true');
 
-      //
-      // Create reader and start event loop to consume test events
-      //
-
+      // Store reader for emitting events only
       this.reader = await ringBuffer.createReader('reporter');
-      this.startEventLoop();
 
       // === PROCESSORS START ===
       // Initialize processors
@@ -249,16 +210,12 @@ export default class TestAnalysisReporter {
     const config = getConfig();
     if (!config?.aiMode || !this.reader) return;
 
-    // === DEBUG: Keep these messages - very useful for debugging input errors ===
-    // console.error('[REPORTER] Test run starting...');
-    // === END DEBUG ===
-
-    // Reset per-run counters
-    this.pendingAnalyses = [];
-    this.failedCount = 0;
+    // Reset per-run state
     this.currentRunId = Date.now();
-    this.processedSuites.clear();
-    this.seenSuites.clear();
+
+    // === DEBUG: Keep these messages - very useful for debugging input errors ===
+    // console.error('[REPORTER] Test run starting, runId:', this.currentRunId, 'Watch mode:', isWatchMode());
+    // === END DEBUG ===
 
     // Mark run-start so lookbacks can slice to current run
     await this.reader.buffer.push({
@@ -276,42 +233,61 @@ export default class TestAnalysisReporter {
     const config = getConfig();
 
     // === DEBUG: Keep these messages - very useful for debugging input errors ===
-    // console.error('[REPORTER] Test run ending, reason:', reason);
+    // console.error('[REPORTER] Test run ending, reason:', reason, 'runId:', this.currentRunId);
     // === END DEBUG ===
+
+    // Prevent duplicate run-end events for the same run
+    if (this.lastEndedRunId === this.currentRunId) {
+      // console.error('[REPORTER] Duplicate run-end event, ignoring');
+      return;
+    }
+    this.lastEndedRunId = this.currentRunId;
 
     // Early exit if not processing
     if (!shouldProcessEvents(config) || !this.reader) {
       return;
     }
 
-    // Emit run-end and process remaining events
+    // Small delay to ensure all test events are written
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    // Now emit run-end event
     await this.reader.buffer.push({
       event: 'run-end',
       timestamp: new Date().toISOString(),
       reason,
     });
-    await this.processRemainingEvents();
 
-    // Wait for all pending work (summaries and/or analyses)
-    // Skip waiting in watch mode to avoid blocking reruns
+    // Give processors a moment to consume the event
+    // Use setTimeout(0) to avoid blocking the event loop
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    // In non-watch mode, clean up to allow process to exit
     if (!isWatchMode()) {
-      await waitForPendingWork(this.pendingAnalyses, 'Run End');
-    }
+      // Wait for processors to finish their work
+      await this.waitForProcessorsToConsume();
 
-    // Reset for next run
-    this.pendingAnalyses = [];
+      // Shutdown processors (stops their polling and waits for pending work)
+      await this.shutdownProcessors();
+
+      // Don't disconnect Redis - it's a shared singleton used by other parts of the app
+      // Let it clean up naturally when the process exits
+      this.reader = null;
+    }
+    // In watch mode, processors continue running for the next test run
 
     // Don't print anything extra at run end - processor handles it
   }
 
   // Pass through console logs to preserve test output
-  onUserConsoleLog(log) {
-    // Only write if it's actual test output, not stdin echo
-    if (log.content && !log.content.includes('\x1b[')) {
-      const stream = log.type === 'stdout' ? process.stdout : process.stderr;
-      stream.write(log.content);
-    }
-  }
+  // Commenting out to let Vitest handle all console output directly
+  // onUserConsoleLog(log) {
+  //   // Always pass through console logs to preserve test output and Vitest's UI
+  //   if (log.content) {
+  //     const stream = log.type === 'stdout' ? process.stdout : process.stderr;
+  //     stream.write(log.content);
+  //   }
+  // }
 
   // Watch mode lifecycle methods - needed for stdin to work
   onWatcherStart(files, errors) {
@@ -324,186 +300,14 @@ export default class TestAnalysisReporter {
 
   onWatcherRerun(_files, _trigger) {
     // Called when tests are rerun in watch mode
+    // console.error('[REPORTER] Watcher rerun triggered:', trigger);
     // Reset our state for the new run
     this._stdinDebugLogged = false;
-  }
-
-  // Event processing flow
-
-  startEventLoop() {
-    const config = getConfig();
-    this.pollInterval = setInterval(async () => {
-      try {
-        const logs = await this.reader.consume(config.batch.size);
-        if (logs.length > 0) {
-          await this.handleEvents(logs);
-        }
-      } catch (error) {
-        if (this.config?.onError) {
-          this.config.onError(error);
-        }
-      }
-    }, config.polling.interval);
-
-    this.pollInterval.unref();
-  }
-
-  async handleEvents(logs) {
-    const config = getConfig();
-    for (const log of logs) {
-      if (config.aiModeDebug) {
-        console.log(JSON.stringify(log));
-      }
-      await this.handleEvent(log);
-    }
-  }
-
-  async handleEvent(log) {
-    const handlers = {
-      'test-start': this.handleTestStart,
-      'test-complete': this.handleTestComplete,
-      expect: this.handleExpectation,
-      'ai-expect': this.handleExpectation,
-      'suite-start': () => {},
-      'suite-end': this.handleSuiteEnd,
-      'run-end': this.handleRunEnd,
-    };
-
-    const handler = handlers[log.event];
-    if (handler) await handler.call(this, log);
-  }
-
-  async handleTestStart(_log) {}
-
-  handleTestComplete(log) {
-    if (log.state === 'fail') {
-      this.failedCount = (this.failedCount || 0) + 1;
-      // TODO: Implement error pattern analysis for failed tests
-    }
-  }
-
-  async handleExpectation() {
-    // Just let the log flow through the ring buffer
-    // Analysis will query the buffer when needed
-  }
-
-  handleSuiteEnd(log) {
-    const config = getConfig();
-    if (isDebugMode(config)) return;
-
-    const suiteKey = `${this.currentRunId}-${log.suite}`;
-    if (this.processedSuites.has(suiteKey)) return;
-    this.processedSuites.add(suiteKey);
-
-    this.pendingAnalyses.push(this.runSuiteAnalysis(log));
-  }
-
-  async handleRunEnd() {
-    const config = getConfig();
-    if (shouldAnalyze(config)) {
-      await waitForPendingWork(this.pendingAnalyses, 'Run End');
-    }
-  }
-
-  // Analysis methods
-
-  async runSuiteAnalysis(log) {
-    const config = getConfig();
-
-    const latestSequence = await this.reader.buffer.getLatestSequence();
-    const logs = await this.reader.lookback(config.batch.lookbackSize, latestSequence);
-
-    const runStartIndex = logs.findLastIndex(l => l.event === 'run-start');
-    const currentRunLogs = runStartIndex >= 0 ? logs.slice(runStartIndex + 1) : logs;
-
-    const suites = aggregateFromLogs(currentRunLogs);
-    const suiteData = suites.find((s) => s.name === log.suite);
-
-    if (!suiteData) {
-      console.log(formatTestSummary(log.suite, 0, 0, 0));
-      return;
-    }
-
-    // Build summary but don't print yet
-    const summary = formatTestSummary(
-      suiteData.name,
-      suiteData.passedCount,
-      suiteData.testCount,
-      suiteData.avgDuration,
-      suiteData.skippedCount || 0
-    );
-
-    if (!shouldAnalyze(config)) return;
-
-    // Find first failed test for analysis
-    const firstFailed = currentRunLogs
-      .filter((l) => isFailedTest(l) && inSuite(log.suite)(l))
-      .sort(byTestIndex)[0];
-
-    if (!firstFailed) {
-      // All tests passed, just show summary
-      console.log(summary);
-      return;
-    }
-
-    // Get all logs for the failed test
-    const testLogs = currentRunLogs
-      .filter(forTest(log.suite, firstFailed.testIndex))
-      .sort(byTimestamp);
-
-    // Get test name from test-start event
-    const testStart = testLogs.find((l) => l.event === 'test-start');
-    const testName = testStart?.testName;
-
-    // Get failure location from failed expect event
-    const failedExpect = testLogs.find(
-      (l) => (l.event === 'expect' || l.event === 'ai-expect') && l.passed === false
-    );
-
-    if (!failedExpect?.file) {
-      console.log(summary);
-      return;
-    }
-
-    // Extract code snippet at failure location
-    const codeSnippet = await extractCodeWindow(failedExpect.file, failedExpect.line, 5);
-
-    // Get analysis before printing anything
-    const analysis = await analyzeTestError(testLogs);
-
-    // Now print everything atomically
-    console.log(summary);
-
-    if (analysis) {
-      console.log(); // Empty line before analysis
-      const formatted = formatAnalysisOutput(
-        analysis,
-        testName,
-        failedExpect.file,
-        failedExpect.line,
-        codeSnippet
-      );
-      console.log(formatted);
-      console.log(); // Empty line after analysis
-    }
+    // Clear the last ended run ID to allow the next run-end
+    this.lastEndedRunId = null;
   }
 
   // Helper methods
-
-  async processRemainingEvents() {
-    const config = getConfig();
-    let logs;
-    while ((logs = await this.reader.consume(config.batch.drainSize)).length > 0) {
-      await this.handleEvents(logs);
-    }
-  }
-
-  stopEventLoop() {
-    if (this.pollInterval) {
-      clearInterval(this.pollInterval);
-      this.pollInterval = undefined;
-    }
-  }
 
   // ===================================
   // === PROCESSOR METHODS START ===
@@ -513,6 +317,7 @@ export default class TestAnalysisReporter {
     // Create and initialize processors based on env flags
     const processors = [
       new FirstFailureProcessor({ ringBuffer }),
+      new SuiteOutputProcessor({ ringBuffer }), // Outputs suite summaries as they complete
       new CompletionTrackingProcessor({ ringBuffer }),
       new DiagnosticProcessor({ ringBuffer }),
       new SuiteDetectionProcessor(ringBuffer),
@@ -530,6 +335,36 @@ export default class TestAnalysisReporter {
 
   async shutdownProcessors() {
     await Promise.all(this.processors.map((p) => p.shutdown()));
+  }
+
+  async waitForProcessorsToConsume() {
+    // Let processors continue polling to consume the run-end event
+    // Their handleRunEnd methods will be called when they consume it
+
+    // Wait for any current polls to complete
+    await Promise.all(
+      this.processors.map(async (p) => {
+        if (p.currentPoll) {
+          await p.currentPoll.catch(() => {}); // Ignore errors
+        }
+      })
+    );
+
+    // Now stop them from polling
+    this.processors.forEach((p) => {
+      if (p.stopProcessing) {
+        p.stopProcessing();
+      }
+    });
+
+    // Give processors time to finish their final work
+    await Promise.all(
+      this.processors.map(async (p) => {
+        if (p.waitForPendingWork) {
+          await p.waitForPendingWork();
+        }
+      })
+    );
   }
 
   // ===================================

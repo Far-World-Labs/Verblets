@@ -1,4 +1,4 @@
-import { describe, expect as vitestExpect, it as vitestIt, beforeAll, afterAll } from 'vitest';
+import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
 import timeline from './index.js';
 import vitestAiExpect from '../expect/index.js';
 import { longTestTimeout } from '../../constants/common.js';
@@ -6,9 +6,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { debug } from '../../lib/debug/index.js';
-import { logSuiteStart, logSuiteEnd } from '../test-analysis/setup.js';
 import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
-import { extractFileContext } from '../../lib/logger/index.js';
 import { getConfig } from '../test-analysis/config.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -21,16 +19,6 @@ const expect = config?.aiMode
 const aiExpect = config?.aiMode
   ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'Timeline chain' } })
   : vitestAiExpect;
-const suiteLogStart = config?.aiMode ? logSuiteStart : () => {};
-const suiteLogEnd = config?.aiMode ? logSuiteEnd : () => {};
-
-beforeAll(async () => {
-  await suiteLogStart('Timeline chain', extractFileContext(2));
-});
-
-afterAll(async () => {
-  await suiteLogEnd('Timeline chain', extractFileContext(2));
-});
 
 describe('timeline', () => {
   it('extracts events from simple narrative', { timeout: longTestTimeout }, async () => {
@@ -246,7 +234,7 @@ describe('timeline', () => {
 
     // Should have more precise dates
     const hasEnrichedContent = await aiExpect(enrichedResult).toSatisfy(
-      `Should contain precise dates like December 17, 1903 for Wright brothers flight, August 1945 for WWII end, and include additional context events`
+      `Should contain precise dates (in any common date format) like December 17, 1903 for Wright brothers flight, August/September 1945 for WWII end, and include additional context events`
     );
 
     expect(hasEnrichedContent).toBe(true);

@@ -33,7 +33,7 @@ export const wrapIt = (it, config = {}) => {
     const hasOptions = typeof optionsOrFn === 'object' && optionsOrFn !== null;
     const options = hasOptions ? optionsOrFn : undefined;
     const fn = hasOptions ? fnOrNothing : optionsOrFn;
-    
+
     // Simple sequential index for tests in this file
     const testIndex = testCounter++;
     registeredTests.push(name);
@@ -80,6 +80,7 @@ export const wrapIt = (it, config = {}) => {
         // Log assertion errors with the location captured by wrapExpect
         if (isAssertionError(error)) {
           const failureLocation = error._expectLocation || testLocation;
+
           await logTestEvent(
             'expect',
             {
@@ -125,7 +126,7 @@ export const wrapIt = (it, config = {}) => {
   wrapped.skip = (name, fn, ...args) => {
     const testIndex = testCounter++;
     registeredTests.push(name);
-    
+
     const testLocation = extractFileContext(3);
 
     // Fire and forget - skipped tests aren't critical to track
@@ -133,7 +134,6 @@ export const wrapIt = (it, config = {}) => {
       'test-skip',
       {
         testName: name,
-        test: name,
         testIndex,
         suite: baseProps.suite,
         reason: 'skip',
@@ -146,7 +146,7 @@ export const wrapIt = (it, config = {}) => {
   };
 
   // Wrap skipIf to track conditionally skipped tests
-  wrapped.skipIf = (condition) => condition ? wrapped.skip : wrapped;
+  wrapped.skipIf = (condition) => (condition ? wrapped.skip : wrapped);
 
   // Copy only property
   wrapped.only = it.only;
@@ -164,12 +164,13 @@ export const wrapExpect =
   (expect, config = {}) =>
   (actual) => {
     const { baseProps = {}, logger } = config;
-    const testIndex = baseProps.currentTestIndex ?? 0;
-    const suite = baseProps.suite ?? '';
     const expectCallStackLevel = 3; // Skip: extractFileContext, wrapExpect, test file
     const expectLocation = extractFileContext(expectCallStackLevel);
 
     return createExpectProxy(expect(actual), (target, method) => (...args) => {
+      // Read testIndex dynamically when the expectation is actually called
+      const testIndex = baseProps.currentTestIndex ?? 0;
+      const suite = baseProps.suite ?? '';
       const log = logger || globalThis.logger;
       try {
         const result = target[method](...args);
@@ -202,8 +203,6 @@ export const wrapAiExpect =
   (aiExpect, config = {}) =>
   (actual) => {
     const { baseProps = {}, logger } = config;
-    const testIndex = baseProps.currentTestIndex ?? 0;
-    const suite = baseProps.suite ?? '';
 
     return createExpectProxy(aiExpect(actual), (target, method) => {
       const methodCallStackLevel = 4; // Skip: extractFileContext, proxy handler, method call, test file
@@ -211,6 +210,9 @@ export const wrapAiExpect =
       const log = logger || globalThis.logger;
 
       return async (...args) => {
+        // Read testIndex dynamically when the expectation is actually called
+        const testIndex = baseProps.currentTestIndex ?? 0;
+        const suite = baseProps.suite ?? '';
         const start = Date.now();
         const aiExpectData = {
           event: 'ai-expect',
@@ -235,6 +237,7 @@ export const wrapAiExpect =
             ...aiExpectData,
             passed: false,
             duration: Date.now() - start,
+            error: error.message,
           });
           throw error;
         }

@@ -8,6 +8,7 @@
 import { BaseProcessor } from './base-processor.js';
 import analyzeTestError from '../../test-analyzer/index.js';
 import { extractCodeWindow } from '../../../lib/code-extractor/index.js';
+import { getConfig } from '../config.js';
 
 // Pure helpers
 const isTestComplete = (event) => event.event === 'test-complete';
@@ -15,9 +16,12 @@ const isFailedTest = (event) => isTestComplete(event) && event.state === 'fail';
 
 export class FirstFailureProcessor extends BaseProcessor {
   constructor(options = {}) {
+    const config = getConfig();
     super({
       name: 'FirstFailure',
-      envFlag: 'VERBLETS_FIRST_FAILURE',
+      // No envFlag needed - we control it via alwaysEnabled
+      alwaysEnabled: config?.aiMode === true, // Enable when in AI mode
+      processAsync: true, // Need this to poll for events!
       ...options,
     });
 
@@ -27,9 +31,6 @@ export class FirstFailureProcessor extends BaseProcessor {
 
   onInitialize() {
     if (!this.enabled) return;
-    console.log(
-      '[FirstFailure] Processor enabled - will report first failure per suite with AI analysis'
-    );
   }
 
   // Event handlers
@@ -53,6 +54,11 @@ export class FirstFailureProcessor extends BaseProcessor {
 
     // Mark as reported
     this.reportedFailures.add(key);
+
+    // Wait a bit for events to be written to ring buffer
+    // This is needed because we're processing events as they come in,
+    // but other events (like expect failures) might still be writing
+    await new Promise((resolve) => setTimeout(resolve, 500));
 
     // Analyze the failure
     await this.analyzeAndReport(event);

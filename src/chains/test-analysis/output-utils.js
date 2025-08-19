@@ -152,16 +152,34 @@ const COLORS = {
   RED: '\x1b[31m',
   GREEN: '\x1b[32m',
   YELLOW: '\x1b[33m',
+  GRAY: '\x1b[90m', // #444444 equivalent
+  BG_GREEN: '\x1b[42m',
+  BG_RED: '\x1b[41m',
+  BG_YELLOW: '\x1b[43m',
+  WHITE: '\x1b[37m',
   RESET: '\x1b[0m',
 };
 
 export const formatTestSummary = (name, passed, total, avgDuration, skipped = 0) => {
-  // All non-skipped tests passed if passed count equals (total - skipped)
+  // Calculate failures
+  const failed = total - passed - skipped;
   const nonSkippedTotal = total - skipped;
   const isFullyPassing = passed === nonSkippedTotal && passed > 0;
   const color = isFullyPassing ? COLORS.GREEN : COLORS.RED;
-  const skipInfo = skipped > 0 ? ` ${COLORS.YELLOW}(${skipped} skipped)${COLORS.RESET}` : '';
-  return `${color}Suite: ${name} ${passed}/${total}${skipInfo} ${avgDuration}ms (avg.)${COLORS.RESET}`;
+
+  // Build status string with failures and skips
+  let statusInfo = '';
+  if (failed > 0) {
+    statusInfo += ` ${COLORS.RED}(${failed} failed)${COLORS.RESET}`;
+  }
+  if (skipped > 0) {
+    statusInfo += ` ${COLORS.YELLOW}(${skipped} skipped)${COLORS.RESET}`;
+  }
+
+  // Show nonSkippedTotal/nonSkippedTotal when all non-skipped tests pass
+  // Or passed/nonSkippedTotal when some fail
+  const displayPassed = isFullyPassing ? nonSkippedTotal : passed;
+  return `${color}Suite: ${name} ${displayPassed}/${nonSkippedTotal}${statusInfo} ${avgDuration}ms (avg.)${COLORS.RESET}`;
 };
 
 // Unicode box drawing characters
