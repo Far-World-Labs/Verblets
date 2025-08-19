@@ -1,11 +1,9 @@
-import { describe, it as vitestIt, expect as vitestExpect, beforeAll, afterAll } from 'vitest';
+import { describe, it as vitestIt, expect as vitestExpect } from 'vitest';
 import fillMissing from './index.js';
 import templateReplace from '../../lib/template-replace/index.js';
 import { longTestTimeout } from '../../constants/common.js';
 import vitestAiExpect from '../../chains/expect/index.js';
-import { logSuiteStart, logSuiteEnd } from '../../chains/test-analysis/setup.js';
 import { wrapIt, wrapExpect, wrapAiExpect } from '../../chains/test-analysis/test-wrappers.js';
-import { extractFileContext } from '../../lib/logger/index.js';
 import { getConfig } from '../../chains/test-analysis/config.js';
 
 //
@@ -21,19 +19,10 @@ const expect = config?.aiMode
 const aiExpect = config?.aiMode
   ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'fillMissing example' } })
   : vitestAiExpect;
-const suiteLogStart = config?.aiMode ? logSuiteStart : () => {};
-const suiteLogEnd = config?.aiMode ? logSuiteEnd : () => {};
 
 //
 // Test suite
 //
-beforeAll(async () => {
-  await suiteLogStart('fillMissing example', extractFileContext(2));
-});
-
-afterAll(async () => {
-  await suiteLogEnd('fillMissing example', extractFileContext(2));
-});
 
 describe('fillMissing example', () => {
   it(

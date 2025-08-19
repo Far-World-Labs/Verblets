@@ -1,10 +1,9 @@
-import { describe, it as vitestIt, expect as vitestExpect, vi, beforeAll, afterAll } from 'vitest';
+import { describe, it as vitestIt, expect as vitestExpect, vi } from 'vitest';
 import setInterval from './index.js';
 import { longTestTimeout } from '../../constants/common.js';
-import { logSuiteStart, logSuiteEnd } from '../test-analysis/setup.js';
 import { wrapIt, wrapExpect } from '../test-analysis/test-wrappers.js';
-import { extractFileContext } from '../../lib/logger/index.js';
 import { getConfig } from '../test-analysis/config.js';
+import { useSafeFakeTimers } from '../../lib/test-utils/fake-timers.js';
 
 const config = getConfig();
 const it = config?.aiMode
@@ -13,19 +12,6 @@ const it = config?.aiMode
 const expect = config?.aiMode
   ? wrapExpect(vitestExpect, { baseProps: { suite: 'Set interval chain' } })
   : vitestExpect;
-const suiteLogStart = config?.aiMode ? logSuiteStart : () => {};
-const suiteLogEnd = config?.aiMode ? logSuiteEnd : () => {};
-
-beforeAll(async () => {
-  await suiteLogStart('Set interval chain', extractFileContext(2));
-  // Use synthetic timers for fast testing
-  vi.useFakeTimers();
-});
-
-afterAll(async () => {
-  vi.useRealTimers(); // Restore real timers to prevent hanging
-  await suiteLogEnd('Set interval chain', extractFileContext(2));
-});
 
 // Mock the dependencies like in the spec file
 vi.mock('../../lib/chatgpt/index.js', () => ({
@@ -50,6 +36,8 @@ describe('setInterval (example)', () => {
   it(
     'adjusts meditation sessions using wearable stress levels',
     async () => {
+      useSafeFakeTimers(vi);
+
       // Mock the LLM responses for timing decisions
       chatGPT
         .mockResolvedValueOnce('3 minutes')
@@ -92,6 +80,8 @@ describe('setInterval (example)', () => {
             typeof result.stress === 'number' && result.stress >= 0 && result.stress <= 100
         )
       ).toBe(true);
+
+      vi.useRealTimers();
     },
     longTestTimeout
   );
@@ -99,6 +89,8 @@ describe('setInterval (example)', () => {
   it(
     'paces game events to match player skill',
     async () => {
+      useSafeFakeTimers(vi);
+
       // Mock the LLM responses for timing decisions
       chatGPT
         .mockResolvedValueOnce('10 seconds')
@@ -142,6 +134,8 @@ describe('setInterval (example)', () => {
             typeof result.winRate === 'number' && result.winRate >= 0 && result.winRate <= 100
         )
       ).toBe(true);
+
+      vi.useRealTimers();
     },
     longTestTimeout
   );

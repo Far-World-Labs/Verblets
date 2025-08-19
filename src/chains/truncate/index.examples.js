@@ -1,9 +1,7 @@
-import { describe, expect as vitestExpect, it as vitestIt, beforeAll, afterAll } from 'vitest';
+import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
 import truncate from './index.js';
 import vitestAiExpect from '../expect/index.js';
-import { logSuiteStart, logSuiteEnd } from '../test-analysis/setup.js';
 import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
-import { extractFileContext } from '../../lib/logger/index.js';
 import { getConfig } from '../test-analysis/config.js';
 
 const config = getConfig();
@@ -14,16 +12,6 @@ const expect = config?.aiMode
 const aiExpect = config?.aiMode
   ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'Truncate chain' } })
   : vitestAiExpect;
-const suiteLogStart = config?.aiMode ? logSuiteStart : () => {};
-const suiteLogEnd = config?.aiMode ? logSuiteEnd : () => {};
-
-beforeAll(async () => {
-  await suiteLogStart('Truncate chain', extractFileContext(2));
-});
-
-afterAll(async () => {
-  await suiteLogEnd('Truncate chain', extractFileContext(2));
-});
 
 const examples = [
   {

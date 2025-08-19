@@ -1,11 +1,9 @@
-import { describe, expect as vitestExpect, it as vitestIt, beforeAll, afterAll } from 'vitest';
+import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
 
 import aiExpectVerblet from './index.js';
 import { longTestTimeout } from '../../constants/common.js';
 import vitestAiExpect from '../../chains/expect/index.js';
-import { logSuiteStart, logSuiteEnd } from '../../chains/test-analysis/setup.js';
 import { wrapIt, wrapExpect, wrapAiExpect } from '../../chains/test-analysis/test-wrappers.js';
-import { extractFileContext } from '../../lib/logger/index.js';
 import { getConfig } from '../../chains/test-analysis/config.js';
 
 //
@@ -21,19 +19,10 @@ const expect = config?.aiMode
 // Use the original aiExpect when testing aiExpect itself to avoid double logging
 // The outer expect wrapper will handle the logging for these tests
 const aiExpect = vitestAiExpect;
-const suiteLogStart = config?.aiMode ? logSuiteStart : () => {};
-const suiteLogEnd = config?.aiMode ? logSuiteEnd : () => {};
 
 //
 // Test suite
 //
-beforeAll(async () => {
-  await suiteLogStart('LLM Expect Verblet', extractFileContext(2));
-});
-
-afterAll(async () => {
-  await suiteLogEnd('LLM Expect Verblet', extractFileContext(2));
-});
 
 const examples = [
   {

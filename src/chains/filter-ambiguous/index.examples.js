@@ -1,9 +1,7 @@
-import { describe, it as vitestIt, expect as vitestExpect, beforeAll, afterAll } from 'vitest';
+import { describe, it as vitestIt, expect as vitestExpect } from 'vitest';
 import { longTestTimeout } from '../../constants/common.js';
 import filterAmbiguous from './index.js';
-import { logSuiteStart, logSuiteEnd } from '../test-analysis/setup.js';
 import { wrapIt, wrapExpect } from '../test-analysis/test-wrappers.js';
-import { extractFileContext } from '../../lib/logger/index.js';
 import { getConfig } from '../test-analysis/config.js';
 
 const config = getConfig();
@@ -13,16 +11,6 @@ const it = config?.aiMode
 const expect = config?.aiMode
   ? wrapExpect(vitestExpect, { baseProps: { suite: 'Filter ambiguous chain' } })
   : vitestExpect;
-const suiteLogStart = config?.aiMode ? logSuiteStart : () => {};
-const suiteLogEnd = config?.aiMode ? logSuiteEnd : () => {};
-
-beforeAll(async () => {
-  await suiteLogStart('Filter ambiguous chain', extractFileContext(2));
-});
-
-afterAll(async () => {
-  await suiteLogEnd('Filter ambiguous chain', extractFileContext(2));
-});
 
 describe('filterAmbiguous examples', () => {
   it(

@@ -19,66 +19,7 @@ export default defineConfig({
     // Exclude hanging tests - uncomment as we identify working ones
     exclude: [
       ...baseConfig.exclude,
-      // Start with all test files, then comment out as we verify they work
-      
-      // === CHAINS - Alphabetical ===
-      'src/chains/anonymize/*.examples.js', // ISSUE: Hangs with aiMode - privacy model conflicts
-      // 'src/chains/category-samples/*.examples.js',
-      // 'src/chains/central-tendency/*.examples.js', 
-      // 'src/chains/collect-terms/*.examples.js',
-      'src/chains/conversation/*.examples.js', // KNOWN SLOW: 5+ seconds
-      // 'src/chains/date/*.examples.js',
-      'src/chains/detect-patterns/*.examples.js', // CHECK: May hang
-      'src/chains/detect-threshold/*.examples.js', // CHECK: Was commented before
-      // 'src/chains/disambiguate/*.examples.js',
-      // 'src/chains/dismantle/*.examples.js',
-      'src/chains/document-shrink/*.examples.js', // CHECK: Was commented before
-      // 'src/chains/entities/*.examples.js',
-      // 'src/chains/expect/*.examples.js',
-      // 'src/chains/filter/*.examples.js',
-      // 'src/chains/filter-ambiguous/*.examples.js',
-      // 'src/chains/find/*.examples.js',
-      // 'src/chains/glossary/*.examples.js',
-      // 'src/chains/group/*.examples.js',
-      // 'src/chains/intersections/*.examples.js',
-      // 'src/chains/join/*.examples.js',
-      // 'src/chains/list/*.examples.js',
-      // 'src/chains/map/*.examples.js',
-      // 'src/chains/pop-reference/*.examples.js',
-      // 'src/chains/questions/*.examples.js',
-      // 'src/chains/reduce/*.examples.js',
-      // 'src/chains/relations/*.examples.js',
-      'src/chains/scale/*.examples.js', // CHECK: Was commented before
-      // 'src/chains/score/*.examples.js',
-      'src/chains/set-interval/*.examples.js', // CHECK: Timer issues
-      // 'src/chains/sort/*.examples.js',
-      // 'src/chains/split/*.examples.js',
-      // 'src/chains/summary-map/*.examples.js',
-      // 'src/chains/themes/*.examples.js',
-      'src/chains/timeline/*.examples.js', // CHECK: May have timer issues
-      // 'src/chains/to-object/*.examples.js',
-      // 'src/chains/truncate/*.examples.js',
-      // 'src/chains/veiled-variants/*.examples.js',
-      
-      // === VERBLETS - Alphabetical ===
-      // 'src/verblets/auto/*.examples.js',
-      // 'src/verblets/bool/*.examples.js',
-      // 'src/verblets/central-tendency-lines/*.examples.js',
-      // 'src/verblets/commonalities/*.examples.js',
-      // 'src/verblets/enum/*.examples.js',
-      // 'src/verblets/expect/*.examples.js',
-      // 'src/verblets/fill-missing/*.examples.js',
-      // 'src/verblets/intent/*.examples.js',
-      // 'src/verblets/list-expand/*.examples.js',
-      // 'src/verblets/name/*.examples.js',
-      // 'src/verblets/name-similar-to/*.examples.js',
-      // 'src/verblets/number/*.examples.js',
-      // 'src/verblets/number-with-units/*.examples.js',
-      // 'src/verblets/schema-org/*.examples.js',
-      // 'src/verblets/sentiment/*.examples.js',
-      
-      // === LIBS ===
-      // 'src/lib/text-similarity/*.examples.js',
+      // All tests enabled - let's see what breaks
     ],
     includeTaskLocation: true, // for precise file/line in reporters (v3)
     // Only include setupFiles when AI mode is enabled

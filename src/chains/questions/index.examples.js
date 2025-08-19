@@ -1,13 +1,11 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { describe, expect as vitestExpect, it as vitestIt, beforeAll, afterAll } from 'vitest';
+import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
 
 import { longTestTimeout } from '../../constants/common.js';
 import questions from './index.js';
 import vitestAiExpect from '../expect/index.js';
-import { logSuiteStart, logSuiteEnd } from '../test-analysis/setup.js';
 import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
-import { extractFileContext } from '../../lib/logger/index.js';
 import { getConfig } from '../test-analysis/config.js';
 
 const config = getConfig();
@@ -20,16 +18,6 @@ const expect = config?.aiMode
 const aiExpect = config?.aiMode
   ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'Questions verblet' } })
   : vitestAiExpect;
-const suiteLogStart = config?.aiMode ? logSuiteStart : () => {};
-const suiteLogEnd = config?.aiMode ? logSuiteEnd : () => {};
-
-beforeAll(async () => {
-  await suiteLogStart('Questions verblet', extractFileContext(2));
-});
-
-afterAll(async () => {
-  await suiteLogEnd('Questions verblet', extractFileContext(2));
-});
 
 const ensureDirectoryExists = async (directoryPath) => {
   try {

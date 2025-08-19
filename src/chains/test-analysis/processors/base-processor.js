@@ -21,11 +21,9 @@ const isEnabled = (envFlag, alwaysEnabled = false) => {
   if (alwaysEnabled) return true;
   if (!envFlag) return false;
   const value = process.env[envFlag];
-  // For special flags like VERBLETS_DEBUG that contain values, check if non-empty
   if (envFlag === 'VERBLETS_DEBUG') {
     return value && value.length > 0;
   }
-  // For other flags, use standard truthy check
   return value && truthyValues.includes(value);
 };
 
@@ -98,6 +96,7 @@ export class BaseProcessor {
     this.reader = null;
     this.processing = false;
     this.pollTimer = null;
+    this.currentPoll = null;
 
     this.config = {
       batchSize,
@@ -116,23 +115,17 @@ export class BaseProcessor {
   }
 
   resetState() {
-    // Cancel all pending work
     if (this.pendingWork) {
       this.pendingWork.forEach((work) => work.cancel?.());
     }
 
-    // Clear all blockers
     if (this.blockers) {
       rejectAllBlockers(this.blockers.suites, 'State reset');
       rejectBlocker(this.blockers.run, 'State reset');
     }
 
-    // Reset state
     this.pendingWork = new Set();
-    this.blockers = {
-      suites: new Map(),
-      run: null,
-    };
+    this.blockers = { suites: new Map(), run: null };
     this.activeSuites = new Set();
     this.activeRun = false;
   }
@@ -151,7 +144,18 @@ export class BaseProcessor {
   }
 
   async shutdown() {
+    // Stop processing to prevent new polls
     this.stopProcessing();
+
+    // Wait for current poll to complete if in progress
+    if (this.currentPoll) {
+      await this.currentPoll.catch(() => {}); // Ignore errors during shutdown
+    }
+
+    // Wait for any pending work to complete
+    await this.waitForPendingWork();
+
+    // Now safe to reset state
     this.resetState();
     await this.onShutdown();
   }
@@ -162,7 +166,12 @@ export class BaseProcessor {
     if (this.processing) return;
 
     this.processing = true;
-    this.pollTimer = setInterval(() => this.poll(), this.config.pollInterval);
+    this.pollTimer = setInterval(() => {
+      // Only start poll if not already polling
+      if (!this.currentPoll) {
+        this.poll();
+      }
+    }, this.config.pollInterval);
     this.pollTimer.unref();
   }
 
@@ -175,13 +184,29 @@ export class BaseProcessor {
   }
 
   async poll() {
+    // Don't start new poll if shutting down
+    if (!this.processing) return;
+
+    // Track the current poll operation
+    this.currentPoll = this.executePoll();
+    try {
+      await this.currentPoll;
+    } finally {
+      this.currentPoll = null;
+    }
+  }
+
+  async executePoll() {
     try {
       const events = await this.reader.consume(this.config.batchSize);
-      if (events.length === 0) return;
-
-      await this.processBatch(events);
+      if (events.length > 0) {
+        await this.processBatch(events);
+      }
     } catch (err) {
-      error(this.name, 'Poll error:', err);
+      // Ignore errors if we're shutting down
+      if (this.processing) {
+        error(this.name, 'Poll error:', err);
+      }
     }
   }
 
@@ -235,12 +260,11 @@ export class BaseProcessor {
       return;
     }
 
-    // Suite rerun - reset its state
     const blocker = this.blockers.suites.get(suiteName);
-    if (!blocker) return;
-
-    rejectBlocker(blocker, 'Suite restarted');
-    this.blockers.suites.delete(suiteName);
+    if (blocker) {
+      rejectBlocker(blocker, 'Suite restarted');
+      this.blockers.suites.delete(suiteName);
+    }
   }
 
   routeToHandler(event) {
@@ -358,14 +382,11 @@ export class BaseProcessor {
   async getCurrentRunEvents() {
     const events = await this.lookback();
     const runStartIdx = findLastIndex(events, isRunStart);
-
-    if (runStartIdx === -1) return events;
-    return events.slice(runStartIdx);
+    return runStartIdx === -1 ? events : events.slice(runStartIdx);
   }
 
   async getSuiteEvents(suiteName) {
     const events = await this.getCurrentRunEvents();
-
     const startIdx = findLastIndex(events, (e) => isSuiteStart(e) && e.suite === suiteName);
 
     if (startIdx === -1) return [];
@@ -375,7 +396,6 @@ export class BaseProcessor {
     );
 
     const range = endIdx === -1 ? events.slice(startIdx) : events.slice(startIdx, endIdx + 1);
-
     return range.filter((e) => e.suite === suiteName);
   }
 

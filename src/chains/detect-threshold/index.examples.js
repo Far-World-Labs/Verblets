@@ -1,9 +1,7 @@
-import { describe, it as vitestIt, expect as vitestExpect, beforeAll, afterAll } from 'vitest';
+import { describe, it as vitestIt, expect as vitestExpect } from 'vitest';
 import detectThreshold from './index.js';
 import vitestAiExpect from '../expect/index.js';
-import { logSuiteStart, logSuiteEnd } from '../test-analysis/setup.js';
 import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
-import { extractFileContext } from '../../lib/logger/index.js';
 import { getConfig } from '../test-analysis/config.js';
 
 const config = getConfig();
@@ -17,16 +15,6 @@ const expect = config?.aiMode
 const aiExpect = config?.aiMode
   ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'Detect-threshold chain' } })
   : vitestAiExpect;
-const suiteLogStart = config?.aiMode ? logSuiteStart : () => {};
-const suiteLogEnd = config?.aiMode ? logSuiteEnd : () => {};
-
-beforeAll(async () => {
-  await suiteLogStart('Detect-threshold chain', extractFileContext(2));
-});
-
-afterAll(async () => {
-  await suiteLogEnd('Detect-threshold chain', extractFileContext(2));
-});
 
 describe('detect-threshold examples', () => {
   it('should analyze risk scores for fraud detection', { timeout: 60000 }, async () => {

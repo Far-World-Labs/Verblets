@@ -1,10 +1,9 @@
-import { describe, expect as vitestExpect, it as vitestIt, beforeAll, afterAll } from 'vitest';
+import { beforeAll, afterAll } from 'vitest';
+import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
 
 import aiExpect from './index.js';
 import { longTestTimeout } from '../../constants/common.js';
-import { logSuiteStart, logSuiteEnd } from '../test-analysis/setup.js';
 import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
-import { extractFileContext } from '../../lib/logger/index.js';
 import { getConfig } from '../test-analysis/config.js';
 
 const config = getConfig();
@@ -12,8 +11,6 @@ const it = config?.aiMode ? wrapIt(vitestIt, { baseProps: { suite: 'Expect chain
 const expect = config?.aiMode
   ? wrapExpect(vitestExpect, { baseProps: { suite: 'Expect chain' } })
   : vitestExpect;
-const suiteLogStart = config?.aiMode ? logSuiteStart : () => {};
-const suiteLogEnd = config?.aiMode ? logSuiteEnd : () => {};
 
 const examples = [
   {
@@ -65,7 +62,6 @@ describe('LLM Expect Chain', () => {
   const originalMode = process.env.LLM_EXPECT_MODE;
 
   beforeAll(async () => {
-    await suiteLogStart('Expect chain', extractFileContext(2));
     process.env.LLM_EXPECT_MODE = 'none';
   });
 
@@ -75,7 +71,6 @@ describe('LLM Expect Chain', () => {
     } else {
       delete process.env.LLM_EXPECT_MODE;
     }
-    await suiteLogEnd('Expect chain', extractFileContext(2));
   });
 
   examples.forEach((example) => {
