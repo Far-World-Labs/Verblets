@@ -93,10 +93,10 @@ export class BaseProcessor {
     this.name = name;
     this.enabled = isEnabled(envFlag, alwaysEnabled);
     this.ringBuffer = ringBuffer;
-    this.reader = null;
+    this.reader = undefined;
     this.processing = false;
-    this.pollTimer = null;
-    this.currentPoll = null;
+    this.pollTimer = undefined;
+    this.currentPoll = undefined;
 
     this.config = {
       batchSize,
@@ -125,9 +125,10 @@ export class BaseProcessor {
     }
 
     this.pendingWork = new Set();
-    this.blockers = { suites: new Map(), run: null };
+    this.blockers = { suites: new Map(), run: undefined };
     this.activeSuites = new Set();
     this.activeRun = false;
+    this.currentRunId = undefined;
   }
 
   async initialize() {
@@ -180,7 +181,7 @@ export class BaseProcessor {
 
     this.processing = false;
     clearInterval(this.pollTimer);
-    this.pollTimer = null;
+    this.pollTimer = undefined;
   }
 
   async poll() {
@@ -192,7 +193,7 @@ export class BaseProcessor {
     try {
       await this.currentPoll;
     } finally {
-      this.currentPoll = null;
+      this.currentPoll = undefined;
     }
   }
 
@@ -224,7 +225,7 @@ export class BaseProcessor {
 
   handleStateResets(event) {
     if (isRunStart(event)) {
-      this.resetRunState();
+      this.resetRunState(event.runId);
       return;
     }
 
@@ -243,15 +244,16 @@ export class BaseProcessor {
     }
   }
 
-  resetRunState() {
+  resetRunState(runId) {
     this.activeSuites.clear();
     this.activeRun = true;
+    this.currentRunId = runId;
 
     rejectAllBlockers(this.blockers.suites, 'Run restarted');
     this.blockers.suites.clear();
 
     rejectBlocker(this.blockers.run, 'Run restarted');
-    this.blockers.run = null;
+    this.blockers.run = undefined;
   }
 
   resetSuiteState(suiteName) {
@@ -313,7 +315,7 @@ export class BaseProcessor {
     this.waitForPendingWork()
       .then(() => resolver.resolve())
       .catch((err) => resolver.reject(err))
-      .finally(() => (this.blockers.run = null));
+      .finally(() => (this.blockers.run = undefined));
   }
 
   // Blocking APIs
@@ -389,7 +391,10 @@ export class BaseProcessor {
     const events = await this.getCurrentRunEvents();
     const startIdx = findLastIndex(events, (e) => isSuiteStart(e) && e.suite === suiteName);
 
-    if (startIdx === -1) return [];
+    if (startIdx === -1) {
+      // No suite-start found, return all events for this suite
+      return events.filter((e) => e.suite === suiteName);
+    }
 
     const endIdx = events.findIndex(
       (e, i) => i > startIdx && isSuiteEnd(e) && e.suite === suiteName
@@ -402,6 +407,11 @@ export class BaseProcessor {
   async getTestEvents(suiteName, testIndex) {
     const events = await this.getSuiteEvents(suiteName);
     return events.filter((e) => e.testIndex === testIndex);
+  }
+
+  // Helper to check if async operation should proceed
+  isCurrentRun(runId) {
+    return this.currentRunId === runId;
   }
 
   // Lifecycle hooks for subclasses

@@ -9,6 +9,7 @@ import { BaseProcessor } from './base-processor.js';
 import analyzeTestError from '../../test-analyzer/index.js';
 import { extractCodeWindow } from '../../../lib/code-extractor/index.js';
 import { getConfig } from '../config.js';
+import { gray, red, badges, createBoxedCode } from '../output-utils.js';
 
 // Pure helpers
 const isTestComplete = (event) => event.event === 'test-complete';
@@ -55,9 +56,7 @@ export class FirstFailureProcessor extends BaseProcessor {
     // Mark as reported
     this.reportedFailures.add(key);
 
-    // Wait a bit for events to be written to ring buffer
-    // This is needed because we're processing events as they come in,
-    // but other events (like expect failures) might still be writing
+    // Wait for events to be written to ring buffer
     await new Promise((resolve) => setTimeout(resolve, 500));
 
     // Analyze the failure
@@ -67,8 +66,18 @@ export class FirstFailureProcessor extends BaseProcessor {
   // Analysis methods
 
   async analyzeAndReport(event) {
-    // Get all test events for context
-    const testEvents = await this.getTestEvents(event.suite, event.testIndex);
+    // Get events for this test - if none found, fallback to raw lookback
+    let testEvents = await this.getTestEvents(event.suite, event.testIndex);
+
+    if (testEvents.length === 0) {
+      // Fallback: look for events by suite and test name
+      const rawEvents = await this.lookback(100);
+      testEvents = rawEvents.filter(
+        (e) =>
+          e.suite === event.suite &&
+          (e.testIndex === event.testIndex || e.testName === event.testName)
+      );
+    }
 
     // Find failed expectation
     const failedExpect = testEvents.find(
@@ -89,7 +98,7 @@ export class FirstFailureProcessor extends BaseProcessor {
     const analysis = await analyzeTestError(testEvents);
 
     // Build view model with analysis
-    const viewModel = this.getAnalysisViewModel(event, failedExpect, codeSnippet, analysis);
+    const viewModel = await this.getAnalysisViewModel(event, failedExpect, codeSnippet, analysis);
 
     // Render with analysis
     this.renderFailureWithAnalysis(viewModel);
@@ -112,9 +121,9 @@ export class FirstFailureProcessor extends BaseProcessor {
     };
   }
 
-  getAnalysisViewModel(event, failedExpect, codeSnippet, analysis) {
+  async getAnalysisViewModel(event, failedExpect, codeSnippet, analysis) {
     // Get test name from test-start event if available
-    const testEvents = this.getTestEvents(event.suite, event.testIndex);
+    const testEvents = await this.getTestEvents(event.suite, event.testIndex);
     const testStart = testEvents.find((e) => e.event === 'test-start');
     const testName = testStart?.testName || event.testName;
 
@@ -132,53 +141,41 @@ export class FirstFailureProcessor extends BaseProcessor {
 
   // View Components
 
-  renderBoxLine(content = '') {
-    console.log(`│${content}`);
+  renderHeader(suite, testName) {
+    console.log('');
+    console.log(`${badges.fail()}  ${suite}`);
+    console.log(`  ${testName}`);
   }
 
-  renderBoxContent(text, indent = 2) {
-    const padding = ' '.repeat(indent);
-    this.renderBoxLine(`${padding}${text}`);
-  }
-
-  renderHeader(suite) {
-    this.renderBoxContent(`⚠️  First failure in ${suite}`);
-  }
-
-  renderTestInfo(testName, file, line) {
-    this.renderBoxContent(`Test: ${testName}`, 5);
-    if (file && line) {
-      this.renderBoxContent(`at ${file}:${line}`, 5);
-    }
+  renderLocation(file, line) {
+    if (!file || !line) return;
+    console.log(gray(`  ${file}:${line}`));
   }
 
   renderError(error) {
     if (!error) return;
-    this.renderBoxContent(`Error: ${error}`, 5);
+    console.log('');
+    console.log(red(`  ${error}`));
   }
 
   renderCodeSnippet(snippet) {
     if (!snippet) return;
+    console.log('');
 
-    this.renderBoxContent('');
-    this.renderBoxContent('Code context:', 5);
-
-    snippet.split('\n').forEach((line) => {
-      this.renderBoxContent(line, 7);
-    });
+    // createBoxedCode will handle the highlighting internally
+    console.log(createBoxedCode(snippet));
   }
 
   renderAnalysis(analysis) {
     if (!analysis) return;
-
-    this.renderBoxContent('');
-    this.renderBoxContent('AI Analysis:', 5);
+    console.log('');
+    console.log(gray('  Analysis:'));
 
     // Split analysis by lines and render
     const lines = analysis.split('\n');
     lines.forEach((line) => {
       if (line.trim()) {
-        this.renderBoxContent(line, 7);
+        console.log(gray(`  ${line}`));
       }
     });
   }
@@ -188,34 +185,19 @@ export class FirstFailureProcessor extends BaseProcessor {
   renderFailure(viewModel) {
     const { suite, testName, error } = viewModel;
 
-    // Start box
-    console.log(`\n│`);
-
-    // Content
-    this.renderHeader(suite);
-    this.renderBoxContent(`Test: ${testName}`, 5);
+    this.renderHeader(suite, testName);
     this.renderError(error);
-
-    // End box
-    this.renderBoxLine();
-    console.log(`\n`);
+    console.log('');
   }
 
   renderFailureWithAnalysis(viewModel) {
     const { suite, testName, file, line, error, codeSnippet, analysis } = viewModel;
 
-    // Start box
-    console.log(`\n│`);
-
-    // Content
-    this.renderHeader(suite);
-    this.renderTestInfo(testName, file, line);
+    this.renderHeader(suite, testName);
+    this.renderLocation(file, line);
     this.renderError(error);
     this.renderCodeSnippet(codeSnippet);
     this.renderAnalysis(analysis);
-
-    // End box
-    this.renderBoxLine();
-    console.log(`\n`);
+    console.log('');
   }
 }

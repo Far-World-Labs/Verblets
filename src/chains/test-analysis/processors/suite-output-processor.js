@@ -122,12 +122,18 @@ export class SuiteOutputProcessor extends BaseProcessor {
     const allComplete = suite.started.size > 0 && suite.started.size === suite.completed.size;
 
     if (allComplete) {
+      // Capture current run ID for validation
+      const runId = this.currentRunId;
+
       // Start debounce timer - output immediately after debounce
       suite.debounceTimer = setTimeout(async () => {
-        // Just check our local tracking - if we think it's complete, output it
-        if (suite.started.size === suite.completed.size && !this.outputSuites.has(suiteName)) {
-          this.outputSuites.add(suiteName);
-          await this.outputSuiteSummary(suiteName);
+        // Only output if still in the same run
+        if (this.currentRunId === runId) {
+          // Just check our local tracking - if we think it's complete, output it
+          if (suite.started.size === suite.completed.size && !this.outputSuites.has(suiteName)) {
+            this.outputSuites.add(suiteName);
+            await this.outputSuiteSummary(suiteName);
+          }
         }
       }, this.DEBOUNCE_MS);
     }

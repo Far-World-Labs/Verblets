@@ -35,7 +35,8 @@ describe('Bool verblet', () => {
     it(
       `${example.inputs.text}`,
       async () => {
-        const result = await bool(example.inputs.text);
+        // Use global logger if available (set up by test infrastructure in AI mode)
+        const result = await bool(example.inputs.text, { logger: globalThis.logger });
         expect(result).toStrictEqual(example.want.result);
 
         // Additional LLM assertion to validate the boolean result makes sense
@@ -57,7 +58,8 @@ describe('Bool verblet', () => {
       Should we deploy this change to production?
     `;
 
-      const result = await bool(complexQuestion);
+      // Use global logger if available (set up by test infrastructure in AI mode)
+      const result = await bool(complexQuestion, { logger: globalThis.logger });
 
       // Traditional assertion
       expect(typeof result).toBe('boolean');

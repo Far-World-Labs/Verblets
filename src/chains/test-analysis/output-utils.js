@@ -152,13 +152,25 @@ const COLORS = {
   RED: '\x1b[31m',
   GREEN: '\x1b[32m',
   YELLOW: '\x1b[33m',
-  GRAY: '\x1b[90m', // #444444 equivalent
+  GRAY: '\x1b[90m', // Dark gray
+  LIGHT_GRAY: '\x1b[37m', // Light gray
   BG_GREEN: '\x1b[42m',
   BG_RED: '\x1b[41m',
   BG_YELLOW: '\x1b[43m',
   WHITE: '\x1b[37m',
+  DIM: '\x1b[2m',
+  BOLD: '\x1b[1m',
   RESET: '\x1b[0m',
 };
+
+// Color helper functions
+export const red = (text) => `${COLORS.RED}${text}${COLORS.RESET}`;
+export const green = (text) => `${COLORS.GREEN}${text}${COLORS.RESET}`;
+export const yellow = (text) => `${COLORS.YELLOW}${text}${COLORS.RESET}`;
+export const gray = (text) => `${COLORS.LIGHT_GRAY}${text}${COLORS.RESET}`;
+export const darkGray = (text) => `${COLORS.GRAY}${text}${COLORS.RESET}`;
+export const dim = (text) => `${COLORS.DIM}${text}${COLORS.RESET}`;
+export const bold = (text) => `${COLORS.BOLD}${text}${COLORS.RESET}`;
 
 export const formatTestSummary = (name, passed, total, avgDuration, skipped = 0) => {
   // Calculate failures
@@ -183,29 +195,66 @@ export const formatTestSummary = (name, passed, total, avgDuration, skipped = 0)
 };
 
 // Unicode box drawing characters
-const BOX = {
+export const BOX = {
   topLeft: '┌',
   topRight: '┐',
   bottomLeft: '└',
   bottomRight: '┘',
   horizontal: '─',
   vertical: '│',
+  verticalRight: '├',
+  verticalLeft: '┤',
+  horizontalDown: '┬',
+  horizontalUp: '┴',
+  cross: '┼',
 };
 
-export const createBoxedCode = (code, indent = LAYOUT.CONTENT_INDENT) => {
+// Status badges (background colors with bold white text)
+export const badges = {
+  pass: () => `${COLORS.BG_GREEN}${COLORS.BOLD} PASS ${COLORS.RESET}`,
+  fail: () => `${COLORS.BG_RED}${COLORS.BOLD} FAIL ${COLORS.RESET}`,
+  test: () => ' TEST ',
+  skip: () => `${COLORS.BG_YELLOW}${COLORS.BOLD} SKIP ${COLORS.RESET}`,
+};
+
+// Helper to strip ANSI codes for length calculation
+const stripAnsi = (str) => {
+  // eslint-disable-next-line no-control-regex
+  return str.replace(/\x1b\[[0-9;]*m/g, '');
+};
+
+// Default highlighter - highlights lines starting with '>'
+const defaultHighlighter = (line) => {
+  if (line.trim().startsWith('>')) {
+    // Highlight error lines in yellow
+    return yellow(line);
+  }
+  return line;
+};
+
+export const createBoxedCode = (code, indent = LAYOUT.CONTENT_INDENT, options = {}) => {
   if (!code) return '';
+
+  const { highlighter = defaultHighlighter } = options;
 
   const maxContentWidth = getBoxContentWidth();
   const lines = code.split('\n');
-  const contentWidth = Math.min(Math.max(...lines.map((l) => l.length)), maxContentWidth);
+
+  // Calculate width based on visible characters (without ANSI codes)
+  const contentWidth = Math.min(
+    Math.max(...lines.map((l) => stripAnsi(l).length)),
+    maxContentWidth
+  );
 
   const result = [];
   result.push(indent + BOX.topLeft + BOX.horizontal.repeat(contentWidth + 2) + BOX.topRight);
 
   for (const line of lines) {
-    const truncated = line.substring(0, contentWidth);
-    const padding = ' '.repeat(Math.max(0, contentWidth - truncated.length));
-    result.push(`${indent}${BOX.vertical} ${truncated}${padding} ${BOX.vertical}`);
+    // Apply highlighting
+    const highlightedLine = highlighter(line);
+    const visibleLength = stripAnsi(line).length;
+    const padding = ' '.repeat(Math.max(0, contentWidth - visibleLength));
+    result.push(`${indent}${BOX.vertical} ${highlightedLine}${padding} ${BOX.vertical}`);
   }
 
   result.push(indent + BOX.bottomLeft + BOX.horizontal.repeat(contentWidth + 2) + BOX.bottomRight);
