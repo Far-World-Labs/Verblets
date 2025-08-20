@@ -107,10 +107,22 @@ import { CompletionTrackingProcessor } from './processors/completion-tracking-pr
 import { DiagnosticProcessor } from './processors/diagnostic-processor.js';
 import SuiteDetectionProcessor from './processors/suite-detection-processor.js';
 import { SuiteOutputProcessor } from './processors/suite-output-processor.js';
+import { DetailsProcessor } from './processors/details-processor.js';
+import { RunSeparatorProcessor } from './processors/run-separator-processor.js';
 
 // Pure helper functions
 function shouldProcessEvents(config) {
   return config?.aiMode;
+}
+
+function hasTestFilter() {
+  const args = process.argv;
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === '-t' || args[i] === '--testNamePattern') {
+      return true;
+    }
+  }
+  return false;
 }
 
 // Pure predicates
@@ -254,6 +266,7 @@ export default class TestAnalysisReporter {
     // Now emit run-end event
     await this.reader.buffer.push({
       event: 'run-end',
+      runId: this.currentRunId,
       timestamp: new Date().toISOString(),
       reason,
     });
@@ -314,15 +327,25 @@ export default class TestAnalysisReporter {
   // ===================================
 
   async initializeProcessors(ringBuffer) {
-    // Create and initialize processors based on env flags
-    const processors = [
-      new FirstFailureProcessor({ ringBuffer }),
-      new SuiteOutputProcessor({ ringBuffer }), // Outputs suite summaries as they complete
-      new CompletionTrackingProcessor({ ringBuffer }),
-      new DiagnosticProcessor({ ringBuffer }),
-      new SuiteDetectionProcessor(ringBuffer),
-      // Add more processors here as they're created
-    ];
+    const isTestFilterMode = hasTestFilter();
+
+    // Create processors - we'll decide which to enable based on mode
+    const processors = [];
+
+    // Always include these processors when in AI mode
+    processors.push(new RunSeparatorProcessor({ ringBuffer }));
+    processors.push(new FirstFailureProcessor({ ringBuffer }));
+    processors.push(new CompletionTrackingProcessor({ ringBuffer }));
+    processors.push(new DiagnosticProcessor({ ringBuffer }));
+    processors.push(new SuiteDetectionProcessor(ringBuffer));
+
+    if (isTestFilterMode) {
+      // In test filter mode, use DetailsProcessor instead of SuiteOutputProcessor
+      processors.push(new DetailsProcessor({ ringBuffer }));
+    } else {
+      // In suite mode, use SuiteOutputProcessor
+      processors.push(new SuiteOutputProcessor({ ringBuffer }));
+    }
 
     // Initialize enabled processors
     for (const processor of processors) {

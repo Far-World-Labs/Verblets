@@ -16,8 +16,8 @@ export class CompletionTrackingProcessor extends BaseProcessor {
       ringBuffer,
     });
 
-    this.currentRunId = null;
-    this.runStartTime = null;
+    this.currentRunId = undefined;
+    this.runStartTime = undefined;
     this.runEnded = false;
     this.statusShown = false;
   }
@@ -34,9 +34,13 @@ export class CompletionTrackingProcessor extends BaseProcessor {
   handleRunEnd(_log) {
     this.runEnded = true;
 
+    // Capture current run ID for validation
+    const runId = this.currentRunId;
+
     // Wait for suites to finish outputting (they have 500ms debounce)
     const timer = setTimeout(async () => {
-      if (!this.statusShown) {
+      // Only show status if still in the same run
+      if (this.currentRunId === runId && !this.statusShown) {
         await this.showStatus();
       }
     }, 1000);
@@ -54,8 +58,11 @@ export class CompletionTrackingProcessor extends BaseProcessor {
 
       // If still waiting for suites, schedule an update
       if (!stats.allComplete) {
+        const runId = this.currentRunId;
+
         const updateTimer = setTimeout(async () => {
-          if (this.runEnded) {
+          // Only update if still in the same run
+          if (this.currentRunId === runId && this.runEnded) {
             this.statusShown = false; // Reset to allow showing again
             await this.showStatus();
           }
