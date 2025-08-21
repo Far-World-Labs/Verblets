@@ -1,0 +1,172 @@
+{
+  "type": "object",
+  "properties": {
+    "purpose": {
+      "type": "string",
+      "description": "Primary purpose and main functionality of the module (1-2 sentences, max 200 chars)"
+    },
+    "capabilities": {
+      "type": "array",
+      "items": { 
+        "type": "string",
+        "maxLength": 100
+      },
+      "maxItems": 5,
+      "description": "Key capabilities and features (up to 5 items, each max 100 chars)"
+    },
+    "workingState": {
+      "type": "object",
+      "properties": {
+        "assessment": {
+          "type": "string",
+          "enum": ["healthy", "needs_attention", "critical"],
+          "description": "Overall health assessment for filtering/sorting"
+        },
+        "details": {
+          "type": "string",
+          "maxLength": 300,
+          "description": "Detailed assessment of module health (2-3 sentences, max 300 chars)"
+        },
+        "testCoverage": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Percentage of functionality covered by tests"
+        }
+      },
+      "required": ["assessment", "details", "testCoverage"]
+    },
+    "concerns": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z_]+_\\d+$",
+            "description": "Unique identifier for tracking (e.g., error_handling_1)"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["error_handling", "performance", "design", "testing", "documentation", "integration", "security"],
+            "description": "Category for filtering concerns"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "Specific issue description (max 200 chars)"
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["low", "medium", "high"],
+            "description": "For prioritization and filtering"
+          },
+          "sourceFile": {
+            "type": "string",
+            "description": "Which file this concern relates to (optional)"
+          },
+          "fromAiMd": {
+            "type": "boolean",
+            "description": "Whether this concern was mentioned in AI.md"
+          }
+        },
+        "required": ["id", "type", "description", "severity", "fromAiMd"]
+      },
+      "maxItems": 10,
+      "description": "Issues needing attention (max 10, prioritize those from AI.md)"
+    },
+    "integrations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "module": { 
+            "type": "string",
+            "description": "Module path (e.g., 'src/lib/chatgpt')"
+          },
+          "type": { 
+            "type": "string",
+            "enum": ["imports", "exports", "extends", "implements"],
+            "description": "Integration type for dependency graph"
+          },
+          "frequency": {
+            "type": "string",
+            "enum": ["core", "frequent", "occasional"],
+            "description": "How often this integration is used"
+          },
+          "apis": {
+            "type": "array",
+            "items": { "type": "string" },
+            "maxItems": 3,
+            "description": "Specific functions/classes used (max 3)"
+          }
+        },
+        "required": ["module", "type", "frequency"]
+      },
+      "maxItems": 8,
+      "description": "Key integration points (max 8, focus on most important)"
+    },
+    "recommendations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^rec_\\d+$",
+            "description": "Unique ID for tracking (e.g., rec_1)"
+          },
+          "action": { 
+            "type": "string",
+            "maxLength": 150,
+            "description": "Specific action to take (max 150 chars)"
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["low", "medium", "high"],
+            "description": "For sorting and filtering"
+          },
+          "category": {
+            "type": "string",
+            "enum": ["fix", "refactor", "test", "document", "investigate"],
+            "description": "Type of action for grouping"
+          },
+          "rationale": { 
+            "type": "string",
+            "maxLength": 100,
+            "description": "Brief reason (max 100 chars, optional)"
+          },
+          "relatedConcern": {
+            "type": "string",
+            "description": "ID of related concern if applicable"
+          }
+        },
+        "required": ["id", "action", "priority", "category"]
+      },
+      "maxItems": 5,
+      "description": "Top 5 actionable items, sorted by priority"
+    },
+    "metrics": {
+      "type": "object",
+      "properties": {
+        "linesOfCode": {
+          "type": "integer",
+          "description": "Approximate lines of code"
+        },
+        "complexity": {
+          "type": "string",
+          "enum": ["low", "medium", "high"],
+          "description": "Overall complexity assessment"
+        },
+        "llmUsage": {
+          "type": "string",
+          "enum": ["none", "light", "moderate", "heavy"],
+          "description": "How much the module uses LLMs"
+        }
+      },
+      "description": "Quantitative metrics for sorting/filtering"
+    }
+  },
+  "required": ["purpose", "workingState", "concerns", "recommendations"],
+  "additionalProperties": false
+}
