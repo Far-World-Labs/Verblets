@@ -12,39 +12,35 @@ import * as walk from 'acorn-walk';
 export function extractImports(code, filePath) {
   const imports = [];
 
-  try {
-    const ast = parse(code, {
-      sourceType: 'module',
-      ecmaVersion: 'latest',
-      allowHashBang: true,
-    });
+  const ast = parse(code, {
+    sourceType: 'module',
+    ecmaVersion: 'latest',
+    allowHashBang: true,
+  });
 
-    walk.simple(ast, {
-      ImportDeclaration(node) {
-        const source = node.source.value;
-        if (source.startsWith('.')) {
+  walk.simple(ast, {
+    ImportDeclaration(node) {
+      const source = node.source.value;
+      if (source.startsWith('.')) {
+        const importPath = resolve(dirname(filePath), source);
+        imports.push(importPath);
+      }
+    },
+    CallExpression(node) {
+      // Handle require() calls
+      if (
+        node.callee.name === 'require' &&
+        node.arguments[0] &&
+        node.arguments[0].type === 'Literal'
+      ) {
+        const source = node.arguments[0].value;
+        if (typeof source === 'string' && source.startsWith('.')) {
           const importPath = resolve(dirname(filePath), source);
           imports.push(importPath);
         }
-      },
-      CallExpression(node) {
-        // Handle require() calls
-        if (
-          node.callee.name === 'require' &&
-          node.arguments[0] &&
-          node.arguments[0].type === 'Literal'
-        ) {
-          const source = node.arguments[0].value;
-          if (typeof source === 'string' && source.startsWith('.')) {
-            const importPath = resolve(dirname(filePath), source);
-            imports.push(importPath);
-          }
-        }
-      },
-    });
-  } catch {
-    // Parse error, return empty imports
-  }
+      }
+    },
+  });
 
   return imports;
 }
@@ -56,32 +52,34 @@ export function extractImports(code, filePath) {
  */
 export async function buildDependencyGraph(files) {
   const dependencies = new Map();
+  const fileSet = new Set(files);
 
-  for (const filePath of files) {
-    if (!filePath.endsWith('.js')) {
-      dependencies.set(filePath, []);
-      continue;
-    }
+  // Process non-JS files first
+  const nonJsFiles = files.filter((f) => !f.endsWith('.js'));
+  nonJsFiles.forEach((f) => dependencies.set(f, []));
 
-    try {
-      const content = await readFile(filePath, 'utf-8');
-      const imports = extractImports(content, filePath);
+  // Process JS files in parallel
+  const jsFiles = files.filter((f) => f.endsWith('.js'));
+  const results = await Promise.all(
+    jsFiles.map(async (filePath) => {
+      try {
+        const content = await readFile(filePath, 'utf-8');
+        const imports = extractImports(content, filePath);
 
-      // Normalize import paths (add .js if missing) and filter to files in our set
-      const normalizedImports = imports
-        .map((imp) => {
-          if (!imp.endsWith('.js') && !imp.endsWith('.json')) {
-            return `${imp}.js`;
-          }
-          return imp;
-        })
-        .filter((imp) => files.includes(imp));
+        // Normalize and filter imports efficiently
+        const normalizedImports = imports
+          .map((imp) => (!imp.endsWith('.js') && !imp.endsWith('.json') ? `${imp}.js` : imp))
+          .filter((imp) => fileSet.has(imp));
 
-      dependencies.set(filePath, normalizedImports);
-    } catch {
-      dependencies.set(filePath, []);
-    }
-  }
+        return [filePath, normalizedImports];
+      } catch {
+        return [filePath, []];
+      }
+    })
+  );
+
+  // Build map from results
+  results.forEach(([file, deps]) => dependencies.set(file, deps));
 
   return dependencies;
 }

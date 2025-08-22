@@ -10,49 +10,43 @@ import { extractImports } from '../topological-imports/index.js';
  * @returns {Promise<string[]>} New files discovered
  */
 async function processBatch(files, allowedPaths, allFiles, processed) {
-  const newFiles = [];
+  const jsFiles = files.filter((file) => !processed.has(file) && file.endsWith('.js'));
 
-  await Promise.all(
-    files.map(async (file) => {
-      // Skip if already processed or not JS
-      if (processed.has(file) || !file.endsWith('.js')) return;
+  const results = await Promise.all(
+    jsFiles.map(async (file) => {
+      const content = await readFile(file, 'utf-8');
+      const imports = extractImports(content, file);
+      const newImports = [];
 
-      try {
-        const content = await readFile(file, 'utf-8');
-        const imports = extractImports(content, file);
+      for (let importPath of imports) {
+        // Normalize import path
+        if (!importPath.endsWith('.js') && !importPath.endsWith('.json')) {
+          importPath = `${importPath}.js`;
+        }
 
-        for (let importPath of imports) {
-          // Normalize import path
-          if (!importPath.endsWith('.js') && !importPath.endsWith('.json')) {
-            importPath = `${importPath}.js`;
-          }
+        // Skip if already found
+        if (allFiles.has(importPath)) continue;
 
-          // Skip if already found
-          if (allFiles.has(importPath)) continue;
+        // Check if within allowed paths
+        const isAllowed =
+          allowedPaths.length === 0 ||
+          allowedPaths.some(
+            (allowed) => importPath.includes(allowed) && !importPath.includes('node_modules')
+          );
 
-          // Check if within allowed paths
-          const isAllowed =
-            allowedPaths.length === 0 ||
-            allowedPaths.some(
-              (allowed) => importPath.includes(allowed) && !importPath.includes('node_modules')
-            );
-
-          if (isAllowed) {
-            try {
-              await stat(importPath);
-              newFiles.push(importPath);
-            } catch {
-              // File doesn't exist
-            }
+        if (isAllowed) {
+          const stats = await stat(importPath);
+          if (stats.isFile()) {
+            newImports.push(importPath);
           }
         }
-      } catch {
-        // Error reading file
       }
+
+      return newImports;
     })
   );
 
-  return newFiles;
+  return results.flat();
 }
 
 /**
