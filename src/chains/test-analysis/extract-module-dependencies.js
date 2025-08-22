@@ -1,6 +1,7 @@
 import chatGPT from '../../lib/chatgpt/index.js';
 import { readFile } from 'fs/promises';
 import { join } from 'path';
+import MODULE_DEPENDENCIES_SCHEMA from './schemas/module-dependencies-schema.json';
 
 /**
  * Extract explicitly listed module dependencies from AI.md file
@@ -28,20 +29,7 @@ Do NOT infer or guess dependencies from the text.
 
 If no dependencies are explicitly listed, return an empty array.`;
 
-    const schema = {
-      type: 'object',
-      properties: {
-        additionalModulePaths: {
-          type: 'array',
-          items: {
-            type: 'string',
-          },
-          description: 'Explicitly listed module paths from the AI.md file',
-        },
-      },
-      required: ['additionalModulePaths'],
-      additionalProperties: false,
-    };
+    const schema = MODULE_DEPENDENCIES_SCHEMA;
 
     const result = await chatGPT(prompt, {
       modelOptions: {

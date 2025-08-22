@@ -1,0 +1,14 @@
+{
+  "type": "object",
+  "properties": {
+    "additionalModulePaths": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Explicitly listed module paths from the AI.md file"
+    }
+  },
+  "required": ["additionalModulePaths"],
+  "additionalProperties": false
+}

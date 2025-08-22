@@ -25,6 +25,7 @@ export async function gatherModuleContext(moduleDir, options = {}) {
     files: [],
     hasAIGuide: false,
     dependencyCount: 0,
+    fileTypeBreakdown: {},
   };
 
   // Find all .js and .md files in the module directory
@@ -126,6 +127,10 @@ export async function gatherModuleContext(moduleDir, options = {}) {
     });
     metadata.totalSize += fileData.size;
     metadata.fileCount++;
+
+    // Track file type breakdown
+    const extension = fileData.fileName.split('.').pop().toLowerCase();
+    metadata.fileTypeBreakdown[extension] = (metadata.fileTypeBreakdown[extension] || 0) + 1;
 
     if (fileData.fileName === 'AI.md' && fileData.isMainModule) {
       metadata.hasAIGuide = true;
