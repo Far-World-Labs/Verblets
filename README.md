@@ -1,13 +1,12 @@
 # Verblets
 
-Verblets /ˈvaɪb.ləts/ is a utility library of AI-powered functions for creating new kinds of applications. Verblets are composable and reusable while constraining outputs to ensure software reliability. Many of the API interfaces are familiar to developers but support intelligent operations in ways classical analogues do not, sometimes via complex algorithms that have surprising new capabilities.
+Verblets /ˈvaɪb.ləts/ is a utility library of AI-powered functions for creating new kinds of applications. Verblets are composable and reusable while constraining outputs to ensure software reliability. Many of the API interfaces are familiar to developers but support intelligent operations in ways classical analogues do not, sometimes via complex algorithms that have surprising results.
 
 Instead of mimicking humans in order to automate tasks, an AI standard library *extends* people in *new* ways via intelligent software applications that are built on those utilities. Top-down AI approaches to automate people lead to forgetful, error-prone NPC-like replicas that can't be shaped the way software can. By contrast, AI-based software tools lead to new roles and new ways of working together for us humans.
 
 Why the name? Verblets are verbally based: they're LLM-powered; and you can think of functions as verbs.
 
 It's not clear how many functions an AI standard library should have. This is uncharted terratory. The adaptive nature of LLMs suggests AI standard libraries can be much larger than classical standard libraries, and people prefer to have large, flexible vocabularies. So please suggest or introduce new verblets!
-
 
 ## Repository Guide
 
