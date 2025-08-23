@@ -1,15 +1,19 @@
 # Verblets
 
-Verblets is a utility library that provides AI-powered functions for transforming text and structured data into reliable outputs. Each function leverages language model intelligence while constraining outputs to ensure software reliability.
+Verblets /ˈvaɪb.ləts/ is a utility library of AI-powered functions for transforming text and structured data into reliable outputs. Functions are composable and reusable while constraining outputs to ensure software reliability. 
 
-The chief motivation is that modular tools can augment human capability rather than replacing it, in contrast to top-down AI strategies. Algorithmic orchestration enables a new class of software tools that combine structured execution with targeted intelligence to solve problems that exceed context windows, require coordination across multiple AI functions, and benefit from immediate, composable integration of reasoning at strategic points.
+The API interfaces are familiar but support intelligent operations over text and data instead, sometimes via complex algorithms. It's not clear how many functions an AI standard library should have. This is uncharted terratory. The fuzzy and adaptive nature of LLMs suggests AI standard libraries can be much larger than classical standard libraries, and humans prefer to have large, flexible vocabularies. So please suggest or introduce new verblets!
+
+Instead of mimicking humans in order to automate tasks, an AI standard library surfaces operational capability that *extends* people in *new* ways via intelligent software applications. Top-down AI approaches to automate people lead to forgetful, error-prone NPC-like replicas. By contrast, powerful new tools lead to new roles and new ways of working together for us humans.
+
+Why the name? Verblets are verbally based: they're LLM-powered; and you can think of functions as verbs.
 
 ## Repository Guide
 
 ### Quick Links
 
-- [Chains](./src/chains/) - AI-powered workflows and operations
-- [Verblets](./src/verblets/) - Core AI utility functions
+- [Chains](./src/chains/) - Prompt chains and algorithms based on LLMs
+- [Verblets](./src/verblets/) - Core AI utility functions. At most a single LLM call, no prompt chains. 
 - [Library Helpers](./src/lib/) - Utility functions and wrappers
 - [Prompts](./src/prompts/) - Reusable prompt templates
 - [JSON Schemas](./src/json-schemas/) - Data validation schemas
