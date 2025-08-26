@@ -8,11 +8,14 @@ import { BaseProcessor } from './base-processor.js';
 import { analyzeSuiteStates } from './suite-tracking-utils.js';
 
 export class CompletionTrackingProcessor extends BaseProcessor {
-  constructor({ ringBuffer }) {
+  constructor({ ringBuffer, policy }) {
+    // Disable when in test filter mode (DetailsProcessor handles it)
+    const isEnabled = !policy?.hasTestFilter;
+
     super({
       name: 'CompletionTracking',
-      alwaysEnabled: true,
-      processAsync: true,
+      alwaysEnabled: isEnabled,
+      processAsync: isEnabled,
       ringBuffer,
     });
 

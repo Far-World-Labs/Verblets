@@ -1,0 +1,6 @@
+{
+  "description": "Show errors if any tests failed, display test failures, show test errors, display failed tests, show error messages",
+  "properties": {},
+  "required": [],
+  "type": "object"
+}

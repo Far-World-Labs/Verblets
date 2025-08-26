@@ -9,22 +9,29 @@ import categorySamples from '../../chains/category-samples/index.js';
 import centralTendencyChain from '../../chains/central-tendency/index.js';
 import { longTestTimeout } from '../../constants/common.js';
 import vitestAiExpect from '../../chains/expect/index.js';
-import { wrapIt, wrapExpect, wrapAiExpect } from '../../chains/test-analysis/test-wrappers.js';
+import {
+  makeWrappedIt,
+  makeWrappedExpect,
+  makeWrappedAiExpect,
+} from '../../chains/test-analysis/test-wrappers.js';
 import { getConfig } from '../../chains/test-analysis/config.js';
 
 //
 // Setup AI test wrappers
 //
 const config = getConfig();
-const it = config?.aiMode
-  ? wrapIt(vitestIt, { baseProps: { suite: 'centralTendency examples' } })
-  : vitestIt;
-const expect = config?.aiMode
-  ? wrapExpect(vitestExpect, { baseProps: { suite: 'centralTendency examples' } })
-  : vitestExpect;
-const aiExpect = config?.aiMode
-  ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'centralTendency examples' } })
-  : vitestAiExpect;
+const suite = 'centralTendency examples';
+
+const it = makeWrappedIt(vitestIt, suite, config);
+const expect = makeWrappedExpect(vitestExpect, suite, config);
+const aiExpect = makeWrappedAiExpect(vitestAiExpect, suite, config);
+
+// Higher-order function to create test-specific loggers
+const makeTestLogger = (testName) => {
+  return config?.aiMode && globalThis.logger
+    ? globalThis.logger.child({ suite, testName })
+    : undefined;
+};
 
 //
 // Test suite
@@ -39,10 +46,12 @@ describe('centralTendency examples', () => {
       const config = {
         context: 'Evaluate based on typical bird characteristics and behavior',
         coreFeatures: ['feathers', 'beak', 'lays eggs', 'flight'],
+        logger: makeTestLogger('evaluates bird centrality'),
       };
 
       // Test prototypical bird
       const robinResult = await centralTendency('robin', birdSeeds, config);
+
       expect(robinResult).toHaveProperty('score');
       expect(robinResult).toHaveProperty('reason');
       expect(robinResult).toHaveProperty('confidence');
@@ -143,6 +152,7 @@ describe('centralTendency examples', () => {
         coreFeatures: ['warm-blooded', 'hair/fur', 'mammary glands', 'live birth'],
         chunkSize: 3,
         maxAttempts: 2,
+        logger: makeTestLogger('processes bulk items'),
       };
 
       const results = await centralTendencyChain(testAnimals, mammalSeeds, config);

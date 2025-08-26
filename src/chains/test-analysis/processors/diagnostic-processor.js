@@ -28,7 +28,7 @@ const parseDebugModes = () => {
 };
 
 export class DiagnosticProcessor extends BaseProcessor {
-  constructor({ ringBuffer }) {
+  constructor({ ringBuffer, policy: _policy }) {
     const debugModes = parseDebugModes();
 
     super({

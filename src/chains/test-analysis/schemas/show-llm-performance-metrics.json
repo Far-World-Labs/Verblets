@@ -1,0 +1,7 @@
+{
+  "name": "showLLMPerformanceMetrics",
+  "description": "Display LLM performance metrics, show LLM call counts, display timing statistics, show cache hit rates, display model performance",
+  "type": "object",
+  "properties": {},
+  "required": []
+}

@@ -1,0 +1,7 @@
+{
+  "name": "analyzeModule",
+  "description": "Provide comprehensive module analysis",
+  "type": "object",
+  "properties": {},
+  "required": []
+}

@@ -1,6 +1,7 @@
 import map from '../map/index.js';
 import { CENTRAL_TENDENCY_PROMPT } from '../../verblets/central-tendency-lines/index.js';
 import { centralTendencyResultsJsonSchema } from './schemas.js';
+import { createLifecycleLogger } from '../../lib/lifecycle-logger/index.js';
 
 const centralTendencyResponseFormat = {
   type: 'json_schema',
@@ -61,27 +62,62 @@ export default async function centralTendency(items, seedItems, config = {}) {
     throw new Error('seedItems must be a non-empty array');
   }
 
-  const { chunkSize = 5, maxAttempts = 3, ...otherConfig } = config;
+  const { chunkSize = 5, maxAttempts = 3, logger, ...otherConfig } = config;
 
-  // Build instructions for the mapper
-  const instructions = buildCentralTendencyInstructions(seedItems, otherConfig);
+  // Create lifecycle logger for the chain
+  const lifecycleLogger = createLifecycleLogger(logger, 'central-tendency-chain');
 
-  // Use map to handle all the complexity
-  const results = await map(items, instructions, {
-    chunkSize,
-    maxAttempts,
-    responseFormat: centralTendencyResponseFormat,
+  // Log the initial input to the chain
+  lifecycleLogger.logStart({
+    items,
+    seedItems,
+    context: otherConfig.context,
+    coreFeatures: otherConfig.coreFeatures,
+    itemCount: items.length,
+    seedCount: seedItems.length,
   });
 
-  // Extract results from the structured output
-  // Map returns an array where each element is the response for that item
-  return results.map((result) => {
-    if (result === undefined) {
-      return undefined;
-    }
-    // With structured output, we get objects directly
-    return result;
-  });
+  try {
+    // Build instructions for the mapper
+    const instructions = buildCentralTendencyInstructions(seedItems, otherConfig);
+
+    // Log instruction construction
+    lifecycleLogger.logConstruction(instructions, {
+      instructionLength: instructions.length,
+      chunkSize,
+      maxAttempts,
+    });
+
+    // Use map to handle all the complexity
+    const results = await map(items, instructions, {
+      chunkSize,
+      maxAttempts,
+      responseFormat: centralTendencyResponseFormat,
+      logger: lifecycleLogger, // Pass logger to map for its own logging
+    });
+
+    // Extract results from the structured output
+    // Map returns an array where each element is the response for that item
+    const finalResults = results.map((result) => {
+      if (result === undefined) {
+        return undefined;
+      }
+      // With structured output, we get objects directly
+      return result;
+    });
+
+    // Log the final output from the chain
+    lifecycleLogger.logResult(finalResults, {
+      totalItems: finalResults.length,
+      successCount: finalResults.filter((r) => r !== undefined).length,
+      failureCount: finalResults.filter((r) => r === undefined).length,
+    });
+
+    return finalResults;
+  } catch (error) {
+    lifecycleLogger.logError(error);
+    throw error;
+  }
 }
 
 // Export the retry version as well for consistency with other bulk processors

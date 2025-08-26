@@ -3,17 +3,26 @@ import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
 import bool from './index.js';
 import vitestAiExpect from '../../chains/expect/index.js';
 import { longTestTimeout } from '../../constants/common.js';
-import { wrapIt, wrapExpect, wrapAiExpect } from '../../chains/test-analysis/test-wrappers.js';
+import {
+  makeWrappedIt,
+  makeWrappedExpect,
+  makeWrappedAiExpect,
+} from '../../chains/test-analysis/test-wrappers.js';
 import { getConfig } from '../../chains/test-analysis/config.js';
 
 const config = getConfig();
-const it = config?.aiMode ? wrapIt(vitestIt, { baseProps: { suite: 'Bool verblet' } }) : vitestIt;
-const expect = config?.aiMode
-  ? wrapExpect(vitestExpect, { baseProps: { suite: 'Bool verblet' } })
-  : vitestExpect;
-const aiExpect = config?.aiMode
-  ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'Bool verblet' } })
-  : vitestAiExpect;
+const suite = 'Bool verblet';
+
+const it = makeWrappedIt(vitestIt, suite, config);
+const expect = makeWrappedExpect(vitestExpect, suite, config);
+const aiExpect = makeWrappedAiExpect(vitestAiExpect, suite, config);
+
+// Higher-order function to create test-specific loggers
+const makeTestLogger = (testName) => {
+  return config?.aiMode && globalThis.logger
+    ? globalThis.logger.child({ suite, testName })
+    : undefined;
+};
 
 const examples = [
   {
@@ -35,8 +44,8 @@ describe('Bool verblet', () => {
     it(
       `${example.inputs.text}`,
       async () => {
-        // Use global logger if available (set up by test infrastructure in AI mode)
-        const result = await bool(example.inputs.text, { logger: globalThis.logger });
+        const logger = makeTestLogger(example.inputs.text);
+        const result = await bool(example.inputs.text, { logger });
         expect(result).toStrictEqual(example.want.result);
 
         // Additional LLM assertion to validate the boolean result makes sense
@@ -58,8 +67,8 @@ describe('Bool verblet', () => {
       Should we deploy this change to production?
     `;
 
-      // Use global logger if available (set up by test infrastructure in AI mode)
-      const result = await bool(complexQuestion, { logger: globalThis.logger });
+      const logger = makeTestLogger('complex contextual decisions');
+      const result = await bool(complexQuestion, { logger });
 
       // Traditional assertion
       expect(typeof result).toBe('boolean');

@@ -2,19 +2,26 @@ import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
 import { longTestTimeout } from '../../constants/common.js';
 import vitestAiExpect from '../expect/index.js';
 import centralTendency from './index.js';
-import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
+import {
+  makeWrappedIt,
+  makeWrappedExpect,
+  makeWrappedAiExpect,
+} from '../test-analysis/test-wrappers.js';
 import { getConfig } from '../test-analysis/config.js';
 
 const config = getConfig();
-const it = config?.aiMode
-  ? wrapIt(vitestIt, { baseProps: { suite: 'Central-tendency chain' } })
-  : vitestIt;
-const expect = config?.aiMode
-  ? wrapExpect(vitestExpect, { baseProps: { suite: 'Central-tendency chain' } })
-  : vitestExpect;
-const aiExpect = config?.aiMode
-  ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'Central-tendency chain' } })
-  : vitestAiExpect;
+const suite = 'Central-tendency chain';
+
+const it = makeWrappedIt(vitestIt, suite, config);
+const expect = makeWrappedExpect(vitestExpect, suite, config);
+const aiExpect = makeWrappedAiExpect(vitestAiExpect, suite, config);
+
+// Higher-order function to create test-specific loggers
+const makeTestLogger = (testName) => {
+  return config?.aiMode && globalThis.logger
+    ? globalThis.logger.child({ suite, testName })
+    : undefined;
+};
 
 describe('Bulk Central Tendency Chain', () => {
   it(
@@ -23,8 +30,10 @@ describe('Bulk Central Tendency Chain', () => {
       const items = ['apple', 'orange', 'durian', 'jackfruit', 'banana'];
       const seedItems = ['apple', 'orange', 'banana', 'grape', 'strawberry'];
 
+      const logger = makeTestLogger('processes multiple fruit items');
       const results = await centralTendency(items, seedItems, {
         context: 'Common fruits found in grocery stores',
+        logger,
       });
 
       expect(results).toHaveLength(5);
@@ -72,8 +81,10 @@ describe('Bulk Central Tendency Chain', () => {
       const items = ['robin', 'eagle', 'penguin', 'ostrich'];
       const seedItems = ['robin', 'sparrow', 'cardinal', 'blue jay'];
 
+      const logger = makeTestLogger('demonstrates context effects');
       const results = await centralTendency(items, seedItems, {
         context: 'Small songbirds commonly seen in backyards',
+        logger,
       });
 
       expect(results).toHaveLength(4);
@@ -94,8 +105,10 @@ describe('Bulk Central Tendency Chain', () => {
       const items = ['cat', 'dog', 'elephant'];
       const seedItems = ['cat', 'dog', 'rabbit', 'hamster'];
 
+      const logger = makeTestLogger('manages retry logic');
       const results = await centralTendency(items, seedItems, {
         maxAttempts: 2,
+        logger,
       });
 
       expect(results).toHaveLength(3);
@@ -130,8 +143,10 @@ describe('Bulk Central Tendency Chain', () => {
       const items = Array.from({ length: 15 }, (_, i) => `item${i + 1}`);
       const seedItems = ['item1', 'item2', 'item3', 'item4', 'item5'];
 
+      const logger = makeTestLogger('processes large batches');
       const results = await centralTendency(items, seedItems, {
         chunkSize: 3,
+        logger,
       });
 
       expect(results).toHaveLength(15);

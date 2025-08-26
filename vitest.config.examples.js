@@ -5,8 +5,9 @@ import { truthyValues, falsyValues } from './src/constants/common.js';
 // Check if AI mode should be enabled (matches config.js logic)
 const aiLogsOnly = process.env.VERBLETS_AI_LOGS_ONLY && truthyValues.includes(process.env.VERBLETS_AI_LOGS_ONLY);
 const aiPerSuite = process.env.VERBLETS_AI_PER_SUITE && truthyValues.includes(process.env.VERBLETS_AI_PER_SUITE);
+const aiDetail = process.env.VERBLETS_AI_DETAIL && truthyValues.includes(process.env.VERBLETS_AI_DETAIL);
 // const aiModeEnabled = false; // Temporarily disable to debug hanging tests
-const aiModeEnabled = aiLogsOnly || aiPerSuite;
+const aiModeEnabled = aiLogsOnly || aiPerSuite || aiDetail;
 
 // Config for npm run examples - runs *.examples.js in Node
 export default defineConfig({

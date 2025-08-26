@@ -15,6 +15,9 @@ import scoreResult from './score-result.json';
 import schemaDotOrgPhotograph from './schema-dot-org-photograph.json';
 import schemaDotOrgPlace from './schema-dot-org-place.json';
 
+// Import test analysis intent schemas
+import * as testAnalysisIntents from './test-analysis-intents.js';
+
 // Export schemas
 export {
   intentResult,
@@ -35,6 +38,8 @@ export const schemas = {
   scoreResult,
   schemaDotOrgPhotograph,
   schemaDotOrgPlace,
+  // Add test analysis intents
+  ...testAnalysisIntents,
 };
 
 // Export schema.org schemas separately for convenience

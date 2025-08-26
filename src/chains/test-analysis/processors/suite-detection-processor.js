@@ -2,7 +2,7 @@ import { BaseProcessor } from './base-processor.js';
 import { getConfig } from '../config.js';
 
 export default class SuiteDetectionProcessor extends BaseProcessor {
-  constructor(ringBuffer) {
+  constructor({ ringBuffer, policy: _policy }) {
     super({
       name: 'SuiteDetection',
       alwaysEnabled: true,

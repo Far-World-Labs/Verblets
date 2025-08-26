@@ -16,14 +16,29 @@ const scanFile = (file, code) => {
   const variablesMap = {};
   const importsMap = {};
   const exportsMap = {};
+  const stringsMap = {};
 
   const comments = [];
 
-  const ast = parse(code, {
-    sourceType: 'module',
-    ecmaVersion: 'latest',
-    onComment: comments,
-  });
+  let ast;
+  try {
+    ast = parse(code, {
+      sourceType: 'module',
+      ecmaVersion: 'latest',
+      onComment: comments,
+    });
+  } catch {
+    // Return empty results if parse fails (e.g., for files with unsupported syntax)
+    return {
+      functionsMap,
+      functionsSeen,
+      variablesMap,
+      importsMap,
+      exportsMap,
+      stringsMap,
+      comments: [],
+    };
+  }
 
   const commentsMap = comments.reduce((acc, comment) => {
     const commentNew = { ...comment };
@@ -32,6 +47,38 @@ const scanFile = (file, code) => {
   }, {});
 
   walk.simple(ast, {
+    Literal(node) {
+      // Capture string literals
+      if (typeof node.value === 'string' && node.value.length > 0) {
+        const key = `${node.start}:${node.end}`;
+        stringsMap[key] = {
+          type: 'string',
+          value: node.value,
+          start: node.start,
+          end: node.end,
+          length: node.value.length,
+        };
+      }
+    },
+    TemplateLiteral(node) {
+      // Capture template literals
+      let value = '';
+      for (let i = 0; i < node.quasis.length; i++) {
+        value += node.quasis[i].value.raw;
+        if (i < node.expressions.length) {
+          value += '${...}';
+        }
+      }
+      const key = `${node.start}:${node.end}`;
+      stringsMap[key] = {
+        type: 'template',
+        value,
+        start: node.start,
+        end: node.end,
+        length: value.length,
+        hasExpressions: node.expressions.length > 0,
+      };
+    },
     ImportDeclaration(importNode) {
       const declaration = importNode.specifiers
         .filter((s) => s.type === 'ImportDefaultSpecifier')
@@ -315,6 +362,7 @@ const scanFile = (file, code) => {
     importsMap,
     exportsMap,
     commentsMap,
+    stringsMap,
   };
 };
 

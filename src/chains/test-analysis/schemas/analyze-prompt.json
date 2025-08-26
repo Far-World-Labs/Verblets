@@ -1,0 +1,6 @@
+{
+  "description": "Analyze a specific prompt, enhance prompt, improve prompt, critique prompt, debug prompt",
+  "properties": {},
+  "required": [],
+  "type": "object"
+}

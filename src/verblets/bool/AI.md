@@ -1,5 +1,10 @@
 # Bool Module Development Notes
 
+## Test Focus
+- Show AI outputs from bool decisions
+- Analyze the explain-then-answer pattern effectiveness
+- Show LLM performance metrics
+
 ## Key Innovation: Explain-Then-Answer Pattern
 The `explainAndSeparate` technique forces reasoning before output. This two-step process (explanation → answer) dramatically improves accuracy over direct boolean output.
 

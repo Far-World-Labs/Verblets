@@ -61,6 +61,8 @@ export { default as expect } from './verblets/expect/index.js';
 export { default as expectChain } from './chains/expect/index.js';
 export { default as intent } from './verblets/intent/index.js';
 export { default as llmLogger } from './chains/llm-logger/index.js';
+export { default as makePrompt } from './verblets/phail-forge/index.js'; // Alias for phailForge
+export { default as phailForge } from './verblets/phail-forge/index.js';
 export { default as sentiment } from './verblets/sentiment/index.js';
 export { default as setInterval } from './chains/set-interval/index.js';
 

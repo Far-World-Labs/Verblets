@@ -36,7 +36,9 @@ describe('centralTendency', () => {
 
     expect(chatGPT).toHaveBeenCalledWith(
       expect.stringContaining('Evaluate how central "robin" is among these category members'),
-      { modelOptions: expect.objectContaining({ modelName: 'fastGoodCheap' }) }
+      expect.objectContaining({
+        modelOptions: expect.objectContaining({ modelName: 'fastGoodCheap' }),
+      })
     );
   });
 
@@ -54,9 +56,12 @@ describe('centralTendency', () => {
     });
 
     expect(result.score).toBe(0.75);
-    expect(chatGPT).toHaveBeenCalledWith(expect.any(String), {
-      modelOptions: expect.objectContaining({ modelName: 'fastGoodCheap' }),
-    });
+    expect(chatGPT).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        modelOptions: expect.objectContaining({ modelName: 'fastGoodCheap' }),
+      })
+    );
   });
 
   it('throws error for invalid item', async () => {

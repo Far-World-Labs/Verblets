@@ -19,10 +19,13 @@ function isWatchMode() {
 
 export class RunSeparatorProcessor extends BaseProcessor {
   constructor(options = {}) {
+    // Disable when in test filter mode (DetailsProcessor handles it)
+    const isEnabled = !options.policy?.hasTestFilter;
+
     super({
       name: 'RunSeparator',
-      alwaysEnabled: true,
-      processAsync: true, // Need this to process ring buffer events
+      alwaysEnabled: isEnabled,
+      processAsync: isEnabled, // Need this to process ring buffer events
       ...options,
     });
 

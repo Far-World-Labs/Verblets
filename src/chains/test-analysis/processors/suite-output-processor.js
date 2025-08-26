@@ -8,17 +8,16 @@
 import { BaseProcessor } from './base-processor.js';
 
 export class SuiteOutputProcessor extends BaseProcessor {
-  constructor({ ringBuffer }) {
+  constructor({ ringBuffer, policy }) {
+    // Disable when in test filter mode (DetailsProcessor handles it)
+    const isEnabled = !policy?.hasTestFilter && !process.env.VERBLETS_NO_SUITE_OUTPUT;
+
     super({
       name: 'SuiteOutput',
       ringBuffer,
       processAsync: true,
-      alwaysEnabled: true, // Always enabled unless explicitly disabled
+      alwaysEnabled: isEnabled,
     });
-
-    // Override the enabled flag after super() call
-    // Invert the logic - enabled by default unless env var is set
-    this.enabled = !process.env.VERBLETS_NO_SUITE_OUTPUT;
 
     // Track suites and their test counts
     this.suites = new Map(); // suite -> { started: Set, completed: Set, debounceTimer }
