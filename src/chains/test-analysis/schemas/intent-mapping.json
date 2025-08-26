@@ -1,0 +1,48 @@
+{
+  "description": "Maps user intents to handler functions for test analysis",
+  "mappings": {
+    "show-error": "showError",
+    "showError": "showError",
+    "error": "showError",
+    
+    "analyze-prompt": "analyzePrompt",
+    "analyzePrompt": "analyzePrompt",
+    "prompt": "analyzePrompt",
+    
+    "analyze-function": "analyzeFunction",
+    "analyzeFunction": "analyzeFunction",
+    "function": "analyzeFunction",
+    
+    "show-performance": "showPerformance",
+    "showPerformance": "showPerformance",
+    "showPerf": "showPerformance",
+    "perf": "showPerformance",
+    "performance": "showPerformance",
+    
+    "list-prompts": "listPrompts",
+    "listPrompts": "listPrompts",
+    "prompts": "listPrompts"
+  },
+  "parameterMappings": {
+    "showError": {
+      "i": "index",
+      "idx": "index",
+      "n": "index"
+    },
+    "analyzePrompt": {
+      "name": "promptName",
+      "n": "promptName",
+      "i": "index",
+      "idx": "index"
+    },
+    "analyzeFunction": {
+      "name": "functionName",
+      "fn": "functionName",
+      "func": "functionName"
+    },
+    "showPerformance": {
+      "m": "metric",
+      "type": "metric"
+    }
+  }
+}

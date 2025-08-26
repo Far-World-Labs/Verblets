@@ -1,0 +1,20 @@
+{
+  "type": "object",
+  "properties": {
+    "testFocusIntents": {
+      "type": "array",
+      "description": "List of test focus items/intents from the Test Focus section",
+      "items": {
+        "type": "string"
+      }
+    },
+    "referenceModules": {
+      "type": "array",
+      "description": "List of reference module paths from the Reference Modules section",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": ["testFocusIntents", "referenceModules"]
+}

@@ -101,6 +101,71 @@ export const createSeparator = (width = getTerminalWidth(), char = '─') => {
   return char.repeat(Math.max(1, width));
 };
 
+// Box drawing characters
+export const BOX = {
+  topLeft: '┌',
+  topRight: '┐',
+  bottomLeft: '└',
+  bottomRight: '┘',
+  horizontal: '─',
+  vertical: '│',
+};
+
+/**
+ * Draw a box around content
+ * @param {string|object} content - Content to box
+ * @param {string} title - Optional title for the box
+ * @param {Function} color - Color function (e.g., cyan, green)
+ * @param {number} indent - Number of spaces to indent
+ * @returns {string} Boxed content
+ */
+export const drawBox = (content, title = '', color = (x) => x, indent = 6) => {
+  const width = getTerminalWidth() - indent - 4; // Account for indent and margins
+  const contentStr =
+    typeof content === 'object' ? JSON.stringify(content, null, 2) : String(content);
+  const lines = contentStr.split('\n');
+
+  // Wrap long lines
+  const wrappedLines = lines.flatMap((line) => {
+    if (line.length <= width - 4) return line;
+    const chunks = [];
+    for (let i = 0; i < line.length; i += width - 4) {
+      chunks.push(line.substring(i, i + width - 4));
+    }
+    return chunks;
+  });
+
+  // Create box line
+  const boxLine = (text) => {
+    const padding = ' '.repeat(Math.max(0, width - text.length - 4));
+    return `${BOX.vertical} ${text}${padding} ${BOX.vertical}`;
+  };
+
+  // Build box
+  const indentStr = ' '.repeat(indent);
+  const parts = [];
+
+  // Top border with optional title
+  if (title) {
+    const titleStr = ` ${title} `;
+    const beforeTitle = BOX.topLeft + BOX.horizontal.repeat(3);
+    const afterTitle =
+      BOX.horizontal.repeat(Math.max(0, width - beforeTitle.length - titleStr.length - 1)) +
+      BOX.topRight;
+    parts.push(color(beforeTitle + titleStr + afterTitle));
+  } else {
+    parts.push(color(BOX.topLeft + BOX.horizontal.repeat(width - 2) + BOX.topRight));
+  }
+
+  // Content lines
+  wrappedLines.forEach((line) => parts.push(color(boxLine(line))));
+
+  // Bottom border
+  parts.push(color(BOX.bottomLeft + BOX.horizontal.repeat(width - 2) + BOX.bottomRight));
+
+  return parts.map((line) => indentStr + line).join('\n');
+};
+
 export const writeInitialSeparator = () => {
   console.log(createSeparator());
 };
@@ -152,6 +217,7 @@ const COLORS = {
   RED: '\x1b[31m',
   GREEN: '\x1b[32m',
   YELLOW: '\x1b[33m',
+  CYAN: '\x1b[36m',
   GRAY: '\x1b[90m', // Dark gray
   LIGHT_GRAY: '\x1b[37m', // Light gray
   BG_GREEN: '\x1b[42m',
@@ -167,6 +233,7 @@ const COLORS = {
 export const red = (text) => `${COLORS.RED}${text}${COLORS.RESET}`;
 export const green = (text) => `${COLORS.GREEN}${text}${COLORS.RESET}`;
 export const yellow = (text) => `${COLORS.YELLOW}${text}${COLORS.RESET}`;
+export const cyan = (text) => `${COLORS.CYAN}${text}${COLORS.RESET}`;
 export const gray = (text) => `${COLORS.LIGHT_GRAY}${text}${COLORS.RESET}`;
 export const darkGray = (text) => `${COLORS.GRAY}${text}${COLORS.RESET}`;
 export const dim = (text) => `${COLORS.DIM}${text}${COLORS.RESET}`;
@@ -194,21 +261,6 @@ export const formatTestSummary = (name, passed, total, avgDuration, skipped = 0)
   return `${color}Suite: ${name} ${displayPassed}/${nonSkippedTotal}${statusInfo} ${avgDuration}ms (avg.)${COLORS.RESET}`;
 };
 
-// Unicode box drawing characters
-export const BOX = {
-  topLeft: '┌',
-  topRight: '┐',
-  bottomLeft: '└',
-  bottomRight: '┘',
-  horizontal: '─',
-  vertical: '│',
-  verticalRight: '├',
-  verticalLeft: '┤',
-  horizontalDown: '┬',
-  horizontalUp: '┴',
-  cross: '┼',
-};
-
 // Status badges (background colors with bold white text)
 export const badges = {
   pass: () => `${COLORS.BG_GREEN}${COLORS.BOLD} PASS ${COLORS.RESET}`,
@@ -221,6 +273,32 @@ export const badges = {
 const stripAnsi = (str) => {
   // eslint-disable-next-line no-control-regex
   return str.replace(/\x1b\[[0-9;]*m/g, '');
+};
+
+// Wrap text with indentation - returns lines with specified indent width
+export const wrapWithIndent = (text, indentWidth) => {
+  const termWidth = getTerminalWidth();
+  const maxLineWidth = termWidth - indentWidth;
+
+  // Use our existing wordWrap function
+  const wrappedLines = wordWrap(text, maxLineWidth);
+
+  // Return lines with indent spaces
+  return wrappedLines.map((line) => ' '.repeat(indentWidth) + line);
+};
+
+// Add bullet to wrapped lines
+export const addBullet = (lines, indentWidth) => {
+  return lines
+    .map((line, i) => {
+      if (i === 0) {
+        // Replace first indentWidth chars with bullet
+        return `      - ${line.substring(indentWidth)}`;
+      } else {
+        return line;
+      }
+    })
+    .join('\n');
 };
 
 // Default highlighter - highlights lines starting with '>'

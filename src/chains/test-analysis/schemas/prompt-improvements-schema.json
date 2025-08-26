@@ -1,0 +1,41 @@
+{
+  "name": "prompt_improvements",
+  "schema": {
+    "type": "object",
+    "properties": {
+      "thinking": {
+        "type": "string",
+        "description": "Internal analysis and reasoning about the prompt's purpose, structure, and potential improvements (not displayed to user)"
+      },
+      "criticalPriority": {
+        "type": "string",
+        "description": "Single most important improvement for greatest value increase"
+      },
+      "precisionAdjustments": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "suggestion": {
+              "type": "string",
+              "description": "Concrete, implementable suggestion"
+            },
+            "rationale": {
+              "type": "string",
+              "description": "Why this change would enhance quality"
+            },
+            "example": {
+              "type": "string",
+              "description": "Specific example of the improvement"
+            }
+          },
+          "required": ["suggestion", "rationale"]
+        },
+        "minItems": 3,
+        "maxItems": 5,
+        "description": "Concrete suggestions to enhance response quality"
+      }
+    },
+    "required": ["criticalPriority", "precisionAdjustments"]
+  }
+}

@@ -327,25 +327,21 @@ export default class TestAnalysisReporter {
   // ===================================
 
   async initializeProcessors(ringBuffer) {
-    const isTestFilterMode = hasTestFilter();
+    // Simple policy - just pass the data
+    const policy = {
+      hasTestFilter: hasTestFilter(),
+    };
 
-    // Create processors - we'll decide which to enable based on mode
-    const processors = [];
-
-    // Always include these processors when in AI mode
-    processors.push(new RunSeparatorProcessor({ ringBuffer }));
-    processors.push(new FirstFailureProcessor({ ringBuffer }));
-    processors.push(new CompletionTrackingProcessor({ ringBuffer }));
-    processors.push(new DiagnosticProcessor({ ringBuffer }));
-    processors.push(new SuiteDetectionProcessor(ringBuffer));
-
-    if (isTestFilterMode) {
-      // In test filter mode, use DetailsProcessor instead of SuiteOutputProcessor
-      processors.push(new DetailsProcessor({ ringBuffer }));
-    } else {
-      // In suite mode, use SuiteOutputProcessor
-      processors.push(new SuiteOutputProcessor({ ringBuffer }));
-    }
+    // Create all processors - they decide themselves if they're enabled
+    const processors = [
+      new RunSeparatorProcessor({ ringBuffer, policy }),
+      new FirstFailureProcessor({ ringBuffer, policy }),
+      new CompletionTrackingProcessor({ ringBuffer, policy }),
+      new DiagnosticProcessor({ ringBuffer, policy }),
+      new SuiteDetectionProcessor({ ringBuffer, policy }),
+      new SuiteOutputProcessor({ ringBuffer, policy }),
+      new DetailsProcessor({ ringBuffer, policy }),
+    ];
 
     // Initialize enabled processors
     for (const processor of processors) {

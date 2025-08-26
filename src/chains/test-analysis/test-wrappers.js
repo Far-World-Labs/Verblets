@@ -15,7 +15,8 @@ const logTestEvent = async (event, data, logger) => {
   //
   const log = logger || globalThis.logger;
   if (!log) {
-    throw new Error(`Logger not available for event: ${event}`);
+    // Logger not initialized yet, skip logging
+    return;
   }
   const result = await log.info({ event, ...data });
   return result;
@@ -244,3 +245,74 @@ export const wrapAiExpect =
       };
     });
   };
+
+/**
+ * Higher-order function to create logging variants of aiExpect
+ * Usage:
+ *   const aiExpectInput = ((aiExpect, config) => (actual) => {
+ *     logger?.info({ event: 'ai-input', value: actual, ...baseProps });
+ *     return aiExpect(actual);
+ *   })(aiExpect, { event: 'ai-input', baseProps, logger });
+ */
+export const createAiExpectLogger = (aiExpect, config = {}) => {
+  const { event = 'ai-value', baseProps = {}, logger } = config;
+
+  return (actual) => {
+    const location = extractFileContext(3);
+    const log = logger || globalThis.logger;
+
+    // Log the value with all baseProps
+    log?.info({
+      event,
+      value: actual,
+      ...baseProps,
+      ...location,
+    });
+
+    // Return the original aiExpect
+    return aiExpect(actual);
+  };
+};
+
+// Example usage in test files:
+// const aiExpectInput = createAiExpectLogger(aiExpect, { event: 'ai-input', baseProps, logger });
+// const aiExpectOutput = createAiExpectLogger(aiExpect, { event: 'ai-output', baseProps, logger });
+//
+// aiExpectInput(inputData).toSatisfy(...);
+// aiExpectOutput(result).toSatisfy(...);
+
+/**
+ * Create wrapped it function with AI mode support
+ * @param {Function} it - Original it function
+ * @param {string} suite - Suite name for logging
+ * @param {Object} config - Test config object with aiMode flag
+ * @returns {Function} Wrapped or original it function
+ */
+export const makeWrappedIt = (it, suite, config) => {
+  const baseProps = { suite };
+  return config?.aiMode ? wrapIt(it, { baseProps }) : it;
+};
+
+/**
+ * Create wrapped expect function with AI mode support
+ * @param {Function} expect - Original expect function
+ * @param {string} suite - Suite name for logging
+ * @param {Object} config - Test config object with aiMode flag
+ * @returns {Function} Wrapped or original expect function
+ */
+export const makeWrappedExpect = (expect, suite, config) => {
+  const baseProps = { suite };
+  return config?.aiMode ? wrapExpect(expect, { baseProps }) : expect;
+};
+
+/**
+ * Create wrapped aiExpect function with AI mode support
+ * @param {Function} aiExpect - Original aiExpect function
+ * @param {string} suite - Suite name for logging
+ * @param {Object} config - Test config object with aiMode flag
+ * @returns {Function} Wrapped or original aiExpect function
+ */
+export const makeWrappedAiExpect = (aiExpect, suite, config) => {
+  const baseProps = { suite };
+  return config?.aiMode ? wrapAiExpect(aiExpect, { baseProps }) : aiExpect;
+};

@@ -1,0 +1,6 @@
+{
+  "description": "Analyze any named function, analyze specific function implementation, examine function code, analyze the [functionName] function where functionName can be any function name",
+  "properties": {},
+  "required": [],
+  "type": "object"
+}

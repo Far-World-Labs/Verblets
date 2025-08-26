@@ -1,5 +1,6 @@
 import chatGPT from '../../lib/chatgpt/index.js';
 import { onlyJSON, strictFormat } from '../../prompts/constants.js';
+import { createLifecycleLogger } from '../../lib/lifecycle-logger/index.js';
 import centralTendencySchema from './central-tendency-result.json';
 
 /**
@@ -137,11 +138,38 @@ export default async function centralTendency(item, seedItems, config = {}) {
     throw new Error('seedItems must be a non-empty array');
   }
 
-  const { context = '', coreFeatures = [], llm = 'fastGoodCheap' } = config;
+  const { context = '', coreFeatures = [], llm = 'fastGoodCheap', logger } = config;
+
+  // Create lifecycle logger with central-tendency namespace
+  const lifecycleLogger = createLifecycleLogger(logger, 'central-tendency');
+
+  // Log start with input
+  lifecycleLogger.logStart({ item, seedItems, context, coreFeatures });
 
   const prompt = buildCentralTendencyPrompt(item, seedItems, { context, coreFeatures });
   const modelOptions = createModelOptions(llm, 'central_tendency_result');
 
-  const response = await chatGPT(prompt, { modelOptions });
-  return response;
+  // Log prompt construction
+  lifecycleLogger.logConstruction(prompt, {
+    promptLength: prompt.length,
+    itemLength: item.length,
+    seedCount: seedItems.length,
+    hasCoreFeatures: coreFeatures.length > 0,
+  });
+
+  try {
+    const response = await chatGPT(prompt, { modelOptions, logger: lifecycleLogger });
+
+    // Log result
+    lifecycleLogger.logResult(response, {
+      score: response.score,
+      confidence: response.confidence,
+      hasReason: !!response.reason,
+    });
+
+    return response;
+  } catch (error) {
+    lifecycleLogger.logError(error);
+    throw error;
+  }
 }

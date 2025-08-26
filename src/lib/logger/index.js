@@ -225,7 +225,7 @@ export function createLogger(options = {}) {
       return log(level, data, context);
     };
 
-  return {
+  const logger = {
     // Async logging methods - capture context before async boundary
     log: createAsyncLogger('log'),
     info: createAsyncLogger('info'),
@@ -251,5 +251,37 @@ export function createLogger(options = {}) {
       const index = streams.findIndex((s) => s.name === name);
       if (index >= 0) streams.splice(index, 1);
     },
+
+    // Child logger creation - adds context to all logs
+    child: (context = {}) => {
+      // Create a wrapper that adds context to each log
+      const childLog = (level, data, extraContext) => {
+        return log(level, { ...context, ...data }, extraContext);
+      };
+
+      const createChildAsyncLogger =
+        (level) =>
+        (data, options = {}) => {
+          const { lineOffset } = options;
+          const fileContext =
+            includeFileContext && !data.file ? extractFileContext(lineOffset) : {};
+          return childLog(level, data, fileContext);
+        };
+
+      return {
+        ...logger,
+        log: createChildAsyncLogger('log'),
+        info: createChildAsyncLogger('info'),
+        warn: createChildAsyncLogger('warn'),
+        error: createChildAsyncLogger('error'),
+        debug: createChildAsyncLogger('debug'),
+        trace: createChildAsyncLogger('trace'),
+        fatal: createChildAsyncLogger('fatal'),
+        // Child can create more children
+        child: (moreContext) => logger.child({ ...context, ...moreContext }),
+      };
+    },
   };
+
+  return logger;
 }

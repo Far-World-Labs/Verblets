@@ -151,6 +151,7 @@ export const run = async (prompt, config = {}) => {
     debugPrompt,
     debugResult,
     forceQuery,
+    logger,
     modelOptions = {},
     onAfterRequest = onAfterRequestDefault,
     onBeforeRequest = onBeforeRequestDefault,
@@ -159,6 +160,15 @@ export const run = async (prompt, config = {}) => {
     unwrapValues,
     unwrapCollections,
   } = options;
+
+  // Log start of chatGPT execution
+  const startTime = Date.now();
+  if (logger?.info) {
+    logger.info({
+      event: 'chatgpt:start',
+      promptLength: prompt.length,
+    });
+  }
 
   // Apply global overrides to model options
   const modelOptionsWithOverrides = modelService.applyGlobalOverrides(modelOptions);
@@ -258,6 +268,16 @@ export const run = async (prompt, config = {}) => {
     result,
     resultShaped,
   });
+
+  // Log end of chatGPT execution
+  if (logger?.info) {
+    logger.info({
+      event: 'chatgpt:end',
+      duration: Date.now() - startTime,
+      cached: !!cacheResult,
+      model: modelNameNegotiated,
+    });
+  }
 
   return resultShaped;
 };

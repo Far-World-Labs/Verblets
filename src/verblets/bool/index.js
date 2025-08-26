@@ -1,17 +1,7 @@
 import chatGPT from '../../lib/chatgpt/index.js';
 import { constants as promptConstants } from '../../prompts/index.js';
+import { createLifecycleLogger } from '../../lib/lifecycle-logger/index.js';
 import { booleanSchema } from './schema.js';
-import {
-  createLoggerContext,
-  logStart,
-  logPromptConstruction,
-  logLLMCallStart,
-  logLLMCallEnd,
-  logLLMError,
-  logInterpretation,
-  logResult,
-  withTiming,
-} from './logger-adapter.js';
 
 const {
   asBool,
@@ -25,11 +15,12 @@ const {
 export default async (text, config = {}) => {
   const { llm, logger, ...options } = config;
 
-  // Create logger context
-  const logContext = createLoggerContext(logger);
+  // Create lifecycle logger with bool namespace
+  const lifecycleLogger = createLifecycleLogger(logger, 'bool');
 
   // Log start with full input
-  logStart(logContext, text);
+  lifecycleLogger.logStart(text);
+
   const systemPrompt = `${explainAndSeparate} ${explainAndSeparatePrimitive}
 
 ${asBool} ${asUndefinedByDefault}
@@ -39,49 +30,49 @@ ${asWrappedValueJSON} The value should be "true", "false", or "undefined".
 ${asJSON}`;
 
   // Log prompt construction
-  logPromptConstruction(logContext, systemPrompt, { llm });
+  lifecycleLogger.logConstruction(systemPrompt, {
+    systemPromptLength: systemPrompt.length,
+    hasLlmConfig: !!llm,
+    responseFormat: llm?.response_format?.type ?? 'json_schema',
+  });
 
   try {
-    // Log LLM call start
-    const modelName = llm?.modelName || 'default';
-    logLLMCallStart(logContext, modelName, systemPrompt.length);
-
-    // Make LLM call with timing
-    const response = await withTiming(logContext, 'llm-call', async () => {
-      const llmStartTime = Date.now();
-      const result = await chatGPT(text, {
-        modelOptions: {
-          systemPrompt,
-          ...llm,
-          response_format: {
-            type: 'json_schema',
-            json_schema: {
-              name: 'boolean_evaluation',
-              schema: booleanSchema,
-            },
+    // Make LLM call with logger
+    const response = await chatGPT(text, {
+      modelOptions: {
+        systemPrompt,
+        ...llm,
+        response_format: {
+          type: 'json_schema',
+          json_schema: {
+            name: 'boolean_evaluation',
+            schema: booleanSchema,
           },
         },
-        ...options,
-      });
-
-      // Log LLM call end
-      logLLMCallEnd(logContext, result, Date.now() - llmStartTime);
-      return result;
+      },
+      logger: lifecycleLogger,
+      ...options,
     });
 
     // Interpret response
     const interpreted = response === 'true' ? true : response === 'false' ? false : undefined;
 
-    // Log interpretation
-    logInterpretation(logContext, response, interpreted);
+    // Log interpretation as a processing stage
+    lifecycleLogger.logProcessing('interpretation', interpreted, {
+      raw: response,
+      interpreted,
+      decision: interpreted === true ? 'true' : interpreted === false ? 'false' : 'undefined',
+    });
 
-    // Log final result with full output
-    logResult(logContext, interpreted);
+    // Log final result
+    lifecycleLogger.logResult(interpreted, {
+      value: interpreted === true ? 'true' : interpreted === false ? 'false' : 'undefined',
+    });
 
     return interpreted;
   } catch (error) {
     // Log error
-    logLLMError(logContext, error);
+    lifecycleLogger.logError(error);
     throw error;
   }
 };

@@ -7,6 +7,7 @@
  */
 
 import { env, runtime } from '../lib/env/index.js';
+import { assertValidModelDef } from './model-validation.js';
 
 // Validate critical environment variables
 function validateEnvironment() {
@@ -286,6 +287,11 @@ _models.privacy = {
     stop: ['</s>'],
   },
 };
+
+// Validate all model definitions
+Object.entries(_models).forEach(([key, model]) => {
+  assertValidModelDef(key, model);
+});
 
 // Allow tests to run without requiring an API key
 if (env.NODE_ENV !== 'test') {

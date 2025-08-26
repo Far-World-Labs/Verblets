@@ -20,15 +20,17 @@ export function getConfig() {
     process.env.VERBLETS_AI_LOGS_ONLY && truthyValues.includes(process.env.VERBLETS_AI_LOGS_ONLY);
   const aiPerSuite =
     process.env.VERBLETS_AI_PER_SUITE && truthyValues.includes(process.env.VERBLETS_AI_PER_SUITE);
+  const aiDetail =
+    process.env.VERBLETS_AI_DETAIL && truthyValues.includes(process.env.VERBLETS_AI_DETAIL);
   const debugMode = process.env.VERBLETS_DEBUG && truthyValues.includes(process.env.VERBLETS_DEBUG);
   const debugSuites =
     process.env.VERBLETS_DEBUG_SUITES && truthyValues.includes(process.env.VERBLETS_DEBUG_SUITES);
 
   return {
     // Core functionality flags
-    aiMode: aiLogsOnly || aiPerSuite,
+    aiMode: aiLogsOnly || aiPerSuite || aiDetail,
     aiModeDebug: aiLogsOnly || debugMode,
-    aiModeAnalysis: aiPerSuite && !aiLogsOnly, // Analysis disabled in logs-only mode
+    aiModeAnalysis: (aiPerSuite || aiDetail) && !aiLogsOnly, // Analysis disabled in logs-only mode
 
     // Debug flags
     debug: {
@@ -55,7 +57,7 @@ export function getConfig() {
 
     // AI analysis
     ai: {
-      enabled: aiPerSuite && !aiLogsOnly,
+      enabled: (aiPerSuite || aiDetail) && !aiLogsOnly,
       timeout: parseInt(process.env.VERBLETS_AI_TIMEOUT) || 120000,
     },
   };

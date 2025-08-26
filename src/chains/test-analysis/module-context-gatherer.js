@@ -1,5 +1,5 @@
-import { readFile, stat } from 'fs/promises';
-import { join, basename } from 'path';
+import { readFile, stat } from 'node:fs/promises';
+import { join, basename } from 'node:path';
 import { glob } from 'glob';
 import sortByImports from '../../lib/topological-imports/index.js';
 import findDependencies from '../../lib/find-dependencies/index.js';
@@ -99,6 +99,7 @@ export async function gatherModuleContext(moduleDir, options = {}) {
             content,
             fileName,
             relPath,
+            fullPath: filePath,
             size: stats.size,
             isMainModule,
           };
@@ -121,9 +122,10 @@ export async function gatherModuleContext(moduleDir, options = {}) {
 
     metadata.files.push({
       name: fileData.fileName,
-      path: fileData.relPath,
+      path: fileData.fullPath, // Use full path for location calculations
       size: fileData.size,
       isMainModule: fileData.isMainModule,
+      content: fileData.content,
     });
     metadata.totalSize += fileData.size;
     metadata.fileCount++;

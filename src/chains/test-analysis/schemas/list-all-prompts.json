@@ -1,0 +1,6 @@
+{
+  "description": "List all prompts in the module, show all prompts, display prompt inventory, find prompts in code, extract prompts",
+  "properties": {},
+  "required": [],
+  "type": "object"
+}

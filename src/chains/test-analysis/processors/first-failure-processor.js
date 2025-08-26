@@ -18,11 +18,14 @@ const isFailedTest = (event) => isTestComplete(event) && event.state === 'fail';
 export class FirstFailureProcessor extends BaseProcessor {
   constructor(options = {}) {
     const config = getConfig();
+    // Disable when in test filter mode (DetailsProcessor handles it)
+    const isEnabled = config?.aiMode === true && !options.policy?.hasTestFilter;
+
     super({
       name: 'FirstFailure',
       // No envFlag needed - we control it via alwaysEnabled
-      alwaysEnabled: config?.aiMode === true, // Enable when in AI mode
-      processAsync: true, // Need this to poll for events!
+      alwaysEnabled: isEnabled,
+      processAsync: isEnabled, // Need this to poll for events!
       ...options,
     });
 

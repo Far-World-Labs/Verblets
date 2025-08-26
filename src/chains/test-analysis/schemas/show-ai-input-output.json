@@ -1,0 +1,18 @@
+{
+  "name": "showAiInputOutput",
+  "description": "Display the actual LLM inputs and/or outputs captured during test execution. Match when intent references AI I/O, inputs and outputs, or similar phrases. When neither input nor output is explicitly specified, default to showing only outputs.",
+  "type": "object",
+  "properties": {
+    "showInput": {
+      "type": "boolean",
+      "description": "Set to true when the intent mentions inputs, input data, or uses phrases like 'inputs and outputs' or 'I/O'",
+      "default": false
+    },
+    "showOutput": {
+      "type": "boolean", 
+      "description": "Set to true when the intent mentions outputs, output data, results, or uses phrases like 'inputs and outputs' or 'I/O'",
+      "default": true
+    }
+  },
+  "required": []
+}

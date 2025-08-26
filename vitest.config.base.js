@@ -3,7 +3,9 @@ import { fileURLToPath } from 'node:url';
 import * as dotenv from 'dotenv';
 
 // Load environment variables
-dotenv.config();
+// In CI/test, load .env.test first (if it exists), then .env
+const envFile = (process.env.CI || process.env.VITEST) ? '.env.test' : '.env';
+dotenv.config({ path: envFile });
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 

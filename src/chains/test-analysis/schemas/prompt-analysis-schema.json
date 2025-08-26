@@ -1,0 +1,120 @@
+{
+  "name": "prompt_analysis",
+  "schema": {
+    "type": "object",
+    "properties": {
+      "overview": {
+        "type": "string",
+        "description": "2-3 sentences explaining what the prompt does, why it's structured this way, and what type of LLM task it performs"
+      },
+      "alignmentPrecision": {
+        "type": "object",
+        "properties": {
+          "score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 10,
+            "description": "How well it addresses specific vs generic needs"
+          },
+          "observations": {
+            "type": "string",
+            "description": "Specific mismatches or alignments noted"
+          }
+        },
+        "required": ["score", "observations"]
+      },
+      "informationArchitecture": {
+        "type": "object",
+        "properties": {
+          "score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 10,
+            "description": "Organization, hierarchy, navigational clarity"
+          },
+          "observations": {
+            "type": "string",
+            "description": "Structure and flow assessment"
+          }
+        },
+        "required": ["score", "observations"]
+      },
+      "accuracyCompleteness": {
+        "type": "object",
+        "properties": {
+          "score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 10,
+            "description": "Factual correctness and comprehensive coverage"
+          },
+          "observations": {
+            "type": "string",
+            "description": "Omissions or misrepresentations noted"
+          }
+        },
+        "required": ["score", "observations"]
+      },
+      "cognitiveAccessibility": {
+        "type": "object",
+        "properties": {
+          "score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 10,
+            "description": "Language precision, concept clarity, assumption management"
+          },
+          "observations": {
+            "type": "string",
+            "description": "Areas needing clarification or examples"
+          }
+        },
+        "required": ["score", "observations"]
+      },
+      "actionabilityImpact": {
+        "type": "object",
+        "properties": {
+          "score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 10,
+            "description": "Practical utility and implementation readiness"
+          },
+          "observations": {
+            "type": "string",
+            "description": "Guidance for next steps assessment"
+          }
+        },
+        "required": ["score", "observations"]
+      },
+      "executionStrengths": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "description": "Specific elements that effectively serve user needs"
+        },
+        "minItems": 2,
+        "maxItems": 3
+      },
+      "refinementOpportunities": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "description": "IMPORTANT: Each item should be a COMPLETE recommendation that includes both the problem and the solution. Format: 'Problem statement. Solution statement.' Example: 'The prompt lacks clear output format specification. Add an OUTPUT section that defines the expected JSON structure with field descriptions.' Focus on the ACTUAL CONTENT of the prompt being analyzed, not generic prompt engineering advice."
+        },
+        "minItems": 2,
+        "maxItems": 3
+      }
+    },
+    "required": [
+      "overview",
+      "alignmentPrecision",
+      "informationArchitecture",
+      "accuracyCompleteness",
+      "cognitiveAccessibility",
+      "actionabilityImpact",
+      "executionStrengths",
+      "refinementOpportunities"
+    ]
+  }
+}
