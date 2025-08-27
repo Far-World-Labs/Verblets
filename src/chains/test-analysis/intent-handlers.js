@@ -14,8 +14,8 @@ import listAllPromptsSchema from './schemas/list-all-prompts.json';
 import analyzePromptSchema from './schemas/analyze-prompt.json';
 import showTestErrorsSchema from './schemas/show-test-errors.json';
 import analyzeFunctionSchema from './schemas/analyze-function.json';
-import analyzeModuleSchema from './schemas/analyze-module.json';
 import showAiInputOutputSchema from './schemas/show-ai-input-output.json';
+import listModuleFunctionsSchema from './schemas/list-module-functions.json';
 
 // Collect all schemas for auto
 const intentSchemas = {
@@ -24,8 +24,8 @@ const intentSchemas = {
   analyzePrompt: analyzePromptSchema,
   showTestErrors: showTestErrorsSchema,
   analyzeFunction: analyzeFunctionSchema,
-  analyzeModule: analyzeModuleSchema,
   showAiInputOutput: showAiInputOutputSchema,
+  listModuleFunctions: listModuleFunctionsSchema,
 };
 
 export async function processIntent(intent, context) {
@@ -50,8 +50,6 @@ Context: You are analyzing the module at ${context.moduleDir} which has ${
     const result = await auto(prompt, {
       logger: lifecycleLogger,
       schemas: intentSchemas,
-      defaultFunction: 'analyzeModule', // Fallback to generic module analysis
-      defaultArguments: {},
     });
 
     // Check if no function was matched

@@ -7,9 +7,9 @@ import { showLLMPerformanceMetrics } from './llm-performance.js';
 import { showTestErrors } from './test-errors.js';
 import { listAllPrompts } from './prompt-inventory.js';
 import { analyzePrompt } from './analyze-prompt.js';
-import { analyzeFunction } from './function-analysis.js';
-import { analyzeModule } from './module-analysis.js';
+import { analyzeFunction } from './analyze-function.js';
 import { showAiInputOutput } from './show-ai-io.js';
+import { listModuleFunctions } from './list-functions.js';
 
 // Registry of all intent handlers
 export const handlers = {
@@ -18,8 +18,8 @@ export const handlers = {
   listAllPrompts,
   analyzePrompt,
   analyzeFunction,
-  analyzeModule,
   showAiInputOutput,
+  listModuleFunctions,
 };
 
 /**
