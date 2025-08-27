@@ -121,22 +121,11 @@ const display = (events, showInput = false, showOutput = true) => {
       No events available for analysis.`;
   }
 
-  // Debug: Show what events we have
-  const allEventTypes = events
-    .map((e) => e.event)
-    .filter((e) => e)
-    .reduce((acc, e) => {
-      acc[e] = (acc[e] || 0) + 1;
-      return acc;
-    }, {});
-
   const ioEvents = extractIoEvents(events);
 
   if (ioEvents.length === 0) {
     return `${header}
       No AI input/output captured during test execution.
-      
-      Event types found: ${JSON.stringify(allEventTypes, null, 2)}
       
       Ensure your verblets/chains pass a logger and use lifecycle logging:
       ${gray('const logger = makeTestLogger("test name");')}

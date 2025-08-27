@@ -32,11 +32,17 @@ export const analyzePrompt = {
 
 export const analyzeFunction = {
   type: 'object',
-  description: 'Analyze a specific function in the module',
+  description:
+    'Analyze a specific function in the module with AI, including context, callers, and callees',
   properties: {
     functionName: {
       type: 'string',
       description: 'Name of the function to analyze',
+    },
+    intent: {
+      type: 'string',
+      description: 'What to analyze about the function',
+      default: 'Analyze this function',
     },
   },
   required: ['functionName'],
@@ -58,4 +64,33 @@ export const listPrompts = {
   type: 'object',
   description: 'List all prompts found in the module',
   properties: {},
+};
+
+export const showAiInputOutput = {
+  type: 'object',
+  description: 'Display AI inputs and outputs captured during test execution',
+  properties: {
+    showInput: {
+      type: 'boolean',
+      description: 'Whether to show inputs',
+      default: false,
+    },
+    showOutput: {
+      type: 'boolean',
+      description: 'Whether to show outputs',
+      default: true,
+    },
+  },
+};
+
+export const listModuleFunctions = {
+  type: 'object',
+  description: 'List functions in the module that are longer than a specified number of lines',
+  properties: {
+    minLines: {
+      type: 'number',
+      description: 'Minimum number of lines for functions to include',
+      default: 2,
+    },
+  },
 };

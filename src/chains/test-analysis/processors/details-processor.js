@@ -9,19 +9,21 @@
 
 import { BaseProcessor } from './base-processor.js';
 import { getConfig } from '../config.js';
-import { createSeparator } from '../output-utils.js';
+import { createSeparator, bold, cyan, red, gray } from '../output-utils.js';
+import analyzeTestError from '../../test-analyzer/index.js';
+import { extractCodeWindow } from '../../../lib/code-extractor/index.js';
 
 // Data collectors
 import { TestCollector } from '../collectors/test-collector.js';
 import { ModuleCollector } from '../collectors/module-collector.js';
 import { IntentCollector } from '../collectors/intent-collector.js';
 import { extractAIMdConfig } from '../utils/ai-md-extractor.js';
+import { getDefaultIntents } from '../utils/default-intents.js';
 import { findProjectRoot } from '../../../lib/find-project-root/index.js';
 
 // Views (build + render combined)
 import { renderTestSummary } from '../views/test-summary.js';
 import { renderModuleOverview } from '../views/module-overview.js';
-import { renderModuleAnalysis } from '../views/module-analysis.js';
 import { renderAnalysisStart } from '../views/analysis-start.js';
 import { processIntent } from '../intent-handlers.js';
 
@@ -57,6 +59,65 @@ export class DetailsProcessor extends BaseProcessor {
     this.aiMdConfigPromise = undefined;
 
     this.rendered = false;
+  }
+
+  async analyzeTestFailure(test, allEvents) {
+    // Find events for this specific test
+    const testEvents =
+      allEvents?.filter(
+        (e) =>
+          e.testName === test.name ||
+          e.testIndex === test.index ||
+          (e.timestamp >= test.startTime && e.timestamp <= test.endTime)
+      ) || [];
+
+    // Find failed expectation
+    const failedExpect = testEvents.find(
+      (e) => (e.event === 'expect' || e.event === 'ai-expect') && e.passed === false
+    );
+
+    const output = [`${bold(cyan('TEST FAILURE ANALYSIS'))}`];
+    output.push('');
+    output.push(`      Test: ${bold(test.name)}`);
+
+    if (failedExpect?.file && failedExpect?.line) {
+      output.push(`      Location: ${gray(`${failedExpect.file}:${failedExpect.line}`)}`);
+
+      // Extract code context
+      try {
+        const codeSnippet = await extractCodeWindow(failedExpect.file, failedExpect.line, 5);
+        if (codeSnippet) {
+          output.push('');
+          output.push('      Code:');
+          const codeLines = codeSnippet.split('\n').map((line) => `        ${line}`);
+          output.push(...codeLines);
+        }
+      } catch {
+        // Ignore code extraction errors
+      }
+    }
+
+    if (test.error) {
+      output.push('');
+      output.push(`      Error: ${red(test.error)}`);
+    }
+
+    // Get AI analysis if we have events
+    if (testEvents.length > 0) {
+      try {
+        const analysis = await analyzeTestError(testEvents);
+        if (analysis) {
+          output.push('');
+          output.push('      Analysis:');
+          const analysisLines = analysis.split('\n').map((line) => `        ${gray(line)}`);
+          output.push(...analysisLines);
+        }
+      } catch {
+        // Ignore analysis errors
+      }
+    }
+
+    return output.join('\n');
   }
 
   async gatherModuleWithReferences(moduleDir) {
@@ -138,7 +199,8 @@ export class DetailsProcessor extends BaseProcessor {
     ]);
 
     // Extract intents and reference modules from AI.md config
-    const intents = aiMdConfig.intents || [];
+    // Use AI.md intents if specified, otherwise use all default intents
+    const intents = aiMdConfig.intents?.length > 0 ? aiMdConfig.intents : getDefaultIntents();
     const referenceModules = aiMdConfig.referenceModules || [];
 
     // Render synchronous views immediately with quick feedback
@@ -155,15 +217,23 @@ export class DetailsProcessor extends BaseProcessor {
       events, // Pass events from ringBuffer for intent handlers
     };
 
+    // Check if any tests failed and add error analysis automatically
+    const failedTests = testData?.tests?.filter((t) => !t.passed) || [];
+    const errorAnalysisOps = [];
+
+    if (failedTests.length > 0) {
+      // Add automatic error analysis for ONLY the first failed test
+      const firstFailure = failedTests[0];
+      errorAnalysisOps.push(async () => {
+        const analysis = await this.analyzeTestFailure(firstFailure, events);
+        return analysis;
+      });
+    }
+
     // Create async operations without pre-assigned numbers
-    const intentCount = intents?.length ?? 0;
-    const totalOps = 1 + intentCount;
-
-    const moduleAnalysisOp = () => renderModuleAnalysis(moduleContext, testData);
-
     const intentOps = (intents ?? []).map((intent) => () => processIntent(intent, context));
-
-    const allOps = [moduleAnalysisOp, ...intentOps];
+    const allOps = [...errorAnalysisOps, ...intentOps];
+    const totalOps = allOps.length;
 
     // Execute and track async operations
     if (!allOps.length) return;

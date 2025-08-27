@@ -1,11 +1,9 @@
 # Central Tendency Chain Analysis
 
 ## Test Focus
-- Show AI inputs and outputs from centrality evaluations  
-- List all prompts in the module
-- Show LLM performance metrics
-- Analyze the central tendency prompt
-- Analyze the calculateMedian function
+- List functions in the module focusing on prompt construction
+- Analyze the buildCentralTendencyInstructions function to understand prompt assembly
+
 
 ## Reference Modules
 - src/verblets/central-tendency-lines
