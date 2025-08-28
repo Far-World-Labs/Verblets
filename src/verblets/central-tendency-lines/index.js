@@ -1,6 +1,10 @@
 import chatGPT from '../../lib/chatgpt/index.js';
 import { onlyJSON, strictFormat } from '../../prompts/constants.js';
-import { createLifecycleLogger } from '../../lib/lifecycle-logger/index.js';
+import {
+  createLifecycleLogger,
+  extractPromptAnalysis,
+  extractLLMConfig,
+} from '../../lib/lifecycle-logger/index.js';
 import centralTendencySchema from './central-tendency-result.json';
 
 /**
@@ -151,7 +155,8 @@ export default async function centralTendency(item, seedItems, config = {}) {
 
   // Log prompt construction
   lifecycleLogger.logConstruction(prompt, {
-    promptLength: prompt.length,
+    ...extractPromptAnalysis(prompt),
+    ...extractLLMConfig(modelOptions),
     itemLength: item.length,
     seedCount: seedItems.length,
     hasCoreFeatures: coreFeatures.length > 0,

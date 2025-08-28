@@ -1,6 +1,11 @@
 import chatGPT from '../../lib/chatgpt/index.js';
 import { constants as promptConstants } from '../../prompts/index.js';
-import { createLifecycleLogger } from '../../lib/lifecycle-logger/index.js';
+import {
+  createLifecycleLogger,
+  extractLLMConfig,
+  extractPromptAnalysis,
+  extractResultValue,
+} from '../../lib/lifecycle-logger/index.js';
 import { booleanSchema } from './schema.js';
 
 const {
@@ -29,11 +34,10 @@ ${asWrappedValueJSON} The value should be "true", "false", or "undefined".
 
 ${asJSON}`;
 
-  // Log prompt construction
+  // Log prompt construction with extracted analysis
   lifecycleLogger.logConstruction(systemPrompt, {
-    systemPromptLength: systemPrompt.length,
-    hasLlmConfig: !!llm,
-    responseFormat: llm?.response_format?.type ?? 'json_schema',
+    ...extractPromptAnalysis(systemPrompt),
+    ...extractLLMConfig(llm),
   });
 
   try {
@@ -57,17 +61,8 @@ ${asJSON}`;
     // Interpret response
     const interpreted = response === 'true' ? true : response === 'false' ? false : undefined;
 
-    // Log interpretation as a processing stage
-    lifecycleLogger.logProcessing('interpretation', interpreted, {
-      raw: response,
-      interpreted,
-      decision: interpreted === true ? 'true' : interpreted === false ? 'false' : 'undefined',
-    });
-
-    // Log final result
-    lifecycleLogger.logResult(interpreted, {
-      value: interpreted === true ? 'true' : interpreted === false ? 'false' : 'undefined',
-    });
+    // Log final result with raw and interpreted values
+    lifecycleLogger.logResult(interpreted, extractResultValue(response, interpreted));
 
     return interpreted;
   } catch (error) {

@@ -38,9 +38,18 @@ export function renderTestSummary(testData) {
 
   // Add errors if any
   const errors = testData.tests
-    .filter((t) => t.error)
-    .map((t) => `        ${red(`Error in "${t.name}": ${t.error}`)}`)
-    .join('\n');
+    .filter((t) => t.error || (!t.passed && t.errorLocation))
+    .map((t) => {
+      let errorMsg = `        ${red(`Error in "${t.name}"`)}`;
+      if (t.errorLocation) {
+        errorMsg += `\n        ${dim(t.errorLocation)}`;
+      }
+      if (t.error) {
+        errorMsg += `\n        ${red(t.error)}`;
+      }
+      return errorMsg;
+    })
+    .join('\n\n');
 
   const output = `${bold(cyan('TEST SUMMARY'))}
 ${summary}
