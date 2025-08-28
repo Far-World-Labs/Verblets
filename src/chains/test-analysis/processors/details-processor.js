@@ -9,7 +9,7 @@
 
 import { BaseProcessor } from './base-processor.js';
 import { getConfig } from '../config.js';
-import { createSeparator, bold, cyan, red, gray } from '../output-utils.js';
+import { createSeparator, red, gray, badges, createBoxedCode } from '../output-utils.js';
 import analyzeTestError from '../../test-analyzer/index.js';
 import { extractCodeWindow } from '../../../lib/code-extractor/index.js';
 
@@ -76,30 +76,35 @@ export class DetailsProcessor extends BaseProcessor {
       (e) => (e.event === 'expect' || e.event === 'ai-expect') && e.passed === false
     );
 
-    const output = [`${bold(cyan('TEST FAILURE ANALYSIS'))}`];
-    output.push('');
-    output.push(`      Test: ${bold(test.name)}`);
+    const output = [];
 
+    // Header with badge
+    output.push(`${badges.fail()}  ${test.suite || 'Test Suite'}`);
+    output.push(`  ${test.name}`);
+
+    // Location (like first-failure-processor)
     if (failedExpect?.file && failedExpect?.line) {
-      output.push(`      Location: ${gray(`${failedExpect.file}:${failedExpect.line}`)}`);
+      output.push(gray(`  ${failedExpect.file}:${failedExpect.line}`));
+    }
 
-      // Extract code context
+    // Error message
+    if (test.error || failedExpect?.error) {
+      const errorMsg = test.error || failedExpect.error;
+      output.push('');
+      output.push(red(`  ${typeof errorMsg === 'object' ? errorMsg.message : errorMsg}`));
+    }
+
+    // Code context in a box (like first-failure-processor)
+    if (failedExpect?.file && failedExpect?.line) {
       try {
         const codeSnippet = await extractCodeWindow(failedExpect.file, failedExpect.line, 5);
         if (codeSnippet) {
           output.push('');
-          output.push('      Code:');
-          const codeLines = codeSnippet.split('\n').map((line) => `        ${line}`);
-          output.push(...codeLines);
+          output.push(createBoxedCode(codeSnippet));
         }
       } catch {
         // Ignore code extraction errors
       }
-    }
-
-    if (test.error) {
-      output.push('');
-      output.push(`      Error: ${red(test.error)}`);
     }
 
     // Get AI analysis if we have events
@@ -108,15 +113,20 @@ export class DetailsProcessor extends BaseProcessor {
         const analysis = await analyzeTestError(testEvents);
         if (analysis) {
           output.push('');
-          output.push('      Analysis:');
-          const analysisLines = analysis.split('\n').map((line) => `        ${gray(line)}`);
-          output.push(...analysisLines);
+          output.push(gray('  Analysis:'));
+          const analysisLines = analysis.split('\n');
+          analysisLines.forEach((line) => {
+            if (line.trim()) {
+              output.push(gray(`  ${line}`));
+            }
+          });
         }
       } catch {
         // Ignore analysis errors
       }
     }
 
+    output.push(''); // Empty line at the end
     return output.join('\n');
   }
 
@@ -191,6 +201,37 @@ export class DetailsProcessor extends BaseProcessor {
 
     // Get events from the ringBuffer for this run
     const events = await this.getCurrentRunEvents();
+
+    // Enrich test data with error locations from events
+    if (testData?.tests) {
+      for (const test of testData.tests) {
+        if (!test.passed && !test.errorLocation) {
+          // Find events for this test
+          const testEvents =
+            events?.filter(
+              (e) =>
+                e.testName === test.name || (e.suite === test.suite && e.testIndex === test.index)
+            ) || [];
+
+          // Find failed expectation with location
+          const failedExpect = testEvents.find(
+            (e) => (e.event === 'expect' || e.event === 'ai-expect') && e.passed === false
+          );
+
+          if (failedExpect?.file && failedExpect?.line) {
+            test.errorLocation = `${failedExpect.file}:${failedExpect.line}`;
+          }
+
+          // Also capture error message if not already set
+          if (!test.error && failedExpect?.error) {
+            test.error =
+              typeof failedExpect.error === 'object'
+                ? failedExpect.error.message
+                : failedExpect.error;
+          }
+        }
+      }
+    }
 
     // Wait for async data we started earlier
     const [moduleContext, aiMdConfig] = await Promise.all([

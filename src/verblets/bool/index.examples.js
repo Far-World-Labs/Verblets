@@ -44,8 +44,9 @@ describe('Bool verblet', () => {
     it(
       `${example.inputs.text}`,
       async () => {
-        const logger = makeTestLogger(example.inputs.text);
-        const result = await bool(example.inputs.text, { logger });
+        const result = await bool(example.inputs.text, {
+          logger: makeTestLogger(example.inputs.text),
+        });
         expect(result).toStrictEqual(example.want.result);
 
         // Additional LLM assertion to validate the boolean result makes sense
@@ -67,8 +68,9 @@ describe('Bool verblet', () => {
       Should we deploy this change to production?
     `;
 
-      const logger = makeTestLogger('complex contextual decisions');
-      const result = await bool(complexQuestion, { logger });
+      const result = await bool(complexQuestion, {
+        logger: makeTestLogger('should handle complex contextual decisions'),
+      });
 
       // Traditional assertion
       expect(typeof result).toBe('boolean');

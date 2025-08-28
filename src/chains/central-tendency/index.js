@@ -1,7 +1,7 @@
 import map from '../map/index.js';
 import { CENTRAL_TENDENCY_PROMPT } from '../../verblets/central-tendency-lines/index.js';
 import { centralTendencyResultsJsonSchema } from './schemas.js';
-import { createLifecycleLogger } from '../../lib/lifecycle-logger/index.js';
+import { createLifecycleLogger, extractPromptAnalysis } from '../../lib/lifecycle-logger/index.js';
 
 const centralTendencyResponseFormat = {
   type: 'json_schema',
@@ -82,11 +82,7 @@ export default async function centralTendency(items, seedItems, config = {}) {
     const instructions = buildCentralTendencyInstructions(seedItems, otherConfig);
 
     // Log instruction construction
-    lifecycleLogger.logConstruction(instructions, {
-      instructionLength: instructions.length,
-      chunkSize,
-      maxAttempts,
-    });
+    lifecycleLogger.logConstruction(instructions, extractPromptAnalysis(instructions));
 
     // Use map to handle all the complexity
     const results = await map(items, instructions, {

@@ -29,6 +29,7 @@ export class TestCollector {
       this.currentTest = {
         name: event.testName,
         suite: event.suite,
+        index: event.testIndex,
         logs: [],
       };
     }

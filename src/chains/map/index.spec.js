@@ -19,14 +19,11 @@ vi.mock('../../lib/retry/index.js', () => ({
 }));
 
 vi.mock('../../verblets/list-batch/index.js', () => ({
-  default: vi.fn(async (items, instructions) => {
+  default: vi.fn(async (items, _instructions) => {
     if (items.includes('FAIL')) throw new Error('fail');
-    // Handle function-based instructions
-    const resolvedInstructions =
-      typeof instructions === 'function'
-        ? 'x' // Simplified for test
-        : instructions;
-    return items.map((i) => `${i}-${resolvedInstructions}`);
+    // For tests, just append 'x' to show the transformation worked
+    // (the actual prompt content doesn't matter for these tests)
+    return items.map((i) => `${i}-x`);
   }),
   ListStyle: {
     NEWLINE: 'newline',
@@ -55,7 +52,7 @@ describe('map', () => {
 
   it('retries only failed fragments', async () => {
     let call = 0;
-    listBatch.mockImplementation(async (items) => {
+    listBatch.mockImplementation(async (items, _instructions) => {
       call += 1;
       if (call === 1) throw new Error('fail');
       return items.map((l) => l.toUpperCase());
@@ -71,7 +68,7 @@ describe('map', () => {
 
   it('retries multiple times', async () => {
     let call = 0;
-    listBatch.mockImplementation(async (items) => {
+    listBatch.mockImplementation(async (items, _instructions) => {
       call += 1;
       if (call === 1) throw new Error('fail');
       if (call === 2) throw new Error('fail');

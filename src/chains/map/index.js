@@ -2,6 +2,11 @@ import listBatch, { ListStyle, determineStyle } from '../../verblets/list-batch/
 import createBatches from '../../lib/text-batch/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
+import {
+  createLifecycleLogger,
+  extractBatchConfig,
+  extractPromptAnalysis,
+} from '../../lib/lifecycle-logger/index.js';
 
 /**
  * Map over a list of items by calling `listBatch` on XML-enriched batches.
@@ -19,7 +24,7 @@ import { asXML } from '../../prompts/wrap-variable.js';
  * @returns { Promise<(string|undefined)[]> } results aligned with input order
  */
 const mapOnce = async function (list, instructions, config = {}) {
-  const { maxParallel = 3, listStyle, autoModeThreshold, responseFormat, llm, ...options } = config;
+  const { maxParallel = 3 } = config;
 
   const results = new Array(list.length);
   const batches = createBatches(list, config);
@@ -31,10 +36,10 @@ const mapOnce = async function (list, instructions, config = {}) {
       continue;
     }
 
-    const batchStyle = determineStyle(listStyle, items, autoModeThreshold);
+    const batchStyle = determineStyle(config.listStyle, items, config.autoModeThreshold);
 
-    const mappingInstructions = ({ style, count }) => {
-      const baseInstructions = `Transform each item in the list according to the instructions below. Apply the transformation consistently to every item.
+    // Build the compiled prompt for this batch
+    const baseInstructions = `Transform each item in the list according to the instructions below. Apply the transformation consistently to every item.
 
 ${asXML(instructions, { tag: 'transformation-instructions' })}
 
@@ -44,18 +49,19 @@ IMPORTANT:
 - Preserve the order of items from the input list
 - Output one transformed result per input item`;
 
-      if (style === ListStyle.NEWLINE) {
-        return `${baseInstructions}
+    const compiledPrompt =
+      batchStyle === ListStyle.NEWLINE
+        ? `${baseInstructions}
 
-The input list contains exactly ${count} item${count === 1 ? '' : 's'}, separated by newlines.
-Return exactly ${count} line${
-          count === 1 ? '' : 's'
-        } of output, one transformed item per line. Do not number the lines.`;
-      }
+The input list contains exactly ${items.length} item${
+            items.length === 1 ? '' : 's'
+          }, separated by newlines.
+Return exactly ${items.length} line${
+            items.length === 1 ? '' : 's'
+          } of output, one transformed item per line. Do not number the lines.`
+        : `${baseInstructions}
 
-      return `${baseInstructions}
-
-Return the transformed items as an XML list with exactly ${count} items:
+Return the transformed items as an XML list with exactly ${items.length} items:
 <list>
   <item>transformed content 1</item>
   <item>transformed content 2</item>
@@ -63,16 +69,17 @@ Return the transformed items as an XML list with exactly ${count} items:
 </list>
 
 Preserve all formatting and newlines within each <item> element.`;
-    };
+
+    // Log the compiled prompt for this batch
+    if (config.logger) {
+      config.logger.logEvent('batch-prompt', extractPromptAnalysis(compiledPrompt));
+    }
 
     const p = retry(
       () =>
-        listBatch(items, mappingInstructions, {
+        listBatch(items, compiledPrompt, {
+          ...config,
           listStyle: batchStyle,
-          autoModeThreshold,
-          responseFormat,
-          llm,
-          ...options,
         }),
       {
         label: `map batch ${startIndex}-${startIndex + items.length - 1}`,
@@ -125,25 +132,24 @@ Preserve all formatting and newlines within each <item> element.`;
  * @returns { Promise<(string|undefined)[]> }
  */
 const map = async function (list, instructions, config = {}) {
-  const {
-    batchSize,
-    maxAttempts = 3,
-    maxParallel = 3,
-    listStyle,
-    autoModeThreshold,
-    responseFormat,
-    llm,
-    ...options
-  } = config;
+  const { maxAttempts = 3, logger } = config;
+
+  // Create logger for map chain
+  const lifecycleLogger = createLifecycleLogger(logger, 'chain:map');
+
+  // Log map chain start with batch configuration
+  lifecycleLogger.logStart(
+    extractBatchConfig({
+      totalItems: list.length,
+      batchSize: config.batchSize,
+      maxAttempts,
+      maxParallel: config.maxParallel,
+    })
+  );
 
   const results = await mapOnce(list, instructions, {
-    batchSize,
-    maxParallel,
-    listStyle,
-    autoModeThreshold,
-    responseFormat,
-    llm,
-    ...options,
+    ...config,
+    logger: lifecycleLogger,
   });
 
   for (let attempt = 1; attempt < maxAttempts; attempt += 1) {
@@ -159,20 +165,32 @@ const map = async function (list, instructions, config = {}) {
 
     if (missingItems.length === 0) break;
 
+    // Log retry attempt
+    lifecycleLogger.logEvent(
+      'retry',
+      extractBatchConfig({
+        retryCount: attempt,
+        failedItems: missingItems.length,
+      })
+    );
+
     const retryResults = await mapOnce(missingItems, instructions, {
-      batchSize,
-      maxParallel,
-      listStyle,
-      autoModeThreshold,
-      responseFormat,
-      llm,
-      ...options,
+      ...config,
+      logger: lifecycleLogger,
     });
 
     retryResults.forEach((val, i) => {
       results[missingIdx[i]] = val;
     });
   }
+
+  // Log final results
+  const successCount = results.filter((r) => r !== undefined).length;
+  lifecycleLogger.logResult(results, {
+    totalItems: results.length,
+    successCount,
+    failedItems: results.length - successCount,
+  });
 
   return results;
 };
