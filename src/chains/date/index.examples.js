@@ -1,38 +1,35 @@
-import { describe, expect as vitestExpect, it as vitestIt, beforeAll, afterAll } from 'vitest';
+import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
 import date from './index.js';
-import vitestAiExpect from '../../chains/expect/index.js';
+import vitestAiExpect from '../expect/index.js';
 import { longTestTimeout } from '../../constants/common.js';
-import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
+import {
+  makeWrappedIt,
+  makeWrappedExpect,
+  makeWrappedAiExpect,
+} from '../test-analysis/test-wrappers.js';
 import { getConfig } from '../test-analysis/config.js';
 
 const config = getConfig();
-const it = config?.aiMode ? wrapIt(vitestIt, { baseProps: { suite: 'Date chain' } }) : vitestIt;
-const expect = config?.aiMode
-  ? wrapExpect(vitestExpect, { baseProps: { suite: 'Date chain' } })
-  : vitestExpect;
-const aiExpect = config?.aiMode
-  ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'Date chain' } })
-  : vitestAiExpect;
+const suite = 'Date chain';
+
+const it = makeWrappedIt(vitestIt, suite, config);
+const expect = makeWrappedExpect(vitestExpect, suite, config);
+const aiExpect = makeWrappedAiExpect(vitestAiExpect, suite, config);
+
+// Higher-order function to create test-specific loggers
+const makeTestLogger = (testName) => {
+  return config?.aiMode && globalThis.logger
+    ? globalThis.logger.child({ suite, testName })
+    : undefined;
+};
 
 describe('date examples', () => {
-  const originalMode = process.env.LLM_EXPECT_MODE;
-
-  beforeAll(async () => {
-    process.env.LLM_EXPECT_MODE = 'none';
-  });
-
-  afterAll(async () => {
-    if (originalMode !== undefined) {
-      process.env.LLM_EXPECT_MODE = originalMode;
-    } else {
-      delete process.env.LLM_EXPECT_MODE;
-    }
-  });
-
   it(
     'gets Star Wars release date',
     async () => {
-      const result = await date('When was the original Star Wars released?');
+      const result = await date('When was the original Star Wars released?', {
+        logger: makeTestLogger('gets Star Wars release date'),
+      });
       expect(result instanceof Date).toBe(true);
       await aiExpect(`Star Wars release date: ${result.toISOString()}`).toSatisfy(
         'Is this close to the actual release date of the first Star Wars movie?'
@@ -44,7 +41,9 @@ describe('date examples', () => {
   it(
     'finds specific date in 2025',
     async () => {
-      const result = await date('When is the last day of Q3 in 2025?');
+      const result = await date('When is the last day of Q3 in 2025?', {
+        logger: makeTestLogger('finds specific date in 2025'),
+      });
       expect(result instanceof Date).toBe(true);
       expect(result.getUTCFullYear()).toBe(2025);
       expect(result.getUTCMonth()).toBe(8); // September

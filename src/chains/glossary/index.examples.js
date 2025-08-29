@@ -1,4 +1,3 @@
-import { beforeAll, afterAll } from 'vitest';
 import { describe, it as vitestIt, expect as vitestExpect } from 'vitest';
 import glossary from './index.js';
 import vitestAiExpect from '../expect/index.js';
@@ -16,21 +15,6 @@ const aiExpect = config?.aiMode
   : vitestAiExpect;
 
 describe('glossary examples', () => {
-  // Set environment mode to 'none' for all tests to avoid throwing
-  const originalMode = process.env.LLM_EXPECT_MODE;
-
-  beforeAll(async () => {
-    process.env.LLM_EXPECT_MODE = 'none';
-  });
-
-  afterAll(async () => {
-    if (originalMode !== undefined) {
-      process.env.LLM_EXPECT_MODE = originalMode;
-    } else {
-      delete process.env.LLM_EXPECT_MODE;
-    }
-  });
-
   it(
     'extracts terms from a science paragraph',
     async () => {

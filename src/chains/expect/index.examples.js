@@ -1,4 +1,3 @@
-import { beforeAll, afterAll } from 'vitest';
 import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
 
 import aiExpect from './index.js';
@@ -58,21 +57,6 @@ const examples = [
 ];
 
 describe('LLM Expect Chain', () => {
-  // Set environment mode to 'none' for all tests to avoid throwing
-  const originalMode = process.env.LLM_EXPECT_MODE;
-
-  beforeAll(async () => {
-    process.env.LLM_EXPECT_MODE = 'none';
-  });
-
-  afterAll(async () => {
-    if (originalMode !== undefined) {
-      process.env.LLM_EXPECT_MODE = originalMode;
-    } else {
-      delete process.env.LLM_EXPECT_MODE;
-    }
-  });
-
   examples.forEach((example) => {
     const description = example.inputs.constraint
       ? `${JSON.stringify(example.inputs.actual).slice(0, 30)}... - ${example.inputs.constraint}`
