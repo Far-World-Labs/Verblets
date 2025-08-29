@@ -1,8 +1,15 @@
 import chatGPT from '../../lib/chatgpt/index.js';
 import toDate from '../../lib/to-date/index.js';
 import bool from '../../verblets/bool/index.js';
+import retry from '../../lib/retry/index.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 import { dateExpectationsSchema, dateValueSchema } from './schemas.js';
+import {
+  createLifecycleLogger,
+  extractLLMConfig,
+  extractPromptAnalysis,
+  extractResultValue,
+} from '../../lib/lifecycle-logger/index.js';
 
 const {
   asDate,
@@ -15,7 +22,15 @@ const {
   asWrappedValueJSON,
 } = promptConstants;
 
-const expectationPrompt = (question) => `${contentIsQuestion} ${question}
+// Date disambiguation guidelines to add to prompts
+const disambiguationGuideline = `When interpreting dates:
+- Default to UTC timezone
+- For ambiguous formats (01-02-03), use context clues
+- For partial dates (year only), use January 1st
+- For quarters: Q1=Jan-Mar, Q2=Apr-Jun, Q3=Jul-Sep, Q4=Oct-Dec`;
+
+// Prompt builders
+const buildExpectationPrompt = (question) => `${contentIsQuestion} ${question}
 
 List up to three short yes/no checks that would confirm a date answer is correct. If nothing specific comes to mind, include "The result is a valid date".
 
@@ -23,77 +38,181 @@ ${asWrappedArrayJSON}
 
 ${asJSON}`;
 
-const buildCheckPrompt = (dateValue, check) => {
+const buildDatePrompt = (text) => `${contentIsQuestion} ${text}
+
+${disambiguationGuideline}
+
+${explainAndSeparate} ${explainAndSeparatePrimitive}
+
+${asDate} ${asUndefinedByDefault}
+
+${asWrappedValueJSON} The value should be the date in ISO format or "undefined".
+
+${asJSON}`;
+
+// Removed buildRetryPrompt - directly using buildDatePrompt inline
+
+const buildValidationPrompt = (dateValue, check) => {
   const iso = dateValue.toISOString();
   const human = dateValue.toUTCString();
-  const utcDate = new Date(
-    Date.UTC(dateValue.getUTCFullYear(), dateValue.getUTCMonth(), dateValue.getUTCDate())
-  );
-  return `Date in ISO: ${iso} (UTC: ${human}, UTC date: ${utcDate.toISOString()}). Does this satisfy "${check}"?`;
+  return `Date in ISO: ${iso} (UTC: ${human}). Does this satisfy "${check}"?`;
 };
 
-export default async function date(text, config = {}) {
-  const { maxAttempts = 3, llm, ...options } = config;
-  const expectationsResult = await chatGPT(expectationPrompt(text), {
+// Helper to normalize date to UTC midnight
+const toUTCDate = (date) => {
+  if (!date) return undefined;
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+};
+
+// Extract date with retry support
+async function extractDate(prompt, llm, logger, options) {
+  const response = await chatGPT(prompt, {
     modelOptions: {
       ...llm,
       response_format: {
         type: 'json_schema',
         json_schema: {
-          name: 'date_expectations',
-          schema: dateExpectationsSchema,
+          name: 'date_extraction',
+          schema: dateValueSchema,
         },
       },
     },
+    logger,
     ...options,
   });
-  const llmExpectations =
-    expectationsResult.length > 0 ? expectationsResult : ['The result is a valid date'];
 
-  let attemptText = text;
-  let response;
-  for (let i = 0; i < maxAttempts; i += 1) {
-    const datePrompt = `${contentIsQuestion} ${attemptText}\n\n${explainAndSeparate} ${explainAndSeparatePrimitive}\n\n${asDate} ${asUndefinedByDefault}\n\n${asWrappedValueJSON} The value should be the date in ISO format or "undefined".\n\n${asJSON}`;
-    // eslint-disable-next-line no-await-in-loop
-    response = await chatGPT(datePrompt, {
+  if (response === 'undefined') return undefined;
+  return toUTCDate(toDate(response));
+}
+
+// Validate date against expectations
+async function validateDate(dateValue, expectations, llm, logger, options) {
+  for (const check of expectations) {
+    const validationPrompt = buildValidationPrompt(dateValue, check);
+    logger?.logEvent('validation-prompt', extractPromptAnalysis(validationPrompt));
+
+    const passed = await bool(validationPrompt, { llm, logger, ...options });
+
+    if (!passed) {
+      return { passed: false, failedCheck: check };
+    }
+  }
+  return { passed: true };
+}
+
+export default async function date(text, config = {}) {
+  const { maxAttempts = 3, llm, logger, ...options } = config;
+
+  // Create lifecycle logger with date chain namespace
+  const lifecycleLogger = createLifecycleLogger(logger, 'chain:date');
+
+  // Log start with input
+  lifecycleLogger.logStart({
+    input: text,
+    maxAttempts,
+    ...extractLLMConfig(llm),
+  });
+
+  // Build all prompts upfront and log them
+  const expectationPrompt = buildExpectationPrompt(text);
+  const datePrompt = buildDatePrompt(text);
+
+  lifecycleLogger.logEvent('prompts-built', {
+    expectations: extractPromptAnalysis(expectationPrompt),
+    extraction: extractPromptAnalysis(datePrompt),
+  });
+
+  // Parallelize expectations and first date extraction
+  const [expectationsResult, firstDate] = await Promise.all([
+    chatGPT(expectationPrompt, {
       modelOptions: {
         ...llm,
         response_format: {
           type: 'json_schema',
           json_schema: {
-            name: 'date_extraction',
-            schema: dateValueSchema,
+            name: 'date_expectations',
+            schema: dateExpectationsSchema,
           },
         },
       },
+      logger: lifecycleLogger,
       ...options,
-    });
-    const value = response === 'undefined' ? undefined : toDate(response);
-    if (value === undefined) return undefined;
+    }),
+    extractDate(datePrompt, llm, lifecycleLogger, options),
+  ]);
 
-    // Convert to UTC date for consistent checks
-    const utcValue = new Date(
-      Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate())
-    );
+  const expectations =
+    expectationsResult.length > 0 ? expectationsResult : ['The result is a valid date'];
 
-    let failedCheck;
-    for (const check of llmExpectations) {
-      // eslint-disable-next-line no-await-in-loop
-      const passed = await bool(buildCheckPrompt(utcValue, check), { llm, ...options });
-      if (!passed) {
-        failedCheck = check;
-        break;
-      }
-    }
+  lifecycleLogger.logEvent('parallel-complete', {
+    expectations,
+    firstDate: firstDate?.toISOString(),
+  });
 
-    if (!failedCheck) return utcValue;
-
-    attemptText = `${text} The previous answer (${utcValue.toISOString()}) failed to satisfy: "${failedCheck}". Try again.`;
+  // Handle undefined response
+  if (!firstDate) {
+    lifecycleLogger.logResult(undefined, extractResultValue('undefined', undefined));
+    return undefined;
   }
-  const finalValue = response === 'undefined' ? undefined : toDate(response);
-  return finalValue
-    ? new Date(
-        Date.UTC(finalValue.getUTCFullYear(), finalValue.getUTCMonth(), finalValue.getUTCDate())
-      )
-    : undefined;
+
+  // State for retry loop
+  let currentDate = firstDate;
+  let currentText = text;
+
+  // Use retry for the entire chain
+  const result = await retry(
+    async () => {
+      lifecycleLogger.logEvent('attempt', {
+        date: currentDate.toISOString(),
+      });
+
+      // Validate current date
+      const validation = await validateDate(
+        currentDate,
+        expectations,
+        llm,
+        lifecycleLogger,
+        options
+      );
+
+      if (validation.passed) {
+        return currentDate;
+      }
+
+      // Validation failed, prepare for retry
+      lifecycleLogger.logEvent('validation-failed', {
+        failedCheck: validation.failedCheck,
+        dateValue: currentDate.toISOString(),
+      });
+
+      // Build retry prompt and get new date
+      currentText = `${text} The previous answer (${currentDate.toISOString()}) failed to satisfy: "${
+        validation.failedCheck
+      }". Try again.`;
+      const retryPrompt = buildDatePrompt(currentText);
+      lifecycleLogger.logEvent('retry-prompt', extractPromptAnalysis(retryPrompt));
+
+      const newDate = await extractDate(retryPrompt, llm, lifecycleLogger, options);
+
+      if (!newDate) {
+        // If we can't get a new date, return what we have
+        return currentDate;
+      }
+
+      currentDate = newDate;
+
+      // Throw to trigger retry
+      throw new Error(`Retrying after validation failure`);
+    },
+    {
+      maxRetries: maxAttempts - 1,
+      retryOnAll: true,
+    }
+  );
+
+  lifecycleLogger.logResult(
+    result,
+    extractResultValue(result?.toISOString() || 'undefined', result)
+  );
+  return result;
 }
