@@ -1,18 +1,53 @@
 import chatGPT from '../../lib/chatgpt/index.js';
 import modelService from '../../services/llm-model/index.js';
+import socraticQuestionSchema from './socratic-question-schema.js';
+import socraticAnswerSchema from './socratic-answer-schema.js';
+import {
+  createLifecycleLogger,
+  extractPromptAnalysis,
+  extractResultValue,
+} from '../../lib/lifecycle-logger/index.js';
+
+// Socratic method guidelines
+const socraticGuidelines = `Using the Socratic method, ask one short question that challenges assumptions`;
+
+// Prompt builders
+const buildAskPrompt = (topic, historyText) =>
+  `${historyText ? `${historyText}\n` : ''}${socraticGuidelines} about "${topic}".`;
+
+const buildAnswerPrompt = (question, historyText) => `${
+  historyText ? `${historyText}\n` : ''
+}Answer the question thoughtfully and briefly:
+"${question}"`;
 
 const defaultAsk = async ({
   topic,
   history = [],
   model = modelService.getBestPublicModel(),
+  logger,
 } = {}) => {
   const historyText = history.map((turn) => `Q: ${turn.question}\nA: ${turn.answer}`).join('\n');
+  const prompt = buildAskPrompt(topic, historyText);
 
-  const prompt = `${
-    historyText ? `${historyText}\n` : ''
-  }Using the Socratic method, ask one short question that challenges assumptions about "${topic}".`;
+  logger?.logEvent('ask-prompt', extractPromptAnalysis(prompt));
+
   const budget = model.budgetTokens(prompt);
-  return await chatGPT(prompt, { maxTokens: budget.completion, temperature: 0.7 });
+  const response = await chatGPT(prompt, {
+    maxTokens: budget.completion,
+    temperature: 0.7,
+    modelOptions: {
+      response_format: {
+        type: 'json_schema',
+        json_schema: {
+          name: 'socratic_question',
+          schema: socraticQuestionSchema,
+        },
+      },
+    },
+    logger,
+  });
+
+  return response;
 };
 
 const defaultAnswer = async ({
@@ -20,22 +55,46 @@ const defaultAnswer = async ({
   history = [],
   _topic,
   model = modelService.getBestPublicModel(),
+  logger,
 } = {}) => {
   const historyText = history.map((turn) => `Q: ${turn.question}\nA: ${turn.answer}`).join('\n');
+  const prompt = buildAnswerPrompt(question, historyText);
 
-  const prompt = `${
-    historyText ? `${historyText}\n` : ''
-  }Answer the question thoughtfully and briefly:\n"${question}"`;
+  logger?.logEvent('answer-prompt', extractPromptAnalysis(prompt));
+
   const budget = model.budgetTokens(prompt);
-  return await chatGPT(prompt, { maxTokens: budget.completion, temperature: 0.7 });
+  const response = await chatGPT(prompt, {
+    maxTokens: budget.completion,
+    temperature: 0.7,
+    modelOptions: {
+      response_format: {
+        type: 'json_schema',
+        json_schema: {
+          name: 'socratic_answer',
+          schema: socraticAnswerSchema,
+        },
+      },
+    },
+    logger,
+  });
+
+  return response;
 };
 
 class SocraticMethod {
-  constructor(statement, { ask = defaultAsk, answer = defaultAnswer } = {}) {
+  constructor(statement, { ask = defaultAsk, answer = defaultAnswer, logger } = {}) {
     this.statement = statement;
     this.ask = ask;
     this.answer = answer;
     this.history = [];
+    this.logger = createLifecycleLogger(logger, 'chain:socratic');
+
+    // Log construction
+    this.logger.logStart({
+      statement,
+      hasCustomAsk: ask !== defaultAsk,
+      hasCustomAnswer: answer !== defaultAnswer,
+    });
   }
 
   getDialogue() {
@@ -43,18 +102,65 @@ class SocraticMethod {
   }
 
   async step() {
-    const question = await this.ask({ topic: this.statement, history: this.history });
-    const answer = await this.answer({ question, history: this.history, topic: this.statement });
+    this.logger.logEvent('step-start', {
+      turnNumber: this.history.length + 1,
+    });
+
+    // Log input (topic and history)
+    this.logger.info({
+      event: 'chain:socratic:input',
+      value: {
+        topic: this.statement,
+        historyLength: this.history.length,
+        history: this.history,
+      },
+    });
+
+    const question = await this.ask({
+      topic: this.statement,
+      history: this.history,
+      logger: this.logger,
+    });
+
+    // Log question as intermediate event
+    this.logger.logEvent('question-generated', {
+      value: question,
+    });
+
+    const answer = await this.answer({
+      question,
+      history: this.history,
+      topic: this.statement,
+      logger: this.logger,
+    });
+
     const turn = { question, answer };
     this.history.push(turn);
+
+    // Log output (the complete turn)
+    this.logger.info({
+      event: 'chain:socratic:output',
+      value: turn,
+    });
+
+    this.logger.logEvent('step-complete', {
+      turnNumber: this.history.length,
+      question,
+      answer,
+    });
+
     return turn;
   }
 
   async run(depth = 3) {
+    this.logger.logEvent('run-start', { depth });
+
     for (let i = 0; i < depth; i += 1) {
       // eslint-disable-next-line no-await-in-loop
       await this.step();
     }
+
+    this.logger.logResult(this.history, extractResultValue(this.history, this.history));
     return this.history;
   }
 }

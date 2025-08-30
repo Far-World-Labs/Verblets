@@ -64,34 +64,31 @@ export class TestCollector {
         }
       }
 
-      // Handle verblet/chain/bool events
-      const match = event.event.match(/^(bool|verblet|chain):(.+)$/);
-      if (match) {
-        const [, type, action] = match;
+      // Handle lifecycle logger events by suffix matching
+      if (event.event?.endsWith(':start')) {
+        const namespace = event.event.replace(':start', '');
+        const call = {
+          type: namespace,
+          name: event.name || namespace,
+          startTime: new Date(event.ts || event.timestamp).getTime(),
+          testName: this.currentTest?.name,
+          suite: this.currentTest?.suite,
+        };
+        this.pendingLLMCalls.set(namespace, call);
+      }
 
-        if (action === 'start') {
-          const call = {
-            type,
-            name: event.name || type,
-            startTime: new Date(event.ts || event.timestamp).getTime(),
-            testName: this.currentTest?.name,
-            suite: this.currentTest?.suite,
-          };
-          this.pendingLLMCalls.set(type, call);
-        }
-
-        if (action === 'complete' || action === 'end') {
-          const pending = this.pendingLLMCalls.get(type);
-          if (pending) {
-            pending.endTime = new Date(event.ts || event.timestamp).getTime();
-            pending.duration =
-              event.totalElapsed ||
-              event.elapsed ||
-              event.duration ||
-              pending.endTime - pending.startTime;
-            this.llmCalls.push(pending);
-            this.pendingLLMCalls.delete(type);
-          }
+      if (event.event?.endsWith(':complete') || event.event?.endsWith(':end')) {
+        const namespace = event.event.replace(':complete', '').replace(':end', '');
+        const pending = this.pendingLLMCalls.get(namespace);
+        if (pending) {
+          pending.endTime = new Date(event.ts || event.timestamp).getTime();
+          pending.duration =
+            event.totalElapsed ||
+            event.elapsed ||
+            event.duration ||
+            pending.endTime - pending.startTime;
+          this.llmCalls.push(pending);
+          this.pendingLLMCalls.delete(namespace);
         }
       }
     }
