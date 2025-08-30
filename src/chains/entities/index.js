@@ -115,171 +115,105 @@ export async function extractEntities(text, instructions, config = {}) {
 // ===== Instruction Builders =====
 
 /**
- * Helper to create instruction with attached specification
- * @param {string} instructions - The instruction string
- * @param {string} specification - The specification text
- * @param {boolean} returnTuple - Whether to return as tuple
- * @returns {string|Object} Instructions with specification attached or tuple
- */
-function createInstructionResult(instructions, specification, returnTuple) {
-  if (returnTuple) {
-    return { value: instructions, specification };
-  }
-  // Attach specification as a property to the string
-  return Object.assign(instructions, { specification });
-}
-
-/**
  * Create map instructions for entity extraction
- * @param {string|Object} instructions - Entity extraction string or instructions object
- * @param {string} instructions.entities - What entities to extract
- * @param {string} instructions.processing - Additional processing instructions (optional)
- * @param {Object} config - Configuration options
- * @param {boolean} config.returnTuple - Return {value, specification} instead of string with property
- * @param {Function} createSpec - Spec generation function (defaults to entitySpec)
- * @returns {Promise<string|Object>} Instructions string with specification property, or tuple if configured
+ * @param {Object} params - Parameters object
+ * @param {string} params.specification - Pre-generated entity specification
+ * @param {string} params.processing - Additional processing instructions (optional)
+ * @returns {string} Instructions string
  */
-export async function mapInstructions(instructions, config = {}, createSpec = entitySpec) {
-  // Handle backward compatibility - if instructions is a string, use it as entities
-  const entities = typeof instructions === 'string' ? instructions : instructions.entities;
-  const processing = typeof instructions === 'object' ? instructions.processing : null;
-  const { returnTuple, ...specConfig } = config;
-  const specification = await createSpec(entities, specConfig);
-
-  let combinedInstructions;
+export function mapInstructions({ specification, processing }) {
   if (processing) {
-    combinedInstructions = `${asXML(processing, { tag: 'processing-instructions' })}
+    return `${asXML(processing, { tag: 'processing-instructions' })}
 
 Apply this entity specification:
 ${asXML(specification, { tag: 'entity-specification' })}`;
   } else {
-    combinedInstructions = `${DEFAULT_MAP_INSTRUCTIONS}
+    return `${DEFAULT_MAP_INSTRUCTIONS}
 
 ${asXML(specification, { tag: 'entity-specification' })}`;
   }
-
-  return createInstructionResult(combinedInstructions, specification, returnTuple);
 }
 
 /**
  * Create filter instructions for entity extraction
- * @param {Object} instructions - Instructions object
- * @param {string} instructions.entities - What entities to extract
- * @param {string} instructions.processing - Filter criteria (optional)
- * @param {Object} config - Configuration options
- * @param {boolean} config.returnTuple - Return {value, specification} instead of string with property
- * @param {Function} createSpec - Spec generation function (defaults to entitySpec)
- * @returns {Promise<string|Object>} Instructions string with specification property, or tuple if configured
+ * @param {Object} params - Parameters object
+ * @param {string} params.specification - Pre-generated entity specification
+ * @param {string} params.processing - Filter criteria (optional)
+ * @returns {string} Instructions string
  */
-export async function filterInstructions(instructions, config = {}, createSpec = entitySpec) {
-  const { entities, processing } = instructions;
-  const { returnTuple, ...specConfig } = config;
-  const specification = await createSpec(entities, specConfig);
-
-  let combinedInstructions;
+export function filterInstructions({ specification, processing }) {
   if (processing) {
-    combinedInstructions = `${asXML(processing, { tag: 'filter-criteria' })}
+    return `${asXML(processing, { tag: 'filter-criteria' })}
 
 ${FILTER_PROCESS_STEPS}
 
 ${asXML(specification, { tag: 'entity-specification' })}`;
   } else {
-    combinedInstructions = `${DEFAULT_FILTER_INSTRUCTIONS}
+    return `${DEFAULT_FILTER_INSTRUCTIONS}
 
 ${asXML(specification, { tag: 'entity-specification' })}`;
   }
-
-  return createInstructionResult(combinedInstructions, specification, returnTuple);
 }
 
 /**
  * Create reduce instructions for entity extraction
- * @param {Object} instructions - Instructions object
- * @param {string} instructions.entities - What entities to extract
- * @param {string} instructions.processing - How to consolidate entities (optional)
- * @param {Object} config - Configuration options
- * @param {boolean} config.returnTuple - Return {value, specification} instead of string with property
- * @param {Function} createSpec - Spec generation function (defaults to entitySpec)
- * @returns {Promise<string|Object>} Instructions string with specification property, or tuple if configured
+ * @param {Object} params - Parameters object
+ * @param {string} params.specification - Pre-generated entity specification
+ * @param {string} params.processing - How to consolidate entities (optional)
+ * @returns {string} Instructions string
  */
-export async function reduceInstructions(instructions, config = {}, createSpec = entitySpec) {
-  const { entities, processing } = instructions;
-  const { returnTuple, ...specConfig } = config;
-  const specification = await createSpec(entities, specConfig);
-
+export function reduceInstructions({ specification, processing }) {
   const defaultProcessing = `Build comprehensive entity list from all chunks`;
 
-  const combinedInstructions = `${asXML(processing || defaultProcessing, {
+  return `${asXML(processing || defaultProcessing, {
     tag: 'reduce-operation',
   })}
 
 ${REDUCE_PROCESS_STEPS}
 
 ${asXML(specification, { tag: 'entity-specification' })}`;
-
-  return createInstructionResult(combinedInstructions, specification, returnTuple);
 }
 
 /**
  * Create find instructions for entity extraction
- * @param {Object} instructions - Instructions object
- * @param {string} instructions.entities - What entities to extract
- * @param {string} instructions.processing - Selection criteria (optional)
- * @param {Object} config - Configuration options
- * @param {boolean} config.returnTuple - Return {value, specification} instead of string with property
- * @param {Function} createSpec - Spec generation function (defaults to entitySpec)
- * @returns {Promise<string|Object>} Instructions string with specification property, or tuple if configured
+ * @param {Object} params - Parameters object
+ * @param {string} params.specification - Pre-generated entity specification
+ * @param {string} params.processing - Selection criteria (optional)
+ * @returns {string} Instructions string
  */
-export async function findInstructions(instructions, config = {}, createSpec = entitySpec) {
-  const { entities, processing } = instructions;
-  const { returnTuple, ...specConfig } = config;
-  const specification = await createSpec(entities, specConfig);
-
-  let combinedInstructions;
+export function findInstructions({ specification, processing }) {
   if (processing) {
-    combinedInstructions = `${asXML(processing, { tag: 'selection-criteria' })}
+    return `${asXML(processing, { tag: 'selection-criteria' })}
 
 ${FIND_PROCESS_STEPS}
 
 ${asXML(specification, { tag: 'entity-specification' })}`;
   } else {
-    combinedInstructions = `${DEFAULT_FIND_INSTRUCTIONS}
+    return `${DEFAULT_FIND_INSTRUCTIONS}
 
 ${asXML(specification, { tag: 'entity-specification' })}`;
   }
-
-  return createInstructionResult(combinedInstructions, specification, returnTuple);
 }
 
 /**
  * Create group instructions for entity extraction
- * @param {Object} instructions - Instructions object
- * @param {string} instructions.entities - What entities to extract
- * @param {string} instructions.processing - Grouping strategy (optional)
- * @param {Object} config - Configuration options
- * @param {boolean} config.returnTuple - Return {value, specification} instead of string with property
- * @param {Function} createSpec - Spec generation function (defaults to entitySpec)
- * @returns {Promise<string|Object>} Instructions string with specification property, or tuple if configured
+ * @param {Object} params - Parameters object
+ * @param {string} params.specification - Pre-generated entity specification
+ * @param {string} params.processing - Grouping strategy (optional)
+ * @returns {string} Instructions string
  */
-export async function groupInstructions(instructions, config = {}, createSpec = entitySpec) {
-  const { entities, processing } = instructions;
-  const { returnTuple, ...specConfig } = config;
-  const specification = await createSpec(entities, specConfig);
-
-  let combinedInstructions;
+export function groupInstructions({ specification, processing }) {
   if (processing) {
-    combinedInstructions = `${asXML(processing, { tag: 'grouping-strategy' })}
+    return `${asXML(processing, { tag: 'grouping-strategy' })}
 
 ${GROUP_PROCESS_STEPS}
 
 ${asXML(specification, { tag: 'entity-specification' })}`;
   } else {
-    combinedInstructions = `${DEFAULT_GROUP_INSTRUCTIONS}
+    return `${DEFAULT_GROUP_INSTRUCTIONS}
 
 ${asXML(specification, { tag: 'entity-specification' })}`;
   }
-
-  return createInstructionResult(combinedInstructions, specification, returnTuple);
 }
 
 // ===== Advanced Entity Functions =====

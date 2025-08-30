@@ -77,7 +77,7 @@ describe('score chain', () => {
   describe('scoreItem', () => {
     it('scores a single item', async () => {
       scaleSpec.mockResolvedValueOnce(mockSpec);
-      chatGPT.mockResolvedValueOnce({ score: 7 });
+      chatGPT.mockResolvedValueOnce(7); // chatGPT auto-unwraps single value property
 
       const result = await scoreItem('test item', 'score by length');
 
@@ -92,7 +92,7 @@ describe('score chain', () => {
 
   describe('applyScore', () => {
     it('applies a score specification to a single item', async () => {
-      chatGPT.mockResolvedValueOnce({ score: 7 });
+      chatGPT.mockResolvedValueOnce(7); // chatGPT auto-unwraps single value property
 
       const result = await applyScore('test item', mockSpec);
 
@@ -106,96 +106,63 @@ describe('score chain', () => {
 
   describe('instruction builders', () => {
     describe('mapInstructions', () => {
-      it('creates map instructions with specification attached', async () => {
-        scaleSpec.mockResolvedValueOnce(mockSpec);
+      it('creates map instructions from specification', () => {
+        const instructions = mapInstructions({ specification: mockSpec });
 
-        const instructions = await mapInstructions('score by length');
-
-        expect(instructions.specification).toEqual(mockSpec);
-        expect(String(instructions)).toContain('score-specification');
-        expect(String(instructions)).toContain('Return ONLY the score value');
-      });
-
-      it('returns tuple when configured', async () => {
-        scaleSpec.mockResolvedValueOnce(mockSpec);
-
-        const result = await mapInstructions('score by length', { returnTuple: true });
-
-        expect(result.value).toContain('score-specification');
-        expect(result.specification).toEqual(mockSpec);
-      });
-
-      it('accepts custom spec generator', async () => {
-        const customSpec = vi.fn().mockResolvedValueOnce(mockSpec);
-
-        await mapInstructions('score by length', {}, customSpec);
-
-        expect(customSpec).toHaveBeenCalledWith('score by length', {});
-        expect(scaleSpec).not.toHaveBeenCalled();
+        expect(instructions).toContain('score-specification');
+        expect(instructions).toContain('Return ONLY the score value');
       });
     });
 
     describe('filterInstructions', () => {
-      it('creates filter instructions with specification attached', async () => {
-        scaleSpec.mockResolvedValueOnce(mockSpec);
-
-        const instructions = await filterInstructions({
-          scoring: 'score by quality',
+      it('creates filter instructions from specification', () => {
+        const instructions = filterInstructions({
+          specification: mockSpec,
           processing: 'keep scores above 7',
         });
 
-        expect(instructions.specification).toEqual(mockSpec);
-        expect(String(instructions)).toContain('score-specification');
-        expect(String(instructions)).toContain('filter-condition');
-        expect(String(instructions)).toContain('keep scores above 7');
+        expect(instructions).toContain('score-specification');
+        expect(instructions).toContain('filter-condition');
+        expect(instructions).toContain('keep scores above 7');
       });
     });
 
     describe('reduceInstructions', () => {
-      it('creates reduce instructions with specification attached', async () => {
-        scaleSpec.mockResolvedValueOnce(mockSpec);
-
-        const instructions = await reduceInstructions({
-          scoring: 'score by relevance',
+      it('creates reduce instructions from specification', () => {
+        const instructions = reduceInstructions({
+          specification: mockSpec,
           processing: 'sum all scores',
         });
 
-        expect(instructions.specification).toEqual(mockSpec);
-        expect(String(instructions)).toContain('score-specification');
-        expect(String(instructions)).toContain('reduce-operation');
-        expect(String(instructions)).toContain('sum all scores');
+        expect(instructions).toContain('score-specification');
+        expect(instructions).toContain('reduce-operation');
+        expect(instructions).toContain('sum all scores');
       });
     });
 
     describe('findInstructions', () => {
-      it('creates find instructions with specification attached', async () => {
-        scaleSpec.mockResolvedValueOnce(mockSpec);
-
-        const instructions = await findInstructions({
-          scoring: 'score by match',
+      it('creates find instructions from specification', () => {
+        const instructions = findInstructions({
+          specification: mockSpec,
           processing: 'highest scoring item',
         });
 
-        expect(instructions.specification).toEqual(mockSpec);
-        expect(String(instructions)).toContain('score-specification');
-        expect(String(instructions)).toContain('selection-criteria');
-        expect(String(instructions)).toContain('highest scoring item');
+        expect(instructions).toContain('score-specification');
+        expect(instructions).toContain('selection-criteria');
+        expect(instructions).toContain('highest scoring item');
       });
     });
 
     describe('groupInstructions', () => {
-      it('creates group instructions with specification attached', async () => {
-        scaleSpec.mockResolvedValueOnce(mockSpec);
-
-        const instructions = await groupInstructions({
-          scoring: 'score by category',
+      it('creates group instructions from specification', () => {
+        const instructions = groupInstructions({
+          specification: mockSpec,
           processing: 'group into low, medium, high',
         });
 
-        expect(instructions.specification).toEqual(mockSpec);
-        expect(String(instructions)).toContain('score-specification');
-        expect(String(instructions)).toContain('grouping-strategy');
-        expect(String(instructions)).toContain('group into low, medium, high');
+        expect(instructions).toContain('score-specification');
+        expect(instructions).toContain('grouping-strategy');
+        expect(instructions).toContain('group into low, medium, high');
       });
     });
   });
@@ -276,10 +243,9 @@ describe('score chain', () => {
 
   describe('integration with collection chains', () => {
     it('can use mapInstructions with map chain', async () => {
-      scaleSpec.mockResolvedValueOnce(mockSpec);
       map.mockResolvedValueOnce(['5', '7', '3']);
 
-      const instructions = await mapInstructions('score by quality');
+      const instructions = mapInstructions({ specification: mockSpec });
       const items = ['item1', 'item2', 'item3'];
 
       const scores = await map(items, instructions);
@@ -289,11 +255,10 @@ describe('score chain', () => {
     });
 
     it('can use filterInstructions with filter chain', async () => {
-      scaleSpec.mockResolvedValueOnce(mockSpec);
       filter.mockResolvedValueOnce(['item1', 'item3']);
 
-      const instructions = await filterInstructions({
-        scoring: 'score by relevance',
+      const instructions = filterInstructions({
+        specification: mockSpec,
         processing: 'keep scores above 5',
       });
       const items = ['item1', 'item2', 'item3'];

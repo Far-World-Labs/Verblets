@@ -64,9 +64,8 @@ describe('core functions', () => {
 
 describe('collection instruction builders', () => {
   // Shared test helper for instruction builders
-  const testInstructionBuilder = async (builderFn, config, expectedContent) => {
-    const instructions = await builderFn(config);
-    expect(instructions.specification).toBe(mockSpec);
+  const testInstructionBuilder = (builderFn, params, expectedContent) => {
+    const instructions = builderFn(params);
 
     const text = toText(instructions);
     expectedContent.forEach((content) => {
@@ -76,65 +75,65 @@ describe('collection instruction builders', () => {
     return instructions;
   };
 
-  it('mapInstructions creates proper instructions', async () => {
-    await testInstructionBuilder(
+  it('mapInstructions creates proper instructions', () => {
+    testInstructionBuilder(
       mapInstructions,
       {
-        anonymization: 'Remove personal data',
+        specification: mockSpec,
         processing: 'Process each review independently',
       },
       ['processing-instructions', 'anonymization-specification']
     );
 
-    // Test backward compatibility
-    const stringInput = await mapInstructions('Simple anonymization');
-    expect(stringInput.specification).toBe(mockSpec);
+    // Test without processing
+    const simpleInstructions = mapInstructions({ specification: mockSpec });
+    expect(simpleInstructions).toContain('anonymization-specification');
   });
 
-  it('filterInstructions handles criteria and defaults', async () => {
-    await testInstructionBuilder(
+  it('filterInstructions handles criteria and defaults', () => {
+    testInstructionBuilder(
       filterInstructions,
       {
-        anonymization: 'Remove sensitive data',
+        specification: mockSpec,
         processing: 'Keep financial information',
       },
       ['filter-criteria', 'anonymization-specification']
     );
 
     // Test default behavior
-    await testInstructionBuilder(filterInstructions, { anonymization: 'Standard anonymization' }, [
+    testInstructionBuilder(filterInstructions, { specification: mockSpec }, [
       'moderate threshold',
       'anonymization-specification',
     ]);
   });
 
-  it('reduceInstructions combines properly', async () => {
-    await testInstructionBuilder(
+  it('reduceInstructions combines properly', () => {
+    testInstructionBuilder(
       reduceInstructions,
       {
-        anonymization: 'Anonymize final summary',
+        specification: mockSpec,
         processing: 'Combine customer feedback',
       },
       ['reduce-operation', 'final accumulated result']
     );
   });
 
-  it('findInstructions selects correctly', async () => {
-    await testInstructionBuilder(
+  it('findInstructions selects correctly', () => {
+    testInstructionBuilder(
       findInstructions,
       {
-        anonymization: 'Anonymize selected',
+        specification: mockSpec,
         processing: 'Find most sensitive',
       },
       ['selection-criteria', 'selected item']
     );
   });
 
-  it('groupInstructions organizes properly', async () => {
-    await testInstructionBuilder(
+  it('groupInstructions organizes properly', () => {
+    testInstructionBuilder(
       groupInstructions,
       {
-        anonymization: 'Anonymize grouped data',
+        specification: mockSpec,
         processing: 'Group by type and sensitivity',
       },
       ['grouping-strategy', 'within each group']

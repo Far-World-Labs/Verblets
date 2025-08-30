@@ -98,9 +98,12 @@ describe('anonymize collection operations', () => {
     'maps anonymization across items',
     { timeout: 60_000 },
     async () => {
-      const instructions = await mapInstructions(
-        'Remove personal and company names from technical insights'
-      );
+      // First generate the anonymization spec
+      const spec = await anonymizeSpec('Remove personal and company names from technical insights');
+
+      const instructions = mapInstructions({
+        specification: spec,
+      });
 
       const results = await map(techTexts, instructions);
 
@@ -134,9 +137,12 @@ describe('anonymize collection operations', () => {
     'reduces with final anonymization',
     { timeout: 60_000 },
     async () => {
-      const instructions = await reduceInstructions({
+      // First generate the anonymization spec
+      const spec = await anonymizeSpec('Remove all identifiers from the final summary');
+
+      const instructions = reduceInstructions({
+        specification: spec,
         processing: 'Combine insights into a unified technical summary',
-        anonymization: 'Remove all identifiers from the final summary',
       });
 
       const summary = await reduce(techTexts, instructions);
@@ -176,21 +182,19 @@ describe('anonymize collection operations', () => {
       expect(spec.length).to.be.greaterThan(50);
 
       // Use the spec in map instructions
-      const instructions1 = await mapInstructions(
-        { anonymization: spec, processing: 'Process reviews batch 1' },
-        {},
-        () => spec
-      );
+      const instructions1 = mapInstructions({
+        specification: spec,
+        processing: 'Process reviews batch 1',
+      });
 
-      const instructions2 = await mapInstructions(
-        { anonymization: spec, processing: 'Process reviews batch 2' },
-        {},
-        () => spec
-      );
+      const instructions2 = mapInstructions({
+        specification: spec,
+        processing: 'Process reviews batch 2',
+      });
 
-      // Both should have the same specification
-      expect(instructions1.specification).toBe(spec);
-      expect(instructions2.specification).toBe(spec);
+      // Both instructions should contain the specification
+      expect(instructions1).to.include(spec);
+      expect(instructions2).to.include(spec);
 
       // Test with sample data
       const batch1 = ['Alice from TechCorp loves the new features'];

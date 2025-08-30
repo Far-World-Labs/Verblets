@@ -89,68 +89,62 @@ Extraction Rules:
   });
 
   describe('instruction builders', () => {
-    it('should create map instructions', async () => {
+    it('should create map instructions', () => {
       const mockSpec = 'Entity specification';
-      chatGPT.mockResolvedValueOnce(mockSpec);
 
-      const instructions = await mapInstructions('Extract people');
+      const instructions = mapInstructions({ specification: mockSpec });
 
-      // Instructions are string-like objects with toString()
-      expect(instructions.toString()).toContain('Extract entities from each text chunk');
-      expect(instructions.specification).toBe(mockSpec);
+      expect(instructions).toContain('Extract entities from each text chunk');
+      expect(instructions).toContain(mockSpec);
     });
 
-    it('should create reduce instructions with custom processing', async () => {
+    it('should create reduce instructions with custom processing', () => {
       const mockSpec = 'Entity specification';
-      chatGPT.mockResolvedValueOnce(mockSpec);
 
-      const instructions = await reduceInstructions({
-        entities: 'Extract companies',
+      const instructions = reduceInstructions({
+        specification: mockSpec,
         processing: 'Merge all variations of company names',
       });
 
-      expect(instructions.toString()).toContain('Merge all variations of company names');
-      expect(instructions.toString()).toContain('Consolidate entities across text chunks');
-      expect(instructions.specification).toBe(mockSpec);
+      expect(instructions).toContain('Merge all variations of company names');
+      expect(instructions).toContain('Consolidate entities across text chunks');
+      expect(instructions).toContain(mockSpec);
     });
 
-    it('should create filter instructions', async () => {
+    it('should create filter instructions', () => {
       const mockSpec = 'Entity specification';
-      chatGPT.mockResolvedValueOnce(mockSpec);
 
-      const instructions = await filterInstructions({
-        entities: 'Extract locations',
+      const instructions = filterInstructions({
+        specification: mockSpec,
         processing: 'Keep entities in Europe',
       });
 
-      expect(instructions.toString()).toContain('Keep entities in Europe');
-      expect(instructions.toString()).toContain('filter');
+      expect(instructions).toContain('Keep entities in Europe');
+      expect(instructions).toContain('filter');
     });
 
-    it('should create find instructions', async () => {
+    it('should create find instructions', () => {
       const mockSpec = 'Entity specification';
-      chatGPT.mockResolvedValueOnce(mockSpec);
 
-      const instructions = await findInstructions({
-        entities: 'Extract all entities',
+      const instructions = findInstructions({
+        specification: mockSpec,
         processing: 'Find the most mentioned entity',
       });
 
-      expect(instructions.toString()).toContain('Find the most mentioned entity');
-      expect(instructions.toString()).toContain('selection-criteria');
+      expect(instructions).toContain('Find the most mentioned entity');
+      expect(instructions).toContain('selection-criteria');
     });
 
-    it('should create group instructions', async () => {
+    it('should create group instructions', () => {
       const mockSpec = 'Entity specification';
-      chatGPT.mockResolvedValueOnce(mockSpec);
 
-      const instructions = await groupInstructions({
-        entities: 'Extract organizations',
+      const instructions = groupInstructions({
+        specification: mockSpec,
         processing: 'Group by industry sector',
       });
 
-      expect(instructions.toString()).toContain('Group by industry sector');
-      expect(instructions.toString()).toContain('grouping-strategy');
+      expect(instructions).toContain('Group by industry sector');
+      expect(instructions).toContain('grouping-strategy');
     });
   });
 
@@ -163,6 +157,7 @@ Extraction Rules:
       expect(extractor.specification).toBe(spec);
 
       const mockEntities = { entities: [{ name: 'Test', type: 'test' }] };
+      // The extractor calls applyEntities which calls chatGPT once
       chatGPT.mockResolvedValueOnce(mockEntities);
 
       const result = await extractor('Test text');
@@ -180,29 +175,30 @@ Extraction Rules:
       expect(result.entities).toEqual([]);
     });
 
-    it('should handle backward compatibility for map instructions', async () => {
-      chatGPT.mockResolvedValueOnce('Spec');
+    it('should handle map instructions', () => {
+      const spec = 'Entity specification';
 
-      // String input (backward compatible)
-      const instructions1 = await mapInstructions('Extract companies');
-      expect(instructions1.toString()).toBeTruthy();
+      // Without processing
+      const instructions1 = mapInstructions({ specification: spec });
+      expect(instructions1).toBeTruthy();
+      expect(instructions1).toContain(spec);
 
-      // Object input
-      const instructions2 = await mapInstructions({
-        entities: 'Extract companies',
+      // With processing
+      const instructions2 = mapInstructions({
+        specification: spec,
         processing: 'Additional processing',
       });
-      expect(instructions2.toString()).toContain('Additional processing');
+      expect(instructions2).toContain('Additional processing');
+      expect(instructions2).toContain(spec);
     });
 
-    it('should return tuple when configured', async () => {
-      chatGPT.mockResolvedValueOnce('Test spec');
+    it('should create proper instructions', () => {
+      const spec = 'Test spec';
 
-      const result = await mapInstructions('Extract entities', { returnTuple: true });
+      const result = mapInstructions({ specification: spec });
 
-      expect(result).toHaveProperty('value');
-      expect(result).toHaveProperty('specification');
-      expect(result.specification).toBe('Test spec');
+      expect(result).toContain(spec);
+      expect(result).toContain('entity-specification');
     });
   });
 });

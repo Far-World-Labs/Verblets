@@ -183,81 +183,91 @@ describe('relations', () => {
 
   describe('instruction builders', () => {
     describe('mapInstructions', () => {
-      it('should create map instructions from string', async () => {
-        const instructions = await mapInstructions('Extract all relationships');
-        expect(instructions.specification).toBeTruthy();
-        expect(String(instructions)).toContain('relation-specification');
+      it('should create map instructions from string', () => {
+        const spec = 'Relation specification';
+        const instructions = mapInstructions({ specification: spec });
+        expect(instructions).toContain(spec);
+        expect(instructions).toContain('relation-specification');
       });
 
-      it('should handle complex instruction object', async () => {
-        const instructions = await mapInstructions({
-          relations: 'Extract business relationships',
+      it('should handle complex instruction object', () => {
+        const spec = 'Relation specification';
+        const instructions = mapInstructions({
+          specification: spec,
           processing: 'Focus on partnerships and acquisitions',
-          entities: [{ name: 'Apple', canonical: 'Apple Inc.' }],
         });
-        expect(instructions.specification).toBeTruthy();
-        expect(String(instructions)).toContain('relation-specification');
+        expect(instructions).toContain(spec);
+        expect(instructions).toContain('relation-specification');
+        expect(instructions).toContain('Focus on partnerships');
       });
 
-      it('should return tuple when configured', async () => {
-        const result = await mapInstructions('Extract relationships', { returnTuple: true });
-        expect(typeof result).toBe('object');
-        expect(result).toHaveProperty('value');
-        expect(result).toHaveProperty('specification');
-        expect(typeof result.value).toBe('string');
-        expect(typeof result.specification).toBe('string');
+      it('should create proper instructions', () => {
+        const spec = 'Relation specification';
+        const result = mapInstructions({ specification: spec });
+        expect(typeof result).toBe('string');
+        expect(result).toContain(spec);
+        expect(result).toContain('relation-specification');
       });
     });
 
     describe('filterInstructions', () => {
-      it('should create filter instructions', async () => {
-        const instructions = await filterInstructions({
-          relations: 'Extract employment relationships',
+      it('should create filter instructions', () => {
+        const spec = 'Relation specification';
+        const instructions = filterInstructions({
+          specification: spec,
           processing: 'Keep only C-level relationships',
         });
-        expect(instructions.specification).toBeTruthy();
-        expect(String(instructions)).toContain('relation-specification');
+        expect(instructions).toContain(spec);
+        expect(instructions).toContain('relation-specification');
+        expect(instructions).toContain('C-level relationships');
       });
     });
 
     describe('reduceInstructions', () => {
-      it('should create reduce instructions', async () => {
-        const instructions = await reduceInstructions({
-          relations: 'Extract all relationships',
+      it('should create reduce instructions', () => {
+        const spec = 'Relation specification';
+        const instructions = reduceInstructions({
+          specification: spec,
           processing: 'Build unified knowledge graph',
         });
-        expect(instructions.specification).toBeTruthy();
-        expect(String(instructions)).toContain('relation-specification');
+        expect(instructions).toContain(spec);
+        expect(instructions).toContain('relation-specification');
+        expect(instructions).toContain('unified knowledge graph');
       });
 
-      it('should use default processing when not provided', async () => {
-        const instructions = await reduceInstructions({
-          relations: 'Extract company relationships',
+      it('should use default processing when not provided', () => {
+        const spec = 'Relation specification';
+        const instructions = reduceInstructions({
+          specification: spec,
         });
-        expect(instructions.specification).toBeTruthy();
-        expect(String(instructions)).toContain('comprehensive relation graph');
+        expect(instructions).toContain(spec);
+        expect(instructions).toContain('comprehensive relation graph');
       });
     });
 
     describe('findInstructions', () => {
-      it('should create find instructions', async () => {
-        const instructions = await findInstructions({
-          relations: 'Extract conflict relationships',
+      it('should create find instructions', () => {
+        const spec = 'Relation specification';
+        const instructions = findInstructions({
+          specification: spec,
           processing: 'Find most contentious section',
         });
-        expect(instructions.specification).toBeTruthy();
-        expect(String(instructions)).toContain('relation-specification');
+        expect(instructions).toContain(spec);
+        expect(instructions).toContain('relation-specification');
+        expect(instructions).toContain('contentious section');
       });
     });
 
     describe('groupInstructions', () => {
-      it('should create group instructions', async () => {
-        const instructions = await groupInstructions({
-          relations: 'Extract all relationships',
+      it('should create group instructions', () => {
+        const spec = 'Relation specification';
+        const instructions = groupInstructions({
+          specification: spec,
           processing: 'Group by relationship type',
         });
-        expect(instructions.specification).toBeTruthy();
-        expect(String(instructions)).toContain('relation-specification');
+        expect(instructions).toContain(spec);
+        expect(instructions).toContain('relation-specification');
+        expect(instructions).toContain('relationship type');
       });
     });
   });

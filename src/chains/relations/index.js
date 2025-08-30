@@ -242,46 +242,15 @@ export async function extractRelations(text, instructions, config = {}) {
 // ===== Instruction Builders =====
 
 /**
- * Helper to create instruction with attached specification
- * @param {string} instructions - The instruction string
- * @param {string} specification - The specification text
- * @param {boolean} returnTuple - Whether to return as tuple
- * @returns {string|Object} Instructions with specification attached or tuple
- */
-function createInstructionResult(instructions, specification, returnTuple) {
-  if (returnTuple) {
-    return { value: instructions, specification };
-  }
-  // Create a String object to allow property attachment
-  const instructionString = new String(instructions);
-  instructionString.specification = specification;
-  return instructionString;
-}
-
-/**
  * Create map instructions for relation extraction
- * @param {string|Object} instructions - Relation extraction string or instructions object
- * @param {string} instructions.relations - What relations to extract
- * @param {string} instructions.processing - Additional processing instructions (optional)
- * @param {Array<Object>} instructions.entities - Pre-identified entities (optional)
- * @param {Array<string>} instructions.predicates - Specific predicates to look for (optional)
- * @param {Object} config - Configuration options
- * @param {boolean} config.returnTuple - Return {value, specification} instead of string with property
- * @param {Function} createSpec - Spec generation function (defaults to relationSpec)
- * @returns {Promise<string|Object>} Instructions string with specification property, or tuple if configured
+ * @param {Object} params - Parameters object
+ * @param {string} params.specification - Pre-generated relation specification
+ * @param {string} params.processing - Additional processing instructions (optional)
+ * @returns {string} Instructions string
  */
-export async function mapInstructions(instructions, config = {}, createSpec = relationSpec) {
-  const { returnTuple, ...specConfig } = config;
-  const specification = await createSpec(instructions, specConfig);
-
-  let processing;
-  if (typeof instructions === 'object' && instructions.processing) {
-    processing = instructions.processing;
-  }
-
-  let combinedInstructions;
+export function mapInstructions({ specification, processing }) {
   if (processing) {
-    combinedInstructions = `${asXML(processing, { tag: 'processing-instructions' })}
+    return `${asXML(processing, { tag: 'processing-instructions' })}
 
 Apply this relation specification:
 ${asXML(specification, { tag: 'relation-specification' })}
@@ -289,146 +258,94 @@ ${asXML(specification, { tag: 'relation-specification' })}
 Return a JSON object with an "items" array containing the extracted relations.
 Each relation must have: subject (string), predicate (string), object (string), and optional metadata (object).`;
   } else {
-    combinedInstructions = `${DEFAULT_MAP_INSTRUCTIONS}
+    return `${DEFAULT_MAP_INSTRUCTIONS}
 
 ${asXML(specification, { tag: 'relation-specification' })}
 
 Return a JSON object with an "items" array containing the extracted relations.`;
   }
-
-  return createInstructionResult(combinedInstructions, specification, returnTuple);
 }
 
 /**
  * Create filter instructions for relation extraction
- * @param {Object} instructions - Instructions object
- * @param {string} instructions.relations - What relations to extract
- * @param {string} instructions.processing - Filter criteria (optional)
- * @param {Array<Object>} instructions.entities - Pre-identified entities (optional)
- * @param {Array<string>} instructions.predicates - Specific predicates to look for (optional)
- * @param {Object} config - Configuration options
- * @param {boolean} config.returnTuple - Return {value, specification} instead of string with property
- * @param {Function} createSpec - Spec generation function (defaults to relationSpec)
- * @returns {Promise<string|Object>} Instructions string with specification property, or tuple if configured
+ * @param {Object} params - Parameters object
+ * @param {string} params.specification - Pre-generated relation specification
+ * @param {string} params.processing - Filter criteria (optional)
+ * @returns {string} Instructions string
  */
-export async function filterInstructions(instructions, config = {}, createSpec = relationSpec) {
-  const { returnTuple, ...specConfig } = config;
-  const specification = await createSpec(instructions, specConfig);
-
-  const processing = instructions.processing;
-
-  let combinedInstructions;
+export function filterInstructions({ specification, processing }) {
   if (processing) {
-    combinedInstructions = `${asXML(processing, { tag: 'filter-criteria' })}
+    return `${asXML(processing, { tag: 'filter-criteria' })}
 
 ${FILTER_PROCESS_STEPS}
 
 ${asXML(specification, { tag: 'relation-specification' })}`;
   } else {
-    combinedInstructions = `${DEFAULT_FILTER_INSTRUCTIONS}
+    return `${DEFAULT_FILTER_INSTRUCTIONS}
 
 ${asXML(specification, { tag: 'relation-specification' })}`;
   }
-
-  return createInstructionResult(combinedInstructions, specification, returnTuple);
 }
 
 /**
  * Create reduce instructions for relation extraction
- * @param {Object} instructions - Instructions object
- * @param {string} instructions.relations - What relations to extract
- * @param {string} instructions.processing - How to consolidate relations (optional)
- * @param {Array<Object>} instructions.entities - Pre-identified entities (optional)
- * @param {Array<string>} instructions.predicates - Specific predicates to look for (optional)
- * @param {Object} config - Configuration options
- * @param {boolean} config.returnTuple - Return {value, specification} instead of string with property
- * @param {Function} createSpec - Spec generation function (defaults to relationSpec)
- * @returns {Promise<string|Object>} Instructions string with specification property, or tuple if configured
+ * @param {Object} params - Parameters object
+ * @param {string} params.specification - Pre-generated relation specification
+ * @param {string} params.processing - How to consolidate relations (optional)
+ * @returns {string} Instructions string
  */
-export async function reduceInstructions(instructions, config = {}, createSpec = relationSpec) {
-  const { returnTuple, ...specConfig } = config;
-  const specification = await createSpec(instructions, specConfig);
-
+export function reduceInstructions({ specification, processing }) {
   const defaultProcessing = `Build comprehensive relation graph from all chunks`;
-  const processing = instructions.processing || defaultProcessing;
 
-  const combinedInstructions = `${asXML(processing, {
+  return `${asXML(processing || defaultProcessing, {
     tag: 'reduce-operation',
   })}
 
 ${REDUCE_PROCESS_STEPS}
 
 ${asXML(specification, { tag: 'relation-specification' })}`;
-
-  return createInstructionResult(combinedInstructions, specification, returnTuple);
 }
 
 /**
  * Create find instructions for relation extraction
- * @param {Object} instructions - Instructions object
- * @param {string} instructions.relations - What relations to extract
- * @param {string} instructions.processing - Selection criteria (optional)
- * @param {Array<Object>} instructions.entities - Pre-identified entities (optional)
- * @param {Array<string>} instructions.predicates - Specific predicates to look for (optional)
- * @param {Object} config - Configuration options
- * @param {boolean} config.returnTuple - Return {value, specification} instead of string with property
- * @param {Function} createSpec - Spec generation function (defaults to relationSpec)
- * @returns {Promise<string|Object>} Instructions string with specification property, or tuple if configured
+ * @param {Object} params - Parameters object
+ * @param {string} params.specification - Pre-generated relation specification
+ * @param {string} params.processing - Selection criteria (optional)
+ * @returns {string} Instructions string
  */
-export async function findInstructions(instructions, config = {}, createSpec = relationSpec) {
-  const { returnTuple, ...specConfig } = config;
-  const specification = await createSpec(instructions, specConfig);
-
-  const processing = instructions.processing;
-
-  let combinedInstructions;
+export function findInstructions({ specification, processing }) {
   if (processing) {
-    combinedInstructions = `${asXML(processing, { tag: 'selection-criteria' })}
+    return `${asXML(processing, { tag: 'selection-criteria' })}
 
 ${FIND_PROCESS_STEPS}
 
 ${asXML(specification, { tag: 'relation-specification' })}`;
   } else {
-    combinedInstructions = `${DEFAULT_FIND_INSTRUCTIONS}
+    return `${DEFAULT_FIND_INSTRUCTIONS}
 
 ${asXML(specification, { tag: 'relation-specification' })}`;
   }
-
-  return createInstructionResult(combinedInstructions, specification, returnTuple);
 }
 
 /**
  * Create group instructions for relation extraction
- * @param {Object} instructions - Instructions object
- * @param {string} instructions.relations - What relations to extract
- * @param {string} instructions.processing - Grouping strategy (optional)
- * @param {Array<Object>} instructions.entities - Pre-identified entities (optional)
- * @param {Array<string>} instructions.predicates - Specific predicates to look for (optional)
- * @param {Object} config - Configuration options
- * @param {boolean} config.returnTuple - Return {value, specification} instead of string with property
- * @param {Function} createSpec - Spec generation function (defaults to relationSpec)
- * @returns {Promise<string|Object>} Instructions string with specification property, or tuple if configured
+ * @param {Object} params - Parameters object
+ * @param {string} params.specification - Pre-generated relation specification
+ * @param {string} params.processing - Grouping strategy (optional)
+ * @returns {string} Instructions string
  */
-export async function groupInstructions(instructions, config = {}, createSpec = relationSpec) {
-  const { returnTuple, ...specConfig } = config;
-  const specification = await createSpec(instructions, specConfig);
-
-  const processing = instructions.processing;
-
-  let combinedInstructions;
+export function groupInstructions({ specification, processing }) {
   if (processing) {
-    combinedInstructions = `${asXML(processing, { tag: 'grouping-strategy' })}
+    return `${asXML(processing, { tag: 'grouping-strategy' })}
 
 ${GROUP_PROCESS_STEPS}
 
 ${asXML(specification, { tag: 'relation-specification' })}`;
   } else {
-    combinedInstructions = `${DEFAULT_GROUP_INSTRUCTIONS}
+    return `${DEFAULT_GROUP_INSTRUCTIONS}
 
 ${asXML(specification, { tag: 'relation-specification' })}`;
   }
-
-  return createInstructionResult(combinedInstructions, specification, returnTuple);
 }
 
 // ===== Advanced Relation Functions =====
