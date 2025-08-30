@@ -3,36 +3,9 @@ import { asXML } from '../../prompts/wrap-variable.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 import { scaleSpec } from '../scale/index.js';
 import map from '../map/index.js';
-import scoreSchema from './score-result.json';
+import scoreSingleResultSchema from './score-single-result.json';
 
 const { onlyJSON } = promptConstants;
-
-/**
- * Create model options for structured outputs
- * @param {string|Object} llm - LLM model name or configuration object
- * @returns {Object} Model options for chatGPT
- */
-function createModelOptions(llm = 'fastGoodCheap') {
-  const responseFormat = {
-    type: 'json_schema',
-    json_schema: {
-      name: 'score_result',
-      schema: scoreSchema,
-    },
-  };
-
-  if (typeof llm === 'string') {
-    return {
-      modelName: llm,
-      response_format: responseFormat,
-    };
-  } else {
-    return {
-      ...llm,
-      response_format: responseFormat,
-    };
-  }
-}
 
 // ===== Core Functions =====
 
@@ -56,20 +29,28 @@ export async function applyScore(item, specification, config = {}) {
 ${asXML(specification, { tag: 'score-specification' })}
 
 Score this item according to the specification.
-Return a JSON object with a "score" property containing the value from the range.
+Return a JSON object with a "value" property containing the score from the range.
 
 ${onlyJSON}
 
 ${asXML(item, { tag: 'item' })}`;
 
-  const modelOptions = createModelOptions();
   const response = await chatGPT(prompt, {
-    modelOptions,
+    modelOptions: {
+      response_format: {
+        type: 'json_schema',
+        json_schema: {
+          name: 'score_single_result',
+          schema: scoreSingleResultSchema,
+        },
+      },
+    },
     llm,
     ...options,
   });
 
-  return response.score;
+  // chatGPT auto-unwraps single value property, returns the number directly
+  return response;
 }
 
 /**
@@ -92,27 +73,13 @@ export async function scoreItem(item, instructions, config = {}) {
  * @returns {Promise<Array>} Array of scores
  */
 export async function mapScore(list, instructions, config = {}) {
-  const mapInstr = await mapInstructions(instructions, config);
+  const spec = await scoreSpec(instructions, config);
+  const mapInstr = mapInstructions({ specification: spec });
   const scores = await map(list, mapInstr, config);
   return scores.map((s) => Number(s));
 }
 
 // ===== Instruction Builders =====
-
-/**
- * Helper to create instruction with attached specification
- * @param {string} instructions - The instruction string
- * @param {Object} specification - The specification object
- * @param {boolean} returnTuple - Whether to return as tuple
- * @returns {string|Object} Instructions with specification attached or tuple
- */
-function createInstructionResult(instructions, specification, returnTuple) {
-  if (returnTuple) {
-    return { value: instructions, specification };
-  }
-  // Attach specification as a property to the string
-  return Object.assign(instructions, { specification });
-}
 
 /**
  * Build scoring instructions with common prefix and specification
@@ -130,66 +97,40 @@ ${asXML(specification, { tag: 'score-specification' })}`;
 
 /**
  * Create map instructions for scoring
- * @param {string|Object} instructions - Scoring criteria string or instructions object
- * @param {string} instructions.scoring - How to score each item (e.g., "technical quality", "humor level")
- * @param {Object} config - Configuration options
- * @param {boolean} config.returnTuple - Return {value, specification} instead of string with property
- * @param {Function} createSpec - Spec generation function (defaults to scoreSpec)
- * @returns {Promise<string|Object>} Instructions string with specification property, or tuple if configured
+ * @param {Object} params - Parameters object
+ * @param {Object} params.specification - Pre-generated score specification
+ * @returns {string} Instructions string
  */
-export async function mapInstructions(instructions, config = {}, createSpec = scoreSpec) {
-  // Handle backward compatibility - if instructions is a string, use it as scoring
-  const scoring = typeof instructions === 'string' ? instructions : instructions.scoring;
-  const { returnTuple, ...specConfig } = config;
-  const specification = await createSpec(scoring, specConfig);
-
-  const combinedInstructions = buildScoringInstructions(
+export function mapInstructions({ specification }) {
+  return buildScoringInstructions(
     specification,
     'Return ONLY the score value from the range for each item, nothing else.'
   );
-
-  return createInstructionResult(combinedInstructions, specification, returnTuple);
 }
 
 /**
  * Create filter instructions for scoring
- * @param {Object} instructions - Instructions object
- * @param {string} instructions.scoring - How to score each item (e.g., "production readiness", "technical debt")
- * @param {string} instructions.processing - Which items to keep (e.g., "scores above 7", "only perfect scores")
- * @param {Object} config - Configuration options
- * @param {boolean} config.returnTuple - Return {value, specification} instead of string with property
- * @param {Function} createSpec - Spec generation function (defaults to scoreSpec)
- * @returns {Promise<string|Object>} Instructions string with specification property, or tuple if configured
+ * @param {Object} params - Parameters object
+ * @param {Object} params.specification - Pre-generated score specification
+ * @param {string} params.processing - Which items to keep (e.g., "scores above 7", "only perfect scores")
+ * @returns {string} Instructions string
  */
-export async function filterInstructions(instructions, config = {}, createSpec = scoreSpec) {
-  const { scoring, processing } = instructions;
-  const { returnTuple, ...specConfig } = config;
-  const specification = await createSpec(scoring, specConfig);
-
+export function filterInstructions({ specification, processing }) {
   const filterContext = `<filter-condition>
 ${processing}
 </filter-condition>`;
 
-  const combinedInstructions = `${buildScoringInstructions(specification)}\n\n${filterContext}`;
-
-  return createInstructionResult(combinedInstructions, specification, returnTuple);
+  return `${buildScoringInstructions(specification)}\n\n${filterContext}`;
 }
 
 /**
  * Create reduce instructions for scoring
- * @param {Object} instructions - Instructions object
- * @param {string} instructions.scoring - How to score each item (e.g., "performance impact", "code quality")
- * @param {string} instructions.processing - How to reduce the scores (e.g., "sum all scores", "find highest score with its item")
- * @param {Object} config - Configuration options
- * @param {boolean} config.returnTuple - Return {value, specification} instead of string with property
- * @param {Function} createSpec - Spec generation function (defaults to scoreSpec)
- * @returns {Promise<string|Object>} Instructions string with specification property, or tuple if configured
+ * @param {Object} params - Parameters object
+ * @param {Object} params.specification - Pre-generated score specification
+ * @param {string} params.processing - How to reduce the scores (e.g., "sum all scores", "find highest score with its item")
+ * @returns {string} Instructions string
  */
-export async function reduceInstructions(instructions, config = {}, createSpec = scoreSpec) {
-  const { scoring, processing } = instructions;
-  const { returnTuple, ...specConfig } = config;
-  const specification = await createSpec(scoring, specConfig);
-
+export function reduceInstructions({ specification, processing }) {
   const reduceContext = `<reduce-operation>
 ${processing}
 
@@ -200,57 +141,37 @@ Process each item by:
 4. Returning the final reduced value
 </reduce-operation>`;
 
-  const combinedInstructions = `${buildScoringInstructions(specification)}\n\n${reduceContext}`;
-
-  return createInstructionResult(combinedInstructions, specification, returnTuple);
+  return `${buildScoringInstructions(specification)}\n\n${reduceContext}`;
 }
 
 /**
  * Create find instructions for scoring
- * @param {Object} instructions - Instructions object
- * @param {string} instructions.scoring - How to score each item (e.g., "user intent alignment", "relevance")
- * @param {string} instructions.processing - Which item to select (e.g., "highest scoring", "first above threshold 8")
- * @param {Object} config - Configuration options
- * @param {boolean} config.returnTuple - Return {value, specification} instead of string with property
- * @param {Function} createSpec - Spec generation function (defaults to scoreSpec)
- * @returns {Promise<string|Object>} Instructions string with specification property, or tuple if configured
+ * @param {Object} params - Parameters object
+ * @param {Object} params.specification - Pre-generated score specification
+ * @param {string} params.processing - Which item to select (e.g., "highest scoring", "first above threshold 8")
+ * @returns {string} Instructions string
  */
-export async function findInstructions(instructions, config = {}, createSpec = scoreSpec) {
-  const { scoring, processing } = instructions;
-  const { returnTuple, ...specConfig } = config;
-  const specification = await createSpec(scoring, specConfig);
-
+export function findInstructions({ specification, processing }) {
   const findContext = `<selection-criteria>
 ${processing}
 </selection-criteria>`;
 
-  const combinedInstructions = `${buildScoringInstructions(specification)}\n\n${findContext}`;
-
-  return createInstructionResult(combinedInstructions, specification, returnTuple);
+  return `${buildScoringInstructions(specification)}\n\n${findContext}`;
 }
 
 /**
  * Create group instructions for scoring
- * @param {Object} instructions - Instructions object
- * @param {string} instructions.scoring - How to score each item (e.g., "complexity level", "difficulty")
- * @param {string} instructions.processing - How to group by scores (e.g., "low (0-3), medium (4-7), high (8-10)")
- * @param {Object} config - Configuration options
- * @param {boolean} config.returnTuple - Return {value, specification} instead of string with property
- * @param {Function} createSpec - Spec generation function (defaults to scoreSpec)
- * @returns {Promise<string|Object>} Instructions string with specification property, or tuple if configured
+ * @param {Object} params - Parameters object
+ * @param {Object} params.specification - Pre-generated score specification
+ * @param {string} params.processing - How to group by scores (e.g., "low (0-3), medium (4-7), high (8-10)")
+ * @returns {string} Instructions string
  */
-export async function groupInstructions(instructions, config = {}, createSpec = scoreSpec) {
-  const { scoring, processing } = instructions;
-  const { returnTuple, ...specConfig } = config;
-  const specification = await createSpec(scoring, specConfig);
-
+export function groupInstructions({ specification, processing }) {
   const groupContext = `<grouping-strategy>
 ${processing}
 </grouping-strategy>`;
 
-  const combinedInstructions = `${buildScoringInstructions(specification)}\n\n${groupContext}`;
-
-  return createInstructionResult(combinedInstructions, specification, returnTuple);
+  return `${buildScoringInstructions(specification)}\n\n${groupContext}`;
 }
 
 // ===== Calibration Utilities =====

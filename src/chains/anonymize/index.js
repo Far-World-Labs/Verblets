@@ -210,57 +210,27 @@ const anonymize = async (input, config = {}) => {
 // ===== Instruction Builders =====
 
 /**
- * Helper to create instruction with attached specification
- * @param {string} instructions - The instruction string
- * @param {string} specification - The specification text
- * @param {boolean} returnTuple - Whether to return as tuple
- * @returns {string|Object} Instructions with specification attached or tuple
- */
-function createInstructionResult(instructions, specification, returnTuple) {
-  if (returnTuple) {
-    return { value: instructions, specification };
-  }
-  // Create a String object to allow property attachment
-  const instructionString = new String(instructions);
-  instructionString.specification = specification;
-  return instructionString;
-}
-
-/**
  * Create map instructions for anonymization
- * @param {string|Object} instructions - Anonymization instructions or object
- * @param {string} instructions.anonymization - Anonymization instructions (if object)
- * @param {string} instructions.processing - Additional map processing instructions (optional)
- * @param {Object} config - Configuration options
- * @param {boolean} config.returnTuple - Return {value, specification} instead of string with property
- * @param {Function} createSpec - Spec generation function (defaults to anonymizeSpec)
- * @returns {Promise<string|Object>} Instructions string with specification property, or tuple if configured
+ * @param {Object} params - Parameters object
+ * @param {string} params.specification - Pre-generated anonymization specification
+ * @param {string} params.processing - Additional map processing instructions (optional)
+ * @returns {string} Instructions string
  */
-export async function mapInstructions(instructions, config = {}, createSpec = anonymizeSpec) {
-  // Handle backward compatibility - if instructions is a string, use it as anonymization
-  const anonymization =
-    typeof instructions === 'string' ? instructions : instructions.anonymization;
-  const processing = typeof instructions === 'object' ? instructions.processing : null;
-  const { returnTuple, ...specConfig } = config;
-  const specification = await createSpec(anonymization, specConfig);
-
-  let combinedInstructions;
+export function mapInstructions({ specification, processing }) {
   if (processing) {
-    combinedInstructions = `${asXML(processing, { tag: 'processing-instructions' })}
+    return `${asXML(processing, { tag: 'processing-instructions' })}
 
 Apply this anonymization specification to each item:
 ${asXML(specification, { tag: 'anonymization-specification' })}
 
 Return the anonymized text with any relevant metadata.`;
   } else {
-    combinedInstructions = `${DEFAULT_MAP_INSTRUCTIONS}
+    return `${DEFAULT_MAP_INSTRUCTIONS}
 
 ${asXML(specification, { tag: 'anonymization-specification' })}
 
 Return the anonymized text.`;
   }
-
-  return createInstructionResult(combinedInstructions, specification, returnTuple);
 }
 
 /**
@@ -270,126 +240,87 @@ Return the anonymized text.`;
  * It should be refactored to support one-pass filter+operation behavior where filtered items
  * can be transformed before being returned.
  *
- * @param {Object} instructions - Instructions object
- * @param {string} instructions.anonymization - Anonymization instructions
- * @param {string} instructions.processing - Filter criteria (optional - defaults to sensitivity threshold)
- * @param {Object} config - Configuration options
- * @param {boolean} config.returnTuple - Return {value, specification} instead of string with property
- * @param {Function} createSpec - Spec generation function (defaults to anonymizeSpec)
- * @returns {Promise<string|Object>} Instructions string with specification property, or tuple if configured
+ * @param {Object} params - Parameters object
+ * @param {string} params.specification - Pre-generated anonymization specification
+ * @param {string} params.processing - Filter criteria (optional - defaults to sensitivity threshold)
+ * @returns {string} Instructions string
  */
-export async function filterInstructions(instructions, config = {}, createSpec = anonymizeSpec) {
-  const { anonymization, processing } = instructions;
-  const { returnTuple, ...specConfig } = config;
-  const specification = await createSpec(anonymization, specConfig);
-
-  let combinedInstructions;
+export function filterInstructions({ specification, processing }) {
   if (processing) {
-    combinedInstructions = `${asXML(processing, { tag: 'filter-criteria' })}
+    return `${asXML(processing, { tag: 'filter-criteria' })}
 
 ${FILTER_PROCESS_STEPS}
 
 For items that pass the filter, apply this anonymization:
 ${asXML(specification, { tag: 'anonymization-specification' })}`;
   } else {
-    combinedInstructions = `${DEFAULT_FILTER_INSTRUCTIONS}
+    return `${DEFAULT_FILTER_INSTRUCTIONS}
 
 For items that pass the filter, apply this anonymization:
 ${asXML(specification, { tag: 'anonymization-specification' })}`;
   }
-
-  return createInstructionResult(combinedInstructions, specification, returnTuple);
 }
 
 /**
  * Create reduce instructions for anonymization
- * @param {Object} instructions - Instructions object
- * @param {string} instructions.anonymization - Anonymization instructions for final result
- * @param {string} instructions.processing - How to reduce/combine the texts
- * @param {Object} config - Configuration options
- * @param {boolean} config.returnTuple - Return {value, specification} instead of string with property
- * @param {Function} createSpec - Spec generation function (defaults to anonymizeSpec)
- * @returns {Promise<string|Object>} Instructions string with specification property, or tuple if configured
+ * @param {Object} params - Parameters object
+ * @param {string} params.specification - Pre-generated anonymization specification
+ * @param {string} params.processing - How to reduce/combine the texts
+ * @returns {string} Instructions string
  */
-export async function reduceInstructions(instructions, config = {}, createSpec = anonymizeSpec) {
-  const { anonymization, processing } = instructions;
-  const { returnTuple, ...specConfig } = config;
-  const specification = await createSpec(anonymization, specConfig);
-
-  const combinedInstructions = `${asXML(processing, { tag: 'reduce-operation' })}
+export function reduceInstructions({ specification, processing }) {
+  return `${asXML(processing, { tag: 'reduce-operation' })}
 
 ${REDUCE_PROCESS_STEPS}
 
 Apply this anonymization to the final accumulated result:
 ${asXML(specification, { tag: 'anonymization-specification' })}`;
-
-  return createInstructionResult(combinedInstructions, specification, returnTuple);
 }
 
 /**
  * Create find instructions for anonymization
- * @param {Object} instructions - Instructions object
- * @param {string} instructions.anonymization - Anonymization instructions for selected item
- * @param {string} instructions.processing - Selection criteria (optional - defaults to highest sensitivity)
- * @param {Object} config - Configuration options
- * @param {boolean} config.returnTuple - Return {value, specification} instead of string with property
- * @param {Function} createSpec - Spec generation function (defaults to anonymizeSpec)
- * @returns {Promise<string|Object>} Instructions string with specification property, or tuple if configured
+ * @param {Object} params - Parameters object
+ * @param {string} params.specification - Pre-generated anonymization specification
+ * @param {string} params.processing - Selection criteria (optional - defaults to highest sensitivity)
+ * @returns {string} Instructions string
  */
-export async function findInstructions(instructions, config = {}, createSpec = anonymizeSpec) {
-  const { anonymization, processing } = instructions;
-  const { returnTuple, ...specConfig } = config;
-  const specification = await createSpec(anonymization, specConfig);
-
-  let combinedInstructions;
+export function findInstructions({ specification, processing }) {
   if (processing) {
-    combinedInstructions = `${asXML(processing, { tag: 'selection-criteria' })}
+    return `${asXML(processing, { tag: 'selection-criteria' })}
 
 ${FIND_PROCESS_STEPS}
 
 Apply this anonymization to the selected item:
 ${asXML(specification, { tag: 'anonymization-specification' })}`;
   } else {
-    combinedInstructions = `${DEFAULT_FIND_INSTRUCTIONS}
+    return `${DEFAULT_FIND_INSTRUCTIONS}
 
 Apply this anonymization to the selected item:
 ${asXML(specification, { tag: 'anonymization-specification' })}`;
   }
-
-  return createInstructionResult(combinedInstructions, specification, returnTuple);
 }
 
 /**
  * Create group instructions for anonymization
- * @param {Object} instructions - Instructions object
- * @param {string} instructions.anonymization - Anonymization instructions for items
- * @param {string} instructions.processing - Grouping strategy (optional - defaults to sensitivity levels)
- * @param {Object} config - Configuration options
- * @param {boolean} config.returnTuple - Return {value, specification} instead of string with property
- * @param {Function} createSpec - Spec generation function (defaults to anonymizeSpec)
- * @returns {Promise<string|Object>} Instructions string with specification property, or tuple if configured
+ * @param {Object} params - Parameters object
+ * @param {string} params.specification - Pre-generated anonymization specification
+ * @param {string} params.processing - Grouping strategy (optional - defaults to sensitivity levels)
+ * @returns {string} Instructions string
  */
-export async function groupInstructions(instructions, config = {}, createSpec = anonymizeSpec) {
-  const { anonymization, processing } = instructions;
-  const { returnTuple, ...specConfig } = config;
-  const specification = await createSpec(anonymization, specConfig);
-
-  let combinedInstructions;
+export function groupInstructions({ specification, processing }) {
   if (processing) {
-    combinedInstructions = `${asXML(processing, { tag: 'grouping-strategy' })}
+    return `${asXML(processing, { tag: 'grouping-strategy' })}
 
 ${GROUP_PROCESS_STEPS}
 
 Apply this anonymization to items within each group:
 ${asXML(specification, { tag: 'anonymization-specification' })}`;
   } else {
-    combinedInstructions = `${DEFAULT_GROUP_INSTRUCTIONS}
+    return `${DEFAULT_GROUP_INSTRUCTIONS}
 
 Apply this anonymization to items within each group:
 ${asXML(specification, { tag: 'anonymization-specification' })}`;
   }
-
-  return createInstructionResult(combinedInstructions, specification, returnTuple);
 }
 
 // ===== Advanced Anonymization Functions =====

@@ -1,0 +1,12 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "value": {
+      "type": "number",
+      "description": "The numeric score value that represents the evaluation of the item according to the provided specification. This value must fall within the range defined by the score specification. The score should accurately reflect how well the item meets the criteria outlined in the specification, with higher values indicating better alignment with the desired qualities and lower values indicating poorer alignment."
+    }
+  },
+  "required": ["value"],
+  "additionalProperties": false
+}

@@ -120,167 +120,101 @@ export async function scaleItem(item, instructions, config = {}) {
 // ===== Instruction Builders =====
 
 /**
- * Helper to create instruction with attached specification
- * @param {string} instructions - The instruction string
- * @param {Object} specification - The specification object
- * @param {boolean} returnTuple - Whether to return as tuple
- * @returns {string|Object} Instructions with specification attached or tuple
- */
-function createInstructionResult(instructions, specification, returnTuple) {
-  if (returnTuple) {
-    return { value: instructions, specification };
-  }
-  // Attach specification as a property to the string
-  return Object.assign(instructions, { specification });
-}
-
-/**
  * Create map instructions for scaling
- * @param {string|Object} instructions - Scaling criteria string or instructions object
- * @param {string} instructions.scaling - How to scale each item
- * @param {string} instructions.processing - Additional processing instructions (optional)
- * @param {Object} config - Configuration options
- * @param {boolean} config.returnTuple - Return {value, specification} instead of string with property
- * @param {Function} createSpec - Spec generation function (defaults to scaleSpec)
- * @returns {Promise<string|Object>} Instructions string with specification property, or tuple if configured
+ * @param {Object} params - Parameters object
+ * @param {Object} params.specification - Pre-generated scale specification
+ * @param {string} params.processing - Additional processing instructions (optional)
+ * @returns {string} Instructions string
  */
-export async function mapInstructions(instructions, config = {}, createSpec = scaleSpec) {
-  // Handle backward compatibility - if instructions is a string, use it as scaling
-  const scaling = typeof instructions === 'string' ? instructions : instructions.scaling;
-  const processing = typeof instructions === 'object' ? instructions.processing : null;
-  const { returnTuple, ...specConfig } = config;
-  const specification = await createSpec(scaling, specConfig);
-
-  let combinedInstructions;
+export function mapInstructions({ specification, processing }) {
   if (processing) {
-    combinedInstructions = `${asXML(processing, { tag: 'processing-instructions' })}
+    return `${asXML(processing, { tag: 'processing-instructions' })}
 
 Apply this scale to transform each item:
 ${asXML(specification, { tag: 'scale-specification' })}`;
   } else {
-    combinedInstructions = `${DEFAULT_MAP_INSTRUCTIONS}
+    return `${DEFAULT_MAP_INSTRUCTIONS}
 
 ${asXML(specification, { tag: 'scale-specification' })}`;
   }
-
-  return createInstructionResult(combinedInstructions, specification, returnTuple);
 }
 
 /**
  * Create filter instructions for scaling
- * @param {Object} instructions - Instructions object
- * @param {string} instructions.scaling - How to scale each item
- * @param {string} instructions.processing - Filter criteria (optional - defaults based on scale midpoint)
- * @param {Object} config - Configuration options
- * @param {boolean} config.returnTuple - Return {value, specification} instead of string with property
- * @param {Function} createSpec - Spec generation function (defaults to scaleSpec)
- * @returns {Promise<string|Object>} Instructions string with specification property, or tuple if configured
+ * @param {Object} params - Parameters object
+ * @param {Object} params.specification - Pre-generated scale specification
+ * @param {string} params.processing - Filter criteria (optional - defaults based on scale midpoint)
+ * @returns {string} Instructions string
  */
-export async function filterInstructions(instructions, config = {}, createSpec = scaleSpec) {
-  const { scaling, processing } = instructions;
-  const { returnTuple, ...specConfig } = config;
-  const specification = await createSpec(scaling, specConfig);
-
-  let combinedInstructions;
+export function filterInstructions({ specification, processing }) {
   if (processing) {
-    combinedInstructions = `${asXML(processing, { tag: 'filter-criteria' })}
+    return `${asXML(processing, { tag: 'filter-criteria' })}
 
 ${FILTER_PROCESS_STEPS}
 
 ${asXML(specification, { tag: 'scale-specification' })}`;
   } else {
-    combinedInstructions = `${DEFAULT_FILTER_INSTRUCTIONS}
+    return `${DEFAULT_FILTER_INSTRUCTIONS}
 
 ${asXML(specification, { tag: 'scale-specification' })}`;
   }
-
-  return createInstructionResult(combinedInstructions, specification, returnTuple);
 }
 
 /**
  * Create reduce instructions for scaling
- * @param {Object} instructions - Instructions object
- * @param {string} instructions.scaling - How to scale each item
- * @param {string} instructions.processing - How to reduce the scaled values
- * @param {Object} config - Configuration options
- * @param {boolean} config.returnTuple - Return {value, specification} instead of string with property
- * @param {Function} createSpec - Spec generation function (defaults to scaleSpec)
- * @returns {Promise<string|Object>} Instructions string with specification property, or tuple if configured
+ * @param {Object} params - Parameters object
+ * @param {Object} params.specification - Pre-generated scale specification
+ * @param {string} params.processing - How to reduce the scaled values
+ * @returns {string} Instructions string
  */
-export async function reduceInstructions(instructions, config = {}, createSpec = scaleSpec) {
-  const { scaling, processing } = instructions;
-  const { returnTuple, ...specConfig } = config;
-  const specification = await createSpec(scaling, specConfig);
-
-  const combinedInstructions = `${asXML(processing, { tag: 'reduce-operation' })}
+export function reduceInstructions({ specification, processing }) {
+  return `${asXML(processing, { tag: 'reduce-operation' })}
 
 ${REDUCE_PROCESS_STEPS}
 
 ${asXML(specification, { tag: 'scale-specification' })}`;
-
-  return createInstructionResult(combinedInstructions, specification, returnTuple);
 }
 
 /**
  * Create find instructions for scaling
- * @param {Object} instructions - Instructions object
- * @param {string} instructions.scaling - How to scale each item
- * @param {string} instructions.processing - Selection criteria (optional - defaults to upper quartile)
- * @param {Object} config - Configuration options
- * @param {boolean} config.returnTuple - Return {value, specification} instead of string with property
- * @param {Function} createSpec - Spec generation function (defaults to scaleSpec)
- * @returns {Promise<string|Object>} Instructions string with specification property, or tuple if configured
+ * @param {Object} params - Parameters object
+ * @param {Object} params.specification - Pre-generated scale specification
+ * @param {string} params.processing - Selection criteria (optional - defaults to upper quartile)
+ * @returns {string} Instructions string
  */
-export async function findInstructions(instructions, config = {}, createSpec = scaleSpec) {
-  const { scaling, processing } = instructions;
-  const { returnTuple, ...specConfig } = config;
-  const specification = await createSpec(scaling, specConfig);
-
-  let combinedInstructions;
+export function findInstructions({ specification, processing }) {
   if (processing) {
-    combinedInstructions = `${asXML(processing, { tag: 'selection-criteria' })}
+    return `${asXML(processing, { tag: 'selection-criteria' })}
 
 ${FIND_PROCESS_STEPS}
 
 ${asXML(specification, { tag: 'scale-specification' })}`;
   } else {
-    combinedInstructions = `${DEFAULT_FIND_INSTRUCTIONS}
+    return `${DEFAULT_FIND_INSTRUCTIONS}
 
 ${asXML(specification, { tag: 'scale-specification' })}`;
   }
-
-  return createInstructionResult(combinedInstructions, specification, returnTuple);
 }
 
 /**
  * Create group instructions for scaling
- * @param {Object} instructions - Instructions object
- * @param {string} instructions.scaling - How to scale each item
- * @param {string} instructions.processing - Grouping strategy (optional - defaults to ranges)
- * @param {Object} config - Configuration options
- * @param {boolean} config.returnTuple - Return {value, specification} instead of string with property
- * @param {Function} createSpec - Spec generation function (defaults to scaleSpec)
- * @returns {Promise<string|Object>} Instructions string with specification property, or tuple if configured
+ * @param {Object} params - Parameters object
+ * @param {Object} params.specification - Pre-generated scale specification
+ * @param {string} params.processing - Grouping strategy (optional - defaults to ranges)
+ * @returns {string} Instructions string
  */
-export async function groupInstructions(instructions, config = {}, createSpec = scaleSpec) {
-  const { scaling, processing } = instructions;
-  const { returnTuple, ...specConfig } = config;
-  const specification = await createSpec(scaling, specConfig);
-
-  let combinedInstructions;
+export function groupInstructions({ specification, processing }) {
   if (processing) {
-    combinedInstructions = `${asXML(processing, { tag: 'grouping-strategy' })}
+    return `${asXML(processing, { tag: 'grouping-strategy' })}
 
 ${GROUP_PROCESS_STEPS}
 
 ${asXML(specification, { tag: 'scale-specification' })}`;
   } else {
-    combinedInstructions = `${DEFAULT_GROUP_INSTRUCTIONS}
+    return `${DEFAULT_GROUP_INSTRUCTIONS}
 
 ${asXML(specification, { tag: 'scale-specification' })}`;
   }
-
-  return createInstructionResult(combinedInstructions, specification, returnTuple);
 }
 
 // ===== Advanced Scale Functions =====
