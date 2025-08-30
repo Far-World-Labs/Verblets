@@ -2,24 +2,35 @@ import { describe, it as vitestIt, expect as vitestExpect } from 'vitest';
 import SocraticMethod from './index.js';
 import vitestAiExpect from '../expect/index.js';
 import { longTestTimeout } from '../../constants/common.js';
-import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
+import {
+  makeWrappedIt,
+  makeWrappedExpect,
+  makeWrappedAiExpect,
+} from '../test-analysis/test-wrappers.js';
 import { getConfig } from '../test-analysis/config.js';
 
 const config = getConfig();
-const it = config?.aiMode ? wrapIt(vitestIt, { baseProps: { suite: 'Socratic chain' } }) : vitestIt;
-const expect = config?.aiMode
-  ? wrapExpect(vitestExpect, { baseProps: { suite: 'Socratic chain' } })
-  : vitestExpect;
-const aiExpect = config?.aiMode
-  ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'Socratic chain' } })
-  : vitestAiExpect;
+const suite = 'Socratic chain';
+
+const it = makeWrappedIt(vitestIt, suite, config);
+const expect = makeWrappedExpect(vitestExpect, suite, config);
+const aiExpect = makeWrappedAiExpect(vitestAiExpect, suite, config);
+
+// Higher-order function to create test-specific loggers
+const makeTestLogger = (testName) => {
+  return config?.aiMode && globalThis.logger
+    ? globalThis.logger.child({ suite, testName })
+    : undefined;
+};
 
 describe('Socratic method chain', () => {
   it(
     'explores a simple concept through questioning',
     async () => {
       const statement = 'Knowledge is power';
-      const socratic = new SocraticMethod(statement);
+      const socratic = new SocraticMethod(statement, {
+        logger: makeTestLogger('explores a simple concept through questioning'),
+      });
 
       // Take a single step
       const turn = await socratic.step();
@@ -49,7 +60,9 @@ describe('Socratic method chain', () => {
     'maintains dialogue history across multiple steps',
     async () => {
       const statement = 'Success is measured by wealth';
-      const socratic = new SocraticMethod(statement);
+      const socratic = new SocraticMethod(statement, {
+        logger: makeTestLogger('maintains dialogue history across multiple steps'),
+      });
 
       // Take multiple steps
       const turn1 = await socratic.step();
@@ -93,6 +106,7 @@ describe('Socratic method chain', () => {
       const socratic = new SocraticMethod('Custom topic', {
         ask: customAsk,
         answer: customAnswer,
+        logger: makeTestLogger('allows custom ask and answer functions'),
       });
 
       const turn = await socratic.step();
@@ -109,7 +123,9 @@ describe('Socratic method chain', () => {
     'explores complex philosophical topic through dialogue',
     async () => {
       const statement = 'Free will is an illusion created by consciousness';
-      const socratic = new SocraticMethod(statement);
+      const socratic = new SocraticMethod(statement, {
+        logger: makeTestLogger('explores complex philosophical topic through dialogue'),
+      });
 
       // Build a dialogue with 3 rounds
       const dialogue = [];
