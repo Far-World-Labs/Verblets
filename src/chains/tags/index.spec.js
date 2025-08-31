@@ -58,8 +58,8 @@ describe('tags', () => {
 
   describe('applyTags', () => {
     it('should apply tags to an item', async () => {
-      const mockResponse = { items: ['urgent', 'financial'] };
-      chatGPT.mockResolvedValueOnce(mockResponse);
+      // chatGPT auto-unwraps {items: [...]} to just the array
+      chatGPT.mockResolvedValueOnce(['urgent', 'financial']);
 
       const item = 'Pay credit card bill today';
       const spec = 'Tag based on urgency and category';
@@ -80,7 +80,8 @@ describe('tags', () => {
     });
 
     it('should handle empty tag arrays', async () => {
-      chatGPT.mockResolvedValueOnce({ items: [] });
+      // chatGPT auto-unwraps {items: [...]} to just the array
+      chatGPT.mockResolvedValueOnce([]);
 
       const result = await applyTags('Random note', 'spec', mockVocabulary);
       expect(result).toEqual([]);
@@ -94,7 +95,7 @@ describe('tags', () => {
 
       chatGPT
         .mockResolvedValueOnce(mockSpec) // tagSpec
-        .mockResolvedValueOnce({ items: mockTags }); // applyTags
+        .mockResolvedValueOnce(mockTags); // applyTags - auto-unwrapped
 
       const result = await tagItem('Call mom', 'Tag personal items', mockVocabulary);
 
@@ -137,7 +138,7 @@ describe('tags', () => {
 
       expect(instructions).toContain('Test spec');
       expect(instructions).toContain('tag-specification');
-      expect(instructions).toContain('tag-vocabulary');
+      expect(instructions).toContain('available-tags'); // The actual XML tag used
     });
 
     it('should create filter instructions', () => {
@@ -215,7 +216,8 @@ describe('tags', () => {
       expect(extractor.specification).toBe(spec);
       expect(extractor.vocabulary).toBe(mockVocabulary);
 
-      chatGPT.mockResolvedValueOnce({ items: ['urgent'] });
+      // chatGPT auto-unwraps {items: [...]} to just the array
+      chatGPT.mockResolvedValueOnce(['urgent']);
       const result = await extractor('Test item');
       expect(result).toEqual(['urgent']);
     });
@@ -229,7 +231,7 @@ describe('tags', () => {
       expect(tagger.vocabulary).toBe(mockVocabulary);
 
       // Test single item
-      chatGPT.mockResolvedValueOnce('spec').mockResolvedValueOnce({ items: ['personal'] });
+      chatGPT.mockResolvedValueOnce('spec').mockResolvedValueOnce(['personal']); // auto-unwrapped
 
       const result = await tagger('Single item', 'Tag this');
       expect(result).toEqual(['personal']);
@@ -267,7 +269,7 @@ describe('tags', () => {
       await expect(tagger('Item')).rejects.toThrow('Vocabulary must be provided');
 
       // Should work with vocabulary
-      chatGPT.mockResolvedValueOnce('spec').mockResolvedValueOnce({ items: ['urgent'] });
+      chatGPT.mockResolvedValueOnce('spec').mockResolvedValueOnce(['urgent']); // auto-unwrapped
 
       const result = await tagger('Item', mockVocabulary);
       expect(result).toEqual(['urgent']);
