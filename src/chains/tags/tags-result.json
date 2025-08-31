@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "items": {
+      "type": "array",
+      "description": "Array of tag IDs assigned to the item. Each ID must exactly match an id from the provided vocabulary",
+      "items": {
+        "type": "string",
+        "description": "Tag identifier that must exactly match an id from the provided tag vocabulary"
+      }
+    }
+  },
+  "required": ["items"],
+  "additionalProperties": false
+}

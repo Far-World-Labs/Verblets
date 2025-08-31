@@ -53,6 +53,7 @@ List operations transform, filter, and organize collections. They handle both in
 - [reduce](./src/chains/reduce) - Combine items sequentially, building up a result across batches
 - [score](./src/chains/score) - Rate items on multiple criteria using weighted evaluation
 - [sort](./src/chains/sort) - Order by complex criteria using tournament-style comparisons
+- [tags](./src/chains/tags) - Apply vocabulary-based tags to categorize items
 
 ### Content
 
@@ -79,6 +80,7 @@ Content utilities generate, transform, and analyze text while maintaining struct
 - [socratic](./src/chains/socratic) - Ask questions that reveal hidden assumptions and logic gaps
 - [split](./src/chains/split) - Find topic boundaries in continuous text
 - [summary-map](./src/chains/summary-map) - Build layered summaries for navigating large documents
+- [tag-vocabulary](./src/chains/tag-vocabulary) - Generate and refine tag vocabularies through iterative analysis
 - [themes](./src/chains/themes) - Surface recurring ideas through multi-pass extraction and merging
 - [timeline](./src/chains/timeline) - Order events chronologically from scattered mentions
 - [to-object](./src/chains/to-object) - Extract key-value pairs from natural language descriptions

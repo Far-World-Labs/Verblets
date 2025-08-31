@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "tags": {
+      "type": "array",
+      "description": "Array of tags in the vocabulary. Each tag must have a unique identifier (lowercase, no spaces) and human-readable label. Tags may optionally have descriptions explaining when to apply them, parent IDs for hierarchical organization, and example items.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique identifier for the tag (lowercase, no spaces)",
+            "pattern": "^[a-z][a-z0-9_]*$"
+          },
+          "label": {
+            "type": "string",
+            "description": "Human-readable label for the tag"
+          },
+          "description": {
+            "type": "string",
+            "description": "Brief description of when to apply this tag (optional but recommended)"
+          },
+          "parent": {
+            "type": "string",
+            "description": "Parent tag ID for hierarchical organization (optional, must reference an existing tag ID)"
+          }
+        },
+        "required": ["id", "label"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["tags"],
+  "additionalProperties": false
+}
