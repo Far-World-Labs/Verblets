@@ -27,6 +27,7 @@ export { default as map } from './chains/map/index.js';
 export { default as reduce } from './chains/reduce/index.js';
 export { default as score } from './chains/score/index.js';
 export { default as sort } from './chains/sort/index.js';
+export { default as tags } from './chains/tags/index.js';
 
 // Content
 export { default as anonymize } from './chains/anonymize/index.js';
@@ -45,10 +46,12 @@ export { default as nameSimilarTo } from './verblets/name-similar-to/index.js';
 export { default as people } from './chains/people/index.js';
 export { default as popReference } from './chains/pop-reference/index.js';
 export { default as questions } from './chains/questions/index.js';
+export { default as relations } from './chains/relations/index.js';
 export { default as schemaOrg } from './verblets/schema-org/index.js';
 export { default as socratic } from './chains/socratic/index.js';
 export { default as split } from './chains/split/index.js';
 export { default as summaryMap } from './chains/summary-map/index.js';
+export { default as tagVocabulary } from './chains/tag-vocabulary/index.js';
 export { default as themes } from './chains/themes/index.js';
 export { default as timeline } from './chains/timeline/index.js';
 export { default as toObject } from './verblets/to-object/index.js';
