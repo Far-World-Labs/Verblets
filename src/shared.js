@@ -16,6 +16,7 @@ export { default as centralTendency } from './chains/central-tendency/index.js';
 export { default as detectPatterns } from './chains/detect-patterns/index.js';
 export { default as detectThreshold } from './chains/detect-threshold/index.js';
 export { default as entities } from './chains/entities/index.js';
+export { default as extractBlocks } from './chains/extract-blocks/index.js';
 export { default as filter } from './chains/filter/index.js';
 export { default as find } from './chains/find/index.js';
 export { default as glossary } from './chains/glossary/index.js';
