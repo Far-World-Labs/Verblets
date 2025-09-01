@@ -1,6 +1,7 @@
 import chatGPT from '../../lib/chatgpt/index.js';
 import chunkSentences from '../../lib/chunk-sentences/index.js';
 import retry from '../../lib/retry/index.js';
+import parallelBatch from '../../lib/parallel-batch/index.js';
 import map from '../map/index.js';
 import reduce from '../reduce/index.js';
 import { timelineEventJsonSchema } from './schemas.js';
@@ -106,38 +107,28 @@ export default async function timeline(text, options = {}) {
 
   // Process chunks in parallel batches
   const allEvents = [];
-  const promises = [];
 
-  for (let i = 0; i < chunks.length; i++) {
-    const chunkIndex = i;
-
-    const p = retry(() => extractFromChunk(chunks[chunkIndex], { llm, ...remainingOptions }), {
-      label: `timeline chunk ${chunkIndex + 1}`,
-    })
-      .then((events) => {
+  await parallelBatch(
+    chunks,
+    async (chunk, chunkIndex) => {
+      try {
+        const events = await retry(() => extractFromChunk(chunk, { llm, ...remainingOptions }), {
+          label: `timeline chunk ${chunkIndex + 1}`,
+        });
         allEvents.push(...events);
         onProgress?.(chunkIndex + 1, chunks.length);
-      })
-      .catch((error) => {
+      } catch (error) {
         if (process.env.VERBLETS_DEBUG) {
           console.warn(`Timeline extraction failed for chunk ${chunkIndex + 1}:`, error.message);
         }
         onProgress?.(chunkIndex + 1, chunks.length);
-      });
-
-    promises.push(p);
-
-    // Control parallelism
-    if (promises.length >= maxParallel) {
-      await Promise.all(promises);
-      promises.length = 0;
+      }
+    },
+    {
+      maxParallel,
+      label: 'timeline chunks',
     }
-  }
-
-  // Wait for remaining promises
-  if (promises.length > 0) {
-    await Promise.all(promises);
-  }
+  );
 
   // Merge and deduplicate events from all chunks
   if (process.env.VERBLETS_DEBUG) {

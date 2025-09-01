@@ -1,6 +1,7 @@
 import listBatch, { ListStyle, determineStyle } from '../../verblets/list-batch/index.js';
 import createBatches from '../../lib/text-batch/index.js';
 import retry from '../../lib/retry/index.js';
+import parallelBatch from '../../lib/parallel-batch/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import {
   createLifecycleLogger,
@@ -28,18 +29,24 @@ const mapOnce = async function (list, instructions, config = {}) {
 
   const results = new Array(list.length);
   const batches = createBatches(list, config);
-  const promises = [];
 
-  for (const { items, startIndex, skip } of batches) {
-    if (skip) {
-      results[startIndex] = undefined;
-      continue;
+  // Filter out skip batches
+  const batchesToProcess = batches.filter((batch) => {
+    if (batch.skip) {
+      results[batch.startIndex] = undefined;
+      return false;
     }
+    return true;
+  });
 
-    const batchStyle = determineStyle(config.listStyle, items, config.autoModeThreshold);
+  // Process batches in parallel using parallelBatch
+  await parallelBatch(
+    batchesToProcess,
+    async ({ items, startIndex }) => {
+      const batchStyle = determineStyle(config.listStyle, items, config.autoModeThreshold);
 
-    // Build the compiled prompt for this batch
-    const baseInstructions = `Transform each item in the list according to the instructions below. Apply the transformation consistently to every item.
+      // Build the compiled prompt for this batch
+      const baseInstructions = `Transform each item in the list according to the instructions below. Apply the transformation consistently to every item.
 
 ${asXML(instructions, { tag: 'transformation-instructions' })}
 
@@ -49,17 +56,17 @@ IMPORTANT:
 - Preserve the order of items from the input list
 - Output one transformed result per input item`;
 
-    const compiledPrompt =
-      batchStyle === ListStyle.NEWLINE
-        ? `${baseInstructions}
+      const compiledPrompt =
+        batchStyle === ListStyle.NEWLINE
+          ? `${baseInstructions}
 
 The input list contains exactly ${items.length} item${
-            items.length === 1 ? '' : 's'
-          }, separated by newlines.
+              items.length === 1 ? '' : 's'
+            }, separated by newlines.
 Return exactly ${items.length} line${
-            items.length === 1 ? '' : 's'
-          } of output, one transformed item per line. Do not number the lines.`
-        : `${baseInstructions}
+              items.length === 1 ? '' : 's'
+            } of output, one transformed item per line. Do not number the lines.`
+          : `${baseInstructions}
 
 Return the transformed items as an XML list with exactly ${items.length} items:
 <list>
@@ -70,22 +77,23 @@ Return the transformed items as an XML list with exactly ${items.length} items:
 
 Preserve all formatting and newlines within each <item> element.`;
 
-    // Log the compiled prompt for this batch
-    if (config.logger) {
-      config.logger.logEvent('batch-prompt', extractPromptAnalysis(compiledPrompt));
-    }
-
-    const p = retry(
-      () =>
-        listBatch(items, compiledPrompt, {
-          ...config,
-          listStyle: batchStyle,
-        }),
-      {
-        label: `map batch ${startIndex}-${startIndex + items.length - 1}`,
+      // Log the compiled prompt for this batch
+      if (config.logger) {
+        config.logger.logEvent('batch-prompt', extractPromptAnalysis(compiledPrompt));
       }
-    )
-      .then((output) => {
+
+      try {
+        const output = await retry(
+          () =>
+            listBatch(items, compiledPrompt, {
+              ...config,
+              listStyle: batchStyle,
+            }),
+          {
+            label: `map batch ${startIndex}-${startIndex + items.length - 1}`,
+          }
+        );
+
         // listBatch now returns arrays directly
         if (!Array.isArray(output)) {
           throw new Error(`Expected array from listBatch, got: ${typeof output}`);
@@ -94,24 +102,18 @@ Preserve all formatting and newlines within each <item> element.`;
         output.forEach((item, j) => {
           results[startIndex + j] = item;
         });
-      })
-      .catch(() => {
+      } catch {
+        // On error, mark all items in batch as undefined
         for (let j = 0; j < items.length; j += 1) {
           results[startIndex + j] = undefined;
         }
-      });
-
-    promises.push(p);
-
-    if (promises.length >= maxParallel) {
-      await Promise.all(promises);
-      promises.length = 0;
+      }
+    },
+    {
+      maxParallel,
+      label: 'map batches',
     }
-  }
-
-  if (promises.length > 0) {
-    await Promise.all(promises);
-  }
+  );
 
   return results;
 };
