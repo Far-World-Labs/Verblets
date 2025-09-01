@@ -1,6 +1,7 @@
 import listBatch, { ListStyle, determineStyle } from '../../verblets/list-batch/index.js';
 import createBatches from '../../lib/text-batch/index.js';
 import retry from '../../lib/retry/index.js';
+import parallelBatch from '../../lib/parallel-batch/index.js';
 import reduce from '../reduce/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 
@@ -101,52 +102,48 @@ export default async function group(list, instructions, config = {}) {
 
   // Phase 2: Assignment - map items to established categories
   const batches = createBatches(list, config);
-  const promises = [];
   const batchResults = [];
   const assignmentInstructions = createAssignmentInstructions(categories);
 
-  for (const { items, startIndex, skip } of batches) {
-    if (skip) continue;
+  // Filter out skip batches
+  const batchesToProcess = batches.filter((batch) => !batch.skip);
 
-    const batchStyle = determineStyle(listStyle, items, autoModeThreshold);
+  // Process batches in parallel using parallelBatch
+  await parallelBatch(
+    batchesToProcess,
+    async ({ items, startIndex }) => {
+      const batchStyle = determineStyle(listStyle, items, autoModeThreshold);
 
-    const p = retry(
-      () =>
-        listBatch(items, assignmentInstructions, {
-          listStyle: batchStyle,
-          autoModeThreshold,
-          llm,
-          ...options,
-        }),
-      {
-        label: `group assignment batch ${startIndex}`,
-      }
-    )
-      .then((labels) => {
+      try {
+        const labels = await retry(
+          () =>
+            listBatch(items, assignmentInstructions, {
+              listStyle: batchStyle,
+              autoModeThreshold,
+              llm,
+              ...options,
+            }),
+          {
+            label: `group assignment batch ${startIndex}`,
+          }
+        );
+
         if (!Array.isArray(labels) || labels.length !== items.length) {
           const fallbackLabels = new Array(items.length).fill('other');
           batchResults.push({ items, labels: fallbackLabels, startIndex });
-          return;
+        } else {
+          batchResults.push({ items, labels, startIndex });
         }
-
-        batchResults.push({ items, labels, startIndex });
-      })
-      .catch(() => {
+      } catch {
         const fallbackLabels = new Array(items.length).fill('other');
         batchResults.push({ items, labels: fallbackLabels, startIndex });
-      });
-
-    promises.push(p);
-
-    if (promises.length >= maxParallel) {
-      await Promise.all(promises);
-      promises.length = 0;
+      }
+    },
+    {
+      maxParallel,
+      label: 'group assignment batches',
     }
-  }
-
-  if (promises.length > 0) {
-    await Promise.all(promises);
-  }
+  );
 
   // Final grouping
   batchResults.sort((a, b) => a.startIndex - b.startIndex);

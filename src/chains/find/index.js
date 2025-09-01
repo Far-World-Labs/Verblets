@@ -1,6 +1,7 @@
 import listBatch, { ListStyle, determineStyle } from '../../verblets/list-batch/index.js';
 import createBatches from '../../lib/text-batch/index.js';
 import retry from '../../lib/retry/index.js';
+import parallelBatch from '../../lib/parallel-batch/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { findResultJsonSchema } from './schemas.js';
 
@@ -36,59 +37,57 @@ Process exactly ${count} items from the list below and return the single best ma
 Process exactly ${count} items from the XML list below and return the single best match.`;
   };
 
-  const promises = [];
   const results = [];
+  let foundEarly = false;
 
-  for (const { items, startIndex, skip } of batches) {
-    if (skip) {
-      continue;
-    }
+  // Filter out skip batches
+  const batchesToProcess = batches.filter((batch) => !batch.skip);
 
-    const batchStyle = determineStyle(listStyle, items, autoModeThreshold);
+  // Process in chunks to allow early termination
+  for (let i = 0; i < batchesToProcess.length && !foundEarly; i += maxParallel) {
+    const chunk = batchesToProcess.slice(i, i + maxParallel);
 
-    const p = retry(
-      () =>
-        listBatch(items, findInstructions, {
-          listStyle: batchStyle,
-          autoModeThreshold,
-          responseFormat: responseFormat || findResponseFormat,
-          llm,
-          ...options,
-        }),
-      {
-        label: `find batch ${startIndex}-${startIndex + items.length - 1}`,
-      }
-    )
-      .then((result) => {
-        // listBatch now returns arrays directly
-        const foundItem = Array.isArray(result) && result[0];
-        if (foundItem) {
-          // Try to find the exact index in the original list
-          const itemIndex = list.findIndex((item) => item === foundItem);
-          results.push({ result: foundItem, index: itemIndex !== -1 ? itemIndex : startIndex });
+    await parallelBatch(
+      chunk,
+      async ({ items, startIndex }) => {
+        const batchStyle = determineStyle(listStyle, items, autoModeThreshold);
+
+        try {
+          const result = await retry(
+            () =>
+              listBatch(items, findInstructions, {
+                listStyle: batchStyle,
+                autoModeThreshold,
+                responseFormat: responseFormat || findResponseFormat,
+                llm,
+                ...options,
+              }),
+            {
+              label: `find batch ${startIndex}-${startIndex + items.length - 1}`,
+            }
+          );
+
+          // listBatch now returns arrays directly
+          const foundItem = Array.isArray(result) && result[0];
+          if (foundItem) {
+            // Try to find the exact index in the original list
+            const itemIndex = list.findIndex((item) => item === foundItem);
+            results.push({ result: foundItem, index: itemIndex !== -1 ? itemIndex : startIndex });
+          }
+        } catch {
+          // continue on error
         }
-      })
-      .catch(() => {
-        // continue on error
-      });
-
-    promises.push(p);
-
-    if (promises.length >= maxParallel) {
-      await Promise.all(promises);
-      promises.length = 0;
-
-      if (results.length > 0) {
-        const earliest = results.reduce((best, current) =>
-          current.index < best.index ? current : best
-        );
-        return earliest.result;
+      },
+      {
+        maxParallel,
+        label: 'find batches',
       }
-    }
-  }
+    );
 
-  if (promises.length > 0) {
-    await Promise.all(promises);
+    // Check for early termination after each chunk
+    if (results.length > 0) {
+      foundEarly = true;
+    }
   }
 
   if (results.length > 0) {
