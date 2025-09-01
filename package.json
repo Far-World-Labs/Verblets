@@ -3,6 +3,7 @@
   "version": "0.3.0",
   "description": "Verblets is a collection of tools for building LLM-powered applications.",
   "main": "dist/index.js",
+  "module": "dist/index.js",
   "type": "module",
   "exports": {
     ".": {
@@ -12,14 +13,14 @@
     }
   },
   "files": [
-    "dist",
-    "src"
+    "dist"
   ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Far-World-Labs/Verblets.git"
   },
   "scripts": {
+    "prepublishOnly": "npm run build",
     "start": "node scripts/runner/index.js",
     "dev": "nodemon --no-warnings scripts/runner/index.js",
     "editor": "node scripts/simple-editor/index.js",
