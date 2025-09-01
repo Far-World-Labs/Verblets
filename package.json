@@ -2,15 +2,19 @@
   "name": "@far-world-labs/verblets",
   "version": "0.3.0",
   "description": "Verblets is a collection of tools for building LLM-powered applications.",
-  "main": "src/index.js",
+  "main": "dist/index.js",
   "type": "module",
   "exports": {
     ".": {
-      "node": "./src/index.js",
-      "browser": "./src/index.browser.js",
-      "default": "./src/index.js"
+      "node": "./dist/index.js",
+      "browser": "./dist/index.browser.js",
+      "default": "./dist/index.js"
     }
   },
+  "files": [
+    "dist",
+    "src"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Far-World-Labs/Verblets.git"

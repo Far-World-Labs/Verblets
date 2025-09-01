@@ -9,7 +9,7 @@ export { default as number } from './verblets/number/index.js';
 export { default as numberWithUnits } from './verblets/number-with-units/index.js';
 
 // Math
-export { default as scale, createScale } from './verblets/scale/index.js';
+export { default as scale, createScale } from './chains/scale/index.js';
 
 // Lists
 export { default as centralTendency } from './chains/central-tendency/index.js';
@@ -54,7 +54,7 @@ export { default as summaryMap } from './chains/summary-map/index.js';
 export { default as tagVocabulary } from './chains/tag-vocabulary/index.js';
 export { default as themes } from './chains/themes/index.js';
 export { default as timeline } from './chains/timeline/index.js';
-export { default as toObject } from './verblets/to-object/index.js';
+export { default as toObject } from './chains/to-object/index.js';
 export { default as truncate } from './chains/truncate/index.js';
 export { default as veiledVariants } from './chains/veiled-variants/index.js';
 
@@ -71,7 +71,7 @@ export { default as setInterval } from './chains/set-interval/index.js';
 
 // Library Helpers (documented in README)
 export { default as chatGPT } from './lib/chatgpt/index.js';
-export { default as promptCache } from './lib/prompt-cache/index.js';
+export * as promptCache from './lib/prompt-cache/index.js';
 export { default as retry } from './lib/retry/index.js';
 export { default as ringBuffer } from './lib/ring-buffer/index.js';
 
@@ -79,10 +79,10 @@ export { default as ringBuffer } from './lib/ring-buffer/index.js';
 export * as prompts from './prompts/index.js';
 export * as schemas from './json-schemas/index.js';
 
-import common from './constants/common.js';
+import * as common from './constants/common.js';
 import * as messages from './constants/messages.js';
 import * as models from './constants/models.js';
-import redis from './services/redis/index.js';
+import * as redis from './services/redis/index.js';
 import modelService from './services/llm-model/model.js';
 
 export const constants = {

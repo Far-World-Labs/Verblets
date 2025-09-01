@@ -8,7 +8,7 @@ export default defineConfig({
         index: resolve(__dirname, 'src/index.js'),
         'index.browser': resolve(__dirname, 'src/index.browser.js'),
       },
-      formats: ['es', 'cjs'],
+      formats: ['es'],
     },
     rollupOptions: {
       external: [
@@ -50,25 +50,12 @@ export default defineConfig({
     alias: {
       // Redirect Node-specific modules to browser versions
       'node:crypto': resolve(__dirname, 'src/lib/crypto/index.js'),
-      // Conditional imports for browser/node specific code
-      './index.js': {
-        browser: './index.browser.js',
-      },
-      '../search-js-files/index.js': {
-        browser: '../search-js-files/index.browser.js',
-      },
-      '../scan-js/index.js': {
-        browser: '../scan-js/index.browser.js',
-      },
-      '../transcribe/index.js': {
-        browser: '../transcribe/index.browser.js',
-      },
-      '../expect/index.js': {
-        browser: '../expect/index.browser.js',
-      },
-      '../../services/redis/index.js': {
-        browser: '../../services/redis/index.browser.js',
-      },
+      './chains/expect/index.js': resolve(__dirname, 'src/chains/expect/index.browser.js'),
+      './chains/scan-js/index.js': resolve(__dirname, 'src/chains/scan-js/index.browser.js'),
+      './lib/parse-js-parts/index.js': resolve(__dirname, 'src/lib/parse-js-parts/index.browser.js'),
+      './lib/search-js-files/index.js': resolve(__dirname, 'src/lib/search-js-files/index.browser.js'),
+      './lib/transcribe/index.js': resolve(__dirname, 'src/lib/transcribe/index.browser.js'),
+      './services/redis/index.js': resolve(__dirname, 'src/services/redis/index.browser.js'),
     },
     conditions: ['browser', 'import', 'default'],
   },

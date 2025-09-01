@@ -646,3 +646,6 @@ export const log = (data, logger) => {
     'LLM Logger: log() called without proper logger instance. Use createLLMLogger() and setLogger().'
   );
 };
+
+// Default export
+export default createLLMLogger;
