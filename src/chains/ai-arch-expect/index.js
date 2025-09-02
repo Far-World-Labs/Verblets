@@ -1,6 +1,5 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { expect } from 'vitest';
 import chatgpt from '../../lib/chatgpt/index.js';
 import reduce from '../reduce/index.js';
 
@@ -596,7 +595,7 @@ class ArchExpectation {
       } ${(this.threshold * 100).toFixed(1)}% threshold`;
 
       if (!coveragePassed) {
-        expect.fail(message);
+        throw new Error(message);
       }
 
       return { passed: coveragePassed, coverage, message };
@@ -610,7 +609,7 @@ class ArchExpectation {
     const message = generateResultMessage(stats, this.description, this.maxFailures);
 
     if (!stats.allPassed) {
-      expect.fail(message);
+      throw new Error(message);
     }
 
     return createSummaryResult(stats, message);
