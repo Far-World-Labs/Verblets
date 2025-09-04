@@ -10,7 +10,8 @@
       "node": "./dist/index.js",
       "browser": "./dist/index.browser.js",
       "default": "./dist/index.js"
-    }
+    },
+    "./*": "./dist/*"
   },
   "files": [
     "dist"
