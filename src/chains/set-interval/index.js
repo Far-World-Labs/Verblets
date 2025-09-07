@@ -1,4 +1,5 @@
 import chatGPT from '../../lib/chatgpt/index.js';
+import retry from '../../lib/retry/index.js';
 import numberWithUnits from '../../verblets/number-with-units/index.js';
 import number from '../../verblets/number/index.js';
 import date from '../date/index.js';
@@ -63,6 +64,7 @@ export default function setInterval({
   onTick,
   model,
   llm,
+  maxAttempts = 3,
   ...options
 } = {}) {
   let timer;
@@ -96,9 +98,15 @@ ${asXML(history, { tag: 'history', title: 'History:' })}
 ${asXML(count, { tag: 'count', title: 'Count:' })}
 Next wait:`;
 
-      const intervalText = await chatGPT(intervalPrompt, {
-        modelOptions: model ? { modelName: model, ...llm } : { ...llm },
-        ...options,
+      const intervalText = await retry(chatGPT, {
+        label: 'set-interval',
+        maxRetries: maxAttempts,
+        chatGPTPrompt: intervalPrompt,
+        chatGPTConfig: {
+          modelOptions: model ? { modelName: model, ...llm } : { ...llm },
+          ...options,
+        },
+        logger: options.logger,
       });
 
       history.push(intervalText);

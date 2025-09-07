@@ -12,7 +12,16 @@ const DEFAULT_REDUCE_RESPONSE_FORMAT = {
 };
 
 export default async function reduce(list, instructions, config = {}) {
-  const { initial, listStyle, autoModeThreshold, responseFormat, llm, ...options } = config;
+  const {
+    initial,
+    listStyle,
+    autoModeThreshold,
+    responseFormat,
+    llm,
+    maxAttempts = 3,
+    logger,
+    ...options
+  } = config;
 
   let acc = initial;
 
@@ -56,19 +65,25 @@ Process exactly ${count} items from the ${itemFormat} list below and return the 
 
     const effectiveResponseFormat = responseFormat || DEFAULT_REDUCE_RESPONSE_FORMAT;
 
-    const result = await retry(
-      () =>
-        listBatch(items, reduceInstructions, {
-          listStyle: batchStyle,
-          autoModeThreshold,
-          responseFormat: effectiveResponseFormat,
-          llm,
-          ...options,
-        }),
-      {
-        label: `reduce batch ${items.length} items`,
-      }
-    );
+    const prompt = reduceInstructions({ style: batchStyle, count: items.length });
+    const listBatchOptions = {
+      listStyle: batchStyle,
+      autoModeThreshold,
+      responseFormat: effectiveResponseFormat,
+      llm,
+      ...options,
+    };
+
+    const result = await retry(() => listBatch(items, prompt, listBatchOptions), {
+      label: `reduce batch ${items.length} items`,
+      maxRetries: maxAttempts,
+      logger,
+      chatGPTPrompt: `${prompt}\n\nAccumulator: ${(JSON.stringify(acc) || '').substring(
+        0,
+        200
+      )}\nItems: ${(JSON.stringify(items) || '').substring(0, 300)}...`,
+      chatGPTConfig: listBatchOptions,
+    });
 
     if (!responseFormat && result?.accumulator !== undefined) {
       acc = result.accumulator;

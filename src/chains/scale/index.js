@@ -1,4 +1,5 @@
 import chatGPT from '../../lib/chatgpt/index.js';
+import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 import { scaleSpecificationJsonSchema } from './schemas.js';
@@ -34,10 +35,11 @@ const GROUP_PROCESS_STEPS = `Apply the scale to determine each item's group assi
  * Generate a scale specification from instructions
  * @param {string} prompt - Natural language scaling instructions
  * @param {Object} config - Configuration options
+ * @param {number} config.maxAttempts - Max retry attempts (default: 3)
  * @returns {Promise<Object>} Scale specification with domain, range, and mapping
  */
 export async function scaleSpec(prompt, config = {}) {
-  const { llm, ...rest } = config;
+  const { llm, maxAttempts = 3, ...rest } = config;
 
   const specSystemPrompt = `You are a scale specification generator. Analyze the scaling instructions and produce a clear, comprehensive specification.`;
 
@@ -52,16 +54,22 @@ Provide a JSON object with exactly three string properties:
 
 IMPORTANT: Each property must be a simple string value, not a nested object or array.`;
 
-  const response = await chatGPT(specUserPrompt, {
-    modelOptions: {
-      response_format: {
-        type: 'json_schema',
-        json_schema: scaleSpecificationJsonSchema,
+  const response = await retry(chatGPT, {
+    label: 'scale spec',
+    maxRetries: maxAttempts,
+    chatGPTPrompt: specUserPrompt,
+    chatGPTConfig: {
+      modelOptions: {
+        response_format: {
+          type: 'json_schema',
+          json_schema: scaleSpecificationJsonSchema,
+        },
       },
+      llm,
+      system: specSystemPrompt,
+      ...rest,
     },
-    llm,
-    system: specSystemPrompt,
-    ...rest,
+    logger: rest.logger,
   });
 
   return response;
@@ -72,10 +80,11 @@ IMPORTANT: Each property must be a simple string value, not a nested object or a
  * @param {*} item - Item to scale
  * @param {Object} specification - Pre-generated scale specification
  * @param {Object} config - Configuration options
+ * @param {number} config.maxAttempts - Max retry attempts (default: 3)
  * @returns {Promise<*>} Scaled value (type depends on specification range)
  */
 export async function applyScale(item, specification, config = {}) {
-  const { llm, ...options } = config;
+  const { llm, maxAttempts = 3, ...options } = config;
 
   const prompt = `Apply the scale specification to transform this item.
 
@@ -88,18 +97,24 @@ Return a JSON object with a "value" property containing the scaled result.
 
 ${onlyJSON}`;
 
-  const response = await chatGPT(prompt, {
-    modelOptions: {
-      response_format: {
-        type: 'json_schema',
-        json_schema: {
-          name: 'scale_result',
-          schema: scaleResultSchema,
+  const response = await retry(chatGPT, {
+    label: 'scale item',
+    maxRetries: maxAttempts,
+    chatGPTPrompt: prompt,
+    chatGPTConfig: {
+      modelOptions: {
+        response_format: {
+          type: 'json_schema',
+          json_schema: {
+            name: 'scale_result',
+            schema: scaleResultSchema,
+          },
         },
       },
+      llm,
+      ...options,
     },
-    llm,
-    ...options,
+    logger: options.logger,
   });
 
   return response;

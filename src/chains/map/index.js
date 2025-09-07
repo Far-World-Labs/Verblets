@@ -25,7 +25,7 @@ import {
  * @returns { Promise<(string|undefined)[]> } results aligned with input order
  */
 const mapOnce = async function (list, instructions, config = {}) {
-  const { maxParallel = 3 } = config;
+  const { maxParallel = 3, onProgress } = config;
 
   const results = new Array(list.length);
   const batches = createBatches(list, config);
@@ -38,6 +38,17 @@ const mapOnce = async function (list, instructions, config = {}) {
     }
     return true;
   });
+
+  // Log batch processing start
+  if (config.logger?.info) {
+    config.logger.info('Map chain processing batches', {
+      totalBatches: batchesToProcess.length,
+      maxParallel,
+      batchSizes: batchesToProcess.map((b) => b.items.length),
+    });
+  }
+
+  let processedBatches = 0;
 
   // Process batches in parallel using parallelBatch
   await parallelBatch(
@@ -83,16 +94,21 @@ Preserve all formatting and newlines within each <item> element.`;
       }
 
       try {
-        const output = await retry(
-          () =>
-            listBatch(items, compiledPrompt, {
-              ...config,
-              listStyle: batchStyle,
-            }),
-          {
-            label: `map batch ${startIndex}-${startIndex + items.length - 1}`,
-          }
-        );
+        const listBatchOptions = {
+          ...config,
+          listStyle: batchStyle,
+        };
+
+        const output = await retry(() => listBatch(items, compiledPrompt, listBatchOptions), {
+          label: `map batch ${startIndex}-${startIndex + items.length - 1}`,
+          maxRetries: config.maxAttempts || 3,
+          logger: config.logger,
+          chatGPTPrompt: `${compiledPrompt}\n\nItems: ${JSON.stringify(items).substring(
+            0,
+            500
+          )}...`,
+          chatGPTConfig: listBatchOptions,
+        });
 
         // listBatch now returns arrays directly
         if (!Array.isArray(output)) {
@@ -102,7 +118,36 @@ Preserve all formatting and newlines within each <item> element.`;
         output.forEach((item, j) => {
           results[startIndex + j] = item;
         });
-      } catch {
+
+        // Call onProgress if provided
+        processedBatches++;
+        if (onProgress) {
+          onProgress({
+            batchIndex: processedBatches,
+            totalBatches: batchesToProcess.length,
+            itemsProcessed: startIndex + items.length,
+            totalItems: list.length,
+          });
+        }
+
+        if (config.logger?.info) {
+          config.logger.info(`Map batch completed`, {
+            batchIndex: processedBatches,
+            startIndex,
+            itemCount: items.length,
+            successCount: output.length,
+          });
+        }
+      } catch (error) {
+        // Log the error before marking items as undefined
+        if (config.logger?.error) {
+          config.logger.error(`Map batch ${startIndex}-${startIndex + items.length - 1} failed`, {
+            error: error.message,
+            batchIndex: processedBatches + 1,
+            itemCount: items.length,
+          });
+        }
+
         // On error, mark all items in batch as undefined
         for (let j = 0; j < items.length; j += 1) {
           results[startIndex + j] = undefined;
@@ -138,6 +183,19 @@ const map = async function (list, instructions, config = {}) {
 
   // Create logger for map chain
   const lifecycleLogger = createLifecycleLogger(logger, 'chain:map');
+
+  // Log detailed config for debugging
+  if (logger?.info) {
+    logger.info('Map chain starting', {
+      itemCount: list.length,
+      instructionsLength: instructions?.length,
+      llm: config.llm,
+      batchSize: config.batchSize,
+      maxParallel: config.maxParallel,
+      maxAttempts,
+      hasOnProgress: !!config.onProgress,
+    });
+  }
 
   // Log map chain start with batch configuration
   lifecycleLogger.logStart(

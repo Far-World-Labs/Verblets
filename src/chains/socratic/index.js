@@ -1,4 +1,5 @@
 import chatGPT from '../../lib/chatgpt/index.js';
+import retry from '../../lib/retry/index.js';
 import modelService from '../../services/llm-model/index.js';
 import socraticQuestionSchema from './socratic-question-schema.js';
 import socraticAnswerSchema from './socratic-answer-schema.js';
@@ -25,6 +26,7 @@ const defaultAsk = async ({
   history = [],
   model = modelService.getBestPublicModel(),
   logger,
+  maxAttempts = 3,
 } = {}) => {
   const historyText = history.map((turn) => `Q: ${turn.question}\nA: ${turn.answer}`).join('\n');
   const prompt = buildAskPrompt(topic, historyText);
@@ -32,17 +34,23 @@ const defaultAsk = async ({
   logger?.logEvent('ask-prompt', extractPromptAnalysis(prompt));
 
   const budget = model.budgetTokens(prompt);
-  const response = await chatGPT(prompt, {
-    maxTokens: budget.completion,
-    temperature: 0.7,
-    modelOptions: {
-      response_format: {
-        type: 'json_schema',
-        json_schema: {
-          name: 'socratic_question',
-          schema: socraticQuestionSchema,
+  const response = await retry(chatGPT, {
+    label: 'socratic-ask',
+    maxRetries: maxAttempts,
+    chatGPTPrompt: prompt,
+    chatGPTConfig: {
+      maxTokens: budget.completion,
+      temperature: 0.7,
+      modelOptions: {
+        response_format: {
+          type: 'json_schema',
+          json_schema: {
+            name: 'socratic_question',
+            schema: socraticQuestionSchema,
+          },
         },
       },
+      logger,
     },
     logger,
   });
@@ -56,6 +64,7 @@ const defaultAnswer = async ({
   _topic,
   model = modelService.getBestPublicModel(),
   logger,
+  maxAttempts = 3,
 } = {}) => {
   const historyText = history.map((turn) => `Q: ${turn.question}\nA: ${turn.answer}`).join('\n');
   const prompt = buildAnswerPrompt(question, historyText);
@@ -63,17 +72,23 @@ const defaultAnswer = async ({
   logger?.logEvent('answer-prompt', extractPromptAnalysis(prompt));
 
   const budget = model.budgetTokens(prompt);
-  const response = await chatGPT(prompt, {
-    maxTokens: budget.completion,
-    temperature: 0.7,
-    modelOptions: {
-      response_format: {
-        type: 'json_schema',
-        json_schema: {
-          name: 'socratic_answer',
-          schema: socraticAnswerSchema,
+  const response = await retry(chatGPT, {
+    label: 'socratic-answer',
+    maxRetries: maxAttempts,
+    chatGPTPrompt: prompt,
+    chatGPTConfig: {
+      maxTokens: budget.completion,
+      temperature: 0.7,
+      modelOptions: {
+        response_format: {
+          type: 'json_schema',
+          json_schema: {
+            name: 'socratic_answer',
+            schema: socraticAnswerSchema,
+          },
         },
       },
+      logger,
     },
     logger,
   });
@@ -82,11 +97,15 @@ const defaultAnswer = async ({
 };
 
 class SocraticMethod {
-  constructor(statement, { ask = defaultAsk, answer = defaultAnswer, logger } = {}) {
+  constructor(
+    statement,
+    { ask = defaultAsk, answer = defaultAnswer, logger, maxAttempts = 3 } = {}
+  ) {
     this.statement = statement;
     this.ask = ask;
     this.answer = answer;
     this.history = [];
+    this.maxAttempts = maxAttempts;
     this.logger = createLifecycleLogger(logger, 'chain:socratic');
 
     // Log construction
@@ -94,6 +113,7 @@ class SocraticMethod {
       statement,
       hasCustomAsk: ask !== defaultAsk,
       hasCustomAnswer: answer !== defaultAnswer,
+      maxAttempts,
     });
   }
 
@@ -120,6 +140,7 @@ class SocraticMethod {
       topic: this.statement,
       history: this.history,
       logger: this.logger,
+      maxAttempts: this.maxAttempts,
     });
 
     // Log question as intermediate event
@@ -132,6 +153,7 @@ class SocraticMethod {
       history: this.history,
       topic: this.statement,
       logger: this.logger,
+      maxAttempts: this.maxAttempts,
     });
 
     const turn = { question, answer };

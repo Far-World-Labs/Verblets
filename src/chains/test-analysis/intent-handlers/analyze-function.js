@@ -6,6 +6,7 @@ import {
   traceCaller,
 } from '../../../lib/parse-js-parts/function-utils.js';
 import chatGPT from '../../../lib/chatgpt/index.js';
+import retry from '../../../lib/retry/index.js';
 import score from '../../../chains/score/index.js';
 import modelService from '../../../services/llm-model/index.js';
 import { bold, cyan } from '../../../chains/test-analysis/output-utils.js';
@@ -180,7 +181,10 @@ Cover these aspects (skip if not applicable):
   // For system+user messages, we combine them into a single prompt
   const combinedPrompt = `${systemMessage}\n\n${userMessage}`;
 
-  const analysis = await chatGPT(combinedPrompt);
+  const analysis = await retry(() => chatGPT(combinedPrompt), {
+    maxRetries: 2,
+    label: 'function analysis',
+  });
 
   // Format the output - consistent with other handlers
   const header = bold(cyan('FUNCTION ANALYSIS'));

@@ -1,4 +1,5 @@
 import chatGPT from '../../lib/chatgpt/index.js';
+import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 import { scaleSpec } from '../scale/index.js';
@@ -19,10 +20,11 @@ export const scoreSpec = scaleSpec;
  * @param {*} item - Item to score
  * @param {Object} specification - Pre-generated score specification
  * @param {Object} config - Configuration options
+ * @param {number} config.maxAttempts - Max retry attempts (default: 3)
  * @returns {Promise<*>} Score value (type depends on specification range)
  */
 export async function applyScore(item, specification, config = {}) {
-  const { llm, ...options } = config;
+  const { llm, maxAttempts = 3, ...options } = config;
 
   const prompt = `Apply the score specification to evaluate this item.
 
@@ -35,18 +37,24 @@ ${onlyJSON}
 
 ${asXML(item, { tag: 'item' })}`;
 
-  const response = await chatGPT(prompt, {
-    modelOptions: {
-      response_format: {
-        type: 'json_schema',
-        json_schema: {
-          name: 'score_single_result',
-          schema: scoreSingleResultSchema,
+  const response = await retry(chatGPT, {
+    label: 'score item',
+    maxRetries: maxAttempts,
+    chatGPTPrompt: prompt,
+    chatGPTConfig: {
+      modelOptions: {
+        response_format: {
+          type: 'json_schema',
+          json_schema: {
+            name: 'score_single_result',
+            schema: scoreSingleResultSchema,
+          },
         },
       },
+      llm,
+      ...options,
     },
-    llm,
-    ...options,
+    logger: options.logger,
   });
 
   // chatGPT auto-unwraps single value property, returns the number directly

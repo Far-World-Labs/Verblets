@@ -115,16 +115,24 @@ export default async function group(list, instructions, config = {}) {
       const batchStyle = determineStyle(listStyle, items, autoModeThreshold);
 
       try {
+        const listBatchOptions = {
+          listStyle: batchStyle,
+          autoModeThreshold,
+          llm,
+          ...options,
+        };
+
         const labels = await retry(
-          () =>
-            listBatch(items, assignmentInstructions, {
-              listStyle: batchStyle,
-              autoModeThreshold,
-              llm,
-              ...options,
-            }),
+          () => listBatch(items, assignmentInstructions, listBatchOptions),
           {
             label: `group assignment batch ${startIndex}`,
+            maxRetries: options.maxAttempts || 3,
+            logger: options.logger,
+            chatGPTPrompt: `${assignmentInstructions({
+              style: batchStyle,
+              count: items.length,
+            })}\n\nItems: ${JSON.stringify(items).substring(0, 500)}...`,
+            chatGPTConfig: listBatchOptions,
           }
         );
 

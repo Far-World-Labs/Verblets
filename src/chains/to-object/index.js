@@ -3,6 +3,7 @@ import Ajv from 'ajv';
 import { debugToObject } from '../../constants/common.js';
 import { retryJSONParse } from '../../constants/messages.js';
 import chatGPT from '../../lib/chatgpt/index.js';
+import retry from '../../lib/retry/index.js';
 import stripResponse from '../../lib/strip-response/index.js';
 import { constants as promptConstants, asXML } from '../../prompts/index.js';
 
@@ -98,7 +99,7 @@ function logDebugInfo(attempt, prompt, response, error) {
  * Converts text to structured JSON object using LLM assistance
  */
 export default async function toObject(text, schema, config = {}) {
-  const { llm, ...options } = config;
+  const { llm, maxAttempts = 3, ...options } = config;
   let errorDetails;
 
   // First attempt: try direct parsing
@@ -112,9 +113,15 @@ export default async function toObject(text, schema, config = {}) {
   // Second attempt: use LLM to fix JSON
   try {
     const prompt = buildJsonPrompt(text, schema, errorDetails);
-    const response = await chatGPT(prompt, {
-      modelOptions: { modelName: 'fastGood', ...llm },
-      ...options,
+    const response = await retry(chatGPT, {
+      label: 'to-object json fix',
+      maxRetries: maxAttempts,
+      chatGPTPrompt: prompt,
+      chatGPTConfig: {
+        modelOptions: { modelName: 'fastGood', ...llm },
+        ...options,
+      },
+      logger: options.logger,
     });
 
     const result = parseAndValidate(response, schema);
@@ -127,9 +134,15 @@ export default async function toObject(text, schema, config = {}) {
   // Third attempt: final retry with updated errors
   try {
     const prompt = buildJsonPrompt(text, schema, errorDetails);
-    const response = await chatGPT(prompt, {
-      modelOptions: { modelName: 'fastGood', ...llm },
-      ...options,
+    const response = await retry(chatGPT, {
+      label: 'to-object final retry',
+      maxRetries: maxAttempts,
+      chatGPTPrompt: prompt,
+      chatGPTConfig: {
+        modelOptions: { modelName: 'fastGood', ...llm },
+        ...options,
+      },
+      logger: options.logger,
     });
 
     const result = parseAndValidate(response, schema);

@@ -1,6 +1,7 @@
 import commonalities from '../../verblets/commonalities/index.js';
 import { rangeCombinations } from '../../lib/combinations/index.js';
 import chatGPT from '../../lib/chatgpt/index.js';
+import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 import { intersectionElementsSchema } from './schemas.js';
@@ -42,18 +43,23 @@ const parseElements = (elements) => {
 /**
  * Process a single combination to get intersection elements and description
  */
-const processCombo = async (combo, instructions) => {
+const processCombo = async (combo, instructions, maxAttempts = 3) => {
   const comboKey = combo.join(' + ');
 
   // Get elements and description in parallel
   const [elementsResponse, intersectionItems] = await Promise.all([
-    chatGPT(INTERSECTION_PROMPT(combo, instructions), {
-      modelOptions: {
-        response_format: {
-          type: 'json_schema',
-          json_schema: {
-            name: 'intersection_elements',
-            schema: intersectionElementsSchema,
+    retry(chatGPT, {
+      label: 'intersections-elements',
+      maxRetries: maxAttempts,
+      chatGPTPrompt: INTERSECTION_PROMPT(combo, instructions),
+      chatGPTConfig: {
+        modelOptions: {
+          response_format: {
+            type: 'json_schema',
+            json_schema: {
+              name: 'intersection_elements',
+              schema: intersectionElementsSchema,
+            },
           },
         },
       },
@@ -101,6 +107,7 @@ export default async function intersections(items, options = {}) {
     batchSize = 10,
     llm = 'fastGoodCheap',
     useSchemaValidation = false,
+    maxAttempts = 3,
   } = options;
 
   // Generate all combinations
@@ -115,7 +122,9 @@ export default async function intersections(items, options = {}) {
 
   for (let i = 0; i < allCombinations.length; i += batchSize) {
     const batch = allCombinations.slice(i, i + batchSize);
-    const batchResults = await Promise.all(batch.map((combo) => processCombo(combo, instructions)));
+    const batchResults = await Promise.all(
+      batch.map((combo) => processCombo(combo, instructions, maxAttempts))
+    );
 
     // Add batch results to final results
     for (const result of batchResults) {
@@ -125,7 +134,7 @@ export default async function intersections(items, options = {}) {
 
   // Validate results with JSON schema if enabled
   if (useSchemaValidation && Object.keys(results).length > 0) {
-    const validated = await validateIntersectionResults(results, llm);
+    const validated = await validateIntersectionResults(results, llm, maxAttempts);
     return validated.intersections || results;
   }
 
@@ -166,7 +175,7 @@ function createModelOptions(llm = 'fastGoodCheap', schemaName = 'intersection_re
  * @param {string|Object} llm - LLM model to use
  * @returns {Promise<Object>} Schema-validated intersection results
  */
-async function validateIntersectionResults(intersections, llm = 'fastGoodCheap') {
+async function validateIntersectionResults(intersections, llm = 'fastGoodCheap', maxAttempts = 3) {
   if (!intersections || Object.keys(intersections).length === 0) {
     return { intersections: {} };
   }
@@ -184,7 +193,14 @@ Return the properly structured JSON object with an "intersections" property cont
 
   try {
     const modelOptions = createModelOptions(llm, 'intersection_result');
-    const response = await chatGPT(prompt, { modelOptions });
+    const response = await retry(chatGPT, {
+      label: 'intersections-validation',
+      maxRetries: maxAttempts,
+      chatGPTPrompt: prompt,
+      chatGPTConfig: {
+        modelOptions,
+      },
+    });
     const parsed = typeof response === 'string' ? JSON.parse(response) : response;
 
     // Extract intersections from the object structure

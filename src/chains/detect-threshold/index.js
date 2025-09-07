@@ -1,5 +1,6 @@
 import reduce from '../reduce/index.js';
 import chatGPT from '../../lib/chatgpt/index.js';
+import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import thresholdResultSchema from './threshold-result.json';
 
@@ -55,6 +56,7 @@ export default async function detectThreshold({
   goal,
   chunkSize = 50,
   llm = { negotiate: { good: true } },
+  maxAttempts = 3,
   ...options
 }) {
   if (!data || !Array.isArray(data) || data.length === 0) {
@@ -222,9 +224,15 @@ Return threshold candidates with their rationales.`;
     },
   };
 
-  const result = await chatGPT(finalPrompt, {
-    modelOptions,
-    ...options,
+  const result = await retry(chatGPT, {
+    label: 'detect-threshold-analysis',
+    maxRetries: maxAttempts,
+    chatGPTPrompt: finalPrompt,
+    chatGPTConfig: {
+      modelOptions,
+      ...options,
+    },
+    logger: options.logger,
   });
 
   // With structured output, result should already be parsed

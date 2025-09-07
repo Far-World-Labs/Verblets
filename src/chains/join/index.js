@@ -48,10 +48,14 @@ ${fragmentList}
 
 Important: This is part of a larger sequence. Join these fragments while being mindful that this result will be combined with other processed windows. Add necessary connecting words, prepositions, conjunctions, or other filler text to create a coherent, grammatically correct, and semantically meaningful result. Output only the joined result for this window.`;
 
-    const result = await retry(
-      () => chatGPT(instruction, { modelOptions: { ...llm }, ...options }),
-      { label: `join-window-${windowIndex + 1}`, maxRetries }
-    );
+    const chatGPTConfig = { modelOptions: { ...llm }, ...options };
+    const result = await retry(chatGPT, {
+      label: `join-window-${windowIndex + 1}`,
+      maxRetries,
+      chatGPTPrompt: instruction,
+      chatGPTConfig,
+      logger: options.logger,
+    });
 
     windowResults.push({
       content: result || window.fragments.join(' '),
@@ -98,10 +102,14 @@ The terminal ends of both sections should be preserved. Only resolve the overlap
 
 Add necessary connecting words, prepositions, conjunctions, or other filler text to create a coherent, grammatically correct, and semantically meaningful result. Output only the final stitched result with terminals preserved.`;
 
-      const stitchResult = await retry(
-        () => chatGPT(stitchInstruction, { modelOptions: { ...llm }, ...options }),
-        { label: `join-stitch-${i}`, maxRetries }
-      );
+      const stitchConfig = { modelOptions: { ...llm }, ...options };
+      const stitchResult = await retry(chatGPT, {
+        label: `join-stitch-${i}`,
+        maxRetries,
+        chatGPTPrompt: stitchInstruction,
+        chatGPTConfig: stitchConfig,
+        logger: options.logger,
+      });
 
       stitchedResult = stitchResult || stitchedResult;
     } else {
@@ -114,10 +122,14 @@ Join these two non-overlapping sections:
 
 Add necessary connecting words, prepositions, conjunctions, or other filler text to create a coherent, grammatically correct, and semantically meaningful result. Output only the joined result.`;
 
-      const joinResult = await retry(
-        () => chatGPT(joinInstruction, { modelOptions: { ...llm }, ...options }),
-        { label: `join-nonoverlap-${i}`, maxRetries }
-      );
+      const joinConfig = { modelOptions: { ...llm }, ...options };
+      const joinResult = await retry(chatGPT, {
+        label: `join-nonoverlap-${i}`,
+        maxRetries,
+        chatGPTPrompt: joinInstruction,
+        chatGPTConfig: joinConfig,
+        logger: options.logger,
+      });
 
       stitchedResult = joinResult || stitchedResult;
     }

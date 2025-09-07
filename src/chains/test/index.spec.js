@@ -9,6 +9,11 @@ vi.mock('../../lib/chatgpt/index.js', () => ({
   default: vi.fn(),
 }));
 
+// Mock retry to just call the function
+vi.mock('../../lib/retry/index.js', () => ({
+  default: vi.fn((fn) => fn()),
+}));
+
 import chatGPT from '../../lib/chatgpt/index.js';
 
 let tempFile;

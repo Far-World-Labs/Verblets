@@ -7,6 +7,7 @@ import { readFile, access } from 'node:fs/promises';
 import { join } from 'node:path';
 import { constants } from 'node:fs';
 import chatGPT from '../../../lib/chatgpt/index.js';
+import retry from '../../../lib/retry/index.js';
 import aiMdExtractionSchema from '../schemas/ai-md-extraction.json';
 
 const EXTRACTION_PROMPT = `AI.md is a convention for informing AI processing of various details we're concerned with, including areas of focus, things we're actively working on, focuses of analysis when displaying AI tests, places that are in need of repair or break easily, and various levels of overview for quick analysis.
@@ -42,17 +43,21 @@ export async function extractAIMdConfig(moduleDir) {
   try {
     const prompt = EXTRACTION_PROMPT.replace('{content}', content);
 
-    const response = await chatGPT(prompt, {
-      modelOptions: {
-        response_format: {
-          type: 'json_schema',
-          json_schema: {
-            name: 'ai_md_extraction',
-            schema: aiMdExtractionSchema,
+    const response = await retry(
+      () =>
+        chatGPT(prompt, {
+          modelOptions: {
+            response_format: {
+              type: 'json_schema',
+              json_schema: {
+                name: 'ai_md_extraction',
+                schema: aiMdExtractionSchema,
+              },
+            },
           },
-        },
-      },
-    });
+        }),
+      { maxRetries: 2, label: 'AI.md extractor' }
+    );
 
     const parsed = typeof response === 'string' ? JSON.parse(response) : response;
 

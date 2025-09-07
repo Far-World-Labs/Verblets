@@ -26,7 +26,11 @@ export { default as list } from './chains/list/index.js';
 export { default as listExpand } from './verblets/list-expand/index.js';
 export { default as map } from './chains/map/index.js';
 export { default as reduce } from './chains/reduce/index.js';
-export { default as score } from './chains/score/index.js';
+export {
+  default as score,
+  scoreSpec,
+  mapInstructions as scoreMapInstructions,
+} from './chains/score/index.js';
 export { default as sort } from './chains/sort/index.js';
 export { default as tags } from './chains/tags/index.js';
 
@@ -75,6 +79,7 @@ export { default as chatGPT } from './lib/chatgpt/index.js';
 export * as promptCache from './lib/prompt-cache/index.js';
 export { default as retry } from './lib/retry/index.js';
 export { default as ringBuffer } from './lib/ring-buffer/index.js';
+export { default as version } from './lib/version/index.js';
 
 // Namespaced exports
 export * as prompts from './prompts/index.js';

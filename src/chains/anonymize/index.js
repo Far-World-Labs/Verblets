@@ -1,5 +1,5 @@
-import { run } from '../../lib/chatgpt/index.js';
 import chatGPT from '../../lib/chatgpt/index.js';
+import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 
 export const anonymizeMethod = {
@@ -43,7 +43,7 @@ const GROUP_PROCESS_STEPS = `Analyze each item to determine its appropriate grou
  * @returns {Promise<string>} Anonymization specification as descriptive text
  */
 export async function anonymizeSpec(prompt, config = {}) {
-  const { llm, ...rest } = config;
+  const { llm, maxAttempts = 3, ...rest } = config;
 
   const specSystemPrompt = `You are an anonymization specification generator. Create a clear, concise specification for text anonymization.`;
 
@@ -89,10 +89,16 @@ Provide a specification describing:
 
 Keep it focused on actionable anonymization rules.`;
 
-  const response = await chatGPT(specUserPrompt, {
-    llm,
-    system: specSystemPrompt,
-    ...rest,
+  const response = await retry(chatGPT, {
+    label: 'anonymize spec',
+    maxRetries: maxAttempts,
+    chatGPTPrompt: specUserPrompt,
+    chatGPTConfig: {
+      llm,
+      system: specSystemPrompt,
+      ...rest,
+    },
+    logger: rest.logger,
   });
 
   return response;
@@ -158,12 +164,18 @@ Return ONLY the final anonymized text, with no explanations or additional conten
 
 const anonymize = async (input, config = {}) => {
   const { text, method, context } = validateInput(input);
-  const { llm, ...options } = config;
+  const { llm, maxAttempts = 3, ...options } = config;
 
   // Stage 1: Remove distinctive content
-  const stage1Result = await run(stage1Prompt(text, method, context), {
-    modelOptions: { modelName: 'privacy', ...llm },
-    ...options,
+  const stage1Result = await retry(chatGPT, {
+    label: 'anonymize stage 1',
+    maxRetries: maxAttempts,
+    chatGPTPrompt: stage1Prompt(text, context),
+    chatGPTConfig: {
+      modelOptions: { modelName: 'privacy', ...llm },
+      ...options,
+    },
+    logger: options.logger,
   });
 
   if (method === anonymizeMethod.LIGHT) {
@@ -176,9 +188,15 @@ const anonymize = async (input, config = {}) => {
   }
 
   // Stage 2: Normalize structure and tone
-  const stage2Result = await run(stage2Prompt(stage1Result, method), {
-    modelOptions: { modelName: 'privacy', ...llm },
-    ...options,
+  const stage2Result = await retry(chatGPT, {
+    label: 'anonymize stage 2',
+    maxRetries: maxAttempts,
+    chatGPTPrompt: stage2Prompt(stage1Result, context),
+    chatGPTConfig: {
+      modelOptions: { modelName: 'privacy', ...llm },
+      ...options,
+    },
+    logger: options.logger,
   });
 
   if (method === anonymizeMethod.BALANCED) {
@@ -192,9 +210,15 @@ const anonymize = async (input, config = {}) => {
   }
 
   // Stage 3: Suppress stylistic patterns
-  const stage3Result = await run(stage3Prompt(stage2Result, method), {
-    modelOptions: { modelName: 'privacy', ...llm },
-    ...options,
+  const stage3Result = await retry(chatGPT, {
+    label: 'anonymize stage 3',
+    maxRetries: maxAttempts,
+    chatGPTPrompt: stage3Prompt(stage2Result, context),
+    chatGPTConfig: {
+      modelOptions: { modelName: 'privacy', ...llm },
+      ...options,
+    },
+    logger: options.logger,
   });
 
   return {

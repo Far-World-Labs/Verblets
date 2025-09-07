@@ -1,4 +1,5 @@
 import chatGPT from '../../lib/chatgpt/index.js';
+import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 import tagVocabularyResultSchema from './tag-vocabulary-result.json';
@@ -121,7 +122,7 @@ export function computeTagStatistics(vocabulary, taggedItems, options = {}) {
  * @returns {Promise<Object>} Initial tag vocabulary
  */
 async function generateInitialVocabulary(tagSystemSpec, sampleItems, config = {}) {
-  const { llm, ...options } = config;
+  const { llm, maxAttempts = 3, ...options } = config;
 
   const prompt = `Generate a comprehensive tag vocabulary for categorizing items.
 
@@ -141,18 +142,24 @@ The vocabulary should be complete enough to categorize diverse items along the i
 
 ${onlyJSON}`;
 
-  const response = await chatGPT(prompt, {
-    modelOptions: {
-      response_format: {
-        type: 'json_schema',
-        json_schema: {
-          name: 'tag_vocabulary_result',
-          schema: tagVocabularyResultSchema,
+  const response = await retry(chatGPT, {
+    label: 'tag-vocabulary-initial',
+    maxRetries: maxAttempts,
+    chatGPTPrompt: prompt,
+    chatGPTConfig: {
+      modelOptions: {
+        response_format: {
+          type: 'json_schema',
+          json_schema: {
+            name: 'tag_vocabulary_result',
+            schema: tagVocabularyResultSchema,
+          },
         },
       },
+      llm,
+      ...options,
     },
-    llm,
-    ...options,
+    logger: options.logger,
   });
 
   return response;
@@ -167,7 +174,7 @@ ${onlyJSON}`;
  * @returns {Promise<Object>} Refined tag vocabulary
  */
 async function refineVocabulary(vocabulary, taggedItems, tagSystemSpec, config = {}) {
-  const { llm, topN = 3, bottomN = 3, ...options } = config;
+  const { llm, topN = 3, bottomN = 3, maxAttempts = 3, ...options } = config;
 
   // Compute statistics using pure function
   const analysis = computeTagStatistics(vocabulary, taggedItems, { topN, bottomN });
@@ -198,18 +205,24 @@ Return an improved vocabulary that provides better coverage and clearer distinct
 
 ${onlyJSON}`;
 
-  const response = await chatGPT(prompt, {
-    modelOptions: {
-      response_format: {
-        type: 'json_schema',
-        json_schema: {
-          name: 'tag_vocabulary_result',
-          schema: tagVocabularyResultSchema,
+  const response = await retry(chatGPT, {
+    label: 'tag-vocabulary-refine',
+    maxRetries: maxAttempts,
+    chatGPTPrompt: prompt,
+    chatGPTConfig: {
+      modelOptions: {
+        response_format: {
+          type: 'json_schema',
+          json_schema: {
+            name: 'tag_vocabulary_result',
+            schema: tagVocabularyResultSchema,
+          },
         },
       },
+      llm,
+      ...options,
     },
-    llm,
-    ...options,
+    logger: options.logger,
   });
 
   return response;
@@ -223,7 +236,7 @@ ${onlyJSON}`;
  * @returns {Promise<Object>} Final refined tag vocabulary
  */
 export default async function tagVocabulary(tagSystemSpec, items, config = {}) {
-  const { tagger, sampleSize = 50, ...options } = config;
+  const { tagger, sampleSize = 50, maxAttempts = 3, ...options } = config;
 
   if (!tagger) {
     throw new Error('A tagger function must be provided in config');
@@ -233,14 +246,20 @@ export default async function tagVocabulary(tagSystemSpec, items, config = {}) {
   const sampleItems = items.slice(0, Math.min(sampleSize, items.length));
 
   // Generate initial vocabulary
-  const initialVocab = await generateInitialVocabulary(tagSystemSpec, sampleItems, options);
+  const initialVocab = await generateInitialVocabulary(tagSystemSpec, sampleItems, {
+    maxAttempts,
+    ...options,
+  });
 
   // Apply tags to all items using the provided tagger
   // The tagger should be a configured tags chain function
   const taggedItems = await tagger(items, initialVocab);
 
   // Refine vocabulary based on usage
-  const finalVocab = await refineVocabulary(initialVocab, taggedItems, tagSystemSpec, options);
+  const finalVocab = await refineVocabulary(initialVocab, taggedItems, tagSystemSpec, {
+    maxAttempts,
+    ...options,
+  });
 
   return finalVocab;
 }

@@ -1,4 +1,5 @@
 import chatGPT from '../../lib/chatgpt/index.js';
+import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 import map from '../map/index.js';
@@ -36,7 +37,7 @@ const tagsMapSchema = {
  * @returns {Promise<string>} Tag specification
  */
 export async function tagSpec(instructions, config = {}) {
-  const { llm, ...rest } = config;
+  const { llm, maxAttempts = 3, ...rest } = config;
 
   const specSystemPrompt = `You are a tag specification generator. Create clear, actionable tagging criteria.`;
 
@@ -52,10 +53,16 @@ Provide a clear specification describing:
 
 Keep it concise and actionable.`;
 
-  const response = await chatGPT(specUserPrompt, {
-    llm,
-    system: specSystemPrompt,
-    ...rest,
+  const response = await retry(chatGPT, {
+    label: 'tags-spec',
+    maxRetries: maxAttempts,
+    chatGPTPrompt: specUserPrompt,
+    chatGPTConfig: {
+      llm,
+      system: specSystemPrompt,
+      ...rest,
+    },
+    logger: rest.logger,
   });
 
   return response;
@@ -70,7 +77,7 @@ Keep it concise and actionable.`;
  * @returns {Promise<Array>} Array of tag IDs
  */
 export async function applyTags(item, specification, vocabulary, config = {}) {
-  const { llm, ...options } = config;
+  const { llm, maxAttempts = 3, ...options } = config;
 
   const prompt = `You are a tagger. Apply tags to the given item based on the specification.
 
@@ -88,18 +95,24 @@ Do NOT return tag labels, descriptions, or full tag objects - ONLY the string ID
 
 ${onlyJSON}`;
 
-  const response = await chatGPT(prompt, {
-    modelOptions: {
-      response_format: {
-        type: 'json_schema',
-        json_schema: {
-          name: 'tags_result',
-          schema: tagsResultSchema,
+  const response = await retry(chatGPT, {
+    label: 'tags-apply',
+    maxRetries: maxAttempts,
+    chatGPTPrompt: prompt,
+    chatGPTConfig: {
+      modelOptions: {
+        response_format: {
+          type: 'json_schema',
+          json_schema: {
+            name: 'tags_result',
+            schema: tagsResultSchema,
+          },
         },
       },
+      llm,
+      ...options,
     },
-    llm,
-    ...options,
+    logger: options.logger,
   });
 
   // chatGPT auto-unwraps {items: [...]} to just the array

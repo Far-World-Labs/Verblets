@@ -12,8 +12,13 @@ describe('extract-blocks', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    // Make retry just call the function
-    retry.mockImplementation(async (fn) => fn());
+    // Make retry pass through chatGPT calls with proper arguments
+    retry.mockImplementation(async (fn, options) => {
+      if (options?.chatGPTPrompt !== undefined) {
+        return fn(options.chatGPTPrompt, options.chatGPTConfig);
+      }
+      return fn();
+    });
   });
 
   it('should extract blocks from text with clear boundaries', async () => {

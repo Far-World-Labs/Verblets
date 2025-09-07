@@ -52,18 +52,23 @@ export default async function split(text, instructions, config = {}) {
     };
 
     const prompt = buildPrompt(chunk, instructions, delimiter, context);
-    const run = () =>
-      chatGPT(prompt, {
-        modelOptions: {
-          temperature: 0.1, // Lower temperature for more consistent splitting
-          modelName: 'fastGoodCheapCoding', // Use faster model for better performance
-          ...llm,
-        },
-        ...options,
-      });
+    const chatGPTConfig = {
+      modelOptions: {
+        temperature: 0.1, // Lower temperature for more consistent splitting
+        modelName: 'fastGoodCheapCoding', // Use faster model for better performance
+        ...llm,
+      },
+      ...options,
+    };
 
     try {
-      const output = await retry(run, { label: 'split', maxRetries: maxAttempts - 1 });
+      const output = await retry(chatGPT, {
+        label: 'split',
+        maxRetries: maxAttempts - 1,
+        chatGPTPrompt: prompt,
+        chatGPTConfig,
+        logger: options.logger,
+      });
 
       const outputWithoutDelimiters = output.replace(
         new RegExp(delimiter.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'),
@@ -78,17 +83,21 @@ export default async function split(text, instructions, config = {}) {
         Math.abs(outputWithoutDelimiters.length - originalChunk.length) >
         originalChunk.length * maxDifference
       ) {
-        console.warn(
-          `Split output differs significantly from input for chunk ${
-            index + 1
-          }, using original chunk`
-        );
+        if (options.logger?.warn) {
+          options.logger.warn(
+            `Split output differs significantly from input for chunk ${
+              index + 1
+            }, using original chunk`
+          );
+        }
         return chunk;
       }
 
       return output;
     } catch (error) {
-      console.warn(`Split failed for chunk ${index + 1}:`, error.message);
+      if (options.logger?.warn) {
+        options.logger.warn(`Split failed for chunk ${index + 1}:`, error.message);
+      }
       return chunk;
     }
   });
