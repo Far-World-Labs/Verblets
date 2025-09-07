@@ -1,10 +1,12 @@
 import fs from 'node:fs/promises';
 import chatGPT from '../../lib/chatgpt/index.js';
+import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { asJSON } from '../../prompts/constants.js';
 import { testResultJsonSchema } from './schemas.js';
 
 export default async function test(path, instructions, options = {}) {
+  const { maxAttempts = 3, ...restOptions } = options;
   try {
     const code = await fs.readFile(path, 'utf-8');
 
@@ -25,16 +27,20 @@ GUIDELINES:
 
 ${asJSON}`;
 
-    const result = await chatGPT(prompt, {
-      ...options,
-      modelOptions: {
-        ...options.modelOptions,
-        response_format: {
-          type: 'json_schema',
-          json_schema: testResultJsonSchema,
-        },
-      },
-    });
+    const result = await retry(
+      () =>
+        chatGPT(prompt, {
+          ...restOptions,
+          modelOptions: {
+            ...restOptions.modelOptions,
+            response_format: {
+              type: 'json_schema',
+              json_schema: testResultJsonSchema,
+            },
+          },
+        }),
+      { maxRetries: maxAttempts - 1, label: 'test chain' }
+    );
 
     // With structured output, we get a validated object
     return result.hasIssues ? result.issues : [];

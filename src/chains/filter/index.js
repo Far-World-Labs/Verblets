@@ -10,14 +10,49 @@ const filterResponseFormat = {
 };
 
 export default async function filter(list, instructions, config = {}) {
-  const { listStyle, autoModeThreshold, responseFormat, llm, ...options } = config;
+  const {
+    listStyle,
+    autoModeThreshold,
+    responseFormat,
+    llm,
+    maxAttempts = 3,
+    logger,
+    ...options
+  } = config;
+
+  // Log filter start
+  if (logger?.info) {
+    logger.info('Filter chain starting', {
+      itemCount: list.length,
+      llm: typeof llm === 'object' ? llm.name : llm,
+      maxAttempts,
+      hasResponseFormat: !!responseFormat,
+    });
+  }
 
   const results = [];
   const batches = createBatches(list, config);
 
-  for (const { items, skip } of batches) {
+  if (logger?.info) {
+    logger.info('Batches created', {
+      totalBatches: batches.length,
+      batchSizes: batches.map((b) => b.items?.length || 0),
+    });
+  }
+
+  for (const [batchIndex, { items, skip }] of batches.entries()) {
     if (skip) {
+      if (logger?.warn) {
+        logger.warn(`Skipping batch ${batchIndex} due to size limits`);
+      }
       continue;
+    }
+
+    if (logger?.info) {
+      logger.info(`Processing batch ${batchIndex}`, {
+        itemCount: items.length,
+        firstItem: items[0]?.substring(0, 50),
+      });
     }
 
     const batchStyle = determineStyle(listStyle, items, autoModeThreshold);
@@ -44,28 +79,76 @@ Process exactly ${count} items from the list below and return ${count} yes/no de
 Process exactly ${count} items from the XML list below and return ${count} yes/no decisions.`;
     };
 
-    const response = await retry(
-      () =>
-        listBatch(items, filterInstructions, {
-          listStyle: batchStyle,
-          autoModeThreshold,
-          responseFormat: responseFormat ?? filterResponseFormat,
-          llm,
-          ...options,
-        }),
-      {
+    const prompt = filterInstructions({ style: batchStyle, count: items.length });
+    const listBatchOptions = {
+      listStyle: batchStyle,
+      autoModeThreshold,
+      responseFormat: responseFormat ?? filterResponseFormat,
+      llm,
+      ...options,
+    };
+
+    if (logger?.info) {
+      logger.info(`Calling listBatch for batch ${batchIndex}`, {
+        style: batchStyle,
+        llmConfig: llm,
+        optionKeys: Object.keys(listBatchOptions),
+      });
+    }
+
+    let response;
+    try {
+      response = await retry(() => listBatch(items, prompt, listBatchOptions), {
         label: `filter batch ${items.length} items`,
+        maxRetries: maxAttempts,
+        logger,
+        chatGPTPrompt: `${prompt}\n\nItems: ${JSON.stringify(items).substring(0, 500)}...`,
+        chatGPTConfig: listBatchOptions,
+      });
+    } catch (error) {
+      if (logger?.error) {
+        logger.error(`Batch ${batchIndex} failed after all retries`, {
+          error: error.message,
+          itemCount: items.length,
+        });
       }
-    );
+      throw error;
+    }
 
     // listBatch now returns arrays directly
     const decisions = response;
 
+    if (logger?.info) {
+      logger.info(`Batch ${batchIndex} response received`, {
+        decisionsCount: decisions?.length,
+        expectedCount: items.length,
+        matches: decisions?.length === items.length,
+      });
+    }
+
+    let included = 0;
     items.forEach((item, i) => {
       const decision = decisions[i]?.toLowerCase().trim();
       if (decision === 'yes') {
         results.push(item);
+        included++;
       }
+    });
+
+    if (logger?.info) {
+      logger.info(`Batch ${batchIndex} processed`, {
+        itemsProcessed: items.length,
+        itemsIncluded: included,
+        totalResultsSoFar: results.length,
+      });
+    }
+  }
+
+  if (logger?.info) {
+    logger.info('Filter chain complete', {
+      inputCount: list.length,
+      outputCount: results.length,
+      filterRate: `${((results.length / list.length) * 100).toFixed(1)}%`,
     });
   }
 

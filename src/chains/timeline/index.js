@@ -118,8 +118,11 @@ export default async function timeline(text, options = {}) {
         allEvents.push(...events);
         onProgress?.(chunkIndex + 1, chunks.length);
       } catch (error) {
-        if (process.env.VERBLETS_DEBUG) {
-          console.warn(`Timeline extraction failed for chunk ${chunkIndex + 1}:`, error.message);
+        if (remainingOptions.logger?.warn) {
+          remainingOptions.logger.warn(
+            `Timeline extraction failed for chunk ${chunkIndex + 1}:`,
+            error.message
+          );
         }
         onProgress?.(chunkIndex + 1, chunks.length);
       }

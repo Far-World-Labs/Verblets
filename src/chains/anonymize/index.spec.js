@@ -21,7 +21,7 @@ vi.mock('../../lib/chatgpt/index.js', () => ({
     if (prompt.includes('specification')) {
       return Promise.resolve(mockSpec);
     }
-    return Promise.resolve({ text: 'anonymized text' });
+    return Promise.resolve('anonymized text');
   }),
   run: vi.fn().mockImplementation(() => Promise.resolve('anonymized text')),
 }));

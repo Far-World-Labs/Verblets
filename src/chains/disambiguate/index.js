@@ -1,4 +1,5 @@
 import chatGPT from '../../lib/chatgpt/index.js';
+import retry from '../../lib/retry/index.js';
 import score from '../score/index.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 import modelService from '../../services/llm-model/index.js';
@@ -41,14 +42,20 @@ ${onlyJSONStringArray}`;
 };
 
 export const getMeanings = async (term, config = {}) => {
-  const { model = modelService.getBestPublicModel(), llm, ...options } = config;
+  const { model = modelService.getBestPublicModel(), llm, maxAttempts = 3, ...options } = config;
   const prompt = meaningsPrompt(term);
   const budget = model.budgetTokens(prompt);
   const modelOptions = createModelOptions(llm);
-  const response = await chatGPT(prompt, {
-    maxTokens: budget.completion,
-    modelOptions,
-    ...options,
+  const response = await retry(chatGPT, {
+    label: 'disambiguate-get-meanings',
+    maxRetries: maxAttempts,
+    chatGPTPrompt: prompt,
+    chatGPTConfig: {
+      maxTokens: budget.completion,
+      modelOptions,
+      ...options,
+    },
+    logger: options.logger,
   });
 
   const resultArray = response?.meanings || response;
@@ -59,10 +66,11 @@ export default async function disambiguate({
   term,
   context,
   model = modelService.getBestPublicModel(),
+  maxAttempts = 3,
   ...config
 } = {}) {
   const { llm, ...options } = config;
-  const meanings = await getMeanings(term, { model, llm, ...options });
+  const meanings = await getMeanings(term, { model, llm, maxAttempts, ...options });
   const scores = await score(
     meanings,
     `how well this meaning of "${term}" matches the context: ${context}`,

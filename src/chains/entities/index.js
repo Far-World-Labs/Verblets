@@ -1,4 +1,5 @@
 import chatGPT from '../../lib/chatgpt/index.js';
+import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 import entityResultSchema from './entity-result.json';
@@ -35,7 +36,7 @@ const GROUP_PROCESS_STEPS = `Extract entities and group them by patterns, types,
  * @returns {Promise<string>} Entity specification as descriptive text
  */
 export async function entitySpec(prompt, config = {}) {
-  const { llm, ...rest } = config;
+  const { llm, maxAttempts = 3, ...rest } = config;
 
   const specSystemPrompt = `You are an entity specification generator. Create a clear, concise specification for entity extraction.`;
 
@@ -50,10 +51,16 @@ Provide a brief specification describing:
 
 Keep it simple and actionable.`;
 
-  const response = await chatGPT(specUserPrompt, {
-    llm,
-    system: specSystemPrompt,
-    ...rest,
+  const response = await retry(chatGPT, {
+    label: 'entities-spec',
+    maxRetries: maxAttempts,
+    chatGPTPrompt: specUserPrompt,
+    chatGPTConfig: {
+      llm,
+      system: specSystemPrompt,
+      ...rest,
+    },
+    logger: rest.logger,
   });
 
   return response;
@@ -67,7 +74,7 @@ Keep it simple and actionable.`;
  * @returns {Promise<Object>} Object with entities array
  */
 export async function applyEntities(text, specification, config = {}) {
-  const { llm, ...options } = config;
+  const { llm, maxAttempts = 3, ...options } = config;
 
   const prompt = `Apply the entity specification to extract entities from this text.
 
@@ -83,18 +90,24 @@ Each entity should include:
 
 ${onlyJSON}`;
 
-  const response = await chatGPT(prompt, {
-    modelOptions: {
-      response_format: {
-        type: 'json_schema',
-        json_schema: {
-          name: 'entity_result',
-          schema: entityResultSchema,
+  const response = await retry(chatGPT, {
+    label: 'entities-apply',
+    maxRetries: maxAttempts,
+    chatGPTPrompt: prompt,
+    chatGPTConfig: {
+      modelOptions: {
+        response_format: {
+          type: 'json_schema',
+          json_schema: {
+            name: 'entity_result',
+            schema: entityResultSchema,
+          },
         },
       },
+      llm,
+      ...options,
     },
-    llm,
-    ...options,
+    logger: options.logger,
   });
 
   return response;

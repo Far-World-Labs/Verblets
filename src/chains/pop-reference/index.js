@@ -1,4 +1,5 @@
 import chatGPT from '../../lib/chatgpt/index.js';
+import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 import popReferenceSchema from './pop-reference-result.json';
@@ -49,6 +50,7 @@ export default async function popReference(sentence, description, options = {}) 
     referenceContext = false,
     referencesPerSource = 2,
     llm,
+    maxAttempts = 3,
     ...restOptions
   } = options;
 
@@ -103,9 +105,15 @@ Requirements:
 ${onlyJSON}`;
 
   const modelOptions = createModelOptions(llm);
-  const response = await chatGPT(prompt, {
-    modelOptions,
-    ...restOptions,
+  const response = await retry(chatGPT, {
+    label: 'pop-reference',
+    maxRetries: maxAttempts,
+    chatGPTPrompt: prompt,
+    chatGPTConfig: {
+      modelOptions,
+      ...restOptions,
+    },
+    logger: restOptions.logger,
   });
 
   const references = response?.references || response;

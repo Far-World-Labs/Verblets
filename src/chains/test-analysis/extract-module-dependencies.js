@@ -1,4 +1,5 @@
 import chatGPT from '../../lib/chatgpt/index.js';
+import retry from '../../lib/retry/index.js';
 import { readFile } from 'fs/promises';
 import { join } from 'path';
 import MODULE_DEPENDENCIES_SCHEMA from './schemas/module-dependencies-schema.json';
@@ -31,17 +32,21 @@ If no dependencies are explicitly listed, return an empty array.`;
 
     const schema = MODULE_DEPENDENCIES_SCHEMA;
 
-    const result = await chatGPT(prompt, {
-      modelOptions: {
-        response_format: {
-          type: 'json_schema',
-          json_schema: {
-            name: 'module_dependencies',
-            schema,
+    const result = await retry(
+      () =>
+        chatGPT(prompt, {
+          modelOptions: {
+            response_format: {
+              type: 'json_schema',
+              json_schema: {
+                name: 'module_dependencies',
+                schema,
+              },
+            },
           },
-        },
-      },
-    });
+        }),
+      { maxRetries: 2, label: 'extract module dependencies' }
+    );
 
     return result.additionalModulePaths || [];
   } catch {

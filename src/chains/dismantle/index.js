@@ -1,6 +1,7 @@
 import { v4 as uuid } from 'uuid';
 
 import chatGPT from '../../lib/chatgpt/index.js';
+import retry from '../../lib/retry/index.js';
 import { outputSuccinctNames, constants as promptConstants } from '../../prompts/index.js';
 import modelService from '../../services/llm-model/index.js';
 import { subComponentsSchema, componentOptionsSchema } from './schemas.js';
@@ -74,21 +75,27 @@ const defaultDecompose = async ({
   rootName,
   fixes,
   model = modelService.getBestPublicModel(),
+  maxAttempts = 3,
 } = {}) => {
   const focusFormatted = focus ? `: ${focus}` : '';
 
   const promptCreated = subComponentsPrompt(`${name}${focusFormatted}`, rootName, fixes);
   const budget = model.budgetTokens(promptCreated);
-  const result = await chatGPT(promptCreated, {
-    modelOptions: {
-      maxTokens: budget.completion,
-      frequencyPenalty: 0.7,
-      temperature: 0.7,
-      response_format: {
-        type: 'json_schema',
-        json_schema: {
-          name: 'subcomponents',
-          schema: subComponentsSchema,
+  const result = await retry(chatGPT, {
+    label: 'dismantle-decompose',
+    maxRetries: maxAttempts,
+    chatGPTPrompt: promptCreated,
+    chatGPTConfig: {
+      modelOptions: {
+        maxTokens: budget.completion,
+        frequencyPenalty: 0.7,
+        temperature: 0.7,
+        response_format: {
+          type: 'json_schema',
+          json_schema: {
+            name: 'subcomponents',
+            schema: subComponentsSchema,
+          },
         },
       },
     },
@@ -101,19 +108,25 @@ const defaultEnhance = async ({
   rootName,
   fixes,
   model = modelService.getBestPublicModel(),
+  maxAttempts = 3,
 } = {}) => {
   const promptCreated = componentOptionsPrompt(name, rootName, fixes);
   const budget = model.budgetTokens(promptCreated);
-  const result = await chatGPT(promptCreated, {
-    modelOptions: {
-      maxTokens: budget.completion,
-      frequencyPenalty: 0.5,
-      temperature: 0.3,
-      response_format: {
-        type: 'json_schema',
-        json_schema: {
-          name: 'component_options',
-          schema: componentOptionsSchema,
+  const result = await retry(chatGPT, {
+    label: 'dismantle-enhance',
+    maxRetries: maxAttempts,
+    chatGPTPrompt: promptCreated,
+    chatGPTConfig: {
+      modelOptions: {
+        maxTokens: budget.completion,
+        frequencyPenalty: 0.5,
+        temperature: 0.3,
+        response_format: {
+          type: 'json_schema',
+          json_schema: {
+            name: 'component_options',
+            schema: componentOptionsSchema,
+          },
         },
       },
     },
@@ -136,6 +149,7 @@ const makeNode = async ({
   makeId = uuid,
   enhanceFixes,
   decomposeFixes,
+  maxAttempts = 3,
 } = {}) => {
   const name = nameInitial ?? rootName;
 
@@ -146,6 +160,7 @@ const makeNode = async ({
       name,
       rootName,
       fixes: enhanceFixes,
+      maxAttempts,
     });
     nodeNew.isEnhanced = true;
 
@@ -156,6 +171,7 @@ const makeNode = async ({
       focus,
       rootName,
       fixes: decomposeFixes,
+      maxAttempts,
     });
     nodeNew.children = childNames.map((childName) => ({
       id: makeId(),
@@ -183,6 +199,7 @@ const makeSubtree = async ({
   enhanceFixes,
   decomposeFixes,
   makeId,
+  maxAttempts = 3,
 } = {}) => {
   let tree = { ...(treeInitial ?? {}) };
 
@@ -195,6 +212,7 @@ const makeSubtree = async ({
     makeId,
     enhanceFixes,
     decomposeFixes,
+    maxAttempts,
   });
 
   tree = {
@@ -218,6 +236,7 @@ const makeSubtree = async ({
       makeId,
       enhanceFixes,
       decomposeFixes,
+      maxAttempts,
     });
 
     children.push(subtree);

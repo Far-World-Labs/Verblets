@@ -1,6 +1,7 @@
 import * as R from 'ramda';
 
 import chatGPT from '../../lib/chatgpt/index.js';
+import retry from '../../lib/retry/index.js';
 import { constants as promptConstants, asXML } from '../../prompts/index.js';
 import modelService from '../../services/llm-model/index.js';
 import { questionsListSchema, selectedQuestionSchema } from './schemas.js';
@@ -64,6 +65,7 @@ const generateQuestions = async function* generateQuestionsGenerator(text, optio
     shouldSkip = shouldSkipNull,
     shouldStop = shouldStopNull,
     model = modelService.getBestPublicModel(),
+    maxAttempts = 3,
   } = options;
 
   let attempts = 0;
@@ -76,13 +78,18 @@ const generateQuestions = async function* generateQuestionsGenerator(text, optio
         existing: choices,
       });
       // eslint-disable-next-line no-await-in-loop
-      const selectedResult = await chatGPT(pickInterestingQuestionPrompt, {
-        modelOptions: {
-          response_format: {
-            type: 'json_schema',
-            json_schema: {
-              name: 'selected_question',
-              schema: selectedQuestionSchema,
+      const selectedResult = await retry(chatGPT, {
+        label: 'questions-pick-interesting',
+        maxRetries: maxAttempts,
+        chatGPTPrompt: pickInterestingQuestionPrompt,
+        chatGPTConfig: {
+          modelOptions: {
+            response_format: {
+              type: 'json_schema',
+              json_schema: {
+                name: 'selected_question',
+                schema: selectedQuestionSchema,
+              },
             },
           },
         },
@@ -110,7 +117,12 @@ const generateQuestions = async function* generateQuestionsGenerator(text, optio
     };
 
     // eslint-disable-next-line no-await-in-loop
-    const results = await chatGPT(`${promptCreated}`, chatGPTConfig);
+    const results = await retry(chatGPT, {
+      label: 'questions-generate',
+      maxRetries: maxAttempts,
+      chatGPTPrompt: `${promptCreated}`,
+      chatGPTConfig,
+    });
     const resultsNew = getRandomSubset(results, searchBreadth);
     if (searchBreadth < 0.5) {
       const randomIndex = Math.floor(Math.random() * resultsNew.length);

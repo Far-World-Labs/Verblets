@@ -38,11 +38,20 @@ ${asXML(numberedLines, { tag: 'window' })}`;
  * @param {number} config.windowSize - Lines per window (default: 100)
  * @param {number} config.overlapSize - Lines of overlap between windows (default: 20)
  * @param {number} config.maxParallel - Max parallel window processing (default: 3)
+ * @param {number} config.maxAttempts - Max retry attempts for failed requests (default: 3)
  * @param {Object} config.logger - Logger instance
  * @returns {Promise<Array<Array<string>>>} Array of blocks, each block is array of lines
  */
 export async function extractBlocks(text, instructions, config = {}) {
-  const { windowSize = 100, overlapSize = 20, maxParallel = 3, logger, llm, ...options } = config;
+  const {
+    windowSize = 100,
+    overlapSize = 20,
+    maxParallel = 3,
+    maxAttempts = 3,
+    logger,
+    llm,
+    ...options
+  } = config;
 
   const lifecycleLogger = createLifecycleLogger(logger, 'chain:extract-blocks');
 
@@ -88,18 +97,20 @@ export async function extractBlocks(text, instructions, config = {}) {
 
       const prompt = buildBlockExtractionPrompt(windowLines, windowStart, instructions);
 
-      const result = await retry(
-        () =>
-          chatGPT(prompt, {
-            modelOptions: {
-              response_format: blockExtractionSchema,
-              ...llm,
-            },
-            logger: lifecycleLogger,
-            ...options,
-          }),
-        { label: `extract blocks window ${windowStart}` }
-      );
+      const result = await retry(chatGPT, {
+        label: `extract blocks window ${windowStart}`,
+        maxRetries: maxAttempts,
+        chatGPTPrompt: prompt,
+        chatGPTConfig: {
+          modelOptions: {
+            response_format: blockExtractionSchema,
+            ...llm,
+          },
+          logger: lifecycleLogger,
+          ...options,
+        },
+        logger: lifecycleLogger,
+      });
 
       // Results should already have global line numbers
       return result.blocks || [];

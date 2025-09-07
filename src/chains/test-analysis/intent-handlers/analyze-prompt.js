@@ -8,6 +8,7 @@
 import { cyan, gray, yellow, green, red } from '../output-utils.js';
 import * as promptUtils from '../prompt-utils.js';
 import chatGPT from '../../../lib/chatgpt/index.js';
+import retry from '../../../lib/retry/index.js';
 import promptAnalysisSchema from '../schemas/prompt-analysis-schema.json';
 import * as promptConstants from '../../../prompts/constants.js';
 import fs from 'fs';
@@ -150,14 +151,18 @@ function detectIndicators(text) {
  */
 async function runAnalysis(promptText) {
   const analysisPrompt = ANALYSIS_PROMPT.replace('{promptText}', promptText);
-  const analysis = await chatGPT(analysisPrompt, {
-    modelOptions: {
-      response_format: {
-        type: 'json_schema',
-        json_schema: promptAnalysisSchema,
-      },
-    },
-  });
+  const analysis = await retry(
+    () =>
+      chatGPT(analysisPrompt, {
+        modelOptions: {
+          response_format: {
+            type: 'json_schema',
+            json_schema: promptAnalysisSchema,
+          },
+        },
+      }),
+    { maxRetries: 2, label: 'prompt analysis' }
+  );
 
   return { analysis };
 }

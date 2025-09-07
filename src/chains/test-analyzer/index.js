@@ -1,4 +1,5 @@
 import chatGPT from '../../lib/chatgpt/index.js';
+import retry from '../../lib/retry/index.js';
 import { extractCodeWindow } from '../../lib/code-extractor/index.js';
 
 // File-level constants
@@ -44,8 +45,10 @@ const calculateCodeWindow = (testLine, testLineCount, assertionLine) => {
 /**
  * Analyzes test failures using AI
  * @param {Array} logs - Complete test execution logs from test-start to test-complete
+ * @param {Object} options - Options including maxAttempts
  */
-export default async function analyzeTestError(logs) {
+export default async function analyzeTestError(logs, options = {}) {
+  const { maxAttempts = 3 } = options;
   if (!logs || logs.length === 0) {
     console.error('analyzeTestError: No logs provided');
     return '';
@@ -138,7 +141,10 @@ Discussion:
 </analysis-guidelines>`;
 
   try {
-    const response = await chatGPT(prompt, { modelOptions: { max_tokens: MAX_TOKENS } });
+    const response = await retry(
+      () => chatGPT(prompt, { modelOptions: { max_tokens: MAX_TOKENS } }),
+      { maxRetries: maxAttempts - 1, label: 'test analyzer' }
+    );
     return response.trim();
   } catch (error) {
     console.error('AI analysis failed:', error.message);

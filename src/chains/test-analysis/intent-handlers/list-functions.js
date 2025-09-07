@@ -3,6 +3,7 @@ import path from 'node:path';
 import { listFunctions } from '../../../lib/parse-js-parts/function-utils.js';
 import score from '../../../chains/score/index.js';
 import chatGPT from '../../../lib/chatgpt/index.js';
+import retry from '../../../lib/retry/index.js';
 import { bold, cyan, gray } from '../../../chains/test-analysis/output-utils.js';
 import compressedContextSchema from '../schemas/compressed-context.json';
 import { extractAIMdConfig } from '../utils/ai-md-extractor.js';
@@ -23,17 +24,21 @@ async function getAiMdContext(moduleDir) {
     // Use AI to compress the content to key points
     const prompt = `Compress the following document to its key points in under ${MAX_AIMD_TOKENS} tokens. Focus on development priorities, areas of concern, and what to analyze or improve in the module.\n\n${content}`;
 
-    const compressed = await chatGPT(prompt, {
-      modelOptions: {
-        response_format: {
-          type: 'json_schema',
-          json_schema: {
-            name: 'compressed_context',
-            schema: compressedContextSchema,
+    const compressed = await retry(
+      () =>
+        chatGPT(prompt, {
+          modelOptions: {
+            response_format: {
+              type: 'json_schema',
+              json_schema: {
+                name: 'compressed_context',
+                schema: compressedContextSchema,
+              },
+            },
           },
-        },
-      },
-    });
+        }),
+      { maxRetries: 2, label: 'AI.md compression' }
+    );
 
     // chatGPT auto-unwraps the value field
     return compressed;
@@ -74,7 +79,10 @@ const buildModulePaths = (referenceModules) =>
 const summarizeFunction = async (func) => {
   const prompt = `Describe this function's purpose in 5-10 words:\n\n${func.text.slice(0, 300)}`;
   try {
-    const description = await chatGPT(prompt);
+    const description = await retry(() => chatGPT(prompt), {
+      maxRetries: 1,
+      label: 'function summary',
+    });
     return description.trim();
   } catch {
     // Fallback descriptions

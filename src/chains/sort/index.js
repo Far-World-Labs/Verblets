@@ -1,5 +1,6 @@
 import * as R from 'ramda';
 import chatGPT from '../../lib/chatgpt/index.js';
+import retry from '../../lib/retry/index.js';
 import { sort as sortPromptInitial } from '../../prompts/index.js';
 import sortSchema from './sort-result.json';
 
@@ -57,6 +58,7 @@ const sort = async (list, criteria, config = {}) => {
     selectBottom = true, // New parameter to control bottom selection
     onProgress = undefined, // Callback: ({top, bottom, processed, total}) => void
     llm,
+    maxAttempts = 3,
     ...options
   } = config;
 
@@ -73,9 +75,15 @@ const sort = async (list, criteria, config = {}) => {
 
     const modelOptions = createModelOptions(llm);
 
-    const result = await chatGPT(prompt, {
-      modelOptions,
-      ...options,
+    const result = await retry(chatGPT, {
+      label: 'sort-batch',
+      maxRetries: maxAttempts,
+      chatGPTPrompt: prompt,
+      chatGPTConfig: {
+        modelOptions,
+        ...options,
+      },
+      logger: options.logger,
     });
 
     const resultArray = result?.items || result;

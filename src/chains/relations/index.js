@@ -1,4 +1,5 @@
 import chatGPT from '../../lib/chatgpt/index.js';
+import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 import relationResultSchema from './relation-result.json';
@@ -99,7 +100,7 @@ const GROUP_PROCESS_STEPS = `Extract relations and group them by patterns, types
  * @returns {Promise<string>} Relation specification as descriptive text
  */
 export async function relationSpec(prompt, config = {}) {
-  const { llm, ...rest } = config;
+  const { llm, maxAttempts = 3, ...rest } = config;
 
   const specSystemPrompt = `You are a relation specification generator. Create a clear, concise specification for relation extraction.`;
 
@@ -142,10 +143,16 @@ Provide a specification describing:
 
 Use natural language, not symbolic identifiers or linked data formats.`;
 
-  const response = await chatGPT(specUserPrompt, {
-    llm,
-    system: specSystemPrompt,
-    ...rest,
+  const response = await retry(chatGPT, {
+    label: 'relations-spec',
+    maxRetries: maxAttempts,
+    chatGPTPrompt: specUserPrompt,
+    chatGPTConfig: {
+      llm,
+      system: specSystemPrompt,
+      ...rest,
+    },
+    logger: rest.logger,
   });
 
   return response;
@@ -160,7 +167,7 @@ Use natural language, not symbolic identifiers or linked data formats.`;
  * @returns {Promise<Object>} Object with relations array
  */
 export async function applyRelations(text, specification, config = {}) {
-  const { llm, entities, ...options } = config;
+  const { llm, entities, maxAttempts = 3, ...options } = config;
 
   let prompt = `Apply the relation specification to extract relations from this text.
 
@@ -197,18 +204,24 @@ Example: {"object": "42^^xsd:integer"} NOT {"object": '"42"^^xsd:integer'}
 
 ${onlyJSON}`;
 
-  const response = await chatGPT(prompt, {
-    modelOptions: {
-      response_format: {
-        type: 'json_schema',
-        json_schema: {
-          name: 'relation_result',
-          schema: relationResultSchema,
+  const response = await retry(chatGPT, {
+    label: 'relations-apply',
+    maxRetries: maxAttempts,
+    chatGPTPrompt: prompt,
+    chatGPTConfig: {
+      modelOptions: {
+        response_format: {
+          type: 'json_schema',
+          json_schema: {
+            name: 'relation_result',
+            schema: relationResultSchema,
+          },
         },
       },
+      llm,
+      ...options,
     },
-    llm,
-    ...options,
+    logger: options.logger,
   });
 
   // Handle auto-unwrapped response (chatGPT unwraps simple collection schemas)

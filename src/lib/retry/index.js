@@ -9,7 +9,10 @@ export default async (
     label = '',
     maxRetries = maxRetriesDefault,
     retryDelay = retryDelayDefault,
-    retryOnAll = true,
+    retryOnAll = false,
+    chatGPTPrompt = undefined,
+    chatGPTConfig = undefined,
+    logger = undefined,
   } = {}
 ) => {
   let retry = 0;
@@ -25,7 +28,8 @@ export default async (
   while (retry <= maxRetries) {
     try {
       // eslint-disable-next-line no-await-in-loop
-      const result = await fn();
+      const result =
+        chatGPTPrompt !== undefined ? await fn(chatGPTPrompt, chatGPTConfig) : await fn();
 
       return result;
     } catch (error) {
@@ -33,18 +37,44 @@ export default async (
 
       const isRetry = retryOnAll || (error.response && error.response.status === 429);
 
-      if (isRetry) {
+      const isLastAttempt = !isRetry || retry >= maxRetries;
+
+      if (isRetry && retry < maxRetries) {
         // eslint-disable-next-line no-await-in-loop
         await sleep(retryDelay * retry);
         retry += 1;
       } else {
-        retry = maxRetries;
+        retry = maxRetries + 1;
       }
-      const doneTag = `${retry >= maxRetries ? 'abort' : 'retry'}`;
 
-      if (label && retry >= maxRetries) {
-        // eslint-disable-next-line no-console
-        console.error(`Run ${labelDisplay} [${doneTag}]: ${error.message}`);
+      const doneTag = isLastAttempt ? 'abort' : 'retry';
+      const attemptInfo = `attempt ${retry + 1}/${maxRetries + 1}`;
+
+      if (label && isLastAttempt && logger?.error) {
+        const message = `Run ${labelDisplay} [${doneTag}] after ${attemptInfo}: ${error.message}`;
+        logger.error(message);
+
+        // Always log context on final failure if provided
+        if (chatGPTPrompt !== undefined) {
+          const promptPreview =
+            typeof chatGPTPrompt === 'string'
+              ? chatGPTPrompt.length > 500
+                ? `${chatGPTPrompt.substring(0, 500)}...`
+                : chatGPTPrompt
+              : JSON.stringify(chatGPTPrompt) || '';
+
+          logger.error(
+            'Failed prompt:',
+            promptPreview.substring ? promptPreview.substring(0, 500) : promptPreview
+          );
+        }
+        if (chatGPTConfig) {
+          const configStr = JSON.stringify(chatGPTConfig) || '';
+          logger.error(
+            'Failed config:',
+            configStr.substring ? configStr.substring(0, 500) : configStr
+          );
+        }
       }
     }
   }

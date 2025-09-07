@@ -163,12 +163,6 @@ export const run = async (prompt, config = {}) => {
 
   // Log start of chatGPT execution
   const startTime = Date.now();
-  if (logger?.info) {
-    logger.info({
-      event: 'chatgpt:start',
-      promptLength: prompt.length,
-    });
-  }
 
   // Apply global overrides to model options
   const modelOptionsWithOverrides = modelService.applyGlobalOverrides(modelOptions);
@@ -185,6 +179,15 @@ export const run = async (prompt, config = {}) => {
     : modelOptionsWithOverrides.modelName;
 
   const modelFound = modelService.getModel(modelNameNegotiated);
+
+  // Log start event with model information
+  if (logger?.info) {
+    logger.info({
+      event: 'chatgpt:start',
+      promptLength: prompt.length,
+      model: modelNameNegotiated,
+    });
+  }
 
   // Use model-specific API URL and key if defined, otherwise fall back to defaults
   const apiUrl = modelFound?.apiUrl || models.fastGood.apiUrl;

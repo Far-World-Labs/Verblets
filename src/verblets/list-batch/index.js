@@ -69,8 +69,19 @@ export default async function listBatch(list, instructions, config = {}) {
     maxTokens,
     responseFormat,
     llm,
+    logger,
     ...options
   } = config;
+
+  if (logger?.debug) {
+    logger.debug('listBatch called', {
+      listLength: list?.length,
+      instructionsLength: instructions?.length,
+      hasLLM: !!llm,
+      llmType: typeof llm === 'object' ? llm.name : llm,
+      hasResponseFormat: !!responseFormat,
+    });
+  }
 
   if (!list || list.length === 0) {
     // Return empty array directly - chatGPT unwrapping will handle this consistently
@@ -95,14 +106,52 @@ export default async function listBatch(list, instructions, config = {}) {
     response_format: foundResponseFormat,
   };
 
+  if (logger?.debug) {
+    logger.debug('Calling chatGPT', {
+      promptLength: prompt.length,
+      modelOptions: {
+        hasLLM: !!llm,
+        llmKeys: llm && typeof llm === 'object' ? Object.keys(llm) : [],
+        hasResponseFormat: !!modelOptions.response_format,
+      },
+      optionKeys: Object.keys(options),
+    });
+  }
+
   let output;
   try {
-    output = await chatGPT(prompt, {
+    const chatGPTOptions = {
       modelOptions,
+      logger,
       ...options,
-    });
+    };
+
+    if (logger?.debug) {
+      logger.debug('ChatGPT request starting', {
+        hasAbortSignal: !!chatGPTOptions.abortSignal,
+        modelOptionsKeys: Object.keys(modelOptions),
+      });
+    }
+
+    output = await chatGPT(prompt, chatGPTOptions);
+
+    if (logger?.debug) {
+      logger.debug('ChatGPT response received', {
+        outputType: Array.isArray(output) ? 'array' : typeof output,
+        outputLength: Array.isArray(output) ? output.length : undefined,
+      });
+    }
   } catch (error) {
-    throw new Error(`LLM request failed: ${error.message}`);
+    if (logger?.error) {
+      logger.error('ChatGPT request failed in listBatch', {
+        error: error.message,
+        modelOptions: llm,
+        promptLength: prompt?.length,
+        itemCount: list?.length,
+      });
+    }
+    // Re-throw the original error to preserve stack trace and details
+    throw error;
   }
 
   // chatGPT will auto-unwrap simple collections, so output is already an array

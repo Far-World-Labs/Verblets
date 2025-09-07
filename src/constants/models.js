@@ -267,14 +267,17 @@ _models.good = _models.goodMulti; // Caution: Moderate cost
 _models.reasoningMulti = _models.fastCheapReasoningMulti; // Caution: Moderate cost
 _models.reasoning = _models.reasoningNoImage; // Caution: High cost
 
-// cutoff: 03/2024
-// Supports image inputs
+// Gemma 3 12B QAT - Quantization Aware Trained model
+// 3x less memory than BF16 while maintaining quality
+// Better accuracy than 4B model for complex tasks
+// Multimodal (text + vision), 128K context window
+// https://ollama.com/library/gemma3:12b-it-qat
 _models.privacy = {
-  name: 'gemma3:latest', // same as gemma3:4b
+  name: 'gemma3:12b-it-qat',
   endpoint: 'api/chat/completions',
   maxContextWindow: 128_000,
   maxOutputTokens: 8_192,
-  requestTimeout: 120_000,
+  requestTimeout: 240_000, // 4 minutes for the 12B model
   get apiUrl() {
     const url = env.OPENWEBUI_API_URL ?? '';
     return url.endsWith('/') ? url : `${url}/`;
@@ -283,9 +286,7 @@ _models.privacy = {
     return env.OPENWEBUI_API_KEY;
   },
   systemPrompt,
-  modelOptions: {
-    stop: ['</s>'],
-  },
+  modelOptions: {},
 };
 
 // Validate all model definitions

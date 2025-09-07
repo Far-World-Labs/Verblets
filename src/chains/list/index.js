@@ -1,5 +1,6 @@
 import { operationTimeoutMultiplier } from '../../constants/models.js';
 import chatGPT from '../../lib/chatgpt/index.js';
+import retry from '../../lib/retry/index.js';
 import {
   asObjectWithSchema as asObjectWithSchemaPrompt,
   generateList as generateListPrompt,
@@ -65,6 +66,7 @@ export const generateList = async function* generateListGenerator(text, options 
     shouldSkip = shouldSkipDefault,
     shouldStop = shouldStopDefault,
     model = 'fastGoodCheap',
+    maxAttempts = 3,
     // eslint-disable-next-line no-unused-vars
     _schema,
     ...passThroughOptions
@@ -83,9 +85,15 @@ export const generateList = async function* generateListGenerator(text, options 
     try {
       const modelOptions = createModelOptions(model);
       // eslint-disable-next-line no-await-in-loop
-      const results = await chatGPT(listPrompt, {
-        modelOptions,
-        ...passThroughOptions,
+      const results = await retry(chatGPT, {
+        label: 'list-generate',
+        maxRetries: maxAttempts,
+        chatGPTPrompt: listPrompt,
+        chatGPTConfig: {
+          modelOptions,
+          ...passThroughOptions,
+        },
+        logger: passThroughOptions.logger,
       });
 
       const resultArray = results?.items || results;
@@ -150,13 +158,19 @@ export const generateList = async function* generateListGenerator(text, options 
 };
 
 export default async function list(prompt, config = {}) {
-  const { llm, schema, ...options } = config;
+  const { llm, schema, maxAttempts = 3, ...options } = config;
   const fullPrompt = `${prompt}\n\n${onlyJSONArray}`;
 
   const modelOptions = createModelOptions(llm);
-  const response = await chatGPT(fullPrompt, {
-    modelOptions,
-    ...options,
+  const response = await retry(chatGPT, {
+    label: 'list-main',
+    maxRetries: maxAttempts,
+    chatGPTPrompt: fullPrompt,
+    chatGPTConfig: {
+      modelOptions,
+      ...options,
+    },
+    logger: options.logger,
   });
 
   // With structured outputs, response should already be parsed and validated
@@ -170,11 +184,17 @@ export default async function list(prompt, config = {}) {
     const transformedItems = [];
     for (const item of items) {
       const transformPrompt = outputTransformPrompt(item, schema);
-      const transformResponse = await chatGPT(transformPrompt, {
-        modelOptions: {
-          ...llm,
+      const transformResponse = await retry(chatGPT, {
+        label: 'list-transform',
+        maxRetries: maxAttempts,
+        chatGPTPrompt: transformPrompt,
+        chatGPTConfig: {
+          modelOptions: {
+            ...llm,
+          },
+          ...options,
         },
-        ...options,
+        logger: options.logger,
       });
       try {
         const transformedItem = JSON.parse(transformResponse);
