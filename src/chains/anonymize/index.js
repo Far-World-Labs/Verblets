@@ -43,7 +43,7 @@ const GROUP_PROCESS_STEPS = `Analyze each item to determine its appropriate grou
  * @returns {Promise<string>} Anonymization specification as descriptive text
  */
 export async function anonymizeSpec(prompt, config = {}) {
-  const { llm, maxAttempts = 3, ...rest } = config;
+  const { llm, maxAttempts = 3, onProgress, ...rest } = config;
 
   const specSystemPrompt = `You are an anonymization specification generator. Create a clear, concise specification for text anonymization.`;
 
@@ -91,7 +91,8 @@ Keep it focused on actionable anonymization rules.`;
 
   const response = await retry(chatGPT, {
     label: 'anonymize spec',
-    maxRetries: maxAttempts,
+    maxAttempts,
+    onProgress,
     chatGPTPrompt: specUserPrompt,
     chatGPTConfig: {
       llm,
@@ -164,12 +165,13 @@ Return ONLY the final anonymized text, with no explanations or additional conten
 
 const anonymize = async (input, config = {}) => {
   const { text, method, context } = validateInput(input);
-  const { llm, maxAttempts = 3, ...options } = config;
+  const { llm, maxAttempts = 3, onProgress, ...options } = config;
 
   // Stage 1: Remove distinctive content
   const stage1Result = await retry(chatGPT, {
     label: 'anonymize stage 1',
-    maxRetries: maxAttempts,
+    maxAttempts,
+    onProgress,
     chatGPTPrompt: stage1Prompt(text, context),
     chatGPTConfig: {
       modelOptions: { modelName: 'privacy', ...llm },
@@ -190,7 +192,8 @@ const anonymize = async (input, config = {}) => {
   // Stage 2: Normalize structure and tone
   const stage2Result = await retry(chatGPT, {
     label: 'anonymize stage 2',
-    maxRetries: maxAttempts,
+    maxAttempts,
+    onProgress,
     chatGPTPrompt: stage2Prompt(stage1Result, context),
     chatGPTConfig: {
       modelOptions: { modelName: 'privacy', ...llm },
@@ -212,7 +215,8 @@ const anonymize = async (input, config = {}) => {
   // Stage 3: Suppress stylistic patterns
   const stage3Result = await retry(chatGPT, {
     label: 'anonymize stage 3',
-    maxRetries: maxAttempts,
+    maxAttempts,
+    onProgress,
     chatGPTPrompt: stage3Prompt(stage2Result, context),
     chatGPTConfig: {
       modelOptions: { modelName: 'privacy', ...llm },

@@ -66,6 +66,7 @@ const generateQuestions = async function* generateQuestionsGenerator(text, optio
     shouldStop = shouldStopNull,
     model = modelService.getBestPublicModel(),
     maxAttempts = 3,
+    onProgress,
   } = options;
 
   let attempts = 0;
@@ -80,7 +81,8 @@ const generateQuestions = async function* generateQuestionsGenerator(text, optio
       // eslint-disable-next-line no-await-in-loop
       const selectedResult = await retry(chatGPT, {
         label: 'questions-pick-interesting',
-        maxRetries: maxAttempts,
+        maxAttempts,
+        onProgress,
         chatGPTPrompt: pickInterestingQuestionPrompt,
         chatGPTConfig: {
           modelOptions: {
@@ -119,7 +121,8 @@ const generateQuestions = async function* generateQuestionsGenerator(text, optio
     // eslint-disable-next-line no-await-in-loop
     const results = await retry(chatGPT, {
       label: 'questions-generate',
-      maxRetries: maxAttempts,
+      maxAttempts,
+      onProgress,
       chatGPTPrompt: `${promptCreated}`,
       chatGPTConfig,
     });

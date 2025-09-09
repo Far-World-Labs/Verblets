@@ -50,7 +50,7 @@ const processCombo = async (combo, instructions, maxAttempts = 3) => {
   const [elementsResponse, intersectionItems] = await Promise.all([
     retry(chatGPT, {
       label: 'intersections-elements',
-      maxRetries: maxAttempts,
+      maxAttempts,
       chatGPTPrompt: INTERSECTION_PROMPT(combo, instructions),
       chatGPTConfig: {
         modelOptions: {
@@ -108,6 +108,7 @@ export default async function intersections(items, options = {}) {
     llm = 'fastGoodCheap',
     useSchemaValidation = false,
     maxAttempts = 3,
+    onProgress,
   } = options;
 
   // Generate all combinations
@@ -134,7 +135,7 @@ export default async function intersections(items, options = {}) {
 
   // Validate results with JSON schema if enabled
   if (useSchemaValidation && Object.keys(results).length > 0) {
-    const validated = await validateIntersectionResults(results, llm, maxAttempts);
+    const validated = await validateIntersectionResults(results, llm, maxAttempts, onProgress);
     return validated.intersections || results;
   }
 
@@ -175,7 +176,12 @@ function createModelOptions(llm = 'fastGoodCheap', schemaName = 'intersection_re
  * @param {string|Object} llm - LLM model to use
  * @returns {Promise<Object>} Schema-validated intersection results
  */
-async function validateIntersectionResults(intersections, llm = 'fastGoodCheap', maxAttempts = 3) {
+async function validateIntersectionResults(
+  intersections,
+  llm = 'fastGoodCheap',
+  maxAttempts = 3,
+  onProgress
+) {
   if (!intersections || Object.keys(intersections).length === 0) {
     return { intersections: {} };
   }
@@ -195,7 +201,8 @@ Return the properly structured JSON object with an "intersections" property cont
     const modelOptions = createModelOptions(llm, 'intersection_result');
     const response = await retry(chatGPT, {
       label: 'intersections-validation',
-      maxRetries: maxAttempts,
+      maxAttempts,
+      onProgress,
       chatGPTPrompt: prompt,
       chatGPTConfig: {
         modelOptions,

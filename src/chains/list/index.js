@@ -67,6 +67,7 @@ export const generateList = async function* generateListGenerator(text, options 
     shouldStop = shouldStopDefault,
     model = 'fastGoodCheap',
     maxAttempts = 3,
+    onProgress,
     // eslint-disable-next-line no-unused-vars
     _schema,
     ...passThroughOptions
@@ -87,7 +88,8 @@ export const generateList = async function* generateListGenerator(text, options 
       // eslint-disable-next-line no-await-in-loop
       const results = await retry(chatGPT, {
         label: 'list-generate',
-        maxRetries: maxAttempts,
+        maxAttempts,
+        onProgress,
         chatGPTPrompt: listPrompt,
         chatGPTConfig: {
           modelOptions,
@@ -158,13 +160,14 @@ export const generateList = async function* generateListGenerator(text, options 
 };
 
 export default async function list(prompt, config = {}) {
-  const { llm, schema, maxAttempts = 3, ...options } = config;
+  const { llm, schema, maxAttempts = 3, onProgress, ...options } = config;
   const fullPrompt = `${prompt}\n\n${onlyJSONArray}`;
 
   const modelOptions = createModelOptions(llm);
   const response = await retry(chatGPT, {
     label: 'list-main',
-    maxRetries: maxAttempts,
+    maxAttempts,
+    onProgress,
     chatGPTPrompt: fullPrompt,
     chatGPTConfig: {
       modelOptions,
@@ -186,7 +189,8 @@ export default async function list(prompt, config = {}) {
       const transformPrompt = outputTransformPrompt(item, schema);
       const transformResponse = await retry(chatGPT, {
         label: 'list-transform',
-        maxRetries: maxAttempts,
+        maxAttempts,
+        onProgress,
         chatGPTPrompt: transformPrompt,
         chatGPTConfig: {
           modelOptions: {

@@ -99,7 +99,7 @@ function logDebugInfo(attempt, prompt, response, error) {
  * Converts text to structured JSON object using LLM assistance
  */
 export default async function toObject(text, schema, config = {}) {
-  const { llm, maxAttempts = 3, ...options } = config;
+  const { llm, maxAttempts = 3, onProgress, ...options } = config;
   let errorDetails;
 
   // First attempt: try direct parsing
@@ -115,7 +115,8 @@ export default async function toObject(text, schema, config = {}) {
     const prompt = buildJsonPrompt(text, schema, errorDetails);
     const response = await retry(chatGPT, {
       label: 'to-object json fix',
-      maxRetries: maxAttempts,
+      maxAttempts,
+      onProgress,
       chatGPTPrompt: prompt,
       chatGPTConfig: {
         modelOptions: { modelName: 'fastGood', ...llm },
@@ -136,7 +137,8 @@ export default async function toObject(text, schema, config = {}) {
     const prompt = buildJsonPrompt(text, schema, errorDetails);
     const response = await retry(chatGPT, {
       label: 'to-object final retry',
-      maxRetries: maxAttempts,
+      maxAttempts,
+      onProgress,
       chatGPTPrompt: prompt,
       chatGPTConfig: {
         modelOptions: { modelName: 'fastGood', ...llm },

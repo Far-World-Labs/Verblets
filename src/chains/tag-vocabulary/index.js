@@ -122,7 +122,7 @@ export function computeTagStatistics(vocabulary, taggedItems, options = {}) {
  * @returns {Promise<Object>} Initial tag vocabulary
  */
 async function generateInitialVocabulary(tagSystemSpec, sampleItems, config = {}) {
-  const { llm, maxAttempts = 3, ...options } = config;
+  const { llm, maxAttempts = 3, onProgress, ...options } = config;
 
   const prompt = `Generate a comprehensive tag vocabulary for categorizing items.
 
@@ -144,7 +144,8 @@ ${onlyJSON}`;
 
   const response = await retry(chatGPT, {
     label: 'tag-vocabulary-initial',
-    maxRetries: maxAttempts,
+    maxAttempts,
+    onProgress,
     chatGPTPrompt: prompt,
     chatGPTConfig: {
       modelOptions: {
@@ -174,7 +175,7 @@ ${onlyJSON}`;
  * @returns {Promise<Object>} Refined tag vocabulary
  */
 async function refineVocabulary(vocabulary, taggedItems, tagSystemSpec, config = {}) {
-  const { llm, topN = 3, bottomN = 3, maxAttempts = 3, ...options } = config;
+  const { llm, topN = 3, bottomN = 3, maxAttempts = 3, onProgress, ...options } = config;
 
   // Compute statistics using pure function
   const analysis = computeTagStatistics(vocabulary, taggedItems, { topN, bottomN });
@@ -207,7 +208,8 @@ ${onlyJSON}`;
 
   const response = await retry(chatGPT, {
     label: 'tag-vocabulary-refine',
-    maxRetries: maxAttempts,
+    maxAttempts,
+    onProgress,
     chatGPTPrompt: prompt,
     chatGPTConfig: {
       modelOptions: {

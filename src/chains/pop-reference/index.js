@@ -51,6 +51,7 @@ export default async function popReference(sentence, description, options = {}) 
     referencesPerSource = 2,
     llm,
     maxAttempts = 3,
+    onProgress,
     ...restOptions
   } = options;
 
@@ -107,7 +108,8 @@ ${onlyJSON}`;
   const modelOptions = createModelOptions(llm);
   const response = await retry(chatGPT, {
     label: 'pop-reference',
-    maxRetries: maxAttempts,
+    maxAttempts,
+    onProgress,
     chatGPTPrompt: prompt,
     chatGPTConfig: {
       modelOptions,

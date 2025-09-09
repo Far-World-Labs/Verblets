@@ -37,7 +37,7 @@ const tagsMapSchema = {
  * @returns {Promise<string>} Tag specification
  */
 export async function tagSpec(instructions, config = {}) {
-  const { llm, maxAttempts = 3, ...rest } = config;
+  const { llm, maxAttempts = 3, onProgress, ...rest } = config;
 
   const specSystemPrompt = `You are a tag specification generator. Create clear, actionable tagging criteria.`;
 
@@ -55,7 +55,8 @@ Keep it concise and actionable.`;
 
   const response = await retry(chatGPT, {
     label: 'tags-spec',
-    maxRetries: maxAttempts,
+    maxAttempts,
+    onProgress,
     chatGPTPrompt: specUserPrompt,
     chatGPTConfig: {
       llm,
@@ -77,7 +78,7 @@ Keep it concise and actionable.`;
  * @returns {Promise<Array>} Array of tag IDs
  */
 export async function applyTags(item, specification, vocabulary, config = {}) {
-  const { llm, maxAttempts = 3, ...options } = config;
+  const { llm, maxAttempts = 3, onProgress, ...options } = config;
 
   const prompt = `You are a tagger. Apply tags to the given item based on the specification.
 
@@ -97,7 +98,8 @@ ${onlyJSON}`;
 
   const response = await retry(chatGPT, {
     label: 'tags-apply',
-    maxRetries: maxAttempts,
+    maxAttempts,
+    onProgress,
     chatGPTPrompt: prompt,
     chatGPTConfig: {
       modelOptions: {

@@ -39,7 +39,7 @@ ${asXML(item, { tag: 'item' })}`;
 
   const response = await retry(chatGPT, {
     label: 'score item',
-    maxRetries: maxAttempts,
+    maxAttempts,
     chatGPTPrompt: prompt,
     chatGPTConfig: {
       modelOptions: {
@@ -81,9 +81,31 @@ export async function scoreItem(item, instructions, config = {}) {
  * @returns {Promise<Array>} Array of scores
  */
 export async function mapScore(list, instructions, config = {}) {
-  const spec = await scoreSpec(instructions, config);
+  const { onProgress, ...restConfig } = config;
+
+  // Emit phase for specification generation
+  if (onProgress) {
+    onProgress({
+      step: 'score',
+      event: 'phase',
+      phase: 'generating-specification',
+    });
+  }
+
+  const spec = await scoreSpec(instructions, restConfig);
+
+  // Emit phase for scoring
+  if (onProgress) {
+    onProgress({
+      step: 'score',
+      event: 'phase',
+      phase: 'scoring-items',
+      specification: spec,
+    });
+  }
+
   const mapInstr = mapInstructions({ specification: spec });
-  const scores = await map(list, mapInstr, config);
+  const scores = await map(list, mapInstr, { ...restConfig, onProgress });
   return scores.map((s) => Number(s));
 }
 

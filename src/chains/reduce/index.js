@@ -4,6 +4,13 @@ import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { isSimpleCollectionSchema } from '../../lib/chatgpt/index.js';
 import { reduceAccumulatorJsonSchema } from './schemas.js';
+import {
+  emitBatchStart,
+  emitBatchComplete,
+  emitBatchProcessed,
+  createBatchProgressCallback,
+  createBatchContext,
+} from '../../lib/progress-callback/index.js';
 
 // Default response format for reduce operations - simple string accumulator
 const DEFAULT_REDUCE_RESPONSE_FORMAT = {
@@ -19,7 +26,7 @@ export default async function reduce(list, instructions, config = {}) {
     responseFormat,
     llm,
     maxAttempts = 3,
-    logger,
+    onProgress,
     ...options
   } = config;
 
@@ -32,8 +39,16 @@ export default async function reduce(list, instructions, config = {}) {
   }
 
   const batches = createBatches(list, config);
+  const activeBatches = batches.filter((b) => !b.skip);
 
-  for (const { items, skip } of batches) {
+  emitBatchStart(onProgress, 'reduce', list.length, {
+    totalBatches: activeBatches.length,
+  });
+
+  let processedItems = 0;
+  let processedBatches = 0;
+
+  for (const { items, skip, startIndex } of batches) {
     if (skip) {
       // Skip items that exceed token limits
       continue;
@@ -75,9 +90,19 @@ Process exactly ${count} items from the ${itemFormat} list below and return the 
     };
 
     const result = await retry(() => listBatch(items, prompt, listBatchOptions), {
-      label: `reduce batch ${items.length} items`,
-      maxRetries: maxAttempts,
-      logger,
+      label: `reduce:batch`,
+      maxAttempts,
+      onProgress: createBatchProgressCallback(
+        onProgress,
+        createBatchContext({
+          batchIndex: processedBatches,
+          batchSize: items.length,
+          startIndex,
+          totalItems: list.length,
+          processedItems,
+          totalBatches: activeBatches.length,
+        })
+      ),
       chatGPTPrompt: `${prompt}\n\nAccumulator: ${(JSON.stringify(acc) || '').substring(
         0,
         200
@@ -93,7 +118,29 @@ Process exactly ${count} items from the ${itemFormat} list below and return the 
     } else {
       acc = result;
     }
+
+    processedItems += items.length;
+    processedBatches++;
+
+    emitBatchProcessed(
+      onProgress,
+      'reduce',
+      {
+        totalItems: list.length,
+        processedItems,
+        batchNumber: processedBatches,
+        batchSize: items.length,
+      },
+      {
+        batchIndex: `${startIndex}-${startIndex + items.length - 1}`,
+        totalBatches: activeBatches.length,
+      }
+    );
   }
+
+  emitBatchComplete(onProgress, 'reduce', list.length, {
+    totalBatches: activeBatches.length,
+  });
 
   return acc;
 }

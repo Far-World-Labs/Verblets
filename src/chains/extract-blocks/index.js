@@ -4,6 +4,12 @@ import parallelBatch from '../../lib/parallel-batch/index.js';
 import { createLifecycleLogger } from '../../lib/lifecycle-logger/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { blockExtractionSchema } from './block-schema.js';
+import {
+  emitBatchStart,
+  emitBatchComplete,
+  emitBatchProcessed,
+  createBatchProgressCallback,
+} from '../../lib/progress-callback/index.js';
 
 const buildBlockExtractionPrompt = (windowLines, windowStart, instructions) => {
   // Add global line numbers to each line for easier reference
@@ -50,6 +56,7 @@ export async function extractBlocks(text, instructions, config = {}) {
     maxAttempts = 3,
     logger,
     llm,
+    onProgress,
     ...options
   } = config;
 
@@ -88,6 +95,13 @@ export async function extractBlocks(text, instructions, config = {}) {
     windowStarts.push(start);
   }
 
+  emitBatchStart(onProgress, 'extract-blocks', lines.length, {
+    totalWindows: windowStarts.length,
+    maxParallel,
+  });
+
+  let processedWindows = 0;
+
   // Process windows with controlled parallelism
   const allBlockBoundaries = await parallelBatch(
     windowStarts,
@@ -98,8 +112,16 @@ export async function extractBlocks(text, instructions, config = {}) {
       const prompt = buildBlockExtractionPrompt(windowLines, windowStart, instructions);
 
       const result = await retry(chatGPT, {
-        label: `extract blocks window ${windowStart}`,
-        maxRetries: maxAttempts,
+        label: `extract-blocks:window`,
+        maxAttempts,
+        onProgress: createBatchProgressCallback(onProgress, {
+          totalItems: lines.length,
+          processedItems: Math.min(windowStart + windowSize, lines.length),
+          windowNumber: processedWindows + 1,
+          windowSize: windowLines.length,
+          windowStart,
+          totalWindows: windowStarts.length,
+        }),
         chatGPTPrompt: prompt,
         chatGPTConfig: {
           modelOptions: {
@@ -109,8 +131,25 @@ export async function extractBlocks(text, instructions, config = {}) {
           logger: lifecycleLogger,
           ...options,
         },
-        logger: lifecycleLogger,
       });
+
+      processedWindows++;
+
+      emitBatchProcessed(
+        onProgress,
+        'extract-blocks',
+        {
+          totalItems: lines.length,
+          processedItems: Math.min(windowStart + windowSize, lines.length),
+          batchNumber: processedWindows,
+          batchSize: windowLines.length,
+        },
+        {
+          windowStart,
+          totalWindows: windowStarts.length,
+          blocksFound: (result.blocks || []).length,
+        }
+      );
 
       // Results should already have global line numbers
       return result.blocks || [];
@@ -143,6 +182,11 @@ export async function extractBlocks(text, instructions, config = {}) {
 
   // Extract text blocks as arrays of lines (without line numbers)
   const blocks = mergedBlocks.map(({ startLine, endLine }) => lines.slice(startLine, endLine + 1));
+
+  emitBatchComplete(onProgress, 'extract-blocks', lines.length, {
+    totalWindows: windowStarts.length,
+    blocksExtracted: blocks.length,
+  });
 
   // Log output
   lifecycleLogger.info({

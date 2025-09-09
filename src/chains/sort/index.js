@@ -3,6 +3,7 @@ import chatGPT from '../../lib/chatgpt/index.js';
 import retry from '../../lib/retry/index.js';
 import { sort as sortPromptInitial } from '../../prompts/index.js';
 import sortSchema from './sort-result.json';
+import { emitStart, emitComplete, emitStepProgress } from '../../lib/progress-callback/index.js';
 
 /**
  * Create model options for structured outputs
@@ -64,6 +65,14 @@ const sort = async (list, criteria, config = {}) => {
 
   const items = sanitizeList(list);
 
+  emitStart(onProgress, 'sort', {
+    totalItems: items.length,
+    chunkSize,
+    extremeK,
+    iterations,
+    criteria,
+  });
+
   // Sort a batch of items with LLM
   const sortBatch = async (batch) => {
     const prompt = sortPrompt({ description: criteria }, batch);
@@ -77,13 +86,13 @@ const sort = async (list, criteria, config = {}) => {
 
     const result = await retry(chatGPT, {
       label: 'sort-batch',
-      maxRetries: maxAttempts,
+      maxAttempts,
+      onProgress: config.onProgress,
       chatGPTPrompt: prompt,
       chatGPTConfig: {
         modelOptions,
         ...options,
       },
-      logger: options.logger,
     });
 
     const resultArray = result?.items || result;
@@ -92,14 +101,21 @@ const sort = async (list, criteria, config = {}) => {
 
   // Process one complete pass through all items
   // This maintains running global extremes that compete with each chunk
-  const extractExtremes = async (itemsToProcess) => {
+  const extractExtremes = async (itemsToProcess, iterationNumber) => {
     const chunks = R.splitEvery(chunkSize, itemsToProcess);
 
     // Running global extremes - these represent the best/worst we've seen
     let globalTop = [];
     let globalBottom = [];
+    let processedChunks = 0;
 
     for (const chunk of chunks) {
+      emitStepProgress(onProgress, 'sort', 'sorting-chunk', {
+        iteration: iterationNumber,
+        chunkNumber: processedChunks + 1,
+        totalChunks: chunks.length,
+        chunkSize: chunk.length,
+      });
       // Current chunk competes with the global extremes
       const itemsToSort = [...chunk, ...globalTop, ...(selectBottom ? globalBottom : [])];
 
@@ -135,6 +151,8 @@ const sort = async (list, criteria, config = {}) => {
         const bottomSliceSize = Math.min(extremeK, availableForBottom);
         globalBottom = bottomSliceSize > 0 ? sorted.slice(-bottomSliceSize) : [];
       }
+
+      processedChunks++;
     }
 
     // After seeing all chunks, we have the true global extremes
@@ -151,8 +169,14 @@ const sort = async (list, criteria, config = {}) => {
   let remaining = items;
 
   for (let iter = 0; iter < iterations && remaining.length > 0; iter++) {
+    emitStepProgress(onProgress, 'sort', 'extracting-extremes', {
+      iteration: iter + 1,
+      totalIterations: iterations,
+      remainingItems: remaining.length,
+    });
+
     // eslint-disable-next-line no-await-in-loop
-    const { top, bottom, selected } = await extractExtremes(remaining);
+    const { top, bottom, selected } = await extractExtremes(remaining, iter + 1);
 
     // Accumulate results
     finalTop.push(...top);
@@ -183,7 +207,19 @@ const sort = async (list, criteria, config = {}) => {
   }
 
   // Assemble final result
-  return selectBottom ? [...finalTop, ...remaining, ...finalBottom] : [...finalTop, ...remaining];
+  const result = selectBottom
+    ? [...finalTop, ...remaining, ...finalBottom]
+    : [...finalTop, ...remaining];
+
+  emitComplete(onProgress, 'sort', {
+    totalItems: items.length,
+    iterations,
+    topItems: finalTop.length,
+    bottomItems: finalBottom.length,
+    remainingItems: remaining.length,
+  });
+
+  return result;
 };
 
 export default async function sortWrapper(list, criteria, config = {}) {

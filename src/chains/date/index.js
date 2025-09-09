@@ -101,7 +101,7 @@ async function validateDate(dateValue, expectations, llm, logger, options) {
 }
 
 export default async function date(text, config = {}) {
-  const { maxAttempts = 3, llm, logger, ...options } = config;
+  const { maxAttempts = 3, llm, logger, onProgress, ...options } = config;
 
   // Create lifecycle logger with date chain namespace
   const lifecycleLogger = createLifecycleLogger(logger, 'chain:date');
@@ -205,8 +205,9 @@ export default async function date(text, config = {}) {
       throw new Error(`Retrying after validation failure`);
     },
     {
-      maxRetries: maxAttempts - 1,
+      maxAttempts,
       retryOnAll: true,
+      onProgress,
     }
   );
 
