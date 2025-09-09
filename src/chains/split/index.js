@@ -40,6 +40,7 @@ export default async function split(text, instructions, config = {}) {
     maxAttempts = 2,
     llm,
     targetSplitsPerChunk = null,
+    onProgress,
     ...options
   } = config;
 
@@ -64,7 +65,8 @@ export default async function split(text, instructions, config = {}) {
     try {
       const output = await retry(chatGPT, {
         label: 'split',
-        maxRetries: maxAttempts - 1,
+        maxAttempts,
+        onProgress,
         chatGPTPrompt: prompt,
         chatGPTConfig,
         logger: options.logger,

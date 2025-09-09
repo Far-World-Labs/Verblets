@@ -3,6 +3,13 @@ import createBatches from '../../lib/text-batch/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { filterDecisionsJsonSchema } from './schemas.js';
+import {
+  emitBatchStart,
+  emitBatchComplete,
+  emitBatchProcessed,
+  createBatchProgressCallback,
+  createBatchContext,
+} from '../../lib/progress-callback/index.js';
 
 const filterResponseFormat = {
   type: 'json_schema',
@@ -17,6 +24,7 @@ export default async function filter(list, instructions, config = {}) {
     llm,
     maxAttempts = 3,
     logger,
+    onProgress,
     ...options
   } = config;
 
@@ -32,6 +40,7 @@ export default async function filter(list, instructions, config = {}) {
 
   const results = [];
   const batches = createBatches(list, config);
+  const activeBatches = batches.filter((b) => !b.skip);
 
   if (logger?.info) {
     logger.info('Batches created', {
@@ -40,7 +49,14 @@ export default async function filter(list, instructions, config = {}) {
     });
   }
 
-  for (const [batchIndex, { items, skip }] of batches.entries()) {
+  emitBatchStart(onProgress, 'filter', list.length, {
+    totalBatches: activeBatches.length,
+  });
+
+  let processedItems = 0;
+  let processedBatches = 0;
+
+  for (const [batchIndex, { items, skip, startIndex }] of batches.entries()) {
     if (skip) {
       if (logger?.warn) {
         logger.warn(`Skipping batch ${batchIndex} due to size limits`);
@@ -99,9 +115,19 @@ Process exactly ${count} items from the XML list below and return ${count} yes/n
     let response;
     try {
       response = await retry(() => listBatch(items, prompt, listBatchOptions), {
-        label: `filter batch ${items.length} items`,
-        maxRetries: maxAttempts,
-        logger,
+        label: `filter:batch`,
+        maxAttempts,
+        onProgress: createBatchProgressCallback(
+          onProgress,
+          createBatchContext({
+            batchIndex: processedBatches,
+            batchSize: items.length,
+            startIndex,
+            totalItems: list.length,
+            processedItems,
+            totalBatches: activeBatches.length,
+          })
+        ),
         chatGPTPrompt: `${prompt}\n\nItems: ${JSON.stringify(items).substring(0, 500)}...`,
         chatGPTConfig: listBatchOptions,
       });
@@ -135,6 +161,24 @@ Process exactly ${count} items from the XML list below and return ${count} yes/n
       }
     });
 
+    processedItems += items.length;
+    processedBatches++;
+
+    emitBatchProcessed(
+      onProgress,
+      'filter',
+      {
+        totalItems: list.length,
+        processedItems,
+        batchNumber: processedBatches,
+        batchSize: items.length,
+      },
+      {
+        batchIndex: `${startIndex}-${startIndex + items.length - 1}`,
+        totalBatches: activeBatches.length,
+      }
+    );
+
     if (logger?.info) {
       logger.info(`Batch ${batchIndex} processed`, {
         itemsProcessed: items.length,
@@ -143,6 +187,10 @@ Process exactly ${count} items from the XML list below and return ${count} yes/n
       });
     }
   }
+
+  emitBatchComplete(onProgress, 'filter', list.length, {
+    totalBatches: activeBatches.length,
+  });
 
   if (logger?.info) {
     logger.info('Filter chain complete', {

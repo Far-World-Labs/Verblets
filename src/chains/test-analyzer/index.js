@@ -48,7 +48,7 @@ const calculateCodeWindow = (testLine, testLineCount, assertionLine) => {
  * @param {Object} options - Options including maxAttempts
  */
 export default async function analyzeTestError(logs, options = {}) {
-  const { maxAttempts = 3 } = options;
+  const { maxAttempts = 3, onProgress } = options;
   if (!logs || logs.length === 0) {
     console.error('analyzeTestError: No logs provided');
     return '';
@@ -143,7 +143,7 @@ Discussion:
   try {
     const response = await retry(
       () => chatGPT(prompt, { modelOptions: { max_tokens: MAX_TOKENS } }),
-      { maxRetries: maxAttempts - 1, label: 'test analyzer' }
+      { maxAttempts, onProgress, label: 'test analyzer' }
     );
     return response.trim();
   } catch (error) {

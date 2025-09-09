@@ -65,6 +65,7 @@ export default function setInterval({
   model,
   llm,
   maxAttempts = 3,
+  onProgress,
   ...options
 } = {}) {
   let timer;
@@ -100,7 +101,8 @@ Next wait:`;
 
       const intervalText = await retry(chatGPT, {
         label: 'set-interval',
-        maxRetries: maxAttempts,
+        maxAttempts,
+        onProgress,
         chatGPTPrompt: intervalPrompt,
         chatGPTConfig: {
           modelOptions: model ? { modelName: model, ...llm } : { ...llm },

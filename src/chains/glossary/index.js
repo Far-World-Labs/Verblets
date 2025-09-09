@@ -21,16 +21,15 @@ const GLOSSARY_RESPONSE_FORMAT = {
  * @param {string} [options.sortBy='importance for understanding the content'] - sorting criteria
  * @returns {Promise<string[]>} list of important terms, sorted by relevance
  */
-export default async function glossary(
-  text,
-  {
+export default async function glossary(text, options = {}) {
+  const {
     maxTerms = 10,
     batchSize = 3,
     overlap = 1,
     chunkSize = 1,
     sortBy = 'importance for understanding the content',
-  } = {}
-) {
+    ...restOptions
+  } = options;
   if (!text || !text.trim()) return [];
 
   // Parse sentences using compromise
@@ -61,6 +60,7 @@ Return a "terms" object containing an array of the extracted terms.`;
   const mapped = await map(textChunks, instructions, {
     chunkSize,
     responseFormat: GLOSSARY_RESPONSE_FORMAT,
+    ...restOptions,
   });
 
   const termSet = new Set();

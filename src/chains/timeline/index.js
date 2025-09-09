@@ -158,6 +158,7 @@ Return JSON with "events" array where each event has "timestamp" and "name" fiel
       initialValue: JSON.stringify({ events: [] }),
       ...(batchSize !== undefined && { batchSize }),
       llm,
+      onProgress,
       ...remainingOptions,
     });
 
@@ -196,6 +197,7 @@ Return as JSON with the same event format, maintaining chronological order.`;
       },
       ...(batchSize !== undefined && { batchSize }),
       llm,
+      onProgress,
       ...remainingOptions,
     });
 
@@ -233,6 +235,7 @@ Return the enriched event as: "YYYY-MM-DD: Event name" or with the appropriate t
         ...(batchSize !== undefined && { batchSize }),
         maxParallel,
         llm,
+        onProgress,
         ...remainingOptions,
       }
     );

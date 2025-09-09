@@ -57,6 +57,7 @@ export default async function detectThreshold({
   chunkSize = 50,
   llm = { negotiate: { good: true } },
   maxAttempts = 3,
+  onProgress,
   ...options
 }) {
   if (!data || !Array.isArray(data) || data.length === 0) {
@@ -168,6 +169,7 @@ Return the updated accumulator as valid JSON.`;
         },
       },
     },
+    onProgress,
     ...options,
   });
 
@@ -226,7 +228,8 @@ Return threshold candidates with their rationales.`;
 
   const result = await retry(chatGPT, {
     label: 'detect-threshold-analysis',
-    maxRetries: maxAttempts,
+    maxAttempts,
+    onProgress,
     chatGPTPrompt: finalPrompt,
     chatGPTConfig: {
       modelOptions,

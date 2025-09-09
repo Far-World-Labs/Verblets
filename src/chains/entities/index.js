@@ -3,6 +3,7 @@ import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 import entityResultSchema from './entity-result.json';
+import { emitStepProgress } from '../../lib/progress-callback/index.js';
 
 const { onlyJSON } = promptConstants;
 
@@ -36,7 +37,7 @@ const GROUP_PROCESS_STEPS = `Extract entities and group them by patterns, types,
  * @returns {Promise<string>} Entity specification as descriptive text
  */
 export async function entitySpec(prompt, config = {}) {
-  const { llm, maxAttempts = 3, ...rest } = config;
+  const { llm, maxAttempts = 3, onProgress, ...rest } = config;
 
   const specSystemPrompt = `You are an entity specification generator. Create a clear, concise specification for entity extraction.`;
 
@@ -53,14 +54,14 @@ Keep it simple and actionable.`;
 
   const response = await retry(chatGPT, {
     label: 'entities-spec',
-    maxRetries: maxAttempts,
+    maxAttempts,
+    onProgress,
     chatGPTPrompt: specUserPrompt,
     chatGPTConfig: {
       llm,
       system: specSystemPrompt,
       ...rest,
     },
-    logger: rest.logger,
   });
 
   return response;
@@ -74,7 +75,7 @@ Keep it simple and actionable.`;
  * @returns {Promise<Object>} Object with entities array
  */
 export async function applyEntities(text, specification, config = {}) {
-  const { llm, maxAttempts = 3, ...options } = config;
+  const { llm, maxAttempts = 3, onProgress, ...options } = config;
 
   const prompt = `Apply the entity specification to extract entities from this text.
 
@@ -92,7 +93,8 @@ ${onlyJSON}`;
 
   const response = await retry(chatGPT, {
     label: 'entities-apply',
-    maxRetries: maxAttempts,
+    maxAttempts,
+    onProgress,
     chatGPTPrompt: prompt,
     chatGPTConfig: {
       modelOptions: {
@@ -107,7 +109,6 @@ ${onlyJSON}`;
       llm,
       ...options,
     },
-    logger: options.logger,
   });
 
   return response;
@@ -121,8 +122,19 @@ ${onlyJSON}`;
  * @returns {Promise<Object>} Object with entities array
  */
 export async function extractEntities(text, instructions, config = {}) {
-  const spec = await entitySpec(instructions, config);
-  return await applyEntities(text, spec, config);
+  const { onProgress, ...restConfig } = config;
+
+  emitStepProgress(onProgress, 'entities', 'generating-specification', {
+    instructions,
+  });
+
+  const spec = await entitySpec(instructions, { onProgress, ...restConfig });
+
+  emitStepProgress(onProgress, 'entities', 'extracting-entities', {
+    specification: spec,
+  });
+
+  return await applyEntities(text, spec, { onProgress, ...restConfig });
 }
 
 // ===== Instruction Builders =====

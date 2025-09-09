@@ -83,8 +83,9 @@ export default async function categorySamples(categoryName, options = {}) {
     count = 30,
     diversityLevel = 'balanced',
     llm = 'fastGoodCheap',
-    maxRetries = 3,
+    maxAttempts = 3,
     retryDelay = 1000,
+    onProgress,
   } = options;
 
   const generateWithRetry = async () => {
@@ -107,8 +108,9 @@ export default async function categorySamples(categoryName, options = {}) {
   };
 
   return await retry(generateWithRetry, {
-    maxRetries,
+    maxAttempts,
     retryDelay,
+    onProgress,
     retryCondition: (error) => {
       // Retry on network errors, timeouts, or empty results
       return (

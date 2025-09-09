@@ -6,7 +6,7 @@ import { asJSON } from '../../prompts/constants.js';
 import { testResultJsonSchema } from './schemas.js';
 
 export default async function test(path, instructions, options = {}) {
-  const { maxAttempts = 3, ...restOptions } = options;
+  const { maxAttempts = 3, onProgress, ...restOptions } = options;
   try {
     const code = await fs.readFile(path, 'utf-8');
 
@@ -39,7 +39,7 @@ ${asJSON}`;
             },
           },
         }),
-      { maxRetries: maxAttempts - 1, label: 'test chain' }
+      { maxAttempts, onProgress, label: 'test chain' }
     );
 
     // With structured output, we get a validated object

@@ -62,7 +62,7 @@ export default async function centralTendency(items, seedItems, config = {}) {
     throw new Error('seedItems must be a non-empty array');
   }
 
-  const { chunkSize = 5, maxAttempts = 3, logger, ...otherConfig } = config;
+  const { chunkSize = 5, maxAttempts = 3, logger, onProgress, ...otherConfig } = config;
 
   // Create lifecycle logger for the chain
   const lifecycleLogger = createLifecycleLogger(logger, 'central-tendency-chain');
@@ -90,6 +90,7 @@ export default async function centralTendency(items, seedItems, config = {}) {
       maxAttempts,
       responseFormat: centralTendencyResponseFormat,
       logger: lifecycleLogger, // Pass logger to map for its own logging
+      onProgress,
     });
 
     // Extract results from the structured output

@@ -8,6 +8,13 @@ import {
   extractBatchConfig,
   extractPromptAnalysis,
 } from '../../lib/lifecycle-logger/index.js';
+import {
+  emitBatchStart,
+  emitBatchComplete,
+  emitBatchProcessed,
+  createBatchProgressCallback,
+  createBatchContext,
+} from '../../lib/progress-callback/index.js';
 
 /**
  * Map over a list of items by calling `listBatch` on XML-enriched batches.
@@ -48,12 +55,19 @@ const mapOnce = async function (list, instructions, config = {}) {
     });
   }
 
+  emitBatchStart(onProgress, 'map', list.length, {
+    totalBatches: batchesToProcess.length,
+    maxParallel,
+  });
+
   let processedBatches = 0;
+  let processedItems = 0;
 
   // Process batches in parallel using parallelBatch
   await parallelBatch(
     batchesToProcess,
     async ({ items, startIndex }) => {
+      const currentBatchNumber = processedBatches + 1;
       const batchStyle = determineStyle(config.listStyle, items, config.autoModeThreshold);
 
       // Build the compiled prompt for this batch
@@ -100,9 +114,19 @@ Preserve all formatting and newlines within each <item> element.`;
         };
 
         const output = await retry(() => listBatch(items, compiledPrompt, listBatchOptions), {
-          label: `map batch ${startIndex}-${startIndex + items.length - 1}`,
-          maxRetries: config.maxAttempts || 3,
-          logger: config.logger,
+          label: `map:batch`,
+          maxAttempts: config.maxAttempts || 3,
+          onProgress: createBatchProgressCallback(
+            onProgress,
+            createBatchContext({
+              batchIndex: currentBatchNumber - 1,
+              batchSize: items.length,
+              startIndex,
+              totalItems: list.length,
+              processedItems,
+              totalBatches: batchesToProcess.length,
+            })
+          ),
           chatGPTPrompt: `${compiledPrompt}\n\nItems: ${JSON.stringify(items).substring(
             0,
             500
@@ -119,16 +143,23 @@ Preserve all formatting and newlines within each <item> element.`;
           results[startIndex + j] = item;
         });
 
-        // Call onProgress if provided
         processedBatches++;
-        if (onProgress) {
-          onProgress({
-            batchIndex: processedBatches,
-            totalBatches: batchesToProcess.length,
-            itemsProcessed: startIndex + items.length,
+        processedItems += items.length;
+
+        emitBatchProcessed(
+          onProgress,
+          'map',
+          {
             totalItems: list.length,
-          });
-        }
+            processedItems,
+            batchNumber: currentBatchNumber,
+            batchSize: items.length,
+          },
+          {
+            batchIndex: `${startIndex}-${startIndex + items.length - 1}`,
+            totalBatches: batchesToProcess.length,
+          }
+        );
 
         if (config.logger?.info) {
           config.logger.info(`Map batch completed`, {
@@ -159,6 +190,10 @@ Preserve all formatting and newlines within each <item> element.`;
       label: 'map batches',
     }
   );
+
+  emitBatchComplete(onProgress, 'map', list.length, {
+    totalBatches: batchesToProcess.length,
+  });
 
   return results;
 };

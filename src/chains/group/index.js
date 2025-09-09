@@ -4,6 +4,15 @@ import retry from '../../lib/retry/index.js';
 import parallelBatch from '../../lib/parallel-batch/index.js';
 import reduce from '../reduce/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
+import {
+  emitBatchStart,
+  emitBatchComplete,
+  emitBatchProcessed,
+  createBatchProgressCallback,
+  createBatchContext,
+  emitPhaseProgress,
+  emitProgress,
+} from '../../lib/progress-callback/index.js';
 
 const createCategoryDiscoveryPrompt = (instructions, categoryPrompt) => {
   const defaultCategoryPrompt =
@@ -84,15 +93,32 @@ export default async function group(list, instructions, config = {}) {
     listStyle,
     autoModeThreshold,
     llm,
+    onProgress,
     ...options
   } = config;
 
   // Phase 1: Category Discovery - reduce pass to build taxonomy
+  if (onProgress) {
+    emitPhaseProgress(onProgress, 'group', 'category-discovery', {
+      description: 'Discovering categories from items',
+    });
+  }
+
   const categoryDiscoveryPrompt = createCategoryDiscoveryPrompt(instructions, categoryPrompt);
   const categoriesString = await reduce(list, categoryDiscoveryPrompt, {
     initial: '',
     llm,
     ...options,
+    onProgress: onProgress
+      ? (event) => {
+          // Pass through reduce events with phase context
+          emitProgress({
+            ...event,
+            callback: onProgress,
+            phase: 'category-discovery',
+          });
+        }
+      : undefined,
   });
 
   const categories = parseCategories(categoriesString);
@@ -101,12 +127,28 @@ export default async function group(list, instructions, config = {}) {
   }
 
   // Phase 2: Assignment - map items to established categories
+  if (onProgress) {
+    emitPhaseProgress(onProgress, 'group', 'assignment', {
+      description: 'Assigning items to categories',
+      categoryCount: categories.length,
+    });
+  }
+
   const batches = createBatches(list, config);
   const batchResults = [];
   const assignmentInstructions = createAssignmentInstructions(categories);
 
   // Filter out skip batches
   const batchesToProcess = batches.filter((batch) => !batch.skip);
+
+  emitBatchStart(onProgress, 'group', list.length, {
+    totalBatches: batchesToProcess.length,
+    maxParallel,
+    phase: 'assignment',
+  });
+
+  let processedItems = 0;
+  let processedBatches = 0;
 
   // Process batches in parallel using parallelBatch
   await parallelBatch(
@@ -123,11 +165,26 @@ export default async function group(list, instructions, config = {}) {
         };
 
         const labels = await retry(
-          () => listBatch(items, assignmentInstructions, listBatchOptions),
+          () =>
+            listBatch(
+              items,
+              assignmentInstructions({ style: batchStyle, count: items.length }),
+              listBatchOptions
+            ),
           {
-            label: `group assignment batch ${startIndex}`,
-            maxRetries: options.maxAttempts || 3,
-            logger: options.logger,
+            label: `group:batch`,
+            maxAttempts: options.maxAttempts || 3,
+            onProgress: createBatchProgressCallback(
+              onProgress,
+              createBatchContext({
+                batchIndex: processedBatches,
+                batchSize: items.length,
+                startIndex,
+                totalItems: list.length,
+                processedItems,
+                totalBatches: batchesToProcess.length,
+              })
+            ),
             chatGPTPrompt: `${assignmentInstructions({
               style: batchStyle,
               count: items.length,
@@ -142,6 +199,24 @@ export default async function group(list, instructions, config = {}) {
         } else {
           batchResults.push({ items, labels, startIndex });
         }
+
+        processedItems += items.length;
+        processedBatches++;
+
+        emitBatchProcessed(
+          onProgress,
+          'group',
+          {
+            totalItems: list.length,
+            processedItems,
+            batchNumber: processedBatches,
+            batchSize: items.length,
+          },
+          {
+            batchIndex: `${startIndex}-${startIndex + items.length - 1}`,
+            totalBatches: batchesToProcess.length,
+          }
+        );
       } catch {
         const fallbackLabels = new Array(items.length).fill('other');
         batchResults.push({ items, labels: fallbackLabels, startIndex });
@@ -156,6 +231,11 @@ export default async function group(list, instructions, config = {}) {
   // Final grouping
   batchResults.sort((a, b) => a.startIndex - b.startIndex);
   const groups = assignItemsToGroups(batchResults);
+
+  emitBatchComplete(onProgress, 'group', list.length, {
+    totalBatches: batchesToProcess.length,
+    categoryCount: categories.length,
+  });
 
   return topN ? applyTopNFilter(groups, topN) : groups;
 }

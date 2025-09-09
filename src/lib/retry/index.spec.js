@@ -42,8 +42,8 @@ describe('Retry', () => {
     expect(callCount).toStrictEqual(2);
   });
 
-  it('Fails after maxRetries', async () => {
-    const maxRetries = 2;
+  it('Fails after maxAttempts', async () => {
+    const maxAttempts = 3;
     let callCount = 0;
 
     const fn = async () => {
@@ -53,12 +53,11 @@ describe('Retry', () => {
       throw error;
     };
 
-    const promise = retry(fn, { maxRetries, retryDelay: retryDelayGlobal });
-    // Attach handler immediately to prevent unhandled rejection
-    promise.catch(() => {}); // Ignore error here, we'll check it below
+    const promise = retry(fn, { maxAttempts, retryDelay: retryDelayGlobal });
+    promise.catch(() => {});
     await vi.runAllTimersAsync();
     await expect(promise).rejects.toThrow('Error 429');
-    expect(callCount).toStrictEqual(maxRetries + 1);
+    expect(callCount).toStrictEqual(maxAttempts);
   });
 
   it('Throws non-retryable error', async () => {
@@ -75,7 +74,7 @@ describe('Retry', () => {
 
   it('Retries on all errors when retryOnAll is true', async () => {
     let callCount = 0;
-    const maxRetries = 2;
+    const maxAttempts = 3;
     const fn = async () => {
       callCount += 1;
       const error = new Error('Error 500');
@@ -84,14 +83,13 @@ describe('Retry', () => {
     };
 
     const promise = retry(fn, {
-      maxRetries,
+      maxAttempts,
       retryDelay: retryDelayGlobal,
       retryOnAll: true,
     });
-    // Attach handler immediately to prevent unhandled rejection
-    promise.catch(() => {}); // Ignore error here, we'll check it below
+    promise.catch(() => {});
     await vi.runAllTimersAsync();
     await expect(promise).rejects.toThrow('Error 500');
-    expect(callCount).toStrictEqual(maxRetries + 1);
+    expect(callCount).toStrictEqual(maxAttempts);
   });
 });

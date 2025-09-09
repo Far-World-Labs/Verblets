@@ -76,6 +76,7 @@ const defaultDecompose = async ({
   fixes,
   model = modelService.getBestPublicModel(),
   maxAttempts = 3,
+  onProgress,
 } = {}) => {
   const focusFormatted = focus ? `: ${focus}` : '';
 
@@ -83,7 +84,8 @@ const defaultDecompose = async ({
   const budget = model.budgetTokens(promptCreated);
   const result = await retry(chatGPT, {
     label: 'dismantle-decompose',
-    maxRetries: maxAttempts,
+    maxAttempts,
+    onProgress,
     chatGPTPrompt: promptCreated,
     chatGPTConfig: {
       modelOptions: {
@@ -109,12 +111,14 @@ const defaultEnhance = async ({
   fixes,
   model = modelService.getBestPublicModel(),
   maxAttempts = 3,
+  onProgress,
 } = {}) => {
   const promptCreated = componentOptionsPrompt(name, rootName, fixes);
   const budget = model.budgetTokens(promptCreated);
   const result = await retry(chatGPT, {
     label: 'dismantle-enhance',
-    maxRetries: maxAttempts,
+    maxAttempts,
+    onProgress,
     chatGPTPrompt: promptCreated,
     chatGPTConfig: {
       modelOptions: {

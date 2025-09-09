@@ -100,7 +100,7 @@ const GROUP_PROCESS_STEPS = `Extract relations and group them by patterns, types
  * @returns {Promise<string>} Relation specification as descriptive text
  */
 export async function relationSpec(prompt, config = {}) {
-  const { llm, maxAttempts = 3, ...rest } = config;
+  const { llm, maxAttempts = 3, onProgress, ...rest } = config;
 
   const specSystemPrompt = `You are a relation specification generator. Create a clear, concise specification for relation extraction.`;
 
@@ -145,7 +145,8 @@ Use natural language, not symbolic identifiers or linked data formats.`;
 
   const response = await retry(chatGPT, {
     label: 'relations-spec',
-    maxRetries: maxAttempts,
+    maxAttempts,
+    onProgress,
     chatGPTPrompt: specUserPrompt,
     chatGPTConfig: {
       llm,
@@ -167,7 +168,7 @@ Use natural language, not symbolic identifiers or linked data formats.`;
  * @returns {Promise<Object>} Object with relations array
  */
 export async function applyRelations(text, specification, config = {}) {
-  const { llm, entities, maxAttempts = 3, ...options } = config;
+  const { llm, entities, maxAttempts = 3, onProgress, ...options } = config;
 
   let prompt = `Apply the relation specification to extract relations from this text.
 
@@ -206,7 +207,8 @@ ${onlyJSON}`;
 
   const response = await retry(chatGPT, {
     label: 'relations-apply',
-    maxRetries: maxAttempts,
+    maxAttempts,
+    onProgress,
     chatGPTPrompt: prompt,
     chatGPTConfig: {
       modelOptions: {

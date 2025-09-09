@@ -201,7 +201,7 @@ function selectChunksByTfIdf(scoredChunks, tfIdfBudget) {
 }
 
 // Pure function: Score edge chunks with LLM
-async function scoreEdgeChunks(candidates, query, maxChunks, llm) {
+async function scoreEdgeChunks(candidates, query, maxChunks, llm, options = {}) {
   // console.log(`[scoreEdgeChunks] Scoring ${candidates.length} candidates, max chunks: ${maxChunks}`);
   if (candidates.length === 0 || maxChunks === 0) {
     // console.log(`[scoreEdgeChunks] No candidates or maxChunks is 0, returning empty`);
@@ -231,7 +231,7 @@ async function scoreEdgeChunks(candidates, query, maxChunks, llm) {
   const scores = await score(
     cleanedChunks,
     `relevance to query: "${query}" (0=unrelated, 5=partially related, 10=directly answers)`,
-    { chunkSize: LLM_CHUNK_BATCH_SIZE, llm }
+    { chunkSize: LLM_CHUNK_BATCH_SIZE, llm, onProgress: options.onProgress }
   );
 
   // console.log(`[scoreEdgeChunks] Received scores:`, scores);
@@ -250,7 +250,15 @@ async function scoreEdgeChunks(candidates, query, maxChunks, llm) {
 }
 
 // Pure function: Compress high-value chunks adaptively
-async function compressHighValueChunks(chunks, query, maxChunks, availableSpace, allocation, llm) {
+async function compressHighValueChunks(
+  chunks,
+  query,
+  maxChunks,
+  availableSpace,
+  allocation,
+  llm,
+  options = {}
+) {
   // Adaptive minimum size based on average chunk size
   const minCompressSize = Math.min(allocation.avgChunkSize * 0.8, 400);
 
@@ -283,7 +291,7 @@ async function compressHighValueChunks(chunks, query, maxChunks, availableSpace,
   const texts = await map(
     cleanedTexts,
     `Extract key parts answering: "${query}". Preserve important details. Target ${compressionTarget}% of original.`,
-    { chunkSize: 10, llm }
+    { chunkSize: 10, llm, onProgress: options.onProgress }
   );
 
   const compressed = [];
@@ -508,7 +516,8 @@ export default async function documentShrink(document, query, options = {}) {
     candidates,
     query,
     allocation.chunksWeCanScore,
-    config.llm
+    config.llm,
+    options
   );
   tokenBudget -= scoreTokens;
   // console.log(`[documentShrink] Scored ${scored.length} edge chunks, tokens remaining: ${tokenBudget}`);
@@ -530,7 +539,8 @@ export default async function documentShrink(document, query, options = {}) {
       allocation.chunksWeCanCompress,
       remainingSpace,
       allocation,
-      config.llm
+      config.llm,
+      options
     );
     compressTokens = tokensUsed;
     tokenBudget -= tokensUsed;

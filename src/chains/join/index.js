@@ -29,6 +29,7 @@ export default async function join(
     styleHint = '',
     maxRetries = 2,
     llm,
+    onProgress,
     ...options
   } = config;
 
@@ -125,7 +126,8 @@ Add necessary connecting words, prepositions, conjunctions, or other filler text
       const joinConfig = { modelOptions: { ...llm }, ...options };
       const joinResult = await retry(chatGPT, {
         label: `join-nonoverlap-${i}`,
-        maxRetries,
+        maxAttempts: maxRetries + 1,
+        onProgress,
         chatGPTPrompt: joinInstruction,
         chatGPTConfig: joinConfig,
         logger: options.logger,

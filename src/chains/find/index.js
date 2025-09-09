@@ -4,6 +4,13 @@ import retry from '../../lib/retry/index.js';
 import parallelBatch from '../../lib/parallel-batch/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { findResultJsonSchema } from './schemas.js';
+import {
+  emitBatchStart,
+  emitBatchComplete,
+  emitBatchProcessed,
+  createBatchProgressCallback,
+  createBatchContext,
+} from '../../lib/progress-callback/index.js';
 
 const findResponseFormat = {
   type: 'json_schema',
@@ -11,7 +18,15 @@ const findResponseFormat = {
 };
 
 const find = async function (list, instructions, config = {}) {
-  const { maxParallel = 3, listStyle, autoModeThreshold, responseFormat, llm, ...options } = config;
+  const {
+    maxParallel = 3,
+    listStyle,
+    autoModeThreshold,
+    responseFormat,
+    llm,
+    onProgress,
+    ...options
+  } = config;
 
   const batches = createBatches(list, config);
   const findInstructions = ({ style, count }) => {
@@ -43,6 +58,14 @@ Process exactly ${count} items from the XML list below and return the single bes
   // Filter out skip batches
   const batchesToProcess = batches.filter((batch) => !batch.skip);
 
+  emitBatchStart(onProgress, 'find', list.length, {
+    totalBatches: batchesToProcess.length,
+    maxParallel,
+  });
+
+  let processedItems = 0;
+  let processedBatches = 0;
+
   // Process in chunks to allow early termination
   for (let i = 0; i < batchesToProcess.length && !foundEarly; i += maxParallel) {
     const chunk = batchesToProcess.slice(i, i + maxParallel);
@@ -55,7 +78,7 @@ Process exactly ${count} items from the XML list below and return the single bes
         try {
           const result = await retry(
             () =>
-              listBatch(items, findInstructions, {
+              listBatch(items, findInstructions({ style: batchStyle, count: items.length }), {
                 listStyle: batchStyle,
                 autoModeThreshold,
                 responseFormat: responseFormat || findResponseFormat,
@@ -63,7 +86,19 @@ Process exactly ${count} items from the XML list below and return the single bes
                 ...options,
               }),
             {
-              label: `find batch ${startIndex}-${startIndex + items.length - 1}`,
+              label: `find:batch`,
+              maxAttempts: 3,
+              onProgress: createBatchProgressCallback(
+                onProgress,
+                createBatchContext({
+                  batchIndex: processedBatches,
+                  batchSize: items.length,
+                  startIndex,
+                  totalItems: list.length,
+                  processedItems,
+                  totalBatches: batchesToProcess.length,
+                })
+              ),
             }
           );
 
@@ -74,6 +109,25 @@ Process exactly ${count} items from the XML list below and return the single bes
             const itemIndex = list.findIndex((item) => item === foundItem);
             results.push({ result: foundItem, index: itemIndex !== -1 ? itemIndex : startIndex });
           }
+
+          processedItems += items.length;
+          processedBatches++;
+
+          emitBatchProcessed(
+            onProgress,
+            'find',
+            {
+              totalItems: list.length,
+              processedItems,
+              batchNumber: processedBatches,
+              batchSize: items.length,
+            },
+            {
+              batchIndex: `${startIndex}-${startIndex + items.length - 1}`,
+              totalBatches: batchesToProcess.length,
+              found: !!foundItem,
+            }
+          );
         } catch {
           // continue on error
         }
@@ -89,6 +143,11 @@ Process exactly ${count} items from the XML list below and return the single bes
       foundEarly = true;
     }
   }
+
+  emitBatchComplete(onProgress, 'find', list.length, {
+    totalBatches: batchesToProcess.length,
+    found: results.length > 0,
+  });
 
   if (results.length > 0) {
     const earliest = results.reduce((best, current) =>
