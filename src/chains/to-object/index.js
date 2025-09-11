@@ -99,7 +99,7 @@ function logDebugInfo(attempt, prompt, response, error) {
  * Converts text to structured JSON object using LLM assistance
  */
 export default async function toObject(text, schema, config = {}) {
-  const { llm, maxAttempts = 3, onProgress, ...options } = config;
+  const { llm, maxAttempts = 3, onProgress, now = new Date(), ...options } = config;
   let errorDetails;
 
   // First attempt: try direct parsing
@@ -123,6 +123,8 @@ export default async function toObject(text, schema, config = {}) {
         ...options,
       },
       logger: options.logger,
+      now,
+      chainStartTime: now,
     });
 
     const result = parseAndValidate(response, schema);
@@ -145,6 +147,8 @@ export default async function toObject(text, schema, config = {}) {
         ...options,
       },
       logger: options.logger,
+      now: new Date(),
+      chainStartTime: now,
     });
 
     const result = parseAndValidate(response, schema);

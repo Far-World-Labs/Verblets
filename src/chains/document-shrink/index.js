@@ -108,7 +108,7 @@ function createChunks(document, baseChunkSize, targetSize) {
 }
 
 // Pure function: Minimal query expansion
-async function expandQuery(query, tokenBudget, llm) {
+async function expandQuery(query, tokenBudget, llm, onProgress, now = new Date()) {
   // console.log(`[expandQuery] Expanding query: "${query}" with token budget: ${tokenBudget}`);
   if (tokenBudget < TOKENS_PER_EXPANSION) {
     // console.log(`[expandQuery] Insufficient token budget, returning original query only`);
@@ -121,6 +121,8 @@ async function expandQuery(query, tokenBudget, llm) {
       topN: 5,
       chunkLen: 500,
       llm,
+      onProgress,
+      now,
     });
     // console.log(`[expandQuery] Collected ${terms.length} terms:`, terms);
 
@@ -202,6 +204,7 @@ function selectChunksByTfIdf(scoredChunks, tfIdfBudget) {
 
 // Pure function: Score edge chunks with LLM
 async function scoreEdgeChunks(candidates, query, maxChunks, llm, options = {}) {
+  const { onProgress, now = new Date() } = options;
   // console.log(`[scoreEdgeChunks] Scoring ${candidates.length} candidates, max chunks: ${maxChunks}`);
   if (candidates.length === 0 || maxChunks === 0) {
     // console.log(`[scoreEdgeChunks] No candidates or maxChunks is 0, returning empty`);
@@ -231,7 +234,7 @@ async function scoreEdgeChunks(candidates, query, maxChunks, llm, options = {}) 
   const scores = await score(
     cleanedChunks,
     `relevance to query: "${query}" (0=unrelated, 5=partially related, 10=directly answers)`,
-    { chunkSize: LLM_CHUNK_BATCH_SIZE, llm, onProgress: options.onProgress }
+    { chunkSize: LLM_CHUNK_BATCH_SIZE, llm, onProgress, now }
   );
 
   // console.log(`[scoreEdgeChunks] Received scores:`, scores);
@@ -259,6 +262,7 @@ async function compressHighValueChunks(
   llm,
   options = {}
 ) {
+  const { onProgress, now = new Date() } = options;
   // Adaptive minimum size based on average chunk size
   const minCompressSize = Math.min(allocation.avgChunkSize * 0.8, 400);
 
@@ -291,7 +295,7 @@ async function compressHighValueChunks(
   const texts = await map(
     cleanedTexts,
     `Extract key parts answering: "${query}". Preserve important details. Target ${compressionTarget}% of original.`,
-    { chunkSize: 10, llm, onProgress: options.onProgress }
+    { chunkSize: 10, llm, onProgress, now }
   );
 
   const compressed = [];
@@ -448,6 +452,8 @@ function selectGapFillers(allChunks, selectedChunks, gapFillerBudget) {
 
 // Main function with proper budget planning
 export default async function documentShrink(document, query, options = {}) {
+  const { onProgress, now = new Date(), ...rest } = options;
+  const config = { ...DEFAULT_OPTIONS, ...rest };
   // Handle edge cases early
   if (!document || document.length === 0) {
     return {
@@ -465,8 +471,6 @@ export default async function documentShrink(document, query, options = {}) {
 
   // console.log(`[documentShrink] Starting with document length: ${document.length}, query: "${query}"`);
   // console.log(`[documentShrink] Options:`, options);
-
-  const config = { ...DEFAULT_OPTIONS, ...options };
 
   // Validate and fix config values
   if (config.targetSize <= 0) config.targetSize = DEFAULT_OPTIONS.targetSize;
@@ -494,7 +498,9 @@ export default async function documentShrink(document, query, options = {}) {
   const { expansions, tokensUsed: expansionTokens } = await expandQuery(
     query,
     tokenBudget,
-    config.llm
+    config.llm,
+    onProgress,
+    now
   );
   tokenBudget -= expansionTokens;
   // console.log(`[documentShrink] Token budget after expansion: ${tokenBudget}`);
@@ -517,7 +523,7 @@ export default async function documentShrink(document, query, options = {}) {
     query,
     allocation.chunksWeCanScore,
     config.llm,
-    options
+    { onProgress, now }
   );
   tokenBudget -= scoreTokens;
   // console.log(`[documentShrink] Scored ${scored.length} edge chunks, tokens remaining: ${tokenBudget}`);
@@ -540,7 +546,7 @@ export default async function documentShrink(document, query, options = {}) {
       remainingSpace,
       allocation,
       config.llm,
-      options
+      { onProgress, now }
     );
     compressTokens = tokensUsed;
     tokenBudget -= tokensUsed;

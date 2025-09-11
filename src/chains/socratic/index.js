@@ -28,6 +28,8 @@ const defaultAsk = async ({
   model = modelService.getBestPublicModel(),
   logger,
   maxAttempts = 3,
+  onProgress,
+  now = new Date(),
 } = {}) => {
   const historyText = history.map((turn) => `Q: ${turn.question}\nA: ${turn.answer}`).join('\n');
   const prompt = buildAskPrompt(topic, historyText);
@@ -38,6 +40,9 @@ const defaultAsk = async ({
   const response = await retry(chatGPT, {
     label: 'socratic-ask',
     maxAttempts,
+    onProgress,
+    now,
+    chainStartTime: now,
     chatGPTPrompt: prompt,
     chatGPTConfig: {
       maxTokens: budget.completion,
@@ -65,6 +70,8 @@ const defaultAnswer = async ({
   model = modelService.getBestPublicModel(),
   logger,
   maxAttempts = 3,
+  onProgress,
+  now = new Date(),
 } = {}) => {
   const historyText = history.map((turn) => `Q: ${turn.question}\nA: ${turn.answer}`).join('\n');
   const prompt = buildAnswerPrompt(question, historyText);
@@ -75,6 +82,9 @@ const defaultAnswer = async ({
   const response = await retry(chatGPT, {
     label: 'socratic-answer',
     maxAttempts,
+    onProgress,
+    now,
+    chainStartTime: now,
     chatGPTPrompt: prompt,
     chatGPTConfig: {
       maxTokens: budget.completion,
@@ -98,7 +108,14 @@ const defaultAnswer = async ({
 class SocraticMethod {
   constructor(
     statement,
-    { ask = defaultAsk, answer = defaultAnswer, logger, maxAttempts = 3, onProgress } = {}
+    {
+      ask = defaultAsk,
+      answer = defaultAnswer,
+      logger,
+      maxAttempts = 3,
+      onProgress,
+      now = new Date(),
+    } = {}
   ) {
     this.statement = statement;
     this.ask = ask;
@@ -106,6 +123,7 @@ class SocraticMethod {
     this.history = [];
     this.maxAttempts = maxAttempts;
     this.onProgress = onProgress;
+    this.now = now;
     this.logger = createLifecycleLogger(logger, 'chain:socratic');
 
     // Log construction
@@ -129,6 +147,8 @@ class SocraticMethod {
     emitStepProgress(this.onProgress, 'socratic', 'asking-question', {
       turnNumber,
       topic: this.statement,
+      now: new Date(),
+      chainStartTime: this.now,
     });
 
     // Log input (topic and history)
@@ -147,6 +167,7 @@ class SocraticMethod {
       logger: this.logger,
       maxAttempts: this.maxAttempts,
       onProgress: this.onProgress,
+      now: this.now,
     });
 
     // Log question as intermediate event
@@ -157,6 +178,8 @@ class SocraticMethod {
     emitStepProgress(this.onProgress, 'socratic', 'answering-question', {
       turnNumber,
       question,
+      now: new Date(),
+      chainStartTime: this.now,
     });
 
     const answer = await this.answer({
@@ -166,6 +189,7 @@ class SocraticMethod {
       logger: this.logger,
       maxAttempts: this.maxAttempts,
       onProgress: this.onProgress,
+      now: this.now,
     });
 
     const turn = { question, answer };

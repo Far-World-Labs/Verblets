@@ -86,6 +86,7 @@ export default async function categorySamples(categoryName, options = {}) {
     maxAttempts = 3,
     retryDelay = 1000,
     onProgress,
+    now = new Date(),
   } = options;
 
   const generateWithRetry = async () => {
@@ -97,6 +98,8 @@ export default async function categorySamples(categoryName, options = {}) {
     const results = await list(prompt, {
       llm: model,
       shouldStop: ({ resultsAll }) => resultsAll.length >= count,
+      onProgress,
+      now,
     });
 
     if (!results || results.length === 0) {
@@ -111,6 +114,8 @@ export default async function categorySamples(categoryName, options = {}) {
     maxAttempts,
     retryDelay,
     onProgress,
+    now,
+    chainStartTime: now,
     retryCondition: (error) => {
       // Retry on network errors, timeouts, or empty results
       return (

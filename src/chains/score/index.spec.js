@@ -62,7 +62,7 @@ describe('score chain', () => {
 
       const result = await score(['a', 'bb', 'ccc'], 'score by length');
 
-      expect(scaleSpec).toHaveBeenCalledWith('score by length', {});
+      expect(scaleSpec).toHaveBeenCalledWith('score by length', { now: expect.any(Date) });
       expect(map).toHaveBeenCalled();
       expect(result).toEqual([1, 2, 3]);
     });
@@ -81,7 +81,7 @@ describe('score chain', () => {
 
       const result = await scoreItem('test item', 'score by length');
 
-      expect(scaleSpec).toHaveBeenCalledWith('score by length', {});
+      expect(scaleSpec).toHaveBeenCalledWith('score by length', { now: expect.any(Date) });
       expect(chatGPT).toHaveBeenCalledWith(
         expect.stringContaining('test item'),
         expect.any(Object)

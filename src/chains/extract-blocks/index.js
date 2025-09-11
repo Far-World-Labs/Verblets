@@ -57,6 +57,7 @@ export async function extractBlocks(text, instructions, config = {}) {
     logger,
     llm,
     onProgress,
+    now = new Date(),
     ...options
   } = config;
 
@@ -98,6 +99,8 @@ export async function extractBlocks(text, instructions, config = {}) {
   emitBatchStart(onProgress, 'extract-blocks', lines.length, {
     totalWindows: windowStarts.length,
     maxParallel,
+    now,
+    chainStartTime: now,
   });
 
   let processedWindows = 0;
@@ -114,6 +117,8 @@ export async function extractBlocks(text, instructions, config = {}) {
       const result = await retry(chatGPT, {
         label: `extract-blocks:window`,
         maxAttempts,
+        now,
+        chainStartTime: now,
         onProgress: createBatchProgressCallback(onProgress, {
           totalItems: lines.length,
           processedItems: Math.min(windowStart + windowSize, lines.length),
@@ -121,6 +126,8 @@ export async function extractBlocks(text, instructions, config = {}) {
           windowSize: windowLines.length,
           windowStart,
           totalWindows: windowStarts.length,
+          now,
+          chainStartTime: now,
         }),
         chatGPTPrompt: prompt,
         chatGPTConfig: {
@@ -148,6 +155,8 @@ export async function extractBlocks(text, instructions, config = {}) {
           windowStart,
           totalWindows: windowStarts.length,
           blocksFound: (result.blocks || []).length,
+          now: new Date(),
+          chainStartTime: now,
         }
       );
 
@@ -186,6 +195,8 @@ export async function extractBlocks(text, instructions, config = {}) {
   emitBatchComplete(onProgress, 'extract-blocks', lines.length, {
     totalWindows: windowStarts.length,
     blocksExtracted: blocks.length,
+    now: new Date(),
+    chainStartTime: now,
   });
 
   // Log output

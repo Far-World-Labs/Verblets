@@ -24,7 +24,7 @@ export const scoreSpec = scaleSpec;
  * @returns {Promise<*>} Score value (type depends on specification range)
  */
 export async function applyScore(item, specification, config = {}) {
-  const { llm, maxAttempts = 3, ...options } = config;
+  const { llm, maxAttempts = 3, onProgress, now = new Date(), ...options } = config;
 
   const prompt = `Apply the score specification to evaluate this item.
 
@@ -40,6 +40,9 @@ ${asXML(item, { tag: 'item' })}`;
   const response = await retry(chatGPT, {
     label: 'score item',
     maxAttempts,
+    onProgress,
+    now,
+    chainStartTime: now,
     chatGPTPrompt: prompt,
     chatGPTConfig: {
       modelOptions: {
@@ -69,8 +72,9 @@ ${asXML(item, { tag: 'item' })}`;
  * @returns {Promise<*>} Score value
  */
 export async function scoreItem(item, instructions, config = {}) {
-  const spec = await scoreSpec(instructions, config);
-  return await applyScore(item, spec, config);
+  const { now = new Date(), ...restConfig } = config;
+  const spec = await scoreSpec(instructions, { now, ...restConfig });
+  return await applyScore(item, spec, { now, ...restConfig });
 }
 
 /**
@@ -81,7 +85,7 @@ export async function scoreItem(item, instructions, config = {}) {
  * @returns {Promise<Array>} Array of scores
  */
 export async function mapScore(list, instructions, config = {}) {
-  const { onProgress, ...restConfig } = config;
+  const { onProgress, now = new Date(), ...restConfig } = config;
 
   // Emit phase for specification generation
   if (onProgress) {
@@ -92,7 +96,7 @@ export async function mapScore(list, instructions, config = {}) {
     });
   }
 
-  const spec = await scoreSpec(instructions, restConfig);
+  const spec = await scoreSpec(instructions, { now, ...restConfig });
 
   // Emit phase for scoring
   if (onProgress) {
@@ -105,7 +109,7 @@ export async function mapScore(list, instructions, config = {}) {
   }
 
   const mapInstr = mapInstructions({ specification: spec });
-  const scores = await map(list, mapInstr, { ...restConfig, onProgress });
+  const scores = await map(list, mapInstr, { ...restConfig, onProgress, now });
   return scores.map((s) => Number(s));
 }
 

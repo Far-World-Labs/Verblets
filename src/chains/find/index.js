@@ -25,6 +25,7 @@ const find = async function (list, instructions, config = {}) {
     responseFormat,
     llm,
     onProgress,
+    now = new Date(),
     ...options
   } = config;
 
@@ -61,6 +62,8 @@ Process exactly ${count} items from the XML list below and return the single bes
   emitBatchStart(onProgress, 'find', list.length, {
     totalBatches: batchesToProcess.length,
     maxParallel,
+    now,
+    chainStartTime: now,
   });
 
   let processedItems = 0;
@@ -88,6 +91,8 @@ Process exactly ${count} items from the XML list below and return the single bes
             {
               label: `find:batch`,
               maxAttempts: 3,
+              now,
+              chainStartTime: now,
               onProgress: createBatchProgressCallback(
                 onProgress,
                 createBatchContext({
@@ -97,6 +102,8 @@ Process exactly ${count} items from the XML list below and return the single bes
                   totalItems: list.length,
                   processedItems,
                   totalBatches: batchesToProcess.length,
+                  now,
+                  chainStartTime: now,
                 })
               ),
             }
@@ -126,6 +133,8 @@ Process exactly ${count} items from the XML list below and return the single bes
               batchIndex: `${startIndex}-${startIndex + items.length - 1}`,
               totalBatches: batchesToProcess.length,
               found: !!foundItem,
+              now: new Date(),
+              chainStartTime: now,
             }
           );
         } catch {
@@ -147,6 +156,8 @@ Process exactly ${count} items from the XML list below and return the single bes
   emitBatchComplete(onProgress, 'find', list.length, {
     totalBatches: batchesToProcess.length,
     found: results.length > 0,
+    now: new Date(),
+    chainStartTime: now,
   });
 
   if (results.length > 0) {

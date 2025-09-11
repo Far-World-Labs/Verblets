@@ -99,6 +99,7 @@ export default async function timeline(text, options = {}) {
     llm,
     enrichWithKnowledge = false,
     batchSize,
+    now = new Date(),
     ...remainingOptions
   } = options;
 
@@ -114,6 +115,8 @@ export default async function timeline(text, options = {}) {
       try {
         const events = await retry(() => extractFromChunk(chunk, { llm, ...remainingOptions }), {
           label: `timeline chunk ${chunkIndex + 1}`,
+          now,
+          chainStartTime: now,
         });
         allEvents.push(...events);
         onProgress?.(chunkIndex + 1, chunks.length);
@@ -159,6 +162,7 @@ Return JSON with "events" array where each event has "timestamp" and "name" fiel
       ...(batchSize !== undefined && { batchSize }),
       llm,
       onProgress,
+      now,
       ...remainingOptions,
     });
 
@@ -198,6 +202,7 @@ Return as JSON with the same event format, maintaining chronological order.`;
       ...(batchSize !== undefined && { batchSize }),
       llm,
       onProgress,
+      now,
       ...remainingOptions,
     });
 
@@ -236,6 +241,7 @@ Return the enriched event as: "YYYY-MM-DD: Event name" or with the appropriate t
         maxParallel,
         llm,
         onProgress,
+        now,
         ...remainingOptions,
       }
     );

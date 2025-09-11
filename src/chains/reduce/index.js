@@ -27,6 +27,7 @@ export default async function reduce(list, instructions, config = {}) {
     llm,
     maxAttempts = 3,
     onProgress,
+    now = new Date(),
     ...options
   } = config;
 
@@ -43,6 +44,8 @@ export default async function reduce(list, instructions, config = {}) {
 
   emitBatchStart(onProgress, 'reduce', list.length, {
     totalBatches: activeBatches.length,
+    now,
+    chainStartTime: now,
   });
 
   let processedItems = 0;
@@ -92,6 +95,8 @@ Process exactly ${count} items from the ${itemFormat} list below and return the 
     const result = await retry(() => listBatch(items, prompt, listBatchOptions), {
       label: `reduce:batch`,
       maxAttempts,
+      now,
+      chainStartTime: now,
       onProgress: createBatchProgressCallback(
         onProgress,
         createBatchContext({
@@ -101,6 +106,8 @@ Process exactly ${count} items from the ${itemFormat} list below and return the 
           totalItems: list.length,
           processedItems,
           totalBatches: activeBatches.length,
+          now,
+          chainStartTime: now,
         })
       ),
       chatGPTPrompt: `${prompt}\n\nAccumulator: ${(JSON.stringify(acc) || '').substring(
@@ -134,12 +141,16 @@ Process exactly ${count} items from the ${itemFormat} list below and return the 
       {
         batchIndex: `${startIndex}-${startIndex + items.length - 1}`,
         totalBatches: activeBatches.length,
+        now: new Date(),
+        chainStartTime: now,
       }
     );
   }
 
   emitBatchComplete(onProgress, 'reduce', list.length, {
     totalBatches: activeBatches.length,
+    now: new Date(),
+    chainStartTime: now,
   });
 
   return acc;

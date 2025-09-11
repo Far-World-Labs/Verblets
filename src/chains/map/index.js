@@ -32,7 +32,7 @@ import {
  * @returns { Promise<(string|undefined)[]> } results aligned with input order
  */
 const mapOnce = async function (list, instructions, config = {}) {
-  const { maxParallel = 3, onProgress } = config;
+  const { maxParallel = 3, onProgress, now = new Date(), chainStartTime } = config;
 
   const results = new Array(list.length);
   const batches = createBatches(list, config);
@@ -58,6 +58,8 @@ const mapOnce = async function (list, instructions, config = {}) {
   emitBatchStart(onProgress, 'map', list.length, {
     totalBatches: batchesToProcess.length,
     maxParallel,
+    now,
+    chainStartTime: chainStartTime || now,
   });
 
   let processedBatches = 0;
@@ -125,6 +127,8 @@ Preserve all formatting and newlines within each <item> element.`;
               totalItems: list.length,
               processedItems,
               totalBatches: batchesToProcess.length,
+              now,
+              chainStartTime: chainStartTime || now,
             })
           ),
           chatGPTPrompt: `${compiledPrompt}\n\nItems: ${JSON.stringify(items).substring(
@@ -132,6 +136,8 @@ Preserve all formatting and newlines within each <item> element.`;
             500
           )}...`,
           chatGPTConfig: listBatchOptions,
+          now,
+          chainStartTime: chainStartTime || now,
         });
 
         // listBatch now returns arrays directly
@@ -158,6 +164,8 @@ Preserve all formatting and newlines within each <item> element.`;
           {
             batchIndex: `${startIndex}-${startIndex + items.length - 1}`,
             totalBatches: batchesToProcess.length,
+            now: new Date(),
+            chainStartTime: chainStartTime || now,
           }
         );
 
@@ -193,6 +201,8 @@ Preserve all formatting and newlines within each <item> element.`;
 
   emitBatchComplete(onProgress, 'map', list.length, {
     totalBatches: batchesToProcess.length,
+    now: new Date(),
+    chainStartTime: chainStartTime || now,
   });
 
   return results;
@@ -214,7 +224,7 @@ Preserve all formatting and newlines within each <item> element.`;
  * @returns { Promise<(string|undefined)[]> }
  */
 const map = async function (list, instructions, config = {}) {
-  const { maxAttempts = 3, logger } = config;
+  const { maxAttempts = 3, logger, now = new Date() } = config;
 
   // Create logger for map chain
   const lifecycleLogger = createLifecycleLogger(logger, 'chain:map');
@@ -245,6 +255,8 @@ const map = async function (list, instructions, config = {}) {
   const results = await mapOnce(list, instructions, {
     ...config,
     logger: lifecycleLogger,
+    now,
+    chainStartTime: now,
   });
 
   for (let attempt = 1; attempt < maxAttempts; attempt += 1) {
@@ -272,6 +284,8 @@ const map = async function (list, instructions, config = {}) {
     const retryResults = await mapOnce(missingItems, instructions, {
       ...config,
       logger: lifecycleLogger,
+      now: new Date(),
+      chainStartTime: now,
     });
 
     retryResults.forEach((val, i) => {

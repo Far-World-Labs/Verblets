@@ -30,6 +30,7 @@ export default async function join(
     maxRetries = 2,
     llm,
     onProgress,
+    now = new Date(),
     ...options
   } = config;
 
@@ -53,6 +54,9 @@ Important: This is part of a larger sequence. Join these fragments while being m
     const result = await retry(chatGPT, {
       label: `join-window-${windowIndex + 1}`,
       maxRetries,
+      onProgress,
+      now,
+      chainStartTime: now,
       chatGPTPrompt: instruction,
       chatGPTConfig,
       logger: options.logger,
@@ -107,6 +111,9 @@ Add necessary connecting words, prepositions, conjunctions, or other filler text
       const stitchResult = await retry(chatGPT, {
         label: `join-stitch-${i}`,
         maxRetries,
+        onProgress,
+        now,
+        chainStartTime: now,
         chatGPTPrompt: stitchInstruction,
         chatGPTConfig: stitchConfig,
         logger: options.logger,
@@ -128,6 +135,8 @@ Add necessary connecting words, prepositions, conjunctions, or other filler text
         label: `join-nonoverlap-${i}`,
         maxAttempts: maxRetries + 1,
         onProgress,
+        now,
+        chainStartTime: now,
         chatGPTPrompt: joinInstruction,
         chatGPTConfig: joinConfig,
         logger: options.logger,

@@ -41,6 +41,7 @@ export default async function split(text, instructions, config = {}) {
     llm,
     targetSplitsPerChunk = null,
     onProgress,
+    now = new Date(),
     ...options
   } = config;
 
@@ -67,6 +68,8 @@ export default async function split(text, instructions, config = {}) {
         label: 'split',
         maxAttempts,
         onProgress,
+        now,
+        chainStartTime: now,
         chatGPTPrompt: prompt,
         chatGPTConfig,
         logger: options.logger,

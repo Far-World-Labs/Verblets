@@ -122,7 +122,7 @@ export function computeTagStatistics(vocabulary, taggedItems, options = {}) {
  * @returns {Promise<Object>} Initial tag vocabulary
  */
 async function generateInitialVocabulary(tagSystemSpec, sampleItems, config = {}) {
-  const { llm, maxAttempts = 3, onProgress, ...options } = config;
+  const { llm, maxAttempts = 3, onProgress, now = new Date(), ...options } = config;
 
   const prompt = `Generate a comprehensive tag vocabulary for categorizing items.
 
@@ -146,6 +146,8 @@ ${onlyJSON}`;
     label: 'tag-vocabulary-initial',
     maxAttempts,
     onProgress,
+    now,
+    chainStartTime: now,
     chatGPTPrompt: prompt,
     chatGPTConfig: {
       modelOptions: {
@@ -175,7 +177,15 @@ ${onlyJSON}`;
  * @returns {Promise<Object>} Refined tag vocabulary
  */
 async function refineVocabulary(vocabulary, taggedItems, tagSystemSpec, config = {}) {
-  const { llm, topN = 3, bottomN = 3, maxAttempts = 3, onProgress, ...options } = config;
+  const {
+    llm,
+    topN = 3,
+    bottomN = 3,
+    maxAttempts = 3,
+    onProgress,
+    now = new Date(),
+    ...options
+  } = config;
 
   // Compute statistics using pure function
   const analysis = computeTagStatistics(vocabulary, taggedItems, { topN, bottomN });
@@ -210,6 +220,8 @@ ${onlyJSON}`;
     label: 'tag-vocabulary-refine',
     maxAttempts,
     onProgress,
+    now,
+    chainStartTime: now,
     chatGPTPrompt: prompt,
     chatGPTConfig: {
       modelOptions: {
@@ -238,7 +250,7 @@ ${onlyJSON}`;
  * @returns {Promise<Object>} Final refined tag vocabulary
  */
 export default async function tagVocabulary(tagSystemSpec, items, config = {}) {
-  const { tagger, sampleSize = 50, maxAttempts = 3, ...options } = config;
+  const { tagger, sampleSize = 50, maxAttempts = 3, now = new Date(), ...options } = config;
 
   if (!tagger) {
     throw new Error('A tagger function must be provided in config');
@@ -250,6 +262,7 @@ export default async function tagVocabulary(tagSystemSpec, items, config = {}) {
   // Generate initial vocabulary
   const initialVocab = await generateInitialVocabulary(tagSystemSpec, sampleItems, {
     maxAttempts,
+    now,
     ...options,
   });
 
@@ -260,6 +273,7 @@ export default async function tagVocabulary(tagSystemSpec, items, config = {}) {
   // Refine vocabulary based on usage
   const finalVocab = await refineVocabulary(initialVocab, taggedItems, tagSystemSpec, {
     maxAttempts,
+    now,
     ...options,
   });
 

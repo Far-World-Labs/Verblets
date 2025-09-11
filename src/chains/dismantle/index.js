@@ -77,6 +77,7 @@ const defaultDecompose = async ({
   model = modelService.getBestPublicModel(),
   maxAttempts = 3,
   onProgress,
+  now = new Date(),
 } = {}) => {
   const focusFormatted = focus ? `: ${focus}` : '';
 
@@ -86,6 +87,8 @@ const defaultDecompose = async ({
     label: 'dismantle-decompose',
     maxAttempts,
     onProgress,
+    now,
+    chainStartTime: now,
     chatGPTPrompt: promptCreated,
     chatGPTConfig: {
       modelOptions: {
@@ -112,6 +115,7 @@ const defaultEnhance = async ({
   model = modelService.getBestPublicModel(),
   maxAttempts = 3,
   onProgress,
+  now = new Date(),
 } = {}) => {
   const promptCreated = componentOptionsPrompt(name, rootName, fixes);
   const budget = model.budgetTokens(promptCreated);
@@ -119,6 +123,8 @@ const defaultEnhance = async ({
     label: 'dismantle-enhance',
     maxAttempts,
     onProgress,
+    now,
+    chainStartTime: now,
     chatGPTPrompt: promptCreated,
     chatGPTConfig: {
       modelOptions: {
@@ -154,6 +160,8 @@ const makeNode = async ({
   enhanceFixes,
   decomposeFixes,
   maxAttempts = 3,
+  onProgress,
+  now = new Date(),
 } = {}) => {
   const name = nameInitial ?? rootName;
 
@@ -165,6 +173,8 @@ const makeNode = async ({
       rootName,
       fixes: enhanceFixes,
       maxAttempts,
+      onProgress,
+      now,
     });
     nodeNew.isEnhanced = true;
 
@@ -176,6 +186,8 @@ const makeNode = async ({
       rootName,
       fixes: decomposeFixes,
       maxAttempts,
+      onProgress,
+      now,
     });
     nodeNew.children = childNames.map((childName) => ({
       id: makeId(),
@@ -204,6 +216,8 @@ const makeSubtree = async ({
   decomposeFixes,
   makeId,
   maxAttempts = 3,
+  onProgress,
+  now = new Date(),
 } = {}) => {
   let tree = { ...(treeInitial ?? {}) };
 
@@ -217,6 +231,8 @@ const makeSubtree = async ({
     enhanceFixes,
     decomposeFixes,
     maxAttempts,
+    onProgress,
+    now,
   });
 
   tree = {
@@ -241,6 +257,8 @@ const makeSubtree = async ({
       enhanceFixes,
       decomposeFixes,
       maxAttempts,
+      onProgress,
+      now,
     });
 
     children.push(subtree);

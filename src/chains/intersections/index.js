@@ -43,7 +43,7 @@ const parseElements = (elements) => {
 /**
  * Process a single combination to get intersection elements and description
  */
-const processCombo = async (combo, instructions, maxAttempts = 3) => {
+const processCombo = async (combo, instructions, maxAttempts = 3, onProgress, now = new Date()) => {
   const comboKey = combo.join(' + ');
 
   // Get elements and description in parallel
@@ -51,6 +51,9 @@ const processCombo = async (combo, instructions, maxAttempts = 3) => {
     retry(chatGPT, {
       label: 'intersections-elements',
       maxAttempts,
+      onProgress,
+      now,
+      chainStartTime: now,
       chatGPTPrompt: INTERSECTION_PROMPT(combo, instructions),
       chatGPTConfig: {
         modelOptions: {
@@ -64,7 +67,7 @@ const processCombo = async (combo, instructions, maxAttempts = 3) => {
         },
       },
     }),
-    commonalities(combo, { instructions }),
+    commonalities(combo, { instructions, onProgress, now }),
   ]);
 
   const elementList = parseElements(elementsResponse);
@@ -109,6 +112,7 @@ export default async function intersections(items, options = {}) {
     useSchemaValidation = false,
     maxAttempts = 3,
     onProgress,
+    now = new Date(),
   } = options;
 
   // Generate all combinations
@@ -124,7 +128,7 @@ export default async function intersections(items, options = {}) {
   for (let i = 0; i < allCombinations.length; i += batchSize) {
     const batch = allCombinations.slice(i, i + batchSize);
     const batchResults = await Promise.all(
-      batch.map((combo) => processCombo(combo, instructions, maxAttempts))
+      batch.map((combo) => processCombo(combo, instructions, maxAttempts, onProgress, now))
     );
 
     // Add batch results to final results
@@ -135,7 +139,7 @@ export default async function intersections(items, options = {}) {
 
   // Validate results with JSON schema if enabled
   if (useSchemaValidation && Object.keys(results).length > 0) {
-    const validated = await validateIntersectionResults(results, llm, maxAttempts, onProgress);
+    const validated = await validateIntersectionResults(results, llm, maxAttempts, onProgress, now);
     return validated.intersections || results;
   }
 
@@ -180,7 +184,8 @@ async function validateIntersectionResults(
   intersections,
   llm = 'fastGoodCheap',
   maxAttempts = 3,
-  onProgress
+  onProgress,
+  now = new Date()
 ) {
   if (!intersections || Object.keys(intersections).length === 0) {
     return { intersections: {} };
@@ -203,6 +208,8 @@ Return the properly structured JSON object with an "intersections" property cont
       label: 'intersections-validation',
       maxAttempts,
       onProgress,
+      now,
+      chainStartTime: now,
       chatGPTPrompt: prompt,
       chatGPTConfig: {
         modelOptions,
