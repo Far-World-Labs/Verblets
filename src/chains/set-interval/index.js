@@ -66,6 +66,7 @@ export default function setInterval({
   llm,
   maxAttempts = 3,
   onProgress,
+  now = new Date(),
   ...options
 } = {}) {
   let timer;
@@ -103,6 +104,8 @@ Next wait:`;
         label: 'set-interval',
         maxAttempts,
         onProgress,
+        now,
+        chainStartTime: now,
         chatGPTPrompt: intervalPrompt,
         chatGPTConfig: {
           modelOptions: model ? { modelName: model, ...llm } : { ...llm },

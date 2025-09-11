@@ -37,7 +37,7 @@ const GROUP_PROCESS_STEPS = `Extract entities and group them by patterns, types,
  * @returns {Promise<string>} Entity specification as descriptive text
  */
 export async function entitySpec(prompt, config = {}) {
-  const { llm, maxAttempts = 3, onProgress, ...rest } = config;
+  const { llm, maxAttempts = 3, onProgress, now = new Date(), ...rest } = config;
 
   const specSystemPrompt = `You are an entity specification generator. Create a clear, concise specification for entity extraction.`;
 
@@ -56,6 +56,8 @@ Keep it simple and actionable.`;
     label: 'entities-spec',
     maxAttempts,
     onProgress,
+    now,
+    chainStartTime: now,
     chatGPTPrompt: specUserPrompt,
     chatGPTConfig: {
       llm,
@@ -75,7 +77,7 @@ Keep it simple and actionable.`;
  * @returns {Promise<Object>} Object with entities array
  */
 export async function applyEntities(text, specification, config = {}) {
-  const { llm, maxAttempts = 3, onProgress, ...options } = config;
+  const { llm, maxAttempts = 3, onProgress, now = new Date(), ...options } = config;
 
   const prompt = `Apply the entity specification to extract entities from this text.
 
@@ -95,6 +97,8 @@ ${onlyJSON}`;
     label: 'entities-apply',
     maxAttempts,
     onProgress,
+    now,
+    chainStartTime: now,
     chatGPTPrompt: prompt,
     chatGPTConfig: {
       modelOptions: {
@@ -122,19 +126,23 @@ ${onlyJSON}`;
  * @returns {Promise<Object>} Object with entities array
  */
 export async function extractEntities(text, instructions, config = {}) {
-  const { onProgress, ...restConfig } = config;
+  const { onProgress, now = new Date(), ...restConfig } = config;
 
   emitStepProgress(onProgress, 'entities', 'generating-specification', {
     instructions,
+    now: new Date(),
+    chainStartTime: now,
   });
 
-  const spec = await entitySpec(instructions, { onProgress, ...restConfig });
+  const spec = await entitySpec(instructions, { onProgress, now, ...restConfig });
 
   emitStepProgress(onProgress, 'entities', 'extracting-entities', {
     specification: spec,
+    now: new Date(),
+    chainStartTime: now,
   });
 
-  return await applyEntities(text, spec, { onProgress, ...restConfig });
+  return await applyEntities(text, spec, { onProgress, now, ...restConfig });
 }
 
 // ===== Instruction Builders =====

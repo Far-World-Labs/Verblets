@@ -68,6 +68,7 @@ export const generateList = async function* generateListGenerator(text, options 
     model = 'fastGoodCheap',
     maxAttempts = 3,
     onProgress,
+    now = new Date(),
     // eslint-disable-next-line no-unused-vars
     _schema,
     ...passThroughOptions
@@ -90,6 +91,8 @@ export const generateList = async function* generateListGenerator(text, options 
         label: 'list-generate',
         maxAttempts,
         onProgress,
+        now,
+        chainStartTime: now,
         chatGPTPrompt: listPrompt,
         chatGPTConfig: {
           modelOptions,
@@ -160,7 +163,7 @@ export const generateList = async function* generateListGenerator(text, options 
 };
 
 export default async function list(prompt, config = {}) {
-  const { llm, schema, maxAttempts = 3, onProgress, ...options } = config;
+  const { llm, schema, maxAttempts = 3, onProgress, now = new Date(), ...options } = config;
   const fullPrompt = `${prompt}\n\n${onlyJSONArray}`;
 
   const modelOptions = createModelOptions(llm);
@@ -168,6 +171,8 @@ export default async function list(prompt, config = {}) {
     label: 'list-main',
     maxAttempts,
     onProgress,
+    now,
+    chainStartTime: now,
     chatGPTPrompt: fullPrompt,
     chatGPTConfig: {
       modelOptions,

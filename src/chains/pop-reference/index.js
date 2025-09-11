@@ -52,6 +52,7 @@ export default async function popReference(sentence, description, options = {}) 
     llm,
     maxAttempts = 3,
     onProgress,
+    now = new Date(),
     ...restOptions
   } = options;
 
@@ -110,6 +111,8 @@ ${onlyJSON}`;
     label: 'pop-reference',
     maxAttempts,
     onProgress,
+    now,
+    chainStartTime: now,
     chatGPTPrompt: prompt,
     chatGPTConfig: {
       modelOptions,

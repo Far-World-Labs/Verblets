@@ -67,6 +67,7 @@ const generateQuestions = async function* generateQuestionsGenerator(text, optio
     model = modelService.getBestPublicModel(),
     maxAttempts = 3,
     onProgress,
+    now = new Date(),
   } = options;
 
   let attempts = 0;
@@ -83,6 +84,8 @@ const generateQuestions = async function* generateQuestionsGenerator(text, optio
         label: 'questions-pick-interesting',
         maxAttempts,
         onProgress,
+        now,
+        chainStartTime: now,
         chatGPTPrompt: pickInterestingQuestionPrompt,
         chatGPTConfig: {
           modelOptions: {
@@ -123,6 +126,8 @@ const generateQuestions = async function* generateQuestionsGenerator(text, optio
       label: 'questions-generate',
       maxAttempts,
       onProgress,
+      now,
+      chainStartTime: now,
       chatGPTPrompt: `${promptCreated}`,
       chatGPTConfig,
     });

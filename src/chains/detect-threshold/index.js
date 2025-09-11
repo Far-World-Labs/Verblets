@@ -58,6 +58,7 @@ export default async function detectThreshold({
   llm = { negotiate: { good: true } },
   maxAttempts = 3,
   onProgress,
+  now = new Date(),
   ...options
 }) {
   if (!data || !Array.isArray(data) || data.length === 0) {
@@ -170,6 +171,7 @@ Return the updated accumulator as valid JSON.`;
       },
     },
     onProgress,
+    now,
     ...options,
   });
 
@@ -230,6 +232,8 @@ Return threshold candidates with their rationales.`;
     label: 'detect-threshold-analysis',
     maxAttempts,
     onProgress,
+    now,
+    chainStartTime: now,
     chatGPTPrompt: finalPrompt,
     chatGPTConfig: {
       modelOptions,

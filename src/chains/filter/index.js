@@ -25,6 +25,7 @@ export default async function filter(list, instructions, config = {}) {
     maxAttempts = 3,
     logger,
     onProgress,
+    now = new Date(),
     ...options
   } = config;
 
@@ -51,6 +52,8 @@ export default async function filter(list, instructions, config = {}) {
 
   emitBatchStart(onProgress, 'filter', list.length, {
     totalBatches: activeBatches.length,
+    now,
+    chainStartTime: now,
   });
 
   let processedItems = 0;
@@ -117,6 +120,8 @@ Process exactly ${count} items from the XML list below and return ${count} yes/n
       response = await retry(() => listBatch(items, prompt, listBatchOptions), {
         label: `filter:batch`,
         maxAttempts,
+        now,
+        chainStartTime: now,
         onProgress: createBatchProgressCallback(
           onProgress,
           createBatchContext({
@@ -126,6 +131,8 @@ Process exactly ${count} items from the XML list below and return ${count} yes/n
             totalItems: list.length,
             processedItems,
             totalBatches: activeBatches.length,
+            now,
+            chainStartTime: now,
           })
         ),
         chatGPTPrompt: `${prompt}\n\nItems: ${JSON.stringify(items).substring(0, 500)}...`,
@@ -176,6 +183,8 @@ Process exactly ${count} items from the XML list below and return ${count} yes/n
       {
         batchIndex: `${startIndex}-${startIndex + items.length - 1}`,
         totalBatches: activeBatches.length,
+        now: new Date(),
+        chainStartTime: now,
       }
     );
 
@@ -190,6 +199,8 @@ Process exactly ${count} items from the XML list below and return ${count} yes/n
 
   emitBatchComplete(onProgress, 'filter', list.length, {
     totalBatches: activeBatches.length,
+    now: new Date(),
+    chainStartTime: now,
   });
 
   if (logger?.info) {

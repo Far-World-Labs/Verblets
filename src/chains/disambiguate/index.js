@@ -48,6 +48,7 @@ export const getMeanings = async (term, config = {}) => {
     llm,
     maxAttempts = 3,
     onProgress,
+    now = new Date(),
     ...options
   } = config;
   const prompt = meaningsPrompt(term);
@@ -57,6 +58,8 @@ export const getMeanings = async (term, config = {}) => {
     label: 'disambiguate-get-meanings',
     maxAttempts,
     onProgress,
+    now,
+    chainStartTime: now,
     chatGPTPrompt: prompt,
     chatGPTConfig: {
       maxTokens: budget.completion,
@@ -76,23 +79,34 @@ export default async function disambiguate({
   maxAttempts = 3,
   ...config
 } = {}) {
-  const { llm, onProgress, ...options } = config;
+  const { llm, onProgress, now = new Date(), ...options } = config;
 
   emitStepProgress(onProgress, 'disambiguate', 'extracting-meanings', {
     term,
+    now: new Date(),
+    chainStartTime: now,
   });
 
-  const meanings = await getMeanings(term, { model, llm, maxAttempts, onProgress, ...options });
+  const meanings = await getMeanings(term, {
+    model,
+    llm,
+    maxAttempts,
+    onProgress,
+    now,
+    ...options,
+  });
 
   emitStepProgress(onProgress, 'disambiguate', 'scoring-meanings', {
     term,
     meaningCount: meanings.length,
+    now: new Date(),
+    chainStartTime: now,
   });
 
   const scores = await score(
     meanings,
     `how well this meaning of "${term}" matches the context: ${context}`,
-    { llm, onProgress, ...options }
+    { llm, onProgress, now, ...options }
   );
 
   let bestIndex = 0;

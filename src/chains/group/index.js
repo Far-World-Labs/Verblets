@@ -94,6 +94,7 @@ export default async function group(list, instructions, config = {}) {
     autoModeThreshold,
     llm,
     onProgress,
+    now = new Date(),
     ...options
   } = config;
 
@@ -101,6 +102,8 @@ export default async function group(list, instructions, config = {}) {
   if (onProgress) {
     emitPhaseProgress(onProgress, 'group', 'category-discovery', {
       description: 'Discovering categories from items',
+      now: new Date(),
+      chainStartTime: now,
     });
   }
 
@@ -131,6 +134,8 @@ export default async function group(list, instructions, config = {}) {
     emitPhaseProgress(onProgress, 'group', 'assignment', {
       description: 'Assigning items to categories',
       categoryCount: categories.length,
+      now: new Date(),
+      chainStartTime: now,
     });
   }
 

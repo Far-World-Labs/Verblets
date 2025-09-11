@@ -37,7 +37,7 @@ const tagsMapSchema = {
  * @returns {Promise<string>} Tag specification
  */
 export async function tagSpec(instructions, config = {}) {
-  const { llm, maxAttempts = 3, onProgress, ...rest } = config;
+  const { llm, maxAttempts = 3, onProgress, now = new Date(), ...rest } = config;
 
   const specSystemPrompt = `You are a tag specification generator. Create clear, actionable tagging criteria.`;
 
@@ -57,6 +57,8 @@ Keep it concise and actionable.`;
     label: 'tags-spec',
     maxAttempts,
     onProgress,
+    now,
+    chainStartTime: now,
     chatGPTPrompt: specUserPrompt,
     chatGPTConfig: {
       llm,
@@ -78,7 +80,7 @@ Keep it concise and actionable.`;
  * @returns {Promise<Array>} Array of tag IDs
  */
 export async function applyTags(item, specification, vocabulary, config = {}) {
-  const { llm, maxAttempts = 3, onProgress, ...options } = config;
+  const { llm, maxAttempts = 3, onProgress, now = new Date(), ...options } = config;
 
   const prompt = `You are a tagger. Apply tags to the given item based on the specification.
 
@@ -100,6 +102,8 @@ ${onlyJSON}`;
     label: 'tags-apply',
     maxAttempts,
     onProgress,
+    now,
+    chainStartTime: now,
     chatGPTPrompt: prompt,
     chatGPTConfig: {
       modelOptions: {
@@ -130,8 +134,9 @@ ${onlyJSON}`;
  * @returns {Promise<Array>} Array of tag IDs
  */
 export async function tagItem(item, instructions, vocabulary, config = {}) {
-  const spec = await tagSpec(instructions, config);
-  return await applyTags(item, spec, vocabulary, config);
+  const { now = new Date(), ...restConfig } = config;
+  const spec = await tagSpec(instructions, { now, ...restConfig });
+  return await applyTags(item, spec, vocabulary, { now, ...restConfig });
 }
 
 /**
@@ -143,7 +148,8 @@ export async function tagItem(item, instructions, vocabulary, config = {}) {
  * @returns {Promise<Array>} Array of tag arrays
  */
 export async function mapTags(list, instructions, vocabulary, config = {}) {
-  const spec = await tagSpec(instructions, config);
+  const { now = new Date(), ...restConfig } = config;
+  const spec = await tagSpec(instructions, { now, ...restConfig });
   const mapInstr = mapInstructions({ specification: spec, vocabulary });
 
   // Ensure items are properly serialized for the map chain
@@ -154,7 +160,8 @@ export async function mapTags(list, instructions, vocabulary, config = {}) {
 
   // Configure map to use our structured schema for tag arrays
   const mapConfig = {
-    ...config,
+    ...restConfig,
+    now,
     responseFormat: {
       type: 'json_schema',
       json_schema: {

@@ -60,6 +60,7 @@ const sort = async (list, criteria, config = {}) => {
     onProgress = undefined, // Callback: ({top, bottom, processed, total}) => void
     llm,
     maxAttempts = 3,
+    now = new Date(),
     ...options
   } = config;
 
@@ -71,6 +72,8 @@ const sort = async (list, criteria, config = {}) => {
     extremeK,
     iterations,
     criteria,
+    now,
+    chainStartTime: now,
   });
 
   // Sort a batch of items with LLM
@@ -87,7 +90,9 @@ const sort = async (list, criteria, config = {}) => {
     const result = await retry(chatGPT, {
       label: 'sort-batch',
       maxAttempts,
-      onProgress: config.onProgress,
+      onProgress,
+      now,
+      chainStartTime: now,
       chatGPTPrompt: prompt,
       chatGPTConfig: {
         modelOptions,
@@ -115,6 +120,8 @@ const sort = async (list, criteria, config = {}) => {
         chunkNumber: processedChunks + 1,
         totalChunks: chunks.length,
         chunkSize: chunk.length,
+        now: new Date(),
+        chainStartTime: now,
       });
       // Current chunk competes with the global extremes
       const itemsToSort = [...chunk, ...globalTop, ...(selectBottom ? globalBottom : [])];
@@ -173,6 +180,8 @@ const sort = async (list, criteria, config = {}) => {
       iteration: iter + 1,
       totalIterations: iterations,
       remainingItems: remaining.length,
+      now: new Date(),
+      chainStartTime: now,
     });
 
     // eslint-disable-next-line no-await-in-loop
@@ -217,6 +226,8 @@ const sort = async (list, criteria, config = {}) => {
     topItems: finalTop.length,
     bottomItems: finalBottom.length,
     remainingItems: remaining.length,
+    now: new Date(),
+    chainStartTime: now,
   });
 
   return result;
