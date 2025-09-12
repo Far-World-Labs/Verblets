@@ -24,6 +24,11 @@ export class ModuleCollector {
     // Could track module-level events if needed
   }
 
+  reset() {
+    // Module collector doesn't store state currently
+    // Method added for consistency with other collectors
+  }
+
   async gatherContext(moduleDir, options = {}) {
     const fallback = emptyContext(moduleDir);
 
