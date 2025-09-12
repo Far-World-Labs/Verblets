@@ -170,6 +170,15 @@ export class DetailsProcessor extends BaseProcessor {
     await super.processEvent(event);
     if (!this.enabled) return;
 
+    // Reset state on new run
+    if (eventType === 'run-start') {
+      this.rendered = false;
+      this.moduleContextPromise = undefined;
+      this.aiMdConfigPromise = undefined;
+      this.testCollector.reset();
+      this.moduleCollector.reset();
+    }
+
     // Feed event to collectors
     this.testCollector.processEvent(event);
     this.moduleCollector.processEvent(event);

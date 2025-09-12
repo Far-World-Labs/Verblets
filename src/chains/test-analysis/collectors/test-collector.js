@@ -169,4 +169,12 @@ export class TestCollector {
     const index = Math.ceil((percentile / 100) * sorted.length) - 1;
     return sorted[Math.max(0, index)];
   }
+
+  reset() {
+    this.moduleDir = undefined;
+    this.tests = [];
+    this.currentTest = undefined;
+    this.llmCalls = [];
+    this.pendingLLMCalls = new Map();
+  }
 }
