@@ -1,328 +1,244 @@
 /**
  * Model Configuration for LLM Services
  *
- * This module defines model configurations for various LLM providers including
- * OpenAI, Anthropic, and other services. It handles environment variable
- * validation and provides sensible defaults for different use cases.
+ * Three layers:
+ *   1. catalog    – every known model, keyed by its real API name
+ *   2. mapping    – capability aliases (fastGood, reasoning, …) → catalog key
+ *   3. _models    – runtime model definitions consumed by llm-model service
  */
 
 import { env, runtime } from '../lib/env/index.js';
 import { assertValidModelDef } from './model-validation.js';
 
-// Validate critical environment variables
-function validateEnvironment() {
-  const required = ['OPENAI_API_KEY'];
-  const missing = required.filter((key) => !env[key] && env.NODE_ENV !== 'test');
-
-  if (missing.length > 0) {
-    console.warn(`Warning: Missing environment variables: ${missing.join(', ')}`);
-    console.warn('Some model configurations may not work properly.');
-
-    // Special warning for browser environments about API keys
-    if (runtime.isBrowser && missing.includes('OPENAI_API_KEY') && env.OPENAI_API_KEY) {
-      console.warn(
-        'WARNING: OpenAI API key detected in browser environment. ' +
-          'For security, please use a proxy endpoint instead and configure it via OPENAI_PROXY_URL env variable.'
-      );
-    }
-  }
-}
-
-// Validate environment on module load (except in tests)
-if (env.NODE_ENV !== 'test') {
-  validateEnvironment();
-}
-
-/**
- * Base model configurations organized by provider and capability
- */
-
-// OpenAI GPT Models - Primary LLM provider
-export const gpt4o = 'gpt-4o';
-export const gpt4oMini = 'gpt-4o-mini';
-export const gpt4Turbo = 'gpt-4-turbo';
-export const gpt35Turbo = 'gpt-3.5-turbo';
-
-// Anthropic Claude Models - Alternative provider for specific use cases
-export const claude35Sonnet = 'claude-3-5-sonnet-20241022';
-export const claude3Haiku = 'claude-3-haiku-20240307';
-
-// Specialized Models
-export const o1Preview = 'o1-preview'; // Advanced reasoning
-export const o1Mini = 'o1-mini'; // Lightweight reasoning
-
-/**
- * Capability-based model aliases for consistent usage patterns
- * These provide semantic meaning to model selection
- */
-
-// Performance tiers
-export const fast = gpt4oMini; // Quick responses, lower cost
-export const good = gpt4o; // Balanced performance/cost
-export const smart = gpt4Turbo; // High capability tasks
-export const cheap = gpt4oMini; // Cost-optimized
-
-// Combined capability aliases
-export const fastGood = gpt4o; // Fast + Good quality
-export const fastGoodCheap = gpt4oMini; // Optimized for all three
-export const goodCheap = gpt4o; // Quality + Cost balance
-export const smartExpensive = o1Preview; // Maximum capability
-
-// Legacy and compatibility aliases
-export const llmDefault = gpt4o; // Default LLM model
-export const default4o = gpt4o; // Explicit 4o reference
-
-// Provider-specific aliases for consistency
-export const openai = {
-  gpt4o,
-  gpt4oMini,
-  gpt4Turbo,
-  gpt35Turbo,
-  o1Preview,
-  o1Mini,
-};
-
-export const anthropic = {
-  claude35Sonnet,
-  claude3Haiku,
-};
-
-/**
- * Model selection utilities
- */
-
-// Get model for specific use case
-export function getModelForUseCase(useCase) {
-  const useCaseMap = {
-    fast,
-    quality: good,
-    reasoning: smart,
-    cost: cheap,
-    balanced: fastGood,
-    default: good,
-  };
-
-  return useCaseMap[useCase] || good;
-}
-
-// Validate model availability
-export function isModelAvailable(model) {
-  const availableModels = [
-    gpt4o,
-    gpt4oMini,
-    gpt4Turbo,
-    gpt35Turbo,
-    claude35Sonnet,
-    claude3Haiku,
-    o1Preview,
-    o1Mini,
-  ];
-
-  return availableModels.includes(model);
-}
-
-const _models = {};
-
-// Function to get API key at runtime
-const getOpenAIKey = () => env.OPENAI_API_KEY;
-
-// Function to get API URL with proxy support
-const getOpenAIUrl = () => env.OPENAI_PROXY_URL || 'https://api.openai.com/';
+// ── Shared ──────────────────────────────────────────────────────────
 
 const systemPrompt = `You are a superintelligent processing unit, answering prompts with precise instructions.
-You are a small but critical component in a complex system, so your role in giving quality outputs to your given inputs and instructions is critical. 
-You must obey those instructions to the letter at all costs--do not deviate or add your own interpretation or flair. Stick to the instructions. 
+You are a small but critical component in a complex system, so your role in giving quality outputs to your given inputs and instructions is critical.
+You must obey those instructions to the letter at all costs--do not deviate or add your own interpretation or flair. Stick to the instructions.
 Aim to be direct, accurate, correct, and concise.
 You'll often be given complex inputs alongside your instructions. Consider the inputs carefully and think through your answer in relation to the inputs and instructions.
 Most prompts will ask for a specific output format, so comply with those details exactly as well.`;
 
-// // $0.10-0.40/1M tokens
-// // cutoff: 5/2024
-// // supports image inputs, very high speed, 1M token context, 32K output
-// // low intelligence, but > 3.5 turbo
-// _models.fastCheapMulti = {
-//   endpoint: 'v1/chat/completions',
-//   name: 'gpt-4.1-nano-2025-04-14',
-//   maxContextWindow: 1_047_576,
-//   maxOutputTokens: 32_768,
-//   requestTimeout: 20_000,
-//   apiKey: process.env.OPENAI_API_KEY,
-//   get apiUrl() {
-//     return getOpenAIUrl();
-//   },
-//   systemPrompt,
-// };
+// ── Model Catalog ───────────────────────────────────────────────────
+// Every model the library knows about, keyed by the provider-specific name.
 
-// // $.40-$1.60/1M tokens
-// // cutoff: 05/2024
-// // supports image inputs, high speed, 1M token context, 32K output
-// _models.fastGoodMulti = {
-//   endpoint: 'v1/chat/completions',
-//   name: 'gpt-4.1-mini-2025-04-14',
-//   maxContextWindow: 1_047_576,
-//   maxOutputTokens: 32_768,
-//   requestTimeout: 20_000,
-//   apiKey: process.env.OPENAI_API_KEY,
-//   get apiUrl() {
-//     return getOpenAIUrl();
-//   },
-//   systemPrompt,
-// };
-_models.fastCheapMulti = {
-  endpoint: 'v1/chat/completions',
-  name: 'gpt-4o',
-  maxContextWindow: 128_000,
-  maxOutputTokens: 16_384,
-  requestTimeout: 20_000,
-  get apiKey() {
-    return getOpenAIKey();
+export const catalog = {
+  'gpt-4o': {
+    provider: 'openai',
+    endpoint: 'v1/chat/completions',
+    maxContextWindow: 128_000,
+    maxOutputTokens: 16_384,
+    requestTimeout: 20_000,
+    get apiKey() {
+      return env.OPENAI_API_KEY;
+    },
+    get apiUrl() {
+      return env.OPENAI_PROXY_URL || 'https://api.openai.com/';
+    },
+    systemPrompt,
   },
-  get apiUrl() {
-    return getOpenAIUrl();
+  'o4-mini-2025-04-16': {
+    provider: 'openai',
+    endpoint: 'v1/chat/completions',
+    maxContextWindow: 128_000,
+    maxOutputTokens: 16_384,
+    requestTimeout: 40_000,
+    get apiKey() {
+      return env.OPENAI_API_KEY;
+    },
+    get apiUrl() {
+      return env.OPENAI_PROXY_URL || 'https://api.openai.com/';
+    },
+    systemPrompt,
   },
-  systemPrompt,
+  'o3-2025-04-16': {
+    provider: 'openai',
+    endpoint: 'v1/chat/completions',
+    maxContextWindow: 200_000,
+    maxOutputTokens: 100_000,
+    requestTimeout: 120_000,
+    get apiKey() {
+      return env.OPENAI_API_KEY;
+    },
+    get apiUrl() {
+      return env.OPENAI_PROXY_URL || 'https://api.openai.com/';
+    },
+    systemPrompt,
+  },
+  'claude-sonnet-4-5-20250514': {
+    provider: 'anthropic',
+    endpoint: 'v1/messages',
+    maxContextWindow: 200_000,
+    maxOutputTokens: 16_384,
+    requestTimeout: 30_000,
+    get apiKey() {
+      return env.ANTHROPIC_API_KEY;
+    },
+    get apiUrl() {
+      return 'https://api.anthropic.com/';
+    },
+    systemPrompt,
+  },
+  'claude-haiku-4-5-20250514': {
+    provider: 'anthropic',
+    endpoint: 'v1/messages',
+    maxContextWindow: 200_000,
+    maxOutputTokens: 16_384,
+    requestTimeout: 20_000,
+    get apiKey() {
+      return env.ANTHROPIC_API_KEY;
+    },
+    get apiUrl() {
+      return 'https://api.anthropic.com/';
+    },
+    systemPrompt,
+  },
+  'claude-opus-4-5-20250514': {
+    provider: 'anthropic',
+    endpoint: 'v1/messages',
+    maxContextWindow: 200_000,
+    maxOutputTokens: 32_000,
+    requestTimeout: 60_000,
+    get apiKey() {
+      return env.ANTHROPIC_API_KEY;
+    },
+    get apiUrl() {
+      return 'https://api.anthropic.com/';
+    },
+    systemPrompt,
+  },
+  'gemma3:12b-it-qat': {
+    provider: 'openwebui',
+    endpoint: 'api/chat/completions',
+    maxContextWindow: 128_000,
+    maxOutputTokens: 8_192,
+    requestTimeout: 240_000,
+    get apiUrl() {
+      const url = env.OPENWEBUI_API_URL ?? '';
+      return url.endsWith('/') ? url : `${url}/`;
+    },
+    get apiKey() {
+      return env.OPENWEBUI_API_KEY;
+    },
+    systemPrompt,
+    modelOptions: {},
+  },
 };
 
-// $2.5-$10.00/1M tokens
-// cutoff: 09/2023
-// supports image inputs, moderate speed
-_models.goodMulti = {
-  endpoint: 'v1/chat/completions',
-  name: 'gpt-4o',
-  maxContextWindow: 128_000,
-  maxOutputTokens: 16_384,
-  requestTimeout: 20_000,
-  get apiKey() {
-    return getOpenAIKey();
-  },
-  get apiUrl() {
-    return getOpenAIUrl();
-  },
-  systemPrompt,
+// ── Default Capability Mapping ──────────────────────────────────────
+// Maps semantic capability names to catalog model names.
+// Override via .verblets.json or window.verblets.models (browser).
+
+export const defaultMapping = {
+  fastGood: 'gpt-4o',
+  fastCheap: 'gpt-4o',
+  reasoning: 'o4-mini-2025-04-16',
+  privacy: 'gemma3:12b-it-qat',
 };
 
-// Caution!: $1.1-4.4/1M tokens
-// cutoff: 05/2024
-// supports image inputs, moderate speed
-_models.fastCheapReasoningMulti = {
-  endpoint: 'v1/chat/completions',
-  name: 'o4-mini-2025-04-16',
-  maxContextWindow: 128_000,
-  maxOutputTokens: 16_384,
-  requestTimeout: 40_000,
-  get apiKey() {
-    return getOpenAIKey();
-  },
-  get apiUrl() {
-    return getOpenAIUrl();
-  },
-  systemPrompt,
+// ── Environment Validation ──────────────────────────────────────────
+
+function validateEnvironment() {
+  const hasOpenAI = !!env.OPENAI_API_KEY;
+  const hasAnthropic = !!env.ANTHROPIC_API_KEY;
+
+  if (!hasOpenAI && !hasAnthropic && env.NODE_ENV !== 'test') {
+    console.warn('Warning: No LLM API keys found (OPENAI_API_KEY or ANTHROPIC_API_KEY).');
+    console.warn('At least one provider key is required for model configurations to work.');
+  }
+
+  if (runtime.isBrowser && hasOpenAI) {
+    console.warn(
+      'WARNING: API key detected in browser environment. ' +
+        'For security, please use a proxy endpoint instead.'
+    );
+  }
+}
+
+if (env.NODE_ENV !== 'test') {
+  validateEnvironment();
+}
+
+// ── Build _models from catalog + mapping ────────────────────────────
+// The _models object provides the capability-keyed entries that
+// llm-model/index.js wraps in Model instances.
+
+const _models = {};
+
+// Helper: resolve a mapping value to a catalog entry
+const resolveCatalogEntry = (modelName) => {
+  const entry = catalog[modelName];
+  if (!entry) return undefined;
+  return { name: modelName, ...entry };
 };
 
-// Caution!: $10-40/1M tokens
-// cutoff: 05/2024
-// supports image inputs
-_models.reasoningNoImage = {
-  endpoint: 'v1/chat/completions',
-  name: 'o3-2025-04-16',
-  maxContextWindow: 200_000,
-  maxOutputTokens: 100_000,
-  requestTimeout: 120_000,
-  get apiKey() {
-    return getOpenAIKey();
-  },
-  get apiUrl() {
-    return getOpenAIUrl();
-  },
-  systemPrompt,
-};
+// Populate from defaultMapping
+Object.entries(defaultMapping).forEach(([capability, modelName]) => {
+  const entry = resolveCatalogEntry(modelName);
+  if (entry) {
+    _models[capability] = entry;
+  }
+});
 
-// Full matrix with explicit names (no aliases)
-_models.fastGoodMulti = _models.fastCheapMulti;
-_models.fastGoodCheapMulti = _models.fastGoodMulti; // Default system model
-_models.fastGoodCheap = _models.fastGoodMulti;
-_models.fastGoodCheapCoding = _models.fastGoodMulti; // Coding-optimized model
-_models.fastMulti = _models.fastGoodMulti;
-_models.fast = _models.fastGoodMulti;
-_models.fastGood = _models.fastGoodMulti;
-_models.fastReasoningMulti = _models.fastCheapReasoningMulti;
-_models.fastReasoning = _models.fastCheapReasoningMulti;
+// Build full capability matrix (aliases pointing to base capabilities)
+_models.fastGoodMulti = _models.fastGood;
+_models.fastGoodCheap = _models.fastGood;
+_models.fastGoodCheapMulti = _models.fastGood;
+_models.fastGoodCheapCoding = _models.fastGood;
+_models.fastMulti = _models.fastGood;
+_models.fast = _models.fastGood;
 
-// eslint-disable-next-line no-self-assign
-_models.fastCheapMulti = _models.fastCheapMulti;
-_models.fastCheap = _models.fastCheapMulti;
-_models.fastCheapReasoning = _models.fastCheapReasoningMulti;
+_models.fastCheapMulti = _models.fastCheap;
+_models.cheapMulti = _models.fastCheap;
+_models.cheap = _models.fastCheap;
+_models.cheapGoodMulti = _models.fastGood;
+_models.cheapGood = _models.fastGood;
+_models.goodMulti = _models.fastGood;
+_models.good = _models.fastGood;
 
-_models.cheapMulti = _models.fastCheapMulti;
-_models.cheap = _models.fastCheapMulti;
-_models.cheapGoodMulti = _models.fastGoodMulti;
-_models.cheapGood = _models.fastGoodMulti;
-_models.cheapReasoningMulti = _models.fastCheapReasoningMulti;
-_models.cheapReasoning = _models.fastCheapReasoningMulti;
-
-// eslint-disable-next-line no-self-assign
-_models.goodMulti = _models.goodMulti; // Caution: Moderate cost
-_models.good = _models.goodMulti; // Caution: Moderate cost
-
-_models.reasoningMulti = _models.fastCheapReasoningMulti; // Caution: Moderate cost
-_models.reasoning = _models.reasoningNoImage; // Caution: High cost
-
-// Gemma 3 12B QAT - Quantization Aware Trained model
-// 3x less memory than BF16 while maintaining quality
-// Better accuracy than 4B model for complex tasks
-// Multimodal (text + vision), 128K context window
-// https://ollama.com/library/gemma3:12b-it-qat
-_models.privacy = {
-  name: 'gemma3:12b-it-qat',
-  endpoint: 'api/chat/completions',
-  maxContextWindow: 128_000,
-  maxOutputTokens: 8_192,
-  requestTimeout: 240_000, // 4 minutes for the 12B model
-  get apiUrl() {
-    const url = env.OPENWEBUI_API_URL ?? '';
-    return url.endsWith('/') ? url : `${url}/`;
-  },
-  get apiKey() {
-    return env.OPENWEBUI_API_KEY;
-  },
-  systemPrompt,
-  modelOptions: {},
-};
+_models.fastCheapReasoning = _models.reasoning;
+_models.fastCheapReasoningMulti = _models.reasoning;
+_models.fastReasoning = _models.reasoning;
+_models.fastReasoningMulti = _models.reasoning;
+_models.cheapReasoning = _models.reasoning;
+_models.cheapReasoningMulti = _models.reasoning;
+_models.reasoningMulti = _models.reasoning;
+_models.reasoningNoImage = resolveCatalogEntry('o3-2025-04-16');
 
 // Validate all model definitions
 Object.entries(_models).forEach(([key, model]) => {
-  assertValidModelDef(key, model);
+  if (model) assertValidModelDef(key, model);
 });
 
-// Allow tests to run without requiring an API key
-if (env.NODE_ENV !== 'test') {
-  // expect(env.OPENAI_API_KEY).to.exist;
-}
+// ── Exported Config Constants ───────────────────────────────────────
+// Env vars renamed from CHATGPT_* → VERBLETS_* (old names still honoured)
 
 const secondsInDay = 60 * 60 * 24;
-const secondsInYear = secondsInDay * 365; // 365 days
-export const cacheTTL = env.CHATGPT_CACHE_TTL ?? secondsInYear;
+const secondsInYear = secondsInDay * 365;
+export const cacheTTL = env.VERBLETS_CACHE_TTL ?? env.CHATGPT_CACHE_TTL ?? secondsInYear;
 
-// Caching can be disabled by setting DISABLE_CACHE=true
-// By default, caching is enabled when Redis is available and working
 export const cachingEnabled = env.DISABLE_CACHE !== 'true';
 
-export const debugPromptGlobally = env.CHATGPT_DEBUG_PROMPT ?? false;
+export const debugPromptGlobally = env.VERBLETS_DEBUG_PROMPT ?? env.CHATGPT_DEBUG_PROMPT ?? false;
 
-export const debugPromptGloballyIfChanged = env.CHATGPT_DEBUG_REQUEST_IF_CHANGED ?? false;
+export const debugPromptGloballyIfChanged =
+  env.VERBLETS_DEBUG_REQUEST_IF_CHANGED ?? env.CHATGPT_DEBUG_REQUEST_IF_CHANGED ?? false;
 
-export const debugResultGlobally = env.CHATGPT_DEBUG_RESPONSE ?? false;
+export const debugResultGlobally =
+  env.VERBLETS_DEBUG_RESPONSE ?? env.CHATGPT_DEBUG_RESPONSE ?? false;
 
-export const debugResultGloballyIfChanged = env.CHATGPT_DEBUG_RESPONSE_IF_CHANGED ?? false;
+export const debugResultGloballyIfChanged =
+  env.VERBLETS_DEBUG_RESPONSE_IF_CHANGED ?? env.CHATGPT_DEBUG_RESPONSE_IF_CHANGED ?? false;
 
-export const frequencyPenalty = env.CHATGPT_FREQUENCY_PENALTY ?? 0;
+export const frequencyPenalty =
+  env.VERBLETS_FREQUENCY_PENALTY ?? env.CHATGPT_FREQUENCY_PENALTY ?? 0;
+
+export const presencePenalty = env.VERBLETS_PRESENCE_PENALTY ?? env.CHATGPT_PRESENCE_PENALTY ?? 0;
+
+export const temperature = env.VERBLETS_TEMPERATURE ?? env.CHATGPT_TEMPERATURE ?? 0;
+
+export const topP = env.VERBLETS_TOPP ?? env.CHATGPT_TOPP ?? 0.5;
 
 export const models = _models;
 
 export const operationTimeoutMultiplier = 2;
-
-export const presencePenalty = env.CHATGPT_PRESENCE_PENALTY ?? 0;
-
-export const temperature = env.CHATGPT_TEMPERATURE ?? 0;
-
-export const topP = env.CHATGPT_TOPP ?? 0.5;

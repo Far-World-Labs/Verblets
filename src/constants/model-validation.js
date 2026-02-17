@@ -13,6 +13,7 @@ export function assertValidModelDef(key, def) {
   // Note: apiKey is not validated since it may not be available at module load time
   const materialized = {
     name: def.name,
+    provider: def.provider,
     endpoint: def.endpoint,
     maxContextWindow: def.maxContextWindow,
     maxOutputTokens: def.maxOutputTokens,
