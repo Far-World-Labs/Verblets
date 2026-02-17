@@ -7,6 +7,7 @@ import {
   debugResultGloballyIfChanged,
   models,
 } from '../../constants/models.js';
+import { getProvider } from './providers/index.js';
 import anySignal from '../any-signal/index.js';
 import { get as getPromptResult, set as setPromptResult } from '../prompt-cache/index.js';
 import TimedAbortController from '../timed-abort-controller/index.js';
@@ -227,27 +228,32 @@ export const run = async (prompt, config = {}) => {
 
     const timeoutController = new TimedAbortController(requestTimeout);
 
-    const fetchOptions = {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(requestConfig),
-    };
+    // Delegate request building to the provider adapter
+    const providerName = modelFound.provider || 'openai';
+    const provider = getProvider(providerName);
+    const { url: fetchUrl, fetchOptions } = provider.buildRequest(
+      apiUrl,
+      apiKey,
+      modelFound.endpoint,
+      requestConfig
+    );
 
     // Configure abort signal (see function documentation for browser compatibility notes)
     configureAbortSignal(fetchOptions, abortSignal, timeoutController);
 
-    const fetchUrl = `${apiUrl}${modelFound.endpoint}`;
     const response = await fetch(fetchUrl, fetchOptions);
 
-    result = await response.json();
+    const rawJson = await response.json();
 
     if (!response.ok) {
-      const vars = [`status: ${response?.status}`, `type: ${result?.error?.type}`].join(', ');
-      throw new Error(`Completions request [error]: ${result?.error?.message} (${vars})`);
+      // Anthropic uses error.message, OpenAI uses error.message — both work
+      const errorMessage = rawJson?.error?.message || rawJson?.error?.type || 'Unknown error';
+      const vars = [`status: ${response?.status}`, `type: ${rawJson?.error?.type}`].join(', ');
+      throw new Error(`Completions request [error]: ${errorMessage} (${vars})`);
     }
+
+    // Normalize response to canonical (OpenAI) shape
+    result = provider.parseResponse(rawJson);
 
     timeoutController.clearTimeout();
 
