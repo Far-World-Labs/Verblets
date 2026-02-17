@@ -2,6 +2,7 @@ import * as tokenizer from 'gpt-tokenizer';
 
 import Model from './model.js';
 import {
+  catalog,
   frequencyPenalty as frequencyPenaltyConfig,
   models,
   presencePenalty as presencePenaltyConfig,
@@ -140,12 +141,22 @@ class ModelService {
       return this.getBestPublicModel();
     }
 
-    // First try to find by key
+    // First try to find by key in registered models
     let modelFound = this.models[name];
 
     // If not found by key, try to find by model name
     if (!modelFound) {
       modelFound = Object.values(this.models).find((model) => model.name === name);
+    }
+
+    // Fall back to catalog (supports direct model names like 'claude-sonnet-4-5-20250514')
+    if (!modelFound && catalog[name]) {
+      modelFound = new Model({
+        name,
+        ...catalog[name],
+        key: name,
+        tokenizer: tokenizer.encode,
+      });
     }
 
     if (!modelFound) {
