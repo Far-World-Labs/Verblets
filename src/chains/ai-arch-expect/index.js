@@ -164,13 +164,11 @@ async function processBulkChunk(chunk, contextText, description, onProgress, met
     // Use reduce for bulk processing
     const prompt = buildBulkPrompt(contextText, chunk, description);
     const response = await reduce(chunk, prompt, {
-      llm: {
-        response_format: {
-          type: 'json_schema',
-          json_schema: {
-            name: 'arch_bulk_result',
-            schema: bulkResultSchema,
-          },
+      responseFormat: {
+        type: 'json_schema',
+        json_schema: {
+          name: 'arch_bulk_result',
+          schema: bulkResultSchema,
         },
       },
     });

@@ -36,6 +36,7 @@ export default defineConfig({
     'process.env.OPENAI_API_KEY': JSON.stringify(process.env.OPENAI_API_KEY),
     'process.env.OPENWEBUI_API_URL': JSON.stringify(process.env.OPENWEBUI_API_URL),
     'process.env.OPENWEBUI_API_KEY': JSON.stringify(process.env.OPENWEBUI_API_KEY),
+    'process.env.ANTHROPIC_API_KEY': JSON.stringify(process.env.ANTHROPIC_API_KEY),
     'process.env.VERBLETS_DEBUG': JSON.stringify(process.env.VERBLETS_DEBUG),
   },
 });
