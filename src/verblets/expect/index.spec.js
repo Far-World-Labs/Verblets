@@ -2,8 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 import aiExpect from './index.js';
 import { longTestTimeout } from '../../constants/common.js';
 
-// Mock the chatgpt function to avoid actual API calls
-vi.mock('../../lib/chatgpt/index.js', () => ({
+// Mock the llm function to avoid actual API calls
+vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn().mockImplementation((prompt) => {
     // Handle exact equality checks
     if (prompt.includes('Does the actual value strictly equal the expected value?')) {

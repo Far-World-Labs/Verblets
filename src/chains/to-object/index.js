@@ -2,7 +2,7 @@ import Ajv from 'ajv';
 
 import { debugToObject } from '../../constants/common.js';
 import { retryJSONParse } from '../../constants/messages.js';
-import chatGPT from '../../lib/chatgpt/index.js';
+import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import stripResponse from '../../lib/strip-response/index.js';
 import { constants as promptConstants, asXML } from '../../prompts/index.js';
@@ -113,12 +113,12 @@ export default async function toObject(text, schema, config = {}) {
   // Second attempt: use LLM to fix JSON
   try {
     const prompt = buildJsonPrompt(text, schema, errorDetails);
-    const response = await retry(chatGPT, {
+    const response = await retry(callLlm, {
       label: 'to-object json fix',
       maxAttempts,
       onProgress,
-      chatGPTPrompt: prompt,
-      chatGPTConfig: {
+      llmPrompt: prompt,
+      llmConfig: {
         modelOptions: { modelName: 'fastGood', ...llm },
         ...options,
       },
@@ -137,12 +137,12 @@ export default async function toObject(text, schema, config = {}) {
   // Third attempt: final retry with updated errors
   try {
     const prompt = buildJsonPrompt(text, schema, errorDetails);
-    const response = await retry(chatGPT, {
+    const response = await retry(callLlm, {
       label: 'to-object final retry',
       maxAttempts,
       onProgress,
-      chatGPTPrompt: prompt,
-      chatGPTConfig: {
+      llmPrompt: prompt,
+      llmConfig: {
         modelOptions: { modelName: 'fastGood', ...llm },
         ...options,
       },

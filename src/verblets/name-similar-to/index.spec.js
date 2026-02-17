@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import nameSimilarTo from './index.js';
 
-vi.mock('../../lib/chatgpt/index.js', () => ({
+vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(async () => 'freshName'),
 }));
 

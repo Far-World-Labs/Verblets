@@ -1,4 +1,4 @@
-import chatGPT from '../../lib/chatgpt/index.js';
+import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { constants as promptConstants } from '../../prompts/index.js';
@@ -37,14 +37,14 @@ ${onlyJSON}
 
 ${asXML(item, { tag: 'item' })}`;
 
-  const response = await retry(chatGPT, {
+  const response = await retry(callLlm, {
     label: 'score item',
     maxAttempts,
     onProgress,
     now,
     chainStartTime: now,
-    chatGPTPrompt: prompt,
-    chatGPTConfig: {
+    llmPrompt: prompt,
+    llmConfig: {
       modelOptions: {
         response_format: {
           type: 'json_schema',
@@ -60,7 +60,7 @@ ${asXML(item, { tag: 'item' })}`;
     logger: options.logger,
   });
 
-  // chatGPT auto-unwraps single value property, returns the number directly
+  // llm auto-unwraps single value property, returns the number directly
   return response;
 }
 

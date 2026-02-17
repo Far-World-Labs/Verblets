@@ -145,7 +145,7 @@ Key practices demonstrated:
 **Only include "Advanced Usage" sections when showing functionality that goes beyond basic model configuration.**
 
 **Generic model configuration (temperature, maxTokens, modelName, etc.) should be documented in:**
-- Core library documentation (`src/lib/chatgpt/README.md`)
+- Core library documentation (`src/lib/llm/README.md`)
 - Main chains documentation (`src/chains/README.md`) 
 - Main verblets documentation (`src/verblets/README.md`)
 

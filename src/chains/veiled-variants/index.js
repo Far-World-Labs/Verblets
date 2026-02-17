@@ -1,4 +1,4 @@
-import { run } from '../../lib/chatgpt/index.js';
+import { run } from '../../lib/llm/index.js';
 import { constants as promptConstants, asXML } from '../../prompts/index.js';
 
 const { onlyJSONStringArray } = promptConstants;

@@ -75,7 +75,7 @@ export { default as sentiment } from './verblets/sentiment/index.js';
 export { default as setInterval } from './chains/set-interval/index.js';
 
 // Library Helpers (documented in README)
-export { default as chatGPT } from './lib/chatgpt/index.js';
+export { default as llm } from './lib/llm/index.js';
 export * as promptCache from './lib/prompt-cache/index.js';
 export { default as retry } from './lib/retry/index.js';
 export { default as ringBuffer } from './lib/ring-buffer/index.js';

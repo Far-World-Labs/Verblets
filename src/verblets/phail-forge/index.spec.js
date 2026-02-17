@@ -1,8 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
 import makePrompt from './index.js';
 
-// Mock chatGPT
-vi.mock('../../lib/chatgpt/index.js', () => ({
+// Mock llm
+vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(),
 }));
 
@@ -12,13 +12,13 @@ describe('phailForge/makePrompt', () => {
   });
 
   it('should enhance a simple prompt to expert level', async () => {
-    const { default: chatGPT } = await import('../../lib/chatgpt/index.js');
+    const { default: llm } = await import('../../lib/llm/index.js');
 
     const simplePrompt = 'create a webapp';
     const mockEnhanced =
       'Create a single-page web application with responsive design, error handling, state management, and accessibility features. Use modern JavaScript framework (React/Vue/Angular), implement proper routing, include build tooling (Webpack/Vite), and ensure cross-browser compatibility.';
 
-    chatGPT.mockResolvedValueOnce({
+    llm.mockResolvedValueOnce({
       enhanced: mockEnhanced,
       improvements: [
         { category: 'technical', description: 'Added framework specification' },
@@ -37,13 +37,13 @@ describe('phailForge/makePrompt', () => {
   });
 
   it('should add technical terminology and specifications', async () => {
-    const { default: chatGPT } = await import('../../lib/chatgpt/index.js');
+    const { default: llm } = await import('../../lib/llm/index.js');
 
     const simplePrompt = 'analyze this text for sentiment';
     const mockEnhanced =
       'Perform sentiment analysis on the provided text using NLP techniques. Classify sentiment as positive, negative, or neutral with confidence scores. Extract key emotional indicators, identify sentiment-bearing phrases, and provide granular aspect-based sentiment when applicable.';
 
-    chatGPT.mockResolvedValueOnce({
+    llm.mockResolvedValueOnce({
       enhanced: mockEnhanced,
       improvements: [{ category: 'technical', description: 'Added NLP terminology' }],
       keywords: ['NLP', 'confidence scores', 'aspect-based', 'emotional indicators'],
@@ -57,19 +57,19 @@ describe('phailForge/makePrompt', () => {
   });
 
   it('should provide analysis when requested', async () => {
-    const { default: chatGPT } = await import('../../lib/chatgpt/index.js');
+    const { default: llm } = await import('../../lib/llm/index.js');
 
     const simplePrompt = 'sort this list';
     const mockEnhanced =
       'Sort the provided list using an appropriate algorithm based on data characteristics';
 
-    chatGPT.mockResolvedValueOnce({
+    llm.mockResolvedValueOnce({
       enhanced: mockEnhanced,
       improvements: [],
       keywords: ['algorithm', 'sorting'],
     });
 
-    chatGPT.mockResolvedValueOnce({
+    llm.mockResolvedValueOnce({
       strengths: [{ aspect: 'clarity', detail: 'Clear algorithmic approach' }],
       opportunities: [{ aspect: 'specificity', detail: 'Could specify sort order' }],
       suggestions: ['Add stability requirements', 'Specify comparison function'],
@@ -84,13 +84,13 @@ describe('phailForge/makePrompt', () => {
   });
 
   it('should handle domain context', async () => {
-    const { default: chatGPT } = await import('../../lib/chatgpt/index.js');
+    const { default: llm } = await import('../../lib/llm/index.js');
 
     const simplePrompt = 'optimize performance';
     const mockEnhanced =
       'Optimize React application performance with Redux state management. Implement React.memo, useMemo, and useCallback for component optimization. Normalize Redux state shape, use reselect for memoized selectors, and implement code splitting with React.lazy.';
 
-    chatGPT.mockResolvedValueOnce({
+    llm.mockResolvedValueOnce({
       enhanced: mockEnhanced,
       improvements: [
         { category: 'technical', description: 'Added React-specific optimizations' },

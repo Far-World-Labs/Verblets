@@ -91,7 +91,7 @@
         "properties": {
           "module": { 
             "type": "string",
-            "description": "Module path (e.g., 'src/lib/chatgpt')"
+            "description": "Module path (e.g., 'src/lib/llm')"
           },
           "type": { 
             "type": "string",

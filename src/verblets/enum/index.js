@@ -1,4 +1,4 @@
-import chatGPT from '../../lib/chatgpt/index.js';
+import callLlm from '../../lib/llm/index.js';
 import { asEnum, constants } from '../../prompts/index.js';
 import { createEnumSchema } from './schema.js';
 
@@ -17,7 +17,7 @@ ${asJSON}`;
 
   const schema = createEnumSchema(enumVal);
 
-  const result = await chatGPT(enumText, {
+  const result = await callLlm(enumText, {
     modelOptions: {
       ...llm,
       response_format: {

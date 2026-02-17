@@ -14,7 +14,7 @@ const getSchema = () => ({
   },
 });
 
-vi.mock('../../lib/chatgpt/index.js', () => ({
+vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn().mockImplementation((text) => {
     if (/Transform/.test(text) && /Model Y/.test(text)) {
       return '{"make":"Tesla", "model": "Model Y"}';

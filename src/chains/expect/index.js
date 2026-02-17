@@ -1,4 +1,4 @@
-import chatgpt from '../../lib/chatgpt/index.js';
+import llm from '../../lib/llm/index.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
@@ -70,7 +70,7 @@ async function findModuleUnderTest(filePath, lineNumber) {
     context?.lines.join('\n') || ''
   }\n\nRespond with the import path or 'unknown'.`;
   try {
-    return (await chatgpt(prompt, { modelOptions: { modelName: 'fastGoodCheapCoding' } })).trim();
+    return (await llm(prompt, { modelOptions: { modelName: 'fastGoodCheapCoding' } })).trim();
   } catch {
     return 'unknown';
   }
@@ -129,7 +129,7 @@ CONTEXT: [Additional context about the problem and potential root causes]
 Keep your response concise but actionable. Focus on practical solutions.`;
 
   try {
-    return await chatgpt(prompt, { modelOptions: { modelName: 'fastGoodCheapCoding' } });
+    return await llm(prompt, { modelOptions: { modelName: 'fastGoodCheapCoding' } });
   } catch {
     // Fallback to shared generateAdvice if introspection fails
     const { generateAdvice } = await import('./shared.js');

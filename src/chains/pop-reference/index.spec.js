@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import popReference from './index.js';
-import chatGPT from '../../lib/chatgpt/index.js';
+import llm from '../../lib/llm/index.js';
 
 // Mock dependencies
-vi.mock('../../lib/chatgpt/index.js', () => ({
+vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(),
 }));
 
@@ -61,7 +61,7 @@ describe('popReference', () => {
       ],
     };
 
-    chatGPT.mockResolvedValue(mockResponse);
+    llm.mockResolvedValue(mockResponse);
 
     const result = await popReference(
       'She finally made a decision after months of doubt',
@@ -69,7 +69,7 @@ describe('popReference', () => {
     );
 
     expect(result).toEqual(mockResponse.references);
-    expect(chatGPT).toHaveBeenCalledWith(
+    expect(llm).toHaveBeenCalledWith(
       expect.stringContaining('Find pop culture references'),
       expect.any(Object)
     );
@@ -91,7 +91,7 @@ describe('popReference', () => {
       ],
     };
 
-    chatGPT.mockResolvedValue(mockResponse);
+    llm.mockResolvedValue(mockResponse);
 
     const result = await popReference(
       'There was an awkward silence after the joke',
@@ -102,7 +102,7 @@ describe('popReference', () => {
     );
 
     expect(result).toEqual(mockResponse.references);
-    expect(chatGPT).toHaveBeenCalledWith(expect.stringContaining('<sources>'), expect.any(Object));
+    expect(llm).toHaveBeenCalledWith(expect.stringContaining('<sources>'), expect.any(Object));
   });
 
   it('should handle weighted sources', async () => {
@@ -121,7 +121,7 @@ describe('popReference', () => {
       ],
     };
 
-    chatGPT.mockResolvedValue(mockResponse);
+    llm.mockResolvedValue(mockResponse);
 
     const result = await popReference(
       'They kept smiling through the chaos',
@@ -135,7 +135,7 @@ describe('popReference', () => {
     );
 
     expect(result).toEqual(mockResponse.references);
-    expect(chatGPT).toHaveBeenCalledWith(
+    expect(llm).toHaveBeenCalledWith(
       expect.stringContaining('Internet Memes (focus 80%)'),
       expect.any(Object)
     );
@@ -158,7 +158,7 @@ describe('popReference', () => {
       ],
     };
 
-    chatGPT.mockResolvedValue(mockResponse);
+    llm.mockResolvedValue(mockResponse);
 
     const result = await popReference(
       'When the truth was revealed, everything changed',
@@ -196,7 +196,7 @@ describe('popReference', () => {
       ],
     };
 
-    chatGPT.mockResolvedValue(mockResponse);
+    llm.mockResolvedValue(mockResponse);
 
     const result = await popReference(
       'It was a warning sign of things to come',
@@ -208,7 +208,7 @@ describe('popReference', () => {
     );
 
     expect(result.length).toBe(3);
-    expect(chatGPT).toHaveBeenCalledWith(
+    expect(llm).toHaveBeenCalledWith(
       expect.stringContaining('Find 3 references per source'),
       expect.any(Object)
     );
@@ -216,13 +216,13 @@ describe('popReference', () => {
 
   it('should handle custom LLM configuration', async () => {
     const mockResponse = { references: [] };
-    chatGPT.mockResolvedValue(mockResponse);
+    llm.mockResolvedValue(mockResponse);
 
     await popReference('Test sentence', 'Test description', {
       llm: { modelName: 'custom-model', temperature: 0.5 },
     });
 
-    expect(chatGPT).toHaveBeenCalledWith(
+    expect(llm).toHaveBeenCalledWith(
       expect.any(String),
       expect.objectContaining({
         modelOptions: expect.objectContaining({
@@ -234,13 +234,13 @@ describe('popReference', () => {
   });
 
   it('should handle parsing errors gracefully', async () => {
-    chatGPT.mockResolvedValue('invalid json');
+    llm.mockResolvedValue('invalid json');
 
     await expect(popReference('Test', 'Description')).rejects.toThrow();
   });
 
   it('should handle empty reference arrays', async () => {
-    chatGPT.mockResolvedValue({ references: [] });
+    llm.mockResolvedValue({ references: [] });
 
     const result = await popReference('A very unique situation', 'no clear pop culture parallels');
 

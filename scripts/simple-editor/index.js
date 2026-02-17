@@ -1,7 +1,7 @@
 import dotenv from 'dotenv/config';
 import { Command } from 'commander';
 
-import chatGPT, { getRedis, auto, bool } from '../../src/index.js';
+import llm, { getRedis, auto, bool } from '../../src/index.js';
 import modelService from '../../src/services/llm-model/index.js';
 import edit from '../../src/lib/editor/index.js';
 import Transcriber from '../../src/lib/transcribe/index.js';
@@ -53,7 +53,7 @@ if (useTranscribe) {
 
 const useIntent = argv.useIntent !== false;
 
-const commandType = useIntent ? 'Tool selection' : 'Direct ChatGPT';
+const commandType = useIntent ? 'Tool selection' : 'Direct LLM';
 console.error(`Command: ${commandType}`);
 const userInputDisplay = userInput.trim().split('\n')
   .map(line => `| ${line}`)
@@ -63,7 +63,7 @@ console.error(userInputDisplay);
 
 let result;
 if (!useIntent) {
-  result = await chatGPT(userInput);
+  result = await llm(userInput);
 } else {
   const intentFound = await auto(userInput, { forceQuery: true });
 

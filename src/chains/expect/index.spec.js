@@ -4,14 +4,14 @@ import { longTestTimeout } from '../../constants/common.js';
 import { setTestEnv, saveTestEnv } from './test-utils.js';
 import { debug } from '../../lib/debug/index.js';
 
-// Mock the chatgpt function to avoid actual API calls
-vi.mock('../../lib/chatgpt/index.js', () => ({
+// Mock the llm function to avoid actual API calls
+vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn().mockImplementation((config) => {
     // Handle both string and object API
     const prompt = typeof config === 'string' ? config : config.messages?.[0]?.content || '';
 
     // Debug log to see what prompt is being sent
-    debug('ChatGPT mock received:', `${prompt.substring(0, 200)}...`);
+    debug('LLM mock received:', `${prompt.substring(0, 200)}...`);
 
     // Handle module identification request
     if (prompt.includes('identify the import path of the function or module under test')) {

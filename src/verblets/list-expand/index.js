@@ -1,11 +1,11 @@
-import chatGPT from '../../lib/chatgpt/index.js';
+import callLlm from '../../lib/llm/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import listExpandSchema from './list-expand-result.json';
 
 /**
  * Create model options for structured outputs
  * @param {string|Object} llm - LLM model name or configuration object
- * @returns {Object} Model options for chatGPT
+ * @returns {Object} Model options for llm
  */
 function createModelOptions(llm = 'fastGoodCheap') {
   const schema = listExpandSchema;
@@ -57,7 +57,7 @@ const buildPrompt = function (list, count) {
 export default async function listExpand(list, count = list.length * 2, config = {}) {
   const { llm, ...options } = config;
   const modelOptions = createModelOptions(llm);
-  const output = await chatGPT(buildPrompt(list, count), { modelOptions, ...options });
+  const output = await callLlm(buildPrompt(list, count), { modelOptions, ...options });
 
   const items = output?.items || output;
 

@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import scale, { createScale, scaleSpec, applyScale } from './index.js';
-import chatGPT from '../../lib/chatgpt/index.js';
+import llm from '../../lib/llm/index.js';
 
-vi.mock('../../lib/chatgpt/index.js');
+vi.mock('../../lib/llm/index.js');
 
 describe('scale', () => {
   beforeEach(() => {
@@ -11,7 +11,7 @@ describe('scale', () => {
 
   it('should create a scaling function that maps numeric values', async () => {
     // First mock for scaleSpec, then mock for applyScale
-    vi.mocked(chatGPT)
+    vi.mocked(llm)
       .mockResolvedValueOnce({ domain: 'stars 1-5', range: '0-100 quality', mapping: 'linear' })
       .mockResolvedValueOnce(50);
 
@@ -32,7 +32,7 @@ Mapping: Map the "stars" field linearly to the quality range.`;
 
     expect(result).toBe(50);
     // First call is for generating specification
-    expect(chatGPT).toHaveBeenNthCalledWith(
+    expect(llm).toHaveBeenNthCalledWith(
       1,
       expect.stringContaining('<scaling-instructions>'),
       expect.objectContaining({
@@ -47,7 +47,7 @@ Mapping: Map the "stars" field linearly to the quality range.`;
     );
 
     // Second call is for applying the scale
-    expect(chatGPT).toHaveBeenNthCalledWith(
+    expect(llm).toHaveBeenNthCalledWith(
       2,
       expect.stringContaining('<scale-specification>'),
       expect.objectContaining({
@@ -62,7 +62,7 @@ Mapping: Map the "stars" field linearly to the quality range.`;
   });
 
   it('should handle text input', async () => {
-    vi.mocked(chatGPT)
+    vi.mocked(llm)
       .mockResolvedValueOnce({
         domain: 'sentiment words',
         range: '0-100',
@@ -78,7 +78,7 @@ Mapping: Map the "stars" field linearly to the quality range.`;
   });
 
   it('should handle complex object outputs', async () => {
-    vi.mocked(chatGPT)
+    vi.mocked(llm)
       .mockResolvedValueOnce({
         domain: 'task descriptions',
         range: 'confidence and category',
@@ -94,7 +94,7 @@ Mapping: Map the "stars" field linearly to the quality range.`;
   });
 
   it('should pass through config options', async () => {
-    vi.mocked(chatGPT)
+    vi.mocked(llm)
       .mockResolvedValueOnce({ domain: 'numbers', range: '0-100', mapping: 'scale' })
       .mockResolvedValueOnce(42);
 
@@ -103,7 +103,7 @@ Mapping: Map the "stars" field linearly to the quality range.`;
     await scaleFunc(5);
 
     // Check the second call (applyScale) has the config options
-    expect(chatGPT).toHaveBeenNthCalledWith(
+    expect(llm).toHaveBeenNthCalledWith(
       2,
       expect.any(String),
       expect.objectContaining({
@@ -114,7 +114,7 @@ Mapping: Map the "stars" field linearly to the quality range.`;
   });
 
   it('should convert object inputs to JSON strings', async () => {
-    vi.mocked(chatGPT)
+    vi.mocked(llm)
       .mockResolvedValueOnce({
         domain: 'complex objects',
         range: 'scaled values',
@@ -126,7 +126,7 @@ Mapping: Map the "stars" field linearly to the quality range.`;
     const scaleFunc = scale(prompt);
     await scaleFunc({ nested: { value: 123 }, array: [1, 2, 3] });
 
-    expect(chatGPT).toHaveBeenCalledWith(expect.stringContaining('<item>'), expect.any(Object));
+    expect(llm).toHaveBeenCalledWith(expect.stringContaining('<item>'), expect.any(Object));
   });
 
   it('should expose prompt property', () => {
@@ -142,7 +142,7 @@ describe('createScale', () => {
   });
 
   it('should use a pre-generated specification consistently', async () => {
-    vi.mocked(chatGPT).mockResolvedValueOnce(50).mockResolvedValueOnce(100);
+    vi.mocked(llm).mockResolvedValueOnce(50).mockResolvedValueOnce(100);
 
     const specification = {
       domain: '1-5',
@@ -161,8 +161,8 @@ describe('createScale', () => {
     const result2 = await scaleFunc(5);
     expect(result2).toBe(100);
 
-    // Should have called chatGPT 2 times for applications only
-    expect(chatGPT).toHaveBeenCalledTimes(2);
+    // Should have called llm 2 times for applications only
+    expect(llm).toHaveBeenCalledTimes(2);
   });
 
   it('should expose specification property', () => {
@@ -183,7 +183,7 @@ describe('scaleSpec', () => {
   });
 
   it('should generate a scale specification', async () => {
-    vi.mocked(chatGPT).mockResolvedValue({
+    vi.mocked(llm).mockResolvedValue({
       domain: 'Complete domain',
       range: 'Complete range',
       mapping: 'Complete mapping',
@@ -196,7 +196,7 @@ describe('scaleSpec', () => {
       range: 'Complete range',
       mapping: 'Complete mapping',
     });
-    expect(chatGPT).toHaveBeenCalledWith(
+    expect(llm).toHaveBeenCalledWith(
       expect.stringContaining('Analyze these scaling instructions'),
       expect.objectContaining({
         system: expect.stringContaining('scale specification generator'),
@@ -216,7 +216,7 @@ describe('applyScale', () => {
   });
 
   it('should apply a scale using a specification', async () => {
-    vi.mocked(chatGPT).mockResolvedValue(75);
+    vi.mocked(llm).mockResolvedValue(75);
 
     const specification = {
       domain: '1-5',
@@ -226,14 +226,14 @@ describe('applyScale', () => {
     const result = await applyScale(4, specification);
 
     expect(result).toBe(75);
-    expect(chatGPT).toHaveBeenCalledWith(
+    expect(llm).toHaveBeenCalledWith(
       expect.stringContaining('<scale-specification>'),
       expect.any(Object)
     );
   });
 
   it('should handle object inputs', async () => {
-    vi.mocked(chatGPT).mockResolvedValue('high');
+    vi.mocked(llm).mockResolvedValue('high');
 
     const specification = {
       domain: 'scores between 0 and 1',

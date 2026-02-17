@@ -1,4 +1,4 @@
-import chatGPT from '../../lib/chatgpt/index.js';
+import callLlm from '../../lib/llm/index.js';
 import toDate from '../../lib/to-date/index.js';
 import bool from '../../verblets/bool/index.js';
 import retry from '../../lib/retry/index.js';
@@ -66,7 +66,7 @@ const toUTCDate = (date) => {
 
 // Extract date with retry support
 async function extractDate(prompt, llm, logger, options) {
-  const response = await chatGPT(prompt, {
+  const response = await callLlm(prompt, {
     modelOptions: {
       ...llm,
       response_format: {
@@ -124,7 +124,7 @@ export default async function date(text, config = {}) {
 
   // Parallelize expectations and first date extraction
   const [expectationsResult, firstDate] = await Promise.all([
-    chatGPT(expectationPrompt, {
+    callLlm(expectationPrompt, {
       modelOptions: {
         ...llm,
         response_format: {

@@ -1,4 +1,4 @@
-import chatGPT from '../../lib/chatgpt/index.js';
+import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { constants as promptConstants } from '../../prompts/index.js';
@@ -142,14 +142,14 @@ The vocabulary should be complete enough to categorize diverse items along the i
 
 ${onlyJSON}`;
 
-  const response = await retry(chatGPT, {
+  const response = await retry(callLlm, {
     label: 'tag-vocabulary-initial',
     maxAttempts,
     onProgress,
     now,
     chainStartTime: now,
-    chatGPTPrompt: prompt,
-    chatGPTConfig: {
+    llmPrompt: prompt,
+    llmConfig: {
       modelOptions: {
         response_format: {
           type: 'json_schema',
@@ -216,14 +216,14 @@ Return an improved vocabulary that provides better coverage and clearer distinct
 
 ${onlyJSON}`;
 
-  const response = await retry(chatGPT, {
+  const response = await retry(callLlm, {
     label: 'tag-vocabulary-refine',
     maxAttempts,
     onProgress,
     now,
     chainStartTime: now,
-    chatGPTPrompt: prompt,
-    chatGPTConfig: {
+    llmPrompt: prompt,
+    llmConfig: {
       modelOptions: {
         response_format: {
           type: 'json_schema',

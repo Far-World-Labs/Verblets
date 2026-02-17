@@ -1,4 +1,4 @@
-import chatgpt from '../../lib/chatgpt/index.js';
+import callLlm from '../../lib/llm/index.js';
 
 function buildEqualityPrompt({ actual, expected, context }) {
   return `Does the actual value strictly equal the expected value?\n\nActual: ${JSON.stringify(
@@ -37,7 +37,7 @@ export async function llmAssert({
       ? buildEqualityPrompt({ actual, expected: equals, context })
       : buildConstraintPrompt({ actual, constraint, context });
 
-  const answer = await chatgpt(prompt, { modelOptions: llm });
+  const answer = await callLlm(prompt, { modelOptions: llm });
   const text = typeof answer === 'string' ? answer : answer.content;
   const passed = /^true$/i.test(text.trim());
 

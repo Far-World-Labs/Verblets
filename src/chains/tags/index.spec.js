@@ -14,7 +14,7 @@ import tags, {
 } from './index.js';
 
 // Mock the dependencies
-vi.mock('../../lib/chatgpt/index.js', () => ({
+vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(),
 }));
 
@@ -22,7 +22,7 @@ vi.mock('../map/index.js', () => ({
   default: vi.fn(),
 }));
 
-import chatGPT from '../../lib/chatgpt/index.js';
+import llm from '../../lib/llm/index.js';
 import map from '../map/index.js';
 
 describe('tags', () => {
@@ -42,11 +42,11 @@ describe('tags', () => {
   describe('tagSpec', () => {
     it('should generate tag specification from instructions', async () => {
       const mockSpec = 'Tag items based on urgency and category';
-      chatGPT.mockResolvedValueOnce(mockSpec);
+      llm.mockResolvedValueOnce(mockSpec);
 
       const spec = await tagSpec('Tag by priority and type');
 
-      expect(chatGPT).toHaveBeenCalledWith(
+      expect(llm).toHaveBeenCalledWith(
         expect.stringContaining('Tag by priority and type'),
         expect.objectContaining({
           system: expect.stringContaining('tag specification generator'),
@@ -58,15 +58,15 @@ describe('tags', () => {
 
   describe('applyTags', () => {
     it('should apply tags to an item', async () => {
-      // chatGPT auto-unwraps {items: [...]} to just the array
-      chatGPT.mockResolvedValueOnce(['urgent', 'financial']);
+      // llm auto-unwraps {items: [...]} to just the array
+      llm.mockResolvedValueOnce(['urgent', 'financial']);
 
       const item = 'Pay credit card bill today';
       const spec = 'Tag based on urgency and category';
 
       const result = await applyTags(item, spec, mockVocabulary);
 
-      expect(chatGPT).toHaveBeenCalledWith(
+      expect(llm).toHaveBeenCalledWith(
         expect.stringContaining(item),
         expect.objectContaining({
           modelOptions: expect.objectContaining({
@@ -80,8 +80,8 @@ describe('tags', () => {
     });
 
     it('should handle empty tag arrays', async () => {
-      // chatGPT auto-unwraps {items: [...]} to just the array
-      chatGPT.mockResolvedValueOnce([]);
+      // llm auto-unwraps {items: [...]} to just the array
+      llm.mockResolvedValueOnce([]);
 
       const result = await applyTags('Random note', 'spec', mockVocabulary);
       expect(result).toEqual([]);
@@ -93,13 +93,13 @@ describe('tags', () => {
       const mockSpec = 'Generated spec';
       const mockTags = ['personal'];
 
-      chatGPT
+      llm
         .mockResolvedValueOnce(mockSpec) // tagSpec
         .mockResolvedValueOnce(mockTags); // applyTags - auto-unwrapped
 
       const result = await tagItem('Call mom', 'Tag personal items', mockVocabulary);
 
-      expect(chatGPT).toHaveBeenCalledTimes(2);
+      expect(llm).toHaveBeenCalledTimes(2);
       expect(result).toEqual(mockTags);
     });
   });
@@ -109,13 +109,13 @@ describe('tags', () => {
       const mockSpec = 'Generated spec';
       const mockResults = [['urgent'], ['financial', 'personal'], []];
 
-      chatGPT.mockResolvedValueOnce(mockSpec); // tagSpec
+      llm.mockResolvedValueOnce(mockSpec); // tagSpec
       map.mockResolvedValueOnce(mockResults); // map operation
 
       const items = ['Task 1', 'Task 2', 'Task 3'];
       const result = await mapTags(items, 'Tag all tasks', mockVocabulary);
 
-      expect(chatGPT).toHaveBeenCalledTimes(1);
+      expect(llm).toHaveBeenCalledTimes(1);
       expect(map).toHaveBeenCalledWith(
         items,
         expect.any(String),
@@ -216,8 +216,8 @@ describe('tags', () => {
       expect(extractor.specification).toBe(spec);
       expect(extractor.vocabulary).toBe(mockVocabulary);
 
-      // chatGPT auto-unwraps {items: [...]} to just the array
-      chatGPT.mockResolvedValueOnce(['urgent']);
+      // llm auto-unwraps {items: [...]} to just the array
+      llm.mockResolvedValueOnce(['urgent']);
       const result = await extractor('Test item');
       expect(result).toEqual(['urgent']);
     });
@@ -231,7 +231,7 @@ describe('tags', () => {
       expect(tagger.vocabulary).toBe(mockVocabulary);
 
       // Test single item
-      chatGPT.mockResolvedValueOnce('spec').mockResolvedValueOnce(['personal']); // auto-unwrapped
+      llm.mockResolvedValueOnce('spec').mockResolvedValueOnce(['personal']); // auto-unwrapped
 
       const result = await tagger('Single item', 'Tag this');
       expect(result).toEqual(['personal']);
@@ -240,7 +240,7 @@ describe('tags', () => {
     it('should handle arrays with vocabulary-bound tagger', async () => {
       const tagger = createTagger(mockVocabulary);
 
-      chatGPT.mockResolvedValueOnce('spec');
+      llm.mockResolvedValueOnce('spec');
       map.mockResolvedValueOnce([['urgent'], ['financial']]);
 
       const result = await tagger(['Item 1', 'Item 2'], 'Tag these');
@@ -250,7 +250,7 @@ describe('tags', () => {
     it('should expose mapWithVocabulary for tag-vocabulary chain', async () => {
       const tagger = createTagger(mockVocabulary);
 
-      chatGPT.mockResolvedValueOnce('spec');
+      llm.mockResolvedValueOnce('spec');
       map.mockResolvedValueOnce([['urgent']]);
 
       const result = await tagger.mapWithVocabulary(['Item 1']);
@@ -269,7 +269,7 @@ describe('tags', () => {
       await expect(tagger('Item')).rejects.toThrow('Vocabulary must be provided');
 
       // Should work with vocabulary
-      chatGPT.mockResolvedValueOnce('spec').mockResolvedValueOnce(['urgent']); // auto-unwrapped
+      llm.mockResolvedValueOnce('spec').mockResolvedValueOnce(['urgent']); // auto-unwrapped
 
       const result = await tagger('Item', mockVocabulary);
       expect(result).toEqual(['urgent']);
@@ -278,7 +278,7 @@ describe('tags', () => {
     it('should handle arrays in stateless mode', async () => {
       const tagger = tags('Tag items');
 
-      chatGPT.mockResolvedValueOnce('spec');
+      llm.mockResolvedValueOnce('spec');
       map.mockResolvedValueOnce([['urgent'], []]);
 
       const result = await tagger(['Item 1', 'Item 2'], mockVocabulary);

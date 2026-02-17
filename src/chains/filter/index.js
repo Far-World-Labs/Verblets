@@ -135,8 +135,8 @@ Process exactly ${count} items from the XML list below and return ${count} yes/n
             chainStartTime: now,
           })
         ),
-        chatGPTPrompt: `${prompt}\n\nItems: ${JSON.stringify(items).substring(0, 500)}...`,
-        chatGPTConfig: listBatchOptions,
+        llmPrompt: `${prompt}\n\nItems: ${JSON.stringify(items).substring(0, 500)}...`,
+        llmConfig: listBatchOptions,
       });
     } catch (error) {
       if (logger?.error) {

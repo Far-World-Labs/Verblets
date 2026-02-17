@@ -131,11 +131,8 @@ Preserve all formatting and newlines within each <item> element.`;
               chainStartTime: chainStartTime || now,
             })
           ),
-          chatGPTPrompt: `${compiledPrompt}\n\nItems: ${JSON.stringify(items).substring(
-            0,
-            500
-          )}...`,
-          chatGPTConfig: listBatchOptions,
+          llmPrompt: `${compiledPrompt}\n\nItems: ${JSON.stringify(items).substring(0, 500)}...`,
+          llmConfig: listBatchOptions,
           now,
           chainStartTime: chainStartTime || now,
         });

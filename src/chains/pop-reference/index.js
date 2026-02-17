@@ -1,4 +1,4 @@
-import chatGPT from '../../lib/chatgpt/index.js';
+import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { constants as promptConstants } from '../../prompts/index.js';
@@ -9,7 +9,7 @@ const { onlyJSON } = promptConstants;
 /**
  * Create model options for structured outputs
  * @param {string|Object} llm - LLM model name or configuration object
- * @returns {Object} Model options for chatGPT
+ * @returns {Object} Model options for llm
  */
 function createModelOptions(llm) {
   const responseFormat = {
@@ -107,14 +107,14 @@ Requirements:
 ${onlyJSON}`;
 
   const modelOptions = createModelOptions(llm);
-  const response = await retry(chatGPT, {
+  const response = await retry(callLlm, {
     label: 'pop-reference',
     maxAttempts,
     onProgress,
     now,
     chainStartTime: now,
-    chatGPTPrompt: prompt,
-    chatGPTConfig: {
+    llmPrompt: prompt,
+    llmConfig: {
       modelOptions,
       ...restOptions,
     },

@@ -1,4 +1,4 @@
-import chatGPT from '../../lib/chatgpt/index.js';
+import callLlm from '../../lib/llm/index.js';
 import { onlyJSON, strictFormat } from '../../prompts/constants.js';
 import {
   createLifecycleLogger,
@@ -89,7 +89,7 @@ ${prompt}`;
  * @param {string|Object} llm - LLM model name or configuration object
  * @param {string} schemaName - Name for the JSON schema
  * @param {Object} [customSchema] - Custom schema to use instead of default
- * @returns {Object} Model options for chatGPT
+ * @returns {Object} Model options for llm
  */
 function createModelOptions(
   llm = 'fastGoodCheap',
@@ -163,7 +163,7 @@ export default async function centralTendency(item, seedItems, config = {}) {
   });
 
   try {
-    const response = await chatGPT(prompt, { modelOptions, logger: lifecycleLogger });
+    const response = await callLlm(prompt, { modelOptions, logger: lifecycleLogger });
 
     // Log result
     lifecycleLogger.logResult(response, {

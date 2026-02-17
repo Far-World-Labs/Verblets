@@ -2,7 +2,7 @@
 
 A specialized chain for AI-powered architectural testing and validation. This chain intelligently uses different verblet strategies based on the type of analysis needed:
 
-- **Individual processing** (`eachFile`): Uses `chatgpt` directly for deep file analysis with parallel processing
+- **Individual processing** (`eachFile`): Uses `llm` directly for deep file analysis with parallel processing
 - **Bulk processing** (`eachDir`): Uses `reduce` chain for efficient batch operations with parallel chunk processing
 - **Coverage analysis**: Uses normal processing mode selection but disables maxFailures to process all items
 

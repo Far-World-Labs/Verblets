@@ -161,7 +161,7 @@ export const run = async (prompt, config = {}) => {
     unwrapCollections,
   } = options;
 
-  // Log start of chatGPT execution
+  // Log start of llm execution
   const startTime = Date.now();
 
   // Apply global overrides to model options
@@ -183,7 +183,7 @@ export const run = async (prompt, config = {}) => {
   // Log start event with model information
   if (logger?.info) {
     logger.info({
-      event: 'chatgpt:start',
+      event: 'llm:start',
       promptLength: prompt.length,
       model: modelNameNegotiated,
     });
@@ -272,10 +272,10 @@ export const run = async (prompt, config = {}) => {
     resultShaped,
   });
 
-  // Log end of chatGPT execution
+  // Log end of llm execution
   if (logger?.info) {
     logger.info({
-      event: 'chatgpt:end',
+      event: 'llm:end',
       duration: Date.now() - startTime,
       cached: !!cacheResult,
       model: modelNameNegotiated,

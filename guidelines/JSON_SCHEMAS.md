@@ -17,7 +17,7 @@
 ### For All Structured LLM Calls
 
 ```javascript
-import chatGPT from '../../lib/chatgpt/index.js';
+import llm from '../../lib/llm/index.js';
 
 // Define schema (preferably in src/json-schemas/)
 const schema = {
@@ -32,7 +32,7 @@ const schema = {
 };
 
 // Use schema in LLM call
-const result = await chatGPT(prompt, {
+const result = await llm(prompt, {
   modelOptions: {
     modelName: 'fastGoodCheap',
     response_format: {
@@ -66,12 +66,12 @@ Mock responses must return objects matching the schema structure:
 
 ```javascript
 // CORRECT: Mock returns parsed object
-mockChatGPT.mockResolvedValueOnce({
+mockLlm.mockResolvedValueOnce({
   items: ['item1', 'item2', 'item3']
 });
 
 // INCORRECT: Mock returns string (old toObject pattern)
-// mockChatGPT.mockResolvedValueOnce('["item1", "item2"]');
+// mockLlm.mockResolvedValueOnce('["item1", "item2"]');
 ```
 
 ## Migration from toObject
@@ -89,12 +89,12 @@ grep -r "toObject(" src/
 ```javascript
 // OLD: Using toObject chain
 import toObject from '../to-object/index.js';
-const result = await chatGPT(prompt, options);
+const result = await llm(prompt, options);
 const parsed = await toObject(result);
 
 // NEW: Using JSON schema
 const schema = { /* define schema */ };
-const result = await chatGPT(prompt, {
+const result = await llm(prompt, {
   ...options,
   modelOptions: {
     ...options.modelOptions,
@@ -114,11 +114,11 @@ const result = await chatGPT(prompt, {
 - Root schema must be object type, cannot be array
 - The `.items` wrapper is an API requirement for collections
 
-### ChatGPT Module Auto-Handling
-- The chatGPT module automatically parses JSON when `response_format` is provided
+### LLM Module Auto-Handling
+- The llm module automatically parses JSON when `response_format` is provided
 - Simple collection schemas (single `items` property containing array) are auto-unwrapped
 - Use `skipResponseParse: true` in options for edge cases needing raw strings
-- Import `isSimpleCollectionSchema` from chatGPT module to detect collection patterns
+- Import `isSimpleCollectionSchema` from llm module to detect collection patterns
 
 ### Collection Operations Guidelines
 - **Core principle**: Keep `.items` wrapper internal, chains work with arrays
@@ -155,7 +155,7 @@ const result = await chatGPT(prompt, {
   },
   required: ['items']
 }
-// Note: This will be auto-unwrapped by chatGPT module
+// Note: This will be auto-unwrapped by llm module
 ```
 
 ### Scored Results

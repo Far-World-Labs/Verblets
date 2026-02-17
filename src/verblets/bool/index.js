@@ -1,4 +1,4 @@
-import chatGPT from '../../lib/chatgpt/index.js';
+import callLlm from '../../lib/llm/index.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 import {
   createLifecycleLogger,
@@ -42,7 +42,7 @@ ${asJSON}`;
 
   try {
     // Make LLM call with logger
-    const response = await chatGPT(text, {
+    const response = await callLlm(text, {
       modelOptions: {
         systemPrompt,
         ...llm,

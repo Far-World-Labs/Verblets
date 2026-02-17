@@ -1,4 +1,4 @@
-import chatGPT from '../../lib/chatgpt/index.js';
+import callLlm from '../../lib/llm/index.js';
 import chunkSentences from '../../lib/chunk-sentences/index.js';
 import retry from '../../lib/retry/index.js';
 import parallelBatch from '../../lib/parallel-batch/index.js';
@@ -64,7 +64,7 @@ function mergeTimelineEvents(eventArrays) {
 async function extractFromChunk(chunk, options = {}) {
   const { llm, ...remainingOptions } = options;
 
-  const response = await chatGPT(chunk, {
+  const response = await callLlm(chunk, {
     modelOptions: {
       systemPrompt: extractTimelineInstructions,
       response_format: {

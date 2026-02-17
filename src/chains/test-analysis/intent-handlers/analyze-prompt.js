@@ -7,7 +7,7 @@
 
 import { cyan, gray, yellow, green, red } from '../output-utils.js';
 import * as promptUtils from '../prompt-utils.js';
-import chatGPT from '../../../lib/chatgpt/index.js';
+import llm from '../../../lib/llm/index.js';
 import retry from '../../../lib/retry/index.js';
 import promptAnalysisSchema from '../schemas/prompt-analysis-schema.json';
 import * as promptConstants from '../../../prompts/constants.js';
@@ -153,7 +153,7 @@ async function runAnalysis(promptText) {
   const analysisPrompt = ANALYSIS_PROMPT.replace('{promptText}', promptText);
   const analysis = await retry(
     () =>
-      chatGPT(analysisPrompt, {
+      llm(analysisPrompt, {
         modelOptions: {
           response_format: {
             type: 'json_schema',
@@ -184,7 +184,7 @@ async function formatHeader(prompt, indicators, moduleDir) {
     `XML: ${indicators.xml ? green('Y') : red('N')} | Constants: ${
       indicators.constants ? green('Y') : red('N')
     } | Schema: ${indicators.schema ? green('Y') : yellow('?')}`,
-    gray('[TODO: Chain detection - map/score/chatGPT]'),
+    gray('[TODO: Chain detection - map/score/llm]'),
   ];
 }
 

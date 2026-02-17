@@ -3,7 +3,7 @@ import { getConfig } from '../../chains/test-analysis/config.js';
 import { wrapIt, wrapExpect } from '../../chains/test-analysis/test-wrappers.js';
 import bool from './index.js';
 
-vi.mock('../../lib/chatgpt/index.js', () => ({
+vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn().mockImplementation((text, options) => {
     // When responseFormat is used, auto-unwrapping will return the value directly
     const systemPrompt = options?.modelOptions?.systemPrompt || '';

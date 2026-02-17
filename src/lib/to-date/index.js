@@ -5,7 +5,7 @@ export default (val) => {
   if (clean.toLowerCase() === 'undefined') return undefined;
   const parsed = new Date(clean);
   if (Number.isNaN(parsed.getTime())) {
-    throw new Error('ChatGPT output [error]');
+    throw new Error('LLM output [error]');
   }
   return parsed;
 };

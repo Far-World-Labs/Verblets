@@ -1,11 +1,11 @@
-import chatGPT from '../../lib/chatgpt/index.js';
+import callLlm from '../../lib/llm/index.js';
 import { asXML } from '../../prompts/index.js';
 import { intent as intentSchema } from '../../json-schemas/index.js';
 
 /**
  * Create model options for structured outputs
  * @param {string|Object} llm - LLM model name or configuration object
- * @returns {Object} Model options for chatGPT
+ * @returns {Object} Model options for llm
  */
 function createModelOptions(llm = 'fastGoodCheap') {
   const schema = intentSchema;
@@ -76,7 +76,7 @@ Determine:
 Return the result as a structured JSON object with the operation name, extracted parameters, and any optional parameters that might be useful.`;
 
   const modelOptions = createModelOptions(llm);
-  const response = await chatGPT(prompt, { modelOptions, ...options });
+  const response = await callLlm(prompt, { modelOptions, ...options });
 
   return response;
 }

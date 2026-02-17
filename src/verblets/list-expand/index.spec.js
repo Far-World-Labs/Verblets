@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import listExpand from './index.js';
 
-vi.mock('../../lib/chatgpt/index.js', () => ({
+vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(async (prompt) => {
     const match = prompt.match(/<list>\n([\s\S]*?)\n<\/list>/);
     const lines = match ? match[1].split('\n') : [];

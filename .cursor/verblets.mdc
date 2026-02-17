@@ -16,21 +16,21 @@ You are working on **verblets** - single-purpose LLM transformation functions in
 ```javascript
 export default async function verbletName(input, options = {}) {
   const { 
-    llm = { modelName: 'fastGoodCheap' },
-    ...restOptions 
+    llm: llmConfig = { modelName: 'fastGoodCheap' },
+    ...restOptions
   } = options;
-  
+
   // Validation
   if (!input || typeof input !== 'string') {
     return null;
   }
-  
+
   // Prompt construction
   const prompt = `Transform this text: ${input}`;
-  
+
   // LLM call
-  const result = await chatGPT(prompt, {
-    modelOptions: { ...llm },
+  const result = await llm(prompt, {
+    modelOptions: { ...llmConfig },
     ...restOptions
   });
   

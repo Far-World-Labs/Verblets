@@ -6,7 +6,7 @@
 import { readFile, access } from 'node:fs/promises';
 import { join } from 'node:path';
 import { constants } from 'node:fs';
-import chatGPT from '../../../lib/chatgpt/index.js';
+import llm from '../../../lib/llm/index.js';
 import retry from '../../../lib/retry/index.js';
 import aiMdExtractionSchema from '../schemas/ai-md-extraction.json';
 
@@ -45,7 +45,7 @@ export async function extractAIMdConfig(moduleDir) {
 
     const response = await retry(
       () =>
-        chatGPT(prompt, {
+        llm(prompt, {
           modelOptions: {
             response_format: {
               type: 'json_schema',

@@ -69,7 +69,7 @@ export const goodCheap = gpt4o; // Quality + Cost balance
 export const smartExpensive = o1Preview; // Maximum capability
 
 // Legacy and compatibility aliases
-export const chatgpt = gpt4o; // Default ChatGPT model
+export const llmDefault = gpt4o; // Default LLM model
 export const default4o = gpt4o; // Explicit 4o reference
 
 // Provider-specific aliases for consistency

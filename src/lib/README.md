@@ -6,12 +6,12 @@ This directory contains low-level utility functions and services that provide fo
 
 The `lib` directory houses:
 - **Core utilities**: Basic functions for data transformation and validation
-- **Service integrations**: Interfaces to external services like ChatGPT
+- **Service integrations**: Interfaces to external services like LLMs
 - **Helper functions**: Common functionality used across verblets and chains
 
 ## Organization
 
-- `chatgpt/` - OpenAI ChatGPT API integration
+- `llm/` - LLM API integration
 - `to-*` utilities - Data type conversion functions
 - `assert/` - Custom assertion utilities
 - `logger-service/` - Logging functionality
@@ -29,7 +29,7 @@ Library utilities should:
 Modules include:
 
 <!-- commonly used utilities -->
-- [chatgpt](./chatgpt) – wrapper around OpenAI's ChatGPT API.
+- [llm](./llm) – LLM API wrapper.
 - [prompt-cache](./prompt-cache) – cache prompts/responses locally.
 - [retry](./retry) – generic async retry helper.
 - [search-best-first](./search-best-first) – best-first tree search algorithm.

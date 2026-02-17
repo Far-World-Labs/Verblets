@@ -5,7 +5,7 @@ import { describe } from 'vitest';
 /*
 import questions from "./index.js";
 
-vi.mock("../../lib/chatgpt/index.js", () => ({
+vi.mock("../../lib/llm/index.js", () => ({
   default: vi.fn().mockImplementation((text) => {
     if (/a prompt toolkit/.test(text)) {
       return "{}";

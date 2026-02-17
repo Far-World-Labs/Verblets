@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import disambiguate from './index.js';
 
-vi.mock('../../lib/chatgpt/index.js', () => ({
+vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(async (prompt) => {
     if (/List all distinct dictionary meanings/.test(prompt)) {
       return { meanings: ['financial institution', 'edge of a river'] };

@@ -2,13 +2,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import timeline from './index.js';
 
 // Mock all dependencies
-vi.mock('../../lib/chatgpt/index.js');
+vi.mock('../../lib/llm/index.js');
 vi.mock('../../lib/strip-response/index.js');
 vi.mock('../../lib/chunk-sentences/index.js');
 vi.mock('../../lib/retry/index.js');
 vi.mock('../reduce/index.js');
 
-import chatGPT from '../../lib/chatgpt/index.js';
+import llm from '../../lib/llm/index.js';
 import stripResponse from '../../lib/strip-response/index.js';
 import chunkSentences from '../../lib/chunk-sentences/index.js';
 import retry from '../../lib/retry/index.js';
@@ -48,7 +48,7 @@ describe('timeline', () => {
       ],
     };
 
-    chatGPT.mockResolvedValueOnce(mockResponse);
+    llm.mockResolvedValueOnce(mockResponse);
 
     const result = await timeline('Founded in 2010. Funded in March 2012.');
 
@@ -58,12 +58,12 @@ describe('timeline', () => {
     ]);
   });
 
-  it('passes correct schema to chatGPT', async () => {
-    chatGPT.mockResolvedValueOnce({ events: [] });
+  it('passes correct schema to llm', async () => {
+    llm.mockResolvedValueOnce({ events: [] });
 
     await timeline('some text');
 
-    expect(chatGPT).toHaveBeenCalledWith(
+    expect(llm).toHaveBeenCalledWith(
       'some text',
       expect.objectContaining({
         modelOptions: expect.objectContaining({
@@ -91,17 +91,17 @@ describe('timeline', () => {
   it('chunks text based on chunkSize parameter', async () => {
     const mockText = 'a'.repeat(5000);
     chunkSentences.mockReturnValueOnce(['chunk1', 'chunk2', 'chunk3']);
-    chatGPT.mockResolvedValue({ events: [] });
+    llm.mockResolvedValue({ events: [] });
 
     await timeline(mockText, { chunkSize: 1500 });
 
     expect(chunkSentences).toHaveBeenCalledWith(mockText, 1500, { overlap: 200 });
-    expect(chatGPT).toHaveBeenCalledTimes(3);
+    expect(llm).toHaveBeenCalledTimes(3);
   });
 
   it('merges results from multiple chunks', async () => {
     chunkSentences.mockReturnValueOnce(['chunk1', 'chunk2']);
-    chatGPT
+    llm
       .mockResolvedValueOnce({ events: [{ timestamp: '2020', name: 'Event 1' }] })
       .mockResolvedValueOnce({ events: [{ timestamp: '2021', name: 'Event 2' }] });
 
@@ -114,7 +114,7 @@ describe('timeline', () => {
 
   it('deduplicates events with same timestamp and name', async () => {
     chunkSentences.mockReturnValueOnce(['chunk1', 'chunk2']);
-    chatGPT
+    llm
       .mockResolvedValueOnce({ events: [{ timestamp: '2020-01-01', name: 'Same Event' }] })
       .mockResolvedValueOnce({ events: [{ timestamp: '2020-01-01', name: 'same event' }] });
 
@@ -125,7 +125,7 @@ describe('timeline', () => {
   });
 
   it('sorts ISO dates correctly', async () => {
-    chatGPT.mockResolvedValueOnce({
+    llm.mockResolvedValueOnce({
       events: [
         { timestamp: '2023-12-01', name: 'December' },
         { timestamp: '2023-01-15', name: 'January' },
@@ -141,7 +141,7 @@ describe('timeline', () => {
   });
 
   it('places parseable dates before non-parseable ones', async () => {
-    chatGPT.mockResolvedValueOnce({
+    llm.mockResolvedValueOnce({
       events: [
         { timestamp: 'sometime later', name: 'Vague' },
         { timestamp: '2023-01-01', name: 'Precise' },
@@ -158,7 +158,7 @@ describe('timeline', () => {
 
   it('handles parsing errors gracefully', async () => {
     chunkSentences.mockReturnValueOnce(['c1', 'c2', 'c3']);
-    chatGPT
+    llm
       .mockResolvedValueOnce({ events: [{ timestamp: '2023', name: 'Good' }] })
       .mockResolvedValueOnce({ events: [] })
       .mockRejectedValueOnce(new Error('API error'));
@@ -172,7 +172,7 @@ describe('timeline', () => {
   it('calls progress callback', async () => {
     const progressCallback = vi.fn();
     chunkSentences.mockReturnValueOnce(['c1', 'c2', 'c3']);
-    chatGPT.mockResolvedValue('{"events":[]}');
+    llm.mockResolvedValue('{"events":[]}');
 
     await timeline('Text requiring 3 chunks', {
       chunkSize: 10,
@@ -185,8 +185,8 @@ describe('timeline', () => {
     expect(progressCallback).toHaveBeenNthCalledWith(3, 3, 3);
   });
 
-  it('passes through custom options to chatGPT', async () => {
-    chatGPT.mockResolvedValueOnce({ events: [] });
+  it('passes through custom options to llm', async () => {
+    llm.mockResolvedValueOnce({ events: [] });
 
     await timeline('text', {
       chunkSize: 3000,
@@ -195,7 +195,7 @@ describe('timeline', () => {
       llm: { temperature: 0.5 },
     });
 
-    expect(chatGPT).toHaveBeenCalledWith(
+    expect(llm).toHaveBeenCalledWith(
       'text',
       expect.objectContaining({
         modelOptions: expect.objectContaining({
@@ -207,7 +207,7 @@ describe('timeline', () => {
   });
 
   it('returns empty array when no events found', async () => {
-    chatGPT.mockResolvedValueOnce({ events: [] });
+    llm.mockResolvedValueOnce({ events: [] });
 
     const result = await timeline('text');
 
@@ -216,7 +216,7 @@ describe('timeline', () => {
 
   it('handles all chunks returning errors', async () => {
     chunkSentences.mockReturnValueOnce(['c1', 'c2']);
-    chatGPT
+    llm
       .mockRejectedValueOnce(new Error('API error 1'))
       .mockRejectedValueOnce(new Error('API error 2'));
 
@@ -226,8 +226,8 @@ describe('timeline', () => {
   });
 
   it('strips response wrapper from results', async () => {
-    // No longer needed since chatGPT handles JSON parsing
-    chatGPT.mockResolvedValueOnce({
+    // No longer needed since llm handles JSON parsing
+    llm.mockResolvedValueOnce({
       events: [{ timestamp: '2023', name: 'Event' }],
     });
 
@@ -237,7 +237,7 @@ describe('timeline', () => {
   });
 
   it('maintains relative order for non-date timestamps', async () => {
-    chatGPT.mockResolvedValueOnce({
+    llm.mockResolvedValueOnce({
       events: [
         { timestamp: 'first', name: 'A' },
         { timestamp: 'then', name: 'B' },
@@ -257,7 +257,7 @@ describe('timeline', () => {
     let activeRequests = 0;
     let maxActiveRequests = 0;
 
-    chatGPT.mockImplementation(() => {
+    llm.mockImplementation(() => {
       activeRequests++;
       maxActiveRequests = Math.max(maxActiveRequests, activeRequests);
 

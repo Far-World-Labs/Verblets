@@ -190,11 +190,11 @@ export default async function group(list, instructions, config = {}) {
                 totalBatches: batchesToProcess.length,
               })
             ),
-            chatGPTPrompt: `${assignmentInstructions({
+            llmPrompt: `${assignmentInstructions({
               style: batchStyle,
               count: items.length,
             })}\n\nItems: ${JSON.stringify(items).substring(0, 500)}...`,
-            chatGPTConfig: listBatchOptions,
+            llmConfig: listBatchOptions,
           }
         );
 

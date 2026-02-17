@@ -14,7 +14,7 @@ const runMock = vi.fn().mockImplementation(() => {
   return '["w1","w2","w3","w4","w5"]';
 });
 
-vi.mock('../../lib/chatgpt/index.js', () => ({
+vi.mock('../../lib/llm/index.js', () => ({
   run: (...args) => runMock(...args),
 }));
 

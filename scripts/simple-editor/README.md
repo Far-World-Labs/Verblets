@@ -1,16 +1,16 @@
 # Simple Prompt Editor
 
-This is a simple command-line tool that allows you to interact with the ChatGPT library using your system's default text editor or nano if none is defined.
+This is a simple command-line tool that allows you to interact with the LLM library using your system's default text editor or nano if none is defined.
 
 ## Usage
 
-To run the simple ChatGPT editor, use the following command:
+To run the simple LLM editor, use the following command:
 
 ```bash
 npm run script -- simple-editor
 ```
 
-It will open your system's default text editor or nano if none is defined. The editor allows you to enter your input text, which is then processed by the ChatGPT library. The script performs intent detection to match your request with one of the supported library commands. By default, it does ordinary ChatGPT completion.
+It will open your system's default text editor or nano if none is defined. The editor allows you to enter your input text, which is then processed by the LLM library. The script performs intent detection to match your request with one of the supported library commands. By default, it does ordinary LLM completion.
 
 
 ## Adding Support for New Commands

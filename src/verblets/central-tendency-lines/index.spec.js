@@ -2,11 +2,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import centralTendency from './index.js';
 
 // Mock the LLM service
-vi.mock('../../lib/chatgpt/index.js', () => ({
+vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(),
 }));
 
-import chatGPT from '../../lib/chatgpt/index.js';
+import llm from '../../lib/llm/index.js';
 
 describe('centralTendency', () => {
   beforeEach(() => {
@@ -20,7 +20,7 @@ describe('centralTendency', () => {
       confidence: 0.9,
     };
 
-    chatGPT.mockResolvedValue(mockResponse);
+    llm.mockResolvedValue(mockResponse);
 
     const result = await centralTendency('robin', ['sparrow', 'bluejay', 'cardinal'], {
       context: 'Evaluate based on typical bird characteristics',
@@ -34,7 +34,7 @@ describe('centralTendency', () => {
       confidence: 0.9,
     });
 
-    expect(chatGPT).toHaveBeenCalledWith(
+    expect(llm).toHaveBeenCalledWith(
       expect.stringContaining('Evaluate how central "robin" is among these category members'),
       expect.objectContaining({
         modelOptions: expect.objectContaining({ modelName: 'fastGoodCheap' }),
@@ -49,14 +49,14 @@ describe('centralTendency', () => {
       confidence: 0.8,
     };
 
-    chatGPT.mockResolvedValue(mockResponse);
+    llm.mockResolvedValue(mockResponse);
 
     const result = await centralTendency('penguin', ['robin', 'sparrow'], {
       context: 'Bird evaluation',
     });
 
     expect(result.score).toBe(0.75);
-    expect(chatGPT).toHaveBeenCalledWith(
+    expect(llm).toHaveBeenCalledWith(
       expect.any(String),
       expect.objectContaining({
         modelOptions: expect.objectContaining({ modelName: 'fastGoodCheap' }),
@@ -82,14 +82,14 @@ describe('centralTendency', () => {
     );
   });
 
-  it('handles parsed response from chatGPT', async () => {
+  it('handles parsed response from llm', async () => {
     const mockResponse = {
       score: 0.6,
       reason: 'Moderate centrality',
       confidence: 0.7,
     };
 
-    chatGPT.mockResolvedValue(mockResponse);
+    llm.mockResolvedValue(mockResponse);
 
     const result = await centralTendency('item', ['seed1', 'seed2']);
 
@@ -107,7 +107,7 @@ describe('centralTendency', () => {
       confidence: 0.9,
     };
 
-    chatGPT.mockResolvedValue(mockResponse);
+    llm.mockResolvedValue(mockResponse);
 
     const result = await centralTendency('item', ['seed1', 'seed2']);
 
@@ -121,14 +121,14 @@ describe('centralTendency', () => {
       confidence: 0.8,
     };
 
-    chatGPT.mockResolvedValue(mockResponse);
+    llm.mockResolvedValue(mockResponse);
 
     await centralTendency('robin', ['sparrow', 'bluejay'], {
       context: 'Bird evaluation context',
       coreFeatures: ['feathers', 'beak', 'flight'],
     });
 
-    const calledPrompt = chatGPT.mock.calls[0][0];
+    const calledPrompt = llm.mock.calls[0][0];
     expect(calledPrompt).toContain('Context: Bird evaluation context');
     expect(calledPrompt).toContain('Core Features: feathers, beak, flight');
     expect(calledPrompt).toContain('sparrow, bluejay');
@@ -141,11 +141,11 @@ describe('centralTendency', () => {
       confidence: 0.8,
     };
 
-    chatGPT.mockResolvedValue(mockResponse);
+    llm.mockResolvedValue(mockResponse);
 
     await centralTendency('item', ['seed1', 'seed2'], {});
 
-    const modelOptions = chatGPT.mock.calls[0][1].modelOptions;
+    const modelOptions = llm.mock.calls[0][1].modelOptions;
     expect(modelOptions).toHaveProperty('response_format');
     expect(modelOptions.response_format.type).toBe('json_schema');
     expect(modelOptions.response_format.json_schema.name).toBe('central_tendency_result');

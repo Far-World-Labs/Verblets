@@ -1,7 +1,7 @@
 import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
 
 import toObject from './index.js';
-import chatGPT from '../../lib/chatgpt/index.js';
+import llm from '../../lib/llm/index.js';
 import vitestAiExpect from '../expect/index.js';
 import { longTestTimeout } from '../../constants/common.js';
 import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
@@ -30,8 +30,8 @@ describe('To object verblet', () => {
     it(
       example.inputs.text,
       async () => {
-        const chatGPTResult = await chatGPT(example.inputs.text);
-        const result = await toObject(chatGPTResult);
+        const llmResult = await llm(example.inputs.text);
+        const result = await toObject(llmResult);
 
         if (example.want.typeOfResult) {
           expect(typeof result).toStrictEqual(example.want.typeOfResult);

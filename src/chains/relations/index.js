@@ -1,4 +1,4 @@
-import chatGPT from '../../lib/chatgpt/index.js';
+import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { constants as promptConstants } from '../../prompts/index.js';
@@ -143,14 +143,14 @@ Provide a specification describing:
 
 Use natural language, not symbolic identifiers or linked data formats.`;
 
-  const response = await retry(chatGPT, {
+  const response = await retry(callLlm, {
     label: 'relations-spec',
     maxAttempts,
     onProgress,
     now,
     chainStartTime: now,
-    chatGPTPrompt: specUserPrompt,
-    chatGPTConfig: {
+    llmPrompt: specUserPrompt,
+    llmConfig: {
       llm,
       system: specSystemPrompt,
       ...rest,
@@ -207,14 +207,14 @@ Example: {"object": "42^^xsd:integer"} NOT {"object": '"42"^^xsd:integer'}
 
 ${onlyJSON}`;
 
-  const response = await retry(chatGPT, {
+  const response = await retry(callLlm, {
     label: 'relations-apply',
     maxAttempts,
     onProgress,
     now,
     chainStartTime: now,
-    chatGPTPrompt: prompt,
-    chatGPTConfig: {
+    llmPrompt: prompt,
+    llmConfig: {
       modelOptions: {
         response_format: {
           type: 'json_schema',
@@ -230,7 +230,7 @@ ${onlyJSON}`;
     logger: options.logger,
   });
 
-  // Handle auto-unwrapped response (chatGPT unwraps simple collection schemas)
+  // Handle auto-unwrapped response (llm unwraps simple collection schemas)
   // If response is an array, it's already the items array
   if (Array.isArray(response)) {
     return { items: parseRelations(response) };

@@ -62,7 +62,7 @@ const unsortedStrings = [
   'jellyfish',
 ];
 
-vi.mock('../../lib/chatgpt/index.js', () => ({
+vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn().mockImplementation((text) => {
     if (text.options.description === 'alphabetically') {
       const sorted = R.sort((a, b) => b.localeCompare(a), text.list);

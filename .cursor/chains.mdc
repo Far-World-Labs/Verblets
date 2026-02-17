@@ -24,16 +24,16 @@ export default async function chainName(input, instructions, config = {}) {
   const { 
     chunkSize = 10, 
     maxAttempts = 3, 
-    llm = { negotiate: { fast: true, cheap: true } },
-    ...options 
+    llm: llmConfig = { negotiate: { fast: true, cheap: true } },
+    ...options
   } = config;
-  
+
   // Batch processing logic
   for (let i = 0; i < input.length; i += chunkSize) {
     const batch = input.slice(i, i + chunkSize);
     // eslint-disable-next-line no-await-in-loop
-    const result = await chatGPT(prompt, {
-      modelOptions: { ...llm },
+    const result = await llm(prompt, {
+      modelOptions: { ...llmConfig },
       ...options
     });
   }

@@ -11,12 +11,12 @@ import score, {
   buildCalibrationReference,
   formatCalibrationBlock,
 } from './index.js';
-import chatGPT from '../../lib/chatgpt/index.js';
+import llm from '../../lib/llm/index.js';
 import { scaleSpec } from '../scale/index.js';
 import map from '../map/index.js';
 import filter from '../filter/index.js';
 
-vi.mock('../../lib/chatgpt/index.js', () => ({
+vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(),
 }));
 
@@ -77,26 +77,23 @@ describe('score chain', () => {
   describe('scoreItem', () => {
     it('scores a single item', async () => {
       scaleSpec.mockResolvedValueOnce(mockSpec);
-      chatGPT.mockResolvedValueOnce(7); // chatGPT auto-unwraps single value property
+      llm.mockResolvedValueOnce(7); // llm auto-unwraps single value property
 
       const result = await scoreItem('test item', 'score by length');
 
       expect(scaleSpec).toHaveBeenCalledWith('score by length', { now: expect.any(Date) });
-      expect(chatGPT).toHaveBeenCalledWith(
-        expect.stringContaining('test item'),
-        expect.any(Object)
-      );
+      expect(llm).toHaveBeenCalledWith(expect.stringContaining('test item'), expect.any(Object));
       expect(result).toBe(7);
     });
   });
 
   describe('applyScore', () => {
     it('applies a score specification to a single item', async () => {
-      chatGPT.mockResolvedValueOnce(7); // chatGPT auto-unwraps single value property
+      llm.mockResolvedValueOnce(7); // llm auto-unwraps single value property
 
       const result = await applyScore('test item', mockSpec);
 
-      expect(chatGPT).toHaveBeenCalledWith(
+      expect(llm).toHaveBeenCalledWith(
         expect.stringContaining('<score-specification>'),
         expect.any(Object)
       );

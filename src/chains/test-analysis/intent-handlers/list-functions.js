@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { listFunctions } from '../../../lib/parse-js-parts/function-utils.js';
 import score from '../../../chains/score/index.js';
-import chatGPT from '../../../lib/chatgpt/index.js';
+import llm from '../../../lib/llm/index.js';
 import retry from '../../../lib/retry/index.js';
 import { bold, cyan, gray } from '../../../chains/test-analysis/output-utils.js';
 import compressedContextSchema from '../schemas/compressed-context.json';
@@ -26,7 +26,7 @@ async function getAiMdContext(moduleDir) {
 
     const compressed = await retry(
       () =>
-        chatGPT(prompt, {
+        llm(prompt, {
           modelOptions: {
             response_format: {
               type: 'json_schema',
@@ -40,7 +40,7 @@ async function getAiMdContext(moduleDir) {
       { maxRetries: 2, label: 'AI.md compression' }
     );
 
-    // chatGPT auto-unwraps the value field
+    // llm auto-unwraps the value field
     return compressed;
   } catch {
     return '';
@@ -79,7 +79,7 @@ const buildModulePaths = (referenceModules) =>
 const summarizeFunction = async (func) => {
   const prompt = `Describe this function's purpose in 5-10 words:\n\n${func.text.slice(0, 300)}`;
   try {
-    const description = await retry(() => chatGPT(prompt), {
+    const description = await retry(() => llm(prompt), {
       maxRetries: 1,
       label: 'function summary',
     });

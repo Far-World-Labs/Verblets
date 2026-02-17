@@ -1,5 +1,5 @@
 import * as R from 'ramda';
-import chatGPT from '../../lib/chatgpt/index.js';
+import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { sort as sortPromptInitial } from '../../prompts/index.js';
 import sortSchema from './sort-result.json';
@@ -8,7 +8,7 @@ import { emitStart, emitComplete, emitStepProgress } from '../../lib/progress-ca
 /**
  * Create model options for structured outputs
  * @param {string|Object} llm - LLM model name or configuration object
- * @returns {Object} Model options for chatGPT
+ * @returns {Object} Model options for llm
  */
 function createModelOptions(llm = 'fastGoodCheap') {
   const responseFormat = {
@@ -87,14 +87,14 @@ const sort = async (list, criteria, config = {}) => {
 
     const modelOptions = createModelOptions(llm);
 
-    const result = await retry(chatGPT, {
+    const result = await retry(callLlm, {
       label: 'sort-batch',
       maxAttempts,
       onProgress,
       now,
       chainStartTime: now,
-      chatGPTPrompt: prompt,
-      chatGPTConfig: {
+      llmPrompt: prompt,
+      llmConfig: {
         modelOptions,
         ...options,
       },

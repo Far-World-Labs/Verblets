@@ -1,4 +1,4 @@
-import chatGPT from '../../lib/chatgpt/index.js';
+import llm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { extractCodeWindow } from '../../lib/code-extractor/index.js';
 
@@ -141,10 +141,13 @@ Discussion:
 </analysis-guidelines>`;
 
   try {
-    const response = await retry(
-      () => chatGPT(prompt, { modelOptions: { max_tokens: MAX_TOKENS } }),
-      { maxAttempts, onProgress, now, chainStartTime: now, label: 'test analyzer' }
-    );
+    const response = await retry(() => llm(prompt, { modelOptions: { max_tokens: MAX_TOKENS } }), {
+      maxAttempts,
+      onProgress,
+      now,
+      chainStartTime: now,
+      label: 'test analyzer',
+    });
     return response.trim();
   } catch (error) {
     console.error('AI analysis failed:', error.message);

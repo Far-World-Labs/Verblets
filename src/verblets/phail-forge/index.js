@@ -16,7 +16,7 @@
  * expert at whatever." - u/stunspot
  */
 
-import chatGPT from '../../lib/chatgpt/index.js';
+import llm from '../../lib/llm/index.js';
 
 const ENHANCEMENT_PROMPT = `You are an expert prompt engineer tasked with transforming a basic prompt into an expert-level "phial" - a precisely crafted, portable prompt specification.
 
@@ -75,7 +75,7 @@ export default async function phailForge(prompt, options = {}) {
     .join('\n');
 
   // Get the enhanced prompt
-  const enhancedResponse = await chatGPT(fullPrompt, {
+  const enhancedResponse = await llm(fullPrompt, {
     modelOptions: {
       response_format: {
         type: 'json_schema',
@@ -148,7 +148,7 @@ export default async function phailForge(prompt, options = {}) {
   if (analyze) {
     const analysisPrompt = `${ANALYSIS_PROMPT}\n\nPrompt to analyze:\n${enhancedResponse.enhanced}`;
 
-    const analysis = await chatGPT(analysisPrompt, {
+    const analysis = await llm(analysisPrompt, {
       modelOptions: {
         response_format: {
           type: 'json_schema',

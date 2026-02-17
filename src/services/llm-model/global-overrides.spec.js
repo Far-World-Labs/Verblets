@@ -3,9 +3,9 @@ import fetch from 'node-fetch';
 import modelService from './index.js';
 import Model from './model.js';
 
-import { run as chatgptRun } from '../../lib/chatgpt/index.js';
+import { run as llmRun } from '../../lib/llm/index.js';
 
-// Mock node-fetch before importing chatgpt
+// Mock node-fetch before importing llm
 vi.mock('node-fetch', () => ({
   default: vi.fn(),
 }));
@@ -171,7 +171,7 @@ describe('Global Override System', () => {
       // Set global model override
       modelService.setGlobalOverride('modelName', 'customModel');
 
-      const result = await chatgptRun('Test prompt', {
+      const result = await llmRun('Test prompt', {
         modelOptions: {
           modelName: 'fastGood', // This should be overridden
         },
@@ -193,7 +193,7 @@ describe('Global Override System', () => {
     it('should override even when no modelOptions provided', async () => {
       modelService.setGlobalOverride('modelName', 'expensiveReasoning');
 
-      const result = await chatgptRun('Test prompt');
+      const result = await llmRun('Test prompt');
 
       expect(result).toBe('Test response');
       expect(fetch).toHaveBeenCalledWith(
@@ -213,7 +213,7 @@ describe('Global Override System', () => {
     it('should override negotiation options globally', async () => {
       modelService.setGlobalOverride('negotiate', { reasoning: true });
 
-      const result = await chatgptRun('Test prompt', {
+      const result = await llmRun('Test prompt', {
         modelOptions: {
           modelName: 'fastGood',
           negotiate: { fast: true, cheap: true }, // This should be overridden
@@ -233,7 +233,7 @@ describe('Global Override System', () => {
     it('should apply negotiation when none provided in options', async () => {
       modelService.setGlobalOverride('negotiate', { fast: true, cheap: true });
 
-      const result = await chatgptRun('Test prompt', {
+      const result = await llmRun('Test prompt', {
         modelOptions: {
           modelName: 'expensiveReasoning', // Should be overridden by negotiation
         },
@@ -254,7 +254,7 @@ describe('Global Override System', () => {
     it('should override temperature globally', async () => {
       modelService.setGlobalOverride('temperature', 0.9);
 
-      const result = await chatgptRun('Test prompt', {
+      const result = await llmRun('Test prompt', {
         modelOptions: {
           modelName: 'fastGood',
           temperature: 0.1, // This should be overridden
@@ -275,7 +275,7 @@ describe('Global Override System', () => {
       modelService.setGlobalOverride('maxTokens', 1500);
       modelService.setGlobalOverride('topP', 0.95);
 
-      const result = await chatgptRun('Test prompt', {
+      const result = await llmRun('Test prompt', {
         modelOptions: {
           modelName: 'fastGood',
           temperature: 0.1,
@@ -295,7 +295,7 @@ describe('Global Override System', () => {
     it('should preserve non-overridden parameters', async () => {
       modelService.setGlobalOverride('temperature', 0.8);
 
-      const result = await chatgptRun('Test prompt', {
+      const result = await llmRun('Test prompt', {
         modelOptions: {
           modelName: 'fastGood',
           temperature: 0.1,
@@ -318,7 +318,7 @@ describe('Global Override System', () => {
       modelService.setGlobalOverride('modelName', 'customModel');
       modelService.setGlobalOverride('temperature', 0.9);
 
-      const result = await chatgptRun('Test prompt', {
+      const result = await llmRun('Test prompt', {
         modelOptions: {
           modelName: 'fastGood',
           temperature: 0.1,
@@ -348,7 +348,7 @@ describe('Global Override System', () => {
       modelService.setGlobalOverride('modelName', 'customModel');
       modelService.setGlobalOverride('negotiate', { reasoning: true });
 
-      const result = await chatgptRun('Test prompt', {
+      const result = await llmRun('Test prompt', {
         modelOptions: {
           modelName: 'fastGood',
         },
@@ -368,7 +368,7 @@ describe('Global Override System', () => {
       modelService.setGlobalOverride('modelName', 'customModel');
       modelService.setGlobalOverride('temperature', 0.7);
 
-      const result = await chatgptRun('Test prompt');
+      const result = await llmRun('Test prompt');
 
       expect(result).toBe('Test response');
       expect(fetch).toHaveBeenCalledWith(
@@ -389,7 +389,7 @@ describe('Global Override System', () => {
       // Set override and make a call
       modelService.setGlobalOverride('modelName', 'customModel');
 
-      await chatgptRun('Test prompt 1');
+      await llmRun('Test prompt 1');
       expect(fetch).toHaveBeenCalledWith(
         'https://custom.api.com/v1/completions',
         expect.anything()
@@ -399,7 +399,7 @@ describe('Global Override System', () => {
       modelService.clearGlobalOverride('modelName');
       fetch.mockClear();
 
-      await chatgptRun('Test prompt 2');
+      await llmRun('Test prompt 2');
       expect(fetch).toHaveBeenCalledWith(
         'https://api.openai.com/v1/chat/completions',
         expect.anything()
@@ -410,12 +410,12 @@ describe('Global Override System', () => {
       modelService.setGlobalOverride('temperature', 0.8);
 
       // First call
-      await chatgptRun('Test prompt 1', {
+      await llmRun('Test prompt 1', {
         modelOptions: { modelName: 'fastGood', temperature: 0.1 },
       });
 
       // Second call
-      await chatgptRun('Test prompt 2', {
+      await llmRun('Test prompt 2', {
         modelOptions: { modelName: 'customModel', temperature: 0.2 },
       });
 

@@ -8,12 +8,12 @@ import {
   findInstructions,
 } from './index.js';
 
-// Mock the chatGPT module
-vi.mock('../../lib/chatgpt/index.js', () => ({
+// Mock the llm module
+vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(),
 }));
 
-import chatGPT from '../../lib/chatgpt/index.js';
+import llm from '../../lib/llm/index.js';
 
 describe('entities', () => {
   beforeEach(() => {
@@ -32,11 +32,11 @@ Extraction Rules:
 - Capture titles or roles if mentioned with people
 - Recognize common variations and abbreviations`;
 
-      chatGPT.mockResolvedValueOnce(mockSpec);
+      llm.mockResolvedValueOnce(mockSpec);
 
       const spec = await entitySpec('Extract people, companies, and locations');
 
-      expect(chatGPT).toHaveBeenCalledWith(
+      expect(llm).toHaveBeenCalledWith(
         expect.stringContaining('Extract people, companies, and locations'),
         expect.objectContaining({
           system: expect.stringContaining('entity specification generator'),
@@ -59,11 +59,11 @@ Extraction Rules:
         ],
       };
 
-      chatGPT.mockResolvedValueOnce(mockResponse);
+      llm.mockResolvedValueOnce(mockResponse);
 
       const result = await applyEntities(text, spec);
 
-      expect(chatGPT).toHaveBeenCalledWith(expect.stringContaining(text), expect.any(Object));
+      expect(llm).toHaveBeenCalledWith(expect.stringContaining(text), expect.any(Object));
       expect(result).toEqual(mockResponse);
     });
   });
@@ -78,12 +78,12 @@ Extraction Rules:
         ],
       };
 
-      chatGPT.mockResolvedValueOnce(mockSpec).mockResolvedValueOnce(mockEntities);
+      llm.mockResolvedValueOnce(mockSpec).mockResolvedValueOnce(mockEntities);
 
       const extractor = entities('Extract all companies');
       const result = await extractor('Google and Amazon are major tech companies.');
 
-      expect(chatGPT).toHaveBeenCalledTimes(2);
+      expect(llm).toHaveBeenCalledTimes(2);
       expect(result).toEqual(mockEntities);
     });
   });
@@ -157,8 +157,8 @@ Extraction Rules:
       expect(extractor.specification).toBe(spec);
 
       const mockEntities = { entities: [{ name: 'Test', type: 'test' }] };
-      // The extractor calls applyEntities which calls chatGPT once
-      chatGPT.mockResolvedValueOnce(mockEntities);
+      // The extractor calls applyEntities which calls llm once
+      llm.mockResolvedValueOnce(mockEntities);
 
       const result = await extractor('Test text');
       expect(result).toEqual(mockEntities);
@@ -167,7 +167,7 @@ Extraction Rules:
 
   describe('edge cases', () => {
     it('should handle empty text', async () => {
-      chatGPT.mockResolvedValueOnce('Spec').mockResolvedValueOnce({ entities: [] });
+      llm.mockResolvedValueOnce('Spec').mockResolvedValueOnce({ entities: [] });
 
       const extractor = entities('Extract any entities');
       const result = await extractor('');

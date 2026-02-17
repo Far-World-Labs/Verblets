@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import number from './index.js';
 
-vi.mock('../../lib/chatgpt/index.js', () => ({
+vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn().mockImplementation((text) => {
     // When responseFormat is used, auto-unwrapping will return the value directly
     if (/Everest/.test(text)) {

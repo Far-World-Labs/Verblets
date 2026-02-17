@@ -41,26 +41,26 @@ export class TestCollector {
 
     // Track LLM calls from actual event patterns
     if (event.event) {
-      // Handle chatgpt events
-      if (event.event === 'chatgpt:start') {
+      // Handle llm events
+      if (event.event === 'llm:start') {
         const call = {
-          type: 'chatgpt',
+          type: 'llm',
           startTime: new Date(event.ts).getTime(),
           promptLength: event.promptLength,
           testName: this.currentTest?.name,
           suite: this.currentTest?.suite,
         };
-        this.pendingLLMCalls.set('chatgpt', call);
+        this.pendingLLMCalls.set('llm', call);
       }
 
-      if (event.event === 'chatgpt:end') {
-        const pending = this.pendingLLMCalls.get('chatgpt');
+      if (event.event === 'llm:end') {
+        const pending = this.pendingLLMCalls.get('llm');
         if (pending) {
           pending.endTime = new Date(event.ts).getTime();
           pending.duration = event.duration || pending.endTime - pending.startTime;
           pending.cached = event.cached;
           this.llmCalls.push(pending);
-          this.pendingLLMCalls.delete('chatgpt');
+          this.pendingLLMCalls.delete('llm');
         }
       }
 

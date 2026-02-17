@@ -4,8 +4,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from './index.js';
 
-// Mock chatGPT
-vi.mock('../../lib/chatgpt/index.js', () => ({
+// Mock llm
+vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(),
 }));
 
@@ -14,7 +14,7 @@ vi.mock('../../lib/retry/index.js', () => ({
   default: vi.fn((fn) => fn()),
 }));
 
-import chatGPT from '../../lib/chatgpt/index.js';
+import llm from '../../lib/llm/index.js';
 
 let tempFile;
 
@@ -36,7 +36,7 @@ describe('test chain', () => {
     const mockCode = 'function example() { return "hello"; }';
     await writeFile(tempFile, mockCode);
 
-    chatGPT.mockResolvedValueOnce({
+    llm.mockResolvedValueOnce({
       hasIssues: true,
       issues: ['This function could use JSDoc comments.', 'Consider adding error handling.'],
     });
@@ -48,7 +48,7 @@ describe('test chain', () => {
       'Consider adding error handling.',
     ]);
 
-    expect(chatGPT).toHaveBeenCalledWith(
+    expect(llm).toHaveBeenCalledWith(
       expect.any(String),
       expect.objectContaining({
         modelOptions: expect.objectContaining({
@@ -64,7 +64,7 @@ describe('test chain', () => {
     const mockCode = 'function example() { return "hello"; }';
     await writeFile(tempFile, mockCode);
 
-    chatGPT.mockResolvedValueOnce({
+    llm.mockResolvedValueOnce({
       hasIssues: false,
       issues: [],
     });
@@ -75,7 +75,7 @@ describe('test chain', () => {
   });
 
   it('handles errors', async () => {
-    chatGPT.mockRejectedValueOnce(new Error('Analysis failed'));
+    llm.mockRejectedValueOnce(new Error('Analysis failed'));
     await writeFile(tempFile, 'bad code');
 
     const result = await test(tempFile, 'provide feedback');

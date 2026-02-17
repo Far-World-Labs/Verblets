@@ -1,4 +1,4 @@
-import chatGPT from '../../lib/chatgpt/index.js';
+import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import numberWithUnits from '../../verblets/number-with-units/index.js';
 import number from '../../verblets/number/index.js';
@@ -100,14 +100,14 @@ ${asXML(history, { tag: 'history', title: 'History:' })}
 ${asXML(count, { tag: 'count', title: 'Count:' })}
 Next wait:`;
 
-      const intervalText = await retry(chatGPT, {
+      const intervalText = await retry(callLlm, {
         label: 'set-interval',
         maxAttempts,
         onProgress,
         now,
         chainStartTime: now,
-        chatGPTPrompt: intervalPrompt,
-        chatGPTConfig: {
+        llmPrompt: intervalPrompt,
+        llmConfig: {
           modelOptions: model ? { modelName: model, ...llm } : { ...llm },
           ...options,
         },

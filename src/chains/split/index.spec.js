@@ -3,7 +3,7 @@ import split from './index.js';
 
 const DELIM = '---763927459---';
 
-vi.mock('../../lib/chatgpt/index.js', () => ({
+vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(async (prompt) => {
     // Extract the instructions and text using XML tags
     const instructionsMatch = prompt.match(/<instructions>(.*?)<\/instructions>/s);

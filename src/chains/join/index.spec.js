@@ -1,17 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import join from './index.js';
 
-// Mock the ChatGPT function to avoid actual API calls
-vi.mock('../../lib/chatgpt/index.js', () => ({
+// Mock the llm function to avoid actual API calls
+vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(),
 }));
 
-import chatGPT from '../../lib/chatgpt/index.js';
+import llm from '../../lib/llm/index.js';
 
 beforeEach(() => {
   vi.clearAllMocks();
-  // Mock ChatGPT to return joined text
-  chatGPT.mockImplementation((prompt) => {
+  // Mock llm to return joined text
+  llm.mockImplementation((prompt) => {
     // Simple mock that joins fragments mentioned in the prompt
     if (prompt.includes('Hello') && prompt.includes('world') && prompt.includes('today')) {
       return 'Hello and world and today';
@@ -36,7 +36,7 @@ describe('join chain', () => {
     expect(result).toContain('Hello');
     expect(result).toContain('world');
     expect(result).toContain('today');
-    expect(chatGPT).toHaveBeenCalled();
+    expect(llm).toHaveBeenCalled();
   });
 
   it('applies windowed processing with configuration', async () => {
@@ -44,7 +44,7 @@ describe('join chain', () => {
 
     expect(typeof result).toBe('string');
     expect(result.length).toBeGreaterThan(0);
-    expect(chatGPT).toHaveBeenCalled();
+    expect(llm).toHaveBeenCalled();
   });
 
   it('handles empty and single item arrays', async () => {
@@ -54,7 +54,7 @@ describe('join chain', () => {
     const singleResult = await join(['only']);
     expect(singleResult).toBe('only');
 
-    // Should not call ChatGPT for edge cases
-    expect(chatGPT).not.toHaveBeenCalled();
+    // Should not call llm for edge cases
+    expect(llm).not.toHaveBeenCalled();
   });
 });

@@ -1,7 +1,7 @@
 import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
 
 import { longTestTimeout } from '../../constants/common.js';
-import chatGPT from '../../lib/chatgpt/index.js';
+import llm from '../../lib/llm/index.js';
 import { asJSONSchema } from '../../prompts/index.js';
 import toObject from '../to-object/index.js';
 import vitestAiExpect from '../expect/index.js';
@@ -47,7 +47,7 @@ describe('List verblet', () => {
       async () => {
         let schema;
         if (example.inputs.jsonSchemaQuery) {
-          schema = await toObject(await chatGPT(asJSONSchema(example.inputs.jsonSchemaQuery)));
+          schema = await toObject(await llm(asJSONSchema(example.inputs.jsonSchemaQuery)));
         }
 
         const result = await list(example.inputs.description, {

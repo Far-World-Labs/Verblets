@@ -113,7 +113,7 @@ Codebase utilities analyze, test, and improve code quality using AI reasoning.
 
 Helpers support higher-level operations. They make no LLM calls and are often synchronous.
 
-- [chatgpt](./src/lib/chatgpt) - OpenAI ChatGPT wrapper
+- [llm](./src/lib/llm) - LLM wrapper
 - [prompt-cache](./src/lib/prompt-cache) - Cache prompts and responses
 - [retry](./src/lib/retry) - Retry asynchronous calls
 - [ring-buffer](./src/lib/ring-buffer) - Circular buffer implementation for running LLMs on streams of data

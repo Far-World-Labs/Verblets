@@ -1,4 +1,4 @@
-import chatGPT from '../../lib/chatgpt/index.js';
+import callLlm from '../../lib/llm/index.js';
 import { constants as promptConstants, asXML } from '../../prompts/index.js';
 import fillMissingSchema from './fill-missing-result.json';
 
@@ -36,6 +36,6 @@ export default async function fillMissing(text, config = {}) {
   const { llm, ...options } = config;
   const prompt = buildPrompt(text);
   const modelOptions = createModelOptions(llm);
-  const response = await chatGPT(prompt, { modelOptions, ...options });
+  const response = await callLlm(prompt, { modelOptions, ...options });
   return response;
 }

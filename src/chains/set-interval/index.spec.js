@@ -3,7 +3,7 @@ import setInterval from './index.js';
 
 vi.useFakeTimers();
 
-vi.mock('../../lib/chatgpt/index.js', () => ({
+vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(),
 }));
 vi.mock('../date/index.js', () => ({
@@ -16,14 +16,14 @@ vi.mock('../../verblets/number/index.js', () => ({
   default: vi.fn(),
 }));
 
-const chatGPT = (await import('../../lib/chatgpt/index.js')).default;
+const llm = (await import('../../lib/llm/index.js')).default;
 const date = (await import('../date/index.js')).default;
 const numberWithUnits = (await import('../../verblets/number-with-units/index.js')).default;
 const number = (await import('../../verblets/number/index.js')).default;
 
 describe('setInterval', () => {
   it('runs callback with dynamic delays', async () => {
-    chatGPT.mockResolvedValueOnce('1 second').mockResolvedValueOnce('2 seconds');
+    llm.mockResolvedValueOnce('1 second').mockResolvedValueOnce('2 seconds');
     numberWithUnits
       .mockResolvedValueOnce({ value: 1, unit: 'second' })
       .mockResolvedValueOnce({ value: 2, unit: 'second' });
@@ -44,7 +44,7 @@ describe('setInterval', () => {
   });
 
   it('interpolates variables from getData results in prompt', async () => {
-    chatGPT.mockResolvedValueOnce('1 second');
+    llm.mockResolvedValueOnce('1 second');
     numberWithUnits.mockResolvedValueOnce({ value: 1, unit: 'second' });
     date.mockResolvedValue(undefined);
     number.mockResolvedValue(undefined);
@@ -58,8 +58,8 @@ describe('setInterval', () => {
     await Promise.resolve();
     await vi.advanceTimersByTimeAsync(0);
 
-    // Check that chatGPT was called with interpolated values
-    expect(chatGPT).toHaveBeenCalledWith(
+    // Check that llm was called with interpolated values
+    expect(llm).toHaveBeenCalledWith(
       expect.stringContaining('Current stress: 85, mood: anxious. Wait time?'),
       expect.any(Object)
     );
@@ -69,7 +69,7 @@ describe('setInterval', () => {
   });
 
   it('prevents new timers after stop is called', async () => {
-    chatGPT.mockResolvedValueOnce('1 second');
+    llm.mockResolvedValueOnce('1 second');
     numberWithUnits.mockResolvedValueOnce({ value: 1, unit: 'second' });
     date.mockResolvedValue(undefined);
     number.mockResolvedValue(undefined);
