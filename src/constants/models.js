@@ -177,6 +177,10 @@ function selectMapping() {
     mapping = { ...anthropicMapping };
   } else if (hasOpenAI) {
     mapping = { ...openaiMapping };
+  } else {
+    // No API keys — fall back to OpenAI mapping so model definitions
+    // are always populated (needed for unit tests, token budgeting, etc.)
+    mapping = { ...openaiMapping };
   }
 
   if (hasOpenWebUI) {
