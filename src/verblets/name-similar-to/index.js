@@ -1,4 +1,4 @@
-import chatGPT from '../../lib/chatgpt/index.js';
+import callLlm from '../../lib/llm/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { nameSimilarSchema } from './schema.js';
 import { constants as promptConstants } from '../../prompts/index.js';
@@ -23,7 +23,7 @@ ${asJSON}`;
 export default async function nameSimilarTo(description, exampleNames = [], config = {}) {
   const { llm, ...options } = config;
   const prompt = buildPrompt(description, exampleNames);
-  const response = await chatGPT(prompt, {
+  const response = await callLlm(prompt, {
     modelOptions: {
       ...llm,
       response_format: {

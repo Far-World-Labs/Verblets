@@ -1,4 +1,4 @@
-import chatGPT from '../../lib/chatgpt/index.js';
+import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import windowFor from '../../lib/window-for/index.js';
 
@@ -50,15 +50,15 @@ ${fragmentList}
 
 Important: This is part of a larger sequence. Join these fragments while being mindful that this result will be combined with other processed windows. Add necessary connecting words, prepositions, conjunctions, or other filler text to create a coherent, grammatically correct, and semantically meaningful result. Output only the joined result for this window.`;
 
-    const chatGPTConfig = { modelOptions: { ...llm }, ...options };
-    const result = await retry(chatGPT, {
+    const llmConfig = { modelOptions: { ...llm }, ...options };
+    const result = await retry(callLlm, {
       label: `join-window-${windowIndex + 1}`,
       maxRetries,
       onProgress,
       now,
       chainStartTime: now,
-      chatGPTPrompt: instruction,
-      chatGPTConfig,
+      llmPrompt: instruction,
+      llmConfig,
       logger: options.logger,
     });
 
@@ -108,14 +108,14 @@ The terminal ends of both sections should be preserved. Only resolve the overlap
 Add necessary connecting words, prepositions, conjunctions, or other filler text to create a coherent, grammatically correct, and semantically meaningful result. Output only the final stitched result with terminals preserved.`;
 
       const stitchConfig = { modelOptions: { ...llm }, ...options };
-      const stitchResult = await retry(chatGPT, {
+      const stitchResult = await retry(callLlm, {
         label: `join-stitch-${i}`,
         maxRetries,
         onProgress,
         now,
         chainStartTime: now,
-        chatGPTPrompt: stitchInstruction,
-        chatGPTConfig: stitchConfig,
+        llmPrompt: stitchInstruction,
+        llmConfig: stitchConfig,
         logger: options.logger,
       });
 
@@ -131,14 +131,14 @@ Join these two non-overlapping sections:
 Add necessary connecting words, prepositions, conjunctions, or other filler text to create a coherent, grammatically correct, and semantically meaningful result. Output only the joined result.`;
 
       const joinConfig = { modelOptions: { ...llm }, ...options };
-      const joinResult = await retry(chatGPT, {
+      const joinResult = await retry(callLlm, {
         label: `join-nonoverlap-${i}`,
         maxAttempts: maxRetries + 1,
         onProgress,
         now,
         chainStartTime: now,
-        chatGPTPrompt: joinInstruction,
-        chatGPTConfig: joinConfig,
+        llmPrompt: joinInstruction,
+        llmConfig: joinConfig,
         logger: options.logger,
       });
 

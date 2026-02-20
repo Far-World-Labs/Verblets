@@ -5,7 +5,7 @@ Verblets are simple, focused utilities that perform specific tasks. They are the
 ## What are Verblets?
 
 Verblets are small, single-purpose functions that:
-- Perform one specific task well. A verblet should invoke chatgpt or an AI no more than once. 
+- Perform one specific task well. A verblet should invoke the llm module or an AI no more than once. 
 - Should be fast to respond. Large-context verblets should be treated as a chain.
 - Should not retry and should have minimal processing logic.
 - Have clear, predictable inputs and outputs

@@ -63,7 +63,7 @@ export default async function centralTendency(items, seedItems, config = {}) {
   }
 
   const {
-    chunkSize = 5,
+    chunkSize: batchSize = 5,
     maxAttempts = 3,
     logger,
     onProgress,
@@ -93,7 +93,7 @@ export default async function centralTendency(items, seedItems, config = {}) {
 
     // Use map to handle all the complexity
     const results = await map(items, instructions, {
-      chunkSize,
+      batchSize,
       maxAttempts,
       responseFormat: centralTendencyResponseFormat,
       logger: lifecycleLogger, // Pass logger to map for its own logging

@@ -1,4 +1,4 @@
-import chatGPT from '../../lib/chatgpt/index.js';
+import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { peopleListJsonSchema } from './schemas.js';
@@ -13,7 +13,7 @@ ${instructions}`;
 
   const response = await retry(
     () =>
-      chatGPT(prompt, {
+      callLlm(prompt, {
         modelOptions: {
           ...llm,
           response_format: {

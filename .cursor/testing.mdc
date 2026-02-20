@@ -23,24 +23,24 @@ The Verblets library uses a comprehensive testing approach with different types 
 ```javascript
 import { vi } from 'vitest';
 import { expect, test, describe } from 'vitest';
-import chatGPT from '../../lib/chatgpt/index.js';
+import llm from '../../lib/llm/index.js';
 import functionName from './index.js';
 
-// Mock the chatGPT function
-vi.mock('../../lib/chatgpt/index.js');
+// Mock the llm function
+vi.mock('../../lib/llm/index.js');
 
 describe('functionName', () => {
   test('should handle clear input correctly', async () => {
     // Arrange
     const mockResponse = 'expected response format';
-    chatGPT.mockResolvedValue(mockResponse);
+    llm.mockResolvedValue(mockResponse);
     
     // Act
     const result = await functionName('clear input', { llm: 'testModel' });
     
     // Assert
     expect(result).toBe('expected response format');
-    expect(chatGPT).toHaveBeenCalledWith(
+    expect(llm).toHaveBeenCalledWith(
       expect.stringContaining('clear input'),
       expect.objectContaining({
         modelOptions: { llm: 'testModel' }

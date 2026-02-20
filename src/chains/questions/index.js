@@ -1,6 +1,6 @@
 import * as R from 'ramda';
 
-import chatGPT from '../../lib/chatgpt/index.js';
+import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { constants as promptConstants, asXML } from '../../prompts/index.js';
 import modelService from '../../services/llm-model/index.js';
@@ -80,14 +80,14 @@ const generateQuestions = async function* generateQuestionsGenerator(text, optio
         existing: choices,
       });
       // eslint-disable-next-line no-await-in-loop
-      const selectedResult = await retry(chatGPT, {
+      const selectedResult = await retry(callLlm, {
         label: 'questions-pick-interesting',
         maxAttempts,
         onProgress,
         now,
         chainStartTime: now,
-        chatGPTPrompt: pickInterestingQuestionPrompt,
-        chatGPTConfig: {
+        llmPrompt: pickInterestingQuestionPrompt,
+        llmConfig: {
           modelOptions: {
             response_format: {
               type: 'json_schema',
@@ -107,7 +107,7 @@ const generateQuestions = async function* generateQuestionsGenerator(text, optio
       existing: resultsAll,
     });
     const budget = model.budgetTokens(promptCreated);
-    const chatGPTConfig = {
+    const llmConfig = {
       modelOptions: {
         maxTokens: budget.completion,
         temperature: 1,
@@ -122,14 +122,14 @@ const generateQuestions = async function* generateQuestionsGenerator(text, optio
     };
 
     // eslint-disable-next-line no-await-in-loop
-    const results = await retry(chatGPT, {
+    const results = await retry(callLlm, {
       label: 'questions-generate',
       maxAttempts,
       onProgress,
       now,
       chainStartTime: now,
-      chatGPTPrompt: `${promptCreated}`,
-      chatGPTConfig,
+      llmPrompt: `${promptCreated}`,
+      llmConfig,
     });
     const resultsNew = getRandomSubset(results, searchBreadth);
     if (searchBreadth < 0.5) {

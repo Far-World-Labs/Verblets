@@ -100,23 +100,23 @@ describe('Bulk Central Tendency Chain', () => {
   );
 
   it(
-    'manages retry logic for failed items',
+    'handles items with varying centrality to the seed group',
     async () => {
-      const items = ['cat', 'dog', 'elephant'];
-      const seedItems = ['cat', 'dog', 'rabbit', 'hamster'];
+      const items = ['cat', 'dog', 'elephant', 'hamster', 'goldfish'];
+      const seedItems = ['cat', 'dog', 'rabbit', 'hamster', 'guinea pig'];
 
-      const logger = makeTestLogger('manages retry logic');
+      const logger = makeTestLogger('varying centrality');
       const results = await centralTendency(items, seedItems, {
-        maxAttempts: 2,
+        context: 'Common household pets',
         logger,
       });
 
-      expect(results).toHaveLength(3);
+      expect(results).toHaveLength(5);
       expect(results.every((r) => r && typeof r.score === 'number')).toBe(true);
+      expect(results.every((r) => r && r.score >= 0 && r.score <= 1)).toBe(true);
 
-      // Use expect-chain for loose verification
       const isValidPetScoring = await aiExpect(results).toSatisfy(
-        'Are these reasonable centrality scores for pets, with cat and dog having higher scores than elephant?'
+        'Are these reasonable centrality scores for household pets, with cat, dog, and hamster having higher scores than elephant?'
       );
       expect(isValidPetScoring).toBe(true);
     },

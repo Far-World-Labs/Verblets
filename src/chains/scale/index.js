@@ -1,4 +1,4 @@
-import chatGPT from '../../lib/chatgpt/index.js';
+import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { constants as promptConstants } from '../../prompts/index.js';
@@ -54,14 +54,14 @@ Provide a JSON object with exactly three string properties:
 
 IMPORTANT: Each property must be a simple string value, not a nested object or array.`;
 
-  const response = await retry(chatGPT, {
+  const response = await retry(callLlm, {
     label: 'scale spec',
     maxAttempts,
     onProgress,
     now,
     chainStartTime: now,
-    chatGPTPrompt: specUserPrompt,
-    chatGPTConfig: {
+    llmPrompt: specUserPrompt,
+    llmConfig: {
       modelOptions: {
         response_format: {
           type: 'json_schema',
@@ -100,14 +100,14 @@ Return a JSON object with a "value" property containing the scaled result.
 
 ${onlyJSON}`;
 
-  const response = await retry(chatGPT, {
+  const response = await retry(callLlm, {
     label: 'scale item',
     maxAttempts,
     onProgress,
     now,
     chainStartTime: now,
-    chatGPTPrompt: prompt,
-    chatGPTConfig: {
+    llmPrompt: prompt,
+    llmConfig: {
       modelOptions: {
         response_format: {
           type: 'json_schema',

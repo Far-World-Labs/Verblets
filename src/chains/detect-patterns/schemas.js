@@ -21,7 +21,6 @@ export const patternCandidatesJsonSchema = {
             },
             count: {
               type: 'integer',
-              minimum: 1,
               description: 'Number of times this pattern appears in the data',
             },
           },

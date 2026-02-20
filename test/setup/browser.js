@@ -22,6 +22,9 @@ if (typeof window !== 'undefined') {
     if (process.env.OPENWEBUI_API_KEY && process.env.OPENWEBUI_API_KEY !== 'undefined') {
       window.verblets.env.OPENWEBUI_API_KEY = process.env.OPENWEBUI_API_KEY;
     }
+    if (process.env.ANTHROPIC_API_KEY && process.env.ANTHROPIC_API_KEY !== 'undefined') {
+      window.verblets.env.ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
+    }
   }
   
   // Set test environment

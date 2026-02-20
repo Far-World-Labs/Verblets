@@ -372,6 +372,22 @@ export class BaseProcessor {
     await Promise.allSettled(this.pendingWork);
   }
 
+  /**
+   * Consume all remaining events from the reader.
+   * Call AFTER stopProcessing() to avoid races with poll timer.
+   * Loops until the reader has no more events, so it handles any buffer depth.
+   */
+  async drain() {
+    if (!this.reader) return;
+    let batch;
+    do {
+      batch = await this.reader.consume(this.config.batchSize);
+      if (batch.length > 0) {
+        await this.processBatch(batch);
+      }
+    } while (batch.length > 0);
+  }
+
   // Query APIs
 
   async lookback(count = this.config.lookbackSize) {

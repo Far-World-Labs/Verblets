@@ -1,4 +1,4 @@
-import chatGPT from '../../lib/chatgpt/index.js';
+import callLlm from '../../lib/llm/index.js';
 import chunkSentences from '../../lib/chunk-sentences/index.js';
 import retry from '../../lib/retry/index.js';
 import parallelBatch from '../../lib/parallel-batch/index.js';
@@ -64,7 +64,7 @@ function mergeTimelineEvents(eventArrays) {
 async function extractFromChunk(chunk, options = {}) {
   const { llm, ...remainingOptions } = options;
 
-  const response = await chatGPT(chunk, {
+  const response = await callLlm(chunk, {
     modelOptions: {
       systemPrompt: extractTimelineInstructions,
       response_format: {
@@ -145,34 +145,33 @@ export default async function timeline(text, options = {}) {
 
   let mergedEvents = mergeTimelineEvents([allEvents]);
 
-  // Always deduplicate using reduce to handle variations in event names
+  // Deduplicate using a single structured LLM call rather than reduce's string
+  // accumulator, which is fragile for structured data (events get lost during
+  // string serialization round-trips).
   if (mergedEvents.length > 0) {
-    const deduplicationInstructions = `Given timeline events, consolidate duplicates:
-1. Merge events that refer to the same occurrence
-2. Keep the most descriptive version of each event
-3. Preserve all unique events
+    const eventList = mergedEvents.map((e) => `- ${e.timestamp}: ${e.name}`).join('\n');
 
-Each event is formatted as "timestamp: name".
-Return JSON with "events" array where each event has "timestamp" and "name" fields.`;
+    const deduplicationPrompt = `Consolidate these timeline events by merging duplicates that refer to the same occurrence. Keep the most descriptive version of each event and preserve ALL unique events.
 
-    const eventStrings = mergedEvents.map((e) => `${e.timestamp}: ${e.name}`);
+Events:
+${eventList}`;
 
-    const deduplicatedResult = await reduce(eventStrings, deduplicationInstructions, {
-      initialValue: JSON.stringify({ events: [] }),
-      ...(batchSize !== undefined && { batchSize }),
-      llm,
-      onProgress,
-      now,
+    const deduplicatedResult = await callLlm(deduplicationPrompt, {
+      modelOptions: {
+        systemPrompt:
+          'You are a timeline deduplication engine. Return all unique events, merging only true duplicates.',
+        response_format: {
+          type: 'json_schema',
+          json_schema: timelineEventJsonSchema,
+        },
+        ...llm,
+      },
       ...remainingOptions,
     });
 
-    try {
-      const parsed = JSON.parse(deduplicatedResult);
-      mergedEvents = sortTimelineEvents(parsed.events || []);
-    } catch (e) {
-      if (process.env.VERBLETS_DEBUG) {
-        console.warn('Failed to parse deduplicated timeline:', e.message);
-      }
+    const deduplicatedEvents = deduplicatedResult?.events || deduplicatedResult;
+    if (Array.isArray(deduplicatedEvents) && deduplicatedEvents.length > 0) {
+      mergedEvents = sortTimelineEvents(deduplicatedEvents);
     }
   }
 
@@ -194,7 +193,7 @@ Return as JSON with the same event format, maintaining chronological order.`;
 
     // Reduce to build knowledge base
     const knowledgeBase = await reduce(eventStrings, knowledgeBaseInstructions, {
-      initialValue: JSON.stringify({ events: [] }),
+      initial: JSON.stringify({ events: [] }),
       responseFormat: {
         type: 'json_schema',
         json_schema: timelineEventJsonSchema,

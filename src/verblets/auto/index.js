@@ -1,4 +1,4 @@
-import chatGPT from '../../lib/chatgpt/index.js';
+import callLlm from '../../lib/llm/index.js';
 import { schemas as defaultSchemas } from '../../json-schemas/index.js';
 
 export default async (text, config = {}) => {
@@ -21,7 +21,7 @@ export default async (text, config = {}) => {
     },
   }));
 
-  const response = await chatGPT(text, {
+  const response = await callLlm(text, {
     modelOptions: {
       // toolChoice: 'auto' // by default
       tools,

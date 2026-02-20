@@ -90,10 +90,10 @@
     "score0": "0.0 indicates the function uses appropriate data structures or objects instead of primitives, improving code readability and maintainability.",
     "score1": "1.0 indicates the function relies heavily on primitives, making the code less readable and harder to maintain."
   }, {
-    "name": "chatGPTUsage",
-    "criteria": "How frequently and effectively is the chatGPT function used in the code?",
-    "score0": "0.0 indicates the chatGPT function is not used or used ineffectively.",
-    "score1": "1indicates the chatGPT function is used frequently and effectively."
+    "name": "llmUsage",
+    "criteria": "How frequently and effectively is the llm function used in the code?",
+    "score0": "0.0 indicates the llm function is not used or used ineffectively.",
+    "score1": "1indicates the llm function is used frequently and effectively."
   }, {
     "name": "modelBudgetAndTokenManagement",
     "criteria": "How well does the code handle model budgeting and token management?",

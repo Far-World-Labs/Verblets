@@ -1,5 +1,6 @@
 export const glossaryExtractionJsonSchema = {
   name: 'glossary_extraction',
+  strict: true,
   schema: {
     type: 'object',
     properties: {

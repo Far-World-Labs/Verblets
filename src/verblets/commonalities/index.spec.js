@@ -1,12 +1,12 @@
 import { describe, it, expect, vi } from 'vitest';
 import commonalities from './index.js';
 
-// Mock the chatGPT function
-vi.mock('../../lib/chatgpt/index.js', () => ({
+// Mock the llm function
+vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(),
 }));
 
-const mockChatGPT = (await import('../../lib/chatgpt/index.js')).default;
+const mockLlm = (await import('../../lib/llm/index.js')).default;
 
 describe('commonalities', () => {
   it('returns empty array for empty input', async () => {
@@ -20,7 +20,7 @@ describe('commonalities', () => {
   });
 
   it('finds common threads between items', async () => {
-    mockChatGPT.mockResolvedValueOnce({
+    mockLlm.mockResolvedValueOnce({
       items: ['Portable electronics', 'Computing devices'],
     });
 
@@ -29,28 +29,28 @@ describe('commonalities', () => {
   });
 
   it('handles parsed response from LLM', async () => {
-    mockChatGPT.mockResolvedValueOnce({ items: ['Transportation', 'Wheeled vehicles'] });
+    mockLlm.mockResolvedValueOnce({ items: ['Transportation', 'Wheeled vehicles'] });
 
     const result = await commonalities(['car', 'bicycle', 'motorcycle']);
     expect(result).toEqual(['Transportation', 'Wheeled vehicles']);
   });
 
   it('returns empty array when no commonalities found', async () => {
-    mockChatGPT.mockResolvedValueOnce({ items: [] });
+    mockLlm.mockResolvedValueOnce({ items: [] });
 
     const result = await commonalities(['apple', 'car']);
     expect(result).toEqual([]);
   });
 
   it('handles unexpected response gracefully', async () => {
-    mockChatGPT.mockResolvedValueOnce(null);
+    mockLlm.mockResolvedValueOnce(null);
 
     const result = await commonalities(['item1', 'item2']);
     expect(result).toEqual([]);
   });
 
   it('accepts custom instructions', async () => {
-    mockChatGPT.mockResolvedValueOnce({ items: ['Urban transport'] });
+    mockLlm.mockResolvedValueOnce({ items: ['Urban transport'] });
 
     const result = await commonalities(['bus', 'subway', 'taxi'], {
       instructions: 'focus on public transportation in cities',

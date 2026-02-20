@@ -6,6 +6,9 @@ import { longTestTimeout } from '../../constants/common.js';
 import pave from '../../lib/pave/index.js';
 import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
 import { getConfig } from '../test-analysis/config.js';
+import { models } from '../../constants/models.js';
+
+const skipPrivacy = process.env.PRIVACY_TEST_SKIP || !models.privacy;
 
 const config = getConfig();
 const it = config?.aiMode
@@ -48,7 +51,7 @@ function encodeDecode(input, seed) {
 `;
 
 describe('Summary map', () => {
-  it.skipIf(process.env.PRIVACY_TEST_SKIP)(
+  it.skipIf(skipPrivacy)(
     'Example',
     async () => {
       const map = new SummaryMap({

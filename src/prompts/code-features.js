@@ -1,5 +1,3 @@
-import { asJSON, explainAndSeparate, explainAndSeparateJSON } from './constants.js';
-
 export default ({ text, schema }) => {
   return `Analyze the following code to provide scores for each of the features described below.
 
@@ -15,10 +13,5 @@ ${JSON.stringify(schema, null, 2)}
 
 <code-to-analyze do-not-output>
 ${text}
-</code-to-analyze>
-
-${asJSON}
-
-${explainAndSeparate} ${explainAndSeparateJSON}
-`;
+</code-to-analyze>`;
 };

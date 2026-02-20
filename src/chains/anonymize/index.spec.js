@@ -15,8 +15,8 @@ const mockSpec =
   'Anonymization specification: Remove names, dates, and locations. Use balanced method.';
 const sampleText = 'John Smith met Sarah at Apple Inc on January 1st, 2024.';
 
-// Mock chatGPT consistently
-vi.mock('../../lib/chatgpt/index.js', () => ({
+// Mock llm consistently
+vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn().mockImplementation((prompt) => {
     if (prompt.includes('specification')) {
       return Promise.resolve(mockSpec);

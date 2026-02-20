@@ -44,7 +44,7 @@ const testContent = `import { describe, expect, it, vi } from 'vitest';
 
 import ${camelCase(chainName)} from './index.js';
 
-vi.mock('../../lib/chatgpt/index.js', () => ({
+vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn().mockImplementation((text) => {
     if (/prompt text to match/.test(text)) {
       return 'True';

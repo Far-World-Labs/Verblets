@@ -1,4 +1,4 @@
-import chatGPT from '../../lib/chatgpt/index.js';
+import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import score from '../score/index.js';
 import { constants as promptConstants } from '../../prompts/index.js';
@@ -11,7 +11,7 @@ const { onlyJSONStringArray } = promptConstants;
 /**
  * Create model options for structured outputs
  * @param {string|Object} llm - LLM model name or configuration object
- * @returns {Object} Model options for chatGPT
+ * @returns {Object} Model options for llm
  */
 function createModelOptions(llm = 'fastGoodCheap') {
   const responseFormat = {
@@ -54,14 +54,14 @@ export const getMeanings = async (term, config = {}) => {
   const prompt = meaningsPrompt(term);
   const budget = model.budgetTokens(prompt);
   const modelOptions = createModelOptions(llm);
-  const response = await retry(chatGPT, {
+  const response = await retry(callLlm, {
     label: 'disambiguate-get-meanings',
     maxAttempts,
     onProgress,
     now,
     chainStartTime: now,
-    chatGPTPrompt: prompt,
-    chatGPTConfig: {
+    llmPrompt: prompt,
+    llmConfig: {
       maxTokens: budget.completion,
       modelOptions,
       ...options,

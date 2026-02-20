@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { socratic } from './index.js';
 
-vi.mock('../../lib/chatgpt/index.js', () => {
+vi.mock('../../lib/llm/index.js', () => {
   let call = 0;
   return {
     default: vi.fn(() => {

@@ -23,5 +23,6 @@ export default (features) => {
       return { ...acc, ...makeFeatureDefinition(feature) };
     }, {}),
     required: features.map((f) => f.name),
+    additionalProperties: false,
   };
 };

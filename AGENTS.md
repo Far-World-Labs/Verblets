@@ -40,7 +40,7 @@ Single LLM calls with carefully crafted prompts and prompt-supporting functions.
 Supporting utilities that don't use LLMs directly. These provide infrastructure, data processing, and reusable functions that support both chains and verblets.
 
 **Examples:**
-- `chatgpt` - OpenAI API wrapper with error handling
+- `llm` - LLM API wrapper with error handling
 - `prompt-cache` - Caching layer for LLM responses
 - `retry` - Robust retry logic for async operations
 - `parse-js-parts` - JavaScript AST parsing utilities
@@ -71,7 +71,7 @@ The main implementation. Should export a default function or class.
 
 #### `index.spec.js`
 Deterministic tests using table-driven examples. These tests:
-- Mock LLM interfaces (chatGPT, etc.)
+- Mock LLM interfaces (llm, etc.)
 - Use predictable inputs and expected outputs
 - Run quickly and reliably in CI/CD
 - Follow the `examples` array pattern

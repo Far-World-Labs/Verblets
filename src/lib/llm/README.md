@@ -1,17 +1,17 @@
-# chatgpt
+# llm
 
 Core LLM integration for making API calls with intelligent model selection, retry logic, and structured response handling.
 
 ## Usage
 
 ```javascript
-import chatGPT from './index.js';
+import llm from './index.js';
 
 // Basic usage with default model
-const response = await chatGPT('Explain quantum computing in simple terms');
+const response = await llm('Explain quantum computing in simple terms');
 
 // With specific model configuration
-const result = await chatGPT('Generate a JSON list of colors', {
+const result = await llm('Generate a JSON list of colors', {
   modelOptions: {
     modelName: 'fastGoodCheap',
     response_format: {
@@ -32,7 +32,7 @@ const result = await chatGPT('Generate a JSON list of colors', {
 
 ## API
 
-### `chatGPT(prompt, options)`
+### `llm(prompt, options)`
 
 **Parameters:**
 - `prompt` (string): The text prompt to send to the LLM
@@ -59,7 +59,7 @@ const result = await chatGPT('Generate a JSON list of colors', {
 ### Privacy-First Rule
 ```javascript
 // Always use privacy models for sensitive operations
-const result = await chatGPT(prompt, {
+const result = await llm(prompt, {
   modelOptions: { modelName: 'privacy' }
 });
 ```
@@ -67,17 +67,17 @@ const result = await chatGPT(prompt, {
 ### Model Negotiation
 ```javascript
 // Optimize for speed and cost (bulk operations)
-const result = await chatGPT(prompt, {
+const result = await llm(prompt, {
   modelOptions: { negotiate: { fast: true, cheap: true } }
 });
 
 // Optimize for quality (critical operations)
-const result = await chatGPT(prompt, {
+const result = await llm(prompt, {
   modelOptions: { negotiate: { good: true } }
 });
 
 // Complex reasoning tasks
-const result = await chatGPT(prompt, {
+const result = await llm(prompt, {
   modelOptions: { negotiate: { reasoning: true } }
 });
 ```
@@ -95,7 +95,7 @@ const schema = {
   required: ['items', 'count']
 };
 
-const result = await chatGPT('List 5 programming languages', {
+const result = await llm('List 5 programming languages', {
   modelOptions: {
     modelName: 'fastGoodCheap',
     response_format: {
@@ -113,7 +113,7 @@ console.log(result.items); // ['JavaScript', 'Python', 'Java', 'C++', 'Go']
 
 ### Basic Text Generation
 ```javascript
-const explanation = await chatGPT(
+const explanation = await llm(
   'Explain the concept of recursion in programming',
   { modelOptions: { modelName: 'fastGoodCheap' } }
 );
@@ -121,7 +121,7 @@ const explanation = await chatGPT(
 
 ### Structured Data Extraction
 ```javascript
-const extractedData = await chatGPT(
+const extractedData = await llm(
   'Extract key information from this text: "John Smith, age 30, works at Tech Corp"',
   {
     modelOptions: {
@@ -148,7 +148,7 @@ const extractedData = await chatGPT(
 ### Privacy-Sensitive Operations
 ```javascript
 // Use privacy models for sensitive data
-const anonymized = await chatGPT(
+const anonymized = await llm(
   'Anonymize this personal information: [sensitive data]',
   { modelOptions: { modelName: 'privacy' } }
 );

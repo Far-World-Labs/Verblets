@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import pave from '../../lib/pave/index.js';
 import SummaryMap from './index.js';
-import chatGPT from '../../lib/chatgpt/index.js';
+import llm from '../../lib/llm/index.js';
 
 vi.mock('../../services/llm-model/index.js', () => ({
   default: {
@@ -47,7 +47,7 @@ vi.mock('../../services/llm-model/index.js', () => ({
   },
 }));
 
-vi.mock('../../lib/chatgpt/index.js', () => ({
+vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn().mockImplementation((text) => {
     if (/Pursuant to the adjudication/.test(text)) {
       return '01234567890123456789012345678901234567890123456789';
@@ -143,7 +143,7 @@ describe('Summary map', () => {
       }
 
       if (example.name === 'Model options and privacy') {
-        const callWithPrivacy = chatGPT.mock.calls.find(
+        const callWithPrivacy = llm.mock.calls.find(
           (c) => c[1]?.modelOptions?.modelName === 'privacy'
         );
         expect(callWithPrivacy).toBeTruthy();

@@ -65,7 +65,7 @@
 ## Mocking Strategy
 
 ### What TO Mock
-- **LLM calls** - Always mock `chatGPT` and related AI service calls
+- **LLM calls** - Always mock `llm` and related AI service calls
 - **External APIs** - Mock network requests to third-party services
 - **Time-dependent functions** - Mock `Date.now()`, timers when testing time logic
 

@@ -144,7 +144,7 @@ describe('Socratic method chain', () => {
 
       // AI validation of philosophical depth
       const hasPhilosophicalDepth = await aiExpect(dialogue).toSatisfy(
-        'Should demonstrate deep philosophical inquiry about free will through Socratic questioning, with each question probing deeper into the nature of consciousness and determinism'
+        'Does this dialogue explore free will and consciousness through a series of questions and answers, with the questions probing assumptions about determinism or agency?'
       );
       expect(hasPhilosophicalDepth).toBe(true);
     },

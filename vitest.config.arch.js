@@ -7,5 +7,6 @@ export default defineConfig({
     ...baseConfig,
     environment: 'node',
     include: ['**/*.arch.js'],
+    exclude: [...baseConfig.exclude, '**/vitest.config*.js', '**/.vitest.config*.js'],
   },
 });

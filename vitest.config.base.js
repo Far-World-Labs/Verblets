@@ -6,7 +6,7 @@ import * as dotenv from 'dotenv';
 // In CI, use .env.test. For examples, the npm script sources .env directly
 // so we only load .env.test for CI environments
 const envFile = process.env.CI ? '.env.test' : '.env';
-dotenv.config({ path: envFile });
+dotenv.config({ path: envFile, override: true });
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 

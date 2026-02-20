@@ -14,7 +14,7 @@ const expect = config?.aiMode
   : vitestExpect;
 
 // Mock the dependencies like in the spec file
-vi.mock('../../lib/chatgpt/index.js', () => ({
+vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(),
 }));
 vi.mock('../date/index.js', () => ({
@@ -27,7 +27,7 @@ vi.mock('../../verblets/number/index.js', () => ({
   default: vi.fn(),
 }));
 
-const chatGPT = (await import('../../lib/chatgpt/index.js')).default;
+const llm = (await import('../../lib/llm/index.js')).default;
 const date = (await import('../date/index.js')).default;
 const numberWithUnits = (await import('../../verblets/number-with-units/index.js')).default;
 const number = (await import('../../verblets/number/index.js')).default;
@@ -39,7 +39,7 @@ describe('setInterval (example)', () => {
       useSafeFakeTimers(vi);
 
       // Mock the LLM responses for timing decisions
-      chatGPT
+      llm
         .mockResolvedValueOnce('3 minutes')
         .mockResolvedValueOnce('2 minutes')
         .mockResolvedValueOnce('4 minutes');
@@ -92,7 +92,7 @@ describe('setInterval (example)', () => {
       useSafeFakeTimers(vi);
 
       // Mock the LLM responses for timing decisions
-      chatGPT
+      llm
         .mockResolvedValueOnce('10 seconds')
         .mockResolvedValueOnce('8 seconds')
         .mockResolvedValueOnce('15 seconds');

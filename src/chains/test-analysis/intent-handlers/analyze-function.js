@@ -5,7 +5,7 @@ import {
   findCallees,
   traceCaller,
 } from '../../../lib/parse-js-parts/function-utils.js';
-import chatGPT from '../../../lib/chatgpt/index.js';
+import llm from '../../../lib/llm/index.js';
 import retry from '../../../lib/retry/index.js';
 import score from '../../../chains/score/index.js';
 import modelService from '../../../services/llm-model/index.js';
@@ -177,11 +177,11 @@ Cover these aspects (skip if not applicable):
 
   const userMessage = `${intent}\n\n${fullPrompt}`;
 
-  // Analyze with AI - chatGPT takes a single prompt string, not messages
+  // Analyze with AI - llm takes a single prompt string, not messages
   // For system+user messages, we combine them into a single prompt
   const combinedPrompt = `${systemMessage}\n\n${userMessage}`;
 
-  const analysis = await retry(() => chatGPT(combinedPrompt), {
+  const analysis = await retry(() => llm(combinedPrompt), {
     maxRetries: 2,
     label: 'function analysis',
   });

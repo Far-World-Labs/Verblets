@@ -1,11 +1,11 @@
 import { describe, it, expect, vi } from 'vitest';
 import Conversation from './index.js';
 
-let chatGPTMock;
-vi.mock('../../lib/chatgpt/index.js', () => ({
-  default: (...args) => chatGPTMock(...args),
+let llmMock;
+vi.mock('../../lib/llm/index.js', () => ({
+  default: (...args) => llmMock(...args),
 }));
-chatGPTMock = vi.fn(async (_prompt) => 'ok');
+llmMock = vi.fn(async (_prompt) => 'ok');
 
 // Mock the conversationTurnReduce to avoid slow reduce chain calls
 let conversationTurnReduceMock;
@@ -70,7 +70,7 @@ describe('Conversation', () => {
     const chain = new Conversation('test topic', speakers, {
       rules: { shouldContinue: (r) => r < 1 },
     });
-    chatGPTMock.mockClear();
+    llmMock.mockClear();
     await chain.run();
     // Check that the bio is passed to conversationTurnReduce
     expect(conversationTurnReduceMock).toBeDefined();

@@ -1,4 +1,4 @@
-import chatGPT from '../../lib/chatgpt/index.js';
+import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 
@@ -89,14 +89,14 @@ Provide a specification describing:
 
 Keep it focused on actionable anonymization rules.`;
 
-  const response = await retry(chatGPT, {
+  const response = await retry(callLlm, {
     label: 'anonymize spec',
     maxAttempts,
     onProgress,
     now,
     chainStartTime: now,
-    chatGPTPrompt: specUserPrompt,
-    chatGPTConfig: {
+    llmPrompt: specUserPrompt,
+    llmConfig: {
       llm,
       system: specSystemPrompt,
       ...rest,
@@ -170,14 +170,14 @@ const anonymize = async (input, config = {}) => {
   const { llm, maxAttempts = 3, onProgress, now = new Date(), ...options } = config;
 
   // Stage 1: Remove distinctive content
-  const stage1Result = await retry(chatGPT, {
+  const stage1Result = await retry(callLlm, {
     label: 'anonymize stage 1',
     maxAttempts,
     onProgress,
     now,
     chainStartTime: now,
-    chatGPTPrompt: stage1Prompt(text, context),
-    chatGPTConfig: {
+    llmPrompt: stage1Prompt(text, context),
+    llmConfig: {
       modelOptions: { modelName: 'privacy', ...llm },
       ...options,
     },
@@ -194,14 +194,14 @@ const anonymize = async (input, config = {}) => {
   }
 
   // Stage 2: Normalize structure and tone
-  const stage2Result = await retry(chatGPT, {
+  const stage2Result = await retry(callLlm, {
     label: 'anonymize stage 2',
     maxAttempts,
     onProgress,
     now,
     chainStartTime: now,
-    chatGPTPrompt: stage2Prompt(stage1Result, context),
-    chatGPTConfig: {
+    llmPrompt: stage2Prompt(stage1Result, context),
+    llmConfig: {
       modelOptions: { modelName: 'privacy', ...llm },
       ...options,
     },
@@ -219,14 +219,14 @@ const anonymize = async (input, config = {}) => {
   }
 
   // Stage 3: Suppress stylistic patterns
-  const stage3Result = await retry(chatGPT, {
+  const stage3Result = await retry(callLlm, {
     label: 'anonymize stage 3',
     maxAttempts,
     onProgress,
     now,
     chainStartTime: now,
-    chatGPTPrompt: stage3Prompt(stage2Result, context),
-    chatGPTConfig: {
+    llmPrompt: stage3Prompt(stage2Result, context),
+    llmConfig: {
       modelOptions: { modelName: 'privacy', ...llm },
       ...options,
     },

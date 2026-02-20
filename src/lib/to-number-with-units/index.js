@@ -19,7 +19,7 @@ export default (envelope) => {
     valueExtracted = value;
     unitExtracted = unit;
   } catch (error) {
-    throw new Error(`ChatGPT output [error]: ${error.message}`);
+    throw new Error(`LLM output [error]: ${error.message}`);
   }
 
   let unitParsed = unitExtracted;
@@ -40,11 +40,11 @@ export default (envelope) => {
   } else if (typeof valueExtracted === 'undefined' || valueExtracted === null) {
     valueParsed = undefined;
   } else {
-    throw new Error(`ChatGPT output [error]: ${badDatatypeError}`);
+    throw new Error(`LLM output [error]: ${badDatatypeError}`);
   }
 
   if (typeof valueParsed !== 'undefined' && Number.isNaN(valueParsed)) {
-    throw new Error(`ChatGPT output [error]: ${valueNotANumberError}`);
+    throw new Error(`LLM output [error]: ${valueNotANumberError}`);
   }
 
   return { value: valueParsed, unit: unitParsed };

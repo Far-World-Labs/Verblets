@@ -14,11 +14,11 @@ import relations, {
 } from './index.js';
 import { debug } from '../../lib/debug/index.js';
 
-// Mock the chatGPT module
-vi.mock('../../lib/chatgpt/index.js', () => ({
+// Mock the llm module
+vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn().mockImplementation((prompt, config) => {
     // For debugging - uncomment to see what's being called
-    debug('Mock chatGPT called with:', {
+    debug('Mock llm called with:', {
       promptSnippet: prompt.substring(0, 100),
       hasModelOptions: !!config?.modelOptions,
       responseFormat: config?.modelOptions?.response_format?.type,

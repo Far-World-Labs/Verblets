@@ -81,31 +81,19 @@ const grouped = await group(
 );
 ```
 
-## Calibration Utilities
-
-Build consistent scoring references:
-
-```javascript
-// Select representative examples across score ranges
-const reference = buildCalibrationReference(scoredItems, count);
-
-// Format for use in prompts
-const calibrationText = formatCalibrationBlock(reference);
-```
-
 ## Configuration
 
-- `returnTuple`: Get `{value, specification}` instead of string with attached property
+- `spec`: Pre-built scoring specification (skips the `scoreSpec` LLM call)
 - `llm`: LLM configuration object
-- `maxParallel`: Concurrent scoring operations (default: 3)
+- `maxParallel`: Concurrent batch operations (default: 3)
+- `maxAttempts`: Retry attempts per batch (default: 3)
+- `batchSize`: Items per batch (auto-calculated if omitted)
 
 ## Architecture
 
-The score chain implements a specification pattern where scoring criteria are generated once and applied many times. This enables:
+The score chain implements a specification pattern where scoring criteria are generated once and applied many times. For multi-batch lists, the first batch establishes scoring anchors (low/high reference examples) that are embedded in subsequent batch prompts for cross-batch consistency.
 
-- Consistent evaluation across large datasets
-- Composition with any collection operation
-- Reusable scoring logic
-- Clear separation between specification and application
-
-Instructions are returned as strings with attached specification properties, enabling both simple string usage and programmatic access to the underlying specification.
+- Consistent evaluation across large datasets via anchor-based calibration
+- Composition with any collection operation via instruction builders
+- Reusable scoring logic through pre-built specifications
+- JSON schema response format returns numbers directly (no string conversion)

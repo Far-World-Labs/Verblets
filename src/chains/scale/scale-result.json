@@ -2,6 +2,7 @@
   "type": "object",
   "properties": {
     "value": {
+      "anyOf": [{ "type": "number" }, { "type": "string" }],
       "description": "The scaled output value according to the scaling instructions"
     }
   },

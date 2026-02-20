@@ -1,6 +1,7 @@
 import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
 import truncate from './index.js';
 import vitestAiExpect from '../expect/index.js';
+import { longTestTimeout } from '../../constants/common.js';
 import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
 import { getConfig } from '../test-analysis/config.js';
 
@@ -73,7 +74,7 @@ describe('truncate', () => {
         const truncated = example.inputs.text.slice(0, result);
         expect(truncated.length).toBe(result);
       },
-      30000
+      longTestTimeout
     );
   });
 });

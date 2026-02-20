@@ -1,4 +1,4 @@
-import chatGPT from '../../lib/chatgpt/index.js';
+import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import parallelBatch from '../../lib/parallel-batch/index.js';
 import { createLifecycleLogger } from '../../lib/lifecycle-logger/index.js';
@@ -114,7 +114,7 @@ export async function extractBlocks(text, instructions, config = {}) {
 
       const prompt = buildBlockExtractionPrompt(windowLines, windowStart, instructions);
 
-      const result = await retry(chatGPT, {
+      const result = await retry(callLlm, {
         label: `extract-blocks:window`,
         maxAttempts,
         now,
@@ -129,8 +129,8 @@ export async function extractBlocks(text, instructions, config = {}) {
           now,
           chainStartTime: now,
         }),
-        chatGPTPrompt: prompt,
-        chatGPTConfig: {
+        llmPrompt: prompt,
+        llmConfig: {
           modelOptions: {
             response_format: blockExtractionSchema,
             ...llm,

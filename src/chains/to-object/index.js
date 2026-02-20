@@ -2,7 +2,7 @@ import Ajv from 'ajv';
 
 import { debugToObject } from '../../constants/common.js';
 import { retryJSONParse } from '../../constants/messages.js';
-import chatGPT from '../../lib/chatgpt/index.js';
+import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import stripResponse from '../../lib/strip-response/index.js';
 import { constants as promptConstants, asXML } from '../../prompts/index.js';
@@ -62,9 +62,47 @@ function validateWithSchema(result, schema) {
 /**
  * Attempts to parse and validate JSON with error handling
  */
+function extractJson(text) {
+  // Try direct parse first
+  try {
+    return JSON.parse(text);
+  } catch {
+    // Try extracting just the JSON portion (handle trailing text after JSON)
+    const start = text.indexOf('{') === -1 ? text.indexOf('[') : text.indexOf('{');
+    if (start === -1) throw new Error('No JSON object or array found in response');
+
+    const opener = text[start];
+    const closer = opener === '{' ? '}' : ']';
+    let depth = 0;
+    let inString = false;
+    let escape = false;
+
+    for (let i = start; i < text.length; i++) {
+      const ch = text[i];
+      if (escape) {
+        escape = false;
+        continue;
+      }
+      if (ch === '\\' && inString) {
+        escape = true;
+        continue;
+      }
+      if (ch === '"') {
+        inString = !inString;
+        continue;
+      }
+      if (inString) continue;
+      if (ch === opener) depth++;
+      if (ch === closer) depth--;
+      if (depth === 0) return JSON.parse(text.slice(start, i + 1));
+    }
+    throw new Error('Unterminated JSON in response');
+  }
+}
+
 function parseAndValidate(text, schema) {
   try {
-    const result = JSON.parse(stripResponse(text));
+    const result = extractJson(stripResponse(text));
     return validateWithSchema(result, schema);
   } catch (error) {
     if (error instanceof ValidationError) {
@@ -113,12 +151,12 @@ export default async function toObject(text, schema, config = {}) {
   // Second attempt: use LLM to fix JSON
   try {
     const prompt = buildJsonPrompt(text, schema, errorDetails);
-    const response = await retry(chatGPT, {
+    const response = await retry(callLlm, {
       label: 'to-object json fix',
       maxAttempts,
       onProgress,
-      chatGPTPrompt: prompt,
-      chatGPTConfig: {
+      llmPrompt: prompt,
+      llmConfig: {
         modelOptions: { modelName: 'fastGood', ...llm },
         ...options,
       },
@@ -137,12 +175,12 @@ export default async function toObject(text, schema, config = {}) {
   // Third attempt: final retry with updated errors
   try {
     const prompt = buildJsonPrompt(text, schema, errorDetails);
-    const response = await retry(chatGPT, {
+    const response = await retry(callLlm, {
       label: 'to-object final retry',
       maxAttempts,
       onProgress,
-      chatGPTPrompt: prompt,
-      chatGPTConfig: {
+      llmPrompt: prompt,
+      llmConfig: {
         modelOptions: { modelName: 'fastGood', ...llm },
         ...options,
       },

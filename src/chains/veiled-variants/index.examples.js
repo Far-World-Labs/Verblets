@@ -3,6 +3,9 @@ import veiledVariants from './index.js';
 import { longTestTimeout } from '../../constants/common.js';
 import { wrapIt, wrapExpect } from '../test-analysis/test-wrappers.js';
 import { getConfig } from '../test-analysis/config.js';
+import { models } from '../../constants/models.js';
+
+const skipPrivacy = process.env.PRIVACY_TEST_SKIP || !models.privacy;
 
 const config = getConfig();
 const it = config?.aiMode
@@ -13,7 +16,7 @@ const expect = config?.aiMode
   : vitestExpect;
 
 describe('veiledVariants example', () => {
-  it.skipIf(process.env.PRIVACY_TEST_SKIP)(
+  it.skipIf(skipPrivacy)(
     'obscures a sensitive query',
     async () => {
       const result = await veiledVariants({

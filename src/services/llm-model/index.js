@@ -2,6 +2,7 @@ import * as tokenizer from 'gpt-tokenizer';
 
 import Model from './model.js';
 import {
+  catalog,
   frequencyPenalty as frequencyPenaltyConfig,
   models,
   presencePenalty as presencePenaltyConfig,
@@ -140,12 +141,22 @@ class ModelService {
       return this.getBestPublicModel();
     }
 
-    // First try to find by key
+    // First try to find by key in registered models
     let modelFound = this.models[name];
 
     // If not found by key, try to find by model name
     if (!modelFound) {
       modelFound = Object.values(this.models).find((model) => model.name === name);
+    }
+
+    // Fall back to catalog (supports direct model names like 'claude-sonnet-4-5')
+    if (!modelFound && catalog[name]) {
+      modelFound = new Model({
+        name,
+        ...catalog[name],
+        key: name,
+        tokenizer: tokenizer.encode,
+      });
     }
 
     if (!modelFound) {
@@ -272,14 +283,17 @@ class ModelService {
 
     const modelFound = this.getModel(modelName);
 
+    // Use explicit systemPrompt if provided, otherwise fall back to model's default
+    const effectiveSystemPrompt = systemPrompt ?? modelFound.systemPrompt;
+
     let requestPrompt = { prompt };
-    if (/chat/.test(modelFound.endpoint)) {
+    if (/chat|responses|messages/.test(modelFound.endpoint)) {
       const userMessage = { role: 'user', content: prompt };
-      const systemMessages = systemPrompt
+      const systemMessages = effectiveSystemPrompt
         ? [
             {
               role: 'system',
-              content: systemPrompt,
+              content: effectiveSystemPrompt,
             },
           ]
         : [];
@@ -297,7 +311,20 @@ class ModelService {
     };
 
     if (response_format) {
-      result.response_format = response_format;
+      // Strip $schema from json_schema.schema — LLM APIs don't support the JSON Schema meta-schema keyword
+      if (response_format.json_schema?.schema?.$schema) {
+        const schema = { ...response_format.json_schema.schema };
+        delete schema.$schema;
+        result.response_format = {
+          ...response_format,
+          json_schema: {
+            ...response_format.json_schema,
+            schema,
+          },
+        };
+      } else {
+        result.response_format = response_format;
+      }
     }
 
     return result;

@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 
 import sort from '../sort/index.js';
-import chatGPT from '../../lib/chatgpt/index.js';
+import llm from '../../lib/llm/index.js';
 import pathAliases from '../../lib/path-aliases/index.js';
 import retry from '../../lib/retry/index.js';
 import search from '../../lib/search-js-files/index.js';
@@ -55,7 +55,7 @@ const visit = async ({
   });
 
   await retry(async () => {
-    const resultParsed = await chatGPT(visitPrompt, {
+    const resultParsed = await llm(visitPrompt, {
       modelOptions: {
         modelName: 'fastGood',
         response_format: {

@@ -11,8 +11,8 @@ export default async (
     maxAttempts = maxRetriesDefault + 1,
     retryDelay = retryDelayDefault,
     retryOnAll = false,
-    chatGPTPrompt = undefined,
-    chatGPTConfig = undefined,
+    llmPrompt = undefined,
+    llmConfig = undefined,
     onProgress = undefined,
   } = {}
 ) => {
@@ -38,8 +38,7 @@ export default async (
   while (attempt < maxAttempts) {
     try {
       // eslint-disable-next-line no-await-in-loop
-      const result =
-        chatGPTPrompt !== undefined ? await fn(chatGPTPrompt, chatGPTConfig) : await fn();
+      const result = llmPrompt !== undefined ? await fn(llmPrompt, llmConfig) : await fn();
 
       if (onProgress) {
         emitProgress({

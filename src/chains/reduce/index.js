@@ -2,7 +2,7 @@ import listBatch, { ListStyle, determineStyle } from '../../verblets/list-batch/
 import createBatches from '../../lib/text-batch/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
-import { isSimpleCollectionSchema } from '../../lib/chatgpt/index.js';
+import { isSimpleCollectionSchema } from '../../lib/llm/index.js';
 import { reduceAccumulatorJsonSchema } from './schemas.js';
 import {
   emitBatchStart,
@@ -110,11 +110,11 @@ Process exactly ${count} items from the ${itemFormat} list below and return the 
           chainStartTime: now,
         })
       ),
-      chatGPTPrompt: `${prompt}\n\nAccumulator: ${(JSON.stringify(acc) || '').substring(
+      llmPrompt: `${prompt}\n\nAccumulator: ${(JSON.stringify(acc) || '').substring(
         0,
         200
       )}\nItems: ${(JSON.stringify(items) || '').substring(0, 300)}...`,
-      chatGPTConfig: listBatchOptions,
+      llmConfig: listBatchOptions,
     });
 
     if (!responseFormat && result?.accumulator !== undefined) {

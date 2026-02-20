@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import chatgpt from '../../lib/chatgpt/index.js';
+import llm from '../../lib/llm/index.js';
 import reduce from '../reduce/index.js';
 
 // Configuration constants
@@ -99,7 +99,7 @@ async function processIndividualItem(item, contextText, itemContextFns, descript
     const fullContext = [contextText, itemContextText].filter(Boolean).join('\n\n');
     const prompt = buildPrompt(fullContext, item, description, targetType === 'files');
 
-    const response = await chatgpt(prompt, {
+    const response = await llm(prompt, {
       modelOptions: {
         response_format: {
           type: 'json_schema',
@@ -164,13 +164,11 @@ async function processBulkChunk(chunk, contextText, description, onProgress, met
     // Use reduce for bulk processing
     const prompt = buildBulkPrompt(contextText, chunk, description);
     const response = await reduce(chunk, prompt, {
-      llm: {
-        response_format: {
-          type: 'json_schema',
-          json_schema: {
-            name: 'arch_bulk_result',
-            schema: bulkResultSchema,
-          },
+      responseFormat: {
+        type: 'json_schema',
+        json_schema: {
+          name: 'arch_bulk_result',
+          schema: bulkResultSchema,
         },
       },
     });

@@ -239,7 +239,7 @@ describe('my test suite with debugging', () => {
 When enabled, batch debugging shows progress for each chunk:
 
 ```
-[doc-coverage 1/3] PASS: [src/lib/chatgpt, src/lib/each-file]
+[doc-coverage 1/3] PASS: [src/lib/llm, src/lib/each-file]
 [doc-coverage 2/3] FAIL (15.2s): [src/lib/strip-response] - Missing README documentation
 [quality 1/8] PASS (12.4s): [src/chains/reduce/index.js, src/chains/map/index.js]
 ```

@@ -8,7 +8,7 @@ Feed it your own "next date" prompt; it will keep time, remember history, and su
 ```javascript
 import setInterval from './index.js';
 import { getWeather, getCelestialEvents } from './apis.js';
-import chatGPT from '../../lib/chatgpt/index.js';
+import llm from '../../lib/llm/index.js';
 
 const stop = setInterval({
   prompt: `
@@ -43,7 +43,7 @@ const stop = setInterval({
       types: ['solar', 'lunar', 'meteor', 'planetary', 'aurora', 'eclipse'] 
     });
     
-    const description = await chatGPT(`
+    const description = await llm(`
       Describe what celestial event should be photographed right now based on current conditions.
       Current Weather: ${JSON.stringify(currentWeather)}
       Current Events: ${JSON.stringify(currentEvents)}

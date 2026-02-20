@@ -5,12 +5,12 @@ import tagVocabulary, {
   computeTagStatistics,
 } from './index.js';
 
-// Mock the chatGPT module
-vi.mock('../../lib/chatgpt/index.js', () => ({
+// Mock the llm module
+vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(),
 }));
 
-import chatGPT from '../../lib/chatgpt/index.js';
+import llm from '../../lib/llm/index.js';
 
 describe('tag-vocabulary', () => {
   const mockItems = [
@@ -99,12 +99,12 @@ describe('tag-vocabulary', () => {
 
   describe('generateInitialVocabulary', () => {
     it('should generate vocabulary from text specification', async () => {
-      chatGPT.mockResolvedValueOnce(mockVocabulary);
+      llm.mockResolvedValueOnce(mockVocabulary);
 
       const spec = 'Create tags for task management with urgency and category facets';
       const result = await generateInitialVocabulary(spec, mockItems.slice(0, 2));
 
-      expect(chatGPT).toHaveBeenCalledWith(
+      expect(llm).toHaveBeenCalledWith(
         expect.stringContaining(spec),
         expect.objectContaining({
           modelOptions: expect.objectContaining({
@@ -118,11 +118,11 @@ describe('tag-vocabulary', () => {
     });
 
     it('should include sample items in generation', async () => {
-      chatGPT.mockResolvedValueOnce(mockVocabulary);
+      llm.mockResolvedValueOnce(mockVocabulary);
 
       await generateInitialVocabulary('Task tags', mockItems);
 
-      const call = chatGPT.mock.calls[0][0];
+      const call = llm.mock.calls[0][0];
       expect(call).toContain('Pay credit card bill');
       expect(call).toContain('sample-items');
     });
@@ -146,11 +146,11 @@ describe('tag-vocabulary', () => {
         ],
       };
 
-      chatGPT.mockResolvedValueOnce(refinedVocab);
+      llm.mockResolvedValueOnce(refinedVocab);
 
       const result = await refineVocabulary(mockVocabulary, taggedItems, 'Task management tags');
 
-      const call = chatGPT.mock.calls[0][0];
+      const call = llm.mock.calls[0][0];
       expect(call).toContain('usage-statistics');
       expect(call).toContain('most-used-tags');
       expect(call).toContain('least-used-tags');
@@ -164,11 +164,11 @@ describe('tag-vocabulary', () => {
         ['financial'],
       ];
 
-      chatGPT.mockResolvedValueOnce(mockVocabulary);
+      llm.mockResolvedValueOnce(mockVocabulary);
 
       await refineVocabulary(mockVocabulary, taggedItems, 'Tags');
 
-      const call = chatGPT.mock.calls[0][0];
+      const call = llm.mock.calls[0][0];
       expect(call).toContain('problematic-items');
       expect(call).toContain('untagged');
       expect(call).toContain('overtagged');
@@ -180,7 +180,7 @@ describe('tag-vocabulary', () => {
       const mockTagger = vi.fn();
       const taggedResults = [['urgent', 'financial'], ['personal'], ['financial']];
 
-      chatGPT
+      llm
         .mockResolvedValueOnce(mockVocabulary) // generateInitialVocabulary
         .mockResolvedValueOnce(mockVocabulary); // refineVocabulary
 
@@ -191,7 +191,7 @@ describe('tag-vocabulary', () => {
         sampleSize: 2,
       });
 
-      expect(chatGPT).toHaveBeenCalledTimes(2);
+      expect(llm).toHaveBeenCalledTimes(2);
       expect(mockTagger).toHaveBeenCalledWith(mockItems, mockVocabulary);
       expect(result).toEqual(mockVocabulary);
     });
@@ -205,7 +205,7 @@ describe('tag-vocabulary', () => {
     it('should respect sample size', async () => {
       const mockTagger = vi.fn(() => Promise.resolve([]));
 
-      chatGPT.mockResolvedValueOnce(mockVocabulary).mockResolvedValueOnce(mockVocabulary);
+      llm.mockResolvedValueOnce(mockVocabulary).mockResolvedValueOnce(mockVocabulary);
 
       const longList = Array(100).fill('item');
       await tagVocabulary('Tags', longList, {
@@ -214,7 +214,7 @@ describe('tag-vocabulary', () => {
       });
 
       // Check that only 10 sample items were used for initial generation
-      const firstCall = chatGPT.mock.calls[0][0];
+      const firstCall = llm.mock.calls[0][0];
       // The prompt should contain sample-items tag with an array
       expect(firstCall).toContain('<sample-items>');
       expect(firstCall).toContain('</sample-items>');
@@ -246,7 +246,7 @@ describe('tag-vocabulary', () => {
         });
       });
 
-      chatGPT.mockResolvedValueOnce(mockVocabulary).mockResolvedValueOnce(mockVocabulary);
+      llm.mockResolvedValueOnce(mockVocabulary).mockResolvedValueOnce(mockVocabulary);
 
       const result = await tagVocabulary(
         'Categorize by urgency and type',

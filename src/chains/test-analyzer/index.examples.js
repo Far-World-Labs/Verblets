@@ -60,7 +60,7 @@ describe('test-analyzer chain', () => {
 
       // Should provide meaningful analysis of the failure
       const hasInsightfulAnalysis = await aiExpect(analysis).toSatisfy(
-        'Should analyze the test failure and provide insights about why the actual value (5) differs from expected (6)'
+        'Identifies that the test expected 6 but got 5, and suggests a possible cause such as an off-by-one error or incorrect calculation'
       );
       expect(hasInsightfulAnalysis).toBe(true);
     },

@@ -3,7 +3,7 @@ import path from 'node:path';
 
 import parseJSParts from '../../src/lib/parse-js-parts/index.js';
 import
-chatGPT,
+llm,
 {
   getRedis,
   SummaryMap
@@ -125,7 +125,7 @@ async function generateTestFile(modulePath) {
 
   console.error(prompt)
 
-  const response = await chatGPT(prompt);
+  const response = await llm(prompt);
 
   // use standard shell IO to apply the generated code
   console.error(response);

@@ -41,7 +41,7 @@ Analyzes the input text and automatically selects the most appropriate function 
 - `text` (string): Natural language description of the task or request to be processed
 - `config` (object, optional): Configuration options
   - `llm` (object): Language model configuration options
-  - Additional options passed to the underlying ChatGPT service
+  - Additional options passed to the underlying LLM service
 
 **Returns**
 

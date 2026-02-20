@@ -1,4 +1,4 @@
-import chatGPT from '../../lib/chatgpt/index.js';
+import callLlm from '../../lib/llm/index.js';
 import toNumberWithUnits from '../../lib/to-number-with-units/index.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 import numberWithUnitsSchema from './number-with-units-result.json';
@@ -9,7 +9,7 @@ const { asNumberWithUnits, contentIsQuestion, explainAndSeparate, explainAndSepa
 /**
  * Create model options for structured outputs
  * @param {string|Object} llm - LLM model name or configuration object
- * @returns {Object} Model options for chatGPT
+ * @returns {Object} Model options for llm
  */
 function createModelOptions(llm = 'fastGoodCheap') {
   const schema = numberWithUnitsSchema;
@@ -46,12 +46,12 @@ export default async function numberWithUnits(text, config = {}) {
   const { llm, ...options } = config;
   const numberText = `${contentIsQuestion} ${text} \n\n${explainAndSeparate} ${explainAndSeparateJSON}
 
-Extract the numeric value and unit from the question. If you cannot determine the specific numeric value, set "value" to null but still identify the unit being asked for.
+Answer the question and provide the numeric value and unit. If the question is unanswerable or the specific numeric value cannot be determined, set "value" to null but still identify the unit being asked for.
 
 ${asNumberWithUnits}`;
 
   const modelOptions = createModelOptions(llm);
-  const response = await chatGPT(numberText, {
+  const response = await callLlm(numberText, {
     modelOptions,
     ...options,
   });

@@ -1,4 +1,4 @@
-import chatGPT from '../../lib/chatgpt/index.js';
+import callLlm from '../../lib/llm/index.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 import { numberSchema } from './schema.js';
 
@@ -24,7 +24,7 @@ ${asWrappedValueJSON} The value should be the number or "undefined".
 
 ${asJSON}`;
 
-  const result = await chatGPT(numberText, {
+  const result = await callLlm(numberText, {
     modelOptions: {
       ...llm,
       response_format: {

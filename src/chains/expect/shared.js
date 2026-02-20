@@ -1,5 +1,5 @@
 // Shared expect functionality between Node and browser
-import chatgpt from '../../lib/chatgpt/index.js';
+import llm from '../../lib/llm/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 
 /**
@@ -44,10 +44,16 @@ ${valueXml}
 ${expectedXml}
 ${constraint ? constraintsXml : asXML(effectiveConstraint, { tag: 'constraints', fit: 'compact' })}
 ${debugContext ? `\n${debugContext}\n` : ''}
-Return true if the value satisfies the constraints, false otherwise. Be balanced and reasonable in your evaluation - default to a generous interpretation unless the constraints explicitly require strict validation. The goal is practical accuracy, not pedantic strictness.`;
+Return true if the value satisfies the constraints, false otherwise.
+
+Evaluation rules:
+- Focus on SEMANTIC CONTENT, not presentation. Ignore formatting artifacts like XML/HTML tags, markdown syntax, escape characters, or other markup in the value.
+- Default to a generous interpretation unless the constraints explicitly require strict validation.
+- If the value captures the intended meaning, return true even if phrasing, structure, or formatting differs from what might be ideal.
+- The goal is practical accuracy, not pedantic strictness.`;
 
   // Make the LLM call
-  const response = await chatgpt(prompt, {
+  const response = await llm(prompt, {
     modelOptions: {
       temperature: 0,
       response_format: {
@@ -70,7 +76,7 @@ Return true if the value satisfies the constraints, false otherwise. Be balanced
     },
   });
 
-  // chatGPT module returns the value directly when using responseFormat
+  // llm module returns the value directly when using responseFormat
   return response === true;
 }
 
@@ -115,7 +121,7 @@ Provide:
 
 Keep the advice concise and actionable.`;
 
-  return await chatgpt(prompt, {
+  return await llm(prompt, {
     modelOptions: {
       temperature: 0.3,
     },

@@ -18,4 +18,4 @@ export { default as test } from './chains/test/index.js';
 export { default as testAdvice } from './chains/test-advice/index.js';
 
 // Default export
-export { chatGPT as default } from './shared.js';
+export { llm as default } from './shared.js';

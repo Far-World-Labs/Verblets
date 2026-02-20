@@ -41,6 +41,10 @@ export default class TimedAbortController extends BaseController {
     this.timeoutId = setTimeout(() => {
       this.abort();
     }, timeout);
+    // Don't let this timer keep the Node.js event loop alive
+    if (this.timeoutId?.unref) {
+      this.timeoutId.unref();
+    }
   }
 
   /**

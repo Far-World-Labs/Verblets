@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import peopleList from './index.js';
 
-vi.mock('../../lib/chatgpt/index.js', () => ({
+vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(async () => ({
     people: [{ name: 'Alice Smith', bio: 'Experienced baker specializing in sourdough', age: 32 }],
   })),

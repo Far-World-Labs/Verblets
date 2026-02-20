@@ -6,11 +6,10 @@ import { longTestTimeout } from '../../constants/common.js';
 import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
 import { getConfig } from '../test-analysis/config.js';
 import fs from 'node:fs/promises';
+import os from 'node:os';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const testDir = path.join(__dirname, 'test-data');
+let testDir;
 
 const config = getConfig();
 const it = config?.aiMode ? wrapIt(vitestIt, { baseProps: { suite: 'Test chain' } }) : vitestIt;
@@ -23,7 +22,7 @@ const aiExpect = config?.aiMode
 
 describe('test chain', () => {
   beforeAll(async () => {
-    await fs.mkdir(testDir, { recursive: true });
+    testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'test-chain-test-'));
   });
 
   afterAll(async () => {

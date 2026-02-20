@@ -7,8 +7,8 @@
 AI-powered functions that accept natural language instructions to transform and process data.
 
 ### Project-Specific Rules
-- **Never use null** - Convert to undefined at boundaries (JSON, Redis, chatGPT responses)
-- **Use response_format with JSON schemas** - The chatGPT module auto-unwraps `value` and `items`
+- **Never use null** - Convert to undefined at boundaries (JSON, Redis, LLM responses)
+- **Use response_format with JSON schemas** - The llm module auto-unwraps `value` and `items`
 - **Example tests MUST use vitest core function wrappers** - For AI analysis of test output
 - **One compelling example per README** - Show unique AI capabilities with real-world scenarios
 

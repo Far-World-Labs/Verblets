@@ -10,6 +10,16 @@ const TOKENS_PER_CHUNK_COMPRESS = 150;
 const COMPRESSION_RATIO = 0.3;
 const LLM_CHUNK_BATCH_SIZE = 20;
 const MAX_ADJACENCY_DISTANCE = 3;
+const MIN_COMPRESSED_TEXT_LENGTH = 20;
+
+// Trim text to last complete sentence to avoid mid-sentence cutoffs.
+// Returns original text if no sentence boundary found or text already ends cleanly.
+function trimToLastSentence(text) {
+  const trimmed = text.trim();
+  if (/[.!?]["')\]]*\s*$/.test(trimmed)) return trimmed;
+  const match = trimmed.match(/^([\s\S]*[.!?]["')\]]?)\s/);
+  return match && match[1].length >= MIN_COMPRESSED_TEXT_LENGTH ? match[1] : trimmed;
+}
 
 const DEFAULT_OPTIONS = {
   targetSize: 4000,
@@ -302,16 +312,20 @@ async function compressHighValueChunks(
   let spaceUsed = 0;
 
   texts.forEach((text, i) => {
-    if (text && text.length > 20 && text.length <= availableSpace - spaceUsed) {
+    const cleaned = text ? trimToLastSentence(text) : '';
+    if (
+      cleaned.length >= MIN_COMPRESSED_TEXT_LENGTH &&
+      cleaned.length <= availableSpace - spaceUsed
+    ) {
       compressed.push({
         ...compressible[i],
         originalText: compressible[i].text,
-        text,
+        text: cleaned,
         compressed: true,
-        size: text.length,
-        compressionRatio: text.length / compressible[i].size,
+        size: cleaned.length,
+        compressionRatio: cleaned.length / compressible[i].size,
       });
-      spaceUsed += text.length;
+      spaceUsed += cleaned.length;
     }
   });
 
@@ -574,7 +588,14 @@ export default async function documentShrink(document, query, options = {}) {
 
   // Final assembly - group consecutive chunks and join appropriately
   const chunkGroups = groupConsecutiveChunks(finalChunks);
-  const content = assembleContent(chunkGroups);
+  let content = assembleContent(chunkGroups);
+
+  // When content vastly exceeds the target (e.g. forced minimum chunk is
+  // larger than the budget), trim to the last complete sentence.
+  // Only applies when output is >3x target — normal slight overflows are fine.
+  if (content.length > config.targetSize * 3) {
+    content = trimToLastSentence(content.slice(0, config.targetSize * 2));
+  }
 
   // console.timeEnd(`[documentShrink] Full processing for "${query}"`);
 

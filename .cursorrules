@@ -19,7 +19,7 @@ You are assisting with the Verblets AI library - a collection of tools for build
 src/
 ├── chains/          # Multi-step AI workflows, model negotiation for optimization (kebab-case directories)
 ├── verblets/        # Simple LLM transformations, usually fastGoodCheap default
-├── lib/             # Utilities (chatgpt, model-service, each-file, etc.)
+├── lib/             # Utilities (llm, model-service, each-file, etc.)
 ├── prompts/         # Prompt generation functions
 ├── services/        # Core services (llm-model negotiation)
 └── json-schemas/    # Validation schemas for structured outputs
@@ -70,18 +70,18 @@ npm run script -- generate-verblet foo
 
 ## Core Implementation Patterns
 
-### LLM Integration via ChatGPT
+### LLM Integration
 ```javascript
-import chatGPT from '../../lib/chatgpt/index.js';
+import llm from '../../lib/llm/index.js';
 
 // Standard call pattern
-const result = await chatGPT(prompt, {
-  modelOptions: { ...llm },
+const result = await llm(prompt, {
+  modelOptions: { ...llmConfig },
   ...options
 });
 
 // For structured outputs with JSON schema (REQUIRED - never use toObject)
-const result = await chatGPT(prompt, {
+const result = await llm(prompt, {
   modelOptions: {
     modelName: 'fastGoodCheap',
     response_format: {
@@ -97,7 +97,7 @@ const result = await chatGPT(prompt, {
 - Root schema must be object type, cannot be array
 - The `.items` wrapper is an API requirement for collections
 
-**ChatGPT Module Features:**
+**LLM Module Features:**
 - Automatically parses JSON when `response_format` is provided
 - `skipResponseParse` option available for edge cases (e.g., primitive values)
 - Auto-unwraps simple collection schemas by default (single `items` property containing array)
@@ -122,7 +122,7 @@ const schema = {
   }
 };
 
-const result = await chatGPT(prompt, {
+const result = await llm(prompt, {
   modelOptions: {
     modelName: 'fastGoodCheap',
     response_format: {
@@ -346,7 +346,7 @@ See `guidelines/DOCUMENTATION.md` for complete standards:
 ## Key Implementation Details
 
 - **ES6 Modules**: `import/export` throughout
-- **LLM Calls**: Always through `src/lib/chatgpt/index.js`
+- **LLM Calls**: Always through `src/lib/llm/index.js`
 - **Model Service**: Centralized model negotiation in `src/services/llm-model/`
 - **Batch Processing**: Use `chunkSize` config, retry with same model selection
 - **Privacy Override**: Privacy models take absolute precedence over all other selections

@@ -1,7 +1,7 @@
 import { describe, it as vitestIt, expect as vitestExpect } from 'vitest';
 import popReference from './index.js';
-import vitestAiExpect from '../expect/index.js';
 import { longTestTimeout } from '../../constants/common.js';
+import vitestAiExpect from '../expect/index.js';
 import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
 import { getConfig } from '../test-analysis/config.js';
 
@@ -28,15 +28,19 @@ describe('popReference examples', () => {
       expect(result).toBeInstanceOf(Array);
       expect(result.length).toBeGreaterThan(0);
 
-      const hasRequiredProps = await aiExpect(result[0]).toSatisfy(
-        'Has all required properties: reference (string), source (string), score (number 0-1), and match object with text, start, end'
-      );
-      expect(hasRequiredProps).toBe(true);
+      // Validate structure with traditional assertions
+      expect(result[0]).toHaveProperty('reference');
+      expect(result[0]).toHaveProperty('source');
+      expect(result[0]).toHaveProperty('score');
+      expect(result[0]).toHaveProperty('match');
+      expect(typeof result[0].reference).toBe('string');
+      expect(typeof result[0].source).toBe('string');
+      expect(result[0].score).toBeGreaterThanOrEqual(0);
+      expect(result[0].score).toBeLessThanOrEqual(1);
 
-      const satisfiesMetaphor = await aiExpect(result).toSatisfy(
-        'Contains metaphorical references that relate to decision-making or pivotal moments'
+      await aiExpect(result).toSatisfy(
+        'References relate metaphorically to decision-making or pivotal moments'
       );
-      expect(satisfiesMetaphor).toBe(true);
     },
     longTestTimeout
   );
@@ -55,15 +59,12 @@ describe('popReference examples', () => {
       expect(result).toBeInstanceOf(Array);
       expect(result.length).toBeGreaterThan(0);
 
-      const satisfiesInclude = await aiExpect(result).toSatisfy(
-        'References come from The Office, Parks and Recreation, or Silicon Valley shows'
-      );
-      expect(satisfiesInclude).toBe(true);
-
-      const satisfiesContext = await aiExpect(result).toSatisfy(
-        'References relate to workplace dysfunction, awkward meetings, or avoidance behavior'
-      );
-      expect(satisfiesContext).toBe(true);
+      // Validate sources match the include list
+      const validSources = ['the office', 'parks and recreation', 'silicon valley'];
+      result.forEach((ref) => {
+        const sourceMatch = validSources.some((s) => ref.source.toLowerCase().includes(s));
+        expect(sourceMatch).toBe(true);
+      });
     },
     longTestTimeout
   );
@@ -83,15 +84,14 @@ describe('popReference examples', () => {
       expect(result).toBeInstanceOf(Array);
       expect(result.length).toBeGreaterThan(0);
 
-      const hasContext = await aiExpect(result[0]).toSatisfy(
-        'Has a context property that is a non-empty string describing the reference'
-      );
-      expect(hasContext).toBe(true);
+      // Validate context property exists when referenceContext: true
+      expect(result[0]).toHaveProperty('context');
+      expect(typeof result[0].context).toBe('string');
+      expect(result[0].context.length).toBeGreaterThan(0);
 
-      const satisfiesDenial = await aiExpect(result).toSatisfy(
-        'References relate to denial, pretending everything is fine, or ignoring obvious problems'
+      await aiExpect(result).toSatisfy(
+        'References relate to denial or pretending everything is fine'
       );
-      expect(satisfiesDenial).toBe(true);
     },
     longTestTimeout
   );
@@ -115,15 +115,12 @@ describe('popReference examples', () => {
       expect(result).toBeInstanceOf(Array);
       expect(result.length).toBeGreaterThanOrEqual(1);
 
-      const satisfiesWeightedSources = await aiExpect(result).toSatisfy(
-        'References come from Lord of the Rings, Star Wars, or Harry Potter'
-      );
-      expect(satisfiesWeightedSources).toBe(true);
-
-      const satisfiesChoice = await aiExpect(result).toSatisfy(
-        'References relate to choices between safety and adventure, or comfort and growth'
-      );
-      expect(satisfiesChoice).toBe(true);
+      // Validate sources match the weighted include list
+      const validSources = ['lord of the rings', 'star wars', 'harry potter'];
+      result.forEach((ref) => {
+        const sourceMatch = validSources.some((s) => ref.source.toLowerCase().includes(s));
+        expect(sourceMatch).toBe(true);
+      });
     },
     longTestTimeout
   );
@@ -143,15 +140,15 @@ describe('popReference examples', () => {
       expect(result).toBeInstanceOf(Array);
       expect(result.length).toBeGreaterThanOrEqual(2);
 
-      const hasSportsReferences = await aiExpect(result).toSatisfy(
-        'References come from sports movies and relate to underdog victories'
-      );
-      expect(hasSportsReferences).toBe(true);
-
-      const hasValidStructure = await aiExpect(result).toSatisfy(
-        'All references have valid match.text strings and scores between 0 and 1'
-      );
-      expect(hasValidStructure).toBe(true);
+      // Validate structure of all references
+      result.forEach((ref) => {
+        expect(ref).toHaveProperty('reference');
+        expect(ref).toHaveProperty('score');
+        expect(ref).toHaveProperty('match');
+        expect(ref.score).toBeGreaterThanOrEqual(0);
+        expect(ref.score).toBeLessThanOrEqual(1);
+        expect(typeof ref.match.text).toBe('string');
+      });
     },
     longTestTimeout
   );

@@ -1,5 +1,5 @@
 import reduce from '../reduce/index.js';
-import chatGPT from '../../lib/chatgpt/index.js';
+import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import thresholdResultSchema from './threshold-result.json';
@@ -179,7 +179,7 @@ Return the updated accumulator as valid JSON.`;
   const accumulated =
     typeof analysisResult === 'string' ? JSON.parse(analysisResult) : analysisResult;
 
-  // Now use chatGPT directly with structured output for final recommendations
+  // Now use llm directly with structured output for final recommendations
   const finalPrompt = `Based on the following analysis of ${
     stats.count
   } data points for property "${targetProperty}", generate threshold recommendations.
@@ -228,14 +228,14 @@ Return threshold candidates with their rationales.`;
     },
   };
 
-  const result = await retry(chatGPT, {
+  const result = await retry(callLlm, {
     label: 'detect-threshold-analysis',
     maxAttempts,
     onProgress,
     now,
     chainStartTime: now,
-    chatGPTPrompt: finalPrompt,
-    chatGPTConfig: {
+    llmPrompt: finalPrompt,
+    llmConfig: {
       modelOptions,
       ...options,
     },

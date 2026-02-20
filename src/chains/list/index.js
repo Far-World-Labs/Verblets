@@ -1,5 +1,5 @@
 import { operationTimeoutMultiplier } from '../../constants/models.js';
-import chatGPT from '../../lib/chatgpt/index.js';
+import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import {
   asObjectWithSchema as asObjectWithSchemaPrompt,
@@ -14,7 +14,7 @@ const { onlyJSON, contentIsTransformationSource, onlyJSONArray } = promptConstan
 /**
  * Create model options for structured outputs
  * @param {string|Object} llm - LLM model name or configuration object
- * @returns {Promise<Object>} Model options for chatGPT
+ * @returns {Promise<Object>} Model options for llm
  */
 function createModelOptions(llm = 'fastGoodCheap') {
   const responseFormat = {
@@ -87,14 +87,14 @@ export const generateList = async function* generateListGenerator(text, options 
     try {
       const modelOptions = createModelOptions(model);
       // eslint-disable-next-line no-await-in-loop
-      const results = await retry(chatGPT, {
+      const results = await retry(callLlm, {
         label: 'list-generate',
         maxAttempts,
         onProgress,
         now,
         chainStartTime: now,
-        chatGPTPrompt: listPrompt,
-        chatGPTConfig: {
+        llmPrompt: listPrompt,
+        llmConfig: {
           modelOptions,
           ...passThroughOptions,
         },
@@ -167,14 +167,14 @@ export default async function list(prompt, config = {}) {
   const fullPrompt = `${prompt}\n\n${onlyJSONArray}`;
 
   const modelOptions = createModelOptions(llm);
-  const response = await retry(chatGPT, {
+  const response = await retry(callLlm, {
     label: 'list-main',
     maxAttempts,
     onProgress,
     now,
     chainStartTime: now,
-    chatGPTPrompt: fullPrompt,
-    chatGPTConfig: {
+    llmPrompt: fullPrompt,
+    llmConfig: {
       modelOptions,
       ...options,
     },
@@ -192,12 +192,12 @@ export default async function list(prompt, config = {}) {
     const transformedItems = [];
     for (const item of items) {
       const transformPrompt = outputTransformPrompt(item, schema);
-      const transformResponse = await retry(chatGPT, {
+      const transformResponse = await retry(callLlm, {
         label: 'list-transform',
         maxAttempts,
         onProgress,
-        chatGPTPrompt: transformPrompt,
-        chatGPTConfig: {
+        llmPrompt: transformPrompt,
+        llmConfig: {
           modelOptions: {
             ...llm,
           },

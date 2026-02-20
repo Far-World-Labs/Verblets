@@ -129,7 +129,11 @@ function hasTestFilter() {
 
 function isWatchMode() {
   // Vitest defaults to watch mode unless --run is specified
-  // or when running in CI
+  // or when running in CI.
+  // However, if stdin is not a TTY (piped, non-interactive), vitest
+  // exits after the first run regardless — not truly watch mode.
+  if (!process.stdin.isTTY) return false;
+
   const hasRunFlag = process.argv.includes('--run');
   const isCI = process.env.CI === 'true';
   const hasWatchFlag = process.argv.includes('--watch');
@@ -246,6 +250,7 @@ export default class TestAnalysisReporter {
 
     // === DEBUG: Keep these messages - very useful for debugging input errors ===
     // console.error('[REPORTER] Test run ending, reason:', reason, 'runId:', this.currentRunId);
+    // console.error('[REPORTER] vitest.config.watch:', this.vitest?.config?.watch, 'isWatchMode():', isWatchMode());
     // === END DEBUG ===
 
     // Prevent duplicate run-end events for the same run
@@ -283,9 +288,18 @@ export default class TestAnalysisReporter {
       // Shutdown processors (stops their polling and waits for pending work)
       await this.shutdownProcessors();
 
-      // Don't disconnect Redis - it's a shared singleton used by other parts of the app
-      // Let it clean up naturally when the process exits
+      // Close the ring buffer first — its internal pollers use setTimeout
+      // (not unref'd) which keeps the event loop alive.
+      if (this.reader?.buffer) {
+        await this.reader.buffer.close();
+      }
       this.reader = null;
+
+      // disconnect() matches the pattern in setup.js and global-setup.js.
+      if (this.redis) {
+        await this.redis.disconnect();
+        this.redis = null;
+      }
     }
     // In watch mode, processors continue running for the next test run
 
@@ -357,26 +371,33 @@ export default class TestAnalysisReporter {
   }
 
   async waitForProcessorsToConsume() {
-    // Let processors continue polling to consume the run-end event
-    // Their handleRunEnd methods will be called when they consume it
+    // We arrive here ~0ms after pushing run-end to the ring buffer.
+    // Processors poll every 100ms, so the run-end event almost certainly
+    // hasn't been consumed yet. We need to drain it synchronously.
 
-    // Wait for any current polls to complete
+    // 1. Wait for any in-flight poll to finish (avoid corrupting reader state)
     await Promise.all(
       this.processors.map(async (p) => {
         if (p.currentPoll) {
-          await p.currentPoll.catch(() => {}); // Ignore errors
+          await p.currentPoll.catch(() => {});
         }
       })
     );
 
-    // Now stop them from polling
+    // 2. Stop poll timers BEFORE draining — prevents a timer-fired poll
+    //    from racing with the manual drain below
     this.processors.forEach((p) => {
       if (p.stopProcessing) {
         p.stopProcessing();
       }
     });
 
-    // Give processors time to finish their final work
+    // 3. Drain each processor's reader completely. This loops reader.consume()
+    //    until empty, so it handles any buffer depth. Inline processing means
+    //    async work (e.g. DetailsProcessor.render()) executes during drain.
+    await Promise.all(this.processors.map((p) => p.drain()));
+
+    // 4. Wait for any pending async work queued during drain
     await Promise.all(
       this.processors.map(async (p) => {
         if (p.waitForPendingWork) {

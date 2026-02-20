@@ -1,4 +1,4 @@
-import chatGPT from '../../lib/chatgpt/index.js';
+import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import chunkSentences from '../../lib/chunk-sentences/index.js';
 import wrapVariable from '../../prompts/wrap-variable.js';
@@ -54,7 +54,7 @@ export default async function split(text, instructions, config = {}) {
     };
 
     const prompt = buildPrompt(chunk, instructions, delimiter, context);
-    const chatGPTConfig = {
+    const llmConfig = {
       modelOptions: {
         temperature: 0.1, // Lower temperature for more consistent splitting
         modelName: 'fastGoodCheapCoding', // Use faster model for better performance
@@ -64,14 +64,14 @@ export default async function split(text, instructions, config = {}) {
     };
 
     try {
-      const output = await retry(chatGPT, {
+      const output = await retry(callLlm, {
         label: 'split',
         maxAttempts,
         onProgress,
         now,
         chainStartTime: now,
-        chatGPTPrompt: prompt,
-        chatGPTConfig,
+        llmPrompt: prompt,
+        llmConfig,
         logger: options.logger,
       });
 

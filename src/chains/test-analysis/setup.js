@@ -50,10 +50,18 @@ async function initializeLogger() {
     includeFileContext: true,
   });
 
-  // Clean up Redis connection after all tests complete
+  // Clean up ring buffer and Redis connection after all tests complete
   afterAll(async () => {
-    if (!isWatchMode() && redis) {
-      await redis.disconnect();
+    if (!isWatchMode()) {
+      if (sharedRingBuffer) {
+        // Stop internal pollers that keep the event loop alive
+        sharedRingBuffer.readerPoller.stop();
+        sharedRingBuffer.writerPoller.stop();
+        sharedRingBuffer = null;
+      }
+      if (redis) {
+        await redis.disconnect();
+      }
     }
   });
 }
@@ -65,8 +73,11 @@ globalThis.logger = createLogger({
 });
 
 // Then initialize the real logger if aiMode is enabled
+// Top-level await ensures logger is ready before tests start running.
+// Without this, early test events go to the no-op logger and never reach
+// the ring buffer, causing processors to see no events and produce no output.
 if (config.aiMode) {
-  initializeLogger().catch((error) => {
+  await initializeLogger().catch((error) => {
     console.error('[Setup] Failed to initialize logger:', error);
   });
 }

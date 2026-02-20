@@ -1,11 +1,15 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
-  "required": ["name", "endpoint", "maxContextWindow", "maxOutputTokens", "requestTimeout", "apiUrl"],
+  "required": ["name", "provider", "endpoint", "maxContextWindow", "maxOutputTokens", "requestTimeout", "apiUrl"],
   "properties": {
     "name": {
       "type": "string",
       "minLength": 1
+    },
+    "provider": {
+      "type": "string",
+      "enum": ["openai", "openai-responses", "anthropic", "openwebui"]
     },
     "endpoint": {
       "type": "string",

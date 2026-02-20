@@ -3,6 +3,7 @@ import detectThreshold from './index.js';
 import vitestAiExpect from '../expect/index.js';
 import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
 import { getConfig } from '../test-analysis/config.js';
+import { longTestTimeout } from '../../constants/common.js';
 
 const config = getConfig();
 const it = config?.aiMode
@@ -17,7 +18,7 @@ const aiExpect = config?.aiMode
   : vitestAiExpect;
 
 describe('detect-threshold examples', () => {
-  it('should analyze risk scores for fraud detection', { timeout: 60000 }, async () => {
+  it('should analyze risk scores for fraud detection', { timeout: longTestTimeout }, async () => {
     const transactions = [
       { id: 1, amount: 50, riskScore: 0.05, merchant: 'Grocery Store' },
       { id: 2, amount: 1500, riskScore: 0.72, merchant: 'Jewelry Store' },
@@ -51,23 +52,31 @@ describe('detect-threshold examples', () => {
     });
   });
 
-  it('should detect performance thresholds for API monitoring', { timeout: 60000 }, async () => {
-    const apiMetrics = Array.from({ length: 400 }, (_, i) => ({
-      // 400 items: enough to test chunking with 4 chunks
-      endpoint: ['GET /users', 'POST /orders', 'GET /products'][i % 3],
-      responseTime: Math.random() < 0.8 ? 50 + Math.random() * 200 : 500 + Math.random() * 2000,
-      timestamp: new Date(2024, 0, 1, 0, i * 5).toISOString(),
-    }));
+  it(
+    'should detect performance thresholds for API monitoring',
+    { timeout: longTestTimeout },
+    async () => {
+      // Deterministic data with 80/20 distribution (80% normal, 20% high latency).
+      // Using modular arithmetic instead of Math.random() so prompts are cacheable.
+      // 100 items → 5 reduce lines → ~3 batches (token-budget-based), testing iterative reduce.
+      const apiMetrics = Array.from({ length: 100 }, (_, i) => ({
+        endpoint: ['GET /users', 'POST /orders', 'GET /products'][i % 3],
+        responseTime:
+          i % 5 !== 0
+            ? 50 + ((i * 37) % 200) // 80% normal: 50-250ms
+            : 500 + ((i * 73) % 2000), // 20% high latency: 500-2500ms
+        timestamp: new Date(2024, 0, 1, 0, i * 5).toISOString(),
+      }));
 
-    const result = await detectThreshold({
-      data: apiMetrics,
-      targetProperty: 'responseTime',
-      goal: 'Identify response time thresholds for SLA monitoring. Need to distinguish between normal latency, degraded performance, and critical slowdowns.',
-      chunkSize: 100, // Will process in 4 chunks, testing iterative functionality
-    });
+      const result = await detectThreshold({
+        data: apiMetrics,
+        targetProperty: 'responseTime',
+        goal: 'Identify response time thresholds for SLA monitoring. Need to distinguish between normal latency, degraded performance, and critical slowdowns.',
+      });
 
-    expect(result.thresholdCandidates).toBeInstanceOf(Array);
-    expect(result.distributionAnalysis).toHaveProperty('mean');
-    expect(result.distributionAnalysis).toHaveProperty('standardDeviation');
-  });
+      expect(result.thresholdCandidates).toBeInstanceOf(Array);
+      expect(result.distributionAnalysis).toHaveProperty('mean');
+      expect(result.distributionAnalysis).toHaveProperty('standardDeviation');
+    }
+  );
 });

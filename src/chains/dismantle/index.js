@@ -1,6 +1,6 @@
 import { v4 as uuid } from 'uuid';
 
-import chatGPT from '../../lib/chatgpt/index.js';
+import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { outputSuccinctNames, constants as promptConstants } from '../../prompts/index.js';
 import modelService from '../../services/llm-model/index.js';
@@ -83,14 +83,14 @@ const defaultDecompose = async ({
 
   const promptCreated = subComponentsPrompt(`${name}${focusFormatted}`, rootName, fixes);
   const budget = model.budgetTokens(promptCreated);
-  const result = await retry(chatGPT, {
+  const result = await retry(callLlm, {
     label: 'dismantle-decompose',
     maxAttempts,
     onProgress,
     now,
     chainStartTime: now,
-    chatGPTPrompt: promptCreated,
-    chatGPTConfig: {
+    llmPrompt: promptCreated,
+    llmConfig: {
       modelOptions: {
         maxTokens: budget.completion,
         frequencyPenalty: 0.7,
@@ -119,14 +119,14 @@ const defaultEnhance = async ({
 } = {}) => {
   const promptCreated = componentOptionsPrompt(name, rootName, fixes);
   const budget = model.budgetTokens(promptCreated);
-  const result = await retry(chatGPT, {
+  const result = await retry(callLlm, {
     label: 'dismantle-enhance',
     maxAttempts,
     onProgress,
     now,
     chainStartTime: now,
-    chatGPTPrompt: promptCreated,
-    chatGPTConfig: {
+    llmPrompt: promptCreated,
+    llmConfig: {
       modelOptions: {
         maxTokens: budget.completion,
         frequencyPenalty: 0.5,

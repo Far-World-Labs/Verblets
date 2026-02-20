@@ -1,4 +1,4 @@
-import chatGPT from '../../lib/chatgpt/index.js';
+import callLlm from '../../lib/llm/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 import commonalitiesSchema from './commonalities-result.json';
@@ -8,7 +8,7 @@ const { contentIsQuestion, tryCompleteData, onlyJSONStringArray } = promptConsta
 /**
  * Create model options for structured outputs
  * @param {string|Object} llm - LLM model name or configuration object
- * @returns {Object} Model options for chatGPT
+ * @returns {Object} Model options for llm
  */
 function createModelOptions(llm = 'fastGoodCheap') {
   const schema = commonalitiesSchema;
@@ -63,7 +63,7 @@ export default async function commonalities(items, config = {}) {
   const { llm, ...options } = config;
   const modelOptions = createModelOptions(llm);
 
-  const output = await chatGPT(buildPrompt(items, options), {
+  const output = await callLlm(buildPrompt(items, options), {
     modelOptions,
   });
 

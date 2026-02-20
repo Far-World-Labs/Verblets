@@ -1,6 +1,6 @@
 import commonalities from '../../verblets/commonalities/index.js';
 import { rangeCombinations } from '../../lib/combinations/index.js';
-import chatGPT from '../../lib/chatgpt/index.js';
+import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { constants as promptConstants } from '../../prompts/index.js';
@@ -48,14 +48,14 @@ const processCombo = async (combo, instructions, maxAttempts = 3, onProgress, no
 
   // Get elements and description in parallel
   const [elementsResponse, intersectionItems] = await Promise.all([
-    retry(chatGPT, {
+    retry(callLlm, {
       label: 'intersections-elements',
       maxAttempts,
       onProgress,
       now,
       chainStartTime: now,
-      chatGPTPrompt: INTERSECTION_PROMPT(combo, instructions),
-      chatGPTConfig: {
+      llmPrompt: INTERSECTION_PROMPT(combo, instructions),
+      llmConfig: {
         modelOptions: {
           response_format: {
             type: 'json_schema',
@@ -204,14 +204,14 @@ Return the properly structured JSON object with an "intersections" property cont
 
   try {
     const modelOptions = createModelOptions(llm, 'intersection_result');
-    const response = await retry(chatGPT, {
+    const response = await retry(callLlm, {
       label: 'intersections-validation',
       maxAttempts,
       onProgress,
       now,
       chainStartTime: now,
-      chatGPTPrompt: prompt,
-      chatGPTConfig: {
+      llmPrompt: prompt,
+      llmConfig: {
         modelOptions,
       },
     });

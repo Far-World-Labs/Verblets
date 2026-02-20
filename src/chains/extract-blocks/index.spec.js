@@ -2,20 +2,20 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import extractBlocks from './index.js';
 
 // Mock the dependencies
-vi.mock('../../lib/chatgpt/index.js');
+vi.mock('../../lib/llm/index.js');
 vi.mock('../../lib/retry/index.js');
 
-import chatGPT from '../../lib/chatgpt/index.js';
+import llm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 
 describe('extract-blocks', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    // Make retry pass through chatGPT calls with proper arguments
+    // Make retry pass through llm calls with proper arguments
     retry.mockImplementation(async (fn, options) => {
-      if (options?.chatGPTPrompt !== undefined) {
-        return fn(options.chatGPTPrompt, options.chatGPTConfig);
+      if (options?.llmPrompt !== undefined) {
+        return fn(options.llmPrompt, options.llmConfig);
       }
       return fn();
     });
@@ -37,8 +37,8 @@ Line 2 of entry 3`;
     const instructions =
       'Identify entries that start with "Entry N:" and end before the next entry or at document end';
 
-    // Mock chatGPT to return block boundaries
-    chatGPT.mockResolvedValue({
+    // Mock llm to return block boundaries
+    llm.mockResolvedValue({
       blocks: [
         { startLine: 0, endLine: 2 }, // Entry 1
         { startLine: 4, endLine: 7 }, // Entry 2
@@ -75,7 +75,7 @@ Line 5`;
     // First window returns a block
     // Second overlapping window returns same block with extended end
     // Third window returns nothing
-    chatGPT
+    llm
       .mockResolvedValueOnce({
         blocks: [{ startLine: 1, endLine: 2 }],
       })
@@ -103,7 +103,7 @@ Line 5`;
       .map((l, i) => `${l} ${i + 1}`);
     const text = lines.join('\n');
 
-    chatGPT.mockResolvedValue({ blocks: [] });
+    llm.mockResolvedValue({ blocks: [] });
 
     await extractBlocks(text, 'Find blocks', {
       windowSize: 20,
@@ -113,7 +113,7 @@ Line 5`;
 
     // Calculate expected number of windows
     const expectedWindows = Math.ceil(100 / (20 - 5));
-    expect(chatGPT).toHaveBeenCalledTimes(expectedWindows);
+    expect(llm).toHaveBeenCalledTimes(expectedWindows);
   });
 
   it('should include line numbers in prompts for easier reference', async () => {
@@ -121,14 +121,14 @@ Line 5`;
 Second line
 Third line`;
 
-    chatGPT.mockResolvedValue({ blocks: [] });
+    llm.mockResolvedValue({ blocks: [] });
 
     await extractBlocks(text, 'Find blocks', {
       windowSize: 10,
       overlapSize: 2,
     });
 
-    const call = chatGPT.mock.calls[0];
+    const call = llm.mock.calls[0];
     const prompt = call[0];
 
     // Check that line numbers are included
@@ -141,7 +141,7 @@ Third line`;
     const result = await extractBlocks('', 'Find blocks');
 
     expect(result).toEqual([]);
-    expect(chatGPT).toHaveBeenCalledTimes(0);
+    expect(llm).toHaveBeenCalledTimes(0);
   });
 
   it('should merge adjacent overlapping blocks', async () => {
@@ -152,7 +152,7 @@ Block 2 content
 Block 3 start
 Block 3 content`;
 
-    chatGPT.mockResolvedValue({
+    llm.mockResolvedValue({
       blocks: [
         { startLine: 0, endLine: 1 },
         { startLine: 1, endLine: 3 }, // Overlaps with previous

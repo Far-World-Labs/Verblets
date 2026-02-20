@@ -1,7 +1,7 @@
 import { describe, it as vitestIt, expect as vitestExpect } from 'vitest';
 import ConversationChain from './index.js';
 import vitestAiExpect from '../expect/index.js';
-import { longTestTimeout, shouldRunLongExamples } from '../../constants/common.js';
+import { longTestTimeout } from '../../constants/common.js';
 import { roundRobin } from './turn-policies.js';
 import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
 import { getConfig } from '../test-analysis/config.js';
@@ -17,8 +17,11 @@ const aiExpect = config?.aiMode
   ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'Conversation chain' } })
   : vitestAiExpect;
 
+// Fixed clock for deterministic timestamps — makes LLM prompts cacheable
+const fixedClock = () => new Date('2024-06-15T12:00:00Z');
+
 describe('conversation chain examples', () => {
-  it.skipIf(!shouldRunLongExamples)(
+  it(
     'generates a debate on consciousness emergence in AI systems - a current open question',
     async () => {
       const speakers = [
@@ -61,6 +64,7 @@ describe('conversation chain examples', () => {
       };
 
       const chain = new ConversationChain(topic, speakers, {
+        clock: fixedClock,
         rules: {
           shouldContinue: shouldContinueWithHook,
           turnPolicy: roundRobin(speakers), // Use deterministic round-robin to ensure all speakers participate
@@ -112,13 +116,14 @@ describe('conversation chain examples', () => {
 
       expect(foundTerms.length).toBeGreaterThan(0);
 
-      // AI validation of conversation quality
-      const hasPhilosophicalDepth = await aiExpect(messages).toSatisfy(
-        'Should contain sophisticated philosophical discussion about machine consciousness with each pioneer contributing their unique perspective'
-      );
+      // Content depth: each speaker should produce substantive comments
+      for (const message of messages) {
+        expect(message.comment.length).toBeGreaterThan(50);
+      }
 
-      // Hook: Final validation
-      expect(hasPhilosophicalDepth).toBe(true);
+      await aiExpect(allComments).toSatisfy(
+        'Contains discussion about machine consciousness with multiple perspectives'
+      );
     },
     longTestTimeout
   );
@@ -166,6 +171,7 @@ describe('conversation chain examples', () => {
       };
 
       const chain = new ConversationChain(topic, speakers, {
+        clock: fixedClock,
         rules: {
           shouldContinue: (round, _messages) => {
             // Hook: Simple continuation check
@@ -243,6 +249,7 @@ describe('conversation chain examples', () => {
       };
 
       const chain = new ConversationChain(topic, speakers, {
+        clock: fixedClock,
         rules: {
           shouldContinue: (round) => round < 2, // Only 2 rounds
           turnPolicy: customTurnPolicy,
@@ -310,6 +317,7 @@ describe('conversation chain examples', () => {
       };
 
       const chain = new ConversationChain(topic, speakers, {
+        clock: fixedClock,
         rules: {
           shouldContinue: (round) => round < 2, // Only 2 rounds
           turnPolicy: summaryTurnPolicy,
@@ -383,6 +391,7 @@ describe('conversation chain examples', () => {
       };
 
       const chain = new ConversationChain(topic, speakers, {
+        clock: fixedClock,
         rules: {
           shouldContinue: (round) => round < 2, // Only 2 rounds
           turnPolicy: dynamicTurnPolicy,

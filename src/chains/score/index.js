@@ -1,12 +1,57 @@
-import chatGPT from '../../lib/chatgpt/index.js';
+import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 import { scaleSpec } from '../scale/index.js';
-import map from '../map/index.js';
+import listBatch from '../../verblets/list-batch/index.js';
+import createBatches from '../../lib/text-batch/index.js';
+import parallelBatch from '../../lib/parallel-batch/index.js';
+import {
+  emitBatchStart,
+  emitBatchComplete,
+  emitBatchProcessed,
+  emitPhaseProgress,
+} from '../../lib/progress-callback/index.js';
 import scoreSingleResultSchema from './score-single-result.json';
 
 const { onlyJSON } = promptConstants;
+
+const scoreBatchResponseFormat = {
+  type: 'json_schema',
+  json_schema: {
+    name: 'score_batch',
+    schema: {
+      type: 'object',
+      properties: {
+        items: { type: 'array', items: { type: 'number' } },
+      },
+      required: ['items'],
+      additionalProperties: false,
+    },
+  },
+};
+
+function buildScoringAnchors(items, scores) {
+  const paired = items
+    .map((item, i) => ({ item: String(item), score: scores[i] }))
+    .filter((s) => Number.isFinite(s.score))
+    .sort((a, b) => a.score - b.score);
+  if (paired.length < 2) return '';
+  const count = Math.min(2, Math.ceil(paired.length / 3));
+  const anchors = [...paired.slice(0, count), ...paired.slice(-count)];
+  return `\nUse these scored examples as reference points:\n${asXML(
+    anchors.map((a) => `${a.score} — ${a.item}`).join('\n'),
+    { tag: 'scoring-anchors' }
+  )}`;
+}
+
+function alignScores(scores, expectedLength) {
+  const arr = Array.isArray(scores) ? scores : [];
+  if (arr.length === expectedLength) return arr;
+  return Array.from({ length: expectedLength }, (_, i) =>
+    i < arr.length && typeof arr[i] === 'number' ? arr[i] : undefined
+  );
+}
 
 // ===== Core Functions =====
 
@@ -37,14 +82,14 @@ ${onlyJSON}
 
 ${asXML(item, { tag: 'item' })}`;
 
-  const response = await retry(chatGPT, {
+  const response = await retry(callLlm, {
     label: 'score item',
     maxAttempts,
     onProgress,
     now,
     chainStartTime: now,
-    chatGPTPrompt: prompt,
-    chatGPTConfig: {
+    llmPrompt: prompt,
+    llmConfig: {
       modelOptions: {
         response_format: {
           type: 'json_schema',
@@ -60,7 +105,7 @@ ${asXML(item, { tag: 'item' })}`;
     logger: options.logger,
   });
 
-  // chatGPT auto-unwraps single value property, returns the number directly
+  // llm auto-unwraps single value property, returns the number directly
   return response;
 }
 
@@ -78,39 +123,176 @@ export async function scoreItem(item, instructions, config = {}) {
 }
 
 /**
+ * Single scoring pass — processes batches with error containment.
+ * First batch runs alone to establish scoring anchors; remaining batches
+ * run in parallel with those anchors embedded in the prompt.
+ * Failed batches leave items as undefined (never throws).
+ */
+async function scoreOnce(list, prompt, batchConfig, options) {
+  const { maxParallel, maxAttempts, onProgress, now, logger } = options;
+
+  const batches = createBatches(list, batchConfig);
+  const batchesToProcess = batches.filter((b) => !b.skip);
+  const results = new Array(list.length);
+  batches.forEach((b) => {
+    if (b.skip) results[b.startIndex] = undefined;
+  });
+
+  emitBatchStart(onProgress, 'score', list.length, {
+    totalBatches: batchesToProcess.length,
+    maxParallel,
+    now,
+    chainStartTime: now,
+  });
+
+  // First batch establishes scoring anchors
+  let anchorBlock = '';
+  if (batchesToProcess.length > 0) {
+    const first = batchesToProcess[0];
+    try {
+      const scores = await retry(() => listBatch(first.items, prompt, batchConfig), {
+        label: 'score:batch',
+        maxAttempts,
+      });
+      alignScores(scores, first.items.length).forEach((s, j) => {
+        results[first.startIndex + j] = s;
+      });
+      anchorBlock = buildScoringAnchors(first.items, scores);
+    } catch (error) {
+      if (logger?.error)
+        logger.error('Score batch 0 failed', {
+          error: error.message,
+          itemCount: first.items.length,
+        });
+    }
+
+    emitBatchProcessed(
+      onProgress,
+      'score',
+      {
+        totalItems: list.length,
+        processedItems: first.items.length,
+        batchNumber: 1,
+        batchSize: first.items.length,
+      },
+      { totalBatches: batchesToProcess.length, now: new Date(), chainStartTime: now }
+    );
+  }
+
+  // Remaining batches run in parallel with anchors
+  if (batchesToProcess.length > 1) {
+    const anchoredPrompt = anchorBlock ? `${prompt}\n${anchorBlock}` : prompt;
+    let processedItems = batchesToProcess[0].items.length;
+
+    await parallelBatch(
+      batchesToProcess.slice(1),
+      async ({ items, startIndex }, batchIndex) => {
+        try {
+          const scores = await retry(() => listBatch(items, anchoredPrompt, batchConfig), {
+            label: 'score:batch',
+            maxAttempts,
+          });
+          alignScores(scores, items.length).forEach((s, j) => {
+            results[startIndex + j] = s;
+          });
+        } catch (error) {
+          if (logger?.error)
+            logger.error(`Score batch ${batchIndex + 1} failed`, {
+              error: error.message,
+              itemCount: items.length,
+            });
+        }
+        processedItems += items.length;
+
+        emitBatchProcessed(
+          onProgress,
+          'score',
+          {
+            totalItems: list.length,
+            processedItems,
+            batchNumber: batchIndex + 2,
+            batchSize: items.length,
+          },
+          { totalBatches: batchesToProcess.length, now: new Date(), chainStartTime: now }
+        );
+      },
+      { maxParallel, label: 'score batches' }
+    );
+  }
+
+  emitBatchComplete(onProgress, 'score', list.length, {
+    totalBatches: batchesToProcess.length,
+    now: new Date(),
+    chainStartTime: now,
+  });
+
+  return results;
+}
+
+/**
  * Score a list of items
  * @param {Array} list - Array of items
  * @param {string} instructions - Scoring instructions
  * @param {Object} config - Configuration options
+ * @param {Object} config.spec - Optional pre-built spec (skips scoreSpec LLM call)
  * @returns {Promise<Array>} Array of scores
  */
 export async function mapScore(list, instructions, config = {}) {
-  const { onProgress, now = new Date(), ...restConfig } = config;
+  const {
+    spec: providedSpec,
+    onProgress,
+    now = new Date(),
+    maxParallel = 3,
+    maxAttempts = 3,
+    llm,
+    logger,
+    ...restConfig
+  } = config;
 
-  // Emit phase for specification generation
-  if (onProgress) {
-    onProgress({
-      step: 'score',
-      event: 'phase',
-      phase: 'generating-specification',
+  emitPhaseProgress(onProgress, 'score', 'generating-specification');
+  const spec = providedSpec || (await scoreSpec(instructions, { now, llm, ...restConfig }));
+  emitPhaseProgress(onProgress, 'score', 'scoring-items', { specification: spec });
+
+  const scoringPrompt = buildScoringInstructions(
+    spec,
+    'Return ONLY the numeric score for each item according to the specification range.'
+  );
+  const scoringLlm = { temperature: 0, ...llm };
+  const batchConfig = {
+    ...restConfig,
+    responseFormat: scoreBatchResponseFormat,
+    llm: scoringLlm,
+    logger,
+  };
+  const passOptions = { maxParallel, maxAttempts, onProgress, now, logger };
+
+  const results = await scoreOnce(list, scoringPrompt, batchConfig, passOptions);
+
+  // Retry undefined items (follows map chain's retry pattern)
+  for (let attempt = 1; attempt < maxAttempts; attempt += 1) {
+    const missingIdx = [];
+    const missingItems = [];
+
+    results.forEach((val, idx) => {
+      if (val === undefined) {
+        missingIdx.push(idx);
+        missingItems.push(list[idx]);
+      }
+    });
+
+    if (missingItems.length === 0) break;
+
+    const retryResults = await scoreOnce(missingItems, scoringPrompt, batchConfig, {
+      ...passOptions,
+      now: new Date(),
+    });
+
+    retryResults.forEach((val, i) => {
+      if (val !== undefined) results[missingIdx[i]] = val;
     });
   }
 
-  const spec = await scoreSpec(instructions, { now, ...restConfig });
-
-  // Emit phase for scoring
-  if (onProgress) {
-    onProgress({
-      step: 'score',
-      event: 'phase',
-      phase: 'scoring-items',
-      specification: spec,
-    });
-  }
-
-  const mapInstr = mapInstructions({ specification: spec });
-  const scores = await map(list, mapInstr, { ...restConfig, onProgress, now });
-  return scores.map((s) => Number(s));
+  return results;
 }
 
 // ===== Instruction Builders =====
@@ -206,43 +388,6 @@ ${processing}
 </grouping-strategy>`;
 
   return `${buildScoringInstructions(specification)}\n\n${groupContext}`;
-}
-
-// ===== Calibration Utilities =====
-
-/**
- * Build calibration reference from scored items
- * Selects representative items from low, middle, and high score ranges
- * @param {Array<{item: *, score: number}>} scoredItems - Items with their scores
- * @param {number} count - Number of examples per range (default 3)
- * @returns {Array<{item: *, score: number}>} Calibration reference examples
- */
-export function buildCalibrationReference(scoredItems, count = 3) {
-  const valid = scoredItems.filter((s) => Number.isFinite(s.score));
-  if (!valid.length) return [];
-
-  valid.sort((a, b) => a.score - b.score);
-
-  const lows = valid.slice(0, count);
-  const highs = valid.slice(-count);
-  const midStart = Math.max(0, Math.floor(valid.length / 2) - Math.floor(count / 2));
-  const mids = valid.slice(midStart, midStart + count);
-
-  return [...lows, ...mids, ...highs];
-}
-
-/**
- * Format calibration examples as XML block
- * @param {Array<{item: *, score: number}>} calibration - Calibration examples
- * @returns {string} Formatted calibration block
- */
-export function formatCalibrationBlock(calibration) {
-  if (!calibration || !calibration.length) return '';
-
-  return `\nCalibration examples:\n${asXML(
-    calibration.map((c) => `${c.score} - ${c.item}`).join('\n'),
-    { tag: 'calibration' }
-  )}`;
 }
 
 // Default export: Score a list of items

@@ -39,7 +39,15 @@ export default class Conversation {
       idSet.add(p.id);
     });
 
-    const { rules = {}, speakFn, bulkSpeakFn, maxParallel = 3, llm, ...otherOptions } = options;
+    const {
+      rules = {},
+      speakFn,
+      bulkSpeakFn,
+      maxParallel = 3,
+      llm,
+      clock,
+      ...otherOptions
+    } = options;
 
     if (rules.shouldContinue && typeof rules.shouldContinue !== 'function') {
       throw new Error('shouldContinue must be a function');
@@ -63,6 +71,7 @@ export default class Conversation {
       this.bulkSpeakFn = conversationTurnReduce;
     }
     this.llm = llm;
+    this.clock = clock || (() => new Date());
     this.otherOptions = otherOptions;
     this.messages = [];
   }
@@ -73,7 +82,7 @@ export default class Conversation {
     const speaker = this.speakers.find((s) => s.id === id);
     const idx = this.speakers.indexOf(speaker);
     const name = speaker?.name || `Speaker ${idx + 1}`;
-    const time = new Date().toISOString().substring(11, 16);
+    const time = this.clock().toISOString().substring(11, 16);
     this.messages.push({ id, name, comment: trimmed, time });
   }
 

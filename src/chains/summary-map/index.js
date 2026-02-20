@@ -1,4 +1,4 @@
-import chatGPT from '../../lib/chatgpt/index.js';
+import llm from '../../lib/llm/index.js';
 import pave from '../../lib/pave/index.js';
 import shortenText from '../../lib/shorten-text/index.js';
 import { summarize as basicSummarize, tokenBudget } from '../../prompts/index.js';
@@ -27,7 +27,7 @@ const summarize = ({ budget, type, value, fixes = [], modelOptions, privacy }) =
 
   const fixesAsBullets = fixes.map((fix) => ` - ${fix}`);
 
-  return chatGPT(basicSummarize(value, `${fixesAsBullets.join('\n')}`), {
+  return llm(basicSummarize(value, `${fixesAsBullets.join('\n')}`), {
     modelOptions,
   });
 };

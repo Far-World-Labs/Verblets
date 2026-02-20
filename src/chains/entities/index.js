@@ -1,4 +1,4 @@
-import chatGPT from '../../lib/chatgpt/index.js';
+import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { constants as promptConstants } from '../../prompts/index.js';
@@ -52,14 +52,14 @@ Provide a brief specification describing:
 
 Keep it simple and actionable.`;
 
-  const response = await retry(chatGPT, {
+  const response = await retry(callLlm, {
     label: 'entities-spec',
     maxAttempts,
     onProgress,
     now,
     chainStartTime: now,
-    chatGPTPrompt: specUserPrompt,
-    chatGPTConfig: {
+    llmPrompt: specUserPrompt,
+    llmConfig: {
       llm,
       system: specSystemPrompt,
       ...rest,
@@ -93,14 +93,14 @@ Each entity should include:
 
 ${onlyJSON}`;
 
-  const response = await retry(chatGPT, {
+  const response = await retry(callLlm, {
     label: 'entities-apply',
     maxAttempts,
     onProgress,
     now,
     chainStartTime: now,
-    chatGPTPrompt: prompt,
-    chatGPTConfig: {
+    llmPrompt: prompt,
+    llmConfig: {
       modelOptions: {
         response_format: {
           type: 'json_schema',

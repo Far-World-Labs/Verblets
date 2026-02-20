@@ -1,7 +1,7 @@
 # bool
 
 Interpret natural language questions as yes/no decisions and return a boolean.
-The verblet uses ChatGPT to reason about the provided text and responds with
+The verblet uses an LLM to reason about the provided text and responds with
 `true` or `false`.
 
 ```javascript

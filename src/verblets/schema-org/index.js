@@ -1,4 +1,4 @@
-import chatGPT from '../../lib/chatgpt/index.js';
+import callLlm from '../../lib/llm/index.js';
 import { asSchemaOrgText } from '../../prompts/index.js';
 import { schemaOrgSchemas } from '../../json-schemas/index.js';
 
@@ -30,7 +30,7 @@ export default async (text, type, config = {}) => {
         ...llm,
       };
 
-  const response = await chatGPT(asSchemaOrgText(text, type, schema), {
+  const response = await callLlm(asSchemaOrgText(text, type, schema), {
     modelOptions,
     ...options,
   });

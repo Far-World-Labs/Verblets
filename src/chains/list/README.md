@@ -98,7 +98,7 @@ Generates a complete list of items based on the provided prompt.
   - `count` (number): Target number of items to generate (default: 10)
   - `llm` (string|object): Model configuration (default: 'fastGoodCheap')
   - `schema` (object): JSON schema for transforming items to structured objects
-  - Additional options passed to the underlying ChatGPT service
+  - Additional options passed to the underlying LLM service
 
 **Returns**
 

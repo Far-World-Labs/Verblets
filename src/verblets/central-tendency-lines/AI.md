@@ -13,6 +13,6 @@ This verblet evaluates how typical or representative an item is within a categor
 
 Key areas of interest:
 - Prompt construction for typicality assessment
-- Integration with chatGPT for evaluations
+- Integration with llm module for evaluations
 - Handling of seed items and context
 - Performance with different category types

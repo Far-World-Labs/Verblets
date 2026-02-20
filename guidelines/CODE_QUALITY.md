@@ -62,7 +62,7 @@ Actual configuration files like `.js` config files, not utility functions.
 
 ### Core Design Principles
 - **Keep `.items` wrapper internal**: Chains work with arrays, not wrapped objects
-- **Auto-unwrapping**: chatGPT module handles simple collection schemas automatically
+- **Auto-unwrapping**: llm module handles simple collection schemas automatically
 - **Clean APIs**: Collection functions (map, filter, find) return arrays directly
 - **Special case for reduce**: Not a collection operation - builds accumulators
 

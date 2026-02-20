@@ -36,15 +36,15 @@ Each verblet directory contains:
 
 ### Correct Schema Configuration
 
-Use `modelOptions.response_format` for structured output with ChatGPT:
+Use `modelOptions.response_format` for structured output with the llm module:
 
 ```javascript
-import chatGPT from '../../lib/chatgpt/index.js';
+import llm from '../../lib/llm/index.js';
 
 export async function sentiment(text, options = {}) {
   const prompt = `Analyze the sentiment of this text: ${text}`;
   
-  const response = await chatGPT(prompt, {
+  const response = await llm(prompt, {
     modelOptions: {
       response_format: {
         type: 'json_schema',
@@ -134,7 +134,7 @@ const prompt = `Return JSON with this structure: {"sentiment": "positive|negativ
 
 **❌ Wrong: Using deprecated schema parameter**
 ```javascript
-const response = await chatGPT(prompt, {
+const response = await llm(prompt, {
   schema: mySchema, // Old pattern - don't use
 });
 ```
@@ -149,7 +149,7 @@ const result = JSON.parse(response); // Fails if response is already an object
 **Robust Response Processing:**
 ```javascript
 try {
-  const response = await chatGPT(prompt, {
+  const response = await llm(prompt, {
     modelOptions: { response_format: { /* schema */ } }
   });
   
@@ -170,7 +170,7 @@ try {
 **For List Processing Verblets:**
 ```javascript
 export async function processItems(items, options = {}) {
-  const response = await chatGPT(buildPrompt(items), {
+  const response = await llm(buildPrompt(items), {
     modelOptions: {
       response_format: {
         type: 'json_schema',
@@ -318,13 +318,13 @@ Mock LLM calls for fast, deterministic tests:
 ```javascript
 import { vi, describe, it, expect } from 'vitest';
 import { sentiment } from './index.js';
-import chatGPT from '../../lib/chatgpt/index.js';
+import llm from '../../lib/llm/index.js';
 
-vi.mock('../../lib/chatgpt/index.js');
+vi.mock('../../lib/llm/index.js');
 
 describe('sentiment', () => {
   it('should analyze positive sentiment', async () => {
-    chatGPT.mockResolvedValue({
+    llm.mockResolvedValue({
       sentiment: 'positive',
       confidence: 0.95,
       reasoning: 'Expresses joy and satisfaction'
@@ -334,7 +334,7 @@ describe('sentiment', () => {
     
     expect(result.sentiment).toBe('positive');
     expect(result.confidence).toBeGreaterThan(0.9);
-    expect(chatGPT).toHaveBeenCalledWith(
+    expect(llm).toHaveBeenCalledWith(
       expect.stringContaining('I love this product!'),
       expect.objectContaining({
         modelOptions: expect.objectContaining({
@@ -391,7 +391,7 @@ export async function verbletName(input, options = {}) {
   };
   
   // 3. LLM processing with proper schema
-  const response = await chatGPT(prompt, {
+  const response = await llm(prompt, {
     modelOptions: {
       response_format: { /* schema */ }
     },
@@ -451,7 +451,7 @@ export async function analyze(text, options = {}) {
     ? detailedAnalysisSchema 
     : basicAnalysisSchema;
   
-  const response = await chatGPT(prompt, {
+  const response = await llm(prompt, {
     modelOptions: {
       response_format: {
         type: 'json_schema',
@@ -471,14 +471,14 @@ export async function generateLongContent(prompt, options = {}) {
   
   if (stream) {
     // Handle streaming response for large content
-    return chatGPT(prompt, { 
+    return llm(prompt, { 
       stream: true,
       ...options.llm
     });
   }
   
   // Standard response for smaller content
-  return chatGPT(prompt, {
+  return llm(prompt, {
     modelOptions: {
       response_format: { /* schema */ }
     },

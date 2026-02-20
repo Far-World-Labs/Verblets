@@ -129,13 +129,13 @@ const model = await negotiate(
 
 ## Integration Patterns
 
-### With ChatGPT Service
+### With LLM Service
 ```javascript
-import chatGPT from '../chatgpt/index.js';
+import llm from '../llm/index.js';
 import { negotiate } from './llm-model/index.js';
 
 const model = await negotiate({ fast: true, cheap: true });
-const response = await chatGPT(prompt, { modelOptions: model });
+const response = await llm(prompt, { modelOptions: model });
 ```
 
 ### Dynamic Model Selection

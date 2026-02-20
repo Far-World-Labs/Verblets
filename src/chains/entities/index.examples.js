@@ -13,6 +13,7 @@ import filter from '../filter/index.js';
 import group from '../group/index.js';
 import find from '../find/index.js';
 import { techCompanyArticle } from './sample-text.js';
+import { longTestTimeout } from '../../constants/common.js';
 import vitestAiExpect from '../expect/index.js';
 import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
 import { getConfig } from '../test-analysis/config.js';
@@ -30,15 +31,20 @@ const aiExpect = config?.aiMode
 const chunks = techCompanyArticle.split('\n\n').filter((chunk) => chunk.trim().length > 0);
 
 describe('entities examples', () => {
-  it('should extract entities from text', async () => {
-    const text = chunks[0];
-    const extractor = entities('Extract companies and people');
-    const result = await extractor(text);
+  it(
+    'should extract entities from text',
+    async () => {
+      // chunks[0] is the headline; chunks[1] is the first paragraph with actual entities
+      const text = chunks[1];
+      const extractor = entities('Extract companies and people');
+      const result = await extractor(text);
 
-    expect(result).toHaveProperty('entities');
-    expect(Array.isArray(result.entities)).toBe(true);
-    expect(result.entities.length).toBeGreaterThan(0);
-  }, 15000);
+      expect(result).toHaveProperty('entities');
+      expect(Array.isArray(result.entities)).toBe(true);
+      expect(result.entities.length).toBeGreaterThan(0);
+    },
+    longTestTimeout
+  );
 
   it('should map entities across chunks', async () => {
     const instructions = await mapInstructions('Extract companies and people');

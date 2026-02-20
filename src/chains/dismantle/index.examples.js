@@ -2,7 +2,7 @@ import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
 
 import Dismantle from './index.js';
 import vitestAiExpect from '../expect/index.js';
-import { longTestTimeout } from '../../constants/common.js';
+import { longTestTimeout, shouldRunLongExamples } from '../../constants/common.js';
 import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
 import { getConfig } from '../test-analysis/config.js';
 
@@ -18,7 +18,7 @@ const aiExpect = config?.aiMode
   : vitestAiExpect;
 
 describe('Dismantle chain', () => {
-  it(
+  it.skipIf(!shouldRunLongExamples)(
     '2022 Aprilia Tuono 660',
     async () => {
       const dismantleBike = new Dismantle('2022 Aprilia Tuono 660', {
@@ -37,7 +37,7 @@ describe('Dismantle chain', () => {
         find: (node) => node.name === 'Exhaust System',
       });
 
-      expect(true).toStrictEqual(true);
+      expect(dismantleBike.tree.children.length).toBeGreaterThan(0);
     },
     longTestTimeout
   );

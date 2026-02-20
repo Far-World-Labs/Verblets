@@ -1,4 +1,4 @@
-import chatGPT from '../../lib/chatgpt/index.js';
+import callLlm from '../../lib/llm/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 import { nameSchema } from './schema.js';
@@ -14,7 +14,7 @@ export default async function name(subject, config = {}) {
     }
   )} ${asUndefinedByDefault}\n\n${asWrappedValueJSON} The value should be the suggested name.\n\n${asJSON}`;
 
-  const response = await chatGPT(prompt, {
+  const response = await callLlm(prompt, {
     modelOptions: {
       ...llm,
       response_format: {

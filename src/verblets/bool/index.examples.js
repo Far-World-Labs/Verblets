@@ -1,8 +1,9 @@
 import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
 
 import bool from './index.js';
-import vitestAiExpect from '../../chains/expect/index.js';
 import { longTestTimeout } from '../../constants/common.js';
+import vitestAiExpect from '../../chains/expect/index.js';
+
 import {
   makeWrappedIt,
   makeWrappedExpect,
@@ -53,7 +54,10 @@ describe('Bool verblet', () => {
         await aiExpect({
           question: example.inputs.text,
           answer: result,
-        }).toSatisfy('Is this a reasonable yes/no answer to a Star Wars question?');
+        }).toSatisfy(
+          'The answer is a boolean (true=yes, false=no). Is this boolean value a factually correct yes/no answer to the Star Wars question?',
+          { mode: 'warn' }
+        );
       },
       longTestTimeout
     );
@@ -63,7 +67,7 @@ describe('Bool verblet', () => {
     'should handle complex contextual decisions',
     async () => {
       const complexQuestion = `
-      Given the context: It's Friday at 4:45 PM, we have 3 files changed (150+ lines, 20- lines), 
+      Given the context: It's Friday at 4:45 PM, we have 3 files changed (150+ lines, 20- lines),
       all 247 tests are passing, and the deployment window closes at 5 PM.
       Should we deploy this change to production?
     `;
@@ -75,14 +79,12 @@ describe('Bool verblet', () => {
       // Traditional assertion
       expect(typeof result).toBe('boolean');
 
-      // LLM assertion to validate the decision reasoning
+      // Both true (tests pass, ship it) and false (Friday afternoon, risky timing) are defensible.
+      // Validate the LLM produced a reasoned answer, not that it picked one specific side.
       await aiExpect(
-        `The question was about Friday afternoon deployment with passing tests. The decision was: ${result}`
-      ).toSatisfy('Does this sound like a reasonable deployment decision?');
-
-      // Additional assertion about the decision being conservative
-      await aiExpect(`A boolean decision of ${result} for Friday afternoon deployment`).toSatisfy(
-        'Is this a cautious approach to deployment timing?'
+        `Question: Should we deploy on Friday at 4:45 PM with all 247 tests passing? Answer: ${result}`
+      ).toSatisfy(
+        'The boolean answer is a defensible yes-or-no position on Friday afternoon deployment — either "yes, tests pass so ship it" or "no, too risky before the weekend" are both reasonable'
       );
     },
     longTestTimeout

@@ -1,4 +1,4 @@
-import chatGPT from '../../lib/chatgpt/index.js';
+import callLlm from '../../lib/llm/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { xmlEscape } from '../../lib/functional/index.js';
 
@@ -84,7 +84,7 @@ export default async function listBatch(list, instructions, config = {}) {
   }
 
   if (!list || list.length === 0) {
-    // Return empty array directly - chatGPT unwrapping will handle this consistently
+    // Return empty array directly - llm unwrapping will handle this consistently
     return [];
   }
 
@@ -107,7 +107,7 @@ export default async function listBatch(list, instructions, config = {}) {
   };
 
   if (logger?.debug) {
-    logger.debug('Calling chatGPT', {
+    logger.debug('Calling llm', {
       promptLength: prompt.length,
       modelOptions: {
         hasLLM: !!llm,
@@ -120,30 +120,30 @@ export default async function listBatch(list, instructions, config = {}) {
 
   let output;
   try {
-    const chatGPTOptions = {
+    const llmOptions = {
       modelOptions,
       logger,
       ...options,
     };
 
     if (logger?.debug) {
-      logger.debug('ChatGPT request starting', {
-        hasAbortSignal: !!chatGPTOptions.abortSignal,
+      logger.debug('LLM request starting', {
+        hasAbortSignal: !!llmOptions.abortSignal,
         modelOptionsKeys: Object.keys(modelOptions),
       });
     }
 
-    output = await chatGPT(prompt, chatGPTOptions);
+    output = await callLlm(prompt, llmOptions);
 
     if (logger?.debug) {
-      logger.debug('ChatGPT response received', {
+      logger.debug('LLM response received', {
         outputType: Array.isArray(output) ? 'array' : typeof output,
         outputLength: Array.isArray(output) ? output.length : undefined,
       });
     }
   } catch (error) {
     if (logger?.error) {
-      logger.error('ChatGPT request failed in listBatch', {
+      logger.error('LLM request failed in listBatch', {
         error: error.message,
         modelOptions: llm,
         promptLength: prompt?.length,
@@ -154,6 +154,6 @@ export default async function listBatch(list, instructions, config = {}) {
     throw error;
   }
 
-  // chatGPT will auto-unwrap simple collections, so output is already an array
+  // llm will auto-unwrap simple collections, so output is already an array
   return output;
 }

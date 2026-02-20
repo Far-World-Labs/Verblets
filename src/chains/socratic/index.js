@@ -1,4 +1,4 @@
-import chatGPT from '../../lib/chatgpt/index.js';
+import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import modelService from '../../services/llm-model/index.js';
 import socraticQuestionSchema from './socratic-question-schema.js';
@@ -37,14 +37,14 @@ const defaultAsk = async ({
   logger?.logEvent('ask-prompt', extractPromptAnalysis(prompt));
 
   const budget = model.budgetTokens(prompt);
-  const response = await retry(chatGPT, {
+  const response = await retry(callLlm, {
     label: 'socratic-ask',
     maxAttempts,
     onProgress,
     now,
     chainStartTime: now,
-    chatGPTPrompt: prompt,
-    chatGPTConfig: {
+    llmPrompt: prompt,
+    llmConfig: {
       maxTokens: budget.completion,
       temperature: 0.7,
       modelOptions: {
@@ -79,14 +79,14 @@ const defaultAnswer = async ({
   logger?.logEvent('answer-prompt', extractPromptAnalysis(prompt));
 
   const budget = model.budgetTokens(prompt);
-  const response = await retry(chatGPT, {
+  const response = await retry(callLlm, {
     label: 'socratic-answer',
     maxAttempts,
     onProgress,
     now,
     chainStartTime: now,
-    chatGPTPrompt: prompt,
-    chatGPTConfig: {
+    llmPrompt: prompt,
+    llmConfig: {
       maxTokens: budget.completion,
       temperature: 0.7,
       modelOptions: {

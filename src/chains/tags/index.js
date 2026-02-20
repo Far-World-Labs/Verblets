@@ -1,4 +1,4 @@
-import chatGPT from '../../lib/chatgpt/index.js';
+import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { constants as promptConstants } from '../../prompts/index.js';
@@ -53,14 +53,14 @@ Provide a clear specification describing:
 
 Keep it concise and actionable.`;
 
-  const response = await retry(chatGPT, {
+  const response = await retry(callLlm, {
     label: 'tags-spec',
     maxAttempts,
     onProgress,
     now,
     chainStartTime: now,
-    chatGPTPrompt: specUserPrompt,
-    chatGPTConfig: {
+    llmPrompt: specUserPrompt,
+    llmConfig: {
       llm,
       system: specSystemPrompt,
       ...rest,
@@ -98,14 +98,14 @@ Do NOT return tag labels, descriptions, or full tag objects - ONLY the string ID
 
 ${onlyJSON}`;
 
-  const response = await retry(chatGPT, {
+  const response = await retry(callLlm, {
     label: 'tags-apply',
     maxAttempts,
     onProgress,
     now,
     chainStartTime: now,
-    chatGPTPrompt: prompt,
-    chatGPTConfig: {
+    llmPrompt: prompt,
+    llmConfig: {
       modelOptions: {
         response_format: {
           type: 'json_schema',
@@ -121,7 +121,7 @@ ${onlyJSON}`;
     logger: options.logger,
   });
 
-  // chatGPT auto-unwraps {items: [...]} to just the array
+  // llm auto-unwraps {items: [...]} to just the array
   return Array.isArray(response) ? response : [];
 }
 

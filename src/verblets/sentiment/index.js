@@ -1,4 +1,4 @@
-import chatGPT from '../../lib/chatgpt/index.js';
+import callLlm from '../../lib/llm/index.js';
 import { sentimentSchema } from './schema.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 
@@ -15,7 +15,7 @@ export default async function sentiment(text, config = {}) {
   const { llm, ...options } = config;
   const prompt = `Identify the overall sentiment of the following text as "positive", "negative", or "neutral".\n\nText: ${text}\n\n${asWrappedValueJSON} The value should be the sentiment classification.\n\n${asJSON}`;
 
-  const response = await chatGPT(prompt, {
+  const response = await callLlm(prompt, {
     modelOptions: {
       ...llm,
       response_format: {
