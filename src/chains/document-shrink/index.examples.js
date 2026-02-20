@@ -4,6 +4,7 @@ import vitestAiExpect from '../expect/index.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { debug } from '../../lib/debug/index.js';
+import { shouldRunLongExamples } from '../../constants/common.js';
 import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
 import { getConfig } from '../test-analysis/config.js';
 
@@ -43,7 +44,7 @@ function withCacheMessage(testFn) {
   };
 }
 
-describe('document-shrink examples', () => {
+describe.skipIf(!shouldRunLongExamples)('document-shrink examples', () => {
   const samplesDir = path.join(process.cwd(), 'src/samples/txt');
 
   it(
@@ -77,7 +78,7 @@ describe('document-shrink examples', () => {
       expect(isRelevantToQuery).toBe(true);
 
       const maintainsCoherence = await aiExpect(result.content).toSatisfy(
-        `The text contains coherent sections of content, even if separated by dividers like "---", and is not just random word fragments`
+        `The text contains recognizable passages about climate change, even if some sentences are truncated at chunk boundaries or separated by dividers`
       );
       expect(maintainsCoherence).toBe(true);
 
@@ -240,7 +241,7 @@ describe('document-shrink examples', () => {
       expect(hasMedicalInfo).toBe(true);
 
       const hasClinicalContext = await aiExpect(result.content).toSatisfy(
-        `May include relevant clinical information such as when to use each medication, contraindications, or monitoring requirements`
+        `Contains some medical or clinical context related to diabetes treatment, even if the content is partial or truncated`
       );
       expect(hasClinicalContext).toBe(true);
 

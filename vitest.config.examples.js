@@ -1,6 +1,7 @@
+/* global process */
 import { defineConfig } from 'vitest/config';
 import { baseConfig } from './vitest.config.base.js';
-import { truthyValues, falsyValues } from './src/constants/common.js';
+import { truthyValues } from './src/constants/common.js';
 
 // Check if AI mode should be enabled (matches config.js logic)
 const aiLogsOnly = process.env.VERBLETS_AI_LOGS_ONLY && truthyValues.includes(process.env.VERBLETS_AI_LOGS_ONLY);
@@ -13,20 +14,32 @@ const aiModeEnabled = aiLogsOnly || aiPerSuite || aiDetail;
 export default defineConfig({
   test: {
     ...baseConfig,
+    testTimeout: 60_000,
     environment: 'node',
     include: ['src/**/*.examples.js'],
-    // Disable file parallelism to run tests sequentially and share Redis connection
-    // fileParallelism: false, // Temporarily disabled to see if this affects output
-    // Exclude hanging tests - uncomment as we identify working ones
+    // Use forks pool with limited concurrency instead of threads.
+    // Threads exhaust the pool during parallel collection of 70+ files.
+    // Forks use separate processes, avoiding thread pool contention.
+    // Anthropic has tighter rate limits, so use 1 fork for Anthropic.
+    pool: 'forks',
+    poolOptions: {
+      forks: {
+        minForks: 1,
+        maxForks: process.env.VERBLETS_LLM_PROVIDER === 'anthropic' ? 1 : 2,
+      },
+    },
     exclude: [
       ...baseConfig.exclude,
-      // All tests enabled - let's see what breaks
     ],
     includeTaskLocation: true, // for precise file/line in reporters (v3)
-    // Only include setupFiles when AI mode is enabled
-    ...(aiModeEnabled && { setupFiles: ['./src/chains/test-analysis/setup.js'] }),
-    reporters: aiModeEnabled 
-      ? ['./src/chains/test-analysis/index.js'] // Only our reporter in AI mode
+    setupFiles: [
+      './test/setup/llm-provider.js',
+      ...(aiModeEnabled ? ['./src/chains/test-analysis/setup.js'] : []),
+    ],
+    reporters: aiModeEnabled
+      ? (aiLogsOnly
+        ? ['default', './src/chains/test-analysis/index.js'] // Logs-only: default output + event collection
+        : ['./src/chains/test-analysis/index.js']) // Full AI mode: custom reporter only
       : ['default']
   },
 });

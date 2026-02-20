@@ -2,7 +2,7 @@ import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
 
 import enumValue from './index.js';
 import vitestAiExpect from '../../chains/expect/index.js';
-import { longTestTimeout } from '../../constants/common.js';
+
 import { wrapIt, wrapExpect, wrapAiExpect } from '../../chains/test-analysis/test-wrappers.js';
 import { getConfig } from '../../chains/test-analysis/config.js';
 
@@ -34,16 +34,12 @@ const examples = [
 
 describe('Enum verblet', () => {
   examples.forEach((example) => {
-    it(
-      example.inputs.text,
-      async () => {
-        const result = await enumValue(example.inputs.text, example.inputs.enum);
+    it(example.inputs.text, async () => {
+      const result = await enumValue(example.inputs.text, example.inputs.enum);
 
-        if (example.want.result) {
-          expect(result).toStrictEqual(example.want.result);
-        }
-      },
-      longTestTimeout
-    );
+      if (example.want.result) {
+        expect(result).toStrictEqual(example.want.result);
+      }
+    });
   });
 });

@@ -20,11 +20,13 @@ export class TestCollector {
       console.log('[DEBUG EVENT]', eventType, JSON.stringify(event, null, 2));
     }
 
-    if (eventType === 'test-start' && !this.moduleDir && event.file) {
+    if (eventType === 'test-start') {
       // Extract module dir from first test file
-      const parts = event.file.split('/');
-      parts.pop(); // Remove filename
-      this.moduleDir = parts.join('/');
+      if (!this.moduleDir && event.file) {
+        const parts = event.file.split('/');
+        parts.pop(); // Remove filename
+        this.moduleDir = parts.join('/');
+      }
 
       this.currentTest = {
         name: event.testName,

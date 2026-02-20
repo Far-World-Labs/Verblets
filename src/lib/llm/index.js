@@ -245,6 +245,9 @@ export const run = async (prompt, config = {}) => {
 
     const rawJson = await response.json();
 
+    // Timer's only purpose is to abort the fetch — clear it as soon as we have a response
+    timeoutController.clearTimeout();
+
     if (!response.ok) {
       // Anthropic uses error.message, OpenAI uses error.message — both work
       const errorMessage = rawJson?.error?.message || rawJson?.error?.type || 'Unknown error';
@@ -254,8 +257,6 @@ export const run = async (prompt, config = {}) => {
 
     // Normalize response to canonical (OpenAI) shape
     result = provider.parseResponse(rawJson);
-
-    timeoutController.clearTimeout();
 
     // Only cache the result if caching is not disabled
     if (!cachingDisabled && cache) {

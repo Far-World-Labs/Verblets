@@ -23,12 +23,13 @@ Most prompts will ask for a specific output format, so comply with those details
 // Every model the library knows about, keyed by the provider-specific name.
 
 export const catalog = {
-  'gpt-4o': {
+  // ── OpenAI (Chat Completions) ──────────────────────────────────────
+  'gpt-4.1': {
     provider: 'openai',
     endpoint: 'v1/chat/completions',
-    maxContextWindow: 128_000,
-    maxOutputTokens: 16_384,
-    requestTimeout: 20_000,
+    maxContextWindow: 1_047_576,
+    maxOutputTokens: 32_768,
+    requestTimeout: 45_000,
     get apiKey() {
       return env.OPENAI_API_KEY;
     },
@@ -37,12 +38,12 @@ export const catalog = {
     },
     systemPrompt,
   },
-  'o4-mini-2025-04-16': {
+  'gpt-4.1-mini': {
     provider: 'openai',
     endpoint: 'v1/chat/completions',
-    maxContextWindow: 128_000,
-    maxOutputTokens: 16_384,
-    requestTimeout: 40_000,
+    maxContextWindow: 1_047_576,
+    maxOutputTokens: 32_768,
+    requestTimeout: 45_000,
     get apiKey() {
       return env.OPENAI_API_KEY;
     },
@@ -51,11 +52,26 @@ export const catalog = {
     },
     systemPrompt,
   },
-  'o3-2025-04-16': {
+  'gpt-4.1-nano': {
     provider: 'openai',
     endpoint: 'v1/chat/completions',
-    maxContextWindow: 200_000,
-    maxOutputTokens: 100_000,
+    maxContextWindow: 1_047_576,
+    maxOutputTokens: 32_768,
+    requestTimeout: 30_000,
+    get apiKey() {
+      return env.OPENAI_API_KEY;
+    },
+    get apiUrl() {
+      return env.OPENAI_PROXY_URL || 'https://api.openai.com/';
+    },
+    systemPrompt,
+  },
+  // ── OpenAI (Responses API) ─────────────────────────────────────────
+  'gpt-5.2-pro': {
+    provider: 'openai-responses',
+    endpoint: 'v1/responses',
+    maxContextWindow: 400_000,
+    maxOutputTokens: 128_000,
     requestTimeout: 120_000,
     get apiKey() {
       return env.OPENAI_API_KEY;
@@ -65,12 +81,13 @@ export const catalog = {
     },
     systemPrompt,
   },
-  'claude-sonnet-4-5-20250514': {
+  // ── Anthropic ──────────────────────────────────────────────────────
+  'claude-sonnet-4-5': {
     provider: 'anthropic',
     endpoint: 'v1/messages',
     maxContextWindow: 200_000,
-    maxOutputTokens: 16_384,
-    requestTimeout: 30_000,
+    maxOutputTokens: 64_000,
+    requestTimeout: 90_000,
     get apiKey() {
       return env.ANTHROPIC_API_KEY;
     },
@@ -79,12 +96,12 @@ export const catalog = {
     },
     systemPrompt,
   },
-  'claude-haiku-4-5-20250514': {
+  'claude-haiku-4-5': {
     provider: 'anthropic',
     endpoint: 'v1/messages',
     maxContextWindow: 200_000,
-    maxOutputTokens: 16_384,
-    requestTimeout: 20_000,
+    maxOutputTokens: 64_000,
+    requestTimeout: 45_000,
     get apiKey() {
       return env.ANTHROPIC_API_KEY;
     },
@@ -93,12 +110,12 @@ export const catalog = {
     },
     systemPrompt,
   },
-  'claude-opus-4-5-20250514': {
+  'claude-opus-4-6': {
     provider: 'anthropic',
     endpoint: 'v1/messages',
     maxContextWindow: 200_000,
-    maxOutputTokens: 32_000,
-    requestTimeout: 60_000,
+    maxOutputTokens: 128_000,
+    requestTimeout: 120_000,
     get apiKey() {
       return env.ANTHROPIC_API_KEY;
     },
@@ -107,6 +124,7 @@ export const catalog = {
     },
     systemPrompt,
   },
+  // ── Local / Privacy ────────────────────────────────────────────────
   'gemma3:12b-it-qat': {
     provider: 'openwebui',
     endpoint: 'api/chat/completions',
@@ -125,16 +143,50 @@ export const catalog = {
   },
 };
 
-// ── Default Capability Mapping ──────────────────────────────────────
-// Maps semantic capability names to catalog model names.
+// ── Capability Mappings ──────────────────────────────────────────────
+// Three modes selected automatically based on which API keys are present.
 // Override via .verblets.json or window.verblets.models (browser).
 
-export const defaultMapping = {
-  fastGood: 'gpt-4o',
-  fastCheap: 'gpt-4o',
-  reasoning: 'o4-mini-2025-04-16',
-  privacy: 'gemma3:12b-it-qat',
+const openaiMapping = {
+  fastGood: 'gpt-4.1-mini',
+  fastCheap: 'gpt-4.1-nano',
+  reasoning: 'gpt-5.2-pro',
 };
+
+const anthropicMapping = {
+  fastGood: 'claude-sonnet-4-5',
+  fastCheap: 'claude-haiku-4-5',
+  reasoning: 'claude-opus-4-6',
+};
+
+const mixedMapping = {
+  fastGood: 'gpt-4.1-mini',
+  fastCheap: 'gpt-4.1-nano',
+  reasoning: 'claude-opus-4-6',
+};
+
+function selectMapping() {
+  const hasOpenAI = !!env.OPENAI_API_KEY;
+  const hasAnthropic = !!env.ANTHROPIC_API_KEY;
+  const hasOpenWebUI = !!env.OPENWEBUI_API_KEY;
+
+  let mapping = {};
+  if (hasOpenAI && hasAnthropic) {
+    mapping = { ...mixedMapping };
+  } else if (hasAnthropic) {
+    mapping = { ...anthropicMapping };
+  } else if (hasOpenAI) {
+    mapping = { ...openaiMapping };
+  }
+
+  if (hasOpenWebUI) {
+    mapping.privacy = 'gemma3:12b-it-qat';
+  }
+
+  return mapping;
+}
+
+export const defaultMapping = selectMapping();
 
 // ── Environment Validation ──────────────────────────────────────────
 
@@ -203,7 +255,7 @@ _models.fastReasoningMulti = _models.reasoning;
 _models.cheapReasoning = _models.reasoning;
 _models.cheapReasoningMulti = _models.reasoning;
 _models.reasoningMulti = _models.reasoning;
-_models.reasoningNoImage = resolveCatalogEntry('o3-2025-04-16');
+_models.reasoningNoImage = _models.reasoning;
 
 // Validate all model definitions
 Object.entries(_models).forEach(([key, model]) => {

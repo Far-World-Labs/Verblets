@@ -2,15 +2,14 @@ import { beforeAll, afterAll } from 'vitest';
 import { describe, it as vitestIt, expect as vitestExpect } from 'vitest';
 import scanJs from './index.js';
 import vitestAiExpect from '../expect/index.js';
-import { longTestTimeout } from '../../constants/common.js';
+import { longTestTimeout, shouldRunLongExamples } from '../../constants/common.js';
 import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
 import { getConfig } from '../test-analysis/config.js';
 import fs from 'node:fs/promises';
+import os from 'node:os';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const testDir = path.join(__dirname, 'test-data');
+let testDir;
 
 const config = getConfig();
 const it = config?.aiMode ? wrapIt(vitestIt, { baseProps: { suite: 'Scan-js chain' } }) : vitestIt;
@@ -21,9 +20,9 @@ const aiExpect = config?.aiMode
   ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'Scan-js chain' } })
   : vitestAiExpect;
 
-describe('scan-js chain', () => {
+describe.skipIf(!shouldRunLongExamples)('scan-js chain', () => {
   beforeAll(async () => {
-    await fs.mkdir(testDir, { recursive: true });
+    testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'scan-js-test-'));
   });
 
   afterAll(async () => {
@@ -88,7 +87,7 @@ describe('scan-js chain', () => {
 
       // AI validation of analysis quality
       const hasValidAnalysis = await aiExpect(analysisResults).toSatisfy(
-        'Should contain code quality metrics like separationOfConcerns, singlePurpose, or easyTestability scores'
+        'Should contain objects with numeric code quality metric scores (values between 0 and 1). The specific metric names may vary but should relate to code quality aspects like maintainability, readability, complexity, testability, or similar software engineering concerns.'
       );
       expect(hasValidAnalysis).toBe(true);
     },

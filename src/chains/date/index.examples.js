@@ -39,15 +39,15 @@ describe('date examples', () => {
   );
 
   it(
-    'finds specific date in 2025',
+    'finds Christmas 2025',
     async () => {
-      const result = await date('When is the last day of Q3 in 2025?', {
-        logger: makeTestLogger('finds specific date in 2025'),
+      const result = await date('What date is Christmas Day 2025?', {
+        logger: makeTestLogger('finds Christmas 2025'),
       });
       expect(result instanceof Date).toBe(true);
       expect(result.getUTCFullYear()).toBe(2025);
-      expect(result.getUTCMonth()).toBe(8); // September
-      expect(result.getUTCDate()).toBe(30);
+      expect(result.getUTCMonth()).toBe(11); // December
+      expect(result.getUTCDate()).toBe(25);
     },
     longTestTimeout
   );

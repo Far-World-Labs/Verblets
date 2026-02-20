@@ -2,6 +2,7 @@ export const blockExtractionSchema = {
   type: 'json_schema',
   json_schema: {
     name: 'block_boundaries',
+    strict: true,
     schema: {
       type: 'object',
       properties: {
@@ -20,10 +21,12 @@ export const blockExtractionSchema = {
               },
             },
             required: ['startLine', 'endLine'],
+            additionalProperties: false,
           },
         },
       },
       required: ['blocks'],
+      additionalProperties: false,
     },
   },
 };

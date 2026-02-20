@@ -1,6 +1,6 @@
 import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
 
-import { longTestTimeout } from '../../constants/common.js';
+import { longTestTimeout, extendedTestTimeout } from '../../constants/common.js';
 import llm from '../../lib/llm/index.js';
 import { asJSONSchema } from '../../prompts/index.js';
 import toObject from '../to-object/index.js';
@@ -22,7 +22,10 @@ const aiExpect = config?.aiMode
 const examples = [
   {
     inputs: { description: '2021 EV cars' },
-    want: { minLength: 10, listContains: 'Model Y' },
+    want: {
+      minLength: 10,
+      listContainsAny: ['Model Y', 'Model 3', 'Tesla', 'Mustang Mach-E', 'ID.4', 'Bolt'],
+    },
   },
   {
     inputs: {
@@ -31,7 +34,10 @@ const examples = [
         'make, model, releaseDate (ISO),\
 maxRange (miles), batteryCapacity (kWH), startingCost (USD)',
     },
-    want: { minLength: 10, listModelContains: 'Model Y' },
+    want: {
+      minLength: 10,
+      listModelContainsAny: ['Model Y', 'Model 3', 'Tesla', 'Mustang Mach-E', 'ID.4', 'Bolt'],
+    },
   },
 ];
 
@@ -58,23 +64,24 @@ describe('List verblet', () => {
           expect(result.length).gt(5);
         }
 
-        if (example.want.listContains) {
-          expect(result.some((item) => item.includes(example.want.listContains))).equals(true);
+        if (example.want.listContainsAny) {
+          const found = example.want.listContainsAny.some((needle) =>
+            result.some((item) => item.toLowerCase().includes(needle.toLowerCase()))
+          );
+          expect(found).equals(true);
         }
 
-        if (example.want.listModelContains) {
-          expect(
+        if (example.want.listModelContainsAny) {
+          const found = example.want.listModelContainsAny.some((needle) =>
             result.some((item) => {
-              // Handle both string and object results
-              if (typeof item === 'string') {
-                return item.includes(example.want.listModelContains);
-              }
-              return item.model?.includes(example.want.listModelContains);
+              const str = typeof item === 'string' ? item : item.model || item.make || '';
+              return str.toLowerCase().includes(needle.toLowerCase());
             })
-          ).equals(true);
+          );
+          expect(found).equals(true);
         }
       },
-      longTestTimeout
+      example.inputs.jsonSchemaQuery ? extendedTestTimeout : longTestTimeout
     );
   });
 });

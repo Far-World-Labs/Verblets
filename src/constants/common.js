@@ -1,6 +1,8 @@
 import { env } from '../lib/env/index.js';
 
-export const longTestTimeout = 10 * 60 * 1000; // 10 minutes
+export const longTestTimeout = 2 * 60 * 1000; // 2 minutes
+
+export const extendedTestTimeout = 5 * 60 * 1000; // 5 minutes
 
 // Timeout for AI analysis operations (not a test, but analysis of test results)
 export const aiAnalysisTimeout = 30 * 1000; // 30 seconds

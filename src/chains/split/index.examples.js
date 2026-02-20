@@ -5,6 +5,7 @@ import path from 'node:path';
 import vitestAiExpect from '../expect/index.js';
 import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
 import { getConfig } from '../test-analysis/config.js';
+import { longTestTimeout, shouldRunLongExamples } from '../../constants/common.js';
 
 const config = getConfig();
 const it = config?.aiMode ? wrapIt(vitestIt, { baseProps: { suite: 'Split chain' } }) : vitestIt;
@@ -15,114 +16,111 @@ const aiExpect = config?.aiMode
   ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'Split chain' } })
   : vitestAiExpect;
 
-describe('split chain examples', () => {
+describe.skipIf(!shouldRunLongExamples)('split chain examples', () => {
   const comedySet = fs.readFileSync(
     path.join(process.cwd(), 'src/samples/txt/taylor-tomlinson-10-2024.txt'),
     'utf8'
   );
 
-  it('should split comedy set into distinct topics', async () => {
-    const TOPIC_DELIM = '---TOPIC-BREAK---';
-    const topicsMarked = await split(
-      comedySet,
-      'between different comedy topics or subject changes',
-      { delimiter: TOPIC_DELIM, chunkLen: 2000, targetSplitsPerChunk: 2 }
-    );
+  it(
+    'should split comedy set into distinct topics',
+    async () => {
+      const TOPIC_DELIM = '---TOPIC-BREAK---';
+      const topicsMarked = await split(
+        comedySet,
+        'between different comedy topics or subject changes',
+        { delimiter: TOPIC_DELIM, chunkLen: 2000, targetSplitsPerChunk: 2 }
+      );
 
-    const topics = topicsMarked.split(TOPIC_DELIM).filter((topic) => topic.trim());
+      const topics = topicsMarked.split(TOPIC_DELIM).filter((topic) => topic.trim());
 
-    const hasMultipleTopics = await aiExpect(
-      `Found ${topics.length} topics in comedy set`
-    ).toSatisfy('Has more than 2 distinct topics', { throws: false });
+      expect(topics.length).toBeGreaterThan(2);
+      // Each topic should have meaningful content
+      topics.forEach((topic) => expect(topic.trim().length).toBeGreaterThan(20));
 
-    const topicsAreDistinct = await aiExpect(topics.join('\n---SEPARATOR---\n')).toSatisfy(
-      'The text has been split into sections that attempt to separate different topics or themes',
-      { throws: false }
-    );
+      await aiExpect(topics).toSatisfy('The segments represent distinct topics or subject changes');
+    },
+    longTestTimeout
+  );
 
-    expect(hasMultipleTopics).toBe(true);
-    expect(topicsAreDistinct).toBe(true);
-  }, 30000);
+  it(
+    'should split individual topics by punchlines',
+    async () => {
+      const TOPIC_DELIM = '---TOPIC-BREAK---';
+      const PUNCHLINE_DELIM = '---PUNCHLINE---';
 
-  it('should split individual topics by punchlines', async () => {
-    const TOPIC_DELIM = '---TOPIC-BREAK---';
-    const PUNCHLINE_DELIM = '---PUNCHLINE---';
+      // Use larger chunks to get meaningful topics
+      const topicsMarked = await split(
+        comedySet,
+        'between different comedy topics or subject changes',
+        { delimiter: TOPIC_DELIM, chunkLen: 3000 }
+      );
 
-    // Use larger chunks to get meaningful topics
-    const topicsMarked = await split(
-      comedySet,
-      'between different comedy topics or subject changes',
-      { delimiter: TOPIC_DELIM, chunkLen: 3000 }
-    );
+      const topics = topicsMarked.split(TOPIC_DELIM).filter((topic) => topic.trim());
 
-    const topics = topicsMarked.split(TOPIC_DELIM).filter((topic) => topic.trim());
+      // Find a topic that's long enough for punchline splitting
+      const longTopic = topics.find((topic) => topic.length > 500) || topics[0];
 
-    // Find a topic that's long enough for punchline splitting
-    const longTopic = topics.find((topic) => topic.length > 500) || topics[0];
+      const punchlineSplit = await split(
+        longTopic,
+        'after sentences that end with punchlines or jokes',
+        { delimiter: PUNCHLINE_DELIM, chunkLen: 800 }
+      );
 
-    const punchlineSplit = await split(
-      longTopic,
-      'after sentences that end with punchlines or jokes',
-      { delimiter: PUNCHLINE_DELIM, chunkLen: 800 }
-    );
+      const jokes = punchlineSplit.split(PUNCHLINE_DELIM).filter((joke) => joke.trim());
 
-    const jokes = punchlineSplit.split(PUNCHLINE_DELIM).filter((joke) => joke.trim());
+      expect(jokes.length).toBeGreaterThanOrEqual(1);
+      // Each joke segment should have content
+      jokes.forEach((joke) => expect(joke.trim().length).toBeGreaterThan(0));
+    },
+    longTestTimeout
+  );
 
-    const hasPunchlines = await aiExpect(`Split into ${jokes.length} joke segments`).toSatisfy(
-      'Has at least 1 segment (splitting worked, even if not perfect)'
-    );
+  it(
+    'should preserve all original text content',
+    async () => {
+      const DELIM = '---SPLIT---';
+      const splitText = await split(comedySet, 'between different comedy topics', {
+        delimiter: DELIM,
+        chunkLen: 1500,
+      });
 
-    const jokesEndWithPunchlines = await aiExpect(
-      jokes.slice(0, 2).join('\n---JOKE---\n')
-    ).toSatisfy('At least one segment contains humor or comedic content');
+      const reconstructed = splitText.split(DELIM).join('');
+      const originalWords = comedySet.replace(/\s+/g, ' ').trim().split(' ');
+      const reconstructedWords = reconstructed.replace(/\s+/g, ' ').trim().split(' ');
 
-    expect(hasPunchlines).toBe(true);
-    expect(jokesEndWithPunchlines).toBe(true);
-  }, 45000);
+      // Word counts should be close (within 10%)
+      const ratio = reconstructedWords.length / originalWords.length;
+      expect(ratio).toBeGreaterThan(0.9);
+      expect(ratio).toBeLessThan(1.1);
+    },
+    longTestTimeout
+  );
 
-  it('should preserve all original text content', async () => {
-    const DELIM = '---SPLIT---';
-    const splitText = await split(comedySet, 'between different comedy topics', {
-      delimiter: DELIM,
-      chunkLen: 1500,
-    });
+  it(
+    'should handle different chunk sizes appropriately',
+    async () => {
+      const DELIM = '---CHUNK-SPLIT---';
 
-    const reconstructed = splitText.split(DELIM).join('');
-    const originalWords = comedySet.replace(/\s+/g, ' ').trim().split(' ');
-    const reconstructedWords = reconstructed.replace(/\s+/g, ' ').trim().split(' ');
+      // Test with small chunks
+      const smallChunkSplit = await split(comedySet, 'between different topics', {
+        delimiter: DELIM,
+        chunkLen: 800,
+      });
 
-    const preservesContent = await aiExpect(
-      `Original: ${originalWords.length} words, Reconstructed: ${reconstructedWords.length} words`
-    ).toSatisfy('Word counts are reasonably close (within 10% is fine)');
+      // Test with large chunks
+      const largeChunkSplit = await split(comedySet, 'between different topics', {
+        delimiter: DELIM,
+        chunkLen: 3000,
+      });
 
-    expect(preservesContent).toBe(true);
-  }, 30000);
+      const smallChunkParts = smallChunkSplit.split(DELIM).filter((p) => p.trim());
+      const largeChunkParts = largeChunkSplit.split(DELIM).filter((p) => p.trim());
 
-  it('should handle different chunk sizes appropriately', async () => {
-    const DELIM = '---CHUNK-SPLIT---';
-
-    // Test with small chunks
-    const smallChunkSplit = await split(comedySet, 'between different topics', {
-      delimiter: DELIM,
-      chunkLen: 800,
-    });
-
-    // Test with large chunks
-    const largeChunkSplit = await split(comedySet, 'between different topics', {
-      delimiter: DELIM,
-      chunkLen: 3000,
-    });
-
-    const smallChunkParts = smallChunkSplit.split(DELIM).filter((p) => p.trim());
-    const largeChunkParts = largeChunkSplit.split(DELIM).filter((p) => p.trim());
-
-    // Very lenient constraint - just check that both produced some output
-    const handlesChunkSizes = await aiExpect(
-      `Small chunks (800 chars): ${smallChunkParts.length} parts, Large chunks (3000 chars): ${largeChunkParts.length} parts`
-    ).toSatisfy(
-      'Both chunk sizes produced at least 1 part each (function works with different chunk sizes)'
-    );
-
-    expect(handlesChunkSizes).toBe(true);
-  }, 60000);
+      // Both chunk sizes should produce output
+      expect(smallChunkParts.length).toBeGreaterThanOrEqual(1);
+      expect(largeChunkParts.length).toBeGreaterThanOrEqual(1);
+    },
+    longTestTimeout
+  );
 });

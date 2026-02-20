@@ -1,19 +1,18 @@
 export const centralTendencyResultsJsonSchema = {
   name: 'central_tendency_results',
+  strict: true,
   schema: {
     type: 'object',
     properties: {
       items: {
         type: 'array',
-        description: 'Array of centrality assessments for each evaluated item',
+        description: 'Array of centrality assessments, one per input item in order',
         items: {
           type: 'object',
           description: 'Centrality assessment for a single item',
           properties: {
             score: {
               type: 'number',
-              minimum: 0,
-              maximum: 1,
               description:
                 'Centrality score from 0 (not central) to 1 (highly central) based on prototype theory',
             },
@@ -23,8 +22,6 @@ export const centralTendencyResultsJsonSchema = {
             },
             confidence: {
               type: 'number',
-              minimum: 0,
-              maximum: 1,
               description: 'Confidence level in the assessment from 0 (low) to 1 (high)',
             },
           },

@@ -288,7 +288,7 @@ describe('Global Override System', () => {
 
       const requestBody = JSON.parse(fetch.mock.calls[0][1].body);
       expect(requestBody.temperature).toBe(0.8);
-      expect(requestBody.max_tokens).toBe(1500);
+      expect(requestBody.max_completion_tokens).toBe(1500);
       expect(requestBody.top_p).toBe(0.95);
     });
 
@@ -308,7 +308,7 @@ describe('Global Override System', () => {
 
       const requestBody = JSON.parse(fetch.mock.calls[0][1].body);
       expect(requestBody.temperature).toBe(0.8); // Overridden
-      expect(requestBody.max_tokens).toBe(2000); // Preserved
+      expect(requestBody.max_completion_tokens).toBe(2000); // Preserved
       expect(requestBody.top_p).toBe(0.7); // Preserved
     });
   });
@@ -340,7 +340,7 @@ describe('Global Override System', () => {
 
       const requestBody = JSON.parse(fetch.mock.calls[0][1].body);
       expect(requestBody.model).toBe('custom-model-name');
-      expect(requestBody.max_tokens).toBe(1000); // Preserved
+      expect(requestBody.max_completion_tokens).toBe(1000); // Preserved
     });
 
     it('should handle override precedence correctly', async () => {

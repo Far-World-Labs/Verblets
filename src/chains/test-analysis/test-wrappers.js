@@ -30,10 +30,11 @@ export const wrapIt = (it, config = {}) => {
   const registeredTests = [];
 
   const wrapped = (name, optionsOrFn, fnOrNothing) => {
-    // Handle both signatures: it(name, fn) and it(name, options, fn)
+    // Handle all vitest signatures: it(name, fn), it(name, fn, timeout), it(name, options, fn)
     const hasOptions = typeof optionsOrFn === 'object' && optionsOrFn !== null;
     const options = hasOptions ? optionsOrFn : undefined;
     const fn = hasOptions ? fnOrNothing : optionsOrFn;
+    const timeout = !hasOptions && typeof fnOrNothing === 'number' ? fnOrNothing : undefined;
 
     // Simple sequential index for tests in this file
     const testIndex = testCounter++;
@@ -118,6 +119,8 @@ export const wrapIt = (it, config = {}) => {
     // Return the wrapped test with the correct signature
     if (options) {
       return it(name, options, wrappedFn);
+    } else if (timeout !== undefined) {
+      return it(name, wrappedFn, timeout);
     } else {
       return it(name, wrappedFn);
     }

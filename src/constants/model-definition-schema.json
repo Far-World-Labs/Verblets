@@ -9,7 +9,7 @@
     },
     "provider": {
       "type": "string",
-      "enum": ["openai", "anthropic", "openwebui"]
+      "enum": ["openai", "openai-responses", "anthropic", "openwebui"]
     },
     "endpoint": {
       "type": "string",

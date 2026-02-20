@@ -3,11 +3,13 @@
  */
 
 import * as openai from './openai.js';
+import * as openaiResponses from './openai-responses.js';
 import * as anthropic from './anthropic.js';
 import * as openwebui from './openwebui.js';
 
 const providers = {
   openai,
+  'openai-responses': openaiResponses,
   anthropic,
   openwebui,
 };

@@ -1,5 +1,5 @@
 import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
-import { longTestTimeout } from '../../constants/common.js';
+
 import name from './index.js';
 import vitestAiExpect from '../../chains/expect/index.js';
 import { wrapIt, wrapExpect, wrapAiExpect } from '../../chains/test-analysis/test-wrappers.js';
@@ -34,14 +34,10 @@ const examples = [
 
 describe('name verblet', () => {
   examples.forEach((example) => {
-    it(
-      example.got.text,
-      async () => {
-        const result = await name(example.got.text);
-        expect(typeof result).toBe('string');
-        expect(result.length).toBeGreaterThan(0);
-      },
-      longTestTimeout
-    );
+    it(example.got.text, async () => {
+      const result = await name(example.got.text);
+      expect(typeof result).toBe('string');
+      expect(result.length).toBeGreaterThan(0);
+    });
   });
 });

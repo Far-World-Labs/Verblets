@@ -1,7 +1,7 @@
 import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
 import sentiment from './index.js';
 import vitestAiExpect from '../../chains/expect/index.js';
-import { longTestTimeout } from '../../constants/common.js';
+
 import { wrapIt, wrapExpect, wrapAiExpect } from '../../chains/test-analysis/test-wrappers.js';
 import { getConfig } from '../../chains/test-analysis/config.js';
 
@@ -28,12 +28,8 @@ const examples = [
 
 describe('sentiment', () => {
   examples.forEach(({ text, want }) => {
-    it(
-      text,
-      async () => {
-        expect(await sentiment(text)).toBe(want);
-      },
-      longTestTimeout
-    );
+    it(text, async () => {
+      expect(await sentiment(text)).toBe(want);
+    });
   });
 });

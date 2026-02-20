@@ -47,13 +47,7 @@ export default async function glossary(text, options = {}) {
     }
   }
 
-  const instructions = `For each text chunk, extract specialized terms that would benefit from definition in a glossary.
-
-Focus on terms that:
-- Are technical, academic, or domain-specific
-- Would be unfamiliar to a general audience  
-- Carry precise meaning in their field
-- Are essential for understanding the content
+  const instructions = `Extract every proper noun and every term that a general reader would need to look up. Over-extract — the list will be filtered later.
 
 Return a "terms" object containing an array of the extracted terms.`;
 

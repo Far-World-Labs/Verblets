@@ -12,6 +12,9 @@ import reduce from '../reduce/index.js';
 import vitestAiExpect from '../expect/index.js';
 import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
 import { getConfig } from '../test-analysis/config.js';
+import { models } from '../../constants/models.js';
+
+const skipPrivacy = process.env.PRIVACY_TEST_SKIP || !models.privacy;
 
 const config = getConfig();
 const it = config?.aiMode
@@ -39,13 +42,13 @@ const techTexts = [
 // Helper to verify anonymization
 async function verifyAnonymized(text, description) {
   const hasNoPersonalInfo = await aiExpect(text).toSatisfy(`text that ${description}`, {
-    throws: false,
+    mode: 'warn',
   });
   return hasNoPersonalInfo;
 }
 
 describe('anonymize core functionality', () => {
-  it.skipIf(process.env.PRIVACY_TEST_SKIP)(
+  it.skipIf(skipPrivacy)(
     'applies different anonymization methods',
     { timeout: 60_000 },
     async () => {
@@ -94,69 +97,61 @@ describe('anonymize core functionality', () => {
 });
 
 describe('anonymize collection operations', () => {
-  it.skipIf(process.env.PRIVACY_TEST_SKIP)(
-    'maps anonymization across items',
-    { timeout: 60_000 },
-    async () => {
-      // First generate the anonymization spec
-      const spec = await anonymizeSpec('Remove personal and company names from technical insights');
+  it.skipIf(skipPrivacy)('maps anonymization across items', { timeout: 60_000 }, async () => {
+    // First generate the anonymization spec
+    const spec = await anonymizeSpec('Remove personal and company names from technical insights');
 
-      const instructions = mapInstructions({
-        specification: spec,
-      });
+    const instructions = mapInstructions({
+      specification: spec,
+    });
 
-      const results = await map(techTexts, instructions);
+    const results = await map(techTexts, instructions);
 
-      expect(results).to.be.an('array');
-      expect(results).to.have.length(techTexts.length);
+    expect(results).to.be.an('array');
+    expect(results).to.have.length(techTexts.length);
 
-      // Verify anonymization happened
-      for (let i = 0; i < results.length; i++) {
-        expect(results[i]).to.be.a('string');
-        // Check that names were replaced
-        expect(results[i]).to.not.include('Jane Smith');
-        expect(results[i]).to.not.include('John Doe');
-        expect(results[i]).to.not.include('Sarah Johnson');
-        expect(results[i]).to.not.include('Google');
-        expect(results[i]).to.not.include('Meta');
-        expect(results[i]).to.not.include('Amazon');
-        // Check that technical content remains
-        expect(results[i].toLowerCase()).to.match(/react|performance|caching/);
-      }
-
-      // Loose check that results look anonymized
-      const hasAnonymizedContent = await aiExpect(results.join('\n')).toSatisfy(
-        'contains technical content with placeholder names like [Person] or [Company]',
-        { throws: false }
-      );
-      expect(hasAnonymizedContent).toBe(true);
+    // Verify anonymization happened
+    for (let i = 0; i < results.length; i++) {
+      expect(results[i]).to.be.a('string');
+      // Check that names were replaced
+      expect(results[i]).to.not.include('Jane Smith');
+      expect(results[i]).to.not.include('John Doe');
+      expect(results[i]).to.not.include('Sarah Johnson');
+      expect(results[i]).to.not.include('Google');
+      expect(results[i]).to.not.include('Meta');
+      expect(results[i]).to.not.include('Amazon');
+      // Check that technical content remains
+      expect(results[i].toLowerCase()).to.match(/react|performance|caching/);
     }
-  );
 
-  it.skipIf(process.env.PRIVACY_TEST_SKIP)(
-    'reduces with final anonymization',
-    { timeout: 60_000 },
-    async () => {
-      // First generate the anonymization spec
-      const spec = await anonymizeSpec('Remove all identifiers from the final summary');
+    // Loose check that results look anonymized
+    const hasAnonymizedContent = await aiExpect(results.join('\n')).toSatisfy(
+      'contains technical content with placeholder names like [Person] or [Company]',
+      { mode: 'warn' }
+    );
+    expect(hasAnonymizedContent).toBe(true);
+  });
 
-      const instructions = reduceInstructions({
-        specification: spec,
-        processing: 'Combine insights into a unified technical summary',
-      });
+  it.skipIf(skipPrivacy)('reduces with final anonymization', { timeout: 60_000 }, async () => {
+    // First generate the anonymization spec
+    const spec = await anonymizeSpec('Remove all identifiers from the final summary');
 
-      const summary = await reduce(techTexts, instructions);
+    const instructions = reduceInstructions({
+      specification: spec,
+      processing: 'Combine insights into a unified technical summary',
+    });
 
-      expect(summary).to.be.a('string');
-      expect(summary.length).to.be.greaterThan(20);
+    const summary = await reduce(techTexts, instructions);
 
-      const isAnonymizedSummary = await aiExpect(summary).toSatisfy(
-        'a summary that mentions technical topics without any real names or companies',
-        { throws: false }
-      );
-      expect(isAnonymizedSummary).toBe(true);
-    }
-  );
+    expect(summary).to.be.a('string');
+    expect(summary.length).to.be.greaterThan(20);
+
+    const isAnonymizedSummary = await aiExpect(summary).toSatisfy(
+      'a summary that mentions technical topics without any real names or companies',
+      { mode: 'warn' }
+    );
+    expect(isAnonymizedSummary).toBe(true);
+  });
 
   it.skip(
     'filters and anonymizes sensitive content - TODO: filter chain needs refactoring',
@@ -167,7 +162,7 @@ describe('anonymize collection operations', () => {
     }
   );
 
-  it.skipIf(process.env.PRIVACY_TEST_SKIP)(
+  it.skipIf(skipPrivacy)(
     'creates reusable specification for consistency',
     { timeout: 60_000 },
     async () => {
@@ -208,7 +203,7 @@ describe('anonymize collection operations', () => {
       // Both should be anonymized consistently
       const bothAnonymized = await aiExpect([...results1, ...results2]).toSatisfy(
         'reviews with consistent anonymization style and placeholders',
-        { throws: false }
+        { mode: 'warn' }
       );
       expect(bothAnonymized).toBe(true);
     }
@@ -216,7 +211,7 @@ describe('anonymize collection operations', () => {
 });
 
 describe('anonymize advanced features', () => {
-  it.skipIf(process.env.PRIVACY_TEST_SKIP)(
+  it.skipIf(skipPrivacy)(
     'creates reusable anonymizer with specification',
     { timeout: 60_000 },
     async () => {
@@ -246,7 +241,7 @@ describe('anonymize advanced features', () => {
       // Verify both are anonymized appropriately
       const bothAnonymized = await aiExpect([result1.text, result2.text]).toSatisfy(
         'technical texts with personal information removed',
-        { throws: false }
+        { mode: 'warn' }
       );
       expect(bothAnonymized).toBe(true);
     }

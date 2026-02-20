@@ -2,14 +2,12 @@ import { beforeAll, afterAll } from 'vitest';
 import { describe, it as vitestIt, expect as vitestExpect } from 'vitest';
 import testAdvice from './index.js';
 import vitestAiExpect from '../expect/index.js';
-import { longTestTimeout } from '../../constants/common.js';
+import { longTestTimeout, shouldRunLongExamples } from '../../constants/common.js';
 import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
 import { getConfig } from '../test-analysis/config.js';
 import fs from 'node:fs/promises';
+import os from 'node:os';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const config = getConfig();
 const it = config?.aiMode
@@ -22,11 +20,11 @@ const aiExpect = config?.aiMode
   ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'Test-advice chain' } })
   : vitestAiExpect;
 
-const testDir = path.join(__dirname, 'test-data');
+let testDir;
 
-describe('test-advice chain', () => {
+describe.skipIf(!shouldRunLongExamples)('test-advice chain', () => {
   beforeAll(async () => {
-    await fs.mkdir(testDir, { recursive: true });
+    testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'test-advice-test-'));
   });
 
   afterAll(async () => {

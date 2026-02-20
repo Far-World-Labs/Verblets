@@ -46,7 +46,7 @@ export default async function numberWithUnits(text, config = {}) {
   const { llm, ...options } = config;
   const numberText = `${contentIsQuestion} ${text} \n\n${explainAndSeparate} ${explainAndSeparateJSON}
 
-Extract the numeric value and unit from the question. If you cannot determine the specific numeric value, set "value" to null but still identify the unit being asked for.
+Answer the question and provide the numeric value and unit. If the question is unanswerable or the specific numeric value cannot be determined, set "value" to null but still identify the unit being asked for.
 
 ${asNumberWithUnits}`;
 

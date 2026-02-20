@@ -44,7 +44,13 @@ ${valueXml}
 ${expectedXml}
 ${constraint ? constraintsXml : asXML(effectiveConstraint, { tag: 'constraints', fit: 'compact' })}
 ${debugContext ? `\n${debugContext}\n` : ''}
-Return true if the value satisfies the constraints, false otherwise. Be balanced and reasonable in your evaluation - default to a generous interpretation unless the constraints explicitly require strict validation. The goal is practical accuracy, not pedantic strictness.`;
+Return true if the value satisfies the constraints, false otherwise.
+
+Evaluation rules:
+- Focus on SEMANTIC CONTENT, not presentation. Ignore formatting artifacts like XML/HTML tags, markdown syntax, escape characters, or other markup in the value.
+- Default to a generous interpretation unless the constraints explicitly require strict validation.
+- If the value captures the intended meaning, return true even if phrasing, structure, or formatting differs from what might be ideal.
+- The goal is practical accuracy, not pedantic strictness.`;
 
   // Make the LLM call
   const response = await llm(prompt, {

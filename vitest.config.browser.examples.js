@@ -1,3 +1,4 @@
+/* global process */
 import { defineConfig } from 'vitest/config';
 import { baseConfig, browserExclusions, browserAliases, redisTestPlugin } from './vitest.config.base.js';
 
@@ -17,7 +18,7 @@ export default defineConfig({
   test: {
     ...baseConfig,
     environment: 'jsdom',
-    setupFiles: ['./test/setup/browser.js'],
+    setupFiles: ['./test/setup/browser.js', './test/setup/llm-provider.js'],
     include: ['src/**/*.examples.js'],
     exclude: [...baseConfig.exclude, ...browserExclusions, ...browserExampleExclusions],
     server: {
@@ -38,5 +39,6 @@ export default defineConfig({
     'process.env.OPENWEBUI_API_KEY': JSON.stringify(process.env.OPENWEBUI_API_KEY),
     'process.env.ANTHROPIC_API_KEY': JSON.stringify(process.env.ANTHROPIC_API_KEY),
     'process.env.VERBLETS_DEBUG': JSON.stringify(process.env.VERBLETS_DEBUG),
+    'process.env.VERBLETS_LLM_PROVIDER': JSON.stringify(process.env.VERBLETS_LLM_PROVIDER),
   },
 });

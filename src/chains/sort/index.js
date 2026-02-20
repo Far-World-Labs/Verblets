@@ -136,10 +136,13 @@ const sort = async (list, criteria, config = {}) => {
 
       // If sizes don't match, we have duplicates or missing items
       if (sorted.length !== itemsToSort.length || outputSet.size !== inputSet.size) {
-        // Find what's missing
+        // Find what's missing from the input
         const missing = itemsToSort.filter((item) => !outputSet.has(item));
 
-        const dedupedSorted = [...outputSet];
+        // Keep only items that were in the original input (filter out hallucinated items)
+        const dedupedSorted = sorted.filter(
+          (item, idx, arr) => inputSet.has(item) && arr.indexOf(item) === idx
+        );
 
         // Add back missing items at the end
         sorted = [...dedupedSorted, ...missing];
@@ -209,16 +212,30 @@ const sort = async (list, criteria, config = {}) => {
     }
   }
 
-  // Verify we didn't lose any items
-  const totalCount = finalTop.length + finalBottom.length + remaining.length;
-  if (totalCount !== items.length && process.env.VERBLETS_DEBUG) {
-    console.warn(`Sort lost items: started with ${items.length}, ended with ${totalCount}`);
-  }
-
-  // Assemble final result
-  const result = selectBottom
+  // Assemble final result, ensuring we return exactly the original items
+  // LLMs may slightly modify strings, so reconcile against the original item set
+  const assembled = selectBottom
     ? [...finalTop, ...remaining, ...finalBottom]
     : [...finalTop, ...remaining];
+
+  const itemSet = new Set(items);
+  const seen = new Set();
+  const result = [];
+
+  // First pass: keep items that are in the original set, deduplicating
+  for (const item of assembled) {
+    if (itemSet.has(item) && !seen.has(item)) {
+      seen.add(item);
+      result.push(item);
+    }
+  }
+
+  // Second pass: add any original items that were lost (append at end)
+  for (const item of items) {
+    if (!seen.has(item)) {
+      result.push(item);
+    }
+  }
 
   emitComplete(onProgress, 'sort', {
     totalItems: items.length,

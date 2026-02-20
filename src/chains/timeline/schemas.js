@@ -32,6 +32,7 @@ export const timelineEventJsonSchema = {
 
 export const timelineMergeJsonSchema = {
   name: 'timeline_merge',
+  strict: true,
   schema: {
     type: 'object',
     properties: {
@@ -52,10 +53,10 @@ export const timelineMergeJsonSchema = {
             },
             category: {
               type: 'string',
-              description: 'Event category or type (optional)',
+              description: 'Event category or type, or empty string if none',
             },
           },
-          required: ['timestamp', 'name'],
+          required: ['timestamp', 'name', 'category'],
           additionalProperties: false,
         },
       },
