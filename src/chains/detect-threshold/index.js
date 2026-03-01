@@ -2,7 +2,7 @@ import reduce from '../reduce/index.js';
 import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
-import thresholdResultSchema from './threshold-result.json';
+import thresholdResultSchema from './threshold-result.json' with { type: 'json' };
 
 function calculateStatistics(data, targetProperty) {
   const values = data
@@ -157,25 +157,25 @@ Return the updated accumulator as valid JSON.`;
   }
 
   // Use reduce to analyze the data in chunks with JSON schema
+  const analysisResponseFormat = {
+    type: 'json_schema',
+    json_schema: {
+      name: 'analysis_accumulator',
+      schema: accumulatorSchema,
+    },
+  };
+
   const analysisResult = await reduce(dataStrings, instructions, {
     initial: JSON.stringify(initialAccumulator),
     chunkSize,
-    llm: {
-      ...llm,
-      response_format: {
-        type: 'json_schema',
-        json_schema: {
-          name: 'analysis_accumulator',
-          schema: accumulatorSchema,
-        },
-      },
-    },
+    responseFormat: analysisResponseFormat,
+    llm,
     onProgress,
     now,
     ...options,
   });
 
-  // Parse the accumulated analysis - should be valid JSON with schema
+  // With responseFormat, reduce returns the parsed object directly
   const accumulated =
     typeof analysisResult === 'string' ? JSON.parse(analysisResult) : analysisResult;
 
