@@ -1,6 +1,6 @@
 import * as R from 'ramda';
 import callLlm from '../../lib/llm/index.js';
-import retry from '../../lib/retry/index.js';
+import { retry } from '../../lib/retry/index.js';
 import { sort as sortPromptInitial } from '../../prompts/index.js';
 import sortSchema from './sort-result.json';
 import { emitStart, emitComplete, emitStepProgress } from '../../lib/progress-callback/index.js';
@@ -87,17 +87,10 @@ const sort = async (list, criteria, config = {}) => {
 
     const modelOptions = createModelOptions(llm);
 
-    const result = await retry(callLlm, {
+    const result = await retry(() => callLlm(prompt, { modelOptions, ...options }), {
       label: 'sort-batch',
       maxAttempts,
       onProgress,
-      now,
-      chainStartTime: now,
-      llmPrompt: prompt,
-      llmConfig: {
-        modelOptions,
-        ...options,
-      },
     });
 
     const resultArray = result?.items || result;

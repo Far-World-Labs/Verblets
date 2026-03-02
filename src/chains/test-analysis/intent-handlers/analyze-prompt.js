@@ -8,7 +8,7 @@
 import { cyan, gray, yellow, green, red } from '../output-utils.js';
 import * as promptUtils from '../prompt-utils.js';
 import llm from '../../../lib/llm/index.js';
-import retry from '../../../lib/retry/index.js';
+import { retry } from '../../../lib/retry/index.js';
 import promptAnalysisSchema from '../schemas/prompt-analysis-schema.json';
 import * as promptConstants from '../../../prompts/constants.js';
 import fs from 'fs';

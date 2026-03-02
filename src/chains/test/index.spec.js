@@ -10,9 +10,10 @@ vi.mock('../../lib/llm/index.js', () => ({
 }));
 
 // Mock retry to just call the function
-vi.mock('../../lib/retry/index.js', () => ({
-  default: vi.fn((fn) => fn()),
-}));
+vi.mock('../../lib/retry/index.js', () => {
+  const mock = vi.fn(async (fn) => fn());
+  return { default: mock, retry: mock };
+});
 
 import llm from '../../lib/llm/index.js';
 

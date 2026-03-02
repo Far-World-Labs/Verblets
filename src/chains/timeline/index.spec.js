@@ -11,7 +11,7 @@ vi.mock('../reduce/index.js');
 import llm from '../../lib/llm/index.js';
 import stripResponse from '../../lib/strip-response/index.js';
 import chunkSentences from '../../lib/chunk-sentences/index.js';
-import retry from '../../lib/retry/index.js';
+import { retry } from '../../lib/retry/index.js';
 import reduce from '../reduce/index.js';
 
 beforeEach(() => {

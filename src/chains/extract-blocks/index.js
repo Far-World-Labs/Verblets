@@ -1,5 +1,5 @@
 import callLlm from '../../lib/llm/index.js';
-import retry from '../../lib/retry/index.js';
+import { retry } from '../../lib/retry/index.js';
 import parallelBatch from '../../lib/parallel-batch/index.js';
 import { createLifecycleLogger } from '../../lib/lifecycle-logger/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
@@ -114,31 +114,29 @@ export async function extractBlocks(text, instructions, config = {}) {
 
       const prompt = buildBlockExtractionPrompt(windowLines, windowStart, instructions);
 
-      const result = await retry(callLlm, {
-        label: `extract-blocks:window`,
-        maxAttempts,
-        now,
-        chainStartTime: now,
-        onProgress: createBatchProgressCallback(onProgress, {
-          totalItems: lines.length,
-          processedItems: Math.min(windowStart + windowSize, lines.length),
-          windowNumber: processedWindows + 1,
-          windowSize: windowLines.length,
-          windowStart,
-          totalWindows: windowStarts.length,
-          now,
-          chainStartTime: now,
-        }),
-        llmPrompt: prompt,
-        llmConfig: {
-          modelOptions: {
-            response_format: blockExtractionSchema,
-            ...llm,
-          },
-          logger: lifecycleLogger,
-          ...options,
-        },
-      });
+      const result = await retry(
+        () =>
+          callLlm(prompt, {
+            modelOptions: {
+              response_format: blockExtractionSchema,
+              ...llm,
+            },
+            logger: lifecycleLogger,
+            ...options,
+          }),
+        {
+          label: `extract-blocks:window`,
+          maxAttempts,
+          onProgress: createBatchProgressCallback(onProgress, {
+            totalItems: lines.length,
+            processedItems: Math.min(windowStart + windowSize, lines.length),
+            windowNumber: processedWindows + 1,
+            windowSize: windowLines.length,
+            windowStart,
+            totalWindows: windowStarts.length,
+          }),
+        }
+      );
 
       processedWindows++;
 

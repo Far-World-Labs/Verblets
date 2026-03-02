@@ -16,6 +16,7 @@ describe('Retry', () => {
   afterEach(() => {
     vi.useRealTimers();
   });
+
   it('Succeeds on first attempt', async () => {
     const promise = retry(mockFn, { retryDelay: retryDelayGlobal });
     await vi.runAllTimersAsync();
@@ -66,8 +67,7 @@ describe('Retry', () => {
     };
 
     const promise = retry(mockFnWithOtherError, { retryDelay: retryDelayGlobal });
-    // Attach handler immediately to prevent unhandled rejection
-    promise.catch(() => {}); // Ignore error here, we'll check it below
+    promise.catch(() => {});
     await vi.runAllTimersAsync();
     await expect(promise).rejects.toThrow('Error 500');
   });
@@ -91,5 +91,34 @@ describe('Retry', () => {
     await vi.runAllTimersAsync();
     await expect(promise).rejects.toThrow('Error 500');
     expect(callCount).toStrictEqual(maxAttempts);
+  });
+
+  it('emits onProgress events', async () => {
+    const onProgress = vi.fn();
+
+    const promise = retry(mockFn, {
+      label: 'test',
+      retryDelay: retryDelayGlobal,
+      onProgress,
+    });
+    await vi.runAllTimersAsync();
+    await promise;
+
+    expect(onProgress).toHaveBeenCalledWith(
+      expect.objectContaining({ step: 'test', event: 'start' })
+    );
+    expect(onProgress).toHaveBeenCalledWith(
+      expect.objectContaining({ step: 'test', event: 'complete', success: true })
+    );
+  });
+
+  it('calls fn with no arguments', async () => {
+    const fn = vi.fn().mockResolvedValue('result');
+
+    const promise = retry(fn, { retryDelay: retryDelayGlobal });
+    await vi.runAllTimersAsync();
+    await promise;
+
+    expect(fn).toHaveBeenCalledWith();
   });
 });

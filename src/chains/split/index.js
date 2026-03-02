@@ -1,5 +1,5 @@
 import callLlm from '../../lib/llm/index.js';
-import retry from '../../lib/retry/index.js';
+import { retry } from '../../lib/retry/index.js';
 import chunkSentences from '../../lib/chunk-sentences/index.js';
 import wrapVariable from '../../prompts/wrap-variable.js';
 
@@ -41,7 +41,6 @@ export default async function split(text, instructions, config = {}) {
     llm,
     targetSplitsPerChunk = null,
     onProgress,
-    now = new Date(),
     ...options
   } = config;
 
@@ -64,15 +63,10 @@ export default async function split(text, instructions, config = {}) {
     };
 
     try {
-      const output = await retry(callLlm, {
+      const output = await retry(() => callLlm(prompt, llmConfig), {
         label: 'split',
         maxAttempts,
         onProgress,
-        now,
-        chainStartTime: now,
-        llmPrompt: prompt,
-        llmConfig,
-        logger: options.logger,
       });
 
       const outputWithoutDelimiters = output.replace(

@@ -1,7 +1,7 @@
 import * as R from 'ramda';
 
 import callLlm from '../../lib/llm/index.js';
-import retry from '../../lib/retry/index.js';
+import { retry } from '../../lib/retry/index.js';
 import { constants as promptConstants, asXML } from '../../prompts/index.js';
 import modelService from '../../services/llm-model/index.js';
 import { questionsListSchema, selectedQuestionSchema } from './schemas.js';
@@ -67,7 +67,6 @@ const generateQuestions = async function* generateQuestionsGenerator(text, optio
     model = modelService.getBestPublicModel(),
     maxAttempts = 3,
     onProgress,
-    now = new Date(),
   } = options;
 
   let attempts = 0;
@@ -80,25 +79,25 @@ const generateQuestions = async function* generateQuestionsGenerator(text, optio
         existing: choices,
       });
       // eslint-disable-next-line no-await-in-loop
-      const selectedResult = await retry(callLlm, {
-        label: 'questions-pick-interesting',
-        maxAttempts,
-        onProgress,
-        now,
-        chainStartTime: now,
-        llmPrompt: pickInterestingQuestionPrompt,
-        llmConfig: {
-          modelOptions: {
-            response_format: {
-              type: 'json_schema',
-              json_schema: {
-                name: 'selected_question',
-                schema: selectedQuestionSchema,
+      const selectedResult = await retry(
+        () =>
+          callLlm(pickInterestingQuestionPrompt, {
+            modelOptions: {
+              response_format: {
+                type: 'json_schema',
+                json_schema: {
+                  name: 'selected_question',
+                  schema: selectedQuestionSchema,
+                },
               },
             },
-          },
-        },
-      });
+          }),
+        {
+          label: 'questions-pick-interesting',
+          maxAttempts,
+          onProgress,
+        }
+      );
       textSelected = selectedResult.question;
       drilldownResults.push(textSelected);
     }
@@ -122,14 +121,10 @@ const generateQuestions = async function* generateQuestionsGenerator(text, optio
     };
 
     // eslint-disable-next-line no-await-in-loop
-    const results = await retry(callLlm, {
+    const results = await retry(() => callLlm(promptCreated, llmConfig), {
       label: 'questions-generate',
       maxAttempts,
       onProgress,
-      now,
-      chainStartTime: now,
-      llmPrompt: `${promptCreated}`,
-      llmConfig,
     });
     const resultsNew = getRandomSubset(results, searchBreadth);
     if (searchBreadth < 0.5) {

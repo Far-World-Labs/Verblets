@@ -4,18 +4,15 @@ import {
 } from '../../constants/common.js';
 import emitProgress from '../progress-callback/index.js';
 
-export default async (
-  fn,
-  {
+async function retry(fn, opts = {}) {
+  const {
     label = '',
     maxAttempts = maxRetriesDefault + 1,
     retryDelay = retryDelayDefault,
     retryOnAll = false,
-    llmPrompt = undefined,
-    llmConfig = undefined,
-    onProgress = undefined,
-  } = {}
-) => {
+    onProgress,
+  } = opts;
+
   let attempt = 0;
   let lastError = new Error('Nothing to run');
 
@@ -38,7 +35,7 @@ export default async (
   while (attempt < maxAttempts) {
     try {
       // eslint-disable-next-line no-await-in-loop
-      const result = llmPrompt !== undefined ? await fn(llmPrompt, llmConfig) : await fn();
+      const result = await fn();
 
       if (onProgress) {
         emitProgress({
@@ -102,4 +99,7 @@ export default async (
   }
 
   throw lastError;
-};
+}
+
+export { retry };
+export default retry;

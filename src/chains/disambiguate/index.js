@@ -1,5 +1,5 @@
 import callLlm from '../../lib/llm/index.js';
-import retry from '../../lib/retry/index.js';
+import { retry } from '../../lib/retry/index.js';
 import score from '../score/index.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 import modelService from '../../services/llm-model/index.js';
@@ -48,25 +48,24 @@ export const getMeanings = async (term, config = {}) => {
     llm,
     maxAttempts = 3,
     onProgress,
-    now = new Date(),
     ...options
   } = config;
   const prompt = meaningsPrompt(term);
   const budget = model.budgetTokens(prompt);
   const modelOptions = createModelOptions(llm);
-  const response = await retry(callLlm, {
-    label: 'disambiguate-get-meanings',
-    maxAttempts,
-    onProgress,
-    now,
-    chainStartTime: now,
-    llmPrompt: prompt,
-    llmConfig: {
-      maxTokens: budget.completion,
-      modelOptions,
-      ...options,
-    },
-  });
+  const response = await retry(
+    () =>
+      callLlm(prompt, {
+        maxTokens: budget.completion,
+        modelOptions,
+        ...options,
+      }),
+    {
+      label: 'disambiguate-get-meanings',
+      maxAttempts,
+      onProgress,
+    }
+  );
 
   const resultArray = response?.meanings || response;
   return Array.isArray(resultArray) ? resultArray.filter(Boolean) : [];

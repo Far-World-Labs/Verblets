@@ -15,18 +15,14 @@ vi.mock('../../lib/text-batch/index.js', () => ({
 }));
 
 vi.mock('../../lib/retry/index.js', () => ({
-  default: vi.fn(async (fn, options) => {
-    if (options?.onProgress) {
-      options.onProgress({
-        step: options.label || 'retry',
-        event: 'start',
-        attemptNumber: 1,
-      });
+  default: vi.fn(async (fn, opts = {}) => {
+    if (opts.onProgress) {
+      opts.onProgress({ step: opts.label || 'retry', event: 'start', attemptNumber: 1 });
     }
     const result = await fn();
-    if (options?.onProgress) {
-      options.onProgress({
-        step: options.label || 'retry',
+    if (opts.onProgress) {
+      opts.onProgress({
+        step: opts.label || 'retry',
         event: 'complete',
         attemptNumber: 1,
         success: true,

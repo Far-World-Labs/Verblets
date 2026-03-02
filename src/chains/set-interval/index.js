@@ -1,5 +1,5 @@
 import callLlm from '../../lib/llm/index.js';
-import retry from '../../lib/retry/index.js';
+import { retry } from '../../lib/retry/index.js';
 import numberWithUnits from '../../verblets/number-with-units/index.js';
 import number from '../../verblets/number/index.js';
 import date from '../date/index.js';
@@ -66,7 +66,6 @@ export default function setInterval({
   llm,
   maxAttempts = 3,
   onProgress,
-  now = new Date(),
   ...options
 } = {}) {
   let timer;
@@ -100,19 +99,18 @@ ${asXML(history, { tag: 'history', title: 'History:' })}
 ${asXML(count, { tag: 'count', title: 'Count:' })}
 Next wait:`;
 
-      const intervalText = await retry(callLlm, {
-        label: 'set-interval',
-        maxAttempts,
-        onProgress,
-        now,
-        chainStartTime: now,
-        llmPrompt: intervalPrompt,
-        llmConfig: {
-          modelOptions: model ? { modelName: model, ...llm } : { ...llm },
-          ...options,
-        },
-        logger: options.logger,
-      });
+      const intervalText = await retry(
+        () =>
+          callLlm(intervalPrompt, {
+            modelOptions: model ? { modelName: model, ...llm } : { ...llm },
+            ...options,
+          }),
+        {
+          label: 'set-interval',
+          maxAttempts,
+          onProgress,
+        }
+      );
 
       history.push(intervalText);
       if (history.length > historySize) history.shift();

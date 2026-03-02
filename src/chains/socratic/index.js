@@ -1,5 +1,5 @@
 import callLlm from '../../lib/llm/index.js';
-import retry from '../../lib/retry/index.js';
+import { retry } from '../../lib/retry/index.js';
 import modelService from '../../services/llm-model/index.js';
 import socraticQuestionSchema from './socratic-question-schema.js';
 import socraticAnswerSchema from './socratic-answer-schema.js';
@@ -29,7 +29,6 @@ const defaultAsk = async ({
   logger,
   maxAttempts = 3,
   onProgress,
-  now = new Date(),
 } = {}) => {
   const historyText = history.map((turn) => `Q: ${turn.question}\nA: ${turn.answer}`).join('\n');
   const prompt = buildAskPrompt(topic, historyText);
@@ -37,28 +36,28 @@ const defaultAsk = async ({
   logger?.logEvent('ask-prompt', extractPromptAnalysis(prompt));
 
   const budget = model.budgetTokens(prompt);
-  const response = await retry(callLlm, {
-    label: 'socratic-ask',
-    maxAttempts,
-    onProgress,
-    now,
-    chainStartTime: now,
-    llmPrompt: prompt,
-    llmConfig: {
-      maxTokens: budget.completion,
-      temperature: 0.7,
-      modelOptions: {
-        response_format: {
-          type: 'json_schema',
-          json_schema: {
-            name: 'socratic_question',
-            schema: socraticQuestionSchema,
+  const response = await retry(
+    () =>
+      callLlm(prompt, {
+        maxTokens: budget.completion,
+        temperature: 0.7,
+        modelOptions: {
+          response_format: {
+            type: 'json_schema',
+            json_schema: {
+              name: 'socratic_question',
+              schema: socraticQuestionSchema,
+            },
           },
         },
-      },
-      logger,
-    },
-  });
+        logger,
+      }),
+    {
+      label: 'socratic-ask',
+      maxAttempts,
+      onProgress,
+    }
+  );
 
   return response;
 };
@@ -71,7 +70,6 @@ const defaultAnswer = async ({
   logger,
   maxAttempts = 3,
   onProgress,
-  now = new Date(),
 } = {}) => {
   const historyText = history.map((turn) => `Q: ${turn.question}\nA: ${turn.answer}`).join('\n');
   const prompt = buildAnswerPrompt(question, historyText);
@@ -79,28 +77,28 @@ const defaultAnswer = async ({
   logger?.logEvent('answer-prompt', extractPromptAnalysis(prompt));
 
   const budget = model.budgetTokens(prompt);
-  const response = await retry(callLlm, {
-    label: 'socratic-answer',
-    maxAttempts,
-    onProgress,
-    now,
-    chainStartTime: now,
-    llmPrompt: prompt,
-    llmConfig: {
-      maxTokens: budget.completion,
-      temperature: 0.7,
-      modelOptions: {
-        response_format: {
-          type: 'json_schema',
-          json_schema: {
-            name: 'socratic_answer',
-            schema: socraticAnswerSchema,
+  const response = await retry(
+    () =>
+      callLlm(prompt, {
+        maxTokens: budget.completion,
+        temperature: 0.7,
+        modelOptions: {
+          response_format: {
+            type: 'json_schema',
+            json_schema: {
+              name: 'socratic_answer',
+              schema: socraticAnswerSchema,
+            },
           },
         },
-      },
-      logger,
-    },
-  });
+        logger,
+      }),
+    {
+      label: 'socratic-answer',
+      maxAttempts,
+      onProgress,
+    }
+  );
 
   return response;
 };

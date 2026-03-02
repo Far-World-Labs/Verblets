@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises';
 import llm from '../../lib/llm/index.js';
-import retry from '../../lib/retry/index.js';
+import { retry } from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { asJSON } from '../../prompts/constants.js';
 import { testResultJsonSchema } from './schemas.js';

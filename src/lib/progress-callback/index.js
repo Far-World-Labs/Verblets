@@ -191,4 +191,78 @@ export const emitPhaseProgress = (callback, step, phase, metadata = {}) => {
   });
 };
 
+/**
+ * Stateful tracker that absorbs counter management and emit boilerplate
+ * for batch-processing chains.
+ *
+ * @param {string} chainName - Name of the chain (e.g. 'filter', 'map')
+ * @param {number} totalItems - Total number of items across all batches
+ * @param {Object} [options]
+ * @param {Function} [options.onProgress] - Progress callback
+ * @param {Date} [options.now] - Reference timestamp
+ * @returns {{ start, forBatch, batchDone, complete }}
+ */
+export function batchTracker(chainName, totalItems, { onProgress, now = new Date() } = {}) {
+  const chainStartTime = now;
+  let processedBatches = 0;
+  let processedItems = 0;
+  let totalBatches = 0;
+
+  return {
+    start(batchCount, maxParallel) {
+      totalBatches = batchCount;
+      emitBatchStart(onProgress, chainName, totalItems, {
+        totalBatches: batchCount,
+        ...(maxParallel !== undefined && { maxParallel }),
+        now: chainStartTime,
+        chainStartTime,
+      });
+    },
+
+    forBatch(batchIndex, startIndex, batchSize) {
+      return createBatchProgressCallback(
+        onProgress,
+        createBatchContext({
+          batchIndex,
+          batchSize,
+          startIndex,
+          totalItems,
+          processedItems,
+          totalBatches,
+        })
+      );
+    },
+
+    batchDone(startIndex, batchSize) {
+      processedItems += batchSize;
+      processedBatches++;
+      emitBatchProcessed(
+        onProgress,
+        chainName,
+        {
+          totalItems,
+          processedItems,
+          batchNumber: processedBatches,
+          batchSize,
+        },
+        {
+          batchIndex: `${startIndex}-${startIndex + batchSize - 1}`,
+          totalBatches,
+          now: new Date(),
+          chainStartTime,
+        }
+      );
+    },
+
+    complete(metadata = {}) {
+      emitBatchComplete(onProgress, chainName, totalItems, {
+        totalBatches,
+        now: new Date(),
+        chainStartTime,
+        ...metadata,
+      });
+    },
+  };
+}
+
 export default emitProgress;

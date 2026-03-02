@@ -1,5 +1,5 @@
 import callLlm from '../../lib/llm/index.js';
-import retry from '../../lib/retry/index.js';
+import { retry } from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { peopleListJsonSchema } from './schemas.js';
 

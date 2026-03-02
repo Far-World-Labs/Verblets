@@ -1,16 +1,7 @@
 import listBatch, { ListStyle, determineStyle } from '../../verblets/list-batch/index.js';
-import createBatches from '../../lib/text-batch/index.js';
-import retry from '../../lib/retry/index.js';
-import parallelBatch from '../../lib/parallel-batch/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { findResultJsonSchema } from './schemas.js';
-import {
-  emitBatchStart,
-  emitBatchComplete,
-  emitBatchProcessed,
-  createBatchProgressCallback,
-  createBatchContext,
-} from '../../lib/progress-callback/index.js';
+import { createBatches, parallel, retry, batchTracker } from '../../lib/index.js';
 
 const findResponseFormat = {
   type: 'json_schema',
@@ -31,7 +22,7 @@ const find = async function (list, instructions, config = {}) {
 
   const batches = createBatches(list, config);
   const findInstructions = ({ style, count }) => {
-    const baseInstructions = `From the list below, identify and return the SINGLE item that BEST matches the search criteria. 
+    const baseInstructions = `From the list below, identify and return the SINGLE item that BEST matches the search criteria.
 
 ${asXML(instructions, { tag: 'search-criteria' })}
 
@@ -59,27 +50,25 @@ Process exactly ${count} items from the XML list below and return the single bes
   // Filter out skip batches
   const batchesToProcess = batches.filter((batch) => !batch.skip);
 
-  emitBatchStart(onProgress, 'find', list.length, {
-    totalBatches: batchesToProcess.length,
-    maxParallel,
-    now,
-    chainStartTime: now,
-  });
+  const tracker = batchTracker('find', list.length, { onProgress, now });
+  const withRetry = (fn, onProgress) =>
+    retry(fn, { label: 'find:batch', maxAttempts: 3, onProgress });
 
-  let processedItems = 0;
+  tracker.start(batchesToProcess.length, maxParallel);
+
   let processedBatches = 0;
 
   // Process in chunks to allow early termination
   for (let i = 0; i < batchesToProcess.length && !foundEarly; i += maxParallel) {
     const chunk = batchesToProcess.slice(i, i + maxParallel);
 
-    await parallelBatch(
+    await parallel(
       chunk,
       async ({ items, startIndex }) => {
         const batchStyle = determineStyle(listStyle, items, autoModeThreshold);
 
         try {
-          const result = await retry(
+          const result = await withRetry(
             () =>
               listBatch(items, findInstructions({ style: batchStyle, count: items.length }), {
                 listStyle: batchStyle,
@@ -88,25 +77,7 @@ Process exactly ${count} items from the XML list below and return the single bes
                 llm,
                 ...options,
               }),
-            {
-              label: `find:batch`,
-              maxAttempts: 3,
-              now,
-              chainStartTime: now,
-              onProgress: createBatchProgressCallback(
-                onProgress,
-                createBatchContext({
-                  batchIndex: processedBatches,
-                  batchSize: items.length,
-                  startIndex,
-                  totalItems: list.length,
-                  processedItems,
-                  totalBatches: batchesToProcess.length,
-                  now,
-                  chainStartTime: now,
-                })
-              ),
-            }
+            tracker.forBatch(processedBatches, startIndex, items.length)
           );
 
           // listBatch now returns arrays directly
@@ -117,26 +88,8 @@ Process exactly ${count} items from the XML list below and return the single bes
             results.push({ result: foundItem, index: itemIndex !== -1 ? itemIndex : startIndex });
           }
 
-          processedItems += items.length;
+          tracker.batchDone(startIndex, items.length);
           processedBatches++;
-
-          emitBatchProcessed(
-            onProgress,
-            'find',
-            {
-              totalItems: list.length,
-              processedItems,
-              batchNumber: processedBatches,
-              batchSize: items.length,
-            },
-            {
-              batchIndex: `${startIndex}-${startIndex + items.length - 1}`,
-              totalBatches: batchesToProcess.length,
-              found: !!foundItem,
-              now: new Date(),
-              chainStartTime: now,
-            }
-          );
         } catch {
           // continue on error
         }
@@ -153,12 +106,7 @@ Process exactly ${count} items from the XML list below and return the single bes
     }
   }
 
-  emitBatchComplete(onProgress, 'find', list.length, {
-    totalBatches: batchesToProcess.length,
-    found: results.length > 0,
-    now: new Date(),
-    chainStartTime: now,
-  });
+  tracker.complete({ found: results.length > 0 });
 
   if (results.length > 0) {
     const earliest = results.reduce((best, current) =>

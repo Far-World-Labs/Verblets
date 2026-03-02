@@ -1,5 +1,5 @@
 import callLlm from '../../lib/llm/index.js';
-import retry from '../../lib/retry/index.js';
+import { retry } from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 import popReferenceSchema from './pop-reference-result.json';
@@ -52,7 +52,6 @@ export default async function popReference(sentence, description, options = {}) 
     llm,
     maxAttempts = 3,
     onProgress,
-    now = new Date(),
     ...restOptions
   } = options;
 
@@ -107,19 +106,18 @@ Requirements:
 ${onlyJSON}`;
 
   const modelOptions = createModelOptions(llm);
-  const response = await retry(callLlm, {
-    label: 'pop-reference',
-    maxAttempts,
-    onProgress,
-    now,
-    chainStartTime: now,
-    llmPrompt: prompt,
-    llmConfig: {
-      modelOptions,
-      ...restOptions,
-    },
-    logger: restOptions.logger,
-  });
+  const response = await retry(
+    () =>
+      callLlm(prompt, {
+        modelOptions,
+        ...restOptions,
+      }),
+    {
+      label: 'pop-reference',
+      maxAttempts,
+      onProgress,
+    }
+  );
 
   const references = response?.references || response;
 

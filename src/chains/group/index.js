@@ -1,18 +1,8 @@
 import listBatch, { ListStyle, determineStyle } from '../../verblets/list-batch/index.js';
-import createBatches from '../../lib/text-batch/index.js';
-import retry from '../../lib/retry/index.js';
-import parallelBatch from '../../lib/parallel-batch/index.js';
 import reduce from '../reduce/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
-import {
-  emitBatchStart,
-  emitBatchComplete,
-  emitBatchProcessed,
-  createBatchProgressCallback,
-  createBatchContext,
-  emitPhaseProgress,
-  emitProgress,
-} from '../../lib/progress-callback/index.js';
+import { emitPhaseProgress, emitProgress } from '../../lib/progress-callback/index.js';
+import { createBatches, parallel, retry, batchTracker } from '../../lib/index.js';
 
 const createCategoryDiscoveryPrompt = (instructions, categoryPrompt) => {
   const defaultCategoryPrompt =
@@ -146,17 +136,16 @@ export default async function group(list, instructions, config = {}) {
   // Filter out skip batches
   const batchesToProcess = batches.filter((batch) => !batch.skip);
 
-  emitBatchStart(onProgress, 'group', list.length, {
-    totalBatches: batchesToProcess.length,
-    maxParallel,
-    phase: 'assignment',
-  });
+  const tracker = batchTracker('group', list.length, { onProgress, now });
+  const withRetry = (fn, onProgress) =>
+    retry(fn, { label: 'group:batch', maxAttempts: options.maxAttempts || 3, onProgress });
 
-  let processedItems = 0;
+  tracker.start(batchesToProcess.length, maxParallel);
+
   let processedBatches = 0;
 
   // Process batches in parallel using parallelBatch
-  await parallelBatch(
+  await parallel(
     batchesToProcess,
     async ({ items, startIndex }) => {
       const batchStyle = determineStyle(listStyle, items, autoModeThreshold);
@@ -169,33 +158,14 @@ export default async function group(list, instructions, config = {}) {
           ...options,
         };
 
-        const labels = await retry(
+        const labels = await withRetry(
           () =>
             listBatch(
               items,
               assignmentInstructions({ style: batchStyle, count: items.length }),
               listBatchOptions
             ),
-          {
-            label: `group:batch`,
-            maxAttempts: options.maxAttempts || 3,
-            onProgress: createBatchProgressCallback(
-              onProgress,
-              createBatchContext({
-                batchIndex: processedBatches,
-                batchSize: items.length,
-                startIndex,
-                totalItems: list.length,
-                processedItems,
-                totalBatches: batchesToProcess.length,
-              })
-            ),
-            llmPrompt: `${assignmentInstructions({
-              style: batchStyle,
-              count: items.length,
-            })}\n\nItems: ${JSON.stringify(items).substring(0, 500)}...`,
-            llmConfig: listBatchOptions,
-          }
+          tracker.forBatch(processedBatches, startIndex, items.length)
         );
 
         if (!Array.isArray(labels) || labels.length !== items.length) {
@@ -205,23 +175,8 @@ export default async function group(list, instructions, config = {}) {
           batchResults.push({ items, labels, startIndex });
         }
 
-        processedItems += items.length;
+        tracker.batchDone(startIndex, items.length);
         processedBatches++;
-
-        emitBatchProcessed(
-          onProgress,
-          'group',
-          {
-            totalItems: list.length,
-            processedItems,
-            batchNumber: processedBatches,
-            batchSize: items.length,
-          },
-          {
-            batchIndex: `${startIndex}-${startIndex + items.length - 1}`,
-            totalBatches: batchesToProcess.length,
-          }
-        );
       } catch {
         const fallbackLabels = new Array(items.length).fill('other');
         batchResults.push({ items, labels: fallbackLabels, startIndex });
@@ -237,10 +192,7 @@ export default async function group(list, instructions, config = {}) {
   batchResults.sort((a, b) => a.startIndex - b.startIndex);
   const groups = assignItemsToGroups(batchResults);
 
-  emitBatchComplete(onProgress, 'group', list.length, {
-    totalBatches: batchesToProcess.length,
-    categoryCount: categories.length,
-  });
+  tracker.complete({ categoryCount: categories.length });
 
   return topN ? applyTopNFilter(groups, topN) : groups;
 }

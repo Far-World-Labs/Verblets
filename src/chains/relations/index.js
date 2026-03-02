@@ -1,5 +1,5 @@
 import callLlm from '../../lib/llm/index.js';
-import retry from '../../lib/retry/index.js';
+import { retry } from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 import relationResultSchema from './relation-result.json';
@@ -100,7 +100,7 @@ const GROUP_PROCESS_STEPS = `Extract relations and group them by patterns, types
  * @returns {Promise<string>} Relation specification as descriptive text
  */
 export async function relationSpec(prompt, config = {}) {
-  const { llm, maxAttempts = 3, onProgress, now = new Date(), ...rest } = config;
+  const { llm, maxAttempts = 3, onProgress, ...rest } = config;
 
   const specSystemPrompt = `You are a relation specification generator. Create a clear, concise specification for relation extraction.`;
 
@@ -143,20 +143,19 @@ Provide a specification describing:
 
 Use natural language, not symbolic identifiers or linked data formats.`;
 
-  const response = await retry(callLlm, {
-    label: 'relations-spec',
-    maxAttempts,
-    onProgress,
-    now,
-    chainStartTime: now,
-    llmPrompt: specUserPrompt,
-    llmConfig: {
-      llm,
-      system: specSystemPrompt,
-      ...rest,
-    },
-    logger: rest.logger,
-  });
+  const response = await retry(
+    () =>
+      callLlm(specUserPrompt, {
+        llm,
+        system: specSystemPrompt,
+        ...rest,
+      }),
+    {
+      label: 'relations-spec',
+      maxAttempts,
+      onProgress,
+    }
+  );
 
   return response;
 }
@@ -170,7 +169,7 @@ Use natural language, not symbolic identifiers or linked data formats.`;
  * @returns {Promise<Object>} Object with relations array
  */
 export async function applyRelations(text, specification, config = {}) {
-  const { llm, entities, maxAttempts = 3, onProgress, now = new Date(), ...options } = config;
+  const { llm, entities, maxAttempts = 3, onProgress, ...options } = config;
 
   let prompt = `Apply the relation specification to extract relations from this text.
 
@@ -207,28 +206,27 @@ Example: {"object": "42^^xsd:integer"} NOT {"object": '"42"^^xsd:integer'}
 
 ${onlyJSON}`;
 
-  const response = await retry(callLlm, {
-    label: 'relations-apply',
-    maxAttempts,
-    onProgress,
-    now,
-    chainStartTime: now,
-    llmPrompt: prompt,
-    llmConfig: {
-      modelOptions: {
-        response_format: {
-          type: 'json_schema',
-          json_schema: {
-            name: 'relation_result',
-            schema: relationResultSchema,
+  const response = await retry(
+    () =>
+      callLlm(prompt, {
+        modelOptions: {
+          response_format: {
+            type: 'json_schema',
+            json_schema: {
+              name: 'relation_result',
+              schema: relationResultSchema,
+            },
           },
         },
-      },
-      llm,
-      ...options,
-    },
-    logger: options.logger,
-  });
+        llm,
+        ...options,
+      }),
+    {
+      label: 'relations-apply',
+      maxAttempts,
+      onProgress,
+    }
+  );
 
   // Handle auto-unwrapped response (llm unwraps simple collection schemas)
   // If response is an array, it's already the items array

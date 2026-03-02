@@ -1,17 +1,15 @@
 import callLlm from '../../lib/llm/index.js';
-import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 import { scaleSpec } from '../scale/index.js';
 import listBatch from '../../verblets/list-batch/index.js';
-import createBatches from '../../lib/text-batch/index.js';
-import parallelBatch from '../../lib/parallel-batch/index.js';
 import {
   emitBatchStart,
   emitBatchComplete,
   emitBatchProcessed,
   emitPhaseProgress,
 } from '../../lib/progress-callback/index.js';
+import { createBatches, parallel, retry } from '../../lib/index.js';
 import scoreSingleResultSchema from './score-single-result.json';
 
 const { onlyJSON } = promptConstants;
@@ -69,7 +67,7 @@ export const scoreSpec = scaleSpec;
  * @returns {Promise<*>} Score value (type depends on specification range)
  */
 export async function applyScore(item, specification, config = {}) {
-  const { llm, maxAttempts = 3, onProgress, now = new Date(), ...options } = config;
+  const { llm, maxAttempts = 3, onProgress, ...options } = config;
 
   const prompt = `Apply the score specification to evaluate this item.
 
@@ -82,27 +80,24 @@ ${onlyJSON}
 
 ${asXML(item, { tag: 'item' })}`;
 
-  const response = await retry(callLlm, {
+  const llmConfig = {
+    modelOptions: {
+      response_format: {
+        type: 'json_schema',
+        json_schema: {
+          name: 'score_single_result',
+          schema: scoreSingleResultSchema,
+        },
+      },
+    },
+    llm,
+    ...options,
+  };
+
+  const response = await retry(() => callLlm(prompt, llmConfig), {
     label: 'score item',
     maxAttempts,
     onProgress,
-    now,
-    chainStartTime: now,
-    llmPrompt: prompt,
-    llmConfig: {
-      modelOptions: {
-        response_format: {
-          type: 'json_schema',
-          json_schema: {
-            name: 'score_single_result',
-            schema: scoreSingleResultSchema,
-          },
-        },
-      },
-      llm,
-      ...options,
-    },
-    logger: options.logger,
   });
 
   // llm auto-unwraps single value property, returns the number directly
@@ -138,6 +133,9 @@ async function scoreOnce(list, prompt, batchConfig, options) {
     if (b.skip) results[b.startIndex] = undefined;
   });
 
+  const withRetry = (fn, onProgress) =>
+    retry(fn, { label: 'score:batch', maxAttempts, onProgress });
+
   emitBatchStart(onProgress, 'score', list.length, {
     totalBatches: batchesToProcess.length,
     maxParallel,
@@ -150,10 +148,7 @@ async function scoreOnce(list, prompt, batchConfig, options) {
   if (batchesToProcess.length > 0) {
     const first = batchesToProcess[0];
     try {
-      const scores = await retry(() => listBatch(first.items, prompt, batchConfig), {
-        label: 'score:batch',
-        maxAttempts,
-      });
+      const scores = await withRetry(() => listBatch(first.items, prompt, batchConfig));
       alignScores(scores, first.items.length).forEach((s, j) => {
         results[first.startIndex + j] = s;
       });
@@ -184,14 +179,11 @@ async function scoreOnce(list, prompt, batchConfig, options) {
     const anchoredPrompt = anchorBlock ? `${prompt}\n${anchorBlock}` : prompt;
     let processedItems = batchesToProcess[0].items.length;
 
-    await parallelBatch(
+    await parallel(
       batchesToProcess.slice(1),
       async ({ items, startIndex }, batchIndex) => {
         try {
-          const scores = await retry(() => listBatch(items, anchoredPrompt, batchConfig), {
-            label: 'score:batch',
-            maxAttempts,
-          });
+          const scores = await withRetry(() => listBatch(items, anchoredPrompt, batchConfig));
           alignScores(scores, items.length).forEach((s, j) => {
             results[startIndex + j] = s;
           });

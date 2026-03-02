@@ -7,9 +7,10 @@ vi.mock('../../lib/llm/index.js', () => ({
   })),
 }));
 
-vi.mock('../../lib/retry/index.js', () => ({
-  default: vi.fn(async (fn) => await fn()),
-}));
+vi.mock('../../lib/retry/index.js', () => {
+  const mock = vi.fn(async (fn) => fn());
+  return { default: mock, retry: mock };
+});
 
 describe('peopleList chain', () => {
   it('returns parsed list with correct structure', async () => {

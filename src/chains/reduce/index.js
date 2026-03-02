@@ -1,16 +1,8 @@
 import listBatch, { ListStyle, determineStyle } from '../../verblets/list-batch/index.js';
-import createBatches from '../../lib/text-batch/index.js';
-import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { isSimpleCollectionSchema } from '../../lib/llm/index.js';
 import { reduceAccumulatorJsonSchema } from './schemas.js';
-import {
-  emitBatchStart,
-  emitBatchComplete,
-  emitBatchProcessed,
-  createBatchProgressCallback,
-  createBatchContext,
-} from '../../lib/progress-callback/index.js';
+import { createBatches, retry, batchTracker } from '../../lib/index.js';
 
 // Default response format for reduce operations - simple string accumulator
 const DEFAULT_REDUCE_RESPONSE_FORMAT = {
@@ -42,13 +34,12 @@ export default async function reduce(list, instructions, config = {}) {
   const batches = createBatches(list, config);
   const activeBatches = batches.filter((b) => !b.skip);
 
-  emitBatchStart(onProgress, 'reduce', list.length, {
-    totalBatches: activeBatches.length,
-    now,
-    chainStartTime: now,
-  });
+  const tracker = batchTracker('reduce', list.length, { onProgress, now });
+  const withRetry = (fn, onProgress) =>
+    retry(fn, { label: 'reduce:batch', maxAttempts, onProgress });
 
-  let processedItems = 0;
+  tracker.start(activeBatches.length);
+
   let processedBatches = 0;
 
   for (const { items, skip, startIndex } of batches) {
@@ -92,30 +83,10 @@ Process exactly ${count} items from the ${itemFormat} list below and return the 
       ...options,
     };
 
-    const result = await retry(() => listBatch(items, prompt, listBatchOptions), {
-      label: `reduce:batch`,
-      maxAttempts,
-      now,
-      chainStartTime: now,
-      onProgress: createBatchProgressCallback(
-        onProgress,
-        createBatchContext({
-          batchIndex: processedBatches,
-          batchSize: items.length,
-          startIndex,
-          totalItems: list.length,
-          processedItems,
-          totalBatches: activeBatches.length,
-          now,
-          chainStartTime: now,
-        })
-      ),
-      llmPrompt: `${prompt}\n\nAccumulator: ${(JSON.stringify(acc) || '').substring(
-        0,
-        200
-      )}\nItems: ${(JSON.stringify(items) || '').substring(0, 300)}...`,
-      llmConfig: listBatchOptions,
-    });
+    const result = await withRetry(
+      () => listBatch(items, prompt, listBatchOptions),
+      tracker.forBatch(processedBatches, startIndex, items.length)
+    );
 
     if (!responseFormat && result?.accumulator !== undefined) {
       acc = result.accumulator;
@@ -126,32 +97,11 @@ Process exactly ${count} items from the ${itemFormat} list below and return the 
       acc = result;
     }
 
-    processedItems += items.length;
+    tracker.batchDone(startIndex, items.length);
     processedBatches++;
-
-    emitBatchProcessed(
-      onProgress,
-      'reduce',
-      {
-        totalItems: list.length,
-        processedItems,
-        batchNumber: processedBatches,
-        batchSize: items.length,
-      },
-      {
-        batchIndex: `${startIndex}-${startIndex + items.length - 1}`,
-        totalBatches: activeBatches.length,
-        now: new Date(),
-        chainStartTime: now,
-      }
-    );
   }
 
-  emitBatchComplete(onProgress, 'reduce', list.length, {
-    totalBatches: activeBatches.length,
-    now: new Date(),
-    chainStartTime: now,
-  });
+  tracker.complete();
 
   return acc;
 }
