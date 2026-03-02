@@ -31,6 +31,7 @@ Modules include:
 <!-- commonly used utilities -->
 - [llm](./llm) – LLM API wrapper.
 - [prompt-cache](./prompt-cache) – cache prompts/responses locally.
+- [progress-callback](./progress-callback) – progress event helpers: `batchTracker`, `scopeProgress`, emit utilities.
 - [retry](./retry) – generic async retry helper.
 - [search-best-first](./search-best-first) – best-first tree search algorithm.
 - [search-js-files](./search-js-files) – locate and analyze JavaScript files.

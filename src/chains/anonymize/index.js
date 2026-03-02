@@ -43,7 +43,7 @@ const GROUP_PROCESS_STEPS = `Analyze each item to determine its appropriate grou
  * @returns {Promise<string>} Anonymization specification as descriptive text
  */
 export async function anonymizeSpec(prompt, config = {}) {
-  const { llm, maxAttempts = 3, onProgress, now = new Date(), ...rest } = config;
+  const { llm, maxAttempts = 3, onProgress, ...rest } = config;
 
   const specSystemPrompt = `You are an anonymization specification generator. Create a clear, concise specification for text anonymization.`;
 
@@ -89,20 +89,14 @@ Provide a specification describing:
 
 Keep it focused on actionable anonymization rules.`;
 
-  const response = await retry(callLlm, {
-    label: 'anonymize spec',
-    maxAttempts,
-    onProgress,
-    now,
-    chainStartTime: now,
-    llmPrompt: specUserPrompt,
-    llmConfig: {
-      llm,
-      system: specSystemPrompt,
-      ...rest,
-    },
-    logger: rest.logger,
-  });
+  const response = await retry(
+    () => callLlm(specUserPrompt, { llm, system: specSystemPrompt, ...rest }),
+    {
+      label: 'anonymize spec',
+      maxAttempts,
+      onProgress,
+    }
+  );
 
   return response;
 }
@@ -167,22 +161,21 @@ Return ONLY the final anonymized text, with no explanations or additional conten
 
 const anonymize = async (input, config = {}) => {
   const { text, method, context } = validateInput(input);
-  const { llm, maxAttempts = 3, onProgress, now = new Date(), ...options } = config;
+  const { llm, maxAttempts = 3, onProgress, ...options } = config;
 
   // Stage 1: Remove distinctive content
-  const stage1Result = await retry(callLlm, {
-    label: 'anonymize stage 1',
-    maxAttempts,
-    onProgress,
-    now,
-    chainStartTime: now,
-    llmPrompt: stage1Prompt(text, context),
-    llmConfig: {
-      modelOptions: { modelName: 'privacy', ...llm },
-      ...options,
-    },
-    logger: options.logger,
-  });
+  const stage1Result = await retry(
+    () =>
+      callLlm(stage1Prompt(text, context), {
+        modelOptions: { modelName: 'privacy', ...llm },
+        ...options,
+      }),
+    {
+      label: 'anonymize stage 1',
+      maxAttempts,
+      onProgress,
+    }
+  );
 
   if (method === anonymizeMethod.LIGHT) {
     return {
@@ -194,19 +187,18 @@ const anonymize = async (input, config = {}) => {
   }
 
   // Stage 2: Normalize structure and tone
-  const stage2Result = await retry(callLlm, {
-    label: 'anonymize stage 2',
-    maxAttempts,
-    onProgress,
-    now,
-    chainStartTime: now,
-    llmPrompt: stage2Prompt(stage1Result, context),
-    llmConfig: {
-      modelOptions: { modelName: 'privacy', ...llm },
-      ...options,
-    },
-    logger: options.logger,
-  });
+  const stage2Result = await retry(
+    () =>
+      callLlm(stage2Prompt(stage1Result, context), {
+        modelOptions: { modelName: 'privacy', ...llm },
+        ...options,
+      }),
+    {
+      label: 'anonymize stage 2',
+      maxAttempts,
+      onProgress,
+    }
+  );
 
   if (method === anonymizeMethod.BALANCED) {
     return {
@@ -219,19 +211,18 @@ const anonymize = async (input, config = {}) => {
   }
 
   // Stage 3: Suppress stylistic patterns
-  const stage3Result = await retry(callLlm, {
-    label: 'anonymize stage 3',
-    maxAttempts,
-    onProgress,
-    now,
-    chainStartTime: now,
-    llmPrompt: stage3Prompt(stage2Result, context),
-    llmConfig: {
-      modelOptions: { modelName: 'privacy', ...llm },
-      ...options,
-    },
-    logger: options.logger,
-  });
+  const stage3Result = await retry(
+    () =>
+      callLlm(stage3Prompt(stage2Result, context), {
+        modelOptions: { modelName: 'privacy', ...llm },
+        ...options,
+      }),
+    {
+      label: 'anonymize stage 3',
+      maxAttempts,
+      onProgress,
+    }
+  );
 
   return {
     text: stage3Result,

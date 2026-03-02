@@ -87,17 +87,10 @@ const sort = async (list, criteria, config = {}) => {
 
     const modelOptions = createModelOptions(llm);
 
-    const result = await retry(callLlm, {
+    const result = await retry(() => callLlm(prompt, { modelOptions, ...options }), {
       label: 'sort-batch',
       maxAttempts,
       onProgress,
-      now,
-      chainStartTime: now,
-      llmPrompt: prompt,
-      llmConfig: {
-        modelOptions,
-        ...options,
-      },
     });
 
     const resultArray = result?.items || result;

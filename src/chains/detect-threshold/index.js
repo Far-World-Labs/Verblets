@@ -1,6 +1,7 @@
 import reduce from '../reduce/index.js';
 import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
+import { scopeProgress } from '../../lib/progress-callback/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import thresholdResultSchema from './threshold-result.json';
 
@@ -170,7 +171,7 @@ Return the updated accumulator as valid JSON.`;
         },
       },
     },
-    onProgress,
+    onProgress: scopeProgress(onProgress, 'reduce:analysis'),
     now,
     ...options,
   });
@@ -228,18 +229,10 @@ Return threshold candidates with their rationales.`;
     },
   };
 
-  const result = await retry(callLlm, {
+  const result = await retry(() => callLlm(finalPrompt, { modelOptions, ...options }), {
     label: 'detect-threshold-analysis',
     maxAttempts,
     onProgress,
-    now,
-    chainStartTime: now,
-    llmPrompt: finalPrompt,
-    llmConfig: {
-      modelOptions,
-      ...options,
-    },
-    logger: options.logger,
   });
 
   // With structured output, result should already be parsed

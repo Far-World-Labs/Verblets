@@ -90,24 +90,51 @@ export async function processItems(items, options = {}) {
 
 ### Progress Tracking and Callbacks
 
-Long-running chains should provide progress feedback:
+Long-running chains should provide progress feedback via `batchTracker`:
 
 ```javascript
-async function processIndividually(items, options = {}) {
-  const { onProgress, onItemComplete } = options;
-  const results = [];
-  
-  for (let i = 0; i < items.length; i++) {
-    const result = await processItem(items[i]);
-    results.push(result);
-    
-    onItemComplete?.(result, i, items.length);
-    onProgress?.(i + 1, items.length);
-  }
-  
-  return results;
+import { createBatches, parallel, retry, batchTracker } from '../../lib/index.js';
+
+async function myChain(items, options = {}) {
+  const { onProgress, now = new Date(), ...rest } = options;
+  const batches = createBatches(items, rest);
+  const tracker = batchTracker('my-chain', items.length, { onProgress, now });
+
+  tracker.start(batches.length, maxParallel);
+
+  await parallel(batches, async ({ items, startIndex }) => {
+    await retry(() => process(items), {
+      onProgress: tracker.forBatch(startIndex, items.length),
+    });
+    tracker.batchDone(startIndex, items.length);
+  }, { maxParallel });
+
+  tracker.complete();
 }
 ```
+
+Events emitted follow the shape `{ step, event, totalItems, processedItems, ... }` where `event` is one of `'start'`, `'batch:complete'`, or `'complete'`.
+
+### Scoping Progress for Nested Chains
+
+When a chain passes `onProgress` to a nested chain call, use `scopeProgress` to tag events with a `phase` field so consumers can distinguish parent events from nested events:
+
+```javascript
+import { scopeProgress } from '../../lib/progress-callback/index.js';
+
+// Phase format: chainName:purpose
+const results = await reduce(items, prompt, {
+  onProgress: scopeProgress(onProgress, 'reduce:category-discovery'),
+});
+```
+
+Phases compose recursively with `/` when scoped chains are themselves wrapped by an outer scope:
+
+```js
+// Consumer sees: { step: 'reduce', phase: 'group:workflow/reduce:category-discovery', ... }
+```
+
+Phase naming convention is `chainName:purpose` — the chain being called plus a short description of its role. This speciates when the same chain is called multiple times (e.g. `reduce:extraction` vs `reduce:refinement`).
 
 ### Failure Handling Strategies
 
@@ -263,7 +290,7 @@ import { chainName } from '@far-world-labs/verblets';
 const results = await chainName(items, {
   batchSize: 10,
   processingMode: 'bulk',
-  onProgress: (current, total) => console.log(`${current}/${total}`)
+  onProgress: (event) => console.log(`${event.step} ${event.event} ${event.processedItems}/${event.totalItems}`)
 });
 \`\`\`
 

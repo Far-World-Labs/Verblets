@@ -12,13 +12,8 @@ describe('extract-blocks', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    // Make retry pass through llm calls with proper arguments
-    retry.mockImplementation(async (fn, options) => {
-      if (options?.llmPrompt !== undefined) {
-        return fn(options.llmPrompt, options.llmConfig);
-      }
-      return fn();
-    });
+    // retry calls fn() — callers close over their own args
+    retry.mockImplementation(async (fn) => fn());
   });
 
   it('should extract blocks from text with clear boundaries', async () => {

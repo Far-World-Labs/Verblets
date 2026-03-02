@@ -68,7 +68,6 @@ export const generateList = async function* generateListGenerator(text, options 
     model = 'fastGoodCheap',
     maxAttempts = 3,
     onProgress,
-    now = new Date(),
     // eslint-disable-next-line no-unused-vars
     _schema,
     ...passThroughOptions
@@ -87,19 +86,14 @@ export const generateList = async function* generateListGenerator(text, options 
     try {
       const modelOptions = createModelOptions(model);
       // eslint-disable-next-line no-await-in-loop
-      const results = await retry(callLlm, {
-        label: 'list-generate',
-        maxAttempts,
-        onProgress,
-        now,
-        chainStartTime: now,
-        llmPrompt: listPrompt,
-        llmConfig: {
-          modelOptions,
-          ...passThroughOptions,
-        },
-        logger: passThroughOptions.logger,
-      });
+      const results = await retry(
+        () => callLlm(listPrompt, { modelOptions, ...passThroughOptions }),
+        {
+          label: 'list-generate',
+          maxAttempts,
+          onProgress,
+        }
+      );
 
       const resultArray = results?.items || results;
       resultsNew = Array.isArray(resultArray) ? resultArray.filter(Boolean) : [];
@@ -163,22 +157,14 @@ export const generateList = async function* generateListGenerator(text, options 
 };
 
 export default async function list(prompt, config = {}) {
-  const { llm, schema, maxAttempts = 3, onProgress, now = new Date(), ...options } = config;
+  const { llm, schema, maxAttempts = 3, onProgress, ...options } = config;
   const fullPrompt = `${prompt}\n\n${onlyJSONArray}`;
 
   const modelOptions = createModelOptions(llm);
-  const response = await retry(callLlm, {
+  const response = await retry(() => callLlm(fullPrompt, { modelOptions, ...options }), {
     label: 'list-main',
     maxAttempts,
     onProgress,
-    now,
-    chainStartTime: now,
-    llmPrompt: fullPrompt,
-    llmConfig: {
-      modelOptions,
-      ...options,
-    },
-    logger: options.logger,
   });
 
   // With structured outputs, response should already be parsed and validated
@@ -192,19 +178,14 @@ export default async function list(prompt, config = {}) {
     const transformedItems = [];
     for (const item of items) {
       const transformPrompt = outputTransformPrompt(item, schema);
-      const transformResponse = await retry(callLlm, {
-        label: 'list-transform',
-        maxAttempts,
-        onProgress,
-        llmPrompt: transformPrompt,
-        llmConfig: {
-          modelOptions: {
-            ...llm,
-          },
-          ...options,
-        },
-        logger: options.logger,
-      });
+      const transformResponse = await retry(
+        () => callLlm(transformPrompt, { modelOptions: { ...llm }, ...options }),
+        {
+          label: 'list-transform',
+          maxAttempts,
+          onProgress,
+        }
+      );
       try {
         const transformedItem = JSON.parse(transformResponse);
         transformedItems.push(transformedItem);

@@ -22,16 +22,17 @@ vi.mock('../../lib/text-batch/index.js', () => ({
   }),
 }));
 
-vi.mock('../../lib/retry/index.js', () => ({
-  default: vi.fn(async (fn) => {
+vi.mock('../../lib/retry/index.js', () => {
+  const mock = vi.fn(async (fn) => {
     try {
       return await fn();
     } catch {
       // Retry once on failure
       return await fn();
     }
-  }),
-}));
+  });
+  return { default: mock };
+});
 
 beforeEach(() => {
   vi.clearAllMocks();

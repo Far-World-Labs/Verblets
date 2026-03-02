@@ -31,7 +31,7 @@ const events = await timeline(newsFragments);
 - `config` (Object): Configuration options
   - `chunkSize` (number): Text chunk size for processing (default: 2000)
   - `maxParallel` (number): Maximum parallel chunk processing (default: 3)
-  - `onProgress` (Function): Progress callback `(current, total) => void`
+  - `onProgress` (Function): Progress callback `(event) => void`. Events from nested reduce/map calls are tagged with `phase` (`'reduce:knowledge-base'`, `'map:enrichment'`)
   - `llm` (Object): LLM model options
   - `enrichWithKnowledge` (boolean): Enrich dates with LLM's historical knowledge (default: false)
 

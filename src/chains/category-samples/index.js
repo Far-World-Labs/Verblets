@@ -1,5 +1,6 @@
 import list from '../list/index.js';
 import retry from '../../lib/retry/index.js';
+import { scopeProgress } from '../../lib/progress-callback/index.js';
 import modelService from '../../services/llm-model/index.js';
 
 /**
@@ -98,7 +99,7 @@ export default async function categorySamples(categoryName, options = {}) {
     const results = await list(prompt, {
       llm: model,
       shouldStop: ({ resultsAll }) => resultsAll.length >= count,
-      onProgress,
+      onProgress: scopeProgress(onProgress, 'list:sampling'),
       now,
     });
 

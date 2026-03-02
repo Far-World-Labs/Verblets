@@ -1,20 +1,11 @@
 import listBatch, { ListStyle, determineStyle } from '../../verblets/list-batch/index.js';
-import createBatches from '../../lib/text-batch/index.js';
-import retry from '../../lib/retry/index.js';
-import parallelBatch from '../../lib/parallel-batch/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import {
   createLifecycleLogger,
   extractBatchConfig,
   extractPromptAnalysis,
 } from '../../lib/lifecycle-logger/index.js';
-import {
-  emitBatchStart,
-  emitBatchComplete,
-  emitBatchProcessed,
-  createBatchProgressCallback,
-  createBatchContext,
-} from '../../lib/progress-callback/index.js';
+import { createBatches, parallel, retry, batchTracker } from '../../lib/index.js';
 
 /**
  * Map over a list of items by calling `listBatch` on XML-enriched batches.
@@ -55,21 +46,15 @@ const mapOnce = async function (list, instructions, config = {}) {
     });
   }
 
-  emitBatchStart(onProgress, 'map', list.length, {
-    totalBatches: batchesToProcess.length,
-    maxParallel,
-    now,
-    chainStartTime: chainStartTime || now,
-  });
+  const effectiveStartTime = chainStartTime || now;
+  const tracker = batchTracker('map', list.length, { onProgress, now: effectiveStartTime });
 
-  let processedBatches = 0;
-  let processedItems = 0;
+  tracker.start(batchesToProcess.length, maxParallel);
 
   // Process batches in parallel using parallelBatch
-  await parallelBatch(
+  await parallel(
     batchesToProcess,
     async ({ items, startIndex }) => {
-      const currentBatchNumber = processedBatches + 1;
       const batchStyle = determineStyle(config.listStyle, items, config.autoModeThreshold);
 
       // Build the compiled prompt for this batch
@@ -116,25 +101,9 @@ Preserve all formatting and newlines within each <item> element.`;
         };
 
         const output = await retry(() => listBatch(items, compiledPrompt, listBatchOptions), {
-          label: `map:batch`,
+          label: 'map:batch',
           maxAttempts: config.maxAttempts || 3,
-          onProgress: createBatchProgressCallback(
-            onProgress,
-            createBatchContext({
-              batchIndex: currentBatchNumber - 1,
-              batchSize: items.length,
-              startIndex,
-              totalItems: list.length,
-              processedItems,
-              totalBatches: batchesToProcess.length,
-              now,
-              chainStartTime: chainStartTime || now,
-            })
-          ),
-          llmPrompt: `${compiledPrompt}\n\nItems: ${JSON.stringify(items).substring(0, 500)}...`,
-          llmConfig: listBatchOptions,
-          now,
-          chainStartTime: chainStartTime || now,
+          onProgress: tracker.forBatch(startIndex, items.length),
         });
 
         // listBatch now returns arrays directly
@@ -146,29 +115,10 @@ Preserve all formatting and newlines within each <item> element.`;
           results[startIndex + j] = item;
         });
 
-        processedBatches++;
-        processedItems += items.length;
-
-        emitBatchProcessed(
-          onProgress,
-          'map',
-          {
-            totalItems: list.length,
-            processedItems,
-            batchNumber: currentBatchNumber,
-            batchSize: items.length,
-          },
-          {
-            batchIndex: `${startIndex}-${startIndex + items.length - 1}`,
-            totalBatches: batchesToProcess.length,
-            now: new Date(),
-            chainStartTime: chainStartTime || now,
-          }
-        );
+        tracker.batchDone(startIndex, items.length);
 
         if (config.logger?.info) {
           config.logger.info(`Map batch completed`, {
-            batchIndex: processedBatches,
             startIndex,
             itemCount: items.length,
             successCount: output.length,
@@ -179,7 +129,6 @@ Preserve all formatting and newlines within each <item> element.`;
         if (config.logger?.error) {
           config.logger.error(`Map batch ${startIndex}-${startIndex + items.length - 1} failed`, {
             error: error.message,
-            batchIndex: processedBatches + 1,
             itemCount: items.length,
           });
         }
@@ -196,11 +145,7 @@ Preserve all formatting and newlines within each <item> element.`;
     }
   );
 
-  emitBatchComplete(onProgress, 'map', list.length, {
-    totalBatches: batchesToProcess.length,
-    now: new Date(),
-    chainStartTime: chainStartTime || now,
-  });
+  tracker.complete();
 
   return results;
 };

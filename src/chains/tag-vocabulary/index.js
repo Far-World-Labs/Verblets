@@ -122,7 +122,7 @@ export function computeTagStatistics(vocabulary, taggedItems, options = {}) {
  * @returns {Promise<Object>} Initial tag vocabulary
  */
 async function generateInitialVocabulary(tagSystemSpec, sampleItems, config = {}) {
-  const { llm, maxAttempts = 3, onProgress, now = new Date(), ...options } = config;
+  const { llm, maxAttempts = 3, onProgress, ...options } = config;
 
   const prompt = `Generate a comprehensive tag vocabulary for categorizing items.
 
@@ -142,28 +142,27 @@ The vocabulary should be complete enough to categorize diverse items along the i
 
 ${onlyJSON}`;
 
-  const response = await retry(callLlm, {
-    label: 'tag-vocabulary-initial',
-    maxAttempts,
-    onProgress,
-    now,
-    chainStartTime: now,
-    llmPrompt: prompt,
-    llmConfig: {
-      modelOptions: {
-        response_format: {
-          type: 'json_schema',
-          json_schema: {
-            name: 'tag_vocabulary_result',
-            schema: tagVocabularyResultSchema,
+  const response = await retry(
+    () =>
+      callLlm(prompt, {
+        modelOptions: {
+          response_format: {
+            type: 'json_schema',
+            json_schema: {
+              name: 'tag_vocabulary_result',
+              schema: tagVocabularyResultSchema,
+            },
           },
         },
-      },
-      llm,
-      ...options,
-    },
-    logger: options.logger,
-  });
+        llm,
+        ...options,
+      }),
+    {
+      label: 'tag-vocabulary-initial',
+      maxAttempts,
+      onProgress,
+    }
+  );
 
   return response;
 }
@@ -177,15 +176,7 @@ ${onlyJSON}`;
  * @returns {Promise<Object>} Refined tag vocabulary
  */
 async function refineVocabulary(vocabulary, taggedItems, tagSystemSpec, config = {}) {
-  const {
-    llm,
-    topN = 3,
-    bottomN = 3,
-    maxAttempts = 3,
-    onProgress,
-    now = new Date(),
-    ...options
-  } = config;
+  const { llm, topN = 3, bottomN = 3, maxAttempts = 3, onProgress, ...options } = config;
 
   // Compute statistics using pure function
   const analysis = computeTagStatistics(vocabulary, taggedItems, { topN, bottomN });
@@ -216,28 +207,27 @@ Return an improved vocabulary that provides better coverage and clearer distinct
 
 ${onlyJSON}`;
 
-  const response = await retry(callLlm, {
-    label: 'tag-vocabulary-refine',
-    maxAttempts,
-    onProgress,
-    now,
-    chainStartTime: now,
-    llmPrompt: prompt,
-    llmConfig: {
-      modelOptions: {
-        response_format: {
-          type: 'json_schema',
-          json_schema: {
-            name: 'tag_vocabulary_result',
-            schema: tagVocabularyResultSchema,
+  const response = await retry(
+    () =>
+      callLlm(prompt, {
+        modelOptions: {
+          response_format: {
+            type: 'json_schema',
+            json_schema: {
+              name: 'tag_vocabulary_result',
+              schema: tagVocabularyResultSchema,
+            },
           },
         },
-      },
-      llm,
-      ...options,
-    },
-    logger: options.logger,
-  });
+        llm,
+        ...options,
+      }),
+    {
+      label: 'tag-vocabulary-refine',
+      maxAttempts,
+      onProgress,
+    }
+  );
 
   return response;
 }
@@ -250,7 +240,7 @@ ${onlyJSON}`;
  * @returns {Promise<Object>} Final refined tag vocabulary
  */
 export default async function tagVocabulary(tagSystemSpec, items, config = {}) {
-  const { tagger, sampleSize = 50, maxAttempts = 3, now = new Date(), ...options } = config;
+  const { tagger, sampleSize = 50, maxAttempts = 3, ...options } = config;
 
   if (!tagger) {
     throw new Error('A tagger function must be provided in config');
@@ -262,7 +252,6 @@ export default async function tagVocabulary(tagSystemSpec, items, config = {}) {
   // Generate initial vocabulary
   const initialVocab = await generateInitialVocabulary(tagSystemSpec, sampleItems, {
     maxAttempts,
-    now,
     ...options,
   });
 
@@ -273,7 +262,6 @@ export default async function tagVocabulary(tagSystemSpec, items, config = {}) {
   // Refine vocabulary based on usage
   const finalVocab = await refineVocabulary(initialVocab, taggedItems, tagSystemSpec, {
     maxAttempts,
-    now,
     ...options,
   });
 

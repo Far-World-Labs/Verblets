@@ -2,6 +2,7 @@ import callLlm from '../../lib/llm/index.js';
 import chunkSentences from '../../lib/chunk-sentences/index.js';
 import retry from '../../lib/retry/index.js';
 import parallelBatch from '../../lib/parallel-batch/index.js';
+import { scopeProgress } from '../../lib/progress-callback/index.js';
 import map from '../map/index.js';
 import reduce from '../reduce/index.js';
 import { timelineEventJsonSchema } from './schemas.js';
@@ -200,7 +201,7 @@ Return as JSON with the same event format, maintaining chronological order.`;
       },
       ...(batchSize !== undefined && { batchSize }),
       llm,
-      onProgress,
+      onProgress: scopeProgress(onProgress, 'reduce:knowledge-base'),
       now,
       ...remainingOptions,
     });
@@ -239,7 +240,7 @@ Return the enriched event as: "YYYY-MM-DD: Event name" or with the appropriate t
         ...(batchSize !== undefined && { batchSize }),
         maxParallel,
         llm,
-        onProgress,
+        onProgress: scopeProgress(onProgress, 'map:enrichment'),
         now,
         ...remainingOptions,
       }

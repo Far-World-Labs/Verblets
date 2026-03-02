@@ -39,7 +39,7 @@ const GROUP_PROCESS_STEPS = `Apply the scale to determine each item's group assi
  * @returns {Promise<Object>} Scale specification with domain, range, and mapping
  */
 export async function scaleSpec(prompt, config = {}) {
-  const { llm, maxAttempts = 3, onProgress, now = new Date(), ...rest } = config;
+  const { llm, maxAttempts = 3, onProgress, ...rest } = config;
 
   const specSystemPrompt = `You are a scale specification generator. Analyze the scaling instructions and produce a clear, comprehensive specification.`;
 
@@ -49,31 +49,30 @@ ${asXML(prompt, { tag: 'scaling-instructions' })}
 
 Provide a JSON object with exactly three string properties:
 - domain: A single string describing expected input types, formats, and valid ranges
-- range: A single string describing output types, formats, and possible values  
+- range: A single string describing output types, formats, and possible values
 - mapping: A single string with clear description of how inputs map to outputs, including any formulas, rules, edge cases, and examples
 
 IMPORTANT: Each property must be a simple string value, not a nested object or array.`;
 
-  const response = await retry(callLlm, {
-    label: 'scale spec',
-    maxAttempts,
-    onProgress,
-    now,
-    chainStartTime: now,
-    llmPrompt: specUserPrompt,
-    llmConfig: {
-      modelOptions: {
-        response_format: {
-          type: 'json_schema',
-          json_schema: scaleSpecificationJsonSchema,
+  const response = await retry(
+    () =>
+      callLlm(specUserPrompt, {
+        modelOptions: {
+          response_format: {
+            type: 'json_schema',
+            json_schema: scaleSpecificationJsonSchema,
+          },
         },
-      },
-      llm,
-      system: specSystemPrompt,
-      ...rest,
-    },
-    logger: rest.logger,
-  });
+        llm,
+        system: specSystemPrompt,
+        ...rest,
+      }),
+    {
+      label: 'scale spec',
+      maxAttempts,
+      onProgress,
+    }
+  );
 
   return response;
 }
@@ -87,7 +86,7 @@ IMPORTANT: Each property must be a simple string value, not a nested object or a
  * @returns {Promise<*>} Scaled value (type depends on specification range)
  */
 export async function applyScale(item, specification, config = {}) {
-  const { llm, maxAttempts = 3, onProgress, now = new Date(), ...options } = config;
+  const { llm, maxAttempts = 3, onProgress, ...options } = config;
 
   const prompt = `Apply the scale specification to transform this item.
 
@@ -100,28 +99,27 @@ Return a JSON object with a "value" property containing the scaled result.
 
 ${onlyJSON}`;
 
-  const response = await retry(callLlm, {
-    label: 'scale item',
-    maxAttempts,
-    onProgress,
-    now,
-    chainStartTime: now,
-    llmPrompt: prompt,
-    llmConfig: {
-      modelOptions: {
-        response_format: {
-          type: 'json_schema',
-          json_schema: {
-            name: 'scale_result',
-            schema: scaleResultSchema,
+  const response = await retry(
+    () =>
+      callLlm(prompt, {
+        modelOptions: {
+          response_format: {
+            type: 'json_schema',
+            json_schema: {
+              name: 'scale_result',
+              schema: scaleResultSchema,
+            },
           },
         },
-      },
-      llm,
-      ...options,
-    },
-    logger: options.logger,
-  });
+        llm,
+        ...options,
+      }),
+    {
+      label: 'scale item',
+      maxAttempts,
+      onProgress,
+    }
+  );
 
   return response;
 }

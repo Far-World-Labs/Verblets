@@ -37,7 +37,7 @@ const tagsMapSchema = {
  * @returns {Promise<string>} Tag specification
  */
 export async function tagSpec(instructions, config = {}) {
-  const { llm, maxAttempts = 3, onProgress, now = new Date(), ...rest } = config;
+  const { llm, maxAttempts = 3, onProgress, ...rest } = config;
 
   const specSystemPrompt = `You are a tag specification generator. Create clear, actionable tagging criteria.`;
 
@@ -53,20 +53,19 @@ Provide a clear specification describing:
 
 Keep it concise and actionable.`;
 
-  const response = await retry(callLlm, {
-    label: 'tags-spec',
-    maxAttempts,
-    onProgress,
-    now,
-    chainStartTime: now,
-    llmPrompt: specUserPrompt,
-    llmConfig: {
-      llm,
-      system: specSystemPrompt,
-      ...rest,
-    },
-    logger: rest.logger,
-  });
+  const response = await retry(
+    () =>
+      callLlm(specUserPrompt, {
+        llm,
+        system: specSystemPrompt,
+        ...rest,
+      }),
+    {
+      label: 'tags-spec',
+      maxAttempts,
+      onProgress,
+    }
+  );
 
   return response;
 }
@@ -80,7 +79,7 @@ Keep it concise and actionable.`;
  * @returns {Promise<Array>} Array of tag IDs
  */
 export async function applyTags(item, specification, vocabulary, config = {}) {
-  const { llm, maxAttempts = 3, onProgress, now = new Date(), ...options } = config;
+  const { llm, maxAttempts = 3, onProgress, ...options } = config;
 
   const prompt = `You are a tagger. Apply tags to the given item based on the specification.
 
@@ -98,28 +97,27 @@ Do NOT return tag labels, descriptions, or full tag objects - ONLY the string ID
 
 ${onlyJSON}`;
 
-  const response = await retry(callLlm, {
-    label: 'tags-apply',
-    maxAttempts,
-    onProgress,
-    now,
-    chainStartTime: now,
-    llmPrompt: prompt,
-    llmConfig: {
-      modelOptions: {
-        response_format: {
-          type: 'json_schema',
-          json_schema: {
-            name: 'tags_result',
-            schema: tagsResultSchema,
+  const response = await retry(
+    () =>
+      callLlm(prompt, {
+        modelOptions: {
+          response_format: {
+            type: 'json_schema',
+            json_schema: {
+              name: 'tags_result',
+              schema: tagsResultSchema,
+            },
           },
         },
-      },
-      llm,
-      ...options,
-    },
-    logger: options.logger,
-  });
+        llm,
+        ...options,
+      }),
+    {
+      label: 'tags-apply',
+      maxAttempts,
+      onProgress,
+    }
+  );
 
   // llm auto-unwraps {items: [...]} to just the array
   return Array.isArray(response) ? response : [];
