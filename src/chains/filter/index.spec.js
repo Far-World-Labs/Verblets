@@ -45,6 +45,25 @@ describe('filter', () => {
     expect(listBatch).toHaveBeenCalledTimes(2);
   });
 
+  describe('filter.for', () => {
+    it('returns a function', () => {
+      const fn = filter.for('contains letter a');
+      expect(typeof fn).toBe('function');
+    });
+
+    it('returns true for matching items', async () => {
+      const fn = filter.for('contains letter a');
+      const result = await fn('apple');
+      expect(result).toBe(true);
+    });
+
+    it('returns false for non-matching items', async () => {
+      const fn = filter.for('contains letter a');
+      const result = await fn('xyz');
+      expect(result).toBe(false);
+    });
+  });
+
   it('retries failed batches', async () => {
     let call = 0;
     listBatch.mockImplementation(async (items) => {

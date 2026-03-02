@@ -63,6 +63,21 @@ describe('reduce chain', () => {
     expect(listBatch).toHaveBeenCalledTimes(1);
   });
 
+  describe('reduce.for', () => {
+    it('returns a function', () => {
+      const fn = reduce.for('join values');
+      expect(typeof fn).toBe('function');
+    });
+
+    it('reduces with accumulator', async () => {
+      const fn = reduce.for('join');
+      const result = await fn('start', 'next');
+      expect(result).toBe('start-next');
+      expect(listBatch).toHaveBeenCalledTimes(1);
+      expect(listBatch).toHaveBeenCalledWith(['next'], expect.any(String), expect.any(Object));
+    });
+  });
+
   it('uses initial value with more elements', async () => {
     const result = await reduce(['x', 'y', 'z'], 'join', { initial: '0', batchSize: 2 });
     expect(result).toBe('0-x-y-z');

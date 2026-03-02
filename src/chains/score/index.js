@@ -385,5 +385,13 @@ ${processing}
   return `${buildScoringInstructions(specification)}\n\n${groupContext}`;
 }
 
+mapScore.for = async function (instructions, config = {}) {
+  const { now = new Date(), ...restConfig } = config;
+  const spec = await scoreSpec(instructions, { now, ...restConfig });
+  return async (item) => {
+    return await applyScore(item, spec, { now, ...restConfig });
+  };
+};
+
 // Default export: Score a list of items
 export default mapScore;

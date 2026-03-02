@@ -224,6 +224,44 @@ describe('score chain', () => {
     });
   });
 
+  describe('score.for', () => {
+    it('is async and returns a function', async () => {
+      scaleSpec.mockResolvedValueOnce(mockSpec);
+      const scorer = await score.for('technical depth');
+      expect(typeof scorer).toBe('function');
+      expect(scaleSpec).toHaveBeenCalledWith(
+        'technical depth',
+        expect.objectContaining({ now: expect.any(Date) })
+      );
+    });
+
+    it('calls scoreSpec once during factory creation', async () => {
+      scaleSpec.mockResolvedValueOnce(mockSpec);
+      llm.mockResolvedValue(7);
+
+      const scorer = await score.for('quality');
+      expect(scaleSpec).toHaveBeenCalledTimes(1);
+
+      await scorer('item1');
+      await scorer('item2');
+      // scoreSpec was only called once, not per-item
+      expect(scaleSpec).toHaveBeenCalledTimes(1);
+      // llm (applyScore) was called per-item
+      expect(llm).toHaveBeenCalledTimes(2);
+    });
+
+    it('returned function scores a single item via applyScore', async () => {
+      scaleSpec.mockResolvedValueOnce(mockSpec);
+      llm.mockResolvedValueOnce(9);
+
+      const scorer = await score.for('depth');
+      const result = await scorer('deep article');
+
+      expect(result).toBe(9);
+      expect(llm).toHaveBeenCalledWith(expect.stringContaining('deep article'), expect.any(Object));
+    });
+  });
+
   describe('instruction builders', () => {
     describe('mapInstructions', () => {
       it('creates map instructions from specification', () => {
