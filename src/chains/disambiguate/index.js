@@ -1,5 +1,5 @@
 import callLlm from '../../lib/llm/index.js';
-import { retry } from '../../lib/retry/index.js';
+import retry from '../../lib/retry/index.js';
 import score from '../score/index.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 import modelService from '../../services/llm-model/index.js';

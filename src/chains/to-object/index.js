@@ -3,7 +3,7 @@ import Ajv from 'ajv';
 import { debugToObject } from '../../constants/common.js';
 import { retryJSONParse } from '../../constants/messages.js';
 import callLlm from '../../lib/llm/index.js';
-import { retry } from '../../lib/retry/index.js';
+import retry from '../../lib/retry/index.js';
 import stripResponse from '../../lib/strip-response/index.js';
 import { constants as promptConstants, asXML } from '../../prompts/index.js';
 

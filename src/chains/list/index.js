@@ -1,6 +1,6 @@
 import { operationTimeoutMultiplier } from '../../constants/models.js';
 import callLlm from '../../lib/llm/index.js';
-import { retry } from '../../lib/retry/index.js';
+import retry from '../../lib/retry/index.js';
 import {
   asObjectWithSchema as asObjectWithSchemaPrompt,
   generateList as generateListPrompt,

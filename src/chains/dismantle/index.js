@@ -1,7 +1,7 @@
 import { v4 as uuid } from 'uuid';
 
 import callLlm from '../../lib/llm/index.js';
-import { retry } from '../../lib/retry/index.js';
+import retry from '../../lib/retry/index.js';
 import { outputSuccinctNames, constants as promptConstants } from '../../prompts/index.js';
 import modelService from '../../services/llm-model/index.js';
 import { subComponentsSchema, componentOptionsSchema } from './schemas.js';

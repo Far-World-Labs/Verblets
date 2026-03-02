@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 
-import { retry } from './index.js';
+import retry from './index.js';
 
 const retryDelayGlobal = 10;
 

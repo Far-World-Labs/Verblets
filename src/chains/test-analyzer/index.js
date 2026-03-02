@@ -1,5 +1,5 @@
 import llm from '../../lib/llm/index.js';
-import { retry } from '../../lib/retry/index.js';
+import retry from '../../lib/retry/index.js';
 import { extractCodeWindow } from '../../lib/code-extractor/index.js';
 
 // File-level constants

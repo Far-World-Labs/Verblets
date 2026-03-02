@@ -32,7 +32,7 @@ vi.mock('../../lib/retry/index.js', () => {
       return await fn();
     }
   });
-  return { retry: mock };
+  return { default: mock };
 });
 
 beforeEach(() => {

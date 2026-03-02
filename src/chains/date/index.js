@@ -1,7 +1,7 @@
 import callLlm from '../../lib/llm/index.js';
 import toDate from '../../lib/to-date/index.js';
 import bool from '../../verblets/bool/index.js';
-import { retry } from '../../lib/retry/index.js';
+import retry from '../../lib/retry/index.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 import { dateExpectationsSchema, dateValueSchema } from './schemas.js';
 import {

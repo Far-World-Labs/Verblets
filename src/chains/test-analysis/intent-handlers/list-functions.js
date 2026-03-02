@@ -3,7 +3,7 @@ import path from 'node:path';
 import { listFunctions } from '../../../lib/parse-js-parts/function-utils.js';
 import score from '../../../chains/score/index.js';
 import llm from '../../../lib/llm/index.js';
-import { retry } from '../../../lib/retry/index.js';
+import retry from '../../../lib/retry/index.js';
 import { bold, cyan, gray } from '../../../chains/test-analysis/output-utils.js';
 import compressedContextSchema from '../schemas/compressed-context.json';
 import { extractAIMdConfig } from '../utils/ai-md-extractor.js';

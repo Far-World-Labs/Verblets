@@ -6,7 +6,7 @@ import {
   traceCaller,
 } from '../../../lib/parse-js-parts/function-utils.js';
 import llm from '../../../lib/llm/index.js';
-import { retry } from '../../../lib/retry/index.js';
+import retry from '../../../lib/retry/index.js';
 import score from '../../../chains/score/index.js';
 import modelService from '../../../services/llm-model/index.js';
 import { bold, cyan } from '../../../chains/test-analysis/output-utils.js';

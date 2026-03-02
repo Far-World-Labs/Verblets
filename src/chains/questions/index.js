@@ -1,7 +1,7 @@
 import * as R from 'ramda';
 
 import callLlm from '../../lib/llm/index.js';
-import { retry } from '../../lib/retry/index.js';
+import retry from '../../lib/retry/index.js';
 import { constants as promptConstants, asXML } from '../../prompts/index.js';
 import modelService from '../../services/llm-model/index.js';
 import { questionsListSchema, selectedQuestionSchema } from './schemas.js';

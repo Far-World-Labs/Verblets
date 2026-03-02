@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import sort from '../sort/index.js';
 import llm from '../../lib/llm/index.js';
 import pathAliases from '../../lib/path-aliases/index.js';
-import { retry } from '../../lib/retry/index.js';
+import retry from '../../lib/retry/index.js';
 import search from '../../lib/search-js-files/index.js';
 import codeFeaturesPrompt from '../../prompts/code-features.js';
 import makeJSONSchema from '../../prompts/features-json-schema.js';

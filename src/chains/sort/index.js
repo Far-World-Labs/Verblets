@@ -1,6 +1,6 @@
 import * as R from 'ramda';
 import callLlm from '../../lib/llm/index.js';
-import { retry } from '../../lib/retry/index.js';
+import retry from '../../lib/retry/index.js';
 import { sort as sortPromptInitial } from '../../prompts/index.js';
 import sortSchema from './sort-result.json';
 import { emitStart, emitComplete, emitStepProgress } from '../../lib/progress-callback/index.js';

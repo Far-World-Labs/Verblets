@@ -1,5 +1,5 @@
 import list from '../list/index.js';
-import { retry } from '../../lib/retry/index.js';
+import retry from '../../lib/retry/index.js';
 import modelService from '../../services/llm-model/index.js';
 
 /**

@@ -101,5 +101,4 @@ async function retry(fn, opts = {}) {
   throw lastError;
 }
 
-export { retry };
 export default retry;

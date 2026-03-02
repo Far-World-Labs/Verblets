@@ -1,5 +1,5 @@
 import callLlm from '../../lib/llm/index.js';
-import { retry } from '../../lib/retry/index.js';
+import retry from '../../lib/retry/index.js';
 import windowFor from '../../lib/window-for/index.js';
 
 /**

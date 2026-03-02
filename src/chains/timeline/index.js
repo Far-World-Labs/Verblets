@@ -1,6 +1,6 @@
 import callLlm from '../../lib/llm/index.js';
 import chunkSentences from '../../lib/chunk-sentences/index.js';
-import { retry } from '../../lib/retry/index.js';
+import retry from '../../lib/retry/index.js';
 import parallelBatch from '../../lib/parallel-batch/index.js';
 import map from '../map/index.js';
 import reduce from '../reduce/index.js';

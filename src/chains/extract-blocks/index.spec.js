@@ -6,7 +6,7 @@ vi.mock('../../lib/llm/index.js');
 vi.mock('../../lib/retry/index.js');
 
 import llm from '../../lib/llm/index.js';
-import { retry } from '../../lib/retry/index.js';
+import retry from '../../lib/retry/index.js';
 
 describe('extract-blocks', () => {
   beforeEach(() => {
