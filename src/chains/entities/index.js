@@ -37,7 +37,7 @@ const GROUP_PROCESS_STEPS = `Extract entities and group them by patterns, types,
  * @returns {Promise<string>} Entity specification as descriptive text
  */
 export async function entitySpec(prompt, config = {}) {
-  const { llm, maxAttempts = 3, onProgress, now = new Date(), ...rest } = config;
+  const { llm, maxAttempts = 3, onProgress, ...rest } = config;
 
   const specSystemPrompt = `You are an entity specification generator. Create a clear, concise specification for entity extraction.`;
 
@@ -52,19 +52,19 @@ Provide a brief specification describing:
 
 Keep it simple and actionable.`;
 
-  const response = await retry(callLlm, {
-    label: 'entities-spec',
-    maxAttempts,
-    onProgress,
-    now,
-    chainStartTime: now,
-    llmPrompt: specUserPrompt,
-    llmConfig: {
-      llm,
-      system: specSystemPrompt,
-      ...rest,
-    },
-  });
+  const response = await retry(
+    () =>
+      callLlm(specUserPrompt, {
+        llm,
+        system: specSystemPrompt,
+        ...rest,
+      }),
+    {
+      label: 'entities-spec',
+      maxAttempts,
+      onProgress,
+    }
+  );
 
   return response;
 }
@@ -77,7 +77,7 @@ Keep it simple and actionable.`;
  * @returns {Promise<Object>} Object with entities array
  */
 export async function applyEntities(text, specification, config = {}) {
-  const { llm, maxAttempts = 3, onProgress, now = new Date(), ...options } = config;
+  const { llm, maxAttempts = 3, onProgress, ...options } = config;
 
   const prompt = `Apply the entity specification to extract entities from this text.
 
@@ -93,27 +93,27 @@ Each entity should include:
 
 ${onlyJSON}`;
 
-  const response = await retry(callLlm, {
-    label: 'entities-apply',
-    maxAttempts,
-    onProgress,
-    now,
-    chainStartTime: now,
-    llmPrompt: prompt,
-    llmConfig: {
-      modelOptions: {
-        response_format: {
-          type: 'json_schema',
-          json_schema: {
-            name: 'entity_result',
-            schema: entityResultSchema,
+  const response = await retry(
+    () =>
+      callLlm(prompt, {
+        modelOptions: {
+          response_format: {
+            type: 'json_schema',
+            json_schema: {
+              name: 'entity_result',
+              schema: entityResultSchema,
+            },
           },
         },
-      },
-      llm,
-      ...options,
-    },
-  });
+        llm,
+        ...options,
+      }),
+    {
+      label: 'entities-apply',
+      maxAttempts,
+      onProgress,
+    }
+  );
 
   return response;
 }
@@ -134,7 +134,7 @@ export async function extractEntities(text, instructions, config = {}) {
     chainStartTime: now,
   });
 
-  const spec = await entitySpec(instructions, { onProgress, now, ...restConfig });
+  const spec = await entitySpec(instructions, { onProgress, ...restConfig });
 
   emitStepProgress(onProgress, 'entities', 'extracting-entities', {
     specification: spec,
@@ -142,7 +142,7 @@ export async function extractEntities(text, instructions, config = {}) {
     chainStartTime: now,
   });
 
-  return await applyEntities(text, spec, { onProgress, now, ...restConfig });
+  return await applyEntities(text, spec, { onProgress, ...restConfig });
 }
 
 // ===== Instruction Builders =====

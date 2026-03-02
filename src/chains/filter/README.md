@@ -32,6 +32,18 @@ const urgent = await filter(emails, 'urgent or time-sensitive messages');
 
 **Returns:** Promise<Array> - Items that match the criteria
 
+## Per-Item Mode
+
+Use `filter.with()` to create a single-item predicate compatible with `p-filter` and similar async utilities:
+
+```javascript
+import filter from './index.js';
+import pFilter from 'p-filter';
+
+const isUrgent = filter.with('urgent or time-sensitive');
+const results = await pFilter(emails, isUrgent, { concurrency: 5 });
+```
+
 ## Use Cases
 
 ### Content Moderation

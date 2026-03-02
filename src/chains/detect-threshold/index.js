@@ -1,6 +1,7 @@
 import reduce from '../reduce/index.js';
 import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
+import { scopeProgress } from '../../lib/progress-callback/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import thresholdResultSchema from './threshold-result.json' with { type: 'json' };
 
@@ -156,21 +157,20 @@ Return the updated accumulator as valid JSON.`;
     dataStrings.push(JSON.stringify(batch));
   }
 
-  // Use reduce to analyze the data in chunks with JSON schema
-  const analysisResponseFormat = {
-    type: 'json_schema',
-    json_schema: {
-      name: 'analysis_accumulator',
-      schema: accumulatorSchema,
-    },
-  };
-
   const analysisResult = await reduce(dataStrings, instructions, {
     initial: JSON.stringify(initialAccumulator),
     chunkSize,
-    responseFormat: analysisResponseFormat,
-    llm,
-    onProgress,
+    llm: {
+      ...llm,
+      response_format: {
+        type: 'json_schema',
+        json_schema: {
+          name: 'analysis_accumulator',
+          schema: accumulatorSchema,
+        },
+      },
+    },
+    onProgress: scopeProgress(onProgress, 'reduce:analysis'),
     now,
     ...options,
   });
@@ -228,18 +228,10 @@ Return threshold candidates with their rationales.`;
     },
   };
 
-  const result = await retry(callLlm, {
+  const result = await retry(() => callLlm(finalPrompt, { modelOptions, ...options }), {
     label: 'detect-threshold-analysis',
     maxAttempts,
     onProgress,
-    now,
-    chainStartTime: now,
-    llmPrompt: finalPrompt,
-    llmConfig: {
-      modelOptions,
-      ...options,
-    },
-    logger: options.logger,
   });
 
   // With structured output, result should already be parsed

@@ -48,25 +48,25 @@ const processCombo = async (combo, instructions, maxAttempts = 3, onProgress, no
 
   // Get elements and description in parallel
   const [elementsResponse, intersectionItems] = await Promise.all([
-    retry(callLlm, {
-      label: 'intersections-elements',
-      maxAttempts,
-      onProgress,
-      now,
-      chainStartTime: now,
-      llmPrompt: INTERSECTION_PROMPT(combo, instructions),
-      llmConfig: {
-        modelOptions: {
-          response_format: {
-            type: 'json_schema',
-            json_schema: {
-              name: 'intersection_elements',
-              schema: intersectionElementsSchema,
+    retry(
+      () =>
+        callLlm(INTERSECTION_PROMPT(combo, instructions), {
+          modelOptions: {
+            response_format: {
+              type: 'json_schema',
+              json_schema: {
+                name: 'intersection_elements',
+                schema: intersectionElementsSchema,
+              },
             },
           },
-        },
-      },
-    }),
+        }),
+      {
+        label: 'intersections-elements',
+        maxAttempts,
+        onProgress,
+      }
+    ),
     commonalities(combo, { instructions, onProgress, now }),
   ]);
 
@@ -139,7 +139,7 @@ export default async function intersections(items, options = {}) {
 
   // Validate results with JSON schema if enabled
   if (useSchemaValidation && Object.keys(results).length > 0) {
-    const validated = await validateIntersectionResults(results, llm, maxAttempts, onProgress, now);
+    const validated = await validateIntersectionResults(results, llm, maxAttempts, onProgress);
     return validated.intersections || results;
   }
 
@@ -184,8 +184,7 @@ async function validateIntersectionResults(
   intersections,
   llm = 'fastGoodCheap',
   maxAttempts = 3,
-  onProgress,
-  now = new Date()
+  onProgress
 ) {
   if (!intersections || Object.keys(intersections).length === 0) {
     return { intersections: {} };
@@ -204,16 +203,10 @@ Return the properly structured JSON object with an "intersections" property cont
 
   try {
     const modelOptions = createModelOptions(llm, 'intersection_result');
-    const response = await retry(callLlm, {
+    const response = await retry(() => callLlm(prompt, { modelOptions }), {
       label: 'intersections-validation',
       maxAttempts,
       onProgress,
-      now,
-      chainStartTime: now,
-      llmPrompt: prompt,
-      llmConfig: {
-        modelOptions,
-      },
     });
     const parsed = typeof response === 'string' ? JSON.parse(response) : response;
 

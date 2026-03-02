@@ -1,22 +1,14 @@
 import listBatch, { ListStyle, determineStyle } from '../../verblets/list-batch/index.js';
-import createBatches from '../../lib/text-batch/index.js';
-import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { filterDecisionsJsonSchema } from './schemas.js';
-import {
-  emitBatchStart,
-  emitBatchComplete,
-  emitBatchProcessed,
-  createBatchProgressCallback,
-  createBatchContext,
-} from '../../lib/progress-callback/index.js';
+import { createBatches, retry, batchTracker } from '../../lib/index.js';
 
 const filterResponseFormat = {
   type: 'json_schema',
   json_schema: filterDecisionsJsonSchema,
 };
 
-export default async function filter(list, instructions, config = {}) {
+const filter = async function filter(list, instructions, config = {}) {
   const {
     listStyle,
     autoModeThreshold,
@@ -50,14 +42,9 @@ export default async function filter(list, instructions, config = {}) {
     });
   }
 
-  emitBatchStart(onProgress, 'filter', list.length, {
-    totalBatches: activeBatches.length,
-    now,
-    chainStartTime: now,
-  });
+  const tracker = batchTracker('filter', list.length, { onProgress, now });
 
-  let processedItems = 0;
-  let processedBatches = 0;
+  tracker.start(activeBatches.length);
 
   for (const [batchIndex, { items, skip, startIndex }] of batches.entries()) {
     if (skip) {
@@ -81,7 +68,7 @@ export default async function filter(list, instructions, config = {}) {
 
 ${asXML(instructions, { tag: 'filtering-criteria' })}
 
-IMPORTANT: 
+IMPORTANT:
 - Evaluate each item independently
 - Consider all aspects of the filtering criteria
 - Return only "yes" or "no" for each item
@@ -118,25 +105,9 @@ Process exactly ${count} items from the XML list below and return ${count} yes/n
     let response;
     try {
       response = await retry(() => listBatch(items, prompt, listBatchOptions), {
-        label: `filter:batch`,
+        label: 'filter:batch',
         maxAttempts,
-        now,
-        chainStartTime: now,
-        onProgress: createBatchProgressCallback(
-          onProgress,
-          createBatchContext({
-            batchIndex: processedBatches,
-            batchSize: items.length,
-            startIndex,
-            totalItems: list.length,
-            processedItems,
-            totalBatches: activeBatches.length,
-            now,
-            chainStartTime: now,
-          })
-        ),
-        llmPrompt: `${prompt}\n\nItems: ${JSON.stringify(items).substring(0, 500)}...`,
-        llmConfig: listBatchOptions,
+        onProgress: tracker.forBatch(startIndex, items.length),
       });
     } catch (error) {
       if (logger?.error) {
@@ -168,25 +139,7 @@ Process exactly ${count} items from the XML list below and return ${count} yes/n
       }
     });
 
-    processedItems += items.length;
-    processedBatches++;
-
-    emitBatchProcessed(
-      onProgress,
-      'filter',
-      {
-        totalItems: list.length,
-        processedItems,
-        batchNumber: processedBatches,
-        batchSize: items.length,
-      },
-      {
-        batchIndex: `${startIndex}-${startIndex + items.length - 1}`,
-        totalBatches: activeBatches.length,
-        now: new Date(),
-        chainStartTime: now,
-      }
-    );
+    tracker.batchDone(startIndex, items.length);
 
     if (logger?.info) {
       logger.info(`Batch ${batchIndex} processed`, {
@@ -197,11 +150,7 @@ Process exactly ${count} items from the XML list below and return ${count} yes/n
     }
   }
 
-  emitBatchComplete(onProgress, 'filter', list.length, {
-    totalBatches: activeBatches.length,
-    now: new Date(),
-    chainStartTime: now,
-  });
+  tracker.complete();
 
   if (logger?.info) {
     logger.info('Filter chain complete', {
@@ -212,6 +161,13 @@ Process exactly ${count} items from the XML list below and return ${count} yes/n
   }
 
   return results;
-}
+};
 
-export const filterOnce = filter;
+filter.with = function (criteria, config = {}) {
+  return async (item) => {
+    const results = await filter([item], criteria, config);
+    return results.length > 0;
+  };
+};
+
+export default filter;

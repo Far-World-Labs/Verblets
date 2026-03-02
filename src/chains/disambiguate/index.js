@@ -4,7 +4,7 @@ import score from '../score/index.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 import modelService from '../../services/llm-model/index.js';
 import disambiguateMeaningsSchema from './disambiguate-meanings-result.json';
-import { emitStepProgress } from '../../lib/progress-callback/index.js';
+import { emitStepProgress, scopeProgress } from '../../lib/progress-callback/index.js';
 
 const { onlyJSONStringArray } = promptConstants;
 
@@ -48,25 +48,24 @@ export const getMeanings = async (term, config = {}) => {
     llm,
     maxAttempts = 3,
     onProgress,
-    now = new Date(),
     ...options
   } = config;
   const prompt = meaningsPrompt(term);
   const budget = model.budgetTokens(prompt);
   const modelOptions = createModelOptions(llm);
-  const response = await retry(callLlm, {
-    label: 'disambiguate-get-meanings',
-    maxAttempts,
-    onProgress,
-    now,
-    chainStartTime: now,
-    llmPrompt: prompt,
-    llmConfig: {
-      maxTokens: budget.completion,
-      modelOptions,
-      ...options,
-    },
-  });
+  const response = await retry(
+    () =>
+      callLlm(prompt, {
+        maxTokens: budget.completion,
+        modelOptions,
+        ...options,
+      }),
+    {
+      label: 'disambiguate-get-meanings',
+      maxAttempts,
+      onProgress,
+    }
+  );
 
   const resultArray = response?.meanings || response;
   return Array.isArray(resultArray) ? resultArray.filter(Boolean) : [];
@@ -106,7 +105,7 @@ export default async function disambiguate({
   const scores = await score(
     meanings,
     `how well this meaning of "${term}" matches the context: ${context}`,
-    { llm, onProgress, now, ...options }
+    { llm, onProgress: scopeProgress(onProgress, 'score:relevance'), now, ...options }
   );
 
   let bestIndex = 0;

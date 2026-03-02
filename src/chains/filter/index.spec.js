@@ -22,16 +22,17 @@ vi.mock('../../lib/text-batch/index.js', () => ({
   }),
 }));
 
-vi.mock('../../lib/retry/index.js', () => ({
-  default: vi.fn(async (fn) => {
+vi.mock('../../lib/retry/index.js', () => {
+  const mock = vi.fn(async (fn) => {
     try {
       return await fn();
     } catch {
       // Retry once on failure
       return await fn();
     }
-  }),
-}));
+  });
+  return { default: mock };
+});
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -42,6 +43,25 @@ describe('filter', () => {
     const result = await filter(['a', 'b', 'c'], 'a', { batchSize: 2 });
     expect(result).toStrictEqual(['a']);
     expect(listBatch).toHaveBeenCalledTimes(2);
+  });
+
+  describe('filter.with', () => {
+    it('returns a function', () => {
+      const fn = filter.with('contains letter a');
+      expect(typeof fn).toBe('function');
+    });
+
+    it('returns true for matching items', async () => {
+      const fn = filter.with('contains letter a');
+      const result = await fn('apple');
+      expect(result).toBe(true);
+    });
+
+    it('returns false for non-matching items', async () => {
+      const fn = filter.with('contains letter a');
+      const result = await fn('xyz');
+      expect(result).toBe(false);
+    });
   });
 
   it('retries failed batches', async () => {

@@ -1,6 +1,7 @@
 import collectTerms from '../collect-terms/index.js';
 import score from '../score/index.js';
 import map from '../map/index.js';
+import { scopeProgress } from '../../lib/progress-callback/index.js';
 import TextSimilarity from '../../lib/text-similarity/index.js';
 
 // Token cost estimates
@@ -131,7 +132,7 @@ async function expandQuery(query, tokenBudget, llm, onProgress, now = new Date()
       topN: 5,
       chunkLen: 500,
       llm,
-      onProgress,
+      onProgress: scopeProgress(onProgress, 'collect-terms:query-expansion'),
       now,
     });
     // console.log(`[expandQuery] Collected ${terms.length} terms:`, terms);
@@ -244,7 +245,12 @@ async function scoreEdgeChunks(candidates, query, maxChunks, llm, options = {}) 
   const scores = await score(
     cleanedChunks,
     `relevance to query: "${query}" (0=unrelated, 5=partially related, 10=directly answers)`,
-    { chunkSize: LLM_CHUNK_BATCH_SIZE, llm, onProgress, now }
+    {
+      chunkSize: LLM_CHUNK_BATCH_SIZE,
+      llm,
+      onProgress: scopeProgress(onProgress, 'score:edge-ranking'),
+      now,
+    }
   );
 
   // console.log(`[scoreEdgeChunks] Received scores:`, scores);
@@ -305,7 +311,7 @@ async function compressHighValueChunks(
   const texts = await map(
     cleanedTexts,
     `Extract key parts answering: "${query}". Preserve important details. Target ${compressionTarget}% of original.`,
-    { chunkSize: 10, llm, onProgress, now }
+    { chunkSize: 10, llm, onProgress: scopeProgress(onProgress, 'map:compression'), now }
   );
 
   const compressed = [];

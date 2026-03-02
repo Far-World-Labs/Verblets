@@ -15,7 +15,7 @@ vi.mock('../../lib/text-batch/index.js', () => ({
 }));
 
 vi.mock('../../lib/retry/index.js', () => ({
-  default: vi.fn((fn) => fn()),
+  default: vi.fn(async (fn) => fn()),
 }));
 
 vi.mock('../../verblets/list-batch/index.js', () => ({
@@ -61,6 +61,21 @@ describe('reduce chain', () => {
     const result = await reduce(['x', 'y'], 'join', { initial: '0', batchSize: 2 });
     expect(result).toBe('0-x-y');
     expect(listBatch).toHaveBeenCalledTimes(1);
+  });
+
+  describe('reduce.with', () => {
+    it('returns a function', () => {
+      const fn = reduce.with('join values');
+      expect(typeof fn).toBe('function');
+    });
+
+    it('reduces with accumulator', async () => {
+      const fn = reduce.with('join');
+      const result = await fn('start', 'next');
+      expect(result).toBe('start-next');
+      expect(listBatch).toHaveBeenCalledTimes(1);
+      expect(listBatch).toHaveBeenCalledWith(['next'], expect.any(String), expect.any(Object));
+    });
   });
 
   it('uses initial value with more elements', async () => {

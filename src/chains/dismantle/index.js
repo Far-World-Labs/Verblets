@@ -77,34 +77,33 @@ const defaultDecompose = async ({
   model = modelService.getBestPublicModel(),
   maxAttempts = 3,
   onProgress,
-  now = new Date(),
 } = {}) => {
   const focusFormatted = focus ? `: ${focus}` : '';
 
   const promptCreated = subComponentsPrompt(`${name}${focusFormatted}`, rootName, fixes);
   const budget = model.budgetTokens(promptCreated);
-  const result = await retry(callLlm, {
-    label: 'dismantle-decompose',
-    maxAttempts,
-    onProgress,
-    now,
-    chainStartTime: now,
-    llmPrompt: promptCreated,
-    llmConfig: {
-      modelOptions: {
-        maxTokens: budget.completion,
-        frequencyPenalty: 0.7,
-        temperature: 0.7,
-        response_format: {
-          type: 'json_schema',
-          json_schema: {
-            name: 'subcomponents',
-            schema: subComponentsSchema,
+  const result = await retry(
+    () =>
+      callLlm(promptCreated, {
+        modelOptions: {
+          maxTokens: budget.completion,
+          frequencyPenalty: 0.7,
+          temperature: 0.7,
+          response_format: {
+            type: 'json_schema',
+            json_schema: {
+              name: 'subcomponents',
+              schema: subComponentsSchema,
+            },
           },
         },
-      },
-    },
-  });
+      }),
+    {
+      label: 'dismantle-decompose',
+      maxAttempts,
+      onProgress,
+    }
+  );
   return result;
 };
 
@@ -115,32 +114,31 @@ const defaultEnhance = async ({
   model = modelService.getBestPublicModel(),
   maxAttempts = 3,
   onProgress,
-  now = new Date(),
 } = {}) => {
   const promptCreated = componentOptionsPrompt(name, rootName, fixes);
   const budget = model.budgetTokens(promptCreated);
-  const result = await retry(callLlm, {
-    label: 'dismantle-enhance',
-    maxAttempts,
-    onProgress,
-    now,
-    chainStartTime: now,
-    llmPrompt: promptCreated,
-    llmConfig: {
-      modelOptions: {
-        maxTokens: budget.completion,
-        frequencyPenalty: 0.5,
-        temperature: 0.3,
-        response_format: {
-          type: 'json_schema',
-          json_schema: {
-            name: 'component_options',
-            schema: componentOptionsSchema,
+  const result = await retry(
+    () =>
+      callLlm(promptCreated, {
+        modelOptions: {
+          maxTokens: budget.completion,
+          frequencyPenalty: 0.5,
+          temperature: 0.3,
+          response_format: {
+            type: 'json_schema',
+            json_schema: {
+              name: 'component_options',
+              schema: componentOptionsSchema,
+            },
           },
         },
-      },
-    },
-  });
+      }),
+    {
+      label: 'dismantle-enhance',
+      maxAttempts,
+      onProgress,
+    }
+  );
   const options = result;
 
   return {

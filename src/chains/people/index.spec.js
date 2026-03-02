@@ -8,7 +8,7 @@ vi.mock('../../lib/llm/index.js', () => ({
 }));
 
 vi.mock('../../lib/retry/index.js', () => ({
-  default: vi.fn(async (fn) => await fn()),
+  default: vi.fn(async (fn) => fn()),
 }));
 
 describe('peopleList chain', () => {

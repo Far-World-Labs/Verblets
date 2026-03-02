@@ -15,18 +15,14 @@ vi.mock('../../lib/text-batch/index.js', () => ({
 }));
 
 vi.mock('../../lib/retry/index.js', () => ({
-  default: vi.fn(async (fn, options) => {
-    if (options?.onProgress) {
-      options.onProgress({
-        step: options.label || 'retry',
-        event: 'start',
-        attemptNumber: 1,
-      });
+  default: vi.fn(async (fn, opts = {}) => {
+    if (opts.onProgress) {
+      opts.onProgress({ step: opts.label || 'retry', event: 'start', attemptNumber: 1 });
     }
     const result = await fn();
-    if (options?.onProgress) {
-      options.onProgress({
-        step: options.label || 'retry',
+    if (opts.onProgress) {
+      opts.onProgress({
+        step: opts.label || 'retry',
         event: 'complete',
         attemptNumber: 1,
         success: true,
@@ -99,6 +95,29 @@ describe('map', () => {
     });
     expect(result).toStrictEqual(['ALPHA', 'BETA']);
     expect(listBatch).toHaveBeenCalledTimes(3);
+  });
+
+  describe('map.with', () => {
+    it('returns a function', () => {
+      const fn = map.with('translate to French');
+      expect(typeof fn).toBe('function');
+    });
+
+    it('processes a single item', async () => {
+      listBatch.mockImplementationOnce(async (items) => items.map((i) => `${i}-mapped`));
+      const fn = map.with('transform');
+      const result = await fn('hello');
+      expect(result).toBe('hello-mapped');
+      expect(listBatch).toHaveBeenCalledTimes(1);
+      expect(listBatch).toHaveBeenCalledWith(['hello'], expect.any(String), expect.any(Object));
+    });
+
+    it('returns undefined on error', async () => {
+      listBatch.mockRejectedValueOnce(new Error('fail'));
+      const fn = map.with('transform');
+      const result = await fn('item');
+      expect(result).toBeUndefined();
+    });
   });
 
   describe('progress callbacks', () => {

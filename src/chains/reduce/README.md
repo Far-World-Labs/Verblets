@@ -58,3 +58,15 @@ const summary = await reduce(
 
 **Returns:** Promise<*> - Final accumulated value (type depends on instructions and responseFormat)
 
+## Per-Item Mode
+
+Use `reduce.with()` to create a step function compatible with `p-reduce` and similar async utilities:
+
+```javascript
+import reduce from './index.js';
+import pReduce from 'p-reduce';
+
+const step = reduce.with('sum the values');
+const total = await pReduce(items, step, 0);
+```
+

@@ -1,17 +1,15 @@
 import callLlm from '../../lib/llm/index.js';
-import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 import { scaleSpec } from '../scale/index.js';
 import listBatch from '../../verblets/list-batch/index.js';
-import createBatches from '../../lib/text-batch/index.js';
-import parallelBatch from '../../lib/parallel-batch/index.js';
 import {
   emitBatchStart,
   emitBatchComplete,
   emitBatchProcessed,
   emitPhaseProgress,
 } from '../../lib/progress-callback/index.js';
+import { createBatches, parallel, retry } from '../../lib/index.js';
 import scoreSingleResultSchema from './score-single-result.json';
 
 const { onlyJSON } = promptConstants;
@@ -69,7 +67,7 @@ export const scoreSpec = scaleSpec;
  * @returns {Promise<*>} Score value (type depends on specification range)
  */
 export async function applyScore(item, specification, config = {}) {
-  const { llm, maxAttempts = 3, onProgress, now = new Date(), ...options } = config;
+  const { llm, maxAttempts = 3, onProgress, ...options } = config;
 
   const prompt = `Apply the score specification to evaluate this item.
 
@@ -82,27 +80,24 @@ ${onlyJSON}
 
 ${asXML(item, { tag: 'item' })}`;
 
-  const response = await retry(callLlm, {
+  const llmConfig = {
+    modelOptions: {
+      response_format: {
+        type: 'json_schema',
+        json_schema: {
+          name: 'score_single_result',
+          schema: scoreSingleResultSchema,
+        },
+      },
+    },
+    llm,
+    ...options,
+  };
+
+  const response = await retry(() => callLlm(prompt, llmConfig), {
     label: 'score item',
     maxAttempts,
     onProgress,
-    now,
-    chainStartTime: now,
-    llmPrompt: prompt,
-    llmConfig: {
-      modelOptions: {
-        response_format: {
-          type: 'json_schema',
-          json_schema: {
-            name: 'score_single_result',
-            schema: scoreSingleResultSchema,
-          },
-        },
-      },
-      llm,
-      ...options,
-    },
-    logger: options.logger,
   });
 
   // llm auto-unwraps single value property, returns the number directly
@@ -184,7 +179,7 @@ async function scoreOnce(list, prompt, batchConfig, options) {
     const anchoredPrompt = anchorBlock ? `${prompt}\n${anchorBlock}` : prompt;
     let processedItems = batchesToProcess[0].items.length;
 
-    await parallelBatch(
+    await parallel(
       batchesToProcess.slice(1),
       async ({ items, startIndex }, batchIndex) => {
         try {
@@ -389,6 +384,14 @@ ${processing}
 
   return `${buildScoringInstructions(specification)}\n\n${groupContext}`;
 }
+
+mapScore.with = async function (instructions, config = {}) {
+  const { now = new Date(), ...restConfig } = config;
+  const spec = await scoreSpec(instructions, { now, ...restConfig });
+  return async (item) => {
+    return await applyScore(item, spec, { now, ...restConfig });
+  };
+};
 
 // Default export: Score a list of items
 export default mapScore;

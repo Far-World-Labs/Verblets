@@ -52,7 +52,6 @@ export default async function popReference(sentence, description, options = {}) 
     llm,
     maxAttempts = 3,
     onProgress,
-    now = new Date(),
     ...restOptions
   } = options;
 
@@ -107,19 +106,18 @@ Requirements:
 ${onlyJSON}`;
 
   const modelOptions = createModelOptions(llm);
-  const response = await retry(callLlm, {
-    label: 'pop-reference',
-    maxAttempts,
-    onProgress,
-    now,
-    chainStartTime: now,
-    llmPrompt: prompt,
-    llmConfig: {
-      modelOptions,
-      ...restOptions,
-    },
-    logger: restOptions.logger,
-  });
+  const response = await retry(
+    () =>
+      callLlm(prompt, {
+        modelOptions,
+        ...restOptions,
+      }),
+    {
+      label: 'pop-reference',
+      maxAttempts,
+      onProgress,
+    }
+  );
 
   const references = response?.references || response;
 
