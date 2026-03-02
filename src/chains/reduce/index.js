@@ -17,6 +17,7 @@ const reduce = async function reduce(list, instructions, config = {}) {
     autoModeThreshold,
     responseFormat,
     llm,
+    logger,
     maxAttempts = 3,
     onProgress,
     now = new Date(),
@@ -76,6 +77,7 @@ Process exactly ${count} items from the ${itemFormat} list below and return the 
       autoModeThreshold,
       responseFormat: effectiveResponseFormat,
       llm,
+      logger,
       ...options,
     };
 

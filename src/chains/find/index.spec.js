@@ -48,6 +48,13 @@ describe('find chain', () => {
     expect(listBatch).toHaveBeenCalledTimes(2);
   });
 
+  it('forwards logger to listBatch', async () => {
+    const logger = { info: vi.fn(), debug: vi.fn() };
+    await find(['a', 'b'], 'find a', { batchSize: 10, logger });
+    const callConfig = listBatch.mock.calls[0][2];
+    expect(callConfig.logger).toBe(logger);
+  });
+
   it('retries on failure', async () => {
     let callCount = 0;
     listBatch.mockImplementation(async (items) => {

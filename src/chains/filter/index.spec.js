@@ -64,6 +64,13 @@ describe('filter', () => {
     });
   });
 
+  it('forwards logger to listBatch', async () => {
+    const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
+    await filter(['apple', 'box'], 'contains a', { batchSize: 10, logger });
+    const callConfig = listBatch.mock.calls[0][2];
+    expect(callConfig.logger).toBe(logger);
+  });
+
   it('retries failed batches', async () => {
     let call = 0;
     listBatch.mockImplementation(async (items) => {

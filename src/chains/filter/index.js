@@ -91,6 +91,7 @@ Process exactly ${count} items from the XML list below and return ${count} yes/n
       autoModeThreshold,
       responseFormat: responseFormat ?? filterResponseFormat,
       llm,
+      logger,
       ...options,
     };
 

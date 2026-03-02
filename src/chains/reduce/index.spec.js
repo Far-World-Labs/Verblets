@@ -78,6 +78,13 @@ describe('reduce chain', () => {
     });
   });
 
+  it('forwards logger to listBatch', async () => {
+    const logger = { info: vi.fn(), debug: vi.fn() };
+    await reduce(['a', 'b'], 'join', { batchSize: 2, logger });
+    const callConfig = listBatch.mock.calls[0][2];
+    expect(callConfig.logger).toBe(logger);
+  });
+
   it('uses initial value with more elements', async () => {
     const result = await reduce(['x', 'y', 'z'], 'join', { initial: '0', batchSize: 2 });
     expect(result).toBe('0-x-y-z');

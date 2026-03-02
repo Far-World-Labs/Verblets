@@ -8,13 +8,14 @@ const findResponseFormat = {
   json_schema: findResultJsonSchema,
 };
 
-const find = async function (list, instructions, config = {}) {
+const find = async function find(list, instructions, config = {}) {
   const {
     maxParallel = 3,
     listStyle,
     autoModeThreshold,
     responseFormat,
     llm,
+    logger,
     onProgress,
     now = new Date(),
     ...options
@@ -71,6 +72,7 @@ Process exactly ${count} items from the XML list below and return the single bes
                 autoModeThreshold,
                 responseFormat: responseFormat || findResponseFormat,
                 llm,
+                logger,
                 ...options,
               }),
             {
@@ -117,5 +119,4 @@ Process exactly ${count} items from the XML list below and return the single bes
   return '';
 };
 
-export const findOnce = find;
 export default find;
