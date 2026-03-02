@@ -98,7 +98,7 @@ export default async function centralTendency(items, seedItems, config = {}) {
       maxAttempts,
       responseFormat: centralTendencyResponseFormat,
       logger: lifecycleLogger, // Pass logger to map for its own logging
-      onProgress: scopeProgress(onProgress, 'analysis'),
+      onProgress: scopeProgress(onProgress, 'map:evaluation'),
       now,
     });
 

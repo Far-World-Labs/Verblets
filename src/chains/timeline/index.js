@@ -201,7 +201,7 @@ Return as JSON with the same event format, maintaining chronological order.`;
       },
       ...(batchSize !== undefined && { batchSize }),
       llm,
-      onProgress: scopeProgress(onProgress, 'knowledge-base'),
+      onProgress: scopeProgress(onProgress, 'reduce:knowledge-base'),
       now,
       ...remainingOptions,
     });
@@ -240,7 +240,7 @@ Return the enriched event as: "YYYY-MM-DD: Event name" or with the appropriate t
         ...(batchSize !== undefined && { batchSize }),
         maxParallel,
         llm,
-        onProgress: scopeProgress(onProgress, 'enrichment'),
+        onProgress: scopeProgress(onProgress, 'map:enrichment'),
         now,
         ...remainingOptions,
       }

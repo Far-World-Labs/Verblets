@@ -105,7 +105,7 @@ export default async function disambiguate({
   const scores = await score(
     meanings,
     `how well this meaning of "${term}" matches the context: ${context}`,
-    { llm, onProgress: scopeProgress(onProgress, 'scoring'), now, ...options }
+    { llm, onProgress: scopeProgress(onProgress, 'score:relevance'), now, ...options }
   );
 
   let bestIndex = 0;

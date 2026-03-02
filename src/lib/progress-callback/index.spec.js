@@ -6,7 +6,7 @@ describe('scopeProgress', () => {
   it('adds phase to events passed through', () => {
     const events = [];
     const onProgress = (event) => events.push(event);
-    const scoped = scopeProgress(onProgress, 'category-discovery');
+    const scoped = scopeProgress(onProgress, 'reduce:category-discovery');
 
     scoped({ step: 'reduce', event: 'start', totalItems: 10 });
     scoped({ step: 'reduce', event: 'complete', totalItems: 10 });
@@ -16,35 +16,54 @@ describe('scopeProgress', () => {
       step: 'reduce',
       event: 'start',
       totalItems: 10,
-      phase: 'category-discovery',
+      phase: 'reduce:category-discovery',
     });
     expect(events[1]).toEqual({
       step: 'reduce',
       event: 'complete',
       totalItems: 10,
-      phase: 'category-discovery',
+      phase: 'reduce:category-discovery',
     });
   });
 
   it('returns undefined when no callback provided', () => {
-    expect(scopeProgress(undefined, 'scoring')).toBeUndefined();
-    expect(scopeProgress(null, 'scoring')).toBeUndefined();
+    expect(scopeProgress(undefined, 'score:relevance')).toBeUndefined();
+    expect(scopeProgress(null, 'score:relevance')).toBeUndefined();
   });
 
-  it('overwrites existing phase field on the event', () => {
+  it('composes nested phases with / separator', () => {
     const events = [];
-    const onProgress = (event) => events.push(event);
-    const scoped = scopeProgress(onProgress, 'enrichment');
+    const consumer = (event) => events.push(event);
 
-    scoped({ step: 'map', event: 'start', phase: 'old-phase' });
+    // Outer orchestrator scopes group
+    const outerScoped = scopeProgress(consumer, 'group:assignment');
+    // Inner group scopes its reduce call
+    const innerScoped = scopeProgress(outerScoped, 'reduce:category-discovery');
 
-    expect(events[0].phase).toBe('enrichment');
+    innerScoped({ step: 'reduce', event: 'start' });
+
+    expect(events[0].phase).toBe('group:assignment/reduce:category-discovery');
+  });
+
+  it('composes three levels of nesting', () => {
+    const events = [];
+    const consumer = (event) => events.push(event);
+
+    const level1 = scopeProgress(consumer, 'orchestrator:phase-a');
+    const level2 = scopeProgress(level1, 'group:assignment');
+    const level3 = scopeProgress(level2, 'reduce:category-discovery');
+
+    level3({ step: 'reduce', event: 'batch:complete', processedItems: 5 });
+
+    expect(events[0].phase).toBe('orchestrator:phase-a/group:assignment/reduce:category-discovery');
+    expect(events[0].step).toBe('reduce');
+    expect(events[0].processedItems).toBe(5);
   });
 
   it('preserves all original event fields', () => {
     const events = [];
     const onProgress = (event) => events.push(event);
-    const scoped = scopeProgress(onProgress, 'scoring');
+    const scoped = scopeProgress(onProgress, 'score:edge-ranking');
 
     scoped({
       step: 'score',
@@ -62,7 +81,7 @@ describe('scopeProgress', () => {
       processedItems: 25,
       batchNumber: 1,
       customField: 'preserved',
-      phase: 'scoring',
+      phase: 'score:edge-ranking',
     });
   });
 });
@@ -73,14 +92,14 @@ describe('batchTracker.scopedProgress', () => {
     const onProgress = (event) => events.push(event);
     const tracker = batchTracker('map', 10, { onProgress });
 
-    const scoped = tracker.scopedProgress('nested-phase');
+    const scoped = tracker.scopedProgress('reduce:refinement');
     scoped({ step: 'reduce', event: 'start' });
 
     expect(events).toHaveLength(1);
     expect(events[0]).toEqual({
       step: 'reduce',
       event: 'start',
-      phase: 'nested-phase',
+      phase: 'reduce:refinement',
     });
   });
 

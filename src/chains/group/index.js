@@ -102,7 +102,7 @@ export default async function group(list, instructions, config = {}) {
     initial: '',
     llm,
     ...options,
-    onProgress: scopeProgress(onProgress, 'category-discovery'),
+    onProgress: scopeProgress(onProgress, 'reduce:category-discovery'),
   });
 
   const categories = parseCategories(categoriesString);

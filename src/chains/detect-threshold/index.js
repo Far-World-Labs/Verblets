@@ -171,7 +171,7 @@ Return the updated accumulator as valid JSON.`;
         },
       },
     },
-    onProgress: scopeProgress(onProgress, 'threshold-analysis'),
+    onProgress: scopeProgress(onProgress, 'reduce:analysis'),
     now,
     ...options,
   });

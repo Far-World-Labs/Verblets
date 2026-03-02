@@ -280,7 +280,8 @@ export function batchTracker(chainName, totalItems, { onProgress, now = new Date
 export function scopeProgress(onProgress, phase) {
   if (!onProgress) return undefined;
   return (event) => {
-    onProgress({ ...event, phase });
+    const composed = event.phase ? `${phase}/${event.phase}` : phase;
+    onProgress({ ...event, phase: composed });
   };
 }
 

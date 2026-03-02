@@ -132,7 +132,7 @@ async function expandQuery(query, tokenBudget, llm, onProgress, now = new Date()
       topN: 5,
       chunkLen: 500,
       llm,
-      onProgress: scopeProgress(onProgress, 'term-collection'),
+      onProgress: scopeProgress(onProgress, 'collect-terms:query-expansion'),
       now,
     });
     // console.log(`[expandQuery] Collected ${terms.length} terms:`, terms);
@@ -245,7 +245,12 @@ async function scoreEdgeChunks(candidates, query, maxChunks, llm, options = {}) 
   const scores = await score(
     cleanedChunks,
     `relevance to query: "${query}" (0=unrelated, 5=partially related, 10=directly answers)`,
-    { chunkSize: LLM_CHUNK_BATCH_SIZE, llm, onProgress: scopeProgress(onProgress, 'scoring'), now }
+    {
+      chunkSize: LLM_CHUNK_BATCH_SIZE,
+      llm,
+      onProgress: scopeProgress(onProgress, 'score:edge-ranking'),
+      now,
+    }
   );
 
   // console.log(`[scoreEdgeChunks] Received scores:`, scores);
@@ -306,7 +311,7 @@ async function compressHighValueChunks(
   const texts = await map(
     cleanedTexts,
     `Extract key parts answering: "${query}". Preserve important details. Target ${compressionTarget}% of original.`,
-    { chunkSize: 10, llm, onProgress: scopeProgress(onProgress, 'extraction'), now }
+    { chunkSize: 10, llm, onProgress: scopeProgress(onProgress, 'map:compression'), now }
   );
 
   const compressed = [];
