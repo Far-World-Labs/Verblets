@@ -82,5 +82,9 @@ Available verblets:
 - [to-object](./to-object) – see its [README](./to-object/README.md) for details.
 - [list-batch](./list-batch) - generic batched list operations with XML/newline auto-detection
 - [list-expand](./list-expand) - expand lists with similar items with prompts
+- [embed-rewrite-query](./embed-rewrite-query) - rewrite search queries for clarity
+- [embed-multi-query](./embed-multi-query) - generate diverse query variants
+- [embed-step-back](./embed-step-back) - broaden queries to underlying concepts
+- [embed-subquestions](./embed-subquestions) - split complex queries into sub-questions
 
 Use these modules directly or compose them inside [chains](../chains/README.md).

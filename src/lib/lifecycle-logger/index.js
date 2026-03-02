@@ -153,8 +153,8 @@ export const createLifecycleLogger = (baseLogger, namespace) => {
           typeof input === 'string'
             ? input.length
             : Array.isArray(input)
-            ? input.length
-            : undefined,
+              ? input.length
+              : undefined,
         timestamp: new Date().toISOString(),
       });
 

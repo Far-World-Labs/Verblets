@@ -1,0 +1,68 @@
+import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
+
+import embedRewriteQuery from './index.js';
+import { longTestTimeout } from '../../constants/common.js';
+import vitestAiExpect from '../../chains/expect/index.js';
+
+import {
+  makeWrappedIt,
+  makeWrappedExpect,
+  makeWrappedAiExpect,
+} from '../../chains/test-analysis/test-wrappers.js';
+import { getConfig } from '../../chains/test-analysis/config.js';
+
+const config = getConfig();
+const suite = 'embed-rewrite-query';
+
+const it = makeWrappedIt(vitestIt, suite, config);
+const expect = makeWrappedExpect(vitestExpect, suite, config);
+const aiExpect = makeWrappedAiExpect(vitestAiExpect, suite, config);
+
+const makeTestLogger = (testName) => {
+  return config?.aiMode && globalThis.logger
+    ? globalThis.logger.child({ suite, testName })
+    : undefined;
+};
+
+describe('embed-rewrite-query', () => {
+  it(
+    'rewrites an ambiguous query into a clearer version',
+    async () => {
+      const result = await embedRewriteQuery('plants food', {
+        logger: makeTestLogger('rewrites an ambiguous query into a clearer version'),
+      });
+
+      expect(typeof result).toBe('string');
+      expect(result.length).toBeGreaterThan(0);
+      expect(result).not.toBe('plants food');
+
+      await aiExpect({
+        original: 'plants food',
+        rewritten: result,
+      }).toSatisfy(
+        'The rewritten query is a clearer, more specific version of the vague original "plants food". It should expand the meaning (e.g. photosynthesis, plant nutrition) rather than just rephrasing.'
+      );
+    },
+    longTestTimeout
+  );
+
+  it(
+    'expands abbreviations and jargon',
+    async () => {
+      const result = await embedRewriteQuery('JS async perf tips', {
+        logger: makeTestLogger('expands abbreviations and jargon'),
+      });
+
+      expect(typeof result).toBe('string');
+      expect(result.length).toBeGreaterThan('JS async perf tips'.length);
+
+      await aiExpect({
+        original: 'JS async perf tips',
+        rewritten: result,
+      }).toSatisfy(
+        'The rewritten query expands abbreviations like "JS" to "JavaScript" and "perf" to "performance", producing a clearer search query.'
+      );
+    },
+    longTestTimeout
+  );
+});

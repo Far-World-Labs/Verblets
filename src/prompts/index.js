@@ -18,3 +18,12 @@ export { default as style } from './style.js';
 export { default as tokenBudget } from './token-budget.js';
 export { default as summarize } from './summarize.js';
 export { default as wrapList } from './wrap-list.js';
+
+// RAG prompt fragments
+export { default as privacyProbes } from './privacy-probes.js';
+export {
+  rewriteQuery as embedRewriteQuery,
+  multiQuery as embedMultiQuery,
+  stepBack as embedStepBack,
+  decomposeQuery as embedSubquestions,
+} from './embed-query-transforms.js';

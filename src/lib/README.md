@@ -46,5 +46,7 @@ Modules include:
 - [to-number](./to-number) – parse text into a number.
 - [to-number-with-units](./to-number-with-units) – parse numbers that include units.
 - [transcribe](./transcribe) – microphone transcription via Whisper.
+- [embed-normalize-text](./embed-normalize-text) – normalize text for consistent processing.
+- [embed-neighbor-chunks](./embed-neighbor-chunks) – expand retrieved hits with neighboring chunks.
 
 These helpers are building blocks used throughout the rest of the project.

@@ -88,6 +88,16 @@ Content utilities generate, transform, and analyze text while maintaining struct
 - [veiled-variants](./src/chains/veiled-variants) - Reword queries to avoid triggering content filters
 
 
+### Retrieval
+
+Retrieval utilities transform queries and prepare text for search and RAG workflows.
+
+- [embed-rewrite-query](./src/verblets/embed-rewrite-query) - Rewrite search queries for clarity and specificity
+- [embed-multi-query](./src/verblets/embed-multi-query) - Generate diverse query variants for broader retrieval
+- [embed-step-back](./src/verblets/embed-step-back) - Broaden queries to underlying concepts and principles
+- [embed-subquestions](./src/verblets/embed-subquestions) - Split complex queries into atomic sub-questions
+- [embed-expand-query](./src/chains/embed-expand-query) - Expand a query using multiple strategies in parallel
+
 ### Utility Operations
 
 Utility operations are uncategorized functionality like automatic tool selection, intent parsing, and context compression.
@@ -107,7 +117,7 @@ Codebase utilities analyze, test, and improve code quality using AI reasoning.
 
 - [scan-js](./src/chains/scan-js) - Examine JavaScript for patterns, anti-patterns, and potential issues
 - [test](./src/chains/test) - Generate test cases covering happy paths, edge cases, and error conditions
-- [test-advice](./src/chains/test-advice) - Identify untested code paths and suggest test scenarios
+
 
 ## Library Helpers
 
@@ -117,6 +127,8 @@ Helpers support higher-level operations. They make no LLM calls and are often sy
 - [prompt-cache](./src/lib/prompt-cache) - Cache prompts and responses
 - [retry](./src/lib/retry) - Retry asynchronous calls
 - [ring-buffer](./src/lib/ring-buffer) - Circular buffer implementation for running LLMs on streams of data
+- [embed-normalize-text](./src/lib/embed-normalize-text) - Normalize text (NFC, whitespace, line endings) for consistent processing
+- [embed-neighbor-chunks](./src/lib/embed-neighbor-chunks) - Expand retrieved chunks with neighboring context
 
 ## Contributing
 
