@@ -102,7 +102,7 @@ Process exactly ${count} items from the ${itemFormat} list below and return the 
   return acc;
 };
 
-reduce.for = function (instructions, config = {}) {
+reduce.with = function (instructions, config = {}) {
   return async (acc, item) => {
     return await reduce([item], instructions, { ...config, initial: acc });
   };

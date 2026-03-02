@@ -35,13 +35,13 @@ Returns `Promise<(string|undefined)[]>` where undefined entries represent items 
 
 ## Per-Item Mode
 
-Use `map.for()` to create a single-item function compatible with `p-map` and similar async utilities:
+Use `map.with()` to create a single-item function compatible with `p-map` and similar async utilities:
 
 ```javascript
 import map from './index.js';
 import pMap from 'p-map';
 
-const transform = map.for('translate to French');
+const transform = map.with('translate to French');
 const results = await pMap(items, transform, { concurrency: 5 });
 ```
 

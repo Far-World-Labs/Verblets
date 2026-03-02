@@ -63,14 +63,14 @@ describe('reduce chain', () => {
     expect(listBatch).toHaveBeenCalledTimes(1);
   });
 
-  describe('reduce.for', () => {
+  describe('reduce.with', () => {
     it('returns a function', () => {
-      const fn = reduce.for('join values');
+      const fn = reduce.with('join values');
       expect(typeof fn).toBe('function');
     });
 
     it('reduces with accumulator', async () => {
-      const fn = reduce.for('join');
+      const fn = reduce.with('join');
       const result = await fn('start', 'next');
       expect(result).toBe('start-next');
       expect(listBatch).toHaveBeenCalledTimes(1);

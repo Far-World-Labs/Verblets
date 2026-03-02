@@ -246,7 +246,7 @@ const map = async function (list, instructions, config = {}) {
   return results;
 };
 
-map.for = function (instructions, config = {}) {
+map.with = function (instructions, config = {}) {
   return async (item) => {
     const results = await mapOnce([item], instructions, config);
     return results[0];

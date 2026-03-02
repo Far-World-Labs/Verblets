@@ -34,13 +34,13 @@ const urgent = await filter(emails, 'urgent or time-sensitive messages');
 
 ## Per-Item Mode
 
-Use `filter.for()` to create a single-item predicate compatible with `p-filter` and similar async utilities:
+Use `filter.with()` to create a single-item predicate compatible with `p-filter` and similar async utilities:
 
 ```javascript
 import filter from './index.js';
 import pFilter from 'p-filter';
 
-const isUrgent = filter.for('urgent or time-sensitive');
+const isUrgent = filter.with('urgent or time-sensitive');
 const results = await pFilter(emails, isUrgent, { concurrency: 5 });
 ```
 

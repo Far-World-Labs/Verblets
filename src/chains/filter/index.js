@@ -163,7 +163,7 @@ Process exactly ${count} items from the XML list below and return ${count} yes/n
   return results;
 };
 
-filter.for = function (criteria, config = {}) {
+filter.with = function (criteria, config = {}) {
   return async (item) => {
     const results = await filter([item], criteria, config);
     return results.length > 0;

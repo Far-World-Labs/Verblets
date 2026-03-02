@@ -97,15 +97,15 @@ describe('map', () => {
     expect(listBatch).toHaveBeenCalledTimes(3);
   });
 
-  describe('map.for', () => {
+  describe('map.with', () => {
     it('returns a function', () => {
-      const fn = map.for('translate to French');
+      const fn = map.with('translate to French');
       expect(typeof fn).toBe('function');
     });
 
     it('processes a single item', async () => {
       listBatch.mockImplementationOnce(async (items) => items.map((i) => `${i}-mapped`));
-      const fn = map.for('transform');
+      const fn = map.with('transform');
       const result = await fn('hello');
       expect(result).toBe('hello-mapped');
       expect(listBatch).toHaveBeenCalledTimes(1);
@@ -114,7 +114,7 @@ describe('map', () => {
 
     it('returns undefined on error', async () => {
       listBatch.mockRejectedValueOnce(new Error('fail'));
-      const fn = map.for('transform');
+      const fn = map.with('transform');
       const result = await fn('item');
       expect(result).toBeUndefined();
     });

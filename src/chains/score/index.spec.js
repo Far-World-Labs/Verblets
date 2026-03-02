@@ -224,10 +224,10 @@ describe('score chain', () => {
     });
   });
 
-  describe('score.for', () => {
+  describe('score.with', () => {
     it('is async and returns a function', async () => {
       scaleSpec.mockResolvedValueOnce(mockSpec);
-      const scorer = await score.for('technical depth');
+      const scorer = await score.with('technical depth');
       expect(typeof scorer).toBe('function');
       expect(scaleSpec).toHaveBeenCalledWith(
         'technical depth',
@@ -239,7 +239,7 @@ describe('score chain', () => {
       scaleSpec.mockResolvedValueOnce(mockSpec);
       llm.mockResolvedValue(7);
 
-      const scorer = await score.for('quality');
+      const scorer = await score.with('quality');
       expect(scaleSpec).toHaveBeenCalledTimes(1);
 
       await scorer('item1');
@@ -254,7 +254,7 @@ describe('score chain', () => {
       scaleSpec.mockResolvedValueOnce(mockSpec);
       llm.mockResolvedValueOnce(9);
 
-      const scorer = await score.for('depth');
+      const scorer = await score.with('depth');
       const result = await scorer('deep article');
 
       expect(result).toBe(9);
