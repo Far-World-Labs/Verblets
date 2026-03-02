@@ -10,7 +10,7 @@ const DEFAULT_REDUCE_RESPONSE_FORMAT = {
   json_schema: reduceAccumulatorJsonSchema,
 };
 
-export default async function reduce(list, instructions, config = {}) {
+const reduce = async function reduce(list, instructions, config = {}) {
   const {
     initial,
     listStyle,
@@ -100,4 +100,12 @@ Process exactly ${count} items from the ${itemFormat} list below and return the 
   tracker.complete();
 
   return acc;
-}
+};
+
+reduce.with = function (instructions, config = {}) {
+  return async (acc, item) => {
+    return await reduce([item], instructions, { ...config, initial: acc });
+  };
+};
+
+export default reduce;

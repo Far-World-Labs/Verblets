@@ -81,6 +81,18 @@ const grouped = await group(
 );
 ```
 
+## Per-Item Mode
+
+Use `score.with()` to create a single-item scoring function. The async factory calls `scoreSpec` once up front, amortizing the spec-generation LLM call across all items:
+
+```javascript
+import score from './index.js';
+import pMap from 'p-map';
+
+const scorer = await score.with('technical depth');
+const results = await pMap(items, scorer, { concurrency: 5 });
+```
+
 ## Configuration
 
 - `spec`: Pre-built scoring specification (skips the `scoreSpec` LLM call)

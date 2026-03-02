@@ -246,5 +246,11 @@ const map = async function (list, instructions, config = {}) {
   return results;
 };
 
-export { mapOnce };
+map.with = function (instructions, config = {}) {
+  return async (item) => {
+    const results = await mapOnce([item], instructions, config);
+    return results[0];
+  };
+};
+
 export default map;
