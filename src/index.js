@@ -11,6 +11,12 @@ if (runtime.isNode) {
 // Export all shared browser-compatible modules
 export * from './shared.js';
 
+// Shallow verblets (RAG — query transforms)
+export { default as rewriteQuery } from './verblets/rewrite-query/index.js';
+export { default as multiQuery } from './verblets/multi-query/index.js';
+export { default as stepBack } from './verblets/step-back/index.js';
+export { default as decomposeQuery } from './verblets/decompose-query/index.js';
+
 // Node-only exports (codebase utilities)
 export { default as aiArchExpect } from './chains/ai-arch-expect/index.js';
 export { default as scanJS } from './chains/scan-js/index.js';

@@ -35,6 +35,6 @@ export default function handleLLMPerformanceMetrics(intent, context, _args) {
 
   return `${bold(cyan('LLM PERFORMANCE METRICS'))}
       Total Calls:  ${totalCalls}${
-    typeBreakdown ? ` (${typeBreakdown})` : ''
-  }${timingInfo}${cacheInfo}`;
+        typeBreakdown ? ` (${typeBreakdown})` : ''
+      }${timingInfo}${cacheInfo}`;
 }

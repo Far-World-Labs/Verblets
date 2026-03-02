@@ -33,8 +33,8 @@ export function renderModuleOverview(moduleContext) {
       Path:         ${moduleContext.moduleDir}
       Files:        ${moduleContext.fileCount} (${fileInfo ?? 'none'})${jsInfo}
       Dependencies: ${moduleContext.dependencyCount}${depInfo}${packageList}${
-    moduleContext.hasAIGuide ? '\n      AI Guide:     ✓ AI.md present' : ''
-  }`;
+        moduleContext.hasAIGuide ? '\n      AI Guide:     ✓ AI.md present' : ''
+      }`;
 
   return output;
 }

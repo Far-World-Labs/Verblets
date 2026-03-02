@@ -74,6 +74,10 @@ export { default as phailForge } from './verblets/phail-forge/index.js';
 export { default as sentiment } from './verblets/sentiment/index.js';
 export { default as setInterval } from './chains/set-interval/index.js';
 
+// RAG Helpers
+export { default as normalizeText } from './lib/normalize-text/index.js';
+export { default as expandContext } from './lib/expand-context/index.js';
+
 // Library Helpers (documented in README)
 export { default as llm } from './lib/llm/index.js';
 export * as promptCache from './lib/prompt-cache/index.js';
