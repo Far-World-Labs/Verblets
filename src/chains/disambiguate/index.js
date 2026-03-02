@@ -4,7 +4,7 @@ import score from '../score/index.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 import modelService from '../../services/llm-model/index.js';
 import disambiguateMeaningsSchema from './disambiguate-meanings-result.json';
-import { emitStepProgress } from '../../lib/progress-callback/index.js';
+import { emitStepProgress, scopeProgress } from '../../lib/progress-callback/index.js';
 
 const { onlyJSONStringArray } = promptConstants;
 
@@ -105,7 +105,7 @@ export default async function disambiguate({
   const scores = await score(
     meanings,
     `how well this meaning of "${term}" matches the context: ${context}`,
-    { llm, onProgress, now, ...options }
+    { llm, onProgress: scopeProgress(onProgress, 'scoring'), now, ...options }
   );
 
   let bestIndex = 0;

@@ -2,6 +2,7 @@ import map from '../map/index.js';
 import { CENTRAL_TENDENCY_PROMPT } from '../../verblets/central-tendency-lines/index.js';
 import { centralTendencyResultsJsonSchema } from './schemas.js';
 import { createLifecycleLogger, extractPromptAnalysis } from '../../lib/lifecycle-logger/index.js';
+import { scopeProgress } from '../../lib/progress-callback/index.js';
 
 const centralTendencyResponseFormat = {
   type: 'json_schema',
@@ -97,7 +98,7 @@ export default async function centralTendency(items, seedItems, config = {}) {
       maxAttempts,
       responseFormat: centralTendencyResponseFormat,
       logger: lifecycleLogger, // Pass logger to map for its own logging
-      onProgress,
+      onProgress: scopeProgress(onProgress, 'analysis'),
       now,
     });
 

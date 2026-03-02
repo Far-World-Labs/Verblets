@@ -1,8 +1,8 @@
 import listBatch, { ListStyle, determineStyle } from '../../verblets/list-batch/index.js';
 import reduce from '../reduce/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
-import { emitPhaseProgress, emitProgress } from '../../lib/progress-callback/index.js';
-import { createBatches, parallel, retry, batchTracker } from '../../lib/index.js';
+import { emitPhaseProgress } from '../../lib/progress-callback/index.js';
+import { createBatches, parallel, retry, batchTracker, scopeProgress } from '../../lib/index.js';
 
 const createCategoryDiscoveryPrompt = (instructions, categoryPrompt) => {
   const defaultCategoryPrompt =
@@ -102,16 +102,7 @@ export default async function group(list, instructions, config = {}) {
     initial: '',
     llm,
     ...options,
-    onProgress: onProgress
-      ? (event) => {
-          // Pass through reduce events with phase context
-          emitProgress({
-            ...event,
-            callback: onProgress,
-            phase: 'category-discovery',
-          });
-        }
-      : undefined,
+    onProgress: scopeProgress(onProgress, 'category-discovery'),
   });
 
   const categories = parseCategories(categoriesString);

@@ -262,6 +262,25 @@ export function batchTracker(chainName, totalItems, { onProgress, now = new Date
         ...metadata,
       });
     },
+
+    scopedProgress(phase) {
+      return scopeProgress(onProgress, phase);
+    },
+  };
+}
+
+/**
+ * Wrap an onProgress callback to tag every event with a phase field.
+ * Returns undefined when no callback is provided so callers can pass-through safely.
+ *
+ * @param {Function} [onProgress] - Progress callback to wrap
+ * @param {string} phase - Phase name to tag events with
+ * @returns {Function|undefined}
+ */
+export function scopeProgress(onProgress, phase) {
+  if (!onProgress) return undefined;
+  return (event) => {
+    onProgress({ ...event, phase });
   };
 }
 
