@@ -43,12 +43,8 @@ export default async function filter(list, instructions, config = {}) {
   }
 
   const tracker = batchTracker('filter', list.length, { onProgress, now });
-  const withRetry = (fn, onProgress) =>
-    retry(fn, { label: 'filter:batch', maxAttempts, onProgress });
 
   tracker.start(activeBatches.length);
-
-  let processedBatches = 0;
 
   for (const [batchIndex, { items, skip, startIndex }] of batches.entries()) {
     if (skip) {
@@ -108,10 +104,11 @@ Process exactly ${count} items from the XML list below and return ${count} yes/n
 
     let response;
     try {
-      response = await withRetry(
-        () => listBatch(items, prompt, listBatchOptions),
-        tracker.forBatch(processedBatches, startIndex, items.length)
-      );
+      response = await retry(() => listBatch(items, prompt, listBatchOptions), {
+        label: 'filter:batch',
+        maxAttempts,
+        onProgress: tracker.forBatch(startIndex, items.length),
+      });
     } catch (error) {
       if (logger?.error) {
         logger.error(`Batch ${batchIndex} failed after all retries`, {
@@ -151,8 +148,6 @@ Process exactly ${count} items from the XML list below and return ${count} yes/n
         totalResultsSoFar: results.length,
       });
     }
-
-    processedBatches++;
   }
 
   tracker.complete();

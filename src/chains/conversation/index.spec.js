@@ -17,9 +17,10 @@ vi.mock('../conversation-turn-reduce/index.js', () => ({
 }));
 
 // Mock retry to avoid any potential delays
-vi.mock('../../lib/retry/index.js', () => ({
-  default: vi.fn(async (fn) => await fn()),
-}));
+vi.mock('../../lib/retry/index.js', () => {
+  const mock = vi.fn(async (fn) => fn());
+  return { default: mock, retry: mock };
+});
 
 // Mock reduce chain to prevent cascading calls
 vi.mock('../reduce/index.js', () => ({

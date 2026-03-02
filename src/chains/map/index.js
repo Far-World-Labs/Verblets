@@ -48,18 +48,13 @@ const mapOnce = async function (list, instructions, config = {}) {
 
   const effectiveStartTime = chainStartTime || now;
   const tracker = batchTracker('map', list.length, { onProgress, now: effectiveStartTime });
-  const withRetry = (fn, onProgress) =>
-    retry(fn, { label: 'map:batch', maxAttempts: config.maxAttempts || 3, onProgress });
 
   tracker.start(batchesToProcess.length, maxParallel);
-
-  let processedBatches = 0;
 
   // Process batches in parallel using parallelBatch
   await parallel(
     batchesToProcess,
     async ({ items, startIndex }) => {
-      const currentBatchNumber = processedBatches + 1;
       const batchStyle = determineStyle(config.listStyle, items, config.autoModeThreshold);
 
       // Build the compiled prompt for this batch
@@ -105,10 +100,11 @@ Preserve all formatting and newlines within each <item> element.`;
           listStyle: batchStyle,
         };
 
-        const output = await withRetry(
-          () => listBatch(items, compiledPrompt, listBatchOptions),
-          tracker.forBatch(currentBatchNumber - 1, startIndex, items.length)
-        );
+        const output = await retry(() => listBatch(items, compiledPrompt, listBatchOptions), {
+          label: 'map:batch',
+          maxAttempts: config.maxAttempts || 3,
+          onProgress: tracker.forBatch(startIndex, items.length),
+        });
 
         // listBatch now returns arrays directly
         if (!Array.isArray(output)) {
@@ -120,11 +116,9 @@ Preserve all formatting and newlines within each <item> element.`;
         });
 
         tracker.batchDone(startIndex, items.length);
-        processedBatches++;
 
         if (config.logger?.info) {
           config.logger.info(`Map batch completed`, {
-            batchIndex: processedBatches,
             startIndex,
             itemCount: items.length,
             successCount: output.length,
@@ -135,7 +129,6 @@ Preserve all formatting and newlines within each <item> element.`;
         if (config.logger?.error) {
           config.logger.error(`Map batch ${startIndex}-${startIndex + items.length - 1} failed`, {
             error: error.message,
-            batchIndex: processedBatches + 1,
             itemCount: items.length,
           });
         }

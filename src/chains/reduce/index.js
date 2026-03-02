@@ -35,12 +35,8 @@ export default async function reduce(list, instructions, config = {}) {
   const activeBatches = batches.filter((b) => !b.skip);
 
   const tracker = batchTracker('reduce', list.length, { onProgress, now });
-  const withRetry = (fn, onProgress) =>
-    retry(fn, { label: 'reduce:batch', maxAttempts, onProgress });
 
   tracker.start(activeBatches.length);
-
-  let processedBatches = 0;
 
   for (const { items, skip, startIndex } of batches) {
     if (skip) {
@@ -83,10 +79,11 @@ Process exactly ${count} items from the ${itemFormat} list below and return the 
       ...options,
     };
 
-    const result = await withRetry(
-      () => listBatch(items, prompt, listBatchOptions),
-      tracker.forBatch(processedBatches, startIndex, items.length)
-    );
+    const result = await retry(() => listBatch(items, prompt, listBatchOptions), {
+      label: 'reduce:batch',
+      maxAttempts,
+      onProgress: tracker.forBatch(startIndex, items.length),
+    });
 
     if (!responseFormat && result?.accumulator !== undefined) {
       acc = result.accumulator;
@@ -98,7 +95,6 @@ Process exactly ${count} items from the ${itemFormat} list below and return the 
     }
 
     tracker.batchDone(startIndex, items.length);
-    processedBatches++;
   }
 
   tracker.complete();

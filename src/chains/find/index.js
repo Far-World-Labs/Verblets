@@ -51,12 +51,8 @@ Process exactly ${count} items from the XML list below and return the single bes
   const batchesToProcess = batches.filter((batch) => !batch.skip);
 
   const tracker = batchTracker('find', list.length, { onProgress, now });
-  const withRetry = (fn, onProgress) =>
-    retry(fn, { label: 'find:batch', maxAttempts: 3, onProgress });
 
   tracker.start(batchesToProcess.length, maxParallel);
-
-  let processedBatches = 0;
 
   // Process in chunks to allow early termination
   for (let i = 0; i < batchesToProcess.length && !foundEarly; i += maxParallel) {
@@ -68,7 +64,7 @@ Process exactly ${count} items from the XML list below and return the single bes
         const batchStyle = determineStyle(listStyle, items, autoModeThreshold);
 
         try {
-          const result = await withRetry(
+          const result = await retry(
             () =>
               listBatch(items, findInstructions({ style: batchStyle, count: items.length }), {
                 listStyle: batchStyle,
@@ -77,7 +73,11 @@ Process exactly ${count} items from the XML list below and return the single bes
                 llm,
                 ...options,
               }),
-            tracker.forBatch(processedBatches, startIndex, items.length)
+            {
+              label: 'find:batch',
+              maxAttempts: 3,
+              onProgress: tracker.forBatch(startIndex, items.length),
+            }
           );
 
           // listBatch now returns arrays directly
@@ -89,7 +89,6 @@ Process exactly ${count} items from the XML list below and return the single bes
           }
 
           tracker.batchDone(startIndex, items.length);
-          processedBatches++;
         } catch {
           // continue on error
         }

@@ -137,12 +137,8 @@ export default async function group(list, instructions, config = {}) {
   const batchesToProcess = batches.filter((batch) => !batch.skip);
 
   const tracker = batchTracker('group', list.length, { onProgress, now });
-  const withRetry = (fn, onProgress) =>
-    retry(fn, { label: 'group:batch', maxAttempts: options.maxAttempts || 3, onProgress });
 
   tracker.start(batchesToProcess.length, maxParallel);
-
-  let processedBatches = 0;
 
   // Process batches in parallel using parallelBatch
   await parallel(
@@ -158,14 +154,18 @@ export default async function group(list, instructions, config = {}) {
           ...options,
         };
 
-        const labels = await withRetry(
+        const labels = await retry(
           () =>
             listBatch(
               items,
               assignmentInstructions({ style: batchStyle, count: items.length }),
               listBatchOptions
             ),
-          tracker.forBatch(processedBatches, startIndex, items.length)
+          {
+            label: 'group:batch',
+            maxAttempts: options.maxAttempts || 3,
+            onProgress: tracker.forBatch(startIndex, items.length),
+          }
         );
 
         if (!Array.isArray(labels) || labels.length !== items.length) {
@@ -176,7 +176,6 @@ export default async function group(list, instructions, config = {}) {
         }
 
         tracker.batchDone(startIndex, items.length);
-        processedBatches++;
       } catch {
         const fallbackLabels = new Array(items.length).fill('other');
         batchResults.push({ items, labels: fallbackLabels, startIndex });

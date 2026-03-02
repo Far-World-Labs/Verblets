@@ -133,9 +133,6 @@ async function scoreOnce(list, prompt, batchConfig, options) {
     if (b.skip) results[b.startIndex] = undefined;
   });
 
-  const withRetry = (fn, onProgress) =>
-    retry(fn, { label: 'score:batch', maxAttempts, onProgress });
-
   emitBatchStart(onProgress, 'score', list.length, {
     totalBatches: batchesToProcess.length,
     maxParallel,
@@ -148,7 +145,10 @@ async function scoreOnce(list, prompt, batchConfig, options) {
   if (batchesToProcess.length > 0) {
     const first = batchesToProcess[0];
     try {
-      const scores = await withRetry(() => listBatch(first.items, prompt, batchConfig));
+      const scores = await retry(() => listBatch(first.items, prompt, batchConfig), {
+        label: 'score:batch',
+        maxAttempts,
+      });
       alignScores(scores, first.items.length).forEach((s, j) => {
         results[first.startIndex + j] = s;
       });
@@ -183,7 +183,10 @@ async function scoreOnce(list, prompt, batchConfig, options) {
       batchesToProcess.slice(1),
       async ({ items, startIndex }, batchIndex) => {
         try {
-          const scores = await withRetry(() => listBatch(items, anchoredPrompt, batchConfig));
+          const scores = await retry(() => listBatch(items, anchoredPrompt, batchConfig), {
+            label: 'score:batch',
+            maxAttempts,
+          });
           alignScores(scores, items.length).forEach((s, j) => {
             results[startIndex + j] = s;
           });

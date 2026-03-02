@@ -25,7 +25,7 @@ vi.mock('../../lib/text-batch/index.js', () => ({
 }));
 
 vi.mock('../../lib/retry/index.js', () => ({
-  default: vi.fn(async (fn) => fn()),
+  retry: vi.fn(async (fn) => fn()),
 }));
 
 describe('group chain', () => {

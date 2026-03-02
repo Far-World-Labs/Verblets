@@ -219,11 +219,11 @@ export function batchTracker(chainName, totalItems, { onProgress, now = new Date
       });
     },
 
-    forBatch(batchIndex, startIndex, batchSize) {
+    forBatch(startIndex, batchSize) {
       return createBatchProgressCallback(
         onProgress,
         createBatchContext({
-          batchIndex,
+          batchIndex: processedBatches,
           batchSize,
           startIndex,
           totalItems,

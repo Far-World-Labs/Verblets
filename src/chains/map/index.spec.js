@@ -15,7 +15,7 @@ vi.mock('../../lib/text-batch/index.js', () => ({
 }));
 
 vi.mock('../../lib/retry/index.js', () => ({
-  default: vi.fn(async (fn, opts = {}) => {
+  retry: vi.fn(async (fn, opts = {}) => {
     if (opts.onProgress) {
       opts.onProgress({ step: opts.label || 'retry', event: 'start', attemptNumber: 1 });
     }
