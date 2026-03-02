@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import rewriteQuery from './index.js';
+import embedRewriteQuery from './index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(),
@@ -11,13 +11,13 @@ beforeEach(() => {
   mockLlm.mockReset();
 });
 
-describe('rewriteQuery', () => {
+describe('embedRewriteQuery', () => {
   it('calls LLM with query embedded in prompt and returns rewritten query', async () => {
     mockLlm.mockResolvedValueOnce(
       'What is the process by which green plants convert sunlight into chemical energy?'
     );
 
-    const result = await rewriteQuery('how do plants make food');
+    const result = await embedRewriteQuery('how do plants make food');
 
     expect(mockLlm).toHaveBeenCalledTimes(1);
     expect(typeof result).toBe('string');
@@ -31,7 +31,7 @@ describe('rewriteQuery', () => {
   it('uses value schema for auto-unwrapping', async () => {
     mockLlm.mockResolvedValueOnce('rewritten');
 
-    await rewriteQuery('test query');
+    await embedRewriteQuery('test query');
 
     const callConfig = mockLlm.mock.calls[0][1];
     const schema = callConfig.modelOptions.response_format.json_schema.schema;
@@ -43,7 +43,7 @@ describe('rewriteQuery', () => {
   it('passes llm config through to modelOptions', async () => {
     mockLlm.mockResolvedValueOnce('rewritten');
 
-    await rewriteQuery('query', { llm: { modelName: 'test-model', temperature: 0.5 } });
+    await embedRewriteQuery('query', { llm: { modelName: 'test-model', temperature: 0.5 } });
 
     const callConfig = mockLlm.mock.calls[0][1];
     expect(callConfig.modelOptions.modelName).toBe('test-model');
@@ -54,7 +54,7 @@ describe('rewriteQuery', () => {
     const logger = { info: vi.fn() };
     mockLlm.mockResolvedValueOnce('rewritten');
 
-    await rewriteQuery('query', { logger });
+    await embedRewriteQuery('query', { logger });
 
     const callConfig = mockLlm.mock.calls[0][1];
     expect(callConfig.logger).toBe(logger);

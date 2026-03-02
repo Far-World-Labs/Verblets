@@ -21,4 +21,9 @@ export { default as wrapList } from './wrap-list.js';
 
 // RAG prompt fragments
 export { default as privacyProbes } from './privacy-probes.js';
-export { rewriteQuery, multiQuery, stepBack, decomposeQuery } from './query-transforms.js';
+export {
+  rewriteQuery as embedRewriteQuery,
+  multiQuery as embedMultiQuery,
+  stepBack as embedStepBack,
+  decomposeQuery as embedSubquestions,
+} from './embed-query-transforms.js';

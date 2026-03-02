@@ -1,4 +1,4 @@
-export const decomposeQuerySchema = {
+export const embedSubquestionsSchema = {
   type: 'object',
   properties: {
     items: {

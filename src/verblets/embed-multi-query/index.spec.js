@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import decomposeQuery from './index.js';
+import embedMultiQuery from './index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(),
@@ -11,31 +11,31 @@ beforeEach(() => {
   mockLlm.mockReset();
 });
 
-describe('decomposeQuery', () => {
-  it('calls LLM with query in prompt and returns sub-questions', async () => {
-    const subQuestions = [
-      'What is the current population of Tokyo?',
-      'What is the average income in Tokyo?',
-      "How does Tokyo's cost of living compare to other major cities?",
+describe('embedMultiQuery', () => {
+  it('calls LLM with query and count in prompt and returns array', async () => {
+    const variants = [
+      'How do plants photosynthesize?',
+      'Plant energy conversion from sunlight',
+      'Photosynthesis mechanism in green plants',
     ];
-    mockLlm.mockResolvedValueOnce(subQuestions);
+    mockLlm.mockResolvedValueOnce(variants);
 
-    const result = await decomposeQuery('Is Tokyo an affordable city for the average resident?');
+    const result = await embedMultiQuery('how do plants make food');
 
     expect(mockLlm).toHaveBeenCalledTimes(1);
     expect(Array.isArray(result)).toBe(true);
     expect(result).toHaveLength(3);
 
     const prompt = mockLlm.mock.calls[0][0];
-    expect(prompt).toContain('Is Tokyo an affordable city for the average resident?');
-    expect(prompt).toContain('Break');
-    expect(prompt).toContain('sub-questions');
+    expect(prompt).toContain('how do plants make food');
+    expect(prompt).toContain('3'); // default count
+    expect(prompt).toContain('diverse search queries');
   });
 
   it('uses items schema for auto-unwrapping', async () => {
     mockLlm.mockResolvedValueOnce([]);
 
-    await decomposeQuery('test query');
+    await embedMultiQuery('test query');
 
     const callConfig = mockLlm.mock.calls[0][1];
     const schema = callConfig.modelOptions.response_format.json_schema.schema;
@@ -45,20 +45,28 @@ describe('decomposeQuery', () => {
     expect(schema.required).toContain('items');
   });
 
-  it('does not include a count parameter in the prompt', async () => {
+  it('uses default count of 3', async () => {
     mockLlm.mockResolvedValueOnce([]);
 
-    await decomposeQuery('complex query about many things');
+    await embedMultiQuery('query');
 
     const prompt = mockLlm.mock.calls[0][0];
-    // The prompt should not have a numeric count — LLM decides complexity
-    expect(prompt).not.toMatch(/Generate \d+ /);
+    expect(prompt).toContain('Generate 3 diverse');
+  });
+
+  it('passes custom count to prompt', async () => {
+    mockLlm.mockResolvedValueOnce([]);
+
+    await embedMultiQuery('query', { count: 5 });
+
+    const prompt = mockLlm.mock.calls[0][0];
+    expect(prompt).toContain('Generate 5 diverse');
   });
 
   it('passes llm config through to modelOptions', async () => {
     mockLlm.mockResolvedValueOnce([]);
 
-    await decomposeQuery('query', { llm: { modelName: 'test-model' } });
+    await embedMultiQuery('query', { llm: { modelName: 'test-model' } });
 
     const callConfig = mockLlm.mock.calls[0][1];
     expect(callConfig.modelOptions.modelName).toBe('test-model');
@@ -68,7 +76,7 @@ describe('decomposeQuery', () => {
     const logger = { info: vi.fn() };
     mockLlm.mockResolvedValueOnce([]);
 
-    await decomposeQuery('query', { logger });
+    await embedMultiQuery('query', { logger });
 
     const callConfig = mockLlm.mock.calls[0][1];
     expect(callConfig.logger).toBe(logger);

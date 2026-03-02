@@ -9,7 +9,7 @@
  * @param {RegExp[]} [options.stripPatterns] - Patterns to remove
  * @returns {string}
  */
-export default function normalizeText(text, options = {}) {
+export default function embedNormalizeText(text, options = {}) {
   const { stripPatterns = [] } = options;
 
   let result = text.normalize('NFC');

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import stepBack from './index.js';
+import embedSubquestions from './index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(),
@@ -11,31 +11,31 @@ beforeEach(() => {
   mockLlm.mockReset();
 });
 
-describe('stepBack', () => {
-  it('calls LLM with query and count in prompt and returns broader questions', async () => {
-    const questions = [
-      'What are the fundamental principles of plant biology?',
-      'How do organisms convert energy from their environment?',
-      'What role does sunlight play in biological processes?',
+describe('embedSubquestions', () => {
+  it('calls LLM with query in prompt and returns sub-questions', async () => {
+    const subQuestions = [
+      'What is the current population of Tokyo?',
+      'What is the average income in Tokyo?',
+      "How does Tokyo's cost of living compare to other major cities?",
     ];
-    mockLlm.mockResolvedValueOnce(questions);
+    mockLlm.mockResolvedValueOnce(subQuestions);
 
-    const result = await stepBack('how do plants make food');
+    const result = await embedSubquestions('Is Tokyo an affordable city for the average resident?');
 
     expect(mockLlm).toHaveBeenCalledTimes(1);
     expect(Array.isArray(result)).toBe(true);
     expect(result).toHaveLength(3);
 
     const prompt = mockLlm.mock.calls[0][0];
-    expect(prompt).toContain('how do plants make food');
-    expect(prompt).toContain('3'); // default count
-    expect(prompt).toContain('broader');
+    expect(prompt).toContain('Is Tokyo an affordable city for the average resident?');
+    expect(prompt).toContain('Break');
+    expect(prompt).toContain('sub-questions');
   });
 
   it('uses items schema for auto-unwrapping', async () => {
     mockLlm.mockResolvedValueOnce([]);
 
-    await stepBack('test query');
+    await embedSubquestions('test query');
 
     const callConfig = mockLlm.mock.calls[0][1];
     const schema = callConfig.modelOptions.response_format.json_schema.schema;
@@ -45,19 +45,20 @@ describe('stepBack', () => {
     expect(schema.required).toContain('items');
   });
 
-  it('passes count through to prompt', async () => {
+  it('does not include a count parameter in the prompt', async () => {
     mockLlm.mockResolvedValueOnce([]);
 
-    await stepBack('query', { count: 5 });
+    await embedSubquestions('complex query about many things');
 
     const prompt = mockLlm.mock.calls[0][0];
-    expect(prompt).toContain('generate 5 broader');
+    // The prompt should not have a numeric count — LLM decides complexity
+    expect(prompt).not.toMatch(/Generate \d+ /);
   });
 
   it('passes llm config through to modelOptions', async () => {
     mockLlm.mockResolvedValueOnce([]);
 
-    await stepBack('query', { llm: { modelName: 'test-model' } });
+    await embedSubquestions('query', { llm: { modelName: 'test-model' } });
 
     const callConfig = mockLlm.mock.calls[0][1];
     expect(callConfig.modelOptions.modelName).toBe('test-model');
@@ -67,7 +68,7 @@ describe('stepBack', () => {
     const logger = { info: vi.fn() };
     mockLlm.mockResolvedValueOnce([]);
 
-    await stepBack('query', { logger });
+    await embedSubquestions('query', { logger });
 
     const callConfig = mockLlm.mock.calls[0][1];
     expect(callConfig.logger).toBe(logger);

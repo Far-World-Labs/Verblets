@@ -1,6 +1,6 @@
 import callLlm from '../../lib/llm/index.js';
-import { stepBack as stepBackPrompt } from '../../prompts/query-transforms.js';
-import { stepBackSchema } from './schema.js';
+import { stepBack as stepBackPrompt } from '../../prompts/embed-query-transforms.js';
+import { embedStepBackSchema } from './schema.js';
 
 /**
  * Generate broader, more fundamental questions from a specific query.
@@ -13,7 +13,7 @@ import { stepBackSchema } from './schema.js';
  * @param {number} [config.count=3] - Number of step-back questions
  * @returns {Promise<string[]>}
  */
-export default async function stepBack(query, config = {}) {
+export default async function embedStepBack(query, config = {}) {
   const { llm, count = 3, ...options } = config;
 
   return await callLlm(stepBackPrompt(query, count), {
@@ -23,7 +23,7 @@ export default async function stepBack(query, config = {}) {
         type: 'json_schema',
         json_schema: {
           name: 'step_back',
-          schema: stepBackSchema,
+          schema: embedStepBackSchema,
         },
       },
     },

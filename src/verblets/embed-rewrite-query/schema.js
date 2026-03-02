@@ -1,4 +1,4 @@
-export const rewriteQuerySchema = {
+export const embedRewriteQuerySchema = {
   type: 'object',
   properties: {
     value: {

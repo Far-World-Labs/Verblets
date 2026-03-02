@@ -1,6 +1,6 @@
 import callLlm from '../../lib/llm/index.js';
-import { multiQuery as multiQueryPrompt } from '../../prompts/query-transforms.js';
-import { multiQuerySchema } from './schema.js';
+import { multiQuery as multiQueryPrompt } from '../../prompts/embed-query-transforms.js';
+import { embedMultiQuerySchema } from './schema.js';
 
 /**
  * Generate diverse search query variants from a single query.
@@ -10,7 +10,7 @@ import { multiQuerySchema } from './schema.js';
  * @param {number} [config.count=3] - Number of variants to generate
  * @returns {Promise<string[]>}
  */
-export default async function multiQuery(query, config = {}) {
+export default async function embedMultiQuery(query, config = {}) {
   const { llm, count = 3, ...options } = config;
 
   return await callLlm(multiQueryPrompt(query, count), {
@@ -20,7 +20,7 @@ export default async function multiQuery(query, config = {}) {
         type: 'json_schema',
         json_schema: {
           name: 'multi_query',
-          schema: multiQuerySchema,
+          schema: embedMultiQuerySchema,
         },
       },
     },

@@ -1,10 +1,10 @@
-export const stepBackSchema = {
+export const embedMultiQuerySchema = {
   type: 'object',
   properties: {
     items: {
       type: 'array',
       items: { type: 'string' },
-      description: 'Broader, more fundamental questions',
+      description: 'Diverse search query variants',
     },
   },
   required: ['items'],

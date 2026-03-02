@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import multiQuery from './index.js';
+import embedStepBack from './index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(),
@@ -11,16 +11,16 @@ beforeEach(() => {
   mockLlm.mockReset();
 });
 
-describe('multiQuery', () => {
-  it('calls LLM with query and count in prompt and returns array', async () => {
-    const variants = [
-      'How do plants photosynthesize?',
-      'Plant energy conversion from sunlight',
-      'Photosynthesis mechanism in green plants',
+describe('embedStepBack', () => {
+  it('calls LLM with query and count in prompt and returns broader questions', async () => {
+    const questions = [
+      'What are the fundamental principles of plant biology?',
+      'How do organisms convert energy from their environment?',
+      'What role does sunlight play in biological processes?',
     ];
-    mockLlm.mockResolvedValueOnce(variants);
+    mockLlm.mockResolvedValueOnce(questions);
 
-    const result = await multiQuery('how do plants make food');
+    const result = await embedStepBack('how do plants make food');
 
     expect(mockLlm).toHaveBeenCalledTimes(1);
     expect(Array.isArray(result)).toBe(true);
@@ -29,13 +29,13 @@ describe('multiQuery', () => {
     const prompt = mockLlm.mock.calls[0][0];
     expect(prompt).toContain('how do plants make food');
     expect(prompt).toContain('3'); // default count
-    expect(prompt).toContain('diverse search queries');
+    expect(prompt).toContain('broader');
   });
 
   it('uses items schema for auto-unwrapping', async () => {
     mockLlm.mockResolvedValueOnce([]);
 
-    await multiQuery('test query');
+    await embedStepBack('test query');
 
     const callConfig = mockLlm.mock.calls[0][1];
     const schema = callConfig.modelOptions.response_format.json_schema.schema;
@@ -45,28 +45,19 @@ describe('multiQuery', () => {
     expect(schema.required).toContain('items');
   });
 
-  it('uses default count of 3', async () => {
+  it('passes count through to prompt', async () => {
     mockLlm.mockResolvedValueOnce([]);
 
-    await multiQuery('query');
+    await embedStepBack('query', { count: 5 });
 
     const prompt = mockLlm.mock.calls[0][0];
-    expect(prompt).toContain('Generate 3 diverse');
-  });
-
-  it('passes custom count to prompt', async () => {
-    mockLlm.mockResolvedValueOnce([]);
-
-    await multiQuery('query', { count: 5 });
-
-    const prompt = mockLlm.mock.calls[0][0];
-    expect(prompt).toContain('Generate 5 diverse');
+    expect(prompt).toContain('generate 5 broader');
   });
 
   it('passes llm config through to modelOptions', async () => {
     mockLlm.mockResolvedValueOnce([]);
 
-    await multiQuery('query', { llm: { modelName: 'test-model' } });
+    await embedStepBack('query', { llm: { modelName: 'test-model' } });
 
     const callConfig = mockLlm.mock.calls[0][1];
     expect(callConfig.modelOptions.modelName).toBe('test-model');
@@ -76,7 +67,7 @@ describe('multiQuery', () => {
     const logger = { info: vi.fn() };
     mockLlm.mockResolvedValueOnce([]);
 
-    await multiQuery('query', { logger });
+    await embedStepBack('query', { logger });
 
     const callConfig = mockLlm.mock.calls[0][1];
     expect(callConfig.logger).toBe(logger);

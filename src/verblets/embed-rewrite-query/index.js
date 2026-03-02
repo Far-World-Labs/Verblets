@@ -1,6 +1,6 @@
 import callLlm from '../../lib/llm/index.js';
-import { rewriteQuery as rewriteQueryPrompt } from '../../prompts/query-transforms.js';
-import { rewriteQuerySchema } from './schema.js';
+import { rewriteQuery as rewriteQueryPrompt } from '../../prompts/embed-query-transforms.js';
+import { embedRewriteQuerySchema } from './schema.js';
 
 /**
  * Rewrite a search query to be clearer and more specific.
@@ -9,7 +9,7 @@ import { rewriteQuerySchema } from './schema.js';
  * @param {object} [config] - { llm, logger }
  * @returns {Promise<string>}
  */
-export default async function rewriteQuery(query, config = {}) {
+export default async function embedRewriteQuery(query, config = {}) {
   const { llm, ...options } = config;
 
   return await callLlm(rewriteQueryPrompt(query), {
@@ -19,7 +19,7 @@ export default async function rewriteQuery(query, config = {}) {
         type: 'json_schema',
         json_schema: {
           name: 'rewrite_query',
-          schema: rewriteQuerySchema,
+          schema: embedRewriteQuerySchema,
         },
       },
     },
