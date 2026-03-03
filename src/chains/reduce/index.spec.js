@@ -78,11 +78,12 @@ describe('reduce chain', () => {
     });
   });
 
-  it('forwards logger to listBatch', async () => {
+  it('forwards lifecycle logger to listBatch', async () => {
     const logger = { info: vi.fn(), debug: vi.fn() };
     await reduce(['a', 'b'], 'join', { batchSize: 2, logger });
     const callConfig = listBatch.mock.calls[0][2];
-    expect(callConfig.logger).toBe(logger);
+    expect(callConfig.logger.logEvent).toBeTypeOf('function');
+    expect(callConfig.logger.info).toBe(logger.info);
   });
 
   it('uses initial value with more elements', async () => {

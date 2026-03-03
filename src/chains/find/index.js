@@ -1,6 +1,7 @@
 import listBatch, { ListStyle, determineStyle } from '../../verblets/list-batch/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { findResultJsonSchema } from './schemas.js';
+import { createLifecycleLogger, extractBatchConfig } from '../../lib/lifecycle-logger/index.js';
 import { createBatches, parallel, retry, batchTracker } from '../../lib/index.js';
 
 const findResponseFormat = {
@@ -20,6 +21,8 @@ const find = async function find(list, instructions, config = {}) {
     now = new Date(),
     ...options
   } = config;
+
+  const lifecycleLogger = createLifecycleLogger(logger, 'chain:find');
 
   const batches = createBatches(list, config);
   const findInstructions = ({ style, count }) => {
@@ -51,6 +54,14 @@ Process exactly ${count} items from the XML list below and return the single bes
   // Filter out skip batches
   const batchesToProcess = batches.filter((batch) => !batch.skip);
 
+  lifecycleLogger.logStart(
+    extractBatchConfig({
+      totalItems: list.length,
+      totalBatches: batchesToProcess.length,
+      maxParallel,
+    })
+  );
+
   const tracker = batchTracker('find', list.length, { onProgress, now });
 
   tracker.start(batchesToProcess.length, maxParallel);
@@ -72,7 +83,7 @@ Process exactly ${count} items from the XML list below and return the single bes
                 autoModeThreshold,
                 responseFormat: responseFormat || findResponseFormat,
                 llm,
-                logger,
+                logger: lifecycleLogger,
                 ...options,
               }),
             {
@@ -87,7 +98,9 @@ Process exactly ${count} items from the XML list below and return the single bes
           if (foundItem) {
             // Try to find the exact index in the original list
             const itemIndex = list.findIndex((item) => item === foundItem);
-            results.push({ result: foundItem, index: itemIndex !== -1 ? itemIndex : startIndex });
+            const matchIndex = itemIndex !== -1 ? itemIndex : startIndex;
+            results.push({ result: foundItem, index: matchIndex });
+            lifecycleLogger.logEvent('match-found', { result: foundItem, index: matchIndex });
           }
 
           tracker.batchDone(startIndex, items.length);
@@ -113,9 +126,11 @@ Process exactly ${count} items from the XML list below and return the single bes
     const earliest = results.reduce((best, current) =>
       current.index < best.index ? current : best
     );
+    lifecycleLogger.logResult(earliest.result, { found: true, totalItems: list.length });
     return earliest.result;
   }
 
+  lifecycleLogger.logResult('', { found: false, totalItems: list.length });
   return '';
 };
 

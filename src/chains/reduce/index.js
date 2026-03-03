@@ -2,6 +2,7 @@ import listBatch, { ListStyle, determineStyle } from '../../verblets/list-batch/
 import { asXML } from '../../prompts/wrap-variable.js';
 import { isSimpleCollectionSchema } from '../../lib/llm/index.js';
 import { reduceAccumulatorJsonSchema } from './schemas.js';
+import { createLifecycleLogger, extractBatchConfig } from '../../lib/lifecycle-logger/index.js';
 import { createBatches, retry, batchTracker } from '../../lib/index.js';
 
 // Default response format for reduce operations - simple string accumulator
@@ -24,6 +25,8 @@ const reduce = async function reduce(list, instructions, config = {}) {
     ...options
   } = config;
 
+  const lifecycleLogger = createLifecycleLogger(logger, 'chain:reduce');
+
   let acc = initial;
 
   // If initial is an array and we're using default format, wrap it
@@ -35,13 +38,22 @@ const reduce = async function reduce(list, instructions, config = {}) {
   const batches = createBatches(list, config);
   const activeBatches = batches.filter((b) => !b.skip);
 
+  lifecycleLogger.logStart(
+    extractBatchConfig({
+      totalItems: list.length,
+      totalBatches: activeBatches.length,
+      batchSize: config.batchSize,
+      maxAttempts,
+    })
+  );
+
   const tracker = batchTracker('reduce', list.length, { onProgress, now });
 
   tracker.start(activeBatches.length);
 
-  for (const { items, skip, startIndex } of batches) {
+  for (const [batchIndex, { items, skip, startIndex }] of batches.entries()) {
     if (skip) {
-      // Skip items that exceed token limits
+      lifecycleLogger.logEvent('batch-skip', { batchIndex });
       continue;
     }
 
@@ -77,7 +89,7 @@ Process exactly ${count} items from the ${itemFormat} list below and return the 
       autoModeThreshold,
       responseFormat: effectiveResponseFormat,
       llm,
-      logger,
+      logger: lifecycleLogger,
       ...options,
     };
 
@@ -97,9 +109,19 @@ Process exactly ${count} items from the ${itemFormat} list below and return the 
     }
 
     tracker.batchDone(startIndex, items.length);
+
+    lifecycleLogger.logEvent('batch-done', {
+      batchIndex,
+      accType: typeof acc,
+    });
   }
 
   tracker.complete();
+
+  lifecycleLogger.logResult(acc, {
+    totalItems: list.length,
+    totalBatches: activeBatches.length,
+  });
 
   return acc;
 };
