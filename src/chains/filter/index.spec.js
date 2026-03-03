@@ -64,11 +64,12 @@ describe('filter', () => {
     });
   });
 
-  it('forwards logger to listBatch', async () => {
-    const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
+  it('forwards lifecycle logger to listBatch', async () => {
+    const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
     await filter(['apple', 'box'], 'contains a', { batchSize: 10, logger });
     const callConfig = listBatch.mock.calls[0][2];
-    expect(callConfig.logger).toBe(logger);
+    expect(callConfig.logger.logEvent).toBeTypeOf('function');
+    expect(callConfig.logger.info).toBe(logger.info);
   });
 
   it('retries failed batches', async () => {
