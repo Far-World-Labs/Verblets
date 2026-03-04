@@ -1,20 +1,29 @@
 # themes
 
-Reveal a text's key themes and map them back to the sentences where they appear. The chain first scans fragments in batches to collect possible themes, then runs a consolidation step to normalize and deduplicate them. Optionally it returns a per-sentence map showing which themes surface in each line.
+Extract key themes from text using a two-pass reduce strategy. The first pass scans shuffled paragraphs to collect candidate themes, the second pass merges similar themes and optionally limits to the top N.
 
 ```javascript
 import themes from './index.js';
 
-const news = `The storm toppled trees and damaged homes. Volunteers quickly arrived with food and tools. Their kindness inspired hope throughout the town.`;
+const news = `The storm toppled trees and damaged homes across the region.
 
-const result = await themes(news, { sentenceMap: true });
-/* {
- * themes: ['disaster recovery', 'community', 'hope'],
- * sentenceThemes: [
- *   [0, ['disaster recovery']],
- *   [44, ['community']],
- *   [114, ['hope']]
- * ]
- */
+Volunteers quickly arrived with food and tools to help rebuild.
+
+Their kindness inspired hope throughout the town.`;
+
+const result = await themes(news);
+// ['disaster recovery', 'community support', 'hope']
 ```
 
+## API
+
+### `themes(text, config)`
+
+**Parameters:**
+- `text` (string): Text to extract themes from (split on double newlines into paragraphs)
+- `config` (Object): Configuration options
+  - `chunkSize` (number): Paragraphs per reduce batch (default: 5)
+  - `topN` (number): Limit to top N themes in the refinement pass
+  - `llm` (Object): LLM model options
+
+**Returns:** Promise<string[]> - Array of theme strings
