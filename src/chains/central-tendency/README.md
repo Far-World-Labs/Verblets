@@ -38,7 +38,7 @@ const results = await centralTendency(
 - **config** (Object): Configuration options
   - **context** (string): Context description for evaluation (default: '')
   - **coreFeatures** (string[]): Known core/definitional features of the category (default: [])
-  - **chunkSize** (number): Items per batch for processing (default: 10)
+  - **chunkSize** (number): Items per batch for processing (default: 5)
   - **maxAttempts** (number): Retry attempts for failed batches (default: 3)
   - **llm** (string): LLM model to use (default: 'fastGoodCheap')
 
