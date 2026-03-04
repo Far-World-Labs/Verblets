@@ -1,6 +1,5 @@
 import listBatch, { ListStyle, determineStyle } from '../../verblets/list-batch/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
-import { isSimpleCollectionSchema } from '../../lib/llm/index.js';
 import { reduceAccumulatorJsonSchema } from './schemas.js';
 import { createLifecycleLogger, extractBatchConfig } from '../../lib/lifecycle-logger/index.js';
 import { createBatches, retry, batchTracker } from '../../lib/index.js';
@@ -101,9 +100,6 @@ Process exactly ${count} items from the ${itemFormat} list below and return the 
 
     if (!responseFormat && result?.accumulator !== undefined) {
       acc = result.accumulator;
-    } else if (responseFormat && isSimpleCollectionSchema(responseFormat)) {
-      // Handle simple collection schemas - reduce should work with arrays directly
-      acc = result;
     } else {
       acc = result;
     }
