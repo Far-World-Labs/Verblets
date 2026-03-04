@@ -8,13 +8,10 @@ export const omit = (keys) => (obj) => {
   return Object.fromEntries(Object.entries(obj).filter(([k]) => !keySet.has(k)));
 };
 
-export const chunk = (size) => (arr) => {
-  const chunks = [];
-  for (let i = 0; i < arr.length; i += size) {
-    chunks.push(arr.slice(i, i + size));
-  }
-  return chunks;
-};
+export const chunk = (size) => (arr) =>
+  Array.from({ length: Math.ceil(arr.length / size) }, (_, i) =>
+    arr.slice(i * size, i * size + size)
+  );
 
 export const unionBy = (keyFn) => (existing, incoming) => {
   const seen = new Set(existing.map(keyFn));
