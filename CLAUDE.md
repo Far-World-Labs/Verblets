@@ -16,6 +16,7 @@ AI-powered functions that accept natural language instructions to transform and 
 - **Avoid early returns** - Less nesting, clearer flow
 - **Define named variables** - Make transformations explicit
 - **Extract pure functions** - Even from classes when possible
+- **Prefer named pure functions over inline idioms** - Well-named, often curried utility functions (in `src/lib/pure/index.js`) are more readable than dense inline native JS. When replacing a library function, create a named internal equivalent rather than inlining. Favor functional composition and non-mutating patterns (e.g. `toSorted()` over `[...arr].sort()`)
 - **Composable interfaces** - Design for composition
 - **Use lib/ for reusable modules** - Break out generally useful code
 - **Boy Scout Principle** - Always leave code cleaner than you found it
