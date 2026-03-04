@@ -4,6 +4,7 @@
 
 import { parse } from 'acorn';
 import * as walk from 'acorn-walk';
+import { debug } from '../debug/index.js';
 
 /**
  * Extract all string literals and template literals from source code
@@ -133,7 +134,7 @@ export function extractStrings(sourceCode, options = {}) {
       });
     }
   } catch (error) {
-    console.error('Failed to parse source code:', error.message);
+    debug('Failed to parse source code:', error.message);
   }
 
   return strings;
