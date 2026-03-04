@@ -1,4 +1,3 @@
-import * as R from 'ramda';
 import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { sort as sortPromptInitial } from '../../prompts/index.js';
@@ -100,7 +99,10 @@ const sort = async (list, criteria, config = {}) => {
   // Process one complete pass through all items
   // This maintains running global extremes that compete with each chunk
   const extractExtremes = async (itemsToProcess, iterationNumber) => {
-    const chunks = R.splitEvery(chunkSize, itemsToProcess);
+    const chunks = [];
+    for (let i = 0; i < itemsToProcess.length; i += chunkSize) {
+      chunks.push(itemsToProcess.slice(i, i + chunkSize));
+    }
 
     // Running global extremes - these represent the best/worst we've seen
     let globalTop = [];

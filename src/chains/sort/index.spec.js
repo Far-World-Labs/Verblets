@@ -1,5 +1,4 @@
 import { describe, expect, it, vi } from 'vitest';
-import * as R from 'ramda';
 
 import sort, { useTestSortPrompt } from './index.js';
 
@@ -65,7 +64,7 @@ const unsortedStrings = [
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn().mockImplementation((text) => {
     if (text.options.description === 'alphabetically') {
-      const sorted = R.sort((a, b) => b.localeCompare(a), text.list);
+      const sorted = text.list.toSorted((a, b) => b.localeCompare(a));
       return JSON.stringify(sorted);
     }
     return '[]';
@@ -80,8 +79,8 @@ const examples = [
       list: [...unsortedStrings],
     },
     want: {
-      highest: R.sort(byAB, [...unsortedStrings]).slice(0, extremeK * 3),
-      lowest: R.sort(byAB, [...unsortedStrings]).slice(-(extremeK * 3)),
+      highest: unsortedStrings.toSorted(byAB).slice(0, extremeK * 3),
+      lowest: unsortedStrings.toSorted(byAB).slice(-(extremeK * 3)),
     },
   },
   {

@@ -1,5 +1,3 @@
-import * as R from 'ramda';
-
 const hasOwnToString = (obj) => {
   return obj.toString !== Object.prototype.toString;
 };
@@ -77,11 +75,10 @@ export default async ({
       }
     });
 
-    nodesTodo = R.unionWith(
-      (nodeA, nodeB) => keyFor(nodeA) === keyFor(nodeB),
-      nodesTodoNext,
-      nextNodes.filter(filterWith(state))
-    );
+    const filtered = nextNodes.filter(filterWith(state));
+    const existingKeys = new Set(nodesTodoNext.map(keyFor));
+    const newNodes = filtered.filter((n) => !existingKeys.has(keyFor(n)));
+    nodesTodo = [...nodesTodoNext, ...newNodes];
   }
 
   if (returnPath) {
