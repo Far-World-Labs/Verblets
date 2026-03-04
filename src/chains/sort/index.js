@@ -4,6 +4,7 @@ import retry from '../../lib/retry/index.js';
 import { sort as sortPromptInitial } from '../../prompts/index.js';
 import sortSchema from './sort-result.json';
 import { emitStart, emitComplete, emitStepProgress } from '../../lib/progress-callback/index.js';
+import { debug } from '../../lib/debug/index.js';
 
 /**
  * Create model options for structured outputs
@@ -141,8 +142,8 @@ const sort = async (list, criteria, config = {}) => {
         sorted = [...dedupedSorted, ...missing];
 
         // Final check
-        if (sorted.length !== itemsToSort.length && process.env.VERBLETS_DEBUG) {
-          console.warn(`Sort mismatch: sent ${itemsToSort.length}, got ${sorted.length}`);
+        if (sorted.length !== itemsToSort.length) {
+          debug(`Sort mismatch: sent ${itemsToSort.length}, got ${sorted.length}`);
         }
       }
 
