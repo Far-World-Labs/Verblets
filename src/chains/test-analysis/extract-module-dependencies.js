@@ -45,7 +45,7 @@ If no dependencies are explicitly listed, return an empty array.`;
             },
           },
         }),
-      { maxRetries: 2, label: 'extract module dependencies' }
+      { maxAttempts: 2, label: 'extract module dependencies' }
     );
 
     return result.additionalModulePaths || [];

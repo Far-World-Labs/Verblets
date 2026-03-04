@@ -182,7 +182,7 @@ Cover these aspects (skip if not applicable):
   const combinedPrompt = `${systemMessage}\n\n${userMessage}`;
 
   const analysis = await retry(() => llm(combinedPrompt), {
-    maxRetries: 2,
+    maxAttempts: 2,
     label: 'function analysis',
   });
 

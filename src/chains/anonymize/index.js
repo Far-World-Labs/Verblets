@@ -68,8 +68,8 @@ Method: ${method} (${
       method === 'strict'
         ? 'Maximum anonymization'
         : method === 'balanced'
-          ? 'Balanced anonymization'
-          : 'Light anonymization'
+        ? 'Balanced anonymization'
+        : 'Light anonymization'
     })`;
   }
 

@@ -70,7 +70,7 @@ export function buildSeedGenerationPrompt(
  * @param {number} [options.count=30] - Number of sample items to generate
  * @param {string} [options.diversityLevel='balanced'] - 'high', 'balanced', or 'focused'
  * @param {string|Object} [options.llm='fastGoodCheap'] - LLM model to use
- * @param {number} [options.maxRetries=3] - Maximum number of retry attempts
+ * @param {number} [options.maxAttempts=3] - Maximum retry attempts
  * @param {number} [options.retryDelay=1000] - Delay between retries in milliseconds
  * @returns {Promise<string[]>}
  */

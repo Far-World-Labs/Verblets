@@ -3,7 +3,7 @@ import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { scopeProgress } from '../../lib/progress-callback/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
-import thresholdResultSchema from './threshold-result.json' with { type: 'json' };
+import thresholdResultSchema from './threshold-result.json';
 
 function calculateStatistics(data, targetProperty) {
   const values = data

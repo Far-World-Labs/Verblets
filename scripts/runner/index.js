@@ -51,6 +51,6 @@ await run(async () => {
     return
   }
   console.error(await functions[results.name](results.arguments.name, results.arguments.options));
-}, { maxRetries: 0 });
+}, { maxAttempts: 1 });
 
 await (await getRedis()).disconnect();

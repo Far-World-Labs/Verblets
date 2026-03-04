@@ -137,8 +137,8 @@ async function display(data, moduleDir) {
       return moduleName && fileName !== 'index.js'
         ? `${moduleName}/${fileName}: ${count}`
         : moduleName
-          ? `${moduleName}: ${count}`
-          : `${fileName}: ${count}`;
+        ? `${moduleName}: ${count}`
+        : `${fileName}: ${count}`;
     })
   );
 
@@ -146,8 +146,8 @@ async function display(data, moduleDir) {
 
   let output = `${header}
       Found ${data.prompts.length} prompt-like string${
-        data.prompts.length === 1 ? '' : 's'
-      } (${breakdown})`;
+    data.prompts.length === 1 ? '' : 's'
+  } (${breakdown})`;
 
   if (data.analysisMap && data.promptLocations) {
     // Direct mapping of analysis results to locations

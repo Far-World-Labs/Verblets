@@ -161,7 +161,7 @@ async function runAnalysis(promptText) {
           },
         },
       }),
-    { maxRetries: 2, label: 'prompt analysis' }
+    { maxAttempts: 2, label: 'prompt analysis' }
   );
 
   return { analysis };

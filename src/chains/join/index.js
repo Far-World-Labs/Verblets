@@ -12,7 +12,7 @@ import windowFor from '../../lib/window-for/index.js';
  * @param {number} config.windowSize - Size of overlapping windows (default: 5)
  * @param {number} config.overlapPercent - Percentage of overlap between windows (default: 50)
  * @param {string} config.styleHint - Optional additional style guidance
- * @param {number} config.maxRetries - Maximum retry attempts (default: 2)
+ * @param {number} config.maxAttempts - Maximum retry attempts (default: 3)
  * @returns {Promise<string>} Single result as dictated by prompt
  */
 export default async function join(
@@ -27,7 +27,7 @@ export default async function join(
     windowSize = config.chunkSize || 5, // Backward compatibility with chunkSize
     overlapPercent = 50,
     styleHint = '',
-    maxRetries = 2,
+    maxAttempts = 3,
     llm,
     onProgress,
     ...options
@@ -52,7 +52,7 @@ Important: This is part of a larger sequence. Join these fragments while being m
     const llmConfig = { modelOptions: { ...llm }, ...options };
     const result = await retry(() => callLlm(instruction, llmConfig), {
       label: `join-window-${windowIndex + 1}`,
-      maxRetries,
+      maxAttempts,
       onProgress,
     });
 
@@ -104,7 +104,7 @@ Add necessary connecting words, prepositions, conjunctions, or other filler text
       const stitchConfig = { modelOptions: { ...llm }, ...options };
       const stitchResult = await retry(() => callLlm(stitchInstruction, stitchConfig), {
         label: `join-stitch-${i}`,
-        maxRetries,
+        maxAttempts,
         onProgress,
       });
 
@@ -122,7 +122,7 @@ Add necessary connecting words, prepositions, conjunctions, or other filler text
       const joinConfig = { modelOptions: { ...llm }, ...options };
       const joinResult = await retry(() => callLlm(joinInstruction, joinConfig), {
         label: `join-nonoverlap-${i}`,
-        maxAttempts: maxRetries + 1,
+        maxAttempts,
         onProgress,
       });
 
