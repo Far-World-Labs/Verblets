@@ -3,7 +3,6 @@ import { omit } from '../pure/index.js';
 import { cacheTTL } from '../../constants/models.js';
 
 const variableKeys = ['created', 'id', 'max_tokens', 'usage'];
-const omitVariableKeys = omit(variableKeys);
 
 const sortKeys = (data) => {
   const sortedData = Object.keys(data)
@@ -30,7 +29,7 @@ export const toKey = async (data) => {
 };
 
 export const get = async (redis, inputData) => {
-  const key = await toKey(omitVariableKeys(inputData));
+  const key = await toKey(omit(variableKeys)(inputData));
   const resultFromRedis = await redis.get(key);
 
   const foundInRedis = !!resultFromRedis;
@@ -44,7 +43,7 @@ export const get = async (redis, inputData) => {
 };
 
 export const set = async (redis, inputData, outputData) => {
-  const key = await toKey(omitVariableKeys(inputData));
+  const key = await toKey(omit(variableKeys)(inputData));
   await redis.set(key, JSON.stringify(outputData), {
     EX: cacheTTL,
   });
