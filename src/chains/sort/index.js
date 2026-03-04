@@ -243,6 +243,4 @@ const sort = async (list, criteria, config = {}) => {
   return result;
 };
 
-export default async function sortWrapper(list, criteria, config = {}) {
-  return await sort(list, criteria, config);
-}
+export default sort;
