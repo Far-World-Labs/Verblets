@@ -61,17 +61,18 @@ const priorityScores = await map(priorities, priorityScale);
 
 ```javascript
 import filter from '../filter/index.js';
-import { filterInstructions } from './index.js';
+import { scaleSpec, filterInstructions } from './index.js';
 
-// Filter items based on scaled values
+const spec = await scaleSpec('Convert priority to urgency score 0-100');
+
 const tasks = [
   { name: 'Fix critical bug', priority: 'critical' },
   { name: 'Update docs', priority: 'low' },
   { name: 'New feature', priority: 'medium' }
 ];
 
-const urgentTasks = await filter(tasks, await filterInstructions({
-  scaling: 'Convert priority to urgency score 0-100',
+const urgentTasks = await filter(tasks, filterInstructions({
+  specification: spec,
   processing: 'Keep items with urgency score above 70'
 }));
 ```
@@ -80,12 +81,13 @@ const urgentTasks = await filter(tasks, await filterInstructions({
 
 ```javascript
 import find from '../find/index.js';
-import { findInstructions } from './index.js';
+import { scaleSpec, findInstructions } from './index.js';
 
-// Find the best match based on scaling
+const spec = await scaleSpec('Scale developer levels by years of experience typically required');
+
 const candidates = ['junior', 'mid-level', 'senior', 'principal'];
-const bestFit = await find(candidates, await findInstructions({
-  scaling: 'Scale developer levels by years of experience typically required',
+const bestFit = await find(candidates, findInstructions({
+  specification: spec,
   processing: 'Find the level closest to 7 years experience'
 }));
 ```
@@ -94,17 +96,18 @@ const bestFit = await find(candidates, await findInstructions({
 
 ```javascript
 import group from '../group/index.js';
-import { groupInstructions } from './index.js';
+import { scaleSpec, groupInstructions } from './index.js';
 
-// Group items by scaled ranges
+const spec = await scaleSpec('Scale prices to affordability categories');
+
 const products = [
   { name: 'Widget A', price: 15 },
   { name: 'Widget B', price: 150 },
   { name: 'Widget C', price: 1500 }
 ];
 
-const priceGroups = await group(products, await groupInstructions({
-  scaling: 'Scale prices to affordability categories',
+const priceGroups = await group(products, groupInstructions({
+  specification: spec,
   processing: 'Group into budget (<$50), standard ($50-500), premium (>$500)'
 }));
 ```
@@ -211,12 +214,10 @@ Creates a scale function with a pre-generated specification.
 
 ### Collection Instruction Builders
 
-These functions create instructions for use with collection utilities:
+These functions create prompt strings for use with collection utilities. Pass a pre-generated specification from `scaleSpec()`:
 
-- `mapInstructions(instructions, config)` - Create instructions for map operations
-- `filterInstructions({ scaling, processing }, config)` - Create instructions for filter operations
-- `findInstructions({ scaling, processing }, config)` - Create instructions for find operations
-- `groupInstructions({ scaling, processing }, config)` - Create instructions for group operations
-- `reduceInstructions({ scaling, processing }, config)` - Create instructions for reduce operations
-
-Each returns a string with an attached `specification` property for introspection.
+- `mapInstructions({ specification, processing })` - Create instructions for map operations
+- `filterInstructions({ specification, processing })` - Create instructions for filter operations
+- `findInstructions({ specification, processing })` - Create instructions for find operations
+- `groupInstructions({ specification, processing })` - Create instructions for group operations
+- `reduceInstructions({ specification, processing })` - Create instructions for reduce operations

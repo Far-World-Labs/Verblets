@@ -37,17 +37,21 @@ Apply a pre-generated specification to score an item.
 
 ## Instruction Builders
 
-Create instructions for use with collection chains:
+Create prompt strings for use with collection chains. Pass a pre-generated specification from `scoreSpec()`:
 
 ```javascript
+import { scoreSpec, mapInstructions, filterInstructions, reduceInstructions, findInstructions, groupInstructions } from './index.js';
+
+const spec = await scoreSpec('code quality');
+
 // Transform items into scores
-const scores = await map(functions, await mapInstructions('code quality'));
+const scores = await map(functions, mapInstructions({ specification: spec }));
 
 // Filter by score threshold
 const ready = await filter(
-  components, 
-  await filterInstructions({
-    scoring: 'production readiness',
+  components,
+  filterInstructions({
+    specification: spec,
     processing: 'keep items with scores >= 7'
   })
 );
@@ -55,8 +59,8 @@ const ready = await filter(
 // Reduce to aggregate scores
 const totalImpact = await reduce(
   algorithms,
-  await reduceInstructions({
-    scoring: 'performance impact on system',
+  reduceInstructions({
+    specification: spec,
     processing: 'sum all scores to get total impact'
   }),
   { initial: 0 }
@@ -65,8 +69,8 @@ const totalImpact = await reduce(
 // Find best match
 const best = await find(
   responses,
-  await findInstructions({
-    scoring: 'user intent alignment',
+  findInstructions({
+    specification: spec,
     processing: 'return the highest scoring item'
   })
 );
@@ -74,8 +78,8 @@ const best = await find(
 // Group by score ranges
 const grouped = await group(
   tasks,
-  await groupInstructions({
-    scoring: 'complexity level',
+  groupInstructions({
+    specification: spec,
     processing: 'group into: simple (0-3), moderate (4-7), complex (8-10)'
   })
 );
