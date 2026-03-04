@@ -8,6 +8,8 @@ const keyFor = (obj) => {
   return hasOwnToString(obj) ? obj.toString() : obj;
 };
 
+const unionByKey = unionBy(keyFor);
+
 const visitDefault = () => {
   return Promise.reject(new Error('Not Implemented'));
 };
@@ -78,7 +80,7 @@ export default async ({
     });
 
     const filtered = nextNodes.filter(filterWith(state));
-    nodesTodo = unionBy(keyFor)(nodesTodoNext, filtered);
+    nodesTodo = unionByKey(nodesTodoNext, filtered);
   }
 
   if (returnPath) {
