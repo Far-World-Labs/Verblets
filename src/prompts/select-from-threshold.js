@@ -9,7 +9,9 @@
  * ]);
  * const openEndedPrompt = `Questions ${openEndedDegree} open-ended. `
  */
+import { last } from '../lib/pure/index.js';
+
 export default (value, thresholds = []) => {
-  const threshold = thresholds.find((t) => value <= t.threshold) || thresholds.at(-1);
+  const threshold = thresholds.find((t) => value <= t.threshold) || last(thresholds);
   return threshold.degree;
 };

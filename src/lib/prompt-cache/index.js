@@ -1,7 +1,9 @@
 import { createHash } from '../crypto/index.js';
+import { omit } from '../pure/index.js';
 import { cacheTTL } from '../../constants/models.js';
 
-const variableKeys = new Set(['created', 'id', 'max_tokens', 'usage']);
+const variableKeys = ['created', 'id', 'max_tokens', 'usage'];
+const omitVariableKeys = omit(variableKeys);
 
 const sortKeys = (data) => {
   const sortedData = Object.keys(data)
@@ -26,9 +28,6 @@ export const toKey = async (data) => {
   const hash = await createHash('sha256');
   return hash.update(JSON.stringify(sortKeys(data))).digest('hex');
 };
-
-const omitVariableKeys = (obj) =>
-  Object.fromEntries(Object.entries(obj).filter(([k]) => !variableKeys.has(k)));
 
 export const get = async (redis, inputData) => {
   const key = await toKey(omitVariableKeys(inputData));

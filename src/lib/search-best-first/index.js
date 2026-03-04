@@ -1,3 +1,5 @@
+import { unionBy } from '../pure/index.js';
+
 const hasOwnToString = (obj) => {
   return obj.toString !== Object.prototype.toString;
 };
@@ -5,6 +7,8 @@ const hasOwnToString = (obj) => {
 const keyFor = (obj) => {
   return hasOwnToString(obj) ? obj.toString() : obj;
 };
+
+const unionByKey = unionBy(keyFor);
 
 const visitDefault = () => {
   return Promise.reject(new Error('Not Implemented'));
@@ -76,9 +80,7 @@ export default async ({
     });
 
     const filtered = nextNodes.filter(filterWith(state));
-    const existingKeys = new Set(nodesTodoNext.map(keyFor));
-    const newNodes = filtered.filter((n) => !existingKeys.has(keyFor(n)));
-    nodesTodo = [...nodesTodoNext, ...newNodes];
+    nodesTodo = unionByKey(nodesTodoNext, filtered);
   }
 
   if (returnPath) {
