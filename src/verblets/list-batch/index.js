@@ -70,6 +70,7 @@ export default async function listBatch(list, instructions, config = {}) {
     responseFormat,
     llm,
     logger,
+    modelOptions: incomingModelOptions,
     ...options
   } = config;
 
@@ -101,6 +102,7 @@ export default async function listBatch(list, instructions, config = {}) {
   };
 
   const modelOptions = {
+    ...incomingModelOptions,
     ...(maxTokens && { maxTokens }),
     response_format: foundResponseFormat,
   };
