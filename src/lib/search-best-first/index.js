@@ -1,4 +1,4 @@
-import * as R from 'ramda';
+import { unionBy } from '../pure/index.js';
 
 const hasOwnToString = (obj) => {
   return obj.toString !== Object.prototype.toString;
@@ -7,6 +7,8 @@ const hasOwnToString = (obj) => {
 const keyFor = (obj) => {
   return hasOwnToString(obj) ? obj.toString() : obj;
 };
+
+const unionByKey = unionBy(keyFor);
 
 const visitDefault = () => {
   return Promise.reject(new Error('Not Implemented'));
@@ -77,11 +79,8 @@ export default async ({
       }
     });
 
-    nodesTodo = R.unionWith(
-      (nodeA, nodeB) => keyFor(nodeA) === keyFor(nodeB),
-      nodesTodoNext,
-      nextNodes.filter(filterWith(state))
-    );
+    const filtered = nextNodes.filter(filterWith(state));
+    nodesTodo = unionByKey(nodesTodoNext, filtered);
   }
 
   if (returnPath) {

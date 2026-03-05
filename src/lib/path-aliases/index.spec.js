@@ -1,4 +1,3 @@
-import * as R from 'ramda';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 import testAdvice from '../../chains/test-advice/index.js';
@@ -50,8 +49,9 @@ describe('Path aliases', async () => {
   examples.forEach((example) => {
     it(example.name, () => {
       const got = alias(example.inputs.sequences, example.inputs.delimiter);
-      const gotSorted = R.sort(([k1], [k2]) => k1.localeCompare(k2), Object.entries(got));
-      const wantSorted = R.sort(([k1], [k2]) => k1.localeCompare(k2), Object.entries(example.want));
+      const byKey = ([k1], [k2]) => k1.localeCompare(k2);
+      const gotSorted = Object.entries(got).toSorted(byKey);
+      const wantSorted = Object.entries(example.want).toSorted(byKey);
 
       expect(gotSorted).toStrictEqual(wantSorted);
     });

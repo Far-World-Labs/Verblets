@@ -1,3 +1,5 @@
+import { chunk } from '../pure/index.js';
+
 /**
  * Process items in parallel batches with controlled concurrency
  *
@@ -16,14 +18,15 @@ export async function parallelBatch(items, processor, options = {}) {
   }
 
   const results = [];
+  const batches = chunk(maxParallel)(items);
+  let offset = 0;
 
-  // Process items in batches of maxParallel
-  for (let i = 0; i < items.length; i += maxParallel) {
-    const batch = items.slice(i, i + maxParallel);
-
-    const batchResults = await Promise.all(batch.map((item, index) => processor(item, i + index)));
-
+  for (const batch of batches) {
+    const batchResults = await Promise.all(
+      batch.map((item, index) => processor(item, offset + index))
+    );
     results.push(...batchResults);
+    offset += batch.length;
   }
 
   return results;

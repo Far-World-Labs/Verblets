@@ -1,5 +1,3 @@
-import * as R from 'ramda';
-
 import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { constants as promptConstants, asXML } from '../../prompts/index.js';
@@ -12,7 +10,7 @@ const { contentIsChoices, asJSON, asWrappedArrayJSON } = promptConstants;
 // based on an input value between 0 and 1
 const getRandomSubset = (list, value) => {
   const numItems = Math.round(value * list.length) + 1;
-  const listShuffled = R.sort(() => Math.random() - 0.5, list);
+  const listShuffled = list.toSorted(() => Math.random() - 0.5);
   return listShuffled.slice(0, numItems);
 };
 
@@ -161,7 +159,7 @@ export default async (text, options) => {
     }
   }
 
-  const resultsSorted = R.sort((a, b) => a.localeCompare(b), results);
+  const resultsSorted = results.toSorted((a, b) => a.localeCompare(b));
 
   return resultsSorted;
 };
