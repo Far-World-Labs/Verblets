@@ -14,8 +14,8 @@ export default async function embedMultiQuery(query, config = {}) {
   const { llm, count = 3, ...options } = config;
 
   return await callLlm(multiQueryPrompt(query, count), {
+    llm,
     modelOptions: {
-      ...llm,
       response_format: {
         type: 'json_schema',
         json_schema: {

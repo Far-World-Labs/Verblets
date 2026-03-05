@@ -18,8 +18,8 @@ ${asJSON}`;
   const schema = createEnumSchema(enumVal);
 
   const result = await callLlm(enumText, {
+    llm,
     modelOptions: {
-      ...llm,
       response_format: {
         type: 'json_schema',
         json_schema: {

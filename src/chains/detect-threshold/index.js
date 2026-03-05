@@ -55,8 +55,8 @@ export default async function detectThreshold({
   data,
   targetProperty,
   goal,
-  chunkSize = 50,
-  llm = { negotiate: { good: true } },
+  batchSize = 50,
+  llm = { good: true },
   maxAttempts = 3,
   onProgress,
   now = new Date(),
@@ -159,15 +159,13 @@ Return the updated accumulator as valid JSON.`;
 
   const analysisResult = await reduce(dataStrings, instructions, {
     initial: JSON.stringify(initialAccumulator),
-    chunkSize,
-    llm: {
-      ...llm,
-      response_format: {
-        type: 'json_schema',
-        json_schema: {
-          name: 'analysis_accumulator',
-          schema: accumulatorSchema,
-        },
+    batchSize,
+    llm,
+    responseFormat: {
+      type: 'json_schema',
+      json_schema: {
+        name: 'analysis_accumulator',
+        schema: accumulatorSchema,
       },
     },
     onProgress: scopeProgress(onProgress, 'reduce:analysis'),
@@ -218,7 +216,6 @@ Generate specific threshold recommendations that:
 Return threshold candidates with their rationales.`;
 
   const modelOptions = {
-    ...llm,
     response_format: {
       type: 'json_schema',
       json_schema: {
@@ -228,7 +225,7 @@ Return threshold candidates with their rationales.`;
     },
   };
 
-  const result = await retry(() => callLlm(finalPrompt, { modelOptions, ...options }), {
+  const result = await retry(() => callLlm(finalPrompt, { llm, modelOptions, ...options }), {
     label: 'detect-threshold-analysis',
     maxAttempts,
     onProgress,

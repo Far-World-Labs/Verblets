@@ -67,13 +67,13 @@ async function extractFromChunk(chunk, options = {}) {
   const { llm, ...remainingOptions } = options;
 
   const response = await callLlm(chunk, {
+    llm,
     modelOptions: {
       systemPrompt: extractTimelineInstructions,
       response_format: {
         type: 'json_schema',
         json_schema: timelineEventJsonSchema,
       },
-      ...llm,
     },
     ...remainingOptions,
   });
@@ -157,6 +157,7 @@ Events:
 ${eventList}`;
 
     const deduplicatedResult = await callLlm(deduplicationPrompt, {
+      llm,
       modelOptions: {
         systemPrompt:
           'You are a timeline deduplication engine. Return all unique events, merging only true duplicates.',
@@ -164,7 +165,6 @@ ${eventList}`;
           type: 'json_schema',
           json_schema: timelineEventJsonSchema,
         },
-        ...llm,
       },
       ...remainingOptions,
     });

@@ -44,7 +44,11 @@ const parseElements = (elements) => {
 /**
  * Process a single combination to get intersection elements and description
  */
-const processCombo = async (combo, instructions, maxAttempts = 3, onProgress, now = new Date()) => {
+const processCombo = async (
+  combo,
+  instructions,
+  { maxAttempts = 3, onProgress, now = new Date(), llm } = {}
+) => {
   const comboKey = combo.join(' + ');
 
   // Get elements and description in parallel
@@ -52,6 +56,7 @@ const processCombo = async (combo, instructions, maxAttempts = 3, onProgress, no
     retry(
       () =>
         callLlm(INTERSECTION_PROMPT(combo, instructions), {
+          llm,
           modelOptions: {
             response_format: {
               type: 'json_schema',
@@ -68,7 +73,7 @@ const processCombo = async (combo, instructions, maxAttempts = 3, onProgress, no
         onProgress,
       }
     ),
-    commonalities(combo, { instructions, onProgress, now }),
+    commonalities(combo, { instructions, onProgress, now, llm }),
   ]);
 
   const elementList = parseElements(elementsResponse);
@@ -129,7 +134,7 @@ export default async function intersections(items, options = {}) {
   for (let i = 0; i < allCombinations.length; i += batchSize) {
     const batch = allCombinations.slice(i, i + batchSize);
     const batchResults = await Promise.all(
-      batch.map((combo) => processCombo(combo, instructions, maxAttempts, onProgress, now))
+      batch.map((combo) => processCombo(combo, instructions, { maxAttempts, onProgress, now, llm }))
     );
 
     // Add batch results to final results
@@ -149,30 +154,19 @@ export default async function intersections(items, options = {}) {
 
 /**
  * Create model options with JSON schema validation
- * @param {string|Object} llm - LLM model to use
  * @param {string} schemaName - Name for the JSON schema
- * @returns {Promise<Object>} Model options with schema validation
+ * @returns {Object} Model options with schema validation
  */
-function createModelOptions(llm = 'fastGoodCheap', schemaName = 'intersection_result') {
-  const responseFormat = {
-    type: 'json_schema',
-    json_schema: {
-      name: schemaName,
-      schema: intersectionResultSchema,
+function createModelOptions(schemaName = 'intersection_result') {
+  return {
+    response_format: {
+      type: 'json_schema',
+      json_schema: {
+        name: schemaName,
+        schema: intersectionResultSchema,
+      },
     },
   };
-
-  if (typeof llm === 'string') {
-    return {
-      modelName: llm,
-      response_format: responseFormat,
-    };
-  } else {
-    return {
-      ...llm,
-      response_format: responseFormat,
-    };
-  }
 }
 
 /**
@@ -203,8 +197,8 @@ Ensure each intersection has:
 Return the properly structured JSON object with an "intersections" property containing the results.`;
 
   try {
-    const modelOptions = createModelOptions(llm, 'intersection_result');
-    const response = await retry(() => callLlm(prompt, { modelOptions }), {
+    const modelOptions = createModelOptions('intersection_result');
+    const response = await retry(() => callLlm(prompt, { llm, modelOptions }), {
       label: 'intersections-validation',
       maxAttempts,
       onProgress,

@@ -46,8 +46,7 @@ describe('embedRewriteQuery', () => {
     await embedRewriteQuery('query', { llm: { modelName: 'test-model', temperature: 0.5 } });
 
     const callConfig = mockLlm.mock.calls[0][1];
-    expect(callConfig.modelOptions.modelName).toBe('test-model');
-    expect(callConfig.modelOptions.temperature).toBe(0.5);
+    expect(callConfig.llm).toEqual({ modelName: 'test-model', temperature: 0.5 });
   });
 
   it('passes logger through to LLM call', async () => {

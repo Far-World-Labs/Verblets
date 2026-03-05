@@ -6,36 +6,15 @@ import popReferenceSchema from './pop-reference-result.json';
 
 const { onlyJSON } = promptConstants;
 
-/**
- * Create model options for structured outputs
- * @param {string|Object} llm - LLM model name or configuration object
- * @returns {Object} Model options for llm
- */
-function createModelOptions(llm) {
-  const responseFormat = {
+const modelOptions = {
+  response_format: {
     type: 'json_schema',
     json_schema: {
       name: 'pop_reference_result',
       schema: popReferenceSchema,
     },
-  };
-
-  if (typeof llm === 'string') {
-    return {
-      modelName: llm,
-      response_format: responseFormat,
-    };
-  } else if (llm) {
-    return {
-      ...llm,
-      response_format: responseFormat,
-    };
-  } else {
-    return {
-      response_format: responseFormat,
-    };
-  }
-}
+  },
+};
 
 /**
  * Find pop culture references that metaphorically match given sentences
@@ -105,10 +84,10 @@ Requirements:
 
 ${onlyJSON}`;
 
-  const modelOptions = createModelOptions(llm);
   const response = await retry(
     () =>
       callLlm(prompt, {
+        llm,
         modelOptions,
         ...restOptions,
       }),

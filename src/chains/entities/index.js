@@ -56,7 +56,7 @@ Keep it simple and actionable.`;
     () =>
       callLlm(specUserPrompt, {
         llm,
-        system: specSystemPrompt,
+        modelOptions: { systemPrompt: specSystemPrompt },
         ...rest,
       }),
     {
@@ -96,6 +96,7 @@ ${onlyJSON}`;
   const response = await retry(
     () =>
       callLlm(prompt, {
+        llm,
         modelOptions: {
           response_format: {
             type: 'json_schema',
@@ -105,7 +106,6 @@ ${onlyJSON}`;
             },
           },
         },
-        llm,
         ...options,
       }),
     {

@@ -87,7 +87,7 @@ describe('embedExpandQuery', () => {
     });
 
     const callConfig = mockLlm.mock.calls[0][1];
-    expect(callConfig.modelOptions.modelName).toBe('test-model');
+    expect(callConfig.llm).toEqual({ modelName: 'test-model' });
     expect(callConfig.logger).toBe(logger);
   });
 

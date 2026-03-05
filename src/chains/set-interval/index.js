@@ -62,7 +62,6 @@ export default function setInterval({
   historySize = 5,
   initial = null,
   onTick,
-  model,
   llm,
   maxAttempts = 3,
   onProgress,
@@ -102,7 +101,7 @@ Next wait:`;
       const intervalText = await retry(
         () =>
           callLlm(intervalPrompt, {
-            modelOptions: model ? { modelName: model, ...llm } : { ...llm },
+            llm,
             ...options,
           }),
         {

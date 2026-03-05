@@ -43,9 +43,9 @@ ${asJSON}`;
   try {
     // Make LLM call with logger
     const response = await callLlm(text, {
+      llm,
       modelOptions: {
         systemPrompt,
-        ...llm,
         response_format: {
           type: 'json_schema',
           json_schema: {

@@ -2,38 +2,18 @@ import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import score from '../score/index.js';
 import { constants as promptConstants } from '../../prompts/index.js';
-import modelService from '../../services/llm-model/index.js';
 import disambiguateMeaningsSchema from './disambiguate-meanings-result.json';
 import { emitStepProgress, scopeProgress } from '../../lib/progress-callback/index.js';
 
 const { onlyJSONStringArray } = promptConstants;
 
-/**
- * Create model options for structured outputs
- * @param {string|Object} llm - LLM model name or configuration object
- * @returns {Object} Model options for llm
- */
-function createModelOptions(llm = 'fastGoodCheap') {
-  const responseFormat = {
-    type: 'json_schema',
-    json_schema: {
-      name: 'disambiguate_meanings_result',
-      schema: disambiguateMeaningsSchema,
-    },
-  };
-
-  if (typeof llm === 'string') {
-    return {
-      modelName: llm,
-      response_format: responseFormat,
-    };
-  } else {
-    return {
-      ...llm,
-      response_format: responseFormat,
-    };
-  }
-}
+const disambiguateResponseFormat = {
+  type: 'json_schema',
+  json_schema: {
+    name: 'disambiguate_meanings_result',
+    schema: disambiguateMeaningsSchema,
+  },
+};
 
 const meaningsPrompt = (term) => {
   return `${onlyJSONStringArray}
@@ -43,21 +23,13 @@ ${onlyJSONStringArray}`;
 };
 
 export const getMeanings = async (term, config = {}) => {
-  const {
-    model = modelService.getBestPublicModel(),
-    llm,
-    maxAttempts = 3,
-    onProgress,
-    ...options
-  } = config;
+  const { llm = 'fastGoodCheap', maxAttempts = 3, onProgress, ...options } = config;
   const prompt = meaningsPrompt(term);
-  const budget = model.budgetTokens(prompt);
-  const modelOptions = createModelOptions(llm);
   const response = await retry(
     () =>
       callLlm(prompt, {
-        maxTokens: budget.completion,
-        modelOptions,
+        llm,
+        modelOptions: { response_format: disambiguateResponseFormat },
         ...options,
       }),
     {
@@ -71,13 +43,7 @@ export const getMeanings = async (term, config = {}) => {
   return Array.isArray(resultArray) ? resultArray.filter(Boolean) : [];
 };
 
-export default async function disambiguate({
-  term,
-  context,
-  model = modelService.getBestPublicModel(),
-  maxAttempts = 3,
-  ...config
-} = {}) {
+export default async function disambiguate({ term, context, maxAttempts = 3, ...config } = {}) {
   const { llm, onProgress, now = new Date(), ...options } = config;
 
   emitStepProgress(onProgress, 'disambiguate', 'extracting-meanings', {
@@ -87,7 +53,6 @@ export default async function disambiguate({
   });
 
   const meanings = await getMeanings(term, {
-    model,
     llm,
     maxAttempts,
     onProgress,

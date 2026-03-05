@@ -101,7 +101,6 @@ export default async function listBatch(list, instructions, config = {}) {
   };
 
   const modelOptions = {
-    ...llm,
     ...(maxTokens && { maxTokens }),
     response_format: foundResponseFormat,
   };
@@ -121,6 +120,7 @@ export default async function listBatch(list, instructions, config = {}) {
   let output;
   try {
     const llmOptions = {
+      llm,
       modelOptions,
       logger,
       ...options,

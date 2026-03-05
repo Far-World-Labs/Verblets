@@ -1,13 +1,10 @@
-import {
-  maxRetries as maxRetriesDefault,
-  retryDelay as retryDelayDefault,
-} from '../../constants/common.js';
+import { defaultMaxAttempts, retryDelay as retryDelayDefault } from '../../constants/common.js';
 import emitProgress from '../progress-callback/index.js';
 
 async function retry(fn, opts = {}) {
   const {
     label = '',
-    maxAttempts = maxRetriesDefault + 1,
+    maxAttempts = defaultMaxAttempts,
     retryDelay = retryDelayDefault,
     retryOnAll = false,
     onProgress,

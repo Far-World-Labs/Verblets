@@ -3,7 +3,6 @@ import { v4 as uuid } from 'uuid';
 import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { outputSuccinctNames, constants as promptConstants } from '../../prompts/index.js';
-import modelService from '../../services/llm-model/index.js';
 import { subComponentsSchema, componentOptionsSchema } from './schemas.js';
 
 const { asJSON, asWrappedArrayJSON } = promptConstants;
@@ -74,19 +73,18 @@ const defaultDecompose = async ({
   focus,
   rootName,
   fixes,
-  model = modelService.getBestPublicModel(),
+  llm,
   maxAttempts = 3,
   onProgress,
 } = {}) => {
   const focusFormatted = focus ? `: ${focus}` : '';
 
   const promptCreated = subComponentsPrompt(`${name}${focusFormatted}`, rootName, fixes);
-  const budget = model.budgetTokens(promptCreated);
   const result = await retry(
     () =>
       callLlm(promptCreated, {
+        llm,
         modelOptions: {
-          maxTokens: budget.completion,
           frequencyPenalty: 0.7,
           temperature: 0.7,
           response_format: {
@@ -107,21 +105,13 @@ const defaultDecompose = async ({
   return result;
 };
 
-const defaultEnhance = async ({
-  name,
-  rootName,
-  fixes,
-  model = modelService.getBestPublicModel(),
-  maxAttempts = 3,
-  onProgress,
-} = {}) => {
+const defaultEnhance = async ({ name, rootName, fixes, llm, maxAttempts = 3, onProgress } = {}) => {
   const promptCreated = componentOptionsPrompt(name, rootName, fixes);
-  const budget = model.budgetTokens(promptCreated);
   const result = await retry(
     () =>
       callLlm(promptCreated, {
+        llm,
         modelOptions: {
-          maxTokens: budget.completion,
           frequencyPenalty: 0.5,
           temperature: 0.3,
           response_format: {
@@ -154,6 +144,7 @@ const makeNode = async ({
   rootName,
   decompose = defaultDecompose,
   enhance = defaultEnhance,
+  llm,
   makeId = uuid,
   enhanceFixes,
   decomposeFixes,
@@ -170,6 +161,7 @@ const makeNode = async ({
       name,
       rootName,
       fixes: enhanceFixes,
+      llm,
       maxAttempts,
       onProgress,
       now,
@@ -183,6 +175,7 @@ const makeNode = async ({
       focus,
       rootName,
       fixes: decomposeFixes,
+      llm,
       maxAttempts,
       onProgress,
       now,
@@ -210,6 +203,7 @@ const makeSubtree = async ({
   depth = 0,
   decompose,
   enhance,
+  llm,
   enhanceFixes,
   decomposeFixes,
   makeId,
@@ -225,6 +219,7 @@ const makeSubtree = async ({
     rootName,
     enhance,
     decompose,
+    llm,
     makeId,
     enhanceFixes,
     decomposeFixes,
@@ -250,6 +245,7 @@ const makeSubtree = async ({
       rootName,
       decompose,
       enhance,
+      llm,
       depth: depth - 1,
       makeId,
       enhanceFixes,
@@ -286,11 +282,12 @@ export const simplifyTree = (node) => {
 };
 
 class ChainTree {
-  constructor(name, { decompose, enhance, makeId, enhanceFixes, decomposeFixes } = {}) {
+  constructor(name, { decompose, enhance, llm, makeId, enhanceFixes, decomposeFixes } = {}) {
     this.rootName = name;
     this.tree = {};
     this.decompose = decompose;
     this.enhance = enhance;
+    this.llm = llm;
     this.makeId = makeId;
     this.enhanceFixes = enhanceFixes;
     this.decomposeFixes = decomposeFixes;

@@ -7,7 +7,7 @@ export const extendedTestTimeout = 5 * 60 * 1000; // 5 minutes
 // Timeout for AI analysis operations (not a test, but analysis of test results)
 export const aiAnalysisTimeout = 30 * 1000; // 30 seconds
 
-export const maxRetries = 3;
+export const defaultMaxAttempts = 4;
 
 export const retryDelay = 1000;
 
@@ -18,6 +18,9 @@ export const truthyValues = ['1', 'true', 'TRUE', 'True', 'yes', 'YES', 'Yes'];
 
 // String values that should be considered falsy
 export const falsyValues = ['0', 'false', 'FALSE', 'False', 'no', 'NO', 'No'];
+
+// Model capability keys recognized by negotiate and normalizeLlm
+export const CAPABILITY_KEYS = ['fast', 'cheap', 'good', 'reasoning', 'multi', 'privacy'];
 
 // Utility to conditionally skip long-running examples
 // Set ENABLE_LONG_EXAMPLES=true to run all examples

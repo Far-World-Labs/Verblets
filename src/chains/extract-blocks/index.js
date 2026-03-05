@@ -117,9 +117,9 @@ export async function extractBlocks(text, instructions, config = {}) {
       const result = await retry(
         () =>
           callLlm(prompt, {
+            llm,
             modelOptions: {
               response_format: blockExtractionSchema,
-              ...llm,
             },
             logger: lifecycleLogger,
             ...options,

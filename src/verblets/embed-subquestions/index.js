@@ -16,8 +16,8 @@ export default async function embedSubquestions(query, config = {}) {
   const { llm, ...options } = config;
 
   return await callLlm(decomposeQueryPrompt(query), {
+    llm,
     modelOptions: {
-      ...llm,
       response_format: {
         type: 'json_schema',
         json_schema: {

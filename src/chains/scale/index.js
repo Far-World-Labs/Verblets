@@ -57,14 +57,14 @@ IMPORTANT: Each property must be a simple string value, not a nested object or a
   const response = await retry(
     () =>
       callLlm(specUserPrompt, {
+        llm,
         modelOptions: {
+          systemPrompt: specSystemPrompt,
           response_format: {
             type: 'json_schema',
             json_schema: scaleSpecificationJsonSchema,
           },
         },
-        llm,
-        system: specSystemPrompt,
         ...rest,
       }),
     {
@@ -102,6 +102,7 @@ ${onlyJSON}`;
   const response = await retry(
     () =>
       callLlm(prompt, {
+        llm,
         modelOptions: {
           response_format: {
             type: 'json_schema',
@@ -111,7 +112,6 @@ ${onlyJSON}`;
             },
           },
         },
-        llm,
         ...options,
       }),
     {

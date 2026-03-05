@@ -198,9 +198,7 @@ describe('timeline', () => {
     expect(llm).toHaveBeenCalledWith(
       'text',
       expect.objectContaining({
-        modelOptions: expect.objectContaining({
-          temperature: 0.5,
-        }),
+        llm: { temperature: 0.5 },
         customOption: 'value',
       })
     );

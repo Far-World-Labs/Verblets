@@ -25,8 +25,8 @@ ${asWrappedValueJSON} The value should be the number or "undefined".
 ${asJSON}`;
 
   const result = await callLlm(numberText, {
+    llm,
     modelOptions: {
-      ...llm,
       response_format: {
         type: 'json_schema',
         json_schema: {

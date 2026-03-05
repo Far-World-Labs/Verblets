@@ -11,32 +11,22 @@ import { debug } from '../../lib/debug/index.js';
  * @param {string|Object} llm - LLM model name or configuration object
  * @returns {Object} Model options for llm
  */
-function createModelOptions(llm = 'fastGoodCheap') {
-  const responseFormat = {
-    type: 'json_schema',
-    json_schema: {
-      name: 'sort_result',
-      schema: sortSchema,
+function createModelOptions() {
+  return {
+    response_format: {
+      type: 'json_schema',
+      json_schema: {
+        name: 'sort_result',
+        schema: sortSchema,
+      },
     },
   };
-
-  if (typeof llm === 'string') {
-    return {
-      modelName: llm,
-      response_format: responseFormat,
-    };
-  } else {
-    return {
-      ...llm,
-      response_format: responseFormat,
-    };
-  }
 }
 
 // redeclared so it's clearer how tests can override the sorter
 let sortPrompt = sortPromptInitial;
 
-export const defaultSortChunkSize = 10;
+export const defaultSortBatchSize = 10;
 export const defaultSortExtremeK = 10;
 export const defaultSortIterations = 1;
 
@@ -54,7 +44,7 @@ const sanitizeList = (list) => {
 
 const sort = async (list, criteria, config = {}) => {
   const {
-    chunkSize = defaultSortChunkSize,
+    batchSize = defaultSortBatchSize,
     extremeK = defaultSortExtremeK,
     iterations = defaultSortIterations,
     selectBottom = true, // New parameter to control bottom selection
@@ -69,7 +59,7 @@ const sort = async (list, criteria, config = {}) => {
 
   emitStart(onProgress, 'sort', {
     totalItems: items.length,
-    chunkSize,
+    batchSize,
     extremeK,
     iterations,
     criteria,
@@ -86,9 +76,9 @@ const sort = async (list, criteria, config = {}) => {
       return prompt;
     }
 
-    const modelOptions = createModelOptions(llm);
+    const modelOptions = createModelOptions();
 
-    const result = await retry(() => callLlm(prompt, { modelOptions, ...options }), {
+    const result = await retry(() => callLlm(prompt, { llm, modelOptions, ...options }), {
       label: 'sort-batch',
       maxAttempts,
       onProgress,
@@ -101,7 +91,7 @@ const sort = async (list, criteria, config = {}) => {
   // Process one complete pass through all items
   // This maintains running global extremes that compete with each chunk
   const extractExtremes = async (itemsToProcess, iterationNumber) => {
-    const chunks = chunk(chunkSize)(itemsToProcess);
+    const chunks = chunk(batchSize)(itemsToProcess);
 
     // Running global extremes - these represent the best/worst we've seen
     let globalTop = [];
@@ -113,7 +103,7 @@ const sort = async (list, criteria, config = {}) => {
         iteration: iterationNumber,
         chunkNumber: processedChunks + 1,
         totalChunks: chunks.length,
-        chunkSize: chunk.length,
+        batchSize: chunk.length,
         now: new Date(),
         chainStartTime: now,
       });

@@ -2,34 +2,13 @@ import callLlm from '../../lib/llm/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import listExpandSchema from './list-expand-result.json';
 
-/**
- * Create model options for structured outputs
- * @param {string|Object} llm - LLM model name or configuration object
- * @returns {Object} Model options for llm
- */
-function createModelOptions(llm = 'fastGoodCheap') {
-  const schema = listExpandSchema;
-
-  const responseFormat = {
-    type: 'json_schema',
-    json_schema: {
-      name: 'list_expand_result',
-      schema,
-    },
-  };
-
-  if (typeof llm === 'string') {
-    return {
-      modelName: llm,
-      response_format: responseFormat,
-    };
-  } else {
-    return {
-      ...llm,
-      response_format: responseFormat,
-    };
-  }
-}
+const responseFormat = {
+  type: 'json_schema',
+  json_schema: {
+    name: 'list_expand_result',
+    schema: listExpandSchema,
+  },
+};
 
 // TODO: This could potentially be refactored to use the list chain (../../chains/list/index.js)
 // for better consistency, but would require adapting the list chain to support this simpler
@@ -56,8 +35,11 @@ const buildPrompt = function (list, count) {
  */
 export default async function listExpand(list, count = list.length * 2, config = {}) {
   const { llm, ...options } = config;
-  const modelOptions = createModelOptions(llm);
-  const output = await callLlm(buildPrompt(list, count), { modelOptions, ...options });
+  const output = await callLlm(buildPrompt(list, count), {
+    llm,
+    modelOptions: { response_format: responseFormat },
+    ...options,
+  });
 
   const items = output?.items || output;
 

@@ -7,10 +7,9 @@ const { contentIsQuestion, tryCompleteData, onlyJSONStringArray } = promptConsta
 
 /**
  * Create model options for structured outputs
- * @param {string|Object} llm - LLM model name or configuration object
- * @returns {Object} Model options for llm
+ * @returns {Object} Model options for callLlm
  */
-function createModelOptions(llm = 'fastGoodCheap') {
+function createModelOptions() {
   const schema = commonalitiesSchema;
 
   const responseFormat = {
@@ -21,17 +20,7 @@ function createModelOptions(llm = 'fastGoodCheap') {
     },
   };
 
-  if (typeof llm === 'string') {
-    return {
-      modelName: llm,
-      response_format: responseFormat,
-    };
-  } else {
-    return {
-      ...llm,
-      response_format: responseFormat,
-    };
-  }
+  return { response_format: responseFormat };
 }
 
 export const buildPrompt = (items, { instructions } = {}) => {
@@ -61,10 +50,12 @@ export default async function commonalities(items, config = {}) {
   }
 
   const { llm, ...options } = config;
-  const modelOptions = createModelOptions(llm);
+  const modelOptions = createModelOptions();
 
   const output = await callLlm(buildPrompt(items, options), {
+    llm,
     modelOptions,
+    ...options,
   });
 
   const resultArray = output?.items || output;
