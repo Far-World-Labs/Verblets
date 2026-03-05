@@ -6,6 +6,7 @@ import { scopeProgress } from '../../lib/progress-callback/index.js';
 import map from '../map/index.js';
 import reduce from '../reduce/index.js';
 import { timelineEventJsonSchema } from './schemas.js';
+import { debug } from '../../lib/debug/index.js';
 
 const extractTimelineInstructions = `Extract timeline events from this text chunk.
 
@@ -138,11 +139,7 @@ export default async function timeline(text, options = {}) {
   );
 
   // Merge and deduplicate events from all chunks
-  if (process.env.VERBLETS_DEBUG) {
-    console.log(
-      `Timeline: processed ${chunks.length} chunks, found ${allEvents.length} total events`
-    );
-  }
+  debug(`Timeline: processed ${chunks.length} chunks, found ${allEvents.length} total events`);
 
   let mergedEvents = mergeTimelineEvents([allEvents]);
 
@@ -211,9 +208,7 @@ Return as JSON with the same event format, maintaining chronological order.`;
       const parsed = JSON.parse(knowledgeBase);
       knownEvents = sortTimelineEvents(parsed.events || []); // Ensure knowledge base is sorted
     } catch (e) {
-      if (process.env.VERBLETS_DEBUG) {
-        console.warn('Failed to parse knowledge base:', e.message);
-      }
+      debug('Failed to parse knowledge base:', e.message);
     }
 
     // Create the enrichment instructions with knowledge base embedded

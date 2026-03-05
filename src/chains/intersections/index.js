@@ -6,6 +6,7 @@ import { asXML } from '../../prompts/wrap-variable.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 import { intersectionElementsSchema } from './schemas.js';
 import intersectionResultSchema from './intersection-result.json';
+import { debug } from '../../lib/debug/index.js';
 
 const { asJSON, asWrappedArrayJSON, strictFormat, contentIsQuestion } = promptConstants;
 
@@ -219,13 +220,13 @@ Return the properly structured JSON object with an "intersections" property cont
       resultIntersections === null ||
       Array.isArray(resultIntersections)
     ) {
-      console.warn('Schema validation failed: invalid structure, returning original results');
+      debug('Schema validation failed: invalid structure, returning original results');
       return { intersections };
     }
 
     return { intersections: resultIntersections };
   } catch (error) {
-    console.warn('Schema validation failed, returning original results:', error.message);
+    debug('Schema validation failed, returning original results:', error.message);
     return { intersections };
   }
 }
