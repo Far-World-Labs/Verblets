@@ -1,6 +1,6 @@
 import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
 import veiledVariants from './index.js';
-import { longTestTimeout } from '../../constants/common.js';
+import { extendedTestTimeout } from '../../constants/common.js';
 import { wrapIt, wrapExpect } from '../test-analysis/test-wrappers.js';
 import { getConfig } from '../test-analysis/config.js';
 import { models } from '../../constants/models.js';
@@ -26,6 +26,6 @@ describe('veiledVariants example', () => {
       expect(Array.isArray(result)).toBe(true);
       expect(result.length, `Saw: "${result.join('", "')}"`).toBe(15);
     },
-    longTestTimeout
+    extendedTestTimeout
   );
 });
