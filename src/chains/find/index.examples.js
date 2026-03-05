@@ -24,7 +24,7 @@ describe('find examples', () => {
         'underwater adventure',
         'future tech thriller',
       ];
-      const result = await find(titles, 'Which title feels most futuristic?', { chunkSize: 2 });
+      const result = await find(titles, 'Which title feels most futuristic?', { batchSize: 2 });
       expect(result).toBeDefined();
     },
     longTestTimeout

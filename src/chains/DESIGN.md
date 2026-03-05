@@ -70,7 +70,7 @@ Chains must decide how to process multiple items efficiently:
 export async function processItems(items, options = {}) {
   const { 
     batchSize = 5, 
-    maxConcurrency = 3,
+    maxParallel = 3,
     processingMode = 'auto' // 'individual', 'bulk', 'auto'
   } = options;
 
@@ -234,7 +234,7 @@ async function processInParallel(items, processor, concurrency = 3) {
  * @param {Array} items - Items to process
  * @param {Object} [options] - Configuration options
  * @param {number} [options.batchSize=5] - Items per batch
- * @param {number} [options.maxConcurrency=3] - Parallel processing limit
+ * @param {number} [options.maxParallel=3] - Parallel processing limit
  * @param {string} [options.processingMode='auto'] - 'individual'|'bulk'|'auto'
  * @param {number} [options.maxFailures=5] - Maximum allowed failures
  * @param {Function} [options.onProgress] - Progress callback
@@ -325,11 +325,11 @@ const results = await chainName(items, {
 ```javascript
 // Process large datasets in chunks to avoid memory issues
 async function processLargeDataset(items, options = {}) {
-  const { chunkSize = 100 } = options;
+  const { batchSize = 100 } = options;
   const results = [];
-  
-  for (let i = 0; i < items.length; i += chunkSize) {
-    const chunk = items.slice(i, i + chunkSize);
+
+  for (let i = 0; i < items.length; i += batchSize) {
+    const chunk = items.slice(i, i + batchSize);
     const chunkResults = await processChunk(chunk, options);
     results.push(...chunkResults);
     

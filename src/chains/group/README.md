@@ -31,7 +31,7 @@ const organized = await group(tasks, 'organize by work type');
 - `array` (Array): Items to group
 - `criteria` (string): Natural language description of how to group
 - `config` (Object): Configuration options
-  - `chunkSize` (number): Items per batch (default: 10)
+  - `batchSize` (number): Items per batch (auto-calculated from model context window)
   - `llm` (Object): LLM model options
 
 **Returns:** Promise<Object> - Object with group names as keys and arrays of items as values

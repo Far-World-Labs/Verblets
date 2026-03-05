@@ -17,3 +17,19 @@ console.log(terms);
 
 This is handy when you want to add a quick glossary sidebar to a dense article
 so everyday readers aren't left guessing what key terms mean.
+
+## API
+
+### `glossary(text, options)`
+
+**Parameters:**
+- `text` (string): Source text to extract terms from
+- `options` (Object): Configuration options
+  - `maxTerms` (number): Maximum terms to return (default: 10)
+  - `sentencesPerBatch` (number): Sentences per extraction window (default: 3)
+  - `overlap` (number): Overlapping sentences between windows (default: 1)
+  - `batchSize` (number): Text chunks per LLM batch (default: 1)
+  - `sortBy` (string): Sorting criteria (default: 'importance for understanding the content')
+  - `llm` (Object): LLM model options
+
+**Returns:** Promise<string[]> - Terms sorted by relevance

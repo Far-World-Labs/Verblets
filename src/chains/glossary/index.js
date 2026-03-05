@@ -15,18 +15,18 @@ const GLOSSARY_RESPONSE_FORMAT = {
  * @param {string} text - source text
  * @param {object} [options]
  * @param {number} [options.maxTerms=10] - maximum terms to return
- * @param {number} [options.batchSize=3] - number of sentences per batch
+ * @param {number} [options.sentencesPerBatch=3] - number of sentences per batch
  * @param {number} [options.overlap=1] - number of overlapping sentences between batches
- * @param {number} [options.chunkSize=1] - number of text chunks to process in parallel
+ * @param {number} [options.batchSize=1] - items per LLM batch
  * @param {string} [options.sortBy='importance for understanding the content'] - sorting criteria
  * @returns {Promise<string[]>} list of important terms, sorted by relevance
  */
 export default async function glossary(text, options = {}) {
   const {
     maxTerms = 10,
-    batchSize = 3,
+    sentencesPerBatch = 3,
     overlap = 1,
-    chunkSize = 1,
+    batchSize = 1,
     sortBy = 'importance for understanding the content',
     ...restOptions
   } = options;
@@ -40,8 +40,8 @@ export default async function glossary(text, options = {}) {
 
   // Create batches of sentences with overlap
   const textChunks = [];
-  for (let i = 0; i < sentences.length; i += batchSize - overlap) {
-    const batch = sentences.slice(i, i + batchSize);
+  for (let i = 0; i < sentences.length; i += sentencesPerBatch - overlap) {
+    const batch = sentences.slice(i, i + sentencesPerBatch);
     if (batch.length > 0) {
       textChunks.push(batch.join(' '));
     }
@@ -52,7 +52,7 @@ export default async function glossary(text, options = {}) {
 Return a "terms" object containing an array of the extracted terms.`;
 
   const mapped = await map(textChunks, instructions, {
-    batchSize: chunkSize,
+    batchSize,
     responseFormat: GLOSSARY_RESPONSE_FORMAT,
     ...restOptions,
   });

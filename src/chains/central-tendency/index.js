@@ -46,7 +46,7 @@ ${corePrompt}`;
  * @param {string} [config.context=''] - Context description for evaluation
  * @param {string[]} [config.coreFeatures=[]] - Known core/definitional features
  * @param {string|Object} [config.llm='fastGoodCheap'] - LLM model to use
- * @param {number} [config.chunkSize=5] - Batch size for processing
+ * @param {number} [config.batchSize=5] - Batch size for processing
  * @param {number} [config.maxAttempts=3] - Max retry attempts for failed items
  * @returns {Promise<Array>} Array of central tendency results
  */
@@ -64,7 +64,7 @@ export default async function centralTendency(items, seedItems, config = {}) {
   }
 
   const {
-    chunkSize: batchSize = 5,
+    batchSize = 5,
     maxAttempts = 3,
     logger,
     onProgress,
@@ -95,6 +95,7 @@ export default async function centralTendency(items, seedItems, config = {}) {
 
     // Use map to handle all the complexity
     const results = await map(items, instructions, {
+      ...otherConfig,
       batchSize,
       maxAttempts,
       responseFormat: centralTendencyResponseFormat,

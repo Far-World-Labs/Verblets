@@ -24,7 +24,7 @@ describe('join examples', () => {
         'The moon rises slowly above the treeline.',
       ];
       const result = await join(fragments, 'Connect these fragments with natural transitions', {
-        chunkSize: 2,
+        windowSize: 2,
       });
 
       // Check for key words from each fragment rather than exact matches
@@ -67,7 +67,7 @@ describe('join examples', () => {
       const result = await join(
         fragments,
         'Connect these instructions with appropriate transitions',
-        { chunkSize: 2 }
+        { windowSize: 2 }
       );
 
       // Check for key technical terms from each fragment
@@ -108,7 +108,7 @@ describe('join examples', () => {
         fragments,
         'Connect these words into a natural, coherent sentence by adding necessary filler words to make it semantically meaningful',
         {
-          chunkSize: 2,
+          windowSize: 2,
         }
       );
       const result = `[${rawResult}]`; // Apply transformation after join
@@ -153,7 +153,7 @@ describe('join examples', () => {
       ];
 
       const result = await join(aiTopics, 'Create connected text about AI topics', {
-        chunkSize: 3,
+        windowSize: 3,
       });
 
       const containsMostFragments =

@@ -51,7 +51,7 @@ const summary = await reduce(
 - `config` (Object): Configuration options
   - `initial` (*): Initial accumulator value
   - `responseFormat` (Object): JSON schema for structured outputs
-  - `chunkSize` (number): Items per batch (default: 10)
+  - `batchSize` (number): Items per batch (auto-calculated from model context window)
   - `listStyle` (string): Input format style ('auto', 'newline', 'xml')
   - `autoModeThreshold` (number): Character threshold for auto XML mode
   - `llm` (Object): LLM model options

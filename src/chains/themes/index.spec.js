@@ -14,7 +14,7 @@ describe('themes chain', () => {
   it('reduces in two passes and returns trimmed themes', async () => {
     reduce.mockResolvedValueOnce('a, b, c').mockResolvedValueOnce('a, c');
     const text = 'paragraph one\n\nparagraph two';
-    const result = await themes(text, { chunkSize: 1, topN: 2 });
+    const result = await themes(text, { batchSize: 1, topN: 2 });
     expect(result).toStrictEqual(['a', 'c']);
     expect(reduce).toHaveBeenCalledTimes(2);
   });
@@ -43,10 +43,10 @@ describe('themes chain', () => {
     expect(refinePrompt).not.toContain('top');
   });
 
-  it('maps chunkSize to batchSize and forwards llm to reduce', async () => {
+  it('forwards batchSize and llm to reduce', async () => {
     reduce.mockResolvedValueOnce('a').mockResolvedValueOnce('a');
     const llm = { model: 'test' };
-    await themes('x\n\ny', { chunkSize: 3, llm });
+    await themes('x\n\ny', { batchSize: 3, llm });
     const firstCallConfig = reduce.mock.calls[0][2];
     expect(firstCallConfig.batchSize).toBe(3);
     expect(firstCallConfig.llm).toBe(llm);

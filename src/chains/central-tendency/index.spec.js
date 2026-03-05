@@ -43,10 +43,10 @@ describe('centralTendency chain', () => {
     expect(mapConfig.llm).toBe(llm);
   });
 
-  it('forwards chunkSize as batchSize to map', async () => {
+  it('forwards batchSize to map', async () => {
     map.mockResolvedValueOnce([mockResult(0.5, 'ok', 0.6)]);
 
-    await centralTendency(['item'], ['seed'], { chunkSize: 10 });
+    await centralTendency(['item'], ['seed'], { batchSize: 10 });
 
     const mapConfig = map.mock.calls[0][2];
     expect(mapConfig.batchSize).toBe(10);

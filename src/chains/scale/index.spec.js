@@ -36,8 +36,8 @@ Mapping: Map the "stars" field linearly to the quality range.`;
       1,
       expect.stringContaining('<scaling-instructions>'),
       expect.objectContaining({
-        system: expect.stringContaining('scale specification generator'),
         modelOptions: expect.objectContaining({
+          systemPrompt: expect.stringContaining('scale specification generator'),
           response_format: {
             type: 'json_schema',
             json_schema: expect.any(Object),
@@ -199,8 +199,8 @@ describe('scaleSpec', () => {
     expect(llm).toHaveBeenCalledWith(
       expect.stringContaining('Analyze these scaling instructions'),
       expect.objectContaining({
-        system: expect.stringContaining('scale specification generator'),
         modelOptions: expect.objectContaining({
+          systemPrompt: expect.stringContaining('scale specification generator'),
           response_format: expect.objectContaining({
             type: 'json_schema',
           }),
