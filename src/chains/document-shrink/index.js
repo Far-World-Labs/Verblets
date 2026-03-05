@@ -246,7 +246,7 @@ async function scoreEdgeChunks(candidates, query, maxChunks, llm, options = {}) 
     cleanedChunks,
     `relevance to query: "${query}" (0=unrelated, 5=partially related, 10=directly answers)`,
     {
-      chunkSize: LLM_CHUNK_BATCH_SIZE,
+      batchSize: LLM_CHUNK_BATCH_SIZE,
       llm,
       onProgress: scopeProgress(onProgress, 'score:edge-ranking'),
       now,
@@ -311,7 +311,7 @@ async function compressHighValueChunks(
   const texts = await map(
     cleanedTexts,
     `Extract key parts answering: "${query}". Preserve important details. Target ${compressionTarget}% of original.`,
-    { chunkSize: 10, llm, onProgress: scopeProgress(onProgress, 'map:compression'), now }
+    { batchSize: 10, llm, onProgress: scopeProgress(onProgress, 'map:compression'), now }
   );
 
   const compressed = [];

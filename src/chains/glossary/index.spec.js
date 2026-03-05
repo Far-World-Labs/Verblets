@@ -34,6 +34,13 @@ describe('glossary', () => {
     expect(map).not.toHaveBeenCalled();
   });
 
+  it('maps chunkSize to batchSize for map call', async () => {
+    await glossary('some text here.', { chunkSize: 7 });
+    const mapConfig = map.mock.calls[0][2];
+    expect(mapConfig.batchSize).toBe(7);
+    expect(mapConfig.chunkSize).toBeUndefined();
+  });
+
   it('forwards llm config to both map and sort', async () => {
     const llm = { model: 'test-model' };
     await glossary('some text here.', { llm });

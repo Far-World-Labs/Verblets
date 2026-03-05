@@ -52,7 +52,7 @@ export default async function glossary(text, options = {}) {
 Return a "terms" object containing an array of the extracted terms.`;
 
   const mapped = await map(textChunks, instructions, {
-    chunkSize,
+    batchSize: chunkSize,
     responseFormat: GLOSSARY_RESPONSE_FORMAT,
     ...restOptions,
   });
