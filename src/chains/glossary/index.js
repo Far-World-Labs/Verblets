@@ -73,7 +73,7 @@ Return a "terms" object containing an array of the extracted terms.`;
   if (terms.length === 0) return [];
 
   // Sort by importance for understanding the content
-  const sorted = await sort(terms, sortBy);
+  const sorted = await sort(terms, sortBy, restOptions);
 
   return sorted.slice(0, maxTerms);
 }
