@@ -68,17 +68,26 @@ IMPORTANT:
 - Preserve the order of items from the input list
 - Output one transformed result per input item`;
 
-      const compiledPrompt =
-        batchStyle === ListStyle.NEWLINE
-          ? `${baseInstructions}
+      // When a custom responseFormat is provided, the JSON schema already
+      // constrains the output shape — don't add conflicting XML/newline
+      // formatting instructions.
+      let compiledPrompt;
+      if (config.responseFormat) {
+        compiledPrompt = `${baseInstructions}
+
+The input list contains exactly ${items.length} item${items.length === 1 ? '' : 's'}.
+Return exactly ${items.length} result${items.length === 1 ? '' : 's'} in the items array, one per input item.`;
+      } else if (batchStyle === ListStyle.NEWLINE) {
+        compiledPrompt = `${baseInstructions}
 
 The input list contains exactly ${items.length} item${
-              items.length === 1 ? '' : 's'
-            }, separated by newlines.
+          items.length === 1 ? '' : 's'
+        }, separated by newlines.
 Return exactly ${items.length} line${
-              items.length === 1 ? '' : 's'
-            } of output, one transformed item per line. Do not number the lines.`
-          : `${baseInstructions}
+          items.length === 1 ? '' : 's'
+        } of output, one transformed item per line. Do not number the lines.`;
+      } else {
+        compiledPrompt = `${baseInstructions}
 
 Return the transformed items as an XML list with exactly ${items.length} items:
 <list>
@@ -88,6 +97,7 @@ Return the transformed items as an XML list with exactly ${items.length} items:
 </list>
 
 Preserve all formatting and newlines within each <item> element.`;
+      }
 
       // Log the compiled prompt for this batch
       if (config.logger) {
