@@ -9,14 +9,34 @@ export { default as number } from './verblets/number/index.js';
 export { default as numberWithUnits } from './verblets/number-with-units/index.js';
 
 // Math
-export { default as scale, createScale } from './chains/scale/index.js';
+export {
+  default as scale,
+  scaleSpec,
+  applyScale,
+  createScale,
+  mapInstructions as scaleMapInstructions,
+  filterInstructions as scaleFilterInstructions,
+  reduceInstructions as scaleReduceInstructions,
+  findInstructions as scaleFindInstructions,
+  groupInstructions as scaleGroupInstructions,
+} from './chains/scale/index.js';
 
 // Lists
 export { default as centralTendency } from './chains/central-tendency/index.js';
 export { default as centralTendencyLines } from './verblets/central-tendency-lines/index.js';
 export { default as detectPatterns } from './chains/detect-patterns/index.js';
 export { default as detectThreshold } from './chains/detect-threshold/index.js';
-export { default as entities } from './chains/entities/index.js';
+export {
+  default as entities,
+  entitySpec,
+  applyEntities,
+  createEntityExtractor,
+  mapInstructions as entitiesMapInstructions,
+  filterInstructions as entitiesFilterInstructions,
+  reduceInstructions as entitiesReduceInstructions,
+  findInstructions as entitiesFindInstructions,
+  groupInstructions as entitiesGroupInstructions,
+} from './chains/entities/index.js';
 export { default as extractBlocks } from './chains/extract-blocks/index.js';
 export { default as filter } from './chains/filter/index.js';
 export { default as find } from './chains/find/index.js';
@@ -30,16 +50,43 @@ export { default as reduce } from './chains/reduce/index.js';
 export {
   default as score,
   scoreSpec,
+  applyScore,
+  scoreItem,
   mapInstructions as scoreMapInstructions,
+  filterInstructions as scoreFilterInstructions,
+  reduceInstructions as scoreReduceInstructions,
+  findInstructions as scoreFindInstructions,
+  groupInstructions as scoreGroupInstructions,
 } from './chains/score/index.js';
 export { default as sort } from './chains/sort/index.js';
-export { default as tags } from './chains/tags/index.js';
+export {
+  default as tags,
+  tagSpec,
+  applyTags,
+  createTagExtractor,
+  createTagger,
+  mapInstructions as tagsMapInstructions,
+  filterInstructions as tagsFilterInstructions,
+  reduceInstructions as tagsReduceInstructions,
+  findInstructions as tagsFindInstructions,
+  groupInstructions as tagsGroupInstructions,
+} from './chains/tags/index.js';
 
 // Features
 export { default as extractFeatures } from './chains/extract-features/index.js';
 
 // Content
-export { default as anonymize } from './chains/anonymize/index.js';
+export {
+  default as anonymize,
+  anonymizeSpec,
+  applyAnonymization,
+  createAnonymizer,
+  mapInstructions as anonymizeMapInstructions,
+  filterInstructions as anonymizeFilterInstructions,
+  reduceInstructions as anonymizeReduceInstructions,
+  findInstructions as anonymizeFindInstructions,
+  groupInstructions as anonymizeGroupInstructions,
+} from './chains/anonymize/index.js';
 export { default as categorySamples } from './chains/category-samples/index.js';
 export { default as collectTerms } from './chains/collect-terms/index.js';
 export { default as commonalities } from './verblets/commonalities/index.js';
@@ -55,7 +102,19 @@ export { default as nameSimilarTo } from './verblets/name-similar-to/index.js';
 export { default as people } from './chains/people/index.js';
 export { default as popReference } from './chains/pop-reference/index.js';
 export { default as questions } from './chains/questions/index.js';
-export { default as relations } from './chains/relations/index.js';
+export {
+  default as relations,
+  relationSpec,
+  applyRelations,
+  createRelationExtractor,
+  parseRDFLiteral,
+  parseRelations,
+  mapInstructions as relationsMapInstructions,
+  filterInstructions as relationsFilterInstructions,
+  reduceInstructions as relationsReduceInstructions,
+  findInstructions as relationsFindInstructions,
+  groupInstructions as relationsGroupInstructions,
+} from './chains/relations/index.js';
 export { default as schemaOrg } from './verblets/schema-org/index.js';
 export { default as socratic } from './chains/socratic/index.js';
 export { default as split } from './chains/split/index.js';

@@ -67,23 +67,25 @@ The `verblets` directory contains individual utilities that wrap specific langua
 
 Available verblets:
 
-- [auto](./auto)
-- [bool](./bool)
-- [name](./name) - generate evocative names from text
-- [enum](./enum)
-- [intent](./intent)
-- [number](./number)
-- [number-with-units](./number-with-units)
-- [date](../chains/date)
-- [sentiment](./sentiment) - classify text sentiment
-- [schema-org](./schema-org)
-- [name-similar-to](./name-similar-to) - suggest short names matching a style
-- [name](./name) - name something from a definition or description
-- [to-object](./to-object) – see its [README](./to-object/README.md) for details.
+- [auto](./auto) - automatic structured output from prompts
+- [bool](./bool) - extract boolean answers
+- [central-tendency-lines](./central-tendency-lines) - evaluate item centrality in a category
+- [commonalities](./commonalities) - find shared traits across items
+- [enum](./enum) - classify into predefined categories
+- [expect](./expect) - LLM-powered assertions for testing
+- [fill-missing](./fill-missing) - infer missing values in structured data
+- [intent](./intent) - detect user intent from text
 - [list-batch](./list-batch) - generic batched list operations with XML/newline auto-detection
-- [list-expand](./list-expand) - expand lists with similar items with prompts
-- [embed-rewrite-query](./embed-rewrite-query) - rewrite search queries for clarity
+- [list-expand](./list-expand) - expand lists with similar items
+- [name](./name) - generate names from descriptions
+- [name-similar-to](./name-similar-to) - suggest names matching a style
+- [number](./number) - extract numeric values
+- [number-with-units](./number-with-units) - extract numbers with units
+- [phail-forge](./phail-forge) - enhance prompts to expert level
+- [schema-org](./schema-org) - classify with Schema.org types
+- [sentiment](./sentiment) - classify text sentiment
 - [embed-multi-query](./embed-multi-query) - generate diverse query variants
+- [embed-rewrite-query](./embed-rewrite-query) - rewrite search queries for clarity
 - [embed-step-back](./embed-step-back) - broaden queries to underlying concepts
 - [embed-subquestions](./embed-subquestions) - split complex queries into sub-questions
 

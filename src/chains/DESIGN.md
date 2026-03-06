@@ -250,7 +250,7 @@ export default chainName;
 
 ## Common Chain Types
 
-- **Analysis Chains**: Multi-step analysis workflows (`aiArchExpect`, `codeQuality`)
+- **Analysis Chains**: Multi-step analysis workflows (`aiArchExpect`, `centralTendency`)
 - **Transformation Chains**: Bulk data transformation with validation
 - **Orchestration Chains**: Coordinate multiple verblets or external services
 - **Aggregation Chains**: Collect and summarize results from multiple sources
@@ -263,8 +263,8 @@ export default chainName;
 3. Follow the established export pattern for both named and verblets exports
 
 ### Testing Integration
-- Import as: `import { aiExpect } from '../expect/index.js';`
-- Use pattern: `await aiExpect(actual).toSatisfy(constraint)`
+- Import as: `import expect from '../expect/index.js';`
+- Use pattern: `await expect(actual).toSatisfy(constraint)`
 
 ## Chain-Specific Documentation Requirements
 
