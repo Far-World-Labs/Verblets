@@ -82,6 +82,7 @@ export { default as extractFeatures } from './chains/extract-features/index.js';
 // Content
 export {
   default as anonymize,
+  anonymizeMethod,
   anonymizeSpec,
   applyAnonymization,
   createAnonymizer,
@@ -98,7 +99,7 @@ export {
 export { default as collectTerms } from './chains/collect-terms/index.js';
 export { default as commonalities } from './verblets/commonalities/index.js';
 export { default as conversation } from './chains/conversation/index.js';
-export { default as disambiguate } from './chains/disambiguate/index.js';
+export { default as disambiguate, getMeanings } from './chains/disambiguate/index.js';
 export {
   default as dismantle,
   simplifyTree,
@@ -130,7 +131,7 @@ export { default as schemaOrg } from './verblets/schema-org/index.js';
 export { default as socratic } from './chains/socratic/index.js';
 export { default as split } from './chains/split/index.js';
 export { default as summaryMap } from './chains/summary-map/index.js';
-export { default as tagVocabulary } from './chains/tag-vocabulary/index.js';
+export { default as tagVocabulary, computeTagStatistics } from './chains/tag-vocabulary/index.js';
 export { default as themes } from './chains/themes/index.js';
 export { default as timeline } from './chains/timeline/index.js';
 export { default as toObject } from './chains/to-object/index.js';
@@ -158,6 +159,8 @@ export { default as embedNormalizeText } from './lib/embed-normalize-text/index.
 export { default as embedNeighborChunks } from './lib/embed-neighbor-chunks/index.js';
 
 // Library Helpers (documented in README)
+export { default as combinations, rangeCombinations } from './lib/combinations/index.js';
+export { default as chunkSentences } from './lib/chunk-sentences/index.js';
 export { default as createBatches } from './lib/text-batch/index.js';
 export { default as llm } from './lib/llm/index.js';
 export { default as normalizeLlm } from './lib/normalize-llm/index.js';

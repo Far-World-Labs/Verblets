@@ -1,7 +1,7 @@
 import Ajv from 'ajv';
 
-import { debugToObject } from '../../constants/common.js';
 import { retryJSONParse } from '../../constants/messages.js';
+import { debug } from '../../lib/debug/index.js';
 import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import stripResponse from '../../lib/strip-response/index.js';
@@ -116,21 +116,15 @@ function parseAndValidate(text, schema) {
  * Logs debug information for failed attempts
  */
 function logDebugInfo(attempt, prompt, response, error) {
-  if (!debugToObject) return;
+  if (!error) return;
 
-  console.error(`Parse JSON [error]: ${error.message} ${retryJSONParse}`);
-  console.error(`<prompt attempt=${attempt}${prompt ? '' : ' value="unknown"'} />`);
+  debug(`Parse JSON [error]: ${error.message} ${retryJSONParse}`);
+  debug(`<prompt attempt=${attempt}${prompt ? '' : ' value="unknown"'} />`);
   if (prompt) {
-    console.error('<prompt>');
-    console.error(prompt);
-    console.error('</prompt>');
+    debug(`<prompt>\n${prompt}\n</prompt>`);
   }
-  console.error('<response>');
-  console.error(stripResponse(response));
-  console.error('</response>');
-  console.error('<error>');
-  console.error(error);
-  console.error('</error>');
+  debug(`<response>\n${stripResponse(response)}\n</response>`);
+  debug(`<error>\n${error}\n</error>`);
 }
 
 /**
