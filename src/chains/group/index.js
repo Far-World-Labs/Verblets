@@ -103,6 +103,7 @@ export default async function group(list, instructions, config = {}) {
     initial: '',
     llm,
     ...options,
+    now,
     onProgress: scopeProgress(onProgress, 'reduce:category-discovery'),
   });
 

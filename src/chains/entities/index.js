@@ -134,7 +134,7 @@ export async function extractEntities(text, instructions, config = {}) {
     chainStartTime: now,
   });
 
-  const spec = await entitySpec(instructions, { onProgress, ...restConfig });
+  const spec = await entitySpec(instructions, { onProgress, now, ...restConfig });
 
   emitStepProgress(onProgress, 'entities', 'extracting-entities', {
     specification: spec,
@@ -142,7 +142,7 @@ export async function extractEntities(text, instructions, config = {}) {
     chainStartTime: now,
   });
 
-  return await applyEntities(text, spec, { onProgress, ...restConfig });
+  return await applyEntities(text, spec, { onProgress, now, ...restConfig });
 }
 
 // ===== Instruction Builders =====

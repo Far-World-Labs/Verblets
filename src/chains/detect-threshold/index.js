@@ -6,7 +6,7 @@ import { asXML } from '../../prompts/wrap-variable.js';
 import { debug } from '../../lib/debug/index.js';
 import thresholdResultSchema from './threshold-result.json';
 
-function calculateStatistics(data, targetProperty) {
+export function calculateStatistics(data, targetProperty) {
   const values = data
     .map((item) => item[targetProperty])
     .filter((v) => v !== null && v !== undefined && !isNaN(v))

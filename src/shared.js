@@ -25,7 +25,10 @@ export {
 export { default as centralTendency } from './chains/central-tendency/index.js';
 export { default as centralTendencyLines } from './verblets/central-tendency-lines/index.js';
 export { default as detectPatterns } from './chains/detect-patterns/index.js';
-export { default as detectThreshold } from './chains/detect-threshold/index.js';
+export {
+  default as detectThreshold,
+  calculateStatistics,
+} from './chains/detect-threshold/index.js';
 export {
   default as entities,
   entitySpec,
@@ -43,7 +46,8 @@ export { default as find } from './chains/find/index.js';
 export { default as glossary } from './chains/glossary/index.js';
 export { default as group } from './chains/group/index.js';
 export { default as intersections } from './chains/intersections/index.js';
-export { default as list } from './chains/list/index.js';
+export { default as list, generateList } from './chains/list/index.js';
+export { default as listBatch, ListStyle, determineStyle } from './verblets/list-batch/index.js';
 export { default as listExpand } from './verblets/list-expand/index.js';
 export { default as map } from './chains/map/index.js';
 export { default as reduce } from './chains/reduce/index.js';
@@ -87,12 +91,19 @@ export {
   findInstructions as anonymizeFindInstructions,
   groupInstructions as anonymizeGroupInstructions,
 } from './chains/anonymize/index.js';
-export { default as categorySamples } from './chains/category-samples/index.js';
+export {
+  default as categorySamples,
+  buildSeedGenerationPrompt,
+} from './chains/category-samples/index.js';
 export { default as collectTerms } from './chains/collect-terms/index.js';
 export { default as commonalities } from './verblets/commonalities/index.js';
 export { default as conversation } from './chains/conversation/index.js';
 export { default as disambiguate } from './chains/disambiguate/index.js';
-export { default as dismantle } from './chains/dismantle/index.js';
+export {
+  default as dismantle,
+  simplifyTree,
+  dismantle as dismantleFactory,
+} from './chains/dismantle/index.js';
 export { default as documentShrink } from './chains/document-shrink/index.js';
 export { default as fillMissing } from './verblets/fill-missing/index.js';
 export { default as filterAmbiguous } from './chains/filter-ambiguous/index.js';
@@ -124,7 +135,12 @@ export { default as themes } from './chains/themes/index.js';
 export { default as timeline } from './chains/timeline/index.js';
 export { default as toObject } from './chains/to-object/index.js';
 export { default as truncate } from './chains/truncate/index.js';
-export { default as veiledVariants } from './chains/veiled-variants/index.js';
+export {
+  default as veiledVariants,
+  scientificFramingPrompt,
+  causalFramePrompt,
+  softCoverPrompt,
+} from './chains/veiled-variants/index.js';
 
 // Utility Operations
 export { default as auto } from './verblets/auto/index.js';
