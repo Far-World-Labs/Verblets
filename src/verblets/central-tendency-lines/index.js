@@ -127,7 +127,7 @@ export default async function centralTendency(item, seedItems, config = {}) {
     throw new Error('seedItems must be a non-empty array');
   }
 
-  const { context = '', coreFeatures = [], llm = 'fastGoodCheap', logger } = config;
+  const { context = '', coreFeatures = [], llm = 'fastGoodCheap', logger, ...options } = config;
 
   // Create lifecycle logger with central-tendency namespace
   const lifecycleLogger = createLifecycleLogger(logger, 'central-tendency');
@@ -148,7 +148,12 @@ export default async function centralTendency(item, seedItems, config = {}) {
   });
 
   try {
-    const response = await callLlm(prompt, { llm, modelOptions, logger: lifecycleLogger });
+    const response = await callLlm(prompt, {
+      llm,
+      modelOptions,
+      logger: lifecycleLogger,
+      ...options,
+    });
 
     // Log result
     lifecycleLogger.logResult(response, {

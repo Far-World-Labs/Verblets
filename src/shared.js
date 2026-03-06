@@ -13,6 +13,7 @@ export { default as scale, createScale } from './chains/scale/index.js';
 
 // Lists
 export { default as centralTendency } from './chains/central-tendency/index.js';
+export { default as centralTendencyLines } from './verblets/central-tendency-lines/index.js';
 export { default as detectPatterns } from './chains/detect-patterns/index.js';
 export { default as detectThreshold } from './chains/detect-threshold/index.js';
 export { default as entities } from './chains/entities/index.js';
@@ -33,6 +34,9 @@ export {
 } from './chains/score/index.js';
 export { default as sort } from './chains/sort/index.js';
 export { default as tags } from './chains/tags/index.js';
+
+// Features
+export { default as extractFeatures } from './chains/extract-features/index.js';
 
 // Content
 export { default as anonymize } from './chains/anonymize/index.js';
@@ -79,11 +83,14 @@ export { default as embedNormalizeText } from './lib/embed-normalize-text/index.
 export { default as embedNeighborChunks } from './lib/embed-neighbor-chunks/index.js';
 
 // Library Helpers (documented in README)
+export { default as createBatches } from './lib/text-batch/index.js';
 export { default as llm } from './lib/llm/index.js';
+export { default as normalizeLlm } from './lib/normalize-llm/index.js';
+export { default as parallel } from './lib/parallel-batch/index.js';
 export * as promptCache from './lib/prompt-cache/index.js';
 export { default as retry } from './lib/retry/index.js';
 export { default as ringBuffer } from './lib/ring-buffer/index.js';
-export { scopeProgress } from './lib/progress-callback/index.js';
+export { batchTracker, scopeProgress } from './lib/progress-callback/index.js';
 export { default as version } from './lib/version/index.js';
 
 // Namespaced exports
