@@ -109,20 +109,11 @@ export default async function categorySamples(categoryName, options = {}) {
   };
 
   return await retry(generateWithRetry, {
+    label: 'category-samples',
     maxAttempts,
     retryDelay,
+    retryOnAll: true,
     onProgress,
-    now,
-    chainStartTime: now,
-    retryCondition: (error) => {
-      // Retry on network errors, timeouts, or empty results
-      return (
-        error.message.includes('No sample items generated') ||
-        error.message.includes('timeout') ||
-        error.message.includes('network') ||
-        error.message.includes('ECONNRESET')
-      );
-    },
   });
 }
 
