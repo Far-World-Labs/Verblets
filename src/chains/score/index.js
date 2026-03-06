@@ -1,6 +1,5 @@
 import callLlm from '../../lib/llm/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
-import { constants as promptConstants } from '../../prompts/index.js';
 import { scaleSpec } from '../scale/index.js';
 import listBatch from '../../verblets/list-batch/index.js';
 import {
@@ -11,8 +10,6 @@ import {
 } from '../../lib/progress-callback/index.js';
 import { createBatches, parallel, retry } from '../../lib/index.js';
 import scoreSingleResultSchema from './score-single-result.json';
-
-const { onlyJSON } = promptConstants;
 
 const scoreBatchResponseFormat = {
   type: 'json_schema',
@@ -75,8 +72,6 @@ ${asXML(specification, { tag: 'score-specification' })}
 
 Score this item according to the specification.
 Return a JSON object with a "value" property containing the score from the range.
-
-${onlyJSON}
 
 ${asXML(item, { tag: 'item' })}`;
 

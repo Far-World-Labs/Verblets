@@ -1,5 +1,5 @@
 import callLlm from '../../lib/llm/index.js';
-import { onlyJSON, strictFormat } from '../../prompts/constants.js';
+import { strictFormat } from '../../prompts/constants.js';
 import {
   createLifecycleLogger,
   extractPromptAnalysis,
@@ -60,7 +60,6 @@ export function buildCentralTendencyPrompt(
 
   // Default structured output requirements for individual verblet use
   const defaultOutputRequirements = `OUTPUT REQUIREMENTS:
-${onlyJSON}
 ${strictFormat}
 
 Required JSON structure:

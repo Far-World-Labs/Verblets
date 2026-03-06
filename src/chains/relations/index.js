@@ -1,10 +1,7 @@
 import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
-import { constants as promptConstants } from '../../prompts/index.js';
 import relationResultSchema from './relation-result.json';
-
-const { onlyJSON } = promptConstants;
 
 // ===== Default Instructions =====
 
@@ -202,9 +199,7 @@ Each relation should be a tuple with:
 - metadata: Additional context (optional)
 
 IMPORTANT: In the JSON output, write RDF literals WITHOUT quotes around the value part.
-Example: {"object": "42^^xsd:integer"} NOT {"object": '"42"^^xsd:integer'}
-
-${onlyJSON}`;
+Example: {"object": "42^^xsd:integer"} NOT {"object": '"42"^^xsd:integer'}`;
 
   const response = await retry(
     () =>

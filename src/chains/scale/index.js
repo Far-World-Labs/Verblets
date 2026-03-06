@@ -1,11 +1,8 @@
 import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
-import { constants as promptConstants } from '../../prompts/index.js';
 import { scaleSpecificationJsonSchema } from './schemas.js';
 import scaleResultSchema from './scale-result.json';
-
-const { onlyJSON } = promptConstants;
 
 // ===== Default Instructions =====
 
@@ -95,9 +92,7 @@ ${asXML(specification, { tag: 'scale-specification' })}
 ${asXML(item, { tag: 'item' })}
 
 Transform this item according to the specification.
-Return a JSON object with a "value" property containing the scaled result.
-
-${onlyJSON}`;
+Return a JSON object with a "value" property containing the scaled result.`;
 
   const response = await retry(
     () =>

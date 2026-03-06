@@ -1,10 +1,7 @@
 import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
-import { constants as promptConstants } from '../../prompts/index.js';
 import popReferenceSchema from './pop-reference-result.json';
-
-const { onlyJSON } = promptConstants;
 
 const modelOptions = {
   response_format: {
@@ -80,9 +77,7 @@ Requirements:
 - Each reference should be a specific moment, scene, or concept (not just the source name)
 - References should meaningfully connect to the sentence's meaning
 - Provide exact character positions for matched text
-- Higher scores mean stronger metaphorical fit
-
-${onlyJSON}`;
+- Higher scores mean stronger metaphorical fit`;
 
   const response = await retry(
     () =>

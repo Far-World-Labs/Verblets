@@ -1,11 +1,8 @@
 import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
-import { constants as promptConstants } from '../../prompts/index.js';
 import map from '../map/index.js';
 import tagsResultSchema from './tags-result.json';
-
-const { onlyJSON } = promptConstants;
 
 // Schema for map operation - array of tag arrays
 const tagsMapSchema = {
@@ -93,9 +90,7 @@ ${asXML(JSON.stringify(item), { tag: 'item-to-tag' })}
 
 Analyze the item and determine which tags apply based on the specification.
 Return a JSON object with an "items" array containing ONLY the tag IDs (the "id" field values from available-tags).
-Do NOT return tag labels, descriptions, or full tag objects - ONLY the string ID values.
-
-${onlyJSON}`;
+Do NOT return tag labels, descriptions, or full tag objects - ONLY the string ID values.`;
 
   const response = await retry(
     () =>

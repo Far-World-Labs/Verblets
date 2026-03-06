@@ -1,11 +1,8 @@
 import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import score from '../score/index.js';
-import { constants as promptConstants } from '../../prompts/index.js';
 import disambiguateMeaningsSchema from './disambiguate-meanings-result.json';
 import { emitStepProgress, scopeProgress } from '../../lib/progress-callback/index.js';
-
-const { onlyJSONStringArray } = promptConstants;
 
 const disambiguateResponseFormat = {
   type: 'json_schema',
@@ -16,10 +13,8 @@ const disambiguateResponseFormat = {
 };
 
 const meaningsPrompt = (term) => {
-  return `${onlyJSONStringArray}
-List all distinct dictionary meanings or common uses of "${term}".
-Return a JSON object with a "meanings" array containing the distinct meanings.
-${onlyJSONStringArray}`;
+  return `List all distinct dictionary meanings or common uses of "${term}".
+Return a JSON object with a "meanings" array containing the distinct meanings.`;
 };
 
 export const getMeanings = async (term, config = {}) => {

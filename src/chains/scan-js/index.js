@@ -54,35 +54,30 @@ const visit = async ({
     schema,
   });
 
-  await retry(async () => {
-    const resultParsed = await callLlm(visitPrompt, {
-      llm,
-      modelOptions: {
-        response_format: {
-          type: 'json_schema',
-          json_schema: {
-            name: 'code_features_analysis',
-            schema,
+  await retry(
+    async () => {
+      const resultParsed = await callLlm(visitPrompt, {
+        llm,
+        modelOptions: {
+          response_format: {
+            type: 'json_schema',
+            json_schema: {
+              name: 'code_features_analysis',
+              schema,
+            },
           },
         },
-      },
-    });
+      });
 
-    const id = `${node.filename}:::${node.functionName}`;
+      const id = `${node.filename}:::${node.functionName}`;
 
-    state[id] = resultParsed;
-    state.nodesFound = (state.nodesFound ?? 0) + 1;
-    state.abbreviations = state.abbreviations ?? {};
-    state.abbreviations[id] = state.abbreviations[id] ?? state.nodesFound;
-
-    // Debug output removed - was cluttering test output
-    // const idDisplay = (state.pathAliases[id] ?? id).slice(-50).padStart(50);
-    // console.error(
-    //   `${`${state.nodesFound}`.padEnd(3, ' ')} ${idDisplay}: ${organizeResult(resultParsed).join(
-    //     ', '
-    //   )}`
-    // );
-  });
+      state[id] = resultParsed;
+      state.nodesFound = (state.nodesFound ?? 0) + 1;
+      state.abbreviations = state.abbreviations ?? {};
+      state.abbreviations[id] = state.abbreviations[id] ?? state.nodesFound;
+    },
+    { label: 'scan-js' }
+  );
 
   return state;
 };

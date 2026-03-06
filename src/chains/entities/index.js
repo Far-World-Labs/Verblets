@@ -1,11 +1,8 @@
 import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
-import { constants as promptConstants } from '../../prompts/index.js';
 import entityResultSchema from './entity-result.json';
 import { emitStepProgress } from '../../lib/progress-callback/index.js';
-
-const { onlyJSON } = promptConstants;
 
 // ===== Default Instructions =====
 
@@ -89,9 +86,7 @@ Extract entities according to the specification.
 Return a JSON object with an "entities" array.
 Each entity should include:
 - name: The entity name
-- type: What kind of entity (if relevant)
-
-${onlyJSON}`;
+- type: What kind of entity (if relevant)`;
 
   const response = await retry(
     () =>
