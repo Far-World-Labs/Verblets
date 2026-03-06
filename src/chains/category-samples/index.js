@@ -98,6 +98,7 @@ export default async function categorySamples(categoryName, options = {}) {
 
     const results = await list(prompt, {
       llm: model,
+      maxAttempts,
       shouldStop: ({ resultsAll }) => resultsAll.length >= count,
       onProgress: scopeProgress(onProgress, 'list:sampling'),
       now,

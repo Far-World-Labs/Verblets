@@ -164,7 +164,7 @@ export default class SummaryMap extends Map {
   }
 
   get(key) {
-    if (!super.has(key)) {
+    if (!this.data.has(key)) {
       return null;
     }
 

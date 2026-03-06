@@ -2,7 +2,7 @@
 
 Map over lists via batch processing with automatic retry logic for failed chunks. This chain handles large datasets by processing items in chunks while maintaining order and reliability.
 
-For single-line mapping operations, use the [list-map-lines](../../verblets/list-map-lines) verblet.
+For single-line mapping operations, use the [list-batch](../../verblets/list-batch) verblet.
 
 ## Usage
 
@@ -24,7 +24,7 @@ const results = await map(films, 'Describe each as a Shakespearean play', { batc
 
 ### `map(list, instructions, [options])`
 
-Break `list` into batches and map each batch using `listMapLines` with automatic retry for failed items.
+Break `list` into batches and map each batch using `listBatch` with automatic retry for failed items.
 
 - `list` (`string[]`): fragments to process.
 - `instructions` (`string`): mapping instructions.

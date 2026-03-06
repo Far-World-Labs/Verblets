@@ -150,4 +150,23 @@ describe('Summary map', () => {
       }
     });
   });
+
+  it('get() returns summarized value for a key that was set', async () => {
+    vi.clearAllMocks();
+    const map = new SummaryMap({ targetTokens: 100 });
+    map.set('example.text', { key: 'example.text', value: legalText, weight: 1, type: 'text' });
+
+    const result = await map.get('example.text');
+
+    expect(result).not.toBeNull();
+    expect(typeof result).toBe('string');
+  });
+
+  it('get() returns null for a key that was never set', async () => {
+    const map = new SummaryMap({ targetTokens: 100 });
+
+    const result = map.get('nonexistent');
+
+    expect(result).toBeNull();
+  });
 });
