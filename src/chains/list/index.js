@@ -1,13 +1,14 @@
-import { operationTimeoutMultiplier } from '../../constants/models.js';
 import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
+import { debug } from '../../lib/debug/index.js';
 import {
   asObjectWithSchema as asObjectWithSchemaPrompt,
   generateList as generateListPrompt,
   constants as promptConstants,
 } from '../../prompts/index.js';
-import modelService from '../../services/llm-model/index.js';
 import listResultSchema from './list-result.json';
+
+const DEFAULT_LIST_TIMEOUT_MS = 90_000;
 
 const { onlyJSON, contentIsTransformationSource, onlyJSONArray } = promptConstants;
 
@@ -41,11 +42,7 @@ const shouldSkipDefault = ({ result, resultsAll } = {}) => {
 };
 
 const shouldStopDefault = ({ queryCount, startTime } = {}) => {
-  return (
-    queryCount > 5 ||
-    new Date() - startTime >
-      operationTimeoutMultiplier * modelService.getBestPublicModel().requestTimeout
-  );
+  return queryCount > 5 || new Date() - startTime > DEFAULT_LIST_TIMEOUT_MS;
 };
 
 export const generateList = async function* generateListGenerator(text, options = {}) {
@@ -89,14 +86,11 @@ export const generateList = async function* generateListGenerator(text, options 
       resultsNew = Array.isArray(resultArray) ? resultArray.filter(Boolean) : [];
     } catch (error) {
       if (/The operation was aborted/.test(error.message)) {
-        // eslint-disable-next-line no-console
-        console.error('Generate list [error]: Aborted');
+        debug('Generate list [error]: Aborted');
         resultsNew = [];
       } else {
-        // eslint-disable-next-line no-console
-        console.error(
-          `Generate list [error]: ${error.message}`,
-          listPrompt.slice(0, 100).replace('\n', '\\n')
+        debug(
+          `Generate list [error]: ${error.message} ${listPrompt.slice(0, 100).replace('\n', '\\n')}`
         );
         isDone = true;
         break;

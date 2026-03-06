@@ -1,7 +1,6 @@
 import list from '../list/index.js';
 import retry from '../../lib/retry/index.js';
 import { scopeProgress } from '../../lib/progress-callback/index.js';
-import modelService from '../../services/llm-model/index.js';
 
 /**
  * Core prompt template for sample generation using cognitive science principles
@@ -93,11 +92,8 @@ export default async function categorySamples(categoryName, options = {}) {
   const generateWithRetry = async () => {
     const prompt = buildSeedGenerationPrompt(categoryName, { context, diversityLevel });
 
-    // Get the model object from the model service
-    const model = typeof llm === 'string' ? modelService.getModel(llm) : llm;
-
     const results = await list(prompt, {
-      llm: model,
+      llm,
       shouldStop: ({ resultsAll }) => resultsAll.length >= count,
       onProgress: scopeProgress(onProgress, 'list:sampling'),
       now,

@@ -8,6 +8,7 @@ import { join } from 'node:path';
 import { constants } from 'node:fs';
 import llm from '../../../lib/llm/index.js';
 import retry from '../../../lib/retry/index.js';
+import { debug } from '../../../lib/debug/index.js';
 import aiMdExtractionSchema from '../schemas/ai-md-extraction.json';
 
 const EXTRACTION_PROMPT = `AI.md is a convention for informing AI processing of various details we're concerned with, including areas of focus, things we're actively working on, focuses of analysis when displaying AI tests, places that are in need of repair or break easily, and various levels of overview for quick analysis.
@@ -66,7 +67,7 @@ export async function extractAIMdConfig(moduleDir) {
       aiMdContent: content,
     };
   } catch (error) {
-    console.error('Failed to extract AI.md config:', error.message);
+    debug(`Failed to extract AI.md config: ${error.message}`);
     return {
       intents: [],
       referenceModules: [],

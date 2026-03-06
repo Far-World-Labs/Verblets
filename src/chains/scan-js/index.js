@@ -1,13 +1,12 @@
 import fs from 'node:fs/promises';
 
 import sort from '../sort/index.js';
-import llm from '../../lib/llm/index.js';
+import callLlm from '../../lib/llm/index.js';
 import pathAliases from '../../lib/path-aliases/index.js';
 import retry from '../../lib/retry/index.js';
 import search from '../../lib/search-js-files/index.js';
 import codeFeaturesPrompt from '../../prompts/code-features.js';
 import makeJSONSchema from '../../prompts/features-json-schema.js';
-import modelService from '../../services/llm-model/index.js';
 
 const codeFeatureDefinitions = JSON.parse(
   await fs.readFile(
@@ -20,6 +19,7 @@ const visit = async ({
   node,
   state: stateInitial,
   features: featuresInitial = 'maintainability',
+  llm,
 }) => {
   if (!node.functionName) {
     return stateInitial;
@@ -31,7 +31,7 @@ const visit = async ({
     {
       batchSize: 4,
       extremeK: 4,
-      llm: modelService.getBestPublicModel(),
+      llm,
     }
   );
   const sortCriteria = sortResults.slice(0, 5);
@@ -55,9 +55,9 @@ const visit = async ({
   });
 
   await retry(async () => {
-    const resultParsed = await llm(visitPrompt, {
+    const resultParsed = await callLlm(visitPrompt, {
+      llm,
       modelOptions: {
-        modelName: 'fastGood',
         response_format: {
           type: 'json_schema',
           json_schema: {
@@ -105,6 +105,7 @@ export default async (moduleOptions) => {
       visit({
         ...options,
         features: moduleOptions.features,
+        llm: moduleOptions.llm,
       }),
   });
 };

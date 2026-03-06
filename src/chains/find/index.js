@@ -3,6 +3,7 @@ import { asXML } from '../../prompts/wrap-variable.js';
 import { findResultJsonSchema } from './schemas.js';
 import { createLifecycleLogger, extractBatchConfig } from '../../lib/lifecycle-logger/index.js';
 import { createBatches, parallel, retry, batchTracker } from '../../lib/index.js';
+import { debug } from '../../lib/debug/index.js';
 
 const findResponseFormat = {
   type: 'json_schema',
@@ -105,8 +106,8 @@ Process exactly ${count} items from the XML list below and return the single bes
           }
 
           tracker.batchDone(startIndex, items.length);
-        } catch {
-          // continue on error
+        } catch (error) {
+          debug(`find batch at index ${startIndex} failed: ${error.message}`);
         }
       },
       {

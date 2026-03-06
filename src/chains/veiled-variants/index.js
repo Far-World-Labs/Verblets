@@ -1,5 +1,6 @@
 import { run } from '../../lib/llm/index.js';
 import { constants as promptConstants, asXML } from '../../prompts/index.js';
+import { debug } from '../../lib/debug/index.js';
 
 const { onlyJSONStringArray } = promptConstants;
 
@@ -97,7 +98,7 @@ const veiledVariants = async ({ prompt, modelName = 'privacy' }) => {
         }
 
         // Fallback: return the raw response as a single item
-        console.warn('Failed to parse JSON response, using raw text:', error.message);
+        debug(`Failed to parse JSON response, using raw text: ${error.message}`);
         return [trimmed];
       }
     })

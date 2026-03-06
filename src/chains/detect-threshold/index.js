@@ -3,6 +3,7 @@ import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { scopeProgress } from '../../lib/progress-callback/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
+import { debug } from '../../lib/debug/index.js';
 import thresholdResultSchema from './threshold-result.json';
 
 function calculateStatistics(data, targetProperty) {
@@ -234,7 +235,7 @@ Return threshold candidates with their rationales.`;
     result.thresholdCandidates = result.thresholdCandidates.filter((candidate) => {
       // Ensure threshold value is within the data range
       if (candidate.value < stats.min || candidate.value > stats.max) {
-        console.warn(
+        debug(
           `Threshold value ${candidate.value} is outside data range [${stats.min}, ${stats.max}]`
         );
         return false;
