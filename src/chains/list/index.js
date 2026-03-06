@@ -157,10 +157,8 @@ export default async function list(prompt, config = {}) {
     onProgress,
   });
 
-  // With structured outputs, response should already be parsed and validated
-  const result = typeof response === 'string' ? JSON.parse(response) : response;
   // Extract items from the object structure
-  const resultArray = result?.items || result;
+  const resultArray = response?.items || response;
   const items = Array.isArray(resultArray) ? resultArray : [];
 
   // If schema is provided, transform each item to match the schema

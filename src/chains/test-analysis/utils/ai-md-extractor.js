@@ -59,11 +59,9 @@ export async function extractAIMdConfig(moduleDir) {
       { maxAttempts: 2, label: 'AI.md extractor' }
     );
 
-    const parsed = typeof response === 'string' ? JSON.parse(response) : response;
-
     return {
-      intents: parsed.testFocusIntents || [],
-      referenceModules: parsed.referenceModules || [],
+      intents: response.testFocusIntents || [],
+      referenceModules: response.referenceModules || [],
       hasAIGuide: true,
       aiMdContent: content,
     };

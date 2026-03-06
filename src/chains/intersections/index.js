@@ -203,10 +203,8 @@ Return the properly structured JSON object with an "intersections" property cont
       maxAttempts,
       onProgress,
     });
-    const parsed = typeof response === 'string' ? JSON.parse(response) : response;
-
     // Extract intersections from the object structure
-    const resultIntersections = parsed?.intersections || parsed;
+    const resultIntersections = response?.intersections || response;
 
     // Validate that the result is an object
     if (

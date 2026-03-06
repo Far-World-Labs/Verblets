@@ -173,9 +173,7 @@ Return the updated accumulator as valid JSON.`;
     ...options,
   });
 
-  // With responseFormat, reduce returns the parsed object directly
-  const accumulated =
-    typeof analysisResult === 'string' ? JSON.parse(analysisResult) : analysisResult;
+  const accumulated = analysisResult;
 
   // Now use llm directly with structured output for final recommendations
   const finalPrompt = `Based on the following analysis of ${
@@ -231,12 +229,9 @@ Return threshold candidates with their rationales.`;
     onProgress,
   });
 
-  // With structured output, result should already be parsed
-  const parsedResult = typeof result === 'string' ? JSON.parse(result) : result;
-
   // Validate and fix threshold values to be within data range
-  if (parsedResult.thresholdCandidates) {
-    parsedResult.thresholdCandidates = parsedResult.thresholdCandidates.filter((candidate) => {
+  if (result.thresholdCandidates) {
+    result.thresholdCandidates = result.thresholdCandidates.filter((candidate) => {
       // Ensure threshold value is within the data range
       if (candidate.value < stats.min || candidate.value > stats.max) {
         console.warn(
@@ -249,7 +244,7 @@ Return threshold candidates with their rationales.`;
   }
 
   // Add distribution analysis
-  parsedResult.distributionAnalysis = {
+  result.distributionAnalysis = {
     mean: stats.mean,
     median: stats.median,
     standardDeviation: stats.stdDev,
@@ -259,5 +254,5 @@ Return threshold candidates with their rationales.`;
     dataPoints: stats.count,
   };
 
-  return parsedResult;
+  return result;
 }
