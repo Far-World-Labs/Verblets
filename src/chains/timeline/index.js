@@ -208,8 +208,8 @@ Return as JSON with the same event format, maintaining chronological order.`;
 
     let knownEvents = [];
     try {
-      const parsed = JSON.parse(knowledgeBase);
-      knownEvents = sortTimelineEvents(parsed.events || []); // Ensure knowledge base is sorted
+      const parsed = typeof knowledgeBase === 'string' ? JSON.parse(knowledgeBase) : knowledgeBase;
+      knownEvents = sortTimelineEvents(parsed.events || []);
     } catch (e) {
       debug('Failed to parse knowledge base:', e.message);
     }

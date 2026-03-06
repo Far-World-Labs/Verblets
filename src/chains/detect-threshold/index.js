@@ -162,6 +162,7 @@ Return the updated accumulator as valid JSON.`;
     initial: JSON.stringify(initialAccumulator),
     batchSize,
     llm,
+    maxAttempts,
     responseFormat: {
       type: 'json_schema',
       json_schema: {
