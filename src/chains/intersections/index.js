@@ -47,7 +47,7 @@ const parseElements = (elements) => {
 const processCombo = async (
   combo,
   instructions,
-  { maxAttempts = 3, onProgress, now = new Date(), llm } = {}
+  { maxAttempts = 3, onProgress, now = new Date(), llm, ...options } = {}
 ) => {
   const comboKey = combo.join(' + ');
 
@@ -57,6 +57,7 @@ const processCombo = async (
       () =>
         callLlm(INTERSECTION_PROMPT(combo, instructions), {
           llm,
+          ...options,
           modelOptions: {
             response_format: {
               type: 'json_schema',
@@ -73,7 +74,7 @@ const processCombo = async (
         onProgress,
       }
     ),
-    commonalities(combo, { instructions, onProgress, now, llm }),
+    commonalities(combo, { instructions, onProgress, now, llm, ...options }),
   ]);
 
   const elementList = parseElements(elementsResponse);
@@ -119,6 +120,7 @@ export default async function intersections(items, options = {}) {
     maxAttempts = 3,
     onProgress,
     now = new Date(),
+    ...restOptions
   } = options;
 
   // Generate all combinations
@@ -134,7 +136,9 @@ export default async function intersections(items, options = {}) {
   for (let i = 0; i < allCombinations.length; i += batchSize) {
     const batch = allCombinations.slice(i, i + batchSize);
     const batchResults = await Promise.all(
-      batch.map((combo) => processCombo(combo, instructions, { maxAttempts, onProgress, now, llm }))
+      batch.map((combo) =>
+        processCombo(combo, instructions, { maxAttempts, onProgress, now, llm, ...restOptions })
+      )
     );
 
     // Add batch results to final results
