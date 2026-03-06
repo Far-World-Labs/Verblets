@@ -70,7 +70,7 @@ export default async function disambiguate({ term, context, maxAttempts = 3, ...
   const scores = await score(
     meanings,
     `how well this meaning of "${term}" matches the context: ${context}`,
-    { llm, onProgress: scopeProgress(onProgress, 'score:relevance'), now, ...options }
+    { llm, maxAttempts, onProgress: scopeProgress(onProgress, 'score:relevance'), now, ...options }
   );
 
   let bestIndex = 0;
