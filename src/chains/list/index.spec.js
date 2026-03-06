@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import list from './index.js';
+import list, { generateList } from './index.js';
 
 // Inline schema instead of loading from file for browser compatibility
 const getSchema = () => ({
@@ -20,7 +20,7 @@ vi.mock('../../lib/llm/index.js', () => ({
       return '{"make":"Tesla", "model": "Model Y"}';
     }
     if (/EV cars/.test(text)) {
-      return '["Tesla Model Y"]';
+      return { items: ['Tesla Model Y', 'Nissan Leaf', 'Chevy Bolt'] };
     }
     return 'undefined';
   }),
@@ -50,7 +50,6 @@ describe('List verblet', () => {
         schema = await example.inputs.schema();
       }
       const result = await list(example.inputs.description, {
-        shouldStop: ({ queryCount }) => queryCount > 1,
         schema,
       });
 
@@ -62,5 +61,31 @@ describe('List verblet', () => {
         expect(result.some((item) => example.want.listModelContains.test(item.model))).equals(true);
       }
     });
+  });
+
+  it('generateList shouldStop receives actual resultsAll in per-query check', async () => {
+    const shouldStopSpy = vi.fn().mockImplementation(({ queryCount }) => {
+      // Allow first query to complete, stop on second
+      return queryCount > 1;
+    });
+
+    const results = [];
+    for await (const item of generateList('2021 EV cars', { shouldStop: shouldStopSpy })) {
+      results.push(item);
+    }
+
+    expect(results.length).toBeGreaterThan(0);
+
+    // The per-query shouldStop call (result === undefined) should receive the actual resultsAll
+    const perQueryCalls = shouldStopSpy.mock.calls.filter(
+      ([factors]) => factors.result === undefined
+    );
+    expect(perQueryCalls.length).toBeGreaterThan(0);
+
+    const firstPerQueryCall = perQueryCalls[0][0];
+    expect(Array.isArray(firstPerQueryCall.resultsAll)).toBe(true);
+    expect(firstPerQueryCall.resultsAll.length).toBeGreaterThan(0);
+    expect(Array.isArray(firstPerQueryCall.resultsNew)).toBe(true);
+    expect(firstPerQueryCall.resultsNew.length).toBeGreaterThan(0);
   });
 });

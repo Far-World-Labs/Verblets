@@ -133,8 +133,8 @@ export const generateList = async function* generateListGenerator(text, options 
 
     const perQueryControlFactors = {
       result: undefined,
-      resultsAll: [],
-      resultsNew: [],
+      resultsAll,
+      resultsNew,
       queryCount,
       startTime,
     };
