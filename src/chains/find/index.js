@@ -12,6 +12,7 @@ const findResponseFormat = {
 const find = async function find(list, instructions, config = {}) {
   const {
     maxParallel = 3,
+    maxAttempts = 3,
     listStyle,
     autoModeThreshold,
     responseFormat,
@@ -88,7 +89,7 @@ Process exactly ${count} items from the XML list below and return the single bes
               }),
             {
               label: 'find:batch',
-              maxAttempts: 3,
+              maxAttempts,
               onProgress: tracker.forBatch(startIndex, items.length),
             }
           );

@@ -1,6 +1,5 @@
 import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
-import modelService from '../../services/llm-model/index.js';
 import socraticQuestionSchema from './socratic-question-schema.js';
 import socraticAnswerSchema from './socratic-answer-schema.js';
 import {
@@ -25,7 +24,7 @@ const buildAnswerPrompt = (question, historyText) => `${
 const defaultAsk = async ({
   topic,
   history = [],
-  model = modelService.getBestPublicModel(),
+  llm,
   logger,
   maxAttempts = 3,
   onProgress,
@@ -35,13 +34,12 @@ const defaultAsk = async ({
 
   logger?.logEvent('ask-prompt', extractPromptAnalysis(prompt));
 
-  const budget = model.budgetTokens(prompt);
   const response = await retry(
     () =>
       callLlm(prompt, {
-        maxTokens: budget.completion,
-        temperature: 0.7,
+        llm,
         modelOptions: {
+          temperature: 0.7,
           response_format: {
             type: 'json_schema',
             json_schema: {
@@ -66,7 +64,7 @@ const defaultAnswer = async ({
   question,
   history = [],
   _topic,
-  model = modelService.getBestPublicModel(),
+  llm,
   logger,
   maxAttempts = 3,
   onProgress,
@@ -76,13 +74,12 @@ const defaultAnswer = async ({
 
   logger?.logEvent('answer-prompt', extractPromptAnalysis(prompt));
 
-  const budget = model.budgetTokens(prompt);
   const response = await retry(
     () =>
       callLlm(prompt, {
-        maxTokens: budget.completion,
-        temperature: 0.7,
+        llm,
         modelOptions: {
+          temperature: 0.7,
           response_format: {
             type: 'json_schema',
             json_schema: {
@@ -109,6 +106,7 @@ class SocraticMethod {
     {
       ask = defaultAsk,
       answer = defaultAnswer,
+      llm,
       logger,
       maxAttempts = 3,
       onProgress,
@@ -118,6 +116,7 @@ class SocraticMethod {
     this.statement = statement;
     this.ask = ask;
     this.answer = answer;
+    this.llm = llm;
     this.history = [];
     this.maxAttempts = maxAttempts;
     this.onProgress = onProgress;
@@ -162,6 +161,7 @@ class SocraticMethod {
     const question = await this.ask({
       topic: this.statement,
       history: this.history,
+      llm: this.llm,
       logger: this.logger,
       maxAttempts: this.maxAttempts,
       onProgress: this.onProgress,
@@ -184,6 +184,7 @@ class SocraticMethod {
       question,
       history: this.history,
       topic: this.statement,
+      llm: this.llm,
       logger: this.logger,
       maxAttempts: this.maxAttempts,
       onProgress: this.onProgress,

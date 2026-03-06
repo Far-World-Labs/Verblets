@@ -56,7 +56,7 @@ export async function extractAIMdConfig(moduleDir) {
             },
           },
         }),
-      { maxRetries: 2, label: 'AI.md extractor' }
+      { maxAttempts: 2, label: 'AI.md extractor' }
     );
 
     const parsed = typeof response === 'string' ? JSON.parse(response) : response;

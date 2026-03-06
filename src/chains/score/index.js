@@ -81,6 +81,7 @@ ${onlyJSON}
 ${asXML(item, { tag: 'item' })}`;
 
   const llmConfig = {
+    llm,
     modelOptions: {
       response_format: {
         type: 'json_schema',
@@ -90,7 +91,6 @@ ${asXML(item, { tag: 'item' })}`;
         },
       },
     },
-    llm,
     ...options,
   };
 
@@ -252,11 +252,11 @@ export async function mapScore(list, instructions, config = {}) {
     spec,
     'Return ONLY the numeric score for each item according to the specification range.'
   );
-  const scoringLlm = { temperature: 0, ...llm };
   const batchConfig = {
     ...restConfig,
     responseFormat: scoreBatchResponseFormat,
-    llm: scoringLlm,
+    llm,
+    modelOptions: { temperature: 0 },
     logger,
   };
   const passOptions = { maxParallel, maxAttempts, onProgress, now, logger };

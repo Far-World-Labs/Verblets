@@ -225,10 +225,7 @@ describe('popReference', () => {
     expect(llm).toHaveBeenCalledWith(
       expect.any(String),
       expect.objectContaining({
-        modelOptions: expect.objectContaining({
-          modelName: 'custom-model',
-          temperature: 0.5,
-        }),
+        llm: { modelName: 'custom-model', temperature: 0.5 },
       })
     );
   });

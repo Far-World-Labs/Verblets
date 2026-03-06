@@ -6,34 +6,13 @@ import numberWithUnitsSchema from './number-with-units-result.json';
 const { asNumberWithUnits, contentIsQuestion, explainAndSeparate, explainAndSeparateJSON } =
   promptConstants;
 
-/**
- * Create model options for structured outputs
- * @param {string|Object} llm - LLM model name or configuration object
- * @returns {Object} Model options for llm
- */
-function createModelOptions(llm = 'fastGoodCheap') {
-  const schema = numberWithUnitsSchema;
-
-  const responseFormat = {
-    type: 'json_schema',
-    json_schema: {
-      name: 'number_with_units_result',
-      schema,
-    },
-  };
-
-  if (typeof llm === 'string') {
-    return {
-      modelName: llm,
-      response_format: responseFormat,
-    };
-  } else {
-    return {
-      ...llm,
-      response_format: responseFormat,
-    };
-  }
-}
+const responseFormat = {
+  type: 'json_schema',
+  json_schema: {
+    name: 'number_with_units_result',
+    schema: numberWithUnitsSchema,
+  },
+};
 
 /**
  * Extract numeric value and unit from text input
@@ -50,9 +29,9 @@ Answer the question and provide the numeric value and unit. If the question is u
 
 ${asNumberWithUnits}`;
 
-  const modelOptions = createModelOptions(llm);
   const response = await callLlm(numberText, {
-    modelOptions,
+    llm,
+    modelOptions: { response_format: responseFormat },
     ...options,
   });
 

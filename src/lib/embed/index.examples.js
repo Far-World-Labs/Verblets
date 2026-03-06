@@ -1,7 +1,6 @@
 import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
 import { embed, embedBatch, embedChunked, embedWarmup } from './index.js';
-import cosineSimilarity from '../../lib/cosine-similarity/index.js';
-import { vectorSearch } from '../../lib/rag/index.js';
+import { cosineSimilarity, vectorSearch } from '../pure/index.js';
 import { extendedTestTimeout } from '../../constants/common.js';
 
 import { makeWrappedIt, makeWrappedExpect } from '../../chains/test-analysis/test-wrappers.js';

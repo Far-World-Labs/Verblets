@@ -15,7 +15,7 @@ describe('map examples', () => {
     'maps with listMap',
     async () => {
       const animals = ['dog', 'cat', 'cow', 'sheep', 'duck'];
-      const result = await map(animals, 'Return the sound each animal makes', { chunkSize: 3 });
+      const result = await map(animals, 'Return the sound each animal makes', { batchSize: 3 });
       // e.g. result[0] === 'bark'
       //      result[2] === 'moo'
       expect(result.length).toBe(5);

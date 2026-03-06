@@ -13,8 +13,8 @@ export default async function embedRewriteQuery(query, config = {}) {
   const { llm, ...options } = config;
 
   return await callLlm(rewriteQueryPrompt(query), {
+    llm,
     modelOptions: {
-      ...llm,
       response_format: {
         type: 'json_schema',
         json_schema: {

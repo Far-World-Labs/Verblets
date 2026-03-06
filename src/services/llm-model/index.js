@@ -9,6 +9,15 @@ import {
   temperature as temperatureConfig,
   topP as topPConfig,
 } from '../../constants/models.js';
+import { CAPABILITY_KEYS } from '../../constants/common.js';
+
+// Get or lazily derive capability Set for a model key
+function getModelCapabilities(model, modelKey) {
+  if (model.capabilities) return model.capabilities;
+  const lower = modelKey.toLowerCase();
+  model.capabilities = new Set(CAPABILITY_KEYS.filter((c) => lower.includes(c)));
+  return model.capabilities;
+}
 
 // Prioritized list of models (best to worst, excluding privacy/reasoning which are never auto-invoked)
 const prioritizedModels = [
@@ -40,17 +49,19 @@ const prioritizedModels = [
 class ModelService {
   constructor() {
     this.models = {};
-    this.models = Object.entries(models).reduce(
-      (acc, [key, modelDef]) => ({
+    const capabilityKeySet = new Set(CAPABILITY_KEYS);
+    this.models = Object.entries(models).reduce((acc, [key, modelDef]) => {
+      const lower = key.toLowerCase();
+      return {
         ...acc,
         [key]: new Model({
           ...modelDef,
           key,
+          capabilities: new Set([...capabilityKeySet].filter((c) => lower.includes(c))),
           tokenizer: tokenizer.encode,
         }),
-      }),
-      {}
-    );
+      };
+    }, {});
 
     // Always default to fastGood for public model
     this.bestPublicModelKey = 'fastGood';
@@ -166,89 +177,82 @@ class ModelService {
   }
 
   negotiateModel(preferred, negotiation = {}) {
-    const { privacy, reasoning, fast, cheap, good, multi } = negotiation;
+    const { privacy, ...capFlags } = negotiation;
 
     // Privacy models take absolute priority
-    if (privacy) {
-      if (!this.models.privacy) {
-        return undefined;
-      }
-      return 'privacy';
+    if (privacy === true || privacy === 'prefer') {
+      if (this.models.privacy) return 'privacy';
+      if (privacy === true) return undefined;
+      // privacy === 'prefer' but no privacy model → fall through
     }
 
-    // Helper function to check if a model matches all requirements
-    const matchesRequirements = (modelKey) => {
-      if (!this.models[modelKey]) {
-        return false;
-      }
+    // Split into hard constraints (true/false) and soft preferences ('prefer')
+    const requires = {};
+    const prefers = {};
+    let hasConstraints = false;
 
-      const lowerModelKey = modelKey.toLowerCase();
+    for (const [key, value] of Object.entries(capFlags)) {
+      if (value === true || value === false) {
+        requires[key] = value;
+        hasConstraints = true;
+      } else if (value === 'prefer') {
+        prefers[key] = true;
+        hasConstraints = true;
+      }
+    }
 
-      // Check each requirement - support both positive and negative (false) requirements
-      // Only check requirements that are explicitly specified (not undefined)
-      if (fast === true && !/fast/i.test(lowerModelKey)) {
-        return false;
-      }
-      if (fast === false && /fast/i.test(lowerModelKey)) {
-        return false;
-      }
-      if (cheap === true && !/cheap/i.test(lowerModelKey)) {
-        return false;
-      }
-      if (cheap === false && /cheap/i.test(lowerModelKey)) {
-        return false;
-      }
-      if (good === true && !/good/i.test(lowerModelKey)) {
-        return false;
-      }
-      if (good === false && /good/i.test(lowerModelKey)) {
-        return false;
-      }
-      if (reasoning === true && !/reasoning/i.test(lowerModelKey)) {
-        return false;
-      }
-      if (reasoning === false && /reasoning/i.test(lowerModelKey)) {
-        return false;
-      }
-      if (multi === true && !/multi/i.test(lowerModelKey)) {
-        return false;
-      }
-      if (multi === false && /multi/i.test(lowerModelKey)) {
-        return false;
+    // No constraints → return preferred or default
+    if (!hasConstraints) {
+      if (preferred && this.models[preferred]) return preferred;
+      return this.bestPublicModelKey;
+    }
+
+    // Does a model satisfy all hard constraints?
+    const matchesRequires = (modelKey) => {
+      const model = this.models[modelKey];
+      if (!model) return false;
+      const caps = getModelCapabilities(model, modelKey);
+      for (const [key, value] of Object.entries(requires)) {
+        const has = caps.has(key);
+        if (value === true && !has) return false;
+        if (value === false && has) return false;
       }
       return true;
     };
 
-    // Check if any specific requirements are given
-    const hasSpecificRequirements =
-      fast !== undefined ||
-      cheap !== undefined ||
-      good !== undefined ||
-      reasoning !== undefined ||
-      multi !== undefined;
+    // If preferred model satisfies all requires, use it
+    if (preferred && matchesRequires(preferred)) return preferred;
 
-    // If no specific requirements are given, return preferred model if available
-    if (!hasSpecificRequirements) {
-      if (preferred && this.models[preferred]) {
-        return preferred;
+    const hasPrefers = Object.keys(prefers).length > 0;
+
+    // Count how many prefer flags a model satisfies
+    const getPreferScore = (modelKey) => {
+      const caps = getModelCapabilities(this.models[modelKey], modelKey);
+      let score = 0;
+      for (const key of Object.keys(prefers)) {
+        if (caps.has(key)) score += 1;
       }
-      return this.bestPublicModelKey;
-    }
+      return score;
+    };
 
-    // Find the first model that matches all requirements
+    // Scan priority list: filter by requires, rank by prefer score
+    let bestKey;
+    let bestScore = -1;
+
     for (const modelKey of prioritizedModels) {
-      if (matchesRequirements(modelKey)) {
-        return modelKey;
+      if (!matchesRequires(modelKey)) continue;
+
+      // No prefers — first match wins (priority order)
+      if (!hasPrefers) return modelKey;
+
+      const score = getPreferScore(modelKey);
+      if (score > bestScore) {
+        bestScore = score;
+        bestKey = modelKey;
       }
     }
 
-    // Check if specific critical requirements were requested but couldn't be satisfied
-    if (reasoning === true) {
-      return undefined;
-    }
-
-    // If specific requirements were given but couldn't be satisfied, return undefined
-    return undefined;
+    return bestKey;
   }
 
   getRequestParameters(options = {}) {
@@ -331,4 +335,57 @@ class ModelService {
   }
 }
 
-export default new ModelService();
+const modelService = new ModelService();
+
+export default modelService;
+
+/**
+ * Resolve an llm config to the model key that would be selected.
+ *
+ * Accepts the same shapes as the `llm` parameter on chains/verblets:
+ *   - string:            'fastGood'
+ *   - capability flags:  { fast: true, good: 'prefer' }
+ *   - full config:       { modelName: 'fastGood', good: true }
+ *
+ * Returns the model key (e.g. 'fastGoodCheap') or undefined.
+ */
+export function resolveModel(llm) {
+  if (typeof llm === 'string') {
+    try {
+      return modelService.getModel(llm) ? llm : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  if (!llm || typeof llm !== 'object') {
+    return modelService.bestPublicModelKey;
+  }
+
+  const { modelName, negotiate: explicitNegotiate, ...rest } = llm;
+
+  // Build negotiation from explicit negotiate or flat capability flags
+  const capSet = new Set(CAPABILITY_KEYS);
+  const negotiation = { ...explicitNegotiate };
+  for (const [key, value] of Object.entries(rest)) {
+    if (capSet.has(key)) {
+      negotiation[key] = value;
+    }
+  }
+
+  return modelService.negotiateModel(modelName, negotiation);
+}
+
+/**
+ * Get the capability Set for a registered model key.
+ *
+ *   getCapabilities('fastGoodCheap')  // → Set(['fast', 'good', 'cheap'])
+ *   getCapabilities('reasoning')      // → Set(['reasoning'])
+ *
+ * Returns undefined if the model key is not registered.
+ */
+export function getCapabilities(modelKey) {
+  const model = modelService.models[modelKey];
+  if (!model) return undefined;
+  return getModelCapabilities(model, modelKey);
+}

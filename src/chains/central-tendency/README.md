@@ -23,7 +23,7 @@ const results = await centralTendency(
   {
     context: 'Mammalian characteristics and traits',
     coreFeatures: ['warm-blooded', 'hair/fur', 'mammary glands'],
-    chunkSize: 3,
+    batchSize: 3,
     maxAttempts: 2
   }
 );
@@ -38,7 +38,7 @@ const results = await centralTendency(
 - **config** (Object): Configuration options
   - **context** (string): Context description for evaluation (default: '')
   - **coreFeatures** (string[]): Known core/definitional features of the category (default: [])
-  - **chunkSize** (number): Items per batch for processing (default: 10)
+  - **batchSize** (number): Items per batch for processing (default: 5)
   - **maxAttempts** (number): Retry attempts for failed batches (default: 3)
   - **llm** (string): LLM model to use (default: 'fastGoodCheap')
 
@@ -76,6 +76,6 @@ const seeds = await categorySamples('musical instrument', { count: 8, diversityL
 const instruments = [...]; // Large array of instruments to evaluate
 const centralities = await centralTendency(instruments, seeds, {
   context: 'Traditional acoustic instruments for orchestral music',
-  chunkSize: 15
+  batchSize: 15
 });
 ``` 

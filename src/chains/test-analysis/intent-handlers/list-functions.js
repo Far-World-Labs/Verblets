@@ -37,7 +37,7 @@ async function getAiMdContext(moduleDir) {
             },
           },
         }),
-      { maxRetries: 2, label: 'AI.md compression' }
+      { maxAttempts: 2, label: 'AI.md compression' }
     );
 
     // llm auto-unwraps the value field
@@ -80,7 +80,7 @@ const summarizeFunction = async (func) => {
   const prompt = `Describe this function's purpose in 5-10 words:\n\n${func.text.slice(0, 300)}`;
   try {
     const description = await retry(() => llm(prompt), {
-      maxRetries: 1,
+      maxAttempts: 1,
       label: 'function summary',
     });
     return description.trim();

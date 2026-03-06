@@ -147,7 +147,7 @@ Use natural language, not symbolic identifiers or linked data formats.`;
     () =>
       callLlm(specUserPrompt, {
         llm,
-        system: specSystemPrompt,
+        modelOptions: { systemPrompt: specSystemPrompt },
         ...rest,
       }),
     {
@@ -209,6 +209,7 @@ ${onlyJSON}`;
   const response = await retry(
     () =>
       callLlm(prompt, {
+        llm,
         modelOptions: {
           response_format: {
             type: 'json_schema',
@@ -218,7 +219,6 @@ ${onlyJSON}`;
             },
           },
         },
-        llm,
         ...options,
       }),
     {

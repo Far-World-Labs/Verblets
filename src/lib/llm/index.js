@@ -8,6 +8,8 @@ import {
   models,
 } from '../../constants/models.js';
 import { getProvider } from './providers/index.js';
+import normalizeLlm from '../normalize-llm/index.js';
+import { CAPABILITY_KEYS } from '../../constants/common.js';
 import anySignal from '../any-signal/index.js';
 import { get as getPromptResult, set as setPromptResult } from '../prompt-cache/index.js';
 import TimedAbortController from '../timed-abort-controller/index.js';
@@ -152,8 +154,9 @@ export const run = async (prompt, config = {}) => {
     debugPrompt,
     debugResult,
     forceQuery,
+    llm,
     logger,
-    modelOptions = {},
+    modelOptions: modelOptionsRaw = {},
     onAfterRequest = onAfterRequestDefault,
     onBeforeRequest = onBeforeRequestDefault,
     shapeOutput = shapeOutputDefault,
@@ -162,21 +165,37 @@ export const run = async (prompt, config = {}) => {
     unwrapCollections,
   } = options;
 
+  // Merge llm shorthand into modelOptions (explicit modelOptions keys win)
+  const modelOptions = { ...normalizeLlm(llm), ...modelOptionsRaw };
+
   // Log start of llm execution
   const startTime = Date.now();
 
   // Apply global overrides to model options
   const modelOptionsWithOverrides = modelService.applyGlobalOverrides(modelOptions);
 
-  // Check if negotiation was applied via global override
-  const negotiationFromGlobalOverride = modelService.getGlobalOverride('negotiate');
+  // Extract capability flags for model negotiation
+  // Supports both flat keys ({ fast: true }) and legacy negotiate wrapper ({ negotiate: { fast: true } })
+  const negotiation = {};
+  let shouldNegotiate = false;
 
-  const modelNameNegotiated = modelOptionsWithOverrides.negotiate
-    ? modelService.negotiateModel(
-        // If negotiation came from global override, don't use preferred model
-        negotiationFromGlobalOverride ? null : modelOptionsWithOverrides.modelName,
-        modelOptionsWithOverrides.negotiate
-      )
+  if (modelOptionsWithOverrides.negotiate) {
+    Object.assign(negotiation, modelOptionsWithOverrides.negotiate);
+    shouldNegotiate = true;
+  }
+
+  for (const key of CAPABILITY_KEYS) {
+    if (key in modelOptionsWithOverrides) {
+      negotiation[key] = modelOptionsWithOverrides[key];
+      shouldNegotiate = true;
+    }
+  }
+
+  const negotiationFromGlobalOverride = modelService.getGlobalOverride('negotiate');
+  const preferred = negotiationFromGlobalOverride ? null : modelOptionsWithOverrides.modelName;
+
+  const modelNameNegotiated = shouldNegotiate
+    ? modelService.negotiateModel(preferred, negotiation)
     : modelOptionsWithOverrides.modelName;
 
   const modelFound = modelService.getModel(modelNameNegotiated);

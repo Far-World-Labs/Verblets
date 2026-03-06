@@ -67,8 +67,8 @@ const toUTCDate = (date) => {
 // Extract date with retry support
 async function extractDate(prompt, llm, logger, options) {
   const response = await callLlm(prompt, {
+    llm,
     modelOptions: {
-      ...llm,
       response_format: {
         type: 'json_schema',
         json_schema: {
@@ -125,8 +125,8 @@ export default async function date(text, config = {}) {
   // Parallelize expectations and first date extraction
   const [expectationsResult, firstDate] = await Promise.all([
     callLlm(expectationPrompt, {
+      llm,
       modelOptions: {
-        ...llm,
         response_format: {
           type: 'json_schema',
           json_schema: {

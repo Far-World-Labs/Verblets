@@ -2,7 +2,7 @@ import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
 
 import SummaryMap from './index.js';
 import vitestAiExpect from '../expect/index.js';
-import { longTestTimeout } from '../../constants/common.js';
+import { extendedTestTimeout } from '../../constants/common.js';
 import pave from '../../lib/pave/index.js';
 import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
 import { getConfig } from '../test-analysis/config.js';
@@ -75,6 +75,6 @@ describe('Summary map', () => {
 
       expect(result).toBe(result);
     },
-    longTestTimeout
+    extendedTestTimeout
   );
 });

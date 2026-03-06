@@ -27,10 +27,12 @@ const technical = await find(documents, 'technical documentation');
 - `array` (Array): Items to search through
 - `criteria` (string): Natural language description of what to find
 - `config` (Object): Configuration options
-  - `chunkSize` (number): Items per batch (default: 10)
+  - `batchSize` (number): Items per batch (auto-calculated if omitted)
+  - `maxAttempts` (number): Retry attempts per batch (default: 3)
+  - `maxParallel` (number): Concurrent batch operations (default: 3)
   - `llm` (Object): LLM model options
 
-**Returns:** Promise<string|null> - First item that matches criteria, or null if none found
+**Returns:** Promise\<string> - Best matching item, or empty string if none found
 
 ## Use Cases
 

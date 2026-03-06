@@ -4,28 +4,13 @@ import fillMissingSchema from './fill-missing-result.json';
 
 const { tryCompleteData, contentIsMain, asJSON } = promptConstants;
 
-function createModelOptions(llm = 'fastGoodCheap') {
-  const schema = fillMissingSchema;
-
-  const responseFormat = {
-    type: 'json_schema',
-    json_schema: {
-      name: 'fill_missing_result',
-      schema,
-    },
-  };
-
-  if (typeof llm === 'string') {
-    return {
-      modelName: llm,
-      response_format: responseFormat,
-    };
-  }
-  return {
-    ...llm,
-    response_format: responseFormat,
-  };
-}
+const responseFormat = {
+  type: 'json_schema',
+  json_schema: {
+    name: 'fill_missing_result',
+    schema: fillMissingSchema,
+  },
+};
 
 export const buildPrompt = (text) =>
   `${tryCompleteData} ${contentIsMain} ${asXML(text, { tag: 'input' })}\n\n` +
@@ -35,7 +20,10 @@ export const buildPrompt = (text) =>
 export default async function fillMissing(text, config = {}) {
   const { llm, ...options } = config;
   const prompt = buildPrompt(text);
-  const modelOptions = createModelOptions(llm);
-  const response = await callLlm(prompt, { modelOptions, ...options });
+  const response = await callLlm(prompt, {
+    llm,
+    modelOptions: { response_format: responseFormat },
+    ...options,
+  });
   return response;
 }

@@ -5,7 +5,7 @@ import sort, { useTestSortPrompt } from './index.js';
 useTestSortPrompt();
 
 const extremeK = 4;
-const chunkSize = 12;
+const batchSize = 12;
 const byAB = (a, b) => b.localeCompare(a);
 
 const unsortedStrings = [
@@ -75,7 +75,7 @@ const examples = [
   {
     name: 'Basic usage',
     inputs: {
-      options: { by: 'alphabetically', iterations: 3, extremeK, chunkSize },
+      options: { by: 'alphabetically', iterations: 3, extremeK, batchSize },
       list: [...unsortedStrings],
     },
     want: {
@@ -86,7 +86,7 @@ const examples = [
   {
     name: 'Empty list',
     inputs: {
-      options: { by: 'alphabetically', extremeK, chunkSize },
+      options: { by: 'alphabetically', extremeK, batchSize },
       list: [],
     },
     want: {

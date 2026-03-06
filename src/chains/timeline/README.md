@@ -34,6 +34,7 @@ const events = await timeline(newsFragments);
   - `onProgress` (Function): Progress callback `(event) => void`. Events from nested reduce/map calls are tagged with `phase` (`'reduce:knowledge-base'`, `'map:enrichment'`)
   - `llm` (Object): LLM model options
   - `enrichWithKnowledge` (boolean): Enrich dates with LLM's historical knowledge (default: false)
+  - `batchSize` (number): Items per batch for reduce/map when enriching (auto-calculated if omitted)
 
 **Returns:** Promise<Array<Event>> - Chronologically sorted timeline events
 

@@ -17,8 +17,8 @@ export default async function embedStepBack(query, config = {}) {
   const { llm, count = 3, ...options } = config;
 
   return await callLlm(stepBackPrompt(query, count), {
+    llm,
     modelOptions: {
-      ...llm,
       response_format: {
         type: 'json_schema',
         json_schema: {

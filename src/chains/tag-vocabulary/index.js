@@ -145,6 +145,7 @@ ${onlyJSON}`;
   const response = await retry(
     () =>
       callLlm(prompt, {
+        llm,
         modelOptions: {
           response_format: {
             type: 'json_schema',
@@ -154,7 +155,6 @@ ${onlyJSON}`;
             },
           },
         },
-        llm,
         ...options,
       }),
     {
@@ -210,6 +210,7 @@ ${onlyJSON}`;
   const response = await retry(
     () =>
       callLlm(prompt, {
+        llm,
         modelOptions: {
           response_format: {
             type: 'json_schema',
@@ -219,7 +220,6 @@ ${onlyJSON}`;
             },
           },
         },
-        llm,
         ...options,
       }),
     {

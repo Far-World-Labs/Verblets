@@ -16,26 +16,16 @@ const { onlyJSON, contentIsTransformationSource, onlyJSONArray } = promptConstan
  * @param {string|Object} llm - LLM model name or configuration object
  * @returns {Promise<Object>} Model options for llm
  */
-function createModelOptions(llm = 'fastGoodCheap') {
-  const responseFormat = {
-    type: 'json_schema',
-    json_schema: {
-      name: 'list_result',
-      schema: listResultSchema,
+function createModelOptions() {
+  return {
+    response_format: {
+      type: 'json_schema',
+      json_schema: {
+        name: 'list_result',
+        schema: listResultSchema,
+      },
     },
   };
-
-  if (typeof llm === 'string') {
-    return {
-      modelName: llm,
-      response_format: responseFormat,
-    };
-  } else {
-    return {
-      ...llm,
-      response_format: responseFormat,
-    };
-  }
 }
 
 const outputTransformPrompt = (result, schema) => {
@@ -65,7 +55,7 @@ export const generateList = async function* generateListGenerator(text, options 
   const {
     shouldSkip = shouldSkipDefault,
     shouldStop = shouldStopDefault,
-    model = 'fastGoodCheap',
+    llm = 'fastGoodCheap',
     maxAttempts = 3,
     onProgress,
     // eslint-disable-next-line no-unused-vars
@@ -84,10 +74,10 @@ export const generateList = async function* generateListGenerator(text, options 
 
     let resultsNew = [];
     try {
-      const modelOptions = createModelOptions(model);
+      const modelOptions = createModelOptions();
       // eslint-disable-next-line no-await-in-loop
       const results = await retry(
-        () => callLlm(listPrompt, { modelOptions, ...passThroughOptions }),
+        () => callLlm(listPrompt, { llm, modelOptions, ...passThroughOptions }),
         {
           label: 'list-generate',
           maxAttempts,
@@ -160,8 +150,8 @@ export default async function list(prompt, config = {}) {
   const { llm, schema, maxAttempts = 3, onProgress, ...options } = config;
   const fullPrompt = `${prompt}\n\n${onlyJSONArray}`;
 
-  const modelOptions = createModelOptions(llm);
-  const response = await retry(() => callLlm(fullPrompt, { modelOptions, ...options }), {
+  const modelOptions = createModelOptions();
+  const response = await retry(() => callLlm(fullPrompt, { llm, modelOptions, ...options }), {
     label: 'list-main',
     maxAttempts,
     onProgress,
@@ -178,14 +168,11 @@ export default async function list(prompt, config = {}) {
     const transformedItems = [];
     for (const item of items) {
       const transformPrompt = outputTransformPrompt(item, schema);
-      const transformResponse = await retry(
-        () => callLlm(transformPrompt, { modelOptions: { ...llm }, ...options }),
-        {
-          label: 'list-transform',
-          maxAttempts,
-          onProgress,
-        }
-      );
+      const transformResponse = await retry(() => callLlm(transformPrompt, { llm, ...options }), {
+        label: 'list-transform',
+        maxAttempts,
+        onProgress,
+      });
       try {
         const transformedItem = JSON.parse(transformResponse);
         transformedItems.push(transformedItem);

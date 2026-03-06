@@ -90,7 +90,12 @@ Provide a specification describing:
 Keep it focused on actionable anonymization rules.`;
 
   const response = await retry(
-    () => callLlm(specUserPrompt, { llm, system: specSystemPrompt, ...rest }),
+    () =>
+      callLlm(specUserPrompt, {
+        llm,
+        modelOptions: { systemPrompt: specSystemPrompt },
+        ...rest,
+      }),
     {
       label: 'anonymize spec',
       maxAttempts,
@@ -167,7 +172,8 @@ const anonymize = async (input, config = {}) => {
   const stage1Result = await retry(
     () =>
       callLlm(stage1Prompt(text, context), {
-        modelOptions: { modelName: 'privacy', ...llm },
+        llm,
+        modelOptions: { modelName: 'privacy' },
         ...options,
       }),
     {
@@ -190,7 +196,8 @@ const anonymize = async (input, config = {}) => {
   const stage2Result = await retry(
     () =>
       callLlm(stage2Prompt(stage1Result, context), {
-        modelOptions: { modelName: 'privacy', ...llm },
+        llm,
+        modelOptions: { modelName: 'privacy' },
         ...options,
       }),
     {
@@ -214,7 +221,8 @@ const anonymize = async (input, config = {}) => {
   const stage3Result = await retry(
     () =>
       callLlm(stage3Prompt(stage2Result, context), {
-        modelOptions: { modelName: 'privacy', ...llm },
+        llm,
+        modelOptions: { modelName: 'privacy' },
         ...options,
       }),
     {

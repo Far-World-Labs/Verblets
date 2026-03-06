@@ -47,7 +47,7 @@ This ensures correctness - every item has a chance to compete for the top positi
 - `list` (Array): Items to sort
 - `criteria` (string): Natural language description of your sorting priorities
 - `config` (Object): Optional configuration
-  - `chunkSize` (number): Items to process per batch (default: 10)
+  - `batchSize` (number): Items to process per batch (default: 10)
   - `extremeK` (number): Top/bottom items to extract per iteration (default: 10)
   - `iterations` (number): Sorting passes for refined results (default: 1)
   - `selectBottom` (boolean): Also find worst items (default: true)

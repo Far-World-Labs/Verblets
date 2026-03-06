@@ -39,7 +39,9 @@ Extraction Rules:
       expect(llm).toHaveBeenCalledWith(
         expect.stringContaining('Extract people, companies, and locations'),
         expect.objectContaining({
-          system: expect.stringContaining('entity specification generator'),
+          modelOptions: expect.objectContaining({
+            systemPrompt: expect.stringContaining('entity specification generator'),
+          }),
         })
       );
       expect(spec).toBe(mockSpec);

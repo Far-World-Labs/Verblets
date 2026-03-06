@@ -14,8 +14,8 @@ ${instructions}`;
   const response = await retry(
     () =>
       callLlm(prompt, {
+        llm,
         modelOptions: {
-          ...llm,
           response_format: {
             type: 'json_schema',
             json_schema: peopleListJsonSchema,

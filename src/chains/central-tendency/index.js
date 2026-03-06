@@ -46,7 +46,7 @@ ${corePrompt}`;
  * @param {string} [config.context=''] - Context description for evaluation
  * @param {string[]} [config.coreFeatures=[]] - Known core/definitional features
  * @param {string|Object} [config.llm='fastGoodCheap'] - LLM model to use
- * @param {number} [config.chunkSize=5] - Batch size for processing
+ * @param {number} [config.batchSize=5] - Batch size for processing
  * @param {number} [config.maxAttempts=3] - Max retry attempts for failed items
  * @returns {Promise<Array>} Array of central tendency results
  */
@@ -64,11 +64,12 @@ export default async function centralTendency(items, seedItems, config = {}) {
   }
 
   const {
-    chunkSize: batchSize = 5,
+    batchSize = 5,
     maxAttempts = 3,
     logger,
     onProgress,
     now = new Date(),
+    llm,
     ...otherConfig
   } = config;
 
@@ -94,37 +95,26 @@ export default async function centralTendency(items, seedItems, config = {}) {
 
     // Use map to handle all the complexity
     const results = await map(items, instructions, {
+      ...otherConfig,
       batchSize,
       maxAttempts,
       responseFormat: centralTendencyResponseFormat,
-      logger: lifecycleLogger, // Pass logger to map for its own logging
+      logger: lifecycleLogger,
       onProgress: scopeProgress(onProgress, 'map:evaluation'),
       now,
-    });
-
-    // Extract results from the structured output
-    // Map returns an array where each element is the response for that item
-    const finalResults = results.map((result) => {
-      if (result === undefined) {
-        return undefined;
-      }
-      // With structured output, we get objects directly
-      return result;
+      llm,
     });
 
     // Log the final output from the chain
-    lifecycleLogger.logResult(finalResults, {
-      totalItems: finalResults.length,
-      successCount: finalResults.filter((r) => r !== undefined).length,
-      failureCount: finalResults.filter((r) => r === undefined).length,
+    lifecycleLogger.logResult(results, {
+      totalItems: results.length,
+      successCount: results.filter((r) => r !== undefined).length,
+      failureCount: results.filter((r) => r === undefined).length,
     });
 
-    return finalResults;
+    return results;
   } catch (error) {
     lifecycleLogger.logError(error);
     throw error;
   }
 }
-
-// Export the retry version as well for consistency with other bulk processors
-export const centralTendencyRetry = centralTendency;

@@ -149,9 +149,13 @@ describe.skipIf(!shouldRunLongExamples)('relations examples', () => {
   it(
     'should map relations across chunks',
     async () => {
-      const instructions = await mapInstructions({
+      const spec = await relationSpec({
         relations: 'Extract all business relationships',
         predicates: ['acquired', 'partnered with', 'competes with', 'invested in'],
+      });
+
+      const instructions = mapInstructions({
+        specification: spec,
         processing: 'Focus on merger and acquisition activities',
       });
 
@@ -167,13 +171,11 @@ describe.skipIf(!shouldRunLongExamples)('relations examples', () => {
 
       expect(Array.isArray(results)).toBe(true);
 
-      // Debug what we got
       debug('Map relations test - found', results.length, 'results');
       if (results.length > 0) {
         debug('First result sample:', JSON.stringify(results[0], null, 2));
       }
 
-      // Map returns an array of relations extracted from all chunks
       // Should find acquisition relations
       const acquisitions = results.filter(
         (rel) => rel && rel.predicate && rel.predicate.toLowerCase().includes('acquir')
@@ -187,15 +189,19 @@ describe.skipIf(!shouldRunLongExamples)('relations examples', () => {
   it(
     'should reduce relations to unified knowledge graph',
     async () => {
-      const instructions = await reduceInstructions({
+      const spec = await relationSpec({
         relations: 'Extract all company relationships',
-        processing: 'Merge duplicate relations and build comprehensive relationship network',
         entities: [
           { name: 'Apple', canonical: 'Apple Inc.' },
           { name: 'Microsoft', canonical: 'Microsoft Corporation' },
           { name: 'Google', canonical: 'Google LLC' },
           { name: 'Amazon', canonical: 'Amazon.com Inc.' },
         ],
+      });
+
+      const instructions = reduceInstructions({
+        specification: spec,
+        processing: 'Merge duplicate relations and build comprehensive relationship network',
       });
 
       const consolidated = await reduce(techChunks.slice(0, 8), instructions, {
@@ -209,7 +215,6 @@ describe.skipIf(!shouldRunLongExamples)('relations examples', () => {
         },
       });
 
-      // Reduce should return an array of relations
       expect(consolidated).toBeTruthy();
       expect(Array.isArray(consolidated)).toBe(true);
     },
@@ -219,10 +224,14 @@ describe.skipIf(!shouldRunLongExamples)('relations examples', () => {
   it(
     'should filter chunks by specific relations',
     async () => {
-      const instructions = await filterInstructions({
+      const spec = await relationSpec({
         relations: 'Extract acquisition and investment relationships',
-        processing: 'Keep only chunks mentioning acquisitions over $1 billion',
         predicates: ['acquired', 'purchased', 'bought'],
+      });
+
+      const instructions = filterInstructions({
+        specification: spec,
+        processing: 'Keep only chunks mentioning acquisitions over $1 billion',
       });
 
       const filtered = await filter(techChunks.slice(0, 10), instructions);
@@ -237,8 +246,12 @@ describe.skipIf(!shouldRunLongExamples)('relations examples', () => {
   it(
     'should find chunk with most dense relationship network',
     async () => {
-      const instructions = await findInstructions({
+      const spec = await relationSpec({
         relations: 'Extract all inter-company relationships',
+      });
+
+      const instructions = findInstructions({
+        specification: spec,
         processing: 'Select chunk with highest density of relationships between entities',
       });
 
@@ -253,10 +266,14 @@ describe.skipIf(!shouldRunLongExamples)('relations examples', () => {
   it(
     'should group chunks by relationship types',
     async () => {
-      const instructions = await groupInstructions({
+      const spec = await relationSpec({
         relations: 'Extract business relationships',
-        processing: 'Group by relationship type: partnerships vs acquisitions vs competition',
         predicates: ['partnered with', 'acquired', 'competes with', 'collaborated with'],
+      });
+
+      const instructions = groupInstructions({
+        specification: spec,
+        processing: 'Group by relationship type: partnerships vs acquisitions vs competition',
       });
 
       const grouped = await group(techChunks.slice(0, 10), instructions);

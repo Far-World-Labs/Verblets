@@ -141,6 +141,38 @@ export const catalog = {
     systemPrompt,
     modelOptions: {},
   },
+  'gemma3:4b-it-qat': {
+    provider: 'openwebui',
+    endpoint: 'api/chat/completions',
+    maxContextWindow: 128_000,
+    maxOutputTokens: 8_192,
+    requestTimeout: 240_000,
+    get apiUrl() {
+      const url = env.OPENWEBUI_API_URL ?? '';
+      return url.endsWith('/') ? url : `${url}/`;
+    },
+    get apiKey() {
+      return env.OPENWEBUI_API_KEY;
+    },
+    systemPrompt,
+    modelOptions: {},
+  },
+  'qwen3:8b': {
+    provider: 'openwebui',
+    endpoint: 'api/chat/completions',
+    maxContextWindow: 32_768,
+    maxOutputTokens: 8_192,
+    requestTimeout: 240_000,
+    get apiUrl() {
+      const url = env.OPENWEBUI_API_URL ?? '';
+      return url.endsWith('/') ? url : `${url}/`;
+    },
+    get apiKey() {
+      return env.OPENWEBUI_API_KEY;
+    },
+    systemPrompt,
+    modelOptions: {},
+  },
 };
 
 // ── Capability Mappings ──────────────────────────────────────────────
@@ -184,7 +216,7 @@ function selectMapping() {
   }
 
   if (hasOpenWebUI) {
-    mapping.privacy = 'gemma3:12b-it-qat';
+    mapping.privacy = env.VERBLETS_PRIVACY_MODEL || 'qwen3:8b';
   }
 
   return mapping;

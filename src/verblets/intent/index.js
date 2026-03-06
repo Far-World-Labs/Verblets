@@ -2,34 +2,13 @@ import callLlm from '../../lib/llm/index.js';
 import { asXML } from '../../prompts/index.js';
 import { intent as intentSchema } from '../../json-schemas/index.js';
 
-/**
- * Create model options for structured outputs
- * @param {string|Object} llm - LLM model name or configuration object
- * @returns {Object} Model options for llm
- */
-function createModelOptions(llm = 'fastGoodCheap') {
-  const schema = intentSchema;
-
-  const responseFormat = {
-    type: 'json_schema',
-    json_schema: {
-      name: 'intent_result',
-      schema,
-    },
-  };
-
-  if (typeof llm === 'string') {
-    return {
-      modelName: llm,
-      response_format: responseFormat,
-    };
-  } else {
-    return {
-      ...llm,
-      response_format: responseFormat,
-    };
-  }
-}
+const responseFormat = {
+  type: 'json_schema',
+  json_schema: {
+    name: 'intent_result',
+    schema: intentSchema,
+  },
+};
 
 /**
  * Extract intent and parameters from text based on available operations
@@ -75,8 +54,11 @@ Determine:
 
 Return the result as a structured JSON object with the operation name, extracted parameters, and any optional parameters that might be useful.`;
 
-  const modelOptions = createModelOptions(llm);
-  const response = await callLlm(prompt, { modelOptions, ...options });
+  const response = await callLlm(prompt, {
+    llm,
+    modelOptions: { response_format: responseFormat },
+    ...options,
+  });
 
   return response;
 }

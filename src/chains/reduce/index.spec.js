@@ -78,6 +78,57 @@ describe('reduce chain', () => {
     });
   });
 
+  describe('custom responseFormat', () => {
+    const statsFormat = {
+      type: 'json_schema',
+      json_schema: {
+        name: 'stats',
+        schema: {
+          type: 'object',
+          properties: {
+            sum: { type: 'number' },
+            count: { type: 'number' },
+          },
+          required: ['sum', 'count'],
+          additionalProperties: false,
+        },
+      },
+    };
+
+    it('returns result directly without unwrapping accumulator', async () => {
+      listBatch.mockResolvedValueOnce({ sum: 10, count: 2 });
+      const result = await reduce(['a', 'b'], 'sum values', {
+        batchSize: 2,
+        responseFormat: statsFormat,
+        initial: { sum: 0, count: 0 },
+      });
+      expect(result).toEqual({ sum: 10, count: 2 });
+    });
+
+    it('passes custom responseFormat through to listBatch', async () => {
+      listBatch.mockResolvedValueOnce({ sum: 5, count: 1 });
+      await reduce(['a'], 'sum', { batchSize: 2, responseFormat: statsFormat });
+      const callConfig = listBatch.mock.calls[0][2];
+      expect(callConfig.responseFormat).toBe(statsFormat);
+    });
+
+    it('chains accumulator across batches with custom format', async () => {
+      listBatch
+        .mockResolvedValueOnce({ sum: 3, count: 2 })
+        .mockResolvedValueOnce({ sum: 8, count: 4 });
+      const result = await reduce(['a', 'b', 'c', 'd'], 'sum values', {
+        batchSize: 2,
+        responseFormat: statsFormat,
+        initial: { sum: 0, count: 0 },
+      });
+      // Second batch gets the first batch's result as accumulator
+      expect(result).toEqual({ sum: 8, count: 4 });
+      expect(listBatch).toHaveBeenCalledTimes(2);
+      const secondCallPrompt = listBatch.mock.calls[1][1];
+      expect(secondCallPrompt).toContain('"sum":');
+    });
+  });
+
   it('forwards lifecycle logger to listBatch', async () => {
     const logger = { info: vi.fn(), debug: vi.fn() };
     await reduce(['a', 'b'], 'join', { batchSize: 2, logger });

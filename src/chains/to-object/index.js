@@ -137,7 +137,7 @@ function logDebugInfo(attempt, prompt, response, error) {
  * Converts text to structured JSON object using LLM assistance
  */
 export default async function toObject(text, schema, config = {}) {
-  const { llm, maxAttempts = 3, onProgress, ...options } = config;
+  const { llm = 'fastGood', maxAttempts = 3, onProgress, ...options } = config;
   let errorDetails;
 
   // First attempt: try direct parsing
@@ -151,14 +151,11 @@ export default async function toObject(text, schema, config = {}) {
   // Second attempt: use LLM to fix JSON
   try {
     const prompt = buildJsonPrompt(text, schema, errorDetails);
-    const response = await retry(
-      () => callLlm(prompt, { modelOptions: { modelName: 'fastGood', ...llm }, ...options }),
-      {
-        label: 'to-object json fix',
-        maxAttempts,
-        onProgress,
-      }
-    );
+    const response = await retry(() => callLlm(prompt, { llm, ...options }), {
+      label: 'to-object json fix',
+      maxAttempts,
+      onProgress,
+    });
 
     const result = parseAndValidate(response, schema);
     return result;
@@ -170,14 +167,11 @@ export default async function toObject(text, schema, config = {}) {
   // Third attempt: final retry with updated errors
   try {
     const prompt = buildJsonPrompt(text, schema, errorDetails);
-    const response = await retry(
-      () => callLlm(prompt, { modelOptions: { modelName: 'fastGood', ...llm }, ...options }),
-      {
-        label: 'to-object final retry',
-        maxAttempts,
-        onProgress,
-      }
-    );
+    const response = await retry(() => callLlm(prompt, { llm, ...options }), {
+      label: 'to-object final retry',
+      maxAttempts,
+      onProgress,
+    });
 
     const result = parseAndValidate(response, schema);
     logDebugInfo(3, prompt, response, null); // Log successful attempt

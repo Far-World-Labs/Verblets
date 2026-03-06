@@ -145,7 +145,7 @@ describe('Bulk Central Tendency Chain', () => {
 
       const logger = makeTestLogger('processes large batches');
       const results = await centralTendency(items, seedItems, {
-        chunkSize: 3,
+        batchSize: 3,
         logger,
       });
 

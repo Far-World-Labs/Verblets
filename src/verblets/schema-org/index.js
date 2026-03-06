@@ -23,14 +23,13 @@ export default async (text, type, config = {}) => {
             schema,
           },
         },
-        ...llm,
       }
     : {
         response_format: { type: 'json_object' },
-        ...llm,
       };
 
   const response = await callLlm(asSchemaOrgText(text, type, schema), {
+    llm,
     modelOptions,
     ...options,
   });

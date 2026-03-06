@@ -38,7 +38,7 @@ export default async function split(text, instructions, config = {}) {
     chunkLen = 4000,
     delimiter = defaultDelimiter,
     maxAttempts = 2,
-    llm,
+    llm = 'fastGoodCheapCoding',
     targetSplitsPerChunk = null,
     onProgress,
     ...options
@@ -54,10 +54,9 @@ export default async function split(text, instructions, config = {}) {
 
     const prompt = buildPrompt(chunk, instructions, delimiter, context);
     const llmConfig = {
+      llm,
       modelOptions: {
         temperature: 0.1, // Lower temperature for more consistent splitting
-        modelName: 'fastGoodCheapCoding', // Use faster model for better performance
-        ...llm,
       },
       ...options,
     };

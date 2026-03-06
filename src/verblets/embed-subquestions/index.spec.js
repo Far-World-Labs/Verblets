@@ -61,7 +61,7 @@ describe('embedSubquestions', () => {
     await embedSubquestions('query', { llm: { modelName: 'test-model' } });
 
     const callConfig = mockLlm.mock.calls[0][1];
-    expect(callConfig.modelOptions.modelName).toBe('test-model');
+    expect(callConfig.llm).toEqual({ modelName: 'test-model' });
   });
 
   it('passes logger through to LLM call', async () => {

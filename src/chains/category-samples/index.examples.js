@@ -90,7 +90,7 @@ describe('Category Samples Chain', () => {
       // This test ensures the retry mechanism works
       const seeds = await categorySamples('animal', {
         count: 3,
-        maxRetries: 2,
+        maxAttempts: 2,
         retryDelay: 100,
       });
 

@@ -29,12 +29,12 @@ describe('sort examples', () => {
         .split('\n')
         .filter((line) => line.trim());
 
-      // With 30 movies and chunkSize of 8, we'll have 4 requests in first pass
+      // With 30 movies and batchSize of 8, we'll have 4 requests in first pass
       const sorted = await sort(
         movieSuggestions,
         'good for watching with friends on a Friday night',
         {
-          chunkSize: 8,
+          batchSize: 8,
           extremeK: 5,
           iterations: 1,
         }
@@ -71,7 +71,7 @@ describe('sort examples', () => {
         .filter((line) => line.trim());
 
       const sorted = await sort(giftIdeas, 'for someone who gardens and likes animals', {
-        chunkSize: 10,
+        batchSize: 10,
         extremeK: 7,
         iterations: 1,
       });

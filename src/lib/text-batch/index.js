@@ -1,4 +1,4 @@
-import modelService from '../../services/llm-model/index.js';
+import modelService, { resolveModel } from '../../services/llm-model/index.js';
 
 const FALLBACK_TOKENS_PER_CHAR = 0.25;
 const SAFETY_MARGIN = 1.2;
@@ -90,7 +90,7 @@ export default function createBatches(list, config = {}) {
     llm,
   } = config;
 
-  const modelName = llm?.modelName || modelService.getBestPublicModel().key;
+  const modelName = resolveModel(llm) || modelService.bestPublicModelKey;
   const model = modelService.getModel(modelName);
   const budget = calculateBudget({
     model,

@@ -67,13 +67,13 @@ async function extractFromChunk(chunk, options = {}) {
   const { llm, ...remainingOptions } = options;
 
   const response = await callLlm(chunk, {
+    llm,
     modelOptions: {
       systemPrompt: extractTimelineInstructions,
       response_format: {
         type: 'json_schema',
         json_schema: timelineEventJsonSchema,
       },
-      ...llm,
     },
     ...remainingOptions,
   });
@@ -97,6 +97,7 @@ export default async function timeline(text, options = {}) {
   const {
     chunkSize = 2000,
     maxParallel = 3,
+    maxAttempts = 3,
     onProgress,
     llm,
     enrichWithKnowledge = false,
@@ -117,6 +118,7 @@ export default async function timeline(text, options = {}) {
       try {
         const events = await retry(() => extractFromChunk(chunk, { llm, ...remainingOptions }), {
           label: `timeline chunk ${chunkIndex + 1}`,
+          maxAttempts,
           now,
           chainStartTime: now,
         });
@@ -155,6 +157,7 @@ Events:
 ${eventList}`;
 
     const deduplicatedResult = await callLlm(deduplicationPrompt, {
+      llm,
       modelOptions: {
         systemPrompt:
           'You are a timeline deduplication engine. Return all unique events, merging only true duplicates.',
@@ -162,7 +165,6 @@ ${eventList}`;
           type: 'json_schema',
           json_schema: timelineEventJsonSchema,
         },
-        ...llm,
       },
       ...remainingOptions,
     });

@@ -29,7 +29,7 @@ const visit = async ({
     codeFeatureDefinitions.map((d) => d.criteria),
     `best criteria for looking at "${featuresInitial}" within code`,
     {
-      chunkSize: 4,
+      batchSize: 4,
       extremeK: 4,
       llm: modelService.getBestPublicModel(),
     }

@@ -15,7 +15,7 @@ const films = [
   'time-travel thriller',
   // ...more titles
 ];
-const results = await map(films, 'Describe each as a Shakespearean play', { chunkSize: 5 });
+const results = await map(films, 'Describe each as a Shakespearean play', { batchSize: 5 });
 // results[0] === 'A saga among the stars'
 // results[1] === 'Where hearts and humor entwine'
 ```
@@ -28,7 +28,7 @@ Break `list` into batches and map each batch using `listMapLines` with automatic
 
 - `list` (`string[]`): fragments to process.
 - `instructions` (`string`): mapping instructions.
-- `options.chunkSize` (`number`, default `10`): number of items per batch.
+- `options.batchSize` (`number`): items per batch (auto-calculated from model context window).
 - `options.maxAttempts` (`number`, default `3`): number of retry passes over failed items.
 
 Returns `Promise<(string|undefined)[]>` where undefined entries represent items that failed after all retry attempts.

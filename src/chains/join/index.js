@@ -12,7 +12,7 @@ import windowFor from '../../lib/window-for/index.js';
  * @param {number} config.windowSize - Size of overlapping windows (default: 5)
  * @param {number} config.overlapPercent - Percentage of overlap between windows (default: 50)
  * @param {string} config.styleHint - Optional additional style guidance
- * @param {number} config.maxRetries - Maximum retry attempts (default: 2)
+ * @param {number} config.maxAttempts - Maximum retry attempts (default: 3)
  * @returns {Promise<string>} Single result as dictated by prompt
  */
 export default async function join(
@@ -24,10 +24,10 @@ export default async function join(
   if (list.length === 1) return list[0];
 
   const {
-    windowSize = config.chunkSize || 5, // Backward compatibility with chunkSize
+    windowSize = 5,
     overlapPercent = 50,
     styleHint = '',
-    maxRetries = 2,
+    maxAttempts = 3,
     llm,
     onProgress,
     ...options
@@ -49,10 +49,10 @@ ${fragmentList}
 
 Important: This is part of a larger sequence. Join these fragments while being mindful that this result will be combined with other processed windows. Add necessary connecting words, prepositions, conjunctions, or other filler text to create a coherent, grammatically correct, and semantically meaningful result. Output only the joined result for this window.`;
 
-    const llmConfig = { modelOptions: { ...llm }, ...options };
+    const llmConfig = { llm, ...options };
     const result = await retry(() => callLlm(instruction, llmConfig), {
       label: `join-window-${windowIndex + 1}`,
-      maxRetries,
+      maxAttempts,
       onProgress,
     });
 
@@ -101,10 +101,10 @@ The terminal ends of both sections should be preserved. Only resolve the overlap
 
 Add necessary connecting words, prepositions, conjunctions, or other filler text to create a coherent, grammatically correct, and semantically meaningful result. Output only the final stitched result with terminals preserved.`;
 
-      const stitchConfig = { modelOptions: { ...llm }, ...options };
+      const stitchConfig = { llm, ...options };
       const stitchResult = await retry(() => callLlm(stitchInstruction, stitchConfig), {
         label: `join-stitch-${i}`,
-        maxRetries,
+        maxAttempts,
         onProgress,
       });
 
@@ -119,10 +119,10 @@ Join these two non-overlapping sections:
 
 Add necessary connecting words, prepositions, conjunctions, or other filler text to create a coherent, grammatically correct, and semantically meaningful result. Output only the joined result.`;
 
-      const joinConfig = { modelOptions: { ...llm }, ...options };
+      const joinConfig = { llm, ...options };
       const joinResult = await retry(() => callLlm(joinInstruction, joinConfig), {
         label: `join-nonoverlap-${i}`,
-        maxAttempts: maxRetries + 1,
+        maxAttempts,
         onProgress,
       });
 

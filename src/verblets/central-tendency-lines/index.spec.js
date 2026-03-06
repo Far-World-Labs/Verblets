@@ -37,7 +37,7 @@ describe('centralTendency', () => {
     expect(llm).toHaveBeenCalledWith(
       expect.stringContaining('Evaluate how central "robin" is among these category members'),
       expect.objectContaining({
-        modelOptions: expect.objectContaining({ modelName: 'fastGoodCheap' }),
+        llm: 'fastGoodCheap',
       })
     );
   });
@@ -59,7 +59,7 @@ describe('centralTendency', () => {
     expect(llm).toHaveBeenCalledWith(
       expect.any(String),
       expect.objectContaining({
-        modelOptions: expect.objectContaining({ modelName: 'fastGoodCheap' }),
+        llm: 'fastGoodCheap',
       })
     );
   });

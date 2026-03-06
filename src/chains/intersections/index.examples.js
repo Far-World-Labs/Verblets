@@ -181,9 +181,7 @@ describe.skipIf(!shouldRunLongExamples)('intersections chain examples', () => {
   it(
     'produces consistent and logical results with quality validation',
     async () => {
-      const result = await intersections(['literature', 'psychology'], {
-        goodnessScore: 8, // Higher quality threshold
-      });
+      const result = await intersections(['literature', 'psychology']);
 
       // Basic validation - should be an object
       expect(typeof result).toBe('object');

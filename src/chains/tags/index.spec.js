@@ -49,7 +49,9 @@ describe('tags', () => {
       expect(llm).toHaveBeenCalledWith(
         expect.stringContaining('Tag by priority and type'),
         expect.objectContaining({
-          system: expect.stringContaining('tag specification generator'),
+          modelOptions: expect.objectContaining({
+            systemPrompt: expect.stringContaining('tag specification generator'),
+          }),
         })
       );
       expect(spec).toBe(mockSpec);

@@ -27,7 +27,7 @@ const urgent = await filter(emails, 'urgent or time-sensitive messages');
 - `array` (Array): Items to filter
 - `criteria` (string): Natural language description of what to keep
 - `config` (Object): Configuration options
-  - `chunkSize` (number): Items per batch (default: 10)
+  - `batchSize` (number): Items per batch (auto-calculated from model context window)
   - `llm` (Object): LLM model options
 
 **Returns:** Promise<Array> - Items that match the criteria

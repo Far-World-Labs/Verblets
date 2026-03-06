@@ -16,8 +16,8 @@ export default async function sentiment(text, config = {}) {
   const prompt = `Identify the overall sentiment of the following text as "positive", "negative", or "neutral".\n\nText: ${text}\n\n${asWrappedValueJSON} The value should be the sentiment classification.\n\n${asJSON}`;
 
   const response = await callLlm(prompt, {
+    llm,
     modelOptions: {
-      ...llm,
       response_format: {
         type: 'json_schema',
         json_schema: {

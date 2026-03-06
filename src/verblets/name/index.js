@@ -15,8 +15,8 @@ export default async function name(subject, config = {}) {
   )} ${asUndefinedByDefault}\n\n${asWrappedValueJSON} The value should be the suggested name.\n\n${asJSON}`;
 
   const response = await callLlm(prompt, {
+    llm,
     modelOptions: {
-      ...llm,
       response_format: {
         type: 'json_schema',
         json_schema: {

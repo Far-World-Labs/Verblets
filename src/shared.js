@@ -95,6 +95,8 @@ import * as messages from './constants/messages.js';
 import * as models from './constants/models.js';
 import * as redis from './services/redis/index.js';
 import modelService from './services/llm-model/model.js';
+export { resolveModel, getCapabilities } from './services/llm-model/index.js';
+export { CAPABILITY_KEYS } from './constants/common.js';
 
 export const constants = {
   common,

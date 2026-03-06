@@ -29,6 +29,7 @@ export const browserExclusions = [
   'src/chains/ai-arch-expect/**',
   'src/chains/test/**',
   'src/chains/test-advice/**',
+  'src/lib/embed/**',
 ];
 
 // Browser-specific aliases for modules with browser versions
@@ -36,7 +37,10 @@ export const browserAliases = [
   { find: 'node:crypto', replacement: resolve(__dirname, 'src/lib/crypto/index.js') },
   { find: './index.node.js', replacement: './index.browser.js' },
   { find: 'node-fetch', replacement: resolve(__dirname, 'src/lib/fetch-browser.js') },
-  { find: resolve(__dirname, 'src/chains/expect/index.js'), replacement: resolve(__dirname, 'src/chains/expect/index.browser.js') },
+  {
+    find: resolve(__dirname, 'src/chains/expect/index.js'),
+    replacement: resolve(__dirname, 'src/chains/expect/index.browser.js'),
+  },
 ];
 
 // Plugin to use Node.js Redis in browser tests for caching
@@ -47,5 +51,5 @@ export const redisTestPlugin = {
     if (id.includes('services/redis/index.js') || id.includes('services/redis/index.browser.js')) {
       return resolve(__dirname, 'src/services/redis/index.node.js');
     }
-  }
+  },
 };

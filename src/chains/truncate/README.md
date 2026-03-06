@@ -35,6 +35,8 @@ const cleaned = article.slice(0, cutPoint);
 - `config` (Object) - Configuration options
   - `threshold` (number) - Score threshold above which to remove content (default: 6)
   - `chunkSize` (number) - Target characters per chunk (default: 1000)
+  - `batchSize` (number) - Items per scoring batch (auto-calculated from model context window)
+  - `llm` (Object) - LLM model options (passed through to scoring)
 
 ## Return Value
 

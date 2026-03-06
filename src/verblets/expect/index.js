@@ -37,7 +37,7 @@ export async function llmAssert({
       ? buildEqualityPrompt({ actual, expected: equals, context })
       : buildConstraintPrompt({ actual, constraint, context });
 
-  const answer = await callLlm(prompt, { modelOptions: llm });
+  const answer = await callLlm(prompt, { llm });
   const text = typeof answer === 'string' ? answer : answer.content;
   const passed = /^true$/i.test(text.trim());
 

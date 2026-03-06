@@ -1,7 +1,6 @@
 import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { constants as promptConstants, asXML } from '../../prompts/index.js';
-import modelService from '../../services/llm-model/index.js';
 import { questionsListSchema, selectedQuestionSchema } from './schemas.js';
 
 const { contentIsChoices, asJSON, asWrappedArrayJSON } = promptConstants;
@@ -59,10 +58,10 @@ const generateQuestions = async function* generateQuestionsGenerator(text, optio
   let textSelected = text;
 
   const {
+    llm,
     searchBreadth = 0.5,
     shouldSkip = shouldSkipNull,
     shouldStop = shouldStopNull,
-    model = modelService.getBestPublicModel(),
     maxAttempts = 3,
     onProgress,
   } = options;
@@ -80,6 +79,7 @@ const generateQuestions = async function* generateQuestionsGenerator(text, optio
       const selectedResult = await retry(
         () =>
           callLlm(pickInterestingQuestionPrompt, {
+            llm,
             modelOptions: {
               response_format: {
                 type: 'json_schema',
@@ -103,10 +103,9 @@ const generateQuestions = async function* generateQuestionsGenerator(text, optio
     const promptCreated = formatQuestionsPrompt(textSelected, {
       existing: resultsAll,
     });
-    const budget = model.budgetTokens(promptCreated);
     const llmConfig = {
+      llm,
       modelOptions: {
-        maxTokens: budget.completion,
         temperature: 1,
         response_format: {
           type: 'json_schema',

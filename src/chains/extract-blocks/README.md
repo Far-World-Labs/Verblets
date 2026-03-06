@@ -5,7 +5,8 @@ Extract structured blocks of information from unstructured text using AI-powered
 ## Usage
 
 ```javascript
-// Extract log entries that may span multiple lines
+import { extractBlocks } from './index.js';
+
 const logText = `
 2024-04-01 10:15:23 INFO Starting batch process
   Processing 1500 records from database
@@ -17,10 +18,10 @@ const logText = `
   Successfully reconnected to database
 `;
 
-const blocks = await extractBlocks(logText, {
-  blockType: 'log entry',
-  instruction: 'Extract complete log entries including their continuation lines'
-});
+const blocks = await extractBlocks(
+  logText,
+  'Extract complete log entries including their continuation lines'
+);
 
 // Result:
 // [
@@ -39,12 +40,18 @@ const blocks = await extractBlocks(logText, {
 // ]
 ```
 
-## Parameters
+## API
 
-- **text** (string): The unstructured text to process
-- **options** (object):
-  - **blockType** (string): Description of what to extract (e.g., "log entry", "transaction", "event")
-  - **instruction** (string): Natural language instruction for extraction
-  - **chunkSize** (number): Size of each text chunk in characters (default: 3000)
-  - **overlapSize** (number): Overlap between chunks in characters (default: 500)
-  - **maxParallel** (number): Maximum parallel processing threads (default: 3)
+### `extractBlocks(text, instructions, config)`
+
+**Parameters:**
+- `text` (string): The unstructured text to process
+- `instructions` (string): Natural language instructions for identifying block boundaries
+- `config` (Object): Configuration options
+  - `windowSize` (number): Lines per processing window (default: 100)
+  - `overlapSize` (number): Lines of overlap between windows (default: 20)
+  - `maxParallel` (number): Concurrent window processing (default: 3)
+  - `maxAttempts` (number): Retry attempts per window (default: 3)
+  - `llm` (Object): LLM model options
+
+**Returns:** Promise<Array<Array\<string>>> - Array of blocks, each block is an array of lines
