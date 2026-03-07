@@ -203,6 +203,7 @@ export {
 } from './lib/progress-callback/index.js';
 export { default as version } from './lib/version/index.js';
 export { default as windowFor } from './lib/window-for/index.js';
+export { default as withInactivityTimeout } from './lib/with-inactivity-timeout/index.js';
 
 // LLM Output Parsers
 export { default as stripResponse } from './lib/strip-response/index.js';
@@ -213,8 +214,9 @@ export { default as toDate } from './lib/to-date/index.js';
 export { default as toEnum } from './lib/to-enum/index.js';
 
 // Pure Utilities
-export { chunk, last, omit, unionBy } from './lib/pure/index.js';
+export { chunk, compact, last, omit, pick, unionBy, zipWith } from './lib/pure/index.js';
 export { default as shuffle } from './lib/shuffle/index.js';
+export { default as pipe } from './lib/pipe/index.js';
 
 // Namespaced exports
 export * as prompts from './prompts/index.js';

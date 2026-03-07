@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { last, omit, chunk, unionBy } from './index.js';
+import { last, compact, pick, omit, chunk, unionBy, zipWith } from './index.js';
 
 describe('last', () => {
   it('returns the last element of an array', () => {
@@ -13,6 +13,48 @@ describe('last', () => {
 
   it('returns the only element of a single-item array', () => {
     expect(last(['a'])).toBe('a');
+  });
+});
+
+describe('compact', () => {
+  it('removes null and undefined from an array', () => {
+    expect(compact([1, null, 2, undefined, 3])).toEqual([1, 2, 3]);
+  });
+
+  it('preserves falsy values that are not null/undefined', () => {
+    expect(compact([0, '', false, null, undefined])).toEqual([0, '', false]);
+  });
+
+  it('returns empty array for all-null input', () => {
+    expect(compact([null, undefined])).toEqual([]);
+  });
+
+  it('returns same elements for array with no nullish values', () => {
+    expect(compact([1, 2, 3])).toEqual([1, 2, 3]);
+  });
+
+  it('handles empty array', () => {
+    expect(compact([])).toEqual([]);
+  });
+});
+
+describe('pick', () => {
+  it('keeps only specified keys', () => {
+    expect(pick(['a', 'c'])({ a: 1, b: 2, c: 3 })).toEqual({ a: 1, c: 3 });
+  });
+
+  it('returns empty object when no keys match', () => {
+    expect(pick(['z'])({ a: 1, b: 2 })).toEqual({});
+  });
+
+  it('accepts a Set of keys', () => {
+    expect(pick(new Set(['b']))({ a: 1, b: 2, c: 3 })).toEqual({ b: 2 });
+  });
+
+  it('is curried', () => {
+    const pickName = pick(['name']);
+    expect(pickName({ id: 1, name: 'Alice' })).toEqual({ name: 'Alice' });
+    expect(pickName({ id: 2, name: 'Bob', age: 30 })).toEqual({ name: 'Bob' });
   });
 });
 
@@ -96,5 +138,38 @@ describe('unionBy', () => {
   it('returns incoming when existing is empty', () => {
     const byId = unionBy((x) => x);
     expect(byId([], [3, 4])).toEqual([3, 4]);
+  });
+});
+
+describe('zipWith', () => {
+  it('combines two arrays element-wise', () => {
+    const add = zipWith((a, b) => a + b);
+    expect(add([1, 2, 3], [10, 20, 30])).toEqual([11, 22, 33]);
+  });
+
+  it('passes index as third argument', () => {
+    const withIndex = zipWith((a, b, i) => `${i}:${a}+${b}`);
+    expect(withIndex(['a', 'b'], ['x', 'y'])).toEqual(['0:a+x', '1:b+y']);
+  });
+
+  it('handles arrays of different lengths (truncates to first)', () => {
+    const pair = zipWith((a, b) => [a, b]);
+    expect(pair([1, 2], [10, 20, 30])).toEqual([
+      [1, 10],
+      [2, 20],
+    ]);
+  });
+
+  it('is curried', () => {
+    const merge = zipWith((item, score) => ({ item, score }));
+    expect(merge(['a', 'b'], [0.9, 0.3])).toEqual([
+      { item: 'a', score: 0.9 },
+      { item: 'b', score: 0.3 },
+    ]);
+  });
+
+  it('handles empty arrays', () => {
+    const add = zipWith((a, b) => a + b);
+    expect(add([], [])).toEqual([]);
   });
 });
