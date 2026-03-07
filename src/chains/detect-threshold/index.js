@@ -117,20 +117,20 @@ export default async function detectThreshold({
 
   const instructions = `You are analyzing data to identify threshold candidates for the property "${targetProperty}".
 
-${asXML('goal', goal)}
+${asXML(goal, { tag: 'goal' })}
 
 ${asXML(
-  'statistics',
   `Mean: ${stats.mean.toFixed(2)}, Median: ${stats.median.toFixed(
     2
-  )}, StdDev: ${stats.stdDev.toFixed(2)}, Min: ${stats.min}, Max: ${stats.max}`
+  )}, StdDev: ${stats.stdDev.toFixed(2)}, Min: ${stats.min}, Max: ${stats.max}`,
+  { tag: 'statistics' }
 )}
 
 ${asXML(
-  'percentiles',
   Object.entries(stats.percentiles)
     .map(([p, val]) => `${p}th: ${val}`)
-    .join(', ')
+    .join(', '),
+  { tag: 'percentiles' }
 )}
 
 IMPORTANT: Each line contains an ARRAY of data points. Process all items in each array.
@@ -182,12 +182,11 @@ Return the updated accumulator as valid JSON.`;
     stats.count
   } data points for property "${targetProperty}", generate threshold recommendations.
 
-${asXML('goal', goal)}
+${asXML(goal, { tag: 'goal' })}
 
-${asXML('accumulated-analysis', JSON.stringify(accumulated, null, 2))}
+${asXML(JSON.stringify(accumulated, null, 2), { tag: 'accumulated-analysis' })}
 
 ${asXML(
-  'statistics',
   JSON.stringify(
     {
       mean: stats.mean,
@@ -199,7 +198,8 @@ ${asXML(
     },
     null,
     2
-  )
+  ),
+  { tag: 'statistics' }
 )}
 
 CRITICAL: The threshold VALUE must be the actual ${targetProperty} value (between ${

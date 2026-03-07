@@ -410,10 +410,11 @@ describe('detectThreshold', () => {
       const finalPrompt = callLlm.mock.calls[0][0];
       expect(finalPrompt).toContain('score');
       expect(finalPrompt).toContain('20 data points');
-      // goal and accumulated-analysis are wrapped via asXML as tag names
-      expect(finalPrompt).toContain('<data>\ngoal\n</data>');
-      expect(finalPrompt).toContain('<data>\naccumulated-analysis\n</data>');
-      expect(finalPrompt).toContain('<data>\nstatistics\n</data>');
+      // goal and accumulated-analysis are wrapped in XML tags with actual content
+      expect(finalPrompt).toContain('<goal>');
+      expect(finalPrompt).toContain(defaultGoal);
+      expect(finalPrompt).toContain('<accumulated-analysis>');
+      expect(finalPrompt).toContain('<statistics>');
       expect(finalPrompt).toContain('between 2 and 80');
     });
 
