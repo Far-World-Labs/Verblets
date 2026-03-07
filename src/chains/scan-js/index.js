@@ -20,6 +20,8 @@ const visit = async ({
   state: stateInitial,
   features: featuresInitial = 'maintainability',
   llm,
+  maxAttempts = 3,
+  onProgress,
 }) => {
   if (!node.functionName) {
     return stateInitial;
@@ -76,7 +78,7 @@ const visit = async ({
       state.abbreviations = state.abbreviations ?? {};
       state.abbreviations[id] = state.abbreviations[id] ?? state.nodesFound;
     },
-    { label: 'scan-js' }
+    { label: 'scan-js', maxAttempts, onProgress }
   );
 
   return state;
@@ -101,6 +103,8 @@ export default async (moduleOptions) => {
         ...options,
         features: moduleOptions.features,
         llm: moduleOptions.llm,
+        maxAttempts: moduleOptions.maxAttempts,
+        onProgress: moduleOptions.onProgress,
       }),
   });
 };

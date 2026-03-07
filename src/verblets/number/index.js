@@ -8,8 +8,6 @@ const {
   contentIsQuestion,
   explainAndSeparate,
   explainAndSeparatePrimitive,
-  asJSON,
-  asWrappedValueJSON,
 } = promptConstants;
 
 export default async (text, config = {}) => {
@@ -20,9 +18,7 @@ ${explainAndSeparate} ${explainAndSeparatePrimitive}
 
 ${asNumber} ${asUndefinedByDefault}
 
-${asWrappedValueJSON} The value should be the number or "undefined".
-
-${asJSON}`;
+The value should be the number or "undefined".`;
 
   const result = await callLlm(numberText, {
     llm,

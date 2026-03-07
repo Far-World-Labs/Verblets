@@ -2,10 +2,8 @@ import { v4 as uuid } from 'uuid';
 
 import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
-import { outputSuccinctNames, constants as promptConstants } from '../../prompts/index.js';
+import { outputSuccinctNames } from '../../prompts/index.js';
 import { subComponentsSchema, componentOptionsSchema } from './schemas.js';
-
-const { asJSON, asWrappedArrayJSON } = promptConstants;
 
 const subComponentsPrompt = (component, thing, fixes = '') => {
   let focus = '';
@@ -22,11 +20,7 @@ Apply the specifics listed here when dealing with component or entity:
  - If some components are subcomponents of others in the list, don't include them.
  - The output must not include "${thing}" or "${component}" in the list.
  - Only subcomponents, no accessories.
-${fixes}
-
-${asWrappedArrayJSON}
-
-${asJSON}`;
+${fixes}`;
 };
 
 const componentOptionsPrompt = (component, thing, fixes = '') => {
@@ -41,11 +35,7 @@ const componentOptionsPrompt = (component, thing, fixes = '') => {
 Apply the specifics listed here when dealing with component or entity:
  - ${outputSuccinctNames()}
  - Do not list subcomponents, that's not what this is about.
-${fixes}
-
-${asWrappedArrayJSON}
-
-${asJSON}`;
+${fixes}`;
 };
 
 const defaultMatch = () => false;

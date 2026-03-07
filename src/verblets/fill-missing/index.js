@@ -2,7 +2,7 @@ import callLlm from '../../lib/llm/index.js';
 import { constants as promptConstants, asXML } from '../../prompts/index.js';
 import fillMissingSchema from './fill-missing-result.json';
 
-const { tryCompleteData, contentIsMain, asJSON } = promptConstants;
+const { tryCompleteData, contentIsMain } = promptConstants;
 
 const responseFormat = {
   type: 'json_schema',
@@ -15,7 +15,7 @@ const responseFormat = {
 export const buildPrompt = (text) =>
   `${tryCompleteData} ${contentIsMain} ${asXML(text, { tag: 'input' })}\n\n` +
   `Return JSON with "template" and "variables" where each variable has "original", ` +
-  `"candidate", and "confidence". ${asJSON}`;
+  `"candidate", and "confidence".`;
 
 export default async function fillMissing(text, config = {}) {
   const { llm, ...options } = config;

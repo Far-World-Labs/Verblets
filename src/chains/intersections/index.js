@@ -8,7 +8,7 @@ import { intersectionElementsSchema } from './schemas.js';
 import intersectionResultSchema from './intersection-result.json';
 import { debug } from '../../lib/debug/index.js';
 
-const { asJSON, asWrappedArrayJSON, strictFormat, contentIsQuestion } = promptConstants;
+const { strictFormat, contentIsQuestion } = promptConstants;
 
 /**
  * Generalized prompt for finding intersection elements
@@ -26,9 +26,7 @@ Focus on items that genuinely exist in the intersection of all categories.`;
 
 ${asXML(categories.join(' | '), { tag: 'categories' })}
 
-${strictFormat} ${asWrappedArrayJSON}
-
-${asJSON}`;
+${strictFormat}`;
 };
 
 /**

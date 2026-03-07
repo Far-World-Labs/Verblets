@@ -165,7 +165,13 @@ export {
   embedSubquestions,
 } from './chains/embed-expand-query/index.js';
 export { default as embedNormalizeText } from './lib/embed-normalize-text/index.js';
-export { default as embedNeighborChunks } from './lib/embed-neighbor-chunks/index.js';
+export {
+  default as embedNeighborChunks,
+  buildIndex as embedBuildIndex,
+  mergeRanges as embedMergeRanges,
+  assembleSpan as embedAssembleSpan,
+  standaloneSpan as embedStandaloneSpan,
+} from './lib/embed-neighbor-chunks/index.js';
 
 // Library Helpers (documented in README)
 export { default as combinations, rangeCombinations } from './lib/combinations/index.js';
@@ -174,17 +180,21 @@ export { debug } from './lib/debug/index.js';
 export { default as createBatches } from './lib/text-batch/index.js';
 export { default as llm } from './lib/llm/index.js';
 export { default as normalizeLlm } from './lib/normalize-llm/index.js';
-export { default as parallel } from './lib/parallel-batch/index.js';
+export { default as parallel, parallelMap } from './lib/parallel-batch/index.js';
 export * as promptCache from './lib/prompt-cache/index.js';
 export { default as retry } from './lib/retry/index.js';
 export { default as ringBuffer } from './lib/ring-buffer/index.js';
 export {
   emitProgress,
+  emitStart,
+  emitComplete,
   emitStepProgress,
   emitBatchStart,
   emitBatchComplete,
   emitBatchProcessed,
   emitPhaseProgress,
+  createBatchProgressCallback,
+  createBatchContext,
   batchTracker,
   scopeProgress,
 } from './lib/progress-callback/index.js';

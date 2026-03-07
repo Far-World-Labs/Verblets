@@ -1,8 +1,5 @@
 import callLlm from '../../lib/llm/index.js';
 import { sentimentSchema } from './schema.js';
-import { constants as promptConstants } from '../../prompts/index.js';
-
-const { asJSON, asWrappedValueJSON } = promptConstants;
 
 /**
  * Extract sentiment from text input
@@ -13,7 +10,7 @@ const { asJSON, asWrappedValueJSON } = promptConstants;
  */
 export default async function sentiment(text, config = {}) {
   const { llm, ...options } = config;
-  const prompt = `Identify the overall sentiment of the following text as "positive", "negative", or "neutral".\n\nText: ${text}\n\n${asWrappedValueJSON} The value should be the sentiment classification.\n\n${asJSON}`;
+  const prompt = `Identify the overall sentiment of the following text as "positive", "negative", or "neutral".\n\nText: ${text}\n\nThe value should be the sentiment classification.`;
 
   const response = await callLlm(prompt, {
     llm,

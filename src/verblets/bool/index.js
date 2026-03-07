@@ -8,14 +8,8 @@ import {
 } from '../../lib/lifecycle-logger/index.js';
 import { booleanSchema } from './schema.js';
 
-const {
-  asBool,
-  asUndefinedByDefault,
-  explainAndSeparate,
-  explainAndSeparatePrimitive,
-  asJSON,
-  asWrappedValueJSON,
-} = promptConstants;
+const { asBool, asUndefinedByDefault, explainAndSeparate, explainAndSeparatePrimitive } =
+  promptConstants;
 
 export default async (text, config = {}) => {
   const { llm, logger, ...options } = config;
@@ -30,9 +24,7 @@ export default async (text, config = {}) => {
 
 ${asBool} ${asUndefinedByDefault}
 
-${asWrappedValueJSON} The value should be "true", "false", or "undefined".
-
-${asJSON}`;
+The value should be "true", "false", or "undefined".`;
 
   // Log prompt construction with extracted analysis
   lifecycleLogger.logConstruction(systemPrompt, {

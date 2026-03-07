@@ -1,9 +1,6 @@
 import callLlm from '../../lib/llm/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { nameSimilarSchema } from './schema.js';
-import { constants as promptConstants } from '../../prompts/index.js';
-
-const { asJSON, asWrappedValueJSON } = promptConstants;
 
 const buildPrompt = (description, exampleNames) => {
   const descriptionBlock = asXML(description, { tag: 'description' });
@@ -15,9 +12,7 @@ ${descriptionBlock}
 
 ${exampleNamesBlock}
 
-${asWrappedValueJSON} The value should be the generated name.
-
-${asJSON}`;
+The value should be the generated name.`;
 };
 
 export default async function nameSimilarTo(description, exampleNames = [], config = {}) {

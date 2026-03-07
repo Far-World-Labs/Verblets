@@ -17,9 +17,6 @@ const {
   contentIsQuestion,
   explainAndSeparate,
   explainAndSeparatePrimitive,
-  asJSON,
-  asWrappedArrayJSON,
-  asWrappedValueJSON,
 } = promptConstants;
 
 // Date disambiguation guidelines to add to prompts
@@ -32,11 +29,7 @@ const disambiguationGuideline = `When interpreting dates:
 // Prompt builders
 const buildExpectationPrompt = (question) => `${contentIsQuestion} ${question}
 
-List up to three short yes/no checks that would confirm a date answer is correct. If nothing specific comes to mind, include "The result is a valid date".
-
-${asWrappedArrayJSON}
-
-${asJSON}`;
+List up to three short yes/no checks that would confirm a date answer is correct. If nothing specific comes to mind, include "The result is a valid date".`;
 
 const buildDatePrompt = (text) => `${contentIsQuestion} ${text}
 
@@ -46,9 +39,7 @@ ${explainAndSeparate} ${explainAndSeparatePrimitive}
 
 ${asDate} ${asUndefinedByDefault}
 
-${asWrappedValueJSON} The value should be the date in ISO format or "undefined".
-
-${asJSON}`;
+The value should be the date in ISO format or "undefined".`;
 
 // Removed buildRetryPrompt - directly using buildDatePrompt inline
 

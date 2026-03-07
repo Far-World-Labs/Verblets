@@ -49,7 +49,7 @@ const calculateCodeWindow = (testLine, testLineCount, assertionLine) => {
  * @param {Object} options - Options including maxAttempts
  */
 export default async function analyzeTestError(logs, options = {}) {
-  const { maxAttempts = 3, onProgress, now = new Date() } = options;
+  const { llm: llmConfig, maxAttempts = 3, onProgress } = options;
   if (!logs || logs.length === 0) {
     debug('analyzeTestError: No logs provided');
     return '';
@@ -142,13 +142,14 @@ Discussion:
 </analysis-guidelines>`;
 
   try {
-    const response = await retry(() => llm(prompt, { modelOptions: { max_tokens: MAX_TOKENS } }), {
-      maxAttempts,
-      onProgress,
-      now,
-      chainStartTime: now,
-      label: 'test analyzer',
-    });
+    const response = await retry(
+      () => llm(prompt, { llm: llmConfig, modelOptions: { max_tokens: MAX_TOKENS } }),
+      {
+        label: 'test-analyzer',
+        maxAttempts,
+        onProgress,
+      }
+    );
     return response.trim();
   } catch (error) {
     debug(`AI analysis failed: ${error.message}`);
