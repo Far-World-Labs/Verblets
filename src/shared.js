@@ -183,6 +183,9 @@ export { default as normalizeLlm } from './lib/normalize-llm/index.js';
 export { default as parallel, parallelMap } from './lib/parallel-batch/index.js';
 export * as promptCache from './lib/prompt-cache/index.js';
 export { default as retry } from './lib/retry/index.js';
+export { default as anySignal } from './lib/any-signal/index.js';
+export { default as TimedAbortController } from './lib/timed-abort-controller/index.js';
+export { default as templateReplace } from './lib/template-replace/index.js';
 export { default as ringBuffer } from './lib/ring-buffer/index.js';
 export {
   emitProgress,
