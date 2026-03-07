@@ -170,6 +170,7 @@ export { default as embedNeighborChunks } from './lib/embed-neighbor-chunks/inde
 // Library Helpers (documented in README)
 export { default as combinations, rangeCombinations } from './lib/combinations/index.js';
 export { default as chunkSentences } from './lib/chunk-sentences/index.js';
+export { debug } from './lib/debug/index.js';
 export { default as createBatches } from './lib/text-batch/index.js';
 export { default as llm } from './lib/llm/index.js';
 export { default as normalizeLlm } from './lib/normalize-llm/index.js';
