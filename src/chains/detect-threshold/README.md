@@ -50,7 +50,10 @@ Analyzes a dataset to recommend threshold values that align with specified opera
 - `data` (`Array<Object>`): Dataset of records containing the target property
 - `targetProperty` (`string`): The numeric property to analyze for thresholds
 - `goal` (`string`): Description of operational context and risk tradeoffs
-- `options.llm` (`Object`): LLM configuration
+- `options.llm` (`string|Object`): LLM configuration
+- `options.maxAttempts` (`number`): Maximum retry attempts (default: 3)
+- `options.onProgress` (`Function`): Progress callback
+- `options.abortSignal` (`AbortSignal`): Signal to cancel the operation
 
 Returns `Promise<Object>` with:
 - `thresholdCandidates`: Array of recommended thresholds with metrics

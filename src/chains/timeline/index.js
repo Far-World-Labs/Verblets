@@ -116,11 +116,14 @@ export default async function timeline(text, options = {}) {
     chunks,
     async (chunk, chunkIndex) => {
       try {
-        const events = await retry(() => extractFromChunk(chunk, { llm, ...remainingOptions }), {
-          label: `timeline chunk ${chunkIndex + 1}`,
-          maxAttempts,
-          abortSignal: remainingOptions.abortSignal,
-        });
+        const events = await retry(
+          () => extractFromChunk(chunk, { llm, now, ...remainingOptions }),
+          {
+            label: `timeline chunk ${chunkIndex + 1}`,
+            maxAttempts,
+            abortSignal: remainingOptions.abortSignal,
+          }
+        );
         allEvents.push(...events);
         onProgress?.(chunkIndex + 1, chunks.length);
       } catch (error) {

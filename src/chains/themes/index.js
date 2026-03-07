@@ -8,7 +8,7 @@ const splitText = (text) =>
     .filter(Boolean);
 
 export default async function themes(text, config = {}) {
-  const { batchSize = 5, topN, llm, ...options } = config;
+  const { batchSize = 5, topN, llm, now = new Date(), ...options } = config;
   const pieces = splitText(text);
   const reducePrompt =
     'Update the accumulator with short themes from this text. Avoid duplicates. Return ONLY a comma-separated list of themes with no explanation or additional text.';
@@ -16,6 +16,7 @@ export default async function themes(text, config = {}) {
   const firstPass = await reduce(shuffledPieces, reducePrompt, {
     batchSize,
     llm,
+    now,
     ...options,
   });
   const rawThemes = firstPass
@@ -28,6 +29,7 @@ export default async function themes(text, config = {}) {
   const final = await reduce(rawThemes, refinePrompt, {
     batchSize,
     llm,
+    now,
     ...options,
   });
   return final
