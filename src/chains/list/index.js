@@ -10,7 +10,7 @@ import listResultSchema from './list-result.json';
 
 const DEFAULT_LIST_TIMEOUT_MS = 90_000;
 
-const { onlyJSON, contentIsTransformationSource, onlyJSONArray } = promptConstants;
+const { onlyJSON, contentIsTransformationSource } = promptConstants;
 
 /**
  * Create model options for structured outputs
@@ -142,7 +142,7 @@ export const generateList = async function* generateListGenerator(text, options 
 
 export default async function list(prompt, config = {}) {
   const { llm, schema, maxAttempts = 3, onProgress, ...options } = config;
-  const fullPrompt = `${prompt}\n\n${onlyJSONArray}`;
+  const fullPrompt = prompt;
 
   const modelOptions = createModelOptions();
   const response = await retry(() => callLlm(fullPrompt, { llm, modelOptions, ...options }), {

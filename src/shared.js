@@ -168,8 +168,18 @@ export { default as parallel } from './lib/parallel-batch/index.js';
 export * as promptCache from './lib/prompt-cache/index.js';
 export { default as retry } from './lib/retry/index.js';
 export { default as ringBuffer } from './lib/ring-buffer/index.js';
-export { batchTracker, scopeProgress } from './lib/progress-callback/index.js';
+export {
+  emitProgress,
+  emitStepProgress,
+  emitBatchStart,
+  emitBatchComplete,
+  emitBatchProcessed,
+  emitPhaseProgress,
+  batchTracker,
+  scopeProgress,
+} from './lib/progress-callback/index.js';
 export { default as version } from './lib/version/index.js';
+export { default as windowFor } from './lib/window-for/index.js';
 
 // Namespaced exports
 export * as prompts from './prompts/index.js';
