@@ -18,6 +18,7 @@ const filter = async function filter(list, instructions, config = {}) {
     maxAttempts = 3,
     logger,
     onProgress,
+    abortSignal,
     now = new Date(),
     ...options
   } = config;
@@ -97,6 +98,7 @@ Process exactly ${count} items from the XML list below and return ${count} yes/n
         label: 'filter:batch',
         maxAttempts,
         onProgress: tracker.forBatch(startIndex, items.length),
+        abortSignal,
       });
     } catch (error) {
       lifecycleLogger.logError(error, { batchIndex, itemCount: items.length });

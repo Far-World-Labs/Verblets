@@ -45,7 +45,7 @@ const parseElements = (elements) => {
 const processCombo = async (
   combo,
   instructions,
-  { maxAttempts = 3, onProgress, now = new Date(), llm, ...options } = {}
+  { maxAttempts = 3, onProgress, abortSignal, now = new Date(), llm, ...options } = {}
 ) => {
   const comboKey = combo.join(' + ');
 
@@ -70,9 +70,10 @@ const processCombo = async (
         label: 'intersections-elements',
         maxAttempts,
         onProgress,
+        abortSignal,
       }
     ),
-    commonalities(combo, { instructions, onProgress, now, llm, ...options }),
+    commonalities(combo, { instructions, onProgress, abortSignal, now, llm, ...options }),
   ]);
 
   const elementList = parseElements(elementsResponse);
@@ -117,6 +118,7 @@ export default async function intersections(items, options = {}) {
     useSchemaValidation = false,
     maxAttempts = 3,
     onProgress,
+    abortSignal,
     now = new Date(),
     ...restOptions
   } = options;
@@ -135,7 +137,14 @@ export default async function intersections(items, options = {}) {
     const batch = allCombinations.slice(i, i + batchSize);
     const batchResults = await Promise.all(
       batch.map((combo) =>
-        processCombo(combo, instructions, { maxAttempts, onProgress, now, llm, ...restOptions })
+        processCombo(combo, instructions, {
+          maxAttempts,
+          onProgress,
+          abortSignal,
+          now,
+          llm,
+          ...restOptions,
+        })
       )
     );
 
@@ -147,7 +156,13 @@ export default async function intersections(items, options = {}) {
 
   // Validate results with JSON schema if enabled
   if (useSchemaValidation && Object.keys(results).length > 0) {
-    const validated = await validateIntersectionResults(results, llm, maxAttempts, onProgress);
+    const validated = await validateIntersectionResults(
+      results,
+      llm,
+      maxAttempts,
+      onProgress,
+      abortSignal
+    );
     return validated.intersections || results;
   }
 
@@ -181,7 +196,8 @@ async function validateIntersectionResults(
   intersections,
   llm = 'fastGoodCheap',
   maxAttempts = 3,
-  onProgress
+  onProgress,
+  abortSignal
 ) {
   if (!intersections || Object.keys(intersections).length === 0) {
     return { intersections: {} };
@@ -204,6 +220,7 @@ Return the properly structured JSON object with an "intersections" property cont
       label: 'intersections-validation',
       maxAttempts,
       onProgress,
+      abortSignal,
     });
     // Extract intersections from the object structure
     const resultIntersections = response?.intersections || response;

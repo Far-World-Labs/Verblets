@@ -86,6 +86,7 @@ export default async function categorySamples(categoryName, options = {}) {
     maxAttempts = 3,
     retryDelay = 1000,
     onProgress,
+    abortSignal,
     now = new Date(),
   } = options;
 
@@ -114,6 +115,7 @@ export default async function categorySamples(categoryName, options = {}) {
     retryDelay,
     retryOnAll: true,
     onProgress,
+    abortSignal,
   });
 }
 

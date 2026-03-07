@@ -22,6 +22,7 @@ const visit = async ({
   llm,
   maxAttempts = 3,
   onProgress,
+  abortSignal,
 }) => {
   if (!node.functionName) {
     return stateInitial;
@@ -78,7 +79,7 @@ const visit = async ({
       state.abbreviations = state.abbreviations ?? {};
       state.abbreviations[id] = state.abbreviations[id] ?? state.nodesFound;
     },
-    { label: 'scan-js', maxAttempts, onProgress }
+    { label: 'scan-js', maxAttempts, onProgress, abortSignal }
   );
 
   return state;
@@ -105,6 +106,7 @@ export default async (moduleOptions) => {
         llm: moduleOptions.llm,
         maxAttempts: moduleOptions.maxAttempts,
         onProgress: moduleOptions.onProgress,
+        abortSignal: moduleOptions.abortSignal,
       }),
   });
 };

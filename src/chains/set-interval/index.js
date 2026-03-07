@@ -109,6 +109,7 @@ Next wait:`;
           label: 'set-interval',
           maxAttempts,
           onProgress,
+          abortSignal: options.abortSignal,
         }
       );
 

@@ -34,7 +34,7 @@ const GROUP_PROCESS_STEPS = `Extract entities and group them by patterns, types,
  * @returns {Promise<string>} Entity specification as descriptive text
  */
 export async function entitySpec(prompt, config = {}) {
-  const { llm, maxAttempts = 3, onProgress, ...rest } = config;
+  const { llm, maxAttempts = 3, onProgress, abortSignal, ...rest } = config;
 
   const specSystemPrompt = `You are an entity specification generator. Create a clear, concise specification for entity extraction.`;
 
@@ -60,6 +60,7 @@ Keep it simple and actionable.`;
       label: 'entities-spec',
       maxAttempts,
       onProgress,
+      abortSignal,
     }
   );
 
@@ -74,7 +75,7 @@ Keep it simple and actionable.`;
  * @returns {Promise<Object>} Object with entities array
  */
 export async function applyEntities(text, specification, config = {}) {
-  const { llm, maxAttempts = 3, onProgress, ...options } = config;
+  const { llm, maxAttempts = 3, onProgress, abortSignal, ...options } = config;
 
   const prompt = `Apply the entity specification to extract entities from this text.
 
@@ -107,6 +108,7 @@ Each entity should include:
       label: 'entities-apply',
       maxAttempts,
       onProgress,
+      abortSignal,
     }
   );
 

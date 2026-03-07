@@ -85,6 +85,7 @@ export default async function group(list, instructions, config = {}) {
     autoModeThreshold,
     llm,
     onProgress,
+    abortSignal,
     now = new Date(),
     ...options
   } = config;
@@ -158,6 +159,7 @@ export default async function group(list, instructions, config = {}) {
             label: 'group:batch',
             maxAttempts: options.maxAttempts || 3,
             onProgress: tracker.forBatch(startIndex, items.length),
+            abortSignal,
           }
         );
 

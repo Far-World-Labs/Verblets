@@ -4,7 +4,7 @@ import { asXML } from '../../prompts/wrap-variable.js';
 import { peopleListJsonSchema } from './schemas.js';
 
 export default async function peopleList(description, count = 3, config = {}) {
-  const { llm, maxAttempts = 3, onProgress, ...options } = config;
+  const { llm, maxAttempts = 3, onProgress, abortSignal, ...options } = config;
 
   const instructions = asXML(description, { tag: 'description' });
   const prompt = `Create a list of ${count} people based on the following description:
@@ -27,6 +27,7 @@ ${instructions}`;
       label: `people-list generation for ${count} people`,
       maxAttempts,
       onProgress,
+      abortSignal,
     }
   );
 

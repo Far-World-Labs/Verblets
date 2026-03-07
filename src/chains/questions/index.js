@@ -60,6 +60,7 @@ const generateQuestions = async function* generateQuestionsGenerator(text, optio
     shouldStop = shouldStopNull,
     maxAttempts = 3,
     onProgress,
+    abortSignal,
     ...restOptions
   } = options;
 
@@ -92,6 +93,7 @@ const generateQuestions = async function* generateQuestionsGenerator(text, optio
           label: 'questions-pick-interesting',
           maxAttempts,
           onProgress,
+          abortSignal,
         }
       );
       textSelected = selectedResult.question;
@@ -121,6 +123,7 @@ const generateQuestions = async function* generateQuestionsGenerator(text, optio
       label: 'questions-generate',
       maxAttempts,
       onProgress,
+      abortSignal,
     });
     const resultsNew = getRandomSubset(results, searchBreadth);
     if (searchBreadth < 0.5) {

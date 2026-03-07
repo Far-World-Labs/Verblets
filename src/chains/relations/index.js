@@ -97,7 +97,7 @@ const GROUP_PROCESS_STEPS = `Extract relations and group them by patterns, types
  * @returns {Promise<string>} Relation specification as descriptive text
  */
 export async function relationSpec(prompt, config = {}) {
-  const { llm, maxAttempts = 3, onProgress, ...rest } = config;
+  const { llm, maxAttempts = 3, onProgress, abortSignal, ...rest } = config;
 
   const specSystemPrompt = `You are a relation specification generator. Create a clear, concise specification for relation extraction.`;
 
@@ -151,6 +151,7 @@ Use natural language, not symbolic identifiers or linked data formats.`;
       label: 'relations-spec',
       maxAttempts,
       onProgress,
+      abortSignal,
     }
   );
 
@@ -166,7 +167,7 @@ Use natural language, not symbolic identifiers or linked data formats.`;
  * @returns {Promise<Object>} Object with relations array
  */
 export async function applyRelations(text, specification, config = {}) {
-  const { llm, entities, maxAttempts = 3, onProgress, ...options } = config;
+  const { llm, entities, maxAttempts = 3, onProgress, abortSignal, ...options } = config;
 
   let prompt = `Apply the relation specification to extract relations from this text.
 
@@ -220,6 +221,7 @@ Example: {"object": "42^^xsd:integer"} NOT {"object": '"42"^^xsd:integer'}`;
       label: 'relations-apply',
       maxAttempts,
       onProgress,
+      abortSignal,
     }
   );
 

@@ -82,6 +82,7 @@ const sort = async (list, criteria, config = {}) => {
       label: 'sort-batch',
       maxAttempts,
       onProgress,
+      abortSignal: options.abortSignal,
     });
 
     const resultArray = result?.items || result;

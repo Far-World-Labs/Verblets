@@ -77,6 +77,7 @@ const veiledVariants = async ({
           label: 'veiled-variants',
           maxAttempts,
           onProgress,
+          abortSignal: options.abortSignal,
         }
       )
     )

@@ -119,7 +119,7 @@ export function computeTagStatistics(vocabulary, taggedItems, options = {}) {
  * @returns {Promise<Object>} Initial tag vocabulary
  */
 async function generateInitialVocabulary(tagSystemSpec, sampleItems, config = {}) {
-  const { llm, maxAttempts = 3, onProgress, ...options } = config;
+  const { llm, maxAttempts = 3, onProgress, abortSignal, ...options } = config;
 
   const prompt = `Generate a comprehensive tag vocabulary for categorizing items.
 
@@ -157,6 +157,7 @@ The vocabulary should be complete enough to categorize diverse items along the i
       label: 'tag-vocabulary-initial',
       maxAttempts,
       onProgress,
+      abortSignal,
     }
   );
 
@@ -172,7 +173,15 @@ The vocabulary should be complete enough to categorize diverse items along the i
  * @returns {Promise<Object>} Refined tag vocabulary
  */
 async function refineVocabulary(vocabulary, taggedItems, tagSystemSpec, config = {}) {
-  const { llm, topN = 3, bottomN = 3, maxAttempts = 3, onProgress, ...options } = config;
+  const {
+    llm,
+    topN = 3,
+    bottomN = 3,
+    maxAttempts = 3,
+    onProgress,
+    abortSignal,
+    ...options
+  } = config;
 
   // Compute statistics using pure function
   const analysis = computeTagStatistics(vocabulary, taggedItems, { topN, bottomN });
@@ -221,6 +230,7 @@ Return an improved vocabulary that provides better coverage and clearer distinct
       label: 'tag-vocabulary-refine',
       maxAttempts,
       onProgress,
+      abortSignal,
     }
   );
 

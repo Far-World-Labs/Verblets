@@ -20,6 +20,7 @@ const find = async function find(list, instructions, config = {}) {
     llm,
     logger,
     onProgress,
+    abortSignal,
     now = new Date(),
     ...options
   } = config;
@@ -92,6 +93,7 @@ Process exactly ${count} items from the XML list below and return the single bes
               label: 'find:batch',
               maxAttempts,
               onProgress: tracker.forBatch(startIndex, items.length),
+              abortSignal,
             }
           );
 

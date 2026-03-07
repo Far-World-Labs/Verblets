@@ -229,6 +229,7 @@ Return threshold candidates with their rationales.`;
     label: 'detect-threshold-analysis',
     maxAttempts,
     onProgress,
+    abortSignal: options.abortSignal,
   });
 
   // Validate and fix threshold values to be within data range

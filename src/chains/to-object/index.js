@@ -131,7 +131,7 @@ function logDebugInfo(attempt, prompt, response, error) {
  * Converts text to structured JSON object using LLM assistance
  */
 export default async function toObject(text, schema, config = {}) {
-  const { llm = 'fastGood', maxAttempts = 3, onProgress, ...options } = config;
+  const { llm = 'fastGood', maxAttempts = 3, onProgress, abortSignal, ...options } = config;
   let errorDetails;
 
   // First attempt: try direct parsing
@@ -149,6 +149,7 @@ export default async function toObject(text, schema, config = {}) {
       label: 'to-object json fix',
       maxAttempts,
       onProgress,
+      abortSignal,
     });
 
     const result = parseAndValidate(response, schema);
@@ -165,6 +166,7 @@ export default async function toObject(text, schema, config = {}) {
       label: 'to-object final retry',
       maxAttempts,
       onProgress,
+      abortSignal,
     });
 
     const result = parseAndValidate(response, schema);

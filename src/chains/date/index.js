@@ -92,7 +92,7 @@ async function validateDate(dateValue, expectations, llm, logger, options) {
 }
 
 export default async function date(text, config = {}) {
-  const { maxAttempts = 3, llm, logger, onProgress, ...options } = config;
+  const { maxAttempts = 3, llm, logger, onProgress, abortSignal, ...options } = config;
 
   // Create lifecycle logger with date chain namespace
   const lifecycleLogger = createLifecycleLogger(logger, 'chain:date');
@@ -200,6 +200,7 @@ export default async function date(text, config = {}) {
       maxAttempts,
       retryOnAll: true,
       onProgress,
+      abortSignal,
     }
   );
 

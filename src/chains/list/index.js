@@ -55,6 +55,7 @@ export const generateList = async function* generateListGenerator(text, options 
     llm = 'fastGoodCheap',
     maxAttempts = 3,
     onProgress,
+    abortSignal,
     // eslint-disable-next-line no-unused-vars
     _schema,
     ...passThroughOptions
@@ -79,6 +80,7 @@ export const generateList = async function* generateListGenerator(text, options 
           label: 'list-generate',
           maxAttempts,
           onProgress,
+          abortSignal,
         }
       );
 
@@ -141,7 +143,7 @@ export const generateList = async function* generateListGenerator(text, options 
 };
 
 export default async function list(prompt, config = {}) {
-  const { llm, schema, maxAttempts = 3, onProgress, ...options } = config;
+  const { llm, schema, maxAttempts = 3, onProgress, abortSignal, ...options } = config;
   const fullPrompt = prompt;
 
   const modelOptions = createModelOptions();
@@ -149,6 +151,7 @@ export default async function list(prompt, config = {}) {
     label: 'list-main',
     maxAttempts,
     onProgress,
+    abortSignal,
   });
 
   // Extract items from the object structure
@@ -164,6 +167,7 @@ export default async function list(prompt, config = {}) {
         label: 'list-transform',
         maxAttempts,
         onProgress,
+        abortSignal,
       });
       try {
         const transformedItem = JSON.parse(transformResponse);

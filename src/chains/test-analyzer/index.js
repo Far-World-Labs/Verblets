@@ -49,7 +49,7 @@ const calculateCodeWindow = (testLine, testLineCount, assertionLine) => {
  * @param {Object} options - Options including maxAttempts
  */
 export default async function analyzeTestError(logs, options = {}) {
-  const { llm: llmConfig, maxAttempts = 3, onProgress } = options;
+  const { llm: llmConfig, maxAttempts = 3, onProgress, abortSignal } = options;
   if (!logs || logs.length === 0) {
     debug('analyzeTestError: No logs provided');
     return '';
@@ -148,6 +148,7 @@ Discussion:
         label: 'test-analyzer',
         maxAttempts,
         onProgress,
+        abortSignal,
       }
     );
     return response.trim();

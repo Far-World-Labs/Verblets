@@ -43,7 +43,7 @@ const GROUP_PROCESS_STEPS = `Analyze each item to determine its appropriate grou
  * @returns {Promise<string>} Anonymization specification as descriptive text
  */
 export async function anonymizeSpec(prompt, config = {}) {
-  const { llm, maxAttempts = 3, onProgress, ...rest } = config;
+  const { llm, maxAttempts = 3, onProgress, abortSignal, ...rest } = config;
 
   const specSystemPrompt = `You are an anonymization specification generator. Create a clear, concise specification for text anonymization.`;
 
@@ -100,6 +100,7 @@ Keep it focused on actionable anonymization rules.`;
       label: 'anonymize spec',
       maxAttempts,
       onProgress,
+      abortSignal,
     }
   );
 
@@ -166,7 +167,7 @@ Return ONLY the final anonymized text, with no explanations or additional conten
 
 const anonymize = async (input, config = {}) => {
   const { text, method, context } = validateInput(input);
-  const { llm, maxAttempts = 3, onProgress, ...options } = config;
+  const { llm, maxAttempts = 3, onProgress, abortSignal, ...options } = config;
 
   // Stage 1: Remove distinctive content
   const stage1Result = await retry(
@@ -180,6 +181,7 @@ const anonymize = async (input, config = {}) => {
       label: 'anonymize stage 1',
       maxAttempts,
       onProgress,
+      abortSignal,
     }
   );
 
@@ -204,6 +206,7 @@ const anonymize = async (input, config = {}) => {
       label: 'anonymize stage 2',
       maxAttempts,
       onProgress,
+      abortSignal,
     }
   );
 
@@ -229,6 +232,7 @@ const anonymize = async (input, config = {}) => {
       label: 'anonymize stage 3',
       maxAttempts,
       onProgress,
+      abortSignal,
     }
   );
 

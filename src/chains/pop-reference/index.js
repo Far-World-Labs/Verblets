@@ -28,6 +28,7 @@ export default async function popReference(sentence, description, options = {}) 
     llm,
     maxAttempts = 3,
     onProgress,
+    abortSignal,
     ...restOptions
   } = options;
 
@@ -90,6 +91,7 @@ Requirements:
       label: 'pop-reference',
       maxAttempts,
       onProgress,
+      abortSignal,
     }
   );
 

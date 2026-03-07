@@ -127,6 +127,7 @@ export async function extractBlocks(text, instructions, config = {}) {
         {
           label: `extract-blocks:window`,
           maxAttempts,
+          abortSignal: options.abortSignal,
           onProgress: createBatchProgressCallback(onProgress, {
             totalItems: lines.length,
             processedItems: Math.min(windowStart + windowSize, lines.length),

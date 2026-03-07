@@ -18,7 +18,7 @@ Return a JSON object with a "meanings" array containing the distinct meanings.`;
 };
 
 export const getMeanings = async (term, config = {}) => {
-  const { llm = 'fastGoodCheap', maxAttempts = 3, onProgress, ...options } = config;
+  const { llm = 'fastGoodCheap', maxAttempts = 3, onProgress, abortSignal, ...options } = config;
   const prompt = meaningsPrompt(term);
   const response = await retry(
     () =>
@@ -31,6 +31,7 @@ export const getMeanings = async (term, config = {}) => {
       label: 'disambiguate-get-meanings',
       maxAttempts,
       onProgress,
+      abortSignal,
     }
   );
 

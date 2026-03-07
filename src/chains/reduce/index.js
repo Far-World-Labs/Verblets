@@ -20,6 +20,7 @@ const reduce = async function reduce(list, instructions, config = {}) {
     logger,
     maxAttempts = 3,
     onProgress,
+    abortSignal,
     now = new Date(),
     ...options
   } = config;
@@ -96,6 +97,7 @@ Process exactly ${count} items from the ${itemFormat} list below and return the 
       label: 'reduce:batch',
       maxAttempts,
       onProgress: tracker.forBatch(startIndex, items.length),
+      abortSignal,
     });
 
     if (!responseFormat && result?.accumulator !== undefined) {

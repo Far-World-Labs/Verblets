@@ -5,7 +5,7 @@ import { asXML } from '../../prompts/wrap-variable.js';
 import { testResultJsonSchema } from './schemas.js';
 
 export default async function test(path, instructions, options = {}) {
-  const { maxAttempts = 3, onProgress, ...restOptions } = options;
+  const { maxAttempts = 3, onProgress, abortSignal, ...restOptions } = options;
   try {
     const code = await fs.readFile(path, 'utf-8');
 
@@ -36,7 +36,7 @@ GUIDELINES:
             },
           },
         }),
-      { label: 'test chain', maxAttempts, onProgress }
+      { label: 'test chain', maxAttempts, onProgress, abortSignal }
     );
 
     // With structured output, we get a validated object

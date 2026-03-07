@@ -28,6 +28,7 @@ const defaultAsk = async ({
   logger,
   maxAttempts = 3,
   onProgress,
+  abortSignal,
 } = {}) => {
   const historyText = history.map((turn) => `Q: ${turn.question}\nA: ${turn.answer}`).join('\n');
   const prompt = buildAskPrompt(topic, historyText);
@@ -54,6 +55,7 @@ const defaultAsk = async ({
       label: 'socratic-ask',
       maxAttempts,
       onProgress,
+      abortSignal,
     }
   );
 
@@ -68,6 +70,7 @@ const defaultAnswer = async ({
   logger,
   maxAttempts = 3,
   onProgress,
+  abortSignal,
 } = {}) => {
   const historyText = history.map((turn) => `Q: ${turn.question}\nA: ${turn.answer}`).join('\n');
   const prompt = buildAnswerPrompt(question, historyText);
@@ -94,6 +97,7 @@ const defaultAnswer = async ({
       label: 'socratic-answer',
       maxAttempts,
       onProgress,
+      abortSignal,
     }
   );
 
@@ -110,6 +114,7 @@ class SocraticMethod {
       logger,
       maxAttempts = 3,
       onProgress,
+      abortSignal,
       now = new Date(),
     } = {}
   ) {
@@ -120,6 +125,7 @@ class SocraticMethod {
     this.history = [];
     this.maxAttempts = maxAttempts;
     this.onProgress = onProgress;
+    this.abortSignal = abortSignal;
     this.now = now;
     this.logger = createLifecycleLogger(logger, 'chain:socratic');
 
@@ -165,6 +171,7 @@ class SocraticMethod {
       logger: this.logger,
       maxAttempts: this.maxAttempts,
       onProgress: this.onProgress,
+      abortSignal: this.abortSignal,
       now: this.now,
     });
 
@@ -188,6 +195,7 @@ class SocraticMethod {
       logger: this.logger,
       maxAttempts: this.maxAttempts,
       onProgress: this.onProgress,
+      abortSignal: this.abortSignal,
       now: this.now,
     });
 
