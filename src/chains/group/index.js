@@ -103,6 +103,7 @@ export default async function group(list, instructions, config = {}) {
   const categoriesString = await reduce(list, categoryDiscoveryPrompt, {
     initial: '',
     llm,
+    abortSignal,
     ...options,
     now,
     onProgress: scopeProgress(onProgress, 'reduce:category-discovery'),

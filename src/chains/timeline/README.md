@@ -31,8 +31,10 @@ const events = await timeline(newsFragments);
 - `config` (Object): Configuration options
   - `chunkSize` (number): Text chunk size for processing (default: 2000)
   - `maxParallel` (number): Maximum parallel chunk processing (default: 3)
+  - `maxAttempts` (number): Retry attempts per LLM call (default: 3)
   - `onProgress` (Function): Progress callback `(event) => void`. Events from nested reduce/map calls are tagged with `phase` (`'reduce:knowledge-base'`, `'map:enrichment'`)
-  - `llm` (Object): LLM model options
+  - `abortSignal` (AbortSignal): Signal to cancel the operation
+  - `llm` (string|Object): LLM model configuration
   - `enrichWithKnowledge` (boolean): Enrich dates with LLM's historical knowledge (default: false)
   - `batchSize` (number): Items per batch for reduce/map when enriching (auto-calculated if omitted)
 

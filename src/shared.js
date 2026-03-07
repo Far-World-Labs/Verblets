@@ -204,6 +204,18 @@ export {
 export { default as version } from './lib/version/index.js';
 export { default as windowFor } from './lib/window-for/index.js';
 
+// LLM Output Parsers
+export { default as stripResponse } from './lib/strip-response/index.js';
+export { default as stripNumeric } from './lib/strip-numeric/index.js';
+export { default as toBool } from './lib/to-bool/index.js';
+export { default as toNumber } from './lib/to-number/index.js';
+export { default as toDate } from './lib/to-date/index.js';
+export { default as toEnum } from './lib/to-enum/index.js';
+
+// Pure Utilities
+export { chunk, last, omit, unionBy } from './lib/pure/index.js';
+export { default as shuffle } from './lib/shuffle/index.js';
+
 // Namespaced exports
 export * as prompts from './prompts/index.js';
 export * as schemas from './json-schemas/index.js';

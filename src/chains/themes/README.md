@@ -24,6 +24,6 @@ const result = await themes(news);
 - `config` (Object): Configuration options
   - `batchSize` (number): Paragraphs per reduce batch (default: 5)
   - `topN` (number): Limit to top N themes in the refinement pass
-  - `llm` (Object): LLM model options
+  - `llm` (string|Object): LLM model configuration
 
 **Returns:** Promise<string[]> - Array of theme strings

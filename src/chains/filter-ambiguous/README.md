@@ -19,6 +19,6 @@ const result = await filterAmbiguous(text, { topN: 3 });
 - `config` (Object): Configuration options
   - `topN` (number): Maximum results to return (default: 10)
   - `batchSize` (number): Items per scoring batch (auto-calculated from model context window)
-  - `llm` (Object): LLM model options
+  - `llm` (string|Object): LLM model configuration
 
 **Returns:** Promise<Array<{term, sentence, score}>> - Ambiguous terms ranked by score

@@ -28,7 +28,10 @@ const urgent = await filter(emails, 'urgent or time-sensitive messages');
 - `criteria` (string): Natural language description of what to keep
 - `config` (Object): Configuration options
   - `batchSize` (number): Items per batch (auto-calculated from model context window)
-  - `llm` (Object): LLM model options
+  - `maxAttempts` (number): Retry attempts per LLM call (default: 3)
+  - `onProgress` (function): Progress callback
+  - `abortSignal` (AbortSignal): Signal to cancel the operation
+  - `llm` (string|Object): LLM model configuration
 
 **Returns:** Promise<Array> - Items that match the criteria
 
