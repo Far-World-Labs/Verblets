@@ -2,7 +2,7 @@ import {
   contentIsQuestion,
   contentListToOmit,
   expertResponse,
-  onlyJSONStringArrayAlt1,
+  onlyJSONStringArray,
 } from './constants.js';
 import { asXML } from './wrap-variable.js';
 
@@ -15,5 +15,5 @@ ${contentIsQuestion} ${text}
 
 ${contentListToOmit} ${asXML(existingJoined, { tag: 'omitted' })}
 
-${onlyJSONStringArrayAlt1} One question per string.`;
+${onlyJSONStringArray} One question per string.`;
 };

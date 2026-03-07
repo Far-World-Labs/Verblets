@@ -11,8 +11,6 @@ export const asWrappedArrayJSON = 'Return a JSON object with an "items" array pr
 export const asWrappedValueJSON = 'Return a JSON object with a "value" property.';
 
 // Response steering
-export const useLineNumber = 'Include the line number where each check is performed.';
-export const noFalseInformation = 'Do not include false information.';
 export const strictFormat = 'You MUST follow the format as described.';
 export const tryCompleteData =
   'Provide as much valid data as possible based on available information. Clearly indicate any uncertainties or missing data.';
@@ -24,14 +22,8 @@ const onlyJSONArrayBase =
   'Respond with a JSON array that parses with JSON.parse, with no additional text, no punctuation, and no code block.';
 export const onlyJSONArray = onlyJSONArrayBase;
 export const onlyJSONStringArray = `${onlyJSONArrayBase} The array should only contain text. No additional structure.`;
-export const onlyJSONStringArrayPerLine =
-  'For each input line, return exactly one line containing a JSON array of strings. No additional text, no code blocks.';
 export const onlyJSONObjectArray =
   'Return an array of obects--not strings, and not just the objects.';
-export const onlyJSONStringArrayAlt1 = 'Output an JSON array of strings.';
-export const asSplitIntoJSONArray = 'Split the following to a JSON array.';
-export const onlyFullCode =
-  'Output only the full code generated, with no other text and no code block.';
 export const asNumberWithUnits = `${onlyJSON} It should take the form "{ "value": 42, "unit": "<SI or other unit name>" }".`;
 export const shapeAsJSON =
   'Even if the input is not JSON, describe as much as possible in a JSON structure that corresponds to the input.';
@@ -52,7 +44,6 @@ export const contentListToOmit = 'Do not use any of the following items:';
 export const contentIsExampleObject =
   'The returned object must look like the following, including all the same properties:';
 export const contentIsSchema = 'Make it conform exactly to the following schema:';
-export const contentHasIntent = 'What is the intent of the following message:';
 export const contentIsSortCriteria = 'Sort the following items by:';
 export const contentIsIntent = 'Give me an intent response for the following:';
 export const contentIsOperationOption = 'The extracted operation must be one of the following:';
@@ -68,7 +59,6 @@ export const explainAndSeparatePrimitive =
   'Next insert the succinctly-stated answer should be below the dividing line and work as a primitive datatype in JS. Be as succinct as possible as it will be parsed by a script.';
 
 // Reflective
-export const thinkStepByStep = "Let's think step by step";
 export const identifyUnclearInfo =
   'Identify any unclear or ambiguous information in your response, and rephrase it for clarity.';
 export const argueAgainstOutput =
@@ -78,8 +68,6 @@ export const rateBasic =
 export const rateSatisfaction =
   'Rate on a scale in the decimal from 0-1 how well you satisfied each point in the initial prompt. Be very critical, no need to justify yourself.';
 export const rewriteBasedOnRating = 'If 0.3 or lower, rewrite to address.';
-export const requestAdditionalInput =
-  'What additional input do you need from me to help you write better output?';
 export const summarizeRequest =
   'Please summarise what I am asking for you before you begin your answer.';
 
