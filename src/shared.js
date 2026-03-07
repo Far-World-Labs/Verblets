@@ -212,6 +212,8 @@ export { default as toBool } from './lib/to-bool/index.js';
 export { default as toNumber } from './lib/to-number/index.js';
 export { default as toDate } from './lib/to-date/index.js';
 export { default as toEnum } from './lib/to-enum/index.js';
+export { default as toNumberWithUnits } from './lib/to-number-with-units/index.js';
+export { default as parseLLMList } from './lib/parse-llm-list/index.js';
 
 // Pure Utilities
 export { chunk, compact, last, omit, pick, unionBy, zipWith } from './lib/pure/index.js';

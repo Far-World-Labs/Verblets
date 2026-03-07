@@ -195,7 +195,7 @@ export function filterByScore(strings, threshold = 7, scoreField = 'score') {
  * Sort by score (highest first)
  */
 export function sortByScore(strings, scoreField = 'score') {
-  return [...strings].sort((a, b) => (b[scoreField] || 0) - (a[scoreField] || 0));
+  return strings.toSorted((a, b) => (b[scoreField] || 0) - (a[scoreField] || 0));
 }
 
 // ========================================

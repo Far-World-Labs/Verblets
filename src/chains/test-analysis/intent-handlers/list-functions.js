@@ -132,7 +132,7 @@ const scoreFunctions = async (functions, focus, moduleDir) => {
 };
 
 const sortByRelevance = (functions) =>
-  [...functions].sort((a, b) => {
+  functions.toSorted((a, b) => {
     // Always sort by relevance score
     const aScore = a.relevance !== undefined ? a.relevance : 0;
     const bScore = b.relevance !== undefined ? b.relevance : 0;
