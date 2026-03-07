@@ -168,7 +168,8 @@ export default async function list(prompt, config = {}) {
       try {
         const transformedItem = JSON.parse(transformResponse);
         transformedItems.push(transformedItem);
-      } catch {
+      } catch (error) {
+        debug(`list-transform JSON.parse failed, keeping original item: ${error.message}`);
         transformedItems.push(item);
       }
     }

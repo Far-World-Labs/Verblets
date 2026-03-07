@@ -99,6 +99,7 @@ export {
 export { default as collectTerms } from './chains/collect-terms/index.js';
 export { default as commonalities } from './verblets/commonalities/index.js';
 export { default as conversation } from './chains/conversation/index.js';
+export { default as conversationTurnReduce } from './chains/conversation-turn-reduce/index.js';
 export { default as disambiguate, getMeanings } from './chains/disambiguate/index.js';
 export {
   default as dismantle,
@@ -155,6 +156,14 @@ export { default as sentiment } from './verblets/sentiment/index.js';
 export { default as setInterval } from './chains/set-interval/index.js';
 
 // RAG Helpers
+export {
+  default as embedExpandQuery,
+  ALL_STRATEGIES as embedStrategies,
+  embedRewriteQuery,
+  embedMultiQuery,
+  embedStepBack,
+  embedSubquestions,
+} from './chains/embed-expand-query/index.js';
 export { default as embedNormalizeText } from './lib/embed-normalize-text/index.js';
 export { default as embedNeighborChunks } from './lib/embed-neighbor-chunks/index.js';
 
