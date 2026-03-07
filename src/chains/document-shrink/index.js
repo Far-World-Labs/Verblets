@@ -182,7 +182,7 @@ function scoreChunksWithTfIdf(chunks, expansions) {
 
 // Pure function: Select chunks adaptively based on score distribution
 function selectChunksByTfIdf(scoredChunks, tfIdfBudget) {
-  const sorted = [...scoredChunks].sort((a, b) => b.tfIdfScore - a.tfIdfScore);
+  const sorted = scoredChunks.toSorted((a, b) => b.tfIdfScore - a.tfIdfScore);
 
   let sizeUsed = 0;
   const selected = [];
@@ -370,7 +370,7 @@ function getUnselectedChunks(allChunks, selectedChunks) {
 function groupConsecutiveChunks(chunks) {
   if (chunks.length === 0) return [];
 
-  const sorted = [...chunks].sort((a, b) => a.index - b.index);
+  const sorted = chunks.toSorted((a, b) => a.index - b.index);
   const groups = [];
   let currentGroup = [sorted[0]];
 
