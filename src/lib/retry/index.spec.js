@@ -121,4 +121,76 @@ describe('Retry', () => {
 
     expect(fn).toHaveBeenCalledWith();
   });
+
+  describe('abortSignal support', () => {
+    it('throws immediately when signal is already aborted', async () => {
+      const controller = new AbortController();
+      controller.abort();
+
+      await expect(
+        retry(mockFn, { retryDelay: retryDelayGlobal, abortSignal: controller.signal })
+      ).rejects.toThrow('aborted');
+    });
+
+    it('aborts during sleep between retries', async () => {
+      vi.useRealTimers();
+      const controller = new AbortController();
+      let callCount = 0;
+
+      const fn = async () => {
+        callCount += 1;
+        const error = new Error('Retriable');
+        error.response = { status: 429 };
+        throw error;
+      };
+
+      // Abort after 10ms — sleep(retryDelay * attempt) starts at 0ms for attempt 0,
+      // then 100ms for attempt 1, so abort fires during the second sleep
+      setTimeout(() => controller.abort(), 10);
+
+      await expect(
+        retry(fn, { retryDelay: 100, maxAttempts: 5, abortSignal: controller.signal })
+      ).rejects.toThrow('aborted');
+
+      // First attempt: sleep(0) = instant, second attempt: sleep(100) interrupted at 10ms
+      expect(callCount).toBe(2);
+    });
+
+    it('does not abort if signal is never triggered', async () => {
+      const controller = new AbortController();
+
+      const promise = retry(mockFn, {
+        retryDelay: retryDelayGlobal,
+        abortSignal: controller.signal,
+      });
+      await vi.runAllTimersAsync();
+      const result = await promise;
+
+      expect(result).toBe('Success');
+    });
+
+    it('aborts before second attempt when signal fires between attempts', async () => {
+      vi.useRealTimers();
+      const controller = new AbortController();
+      let callCount = 0;
+
+      const fn = async () => {
+        callCount += 1;
+        if (callCount === 1) {
+          // Abort immediately after first failure
+          controller.abort();
+          const error = new Error('Retriable');
+          error.response = { status: 429 };
+          throw error;
+        }
+        return 'Should not reach';
+      };
+
+      await expect(
+        retry(fn, { retryDelay: 100, maxAttempts: 5, abortSignal: controller.signal })
+      ).rejects.toThrow('aborted');
+
+      expect(callCount).toBe(1);
+    });
+  });
 });
