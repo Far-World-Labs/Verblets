@@ -262,10 +262,18 @@ export const run = async (prompt, config = {}) => {
 
     const response = await fetch(fetchUrl, fetchOptions);
 
-    const rawJson = await response.json();
-
     // Timer's only purpose is to abort the fetch — clear it as soon as we have a response
     timeoutController.clearTimeout();
+
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.includes('application/json') && !contentType.includes('text/json')) {
+      const bodyPreview = await response.text().then((t) => t.slice(0, 200));
+      throw new Error(
+        `Completions request [error]: expected JSON response but got ${contentType || 'unknown content-type'} (status: ${response.status}, body: ${bodyPreview})`
+      );
+    }
+
+    const rawJson = await response.json();
 
     if (!response.ok) {
       // Anthropic uses error.message, OpenAI uses error.message — both work

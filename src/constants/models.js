@@ -173,6 +173,22 @@ export const catalog = {
     systemPrompt,
     modelOptions: {},
   },
+  'qwen3.5:4b': {
+    provider: 'openwebui',
+    endpoint: 'api/chat/completions',
+    maxContextWindow: 32_768,
+    maxOutputTokens: 8_192,
+    requestTimeout: 480_000,
+    get apiUrl() {
+      const url = env.OPENWEBUI_API_URL ?? '';
+      return url.endsWith('/') ? url : `${url}/`;
+    },
+    get apiKey() {
+      return env.OPENWEBUI_API_KEY;
+    },
+    systemPrompt,
+    modelOptions: {},
+  },
 };
 
 // ── Capability Mappings ──────────────────────────────────────────────
@@ -216,7 +232,7 @@ function selectMapping() {
   }
 
   if (hasOpenWebUI) {
-    mapping.privacy = env.VERBLETS_PRIVACY_MODEL || 'qwen3:8b';
+    mapping.privacy = env.VERBLETS_PRIVACY_MODEL || 'qwen3.5:4b';
   }
 
   return mapping;

@@ -103,6 +103,7 @@ describe('Global Override System', () => {
     fetch.mockResolvedValue({
       ok: true,
       status: 200,
+      headers: { get: () => 'application/json' },
       json: () =>
         Promise.resolve({
           choices: [{ message: { content: 'Test response' } }],
