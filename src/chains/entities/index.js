@@ -1,11 +1,8 @@
 import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
-import { constants as promptConstants } from '../../prompts/index.js';
 import entityResultSchema from './entity-result.json';
 import { emitStepProgress } from '../../lib/progress-callback/index.js';
-
-const { onlyJSON } = promptConstants;
 
 // ===== Default Instructions =====
 
@@ -37,7 +34,7 @@ const GROUP_PROCESS_STEPS = `Extract entities and group them by patterns, types,
  * @returns {Promise<string>} Entity specification as descriptive text
  */
 export async function entitySpec(prompt, config = {}) {
-  const { llm, maxAttempts = 3, onProgress, ...rest } = config;
+  const { llm, maxAttempts = 3, onProgress, abortSignal, ...rest } = config;
 
   const specSystemPrompt = `You are an entity specification generator. Create a clear, concise specification for entity extraction.`;
 
@@ -63,6 +60,7 @@ Keep it simple and actionable.`;
       label: 'entities-spec',
       maxAttempts,
       onProgress,
+      abortSignal,
     }
   );
 
@@ -77,7 +75,7 @@ Keep it simple and actionable.`;
  * @returns {Promise<Object>} Object with entities array
  */
 export async function applyEntities(text, specification, config = {}) {
-  const { llm, maxAttempts = 3, onProgress, ...options } = config;
+  const { llm, maxAttempts = 3, onProgress, abortSignal, ...options } = config;
 
   const prompt = `Apply the entity specification to extract entities from this text.
 
@@ -89,9 +87,7 @@ Extract entities according to the specification.
 Return a JSON object with an "entities" array.
 Each entity should include:
 - name: The entity name
-- type: What kind of entity (if relevant)
-
-${onlyJSON}`;
+- type: What kind of entity (if relevant)`;
 
   const response = await retry(
     () =>
@@ -112,6 +108,7 @@ ${onlyJSON}`;
       label: 'entities-apply',
       maxAttempts,
       onProgress,
+      abortSignal,
     }
   );
 
@@ -134,7 +131,7 @@ export async function extractEntities(text, instructions, config = {}) {
     chainStartTime: now,
   });
 
-  const spec = await entitySpec(instructions, { onProgress, ...restConfig });
+  const spec = await entitySpec(instructions, { onProgress, now, ...restConfig });
 
   emitStepProgress(onProgress, 'entities', 'extracting-entities', {
     specification: spec,
@@ -142,7 +139,7 @@ export async function extractEntities(text, instructions, config = {}) {
     chainStartTime: now,
   });
 
-  return await applyEntities(text, spec, { onProgress, ...restConfig });
+  return await applyEntities(text, spec, { onProgress, now, ...restConfig });
 }
 
 // ===== Instruction Builders =====

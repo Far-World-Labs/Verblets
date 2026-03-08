@@ -1,11 +1,8 @@
 import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
-import { constants as promptConstants } from '../../prompts/index.js';
 import { scaleSpecificationJsonSchema } from './schemas.js';
 import scaleResultSchema from './scale-result.json';
-
-const { onlyJSON } = promptConstants;
 
 // ===== Default Instructions =====
 
@@ -39,7 +36,7 @@ const GROUP_PROCESS_STEPS = `Apply the scale to determine each item's group assi
  * @returns {Promise<Object>} Scale specification with domain, range, and mapping
  */
 export async function scaleSpec(prompt, config = {}) {
-  const { llm, maxAttempts = 3, onProgress, ...rest } = config;
+  const { llm, maxAttempts = 3, onProgress, abortSignal, ...rest } = config;
 
   const specSystemPrompt = `You are a scale specification generator. Analyze the scaling instructions and produce a clear, comprehensive specification.`;
 
@@ -71,6 +68,7 @@ IMPORTANT: Each property must be a simple string value, not a nested object or a
       label: 'scale spec',
       maxAttempts,
       onProgress,
+      abortSignal,
     }
   );
 
@@ -86,7 +84,7 @@ IMPORTANT: Each property must be a simple string value, not a nested object or a
  * @returns {Promise<*>} Scaled value (type depends on specification range)
  */
 export async function applyScale(item, specification, config = {}) {
-  const { llm, maxAttempts = 3, onProgress, ...options } = config;
+  const { llm, maxAttempts = 3, onProgress, abortSignal, ...options } = config;
 
   const prompt = `Apply the scale specification to transform this item.
 
@@ -95,9 +93,7 @@ ${asXML(specification, { tag: 'scale-specification' })}
 ${asXML(item, { tag: 'item' })}
 
 Transform this item according to the specification.
-Return a JSON object with a "value" property containing the scaled result.
-
-${onlyJSON}`;
+Return a JSON object with a "value" property containing the scaled result.`;
 
   const response = await retry(
     () =>
@@ -118,6 +114,7 @@ ${onlyJSON}`;
       label: 'scale item',
       maxAttempts,
       onProgress,
+      abortSignal,
     }
   );
 

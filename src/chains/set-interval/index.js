@@ -1,5 +1,6 @@
 import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
+import { debug } from '../../lib/debug/index.js';
 import numberWithUnits from '../../verblets/number-with-units/index.js';
 import number from '../../verblets/number/index.js';
 import date from '../date/index.js';
@@ -108,6 +109,7 @@ Next wait:`;
           label: 'set-interval',
           maxAttempts,
           onProgress,
+          abortSignal: options.abortSignal,
         }
       );
 
@@ -133,7 +135,7 @@ Next wait:`;
         timer = setTimeout(step, delay);
       }
     } catch (error) {
-      console.error('Error in setInterval step:', error);
+      debug(`Error in setInterval step: ${error.message}`);
 
       // Call onTick with the data we have, even if LLM failed
       if (onTick && lastResult) {

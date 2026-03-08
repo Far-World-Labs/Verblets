@@ -19,10 +19,10 @@ export default function combinations(items, size = 2) {
   return result;
 }
 
-export function rangeCombinations(items, minSize = 2, maxSize = items.length) {
+export function rangeCombinations(items, minSize = 2, maxSize) {
   const sets = [];
   if (!Array.isArray(items)) return sets;
-  const upper = Math.min(items.length, maxSize);
+  const upper = Math.min(items.length, maxSize ?? items.length);
   for (let s = minSize; s <= upper; s++) {
     sets.push(...combinations(items, s));
   }

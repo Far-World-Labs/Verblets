@@ -30,6 +30,7 @@ export default async function join(
     maxAttempts = 3,
     llm,
     onProgress,
+    abortSignal,
     ...options
   } = config;
 
@@ -54,6 +55,7 @@ Important: This is part of a larger sequence. Join these fragments while being m
       label: `join-window-${windowIndex + 1}`,
       maxAttempts,
       onProgress,
+      abortSignal,
     });
 
     windowResults.push({
@@ -106,6 +108,7 @@ Add necessary connecting words, prepositions, conjunctions, or other filler text
         label: `join-stitch-${i}`,
         maxAttempts,
         onProgress,
+        abortSignal,
       });
 
       stitchedResult = stitchResult || stitchedResult;
@@ -124,6 +127,7 @@ Add necessary connecting words, prepositions, conjunctions, or other filler text
         label: `join-nonoverlap-${i}`,
         maxAttempts,
         onProgress,
+        abortSignal,
       });
 
       stitchedResult = joinResult || stitchedResult;

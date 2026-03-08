@@ -40,7 +40,9 @@ const results = await centralTendency(
   - **coreFeatures** (string[]): Known core/definitional features of the category (default: [])
   - **batchSize** (number): Items per batch for processing (default: 5)
   - **maxAttempts** (number): Retry attempts for failed batches (default: 3)
-  - **llm** (string): LLM model to use (default: 'fastGoodCheap')
+  - **onProgress** (function): Progress callback
+  - **abortSignal** (AbortSignal): Signal to cancel the operation
+  - **llm** (string|Object): LLM model configuration (default: 'fastGoodCheap')
 
 ## Return Value
 

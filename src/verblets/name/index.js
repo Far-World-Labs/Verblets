@@ -3,7 +3,7 @@ import { asXML } from '../../prompts/wrap-variable.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 import { nameSchema } from './schema.js';
 
-const { asUndefinedByDefault, contentIsQuestion, asJSON, asWrappedValueJSON } = promptConstants;
+const { asUndefinedByDefault, contentIsQuestion } = promptConstants;
 
 export default async function name(subject, config = {}) {
   const { llm, ...options } = config;
@@ -12,7 +12,7 @@ export default async function name(subject, config = {}) {
     {
       tag: 'subject',
     }
-  )} ${asUndefinedByDefault}\n\n${asWrappedValueJSON} The value should be the suggested name.\n\n${asJSON}`;
+  )} ${asUndefinedByDefault}\n\nThe value should be the suggested name.`;
 
   const response = await callLlm(prompt, {
     llm,

@@ -116,12 +116,14 @@ export default async function timeline(text, options = {}) {
     chunks,
     async (chunk, chunkIndex) => {
       try {
-        const events = await retry(() => extractFromChunk(chunk, { llm, ...remainingOptions }), {
-          label: `timeline chunk ${chunkIndex + 1}`,
-          maxAttempts,
-          now,
-          chainStartTime: now,
-        });
+        const events = await retry(
+          () => extractFromChunk(chunk, { llm, now, ...remainingOptions }),
+          {
+            label: `timeline chunk ${chunkIndex + 1}`,
+            maxAttempts,
+            abortSignal: remainingOptions.abortSignal,
+          }
+        );
         allEvents.push(...events);
         onProgress?.(chunkIndex + 1, chunks.length);
       } catch (error) {
@@ -200,6 +202,7 @@ Return as JSON with the same event format, maintaining chronological order.`;
       },
       ...(batchSize !== undefined && { batchSize }),
       llm,
+      maxAttempts,
       onProgress: scopeProgress(onProgress, 'reduce:knowledge-base'),
       now,
       ...remainingOptions,
@@ -207,7 +210,7 @@ Return as JSON with the same event format, maintaining chronological order.`;
 
     let knownEvents = [];
     try {
-      const parsed = typeof knowledgeBase === 'string' ? JSON.parse(knowledgeBase) : knowledgeBase;
+      const parsed = knowledgeBase;
       knownEvents = sortTimelineEvents(parsed.events || []);
     } catch (e) {
       debug('Failed to parse knowledge base:', e.message);
@@ -236,6 +239,7 @@ Return the enriched event as: "YYYY-MM-DD: Event name" or with the appropriate t
       {
         ...(batchSize !== undefined && { batchSize }),
         maxParallel,
+        maxAttempts,
         llm,
         onProgress: scopeProgress(onProgress, 'map:enrichment'),
         now,

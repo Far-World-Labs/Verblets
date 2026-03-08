@@ -32,7 +32,13 @@ const organized = await group(tasks, 'organize by work type');
 - `criteria` (string): Natural language description of how to group
 - `config` (Object): Configuration options
   - `batchSize` (number): Items per batch (auto-calculated from model context window)
-  - `llm` (Object): LLM model options
+  - `maxParallel` (number): Maximum parallel batch processing (default: 3)
+  - `topN` (number): Limit to top N groups by size
+  - `categoryPrompt` (string): Custom category refinement guidelines
+  - `maxAttempts` (number): Retry attempts per LLM call (default: 3)
+  - `onProgress` (function): Progress callback
+  - `abortSignal` (AbortSignal): Signal to cancel the operation
+  - `llm` (string|Object): LLM model configuration
 
 **Returns:** Promise<Object> - Object with group names as keys and arrays of items as values
 

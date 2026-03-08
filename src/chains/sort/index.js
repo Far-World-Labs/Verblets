@@ -34,7 +34,7 @@ export const useTestSortPrompt = () => {
   sortPrompt = (options, list) => {
     // For testing, return sorted array directly
     // Sort in descending order (z to a) to match test expectations
-    return [...list].sort((a, b) => b.localeCompare(a));
+    return list.toSorted((a, b) => b.localeCompare(a));
   };
 };
 
@@ -82,6 +82,7 @@ const sort = async (list, criteria, config = {}) => {
       label: 'sort-batch',
       maxAttempts,
       onProgress,
+      abortSignal: options.abortSignal,
     });
 
     const resultArray = result?.items || result;

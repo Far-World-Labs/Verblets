@@ -96,7 +96,7 @@ Long-running chains should provide progress feedback via `batchTracker`:
 import { createBatches, parallel, retry, batchTracker } from '../../lib/index.js';
 
 async function myChain(items, options = {}) {
-  const { onProgress, now = new Date(), ...rest } = options;
+  const { maxParallel = 3, maxAttempts = 3, onProgress, abortSignal, now = new Date(), ...rest } = options;
   const batches = createBatches(items, rest);
   const tracker = batchTracker('my-chain', items.length, { onProgress, now });
 
@@ -104,7 +104,10 @@ async function myChain(items, options = {}) {
 
   await parallel(batches, async ({ items, startIndex }) => {
     await retry(() => process(items), {
+      label: 'my-chain:batch',
+      maxAttempts,
       onProgress: tracker.forBatch(startIndex, items.length),
+      abortSignal,
     });
     tracker.batchDone(startIndex, items.length);
   }, { maxParallel });
@@ -235,10 +238,10 @@ async function processInParallel(items, processor, concurrency = 3) {
  * @param {Object} [options] - Configuration options
  * @param {number} [options.batchSize=5] - Items per batch
  * @param {number} [options.maxParallel=3] - Parallel processing limit
- * @param {string} [options.processingMode='auto'] - 'individual'|'bulk'|'auto'
- * @param {number} [options.maxFailures=5] - Maximum allowed failures
+ * @param {number} [options.maxAttempts=3] - Retry attempts per LLM call
  * @param {Function} [options.onProgress] - Progress callback
- * @param {Object} [options.llm] - LLM configuration
+ * @param {AbortSignal} [options.abortSignal] - Signal to cancel the operation
+ * @param {string|Object} [options.llm] - LLM configuration
  * @returns {Promise<Array>} Processed results
  */
 export async function chainName(items, options = {}) {
@@ -250,7 +253,7 @@ export default chainName;
 
 ## Common Chain Types
 
-- **Analysis Chains**: Multi-step analysis workflows (`aiArchExpect`, `codeQuality`)
+- **Analysis Chains**: Multi-step analysis workflows (`aiArchExpect`, `centralTendency`)
 - **Transformation Chains**: Bulk data transformation with validation
 - **Orchestration Chains**: Coordinate multiple verblets or external services
 - **Aggregation Chains**: Collect and summarize results from multiple sources
@@ -263,8 +266,8 @@ export default chainName;
 3. Follow the established export pattern for both named and verblets exports
 
 ### Testing Integration
-- Import as: `import { aiExpect } from '../expect/index.js';`
-- Use pattern: `await aiExpect(actual).toSatisfy(constraint)`
+- Import as: `import expect from '../expect/index.js';`
+- Use pattern: `await expect(actual).toSatisfy(constraint)`
 
 ## Chain-Specific Documentation Requirements
 

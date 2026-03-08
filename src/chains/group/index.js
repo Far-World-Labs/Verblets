@@ -3,6 +3,7 @@ import reduce from '../reduce/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { emitPhaseProgress } from '../../lib/progress-callback/index.js';
 import { createBatches, parallel, retry, batchTracker, scopeProgress } from '../../lib/index.js';
+import { debug } from '../../lib/debug/index.js';
 
 const createCategoryDiscoveryPrompt = (instructions, categoryPrompt) => {
   const defaultCategoryPrompt =
@@ -84,6 +85,7 @@ export default async function group(list, instructions, config = {}) {
     autoModeThreshold,
     llm,
     onProgress,
+    abortSignal,
     now = new Date(),
     ...options
   } = config;
@@ -101,7 +103,9 @@ export default async function group(list, instructions, config = {}) {
   const categoriesString = await reduce(list, categoryDiscoveryPrompt, {
     initial: '',
     llm,
+    abortSignal,
     ...options,
+    now,
     onProgress: scopeProgress(onProgress, 'reduce:category-discovery'),
   });
 
@@ -156,6 +160,7 @@ export default async function group(list, instructions, config = {}) {
             label: 'group:batch',
             maxAttempts: options.maxAttempts || 3,
             onProgress: tracker.forBatch(startIndex, items.length),
+            abortSignal,
           }
         );
 
@@ -167,7 +172,8 @@ export default async function group(list, instructions, config = {}) {
         }
 
         tracker.batchDone(startIndex, items.length);
-      } catch {
+      } catch (error) {
+        debug(`group batch at index ${startIndex} failed, using fallback labels: ${error.message}`);
         const fallbackLabels = new Array(items.length).fill('other');
         batchResults.push({ items, labels: fallbackLabels, startIndex });
       }

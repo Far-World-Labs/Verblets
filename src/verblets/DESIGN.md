@@ -72,8 +72,8 @@ export async function sentiment(text, options = {}) {
     ...options.llm,
   });
 
-  // Structured output returns proper JSON - handle both string and object
-  return typeof response === 'string' ? JSON.parse(response) : response;
+  // callLlm parses structured output automatically
+  return response;
 }
 ```
 
@@ -153,11 +153,8 @@ try {
     modelOptions: { response_format: { /* schema */ } }
   });
   
-  // Handle both string and object responses
-  const result = typeof response === 'string' ? JSON.parse(response) : response;
-  
   // Validate required fields exist
-  if (!result.sentiment || typeof result.confidence !== 'number') {
+  if (!response.sentiment || typeof response.confidence !== 'number') {
     throw new Error('Invalid response structure');
   }
   
@@ -183,10 +180,8 @@ export async function processItems(items, options = {}) {
     ...options.llm
   });
 
-  const parsed = typeof response === 'string' ? JSON.parse(response) : response;
-  
   // Ensure we got the expected array structure
-  const results = parsed.items || parsed.results || parsed;
+  const results = response.items || response.results || response;
   if (!Array.isArray(results)) {
     throw new Error('Expected array response from batch processing');
   }
@@ -398,11 +393,8 @@ export async function verbletName(input, options = {}) {
     ...config.llm
   });
   
-  // 4. Result validation and parsing
-  const result = typeof response === 'string' ? JSON.parse(response) : response;
-  
-  // 5. Return structured output
-  return result;
+  // 4. Return structured output
+  return response;
 }
 ```
 
@@ -460,7 +452,7 @@ export async function analyze(text, options = {}) {
     }
   });
   
-  return typeof response === 'string' ? JSON.parse(response) : response;
+  return response;
 }
 ```
 

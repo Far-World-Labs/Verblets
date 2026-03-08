@@ -66,6 +66,7 @@ export default async function split(text, instructions, config = {}) {
         label: 'split',
         maxAttempts,
         onProgress,
+        abortSignal: options.abortSignal,
       });
 
       const outputWithoutDelimiters = output.replace(

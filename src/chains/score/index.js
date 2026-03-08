@@ -1,6 +1,5 @@
 import callLlm from '../../lib/llm/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
-import { constants as promptConstants } from '../../prompts/index.js';
 import { scaleSpec } from '../scale/index.js';
 import listBatch from '../../verblets/list-batch/index.js';
 import {
@@ -11,8 +10,6 @@ import {
 } from '../../lib/progress-callback/index.js';
 import { createBatches, parallel, retry } from '../../lib/index.js';
 import scoreSingleResultSchema from './score-single-result.json';
-
-const { onlyJSON } = promptConstants;
 
 const scoreBatchResponseFormat = {
   type: 'json_schema',
@@ -67,7 +64,7 @@ export const scoreSpec = scaleSpec;
  * @returns {Promise<*>} Score value (type depends on specification range)
  */
 export async function applyScore(item, specification, config = {}) {
-  const { llm, maxAttempts = 3, onProgress, ...options } = config;
+  const { llm, maxAttempts = 3, onProgress, abortSignal, ...options } = config;
 
   const prompt = `Apply the score specification to evaluate this item.
 
@@ -75,8 +72,6 @@ ${asXML(specification, { tag: 'score-specification' })}
 
 Score this item according to the specification.
 Return a JSON object with a "value" property containing the score from the range.
-
-${onlyJSON}
 
 ${asXML(item, { tag: 'item' })}`;
 
@@ -98,6 +93,7 @@ ${asXML(item, { tag: 'item' })}`;
     label: 'score item',
     maxAttempts,
     onProgress,
+    abortSignal,
   });
 
   // llm auto-unwraps single value property, returns the number directly
@@ -124,7 +120,7 @@ export async function scoreItem(item, instructions, config = {}) {
  * Failed batches leave items as undefined (never throws).
  */
 async function scoreOnce(list, prompt, batchConfig, options) {
-  const { maxParallel, maxAttempts, onProgress, now, logger } = options;
+  const { maxParallel, maxAttempts, onProgress, abortSignal, now, logger } = options;
 
   const batches = createBatches(list, batchConfig);
   const batchesToProcess = batches.filter((b) => !b.skip);
@@ -148,6 +144,8 @@ async function scoreOnce(list, prompt, batchConfig, options) {
       const scores = await retry(() => listBatch(first.items, prompt, batchConfig), {
         label: 'score:batch',
         maxAttempts,
+        onProgress,
+        abortSignal,
       });
       alignScores(scores, first.items.length).forEach((s, j) => {
         results[first.startIndex + j] = s;
@@ -186,6 +184,8 @@ async function scoreOnce(list, prompt, batchConfig, options) {
           const scores = await retry(() => listBatch(items, anchoredPrompt, batchConfig), {
             label: 'score:batch',
             maxAttempts,
+            onProgress,
+            abortSignal,
           });
           alignScores(scores, items.length).forEach((s, j) => {
             results[startIndex + j] = s;
@@ -239,6 +239,7 @@ export async function mapScore(list, instructions, config = {}) {
     now = new Date(),
     maxParallel = 3,
     maxAttempts = 3,
+    abortSignal,
     llm,
     logger,
     ...restConfig
@@ -259,7 +260,7 @@ export async function mapScore(list, instructions, config = {}) {
     modelOptions: { temperature: 0 },
     logger,
   };
-  const passOptions = { maxParallel, maxAttempts, onProgress, now, logger };
+  const passOptions = { maxParallel, maxAttempts, onProgress, abortSignal, now, logger };
 
   const results = await scoreOnce(list, scoringPrompt, batchConfig, passOptions);
 

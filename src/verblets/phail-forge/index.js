@@ -16,7 +16,7 @@
  * expert at whatever." - u/stunspot
  */
 
-import llm from '../../lib/llm/index.js';
+import callLlm from '../../lib/llm/index.js';
 
 const ENHANCEMENT_PROMPT = `You are an expert prompt engineer tasked with transforming a basic prompt into an expert-level "phial" - a precisely crafted, portable prompt specification.
 
@@ -59,9 +59,11 @@ Provide:
  */
 export default async function phailForge(prompt, options = {}) {
   const {
+    llm,
     analyze = false, // Also provide analysis of the enhancement
     context = '', // Additional context about the domain
     style = 'technical', // Enhancement style: technical, creative, analytical
+    ...restOptions
   } = options;
 
   // Build the enhancement request
@@ -75,7 +77,8 @@ export default async function phailForge(prompt, options = {}) {
     .join('\n');
 
   // Get the enhanced prompt
-  const enhancedResponse = await llm(fullPrompt, {
+  const enhancedResponse = await callLlm(fullPrompt, {
+    llm,
     modelOptions: {
       response_format: {
         type: 'json_schema',
@@ -136,6 +139,7 @@ export default async function phailForge(prompt, options = {}) {
         },
       },
     },
+    ...restOptions,
   });
 
   // Calculate expansion ratio
@@ -148,7 +152,8 @@ export default async function phailForge(prompt, options = {}) {
   if (analyze) {
     const analysisPrompt = `${ANALYSIS_PROMPT}\n\nPrompt to analyze:\n${enhancedResponse.enhanced}`;
 
-    const analysis = await llm(analysisPrompt, {
+    const analysis = await callLlm(analysisPrompt, {
+      llm,
       modelOptions: {
         response_format: {
           type: 'json_schema',
@@ -190,6 +195,7 @@ export default async function phailForge(prompt, options = {}) {
           },
         },
       },
+      ...restOptions,
     });
 
     enhancedResponse.analysis = analysis;

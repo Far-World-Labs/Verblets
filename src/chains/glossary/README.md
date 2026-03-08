@@ -30,6 +30,6 @@ so everyday readers aren't left guessing what key terms mean.
   - `overlap` (number): Overlapping sentences between windows (default: 1)
   - `batchSize` (number): Text chunks per LLM batch (default: 1)
   - `sortBy` (string): Sorting criteria (default: 'importance for understanding the content')
-  - `llm` (Object): LLM model options
+  - `llm` (string|Object): LLM model configuration
 
 **Returns:** Promise<string[]> - Terms sorted by relevance

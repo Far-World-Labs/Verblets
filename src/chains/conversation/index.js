@@ -1,6 +1,7 @@
 import conversationTurnReduce from '../conversation-turn-reduce/index.js';
 import { defaultTurnPolicy } from './turn-policies.js';
 import pLimit from 'p-limit';
+import { debug } from '../../lib/debug/index.js';
 
 /**
  * @typedef {Object} Speaker
@@ -128,7 +129,7 @@ export default class Conversation {
             })
               .then((comment) => ({ speaker, comment, index }))
               .catch((error) => {
-                console.warn(`Speaker ${speaker.id} failed:`, error.message);
+                debug(`Speaker ${speaker.id} failed: ${error.message}`);
                 return { speaker, comment: '', index };
               })
           )

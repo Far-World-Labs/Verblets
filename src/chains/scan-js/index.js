@@ -1,13 +1,12 @@
 import fs from 'node:fs/promises';
 
 import sort from '../sort/index.js';
-import llm from '../../lib/llm/index.js';
+import callLlm from '../../lib/llm/index.js';
 import pathAliases from '../../lib/path-aliases/index.js';
 import retry from '../../lib/retry/index.js';
 import search from '../../lib/search-js-files/index.js';
 import codeFeaturesPrompt from '../../prompts/code-features.js';
 import makeJSONSchema from '../../prompts/features-json-schema.js';
-import modelService from '../../services/llm-model/index.js';
 
 const codeFeatureDefinitions = JSON.parse(
   await fs.readFile(
@@ -20,6 +19,10 @@ const visit = async ({
   node,
   state: stateInitial,
   features: featuresInitial = 'maintainability',
+  llm,
+  maxAttempts = 3,
+  onProgress,
+  abortSignal,
 }) => {
   if (!node.functionName) {
     return stateInitial;
@@ -31,7 +34,7 @@ const visit = async ({
     {
       batchSize: 4,
       extremeK: 4,
-      llm: modelService.getBestPublicModel(),
+      llm,
     }
   );
   const sortCriteria = sortResults.slice(0, 5);
@@ -54,35 +57,30 @@ const visit = async ({
     schema,
   });
 
-  await retry(async () => {
-    const resultParsed = await llm(visitPrompt, {
-      modelOptions: {
-        modelName: 'fastGood',
-        response_format: {
-          type: 'json_schema',
-          json_schema: {
-            name: 'code_features_analysis',
-            schema,
+  await retry(
+    async () => {
+      const resultParsed = await callLlm(visitPrompt, {
+        llm,
+        modelOptions: {
+          response_format: {
+            type: 'json_schema',
+            json_schema: {
+              name: 'code_features_analysis',
+              schema,
+            },
           },
         },
-      },
-    });
+      });
 
-    const id = `${node.filename}:::${node.functionName}`;
+      const id = `${node.filename}:::${node.functionName}`;
 
-    state[id] = resultParsed;
-    state.nodesFound = (state.nodesFound ?? 0) + 1;
-    state.abbreviations = state.abbreviations ?? {};
-    state.abbreviations[id] = state.abbreviations[id] ?? state.nodesFound;
-
-    // Debug output removed - was cluttering test output
-    // const idDisplay = (state.pathAliases[id] ?? id).slice(-50).padStart(50);
-    // console.error(
-    //   `${`${state.nodesFound}`.padEnd(3, ' ')} ${idDisplay}: ${organizeResult(resultParsed).join(
-    //     ', '
-    //   )}`
-    // );
-  });
+      state[id] = resultParsed;
+      state.nodesFound = (state.nodesFound ?? 0) + 1;
+      state.abbreviations = state.abbreviations ?? {};
+      state.abbreviations[id] = state.abbreviations[id] ?? state.nodesFound;
+    },
+    { label: 'scan-js', maxAttempts, onProgress, abortSignal }
+  );
 
   return state;
 };
@@ -105,6 +103,10 @@ export default async (moduleOptions) => {
       visit({
         ...options,
         features: moduleOptions.features,
+        llm: moduleOptions.llm,
+        maxAttempts: moduleOptions.maxAttempts,
+        onProgress: moduleOptions.onProgress,
+        abortSignal: moduleOptions.abortSignal,
       }),
   });
 };

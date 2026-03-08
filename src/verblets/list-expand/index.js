@@ -1,5 +1,6 @@
 import callLlm from '../../lib/llm/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
+import { debug } from '../../lib/debug/index.js';
 import listExpandSchema from './list-expand-result.json';
 
 const responseFormat = {
@@ -44,7 +45,7 @@ export default async function listExpand(list, count = list.length * 2, config =
   const items = output?.items || output;
 
   if (!Array.isArray(items)) {
-    console.warn('Expected items array, got:', typeof items);
+    debug(`Expected items array, got: ${typeof items}`);
     return [];
   }
 

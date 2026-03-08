@@ -1,15 +1,16 @@
-import { operationTimeoutMultiplier } from '../../constants/models.js';
 import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
+import { debug } from '../../lib/debug/index.js';
 import {
   asObjectWithSchema as asObjectWithSchemaPrompt,
   generateList as generateListPrompt,
   constants as promptConstants,
 } from '../../prompts/index.js';
-import modelService from '../../services/llm-model/index.js';
 import listResultSchema from './list-result.json';
 
-const { onlyJSON, contentIsTransformationSource, onlyJSONArray } = promptConstants;
+const DEFAULT_LIST_TIMEOUT_MS = 90_000;
+
+const { onlyJSON, contentIsTransformationSource } = promptConstants;
 
 /**
  * Create model options for structured outputs
@@ -41,11 +42,7 @@ const shouldSkipDefault = ({ result, resultsAll } = {}) => {
 };
 
 const shouldStopDefault = ({ queryCount, startTime } = {}) => {
-  return (
-    queryCount > 5 ||
-    new Date() - startTime >
-      operationTimeoutMultiplier * modelService.getBestPublicModel().requestTimeout
-  );
+  return queryCount > 5 || new Date() - startTime > DEFAULT_LIST_TIMEOUT_MS;
 };
 
 export const generateList = async function* generateListGenerator(text, options = {}) {
@@ -58,6 +55,7 @@ export const generateList = async function* generateListGenerator(text, options 
     llm = 'fastGoodCheap',
     maxAttempts = 3,
     onProgress,
+    abortSignal,
     // eslint-disable-next-line no-unused-vars
     _schema,
     ...passThroughOptions
@@ -82,6 +80,7 @@ export const generateList = async function* generateListGenerator(text, options 
           label: 'list-generate',
           maxAttempts,
           onProgress,
+          abortSignal,
         }
       );
 
@@ -89,14 +88,11 @@ export const generateList = async function* generateListGenerator(text, options 
       resultsNew = Array.isArray(resultArray) ? resultArray.filter(Boolean) : [];
     } catch (error) {
       if (/The operation was aborted/.test(error.message)) {
-        // eslint-disable-next-line no-console
-        console.error('Generate list [error]: Aborted');
+        debug('Generate list [error]: Aborted');
         resultsNew = [];
       } else {
-        // eslint-disable-next-line no-console
-        console.error(
-          `Generate list [error]: ${error.message}`,
-          listPrompt.slice(0, 100).replace('\n', '\\n')
+        debug(
+          `Generate list [error]: ${error.message} ${listPrompt.slice(0, 100).replace('\n', '\\n')}`
         );
         isDone = true;
         break;
@@ -133,8 +129,8 @@ export const generateList = async function* generateListGenerator(text, options 
 
     const perQueryControlFactors = {
       result: undefined,
-      resultsAll: [],
-      resultsNew: [],
+      resultsAll,
+      resultsNew,
       queryCount,
       startTime,
     };
@@ -147,20 +143,19 @@ export const generateList = async function* generateListGenerator(text, options 
 };
 
 export default async function list(prompt, config = {}) {
-  const { llm, schema, maxAttempts = 3, onProgress, ...options } = config;
-  const fullPrompt = `${prompt}\n\n${onlyJSONArray}`;
+  const { llm, schema, maxAttempts = 3, onProgress, abortSignal, ...options } = config;
+  const fullPrompt = prompt;
 
   const modelOptions = createModelOptions();
   const response = await retry(() => callLlm(fullPrompt, { llm, modelOptions, ...options }), {
     label: 'list-main',
     maxAttempts,
     onProgress,
+    abortSignal,
   });
 
-  // With structured outputs, response should already be parsed and validated
-  const result = typeof response === 'string' ? JSON.parse(response) : response;
   // Extract items from the object structure
-  const resultArray = result?.items || result;
+  const resultArray = response?.items || response;
   const items = Array.isArray(resultArray) ? resultArray : [];
 
   // If schema is provided, transform each item to match the schema
@@ -172,11 +167,13 @@ export default async function list(prompt, config = {}) {
         label: 'list-transform',
         maxAttempts,
         onProgress,
+        abortSignal,
       });
       try {
         const transformedItem = JSON.parse(transformResponse);
         transformedItems.push(transformedItem);
-      } catch {
+      } catch (error) {
+        debug(`list-transform JSON.parse failed, keeping original item: ${error.message}`);
         transformedItems.push(item);
       }
     }

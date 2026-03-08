@@ -3,7 +3,7 @@ import { asXML } from '../../prompts/wrap-variable.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 import commonalitiesSchema from './commonalities-result.json';
 
-const { contentIsQuestion, tryCompleteData, onlyJSONStringArray } = promptConstants;
+const { contentIsQuestion, tryCompleteData } = promptConstants;
 
 /**
  * Create model options for structured outputs
@@ -36,7 +36,7 @@ ${itemsBlock}
 
 Provide a clear, focused list of items that represent the intersection or commonality between all the given categories.
 
-${tryCompleteData} ${onlyJSONStringArray}`;
+${tryCompleteData}`;
 };
 
 export default async function commonalities(items, config = {}) {

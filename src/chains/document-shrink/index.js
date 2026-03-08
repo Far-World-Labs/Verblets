@@ -3,6 +3,7 @@ import score from '../score/index.js';
 import map from '../map/index.js';
 import { scopeProgress } from '../../lib/progress-callback/index.js';
 import TextSimilarity from '../../lib/text-similarity/index.js';
+import { debug } from '../../lib/debug/index.js';
 
 // Token cost estimates
 const TOKENS_PER_EXPANSION = 200;
@@ -143,9 +144,8 @@ async function expandQuery(query, tokenBudget, llm, onProgress, now = new Date()
       expansions,
       tokensUsed: TOKENS_PER_EXPANSION,
     };
-  } catch {
-    // console.error(`[expandQuery] Error collecting terms:`, error);
-    // Fallback to just the query
+  } catch (error) {
+    debug(`expandQuery failed, using original query: ${error.message}`);
     return { expansions: [query], tokensUsed: 0 };
   }
 }
@@ -182,7 +182,7 @@ function scoreChunksWithTfIdf(chunks, expansions) {
 
 // Pure function: Select chunks adaptively based on score distribution
 function selectChunksByTfIdf(scoredChunks, tfIdfBudget) {
-  const sorted = [...scoredChunks].sort((a, b) => b.tfIdfScore - a.tfIdfScore);
+  const sorted = scoredChunks.toSorted((a, b) => b.tfIdfScore - a.tfIdfScore);
 
   let sizeUsed = 0;
   const selected = [];
@@ -370,7 +370,7 @@ function getUnselectedChunks(allChunks, selectedChunks) {
 function groupConsecutiveChunks(chunks) {
   if (chunks.length === 0) return [];
 
-  const sorted = [...chunks].sort((a, b) => a.index - b.index);
+  const sorted = chunks.toSorted((a, b) => a.index - b.index);
   const groups = [];
   let currentGroup = [sorted[0]];
 

@@ -328,5 +328,3 @@ export const temperature = env.VERBLETS_TEMPERATURE ?? env.CHATGPT_TEMPERATURE ?
 export const topP = env.VERBLETS_TOPP ?? env.CHATGPT_TOPP ?? 0.5;
 
 export const models = _models;
-
-export const operationTimeoutMultiplier = 2;

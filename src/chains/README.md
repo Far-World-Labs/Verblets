@@ -78,6 +78,8 @@ Available chains:
 - [embed-expand-query](./embed-expand-query)
 - [entities](./entities)
 - [expect](./expect)
+- [extract-blocks](./extract-blocks)
+- [extract-features](./extract-features)
 - [filter](./filter)
 - [filter-ambiguous](./filter-ambiguous)
 - [find](./find)

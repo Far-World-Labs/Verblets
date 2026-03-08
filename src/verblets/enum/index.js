@@ -2,8 +2,7 @@ import callLlm from '../../lib/llm/index.js';
 import { asEnum, constants } from '../../prompts/index.js';
 import { createEnumSchema } from './schema.js';
 
-const { asUndefinedByDefault, contentIsQuestion, explainAndSeparate, asJSON, asWrappedValueJSON } =
-  constants;
+const { asUndefinedByDefault, contentIsQuestion, explainAndSeparate } = constants;
 
 export default async (text, enumVal, config = {}) => {
   const { llm, ...options } = config;
@@ -11,9 +10,7 @@ export default async (text, enumVal, config = {}) => {
 
 ${asEnum(enumVal)} ${asUndefinedByDefault}
 
-${asWrappedValueJSON} The value should be your selection.
-
-${asJSON}`;
+The value should be your selection.`;
 
   const schema = createEnumSchema(enumVal);
 

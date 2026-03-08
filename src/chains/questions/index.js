@@ -3,7 +3,7 @@ import retry from '../../lib/retry/index.js';
 import { constants as promptConstants, asXML } from '../../prompts/index.js';
 import { questionsListSchema, selectedQuestionSchema } from './schemas.js';
 
-const { contentIsChoices, asJSON, asWrappedArrayJSON } = promptConstants;
+const { contentIsChoices } = promptConstants;
 
 // Returns a random subset of a list with length between 1 and the length of the list
 // based on an input value between 0 and 1
@@ -23,9 +23,7 @@ ${contentIsChoices}
 ${existingJoined}
 \`\`\`
 
-Return a JSON object with a "question" property containing the selected question.
-
-${asJSON}`;
+Return a JSON object with a "question" property containing the selected question.`;
 };
 
 const shouldSkipNull = (result, resultsAll) => {
@@ -45,9 +43,7 @@ Question: ${text}
 
 ${existing.length > 0 ? `Questions to omit: ${asXML(existingJoined, { tag: 'omitted' })}` : ''}
 
-${asWrappedArrayJSON} One question per string.
-
-${asJSON}`;
+One question per string.`;
 };
 
 const generateQuestions = async function* generateQuestionsGenerator(text, options = {}) {
@@ -64,6 +60,8 @@ const generateQuestions = async function* generateQuestionsGenerator(text, optio
     shouldStop = shouldStopNull,
     maxAttempts = 3,
     onProgress,
+    abortSignal,
+    ...restOptions
   } = options;
 
   let attempts = 0;
@@ -80,6 +78,7 @@ const generateQuestions = async function* generateQuestionsGenerator(text, optio
         () =>
           callLlm(pickInterestingQuestionPrompt, {
             llm,
+            ...restOptions,
             modelOptions: {
               response_format: {
                 type: 'json_schema',
@@ -94,6 +93,7 @@ const generateQuestions = async function* generateQuestionsGenerator(text, optio
           label: 'questions-pick-interesting',
           maxAttempts,
           onProgress,
+          abortSignal,
         }
       );
       textSelected = selectedResult.question;
@@ -105,6 +105,7 @@ const generateQuestions = async function* generateQuestionsGenerator(text, optio
     });
     const llmConfig = {
       llm,
+      ...restOptions,
       modelOptions: {
         temperature: 1,
         response_format: {
@@ -122,6 +123,7 @@ const generateQuestions = async function* generateQuestionsGenerator(text, optio
       label: 'questions-generate',
       maxAttempts,
       onProgress,
+      abortSignal,
     });
     const resultsNew = getRandomSubset(results, searchBreadth);
     if (searchBreadth < 0.5) {

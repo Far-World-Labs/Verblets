@@ -2,11 +2,10 @@ import fs from 'node:fs/promises';
 import llm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
-import { asJSON } from '../../prompts/constants.js';
 import { testResultJsonSchema } from './schemas.js';
 
 export default async function test(path, instructions, options = {}) {
-  const { maxAttempts = 3, onProgress, now = new Date(), ...restOptions } = options;
+  const { maxAttempts = 3, onProgress, abortSignal, ...restOptions } = options;
   try {
     const code = await fs.readFile(path, 'utf-8');
 
@@ -23,9 +22,7 @@ GUIDELINES:
 - Provide specific line numbers or code references when possible
 - Suggest concrete fixes for each issue identified
 - Be concise but clear in your feedback
-- If no issues are found, return {"hasIssues": false, "issues": []}
-
-${asJSON}`;
+- If no issues are found, return {"hasIssues": false, "issues": []}`;
 
     const result = await retry(
       () =>
@@ -39,7 +36,7 @@ ${asJSON}`;
             },
           },
         }),
-      { maxAttempts, onProgress, now, chainStartTime: now, label: 'test chain' }
+      { label: 'test chain', maxAttempts, onProgress, abortSignal }
     );
 
     // With structured output, we get a validated object

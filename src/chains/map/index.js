@@ -114,6 +114,7 @@ Preserve all formatting and newlines within each <item> element.`;
           label: 'map:batch',
           maxAttempts: config.maxAttempts || 3,
           onProgress: tracker.forBatch(startIndex, items.length),
+          abortSignal: config.abortSignal,
         });
 
         // listBatch now returns arrays directly

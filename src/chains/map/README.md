@@ -29,7 +29,11 @@ Break `list` into batches and map each batch using `listBatch` with automatic re
 - `list` (`string[]`): fragments to process.
 - `instructions` (`string`): mapping instructions.
 - `options.batchSize` (`number`): items per batch (auto-calculated from model context window).
+- `options.maxParallel` (`number`, default `3`): maximum parallel batch requests.
 - `options.maxAttempts` (`number`, default `3`): number of retry passes over failed items.
+- `options.onProgress` (`function`): progress callback.
+- `options.abortSignal` (`AbortSignal`): signal to cancel the operation.
+- `options.llm` (`string|Object`): LLM model configuration.
 
 Returns `Promise<(string|undefined)[]>` where undefined entries represent items that failed after all retry attempts.
 

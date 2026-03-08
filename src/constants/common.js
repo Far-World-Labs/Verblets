@@ -11,8 +11,6 @@ export const defaultMaxAttempts = 4;
 
 export const retryDelay = 1000;
 
-export const debugToObject = env.DEBUG_TO_OBJECT ?? false;
-
 // String values that should be considered truthy
 export const truthyValues = ['1', 'true', 'TRUE', 'True', 'yes', 'YES', 'Yes'];
 

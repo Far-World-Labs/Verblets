@@ -52,6 +52,8 @@ const blocks = await extractBlocks(
   - `overlapSize` (number): Lines of overlap between windows (default: 20)
   - `maxParallel` (number): Concurrent window processing (default: 3)
   - `maxAttempts` (number): Retry attempts per window (default: 3)
-  - `llm` (Object): LLM model options
+  - `llm` (string|Object): LLM model options
+  - `onProgress` (Function): Progress callback
+  - `abortSignal` (AbortSignal): Signal to cancel the operation
 
 **Returns:** Promise<Array<Array\<string>>> - Array of blocks, each block is an array of lines

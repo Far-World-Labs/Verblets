@@ -1,11 +1,8 @@
 import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
-import { constants as promptConstants } from '../../prompts/index.js';
 import map from '../map/index.js';
 import tagsResultSchema from './tags-result.json';
-
-const { onlyJSON } = promptConstants;
 
 // Schema for map operation - array of tag arrays
 const tagsMapSchema = {
@@ -37,7 +34,7 @@ const tagsMapSchema = {
  * @returns {Promise<string>} Tag specification
  */
 export async function tagSpec(instructions, config = {}) {
-  const { llm, maxAttempts = 3, onProgress, ...rest } = config;
+  const { llm, maxAttempts = 3, onProgress, abortSignal, ...rest } = config;
 
   const specSystemPrompt = `You are a tag specification generator. Create clear, actionable tagging criteria.`;
 
@@ -64,6 +61,7 @@ Keep it concise and actionable.`;
       label: 'tags-spec',
       maxAttempts,
       onProgress,
+      abortSignal,
     }
   );
 
@@ -79,7 +77,7 @@ Keep it concise and actionable.`;
  * @returns {Promise<Array>} Array of tag IDs
  */
 export async function applyTags(item, specification, vocabulary, config = {}) {
-  const { llm, maxAttempts = 3, onProgress, ...options } = config;
+  const { llm, maxAttempts = 3, onProgress, abortSignal, ...options } = config;
 
   const prompt = `You are a tagger. Apply tags to the given item based on the specification.
 
@@ -93,9 +91,7 @@ ${asXML(JSON.stringify(item), { tag: 'item-to-tag' })}
 
 Analyze the item and determine which tags apply based on the specification.
 Return a JSON object with an "items" array containing ONLY the tag IDs (the "id" field values from available-tags).
-Do NOT return tag labels, descriptions, or full tag objects - ONLY the string ID values.
-
-${onlyJSON}`;
+Do NOT return tag labels, descriptions, or full tag objects - ONLY the string ID values.`;
 
   const response = await retry(
     () =>
@@ -116,6 +112,7 @@ ${onlyJSON}`;
       label: 'tags-apply',
       maxAttempts,
       onProgress,
+      abortSignal,
     }
   );
 

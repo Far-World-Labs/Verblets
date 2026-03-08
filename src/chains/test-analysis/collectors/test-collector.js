@@ -167,7 +167,7 @@ export class TestCollector {
   }
 
   calculatePercentile(sortedArray, percentile) {
-    const sorted = [...sortedArray].sort((a, b) => a - b);
+    const sorted = sortedArray.toSorted((a, b) => a - b);
     const index = Math.ceil((percentile / 100) * sorted.length) - 1;
     return sorted[Math.max(0, index)];
   }

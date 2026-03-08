@@ -17,9 +17,6 @@ const {
   contentIsQuestion,
   explainAndSeparate,
   explainAndSeparatePrimitive,
-  asJSON,
-  asWrappedArrayJSON,
-  asWrappedValueJSON,
 } = promptConstants;
 
 // Date disambiguation guidelines to add to prompts
@@ -32,11 +29,7 @@ const disambiguationGuideline = `When interpreting dates:
 // Prompt builders
 const buildExpectationPrompt = (question) => `${contentIsQuestion} ${question}
 
-List up to three short yes/no checks that would confirm a date answer is correct. If nothing specific comes to mind, include "The result is a valid date".
-
-${asWrappedArrayJSON}
-
-${asJSON}`;
+List up to three short yes/no checks that would confirm a date answer is correct. If nothing specific comes to mind, include "The result is a valid date".`;
 
 const buildDatePrompt = (text) => `${contentIsQuestion} ${text}
 
@@ -46,9 +39,7 @@ ${explainAndSeparate} ${explainAndSeparatePrimitive}
 
 ${asDate} ${asUndefinedByDefault}
 
-${asWrappedValueJSON} The value should be the date in ISO format or "undefined".
-
-${asJSON}`;
+The value should be the date in ISO format or "undefined".`;
 
 // Removed buildRetryPrompt - directly using buildDatePrompt inline
 
@@ -101,7 +92,7 @@ async function validateDate(dateValue, expectations, llm, logger, options) {
 }
 
 export default async function date(text, config = {}) {
-  const { maxAttempts = 3, llm, logger, onProgress, now = new Date(), ...options } = config;
+  const { maxAttempts = 3, llm, logger, onProgress, abortSignal, ...options } = config;
 
   // Create lifecycle logger with date chain namespace
   const lifecycleLogger = createLifecycleLogger(logger, 'chain:date');
@@ -205,11 +196,11 @@ export default async function date(text, config = {}) {
       throw new Error(`Retrying after validation failure`);
     },
     {
+      label: 'date-chain',
       maxAttempts,
       retryOnAll: true,
       onProgress,
-      now,
-      chainStartTime: now,
+      abortSignal,
     }
   );
 

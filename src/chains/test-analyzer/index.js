@@ -1,3 +1,4 @@
+import { debug } from '../../lib/debug/index.js';
 import llm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { extractCodeWindow } from '../../lib/code-extractor/index.js';
@@ -48,9 +49,9 @@ const calculateCodeWindow = (testLine, testLineCount, assertionLine) => {
  * @param {Object} options - Options including maxAttempts
  */
 export default async function analyzeTestError(logs, options = {}) {
-  const { maxAttempts = 3, onProgress, now = new Date() } = options;
+  const { llm: llmConfig, maxAttempts = 3, onProgress, abortSignal } = options;
   if (!logs || logs.length === 0) {
-    console.error('analyzeTestError: No logs provided');
+    debug('analyzeTestError: No logs provided');
     return '';
   }
 
@@ -59,7 +60,7 @@ export default async function analyzeTestError(logs, options = {}) {
   const failedAssertion = getFailedAssertion(logs);
 
   if (!testStart || !testComplete) {
-    console.error('analyzeTestError: Missing test-start or test-complete logs');
+    debug('analyzeTestError: Missing test-start or test-complete logs');
     return '';
   }
 
@@ -141,16 +142,18 @@ Discussion:
 </analysis-guidelines>`;
 
   try {
-    const response = await retry(() => llm(prompt, { modelOptions: { max_tokens: MAX_TOKENS } }), {
-      maxAttempts,
-      onProgress,
-      now,
-      chainStartTime: now,
-      label: 'test analyzer',
-    });
+    const response = await retry(
+      () => llm(prompt, { llm: llmConfig, modelOptions: { max_tokens: MAX_TOKENS } }),
+      {
+        label: 'test-analyzer',
+        maxAttempts,
+        onProgress,
+        abortSignal,
+      }
+    );
     return response.trim();
   } catch (error) {
-    console.error('AI analysis failed:', error.message);
+    debug(`AI analysis failed: ${error.message}`);
     return '';
   }
 }

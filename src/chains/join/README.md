@@ -40,7 +40,9 @@ const story = await join(chapters, 'Merge these chapters into a flowing narrativ
   - `overlapPercent` (number): Percentage of overlap between windows (default: 50)
   - `styleHint` (string): Optional additional style guidance
   - `maxAttempts` (number): Maximum retry attempts (default: 3)
-  - `llm` (Object): LLM model options
+  - `llm` (string|Object): LLM model options
+  - `onProgress` (Function): Progress callback
+  - `abortSignal` (AbortSignal): Signal to cancel the operation
 
 **Returns:** Promise<string> - Single merged result
 

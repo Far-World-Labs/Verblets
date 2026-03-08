@@ -1,10 +1,7 @@
 import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
-import { constants as promptConstants } from '../../prompts/index.js';
 import tagVocabularyResultSchema from './tag-vocabulary-result.json';
-
-const { onlyJSON } = promptConstants;
 
 // ===== Pure Helper Functions =====
 
@@ -122,7 +119,7 @@ export function computeTagStatistics(vocabulary, taggedItems, options = {}) {
  * @returns {Promise<Object>} Initial tag vocabulary
  */
 async function generateInitialVocabulary(tagSystemSpec, sampleItems, config = {}) {
-  const { llm, maxAttempts = 3, onProgress, ...options } = config;
+  const { llm, maxAttempts = 3, onProgress, abortSignal, ...options } = config;
 
   const prompt = `Generate a comprehensive tag vocabulary for categorizing items.
 
@@ -139,8 +136,7 @@ Based on the specification:
 6. Organize hierarchically if specified
 
 The vocabulary should be complete enough to categorize diverse items along the identified dimension.
-
-${onlyJSON}`;
+`;
 
   const response = await retry(
     () =>
@@ -161,6 +157,7 @@ ${onlyJSON}`;
       label: 'tag-vocabulary-initial',
       maxAttempts,
       onProgress,
+      abortSignal,
     }
   );
 
@@ -176,7 +173,15 @@ ${onlyJSON}`;
  * @returns {Promise<Object>} Refined tag vocabulary
  */
 async function refineVocabulary(vocabulary, taggedItems, tagSystemSpec, config = {}) {
-  const { llm, topN = 3, bottomN = 3, maxAttempts = 3, onProgress, ...options } = config;
+  const {
+    llm,
+    topN = 3,
+    bottomN = 3,
+    maxAttempts = 3,
+    onProgress,
+    abortSignal,
+    ...options
+  } = config;
 
   // Compute statistics using pure function
   const analysis = computeTagStatistics(vocabulary, taggedItems, { topN, bottomN });
@@ -204,8 +209,7 @@ Based on this analysis:
 6. Respect any constraints from the original specification
 
 Return an improved vocabulary that provides better coverage and clearer distinctions.
-
-${onlyJSON}`;
+`;
 
   const response = await retry(
     () =>
@@ -226,6 +230,7 @@ ${onlyJSON}`;
       label: 'tag-vocabulary-refine',
       maxAttempts,
       onProgress,
+      abortSignal,
     }
   );
 

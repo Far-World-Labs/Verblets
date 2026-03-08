@@ -71,7 +71,7 @@ export default class SummaryMap extends Map {
       .reduce((sum, valueObject) => {
         return sum + (valueObject.weight ?? 1) * valueObject.value.length;
       }, 0);
-    const sortedEntries = [...this.data.entries()].sort((a, b) => a[1].weight - b[1].weight);
+    const sortedEntries = [...this.data.entries()].toSorted((a, b) => a[1].weight - b[1].weight);
 
     const budgets = [];
     for (const [entryKey, valueObject] of sortedEntries) {

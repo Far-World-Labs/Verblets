@@ -51,7 +51,9 @@ This ensures correctness - every item has a chance to compete for the top positi
   - `extremeK` (number): Top/bottom items to extract per iteration (default: 10)
   - `iterations` (number): Sorting passes for refined results (default: 1)
   - `selectBottom` (boolean): Also find worst items (default: true)
+  - `maxAttempts` (number): Retry attempts per LLM call (default: 3)
   - `onProgress` (function): Called with `{top, bottom}` after each iteration
+  - `abortSignal` (AbortSignal): Signal to cancel the operation
   - `llm` (string|Object): Model configuration
 
 **Returns:** Promise<Array> - Items sorted by semantic relevance to your criteria

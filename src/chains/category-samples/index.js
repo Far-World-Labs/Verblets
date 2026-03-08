@@ -1,7 +1,6 @@
 import list from '../list/index.js';
 import retry from '../../lib/retry/index.js';
 import { scopeProgress } from '../../lib/progress-callback/index.js';
-import modelService from '../../services/llm-model/index.js';
 
 /**
  * Core prompt template for sample generation using cognitive science principles
@@ -87,17 +86,15 @@ export default async function categorySamples(categoryName, options = {}) {
     maxAttempts = 3,
     retryDelay = 1000,
     onProgress,
+    abortSignal,
     now = new Date(),
   } = options;
 
   const generateWithRetry = async () => {
     const prompt = buildSeedGenerationPrompt(categoryName, { context, diversityLevel });
 
-    // Get the model object from the model service
-    const model = typeof llm === 'string' ? modelService.getModel(llm) : llm;
-
     const results = await list(prompt, {
-      llm: model,
+      llm,
       maxAttempts,
       shouldStop: ({ resultsAll }) => resultsAll.length >= count,
       onProgress: scopeProgress(onProgress, 'list:sampling'),
@@ -113,20 +110,12 @@ export default async function categorySamples(categoryName, options = {}) {
   };
 
   return await retry(generateWithRetry, {
+    label: 'category-samples',
     maxAttempts,
     retryDelay,
+    retryOnAll: true,
     onProgress,
-    now,
-    chainStartTime: now,
-    retryCondition: (error) => {
-      // Retry on network errors, timeouts, or empty results
-      return (
-        error.message.includes('No sample items generated') ||
-        error.message.includes('timeout') ||
-        error.message.includes('network') ||
-        error.message.includes('ECONNRESET')
-      );
-    },
+    abortSignal,
   });
 }
 

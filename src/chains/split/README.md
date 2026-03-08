@@ -31,9 +31,13 @@ const sections = await split(article, 'split into topic-based paragraphs');
 - `text` (string): Text to split
 - `criteria` (string): Natural language description of how to split
 - `config` (Object): Configuration options
-  - `maxSegments` (number): Maximum number of segments (optional)
-  - `preserveFormatting` (boolean): Keep original formatting (default: true)
-  - `llm` (Object): LLM model options
+  - `chunkLen` (number): Maximum character length per processing chunk (default: 4000)
+  - `delimiter` (string): Delimiter string for marking split points (default: internal boundary)
+  - `targetSplitsPerChunk` (number): Target number of splits per chunk (optional)
+  - `llm` (string|Object): LLM model options (default: `'fastGoodCheapCoding'`)
+  - `maxAttempts` (number): Maximum retry attempts (default: 2)
+  - `onProgress` (Function): Progress callback
+  - `abortSignal` (AbortSignal): Signal to cancel the operation
 
 **Returns:** Promise<Array<string>> - Array of text segments
 
@@ -54,7 +58,7 @@ Chapter 3: Advanced Features
 Explore advanced functionality and customization options.
 `;
 
-const chapters = await split(manual, 'separate by chapters', { maxSegments: 5 });
+const chapters = await split(manual, 'separate by chapters');
 // Returns each chapter as a separate segment
 ```
 

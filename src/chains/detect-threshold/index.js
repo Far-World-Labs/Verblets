@@ -3,9 +3,10 @@ import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { scopeProgress } from '../../lib/progress-callback/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
+import { debug } from '../../lib/debug/index.js';
 import thresholdResultSchema from './threshold-result.json';
 
-function calculateStatistics(data, targetProperty) {
+export function calculateStatistics(data, targetProperty) {
   const values = data
     .map((item) => item[targetProperty])
     .filter((v) => v !== null && v !== undefined && !isNaN(v))
@@ -116,20 +117,20 @@ export default async function detectThreshold({
 
   const instructions = `You are analyzing data to identify threshold candidates for the property "${targetProperty}".
 
-${asXML('goal', goal)}
+${asXML(goal, { tag: 'goal' })}
 
 ${asXML(
-  'statistics',
   `Mean: ${stats.mean.toFixed(2)}, Median: ${stats.median.toFixed(
     2
-  )}, StdDev: ${stats.stdDev.toFixed(2)}, Min: ${stats.min}, Max: ${stats.max}`
+  )}, StdDev: ${stats.stdDev.toFixed(2)}, Min: ${stats.min}, Max: ${stats.max}`,
+  { tag: 'statistics' }
 )}
 
 ${asXML(
-  'percentiles',
   Object.entries(stats.percentiles)
     .map(([p, val]) => `${p}th: ${val}`)
-    .join(', ')
+    .join(', '),
+  { tag: 'percentiles' }
 )}
 
 IMPORTANT: Each line contains an ARRAY of data points. Process all items in each array.
@@ -174,21 +175,18 @@ Return the updated accumulator as valid JSON.`;
     ...options,
   });
 
-  // With responseFormat, reduce returns the parsed object directly
-  const accumulated =
-    typeof analysisResult === 'string' ? JSON.parse(analysisResult) : analysisResult;
+  const accumulated = analysisResult;
 
   // Now use llm directly with structured output for final recommendations
   const finalPrompt = `Based on the following analysis of ${
     stats.count
   } data points for property "${targetProperty}", generate threshold recommendations.
 
-${asXML('goal', goal)}
+${asXML(goal, { tag: 'goal' })}
 
-${asXML('accumulated-analysis', JSON.stringify(accumulated, null, 2))}
+${asXML(JSON.stringify(accumulated, null, 2), { tag: 'accumulated-analysis' })}
 
 ${asXML(
-  'statistics',
   JSON.stringify(
     {
       mean: stats.mean,
@@ -200,7 +198,8 @@ ${asXML(
     },
     null,
     2
-  )
+  ),
+  { tag: 'statistics' }
 )}
 
 CRITICAL: The threshold VALUE must be the actual ${targetProperty} value (between ${
@@ -230,17 +229,15 @@ Return threshold candidates with their rationales.`;
     label: 'detect-threshold-analysis',
     maxAttempts,
     onProgress,
+    abortSignal: options.abortSignal,
   });
 
-  // With structured output, result should already be parsed
-  const parsedResult = typeof result === 'string' ? JSON.parse(result) : result;
-
   // Validate and fix threshold values to be within data range
-  if (parsedResult.thresholdCandidates) {
-    parsedResult.thresholdCandidates = parsedResult.thresholdCandidates.filter((candidate) => {
+  if (result.thresholdCandidates) {
+    result.thresholdCandidates = result.thresholdCandidates.filter((candidate) => {
       // Ensure threshold value is within the data range
       if (candidate.value < stats.min || candidate.value > stats.max) {
-        console.warn(
+        debug(
           `Threshold value ${candidate.value} is outside data range [${stats.min}, ${stats.max}]`
         );
         return false;
@@ -250,7 +247,7 @@ Return threshold candidates with their rationales.`;
   }
 
   // Add distribution analysis
-  parsedResult.distributionAnalysis = {
+  result.distributionAnalysis = {
     mean: stats.mean,
     median: stats.median,
     standardDeviation: stats.stdDev,
@@ -260,5 +257,5 @@ Return threshold candidates with their rationales.`;
     dataPoints: stats.count,
   };
 
-  return parsedResult;
+  return result;
 }

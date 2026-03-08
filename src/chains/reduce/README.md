@@ -54,7 +54,10 @@ const summary = await reduce(
   - `batchSize` (number): Items per batch (auto-calculated from model context window)
   - `listStyle` (string): Input format style ('auto', 'newline', 'xml')
   - `autoModeThreshold` (number): Character threshold for auto XML mode
-  - `llm` (Object): LLM model options
+  - `maxAttempts` (number): Retry attempts per LLM call (default: 3)
+  - `onProgress` (function): Progress callback
+  - `abortSignal` (AbortSignal): Signal to cancel the operation
+  - `llm` (string|Object): LLM model configuration
 
 **Returns:** Promise<*> - Final accumulated value (type depends on instructions and responseFormat)
 
