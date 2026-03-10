@@ -5,7 +5,7 @@ import { wrapIt, wrapExpect } from '../test-analysis/test-wrappers.js';
 import { getConfig } from '../test-analysis/config.js';
 import { models } from '../../constants/models.js';
 
-const skipPrivacy = process.env.PRIVACY_TEST_SKIP || !models.privacy;
+const skipSensitivity = process.env.SENSITIVITY_TEST_SKIP || !models.sensitive;
 
 const config = getConfig();
 const it = config?.aiMode
@@ -16,7 +16,7 @@ const expect = config?.aiMode
   : vitestExpect;
 
 describe('veiledVariants example', () => {
-  it.skipIf(skipPrivacy)(
+  it.skipIf(skipSensitivity)(
     'obscures a sensitive query',
     async () => {
       const result = await veiledVariants({

@@ -19,7 +19,7 @@ function getModelCapabilities(model, modelKey) {
   return model.capabilities;
 }
 
-// Prioritized list of models (best to worst, excluding privacy/reasoning which are never auto-invoked)
+// Prioritized list of models (best to worst, excluding sensitive/reasoning which are never auto-invoked)
 const prioritizedModels = [
   'fastGoodCheap',
   'fastGoodCheapMulti',
@@ -135,12 +135,12 @@ class ModelService {
   }
 
   getBestPrivateModel() {
-    if (!this.models.privacy) {
+    if (!this.models.sensitive) {
       throw new Error(
-        'No privacy model configured. Configure a privacy model or use a public model instead.'
+        'No sensitive model configured. Configure a sensitive model or use a public model instead.'
       );
     }
-    return this.models.privacy;
+    return this.models.sensitive;
   }
 
   updateBestPublicModel(name) {
@@ -177,13 +177,18 @@ class ModelService {
   }
 
   negotiateModel(preferred, negotiation = {}) {
-    const { privacy, ...capFlags } = negotiation;
+    const { sensitive, ...capFlags } = negotiation;
 
-    // Privacy models take absolute priority
-    if (privacy === true || privacy === 'prefer') {
-      if (this.models.privacy) return 'privacy';
-      if (privacy === true) return undefined;
-      // privacy === 'prefer' but no privacy model → fall through
+    // Sensitive models take absolute priority
+    if (sensitive === true || sensitive === 'prefer') {
+      const wantsGood = capFlags.good === true;
+      const goodKey = wantsGood ? 'sensitiveGood' : 'sensitive';
+      const fallbackKey = wantsGood ? 'sensitive' : 'sensitiveGood';
+
+      if (this.models[goodKey]) return goodKey;
+      if (this.models[fallbackKey]) return fallbackKey;
+      if (sensitive === true) return undefined;
+      // sensitive === 'prefer' but no sensitive model → fall through
     }
 
     // Split into hard constraints (true/false) and soft preferences ('prefer')
@@ -388,4 +393,15 @@ export function getCapabilities(modelKey) {
   const model = modelService.models[modelKey];
   if (!model) return undefined;
   return getModelCapabilities(model, modelKey);
+}
+
+/**
+ * Check whether sensitive models are configured.
+ *
+ *   sensitivityAvailable()  // → { available: true, fast: true, good: true }
+ */
+export function sensitivityAvailable() {
+  const good = !!modelService.models.sensitiveGood;
+  const fast = !!modelService.models.sensitive;
+  return { available: good || fast, fast, good };
 }

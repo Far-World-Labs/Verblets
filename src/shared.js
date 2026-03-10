@@ -21,6 +21,84 @@ export {
   groupInstructions as scaleGroupInstructions,
 } from './chains/scale/index.js';
 
+// Probe Scan & Calibration
+export { default as probeScan } from './chains/probe-scan/index.js';
+export {
+  default as calibrate,
+  calibrateSpec,
+  applyCalibrate,
+  createCalibratedClassifier,
+} from './chains/calibrate/index.js';
+
+// Sensitivity — Detection
+export {
+  default as sensitivityScan,
+  createSensitivityScanner,
+} from './chains/sensitivity-scan/index.js';
+export {
+  default as sensitivityCheck,
+  createSensitivityChecker,
+} from './chains/sensitivity-check/index.js';
+export {
+  default as sensitivityAudit,
+  aggregateAudit,
+  createSensitivityAuditor,
+} from './chains/sensitivity-audit/index.js';
+export {
+  default as sensitivityClassify,
+  policyFromClassification,
+  policyFromAudit,
+} from './lib/sensitivity-classify/index.js';
+
+// Sensitivity — Protection
+export {
+  default as redact,
+  redactMode,
+  redactSpec,
+  applyRedact,
+  createRedactor,
+  mapInstructions as redactMapInstructions,
+  filterInstructions as redactFilterInstructions,
+  reduceInstructions as redactReduceInstructions,
+  findInstructions as redactFindInstructions,
+  groupInstructions as redactGroupInstructions,
+} from './chains/redact/index.js';
+export {
+  default as depersonalize,
+  depersonalizeMethod,
+  depersonalizeSpec,
+  applyDepersonalize,
+  createDepersonalizer,
+  mapInstructions as depersonalizeMapInstructions,
+  filterInstructions as depersonalizeFilterInstructions,
+  reduceInstructions as depersonalizeReduceInstructions,
+  findInstructions as depersonalizeFindInstructions,
+  groupInstructions as depersonalizeGroupInstructions,
+} from './chains/depersonalize/index.js';
+
+// Sensitivity — Orchestration
+export {
+  default as sensitivityGuard,
+  protectionStrategy,
+  createSensitivityGuard,
+  mapInstructions as sensitivityGuardMapInstructions,
+  filterInstructions as sensitivityGuardFilterInstructions,
+  reduceInstructions as sensitivityGuardReduceInstructions,
+  findInstructions as sensitivityGuardFindInstructions,
+  groupInstructions as sensitivityGuardGroupInstructions,
+} from './chains/sensitivity-guard/index.js';
+
+// Sensitivity — Configuration & Constants
+export { sensitivityPolicy } from './constants/sensitivity-policy.js';
+export {
+  SEVERITY_ORDER,
+  severityAtLeast,
+  CATEGORY_SEVERITY,
+  PLACEHOLDER_PREFIXES,
+  GENERALIZATIONS,
+} from './constants/sensitivity-categories.js';
+export { default as embedProbes } from './lib/embed-probes/index.js';
+
 // Lists
 export { default as centralTendency } from './chains/central-tendency/index.js';
 export { default as centralTendencyLines } from './verblets/central-tendency-lines/index.js';
@@ -79,19 +157,6 @@ export {
 // Features
 export { default as extractFeatures } from './chains/extract-features/index.js';
 
-// Content
-export {
-  default as anonymize,
-  anonymizeMethod,
-  anonymizeSpec,
-  applyAnonymization,
-  createAnonymizer,
-  mapInstructions as anonymizeMapInstructions,
-  filterInstructions as anonymizeFilterInstructions,
-  reduceInstructions as anonymizeReduceInstructions,
-  findInstructions as anonymizeFindInstructions,
-  groupInstructions as anonymizeGroupInstructions,
-} from './chains/anonymize/index.js';
 export {
   default as categorySamples,
   buildSeedGenerationPrompt,
@@ -155,6 +220,9 @@ export { default as phailForge } from './verblets/phail-forge/index.js';
 export { default as sentiment } from './verblets/sentiment/index.js';
 export { default as setInterval } from './chains/set-interval/index.js';
 
+// Embedding Primitives
+export { embed, embedBatch, embedChunked, embedWarmup } from './lib/embed/index.js';
+
 // RAG Helpers
 export {
   default as embedExpandQuery,
@@ -206,6 +274,7 @@ export { default as windowFor } from './lib/window-for/index.js';
 export { default as withInactivityTimeout } from './lib/with-inactivity-timeout/index.js';
 
 // LLM Output Parsers
+export { default as extractJson } from './lib/extract-json/index.js';
 export { default as stripResponse } from './lib/strip-response/index.js';
 export { default as stripNumeric } from './lib/strip-numeric/index.js';
 export { default as toBool } from './lib/to-bool/index.js';
@@ -216,7 +285,17 @@ export { default as toNumberWithUnits } from './lib/to-number-with-units/index.j
 export { default as parseLLMList } from './lib/parse-llm-list/index.js';
 
 // Pure Utilities
-export { chunk, compact, last, omit, pick, unionBy, zipWith } from './lib/pure/index.js';
+export {
+  chunk,
+  compact,
+  cosineSimilarity,
+  last,
+  omit,
+  pick,
+  unionBy,
+  vectorSearch,
+  zipWith,
+} from './lib/pure/index.js';
 export { default as shuffle } from './lib/shuffle/index.js';
 export { default as pipe } from './lib/pipe/index.js';
 
@@ -229,7 +308,7 @@ import * as messages from './constants/messages.js';
 import * as models from './constants/models.js';
 import * as redis from './services/redis/index.js';
 import modelService from './services/llm-model/model.js';
-export { resolveModel, getCapabilities } from './services/llm-model/index.js';
+export { resolveModel, getCapabilities, sensitivityAvailable } from './services/llm-model/index.js';
 export { CAPABILITY_KEYS } from './constants/common.js';
 
 export const constants = {

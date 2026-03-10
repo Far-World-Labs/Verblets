@@ -1,17 +1,39 @@
 import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
+import buildInstructions from '../../lib/build-instructions/index.js';
 import relationResultSchema from './relation-result.json';
 
-// ===== Default Instructions =====
+// ===== Instruction Builders =====
 
-const DEFAULT_MAP_INSTRUCTIONS = `Extract relations from each text chunk and return them as JSON.`;
-
-const DEFAULT_FILTER_INSTRUCTIONS = `Extract relations and keep only those matching the criteria.`;
-
-const DEFAULT_FIND_INSTRUCTIONS = `Extract relations and select the most significant one.`;
-
-const DEFAULT_GROUP_INSTRUCTIONS = `Group relations by their predicates, subjects, or patterns.`;
+export const {
+  mapInstructions,
+  filterInstructions,
+  reduceInstructions,
+  findInstructions,
+  groupInstructions,
+} = buildInstructions({
+  specTag: 'relation-specification',
+  defaults: {
+    map: `Extract relations from each text chunk and return them as JSON.`,
+    filter: `Extract relations and keep only those matching the criteria.`,
+    find: `Extract relations and select the most significant one.`,
+    group: `Group relations by their predicates, subjects, or patterns.`,
+  },
+  steps: {
+    reduce: `Consolidate relations across text chunks:\n1. Merge duplicate relations - same triple mentioned in different chunks\n2. Resolve entity variations - ensure consistent canonical forms\n3. Build unified relation set - all unique relations discovered\n4. Preserve relation context through metadata`,
+    filter: `Extract relations and filter to keep only those meeting the criteria.`,
+    find: `Extract relations and return the one best matching the selection criteria.`,
+    group: `Extract relations and group them by patterns, types, or entities involved.`,
+  },
+  mapApplyLine: 'Apply this relation specification:',
+  mapSuffix: {
+    processing:
+      'Return a JSON object with an "items" array containing the extracted relations.\nEach relation must have: subject (string), predicate (string), object (string), and optional metadata (object).',
+    default: 'Return a JSON object with an "items" array containing the extracted relations.',
+  },
+  reduceDefault: 'Build comprehensive relation graph from all chunks',
+});
 
 // ===== RDF Literal Parsing =====
 
@@ -72,18 +94,6 @@ export function parseRelations(relations) {
       : relation.metadata,
   }));
 }
-
-const REDUCE_PROCESS_STEPS = `Consolidate relations across text chunks:
-1. Merge duplicate relations - same triple mentioned in different chunks
-2. Resolve entity variations - ensure consistent canonical forms
-3. Build unified relation set - all unique relations discovered
-4. Preserve relation context through metadata`;
-
-const FILTER_PROCESS_STEPS = `Extract relations and filter to keep only those meeting the criteria.`;
-
-const FIND_PROCESS_STEPS = `Extract relations and return the one best matching the selection criteria.`;
-
-const GROUP_PROCESS_STEPS = `Extract relations and group them by patterns, types, or entities involved.`;
 
 // ===== Core Functions =====
 
@@ -251,115 +261,6 @@ export async function extractRelations(text, instructions, config = {}) {
   const entities = typeof instructions === 'object' ? instructions.entities : config.entities;
   const result = await applyRelations(text, spec, { ...config, entities });
   return result.items || [];
-}
-
-// ===== Instruction Builders =====
-
-/**
- * Create map instructions for relation extraction
- * @param {Object} params - Parameters object
- * @param {string} params.specification - Pre-generated relation specification
- * @param {string} params.processing - Additional processing instructions (optional)
- * @returns {string} Instructions string
- */
-export function mapInstructions({ specification, processing }) {
-  if (processing) {
-    return `${asXML(processing, { tag: 'processing-instructions' })}
-
-Apply this relation specification:
-${asXML(specification, { tag: 'relation-specification' })}
-
-Return a JSON object with an "items" array containing the extracted relations.
-Each relation must have: subject (string), predicate (string), object (string), and optional metadata (object).`;
-  } else {
-    return `${DEFAULT_MAP_INSTRUCTIONS}
-
-${asXML(specification, { tag: 'relation-specification' })}
-
-Return a JSON object with an "items" array containing the extracted relations.`;
-  }
-}
-
-/**
- * Create filter instructions for relation extraction
- * @param {Object} params - Parameters object
- * @param {string} params.specification - Pre-generated relation specification
- * @param {string} params.processing - Filter criteria (optional)
- * @returns {string} Instructions string
- */
-export function filterInstructions({ specification, processing }) {
-  if (processing) {
-    return `${asXML(processing, { tag: 'filter-criteria' })}
-
-${FILTER_PROCESS_STEPS}
-
-${asXML(specification, { tag: 'relation-specification' })}`;
-  } else {
-    return `${DEFAULT_FILTER_INSTRUCTIONS}
-
-${asXML(specification, { tag: 'relation-specification' })}`;
-  }
-}
-
-/**
- * Create reduce instructions for relation extraction
- * @param {Object} params - Parameters object
- * @param {string} params.specification - Pre-generated relation specification
- * @param {string} params.processing - How to consolidate relations (optional)
- * @returns {string} Instructions string
- */
-export function reduceInstructions({ specification, processing }) {
-  const defaultProcessing = `Build comprehensive relation graph from all chunks`;
-
-  return `${asXML(processing || defaultProcessing, {
-    tag: 'reduce-operation',
-  })}
-
-${REDUCE_PROCESS_STEPS}
-
-${asXML(specification, { tag: 'relation-specification' })}`;
-}
-
-/**
- * Create find instructions for relation extraction
- * @param {Object} params - Parameters object
- * @param {string} params.specification - Pre-generated relation specification
- * @param {string} params.processing - Selection criteria (optional)
- * @returns {string} Instructions string
- */
-export function findInstructions({ specification, processing }) {
-  if (processing) {
-    return `${asXML(processing, { tag: 'selection-criteria' })}
-
-${FIND_PROCESS_STEPS}
-
-${asXML(specification, { tag: 'relation-specification' })}`;
-  } else {
-    return `${DEFAULT_FIND_INSTRUCTIONS}
-
-${asXML(specification, { tag: 'relation-specification' })}`;
-  }
-}
-
-/**
- * Create group instructions for relation extraction
- * @param {Object} params - Parameters object
- * @param {string} params.specification - Pre-generated relation specification
- * @param {string} params.processing - Grouping strategy (optional)
- * @returns {string} Instructions string
- */
-export function groupInstructions({ specification, processing }) {
-  if (processing) {
-    return `${asXML(processing, { tag: 'grouping-strategy' })}
-
-${GROUP_PROCESS_STEPS}
-
-${asXML(specification, { tag: 'relation-specification' })}`;
-  } else {
-    return `${DEFAULT_GROUP_INSTRUCTIONS}
-
-${asXML(specification, { tag: 'relation-specification' })}`;
-  }
 }
 
 // ===== Advanced Relation Functions =====

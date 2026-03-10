@@ -16,6 +16,10 @@ import TimedAbortController from '../timed-abort-controller/index.js';
 import modelService from '../../services/llm-model/index.js';
 import { getClient as getRedis } from '../../services/redis/index.js';
 import { env } from '../env/index.js';
+import extractJson from '../extract-json/index.js';
+import stripResponse from '../strip-response/index.js';
+import { onlyJSON, contentIsSchema } from '../../prompts/constants.js';
+import { asXML } from '../../prompts/wrap-variable.js';
 
 /**
  * Configure the appropriate abort signal for fetch requests.
@@ -114,8 +118,12 @@ const shapeOutputDefault = (result, requestConfig, options = {}) => {
 
         return parsed;
       } catch {
-        // If parsing fails, return the trimmed string
-        return trimmed;
+        // Models without structured output may return unparseable text despite
+        // response_format being set. Throwing lets the caller's retry wrapper
+        // re-attempt the LLM call rather than silently returning a string.
+        throw new Error(
+          `Structured output parse failed — model returned non-JSON: ${trimmed.slice(0, 200)}`
+        );
       }
     }
     // Otherwise, it's a string, so trim it
@@ -219,6 +227,31 @@ export const run = async (prompt, config = {}) => {
     modelName: modelNameNegotiated,
   });
 
+  // Structured output fallback for models that can't do response_format (e.g. local sensitive models)
+  const needsJsonExtraction =
+    modelFound.structuredOutput === false && !!requestConfig.response_format;
+  let fetchConfig = requestConfig;
+
+  if (needsJsonExtraction) {
+    const schema = requestConfig.response_format?.json_schema?.schema;
+    const schemaInstruction = schema
+      ? `${onlyJSON} ${contentIsSchema} ${asXML(JSON.stringify(schema), { tag: 'json-schema--do-not-output' })}`
+      : onlyJSON;
+
+    // Augment the last user message with JSON format instructions
+    const messages =
+      requestConfig.messages?.map((msg, i, arr) =>
+        i === arr.length - 1 && msg.role === 'user'
+          ? { ...msg, content: `${msg.content}\n\n${schemaInstruction}` }
+          : msg
+      ) ?? requestConfig.messages;
+
+    // Build fetch config without response_format
+    // eslint-disable-next-line no-unused-vars
+    const { response_format: _rf, ...rest } = requestConfig;
+    fetchConfig = { ...rest, messages };
+  }
+
   // Check if caching is disabled via environment variable
   const cachingDisabled = env.DISABLE_CACHE === 'true';
 
@@ -254,7 +287,7 @@ export const run = async (prompt, config = {}) => {
       apiUrl,
       apiKey,
       modelFound.endpoint,
-      requestConfig
+      fetchConfig
     );
 
     // Configure abort signal (see function documentation for browser compatibility notes)
@@ -262,10 +295,18 @@ export const run = async (prompt, config = {}) => {
 
     const response = await fetch(fetchUrl, fetchOptions);
 
-    const rawJson = await response.json();
-
     // Timer's only purpose is to abort the fetch — clear it as soon as we have a response
     timeoutController.clearTimeout();
+
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.includes('application/json') && !contentType.includes('text/json')) {
+      const bodyPreview = await response.text().then((t) => t.slice(0, 200));
+      throw new Error(
+        `Completions request [error]: expected JSON response but got ${contentType || 'unknown content-type'} (status: ${response.status}, body: ${bodyPreview})`
+      );
+    }
+
+    const rawJson = await response.json();
 
     if (!response.ok) {
       // Anthropic uses error.message, OpenAI uses error.message — both work
@@ -280,6 +321,25 @@ export const run = async (prompt, config = {}) => {
     // Only cache the result if caching is not disabled
     if (!cachingDisabled && cache) {
       await setPromptResult(cache, requestConfig, result);
+    }
+  }
+
+  // Extract JSON from freeform text for models without structured output support
+  if (needsJsonExtraction && typeof result.choices?.[0]?.message?.content === 'string') {
+    const cleaned = stripResponse(result.choices[0].message.content);
+    try {
+      const extracted = extractJson(cleaned);
+      result = {
+        ...result,
+        choices: [
+          {
+            ...result.choices[0],
+            message: { ...result.choices[0].message, content: JSON.stringify(extracted) },
+          },
+        ],
+      };
+    } catch {
+      // extractJson failed — shapeOutput will throw, letting retry re-attempt
     }
   }
 

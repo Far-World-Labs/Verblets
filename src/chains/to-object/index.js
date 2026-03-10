@@ -2,6 +2,7 @@ import Ajv from 'ajv';
 
 import { retryJSONParse } from '../../constants/messages.js';
 import { debug } from '../../lib/debug/index.js';
+import extractJson from '../../lib/extract-json/index.js';
 import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import stripResponse from '../../lib/strip-response/index.js';
@@ -57,47 +58,6 @@ function validateWithSchema(result, schema) {
     throw new ValidationError('Schema validation failed', validate.errors);
   }
   return result;
-}
-
-/**
- * Attempts to parse and validate JSON with error handling
- */
-function extractJson(text) {
-  // Try direct parse first
-  try {
-    return JSON.parse(text);
-  } catch {
-    // Try extracting just the JSON portion (handle trailing text after JSON)
-    const start = text.indexOf('{') === -1 ? text.indexOf('[') : text.indexOf('{');
-    if (start === -1) throw new Error('No JSON object or array found in response');
-
-    const opener = text[start];
-    const closer = opener === '{' ? '}' : ']';
-    let depth = 0;
-    let inString = false;
-    let escape = false;
-
-    for (let i = start; i < text.length; i++) {
-      const ch = text[i];
-      if (escape) {
-        escape = false;
-        continue;
-      }
-      if (ch === '\\' && inString) {
-        escape = true;
-        continue;
-      }
-      if (ch === '"') {
-        inString = !inString;
-        continue;
-      }
-      if (inString) continue;
-      if (ch === opener) depth++;
-      if (ch === closer) depth--;
-      if (depth === 0) return JSON.parse(text.slice(start, i + 1));
-    }
-    throw new Error('Unterminated JSON in response');
-  }
 }
 
 function parseAndValidate(text, schema) {

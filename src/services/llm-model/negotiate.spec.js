@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import modelService, { resolveModel, getCapabilities } from './index.js';
+import modelService, { resolveModel, getCapabilities, sensitivityAvailable } from './index.js';
 import Model from './model.js';
 
 // helper tokenizer
@@ -12,18 +12,25 @@ describe('Model negotiation', () => {
     modelService.bestPublicModelKey = 'fastGood';
   });
 
-  describe('Privacy models', () => {
-    it('prefers privacy model when requested and available', () => {
+  describe('Sensitive models (two-tier)', () => {
+    it('sensitive: true selects fast (2b) tier by default', () => {
       modelService.models = {
-        privacy: new Model({
-          name: 'privacy-model',
-          maxContextWindow: 128000,
+        sensitive: new Model({
+          name: 'qwen3.5:2b',
+          maxContextWindow: 32768,
+          maxOutputTokens: 8192,
+          requestTimeout: 1000,
+          tokenizer,
+        }),
+        sensitiveGood: new Model({
+          name: 'qwen3.5:4b',
+          maxContextWindow: 32768,
           maxOutputTokens: 8192,
           requestTimeout: 1000,
           tokenizer,
         }),
         fastGood: new Model({
-          name: 'fast-good-model',
+          name: 'fast-good',
           maxContextWindow: 128000,
           maxOutputTokens: 16384,
           requestTimeout: 1000,
@@ -31,14 +38,27 @@ describe('Model negotiation', () => {
         }),
       };
 
-      const key = modelService.negotiateModel('fastGood', { privacy: true });
-      expect(key).toBe('privacy');
+      expect(modelService.negotiateModel('fastGood', { sensitive: true })).toBe('sensitive');
     });
 
-    it('throws error when privacy requested but not configured', () => {
+    it('sensitive + good selects quality (4b) tier', () => {
       modelService.models = {
+        sensitive: new Model({
+          name: 'qwen3.5:2b',
+          maxContextWindow: 32768,
+          maxOutputTokens: 8192,
+          requestTimeout: 1000,
+          tokenizer,
+        }),
+        sensitiveGood: new Model({
+          name: 'qwen3.5:4b',
+          maxContextWindow: 32768,
+          maxOutputTokens: 8192,
+          requestTimeout: 1000,
+          tokenizer,
+        }),
         fastGood: new Model({
-          name: 'fast-good-model',
+          name: 'fast-good',
           maxContextWindow: 128000,
           maxOutputTokens: 16384,
           requestTimeout: 1000,
@@ -46,7 +66,73 @@ describe('Model negotiation', () => {
         }),
       };
 
-      expect(modelService.negotiateModel('fastGood', { privacy: true })).toBe(undefined);
+      expect(modelService.negotiateModel('fastGood', { sensitive: true, good: true })).toBe(
+        'sensitiveGood'
+      );
+    });
+
+    it('sensitive + fast selects fast (2b) tier', () => {
+      modelService.models = {
+        sensitive: new Model({
+          name: 'qwen3.5:2b',
+          maxContextWindow: 32768,
+          maxOutputTokens: 8192,
+          requestTimeout: 1000,
+          tokenizer,
+        }),
+        sensitiveGood: new Model({
+          name: 'qwen3.5:4b',
+          maxContextWindow: 32768,
+          maxOutputTokens: 8192,
+          requestTimeout: 1000,
+          tokenizer,
+        }),
+      };
+
+      expect(modelService.negotiateModel(null, { sensitive: true, fast: true })).toBe('sensitive');
+    });
+
+    it('falls back to sensitiveGood when only quality tier is available', () => {
+      modelService.models = {
+        sensitiveGood: new Model({
+          name: 'qwen3.5:4b',
+          maxContextWindow: 32768,
+          maxOutputTokens: 8192,
+          requestTimeout: 1000,
+          tokenizer,
+        }),
+      };
+
+      // No good flag, but only sensitiveGood exists — falls back
+      expect(modelService.negotiateModel(null, { sensitive: true })).toBe('sensitiveGood');
+    });
+
+    it('falls back to sensitive when good requested but only fast tier available', () => {
+      modelService.models = {
+        sensitive: new Model({
+          name: 'qwen3.5:2b',
+          maxContextWindow: 32768,
+          maxOutputTokens: 8192,
+          requestTimeout: 1000,
+          tokenizer,
+        }),
+      };
+
+      expect(modelService.negotiateModel(null, { sensitive: true, good: true })).toBe('sensitive');
+    });
+
+    it('returns undefined when no sensitive models configured and sensitive required', () => {
+      modelService.models = {
+        fastGood: new Model({
+          name: 'fast-good',
+          maxContextWindow: 128000,
+          maxOutputTokens: 16384,
+          requestTimeout: 1000,
+          tokenizer,
+        }),
+      };
+
+      expect(modelService.negotiateModel('fastGood', { sensitive: true })).toBe(undefined);
     });
   });
 
@@ -302,22 +388,22 @@ describe('Model negotiation', () => {
       };
     });
 
-    it('returns preferred model when available and no privacy requested', () => {
+    it('returns preferred model when available and no sensitive requested', () => {
       const key = modelService.negotiateModel('customModel', { fast: true });
       expect(key).toBe('fastGood');
     });
 
-    it('ignores preferred model when privacy is requested', () => {
-      modelService.models.privacy = new Model({
-        name: 'privacy',
-        maxContextWindow: 128000,
+    it('ignores preferred model when sensitive is requested', () => {
+      modelService.models.sensitive = new Model({
+        name: 'qwen3.5:2b',
+        maxContextWindow: 32768,
         maxOutputTokens: 8192,
         requestTimeout: 1000,
         tokenizer,
       });
 
-      const key = modelService.negotiateModel('customModel', { privacy: true });
-      expect(key).toBe('privacy');
+      const key = modelService.negotiateModel('customModel', { sensitive: true });
+      expect(key).toBe('sensitive');
     });
 
     it('falls back to negotiation when preferred model does not exist', () => {
@@ -578,23 +664,43 @@ describe('Model negotiation', () => {
       expect(key).toBe('fastGoodCheap');
     });
 
-    it('privacy as prefer falls through when no privacy model', () => {
-      // prefer privacy but no privacy model — should fall through to normal negotiation
-      const key = modelService.negotiateModel(null, { privacy: 'prefer', fast: true });
+    it('sensitive as prefer falls through when no sensitive model', () => {
+      // prefer sensitive but no sensitive model — should fall through to normal negotiation
+      const key = modelService.negotiateModel(null, { sensitive: 'prefer', fast: true });
       expect(key).toBe('fastGoodCheap');
     });
 
-    it('privacy as prefer returns privacy model when available', () => {
-      modelService.models.privacy = new Model({
-        name: 'privacy',
-        maxContextWindow: 128000,
+    it('sensitive as prefer returns fast sensitive model when available', () => {
+      modelService.models.sensitive = new Model({
+        name: 'qwen3.5:2b',
+        maxContextWindow: 32768,
         maxOutputTokens: 8192,
         requestTimeout: 1000,
         tokenizer,
       });
 
-      const key = modelService.negotiateModel(null, { privacy: 'prefer', fast: true });
-      expect(key).toBe('privacy');
+      const key = modelService.negotiateModel(null, { sensitive: 'prefer', fast: true });
+      expect(key).toBe('sensitive');
+    });
+
+    it('sensitive as prefer with good returns quality tier', () => {
+      modelService.models.sensitive = new Model({
+        name: 'qwen3.5:2b',
+        maxContextWindow: 32768,
+        maxOutputTokens: 8192,
+        requestTimeout: 1000,
+        tokenizer,
+      });
+      modelService.models.sensitiveGood = new Model({
+        name: 'qwen3.5:4b',
+        maxContextWindow: 32768,
+        maxOutputTokens: 8192,
+        requestTimeout: 1000,
+        tokenizer,
+      });
+
+      const key = modelService.negotiateModel(null, { sensitive: 'prefer', good: true });
+      expect(key).toBe('sensitiveGood');
     });
   });
 });
@@ -691,8 +797,8 @@ describe('getCapabilities', () => {
         requestTimeout: 1000,
         tokenizer,
       }),
-      privacy: new Model({
-        name: 'privacy-model',
+      sensitive: new Model({
+        name: 'sensitive-model',
         maxContextWindow: 128000,
         maxOutputTokens: 8192,
         requestTimeout: 1000,
@@ -716,9 +822,9 @@ describe('getCapabilities', () => {
     expect(caps.has('fast')).toBe(false);
   });
 
-  it('returns correct capabilities for privacy model', () => {
-    const caps = getCapabilities('privacy');
-    expect(caps.has('privacy')).toBe(true);
+  it('returns correct capabilities for sensitive model', () => {
+    const caps = getCapabilities('sensitive');
+    expect(caps.has('sensitive')).toBe(true);
     expect(caps.size).toBe(1);
   });
 
@@ -730,5 +836,63 @@ describe('getCapabilities', () => {
     const caps1 = getCapabilities('fastGoodCheap');
     const caps2 = getCapabilities('fastGoodCheap');
     expect(caps1).toBe(caps2);
+  });
+});
+
+describe('sensitivityAvailable', () => {
+  beforeEach(() => {
+    modelService.models = {};
+  });
+
+  it('returns all false when no sensitive models configured', () => {
+    modelService.models = {
+      fastGood: new Model({
+        name: 'fast-good',
+        maxContextWindow: 128000,
+        maxOutputTokens: 16384,
+        requestTimeout: 1000,
+        tokenizer,
+      }),
+    };
+
+    const result = sensitivityAvailable();
+    expect(result).toEqual({ available: false, fast: false, good: false });
+  });
+
+  it('returns fast only when only sensitive (fast tier) configured', () => {
+    modelService.models = {
+      sensitive: new Model({
+        name: 'qwen3.5:2b',
+        maxContextWindow: 32768,
+        maxOutputTokens: 8192,
+        requestTimeout: 1000,
+        tokenizer,
+      }),
+    };
+
+    const result = sensitivityAvailable();
+    expect(result).toEqual({ available: true, fast: true, good: false });
+  });
+
+  it('returns both tiers when both configured', () => {
+    modelService.models = {
+      sensitive: new Model({
+        name: 'qwen3.5:2b',
+        maxContextWindow: 32768,
+        maxOutputTokens: 8192,
+        requestTimeout: 1000,
+        tokenizer,
+      }),
+      sensitiveGood: new Model({
+        name: 'qwen3.5:4b',
+        maxContextWindow: 32768,
+        maxOutputTokens: 8192,
+        requestTimeout: 1000,
+        tokenizer,
+      }),
+    };
+
+    const result = sensitivityAvailable();
+    expect(result).toEqual({ available: true, fast: true, good: true });
   });
 });

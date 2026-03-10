@@ -124,13 +124,14 @@ export const catalog = {
     },
     systemPrompt,
   },
-  // ── Local / Privacy ────────────────────────────────────────────────
+  // ── Local / Sensitive ──────────────────────────────────────────────
   'gemma3:12b-it-qat': {
     provider: 'openwebui',
     endpoint: 'api/chat/completions',
     maxContextWindow: 128_000,
     maxOutputTokens: 8_192,
     requestTimeout: 240_000,
+    structuredOutput: false,
     get apiUrl() {
       const url = env.OPENWEBUI_API_URL ?? '';
       return url.endsWith('/') ? url : `${url}/`;
@@ -147,6 +148,7 @@ export const catalog = {
     maxContextWindow: 128_000,
     maxOutputTokens: 8_192,
     requestTimeout: 240_000,
+    structuredOutput: false,
     get apiUrl() {
       const url = env.OPENWEBUI_API_URL ?? '';
       return url.endsWith('/') ? url : `${url}/`;
@@ -163,6 +165,41 @@ export const catalog = {
     maxContextWindow: 32_768,
     maxOutputTokens: 8_192,
     requestTimeout: 240_000,
+    structuredOutput: false,
+    get apiUrl() {
+      const url = env.OPENWEBUI_API_URL ?? '';
+      return url.endsWith('/') ? url : `${url}/`;
+    },
+    get apiKey() {
+      return env.OPENWEBUI_API_KEY;
+    },
+    systemPrompt,
+    modelOptions: {},
+  },
+  'qwen3.5:4b': {
+    provider: 'openwebui',
+    endpoint: 'api/chat/completions',
+    maxContextWindow: 32_768,
+    maxOutputTokens: 8_192,
+    requestTimeout: 480_000,
+    structuredOutput: false,
+    get apiUrl() {
+      const url = env.OPENWEBUI_API_URL ?? '';
+      return url.endsWith('/') ? url : `${url}/`;
+    },
+    get apiKey() {
+      return env.OPENWEBUI_API_KEY;
+    },
+    systemPrompt,
+    modelOptions: {},
+  },
+  'qwen3.5:2b': {
+    provider: 'openwebui',
+    endpoint: 'api/chat/completions',
+    maxContextWindow: 32_768,
+    maxOutputTokens: 8_192,
+    requestTimeout: 240_000,
+    structuredOutput: false,
     get apiUrl() {
       const url = env.OPENWEBUI_API_URL ?? '';
       return url.endsWith('/') ? url : `${url}/`;
@@ -216,7 +253,8 @@ function selectMapping() {
   }
 
   if (hasOpenWebUI) {
-    mapping.privacy = env.VERBLETS_PRIVACY_MODEL || 'qwen3:8b';
+    mapping.sensitive = env.VERBLETS_SENSITIVITY_MODEL || 'qwen3.5:2b';
+    mapping.sensitiveGood = env.VERBLETS_SENSITIVITY_GOOD_MODEL || 'qwen3.5:4b';
   }
 
   return mapping;
@@ -292,6 +330,8 @@ _models.cheapReasoning = _models.reasoning;
 _models.cheapReasoningMulti = _models.reasoning;
 _models.reasoningMulti = _models.reasoning;
 _models.reasoningNoImage = _models.reasoning;
+
+_models.sensitiveFast = _models.sensitive;
 
 // Validate all model definitions
 Object.entries(_models).forEach(([key, model]) => {

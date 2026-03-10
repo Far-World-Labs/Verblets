@@ -4,7 +4,7 @@ import shortenText from '../../lib/shorten-text/index.js';
 import { summarize as basicSummarize, tokenBudget } from '../../prompts/index.js';
 import modelService from '../../services/llm-model/index.js';
 
-const summarize = ({ budget, type, value, fixes = [], modelOptions, privacy }) => {
+const summarize = ({ budget, type, value, fixes = [], modelOptions, sensitivity }) => {
   if (budget) {
     fixes.push(tokenBudget(budget));
   }
@@ -17,12 +17,12 @@ const summarize = ({ budget, type, value, fixes = [], modelOptions, privacy }) =
     fixes.push('Remove the function header if it exists.');
   }
 
-  if (privacy?.whitelist) {
-    fixes.push(`Only share information matching: ${privacy.whitelist}.`);
+  if (sensitivity?.whitelist) {
+    fixes.push(`Only share information matching: ${sensitivity.whitelist}.`);
   }
 
-  if (privacy?.blacklist) {
-    fixes.push(`Do not share information matching: ${privacy.blacklist}.`);
+  if (sensitivity?.blacklist) {
+    fixes.push(`Do not share information matching: ${sensitivity.blacklist}.`);
   }
 
   const fixesAsBullets = fixes.map((fix) => ` - ${fix}`);
@@ -99,8 +99,8 @@ export default class SummaryMap extends Map {
         ...valueObject.modelOptions,
       };
 
-      if (valueObject.privacy?.whitelist || valueObject.privacy?.blacklist) {
-        entryModelOptions.modelName = 'privacy';
+      if (valueObject.sensitivity?.whitelist || valueObject.sensitivity?.blacklist) {
+        entryModelOptions.sensitive = true;
       }
 
       const value = shortenText(valueObject.value, {
@@ -116,8 +116,8 @@ export default class SummaryMap extends Map {
           ...valueObject.modelOptions,
         };
 
-        if (valueObject.privacy?.whitelist || valueObject.privacy?.blacklist) {
-          summarizeModelOptions.modelName = 'privacy';
+        if (valueObject.sensitivity?.whitelist || valueObject.sensitivity?.blacklist) {
+          summarizeModelOptions.sensitive = true;
         }
 
         // eslint-disable-next-line no-await-in-loop
@@ -125,7 +125,7 @@ export default class SummaryMap extends Map {
           budget,
           fixes: valueObject.fixes,
           modelOptions: summarizeModelOptions,
-          privacy: valueObject.privacy,
+          sensitivity: valueObject.sensitivity,
           type: valueObject.type,
           value,
         });

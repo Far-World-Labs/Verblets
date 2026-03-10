@@ -27,3 +27,17 @@ export const unionBy = (keyFn) => (existing, incoming) => {
 };
 
 export const zipWith = (fn) => (a, b) => a.map((item, i) => fn(item, b[i], i));
+
+// Dot product of two normalized Float32Array vectors (= cosine similarity when pre-normalized)
+export const cosineSimilarity = (a, b) => {
+  let sum = 0;
+  for (let i = 0; i < a.length; i++) sum += a[i] * b[i];
+  return sum;
+};
+
+// Search a corpus of { vector, ...metadata } objects, returning top-K by cosine similarity
+export const vectorSearch = (queryVector, corpus, { topK = 5 } = {}) =>
+  corpus
+    .map((item) => ({ ...item, score: cosineSimilarity(queryVector, item.vector) }))
+    .toSorted((a, b) => b.score - a.score)
+    .slice(0, topK);

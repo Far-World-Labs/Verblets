@@ -1,6 +1,16 @@
 import { describe, expect, it } from 'vitest';
 
-import { last, compact, pick, omit, chunk, unionBy, zipWith } from './index.js';
+import {
+  last,
+  compact,
+  pick,
+  omit,
+  chunk,
+  unionBy,
+  zipWith,
+  cosineSimilarity,
+  vectorSearch,
+} from './index.js';
 
 describe('last', () => {
   it('returns the last element of an array', () => {
@@ -171,5 +181,70 @@ describe('zipWith', () => {
   it('handles empty arrays', () => {
     const add = zipWith((a, b) => a + b);
     expect(add([], [])).toEqual([]);
+  });
+});
+
+describe('cosineSimilarity', () => {
+  it('returns 1.0 for identical normalized vectors', () => {
+    const v = new Float32Array([0.6, 0.8]);
+    expect(cosineSimilarity(v, v)).toBeCloseTo(1.0, 5);
+  });
+
+  it('returns 0.0 for orthogonal vectors', () => {
+    const a = new Float32Array([1, 0]);
+    const b = new Float32Array([0, 1]);
+    expect(cosineSimilarity(a, b)).toBeCloseTo(0.0, 5);
+  });
+
+  it('returns expected value for known vectors', () => {
+    // [1,0,0] · [0.5, 0.5, 0.707] = 0.5
+    const a = new Float32Array([1, 0, 0]);
+    const b = new Float32Array([0.5, 0.5, 0.707]);
+    expect(cosineSimilarity(a, b)).toBeCloseTo(0.5, 3);
+  });
+
+  it('returns -1.0 for opposite vectors', () => {
+    const a = new Float32Array([1, 0]);
+    const b = new Float32Array([-1, 0]);
+    expect(cosineSimilarity(a, b)).toBeCloseTo(-1.0, 5);
+  });
+});
+
+describe('vectorSearch', () => {
+  const corpus = [
+    { id: 'a', vector: new Float32Array([1, 0, 0]) },
+    { id: 'b', vector: new Float32Array([0, 1, 0]) },
+    { id: 'c', vector: new Float32Array([0.9, 0.1, 0]) },
+    { id: 'd', vector: new Float32Array([0, 0, 1]) },
+  ];
+
+  it('returns top-K results sorted by score descending', () => {
+    const query = new Float32Array([1, 0, 0]);
+    const results = vectorSearch(query, corpus, { topK: 2 });
+
+    expect(results).toHaveLength(2);
+    expect(results[0].id).toBe('a');
+    expect(results[1].id).toBe('c');
+    expect(results[0].score).toBeGreaterThan(results[1].score);
+  });
+
+  it('returns all items when topK exceeds corpus size', () => {
+    const query = new Float32Array([0, 1, 0]);
+    const results = vectorSearch(query, corpus, { topK: 100 });
+    expect(results).toHaveLength(corpus.length);
+  });
+
+  it('defaults to topK=5', () => {
+    const query = new Float32Array([1, 0, 0]);
+    const results = vectorSearch(query, corpus);
+    expect(results).toHaveLength(corpus.length); // corpus < 5, returns all
+  });
+
+  it('preserves metadata from corpus items', () => {
+    const query = new Float32Array([1, 0, 0]);
+    const results = vectorSearch(query, corpus, { topK: 1 });
+    expect(results[0].id).toBe('a');
+    expect(results[0]).toHaveProperty('score');
+    expect(results[0]).toHaveProperty('vector');
   });
 });

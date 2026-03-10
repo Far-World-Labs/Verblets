@@ -1,0 +1,40 @@
+{
+  "type": "object",
+  "properties": {
+    "severity": {
+      "type": "string",
+      "enum": ["none", "low", "medium", "high", "critical"],
+      "description": "Absolute risk level of this item"
+    },
+    "salience": {
+      "type": "string",
+      "enum": ["routine", "notable", "significant", "exceptional"],
+      "description": "How notable this item is relative to the corpus baseline"
+    },
+    "categories": {
+      "type": "object",
+      "description": "Per-category breakdown with severity and salience",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "severity": {
+            "type": "string",
+            "enum": ["none", "low", "medium", "high", "critical"]
+          },
+          "salience": {
+            "type": "string",
+            "enum": ["routine", "notable", "significant", "exceptional"]
+          }
+        },
+        "required": ["severity", "salience"],
+        "additionalProperties": false
+      }
+    },
+    "summary": {
+      "type": "string",
+      "description": "Brief explanation of the classification"
+    }
+  },
+  "required": ["severity", "salience", "categories", "summary"],
+  "additionalProperties": false
+}
