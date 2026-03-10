@@ -1,0 +1,118 @@
+/**
+ * Config Provider
+ *
+ * Synchronous get() for hot paths, async getAsync() for future runtime provider.
+ *
+ * Precedence (highest → lowest):
+ *   1. Force overrides:  env vars prefixed VERBLETS_FORCE_*
+ *   2. Runtime provider:  async source (future LD) — only via getAsync()
+ *   3. Normal env vars:   via isomorphic env proxy
+ *   4. Deprecated aliases: old CHATGPT_* names with one-shot warning
+ *   5. Registry defaults:  from ENV_VARS
+ */
+
+import { ENV_VARS } from '../../constants/env-vars.js';
+import { env } from '../env/index.js';
+import { truthyValues, falsyValues } from '../../constants/common.js';
+
+let runtimeProvider;
+
+// ── Type coercion ────────────────────────────────────────────────────
+
+const coerceBoolean = (raw) => {
+  if (typeof raw === 'boolean') return raw;
+  const str = String(raw);
+  if (truthyValues.includes(str)) return true;
+  if (falsyValues.includes(str)) return false;
+  return undefined;
+};
+
+const coerceNumber = (raw) => {
+  const n = Number(raw);
+  return Number.isNaN(n) ? undefined : n;
+};
+
+const coerce = {
+  string: String,
+  number: coerceNumber,
+  boolean: coerceBoolean,
+};
+
+// ── Deprecation warnings ─────────────────────────────────────────────
+
+const warned = new Set();
+
+function warnDeprecated(oldName, canonicalName) {
+  if (warned.has(oldName)) return;
+  warned.add(oldName);
+  console.warn(`[verblets] env var "${oldName}" is deprecated — use "${canonicalName}" instead.`);
+}
+
+// ── Sync get ─────────────────────────────────────────────────────────
+
+export function get(key) {
+  const spec = ENV_VARS[key];
+  const typeFn = coerce[spec?.type] ?? String;
+
+  // 1. Force override
+  const forceRaw = env[`VERBLETS_FORCE_${key}`];
+  if (forceRaw !== undefined && forceRaw !== '') return typeFn(forceRaw);
+
+  // 2. Normal env
+  const raw = env[key];
+  if (raw !== undefined && raw !== '') return typeFn(raw);
+
+  // 3. Deprecated alias
+  if (spec?.deprecated) {
+    const depRaw = env[spec.deprecated];
+    if (depRaw !== undefined && depRaw !== '') {
+      warnDeprecated(spec.deprecated, key);
+      return typeFn(depRaw);
+    }
+  }
+
+  // 4. Registry default
+  return spec?.default;
+}
+
+// ── Async get (runtime provider slot) ────────────────────────────────
+
+export async function getAsync(key) {
+  const spec = ENV_VARS[key];
+  const typeFn = coerce[spec?.type] ?? String;
+
+  // 1. Force override (same as sync — force always wins)
+  const forceRaw = env[`VERBLETS_FORCE_${key}`];
+  if (forceRaw !== undefined && forceRaw !== '') return typeFn(forceRaw);
+
+  // 2. Runtime provider
+  if (runtimeProvider) {
+    const val = await runtimeProvider.get(key);
+    if (val !== undefined) return typeFn(val);
+  }
+
+  // 3. Fall through to sync chain
+  return get(key);
+}
+
+// ── Provider management ──────────────────────────────────────────────
+
+export function setRuntimeProvider(provider) {
+  runtimeProvider = provider;
+}
+
+export function getRuntimeProvider() {
+  return runtimeProvider;
+}
+
+// ── Convenience aliases ──────────────────────────────────────────────
+
+export const getString = get;
+export const getNumber = get;
+export const getBoolean = get;
+
+// ── Testing helpers ──────────────────────────────────────────────────
+
+export function _resetWarnings() {
+  warned.clear();
+}

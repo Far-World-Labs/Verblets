@@ -36,6 +36,7 @@ export const browserExclusions = [
   'src/constants/models-config.spec.js',
   'src/lib/debug/index.spec.js',
   'src/services/redis/config.spec.js',
+  'src/lib/config/index.spec.js',
 ];
 
 // Browser-specific aliases for modules with browser versions
