@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ENV_VARS, DEPRECATED_VARS, VALID_SCOPES, VALID_TYPES } from './env-vars.js';
+import { ENV_VARS, CONSTRAINTS, DEPRECATED_VARS, VALID_SCOPES, VALID_TYPES } from './env-vars.js';
 
 describe('env-vars registry', () => {
   const entries = Object.entries(ENV_VARS);
@@ -26,15 +26,9 @@ describe('env-vars registry', () => {
     expect(unique.size).toBe(keys.length);
   });
 
-  it('every deprecated target exists as a canonical key', () => {
+  it('ENV_VARS entries have no deprecated field (managed in DEPRECATED_VARS)', () => {
     for (const [key, spec] of entries) {
-      if (!spec.deprecated) continue;
-      // The deprecated field is the OLD name — it should NOT be a canonical key
-      // (otherwise we'd have two entries for the same thing)
-      expect(
-        ENV_VARS[spec.deprecated],
-        `${key} has deprecated alias "${spec.deprecated}" that is also a canonical key`
-      ).toBeUndefined();
+      expect(spec.deprecated, `${key} still has deprecated field`).toBeUndefined();
     }
   });
 
@@ -64,6 +58,15 @@ describe('env-vars registry', () => {
         ENV_VARS[oldName],
         `deprecated name "${oldName}" collides with canonical key`
       ).toBeUndefined();
+    }
+  });
+
+  it('every DEPRECATED_VARS target is a canonical key', () => {
+    for (const [oldName, canonical] of Object.entries(DEPRECATED_VARS)) {
+      expect(
+        ENV_VARS[canonical],
+        `deprecated "${oldName}" maps to "${canonical}" which is not a canonical key`
+      ).toBeDefined();
     }
   });
 
@@ -112,7 +115,10 @@ describe('env-vars registry', () => {
     expect(ENV_VARS.DISABLE_CACHE).toBeDefined();
     expect(ENV_VARS.REDIS_HOST).toBeDefined();
     expect(ENV_VARS.REDIS_PORT).toBeDefined();
-    expect(ENV_VARS.USE_REDIS_CACHE).toBeDefined();
+  });
+
+  it('does not include removed USE_REDIS_CACHE', () => {
+    expect(ENV_VARS.USE_REDIS_CACHE).toBeUndefined();
   });
 
   it('includes debug vars', () => {
@@ -132,5 +138,36 @@ describe('env-vars registry', () => {
     expect(ENV_VARS.VERBLETS_EMBED_MODEL).toBeDefined();
     expect(ENV_VARS.VERBLETS_SENSITIVITY_MODEL).toBeDefined();
     expect(ENV_VARS.VERBLETS_SENSITIVITY_GOOD_MODEL).toBeDefined();
+  });
+
+  describe('CONSTRAINTS', () => {
+    it('requires at least one LLM API key', () => {
+      expect(CONSTRAINTS).toContainEqual({
+        oneOf: ['OPENAI_API_KEY', 'ANTHROPIC_API_KEY'],
+      });
+    });
+  });
+
+  describe('requiredIf', () => {
+    it('OPENWEBUI_API_URL is requiredIf OPENWEBUI_API_KEY', () => {
+      expect(ENV_VARS.OPENWEBUI_API_URL.requiredIf).toBe('OPENWEBUI_API_KEY');
+    });
+
+    it('no other entries have requiredIf', () => {
+      const withRequiredIf = Object.entries(ENV_VARS).filter(
+        ([key, spec]) => spec.requiredIf && key !== 'OPENWEBUI_API_URL'
+      );
+      expect(withRequiredIf).toHaveLength(0);
+    });
+  });
+
+  it('ARCH_LOG has no default (string type, no boolean mismatch)', () => {
+    expect(ENV_VARS.ARCH_LOG.type).toBe('string');
+    expect(ENV_VARS.ARCH_LOG.default).toBeUndefined();
+  });
+
+  it('REDIS_HOST and REDIS_PORT have no defaults (Redis is optional)', () => {
+    expect(ENV_VARS.REDIS_HOST.default).toBeUndefined();
+    expect(ENV_VARS.REDIS_PORT.default).toBeUndefined();
   });
 });

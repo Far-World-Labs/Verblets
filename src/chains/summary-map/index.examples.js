@@ -6,7 +6,7 @@ import { extendedTestTimeout } from '../../constants/common.js';
 import pave from '../../lib/pave/index.js';
 import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
 import { getConfig } from '../test-analysis/config.js';
-import { models } from '../../constants/models.js';
+import { models } from '../../constants/model-mappings.js';
 import { get as configGet } from '../../lib/config/index.js';
 
 const skipSensitivity = configGet('SENSITIVITY_TEST_SKIP') || !models.sensitive;

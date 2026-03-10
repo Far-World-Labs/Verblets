@@ -1,6 +1,6 @@
 import { createHash } from '../crypto/index.js';
 import { omit } from '../pure/index.js';
-import { cacheTTL } from '../../constants/models.js';
+import { cacheTTL } from '../../constants/llm-config.js';
 
 const variableKeys = ['created', 'id', 'max_tokens', 'usage'];
 const omitVariableKeys = omit(variableKeys);

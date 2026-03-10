@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { get, getAsync, setRuntimeProvider, _resetWarnings } from './index.js';
+import { get, getAsync, setRuntimeProvider, validate, _resetWarnings } from './index.js';
 
 describe('config provider', () => {
   let warnSpy;
@@ -200,6 +200,62 @@ describe('config provider', () => {
       setRuntimeProvider(undefined);
       vi.stubEnv('OPENAI_PROXY_URL', 'https://direct.example.com/');
       expect(await getAsync('OPENAI_PROXY_URL')).toBe('https://direct.example.com/');
+    });
+  });
+
+  describe('validate()', () => {
+    it('returns empty array when all constraints are satisfied', () => {
+      vi.stubEnv('OPENAI_API_KEY', 'sk-test');
+      vi.stubEnv('OPENWEBUI_API_URL', 'https://ollama.example.com');
+      vi.stubEnv('OPENWEBUI_API_KEY', 'sk-owui');
+      const errors = validate();
+      expect(errors).toEqual([]);
+    });
+
+    it('returns oneOf error when no API key is set', () => {
+      vi.stubEnv('OPENAI_API_KEY', '');
+      vi.stubEnv('ANTHROPIC_API_KEY', '');
+      // Ensure neither key is set via process.env either
+      delete process.env.OPENAI_API_KEY;
+      delete process.env.ANTHROPIC_API_KEY;
+      const errors = validate();
+      expect(errors).toContainEqual(
+        expect.stringContaining('At least one of OPENAI_API_KEY, ANTHROPIC_API_KEY')
+      );
+    });
+
+    it('passes oneOf when only ANTHROPIC_API_KEY is set', () => {
+      delete process.env.OPENAI_API_KEY;
+      vi.stubEnv('ANTHROPIC_API_KEY', 'sk-ant-test');
+      const errors = validate();
+      const oneOfErrors = errors.filter((e) => e.includes('OPENAI_API_KEY'));
+      expect(oneOfErrors).toHaveLength(0);
+    });
+
+    it('returns requiredIf error when OPENWEBUI_API_KEY is set without OPENWEBUI_API_URL', () => {
+      vi.stubEnv('OPENAI_API_KEY', 'sk-test');
+      vi.stubEnv('OPENWEBUI_API_KEY', 'sk-owui');
+      delete process.env.OPENWEBUI_API_URL;
+      const errors = validate();
+      expect(errors).toContainEqual('OPENWEBUI_API_URL is required when OPENWEBUI_API_KEY is set');
+    });
+
+    it('passes requiredIf when OPENWEBUI_API_KEY is unset', () => {
+      vi.stubEnv('OPENAI_API_KEY', 'sk-test');
+      delete process.env.OPENWEBUI_API_KEY;
+      delete process.env.OPENWEBUI_API_URL;
+      const errors = validate();
+      const requiredIfErrors = errors.filter((e) => e.includes('OPENWEBUI_API_URL'));
+      expect(requiredIfErrors).toHaveLength(0);
+    });
+
+    it('passes requiredIf when both OPENWEBUI vars are set', () => {
+      vi.stubEnv('OPENAI_API_KEY', 'sk-test');
+      vi.stubEnv('OPENWEBUI_API_KEY', 'sk-owui');
+      vi.stubEnv('OPENWEBUI_API_URL', 'https://ollama.example.com');
+      const errors = validate();
+      const requiredIfErrors = errors.filter((e) => e.includes('OPENWEBUI_API_URL'));
+      expect(requiredIfErrors).toHaveLength(0);
     });
   });
 });

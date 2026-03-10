@@ -3,7 +3,7 @@ import veiledVariants from './index.js';
 import { extendedTestTimeout } from '../../constants/common.js';
 import { wrapIt, wrapExpect } from '../test-analysis/test-wrappers.js';
 import { getConfig } from '../test-analysis/config.js';
-import { models } from '../../constants/models.js';
+import { models } from '../../constants/model-mappings.js';
 import { get as configGet } from '../../lib/config/index.js';
 
 const skipSensitivity = configGet('SENSITIVITY_TEST_SKIP') || !models.sensitive;

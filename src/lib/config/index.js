@@ -11,7 +11,7 @@
  *   5. Registry defaults:  from ENV_VARS
  */
 
-import { ENV_VARS } from '../../constants/env-vars.js';
+import { ENV_VARS, CONSTRAINTS, DEPRECATED_VARS } from '../../constants/env-vars.js';
 import { env } from '../env/index.js';
 import { truthyValues, falsyValues } from '../../constants/common.js';
 
@@ -38,7 +38,12 @@ const coerce = {
   boolean: coerceBoolean,
 };
 
-// ── Deprecation warnings ─────────────────────────────────────────────
+// ── Deprecation ─────────────────────────────────────────────────────
+
+// Reverse map: canonical name → old deprecated name
+const canonicalToDeprecated = Object.fromEntries(
+  Object.entries(DEPRECATED_VARS).map(([old, canonical]) => [canonical, old])
+);
 
 const warned = new Set();
 
@@ -69,12 +74,13 @@ export function get(key) {
   }
 
   // 3. Deprecated alias
-  if (spec?.deprecated) {
-    const depRaw = env[spec.deprecated];
+  const deprecatedName = canonicalToDeprecated[key];
+  if (deprecatedName) {
+    const depRaw = env[deprecatedName];
     if (depRaw !== undefined && depRaw !== '') {
       const coerced = typeFn(depRaw);
       if (coerced !== undefined) {
-        warnDeprecated(spec.deprecated, key);
+        warnDeprecated(deprecatedName, key);
         return coerced;
       }
     }
@@ -122,6 +128,39 @@ export function getRuntimeProvider() {
 export const getString = get;
 export const getNumber = get;
 export const getBoolean = get;
+
+// ── Validation ──────────────────────────────────────────────────────
+
+export function validate() {
+  const errors = [];
+
+  // Group constraints (oneOf)
+  for (const constraint of CONSTRAINTS) {
+    if (constraint.oneOf) {
+      const hasAny = constraint.oneOf.some((key) => {
+        const raw = env[key];
+        return raw !== undefined && raw !== '';
+      });
+      if (!hasAny) {
+        errors.push(`At least one of ${constraint.oneOf.join(', ')} is required`);
+      }
+    }
+  }
+
+  // Per-entry: requiredIf
+  for (const [key, spec] of Object.entries(ENV_VARS)) {
+    if (!spec.requiredIf) continue;
+    const conditionRaw = env[spec.requiredIf];
+    const conditionSet = conditionRaw !== undefined && conditionRaw !== '';
+    const raw = env[key];
+    const hasValue = raw !== undefined && raw !== '';
+    if (conditionSet && !hasValue) {
+      errors.push(`${key} is required when ${spec.requiredIf} is set`);
+    }
+  }
+
+  return errors;
+}
 
 // ── Testing helpers ──────────────────────────────────────────────────
 

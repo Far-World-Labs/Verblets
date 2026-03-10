@@ -49,4 +49,46 @@ describe('init()', () => {
   it('skips undefined options gracefully', () => {
     expect(() => init({ redis: undefined, modelOverrides: undefined })).not.toThrow();
   });
+
+  describe('strict validation', () => {
+    it('throws when no API keys are set and strict is true', () => {
+      vi.stubEnv('OPENAI_API_KEY', '');
+      vi.stubEnv('ANTHROPIC_API_KEY', '');
+      delete process.env.OPENAI_API_KEY;
+      delete process.env.ANTHROPIC_API_KEY;
+      expect(() => init({ strict: true })).toThrow('Config validation failed');
+    });
+
+    it('includes specific oneOf error in message', () => {
+      vi.stubEnv('OPENAI_API_KEY', '');
+      vi.stubEnv('ANTHROPIC_API_KEY', '');
+      delete process.env.OPENAI_API_KEY;
+      delete process.env.ANTHROPIC_API_KEY;
+      expect(() => init({ strict: true })).toThrow(
+        'At least one of OPENAI_API_KEY, ANTHROPIC_API_KEY'
+      );
+    });
+
+    it('passes with valid env (default strict: true)', () => {
+      vi.stubEnv('OPENAI_API_KEY', 'sk-test');
+      expect(() => init()).not.toThrow();
+    });
+
+    it('skips validation when strict is false', () => {
+      vi.stubEnv('OPENAI_API_KEY', '');
+      vi.stubEnv('ANTHROPIC_API_KEY', '');
+      delete process.env.OPENAI_API_KEY;
+      delete process.env.ANTHROPIC_API_KEY;
+      expect(() => init({ strict: false })).not.toThrow();
+    });
+
+    it('throws requiredIf error when OPENWEBUI_API_KEY set without URL', () => {
+      vi.stubEnv('OPENAI_API_KEY', 'sk-test');
+      vi.stubEnv('OPENWEBUI_API_KEY', 'sk-owui');
+      delete process.env.OPENWEBUI_API_URL;
+      expect(() => init({ strict: true })).toThrow(
+        'OPENWEBUI_API_URL is required when OPENWEBUI_API_KEY is set'
+      );
+    });
+  });
 });

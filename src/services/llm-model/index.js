@@ -1,14 +1,14 @@
 import * as tokenizer from 'gpt-tokenizer';
 
 import Model from './model.js';
+import { catalog } from '../../constants/model-catalog.js';
+import { models } from '../../constants/model-mappings.js';
 import {
-  catalog,
   frequencyPenalty as frequencyPenaltyConfig,
-  models,
   presencePenalty as presencePenaltyConfig,
   temperature as temperatureConfig,
   topP as topPConfig,
-} from '../../constants/models.js';
+} from '../../constants/llm-config.js';
 import { CAPABILITY_KEYS } from '../../constants/common.js';
 
 // Get or lazily derive capability Set for a model key

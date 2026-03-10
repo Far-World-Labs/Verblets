@@ -11,17 +11,25 @@
  * @returns {{ config: object, modelService: object }}
  */
 import * as config from './lib/config/index.js';
+import { validate } from './lib/config/index.js';
 import modelService from './services/llm-model/index.js';
 import { setClient } from './services/redis/index.js';
 
 export default function init(options = {}) {
-  const { redis, modelOverrides, runtimeProvider } = options;
+  const { redis, modelOverrides, runtimeProvider, strict = true } = options;
 
   if (runtimeProvider) config.setRuntimeProvider(runtimeProvider);
   if (redis) setClient(redis);
   if (modelOverrides) {
     for (const [key, value] of Object.entries(modelOverrides)) {
       modelService.setGlobalOverride(key, value);
+    }
+  }
+
+  if (strict) {
+    const errors = validate();
+    if (errors.length > 0) {
+      throw new Error(`Config validation failed:\n  ${errors.join('\n  ')}`);
     }
   }
 

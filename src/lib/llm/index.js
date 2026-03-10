@@ -5,8 +5,8 @@ import {
   debugPromptGloballyIfChanged,
   debugResultGlobally,
   debugResultGloballyIfChanged,
-  models,
-} from '../../constants/models.js';
+} from '../../constants/llm-config.js';
+import { models } from '../../constants/model-mappings.js';
 import { getProvider } from './providers/index.js';
 import normalizeLlm from '../normalize-llm/index.js';
 import { CAPABILITY_KEYS } from '../../constants/common.js';

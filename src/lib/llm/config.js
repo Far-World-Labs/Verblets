@@ -7,7 +7,8 @@
  *   3. Direct catalog lookup by model name
  */
 
-import { catalog, defaultMapping } from '../../constants/models.js';
+import { catalog } from '../../constants/model-catalog.js';
+import { defaultMapping } from '../../constants/model-mappings.js';
 import { runtime } from '../env/index.js';
 
 // ── Project overrides ───────────────────────────────────────────────

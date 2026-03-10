@@ -517,15 +517,15 @@ class SafeRedisClient {
 }
 
 const constructClient = async () => {
-  // Use in-memory cache for tests unless explicitly enabled
-  if (configGet('NODE_ENV') === 'test' && configGet('USE_REDIS_CACHE') !== true) {
+  // Use in-memory cache for tests
+  if (configGet('NODE_ENV') === 'test') {
     client = new NullRedisClient();
     return;
   }
 
   const redisClient = createClient({
-    host: configGet('REDIS_HOST'),
-    port: configGet('REDIS_PORT'),
+    host: configGet('REDIS_HOST') || 'localhost',
+    port: configGet('REDIS_PORT') || 6379,
   });
 
   redisClient.on('error', (error) => {

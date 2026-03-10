@@ -15,7 +15,7 @@
 import { lookup } from 'node:dns/promises';
 import { afterAll, beforeAll } from 'vitest';
 import modelService from '../../src/services/llm-model/index.js';
-import { models } from '../../src/constants/models.js';
+import { models } from '../../src/constants/model-mappings.js';
 
 // ── Provider override ────────────────────────────────────────────────
 
