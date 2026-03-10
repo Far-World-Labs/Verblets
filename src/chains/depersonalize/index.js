@@ -184,7 +184,8 @@ async function runStages(
  * @param {AbortSignal} [options.abortSignal] - Abort signal
  * @returns {Promise<{ text: string, stages: object }>}
  */
-export default function depersonalize(text, options = {}) {
+// eslint-disable-next-line require-await
+export default async function depersonalize(text, options = {}) {
   const { method = 'balanced', context, llm = SENSITIVE_LLM, ...rest } = options;
 
   if (llm === SENSITIVE_LLM) {
@@ -277,7 +278,8 @@ Provide a JSON object describing:
  * @param {object} [config]
  * @returns {Promise<{ text: string, stages: object }>}
  */
-export function applyDepersonalize(text, specification, config = {}) {
+// eslint-disable-next-line require-await
+export async function applyDepersonalize(text, specification, config = {}) {
   const { llm = SENSITIVE_LLM, ...rest } = config;
 
   if (llm === SENSITIVE_LLM) {
