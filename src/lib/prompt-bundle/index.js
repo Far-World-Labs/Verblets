@@ -105,11 +105,13 @@ export const inspectBundle = (bundle) => ({
 export const extensionStatus = (bundle) =>
   bundle.extensions.map((ext) => ({
     ...ext,
-    status: ext.slot in bundle.bindings ? 'filled' : 'unfilled',
+    status: !ext.slot ? 'filled' : ext.slot in bundle.bindings ? 'filled' : 'unfilled',
   }));
 
 export const pendingSlots = (bundle) =>
-  bundle.extensions.filter((ext) => !(ext.slot in bundle.bindings)).map((ext) => ext.slot);
+  bundle.extensions
+    .filter((ext) => ext.slot && !(ext.slot in bundle.bindings))
+    .map((ext) => ext.slot);
 
 // ── Curried pipe helpers ─────────────────────────────────────────────
 // Config-first, bundle-last — for use with pipe().

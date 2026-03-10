@@ -3,7 +3,7 @@ export const promptDescriptionSchema = {
   schema: {
     type: 'object',
     properties: {
-      description: {
+      value: {
         type: 'object',
         properties: {
           purpose: {
@@ -34,7 +34,7 @@ export const promptDescriptionSchema = {
         additionalProperties: false,
       },
     },
-    required: ['description'],
+    required: ['value'],
     additionalProperties: false,
   },
 };
@@ -44,7 +44,7 @@ export const extensionsSchema = {
   schema: {
     type: 'object',
     properties: {
-      extensions: {
+      items: {
         type: 'array',
         items: {
           type: 'object',
@@ -107,7 +107,7 @@ export const extensionsSchema = {
         },
       },
     },
-    required: ['extensions'],
+    required: ['items'],
     additionalProperties: false,
   },
 };

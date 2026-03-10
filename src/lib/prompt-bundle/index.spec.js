@@ -363,6 +363,15 @@ describe('prompt-bundle', () => {
       expect(result[0].produces).toBe('Output uses correct medical terminology.');
       expect(result[0].effort).toBe('medium');
     });
+
+    it('should mark slotless extensions as filled', () => {
+      const bundle = addExtensions(createBundle('Task.'), [
+        ext({ id: 'nfr-info', slot: undefined, preamble: 'Pure informational text.' }),
+      ]);
+
+      const result = extensionStatus(bundle);
+      expect(result[0].status).toBe('filled');
+    });
   });
 
   describe('pending', () => {
@@ -393,6 +402,15 @@ describe('prompt-bundle', () => {
       });
 
       expect(pendingSlots(bundle)).toEqual([]);
+    });
+
+    it('should exclude extensions without a slot field', () => {
+      const bundle = addExtensions(createBundle('Task.'), [
+        ext(),
+        ext({ id: 'nfr-info', slot: undefined, preamble: 'Pure informational text.' }),
+      ]);
+
+      expect(pendingSlots(bundle)).toEqual(['medical_terms']);
     });
   });
 
