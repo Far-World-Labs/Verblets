@@ -8,6 +8,7 @@
  */
 
 import { env, runtime } from '../lib/env/index.js';
+import { get as configGet } from '../lib/config/index.js';
 import { assertValidModelDef } from './model-validation.js';
 
 // ── Shared ──────────────────────────────────────────────────────────
@@ -253,8 +254,8 @@ function selectMapping() {
   }
 
   if (hasOpenWebUI) {
-    mapping.sensitive = env.VERBLETS_SENSITIVITY_MODEL || 'qwen3.5:2b';
-    mapping.sensitiveGood = env.VERBLETS_SENSITIVITY_GOOD_MODEL || 'qwen3.5:4b';
+    mapping.sensitive = configGet('VERBLETS_SENSITIVITY_MODEL');
+    mapping.sensitiveGood = configGet('VERBLETS_SENSITIVITY_GOOD_MODEL');
   }
 
   return mapping;
@@ -339,32 +340,26 @@ Object.entries(_models).forEach(([key, model]) => {
 });
 
 // ── Exported Config Constants ───────────────────────────────────────
-// Env vars renamed from CHATGPT_* → VERBLETS_* (old names still honoured)
+// Config provider handles deprecated CHATGPT_* fallbacks and type coercion.
 
-const secondsInDay = 60 * 60 * 24;
-const secondsInYear = secondsInDay * 365;
-export const cacheTTL = env.VERBLETS_CACHE_TTL ?? env.CHATGPT_CACHE_TTL ?? secondsInYear;
+export const cacheTTL = configGet('VERBLETS_CACHE_TTL');
 
-export const cachingEnabled = env.DISABLE_CACHE !== 'true';
+export const cachingEnabled = configGet('DISABLE_CACHE') !== true;
 
-export const debugPromptGlobally = env.VERBLETS_DEBUG_PROMPT ?? env.CHATGPT_DEBUG_PROMPT ?? false;
+export const debugPromptGlobally = configGet('VERBLETS_DEBUG_PROMPT');
 
-export const debugPromptGloballyIfChanged =
-  env.VERBLETS_DEBUG_REQUEST_IF_CHANGED ?? env.CHATGPT_DEBUG_REQUEST_IF_CHANGED ?? false;
+export const debugPromptGloballyIfChanged = configGet('VERBLETS_DEBUG_REQUEST_IF_CHANGED');
 
-export const debugResultGlobally =
-  env.VERBLETS_DEBUG_RESPONSE ?? env.CHATGPT_DEBUG_RESPONSE ?? false;
+export const debugResultGlobally = configGet('VERBLETS_DEBUG_RESPONSE');
 
-export const debugResultGloballyIfChanged =
-  env.VERBLETS_DEBUG_RESPONSE_IF_CHANGED ?? env.CHATGPT_DEBUG_RESPONSE_IF_CHANGED ?? false;
+export const debugResultGloballyIfChanged = configGet('VERBLETS_DEBUG_RESPONSE_IF_CHANGED');
 
-export const frequencyPenalty =
-  env.VERBLETS_FREQUENCY_PENALTY ?? env.CHATGPT_FREQUENCY_PENALTY ?? 0;
+export const frequencyPenalty = configGet('VERBLETS_FREQUENCY_PENALTY');
 
-export const presencePenalty = env.VERBLETS_PRESENCE_PENALTY ?? env.CHATGPT_PRESENCE_PENALTY ?? 0;
+export const presencePenalty = configGet('VERBLETS_PRESENCE_PENALTY');
 
-export const temperature = env.VERBLETS_TEMPERATURE ?? env.CHATGPT_TEMPERATURE ?? 0;
+export const temperature = configGet('VERBLETS_TEMPERATURE');
 
-export const topP = env.VERBLETS_TOPP ?? env.CHATGPT_TOPP ?? 0.5;
+export const topP = configGet('VERBLETS_TOPP');
 
 export const models = _models;

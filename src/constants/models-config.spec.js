@@ -22,20 +22,20 @@ describe('models.js config exports', () => {
     it('reads VERBLETS_CACHE_TTL from env', async () => {
       vi.stubEnv('VERBLETS_CACHE_TTL', '3600');
       const { cacheTTL } = await importModels();
-      expect(cacheTTL).toBe('3600');
+      expect(cacheTTL).toBe(3600);
     });
 
     it('falls back to CHATGPT_CACHE_TTL when VERBLETS_CACHE_TTL is unset', async () => {
       vi.stubEnv('CHATGPT_CACHE_TTL', '7200');
       const { cacheTTL } = await importModels();
-      expect(cacheTTL).toBe('7200');
+      expect(cacheTTL).toBe(7200);
     });
 
     it('VERBLETS_CACHE_TTL takes priority over CHATGPT_CACHE_TTL', async () => {
       vi.stubEnv('VERBLETS_CACHE_TTL', '100');
       vi.stubEnv('CHATGPT_CACHE_TTL', '200');
       const { cacheTTL } = await importModels();
-      expect(cacheTTL).toBe('100');
+      expect(cacheTTL).toBe(100);
     });
   });
 
@@ -67,13 +67,13 @@ describe('models.js config exports', () => {
     it('reads VERBLETS_TEMPERATURE from env', async () => {
       vi.stubEnv('VERBLETS_TEMPERATURE', '0.7');
       const { temperature } = await importModels();
-      expect(temperature).toBe('0.7');
+      expect(temperature).toBe(0.7);
     });
 
     it('falls back to CHATGPT_TEMPERATURE', async () => {
       vi.stubEnv('CHATGPT_TEMPERATURE', '0.5');
       const { temperature } = await importModels();
-      expect(temperature).toBe('0.5');
+      expect(temperature).toBe(0.5);
     });
   });
 
@@ -86,13 +86,13 @@ describe('models.js config exports', () => {
     it('reads VERBLETS_TOPP from env', async () => {
       vi.stubEnv('VERBLETS_TOPP', '0.9');
       const { topP } = await importModels();
-      expect(topP).toBe('0.9');
+      expect(topP).toBe(0.9);
     });
 
     it('falls back to CHATGPT_TOPP', async () => {
       vi.stubEnv('CHATGPT_TOPP', '0.3');
       const { topP } = await importModels();
-      expect(topP).toBe('0.3');
+      expect(topP).toBe(0.3);
     });
   });
 
@@ -105,13 +105,13 @@ describe('models.js config exports', () => {
     it('reads VERBLETS_FREQUENCY_PENALTY from env', async () => {
       vi.stubEnv('VERBLETS_FREQUENCY_PENALTY', '0.2');
       const { frequencyPenalty } = await importModels();
-      expect(frequencyPenalty).toBe('0.2');
+      expect(frequencyPenalty).toBe(0.2);
     });
 
     it('falls back to CHATGPT_FREQUENCY_PENALTY', async () => {
       vi.stubEnv('CHATGPT_FREQUENCY_PENALTY', '0.1');
       const { frequencyPenalty } = await importModels();
-      expect(frequencyPenalty).toBe('0.1');
+      expect(frequencyPenalty).toBe(0.1);
     });
   });
 
@@ -124,13 +124,13 @@ describe('models.js config exports', () => {
     it('reads VERBLETS_PRESENCE_PENALTY from env', async () => {
       vi.stubEnv('VERBLETS_PRESENCE_PENALTY', '0.4');
       const { presencePenalty } = await importModels();
-      expect(presencePenalty).toBe('0.4');
+      expect(presencePenalty).toBe(0.4);
     });
 
     it('falls back to CHATGPT_PRESENCE_PENALTY', async () => {
       vi.stubEnv('CHATGPT_PRESENCE_PENALTY', '0.3');
       const { presencePenalty } = await importModels();
-      expect(presencePenalty).toBe('0.3');
+      expect(presencePenalty).toBe(0.3);
     });
   });
 
@@ -143,13 +143,13 @@ describe('models.js config exports', () => {
     it('reads VERBLETS_DEBUG_PROMPT from env', async () => {
       vi.stubEnv('VERBLETS_DEBUG_PROMPT', 'true');
       const { debugPromptGlobally } = await importModels();
-      expect(debugPromptGlobally).toBe('true');
+      expect(debugPromptGlobally).toBe(true);
     });
 
     it('falls back to CHATGPT_DEBUG_PROMPT', async () => {
       vi.stubEnv('CHATGPT_DEBUG_PROMPT', 'true');
       const { debugPromptGlobally } = await importModels();
-      expect(debugPromptGlobally).toBe('true');
+      expect(debugPromptGlobally).toBe(true);
     });
   });
 
@@ -162,7 +162,7 @@ describe('models.js config exports', () => {
     it('reads VERBLETS_DEBUG_REQUEST_IF_CHANGED', async () => {
       vi.stubEnv('VERBLETS_DEBUG_REQUEST_IF_CHANGED', 'true');
       const { debugPromptGloballyIfChanged } = await importModels();
-      expect(debugPromptGloballyIfChanged).toBe('true');
+      expect(debugPromptGloballyIfChanged).toBe(true);
     });
   });
 
@@ -175,7 +175,7 @@ describe('models.js config exports', () => {
     it('reads VERBLETS_DEBUG_RESPONSE', async () => {
       vi.stubEnv('VERBLETS_DEBUG_RESPONSE', 'true');
       const { debugResultGlobally } = await importModels();
-      expect(debugResultGlobally).toBe('true');
+      expect(debugResultGlobally).toBe(true);
     });
   });
 
@@ -188,7 +188,7 @@ describe('models.js config exports', () => {
     it('reads VERBLETS_DEBUG_RESPONSE_IF_CHANGED', async () => {
       vi.stubEnv('VERBLETS_DEBUG_RESPONSE_IF_CHANGED', 'true');
       const { debugResultGloballyIfChanged } = await importModels();
-      expect(debugResultGloballyIfChanged).toBe('true');
+      expect(debugResultGloballyIfChanged).toBe(true);
     });
   });
 

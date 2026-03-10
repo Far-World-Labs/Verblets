@@ -37,6 +37,7 @@ export const browserExclusions = [
   'src/lib/debug/index.spec.js',
   'src/services/redis/config.spec.js',
   'src/lib/config/index.spec.js',
+  'src/init.spec.js',
 ];
 
 // Browser-specific aliases for modules with browser versions
