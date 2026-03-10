@@ -144,6 +144,21 @@ export {
   softCoverPrompt,
 } from './chains/veiled-variants/index.js';
 
+// Prompt Engineering
+export {
+  default as extendPrompt,
+  applyExtensions,
+  resolveExtensions,
+  shapePrompt,
+  describePrompt,
+  extendBundle,
+  shapeBundle,
+  describeBundle,
+} from './chains/extend-prompt/index.js';
+export * as promptMarkers from './lib/prompt-markers/index.js';
+export * as promptBundle from './lib/prompt-bundle/index.js';
+export * as promptGraph from './lib/prompt-graph/index.js';
+
 // Utility Operations
 export { default as auto } from './verblets/auto/index.js';
 export { default as expect } from './verblets/expect/index.js';
