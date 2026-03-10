@@ -3,6 +3,9 @@ import modelService, { resolveModel } from '../../services/llm-model/index.js';
 const FALLBACK_TOKENS_PER_CHAR = 0.25;
 const SAFETY_MARGIN = 1.2;
 const MAX_ITEM_RATIO = 0.8;
+const DEFAULT_OUTPUT_RATIO = 2;
+const DEFAULT_MAX_TOKEN_BUDGET = 4000;
+const DEFAULT_CONTEXT_BUFFER = 0.9;
 
 function estimateTokens(text, model) {
   const str = typeof text === 'string' ? text : JSON.stringify(text);
@@ -12,7 +15,12 @@ function estimateTokens(text, model) {
   return Math.ceil(str.length * FALLBACK_TOKENS_PER_CHAR);
 }
 
-function calculateBudget({ model, outputRatio = 2, maxTokenBudget = 4000, contextBuffer = 0.9 }) {
+function calculateBudget({
+  model,
+  outputRatio = DEFAULT_OUTPUT_RATIO,
+  maxTokenBudget = DEFAULT_MAX_TOKEN_BUDGET,
+  contextBuffer = DEFAULT_CONTEXT_BUFFER,
+}) {
   const maxContextTokens = Math.floor(model.maxContextWindow * contextBuffer);
   const maxOutputTokens = model.maxOutputTokens || Math.floor(maxContextTokens / 2);
 
@@ -84,9 +92,9 @@ function buildBatches(list, { targetBatchSize, budget, model }) {
 export default function createBatches(list, config = {}) {
   const {
     batchSize: providedBatchSize,
-    outputRatio = 2,
-    maxTokenBudget = 4000,
-    contextBuffer = 0.9,
+    outputRatio = DEFAULT_OUTPUT_RATIO,
+    maxTokenBudget = DEFAULT_MAX_TOKEN_BUDGET,
+    contextBuffer = DEFAULT_CONTEXT_BUFFER,
     llm,
   } = config;
 

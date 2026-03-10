@@ -14,6 +14,14 @@ const LLM_CHUNK_BATCH_SIZE = 20;
 const MAX_ADJACENCY_DISTANCE = 3;
 const MIN_COMPRESSED_TEXT_LENGTH = 20;
 
+// Adaptive thresholds
+const MIN_REDUCTION_RATIO = 0.1;
+const MIN_DOC_LENGTH = 2000;
+const MAX_TOKEN_ALLOCATION_RATIO = 0.8;
+const LOW_REDUCTION_THRESHOLD = 0.2;
+const LOW_REDUCTION_SPACE_RESERVE = 0.5;
+const HIGH_REDUCTION_SPACE_RESERVE = 0.3;
+
 // Trim text to last complete sentence to avoid mid-sentence cutoffs.
 // Returns original text if no sentence boundary found or text already ends cleanly.
 function trimToLastSentence(text) {
@@ -38,10 +46,10 @@ function calculateReductionRatio(targetSize, documentSize) {
 
 // Pure function: Calculate adaptive chunk size
 function calculateAdaptiveChunkSize(baseChunkSize, reductionRatio, docLength) {
-  if (reductionRatio < 0.1) {
+  if (reductionRatio < MIN_REDUCTION_RATIO) {
     // Heavy reduction: larger chunks for better context
     return Math.min(baseChunkSize * 2, 1000);
-  } else if (docLength < 2000) {
+  } else if (docLength < MIN_DOC_LENGTH) {
     // Small document: smaller chunks for granularity
     return Math.max(baseChunkSize / 2, 200);
   }
@@ -51,7 +59,7 @@ function calculateAdaptiveChunkSize(baseChunkSize, reductionRatio, docLength) {
 // Pure function: Calculate token allocation ratios
 function calculateTokenAllocation(reductionRatio, remainingTokens) {
   // More aggressive reduction = more LLM usage for smart selection
-  const llmTokenRatio = Math.min(0.8, 1 - reductionRatio);
+  const llmTokenRatio = Math.min(MAX_TOKEN_ALLOCATION_RATIO, 1 - reductionRatio);
   const llmTokens = Math.floor(remainingTokens * llmTokenRatio);
 
   return {
@@ -85,7 +93,11 @@ function calculateSpaceAllocation(chunks, targetSize, tokenBudget, documentSize)
   // Calculate space allocation dynamically
   // If we need heavy reduction, reserve more space for compressed chunks
   const compressionPotential = chunksWeCanCompress * avgChunkSize * (1 - COMPRESSION_RATIO);
-  const maxReservedRatio = reductionRatio < 0.2 ? 0.5 : 0.3; // More reservation for aggressive reduction
+  // More reservation for aggressive reduction
+  const maxReservedRatio =
+    reductionRatio < LOW_REDUCTION_THRESHOLD
+      ? LOW_REDUCTION_SPACE_RESERVE
+      : HIGH_REDUCTION_SPACE_RESERVE;
   const reservedSpace = Math.min(targetSize * maxReservedRatio, compressionPotential);
 
   return {
