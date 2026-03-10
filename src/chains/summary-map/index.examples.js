@@ -7,8 +7,9 @@ import pave from '../../lib/pave/index.js';
 import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
 import { getConfig } from '../test-analysis/config.js';
 import { models } from '../../constants/models.js';
+import { get as configGet } from '../../lib/config/index.js';
 
-const skipSensitivity = process.env.SENSITIVITY_TEST_SKIP || !models.sensitive;
+const skipSensitivity = configGet('SENSITIVITY_TEST_SKIP') || !models.sensitive;
 
 const config = getConfig();
 const it = config?.aiMode

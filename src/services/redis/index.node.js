@@ -2,7 +2,7 @@
 // This file contains the full Redis client with fallback support
 
 import { createClient } from 'redis';
-import { env } from '../../lib/env/index.js';
+import { get as configGet } from '../../lib/config/index.js';
 
 let client;
 let constructingClient;
@@ -518,14 +518,14 @@ class SafeRedisClient {
 
 const constructClient = async () => {
   // Use in-memory cache for tests unless explicitly enabled
-  if (env.NODE_ENV === 'test' && env.USE_REDIS_CACHE !== 'true') {
+  if (configGet('NODE_ENV') === 'test' && configGet('USE_REDIS_CACHE') !== true) {
     client = new NullRedisClient();
     return;
   }
 
   const redisClient = createClient({
-    host: env.REDIS_HOST ?? 'localhost',
-    port: env.REDIS_PORT ?? 6379,
+    host: configGet('REDIS_HOST'),
+    port: configGet('REDIS_PORT'),
   });
 
   redisClient.on('error', (error) => {
@@ -563,7 +563,7 @@ const constructClient = async () => {
 export const getClient = async () => {
   if (client) {
     // Log when reusing existing client (for debugging)
-    if (process.env.VERBLETS_DEBUG_REDIS) {
+    if (configGet('VERBLETS_DEBUG_REDIS')) {
       console.error('[REDIS] Reusing existing client');
     }
     return client;
@@ -571,7 +571,7 @@ export const getClient = async () => {
 
   if (!constructingClient) {
     // Log when creating new client (for debugging)
-    if (process.env.VERBLETS_DEBUG_REDIS) {
+    if (configGet('VERBLETS_DEBUG_REDIS')) {
       console.error('[REDIS] Creating new client');
     }
     constructingClient = constructClient();

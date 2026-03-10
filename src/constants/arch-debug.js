@@ -8,6 +8,8 @@
  *   - Set ARCH_DEBUG=true environment variable to enable for all tests
  *   - Override in tests using: vi.spyOn(ARCH_DEBUG, 'enabled').mockReturnValue(true)
  */
+import { get as configGet } from '../lib/config/index.js';
+
 export const ARCH_DEBUG = {
-  enabled: process.env.ARCH_DEBUG === 'true',
+  enabled: configGet('ARCH_DEBUG') === true,
 };

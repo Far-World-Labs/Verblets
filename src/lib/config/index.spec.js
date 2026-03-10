@@ -129,22 +129,18 @@ describe('config provider', () => {
   });
 
   describe('type coercion edge cases', () => {
-    it('returns undefined for NaN number coercion', () => {
+    it('falls through to registry default for NaN number coercion', () => {
       vi.stubEnv('VERBLETS_TEMPERATURE', 'notanumber');
-      // Coercion returns undefined, falls through to deprecated, then default
       delete process.env.CHATGPT_TEMPERATURE;
-      // NaN from coercion → undefined → falls through to default
       const result = get('VERBLETS_TEMPERATURE');
-      // 'notanumber' is not empty so it tries coercion, gets undefined from coerceNumber
-      // But the env[key] check passes (not undefined, not empty), so typeFn is called
-      // coerceNumber('notanumber') returns undefined
-      expect(result).toBeUndefined();
+      // coerceNumber('notanumber') → undefined → falls through to registry default (0)
+      expect(result).toBe(0);
     });
 
-    it('coerces boolean for unrecognized string', () => {
+    it('falls through to registry default for unrecognized boolean string', () => {
       vi.stubEnv('DISABLE_CACHE', 'maybe');
-      // 'maybe' is not in truthyValues or falsyValues → coerceBoolean returns undefined
-      expect(get('DISABLE_CACHE')).toBeUndefined();
+      // 'maybe' not in truthyValues/falsyValues → undefined → falls through to default (false)
+      expect(get('DISABLE_CACHE')).toBe(false);
     });
 
     it('treats already-boolean values correctly', () => {

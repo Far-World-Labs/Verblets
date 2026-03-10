@@ -22,8 +22,14 @@ describe('arch-debug config', () => {
       expect(ARCH_DEBUG.enabled).toBe(true);
     });
 
-    it('enabled is false for non-"true" values', async () => {
+    it('accepts truthy aliases like "yes"', async () => {
       vi.stubEnv('ARCH_DEBUG', 'yes');
+      const { ARCH_DEBUG } = await import('./arch-debug.js');
+      expect(ARCH_DEBUG.enabled).toBe(true);
+    });
+
+    it('enabled is false for unrecognized strings', async () => {
+      vi.stubEnv('ARCH_DEBUG', 'maybe');
       const { ARCH_DEBUG } = await import('./arch-debug.js');
       expect(ARCH_DEBUG.enabled).toBe(false);
     });

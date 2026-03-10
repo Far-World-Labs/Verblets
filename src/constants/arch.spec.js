@@ -36,8 +36,14 @@ describe('arch config', () => {
       expect(ARCH_SHUFFLE).toBe(true);
     });
 
-    it('is false for non-"true" values', async () => {
+    it('accepts truthy aliases like "yes"', async () => {
       vi.stubEnv('ARCH_SHUFFLE', 'yes');
+      const { ARCH_SHUFFLE } = await import('./arch.js');
+      expect(ARCH_SHUFFLE).toBe(true);
+    });
+
+    it('is false for unrecognized strings', async () => {
+      vi.stubEnv('ARCH_SHUFFLE', 'maybe');
       const { ARCH_SHUFFLE } = await import('./arch.js');
       expect(ARCH_SHUFFLE).toBe(false);
     });

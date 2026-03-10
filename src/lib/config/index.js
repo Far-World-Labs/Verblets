@@ -56,18 +56,27 @@ export function get(key) {
 
   // 1. Force override
   const forceRaw = env[`VERBLETS_FORCE_${key}`];
-  if (forceRaw !== undefined && forceRaw !== '') return typeFn(forceRaw);
+  if (forceRaw !== undefined && forceRaw !== '') {
+    const coerced = typeFn(forceRaw);
+    if (coerced !== undefined) return coerced;
+  }
 
   // 2. Normal env
   const raw = env[key];
-  if (raw !== undefined && raw !== '') return typeFn(raw);
+  if (raw !== undefined && raw !== '') {
+    const coerced = typeFn(raw);
+    if (coerced !== undefined) return coerced;
+  }
 
   // 3. Deprecated alias
   if (spec?.deprecated) {
     const depRaw = env[spec.deprecated];
     if (depRaw !== undefined && depRaw !== '') {
-      warnDeprecated(spec.deprecated, key);
-      return typeFn(depRaw);
+      const coerced = typeFn(depRaw);
+      if (coerced !== undefined) {
+        warnDeprecated(spec.deprecated, key);
+        return coerced;
+      }
     }
   }
 
@@ -83,7 +92,10 @@ export async function getAsync(key) {
 
   // 1. Force override (same as sync — force always wins)
   const forceRaw = env[`VERBLETS_FORCE_${key}`];
-  if (forceRaw !== undefined && forceRaw !== '') return typeFn(forceRaw);
+  if (forceRaw !== undefined && forceRaw !== '') {
+    const coerced = typeFn(forceRaw);
+    if (coerced !== undefined) return coerced;
+  }
 
   // 2. Runtime provider
   if (runtimeProvider) {

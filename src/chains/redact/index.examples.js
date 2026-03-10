@@ -6,8 +6,9 @@ import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers
 import { getConfig } from '../test-analysis/config.js';
 import { extendedTestTimeout } from '../../constants/common.js';
 import { models } from '../../constants/models.js';
+import { get as configGet } from '../../lib/config/index.js';
 
-const skipSensitivity = process.env.SENSITIVITY_TEST_SKIP || !models.sensitive;
+const skipSensitivity = configGet('SENSITIVITY_TEST_SKIP') || !models.sensitive;
 
 const config = getConfig();
 const it = config?.aiMode ? wrapIt(vitestIt, { baseProps: { suite: 'Redact chain' } }) : vitestIt;

@@ -15,7 +15,7 @@ import { get as getPromptResult, set as setPromptResult } from '../prompt-cache/
 import TimedAbortController from '../timed-abort-controller/index.js';
 import modelService from '../../services/llm-model/index.js';
 import { getClient as getRedis } from '../../services/redis/index.js';
-import { env } from '../env/index.js';
+import { get as configGet } from '../config/index.js';
 import extractJson from '../extract-json/index.js';
 import stripResponse from '../strip-response/index.js';
 import { onlyJSON, contentIsSchema } from '../../prompts/constants.js';
@@ -253,7 +253,7 @@ export const run = async (prompt, config = {}) => {
   }
 
   // Check if caching is disabled via environment variable
-  const cachingDisabled = env.DISABLE_CACHE === 'true';
+  const cachingDisabled = configGet('DISABLE_CACHE') === true;
 
   let cacheResult = null;
   let cache = null;

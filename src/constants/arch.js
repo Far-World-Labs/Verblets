@@ -8,5 +8,7 @@
  *   - Set ARCH_SHUFFLE=true environment variable to shuffle inputs for better coverage
  *   - Override in tests using spies for fine-grained control
  */
-export const ARCH_LOG = process.env.ARCH_LOG || false;
-export const ARCH_SHUFFLE = process.env.ARCH_SHUFFLE === 'true';
+import { get as configGet } from '../lib/config/index.js';
+
+export const ARCH_LOG = configGet('ARCH_LOG') || false;
+export const ARCH_SHUFFLE = configGet('ARCH_SHUFFLE') === true;
