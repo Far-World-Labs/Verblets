@@ -8,7 +8,7 @@ import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers
 import { getConfig } from '../test-analysis/config.js';
 import { models } from '../../constants/models.js';
 
-const skipPrivacy = process.env.PRIVACY_TEST_SKIP || !models.privacy;
+const skipSensitivity = process.env.SENSITIVITY_TEST_SKIP || !models.sensitive;
 
 const config = getConfig();
 const it = config?.aiMode
@@ -51,7 +51,7 @@ function encodeDecode(input, seed) {
 `;
 
 describe('Summary map', () => {
-  it.skipIf(skipPrivacy)(
+  it.skipIf(skipSensitivity)(
     'Example',
     async () => {
       const map = new SummaryMap({
@@ -61,7 +61,7 @@ describe('Summary map', () => {
       map.set('a.b.c', {
         value: legalText,
         weight: 0.01,
-        privacy: { blacklist: 'names and addresses' },
+        sensitivity: { blacklist: 'names and addresses' },
       });
       map.set('a.d', { value: codeText, type: 'code', weight: 0.7 });
       map.set('e.0', { value: 'abc', weight: 0.01 });

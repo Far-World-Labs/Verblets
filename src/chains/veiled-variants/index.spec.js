@@ -44,10 +44,10 @@ describe('veiledVariants', () => {
     ]);
     expect(callLlm).toHaveBeenCalledTimes(3);
 
-    // Each call should use the privacy llm and structured output
+    // Each call should use the sensitive llm and structured output
     callLlm.mock.calls.forEach(([prompt, config]) => {
       expect(prompt).toContain('<intent>');
-      expect(config.llm).toBe('privacy');
+      expect(config.llm).toEqual({ sensitive: true });
       expect(config.modelOptions.response_format.type).toBe('json_schema');
     });
   });

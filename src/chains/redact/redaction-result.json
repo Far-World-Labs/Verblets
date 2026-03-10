@@ -1,0 +1,33 @@
+{
+  "type": "object",
+  "properties": {
+    "text": {
+      "type": "string",
+      "description": "The redacted text with PII replaced"
+    },
+    "replacements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string",
+            "description": "Sensitivity category of the redacted item"
+          },
+          "original": {
+            "type": "string",
+            "description": "The original PII text"
+          },
+          "replacement": {
+            "type": "string",
+            "description": "The replacement text used"
+          }
+        },
+        "required": ["category", "original", "replacement"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["text", "replacements"],
+  "additionalProperties": false
+}

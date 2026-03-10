@@ -58,7 +58,7 @@ ${asXML(prompt, { tag: 'intent' })}`;
 
 const veiledVariants = async ({
   prompt,
-  llm = 'privacy',
+  llm = { sensitive: true },
   maxAttempts = 3,
   onProgress,
   ...options

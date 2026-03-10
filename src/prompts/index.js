@@ -20,7 +20,7 @@ export { default as summarize } from './summarize.js';
 export { default as wrapList } from './wrap-list.js';
 
 // RAG prompt fragments
-export { default as privacyProbes } from './privacy-probes.js';
+export { default as sensitivityProbes } from './sensitivity-probes.js';
 export {
   rewriteQuery as embedRewriteQuery,
   multiQuery as embedMultiQuery,

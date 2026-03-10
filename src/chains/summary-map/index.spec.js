@@ -83,7 +83,7 @@ const examples = [
     ],
   },
   {
-    name: 'Model options and privacy',
+    name: 'Model options and sensitivity',
     inputs: {
       targetTokens: 50,
       modelOptions: { modelName: 'fastGood' },
@@ -93,7 +93,7 @@ const examples = [
           value: legalText,
           weight: 1,
           type: 'text',
-          privacy: { blacklist: 'names' },
+          sensitivity: { blacklist: 'names' },
         },
         { key: 'example.code', value: codeText, weight: 0.5, type: 'code' },
       ],
@@ -142,11 +142,11 @@ describe('Summary map', () => {
         }
       }
 
-      if (example.name === 'Model options and privacy') {
-        const callWithPrivacy = llm.mock.calls.find(
-          (c) => c[1]?.modelOptions?.modelName === 'privacy'
+      if (example.name === 'Model options and sensitivity') {
+        const callWithSensitive = llm.mock.calls.find(
+          (c) => c[1]?.modelOptions?.sensitive === true
         );
-        expect(callWithPrivacy).toBeTruthy();
+        expect(callWithSensitive).toBeTruthy();
       }
     });
   });

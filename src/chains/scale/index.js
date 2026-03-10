@@ -1,30 +1,34 @@
 import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
+import buildInstructions from '../../lib/build-instructions/index.js';
 import { scaleSpecificationJsonSchema } from './schemas.js';
 import scaleResultSchema from './scale-result.json';
 
-// ===== Default Instructions =====
+// ===== Instruction Builders =====
 
-const DEFAULT_MAP_INSTRUCTIONS = `Apply the scale to each item and return only the transformed value.`;
-
-const DEFAULT_FILTER_INSTRUCTIONS = `Keep items whose scaled values fall in the upper half of the scale's range.
-
-Note: This evaluates against the scale's defined range, not the batch's actual distribution.`;
-
-const DEFAULT_FIND_INSTRUCTIONS = `Select an item whose scaled value falls in the upper quartile of the scale's range.
-
-Note: This evaluates against the scale's defined range, not the global maximum across all batches.`;
-
-const DEFAULT_GROUP_INSTRUCTIONS = `Group items based on natural divisions in the scale's range (e.g., low/medium/high).`;
-
-const REDUCE_PROCESS_STEPS = `Transform each item with the scale, then apply the reduce operation to accumulate the results.`;
-
-const FILTER_PROCESS_STEPS = `Apply the scale to determine which items meet the filter criteria.`;
-
-const FIND_PROCESS_STEPS = `Use the scale to identify and return the item that best matches the selection criteria.`;
-
-const GROUP_PROCESS_STEPS = `Apply the scale to determine each item's group assignment.`;
+export const {
+  mapInstructions,
+  filterInstructions,
+  reduceInstructions,
+  findInstructions,
+  groupInstructions,
+} = buildInstructions({
+  specTag: 'scale-specification',
+  defaults: {
+    map: `Apply the scale to each item and return only the transformed value.`,
+    filter: `Keep items whose scaled values fall in the upper half of the scale's range.\n\nNote: This evaluates against the scale's defined range, not the batch's actual distribution.`,
+    find: `Select an item whose scaled value falls in the upper quartile of the scale's range.\n\nNote: This evaluates against the scale's defined range, not the global maximum across all batches.`,
+    group: `Group items based on natural divisions in the scale's range (e.g., low/medium/high).`,
+  },
+  steps: {
+    reduce: `Transform each item with the scale, then apply the reduce operation to accumulate the results.`,
+    filter: `Apply the scale to determine which items meet the filter criteria.`,
+    find: `Use the scale to identify and return the item that best matches the selection criteria.`,
+    group: `Apply the scale to determine each item's group assignment.`,
+  },
+  mapApplyLine: 'Apply this scale to transform each item:',
+});
 
 // ===== Core Functions =====
 
@@ -132,106 +136,6 @@ export async function scaleItem(item, instructions, config = {}) {
   const { now = new Date(), ...restConfig } = config;
   const spec = await scaleSpec(instructions, { now, ...restConfig });
   return await applyScale(item, spec, { now, ...restConfig });
-}
-
-// ===== Instruction Builders =====
-
-/**
- * Create map instructions for scaling
- * @param {Object} params - Parameters object
- * @param {Object} params.specification - Pre-generated scale specification
- * @param {string} params.processing - Additional processing instructions (optional)
- * @returns {string} Instructions string
- */
-export function mapInstructions({ specification, processing }) {
-  if (processing) {
-    return `${asXML(processing, { tag: 'processing-instructions' })}
-
-Apply this scale to transform each item:
-${asXML(specification, { tag: 'scale-specification' })}`;
-  } else {
-    return `${DEFAULT_MAP_INSTRUCTIONS}
-
-${asXML(specification, { tag: 'scale-specification' })}`;
-  }
-}
-
-/**
- * Create filter instructions for scaling
- * @param {Object} params - Parameters object
- * @param {Object} params.specification - Pre-generated scale specification
- * @param {string} params.processing - Filter criteria (optional - defaults based on scale midpoint)
- * @returns {string} Instructions string
- */
-export function filterInstructions({ specification, processing }) {
-  if (processing) {
-    return `${asXML(processing, { tag: 'filter-criteria' })}
-
-${FILTER_PROCESS_STEPS}
-
-${asXML(specification, { tag: 'scale-specification' })}`;
-  } else {
-    return `${DEFAULT_FILTER_INSTRUCTIONS}
-
-${asXML(specification, { tag: 'scale-specification' })}`;
-  }
-}
-
-/**
- * Create reduce instructions for scaling
- * @param {Object} params - Parameters object
- * @param {Object} params.specification - Pre-generated scale specification
- * @param {string} params.processing - How to reduce the scaled values
- * @returns {string} Instructions string
- */
-export function reduceInstructions({ specification, processing }) {
-  return `${asXML(processing, { tag: 'reduce-operation' })}
-
-${REDUCE_PROCESS_STEPS}
-
-${asXML(specification, { tag: 'scale-specification' })}`;
-}
-
-/**
- * Create find instructions for scaling
- * @param {Object} params - Parameters object
- * @param {Object} params.specification - Pre-generated scale specification
- * @param {string} params.processing - Selection criteria (optional - defaults to upper quartile)
- * @returns {string} Instructions string
- */
-export function findInstructions({ specification, processing }) {
-  if (processing) {
-    return `${asXML(processing, { tag: 'selection-criteria' })}
-
-${FIND_PROCESS_STEPS}
-
-${asXML(specification, { tag: 'scale-specification' })}`;
-  } else {
-    return `${DEFAULT_FIND_INSTRUCTIONS}
-
-${asXML(specification, { tag: 'scale-specification' })}`;
-  }
-}
-
-/**
- * Create group instructions for scaling
- * @param {Object} params - Parameters object
- * @param {Object} params.specification - Pre-generated scale specification
- * @param {string} params.processing - Grouping strategy (optional - defaults to ranges)
- * @returns {string} Instructions string
- */
-export function groupInstructions({ specification, processing }) {
-  if (processing) {
-    return `${asXML(processing, { tag: 'grouping-strategy' })}
-
-${GROUP_PROCESS_STEPS}
-
-${asXML(specification, { tag: 'scale-specification' })}`;
-  } else {
-    return `${DEFAULT_GROUP_INSTRUCTIONS}
-
-${asXML(specification, { tag: 'scale-specification' })}`;
-  }
 }
 
 // ===== Advanced Scale Functions =====

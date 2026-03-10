@@ -1,29 +1,35 @@
 import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
+import buildInstructions from '../../lib/build-instructions/index.js';
 import entityResultSchema from './entity-result.json';
 import { emitStepProgress } from '../../lib/progress-callback/index.js';
 
-// ===== Default Instructions =====
+// ===== Instruction Builders =====
 
-const DEFAULT_MAP_INSTRUCTIONS = `Extract entities from each text chunk.`;
-
-const DEFAULT_FILTER_INSTRUCTIONS = `Extract entities and keep only those matching the criteria.`;
-
-const DEFAULT_FIND_INSTRUCTIONS = `Extract entities and select the most significant one.`;
-
-const DEFAULT_GROUP_INSTRUCTIONS = `Group entities by their types, themes, or co-occurrence patterns.`;
-
-const REDUCE_PROCESS_STEPS = `Consolidate entities across text chunks:
-1. Merge duplicates - same entity mentioned in different chunks
-2. Resolve variations - "Apple Inc." and "Apple" may be the same
-3. Build unified list - all unique entities discovered`;
-
-const FILTER_PROCESS_STEPS = `Extract entities and filter to keep only those meeting the criteria.`;
-
-const FIND_PROCESS_STEPS = `Extract entities and return the one best matching the selection criteria.`;
-
-const GROUP_PROCESS_STEPS = `Extract entities and group them by patterns, types, or relationships.`;
+export const {
+  mapInstructions,
+  filterInstructions,
+  reduceInstructions,
+  findInstructions,
+  groupInstructions,
+} = buildInstructions({
+  specTag: 'entity-specification',
+  defaults: {
+    map: `Extract entities from each text chunk.`,
+    filter: `Extract entities and keep only those matching the criteria.`,
+    find: `Extract entities and select the most significant one.`,
+    group: `Group entities by their types, themes, or co-occurrence patterns.`,
+  },
+  steps: {
+    reduce: `Consolidate entities across text chunks:\n1. Merge duplicates - same entity mentioned in different chunks\n2. Resolve variations - "Apple Inc." and "Apple" may be the same\n3. Build unified list - all unique entities discovered`,
+    filter: `Extract entities and filter to keep only those meeting the criteria.`,
+    find: `Extract entities and return the one best matching the selection criteria.`,
+    group: `Extract entities and group them by patterns, types, or relationships.`,
+  },
+  mapApplyLine: 'Apply this entity specification:',
+  reduceDefault: 'Build comprehensive entity list from all chunks',
+});
 
 // ===== Core Functions =====
 
@@ -140,110 +146,6 @@ export async function extractEntities(text, instructions, config = {}) {
   });
 
   return await applyEntities(text, spec, { onProgress, now, ...restConfig });
-}
-
-// ===== Instruction Builders =====
-
-/**
- * Create map instructions for entity extraction
- * @param {Object} params - Parameters object
- * @param {string} params.specification - Pre-generated entity specification
- * @param {string} params.processing - Additional processing instructions (optional)
- * @returns {string} Instructions string
- */
-export function mapInstructions({ specification, processing }) {
-  if (processing) {
-    return `${asXML(processing, { tag: 'processing-instructions' })}
-
-Apply this entity specification:
-${asXML(specification, { tag: 'entity-specification' })}`;
-  } else {
-    return `${DEFAULT_MAP_INSTRUCTIONS}
-
-${asXML(specification, { tag: 'entity-specification' })}`;
-  }
-}
-
-/**
- * Create filter instructions for entity extraction
- * @param {Object} params - Parameters object
- * @param {string} params.specification - Pre-generated entity specification
- * @param {string} params.processing - Filter criteria (optional)
- * @returns {string} Instructions string
- */
-export function filterInstructions({ specification, processing }) {
-  if (processing) {
-    return `${asXML(processing, { tag: 'filter-criteria' })}
-
-${FILTER_PROCESS_STEPS}
-
-${asXML(specification, { tag: 'entity-specification' })}`;
-  } else {
-    return `${DEFAULT_FILTER_INSTRUCTIONS}
-
-${asXML(specification, { tag: 'entity-specification' })}`;
-  }
-}
-
-/**
- * Create reduce instructions for entity extraction
- * @param {Object} params - Parameters object
- * @param {string} params.specification - Pre-generated entity specification
- * @param {string} params.processing - How to consolidate entities (optional)
- * @returns {string} Instructions string
- */
-export function reduceInstructions({ specification, processing }) {
-  const defaultProcessing = `Build comprehensive entity list from all chunks`;
-
-  return `${asXML(processing || defaultProcessing, {
-    tag: 'reduce-operation',
-  })}
-
-${REDUCE_PROCESS_STEPS}
-
-${asXML(specification, { tag: 'entity-specification' })}`;
-}
-
-/**
- * Create find instructions for entity extraction
- * @param {Object} params - Parameters object
- * @param {string} params.specification - Pre-generated entity specification
- * @param {string} params.processing - Selection criteria (optional)
- * @returns {string} Instructions string
- */
-export function findInstructions({ specification, processing }) {
-  if (processing) {
-    return `${asXML(processing, { tag: 'selection-criteria' })}
-
-${FIND_PROCESS_STEPS}
-
-${asXML(specification, { tag: 'entity-specification' })}`;
-  } else {
-    return `${DEFAULT_FIND_INSTRUCTIONS}
-
-${asXML(specification, { tag: 'entity-specification' })}`;
-  }
-}
-
-/**
- * Create group instructions for entity extraction
- * @param {Object} params - Parameters object
- * @param {string} params.specification - Pre-generated entity specification
- * @param {string} params.processing - Grouping strategy (optional)
- * @returns {string} Instructions string
- */
-export function groupInstructions({ specification, processing }) {
-  if (processing) {
-    return `${asXML(processing, { tag: 'grouping-strategy' })}
-
-${GROUP_PROCESS_STEPS}
-
-${asXML(specification, { tag: 'entity-specification' })}`;
-  } else {
-    return `${DEFAULT_GROUP_INSTRUCTIONS}
-
-${asXML(specification, { tag: 'entity-specification' })}`;
-  }
 }
 
 // ===== Advanced Entity Functions =====

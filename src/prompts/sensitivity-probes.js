@@ -1,5 +1,5 @@
 /**
- * Embedding probe query catalog for privacy screening.
+ * Embedding probe query catalog for sensitivity screening.
  *
  * Each entry has a `category` key, a human-readable `label`, and one or more
  * `queries` designed for embedding-based semantic matching.  Embed the queries

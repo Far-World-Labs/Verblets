@@ -18,7 +18,7 @@ export const truthyValues = ['1', 'true', 'TRUE', 'True', 'yes', 'YES', 'Yes'];
 export const falsyValues = ['0', 'false', 'FALSE', 'False', 'no', 'NO', 'No'];
 
 // Model capability keys recognized by negotiate and normalizeLlm
-export const CAPABILITY_KEYS = ['fast', 'cheap', 'good', 'reasoning', 'multi', 'privacy'];
+export const CAPABILITY_KEYS = ['fast', 'cheap', 'good', 'reasoning', 'multi', 'sensitive'];
 
 // Utility to conditionally skip long-running examples
 // Set ENABLE_LONG_EXAMPLES=true to run all examples
