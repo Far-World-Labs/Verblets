@@ -311,6 +311,8 @@ import * as redis from './services/redis/index.js';
 import modelService from './services/llm-model/model.js';
 export { resolveModel, getCapabilities, sensitivityAvailable } from './services/llm-model/index.js';
 export { CAPABILITY_KEYS } from './constants/common.js';
+export { default as init } from './init.js';
+export * as config from './lib/config/index.js';
 
 export const constants = {
   common,
