@@ -144,20 +144,7 @@ export {
   softCoverPrompt,
 } from './chains/veiled-variants/index.js';
 
-// Prompt Engineering
-export {
-  default as extendPrompt,
-  applyExtensions,
-  resolveExtensions,
-  shapePrompt,
-  describePrompt,
-  extendBundle,
-  shapeBundle,
-  describeBundle,
-} from './chains/extend-prompt/index.js';
-export * as promptMarkers from './lib/prompt-markers/index.js';
-export * as promptBundle from './lib/prompt-bundle/index.js';
-export * as promptGraph from './lib/prompt-graph/index.js';
+// Prompt Engineering (AI advisors — re-exported via promptPiece namespace below)
 
 // Utility Operations
 export { default as auto } from './verblets/auto/index.js';
@@ -196,7 +183,6 @@ export { default as createBatches } from './lib/text-batch/index.js';
 export { default as llm } from './lib/llm/index.js';
 export { default as normalizeLlm } from './lib/normalize-llm/index.js';
 export { default as parallel, parallelMap } from './lib/parallel-batch/index.js';
-export * as promptCache from './lib/prompt-cache/index.js';
 export { default as retry } from './lib/retry/index.js';
 export { default as anySignal } from './lib/any-signal/index.js';
 export { default as TimedAbortController } from './lib/timed-abort-controller/index.js';
@@ -238,6 +224,43 @@ export { default as pipe } from './lib/pipe/index.js';
 // Namespaced exports
 export * as prompts from './prompts/index.js';
 export * as schemas from './json-schemas/index.js';
+export * as promptCache from './lib/prompt-cache/index.js';
+export * as promptMarkers from './lib/prompt-markers/index.js';
+
+// Unified promptPiece namespace — pieces, routing, and AI advisors
+import * as _piece from './lib/prompt-piece/index.js';
+import * as _routing from './lib/prompt-routing/index.js';
+import {
+  reshape,
+  proposeTags,
+  tagSource,
+  tagReconcile,
+  tagConsolidate,
+} from './chains/extend-prompt/index.js';
+export const promptPiece = {
+  // Piece operations
+  createPiece: _piece.createPiece,
+  addInput: _piece.addInput,
+  removeInput: _piece.removeInput,
+  render: _piece.render,
+  matchSources: _piece.matchSources,
+  pendingInputs: _piece.pendingInputs,
+  isReady: _piece.isReady,
+  ambiguousInputs: _piece.ambiguousInputs,
+  // Connection functions
+  connectParts: _routing.connectParts,
+  connectDownstream: _routing.connectDownstream,
+  connectUpstream: _routing.connectUpstream,
+  // Planning functions
+  runOrder: _routing.runOrder,
+  detectCycles: _routing.detectCycles,
+  // AI advisors
+  reshape,
+  proposeTags,
+  tagSource,
+  tagReconcile,
+  tagConsolidate,
+};
 
 import * as common from './constants/common.js';
 import * as messages from './constants/messages.js';

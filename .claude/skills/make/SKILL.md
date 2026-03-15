@@ -16,4 +16,6 @@ Treat code, prompts, workflows, projections, scenarios, and surrounding artifact
 
 Choose actions that increase leverage. Sometimes that means refining what exists. Sometimes it means generating something new. Sometimes it means consolidating, splitting, extracting, projecting, or removing. Make the choice that leaves the project clearer, stronger, and easier to continue. Aim for improvements that help locally, improve the surrounding set, and strengthen the project's direction at the same time. Make the change real.
 
+If you survey the area and cannot find a change you're confident would be an improvement, do not manufacture work. Report what you looked at, what's working well, and what you considered. Propose candidate changes with honest assessment — things that might be good but need the user's judgment, or things that would become clearly valuable with a small amount of additional context. A well-observed "here's what I'd do next and why I'm not sure yet" is a legitimate result.
+
 Verify all changes with tests and build before reporting results.

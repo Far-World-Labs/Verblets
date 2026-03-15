@@ -1,624 +1,374 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import extendPrompt, {
-  applyExtensions,
-  resolveExtensions,
-  shapePrompt,
-  describePrompt,
-  extendBundle,
-  shapeBundle,
-  describeBundle,
-} from './index.js';
+import reshape, { proposeTags, tagSource, tagReconcile, tagConsolidate } from './index.js';
 import llm from '../../lib/llm/index.js';
-import { extractSections, fillSlots } from '../../lib/prompt-markers/index.js';
-import * as promptBundle from '../../lib/prompt-bundle/index.js';
-import pipe from '../../lib/pipe/index.js';
 
 vi.mock('../../lib/llm/index.js');
 
-const mockExtension = (overrides = {}) => ({
-  id: 'ctx-medical-terms',
-  type: 'context',
-  placement: 'prepend',
-  preamble:
-    'The following medical terminology should inform your extraction:\n<reference name="medical-terms">\n{{medical_terms}}\n</reference>',
-  slot: 'medical_terms',
-  need: 'A glossary of medical terms relevant to the input domain',
-  effort: 'medium',
-  rationale:
-    'Domain terminology is the highest-impact improvement because the prompt currently has no domain context. Medical text has synonyms and abbreviations that confuse general-purpose extraction. A 20-term glossary would cover most cases and is easy to maintain.',
-  produces:
-    'Output will use correct medical terminology and recognize domain-specific abbreviations, reducing misclassification of synonymous terms.',
-  ...overrides,
-});
-
-describe('extendPrompt', () => {
+describe('extend-prompt AI advisors', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  describe('LLM call structure', () => {
-    it('should call LLM with prompt analysis request and return extensions', async () => {
-      const extensions = [
-        mockExtension(),
-        mockExtension({
-          id: 'align-examples',
-          type: 'alignment',
-          slot: 'examples',
-          preamble: 'Examples of expected output:\n{{examples}}',
-          need: 'Input/output pairs showing expected entity extraction',
-          rationale: 'Few-shot examples calibrate the extraction format and coverage',
-        }),
-      ];
+  describe('reshape', () => {
+    const mockReshape = {
+      inputChanges: [
+        {
+          action: 'add',
+          id: 'ctx-medical-terms',
+          label: 'Medical Terms',
+          placement: 'prepend',
+          required: true,
+          multi: false,
+          rationale: 'Domain terms reduce ambiguity',
+          suggestedTags: ['medical', 'glossary'],
+        },
+      ],
+      textSuggestions: [
+        {
+          description: 'Add explicit instruction to use provided terminology',
+          rationale: 'Ensures the LLM references domain terms when available',
+        },
+      ],
+    };
 
-      vi.mocked(llm).mockResolvedValueOnce(extensions);
+    it('should call LLM with piece text and return reshape proposals', async () => {
+      vi.mocked(llm).mockResolvedValueOnce(mockReshape);
 
-      const result = await extendPrompt('Extract named entities from the text.', {
-        suggestions: ['add medical context'],
-      });
+      const result = await reshape('Extract medical entities from the text.');
 
-      expect(result).toEqual(extensions);
-
+      expect(result.inputChanges).toHaveLength(1);
+      expect(result.inputChanges[0].action).toBe('add');
+      expect(result.inputChanges[0].id).toBe('ctx-medical-terms');
+      expect(result.textSuggestions).toHaveLength(1);
       expect(llm).toHaveBeenCalledWith(
-        expect.stringContaining('<prompt>'),
+        expect.stringContaining('<piece-text>'),
         expect.objectContaining({
           modelOptions: expect.objectContaining({
-            systemPrompt: expect.stringContaining('prompt engineering advisor'),
-            response_format: expect.objectContaining({
-              type: 'json_schema',
-            }),
+            systemPrompt: expect.stringContaining('prompt structure advisor'),
+            response_format: expect.objectContaining({ type: 'json_schema' }),
           }),
         })
       );
+    });
+
+    it('should accept structured input with existing inputs, registry, and sources', async () => {
+      vi.mocked(llm).mockResolvedValueOnce({ inputChanges: [], textSuggestions: [] });
+
+      await reshape({
+        text: 'Extract entities.',
+        inputs: [
+          {
+            id: 'ctx-terms',
+            placement: 'prepend',
+            tags: ['medical'],
+            required: true,
+            multi: false,
+          },
+        ],
+        registry: [{ tag: 'medical', description: 'Medical domain', usageCount: 5 }],
+        sources: [
+          { id: 'glossary-1', tags: ['medical', 'glossary'], text: 'cephalalgia: headache' },
+        ],
+        note: 'Consider adding examples',
+      });
 
       const callPrompt = llm.mock.calls[0][0];
-      expect(callPrompt).toContain('Extract named entities');
-      expect(callPrompt).toContain('<suggestions>');
-      expect(callPrompt).toContain('add medical context');
+      expect(callPrompt).toContain('<existing-inputs>');
+      expect(callPrompt).toContain('<routing-tags>');
+      expect(callPrompt).toContain('<local-sources>');
+      expect(callPrompt).toContain('<note>');
+      expect(callPrompt).toContain('Consider adding examples');
     });
 
-    it('should work with no suggestions', async () => {
-      vi.mocked(llm).mockResolvedValueOnce([]);
+    it('should respect maxChanges config', async () => {
+      vi.mocked(llm).mockResolvedValueOnce({ inputChanges: [], textSuggestions: [] });
 
-      const result = await extendPrompt('Simple prompt.');
-
-      expect(result).toEqual([]);
-      const callPrompt = llm.mock.calls[0][0];
-      expect(callPrompt).not.toContain('<suggestions>');
-    });
-  });
-
-  describe('suggestions forwarding', () => {
-    it('should accept a string suggestion', async () => {
-      vi.mocked(llm).mockResolvedValueOnce([]);
-
-      await extendPrompt('Test.', { suggestions: 'add context' });
-
-      const callPrompt = llm.mock.calls[0][0];
-      expect(callPrompt).toContain('<suggestions>');
-      expect(callPrompt).toContain('add context');
-    });
-
-    it('should accept an array of suggestions', async () => {
-      vi.mocked(llm).mockResolvedValueOnce([]);
-
-      await extendPrompt('Test.', { suggestions: ['add context', 'improve safety'] });
-
-      const callPrompt = llm.mock.calls[0][0];
-      expect(callPrompt).toContain('add context');
-      expect(callPrompt).toContain('improve safety');
-    });
-  });
-
-  describe('existing extension detection', () => {
-    it('should pass existing markers to LLM for idempotent merge', async () => {
-      vi.mocked(llm).mockResolvedValueOnce([
-        mockExtension({ id: 'ctx-domain', preamble: 'Updated: {{domain}}' }),
-      ]);
-
-      const promptWithMarkers = `<!-- marker:ctx-domain -->
-Old domain info
-<!-- /marker:ctx-domain -->
-
-Do the thing.`;
-
-      await extendPrompt(promptWithMarkers);
-
-      const callPrompt = llm.mock.calls[0][0];
-      expect(callPrompt).toContain('<existing-extensions>');
-      expect(callPrompt).toContain('ctx-domain');
-    });
-  });
-
-  describe('config passthrough', () => {
-    it('should forward llm config options', async () => {
-      vi.mocked(llm).mockResolvedValueOnce([]);
-
-      await extendPrompt('Test prompt.', { llm: 'fastGood', temperature: 0.5 });
-
-      expect(llm).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.objectContaining({
-          llm: 'fastGood',
-          temperature: 0.5,
-        })
-      );
-    });
-
-    it('should include maxExtensions cap in system prompt and user prompt', async () => {
-      vi.mocked(llm).mockResolvedValueOnce([]);
-
-      await extendPrompt('Test.', { maxExtensions: 3 });
-
-      const callOptions = llm.mock.calls[0][1];
-      expect(callOptions.modelOptions.systemPrompt).toContain('at most 3');
+      await reshape('Test.', { maxChanges: 3 });
 
       const callPrompt = llm.mock.calls[0][0];
       expect(callPrompt).toContain('at most 3');
     });
 
-    it('should default maxExtensions to 5', async () => {
-      vi.mocked(llm).mockResolvedValueOnce([]);
-
-      await extendPrompt('Test.');
-
-      const callPrompt = llm.mock.calls[0][0];
-      expect(callPrompt).toContain('at most 5');
-    });
-
-    it('should emit progress events during extension generation', async () => {
-      vi.mocked(llm).mockResolvedValueOnce([mockExtension()]);
+    it('should emit progress events', async () => {
+      vi.mocked(llm).mockResolvedValueOnce(mockReshape);
 
       const onProgress = vi.fn();
-      await extendPrompt('Test.', { onProgress });
+      await reshape('Test.', { onProgress });
 
       const events = onProgress.mock.calls.map((c) => c[0]);
-      const stepEvent = events.find((e) => e.event === 'step' && e.stepName === 'analyzing');
-      expect(stepEvent).toBeDefined();
-      expect(stepEvent.step).toBe('extend-prompt');
-      expect(stepEvent.chainStartTime).toBeInstanceOf(Date);
-
-      const completeEvent = events.find(
-        (e) =>
-          e.event === 'complete' && e.step === 'extend-prompt' && e.extensionCount !== undefined
-      );
-      expect(completeEvent).toBeDefined();
-      expect(completeEvent.extensionCount).toBe(1);
-      expect(completeEvent.extensionIds).toEqual(['ctx-medical-terms']);
+      expect(
+        events.find((e) => e.step === 'piece-reshape' && e.stepName === 'analyzing')
+      ).toBeDefined();
+      expect(
+        events.find((e) => e.step === 'piece-reshape' && e.event === 'complete')
+      ).toBeDefined();
     });
 
-    it('should instruct LLM to describe downstream produces', async () => {
-      vi.mocked(llm).mockResolvedValueOnce([]);
+    it('.with() should pre-apply config', async () => {
+      vi.mocked(llm).mockResolvedValueOnce({ inputChanges: [], textSuggestions: [] });
 
-      await extendPrompt('Test.');
+      const reshapeWith = reshape.with({ maxChanges: 2 });
+      await reshapeWith('Test prompt.');
 
-      const callOptions = llm.mock.calls[0][1];
-      expect(callOptions.modelOptions.systemPrompt).toContain('produces');
-      expect(callOptions.modelOptions.systemPrompt).toContain('downstream');
+      const callPrompt = llm.mock.calls[0][0];
+      expect(callPrompt).toContain('at most 2');
+    });
+
+    it('should include registry examples when provided', async () => {
+      vi.mocked(llm).mockResolvedValueOnce({ inputChanges: [], textSuggestions: [] });
+
+      await reshape({
+        text: 'Task.',
+        registry: [
+          {
+            tag: 'medical',
+            description: 'Medical domain',
+            usageCount: 5,
+            examples: ['cephalalgia', 'edema'],
+          },
+        ],
+      });
+
+      const callPrompt = llm.mock.calls[0][0];
+      expect(callPrompt).toContain('Examples: cephalalgia, edema');
     });
   });
 
-  describe('applyExtensions round-trip', () => {
-    it('should produce a prompt that round-trips through extract', async () => {
-      const extensions = [
-        mockExtension({
-          id: 'ctx-domain',
-          placement: 'prepend',
-          preamble: 'Domain: medical records',
-        }),
-        mockExtension({
-          id: 'nfr-privacy',
-          type: 'nfr',
-          placement: 'append',
-          preamble: 'Requirement: exclude all PII from output.',
-        }),
+  describe('proposeTags', () => {
+    it('should call LLM with piece text and inputs and return tag proposals', async () => {
+      const mockProposals = [
+        {
+          inputId: 'ctx-terms',
+          tags: ['medical', 'glossary'],
+          rationale: 'Standard medical tags',
+          reuseExisting: true,
+        },
       ];
 
-      vi.mocked(llm).mockResolvedValueOnce(extensions);
+      vi.mocked(llm).mockResolvedValueOnce(mockProposals);
 
-      const original = 'Extract key findings from the report.';
-      const suggested = await extendPrompt(original);
-      const shaped = applyExtensions(original, suggested);
-
-      expect(shaped).toContain('Domain: medical records');
-      expect(shaped).toContain('Extract key findings');
-      expect(shaped).toContain('exclude all PII');
-
-      const { clean, sections } = extractSections(shaped);
-      expect(clean).toBe(original);
-      expect(sections).toHaveLength(2);
-      expect(sections.map((s) => s.id)).toEqual(['ctx-domain', 'nfr-privacy']);
-    });
-
-    it('should be idempotent when re-applying extensions', () => {
-      const original = 'Do the thing.';
-      const extensions = [
-        mockExtension({ id: 'ctx-a', placement: 'prepend', preamble: 'Context A' }),
-      ];
-
-      const first = applyExtensions(original, extensions);
-      const second = applyExtensions(first, extensions);
-
-      expect(first).toBe(second);
-    });
-  });
-
-  describe('resolveExtensions', () => {
-    it('should mark applied extensions with filled slots as filled', () => {
-      const ext = mockExtension({
-        id: 'ctx-domain',
-        slot: 'domain_terms',
-        preamble: 'Terms: {{domain_terms}}',
+      const result = await proposeTags({
+        text: 'Extract entities.',
+        inputs: [{ id: 'ctx-terms', placement: 'prepend', tags: [], required: true, multi: false }],
       });
-      const prompt = applyExtensions('Task.', [ext]);
-      const filled = fillSlots(prompt, { domain_terms: 'cephalalgia: headache' });
 
-      const resolved = resolveExtensions(filled, [ext]);
-
-      expect(resolved).toHaveLength(1);
-      expect(resolved[0].status).toBe('filled');
-      expect(resolved[0].id).toBe('ctx-domain');
-    });
-
-    it('should mark applied extensions with unfilled slots as unfilled', () => {
-      const ext = mockExtension({
-        id: 'ctx-domain',
-        slot: 'domain_terms',
-        preamble: 'Terms: {{domain_terms}}',
-      });
-      const prompt = applyExtensions('Task.', [ext]);
-
-      const resolved = resolveExtensions(prompt, [ext]);
-
-      expect(resolved).toHaveLength(1);
-      expect(resolved[0].status).toBe('unfilled');
-    });
-
-    it('should mark unapplied extensions as pending', () => {
-      const ext = mockExtension({ id: 'ctx-domain' });
-
-      const resolved = resolveExtensions('Task.', [ext]);
-
-      expect(resolved).toHaveLength(1);
-      expect(resolved[0].status).toBe('pending');
-    });
-
-    it('should handle mixed states across multiple extensions', () => {
-      const applied = mockExtension({
-        id: 'ctx-filled',
-        slot: 'terms',
-        preamble: 'Terms: {{terms}}',
-      });
-      const unfilled = mockExtension({
-        id: 'ctx-empty',
-        slot: 'examples',
-        preamble: 'Examples: {{examples}}',
-      });
-      const pending = mockExtension({ id: 'ctx-pending' });
-
-      const prompt = applyExtensions('Task.', [applied, unfilled]);
-      const filled = fillSlots(prompt, { terms: 'data' });
-
-      const resolved = resolveExtensions(filled, [applied, unfilled, pending]);
-
-      expect(resolved[0].status).toBe('filled');
-      expect(resolved[1].status).toBe('unfilled');
-      expect(resolved[2].status).toBe('pending');
-    });
-  });
-
-  describe('describePrompt', () => {
-    it('should call LLM and return prompt description', async () => {
-      const mockDescription = {
-        purpose: 'Extracts named entities from medical text',
-        inputs: 'Clinical notes or medical reports as text',
-        outputs: 'A list of named entities with types and positions',
-        qualities: ['domain-aware', 'PII-safe'],
-        gaps: ['No output format specified', 'No error handling for non-medical input'],
-      };
-
-      vi.mocked(llm).mockResolvedValueOnce(mockDescription);
-
-      const result = await describePrompt('Extract entities from medical text.');
-
-      expect(result).toEqual(mockDescription);
+      expect(result).toEqual(mockProposals);
       expect(llm).toHaveBeenCalledWith(
-        expect.stringContaining('<prompt>'),
+        expect.stringContaining('<inputs>'),
         expect.objectContaining({
           modelOptions: expect.objectContaining({
-            systemPrompt: expect.stringContaining('I/O contract'),
-            response_format: expect.objectContaining({
-              type: 'json_schema',
-            }),
+            systemPrompt: expect.stringContaining('routing tag advisor'),
           }),
         })
       );
     });
 
-    it('should forward llm config options', async () => {
-      vi.mocked(llm).mockResolvedValueOnce({
-        purpose: '',
-        inputs: '',
-        outputs: '',
-        qualities: [],
-        gaps: [],
+    it('should include registry when provided', async () => {
+      vi.mocked(llm).mockResolvedValueOnce([]);
+
+      await proposeTags({
+        text: 'Task.',
+        inputs: [],
+        registry: [{ tag: 'medical', description: 'Medical domain' }],
       });
 
-      await describePrompt('Test.', { llm: 'fastGood', temperature: 0.3 });
+      const callPrompt = llm.mock.calls[0][0];
+      expect(callPrompt).toContain('<existing-tags>');
+    });
+
+    it('.with() should pre-apply config', async () => {
+      vi.mocked(llm).mockResolvedValueOnce([]);
+
+      const propose = proposeTags.with({ llm: 'fastGood' });
+      await propose({ text: 'Task.', inputs: [] });
 
       expect(llm).toHaveBeenCalledWith(
         expect.any(String),
+        expect.objectContaining({ llm: 'fastGood' })
+      );
+    });
+  });
+
+  describe('tagSource', () => {
+    it('should call LLM with source text and return tag assignments with rationale', async () => {
+      const mockTags = [
+        {
+          tag: 'medical',
+          confidence: 'high',
+          needsReview: false,
+          rationale: 'Contains medical terminology definitions',
+        },
+        {
+          tag: 'glossary',
+          confidence: 'medium',
+          needsReview: true,
+          rationale: 'Structured as term-definition pairs',
+        },
+      ];
+
+      vi.mocked(llm).mockResolvedValueOnce(mockTags);
+
+      const result = await tagSource({
+        text: 'cephalalgia: headache\nedema: swelling',
+        kind: 'output',
+      });
+
+      expect(result).toEqual(mockTags);
+      expect(result[0].rationale).toBe('Contains medical terminology definitions');
+    });
+
+    it('should accept a plain string input', async () => {
+      vi.mocked(llm).mockResolvedValueOnce([]);
+
+      await tagSource('Some source text.');
+
+      const callPrompt = llm.mock.calls[0][0];
+      expect(callPrompt).toContain('Some source text');
+      expect(callPrompt).toContain('Source kind: piece');
+    });
+
+    it('should include upstream context and piece text for output kind', async () => {
+      vi.mocked(llm).mockResolvedValueOnce([]);
+
+      await tagSource({
+        text: 'cephalalgia: headache',
+        kind: 'output',
+        pieceText: 'Extract medical terms from the document.',
+        upstreamContext: 'Input was a clinical report about neurological conditions.',
+      });
+
+      const callPrompt = llm.mock.calls[0][0];
+      expect(callPrompt).toContain('<producing-piece>');
+      expect(callPrompt).toContain('<upstream-context>');
+    });
+
+    it('should not include upstream fields when kind is piece', async () => {
+      vi.mocked(llm).mockResolvedValueOnce([]);
+
+      await tagSource({
+        text: 'Data.',
+        kind: 'piece',
+        pieceText: 'Should not appear.',
+        upstreamContext: 'Should not appear either.',
+      });
+
+      const callPrompt = llm.mock.calls[0][0];
+      expect(callPrompt).not.toContain('<producing-piece>');
+      expect(callPrompt).not.toContain('<upstream-context>');
+    });
+
+    it('should include consumer hints when provided', async () => {
+      vi.mocked(llm).mockResolvedValueOnce([]);
+
+      await tagSource({
+        text: 'Data.',
+        consumerHints: [{ inputId: 'ctx-terms', tags: ['medical', 'glossary'] }],
+      });
+
+      const callPrompt = llm.mock.calls[0][0];
+      expect(callPrompt).toContain('<consumer-hints>');
+    });
+
+    it('.with() should pre-apply config', async () => {
+      vi.mocked(llm).mockResolvedValueOnce([]);
+
+      const tag = tagSource.with({ llm: 'fastGood' });
+      await tag('Test.');
+
+      expect(llm).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ llm: 'fastGood' })
+      );
+    });
+  });
+
+  describe('tagReconcile', () => {
+    it('should call LLM with mismatch details and return repair recommendation', async () => {
+      const mockRepair = {
+        recommendation: 'add-tag-to-source',
+        sourceTags: ['medical', 'glossary'],
+        inputTags: [],
+        rationale: 'The source clearly contains medical glossary data',
+      };
+
+      vi.mocked(llm).mockResolvedValueOnce(mockRepair);
+
+      const result = await tagReconcile({
+        sourceText: 'cephalalgia: headache',
+        sourceTags: ['medical'],
+        inputLabel: 'Medical Terms',
+        inputTags: ['medical', 'glossary'],
+      });
+
+      expect(result).toEqual(mockRepair);
+      expect(llm).toHaveBeenCalledWith(
+        expect.stringContaining('<source-text>'),
         expect.objectContaining({
-          llm: 'fastGood',
-          temperature: 0.3,
+          modelOptions: expect.objectContaining({
+            systemPrompt: expect.stringContaining('alignment repair'),
+          }),
         })
       );
     });
 
-    it('should include marker-aware instructions in system prompt', async () => {
+    it('should include input guidance when provided', async () => {
       vi.mocked(llm).mockResolvedValueOnce({
-        purpose: '',
-        inputs: '',
-        outputs: '',
-        qualities: [],
-        gaps: [],
+        recommendation: 'change-input-tags',
+        sourceTags: [],
+        inputTags: ['medical'],
+        rationale: 'Simplify requirements',
       });
 
-      await describePrompt('Test.');
-
-      const callOptions = llm.mock.calls[0][1];
-      expect(callOptions.modelOptions.systemPrompt).toContain('marker');
-      expect(callOptions.modelOptions.systemPrompt).toContain('slot_name');
-    });
-
-    it('should emit progress events during description', async () => {
-      vi.mocked(llm).mockResolvedValueOnce({
-        purpose: 'Test',
-        inputs: 'text',
-        outputs: 'result',
-        qualities: ['accurate'],
-        gaps: ['no format spec', 'no examples'],
-      });
-
-      const onProgress = vi.fn();
-      await describePrompt('Test.', { onProgress });
-
-      const events = onProgress.mock.calls.map((c) => c[0]);
-
-      const stepEvent = events.find((e) => e.event === 'step' && e.step === 'describe-prompt');
-      expect(stepEvent).toBeDefined();
-      expect(stepEvent.stepName).toBe('analyzing');
-
-      const describeComplete = events.find(
-        (e) => e.event === 'complete' && e.step === 'describe-prompt' && e.gapCount !== undefined
-      );
-      expect(describeComplete).toBeDefined();
-      expect(describeComplete.gapCount).toBe(2);
-      expect(describeComplete.qualityCount).toBe(1);
-    });
-  });
-
-  describe('shapePrompt', () => {
-    it('should extend and apply in one call, returning shaped prompt + extensions', async () => {
-      const extensions = [
-        mockExtension({
-          id: 'ctx-domain',
-          placement: 'prepend',
-          preamble: 'Domain: {{domain_terms}}',
-        }),
-        mockExtension({
-          id: 'nfr-privacy',
-          type: 'nfr',
-          placement: 'append',
-          preamble: 'Requirement: exclude PII. {{pii_rules}}',
-          slot: 'pii_rules',
-        }),
-      ];
-
-      vi.mocked(llm).mockResolvedValueOnce(extensions);
-
-      const original = 'Extract key findings from the report.';
-      const result = await shapePrompt(original);
-
-      // Returns shaped prompt string with markers applied
-      expect(result.prompt).toContain('Domain: {{domain_terms}}');
-      expect(result.prompt).toContain('Extract key findings');
-      expect(result.prompt).toContain('exclude PII');
-      expect(result.prompt).toContain('<!-- marker:ctx-domain -->');
-
-      // Returns the extensions for introspection and reuse
-      expect(result.extensions).toEqual(extensions);
-
-      // Extensions can be reapplied to another prompt via applyExtensions
-      const reshaped = applyExtensions('Extract key findings from the report.', result.extensions);
-      expect(reshaped).toBe(result.prompt);
-    });
-
-    it('should forward config to extendPrompt', async () => {
-      vi.mocked(llm).mockResolvedValueOnce([]);
-
-      await shapePrompt('Test.', { suggestions: 'add safety', llm: 'fastGood' });
-
-      const callPrompt = llm.mock.calls[0][0];
-      expect(callPrompt).toContain('<suggestions>');
-      expect(callPrompt).toContain('add safety');
-      expect(llm).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.objectContaining({ llm: 'fastGood' })
-      );
-    });
-
-    it('should return empty extensions when LLM suggests none', async () => {
-      vi.mocked(llm).mockResolvedValueOnce([]);
-
-      const result = await shapePrompt('Already perfect prompt.');
-
-      expect(result.prompt).toBe('Already perfect prompt.');
-      expect(result.extensions).toEqual([]);
-    });
-
-    it('should emit extending, applying, and complete progress events', async () => {
-      vi.mocked(llm).mockResolvedValueOnce([mockExtension()]);
-
-      const onProgress = vi.fn();
-      await shapePrompt('Test.', { onProgress });
-
-      const events = onProgress.mock.calls.map((c) => c[0]);
-      const shapeEvents = events.filter((e) => e.step === 'shape-prompt');
-
-      const extending = shapeEvents.find((e) => e.stepName === 'extending');
-      expect(extending).toBeDefined();
-      expect(extending.chainStartTime).toBeInstanceOf(Date);
-
-      const applying = shapeEvents.find((e) => e.stepName === 'applying');
-      expect(applying).toBeDefined();
-      expect(applying.extensionCount).toBe(1);
-
-      const complete = shapeEvents.find((e) => e.event === 'complete');
-      expect(complete).toBeDefined();
-      expect(complete.extensionCount).toBe(1);
-      expect(complete.originalLength).toBe(5);
-    });
-  });
-
-  describe('extendBundle', () => {
-    it('should extend a bundle with LLM-suggested extensions', async () => {
-      const exts = [mockExtension(), mockExtension({ id: 'nfr-pii', slot: 'pii_rules' })];
-      vi.mocked(llm).mockResolvedValueOnce(exts);
-
-      const b = promptBundle.createBundle('Extract entities.');
-      const result = await extendBundle(b);
-
-      expect(result.extensions).toEqual(exts);
-      expect(result.base).toBe('Extract entities.');
-    });
-
-    it('should forward config to extendPrompt', async () => {
-      vi.mocked(llm).mockResolvedValueOnce([]);
-
-      const b = promptBundle.createBundle('Test.');
-      await extendBundle(b, { suggestions: 'add context', llm: 'fastGood' });
-
-      const callPrompt = llm.mock.calls[0][0];
-      expect(callPrompt).toContain('<suggestions>');
-      expect(callPrompt).toContain('add context');
-      expect(llm).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.objectContaining({ llm: 'fastGood' })
-      );
-    });
-
-    it('should merge with existing extensions in the bundle', async () => {
-      const existing = mockExtension({ id: 'ctx-old', slot: 'old_data' });
-      const suggested = mockExtension({ id: 'ctx-new', slot: 'new_data' });
-      vi.mocked(llm).mockResolvedValueOnce([suggested]);
-
-      const b = promptBundle.addExtensions(promptBundle.createBundle('Task.'), [existing]);
-      const result = await extendBundle(b);
-
-      expect(result.extensions).toHaveLength(2);
-      expect(result.extensions.map((e) => e.id).sort()).toEqual(['ctx-new', 'ctx-old']);
-    });
-  });
-
-  describe('shapeBundle', () => {
-    it('should extend a bundle and return both bundle and built prompt', async () => {
-      const exts = [mockExtension({ id: 'ctx-domain', preamble: 'Domain: {{medical_terms}}' })];
-      vi.mocked(llm).mockResolvedValueOnce(exts);
-
-      const b = promptBundle.createBundle('Extract entities.');
-      const result = await shapeBundle(b);
-
-      // Returns the extended bundle
-      expect(result.bundle.extensions).toEqual(exts);
-      expect(result.bundle.base).toBe('Extract entities.');
-
-      // Returns the built prompt string
-      expect(result.prompt).toContain('Extract entities.');
-      expect(result.prompt).toContain('Domain: {{medical_terms}}');
-      expect(result.prompt).toContain('<!-- marker:ctx-domain -->');
-    });
-
-    it('should include filled bindings in the built prompt', async () => {
-      const exts = [mockExtension({ id: 'ctx-a', preamble: 'Terms: {{medical_terms}}' })];
-      vi.mocked(llm).mockResolvedValueOnce(exts);
-
-      const b = promptBundle.bind(promptBundle.createBundle('Task.'), {
-        medical_terms: 'glossary',
-      });
-      const result = await shapeBundle(b);
-
-      // Bindings from the original bundle carry through
-      expect(result.prompt).toContain('glossary');
-    });
-
-    it('should forward config to extendPrompt', async () => {
-      vi.mocked(llm).mockResolvedValueOnce([]);
-
-      await shapeBundle(promptBundle.createBundle('Test.'), {
-        suggestions: 'add context',
-        llm: 'fastGood',
+      await tagReconcile({
+        sourceText: 'data',
+        sourceTags: ['medical'],
+        inputLabel: 'Terms',
+        inputTags: ['medical', 'glossary'],
+        inputGuidance:
+          'This input is for reference terminology that the LLM should use when extracting entities.',
       });
 
       const callPrompt = llm.mock.calls[0][0];
-      expect(callPrompt).toContain('<suggestions>');
-      expect(llm).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.objectContaining({ llm: 'fastGood' })
-      );
-    });
-  });
-
-  describe('describeBundle', () => {
-    it('should describe a bundle and attach the description', async () => {
-      const desc = {
-        purpose: 'Extracts entities',
-        inputs: 'Medical text',
-        outputs: 'Entity list',
-        qualities: ['domain-aware'],
-        gaps: ['No confidence scores'],
-      };
-      vi.mocked(llm).mockResolvedValueOnce(desc);
-
-      const b = promptBundle.createBundle('Extract entities.');
-      const result = await describeBundle(b);
-
-      expect(result.description).toEqual(desc);
-      expect(result.base).toBe('Extract entities.');
+      expect(callPrompt).toContain('<input-guidance>');
+      expect(callPrompt).toContain('reference terminology');
     });
 
-    it('should build the prompt from the bundle before describing', async () => {
+    it('should include registry when provided', async () => {
       vi.mocked(llm).mockResolvedValueOnce({
-        purpose: '',
-        inputs: '',
-        outputs: '',
-        qualities: [],
-        gaps: [],
+        recommendation: 'change-input-tags',
+        sourceTags: [],
+        inputTags: ['medical'],
+        rationale: 'Simplify requirements',
       });
 
-      const b = promptBundle.bind(
-        promptBundle.addExtensions(promptBundle.createBundle('Task.'), [
-          mockExtension({ preamble: 'Context: {{medical_terms}}' }),
-        ]),
-        { medical_terms: 'glossary data' }
-      );
-
-      await describeBundle(b);
+      await tagReconcile({
+        sourceText: 'data',
+        sourceTags: ['medical'],
+        inputLabel: 'Terms',
+        inputTags: ['medical', 'glossary'],
+        registry: [{ tag: 'medical', description: 'Medical domain' }],
+      });
 
       const callPrompt = llm.mock.calls[0][0];
-      expect(callPrompt).toContain('glossary data');
-      expect(callPrompt).toContain('Task.');
+      expect(callPrompt).toContain('<existing-tags>');
     });
 
-    it('should forward config to describePrompt', async () => {
+    it('.with() should pre-apply config', async () => {
       vi.mocked(llm).mockResolvedValueOnce({
-        purpose: '',
-        inputs: '',
-        outputs: '',
-        qualities: [],
-        gaps: [],
+        recommendation: 'new-tag',
+        sourceTags: [],
+        inputTags: [],
+        newTag: 'medical-ref',
+        rationale: 'No existing tag fits',
       });
 
-      await describeBundle(promptBundle.createBundle('Test.'), { llm: 'fastGood' });
+      const reconcile = tagReconcile.with({ llm: 'fastGood' });
+      await reconcile({
+        sourceText: 'data',
+        sourceTags: [],
+        inputLabel: 'Terms',
+        inputTags: ['medical'],
+      });
 
       expect(llm).toHaveBeenCalledWith(
         expect.any(String),
@@ -627,114 +377,89 @@ Do the thing.`;
     });
   });
 
-  describe('.with() pipe helpers', () => {
-    it('extendPrompt.with should pre-apply config', async () => {
-      vi.mocked(llm).mockResolvedValueOnce([mockExtension()]);
-
-      const extend = extendPrompt.with({ suggestions: 'add context', maxExtensions: 2 });
-      const result = await extend('Test prompt.');
-
-      expect(result).toHaveLength(1);
-      const callPrompt = llm.mock.calls[0][0];
-      expect(callPrompt).toContain('add context');
-      expect(callPrompt).toContain('at most 2');
-    });
-
-    it('shapePrompt.with should pre-apply config', async () => {
-      vi.mocked(llm).mockResolvedValueOnce([
-        mockExtension({ id: 'ctx-a', preamble: 'Context: {{terms}}' }),
-      ]);
-
-      const shape = shapePrompt.with({ maxExtensions: 1 });
-      const result = await shape('Extract entities.');
-
-      expect(result.prompt).toContain('Extract entities.');
-      expect(result.prompt).toContain('Context: {{terms}}');
-      expect(result.extensions).toHaveLength(1);
-    });
-
-    it('describePrompt.with should pre-apply config', async () => {
-      vi.mocked(llm).mockResolvedValueOnce({
-        purpose: 'test',
-        inputs: '',
-        outputs: '',
-        qualities: [],
-        gaps: [],
-      });
-
-      const describe = describePrompt.with({ llm: 'fastGood' });
-      const result = await describe('Test.');
-
-      expect(result.purpose).toBe('test');
-      expect(llm).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.objectContaining({ llm: 'fastGood' })
-      );
-    });
-
-    it('extendBundle.with should pre-apply config', async () => {
-      vi.mocked(llm).mockResolvedValueOnce([mockExtension()]);
-
-      const extend = extendBundle.with({ maxExtensions: 1 });
-      const result = await extend(promptBundle.createBundle('Task.'));
-
-      expect(result.extensions).toHaveLength(1);
-    });
-
-    it('shapeBundle.with should pre-apply config', async () => {
-      vi.mocked(llm).mockResolvedValueOnce([mockExtension()]);
-
-      const shape = shapeBundle.with({ maxExtensions: 1 });
-      const result = await shape(promptBundle.createBundle('Task.'));
-
-      expect(result.bundle.extensions).toHaveLength(1);
-      expect(result.prompt).toContain('Task.');
-    });
-
-    it('describeBundle.with should pre-apply config', async () => {
-      vi.mocked(llm).mockResolvedValueOnce({
-        purpose: 'entity extraction',
-        inputs: '',
-        outputs: '',
-        qualities: [],
-        gaps: [],
-      });
-
-      const describe = describeBundle.with({ llm: 'fastGood' });
-      const result = await describe(promptBundle.createBundle('Extract entities.'));
-
-      expect(result.description.purpose).toBe('entity extraction');
-    });
-
-    it('should compose through pipe: create → extend → describe → build', async () => {
-      const extensions = [
-        mockExtension({ id: 'ctx-domain', preamble: 'Domain: {{medical_terms}}' }),
-      ];
-      const description = {
-        purpose: 'Medical entity extraction',
-        inputs: 'Clinical text',
-        outputs: 'Entity list',
-        qualities: ['domain-aware'],
-        gaps: ['No confidence scores'],
+  describe('tagConsolidate', () => {
+    it('should call LLM with registry and return consolidation proposals', async () => {
+      const mockResult = {
+        merges: [
+          {
+            from: ['med-terms', 'medical-glossary'],
+            into: 'medical-glossary',
+            rationale: 'Near-duplicates',
+          },
+        ],
+        deprecations: [{ tag: 'unused-tag', rationale: 'Zero usage' }],
+        renames: [{ from: 'med', to: 'medical', rationale: 'Clearer name' }],
       };
 
-      vi.mocked(llm).mockResolvedValueOnce(extensions).mockResolvedValueOnce(description);
+      vi.mocked(llm).mockResolvedValueOnce(mockResult);
 
-      const result = await pipe(
-        promptBundle.createBundle('Extract entities from medical text.'),
-        extendBundle.with({ maxExtensions: 1 }),
-        describeBundle.with({}),
-        promptBundle.buildPrompt
+      const result = await tagConsolidate({
+        registry: [
+          { tag: 'med-terms', description: 'Medical terms', usageCount: 3 },
+          { tag: 'medical-glossary', description: 'Medical glossary', usageCount: 5 },
+          { tag: 'unused-tag', description: 'Never used', usageCount: 0 },
+          { tag: 'med', description: 'Medical', usageCount: 2 },
+        ],
+      });
+
+      expect(result).toEqual(mockResult);
+    });
+
+    it('should include representative examples in registry formatting', async () => {
+      vi.mocked(llm).mockResolvedValueOnce({ merges: [], deprecations: [], renames: [] });
+
+      await tagConsolidate({
+        registry: [
+          {
+            tag: 'medical',
+            description: 'Medical domain',
+            usageCount: 5,
+            examples: ['diagnoses', 'medications', 'procedures'],
+          },
+        ],
+      });
+
+      const callPrompt = llm.mock.calls[0][0];
+      expect(callPrompt).toContain('Examples: diagnoses, medications, procedures');
+    });
+
+    it('should include unresolved clusters when provided', async () => {
+      vi.mocked(llm).mockResolvedValueOnce({ merges: [], deprecations: [], renames: [] });
+
+      await tagConsolidate({
+        registry: [{ tag: 'a', usageCount: 1 }],
+        unresolvedClusters: [{ tags: ['a', 'b'], description: 'Similar tags' }],
+      });
+
+      const callPrompt = llm.mock.calls[0][0];
+      expect(callPrompt).toContain('<unresolved-clusters>');
+    });
+
+    it('should emit progress events', async () => {
+      vi.mocked(llm).mockResolvedValueOnce({ merges: [], deprecations: [], renames: [] });
+
+      const onProgress = vi.fn();
+      await tagConsolidate({ registry: [] }, { onProgress });
+
+      const events = onProgress.mock.calls.map((c) => c[0]);
+      expect(
+        events.find((e) => e.step === 'tag-consolidate' && e.stepName === 'analyzing')
+      ).toBeDefined();
+      expect(
+        events.find((e) => e.step === 'tag-consolidate' && e.event === 'complete')
+      ).toBeDefined();
+    });
+
+    it('.with() should pre-apply config', async () => {
+      vi.mocked(llm).mockResolvedValueOnce({ merges: [], deprecations: [], renames: [] });
+
+      const consolidate = tagConsolidate.with({ llm: 'fastGood' });
+      await consolidate({ registry: [] });
+
+      expect(llm).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ llm: 'fastGood' })
       );
-
-      // Final result is a prompt string with extensions applied and bindings filled
-      expect(typeof result).toBe('string');
-      expect(result).toContain('Extract entities from medical text.');
-      expect(result).toContain('Domain: {{medical_terms}}');
-      expect(result).toContain('<!-- marker:ctx-domain -->');
-
-      // Two LLM calls: extend then describe
-      expect(llm).toHaveBeenCalledTimes(2);
     });
   });
 });

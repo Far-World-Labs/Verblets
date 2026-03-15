@@ -18,4 +18,6 @@ Work with care for human understanding as well as structural strength. Reduce th
 
 Do not aim for surface consistency. Aim for stronger agreement between what the project says, what it does, what it allows, what related parts imply about one another, and what future changes will have to pass through. Leave the project in a state where its important relationships are clearer, its stronger ideas reach farther, its weaker drifted areas have been brought back into shape, and the next good change has less friction and more truth behind it.
 
+If the area is not significantly drifted, or if you find drift but cannot repair it without risking something you don't fully understand, do not force repairs. Report what you compared, where you found strong agreement, and where you found mild tension that hasn't yet become costly. Describe the drift you'd repair if you had more context, and what that context would need to be. A clear map of what is healthy and what bears watching is a useful result from a drift-fix pass.
+
 Verify all changes with tests and build before reporting results.

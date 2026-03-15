@@ -1,301 +1,262 @@
+// ── Extend Prompt — AI Advisors ─────────────────────────────────────
+// Advisory AI operations for managing prompt pieces and routing tags.
+// Each is a single LLM call following the verblets pattern.
+// All return proposals — nothing auto-applies.
+//
+// Piece advisors:
+//   reshape      — what inputs should this piece have?
+//   proposeTags  — what routing tags should these inputs require?
+//
+// Tag advisors:
+//   tagSource      — what tags describe what this source provides?
+//   tagReconcile   — manual override broke tag matching — how to fix?
+//   tagConsolidate — merge duplicates, deprecate unused, rename unclear
+
 import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
-import { extractSections, insertSections, listSlots } from '../../lib/prompt-markers/index.js';
-import * as bundle from '../../lib/prompt-bundle/index.js';
 import { emitStepProgress, emitComplete } from '../../lib/progress-callback/index.js';
 import { debug } from '../../lib/debug/index.js';
-import { extensionsSchema, promptDescriptionSchema } from './schema.js';
+import {
+  reshapeSchema,
+  proposeTagsSchema,
+  tagSourceSchema,
+  tagReconcileSchema,
+  tagConsolidateSchema,
+} from './schema.js';
 
-// ── LLM Prompt ───────────────────────────────────────────────────────
+// ── Shared helpers ──────────────────────────────────────────────────
 
-const systemPrompt = `You are a prompt engineering advisor. You analyze prompts and produce structured extension options — concrete text preambles that can be inserted to improve the prompt.
+const formatInputs = (inputs) =>
+  inputs
+    .map(
+      (i) =>
+        `- ${i.id} (${i.placement}, ${i.required ? 'required' : 'optional'}, ${i.multi ? 'multi' : 'single'}) tags: [${(i.tags ?? []).join(', ')}]`
+    )
+    .join('\n');
 
-Each extension has a single {{slot_name}} placeholder for content a human or system must provide later. Extensions are returned in priority order — the ordering IS the ranking.
+const formatRegistry = (registry) =>
+  registry
+    .map((t) => {
+      const parts = [`- ${t.tag}: ${t.description ?? ''} (${t.usageCount ?? 0} uses)`];
+      if (t.examples?.length) parts.push(`  Examples: ${t.examples.slice(0, 3).join(', ')}`);
+      return parts.join('\n');
+    })
+    .join('\n');
 
-Common extension types (use whatever label fits):
-- context: Domain data, reference text, source material the prompt should incorporate
-- output: Output format constraints, schemas, conformance rules, structure requirements
-- alignment: Few-shot examples, scoring anchors, calibration data, reference outputs
-- construction: Data that informs prompt wording — used to build phrasing, not injected as blocks
-- nfr: Non-functional requirements — privacy, determinism, precision, latency, cost
-- composition: I/O patterns for batch processing, chaining, or compositional workflows
-- side-effect: External integrations, logging, audit trails, or observable effects
+// ── Advisor factory ─────────────────────────────────────────────────
+// Extracts the repeated skeleton: config destructuring, progress
+// events, retry + callLlm, debug logging, .with() composition.
+// Each advisor only provides: system prompt, schema, and a buildParts
+// function that maps (input, config) → string[] of prompt sections.
 
-Rules:
-- Return extensions sorted by overall priority (best first)
-- Preambles must be succinct and self-contained — they will be inserted verbatim
-- Each preamble must clearly enumerate its integrations, inputs, outputs, or side-effects
-- Use exactly one {{slot_name}} per preamble; use a descriptive slot name
-- If a complex need has multiple inputs, combine them into one slot or suggest separate extensions
-- The rationale should convey priority, impact, feasibility, and tradeoffs — no numeric scores
-- The produces field must describe what downstream consumers gain when this extension is applied and its slot is filled — output quality changes, format guarantees, behavioral shifts, or new capabilities
-- If the prompt already has markers, update or replace them rather than duplicating`;
+const createAdvisor = (label, systemPrompt, schema, buildParts) => {
+  const fn = async (input, config = {}) => {
+    const { llm, maxAttempts = 3, onProgress, abortSignal, now = new Date(), ...rest } = config;
 
-const buildUserPrompt = (prompt, { suggestions, existing, maxExtensions }) => {
-  const parts = [asXML(prompt, { tag: 'prompt' })];
+    emitStepProgress(onProgress, label, 'analyzing', { now: new Date(), chainStartTime: now });
 
-  if (suggestions.length) {
-    const suggestionsText = suggestions.map((s, i) => `${i + 1}. ${s}`).join('\n');
-    parts.push(asXML(suggestionsText, { tag: 'suggestions' }));
-  }
+    const parts = buildParts(input, config);
 
-  if (existing.length) {
-    const existingText = existing.map((e) => `- ${e.id}: ${e.content.slice(0, 200)}`).join('\n');
-    parts.push(
-      `${asXML(existingText, { tag: 'existing-extensions' })}\nThese extensions are already integrated. You may update, replace, or suggest new ones, but do not duplicate.`
+    const response = await retry(
+      () =>
+        callLlm(parts.join('\n\n'), {
+          llm,
+          modelOptions: {
+            systemPrompt,
+            response_format: { type: 'json_schema', json_schema: schema },
+          },
+          ...rest,
+        }),
+      { label, maxAttempts, onProgress, abortSignal }
     );
-  }
 
-  parts.push(
-    `Analyze this prompt and return at most ${maxExtensions} structured extension options, sorted by priority.`
-  );
+    debug(`${label}: complete`);
+    emitComplete(onProgress, label, { now: new Date(), chainStartTime: now });
 
-  return parts.join('\n\n');
+    return response;
+  };
+
+  fn.with =
+    (config = {}) =>
+    (input) =>
+      fn(input, config);
+  return fn;
 };
 
-// ── Apply / Resolve Extensions ───────────────────────────────────────
+// ── Piece advisors ──────────────────────────────────────────────────
 
-export const applyExtensions = (prompt, extensions) =>
-  insertSections(
-    prompt,
-    extensions.map((ext) => ({
-      id: ext.id,
-      placement: ext.placement,
-      content: ext.preamble,
-    }))
-  );
+const reshapeSystemPrompt = `You are a prompt structure advisor. You analyze prompt text and propose structural improvements — inputs to add, remove, or modify, and text changes to make the piece work better with external material.
 
-export const resolveExtensions = (prompt, extensions) => {
-  const { sections } = extractSections(prompt);
-  const appliedIds = new Set(sections.map((s) => s.id));
-  const unfilled = listSlots(prompt);
-
-  return extensions.map((ext) => {
-    if (!appliedIds.has(ext.id)) return { ...ext, status: 'pending' };
-    if (unfilled.includes(ext.slot)) return { ...ext, status: 'unfilled' };
-    return { ...ext, status: 'filled' };
-  });
-};
-
-// ── Main Chain Function ──────────────────────────────────────────────
-
-const DEFAULT_MAX_EXTENSIONS = 5;
-
-const normalizeSuggestions = (suggestions) => {
-  if (!suggestions) return [];
-  if (typeof suggestions === 'string') return [suggestions];
-  return suggestions;
-};
-
-const extendPrompt = async (prompt, config = {}) => {
-  const {
-    suggestions: rawSuggestions,
-    maxExtensions = DEFAULT_MAX_EXTENSIONS,
-    llm,
-    maxAttempts = 3,
-    onProgress,
-    abortSignal,
-    now = new Date(),
-    ...rest
-  } = config;
-
-  const suggestions = normalizeSuggestions(rawSuggestions);
-  const { clean, sections: existing } = extractSections(prompt);
-
-  emitStepProgress(onProgress, 'extend-prompt', 'analyzing', {
-    existingExtensions: existing.length,
-    suggestions: suggestions.length,
-    maxExtensions,
-    now: new Date(),
-    chainStartTime: now,
-  });
-
-  const userPrompt = buildUserPrompt(clean, { suggestions, existing, maxExtensions });
-  const cappedSystemPrompt = `${systemPrompt}\n- Return at most ${maxExtensions} extensions`;
-
-  const response = await retry(
-    () =>
-      callLlm(userPrompt, {
-        llm,
-        modelOptions: {
-          systemPrompt: cappedSystemPrompt,
-          response_format: {
-            type: 'json_schema',
-            json_schema: extensionsSchema,
-          },
-        },
-        ...rest,
-      }),
-    {
-      label: 'extend-prompt',
-      maxAttempts,
-      onProgress,
-      abortSignal,
-    }
-  );
-
-  debug(
-    `extend-prompt: generated ${response.length} extensions for prompt (${clean.length} chars)`
-  );
-
-  emitComplete(onProgress, 'extend-prompt', {
-    extensionCount: response.length,
-    extensionIds: response.map((e) => e.id),
-    now: new Date(),
-    chainStartTime: now,
-  });
-
-  return response;
-};
-
-// ── Describe Prompt ──────────────────────────────────────────────────
-
-const describeSystemPrompt = `You are a prompt analysis expert. You examine prompts and describe their I/O contract, quality characteristics, and gaps.
-
-The prompt may contain <!-- marker:id --> sections — these are structured extensions providing domain context, format constraints, examples, or other enhancements.
-
-The prompt may contain {{slot_name}} placeholders — these are unfilled slots where data has not yet been connected.
-
-Analyze what the prompt currently does with its existing extensions and filled slots. Do not speculate about what unfilled slots might contain — report them as gaps if they are critical.
+Each input is a named insertion point where external material can be provided. Consider:
+- Domain context (terminology, reference data, background knowledge)
+- Output constraints (format, schema, validation rules)
+- Examples (few-shot demonstrations, calibration data)
+- Non-functional requirements (privacy, determinism, cost constraints)
+- Composition inputs (material from upstream pieces in a pipeline)
+- Option choices when structurally useful (categorization, mode selection)
 
 Rules:
-- purpose: Describe the prompt's core function clearly and specifically
-- inputs: What data does this prompt expect to operate on
-- outputs: What shape, format, and content does the prompt produce
-- qualities: Observable characteristics — things the output demonstrably has (e.g. "uses medical terminology", "excludes PII", "produces JSON")
-- gaps: Concrete weaknesses — missing coverage, ambiguities, risks, unfilled critical slots`;
+- Return changes in priority order (most impactful first)
+- Use kebab-case for input ids
+- Set required=true only for inputs without which the piece cannot function
+- Set multi=true for inputs that naturally accept multiple sources
+- Suggest routing tags that would help auto-match sources to each input
+- Consider existing inputs — propose removals or modifications when warranted
+- When inputs should be split or merged, express as remove + add actions with rationale
+- Propose text edits when the piece text should change to accommodate new material`;
 
-export const describePrompt = async (prompt, config = {}) => {
-  const { llm, maxAttempts = 3, onProgress, abortSignal, now = new Date(), ...rest } = config;
+export const reshape = createAdvisor(
+  'piece-reshape',
+  reshapeSystemPrompt,
+  reshapeSchema,
+  (input, { maxChanges = 5 }) => {
+    const {
+      text,
+      inputs = [],
+      registry = [],
+      sources = [],
+      note,
+    } = typeof input === 'string' ? { text: input } : input;
 
-  emitStepProgress(onProgress, 'describe-prompt', 'analyzing', {
-    promptLength: prompt.length,
-    now: new Date(),
-    chainStartTime: now,
-  });
-
-  const userPrompt = `${asXML(prompt, { tag: 'prompt' })}\n\nDescribe this prompt's purpose, I/O contract, quality characteristics, and gaps.`;
-
-  const response = await retry(
-    () =>
-      callLlm(userPrompt, {
-        llm,
-        modelOptions: {
-          systemPrompt: describeSystemPrompt,
-          response_format: {
-            type: 'json_schema',
-            json_schema: promptDescriptionSchema,
-          },
-        },
-        ...rest,
-      }),
-    {
-      label: 'describe-prompt',
-      maxAttempts,
-      onProgress,
-      abortSignal,
+    const parts = [asXML(text, { tag: 'piece-text' })];
+    if (inputs.length) parts.push(asXML(formatInputs(inputs), { tag: 'existing-inputs' }));
+    if (registry.length) parts.push(asXML(formatRegistry(registry), { tag: 'routing-tags' }));
+    if (sources.length) {
+      const formatted = sources
+        .map((s) => `- [${s.tags?.join(', ') ?? ''}]: ${s.text?.slice(0, 200) ?? s.id ?? ''}`)
+        .join('\n');
+      parts.push(asXML(formatted, { tag: 'local-sources' }));
     }
-  );
+    if (note) parts.push(asXML(note, { tag: 'note' }));
+    parts.push(
+      `Propose at most ${maxChanges} structural changes to this piece, in priority order.`
+    );
+    return parts;
+  }
+);
 
-  debug(`describe-prompt: purpose="${response.purpose}", ${response.gaps.length} gaps`);
+const proposeTagsSystemPrompt = `You are a routing tag advisor. You recommend routing tags for inputs on prompts so that sources can auto-match into them.
 
-  emitComplete(onProgress, 'describe-prompt', {
-    gapCount: response.gaps.length,
-    qualityCount: response.qualities.length,
-    now: new Date(),
-    chainStartTime: now,
-  });
+Routing tags are simple string labels used for AND-matching: a source must have ALL of an input's tags to qualify. Choose tags that are:
+- Specific enough to avoid false matches
+- General enough to be reusable across similar inputs
+- Consistent with the existing tag registry when possible
 
-  return response;
-};
+Prefer reusing existing tags over creating new ones. Propose a new tag only when no existing tag fits.`;
 
-// ── One-shot Convenience ─────────────────────────────────────────────
-// Like scaleItem: generates spec (extensions) AND applies in one call.
+export const proposeTags = createAdvisor(
+  'piece-propose-tags',
+  proposeTagsSystemPrompt,
+  proposeTagsSchema,
+  (input) => {
+    const { text, inputs, registry = [] } = input;
+    const parts = [
+      asXML(text, { tag: 'piece-text' }),
+      asXML(formatInputs(inputs), { tag: 'inputs' }),
+    ];
+    if (registry.length) parts.push(asXML(formatRegistry(registry), { tag: 'existing-tags' }));
+    parts.push('Recommend routing tags for each input.');
+    return parts;
+  }
+);
 
-export const shapePrompt = async (prompt, config = {}) => {
-  const { onProgress, now = new Date(), ...rest } = config;
+// ── Tag advisors ────────────────────────────────────────────────────
 
-  emitStepProgress(onProgress, 'shape-prompt', 'extending', {
-    now: new Date(),
-    chainStartTime: now,
-  });
+const tagSourceSystemPrompt = `You are a content classification advisor. You assign routing tags to source content (pieces or their outputs) so they can be automatically matched to inputs that need them.
 
-  const extensions = await extendPrompt(prompt, { onProgress, now, ...rest });
+Tags should describe what the content provides, not what it is about. Consider:
+- What kind of material this content represents
+- Which inputs it could fill
+- The existing tag registry — reuse tags when they fit
 
-  emitStepProgress(onProgress, 'shape-prompt', 'applying', {
-    extensionCount: extensions.length,
-    now: new Date(),
-    chainStartTime: now,
-  });
+Return tags in order of confidence (most confident first).`;
 
-  const shaped = applyExtensions(prompt, extensions);
+export const tagSource = createAdvisor(
+  'tag-source',
+  tagSourceSystemPrompt,
+  tagSourceSchema,
+  (input) => {
+    const {
+      text,
+      kind = 'piece',
+      registry = [],
+      consumerHints = [],
+      upstreamContext,
+      pieceText,
+    } = typeof input === 'string' ? { text: input } : input;
 
-  debug(
-    `shape-prompt: applied ${extensions.length} extensions (${prompt.length} → ${shaped.length} chars)`
-  );
+    const parts = [asXML(text, { tag: 'source-text' }), `Source kind: ${kind}`];
+    if (kind === 'output' && pieceText) parts.push(asXML(pieceText, { tag: 'producing-piece' }));
+    if (kind === 'output' && upstreamContext)
+      parts.push(asXML(upstreamContext, { tag: 'upstream-context' }));
+    if (registry.length) parts.push(asXML(formatRegistry(registry), { tag: 'existing-tags' }));
+    if (consumerHints.length) {
+      const hints = consumerHints.map((h) => `- ${h.inputId}: [${h.tags.join(', ')}]`).join('\n');
+      parts.push(asXML(hints, { tag: 'consumer-hints' }));
+    }
+    parts.push('Assign routing tags to this source content.');
+    return parts;
+  }
+);
 
-  emitComplete(onProgress, 'shape-prompt', {
-    extensionCount: extensions.length,
-    originalLength: prompt.length,
-    shapedLength: shaped.length,
-    now: new Date(),
-    chainStartTime: now,
-  });
+const reconcileSystemPrompt = `You are a routing alignment repair advisor. A user manually connected a source to an input, but the source's tags don't match the input's required tags.
 
-  return { prompt: shaped, extensions };
-};
+Recommend ONE of three strategies:
+1. add-tag-to-source: Add existing tags to the source so it matches
+2. change-input-tags: Change the input's tag requirements
+3. new-tag: Create a new tag when neither side fits existing tags (last resort)
 
-// ── Bundle bridges ──────────────────────────────────────────────────
-// *Prompt functions operate on strings. *Bundle functions operate on bundles.
-// Both are pipe-friendly (target as first argument).
+Prefer strategies that don't require creating new tags.`;
 
-export const extendBundle = async (b, config = {}) => {
-  const { now = new Date(), ...rest } = config;
-  const prompt = bundle.buildPrompt(b);
-  const extensions = await extendPrompt(prompt, { now, ...rest });
-  return bundle.addExtensions(b, extensions);
-};
+export const tagReconcile = createAdvisor(
+  'tag-reconcile',
+  reconcileSystemPrompt,
+  tagReconcileSchema,
+  (input) => {
+    const { sourceText, sourceTags, inputLabel, inputTags, inputGuidance, registry = [] } = input;
 
-export const shapeBundle = async (b, config = {}) => {
-  const { now = new Date(), ...rest } = config;
-  const extended = await extendBundle(b, { now, ...rest });
-  return { bundle: extended, prompt: bundle.buildPrompt(extended) };
-};
+    const parts = [
+      asXML(sourceText, { tag: 'source-text' }),
+      `Source tags: [${sourceTags.join(', ')}]`,
+      `Input: "${inputLabel}" requires tags: [${inputTags.join(', ')}]`,
+    ];
+    if (inputGuidance) parts.push(asXML(inputGuidance, { tag: 'input-guidance' }));
+    if (registry.length) parts.push(asXML(formatRegistry(registry), { tag: 'existing-tags' }));
+    parts.push('Recommend how to repair this tag mismatch.');
+    return parts;
+  }
+);
 
-export const describeBundle = async (b, config = {}) => {
-  const { now = new Date(), ...rest } = config;
-  const prompt = bundle.buildPrompt(b);
-  const description = await describePrompt(prompt, { now, ...rest });
-  return bundle.setDescription(b, description);
-};
+const consolidateSystemPrompt = `You are a tag registry maintenance advisor. You analyze a collection of routing tags and propose improvements to keep the registry clean, small, and stable.
 
-// ── Pipe helpers (.with) ─────────────────────────────────────────────
-// Pre-apply config so the function becomes unary for use with pipe().
-// Follows the same convention as map.with(), filter.with(), score.with().
+Consider:
+- Near-duplicate tags that should be merged
+- Tags with zero or very low usage that should be deprecated
+- Tags with unclear names that should be renamed for clarity
+- Tags that have drifted from their original purpose
 
-extendPrompt.with = function (config = {}) {
-  return (prompt) => extendPrompt(prompt, config);
-};
+This is a reduce-style operation — work from summaries, not full content.`;
 
-shapePrompt.with = function (config = {}) {
-  return (prompt) => shapePrompt(prompt, config);
-};
+export const tagConsolidate = createAdvisor(
+  'tag-consolidate',
+  consolidateSystemPrompt,
+  tagConsolidateSchema,
+  (input) => {
+    const { registry, unresolvedClusters = [] } = input;
 
-describePrompt.with = function (config = {}) {
-  return (prompt) => describePrompt(prompt, config);
-};
+    const parts = [asXML(formatRegistry(registry), { tag: 'registry' })];
+    if (unresolvedClusters.length) {
+      const clusters = unresolvedClusters
+        .map((c) => `- [${c.tags.join(', ')}]: ${c.description}`)
+        .join('\n');
+      parts.push(asXML(clusters, { tag: 'unresolved-clusters' }));
+    }
+    parts.push('Propose improvements to this routing tag registry.');
+    return parts;
+  }
+);
 
-extendBundle.with = function (config = {}) {
-  return (b) => extendBundle(b, config);
-};
+// ── Exports ─────────────────────────────────────────────────────────
 
-shapeBundle.with = function (config = {}) {
-  return (b) => shapeBundle(b, config);
-};
-
-describeBundle.with = function (config = {}) {
-  return (b) => describeBundle(b, config);
-};
-
-export default extendPrompt;
+export default reshape;

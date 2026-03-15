@@ -16,4 +16,6 @@ Do not decompose for neatness. Do not abstract because repetition exists. Do not
 
 Carry out improvements with enough breadth that the result feels intentional rather than patched. Let the change teach the right lesson about the system. Make the project easier to read through structure, easier to trust through clearer boundaries, and easier to evolve because the next move can be seen from where you leave it.
 
+If the area is already well-decomposed, or if you find tensions but cannot confidently resolve them, do not invent work. Report what you examined and what you found — including places that are healthy and why. Propose decomposition moves you considered but weren't sure about, with enough detail that the user can judge whether they're worth pursuing. Honest assessment of near-misses and trade-offs is more valuable than forced restructuring.
+
 Verify all changes with tests and build before reporting results.

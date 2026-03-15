@@ -1,36 +1,91 @@
-export const promptDescriptionSchema = {
-  name: 'prompt_description',
+// ── Schemas for extend-prompt AI advisors ────────────────────────────
+// Each schema follows the verblets convention: items[] for arrays,
+// value{} for single objects. callLlm auto-unwraps.
+
+// reshape: proposes structural changes to a piece
+export const reshapeSchema = {
+  name: 'prompt_piece_reshape',
   schema: {
     type: 'object',
     properties: {
       value: {
         type: 'object',
         properties: {
-          purpose: {
-            type: 'string',
-            description: 'What this prompt does — its core function in one or two sentences',
-          },
-          inputs: {
-            type: 'string',
-            description: 'What input data the prompt expects to receive and operate on',
-          },
-          outputs: {
-            type: 'string',
-            description: 'What the prompt produces — output shape, format, and content',
-          },
-          qualities: {
+          inputChanges: {
             type: 'array',
-            items: { type: 'string' },
-            description:
-              'Observable quality characteristics of the output (e.g. domain-aware, PII-safe, format-constrained)',
+            items: {
+              type: 'object',
+              properties: {
+                action: {
+                  type: 'string',
+                  enum: ['add', 'remove', 'modify'],
+                  description:
+                    'Whether to add a new input, remove an existing one, or modify one. Splits = remove + adds. Merges = removes + add.',
+                },
+                id: {
+                  type: 'string',
+                  description: 'Kebab-case identifier for the input',
+                },
+                label: {
+                  type: 'string',
+                  description: 'Human-readable label for the input',
+                },
+                placement: {
+                  type: 'string',
+                  enum: ['prepend', 'append'],
+                  description: 'Where to insert relative to the piece text',
+                },
+                required: {
+                  type: 'boolean',
+                  description: 'Whether this input must be filled before rendering',
+                },
+                multi: {
+                  type: 'boolean',
+                  description: 'Whether this input accepts multiple sources',
+                },
+                suggestedTags: {
+                  type: 'array',
+                  items: { type: 'string' },
+                  description: 'Suggested routing tags for this input',
+                },
+                rationale: {
+                  type: 'string',
+                  description: 'Why this change improves the piece',
+                },
+              },
+              required: [
+                'action',
+                'id',
+                'label',
+                'placement',
+                'required',
+                'multi',
+                'suggestedTags',
+                'rationale',
+              ],
+              additionalProperties: false,
+            },
           },
-          gaps: {
+          textSuggestions: {
             type: 'array',
-            items: { type: 'string' },
-            description: 'Potential weaknesses, missing coverage, risks, or blind spots',
+            items: {
+              type: 'object',
+              properties: {
+                description: {
+                  type: 'string',
+                  description: 'What text change to make and where',
+                },
+                rationale: {
+                  type: 'string',
+                  description: 'Why this text change helps accommodate new material',
+                },
+              },
+              required: ['description', 'rationale'],
+              additionalProperties: false,
+            },
           },
         },
-        required: ['purpose', 'inputs', 'outputs', 'qualities', 'gaps'],
+        required: ['inputChanges', 'textSuggestions'],
         additionalProperties: false,
       },
     },
@@ -39,8 +94,9 @@ export const promptDescriptionSchema = {
   },
 };
 
-export const extensionsSchema = {
-  name: 'prompt_extensions',
+// proposeTags: recommends routing tags for inputs
+export const proposeTagsSchema = {
+  name: 'prompt_piece_propose_tags',
   schema: {
     type: 'object',
     properties: {
@@ -49,65 +105,175 @@ export const extensionsSchema = {
         items: {
           type: 'object',
           properties: {
-            id: {
+            inputId: {
               type: 'string',
-              description: 'Unique kebab-case identifier for idempotent merge',
+              description: 'The input id these tags apply to',
             },
-            type: {
-              type: 'string',
-              description:
-                'Category of extension (e.g. context, output, alignment, construction, nfr, composition, side-effect)',
-            },
-            placement: {
-              type: 'string',
-              enum: ['prepend', 'append'],
-              description: 'Where to insert relative to the original prompt',
-            },
-            preamble: {
-              type: 'string',
-              description:
-                'The text to insert, with a single {{slot_name}} placeholder for content a human or system must provide',
-            },
-            slot: {
-              type: 'string',
-              description: 'The slot name matching the {{slot_name}} placeholder in the preamble',
-            },
-            need: {
-              type: 'string',
-              description: 'What content must be provided for this slot',
-            },
-            effort: {
-              type: 'string',
-              enum: ['low', 'medium', 'high'],
-              description: 'How much work to produce the needed content',
+            tags: {
+              type: 'array',
+              items: { type: 'string' },
+              description: 'Recommended routing tags for this input',
             },
             rationale: {
               type: 'string',
-              description:
-                'Why this extension improves the prompt — conveys priority, impact, feasibility, and tradeoffs',
+              description: 'Why these tags are appropriate',
             },
-            produces: {
-              type: 'string',
-              description:
-                'What this extension contributes to downstream output quality, format, or behavior when applied and filled',
+            reuseExisting: {
+              type: 'boolean',
+              description: 'Whether all recommended tags already exist in the registry',
             },
           },
-          required: [
-            'id',
-            'type',
-            'placement',
-            'preamble',
-            'slot',
-            'need',
-            'effort',
-            'rationale',
-            'produces',
-          ],
+          required: ['inputId', 'tags', 'rationale', 'reuseExisting'],
           additionalProperties: false,
         },
       },
     },
     required: ['items'],
+    additionalProperties: false,
+  },
+};
+
+// tagSource: assigns routing tags to pieces/outputs
+export const tagSourceSchema = {
+  name: 'prompt_tag_source',
+  schema: {
+    type: 'object',
+    properties: {
+      items: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            tag: {
+              type: 'string',
+              description: 'A routing tag to assign to this source',
+            },
+            confidence: {
+              type: 'string',
+              enum: ['high', 'medium', 'low'],
+              description: 'Confidence that this tag is appropriate',
+            },
+            needsReview: {
+              type: 'boolean',
+              description: 'Whether human approval is recommended',
+            },
+            rationale: {
+              type: 'string',
+              description: 'Why this tag fits the source content',
+            },
+          },
+          required: ['tag', 'confidence', 'needsReview', 'rationale'],
+          additionalProperties: false,
+        },
+      },
+    },
+    required: ['items'],
+    additionalProperties: false,
+  },
+};
+
+// tagReconcile: fixes tag mismatches when manual overrides conflict
+export const tagReconcileSchema = {
+  name: 'prompt_tag_reconcile',
+  schema: {
+    type: 'object',
+    properties: {
+      value: {
+        type: 'object',
+        properties: {
+          recommendation: {
+            type: 'string',
+            enum: ['add-tag-to-source', 'change-input-tags', 'new-tag'],
+            description: 'Which repair strategy to use',
+          },
+          sourceTags: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Tags to add to the source (for add-tag-to-source)',
+          },
+          inputTags: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Replacement tags for the input (for change-input-tags)',
+          },
+          newTag: {
+            type: 'string',
+            description: 'New tag name (for new-tag strategy)',
+          },
+          rationale: {
+            type: 'string',
+            description: 'Why this repair strategy was chosen',
+          },
+        },
+        required: ['recommendation', 'sourceTags', 'inputTags', 'rationale'],
+        additionalProperties: false,
+      },
+    },
+    required: ['value'],
+    additionalProperties: false,
+  },
+};
+
+// tagConsolidate: proposes merges, deprecations, renames for routing tags
+export const tagConsolidateSchema = {
+  name: 'prompt_tag_consolidate',
+  schema: {
+    type: 'object',
+    properties: {
+      value: {
+        type: 'object',
+        properties: {
+          merges: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                from: {
+                  type: 'array',
+                  items: { type: 'string' },
+                  description: 'Tags to merge',
+                },
+                into: {
+                  type: 'string',
+                  description: 'Canonical tag name to keep',
+                },
+                rationale: { type: 'string' },
+              },
+              required: ['from', 'into', 'rationale'],
+              additionalProperties: false,
+            },
+          },
+          deprecations: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                tag: { type: 'string' },
+                rationale: { type: 'string' },
+              },
+              required: ['tag', 'rationale'],
+              additionalProperties: false,
+            },
+          },
+          renames: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                from: { type: 'string' },
+                to: { type: 'string' },
+                rationale: { type: 'string' },
+              },
+              required: ['from', 'to', 'rationale'],
+              additionalProperties: false,
+            },
+          },
+        },
+        required: ['merges', 'deprecations', 'renames'],
+        additionalProperties: false,
+      },
+    },
+    required: ['value'],
     additionalProperties: false,
   },
 };

@@ -2,13 +2,13 @@
 // General-purpose utility for inserting, extracting, and inspecting
 // marked sections in prompts.
 // Markers: <!-- marker:id -->...\n<!-- /marker:id -->
-// Slots:   {{slot_name}} placeholders inside marker content
+// Placeholders: {name} — inventory lives on the piece, not in the text.
 // Idempotent: inserting a section with an existing id replaces it.
 
 const markerOpen = (id) => `<!-- marker:${id} -->`;
 const markerClose = (id) => `<!-- /marker:${id} -->`;
 const MARKER_PATTERN = /<!-- marker:([\w-]+) -->\n([\s\S]*?)\n<!-- \/marker:\1 -->/g;
-const SLOT_PATTERN = /\{\{(\w+)\}\}/g;
+const PLACEHOLDER_PATTERN = /\{([\w-]+)\}/g;
 
 // ── Section operations ──────────────────────────────────────────────
 
@@ -43,32 +43,34 @@ export const insertSections = (prompt, sections) => {
   return parts.join('\n\n');
 };
 
-// ── Slot operations ─────────────────────────────────────────────────
+// ── Test utilities ──────────────────────────────────────────────────
+// Diagnostic functions useful in tests. Not part of the public API.
+// listPlaceholders and fillPlaceholders use {name} syntax. The
+// authoritative inventory of placeholders is piece.inputs, not text
+// scanning. These are retained for testing and debugging only.
 
-export const listSlots = (prompt) => {
-  const slots = [];
+const listPlaceholders = (prompt) => {
+  const names = [];
   let match;
-  const pattern = new RegExp(SLOT_PATTERN.source, SLOT_PATTERN.flags);
+  const pattern = new RegExp(PLACEHOLDER_PATTERN.source, PLACEHOLDER_PATTERN.flags);
   while ((match = pattern.exec(prompt)) !== null) {
-    if (!slots.includes(match[1])) slots.push(match[1]);
+    if (!names.includes(match[1])) names.push(match[1]);
   }
-  return slots;
+  return names;
 };
 
-export const fillSlots = (prompt, bindings) =>
-  prompt.replace(SLOT_PATTERN, (original, name) => (name in bindings ? bindings[name] : original));
+const fillPlaceholders = (prompt, bindings) =>
+  prompt.replace(PLACEHOLDER_PATTERN, (original, name) =>
+    name in bindings ? bindings[name] : original
+  );
 
-// ── Inspection ──────────────────────────────────────────────────────
-
-export const inspectPrompt = (prompt) => {
+const inspectPrompt = (prompt) => {
   const { clean, sections } = extractSections(prompt);
-  const slots = listSlots(prompt);
-  return { clean, sections, slots };
+  const placeholders = listPlaceholders(prompt);
+  return { clean, sections, placeholders };
 };
 
-// ── Diff ────────────────────────────────────────────────────────────
-
-export const diffPrompts = (before, after) => {
+const diffPrompts = (before, after) => {
   const { clean: cleanBefore, sections: secBefore } = extractSections(before);
   const { clean: cleanAfter, sections: secAfter } = extractSections(after);
 
@@ -84,3 +86,5 @@ export const diffPrompts = (before, after) => {
 
   return { coreChanged: cleanBefore !== cleanAfter, added, removed, updated, unchanged };
 };
+
+export const _test = { inspectPrompt, diffPrompts, listPlaceholders, fillPlaceholders };

@@ -20,4 +20,6 @@ When the best move is local, make it cleanly. When the local problem comes from 
 
 Leave behind a project that is less split, less self-contradictory, less dependent on scattered memory, and more able to carry one clear reality across the different places where that reality has to live.
 
+If the couplings you find are already well-maintained, or if you see potential drift but lack confidence that a change would be an improvement, do not force alignment. Report what you compared, what looked healthy, and what you'd watch. Propose specific couplings that may deserve attention with enough context for the user to decide. An honest reading that says "these five surfaces are in good agreement and here are two that bear watching" is a strong result.
+
 Verify all changes with tests and build before reporting results.

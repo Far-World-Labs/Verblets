@@ -1,12 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import {
-  extractSections,
-  insertSections,
-  listSlots,
-  fillSlots,
-  inspectPrompt,
-  diffPrompts,
-} from './index.js';
+import { extractSections, insertSections, _test } from './index.js';
+
+const { inspectPrompt, diffPrompts, listPlaceholders, fillPlaceholders } = _test;
 
 describe('prompt-markers', () => {
   describe('extract', () => {
@@ -73,7 +68,7 @@ Extract medical terms.`;
     it('should insert sections at correct positions', () => {
       const prompt = 'Extract entities from the text.';
       const sections = [
-        { id: 'ctx-domain', placement: 'prepend', content: 'Domain: {{domain_knowledge}}' },
+        { id: 'ctx-domain', placement: 'prepend', content: 'Domain: {domain_knowledge}' },
         { id: 'nfr-precision', placement: 'append', content: 'Requirement: prioritize accuracy.' },
       ];
 
@@ -99,13 +94,13 @@ Old domain info
 Extract entities from the text.`;
 
       const sections = [
-        { id: 'ctx-domain', placement: 'prepend', content: 'Updated domain: {{domain_knowledge}}' },
+        { id: 'ctx-domain', placement: 'prepend', content: 'Updated domain: {domain_knowledge}' },
       ];
 
       const result = insertSections(promptWithMarkers, sections);
 
       expect(result).not.toContain('Old domain info');
-      expect(result).toContain('Updated domain: {{domain_knowledge}}');
+      expect(result).toContain('Updated domain: {domain_knowledge}');
       const markerCount = (result.match(/<!-- marker:ctx-domain -->/g) || []).length;
       expect(markerCount).toBe(1);
     });
@@ -164,87 +159,87 @@ Extract entities from the text.`;
     });
   });
 
-  describe('listSlots', () => {
-    it('should find unfilled slot placeholders', () => {
-      const prompt = 'Use {{domain_terms}} and {{examples}} for extraction.';
-      const slots = listSlots(prompt);
-      expect(slots).toEqual(['domain_terms', 'examples']);
+  describe('_test.listPlaceholders', () => {
+    it('should find unfilled placeholders', () => {
+      const prompt = 'Use {domain_terms} and {examples} for extraction.';
+      const placeholders = listPlaceholders(prompt);
+      expect(placeholders).toEqual(['domain_terms', 'examples']);
     });
 
-    it('should deduplicate repeated slot names', () => {
-      const prompt = '{{name}} said hello to {{name}}.';
-      const slots = listSlots(prompt);
-      expect(slots).toEqual(['name']);
+    it('should deduplicate repeated placeholder names', () => {
+      const prompt = '{name} said hello to {name}.';
+      const placeholders = listPlaceholders(prompt);
+      expect(placeholders).toEqual(['name']);
     });
 
-    it('should return empty for prompts without slots', () => {
-      const slots = listSlots('No placeholders here.');
-      expect(slots).toEqual([]);
+    it('should return empty for prompts without placeholders', () => {
+      const placeholders = listPlaceholders('No placeholders here.');
+      expect(placeholders).toEqual([]);
     });
 
-    it('should find slots inside marker sections', () => {
+    it('should find placeholders inside marker sections', () => {
       const prompt = `<!-- marker:ctx-domain -->
-Domain: {{domain_knowledge}}
+Domain: {domain_knowledge}
 <!-- /marker:ctx-domain -->
 
 Extract entities.`;
 
-      const slots = listSlots(prompt);
-      expect(slots).toEqual(['domain_knowledge']);
+      const placeholders = listPlaceholders(prompt);
+      expect(placeholders).toEqual(['domain_knowledge']);
     });
   });
 
-  describe('fillSlots', () => {
-    it('should replace slot placeholders with values', () => {
-      const prompt = 'Terms: {{domain_terms}}\n\nExtract entities.';
-      const filled = fillSlots(prompt, { domain_terms: 'cephalalgia: headache' });
+  describe('_test.fillPlaceholders', () => {
+    it('should replace placeholders with values', () => {
+      const prompt = 'Terms: {domain_terms}\n\nExtract entities.';
+      const filled = fillPlaceholders(prompt, { domain_terms: 'cephalalgia: headache' });
       expect(filled).toBe('Terms: cephalalgia: headache\n\nExtract entities.');
     });
 
-    it('should leave unmatched slots intact', () => {
-      const prompt = '{{filled}} and {{unfilled}}';
-      const result = fillSlots(prompt, { filled: 'yes' });
-      expect(result).toBe('yes and {{unfilled}}');
+    it('should leave unmatched placeholders intact', () => {
+      const prompt = '{filled} and {unfilled}';
+      const result = fillPlaceholders(prompt, { filled: 'yes' });
+      expect(result).toBe('yes and {unfilled}');
     });
 
     it('should handle empty bindings', () => {
-      const prompt = '{{slot}} stays.';
-      const result = fillSlots(prompt, {});
-      expect(result).toBe('{{slot}} stays.');
+      const prompt = '{placeholder} stays.';
+      const result = fillPlaceholders(prompt, {});
+      expect(result).toBe('{placeholder} stays.');
     });
 
-    it('should fill slots inside marker sections', () => {
+    it('should fill placeholders inside marker sections', () => {
       const prompt = `<!-- marker:ctx-domain -->
-Domain: {{domain_knowledge}}
+Domain: {domain_knowledge}
 <!-- /marker:ctx-domain -->
 
 Extract entities.`;
 
-      const filled = fillSlots(prompt, { domain_knowledge: 'medical records' });
+      const filled = fillPlaceholders(prompt, { domain_knowledge: 'medical records' });
       expect(filled).toContain('Domain: medical records');
-      expect(filled).not.toContain('{{domain_knowledge}}');
+      expect(filled).not.toContain('{domain_knowledge}');
     });
 
     it('should compose with insert — apply then fill', () => {
       const base = 'Extract entities.';
       const withMarkers = insertSections(base, [
-        { id: 'ctx', placement: 'prepend', content: 'Context: {{terms}}' },
+        { id: 'ctx', placement: 'prepend', content: 'Context: {terms}' },
       ]);
-      const filled = fillSlots(withMarkers, { terms: 'fever = pyrexia' });
+      const filled = fillPlaceholders(withMarkers, { terms: 'fever = pyrexia' });
 
       expect(filled).toContain('Context: fever = pyrexia');
       expect(filled).toContain('Extract entities.');
-      expect(filled).not.toContain('{{terms}}');
+      expect(filled).not.toContain('{terms}');
     });
   });
 
-  describe('inspect', () => {
-    it('should return clean prompt, sections, and unfilled slots', () => {
+  describe('_test.inspectPrompt', () => {
+    it('should return clean prompt, sections, and unfilled placeholders', () => {
       const prompt = `<!-- marker:ctx-domain -->
-Domain: {{domain_knowledge}}
+Domain: {domain_knowledge}
 <!-- /marker:ctx-domain -->
 
-Extract entities from {{source}}.
+Extract entities from {source}.
 
 <!-- marker:nfr-privacy -->
 Exclude PII.
@@ -252,21 +247,21 @@ Exclude PII.
 
       const result = inspectPrompt(prompt);
 
-      expect(result.clean).toBe('Extract entities from {{source}}.');
+      expect(result.clean).toBe('Extract entities from {source}.');
       expect(result.sections).toHaveLength(2);
       expect(result.sections[0].id).toBe('ctx-domain');
       expect(result.sections[1].id).toBe('nfr-privacy');
-      expect(result.slots).toEqual(['domain_knowledge', 'source']);
+      expect(result.placeholders).toEqual(['domain_knowledge', 'source']);
     });
 
     it('should return empty state for a plain prompt', () => {
       const result = inspectPrompt('Just a plain prompt.');
       expect(result.clean).toBe('Just a plain prompt.');
       expect(result.sections).toHaveLength(0);
-      expect(result.slots).toEqual([]);
+      expect(result.placeholders).toEqual([]);
     });
 
-    it('should show no slots when all are filled', () => {
+    it('should show no placeholders when all are filled', () => {
       const prompt = `<!-- marker:ctx -->
 Domain: medical records
 <!-- /marker:ctx -->
@@ -274,12 +269,12 @@ Domain: medical records
 Extract entities.`;
 
       const result = inspectPrompt(prompt);
-      expect(result.slots).toEqual([]);
+      expect(result.placeholders).toEqual([]);
       expect(result.sections).toHaveLength(1);
     });
   });
 
-  describe('diff', () => {
+  describe('_test.diffPrompts', () => {
     it('should detect added sections', () => {
       const before = 'Extract entities.';
       const after = insertSections(before, [
@@ -327,11 +322,7 @@ Extract entities.`;
     });
 
     it('should detect core prompt changes', () => {
-      const before = 'Extract entities.';
-      const after = 'Extract medical entities.';
-
-      const result = diffPrompts(before, after);
-
+      const result = diffPrompts('Extract entities.', 'Extract medical entities.');
       expect(result.coreChanged).toBe(true);
     });
 

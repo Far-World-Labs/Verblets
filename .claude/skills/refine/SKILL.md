@@ -14,4 +14,6 @@ Protect the project's strongest ideas and push them further. Learn what already 
 
 When a family of functions exists, show how the set brings value as a whole — not just individual justifications but how the pieces compose into real workflows. If the set is large, that may be its strength. Show it.
 
+If you cannot find changes you are confident would improve the project, do not force changes. Instead, report what you examined, what you considered and rejected, and why. Propose candidate improvements with honest assessment of their risk and value — things the user could choose to pursue or that would become clearly good with more context. A useful refinement pass that proposes three well-described possibilities is better than a forced change that makes the project worse.
+
 Verify all changes with tests and build before reporting results.

@@ -22,4 +22,6 @@ Choose the audience deliberately. A projection may be for human use, machine use
 
 Store projections in `.claude/projections/` named for their scope. When updating an existing projection, your new version replaces it entirely.
 
+If you cannot find a projection that would create real new sight, say so and explain what you looked at. Describe the projections that already exist (or are implied by the current arrangement), assess their health, and propose what projection would become valuable next — even if you aren't ready to build it yet. A clear account of what the project can already see and where its vision is weakest is itself useful output.
+
 Respond by saying what projection you found or made and how this run relates to what was already there. Say who it is for. Present the projection as the central result. Close by saying what it newly allows the project to see, compare, protect, or change.
