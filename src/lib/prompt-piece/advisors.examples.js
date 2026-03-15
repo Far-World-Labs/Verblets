@@ -1,10 +1,10 @@
 import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
-import reshape, { tagSource } from './index.js';
-import * as promptPiece from '../../lib/prompt-piece/index.js';
-import * as promptRouting from '../../lib/prompt-routing/index.js';
+import reshape, { tagSource } from './advisors.js';
+import * as promptPiece from './piece.js';
+import * as promptRouting from './routing.js';
 import { longTestTimeout, shouldRunLongExamples } from '../../constants/common.js';
-import { wrapIt, wrapExpect } from '../test-analysis/test-wrappers.js';
-import { getConfig } from '../test-analysis/config.js';
+import { wrapIt, wrapExpect } from '../../chains/test-analysis/test-wrappers.js';
+import { getConfig } from '../../chains/test-analysis/config.js';
 
 const config = getConfig();
 const it = config?.aiMode
@@ -121,7 +121,7 @@ describe.skipIf(!shouldRunLongExamples)('prompt-routing pipeline example', () =>
   it(
     'should execute a two-step pipeline with tag-based wiring',
     async () => {
-      const llm = (await import('../../lib/llm/index.js')).default;
+      const llm = (await import('../llm/index.js')).default;
 
       const extractorPiece = promptPiece.createPiece(
         'Extract all person names and organizations from this text: "Dr. Sarah Chen at Stanford Medical Center published findings with collaborator James Wu from the Mayo Clinic."'

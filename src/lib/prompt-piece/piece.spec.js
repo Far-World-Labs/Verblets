@@ -9,8 +9,8 @@ import {
   isReady,
   ambiguousInputs,
   _test,
-} from './index.js';
-import { extractSections } from '../prompt-markers/index.js';
+} from './piece.js';
+import { extractSections } from './markers.js';
 
 const { inspectPiece, diffPieces } = _test;
 

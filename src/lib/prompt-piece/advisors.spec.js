@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import reshape, { proposeTags, tagSource, tagReconcile, tagConsolidate } from './index.js';
-import llm from '../../lib/llm/index.js';
+import reshape, { proposeTags, tagSource, tagReconcile, tagConsolidate } from './advisors.js';
+import llm from '../llm/index.js';
 
-vi.mock('../../lib/llm/index.js');
+vi.mock('../llm/index.js');
 
 describe('extend-prompt AI advisors', () => {
   beforeEach(() => {

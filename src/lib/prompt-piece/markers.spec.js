@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { extractSections, insertSections, _test } from './index.js';
+import { extractSections, insertSections, _test } from './markers.js';
 
 const { inspectPrompt, diffPrompts, listPlaceholders, fillPlaceholders } = _test;
 

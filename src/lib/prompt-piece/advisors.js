@@ -12,18 +12,18 @@
 //   tagReconcile   — manual override broke tag matching — how to fix?
 //   tagConsolidate — merge duplicates, deprecate unused, rename unclear
 
-import callLlm from '../../lib/llm/index.js';
-import retry from '../../lib/retry/index.js';
+import callLlm from '../llm/index.js';
+import retry from '../retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
-import { emitStepProgress, emitComplete } from '../../lib/progress-callback/index.js';
-import { debug } from '../../lib/debug/index.js';
+import { emitStepProgress, emitComplete } from '../progress-callback/index.js';
+import { debug } from '../debug/index.js';
 import {
   reshapeSchema,
   proposeTagsSchema,
   tagSourceSchema,
   tagReconcileSchema,
   tagConsolidateSchema,
-} from './schema.js';
+} from './schemas.js';
 
 // ── Shared helpers ──────────────────────────────────────────────────
 
