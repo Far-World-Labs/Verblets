@@ -79,7 +79,7 @@ Return each entity with its type (person, condition, medication, procedure) and 
   );
 });
 
-// ── proposeTags ─────────────────────────────────────────────────────
+// ── proposeTags (LLM) ──────────────────────────────────────────────
 
 describe.skipIf(!shouldRunLongExamples)('proposeTags', () => {
   it(
@@ -122,7 +122,7 @@ describe.skipIf(!shouldRunLongExamples)('proposeTags', () => {
   );
 });
 
-// ── tagSource ───────────────────────────────────────────────────────
+// ── tagSource (LLM) ────────────────────────────────────────────────
 
 describe.skipIf(!shouldRunLongExamples)('tagSource', () => {
   it(
@@ -157,9 +157,9 @@ describe.skipIf(!shouldRunLongExamples)('tagSource', () => {
   );
 });
 
-// ── full lifecycle: reshape → build → route → render ────────────────
+// ── full lifecycle with LLM ────────────────────────────────────────
 
-describe.skipIf(!shouldRunLongExamples)('prompt piece lifecycle', () => {
+describe.skipIf(!shouldRunLongExamples)('prompt piece lifecycle (LLM)', () => {
   it(
     'reshapes a prompt, builds a piece, wires sources, and renders an executable prompt',
     { timeout: longTestTimeout },
