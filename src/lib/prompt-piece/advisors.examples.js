@@ -19,7 +19,7 @@ const aiExpect = config?.aiMode
 
 // ── reshape ─────────────────────────────────────────────────────────
 
-describe.skipIf(!shouldRunLongExamples)('reshape', () => {
+describe('reshape', () => {
   it(
     'proposes domain-relevant inputs for a medical NER prompt',
     { timeout: longTestTimeout },
@@ -79,9 +79,9 @@ Return each entity with its type (person, condition, medication, procedure) and 
   );
 });
 
-// ── proposeTags (LLM) ──────────────────────────────────────────────
+// ── proposeTags ─────────────────────────────────────────────────────
 
-describe.skipIf(!shouldRunLongExamples)('proposeTags', () => {
+describe('proposeTags', () => {
   it(
     'recommends reusable tags that distinguish medical sub-domains',
     { timeout: longTestTimeout },
@@ -122,9 +122,9 @@ describe.skipIf(!shouldRunLongExamples)('proposeTags', () => {
   );
 });
 
-// ── tagSource (LLM) ────────────────────────────────────────────────
+// ── tagSource ───────────────────────────────────────────────────────
 
-describe.skipIf(!shouldRunLongExamples)('tagSource', () => {
+describe('tagSource', () => {
   it(
     'assigns tags that reflect what medical glossary content provides',
     { timeout: longTestTimeout },
