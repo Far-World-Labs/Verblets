@@ -19,6 +19,9 @@ export { default as tokenBudget } from './token-budget.js';
 export { default as summarize } from './summarize.js';
 export { default as wrapList } from './wrap-list.js';
 
+// Prompt piece fragments
+export * as promptPiece from './prompt-piece.js';
+
 // RAG prompt fragments
 export { default as privacyProbes } from './privacy-probes.js';
 export {

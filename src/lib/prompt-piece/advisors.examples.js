@@ -1,7 +1,7 @@
 import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
 import vitestAiExpect from '../../chains/expect/index.js';
 import llm from '../llm/index.js';
-import reshape, { proposeTags, tagSource } from './advisors.js';
+import reshape from './advisors.js';
 import { createPiece, addInput, render, matchSources, isReady, pendingInputs } from './piece.js';
 import { connectParts, detectCycles, runOrder } from './routing.js';
 import { longTestTimeout } from '../../constants/common.js';
@@ -137,84 +137,6 @@ Return each entity with its type and the exact text span.`;
         { mode: 'none' }
       );
       expect(diagPass).toBe(true);
-    }
-  );
-});
-
-// ── proposeTags ─────────────────────────────────────────────────────
-
-describe('proposeTags', () => {
-  it(
-    'recommends reusable tags that distinguish medical sub-domains',
-    { timeout: longTestTimeout },
-    async () => {
-      const result = await proposeTags({
-        text: 'Extract adverse drug reactions from clinical trial reports.',
-        inputs: [
-          { id: 'ctx-drug-list', placement: 'prepend', tags: [], required: true, multi: false },
-          {
-            id: 'ctx-severity-scale',
-            placement: 'append',
-            tags: [],
-            required: false,
-            multi: false,
-          },
-        ],
-        registry: [
-          { tag: 'medical', description: 'General medical domain', usageCount: 12 },
-          { tag: 'pharmacology', description: 'Drug-related content', usageCount: 4 },
-        ],
-      });
-
-      expect(result.length).toBe(2);
-
-      const tagsByInput = result.map((r) => ({ inputId: r.inputId, tags: r.tags }));
-      const tagsPass = await aiExpect(tagsByInput).toSatisfy(
-        'The two inputs have different tag sets that reflect their distinct roles: ctx-drug-list should have tags about drugs/pharmacology, ctx-severity-scale should have tags about severity/grading/scales. They should not both get identical tag sets.',
-        { mode: 'none' }
-      );
-      expect(tagsPass).toBe(true);
-
-      // Should prefer reusing existing registry tags when they fit
-      const reusedAny = result.some((r) =>
-        r.tags.some((t) => ['medical', 'pharmacology'].includes(t))
-      );
-      expect(reusedAny).toBe(true);
-    }
-  );
-});
-
-// ── tagSource ───────────────────────────────────────────────────────
-
-describe('tagSource', () => {
-  it(
-    'assigns tags that reflect what medical glossary content provides',
-    { timeout: longTestTimeout },
-    async () => {
-      const result = await tagSource({
-        text: 'cephalalgia: headache\nedema: swelling\ntachycardia: rapid heart rate',
-        kind: 'output',
-        registry: [
-          { tag: 'medical', description: 'Medical domain content', usageCount: 5 },
-          { tag: 'glossary', description: 'Terminology glossary', usageCount: 3 },
-          { tag: 'pharmacology', description: 'Drug-related content', usageCount: 4 },
-        ],
-      });
-
-      expect(result.length).toBeGreaterThanOrEqual(1);
-
-      const tagNames = result.map((t) => t.tag);
-      const tagsPass = await aiExpect(tagNames).toSatisfy(
-        'Tags describe what this content provides: medical terminology definitions. Should include "medical" and/or "glossary". Should NOT include "pharmacology" since this is general medical terms, not drug-specific.',
-        { mode: 'none' }
-      );
-      expect(tagsPass).toBe(true);
-
-      // High-confidence tags should not need review
-      const highConf = result.filter((t) => t.confidence === 'high');
-      for (const t of highConf) {
-        expect(t.needsReview).toBe(false);
-      }
     }
   );
 });
