@@ -4,7 +4,7 @@ import llm from '../llm/index.js';
 import reshape, { proposeTags, tagSource } from './advisors.js';
 import { createPiece, addInput, render, matchSources, isReady, pendingInputs } from './piece.js';
 import { connectParts, detectCycles, runOrder } from './routing.js';
-import { longTestTimeout, shouldRunLongExamples } from '../../constants/common.js';
+import { longTestTimeout } from '../../constants/common.js';
 import { wrapIt, wrapExpect, wrapAiExpect } from '../../chains/test-analysis/test-wrappers.js';
 import { getConfig } from '../../chains/test-analysis/config.js';
 
@@ -20,15 +20,14 @@ const aiExpect = config?.aiMode
 // ── reshape ─────────────────────────────────────────────────────────
 
 describe('reshape', () => {
+  const medicalNerPrompt = `Extract all named entities from the following medical text.
+Return each entity with its type (person, condition, medication, procedure) and the exact text span.`;
+
   it(
     'proposes domain-relevant inputs for a medical NER prompt',
     { timeout: longTestTimeout },
     async () => {
-      const result = await reshape(
-        `Extract all named entities from the following medical text.
-Return each entity with its type (person, condition, medication, procedure) and the exact text span.`,
-        { maxChanges: 3 }
-      );
+      const result = await reshape(medicalNerPrompt, { maxChanges: 3 });
 
       expect(result.inputChanges.length).toBeGreaterThanOrEqual(1);
       expect(result.inputChanges.length).toBeLessThanOrEqual(3);
@@ -36,14 +35,14 @@ Return each entity with its type (person, condition, medication, procedure) and 
       const ids = result.inputChanges.map((c) => c.id);
       const rationales = result.inputChanges.map((c) => c.rationale).join('\n');
 
-      const idsPass = await aiExpect(ids).toSatisfy(
-        'Each id is kebab-case and relates to medical entity extraction — e.g. terminology, examples, output format, or domain context. No generic names like "input-1".',
+      const idsPass = await aiExpect({ prompt: medicalNerPrompt, ids }).toSatisfy(
+        'Each id is kebab-case and plausibly relates to the prompt (which is about medical named entity extraction). Ids should suggest domain context, examples, output constraints, or similar — not be generic like "input-1" or completely unrelated to the prompt.',
         { mode: 'none' }
       );
       expect(idsPass).toBe(true);
 
-      const rationalesPass = await aiExpect(rationales).toSatisfy(
-        'Each rationale explains how the proposed input specifically improves medical entity extraction — e.g. reduces ambiguity, adds domain knowledge, constrains output format. Not vague platitudes.',
+      const rationalesPass = await aiExpect({ prompt: medicalNerPrompt, rationales }).toSatisfy(
+        'Each rationale explains how the proposed input specifically improves the given prompt — e.g. reduces ambiguity about entity types, adds domain knowledge for medical text, constrains output format. Not vague platitudes that could apply to any prompt.',
         { mode: 'none' }
       );
       expect(rationalesPass).toBe(true);
@@ -82,11 +81,10 @@ Return each entity with its type (person, condition, medication, procedure) and 
     'returns machine-applicable text edits in edits mode',
     { timeout: longTestTimeout },
     async () => {
-      const result = await reshape(
-        `Extract all named entities from the following medical text.
-Return each entity with its type and the exact text span.`,
-        { mode: 'edits', maxChanges: 3 }
-      );
+      const editsPrompt = `Extract all named entities from the following medical text.
+Return each entity with its type and the exact text span.`;
+
+      const result = await reshape(editsPrompt, { mode: 'edits', maxChanges: 3 });
 
       expect(result.textEdits.length).toBeGreaterThanOrEqual(1);
       expect(result.textEdits.length).toBeLessThanOrEqual(3);
@@ -100,8 +98,11 @@ Return each entity with its type and the exact text span.`,
         expect(edit.fix.near).toBeTruthy();
       }
 
-      const editsPass = await aiExpect(result.textEdits).toSatisfy(
-        'Each edit has: (a) an issue describing a real problem with the medical NER prompt, (b) a fix where "find" is text that actually appears in or closely matches the original prompt, and (c) a "replace" that is a concrete improvement, not a vague placeholder. The "near" field locates where in the prompt the change applies.',
+      const editsPass = await aiExpect({
+        prompt: editsPrompt,
+        textEdits: result.textEdits,
+      }).toSatisfy(
+        'Each edit has: (a) an issue describing a real problem with the given prompt, (b) a fix where "find" is a substring that actually appears verbatim in the prompt text, and (c) a "replace" that is a concrete improvement over the found text. The "near" field describes where in the prompt the edit applies.',
         { mode: 'none' }
       );
       expect(editsPass).toBe(true);
@@ -112,7 +113,9 @@ Return each entity with its type and the exact text span.`,
     'returns diagnostics without fixes in diagnostic mode',
     { timeout: longTestTimeout },
     async () => {
-      const result = await reshape(`Summarize the document.`, {
+      const diagPrompt = 'Summarize the document.';
+
+      const result = await reshape(diagPrompt, {
         mode: 'diagnostic',
         maxChanges: 5,
       });
@@ -126,8 +129,11 @@ Return each entity with its type and the exact text span.`,
         expect(diag).not.toHaveProperty('fix');
       }
 
-      const diagPass = await aiExpect(result.diagnostics).toSatisfy(
-        'Each diagnostic identifies a real issue with "Summarize the document" — e.g. vague task, no output format, no length constraint, no domain context. Issues are ordered by severity. Descriptions are specific, not generic.',
+      const diagPass = await aiExpect({
+        prompt: diagPrompt,
+        diagnostics: result.diagnostics,
+      }).toSatisfy(
+        'Each diagnostic identifies a real issue with the given prompt — e.g. vague task, no output format, no length constraint, no domain context. Issues are specific to this prompt (not generic advice). Ordered by severity.',
         { mode: 'none' }
       );
       expect(diagPass).toBe(true);
@@ -162,9 +168,9 @@ describe('proposeTags', () => {
 
       expect(result.length).toBe(2);
 
-      const allTags = result.flatMap((r) => r.tags);
-      const tagsPass = await aiExpect(allTags).toSatisfy(
-        'Tags are specific enough to distinguish a drug list from a severity scale — they should not both get identical tags. At least one tag per input should relate to what kind of content fills it (e.g. drug names vs severity/grading).',
+      const tagsByInput = result.map((r) => ({ inputId: r.inputId, tags: r.tags }));
+      const tagsPass = await aiExpect(tagsByInput).toSatisfy(
+        'The two inputs have different tag sets that reflect their distinct roles: ctx-drug-list should have tags about drugs/pharmacology, ctx-severity-scale should have tags about severity/grading/scales. They should not both get identical tag sets.',
         { mode: 'none' }
       );
       expect(tagsPass).toBe(true);
@@ -215,7 +221,7 @@ describe('tagSource', () => {
 
 // ── full lifecycle with LLM ────────────────────────────────────────
 
-describe.skipIf(!shouldRunLongExamples)('prompt piece lifecycle (LLM)', () => {
+describe('prompt piece lifecycle (LLM)', () => {
   it(
     'reshapes a prompt, builds a piece, wires sources, and renders an executable prompt',
     { timeout: longTestTimeout },
