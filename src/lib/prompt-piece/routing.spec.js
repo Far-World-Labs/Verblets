@@ -5,7 +5,7 @@ import {
   connectDownstream,
   connectUpstream,
   detectCycles,
-} from './index.js';
+} from './routing.js';
 
 const inst = (name, sourceTags, inputs = [], pinned) => ({
   name,
