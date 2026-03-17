@@ -44,16 +44,7 @@ const inputChangeItemSchema = {
       description: 'Why this change improves the piece',
     },
   },
-  required: [
-    'action',
-    'id',
-    'label',
-    'placement',
-    'required',
-    'multi',
-    'suggestedTags',
-    'rationale',
-  ],
+  required: ['action', 'id', 'label', 'placement', 'required', 'multi', 'rationale'],
   additionalProperties: false,
 };
 
@@ -136,48 +127,7 @@ const diagnosticItemSchema = {
 
 // ── Reshape schemas ─────────────────────────────────────────────────
 
-// reshape (default): proposes structural changes + text suggestions
-export const reshapeSchema = {
-  name: 'prompt_piece_reshape',
-  schema: {
-    type: 'object',
-    properties: {
-      value: {
-        type: 'object',
-        properties: {
-          inputChanges: {
-            type: 'array',
-            items: inputChangeItemSchema,
-          },
-          textSuggestions: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                description: {
-                  type: 'string',
-                  description: 'What text change to make and where',
-                },
-                rationale: {
-                  type: 'string',
-                  description: 'Why this text change helps accommodate new material',
-                },
-              },
-              required: ['description', 'rationale'],
-              additionalProperties: false,
-            },
-          },
-        },
-        required: ['inputChanges', 'textSuggestions'],
-        additionalProperties: false,
-      },
-    },
-    required: ['value'],
-    additionalProperties: false,
-  },
-};
-
-// reshape edits: structural changes + machine-applicable text edits
+// reshape (default): structural changes + machine-applicable text edits
 export const reshapeEditsSchema = {
   name: 'prompt_piece_reshape_edits',
   schema: {

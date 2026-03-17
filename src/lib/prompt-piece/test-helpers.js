@@ -1,6 +1,11 @@
 // ── Prompt Piece — Test Helpers ─────────────────────────────────────
 // Lightweight piece construction, rendering, tag matching, and routing
 // used by example and composition tests. Not part of the public API.
+//
+// These functions implement the deterministic core behaviors (piece
+// construction, marker rendering, AND-matching, pipeline ordering)
+// that the UI will also need. When the UI layer is built, these
+// should be promoted to a shared module rather than reimplemented.
 
 // ── Markers ─────────────────────────────────────────────────────────
 // HTML comment markers for inserting/extracting named sections.

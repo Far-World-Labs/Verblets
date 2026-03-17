@@ -8,7 +8,7 @@ import { asXML } from '../../prompts/wrap-variable.js';
 import { emitStepProgress, emitComplete } from '../progress-callback/index.js';
 import { debug } from '../debug/index.js';
 import { untrustedSystemSuffix, untrustedBoundary } from '../../prompts/prompt-piece.js';
-import { reshapeSchema, reshapeEditsSchema, reshapeDiagnosticSchema } from './schemas.js';
+import { reshapeEditsSchema, reshapeDiagnosticSchema } from './schemas.js';
 
 // ── Shared helpers ──────────────────────────────────────────────────
 
@@ -136,15 +136,13 @@ Return issues in priority order (most impactful first).`;
 const reshapeSchemaForMode = (_input, config) => {
   const { mode } = config;
   if (mode === 'diagnostic') return reshapeDiagnosticSchema;
-  if (mode === 'edits') return reshapeEditsSchema;
-  return reshapeSchema;
+  return reshapeEditsSchema;
 };
 
 const reshapeSystemPromptForMode = (_input, config) => {
   const { mode } = config;
   if (mode === 'diagnostic') return reshapeSystemPromptBase + reshapeDiagnosticAddendum;
-  if (mode === 'edits') return reshapeSystemPromptBase + reshapeEditsAddendum;
-  return reshapeSystemPromptBase;
+  return reshapeSystemPromptBase + reshapeEditsAddendum;
 };
 
 export const reshape = createAdvisor(

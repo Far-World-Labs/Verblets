@@ -1,8 +1,13 @@
 // ── Prompt Piece — Reusable Prompt Fragments ────────────────────────
 // Domain knowledge for prompt structure analysis and routing tags.
 // These fragments encode the concepts that prompt-piece advisors and
-// consumers need — extracted here so they can be composed into any
-// prompt, not just the built-in advisors.
+// UI consumers need — extracted here so they can be composed into any
+// prompt, tooltip, or guidance surface, not just the built-in advisors.
+//
+// IMPORTANT: These exports are a shared vocabulary between the reshape
+// advisor (src/lib/prompt-piece/) and UI components. Changes here
+// affect both surfaces. When editing, preserve the natural-language
+// phrasing — these strings are shown to users and embedded in prompts.
 
 // ── Input slot taxonomy ─────────────────────────────────────────────
 // The kinds of named insertion points a prompt can declare.
