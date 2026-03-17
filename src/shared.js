@@ -249,7 +249,6 @@ export { default as createBatches } from './lib/text-batch/index.js';
 export { default as llm } from './lib/llm/index.js';
 export { default as normalizeLlm } from './lib/normalize-llm/index.js';
 export { default as parallel, parallelMap } from './lib/parallel-batch/index.js';
-export * as promptCache from './lib/prompt-cache/index.js';
 export { default as retry } from './lib/retry/index.js';
 export { default as anySignal } from './lib/any-signal/index.js';
 export { default as TimedAbortController } from './lib/timed-abort-controller/index.js';
@@ -302,6 +301,8 @@ export { default as pipe } from './lib/pipe/index.js';
 // Namespaced exports
 export * as prompts from './prompts/index.js';
 export * as schemas from './json-schemas/index.js';
+export * as promptCache from './lib/prompt-cache/index.js';
+export * as promptPiece from './lib/prompt-piece/index.js';
 
 import * as common from './constants/common.js';
 import * as messages from './constants/messages.js';
