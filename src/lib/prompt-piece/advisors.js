@@ -119,7 +119,7 @@ For text changes, propose structured edits with:
 - category: what kind of improvement (clarity, structure, specificity, tone, etc.)
 - issue: what's wrong or improvable, with severity (critical, important, nice-to-have)
 - fix: a concrete text edit with:
-  - near: natural language description locating the region (reference marker sections or distinctive phrases)
+  - near: natural language description locating the region (reference distinctive phrases or structural boundaries)
   - find: the exact text to match
   - replace: the replacement text
   - rationale: why this change improves the piece`;

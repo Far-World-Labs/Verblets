@@ -56,7 +56,7 @@ Diagnostics have the same shape minus `fix`. Input changes propose add/remove/mo
 `test-helpers.js` provides lightweight piece construction, rendering, tag matching, and pipeline routing used by tests. These functions implement the deterministic core behaviors described in the terminology section:
 
 - `createPiece`, `addInput` — piece construction
-- `render` — sealed piece rendering with marker-based section injection
+- `render` — sealed piece rendering: splices content inline by placement (`{id}` for unfilled slots)
 - `matchSources` — AND-matching tag resolution
 - `pendingInputs`, `isReady` — readiness inspection
 - `connectParts`, `runOrder`, `detectCycles` — pipeline wiring and topological ordering

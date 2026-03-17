@@ -6,7 +6,6 @@ import {
   matchSources,
   isReady,
   pendingInputs,
-  extractSections,
   connectParts,
   detectCycles,
   runOrder,
@@ -75,7 +74,7 @@ describe('prompt piece composition', () => {
     const allMatchedIds = Object.values(matches).flatMap((ms) => ms.map((m) => m.sourceId));
     expect(allMatchedIds).not.toContain('unrelated');
 
-    // Render: content injected as marker sections in correct positions
+    // Render: content spliced inline by placement
     const content = Object.fromEntries(
       Object.entries(matches).map(([id, mappings]) => [id, mappings.map((m) => m.content)])
     );
@@ -88,11 +87,76 @@ describe('prompt piece composition', () => {
     expect(termPos).toBeLessThan(taskPos);
     expect(taskPos).toBeLessThan(examplePos);
 
-    // Round-trip: markers can be extracted back out
-    const { clean, sections } = extractSections(rendered);
-    expect(clean).toBe('Extract all named entities from the following medical text.');
-    expect(sections).toHaveLength(2);
-    expect(sections.map((s) => s.id)).toEqual(['ctx-terminology', 'ctx-examples']);
+    // Content appears inline without wrapper markers
+    expect(rendered).not.toContain('<!--');
+    expect(rendered).toContain('cephalalgia: headache');
+    expect(rendered).toContain('chest pain');
+  });
+
+  it('replaces {id} placeholders inline in piece text', () => {
+    const piece = addInput(createPiece('Use {glossary} to extract entities from the text.'), {
+      id: 'glossary',
+      label: 'Glossary',
+      placement: 'prepend',
+      tags: ['medical'],
+      required: true,
+      multi: false,
+    });
+
+    const rendered = render(piece, { glossary: 'cephalalgia: headache' });
+
+    // Content replaces the {glossary} placeholder inline
+    expect(rendered).toBe('Use cephalalgia: headache to extract entities from the text.');
+    // Not prepended — it was inlined
+    expect(rendered).not.toContain('{glossary}');
+  });
+
+  it('replaces <id/> placeholders inline in piece text', () => {
+    const piece = addInput(createPiece('Extract entities using <glossary/> as reference.'), {
+      id: 'glossary',
+      label: 'Glossary',
+      placement: 'prepend',
+      tags: ['medical'],
+      required: true,
+      multi: false,
+    });
+
+    const rendered = render(piece, { glossary: 'cephalalgia: headache' });
+
+    expect(rendered).toBe('Extract entities using cephalalgia: headache as reference.');
+    expect(rendered).not.toContain('<glossary');
+  });
+
+  it('falls back to prepend/append when no inline placeholder exists', () => {
+    let piece = createPiece('Extract entities.');
+    piece = addInput(piece, {
+      id: 'ctx-terms',
+      label: 'Terms',
+      placement: 'prepend',
+      tags: ['medical'],
+      required: true,
+      multi: false,
+    });
+    piece = addInput(piece, {
+      id: 'ctx-examples',
+      label: 'Examples',
+      placement: 'append',
+      tags: ['examples'],
+      required: false,
+      multi: false,
+    });
+
+    const rendered = render(piece, {
+      'ctx-terms': 'glossary content',
+      'ctx-examples': 'example content',
+    });
+
+    // Prepend before, append after
+    const termsPos = rendered.indexOf('glossary content');
+    const taskPos = rendered.indexOf('Extract entities.');
+    const examplesPos = rendered.indexOf('example content');
+    expect(termsPos).toBeLessThan(taskPos);
+    expect(taskPos).toBeLessThan(examplesPos);
   });
 
   it('wires a three-step pipeline and computes correct execution order', () => {

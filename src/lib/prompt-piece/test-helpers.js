@@ -3,44 +3,9 @@
 // used by example and composition tests. Not part of the public API.
 //
 // These functions implement the deterministic core behaviors (piece
-// construction, marker rendering, AND-matching, pipeline ordering)
+// construction, section rendering, AND-matching, pipeline ordering)
 // that the UI will also need. When the UI layer is built, these
 // should be promoted to a shared module rather than reimplemented.
-
-// ── Markers ─────────────────────────────────────────────────────────
-// HTML comment markers for inserting/extracting named sections.
-
-const markerOpen = (id) => `<!-- marker:${id} -->`;
-const markerClose = (id) => `<!-- /marker:${id} -->`;
-const MARKER_PATTERN = /<!-- marker:([\w-]+) -->\n([\s\S]*?)\n<!-- \/marker:\1 -->/g;
-
-export const extractSections = (prompt) => {
-  const sections = [];
-  let match;
-  const pattern = new RegExp(MARKER_PATTERN.source, MARKER_PATTERN.flags);
-  while ((match = pattern.exec(prompt)) !== null) {
-    sections.push({ id: match[1], content: match[2] });
-  }
-  const clean = prompt
-    .replace(pattern, '')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
-  return { clean, sections };
-};
-
-const toBlock = (section) =>
-  `${markerOpen(section.id)}\n${section.content}\n${markerClose(section.id)}`;
-
-const insertSections = (prompt, sections) => {
-  const { clean } = extractSections(prompt);
-  const prepends = sections.filter((s) => s.placement === 'prepend');
-  const appends = sections.filter((s) => s.placement === 'append');
-  const parts = [];
-  if (prepends.length) parts.push(prepends.map(toBlock).join('\n\n'));
-  parts.push(clean);
-  if (appends.length) parts.push(appends.map(toBlock).join('\n\n'));
-  return parts.join('\n\n');
-};
 
 // ── Piece construction ──────────────────────────────────────────────
 
@@ -62,16 +27,41 @@ export const addInput = (piece, input) => ({
 });
 
 // ── Rendering ───────────────────────────────────────────────────────
+// Placeholders in piece text: {id} or <id/> — both replaced inline.
+// Inputs without an inline placeholder are prepended or appended.
+
+const PLACEHOLDER_PATTERN = (id) => new RegExp(`\\{${id}\\}|<${id}\\s*/>`, 'g');
+
+const resolveContent = (input, content) => {
+  const raw = content[input.id];
+  const body = Array.isArray(raw) ? raw.filter(Boolean).join('\n\n') : raw;
+  return body || `{${input.id}}`;
+};
 
 export const render = (piece, content = {}) => {
-  const sections = piece.inputs
-    .filter((input) => input.id in content)
-    .map((input) => {
-      const raw = content[input.id];
-      const body = Array.isArray(raw) ? raw.filter(Boolean).join('\n\n') : raw;
-      return { id: input.id, placement: input.placement, content: body || `{${input.id}}` };
-    });
-  return insertSections(piece.text, sections);
+  let text = piece.text;
+  const inlined = new Set();
+
+  // Replace inline placeholders in piece text
+  for (const input of piece.inputs) {
+    if (!(input.id in content)) continue;
+    const pattern = PLACEHOLDER_PATTERN(input.id);
+    if (pattern.test(text)) {
+      inlined.add(input.id);
+      text = text.replace(pattern, resolveContent(input, content));
+    }
+  }
+
+  // Remaining filled inputs go to prepend/append positions
+  const prepends = [];
+  const appends = [];
+  for (const input of piece.inputs) {
+    if (!(input.id in content) || inlined.has(input.id)) continue;
+    const resolved = resolveContent(input, content);
+    if (input.placement === 'append') appends.push(resolved);
+    else prepends.push(resolved);
+  }
+  return [...prepends, text, ...appends].join('\n\n');
 };
 
 // ── Tag matching ────────────────────────────────────────────────────

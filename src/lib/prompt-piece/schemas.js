@@ -71,7 +71,7 @@ const fixSchema = {
     near: {
       type: 'string',
       description:
-        'Natural language description of where in the text to make the change — reference marker sections or distinctive phrases',
+        'Natural language description of where in the text to make the change — reference distinctive phrases or structural boundaries',
     },
     find: {
       type: 'string',

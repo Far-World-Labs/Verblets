@@ -203,7 +203,7 @@ describe('prompt piece lifecycle (LLM)', () => {
       const rendered = render(piece, content);
 
       const renderedPass = await aiExpect(rendered).toSatisfy(
-        'This is a valid LLM prompt that: (a) contains the original task about summarizing research findings, (b) includes the source content about 34% error rate reduction, (c) wraps injected content in HTML comment markers, (d) reads as a coherent prompt a human could send to an LLM.',
+        'This is a valid LLM prompt that: (a) contains the original task about summarizing research findings, (b) includes the source content about 34% error rate reduction, (c) reads as a coherent prompt a human could send to an LLM.',
         { mode: 'none' }
       );
       expect(renderedPass).toBe(true);
