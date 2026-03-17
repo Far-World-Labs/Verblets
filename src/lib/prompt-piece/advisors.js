@@ -19,6 +19,8 @@ import { emitStepProgress, emitComplete } from '../progress-callback/index.js';
 import { debug } from '../debug/index.js';
 import {
   reshapeSchema,
+  reshapeEditsSchema,
+  reshapeDiagnosticSchema,
   proposeTagsSchema,
   tagSourceSchema,
   tagReconcileSchema,
@@ -78,10 +80,16 @@ const createAdvisor = (label, systemPrompt, schema, buildParts) => {
       ...rest
     } = config;
 
+    const resolvedSchema = typeof schema === 'function' ? schema(input, config) : schema;
+    const resolvedSystemPrompt =
+      typeof systemPrompt === 'function' ? systemPrompt(input, config) : systemPrompt;
+
     emitStepProgress(onProgress, label, 'analyzing', { now: new Date(), chainStartTime: now });
 
     const parts = buildParts(input, config);
-    const effectiveSystemPrompt = untrusted ? systemPrompt + UNTRUSTED_SYSTEM_SUFFIX : systemPrompt;
+    const effectiveSystemPrompt = untrusted
+      ? resolvedSystemPrompt + UNTRUSTED_SYSTEM_SUFFIX
+      : resolvedSystemPrompt;
     const effectiveParts = untrusted ? [UNTRUSTED_BOUNDARY, ...parts] : parts;
 
     const response = await retry(
@@ -90,7 +98,7 @@ const createAdvisor = (label, systemPrompt, schema, buildParts) => {
           llm,
           modelOptions: {
             systemPrompt: effectiveSystemPrompt,
-            response_format: { type: 'json_schema', json_schema: schema },
+            response_format: { type: 'json_schema', json_schema: resolvedSchema },
           },
           ...rest,
         }),
@@ -112,7 +120,7 @@ const createAdvisor = (label, systemPrompt, schema, buildParts) => {
 
 // ── Piece advisors ──────────────────────────────────────────────────
 
-const reshapeSystemPrompt = `You are a prompt structure advisor. You analyze prompt text and propose structural improvements — inputs to add, remove, or modify, and text changes to make the piece work better with external material.
+const reshapeSystemPromptBase = `You are a prompt structure advisor. You analyze prompt text and propose structural improvements — inputs to add, remove, or modify, and text changes to make the piece work better with external material.
 
 Each input is a named insertion point where external material can be provided. Consider:
 - Domain context (terminology, reference data, background knowledge)
@@ -132,11 +140,46 @@ Rules:
 - When inputs should be split or merged, express as remove + add actions with rationale
 - Propose text edits when the piece text should change to accommodate new material`;
 
+const reshapeEditsAddendum = `
+
+For text changes, propose structured edits with:
+- id: kebab-case identifier, stable across re-runs for the same issue
+- category: what kind of improvement (clarity, structure, specificity, tone, etc.)
+- issue: what's wrong or improvable, with severity (critical, important, nice-to-have)
+- fix: a concrete text edit with:
+  - near: natural language description locating the region (reference marker sections or distinctive phrases)
+  - find: the exact text to match
+  - replace: the replacement text
+  - rationale: why this change improves the piece`;
+
+const reshapeDiagnosticAddendum = `
+
+Identify issues only — do not propose fixes or structural input changes. For each issue:
+- id: kebab-case identifier, stable across re-runs for the same issue
+- category: what kind of issue (clarity, structure, specificity, tone, etc.)
+- issue: what's wrong or improvable, with severity (critical, important, nice-to-have)
+
+Return issues in priority order (most impactful first).`;
+
+const reshapeSchemaForMode = (_input, config) => {
+  const { mode } = config;
+  if (mode === 'diagnostic') return reshapeDiagnosticSchema;
+  if (mode === 'edits') return reshapeEditsSchema;
+  return reshapeSchema;
+};
+
+const reshapeSystemPromptForMode = (_input, config) => {
+  const { mode } = config;
+  if (mode === 'diagnostic') return reshapeSystemPromptBase + reshapeDiagnosticAddendum;
+  if (mode === 'edits') return reshapeSystemPromptBase + reshapeEditsAddendum;
+  return reshapeSystemPromptBase;
+};
+
 export const reshape = createAdvisor(
   'piece-reshape',
-  reshapeSystemPrompt,
-  reshapeSchema,
-  (input, { maxChanges = 5 }) => {
+  reshapeSystemPromptForMode,
+  reshapeSchemaForMode,
+  (input, { maxChanges = 5, mode } = {}) => {
     const {
       text,
       inputs = [],
@@ -155,9 +198,12 @@ export const reshape = createAdvisor(
       parts.push(asXML(formatted, { tag: 'local-sources' }));
     }
     if (note) parts.push(asXML(note, { tag: 'note' }));
-    parts.push(
-      `Propose at most ${maxChanges} structural changes to this piece, in priority order.`
-    );
+
+    const instruction =
+      mode === 'diagnostic'
+        ? `Identify at most ${maxChanges} issues with this piece, in priority order.`
+        : `Propose at most ${maxChanges} structural changes to this piece, in priority order.`;
+    parts.push(instruction);
     return parts;
   }
 );

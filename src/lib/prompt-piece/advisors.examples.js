@@ -77,6 +77,62 @@ Return each entity with its type (person, condition, medication, procedure) and 
       expect(noOverlap).toBe(true);
     }
   );
+
+  it(
+    'returns machine-applicable text edits in edits mode',
+    { timeout: longTestTimeout },
+    async () => {
+      const result = await reshape(
+        `Extract all named entities from the following medical text.
+Return each entity with its type and the exact text span.`,
+        { mode: 'edits', maxChanges: 3 }
+      );
+
+      expect(result.textEdits.length).toBeGreaterThanOrEqual(1);
+      expect(result.textEdits.length).toBeLessThanOrEqual(3);
+
+      for (const edit of result.textEdits) {
+        expect(edit.id).toMatch(/^[a-z][a-z0-9-]*$/);
+        expect(edit.category).toBeTruthy();
+        expect(['critical', 'important', 'nice-to-have']).toContain(edit.issue.severity);
+        expect(edit.fix.find).toBeTruthy();
+        expect(edit.fix.replace).toBeTruthy();
+        expect(edit.fix.near).toBeTruthy();
+      }
+
+      const editsPass = await aiExpect(result.textEdits).toSatisfy(
+        'Each edit has: (a) an issue describing a real problem with the medical NER prompt, (b) a fix where "find" is text that actually appears in or closely matches the original prompt, and (c) a "replace" that is a concrete improvement, not a vague placeholder. The "near" field locates where in the prompt the change applies.',
+        { mode: 'none' }
+      );
+      expect(editsPass).toBe(true);
+    }
+  );
+
+  it(
+    'returns diagnostics without fixes in diagnostic mode',
+    { timeout: longTestTimeout },
+    async () => {
+      const result = await reshape(`Summarize the document.`, {
+        mode: 'diagnostic',
+        maxChanges: 5,
+      });
+
+      expect(result.diagnostics.length).toBeGreaterThanOrEqual(1);
+
+      for (const diag of result.diagnostics) {
+        expect(diag.id).toMatch(/^[a-z][a-z0-9-]*$/);
+        expect(diag.category).toBeTruthy();
+        expect(['critical', 'important', 'nice-to-have']).toContain(diag.issue.severity);
+        expect(diag).not.toHaveProperty('fix');
+      }
+
+      const diagPass = await aiExpect(result.diagnostics).toSatisfy(
+        'Each diagnostic identifies a real issue with "Summarize the document" — e.g. vague task, no output format, no length constraint, no domain context. Issues are ordered by severity. Descriptions are specific, not generic.',
+        { mode: 'none' }
+      );
+      expect(diagPass).toBe(true);
+    }
+  );
 });
 
 // ── proposeTags ─────────────────────────────────────────────────────

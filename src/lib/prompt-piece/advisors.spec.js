@@ -114,6 +114,110 @@ describe('extend-prompt AI advisors', () => {
       expect(callPrompt).toContain('at most 2');
     });
 
+    it('should use edits schema when mode is edits', async () => {
+      const mockEdits = {
+        inputChanges: [],
+        textEdits: [
+          {
+            id: 'clarify-extraction',
+            category: 'clarity',
+            issue: {
+              description: 'Extraction instruction is ambiguous',
+              severity: 'important',
+            },
+            fix: {
+              near: 'the extraction instruction',
+              find: 'Extract all named entities',
+              replace: 'Extract all named entities (person, condition, medication)',
+              rationale: 'Listing types reduces ambiguity',
+            },
+          },
+        ],
+      };
+
+      vi.mocked(llm).mockResolvedValueOnce(mockEdits);
+
+      const result = await reshape('Extract all named entities from the text.', {
+        mode: 'edits',
+      });
+
+      expect(result.textEdits).toHaveLength(1);
+      expect(result.textEdits[0].id).toBe('clarify-extraction');
+      expect(result.textEdits[0].issue.severity).toBe('important');
+      expect(result.textEdits[0].fix.find).toBe('Extract all named entities');
+      expect(result.textEdits[0].fix.replace).toContain('person, condition, medication');
+
+      const schemaName = llm.mock.calls[0][1].modelOptions.response_format.json_schema.name;
+      expect(schemaName).toBe('prompt_piece_reshape_edits');
+
+      const systemPrompt = llm.mock.calls[0][1].modelOptions.systemPrompt;
+      expect(systemPrompt).toContain('structured edits');
+      expect(systemPrompt).toContain('near:');
+    });
+
+    it('should use diagnostic schema when mode is diagnostic', async () => {
+      const mockDiagnostics = {
+        diagnostics: [
+          {
+            id: 'ambiguous-scope',
+            category: 'specificity',
+            issue: {
+              description: 'No entity types specified',
+              severity: 'critical',
+            },
+          },
+        ],
+      };
+
+      vi.mocked(llm).mockResolvedValueOnce(mockDiagnostics);
+
+      const result = await reshape('Extract entities.', { mode: 'diagnostic' });
+
+      expect(result.diagnostics).toHaveLength(1);
+      expect(result.diagnostics[0].id).toBe('ambiguous-scope');
+      expect(result.diagnostics[0].issue.severity).toBe('critical');
+      expect(result.diagnostics[0]).not.toHaveProperty('fix');
+
+      const schemaName = llm.mock.calls[0][1].modelOptions.response_format.json_schema.name;
+      expect(schemaName).toBe('prompt_piece_reshape_diagnostic');
+
+      const systemPrompt = llm.mock.calls[0][1].modelOptions.systemPrompt;
+      expect(systemPrompt).toContain('Identify issues only');
+
+      const userMessage = llm.mock.calls[0][0];
+      expect(userMessage).toContain('Identify at most');
+    });
+
+    it('should use default schema when no mode is specified', async () => {
+      vi.mocked(llm).mockResolvedValueOnce({ inputChanges: [], textSuggestions: [] });
+
+      await reshape('Test prompt.');
+
+      const schemaName = llm.mock.calls[0][1].modelOptions.response_format.json_schema.name;
+      expect(schemaName).toBe('prompt_piece_reshape');
+    });
+
+    it('.with() should support mode config', async () => {
+      const mockDiagnostics = {
+        diagnostics: [
+          {
+            id: 'vague-task',
+            category: 'clarity',
+            issue: { description: 'Task is vague', severity: 'important' },
+          },
+        ],
+      };
+
+      vi.mocked(llm).mockResolvedValueOnce(mockDiagnostics);
+
+      const diagnose = reshape.with({ mode: 'diagnostic' });
+      const result = await diagnose('Do the thing.');
+
+      expect(result.diagnostics).toHaveLength(1);
+      const schemaName = llm.mock.calls[0][1].modelOptions.response_format.json_schema.name;
+      expect(schemaName).toBe('prompt_piece_reshape_diagnostic');
+    });
+
     it('should include registry examples when provided', async () => {
       vi.mocked(llm).mockResolvedValueOnce({ inputChanges: [], textSuggestions: [] });
 
