@@ -4,6 +4,7 @@ import { asXML } from '../../prompts/wrap-variable.js';
 import { emitPhaseProgress } from '../../lib/progress-callback/index.js';
 import { createBatches, parallel, retry, batchTracker, scopeProgress } from '../../lib/index.js';
 import { debug } from '../../lib/debug/index.js';
+import { resolveOption } from '../../lib/context/resolve.js';
 
 const createCategoryDiscoveryPrompt = (instructions, categoryPrompt) => {
   const defaultCategoryPrompt =
@@ -79,7 +80,7 @@ const applyTopNFilter = (groups, topN) => {
 export default async function group(list, instructions, config = {}) {
   const {
     maxParallel = 3,
-    topN,
+    topN: _topN,
     categoryPrompt,
     listStyle,
     autoModeThreshold,
@@ -89,6 +90,7 @@ export default async function group(list, instructions, config = {}) {
     now = new Date(),
     ...options
   } = config;
+  const topN = resolveOption('topN', config, undefined);
 
   // Phase 1: Category Discovery - reduce pass to build taxonomy
   if (onProgress) {

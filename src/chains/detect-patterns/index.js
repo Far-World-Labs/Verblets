@@ -1,5 +1,6 @@
 import reduce from '../reduce/index.js';
 import { patternCandidatesJsonSchema } from './schemas.js';
+import { resolveOption } from '../../lib/context/resolve.js';
 
 // Response format for pattern detection - uses items wrapper for array
 const PATTERN_RESPONSE_FORMAT = {
@@ -34,7 +35,8 @@ function filterObject(obj, maxStringLength = 50, maxArrayLength = 10) {
 }
 
 export default async function detectPatterns(objects, config = {}) {
-  const { topN = 5, maxStringLength = 50, maxArrayLength = 10, llm, ...options } = config;
+  const { topN: _topN, maxStringLength = 50, maxArrayLength = 10, llm, ...options } = config;
+  const topN = resolveOption('topN', config, 5);
 
   const filteredObjects = objects.map((obj) => filterObject(obj, maxStringLength, maxArrayLength));
   const stringifiedObjects = filteredObjects.map((obj) => JSON.stringify(obj, null, 0));

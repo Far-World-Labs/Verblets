@@ -3,6 +3,7 @@ import depersonalize, { applyDepersonalize } from '../depersonalize/index.js';
 import redact, { applyRedact } from '../redact/index.js';
 import sensitivityClassify from '../../lib/sensitivity-classify/index.js';
 import buildInstructions from '../../lib/build-instructions/index.js';
+import { resolveOption } from '../../lib/context/resolve.js';
 
 // ===== Instruction Builders =====
 
@@ -98,24 +99,15 @@ export function createSensitivityGuard(options = {}) {
  *
  * @returns {Promise<{ flagged: boolean, text: string, scan: object, classification: object, protection: object|undefined, verification: object|undefined }>}
  */
-export default async function sensitivityGuard(
-  text,
-  {
-    threshold = 0.4,
-    categories,
-    maxTokens = 256,
-    scan: providedScan,
-    protection = 'depersonalize',
-    method = 'balanced',
-    context,
-    mode = 'placeholder',
-    specification,
-    verify = false,
-    llm,
-    maxAttempts,
-    onProgress,
-  } = {}
-) {
+export default async function sensitivityGuard(text, options = {}) {
+  const { scan: providedScan, context, specification, llm, maxAttempts, onProgress } = options;
+  const categories = resolveOption('categories', options, undefined);
+  const threshold = resolveOption('threshold', options, 0.4);
+  const maxTokens = resolveOption('maxTokens', options, 256);
+  const protection = resolveOption('protection', options, 'depersonalize');
+  const method = resolveOption('method', options, 'balanced');
+  const mode = resolveOption('mode', options, 'placeholder');
+  const verify = resolveOption('verify', options, false);
   const scan = providedScan ?? (await sensitivityScan(text, { threshold, categories, maxTokens }));
   const classification = sensitivityClassify(scan);
 

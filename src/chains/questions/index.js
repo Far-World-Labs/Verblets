@@ -2,6 +2,7 @@ import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { constants as promptConstants, asXML } from '../../prompts/index.js';
 import { questionsListSchema, selectedQuestionSchema } from './schemas.js';
+import { resolveOption } from '../../lib/context/resolve.js';
 
 const { contentIsChoices } = promptConstants;
 
@@ -55,7 +56,7 @@ const generateQuestions = async function* generateQuestionsGenerator(text, optio
 
   const {
     llm,
-    searchBreadth = 0.5,
+    searchBreadth: _searchBreadth,
     shouldSkip = shouldSkipNull,
     shouldStop = shouldStopNull,
     maxAttempts = 3,
@@ -63,6 +64,7 @@ const generateQuestions = async function* generateQuestionsGenerator(text, optio
     abortSignal,
     ...restOptions
   } = options;
+  const searchBreadth = resolveOption('searchBreadth', options, 0.5);
 
   let attempts = 0;
   while (!isDone) {

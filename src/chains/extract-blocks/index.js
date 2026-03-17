@@ -10,6 +10,7 @@ import {
   emitBatchProcessed,
   createBatchProgressCallback,
 } from '../../lib/progress-callback/index.js';
+import { resolveOption } from '../../lib/context/resolve.js';
 
 const buildBlockExtractionPrompt = (windowLines, windowStart, instructions) => {
   // Add global line numbers to each line for easier reference
@@ -50,8 +51,8 @@ ${asXML(numberedLines, { tag: 'window' })}`;
  */
 export async function extractBlocks(text, instructions, config = {}) {
   const {
-    windowSize = 100,
-    overlapSize = 20,
+    windowSize: _windowSize,
+    overlapSize: _overlapSize,
     maxParallel = 3,
     maxAttempts = 3,
     logger,
@@ -60,6 +61,8 @@ export async function extractBlocks(text, instructions, config = {}) {
     now = new Date(),
     ...options
   } = config;
+  const windowSize = resolveOption('windowSize', config, 100);
+  const overlapSize = resolveOption('overlapSize', config, 20);
 
   const lifecycleLogger = createLifecycleLogger(logger, 'chain:extract-blocks');
 

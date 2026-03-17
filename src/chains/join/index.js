@@ -1,6 +1,7 @@
 import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import windowFor from '../../lib/window-for/index.js';
+import { resolveOption } from '../../lib/context/resolve.js';
 
 /**
  * Join text fragments using AI with windowed processing for equal context exposure.
@@ -26,13 +27,14 @@ export default async function join(
   const {
     windowSize = 5,
     overlapPercent = 50,
-    styleHint = '',
+    styleHint: _styleHint,
     maxAttempts = 3,
     llm,
     onProgress,
     abortSignal,
     ...options
   } = config;
+  const styleHint = resolveOption('styleHint', config, '');
 
   // Create overlapping windows using the windowFor utility
   const windows = windowFor(list, windowSize, overlapPercent);

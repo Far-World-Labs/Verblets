@@ -1,5 +1,6 @@
 import list from '../list/index.js';
 import score from '../score/index.js';
+import { resolveOption } from '../../lib/context/resolve.js';
 
 const splitIntoChunks = (text, maxLen) => {
   const words = text.split(/\s+/);
@@ -18,7 +19,8 @@ const splitIntoChunks = (text, maxLen) => {
 };
 
 export default async function collectTerms(text, config = {}) {
-  const { chunkLen = 1000, topN = 20, llm, ...options } = config;
+  const { topN: _topN, chunkLen = 1000, llm, ...options } = config;
+  const topN = resolveOption('topN', config, 20);
   const chunks = splitIntoChunks(text, chunkLen);
 
   // Collect terms from each chunk

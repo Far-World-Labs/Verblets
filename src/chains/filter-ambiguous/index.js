@@ -1,8 +1,10 @@
 import list from '../list/index.js';
 import score from '../score/index.js';
+import { resolveOption } from '../../lib/context/resolve.js';
 
 export default async function filterAmbiguous(text, config = {}) {
-  const { topN = 10, batchSize = 5, llm, ...options } = config;
+  const { topN: _topN, batchSize = 5, llm, ...options } = config;
+  const topN = resolveOption('topN', config, 10);
   if (!text) return [];
   const sentences = text
     .split('\n')

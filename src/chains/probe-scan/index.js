@@ -1,5 +1,6 @@
 import { embedChunked } from '../../lib/embed/index.js';
 import { cosineSimilarity } from '../../lib/pure/index.js';
+import { resolveOption } from '../../lib/context/resolve.js';
 
 /**
  * Scan text for probe matches against a set of pre-embedded probes.
@@ -16,7 +17,8 @@ import { cosineSimilarity } from '../../lib/pure/index.js';
  * @returns {Promise<{ flagged: boolean, hits: Array<{ category: string, label: string, score: number, chunk: { text: string, start: number, end: number } }> }>}
  */
 export default async function probeScan(text, probes, options = {}) {
-  const { threshold = 0.4, categories, maxTokens = 256 } = options;
+  const { categories, maxTokens = 256 } = options;
+  const threshold = resolveOption('threshold', options, 0.4);
 
   const chunks = await embedChunked(text, { maxTokens });
 

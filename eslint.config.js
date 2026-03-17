@@ -45,7 +45,7 @@ export default [
       // TODO: Refactor await-in-loop patterns to use Promise.all()
       'no-await-in-loop': 'off',
 
-      'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      'no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
       'require-await': 'error',
       'prefer-arrow-callback': 'error',
       'prefer-template': 'error',

@@ -3,6 +3,7 @@ import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import buildInstructions from '../../lib/build-instructions/index.js';
 import { debug } from '../../lib/debug/index.js';
+import { resolveOption } from '../../lib/context/resolve.js';
 import depersonalizeSpecSchema from './depersonalize-specification.json';
 
 const SENSITIVE_LLM = { sensitive: true, good: true };
@@ -186,7 +187,8 @@ async function runStages(
  */
 // eslint-disable-next-line require-await
 export default async function depersonalize(text, options = {}) {
-  const { method = 'balanced', context, llm = SENSITIVE_LLM, ...rest } = options;
+  const { method: _method, context, llm = SENSITIVE_LLM, ...rest } = options;
+  const method = resolveOption('method', options, 'balanced');
 
   if (llm === SENSITIVE_LLM) {
     debug(

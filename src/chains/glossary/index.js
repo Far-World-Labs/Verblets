@@ -2,6 +2,7 @@ import nlp from 'compromise';
 import sort from '../sort/index.js';
 import map from '../map/index.js';
 import { glossaryExtractionJsonSchema } from './schemas.js';
+import { resolveOption } from '../../lib/context/resolve.js';
 
 // Response format for map: each chunk produces an array of terms
 const GLOSSARY_RESPONSE_FORMAT = {
@@ -23,13 +24,15 @@ const GLOSSARY_RESPONSE_FORMAT = {
  */
 export default async function glossary(text, options = {}) {
   const {
-    maxTerms = 10,
+    maxTerms: _maxTerms,
+    sortBy: _sortBy,
     sentencesPerBatch = 3,
     overlap = 1,
     batchSize = 1,
-    sortBy = 'importance for understanding the content',
     ...restOptions
   } = options;
+  const maxTerms = resolveOption('maxTerms', options, 10);
+  const sortBy = resolveOption('sortBy', options, 'importance for understanding the content');
   if (!text || !text.trim()) return [];
 
   // Parse sentences using compromise

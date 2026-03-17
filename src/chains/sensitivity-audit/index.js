@@ -7,6 +7,7 @@ import {
   emitBatchComplete,
 } from '../../lib/progress-callback/index.js';
 import { SEVERITY_ORDER } from '../../constants/sensitivity-categories.js';
+import { resolveOption } from '../../lib/context/resolve.js';
 
 /**
  * Aggregate individual audit items into a summary.
@@ -63,7 +64,10 @@ export function aggregateAudit(items) {
  * @returns {Promise<{ items: Array<{ text: string, scan: object, classification: object }>, summary: object }>}
  */
 export default async function sensitivityAudit(texts, options = {}) {
-  const { threshold, categories, maxTokens, maxParallel = 5, onProgress } = options;
+  const { maxParallel = 5, onProgress } = options;
+  const threshold = resolveOption('threshold', options, undefined);
+  const categories = resolveOption('categories', options, undefined);
+  const maxTokens = resolveOption('maxTokens', options, undefined);
 
   if (!texts || texts.length === 0) {
     return {

@@ -7,6 +7,7 @@ import { constants as promptConstants } from '../../prompts/index.js';
 import { intersectionElementsSchema } from './schemas.js';
 import intersectionResultSchema from './intersection-result.json';
 import { debug } from '../../lib/debug/index.js';
+import { resolveOption } from '../../lib/context/resolve.js';
 
 const { strictFormat, contentIsQuestion } = promptConstants;
 
@@ -115,13 +116,14 @@ export default async function intersections(items, options = {}) {
     maxSize = items.length,
     batchSize = 10,
     llm = 'fastGoodCheap',
-    useSchemaValidation = false,
+    useSchemaValidation: _useSchemaValidation,
     maxAttempts = 3,
     onProgress,
     abortSignal,
     now = new Date(),
     ...restOptions
   } = options;
+  const useSchemaValidation = resolveOption('useSchemaValidation', options, false);
 
   // Generate all combinations
   const allCombinations = rangeCombinations(items, minSize, maxSize);

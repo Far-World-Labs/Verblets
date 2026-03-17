@@ -1,6 +1,7 @@
 import list from '../list/index.js';
 import retry from '../../lib/retry/index.js';
 import { scopeProgress } from '../../lib/progress-callback/index.js';
+import { resolveOption } from '../../lib/context/resolve.js';
 
 /**
  * Core prompt template for sample generation using cognitive science principles
@@ -80,8 +81,6 @@ export default async function categorySamples(categoryName, options = {}) {
 
   const {
     context = '',
-    count = 30,
-    diversityLevel = 'balanced',
     llm = 'fastGoodCheap',
     maxAttempts = 3,
     retryDelay = 1000,
@@ -89,6 +88,8 @@ export default async function categorySamples(categoryName, options = {}) {
     abortSignal,
     now = new Date(),
   } = options;
+  const count = resolveOption('count', options, 30);
+  const diversityLevel = resolveOption('diversityLevel', options, 'balanced');
 
   const generateWithRetry = async () => {
     const prompt = buildSeedGenerationPrompt(categoryName, { context, diversityLevel });

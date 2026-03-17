@@ -1,5 +1,6 @@
 import score from '../score/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
+import { resolveOption } from '../../lib/context/resolve.js';
 
 /**
  * Create chunks of text with tracked end positions.
@@ -74,7 +75,7 @@ function createChunks(text, chunkSize) {
  */
 export default async function truncate(text, instructions, config = {}) {
   const chunkSize = config.chunkSize ?? 1000;
-  const threshold = config.threshold ?? 6;
+  const threshold = resolveOption('threshold', config, 6);
 
   // Create chunks with tracked end positions
   const chunks = createChunks(text, chunkSize);

@@ -5,6 +5,7 @@ import { sort as sortPromptInitial } from '../../prompts/index.js';
 import sortSchema from './sort-result.json';
 import { emitStart, emitComplete, emitStepProgress } from '../../lib/progress-callback/index.js';
 import { debug } from '../../lib/debug/index.js';
+import { resolveOption } from '../../lib/context/resolve.js';
 
 /**
  * Create model options for structured outputs
@@ -47,13 +48,14 @@ const sort = async (list, criteria, config = {}) => {
     batchSize = defaultSortBatchSize,
     extremeK = defaultSortExtremeK,
     iterations = defaultSortIterations,
-    selectBottom = true, // New parameter to control bottom selection
+    selectBottom: _selectBottom,
     onProgress = undefined, // Callback: ({top, bottom, processed, total}) => void
     llm,
     maxAttempts = 3,
     now = new Date(),
     ...options
   } = config;
+  const selectBottom = resolveOption('selectBottom', config, true);
 
   const items = sanitizeList(list);
 

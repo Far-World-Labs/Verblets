@@ -2,6 +2,7 @@ import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import chunkSentences from '../../lib/chunk-sentences/index.js';
 import wrapVariable from '../../prompts/wrap-variable.js';
+import { resolveOption } from '../../lib/context/resolve.js';
 
 // improbable delimiter string, similar to a multipart form boundary
 const defaultDelimiter = '---763927459---';
@@ -39,10 +40,11 @@ export default async function split(text, instructions, config = {}) {
     delimiter = defaultDelimiter,
     maxAttempts = 2,
     llm = 'fastGoodCheapCoding',
-    targetSplitsPerChunk = null,
+    targetSplitsPerChunk: _targetSplitsPerChunk,
     onProgress,
     ...options
   } = config;
+  const targetSplitsPerChunk = resolveOption('targetSplitsPerChunk', config, null);
 
   const chunks = chunkSentences(text, chunkLen);
 

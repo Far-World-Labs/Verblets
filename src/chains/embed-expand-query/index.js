@@ -2,6 +2,7 @@ import embedRewriteQuery from '../../verblets/embed-rewrite-query/index.js';
 import embedMultiQuery from '../../verblets/embed-multi-query/index.js';
 import embedStepBack from '../../verblets/embed-step-back/index.js';
 import embedSubquestions from '../../verblets/embed-subquestions/index.js';
+import { resolveOption } from '../../lib/context/resolve.js';
 
 export const ALL_STRATEGIES = ['rewrite', 'multi', 'stepBack', 'subquestions'];
 
@@ -29,7 +30,8 @@ export { embedRewriteQuery, embedMultiQuery, embedStepBack, embedSubquestions };
  * @returns {Promise<string[]>}
  */
 export default async function embedExpandQuery(query, config = {}) {
-  const { strategies = ALL_STRATEGIES, count, llm, logger, ...rest } = config;
+  const { strategies: _strategies, count, llm, logger, ...rest } = config;
+  const strategies = resolveOption('strategies', config, ALL_STRATEGIES);
 
   const sharedConfig = { llm, logger, ...rest };
   const countConfig = count !== undefined ? { ...sharedConfig, count } : sharedConfig;

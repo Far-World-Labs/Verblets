@@ -6,6 +6,7 @@ import wrapVariable from '../../prompts/wrap-variable.js';
 import { env } from '../../lib/env/index.js';
 import { expectCore, handleAssertionResult } from './shared.js';
 import { extractFileContext } from '../../lib/logger/index.js';
+import { resolveOption } from '../../lib/context/resolve.js';
 
 /**
  * Get git-aware file path or full path if not in git repo
@@ -141,7 +142,7 @@ Keep your response concise but actionable. Focus on practical solutions.`;
  * Enhanced LLM expectation with debugging features
  */
 export async function expect(actual, expected, constraint, options = {}) {
-  const mode = options.mode || env.LLM_EXPECT_MODE || 'none';
+  const mode = resolveOption('mode', options, env.LLM_EXPECT_MODE || 'none');
 
   const callerInfo = extractFileContext(5);
 

@@ -99,6 +99,25 @@ export {
 } from './constants/sensitivity-categories.js';
 export { default as embedProbes } from './lib/embed-probes/index.js';
 
+// Context
+export {
+  CONTEXT_KINDS,
+  ENVIRONMENT,
+  SENSITIVITY_CAPABILITY,
+  DOMAIN,
+  COMPLIANCE,
+  QUALITY_INTENT,
+  COST_POSTURE,
+  SENSITIVITY_LEVEL,
+} from './constants/context.js';
+export {
+  createContextBuilder,
+  observeApplication,
+  observeProviders,
+  resolveOption,
+  resolveAsyncOption,
+} from './lib/context/index.js';
+
 // Lists
 export { default as centralTendency } from './chains/central-tendency/index.js';
 export { default as centralTendencyLines } from './verblets/central-tendency-lines/index.js';
@@ -305,6 +324,7 @@ export * as promptCache from './lib/prompt-cache/index.js';
 export * as promptPiece from './lib/prompt-piece/index.js';
 
 import * as common from './constants/common.js';
+import * as contextConsts from './constants/context.js';
 import * as messages from './constants/messages.js';
 import * as models from './constants/models.js';
 import * as redis from './services/redis/index.js';
@@ -316,6 +336,7 @@ export * as config from './lib/config/index.js';
 
 export const constants = {
   common,
+  context: contextConsts,
   messages,
   models,
 };

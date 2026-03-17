@@ -7,6 +7,7 @@ import map from '../map/index.js';
 import reduce from '../reduce/index.js';
 import { timelineEventJsonSchema } from './schemas.js';
 import { debug } from '../../lib/debug/index.js';
+import { resolveOption } from '../../lib/context/resolve.js';
 
 const extractTimelineInstructions = `Extract timeline events from this text chunk.
 
@@ -100,11 +101,12 @@ export default async function timeline(text, options = {}) {
     maxAttempts = 3,
     onProgress,
     llm,
-    enrichWithKnowledge = false,
+    enrichWithKnowledge: _enrichWithKnowledge,
     batchSize,
     now = new Date(),
     ...remainingOptions
   } = options;
+  const enrichWithKnowledge = resolveOption('enrichWithKnowledge', options, false);
 
   // Create overlapping chunks to avoid missing events at boundaries
   const chunks = chunkSentences(text, chunkSize, { overlap: 200 });

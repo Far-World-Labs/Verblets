@@ -4,6 +4,7 @@ import { asXML } from '../../prompts/wrap-variable.js';
 import buildInstructions from '../../lib/build-instructions/index.js';
 import { PLACEHOLDER_PREFIXES, GENERALIZATIONS } from '../../constants/sensitivity-categories.js';
 import { debug } from '../../lib/debug/index.js';
+import { resolveOption } from '../../lib/context/resolve.js';
 import redactionResultSchema from './redaction-result.json';
 import redactionSpecSchema from './redaction-specification.json';
 
@@ -124,7 +125,7 @@ export const {
 export default async function redact(text, options = {}) {
   const {
     scan,
-    mode = redactMode.PLACEHOLDER,
+    mode: _mode,
     categories,
     llm = SENSITIVE_LLM,
     maxAttempts = 3,
@@ -132,6 +133,7 @@ export default async function redact(text, options = {}) {
     abortSignal,
     ...rest
   } = options;
+  const mode = resolveOption('mode', options, redactMode.PLACEHOLDER);
 
   if (llm === SENSITIVE_LLM) {
     debug(

@@ -2,6 +2,7 @@ import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import popReferenceSchema from './pop-reference-result.json';
+import { resolveOption } from '../../lib/context/resolve.js';
 
 const modelOptions = {
   response_format: {
@@ -23,14 +24,16 @@ const modelOptions = {
 export default async function popReference(sentence, description, options = {}) {
   const {
     include = [],
-    referenceContext = false,
-    referencesPerSource = 2,
+    referenceContext: _referenceContext,
+    referencesPerSource: _referencesPerSource,
     llm,
     maxAttempts = 3,
     onProgress,
     abortSignal,
     ...restOptions
   } = options;
+  const referenceContext = resolveOption('referenceContext', options, false);
+  const referencesPerSource = resolveOption('referencesPerSource', options, 2);
 
   // Build the include list description
   let includeDescription = '';

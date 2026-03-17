@@ -4,6 +4,7 @@ import map from '../map/index.js';
 import { scopeProgress } from '../../lib/progress-callback/index.js';
 import TextSimilarity from '../../lib/text-similarity/index.js';
 import { debug } from '../../lib/debug/index.js';
+import { resolveOption } from '../../lib/context/resolve.js';
 
 // Token cost estimates
 const TOKENS_PER_EXPANSION = 200;
@@ -486,6 +487,13 @@ function selectGapFillers(allChunks, selectedChunks, gapFillerBudget) {
 export default async function documentShrink(document, query, options = {}) {
   const { onProgress, now = new Date(), ...rest } = options;
   const config = { ...DEFAULT_OPTIONS, ...rest };
+  config.targetSize = resolveOption('targetSize', options, config.targetSize);
+  config.tokenBudget = resolveOption('tokenBudget', options, config.tokenBudget);
+  config.gapFillerBudgetRatio = resolveOption(
+    'gapFillerBudgetRatio',
+    options,
+    config.gapFillerBudgetRatio
+  );
   // Handle edge cases early
   if (!document || document.length === 0) {
     return {

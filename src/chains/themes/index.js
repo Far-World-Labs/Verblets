@@ -1,5 +1,6 @@
 import reduce from '../reduce/index.js';
 import shuffle from '../../lib/shuffle/index.js';
+import { resolveOption } from '../../lib/context/resolve.js';
 
 const splitText = (text) =>
   text
@@ -8,7 +9,8 @@ const splitText = (text) =>
     .filter(Boolean);
 
 export default async function themes(text, config = {}) {
-  const { batchSize = 5, topN, llm, now = new Date(), ...options } = config;
+  const { batchSize = 5, topN: _topN, llm, now = new Date(), ...options } = config;
+  const topN = resolveOption('topN', config, undefined);
   const pieces = splitText(text);
   const reducePrompt =
     'Update the accumulator with short themes from this text. Avoid duplicates. Return ONLY a comma-separated list of themes with no explanation or additional text.';

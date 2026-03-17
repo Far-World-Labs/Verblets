@@ -8,12 +8,13 @@
  * @param {object} [options.runtimeProvider] - Provider with get(key) → Promise<value|undefined>
  * @param {object} [options.redis] - Pre-configured Redis client instance
  * @param {Record<string, any>} [options.modelOverrides] - Per-key global overrides for model service
- * @returns {{ config: object, modelService: object }}
+ * @returns {{ config: object, modelService: object, context: object }}
  */
 import * as config from './lib/config/index.js';
 import { validate } from './lib/config/index.js';
 import modelService from './services/llm-model/index.js';
 import { setClient } from './services/redis/index.js';
+import { createContextBuilder, observeApplication, observeProviders } from './lib/context/index.js';
 
 export default function init(options = {}) {
   const { redis, modelOverrides, runtimeProvider, strict = true } = options;
@@ -33,5 +34,9 @@ export default function init(options = {}) {
     }
   }
 
-  return { config, modelService };
+  const context = createContextBuilder();
+  context.setApplication(observeApplication());
+  context.setProviders(observeProviders());
+
+  return { config, modelService, context };
 }
