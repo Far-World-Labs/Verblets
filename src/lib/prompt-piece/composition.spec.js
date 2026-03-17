@@ -1,7 +1,16 @@
 import { describe, it, expect } from 'vitest';
-import { createPiece, addInput, render, matchSources, isReady, pendingInputs } from './piece.js';
-import { connectParts, detectCycles, runOrder } from './routing.js';
-import { extractSections } from './markers.js';
+import {
+  createPiece,
+  addInput,
+  render,
+  matchSources,
+  isReady,
+  pendingInputs,
+  extractSections,
+  connectParts,
+  detectCycles,
+  runOrder,
+} from './test-helpers.js';
 
 describe('prompt piece composition', () => {
   it('builds a multi-input piece, matches sources by tags, and renders a coherent prompt', () => {

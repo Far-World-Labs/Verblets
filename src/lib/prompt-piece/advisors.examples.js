@@ -2,8 +2,17 @@ import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
 import vitestAiExpect from '../../chains/expect/index.js';
 import llm from '../llm/index.js';
 import reshape from './advisors.js';
-import { createPiece, addInput, render, matchSources, isReady, pendingInputs } from './piece.js';
-import { connectParts, detectCycles, runOrder } from './routing.js';
+import {
+  createPiece,
+  addInput,
+  render,
+  matchSources,
+  isReady,
+  pendingInputs,
+  connectParts,
+  detectCycles,
+  runOrder,
+} from './test-helpers.js';
 import { longTestTimeout } from '../../constants/common.js';
 import { wrapIt, wrapExpect, wrapAiExpect } from '../../chains/test-analysis/test-wrappers.js';
 import { getConfig } from '../../chains/test-analysis/config.js';
