@@ -3,6 +3,7 @@ import categorySamples, {
   buildSeedGenerationPrompt,
   SAMPLE_GENERATION_PROMPT,
   categorySamplesList,
+  mapDiversity,
 } from './index.js';
 import list from '../list/index.js';
 import retry from '../../lib/retry/index.js';
@@ -257,7 +258,7 @@ describe('buildSeedGenerationPrompt', () => {
     expect(prompt).toContain('Generate sample items for the category');
   });
 
-  it('uses balanced diversity level by default', () => {
+  it('uses default diversity when not specified', () => {
     const prompt = buildSeedGenerationPrompt('cars');
 
     expect(prompt).toContain(
@@ -267,7 +268,7 @@ describe('buildSeedGenerationPrompt', () => {
   });
 
   it('uses high diversity level', () => {
-    const prompt = buildSeedGenerationPrompt('music genres', { diversityLevel: 'high' });
+    const prompt = buildSeedGenerationPrompt('music genres', { diversity: 'high' });
 
     expect(prompt).toContain(
       'Include very diverse examples spanning edge cases and borderline members'
@@ -275,8 +276,8 @@ describe('buildSeedGenerationPrompt', () => {
     expect(prompt).toContain('Include many atypical but valid members');
   });
 
-  it('uses focused diversity level', () => {
-    const prompt = buildSeedGenerationPrompt('sports', { diversityLevel: 'focused' });
+  it('uses low diversity level', () => {
+    const prompt = buildSeedGenerationPrompt('sports', { diversity: 'low' });
 
     expect(prompt).toContain(
       'Focus on highly typical, central members with clear category membership'
@@ -284,8 +285,8 @@ describe('buildSeedGenerationPrompt', () => {
     expect(prompt).toContain('Focus primarily on typical members');
   });
 
-  it('falls back to balanced for unknown diversity level', () => {
-    const prompt = buildSeedGenerationPrompt('foods', { diversityLevel: 'unknown' });
+  it('falls back to default for unknown diversity level', () => {
+    const prompt = buildSeedGenerationPrompt('foods', { diversity: 'unknown' });
 
     expect(prompt).toContain(
       'Include a mix of typical, moderately typical, and some atypical members'
@@ -356,5 +357,39 @@ describe('categorySamplesList', () => {
 
     // count is not forwarded to list - only category and options
     expect(list).toHaveBeenCalledWith('items', { llm: 'test' });
+  });
+});
+
+describe('mapDiversity', () => {
+  it('returns default config for undefined', () => {
+    const result = mapDiversity(undefined);
+    expect(result).toStrictEqual({ diversity: undefined, count: 30 });
+  });
+
+  it('returns low diversity with reduced count', () => {
+    const result = mapDiversity('low');
+    expect(result.diversity).toBe('low');
+    expect(result.count).toBe(15);
+  });
+
+  it('returns default config for med', () => {
+    const result = mapDiversity('med');
+    expect(result).toStrictEqual({ diversity: undefined, count: 30 });
+  });
+
+  it('returns high diversity with increased count', () => {
+    const result = mapDiversity('high');
+    expect(result.diversity).toBe('high');
+    expect(result.count).toBe(50);
+  });
+
+  it('returns default config for unknown string', () => {
+    const result = mapDiversity('medium');
+    expect(result).toStrictEqual({ diversity: undefined, count: 30 });
+  });
+
+  it('passes through object values', () => {
+    const custom = { diversity: 'high', count: 100 };
+    expect(mapDiversity(custom)).toBe(custom);
   });
 });

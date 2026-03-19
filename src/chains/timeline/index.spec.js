@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import timeline from './index.js';
+import timeline, { mapEnrichment } from './index.js';
 
 // Mock all dependencies
 vi.mock('../../lib/llm/index.js');
@@ -36,6 +36,41 @@ beforeEach(() => {
       }
     }
     return JSON.stringify({ events: deduped });
+  });
+});
+
+describe('mapEnrichment', () => {
+  it('returns default (llmDedup only) when undefined', () => {
+    expect(mapEnrichment(undefined)).toEqual({
+      llmDedup: true,
+      knowledgeBase: false,
+      enrichMap: false,
+    });
+  });
+
+  it('maps low to extraction-only — no LLM dedup, no knowledge, no enrichment', () => {
+    expect(mapEnrichment('low')).toEqual({
+      llmDedup: false,
+      knowledgeBase: false,
+      enrichMap: false,
+    });
+  });
+
+  it('maps high to full pipeline — all phases enabled', () => {
+    expect(mapEnrichment('high')).toEqual({ llmDedup: true, knowledgeBase: true, enrichMap: true });
+  });
+
+  it('passes through object for power consumers', () => {
+    const custom = { llmDedup: true, knowledgeBase: true, enrichMap: false };
+    expect(mapEnrichment(custom)).toBe(custom);
+  });
+
+  it('falls back to default on unknown string', () => {
+    expect(mapEnrichment('turbo')).toEqual({
+      llmDedup: true,
+      knowledgeBase: false,
+      enrichMap: false,
+    });
   });
 });
 
@@ -247,6 +282,37 @@ describe('timeline', () => {
 
     // Non-parseable dates should maintain their original order
     expect(result.map((e) => e.name)).toEqual(['A', 'B', 'C']);
+  });
+
+  it('skips LLM dedup call when enrichment is low', async () => {
+    llm.mockResolvedValueOnce({
+      events: [
+        { timestamp: '2023-01-01', name: 'Event A' },
+        { timestamp: '2023-06-15', name: 'Event B' },
+      ],
+    });
+
+    const result = await timeline('text', { enrichment: 'low' });
+
+    // Only 1 LLM call (extraction), no dedup call
+    expect(llm).toHaveBeenCalledTimes(1);
+    expect(result).toHaveLength(2);
+  });
+
+  it('makes dedup LLM call with default enrichment', async () => {
+    const extractedEvents = [
+      { timestamp: '2023-01-01', name: 'Event A' },
+      { timestamp: '2023-06-15', name: 'Event B' },
+    ];
+    llm
+      .mockResolvedValueOnce({ events: extractedEvents }) // extraction
+      .mockResolvedValueOnce({ events: extractedEvents }); // dedup
+
+    const result = await timeline('text');
+
+    // 2 LLM calls: extraction + dedup
+    expect(llm).toHaveBeenCalledTimes(2);
+    expect(result).toHaveLength(2);
   });
 
   it('controls parallelism with maxParallel', async () => {

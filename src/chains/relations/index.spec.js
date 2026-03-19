@@ -11,6 +11,7 @@ import relations, {
   groupInstructions,
   parseRDFLiteral,
   parseRelations,
+  mapCanonicalization,
 } from './index.js';
 import { debug } from '../../lib/debug/index.js';
 
@@ -382,5 +383,23 @@ describe('relations', () => {
         expect(parsed[1].object).toBe('Apple Inc.');
       });
     });
+  });
+});
+
+describe('mapCanonicalization', () => {
+  it('returns undefined for undefined', () => {
+    expect(mapCanonicalization(undefined)).toBeUndefined();
+  });
+
+  it('returns low for low', () => {
+    expect(mapCanonicalization('low')).toBe('low');
+  });
+
+  it('returns high for high', () => {
+    expect(mapCanonicalization('high')).toBe('high');
+  });
+
+  it('returns undefined for unknown string', () => {
+    expect(mapCanonicalization('medium')).toBeUndefined();
   });
 });

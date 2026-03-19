@@ -55,7 +55,7 @@ Evaluation rules:
   // Make the LLM call
   const response = await llm(prompt, {
     modelOptions: {
-      temperature: 0,
+      temperature: context.temperature ?? 0,
       response_format: {
         type: 'json_schema',
         json_schema: {

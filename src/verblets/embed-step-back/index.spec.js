@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import embedStepBack from './index.js';
+import embedStepBack, { mapAbstraction } from './index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(),
@@ -9,6 +9,28 @@ const { default: mockLlm } = await import('../../lib/llm/index.js');
 
 beforeEach(() => {
   mockLlm.mockReset();
+});
+
+describe('mapAbstraction', () => {
+  it('returns undefined when undefined', () => {
+    expect(mapAbstraction(undefined)).toBeUndefined();
+  });
+
+  it('maps low to close-generalization guidance', () => {
+    const guidance = mapAbstraction('low');
+    expect(guidance).toContain('one level more general');
+    expect(guidance).toContain('same domain');
+  });
+
+  it('maps high to foundational-principles guidance', () => {
+    const guidance = mapAbstraction('high');
+    expect(guidance).toContain('foundational principles');
+    expect(guidance).toContain('first principles');
+  });
+
+  it('returns undefined on unknown string', () => {
+    expect(mapAbstraction('cosmic')).toBeUndefined();
+  });
 });
 
 describe('embedStepBack', () => {
@@ -71,5 +93,35 @@ describe('embedStepBack', () => {
 
     const callConfig = mockLlm.mock.calls[0][1];
     expect(callConfig.logger).toBe(logger);
+  });
+
+  it('injects low abstraction guidance into prompt', async () => {
+    mockLlm.mockResolvedValueOnce([]);
+
+    await embedStepBack('query', { abstraction: 'low' });
+
+    const prompt = mockLlm.mock.calls.at(-1)[0];
+    expect(prompt).toContain('one level more general');
+    expect(prompt).toContain('same domain');
+  });
+
+  it('injects high abstraction guidance into prompt', async () => {
+    mockLlm.mockResolvedValueOnce([]);
+
+    await embedStepBack('query', { abstraction: 'high' });
+
+    const prompt = mockLlm.mock.calls.at(-1)[0];
+    expect(prompt).toContain('foundational principles');
+    expect(prompt).toContain('first principles');
+  });
+
+  it('omits abstraction guidance when not specified', async () => {
+    mockLlm.mockResolvedValueOnce([]);
+
+    await embedStepBack('query');
+
+    const prompt = mockLlm.mock.calls.at(-1)[0];
+    expect(prompt).not.toContain('one level more general');
+    expect(prompt).not.toContain('foundational principles');
   });
 });

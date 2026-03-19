@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import extractBlocks from './index.js';
+import extractBlocks, { mapPrecision } from './index.js';
 
 // Mock the dependencies
 vi.mock('../../lib/llm/index.js');
@@ -7,6 +7,29 @@ vi.mock('../../lib/retry/index.js');
 
 import llm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
+
+describe('mapPrecision', () => {
+  it('returns default (windowSize 100, overlapSize 20) when undefined', () => {
+    expect(mapPrecision(undefined)).toEqual({ windowSize: 100, overlapSize: 20 });
+  });
+
+  it('maps low to large windows with minimal overlap', () => {
+    expect(mapPrecision('low')).toEqual({ windowSize: 200, overlapSize: 10 });
+  });
+
+  it('maps high to small windows with large overlap', () => {
+    expect(mapPrecision('high')).toEqual({ windowSize: 50, overlapSize: 30 });
+  });
+
+  it('passes through object for power consumers', () => {
+    const custom = { windowSize: 75, overlapSize: 15 };
+    expect(mapPrecision(custom)).toBe(custom);
+  });
+
+  it('falls back to default on unknown string', () => {
+    expect(mapPrecision('ultra')).toEqual({ windowSize: 100, overlapSize: 20 });
+  });
+});
 
 describe('extract-blocks', () => {
   beforeEach(() => {
@@ -137,6 +160,34 @@ Third line`;
 
     expect(result).toEqual([]);
     expect(llm).toHaveBeenCalledTimes(0);
+  });
+
+  it('should create fewer windows with precision low', async () => {
+    const lines = Array(100)
+      .fill('Line')
+      .map((l, i) => `${l} ${i + 1}`);
+    const text = lines.join('\n');
+
+    llm.mockResolvedValue({ blocks: [] });
+
+    await extractBlocks(text, 'Find blocks', { precision: 'low', maxParallel: 1 });
+
+    // low: windowSize=200, overlapSize=10 → step=190 → ceil(100/190) = 1 window
+    expect(llm).toHaveBeenCalledTimes(1);
+  });
+
+  it('should create more windows with precision high', async () => {
+    const lines = Array(100)
+      .fill('Line')
+      .map((l, i) => `${l} ${i + 1}`);
+    const text = lines.join('\n');
+
+    llm.mockResolvedValue({ blocks: [] });
+
+    await extractBlocks(text, 'Find blocks', { precision: 'high', maxParallel: 1 });
+
+    // high: windowSize=50, overlapSize=30 → step=20 → ceil(100/20) = 5 windows
+    expect(llm).toHaveBeenCalledTimes(5);
   });
 
   it('should merge adjacent overlapping blocks', async () => {

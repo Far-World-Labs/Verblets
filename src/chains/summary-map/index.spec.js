@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import pave from '../../lib/pave/index.js';
-import SummaryMap from './index.js';
+import SummaryMap, { mapSummaryDetail } from './index.js';
 import llm from '../../lib/llm/index.js';
 
 vi.mock('../../services/llm-model/index.js', () => ({
@@ -168,5 +168,27 @@ describe('Summary map', () => {
     const result = map.get('nonexistent');
 
     expect(result).toBeNull();
+  });
+});
+
+describe('mapSummaryDetail', () => {
+  it('returns 0.3 for undefined', () => {
+    expect(mapSummaryDetail(undefined)).toBe(0.3);
+  });
+
+  it('returns 0.4 for low', () => {
+    expect(mapSummaryDetail('low')).toBe(0.4);
+  });
+
+  it('returns 0.2 for high', () => {
+    expect(mapSummaryDetail('high')).toBe(0.2);
+  });
+
+  it('passes through a number', () => {
+    expect(mapSummaryDetail(0.35)).toBe(0.35);
+  });
+
+  it('returns 0.3 for unknown string', () => {
+    expect(mapSummaryDetail('medium')).toBe(0.3);
   });
 });

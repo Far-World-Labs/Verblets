@@ -1,12 +1,35 @@
 import { expect } from 'chai';
 import { vi, describe, beforeEach, it } from 'vitest';
-import detectPatterns from './index.js';
+import detectPatterns, { mapThoroughness } from './index.js';
 
 vi.mock('../reduce/index.js', () => ({
   default: vi.fn(),
 }));
 
 import reduce from '../reduce/index.js';
+
+describe('mapThoroughness', () => {
+  it('returns default (capacity 50, topN 5) when undefined', () => {
+    expect(mapThoroughness(undefined)).to.deep.equal({ capacity: 50, topN: 5 });
+  });
+
+  it('maps low to small accumulator with fewer results', () => {
+    expect(mapThoroughness('low')).to.deep.equal({ capacity: 20, topN: 3 });
+  });
+
+  it('maps high to large accumulator with more results', () => {
+    expect(mapThoroughness('high')).to.deep.equal({ capacity: 100, topN: 10 });
+  });
+
+  it('passes through object for power consumers', () => {
+    const custom = { capacity: 75, topN: 8 };
+    expect(mapThoroughness(custom)).to.equal(custom);
+  });
+
+  it('falls back to default on unknown string', () => {
+    expect(mapThoroughness('extreme')).to.deep.equal({ capacity: 50, topN: 5 });
+  });
+});
 
 describe('detect-patterns', () => {
   beforeEach(() => {
@@ -84,6 +107,26 @@ describe('detect-patterns', () => {
     const result = await detectPatterns(objects, { topN: 2 });
 
     expect(result).to.deep.equal([]);
+  });
+
+  it('should use low capacity in reduce prompt with thoroughness low', async () => {
+    reduce.mockResolvedValueOnce([]);
+
+    await detectPatterns([{ a: 1 }], { thoroughness: 'low' });
+
+    const reduceCall = reduce.mock.calls[0];
+    const instructions = reduceCall[1];
+    expect(instructions).to.include('Maximum 20 total items');
+  });
+
+  it('should use high capacity in reduce prompt with thoroughness high', async () => {
+    reduce.mockResolvedValueOnce([]);
+
+    await detectPatterns([{ a: 1 }], { thoroughness: 'high' });
+
+    const reduceCall = reduce.mock.calls[0];
+    const instructions = reduceCall[1];
+    expect(instructions).to.include('Maximum 100 total items');
   });
 
   it('should respect topN limit', async () => {

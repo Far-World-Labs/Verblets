@@ -8,8 +8,31 @@ vi.mock('../../lib/retry/index.js', () => ({
   default: vi.fn(async (fn) => fn()),
 }));
 
-import veiledVariants from './index.js';
+import veiledVariants, { mapCoverage, ALL_STRATEGIES } from './index.js';
 import callLlm from '../../lib/llm/index.js';
+
+describe('mapCoverage', () => {
+  it('returns default (all strategies, 5 variants) when undefined', () => {
+    expect(mapCoverage(undefined)).toEqual({ strategies: ALL_STRATEGIES, variantCount: 5 });
+  });
+
+  it('maps low to single strategy with fewer variants', () => {
+    expect(mapCoverage('low')).toEqual({ strategies: ['scientific'], variantCount: 3 });
+  });
+
+  it('maps high to all strategies with more variants', () => {
+    expect(mapCoverage('high')).toEqual({ strategies: ALL_STRATEGIES, variantCount: 8 });
+  });
+
+  it('passes through object for power consumers', () => {
+    const custom = { strategies: ['causal', 'softCover'], variantCount: 10 };
+    expect(mapCoverage(custom)).toBe(custom);
+  });
+
+  it('falls back to default on unknown string', () => {
+    expect(mapCoverage('turbo')).toEqual({ strategies: ALL_STRATEGIES, variantCount: 5 });
+  });
+});
 
 describe('veiledVariants', () => {
   it('returns 15 masked queries from 3 framing strategies', async () => {
@@ -61,6 +84,46 @@ describe('veiledVariants', () => {
     callLlm.mock.calls.forEach(([, config]) => {
       expect(config.llm).toBe('fastGood');
     });
+  });
+
+  it('uses only 1 strategy with coverage low', async () => {
+    callLlm.mockClear();
+    callLlm.mockResolvedValue(['v1', 'v2', 'v3']);
+
+    const result = await veiledVariants({ prompt: 'secret', coverage: 'low' });
+
+    expect(callLlm).toHaveBeenCalledTimes(1);
+    expect(result).toHaveLength(3);
+    // Should use the scientific framing prompt
+    expect(callLlm.mock.calls[0][0]).toContain('scientific researcher');
+  });
+
+  it('generates more variants per strategy with coverage high', async () => {
+    callLlm.mockClear();
+    callLlm.mockResolvedValue(['v1', 'v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8']);
+
+    const result = await veiledVariants({ prompt: 'secret', coverage: 'high' });
+
+    expect(callLlm).toHaveBeenCalledTimes(3);
+    expect(result).toHaveLength(24);
+    // Each prompt should request 8 variants
+    callLlm.mock.calls.forEach(([prompt]) => {
+      expect(prompt).toContain('exactly 8');
+    });
+  });
+
+  it('allows explicit strategies to override coverage', async () => {
+    callLlm.mockClear();
+    callLlm.mockResolvedValue(['v1', 'v2', 'v3']);
+
+    await veiledVariants({
+      prompt: 'secret',
+      coverage: 'low',
+      strategies: ['causal', 'softCover'],
+    });
+
+    // Explicit strategies override coverage's single-strategy default
+    expect(callLlm).toHaveBeenCalledTimes(2);
   });
 
   it('forwards extra options to callLlm', async () => {

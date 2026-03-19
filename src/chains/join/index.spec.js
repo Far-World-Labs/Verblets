@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import join from './index.js';
+import join, { mapFidelity } from './index.js';
 
 // Mock the llm function to avoid actual API calls
 vi.mock('../../lib/llm/index.js', () => ({
@@ -25,6 +25,29 @@ beforeEach(() => {
     }
     // Default fallback
     return 'joined result';
+  });
+});
+
+describe('mapFidelity', () => {
+  it('returns default (windowSize 5, 50% overlap) when undefined', () => {
+    expect(mapFidelity(undefined)).toEqual({ windowSize: 5, overlapPercent: 50 });
+  });
+
+  it('maps low to large windows with minimal overlap', () => {
+    expect(mapFidelity('low')).toEqual({ windowSize: 10, overlapPercent: 25 });
+  });
+
+  it('maps high to small windows with high overlap', () => {
+    expect(mapFidelity('high')).toEqual({ windowSize: 3, overlapPercent: 67 });
+  });
+
+  it('passes through object for power consumers', () => {
+    const custom = { windowSize: 7, overlapPercent: 40 };
+    expect(mapFidelity(custom)).toBe(custom);
+  });
+
+  it('falls back to default on unknown string', () => {
+    expect(mapFidelity('ultra')).toEqual({ windowSize: 5, overlapPercent: 50 });
   });
 });
 

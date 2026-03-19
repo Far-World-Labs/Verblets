@@ -23,7 +23,29 @@ function createModelOptions() {
   return { response_format: responseFormat };
 }
 
-export const buildPrompt = (items, { instructions } = {}) => {
+// ===== Option Mappers =====
+
+/**
+ * Map depth option to prompt guidance for commonality analysis depth.
+ * low: surface-level — literal, observable shared features.
+ * high: deep/abstract — structural patterns, functional relationships, philosophical connections.
+ * Default: balanced mix (current behavior, no extra guidance).
+ * @param {string|undefined} value
+ * @returns {string|undefined} Prompt guidance string or undefined
+ */
+export const mapDepth = (value) => {
+  if (value === undefined) return undefined;
+  if (typeof value === 'string') {
+    return {
+      low: 'Focus on literal, directly observable shared features. Report concrete, surface-level commonalities such as shared physical properties, obvious category membership, or explicit shared attributes. Do not infer abstract or metaphorical connections.',
+      med: undefined,
+      high: 'Look beyond surface features to find deep structural patterns, functional relationships, and abstract connections. Identify shared underlying mechanisms, analogous roles, philosophical parallels, and non-obvious conceptual links. Prefer insightful, non-trivial commonalities over obvious ones.',
+    }[value];
+  }
+  return undefined;
+};
+
+export const buildPrompt = (items, { instructions, depthGuidance } = {}) => {
   const itemsList = items.join(' | ');
   const itemsBlock = asXML(itemsList, { tag: 'items' });
   const intro =
@@ -34,7 +56,7 @@ export const buildPrompt = (items, { instructions } = {}) => {
 
 ${itemsBlock}
 
-Provide a clear, focused list of items that represent the intersection or commonality between all the given categories.
+Provide a clear, focused list of items that represent the intersection or commonality between all the given categories.${depthGuidance ? `\n\n${depthGuidance}` : ''}
 
 ${tryCompleteData}`;
 };
@@ -49,10 +71,11 @@ export default async function commonalities(items, config = {}) {
     return [];
   }
 
-  const { llm, ...options } = config;
+  const { llm, depth, ...options } = config;
+  const depthGuidance = mapDepth(depth);
   const modelOptions = createModelOptions();
 
-  const output = await callLlm(buildPrompt(items, options), {
+  const output = await callLlm(buildPrompt(items, { ...options, depthGuidance }), {
     llm,
     modelOptions,
     ...options,

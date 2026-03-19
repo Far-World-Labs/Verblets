@@ -3,6 +3,7 @@ import score, {
   scoreItem,
   scoreSpec,
   applyScore,
+  mapAnchoring,
   mapInstructions,
   filterInstructions,
   reduceInstructions,
@@ -325,6 +326,38 @@ describe('score chain', () => {
     });
   });
 
+  describe('anchoring option', () => {
+    it('skips anchors with anchoring low', async () => {
+      scaleSpec.mockResolvedValueOnce(mockSpec);
+      createBatches.mockReturnValueOnce([
+        { items: ['a', 'b'], startIndex: 0 },
+        { items: ['c', 'd'], startIndex: 2 },
+      ]);
+      listBatch.mockResolvedValueOnce([2, 8]).mockResolvedValueOnce([5, 3]);
+
+      await score(['a', 'b', 'c', 'd'], 'score items', { anchoring: 'low' });
+
+      // Second batch prompt should NOT contain scoring anchors
+      const secondCallPrompt = listBatch.mock.calls[1][1];
+      expect(secondCallPrompt).not.toContain('scoring-anchors');
+    });
+
+    it('uses richer anchors with anchoring high', async () => {
+      scaleSpec.mockResolvedValueOnce(mockSpec);
+      createBatches.mockReturnValueOnce([
+        { items: ['a', 'b', 'c', 'd', 'e', 'f'], startIndex: 0 },
+        { items: ['g', 'h'], startIndex: 6 },
+      ]);
+      listBatch.mockResolvedValueOnce([1, 3, 5, 7, 8, 10]).mockResolvedValueOnce([4, 6]);
+
+      await score(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'], 'score items', { anchoring: 'high' });
+
+      // Second batch should have scoring anchors with median items
+      const secondCallPrompt = listBatch.mock.calls[1][1];
+      expect(secondCallPrompt).toContain('scoring-anchors');
+    });
+  });
+
   describe('integration with collection chains', () => {
     it('can use filterInstructions with filter chain', async () => {
       filter.mockResolvedValueOnce(['item1', 'item3']);
@@ -340,5 +373,23 @@ describe('score chain', () => {
       expect(filter).toHaveBeenCalledWith(items, expect.stringContaining('score-specification'));
       expect(filtered).toEqual(['item1', 'item3']);
     });
+  });
+});
+
+describe('mapAnchoring', () => {
+  it('returns default for undefined', () => {
+    expect(mapAnchoring(undefined)).toBe('default');
+  });
+
+  it('returns none for low', () => {
+    expect(mapAnchoring('low')).toBe('none');
+  });
+
+  it('returns rich for high', () => {
+    expect(mapAnchoring('high')).toBe('rich');
+  });
+
+  it('returns default for unknown string', () => {
+    expect(mapAnchoring('medium')).toBe('default');
   });
 });

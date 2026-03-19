@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import split from './index.js';
+import split, { mapPreservation } from './index.js';
 
 const DELIM = '---763927459---';
 
@@ -71,5 +71,28 @@ describe('split chain', () => {
       const result = await split(text, instructions, config);
       expect(result).toBe(example.want.result);
     });
+  });
+});
+
+describe('mapPreservation', () => {
+  it('returns default for undefined', () => {
+    expect(mapPreservation(undefined)).toEqual({ short: 0.5, long: 0.1 });
+  });
+
+  it('returns low preset', () => {
+    expect(mapPreservation('low')).toEqual({ short: 0.7, long: 0.25 });
+  });
+
+  it('returns high preset', () => {
+    expect(mapPreservation('high')).toEqual({ short: 0.3, long: 0.05 });
+  });
+
+  it('passes through an object', () => {
+    const custom = { short: 0.4, long: 0.15 };
+    expect(mapPreservation(custom)).toBe(custom);
+  });
+
+  it('returns default for unknown string', () => {
+    expect(mapPreservation('medium')).toEqual({ short: 0.5, long: 0.1 });
   });
 });

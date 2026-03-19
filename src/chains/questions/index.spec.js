@@ -1,29 +1,24 @@
-// Testing TBD. Randomness makes it challenging.
+import { describe, it, expect } from 'vitest';
+import { mapExploration } from './index.js';
 
-import { describe } from 'vitest';
+describe('mapExploration', () => {
+  it('returns 0.5 for undefined (balanced)', () => {
+    expect(mapExploration(undefined)).toBe(0.5);
+  });
 
-/*
-import questions from "./index.js";
+  it('returns 0.3 for low (depth-first)', () => {
+    expect(mapExploration('low')).toBe(0.3);
+  });
 
-vi.mock("../../lib/llm/index.js", () => ({
-  default: vi.fn().mockImplementation((text) => {
-    if (/a prompt toolkit/.test(text)) {
-      return "{}";
-    }
-    return "undefined";
-  }),
-}));
+  it('returns 0.8 for high (breadth-first)', () => {
+    expect(mapExploration('high')).toBe(0.8);
+  });
 
-const examples = [
-  {
-    name: "Basic usage",
-    inputs: {
-      text: "Writing a prompt toolkit for ChatGPT",
-      searchBreadth: 0.5,
-    },
-    want: {},
-  },
-];
+  it('passes through a raw number', () => {
+    expect(mapExploration(0.6)).toBe(0.6);
+  });
 
-*/
-describe.skip('Questions verblet', () => {});
+  it('returns default for unknown string', () => {
+    expect(mapExploration('medium')).toBe(0.5);
+  });
+});

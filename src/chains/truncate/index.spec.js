@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import truncate from './index.js';
+import truncate, { mapAggression } from './index.js';
 
 // Mock the score chain to prevent actual API calls
 vi.mock('../score/index.js', () => ({
@@ -50,9 +50,9 @@ describe('truncate', () => {
       expect(result).toBeGreaterThanOrEqual(0); // Should be valid
     });
 
-    it('handles threshold configuration', async () => {
+    it('handles aggression as raw number', async () => {
       score.mockResolvedValueOnce([8, 7, 6, 5, 4]);
-      const result = await truncate('Test text', 'Remove boring content', { threshold: 3 });
+      const result = await truncate('Test text', 'Remove boring content', { aggression: 3 });
       expect(typeof result).toBe('number');
     });
 
@@ -65,15 +65,15 @@ describe('truncate', () => {
   });
 
   describe('configuration options', () => {
-    it('uses default threshold of 6', async () => {
+    it('uses default aggression threshold of 6', async () => {
       score.mockResolvedValueOnce([8, 7, 6, 5, 4]);
       const result = await truncate('Test text', 'Remove boring content');
       expect(typeof result).toBe('number');
     });
 
-    it('respects custom threshold', async () => {
+    it('respects custom aggression threshold', async () => {
       score.mockResolvedValueOnce([8, 7, 6, 5, 4]);
-      const result = await truncate('Test text', 'Remove boring content', { threshold: 8 });
+      const result = await truncate('Test text', 'Remove boring content', { aggression: 8 });
       expect(typeof result).toBe('number');
     });
 
@@ -148,5 +148,27 @@ describe('truncate', () => {
       const result = await truncate('Test text', 'Remove boring content');
       expect(typeof result).toBe('number');
     });
+  });
+});
+
+describe('mapAggression', () => {
+  it('returns default threshold (6) for undefined', () => {
+    expect(mapAggression(undefined)).toBe(6);
+  });
+
+  it('returns 7 for low (conservative)', () => {
+    expect(mapAggression('low')).toBe(7);
+  });
+
+  it('returns 4 for high (aggressive)', () => {
+    expect(mapAggression('high')).toBe(4);
+  });
+
+  it('passes through a raw number', () => {
+    expect(mapAggression(3)).toBe(3);
+  });
+
+  it('returns default for unknown string', () => {
+    expect(mapAggression('medium')).toBe(6);
   });
 });

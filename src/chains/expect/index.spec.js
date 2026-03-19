@@ -1,5 +1,6 @@
 import { describe, expect as vitestExpect, it, vi, beforeEach, afterEach } from 'vitest';
 import { expectSimple, expect } from './entry.js';
+import { mapAdvice } from './index.js';
 import { longTestTimeout } from '../../constants/common.js';
 import { setTestEnv, saveTestEnv } from './test-utils.js';
 import { debug } from '../../lib/debug/index.js';
@@ -344,5 +345,28 @@ describe('expect chain', () => {
       },
       longTestTimeout
     );
+  });
+});
+
+describe('mapAdvice', () => {
+  it('returns introspection enabled for undefined (default)', () => {
+    vitestExpect(mapAdvice(undefined)).toEqual({ introspection: true });
+  });
+
+  it('returns introspection disabled for low', () => {
+    vitestExpect(mapAdvice('low')).toEqual({ introspection: false });
+  });
+
+  it('returns introspection enabled for high', () => {
+    vitestExpect(mapAdvice('high')).toEqual({ introspection: true });
+  });
+
+  it('passes through a raw config object', () => {
+    const custom = { introspection: false };
+    vitestExpect(mapAdvice(custom)).toBe(custom);
+  });
+
+  it('returns default for unknown string', () => {
+    vitestExpect(mapAdvice('medium')).toEqual({ introspection: true });
   });
 });

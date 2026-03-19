@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import calibrate, { calibrateSpec, applyCalibrate, createCalibratedClassifier } from './index.js';
+import calibrate, {
+  calibrateSpec,
+  applyCalibrate,
+  createCalibratedClassifier,
+  mapSensitivity,
+} from './index.js';
 import llm from '../../lib/llm/index.js';
 
 vi.mock('../../lib/llm/index.js');
@@ -86,6 +91,35 @@ describe('calibrateSpec', () => {
     expect(prompt).toContain('"totalScans": 0');
     expect(prompt).toContain('"flaggedScans": 0');
     expect(prompt).toContain('"flaggedPercent": 0');
+  });
+
+  it('includes conservative posture when sensitivity is low', async () => {
+    vi.mocked(llm).mockResolvedValueOnce(mockSpec);
+
+    await calibrateSpec([makeScan(['pii-name'], [0.9])], { sensitivity: 'low' });
+
+    const [prompt] = vi.mocked(llm).mock.calls[0];
+    expect(prompt).toContain('Classification posture: conservative');
+    expect(prompt).toContain('Prefer false negatives over false positives');
+  });
+
+  it('includes sensitive posture when sensitivity is high', async () => {
+    vi.mocked(llm).mockResolvedValueOnce(mockSpec);
+
+    await calibrateSpec([makeScan(['pii-name'], [0.9])], { sensitivity: 'high' });
+
+    const [prompt] = vi.mocked(llm).mock.calls[0];
+    expect(prompt).toContain('Classification posture: sensitive');
+    expect(prompt).toContain('Prefer false positives over false negatives');
+  });
+
+  it('omits sensitivity block when not specified', async () => {
+    vi.mocked(llm).mockResolvedValueOnce(mockSpec);
+
+    await calibrateSpec([makeScan(['pii-name'], [0.9])]);
+
+    const [prompt] = vi.mocked(llm).mock.calls[0];
+    expect(prompt).not.toContain('Classification posture');
   });
 
   it('passes llm config through', async () => {
@@ -218,5 +252,23 @@ describe('calibrate (default export)', () => {
 
     const [specPrompt] = vi.mocked(llm).mock.calls[0];
     expect(specPrompt).not.toContain('<classification-instructions>');
+  });
+});
+
+describe('mapSensitivity', () => {
+  it('returns undefined for undefined', () => {
+    expect(mapSensitivity(undefined)).toBeUndefined();
+  });
+
+  it('returns low for low', () => {
+    expect(mapSensitivity('low')).toBe('low');
+  });
+
+  it('returns high for high', () => {
+    expect(mapSensitivity('high')).toBe('high');
+  });
+
+  it('returns undefined for unknown string', () => {
+    expect(mapSensitivity('medium')).toBeUndefined();
   });
 });

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import sort, { useTestSortPrompt } from './index.js';
+import sort, { useTestSortPrompt, mapEffort } from './index.js';
 
 useTestSortPrompt();
 
@@ -107,5 +107,40 @@ describe('Sort', () => {
       expect(result.slice(0, extremeK * iterations)).toStrictEqual(example.want.highest);
       expect(result.slice(-(extremeK * iterations))).toStrictEqual(example.want.lowest);
     });
+  });
+});
+
+describe('mapEffort', () => {
+  it('returns default posture for undefined', () => {
+    const result = mapEffort(undefined);
+    expect(result.iterations).toBe(1);
+    expect(result.extremeK).toBe(10);
+    expect(result.selectBottom).toBe(true);
+  });
+
+  it('returns low posture (fast, top-only)', () => {
+    const result = mapEffort('low');
+    expect(result.iterations).toBe(1);
+    expect(result.extremeK).toBe(5);
+    expect(result.selectBottom).toBe(false);
+  });
+
+  it('returns high posture (multi-pass, larger window)', () => {
+    const result = mapEffort('high');
+    expect(result.iterations).toBe(2);
+    expect(result.extremeK).toBe(15);
+    expect(result.selectBottom).toBe(true);
+  });
+
+  it('passes through a raw config object', () => {
+    const custom = { iterations: 3, extremeK: 20, selectBottom: true };
+    expect(mapEffort(custom)).toBe(custom);
+  });
+
+  it('returns default for unknown string', () => {
+    const result = mapEffort('medium');
+    expect(result.iterations).toBe(1);
+    expect(result.extremeK).toBe(10);
+    expect(result.selectBottom).toBe(true);
   });
 });

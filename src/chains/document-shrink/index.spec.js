@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import documentShrink from './index.js';
+import documentShrink, { mapCompression, mapRanking, mapThoroughness } from './index.js';
 
 // Mock the questions chain
 vi.mock('../questions/index.js', () => ({
@@ -280,5 +280,91 @@ In conclusion, both coffee and relationships benefit from patience and attention
       expect(result.metadata.finalSize).toBeLessThanOrEqual(1500); // Some buffer
       expect(result.content).toBeTruthy();
     });
+  });
+});
+
+describe('mapThoroughness', () => {
+  it('returns default posture for undefined (all phases active)', () => {
+    const result = mapThoroughness(undefined);
+    expect(result.queryExpansion).toBe(true);
+    expect(result.llmScoring).toBe(true);
+    expect(result.llmCompression).toBe(true);
+    expect(result.scoringTokenRatio).toBe(0.6);
+  });
+
+  it('returns low posture (all LLM phases off)', () => {
+    const result = mapThoroughness('low');
+    expect(result.queryExpansion).toBe(false);
+    expect(result.llmScoring).toBe(false);
+    expect(result.llmCompression).toBe(false);
+  });
+
+  it('returns high posture (all phases active, shifted token ratio)', () => {
+    const result = mapThoroughness('high');
+    expect(result.queryExpansion).toBe(true);
+    expect(result.llmScoring).toBe(true);
+    expect(result.llmCompression).toBe(true);
+    expect(result.scoringTokenRatio).toBe(0.4);
+  });
+
+  it('passes through a raw config object', () => {
+    const custom = {
+      queryExpansion: true,
+      llmScoring: false,
+      llmCompression: true,
+      scoringTokenRatio: 0.5,
+    };
+    expect(mapThoroughness(custom)).toBe(custom);
+  });
+
+  it('returns default posture for unknown string', () => {
+    const result = mapThoroughness('medium');
+    expect(result.queryExpansion).toBe(true);
+    expect(result.llmScoring).toBe(true);
+    expect(result.llmCompression).toBe(true);
+  });
+});
+
+describe('mapCompression', () => {
+  it('returns 0.3 for undefined', () => {
+    expect(mapCompression(undefined)).toBe(0.3);
+  });
+
+  it('returns 0.45 for low', () => {
+    expect(mapCompression('low')).toBe(0.45);
+  });
+
+  it('returns 0.15 for high', () => {
+    expect(mapCompression('high')).toBe(0.15);
+  });
+
+  it('passes through a number', () => {
+    expect(mapCompression(0.5)).toBe(0.5);
+  });
+
+  it('returns 0.3 for unknown string', () => {
+    expect(mapCompression('medium')).toBe(0.3);
+  });
+});
+
+describe('mapRanking', () => {
+  it('returns 0.7 for undefined', () => {
+    expect(mapRanking(undefined)).toBe(0.7);
+  });
+
+  it('returns 0.3 for low', () => {
+    expect(mapRanking('low')).toBe(0.3);
+  });
+
+  it('returns 0.9 for high', () => {
+    expect(mapRanking('high')).toBe(0.9);
+  });
+
+  it('passes through a number', () => {
+    expect(mapRanking(0.55)).toBe(0.55);
+  });
+
+  it('returns 0.7 for unknown string', () => {
+    expect(mapRanking('medium')).toBe(0.7);
   });
 });

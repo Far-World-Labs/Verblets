@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import embedMultiQuery from './index.js';
+import embedMultiQuery, { mapDivergence } from './index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(),
@@ -9,6 +9,28 @@ const { default: mockLlm } = await import('../../lib/llm/index.js');
 
 beforeEach(() => {
   mockLlm.mockReset();
+});
+
+describe('mapDivergence', () => {
+  it('returns undefined when undefined', () => {
+    expect(mapDivergence(undefined)).toBeUndefined();
+  });
+
+  it('maps low to tight-paraphrase guidance', () => {
+    const guidance = mapDivergence('low');
+    expect(guidance).toContain('Stay close');
+    expect(guidance).toContain('similar phrasing');
+  });
+
+  it('maps high to maximum-diversity guidance', () => {
+    const guidance = mapDivergence('high');
+    expect(guidance).toContain('Maximize diversity');
+    expect(guidance).toContain('contrasting terminology');
+  });
+
+  it('returns undefined on unknown string', () => {
+    expect(mapDivergence('turbo')).toBeUndefined();
+  });
 });
 
 describe('embedMultiQuery', () => {
@@ -70,6 +92,35 @@ describe('embedMultiQuery', () => {
 
     const callConfig = mockLlm.mock.calls[0][1];
     expect(callConfig.llm).toEqual({ modelName: 'test-model' });
+  });
+
+  it('injects low divergence guidance into prompt', async () => {
+    mockLlm.mockResolvedValueOnce([]);
+
+    await embedMultiQuery('query', { divergence: 'low' });
+
+    const prompt = mockLlm.mock.calls[0][0];
+    expect(prompt).toContain('Stay close');
+    expect(prompt).toContain('similar phrasing');
+  });
+
+  it('injects high divergence guidance into prompt', async () => {
+    mockLlm.mockResolvedValueOnce([]);
+
+    await embedMultiQuery('query', { divergence: 'high' });
+
+    const prompt = mockLlm.mock.calls[0][0];
+    expect(prompt).toContain('Maximize diversity');
+  });
+
+  it('omits divergence guidance when not specified', async () => {
+    mockLlm.mockResolvedValueOnce([]);
+
+    await embedMultiQuery('query');
+
+    const prompt = mockLlm.mock.calls[0][0];
+    expect(prompt).not.toContain('Stay close');
+    expect(prompt).not.toContain('Maximize diversity');
   });
 
   it('passes logger through to LLM call', async () => {

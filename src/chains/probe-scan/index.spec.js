@@ -5,7 +5,7 @@ vi.mock('../../lib/embed/index.js', () => ({
 }));
 
 const { embedChunked } = await import('../../lib/embed/index.js');
-const { default: probeScan } = await import('./index.js');
+const { default: probeScan, mapDetection } = await import('./index.js');
 
 beforeEach(() => {
   embedChunked.mockReset();
@@ -79,7 +79,7 @@ describe('probeScan', () => {
       { text: 'chunk B', start: 10, end: 17, vector: chunkB },
     ]);
 
-    const result = await probeScan('chunk A... chunk B', probes, { threshold: 0.4 });
+    const result = await probeScan('chunk A... chunk B', probes, { detection: 0.4 });
 
     expect(result.flagged).toBe(true);
     expect(result.hits).toHaveLength(2);
@@ -96,7 +96,7 @@ describe('probeScan', () => {
     expect(embedChunked).toHaveBeenCalledWith('some text', { maxTokens: 128 });
   });
 
-  it('respects custom threshold', async () => {
+  it('respects custom detection threshold (raw number)', async () => {
     const weakMatch = new Float32Array(8);
     weakMatch[0] = 0.3;
 
@@ -104,16 +104,66 @@ describe('probeScan', () => {
       { text: 'weak signal', start: 0, end: 11, vector: weakMatch },
     ]);
 
-    const strict = await probeScan('weak signal', probes, { threshold: 0.4 });
+    const strict = await probeScan('weak signal', probes, { detection: 0.4 });
     expect(strict.flagged).toBe(false);
 
     embedChunked.mockResolvedValueOnce([
       { text: 'weak signal', start: 0, end: 11, vector: weakMatch },
     ]);
 
-    const lenient = await probeScan('weak signal', probes, { threshold: 0.2 });
+    const lenient = await probeScan('weak signal', probes, { detection: 0.2 });
     expect(lenient.flagged).toBe(true);
     expect(lenient.hits[0].score).toBeCloseTo(0.3, 5);
+  });
+
+  it('detection low raises threshold (fewer hits)', async () => {
+    // Score of 0.5 — above default (0.4) but below low threshold (0.55)
+    const midMatch = new Float32Array(8);
+    midMatch[0] = 0.5;
+
+    embedChunked.mockResolvedValueOnce([
+      { text: 'mid signal', start: 0, end: 10, vector: midMatch },
+    ]);
+
+    const result = await probeScan('mid signal', probes, { detection: 'low' });
+    expect(result.flagged).toBe(false);
+  });
+
+  it('detection high lowers threshold (more hits)', async () => {
+    // Score of 0.35 — below default (0.4) but above high threshold (0.3)
+    const weakMatch = new Float32Array(8);
+    weakMatch[0] = 0.35;
+
+    embedChunked.mockResolvedValueOnce([
+      { text: 'weak signal', start: 0, end: 11, vector: weakMatch },
+    ]);
+
+    const result = await probeScan('weak signal', probes, { detection: 'high' });
+    expect(result.flagged).toBe(true);
+    expect(result.hits[0].score).toBeCloseTo(0.35, 5);
+  });
+
+  it('accepts pre-embedded chunks and skips embedChunked', async () => {
+    const preEmbedded = [{ text: 'John Smith', start: 0, end: 10, vector: axis(0) }];
+
+    const result = await probeScan(preEmbedded, probes);
+
+    expect(embedChunked).not.toHaveBeenCalled();
+    expect(result.flagged).toBe(true);
+    expect(result.hits).toHaveLength(1);
+    expect(result.hits[0].category).toBe('pii-name');
+    expect(result.hits[0].score).toBeCloseTo(1.0, 5);
+  });
+
+  it('pre-embedded chunks produce same results as string path', async () => {
+    const chunks = [{ text: 'john@example.com', start: 0, end: 16, vector: axis(1) }];
+
+    embedChunked.mockResolvedValueOnce(chunks);
+    const fromString = await probeScan('john@example.com', probes);
+    const fromChunks = await probeScan(chunks, probes);
+
+    expect(fromString.flagged).toBe(fromChunks.flagged);
+    expect(fromString.hits).toEqual(fromChunks.hits);
   });
 
   it('works with any probe set — not coupled to privacy', async () => {
@@ -130,5 +180,27 @@ describe('probeScan', () => {
 
     expect(result.flagged).toBe(true);
     expect(result.hits[0].category).toBe('cooking');
+  });
+});
+
+describe('mapDetection', () => {
+  it('returns default threshold for undefined', () => {
+    expect(mapDetection(undefined)).toBe(0.4);
+  });
+
+  it('returns 0.55 for low (stricter)', () => {
+    expect(mapDetection('low')).toBe(0.55);
+  });
+
+  it('returns 0.3 for high (more sensitive)', () => {
+    expect(mapDetection('high')).toBe(0.3);
+  });
+
+  it('passes through a raw number', () => {
+    expect(mapDetection(0.6)).toBe(0.6);
+  });
+
+  it('returns default for unknown string', () => {
+    expect(mapDetection('medium')).toBe(0.4);
   });
 });
