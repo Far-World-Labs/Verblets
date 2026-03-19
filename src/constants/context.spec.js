@@ -2,12 +2,10 @@ import { describe, it, expect } from 'vitest';
 import {
   CONTEXT_KINDS,
   ENVIRONMENT,
-  SENSITIVITY_CAPABILITY,
   DOMAIN,
   COMPLIANCE,
   QUALITY_INTENT,
   COST_POSTURE,
-  SENSITIVITY_LEVEL,
 } from './context.js';
 
 describe('context constants', () => {
@@ -23,15 +21,6 @@ describe('context constants', () => {
       expect(ENVIRONMENT.DEVELOPMENT).toBe('development');
       expect(ENVIRONMENT.TEST).toBe('test');
       expect(Object.values(ENVIRONMENT)).toHaveLength(3);
-    });
-  });
-
-  describe('SENSITIVITY_CAPABILITY', () => {
-    it('defines full, fast-only, none', () => {
-      expect(SENSITIVITY_CAPABILITY.FULL).toBe('full');
-      expect(SENSITIVITY_CAPABILITY.FAST_ONLY).toBe('fast-only');
-      expect(SENSITIVITY_CAPABILITY.NONE).toBe('none');
-      expect(Object.values(SENSITIVITY_CAPABILITY)).toHaveLength(3);
     });
   });
 
@@ -78,28 +67,8 @@ describe('context constants', () => {
     });
   });
 
-  describe('SENSITIVITY_LEVEL', () => {
-    it('defines five severity tiers matching SEVERITY_ORDER plus none', () => {
-      const values = Object.values(SENSITIVITY_LEVEL);
-      expect(values).toHaveLength(5);
-      expect(values).toContain('none');
-      expect(values).toContain('low');
-      expect(values).toContain('medium');
-      expect(values).toContain('high');
-      expect(values).toContain('critical');
-    });
-  });
-
   it('all value sets contain only lowercase string values', () => {
-    const sets = [
-      ENVIRONMENT,
-      SENSITIVITY_CAPABILITY,
-      DOMAIN,
-      COMPLIANCE,
-      QUALITY_INTENT,
-      COST_POSTURE,
-      SENSITIVITY_LEVEL,
-    ];
+    const sets = [ENVIRONMENT, DOMAIN, COMPLIANCE, QUALITY_INTENT, COST_POSTURE];
     for (const set of sets) {
       for (const value of Object.values(set)) {
         expect(typeof value).toBe('string');
@@ -109,15 +78,7 @@ describe('context constants', () => {
   });
 
   it('no value set has duplicate values', () => {
-    const sets = [
-      ENVIRONMENT,
-      SENSITIVITY_CAPABILITY,
-      DOMAIN,
-      COMPLIANCE,
-      QUALITY_INTENT,
-      COST_POSTURE,
-      SENSITIVITY_LEVEL,
-    ];
+    const sets = [ENVIRONMENT, DOMAIN, COMPLIANCE, QUALITY_INTENT, COST_POSTURE];
     for (const set of sets) {
       const values = Object.values(set);
       expect(new Set(values).size).toBe(values.length);

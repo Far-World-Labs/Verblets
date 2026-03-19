@@ -17,14 +17,6 @@ export const ENVIRONMENT = {
   TEST: 'test',
 };
 
-// ── Providers Kind ───────────────────────────────────────────────────
-
-export const SENSITIVITY_CAPABILITY = {
-  FULL: 'full',
-  FAST_ONLY: 'fast-only',
-  NONE: 'none',
-};
-
 // ── Request Kind ─────────────────────────────────────────────────────
 
 export const DOMAIN = {
@@ -54,14 +46,4 @@ export const COST_POSTURE = {
   NORMAL: 'normal',
   CONSTRAINED: 'constrained',
   MINIMAL: 'minimal',
-};
-
-// ── Content Kind ─────────────────────────────────────────────────────
-
-export const SENSITIVITY_LEVEL = {
-  NONE: 'none',
-  LOW: 'low',
-  MEDIUM: 'medium',
-  HIGH: 'high',
-  CRITICAL: 'critical',
 };

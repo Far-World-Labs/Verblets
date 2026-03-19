@@ -394,14 +394,3 @@ export function getCapabilities(modelKey) {
   if (!model) return undefined;
   return getModelCapabilities(model, modelKey);
 }
-
-/**
- * Check whether sensitive models are configured.
- *
- *   sensitivityAvailable()  // → { available: true, fast: true, good: true }
- */
-export function sensitivityAvailable() {
-  const good = !!modelService.models.sensitiveGood;
-  const fast = !!modelService.models.sensitive;
-  return { available: good || fast, fast, good };
-}

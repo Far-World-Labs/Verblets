@@ -8,12 +8,7 @@ vi.mock('../version/index.js', () => ({
   default: '3.2.1',
 }));
 
-vi.mock('../../services/llm-model/index.js', () => ({
-  sensitivityAvailable: vi.fn(),
-}));
-
 const { get: configGet } = await import('../config/index.js');
-const { sensitivityAvailable } = await import('../../services/llm-model/index.js');
 const { observeApplication, observeProviders } = await import('./observers.js');
 
 describe('context observers', () => {
@@ -69,7 +64,6 @@ describe('context observers', () => {
         };
         return values[key];
       });
-      sensitivityAvailable.mockReturnValue({ available: false, fast: false, good: false });
 
       const result = observeProviders();
       expect(result.openai).toBe(true);
@@ -77,36 +71,11 @@ describe('context observers', () => {
       expect(result.openwebui).toBe(true);
     });
 
-    it('detects full sensitivity capability (fast + good)', () => {
-      configGet.mockReturnValue(undefined);
-      sensitivityAvailable.mockReturnValue({ available: true, fast: true, good: true });
-
-      const result = observeProviders();
-      expect(result.sensitivityCapable).toBe('full');
-    });
-
-    it('detects fast-only sensitivity capability', () => {
-      configGet.mockReturnValue(undefined);
-      sensitivityAvailable.mockReturnValue({ available: true, fast: true, good: false });
-
-      const result = observeProviders();
-      expect(result.sensitivityCapable).toBe('fast-only');
-    });
-
-    it('detects no sensitivity capability', () => {
-      configGet.mockReturnValue(undefined);
-      sensitivityAvailable.mockReturnValue({ available: false, fast: false, good: false });
-
-      const result = observeProviders();
-      expect(result.sensitivityCapable).toBe('none');
-    });
-
     it('derives embeddingAvailable from openwebui presence', () => {
       configGet.mockImplementation((key) => {
         if (key === 'OPENWEBUI_API_KEY') return 'sk-owui';
         return undefined;
       });
-      sensitivityAvailable.mockReturnValue({ available: false, fast: false, good: false });
 
       const result = observeProviders();
       expect(result.embeddingAvailable).toBe(true);
@@ -114,7 +83,6 @@ describe('context observers', () => {
 
     it('embeddingAvailable is false without openwebui', () => {
       configGet.mockReturnValue(undefined);
-      sensitivityAvailable.mockReturnValue({ available: false, fast: false, good: false });
 
       const result = observeProviders();
       expect(result.embeddingAvailable).toBe(false);
@@ -125,7 +93,6 @@ describe('context observers', () => {
         if (key === 'REDIS_HOST') return 'localhost';
         return undefined;
       });
-      sensitivityAvailable.mockReturnValue({ available: false, fast: false, good: false });
 
       const result = observeProviders();
       expect(result.redisConfigured).toBe(true);
@@ -133,14 +100,12 @@ describe('context observers', () => {
 
     it('returns all expected attributes with default key', () => {
       configGet.mockReturnValue(undefined);
-      sensitivityAvailable.mockReturnValue({ available: false, fast: false, good: false });
 
       const result = observeProviders();
       expect(result.key).toBe('default');
       expect(result).toHaveProperty('openai');
       expect(result).toHaveProperty('anthropic');
       expect(result).toHaveProperty('openwebui');
-      expect(result).toHaveProperty('sensitivityCapable');
       expect(result).toHaveProperty('embeddingAvailable');
       expect(result).toHaveProperty('redisConfigured');
     });
