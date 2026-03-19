@@ -552,9 +552,9 @@ function selectGapFillers(allChunks, selectedChunks, gapFillerBudget) {
 }
 
 // Main function with proper budget planning
-export default async function documentShrink(document, query, options = {}) {
-  options = withOperation('document-shrink', options);
-  const { onProgress, now = new Date() } = options;
+export default async function documentShrink(document, query, config = {}) {
+  config = withOperation('document-shrink', config);
+  const { onProgress, now = new Date() } = config;
   const {
     llm,
     targetSize,
@@ -563,7 +563,7 @@ export default async function documentShrink(document, query, options = {}) {
     compression: compressionRatio,
     ranking: llmWeight,
     thoroughness: thoroughnessConfig,
-  } = await resolveAll(options, {
+  } = await resolveAll(config, {
     llm: undefined,
     targetSize: DEFAULT_OPTIONS.targetSize,
     tokenBudget: DEFAULT_OPTIONS.tokenBudget,
@@ -572,25 +572,17 @@ export default async function documentShrink(document, query, options = {}) {
     ranking: mapped(mapRanking),
     thoroughness: mapped(mapThoroughness),
   });
-  const queryExpansion = await resolve(
-    'queryExpansion',
-    options,
-    thoroughnessConfig.queryExpansion
-  );
-  const llmScoring = await resolve('llmScoring', options, thoroughnessConfig.llmScoring);
-  const llmCompression = await resolve(
-    'llmCompression',
-    options,
-    thoroughnessConfig.llmCompression
-  );
+  const queryExpansion = await resolve('queryExpansion', config, thoroughnessConfig.queryExpansion);
+  const llmScoring = await resolve('llmScoring', config, thoroughnessConfig.llmScoring);
+  const llmCompression = await resolve('llmCompression', config, thoroughnessConfig.llmCompression);
   const scoringTokenRatio = await resolve(
     'scoringTokenRatio',
-    options,
+    config,
     thoroughnessConfig.scoringTokenRatio
   );
-  const config = {
+  const merged = {
     ...DEFAULT_OPTIONS,
-    ...options,
+    ...config,
     targetSize,
     tokenBudget: tokenBudgetInit,
     gapFillerBudgetRatio,
@@ -611,38 +603,38 @@ export default async function documentShrink(document, query, options = {}) {
   }
 
   // console.log(`[documentShrink] Starting with document length: ${document.length}, query: "${query}"`);
-  // console.log(`[documentShrink] Options:`, options);
-
-  // Validate and fix config values
-  if (config.targetSize <= 0) config.targetSize = DEFAULT_OPTIONS.targetSize;
-  if (config.chunkSize <= 0) config.chunkSize = DEFAULT_OPTIONS.chunkSize;
-  if (config.tokenBudget <= 0) config.tokenBudget = DEFAULT_OPTIONS.tokenBudget;
-
-  let tokenBudget = config.tokenBudget;
-
   // console.log(`[documentShrink] Config:`, config);
 
+  // Validate and fix merged values
+  if (merged.targetSize <= 0) merged.targetSize = DEFAULT_OPTIONS.targetSize;
+  if (merged.chunkSize <= 0) merged.chunkSize = DEFAULT_OPTIONS.chunkSize;
+  if (merged.tokenBudget <= 0) merged.tokenBudget = DEFAULT_OPTIONS.tokenBudget;
+
+  let tokenBudget = merged.tokenBudget;
+
+  // console.log(`[documentShrink] Merged:`, merged);
+
   // Step 1: Create chunks
-  const chunks = createChunks(document, config.chunkSize, config.targetSize);
+  const chunks = createChunks(document, merged.chunkSize, merged.targetSize);
 
   // Step 2: Calculate space allocation
   const allocation = calculateSpaceAllocation(
     chunks,
-    config.targetSize,
+    merged.targetSize,
     tokenBudget,
     document.length,
     scoringTokenRatio
   );
   // When LLM phases are off, give all space to TF-IDF selection
   if (!llmScoring && !llmCompression) {
-    allocation.tfIdfBudget = config.targetSize;
+    allocation.tfIdfBudget = merged.targetSize;
     allocation.reservedSpace = 0;
   }
   // console.log(`[documentShrink] Space allocation:`, allocation);
   // console.time(`[documentShrink] Full processing for "${query}"`);
 
   // Step 3: Expand query (gated by thoroughness)
-  const subOptions = { ...options, llm, onProgress, now };
+  const subOptions = { ...config, llm, onProgress, now };
   const { expansions, tokensUsed: expansionTokens } = queryExpansion
     ? await expandQuery(query, tokenBudget, subOptions)
     : { expansions: [query], tokensUsed: 0 };
@@ -671,10 +663,10 @@ export default async function documentShrink(document, query, options = {}) {
   // console.log(`[documentShrink] Scored ${scored.length} edge chunks, tokens remaining: ${tokenBudget}`);
 
   // Step 7: Add scored chunks that fit
-  let result = addChunksThatFit(selected, sizeUsed, scored, config.targetSize);
+  let result = addChunksThatFit(selected, sizeUsed, scored, merged.targetSize);
 
   // Step 8: Use remaining tokens to compress chunks for even more content
-  const remainingSpace = config.targetSize - result.size;
+  const remainingSpace = merged.targetSize - result.size;
   let compressTokens = 0;
   const minSpaceForCompression = Math.min(allocation.avgChunkSize * 0.5, 200);
 
@@ -696,16 +688,16 @@ export default async function documentShrink(document, query, options = {}) {
     compressTokens = tokensUsed;
     tokenBudget -= tokensUsed;
 
-    result = addChunksThatFit(result.chunks, result.size, compressed, config.targetSize);
+    result = addChunksThatFit(result.chunks, result.size, compressed, merged.targetSize);
   }
 
   // Step 9: Apply gap filling if configured
   let finalChunks = result.chunks;
   let gapFillerCount = 0;
 
-  if (config.gapFillerBudgetRatio > 0) {
-    const gapFillerBudget = Math.floor(config.targetSize * config.gapFillerBudgetRatio);
-    const remainingSpace = config.targetSize - result.size;
+  if (merged.gapFillerBudgetRatio > 0) {
+    const gapFillerBudget = Math.floor(merged.targetSize * merged.gapFillerBudgetRatio);
+    const remainingSpace = merged.targetSize - result.size;
     const actualGapBudget = Math.min(gapFillerBudget, remainingSpace);
 
     if (actualGapBudget > 0) {
@@ -724,8 +716,8 @@ export default async function documentShrink(document, query, options = {}) {
   // When content vastly exceeds the target (e.g. forced minimum chunk is
   // larger than the budget), trim to the last complete sentence.
   // Only applies when output is >3x target — normal slight overflows are fine.
-  if (content.length > config.targetSize * 3) {
-    content = trimToLastSentence(content.slice(0, config.targetSize * 2));
+  if (content.length > merged.targetSize * 3) {
+    content = trimToLastSentence(content.slice(0, merged.targetSize * 2));
   }
 
   // console.timeEnd(`[documentShrink] Full processing for "${query}"`);
@@ -749,8 +741,8 @@ export default async function documentShrink(document, query, options = {}) {
         gapFillers: gapFillerCount,
       },
       tokens: {
-        budget: config.tokenBudget,
-        used: config.tokenBudget - tokenBudget,
+        budget: merged.tokenBudget,
+        used: merged.tokenBudget - tokenBudget,
         breakdown: {
           expansion: expansionTokens,
           scoring: scoreTokens || 0,

@@ -69,9 +69,9 @@ export default function setInterval({
   onProgress,
   ...options
 } = {}) {
-  const scopedOptions = withOperation('set-interval', { maxAttempts: _maxAttempts, ...options });
-  const maxAttempts = resolveOption('maxAttempts', scopedOptions, 3);
-  const retryOnAll = resolveOption('retryOnAll', scopedOptions, false);
+  const config = withOperation('set-interval', { maxAttempts: _maxAttempts, ...options });
+  const maxAttempts = resolveOption('maxAttempts', config, 3);
+  const retryOnAll = resolveOption('retryOnAll', config, false);
   let timer;
   let count = 0;
   let lastResult = initial;

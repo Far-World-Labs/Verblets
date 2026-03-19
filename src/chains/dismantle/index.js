@@ -335,7 +335,7 @@ class ChainTree {
       ...restOptions
     } = {}
   ) {
-    const options = withOperation('dismantle', {
+    const config = withOperation('dismantle', {
       maxAttempts: _maxAttempts,
       temperature: _temperature,
       ...restOptions,
@@ -349,11 +349,11 @@ class ChainTree {
     this.enhanceFixes = enhanceFixes;
     this.decomposeFixes = decomposeFixes;
     this.abortSignal = abortSignal;
-    this.maxAttempts = resolveOption('maxAttempts', options, 3);
-    this.retryOnAll = resolveOption('retryOnAll', options, false);
-    this.temperature = resolveOption('temperature', options, undefined);
+    this.maxAttempts = resolveOption('maxAttempts', config, 3);
+    this.retryOnAll = resolveOption('retryOnAll', config, false);
+    this.temperature = resolveOption('temperature', config, undefined);
 
-    this.variety = resolveOptionMapped('variety', options, mapVariety);
+    this.variety = resolveOptionMapped('variety', config, mapVariety);
   }
 
   getTree() {

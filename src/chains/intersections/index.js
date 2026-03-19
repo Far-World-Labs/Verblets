@@ -116,12 +116,12 @@ const processCombo = async (
  * @param {boolean} options.useSchemaValidation - Whether to validate results with JSON schema (default: false)
  * @returns {Object} Results with combinations, elements, and intersections
  */
-export default async function intersections(items, options = {}) {
+export default async function intersections(items, config = {}) {
   if (!Array.isArray(items) || items.length < 2) {
     return {};
   }
 
-  options = withOperation('intersections', options);
+  config = withOperation('intersections', config);
   const {
     instructions,
     minSize = 2,
@@ -132,9 +132,9 @@ export default async function intersections(items, options = {}) {
     abortSignal,
     now = new Date(),
     ...restOptions
-  } = options;
+  } = config;
   const { llm, useSchemaValidation, maxAttempts, retryDelay, retryOnAll } = await resolveAll(
-    options,
+    config,
     {
       llm: 'fastGoodCheap',
       useSchemaValidation: false,

@@ -119,9 +119,9 @@ async function extractFromChunk(chunk, options = {}) {
  * @param {number} [options.batchSize] - Batch size for reduce/map operations when enriching (auto-calculated if not provided)
  * @returns {Promise<Array>} Array of timeline events with {timestamp, name}
  */
-export default async function timeline(text, options = {}) {
-  options = withOperation('timeline', options);
-  const { onProgress, batchSize, now = new Date() } = options;
+export default async function timeline(text, config = {}) {
+  config = withOperation('timeline', config);
+  const { onProgress, batchSize, now = new Date() } = config;
   const {
     llm,
     enrichment: enrichmentConfig,
@@ -132,7 +132,7 @@ export default async function timeline(text, options = {}) {
     retryDelay,
     retryOnAll,
     errorPosture,
-  } = await resolveAll(options, {
+  } = await resolveAll(config, {
     llm: undefined,
     enrichment: mapped(mapEnrichment),
     chunkSize: 2000,
@@ -143,9 +143,9 @@ export default async function timeline(text, options = {}) {
     retryOnAll: false,
     errorPosture: 'resilient',
   });
-  const llmDedup = await resolve('llmDedup', options, enrichmentConfig.llmDedup);
-  const knowledgeBase = await resolve('knowledgeBase', options, enrichmentConfig.knowledgeBase);
-  const _enrichMap = await resolve('enrichMap', options, enrichmentConfig.enrichMap);
+  const llmDedup = await resolve('llmDedup', config, enrichmentConfig.llmDedup);
+  const knowledgeBase = await resolve('knowledgeBase', config, enrichmentConfig.knowledgeBase);
+  const _enrichMap = await resolve('enrichMap', config, enrichmentConfig.enrichMap);
 
   // Create overlapping chunks to avoid missing events at boundaries
   const chunks = chunkSentences(text, chunkSize, { overlap });
@@ -157,19 +157,19 @@ export default async function timeline(text, options = {}) {
     chunks,
     async (chunk, chunkIndex) => {
       try {
-        const events = await retry(() => extractFromChunk(chunk, { ...options, llm, now }), {
+        const events = await retry(() => extractFromChunk(chunk, { ...config, llm, now }), {
           label: `timeline chunk ${chunkIndex + 1}`,
           maxAttempts,
           retryDelay,
           retryOnAll,
-          abortSignal: options.abortSignal,
+          abortSignal: config.abortSignal,
         });
         allEvents.push(...events);
         onProgress?.(chunkIndex + 1, chunks.length);
       } catch (error) {
         if (errorPosture === 'strict') throw error;
-        if (options.logger?.warn) {
-          options.logger.warn(
+        if (config.logger?.warn) {
+          config.logger.warn(
             `Timeline extraction failed for chunk ${chunkIndex + 1}:`,
             error.message
           );
@@ -201,7 +201,7 @@ Events:
 ${eventList}`;
 
     const deduplicatedResult = await callLlm(deduplicationPrompt, {
-      ...options,
+      ...config,
       llm,
       modelOptions: {
         systemPrompt:
@@ -237,7 +237,7 @@ Return as JSON with the same event format, maintaining chronological order.`;
 
     // Reduce to build knowledge base
     const knowledgeBase = await reduce(eventStrings, knowledgeBaseInstructions, {
-      ...options,
+      ...config,
       initial: JSON.stringify({ events: [] }),
       responseFormat: {
         type: 'json_schema',
@@ -279,7 +279,7 @@ Return the enriched event as: "YYYY-MM-DD: Event name" or with the appropriate t
       mergedEvents.map((event) => `${event.timestamp}: ${event.name}`),
       enrichmentInstructions,
       {
-        ...options,
+        ...config,
         ...(batchSize !== undefined && { batchSize }),
         maxParallel,
         maxAttempts,

@@ -46,14 +46,14 @@ const shouldStopDefault = ({ queryCount, startTime, queryLimit, timeoutMs } = {}
   return queryCount > queryLimit || new Date() - startTime > timeoutMs;
 };
 
-export const generateList = async function* generateListGenerator(text, options = {}) {
-  options = withOperation('list:generate', options);
+export const generateList = async function* generateListGenerator(text, config = {}) {
+  config = withOperation('list:generate', config);
   const resultsAll = [];
   const resultsAllMap = {};
   let isDone = false;
-  const { shouldSkip = shouldSkipDefault, shouldStop = shouldStopDefault } = options;
+  const { shouldSkip = shouldSkipDefault, shouldStop = shouldStopDefault } = config;
   const { llm, maxAttempts, retryDelay, retryOnAll, queryLimit, timeoutMs } = await resolveAll(
-    options,
+    config,
     {
       llm: 'fastGoodCheap',
       maxAttempts: 3,
@@ -69,7 +69,7 @@ export const generateList = async function* generateListGenerator(text, options 
 
   while (!isDone) {
     const listPrompt = generateListPrompt(text, {
-      ...options,
+      ...config,
       existing: resultsAll,
     });
 
@@ -77,13 +77,13 @@ export const generateList = async function* generateListGenerator(text, options 
     try {
       const modelOptions = createModelOptions();
       // eslint-disable-next-line no-await-in-loop
-      const results = await retry(() => callLlm(listPrompt, { ...options, llm, modelOptions }), {
+      const results = await retry(() => callLlm(listPrompt, { ...config, llm, modelOptions }), {
         label: 'list-generate',
         maxAttempts,
         retryDelay,
         retryOnAll,
-        onProgress: options.onProgress,
-        abortSignal: options.abortSignal,
+        onProgress: config.onProgress,
+        abortSignal: config.abortSignal,
       });
 
       const resultArray = results?.items || results;

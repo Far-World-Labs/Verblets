@@ -41,7 +41,7 @@ export default class Conversation {
       idSet.add(p.id);
     });
 
-    const scopedOptions = withOperation('conversation', options);
+    const config = withOperation('conversation', options);
 
     const {
       rules = {},
@@ -51,7 +51,7 @@ export default class Conversation {
       llm,
       clock,
       ...otherOptions
-    } = scopedOptions;
+    } = config;
 
     if (rules.shouldContinue && typeof rules.shouldContinue !== 'function') {
       throw new Error('shouldContinue must be a function');
@@ -59,7 +59,7 @@ export default class Conversation {
 
     this.topic = topic;
     this.speakers = speakers.slice();
-    const depth = resolveOption('depth', scopedOptions, 3);
+    const depth = resolveOption('depth', config, 3);
     this.rules = Object.assign(
       {
         shouldContinue: (round) => round < depth,
@@ -69,7 +69,7 @@ export default class Conversation {
     );
     this.speakFn = speakFn;
     this.bulkSpeakFn = bulkSpeakFn;
-    this.maxParallel = resolveOption('maxParallel', scopedOptions, 3);
+    this.maxParallel = resolveOption('maxParallel', config, 3);
 
     // If no functions provided, default to our conversationTurnReduce
     if (!this.speakFn && !this.bulkSpeakFn) {

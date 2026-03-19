@@ -94,10 +94,10 @@ const visit = async ({
 
 // node: { filename: './src/index.js' },
 export default async (moduleOptions) => {
-  const scopedOptions = withOperation('scan-js', moduleOptions);
-  const llm = await resolve('llm', scopedOptions, undefined);
+  const config = withOperation('scan-js', moduleOptions);
+  const llm = await resolve('llm', config, undefined);
   const state = await search({
-    ...scopedOptions,
+    ...config,
   });
 
   const preState = {
@@ -106,18 +106,18 @@ export default async (moduleOptions) => {
   };
 
   return search({
-    ...scopedOptions,
+    ...config,
     state: preState,
     visit: (options) =>
       visit({
         ...options,
-        features: scopedOptions.features,
+        features: config.features,
         llm,
-        maxAttempts: scopedOptions.maxAttempts,
-        retryDelay: scopedOptions.retryDelay,
-        retryOnAll: scopedOptions.retryOnAll,
-        onProgress: scopedOptions.onProgress,
-        abortSignal: scopedOptions.abortSignal,
+        maxAttempts: config.maxAttempts,
+        retryDelay: config.retryDelay,
+        retryOnAll: config.retryOnAll,
+        onProgress: config.onProgress,
+        abortSignal: config.abortSignal,
       }),
   });
 };

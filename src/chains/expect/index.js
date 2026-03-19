@@ -162,13 +162,13 @@ Keep your response concise but actionable. Focus on practical solutions.`;
 /**
  * Enhanced LLM expectation with debugging features
  */
-export async function expect(actual, expected, constraint, options = {}) {
-  options = withOperation('expect', options);
-  const { mode, advice: adviceConfig } = await resolveAll(options, {
+export async function expect(actual, expected, constraint, config = {}) {
+  config = withOperation('expect', config);
+  const { mode, advice: adviceConfig } = await resolveAll(config, {
     mode: env.LLM_EXPECT_MODE || 'none',
     advice: mapped(mapAdvice),
   });
-  const introspection = await resolve('introspection', options, adviceConfig.introspection);
+  const introspection = await resolve('introspection', config, adviceConfig.introspection);
 
   const callerInfo = extractFileContext(5);
 

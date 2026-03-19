@@ -63,22 +63,22 @@ ${existing.length > 0 ? `Questions to omit: ${asXML(existingJoined, { tag: 'omit
 One question per string.`;
 };
 
-const generateQuestions = async function* generateQuestionsGenerator(text, options = {}) {
-  options = withOperation('questions', options);
+const generateQuestions = async function* generateQuestionsGenerator(text, config = {}) {
+  config = withOperation('questions', config);
   const resultsAll = [];
   const resultsAllMap = {};
   const drilldownResults = [];
   let isDone = false;
   let textSelected = text;
 
-  const { shouldSkip = shouldSkipNull, shouldStop = shouldStopNull } = options;
+  const { shouldSkip = shouldSkipNull, shouldStop = shouldStopNull } = config;
   const {
     llm,
     exploration: searchBreadth,
     maxAttempts,
     retryDelay,
     retryOnAll,
-  } = await resolveAll(options, {
+  } = await resolveAll(config, {
     llm: undefined,
     exploration: mapped(mapExploration),
     maxAttempts: 3,
@@ -99,7 +99,7 @@ const generateQuestions = async function* generateQuestionsGenerator(text, optio
       const selectedResult = await retry(
         () =>
           callLlm(pickInterestingQuestionPrompt, {
-            ...options,
+            ...config,
             llm,
             modelOptions: {
               response_format: {
@@ -116,8 +116,8 @@ const generateQuestions = async function* generateQuestionsGenerator(text, optio
           maxAttempts,
           retryDelay,
           retryOnAll,
-          onProgress: options.onProgress,
-          abortSignal: options.abortSignal,
+          onProgress: config.onProgress,
+          abortSignal: config.abortSignal,
         }
       );
       textSelected = selectedResult.question;
@@ -127,9 +127,9 @@ const generateQuestions = async function* generateQuestionsGenerator(text, optio
     const promptCreated = formatQuestionsPrompt(textSelected, {
       existing: resultsAll,
     });
-    const temperature = await resolve('temperature', options, 1);
+    const temperature = await resolve('temperature', config, 1);
     const llmConfig = {
-      ...options,
+      ...config,
       llm,
       modelOptions: {
         temperature,
@@ -149,8 +149,8 @@ const generateQuestions = async function* generateQuestionsGenerator(text, optio
       maxAttempts,
       retryDelay,
       retryOnAll,
-      onProgress: options.onProgress,
-      abortSignal: options.abortSignal,
+      onProgress: config.onProgress,
+      abortSignal: config.abortSignal,
     });
     const resultsNew = getRandomSubset(results, searchBreadth);
     if (searchBreadth < 0.5) {
@@ -177,8 +177,8 @@ const generateQuestions = async function* generateQuestionsGenerator(text, optio
   }
 };
 
-export default async (text, options) => {
-  const generator = generateQuestions(text, options);
+export default async (text, config) => {
+  const generator = generateQuestions(text, config);
 
   const results = [];
   for await (const result of generator) {

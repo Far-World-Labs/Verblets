@@ -81,25 +81,25 @@ const calculateCodeWindow = (
  * @param {Array} logs - Complete test execution logs from test-start to test-complete
  * @param {Object} options - Options including maxAttempts
  */
-export default async function analyzeTestError(logs, options = {}) {
-  options = withOperation('test-analyzer', options);
-  const { onProgress, abortSignal } = options;
+export default async function analyzeTestError(logs, config = {}) {
+  config = withOperation('test-analyzer', config);
+  const { onProgress, abortSignal } = config;
   const {
     llm: llmConfig,
     analysisDepth: depthConfig,
     maxAttempts,
     retryDelay,
     retryOnAll,
-  } = await resolveAll(options, {
+  } = await resolveAll(config, {
     llm: undefined,
     analysisDepth: mapped(mapAnalysisDepth),
     maxAttempts: 3,
     retryDelay: 1000,
     retryOnAll: false,
   });
-  const contextSize = await resolve('contextSize', options, depthConfig.context);
-  const maxWindow = await resolve('maxWindow', options, depthConfig.maxWindow);
-  const maxTokens = await resolve('maxTokens', options, depthConfig.maxTokens);
+  const contextSize = await resolve('contextSize', config, depthConfig.context);
+  const maxWindow = await resolve('maxWindow', config, depthConfig.maxWindow);
+  const maxTokens = await resolve('maxTokens', config, depthConfig.maxTokens);
   if (!logs || logs.length === 0) {
     debug('analyzeTestError: No logs provided');
     return '';

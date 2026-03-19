@@ -34,10 +34,10 @@ export const mapDetection = (value) => {
  * @param {number} [options.maxTokens=256] - Chunk size for long texts
  * @returns {Promise<{ flagged: boolean, hits: Array<{ category: string, label: string, score: number, chunk: { text: string, start: number, end: number } }> }>}
  */
-export default async function probeScan(textOrChunks, probes, options = {}) {
-  options = withOperation('probe-scan', options);
-  const { categories } = options;
-  const { detection: threshold, maxTokens } = await resolveAll(options, {
+export default async function probeScan(textOrChunks, probes, config = {}) {
+  config = withOperation('probe-scan', config);
+  const { categories } = config;
+  const { detection: threshold, maxTokens } = await resolveAll(config, {
     detection: mapped(mapDetection),
     maxTokens: 256,
   });

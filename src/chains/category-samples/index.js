@@ -95,27 +95,27 @@ export function buildSeedGenerationPrompt(categoryName, { context = '', diversit
  * @param {number} [options.retryDelay=1000] - Delay between retries in milliseconds
  * @returns {Promise<string[]>}
  */
-export default async function categorySamples(categoryName, options = {}) {
+export default async function categorySamples(categoryName, config = {}) {
   if (!categoryName || typeof categoryName !== 'string') {
     throw new Error('categoryName must be a non-empty string');
   }
 
-  options = withOperation('category-samples', options);
-  const { context = '', onProgress, abortSignal, now = new Date() } = options;
+  config = withOperation('category-samples', config);
+  const { context = '', onProgress, abortSignal, now = new Date() } = config;
   const {
     llm,
     diversity: diversityConfig,
     maxAttempts,
     retryDelay,
     retryOnAll,
-  } = await resolveAll(options, {
+  } = await resolveAll(config, {
     llm: 'fastGoodCheap',
     diversity: mapped(mapDiversity),
     maxAttempts: 3,
     retryDelay: 1000,
     retryOnAll: true,
   });
-  const count = await resolve('count', options, diversityConfig.count);
+  const count = await resolve('count', config, diversityConfig.count);
   const diversity = diversityConfig.diversity;
 
   const generateWithRetry = async () => {

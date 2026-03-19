@@ -21,11 +21,11 @@ const modelOptions = {
  * @param {Object} options - Configuration options
  * @returns {Promise<Array>} Array of PopCultureReference objects
  */
-export default async function popReference(sentence, description, options = {}) {
-  options = withOperation('pop-reference', options);
-  const { include = [] } = options;
+export default async function popReference(sentence, description, config = {}) {
+  config = withOperation('pop-reference', config);
+  const { include = [] } = config;
   const { llm, referenceContext, referencesPerSource, maxAttempts, retryDelay, retryOnAll } =
-    await resolveAll(options, {
+    await resolveAll(config, {
       llm: undefined,
       referenceContext: false,
       referencesPerSource: 2,
@@ -85,7 +85,7 @@ Requirements:
   const response = await retry(
     () =>
       callLlm(prompt, {
-        ...options,
+        ...config,
         llm,
         modelOptions,
       }),
@@ -94,8 +94,8 @@ Requirements:
       maxAttempts,
       retryDelay,
       retryOnAll,
-      onProgress: options.onProgress,
-      abortSignal: options.abortSignal,
+      onProgress: config.onProgress,
+      abortSignal: config.abortSignal,
     }
   );
 

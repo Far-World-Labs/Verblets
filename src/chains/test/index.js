@@ -5,14 +5,14 @@ import { asXML } from '../../prompts/wrap-variable.js';
 import { testResultJsonSchema } from './schemas.js';
 import { resolveAll, withOperation } from '../../lib/context/resolve.js';
 
-export default async function test(path, instructions, options = {}) {
-  options = withOperation('test', options);
+export default async function test(path, instructions, config = {}) {
+  config = withOperation('test', config);
   const {
     llm: llmConfig,
     maxAttempts,
     retryDelay,
     retryOnAll,
-  } = await resolveAll(options, {
+  } = await resolveAll(config, {
     llm: undefined,
     maxAttempts: 3,
     retryDelay: 1000,
@@ -39,10 +39,10 @@ GUIDELINES:
     const result = await retry(
       () =>
         llm(prompt, {
-          ...options,
+          ...config,
           llm: llmConfig,
           modelOptions: {
-            ...options.modelOptions,
+            ...config.modelOptions,
             response_format: {
               type: 'json_schema',
               json_schema: testResultJsonSchema,
@@ -54,8 +54,8 @@ GUIDELINES:
         maxAttempts,
         retryDelay,
         retryOnAll,
-        onProgress: options.onProgress,
-        abortSignal: options.abortSignal,
+        onProgress: config.onProgress,
+        abortSignal: config.abortSignal,
       }
     );
 

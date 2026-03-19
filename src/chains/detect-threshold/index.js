@@ -61,8 +61,8 @@ export default async function detectThreshold({
   now = new Date(),
   ...options
 }) {
-  const configBag = withOperation('detect-threshold', options);
-  const { llm, batchSize, maxAttempts, retryDelay, retryOnAll } = await resolveAll(configBag, {
+  const config = withOperation('detect-threshold', options);
+  const { llm, batchSize, maxAttempts, retryDelay, retryOnAll } = await resolveAll(config, {
     llm: { good: true },
     batchSize: 50,
     maxAttempts: 3,

@@ -157,7 +157,7 @@ class SocraticMethod {
       ...restOptions
     } = {}
   ) {
-    const options = withOperation('socratic', {
+    const config = withOperation('socratic', {
       ask,
       answer,
       llm,
@@ -175,11 +175,11 @@ class SocraticMethod {
     this.answer = answer;
     this.llm = llm;
     this.history = [];
-    this.maxAttempts = resolveOption('maxAttempts', options, 3);
-    this.retryOnAll = resolveOption('retryOnAll', options, false);
-    const challengeConfig = resolveOptionMapped('challenge', options, mapChallenge);
+    this.maxAttempts = resolveOption('maxAttempts', config, 3);
+    this.retryOnAll = resolveOption('retryOnAll', config, false);
+    const challengeConfig = resolveOptionMapped('challenge', config, mapChallenge);
     this.challenge = challengeConfig.challenge;
-    this.temperature = resolveOption('temperature', options, challengeConfig.temperature);
+    this.temperature = resolveOption('temperature', config, challengeConfig.temperature);
     this.onProgress = onProgress;
     this.abortSignal = abortSignal;
     this.now = now;

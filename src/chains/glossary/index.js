@@ -22,9 +22,9 @@ const GLOSSARY_RESPONSE_FORMAT = {
  * @param {string} [options.sortBy='importance for understanding the content'] - sorting criteria
  * @returns {Promise<string[]>} list of important terms, sorted by relevance
  */
-export default async function glossary(text, options = {}) {
-  options = withOperation('glossary', options);
-  const { maxTerms, sortBy, sentencesPerBatch, overlap } = await resolveAll(options, {
+export default async function glossary(text, config = {}) {
+  config = withOperation('glossary', config);
+  const { maxTerms, sortBy, sentencesPerBatch, overlap } = await resolveAll(config, {
     maxTerms: 10,
     sortBy: 'importance for understanding the content',
     sentencesPerBatch: 3,
@@ -52,8 +52,8 @@ export default async function glossary(text, options = {}) {
 Return a "terms" object containing an array of the extracted terms.`;
 
   const mapped = await map(textChunks, instructions, {
-    ...options,
-    batchSize: options.batchSize ?? 1,
+    ...config,
+    batchSize: config.batchSize ?? 1,
     responseFormat: GLOSSARY_RESPONSE_FORMAT,
   });
 
@@ -73,7 +73,7 @@ Return a "terms" object containing an array of the extracted terms.`;
   if (terms.length === 0) return [];
 
   // Sort by importance for understanding the content
-  const sorted = await sort(terms, sortBy, options);
+  const sorted = await sort(terms, sortBy, config);
 
   return sorted.slice(0, maxTerms);
 }
