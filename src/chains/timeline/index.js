@@ -201,6 +201,7 @@ Events:
 ${eventList}`;
 
     const deduplicatedResult = await callLlm(deduplicationPrompt, {
+      ...options,
       llm,
       modelOptions: {
         systemPrompt:
@@ -210,7 +211,6 @@ ${eventList}`;
           json_schema: timelineEventJsonSchema,
         },
       },
-      ...options,
     });
 
     const deduplicatedEvents = deduplicatedResult?.events || deduplicatedResult;
@@ -237,6 +237,7 @@ Return as JSON with the same event format, maintaining chronological order.`;
 
     // Reduce to build knowledge base
     const knowledgeBase = await reduce(eventStrings, knowledgeBaseInstructions, {
+      ...options,
       initial: JSON.stringify({ events: [] }),
       responseFormat: {
         type: 'json_schema',
@@ -247,7 +248,6 @@ Return as JSON with the same event format, maintaining chronological order.`;
       maxAttempts,
       onProgress: scopeProgress(onProgress, 'reduce:knowledge-base'),
       now,
-      ...options,
     });
 
     let knownEvents = [];
@@ -279,13 +279,13 @@ Return the enriched event as: "YYYY-MM-DD: Event name" or with the appropriate t
       mergedEvents.map((event) => `${event.timestamp}: ${event.name}`),
       enrichmentInstructions,
       {
+        ...options,
         ...(batchSize !== undefined && { batchSize }),
         maxParallel,
         maxAttempts,
         llm,
         onProgress: scopeProgress(onProgress, 'map:enrichment'),
         now,
-        ...options,
       }
     );
 

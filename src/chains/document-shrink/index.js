@@ -209,21 +209,17 @@ function createChunks(document, baseChunkSize, targetSize) {
 }
 
 // Pure function: Minimal query expansion
-async function expandQuery(query, tokenBudget, llm, onProgress, now = new Date()) {
-  // console.log(`[expandQuery] Expanding query: "${query}" with token budget: ${tokenBudget}`);
+async function expandQuery(query, tokenBudget, options = {}) {
   if (tokenBudget < TOKENS_PER_EXPANSION) {
-    // console.log(`[expandQuery] Insufficient token budget, returning original query only`);
     return { expansions: [query], tokensUsed: 0 };
   }
 
-  // console.log(`[expandQuery] Collecting key terms related to query...`);
   try {
     const terms = await collectTerms(query, {
+      ...options,
       topN: 5,
       chunkLen: 500,
-      llm,
-      onProgress: scopeProgress(onProgress, 'collect-terms:query-expansion'),
-      now,
+      onProgress: scopeProgress(options.onProgress, 'collect-terms:query-expansion'),
     });
     // console.log(`[expandQuery] Collected ${terms.length} terms:`, terms);
 
@@ -303,11 +299,9 @@ function selectChunksByTfIdf(scoredChunks, tfIdfBudget) {
 }
 
 // Pure function: Score edge chunks with LLM
-async function scoreEdgeChunks(candidates, query, maxChunks, llm, options = {}) {
-  const { onProgress, now = new Date(), llmWeight = 0.7 } = options;
-  // console.log(`[scoreEdgeChunks] Scoring ${candidates.length} candidates, max chunks: ${maxChunks}`);
+async function scoreEdgeChunks(candidates, query, maxChunks, options = {}) {
+  const { llmWeight = 0.7 } = options;
   if (candidates.length === 0 || maxChunks === 0) {
-    // console.log(`[scoreEdgeChunks] No candidates or maxChunks is 0, returning empty`);
     return { scored: [], tokensUsed: 0 };
   }
 
@@ -335,10 +329,9 @@ async function scoreEdgeChunks(candidates, query, maxChunks, llm, options = {}) 
     cleanedChunks,
     `relevance to query: "${query}" (0=unrelated, 5=partially related, 10=directly answers)`,
     {
+      ...options,
       batchSize: LLM_CHUNK_BATCH_SIZE,
-      llm,
-      onProgress: scopeProgress(onProgress, 'score:edge-ranking'),
-      now,
+      onProgress: scopeProgress(options.onProgress, 'score:edge-ranking'),
     }
   );
 
@@ -364,10 +357,9 @@ async function compressHighValueChunks(
   maxChunks,
   availableSpace,
   allocation,
-  llm,
   options = {}
 ) {
-  const { onProgress, now = new Date(), compressionRatio = DEFAULT_COMPRESSION_RATIO } = options;
+  const { compressionRatio = DEFAULT_COMPRESSION_RATIO } = options;
   // Adaptive minimum size based on average chunk size
   const minCompressSize = Math.min(allocation.avgChunkSize * 0.8, 400);
 
@@ -400,7 +392,7 @@ async function compressHighValueChunks(
   const texts = await map(
     cleanedTexts,
     `Extract key parts answering: "${query}". Preserve important details. Target ${compressionTarget}% of original.`,
-    { batchSize: 10, llm, onProgress: scopeProgress(onProgress, 'map:compression'), now }
+    { ...options, batchSize: 10, onProgress: scopeProgress(options.onProgress, 'map:compression') }
   );
 
   const compressed = [];
@@ -564,6 +556,7 @@ export default async function documentShrink(document, query, options = {}) {
   options = withOperation('document-shrink', options);
   const { onProgress, now = new Date() } = options;
   const {
+    llm,
     targetSize,
     tokenBudget: tokenBudgetInit,
     gapFillerBudgetRatio,
@@ -571,6 +564,7 @@ export default async function documentShrink(document, query, options = {}) {
     ranking: llmWeight,
     thoroughness: thoroughnessConfig,
   } = await resolveAll(options, {
+    llm: undefined,
     targetSize: DEFAULT_OPTIONS.targetSize,
     tokenBudget: DEFAULT_OPTIONS.tokenBudget,
     gapFillerBudgetRatio: DEFAULT_OPTIONS.gapFillerBudgetRatio,
@@ -648,8 +642,9 @@ export default async function documentShrink(document, query, options = {}) {
   // console.time(`[documentShrink] Full processing for "${query}"`);
 
   // Step 3: Expand query (gated by thoroughness)
+  const subOptions = { ...options, llm, onProgress, now };
   const { expansions, tokensUsed: expansionTokens } = queryExpansion
-    ? await expandQuery(query, tokenBudget, config.llm, onProgress, now)
+    ? await expandQuery(query, tokenBudget, subOptions)
     : { expansions: [query], tokensUsed: 0 };
   tokenBudget -= expansionTokens;
   // console.log(`[documentShrink] Token budget after expansion: ${tokenBudget}`);
@@ -667,9 +662,8 @@ export default async function documentShrink(document, query, options = {}) {
 
   // Step 6: Use LLM to find high-value edge chunks (gated by thoroughness)
   const { scored, tokensUsed: scoreTokens } = llmScoring
-    ? await scoreEdgeChunks(candidates, query, allocation.chunksWeCanScore, config.llm, {
-        onProgress,
-        now,
+    ? await scoreEdgeChunks(candidates, query, allocation.chunksWeCanScore, {
+        ...subOptions,
         llmWeight,
       })
     : { scored: [], tokensUsed: 0 };
@@ -697,8 +691,7 @@ export default async function documentShrink(document, query, options = {}) {
       allocation.chunksWeCanCompress,
       remainingSpace,
       allocation,
-      config.llm,
-      { onProgress, now, compressionRatio }
+      { ...subOptions, compressionRatio }
     );
     compressTokens = tokensUsed;
     tokenBudget -= tokensUsed;
