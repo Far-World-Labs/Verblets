@@ -4,6 +4,24 @@ import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { outputSuccinctNames } from '../../prompts/index.js';
 import { subComponentsSchema, componentOptionsSchema } from './schemas.js';
+import { resolveOption, resolveOptionMapped, withOperation } from '../../lib/context/resolve.js';
+
+// ===== Option Mappers =====
+
+const DEFAULT_DECOMPOSE_PENALTY = 0.7;
+const DEFAULT_ENHANCE_PENALTY = 0.5;
+
+/**
+ * Map variety option to a frequency penalty. Accepts 'low'|'high' or a raw number.
+ * When set, enhance penalty is derived as `mapped * 0.7`.
+ * @param {string|number|undefined} value
+ * @returns {number|undefined} Frequency penalty for decompose (undefined = use defaults)
+ */
+export const mapVariety = (value) => {
+  if (value === undefined) return undefined;
+  if (typeof value === 'number') return value;
+  return { low: 0.3, med: undefined, high: 0.9 }[value];
+};
 
 const subComponentsPrompt = (component, thing, fixes = '') => {
   let focus = '';
@@ -65,6 +83,9 @@ const defaultDecompose = async ({
   fixes,
   llm,
   maxAttempts = 3,
+  retryOnAll = false,
+  temperature,
+  variety,
   onProgress,
   abortSignal,
 } = {}) => {
@@ -76,8 +97,8 @@ const defaultDecompose = async ({
       callLlm(promptCreated, {
         llm,
         modelOptions: {
-          frequencyPenalty: 0.7,
-          temperature: 0.7,
+          frequencyPenalty: variety ?? DEFAULT_DECOMPOSE_PENALTY,
+          temperature: temperature ?? 0.7,
           response_format: {
             type: 'json_schema',
             json_schema: {
@@ -90,6 +111,7 @@ const defaultDecompose = async ({
     {
       label: 'dismantle-decompose',
       maxAttempts,
+      retryOnAll,
       onProgress,
       abortSignal,
     }
@@ -103,17 +125,21 @@ const defaultEnhance = async ({
   fixes,
   llm,
   maxAttempts = 3,
+  retryOnAll = false,
+  temperature,
+  variety,
   onProgress,
   abortSignal,
 } = {}) => {
   const promptCreated = componentOptionsPrompt(name, rootName, fixes);
+  const enhanceVariety = variety ? variety * 0.7 : DEFAULT_ENHANCE_PENALTY;
   const result = await retry(
     () =>
       callLlm(promptCreated, {
         llm,
         modelOptions: {
-          frequencyPenalty: 0.5,
-          temperature: 0.3,
+          frequencyPenalty: enhanceVariety,
+          temperature: temperature ?? 0.3,
           response_format: {
             type: 'json_schema',
             json_schema: {
@@ -126,6 +152,7 @@ const defaultEnhance = async ({
     {
       label: 'dismantle-enhance',
       maxAttempts,
+      retryOnAll,
       onProgress,
       abortSignal,
     }
@@ -150,6 +177,7 @@ const makeNode = async ({
   enhanceFixes,
   decomposeFixes,
   maxAttempts = 3,
+  variety,
   onProgress,
   abortSignal,
   now = new Date(),
@@ -165,6 +193,7 @@ const makeNode = async ({
       fixes: enhanceFixes,
       llm,
       maxAttempts,
+      variety,
       onProgress,
       abortSignal,
       now,
@@ -180,6 +209,7 @@ const makeNode = async ({
       fixes: decomposeFixes,
       llm,
       maxAttempts,
+      variety,
       onProgress,
       abortSignal,
       now,
@@ -212,6 +242,7 @@ const makeSubtree = async ({
   decomposeFixes,
   makeId,
   maxAttempts = 3,
+  variety: _variety,
   onProgress,
   abortSignal,
   now = new Date(),
@@ -291,8 +322,24 @@ export const simplifyTree = (node) => {
 class ChainTree {
   constructor(
     name,
-    { decompose, enhance, llm, makeId, enhanceFixes, decomposeFixes, abortSignal } = {}
+    {
+      decompose,
+      enhance,
+      llm,
+      makeId,
+      enhanceFixes,
+      decomposeFixes,
+      abortSignal,
+      maxAttempts: _maxAttempts,
+      temperature: _temperature,
+      ...restOptions
+    } = {}
   ) {
+    const options = withOperation('dismantle', {
+      maxAttempts: _maxAttempts,
+      temperature: _temperature,
+      ...restOptions,
+    });
     this.rootName = name;
     this.tree = {};
     this.decompose = decompose;
@@ -302,6 +349,11 @@ class ChainTree {
     this.enhanceFixes = enhanceFixes;
     this.decomposeFixes = decomposeFixes;
     this.abortSignal = abortSignal;
+    this.maxAttempts = resolveOption('maxAttempts', options, 3);
+    this.retryOnAll = resolveOption('retryOnAll', options, false);
+    this.temperature = resolveOption('temperature', options, undefined);
+
+    this.variety = resolveOptionMapped('variety', options, mapVariety);
   }
 
   getTree() {

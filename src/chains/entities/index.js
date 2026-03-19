@@ -4,6 +4,7 @@ import { asXML } from '../../prompts/wrap-variable.js';
 import buildInstructions from '../../lib/build-instructions/index.js';
 import entityResultSchema from './entity-result.json';
 import { emitStepProgress } from '../../lib/progress-callback/index.js';
+import { resolveAll, withOperation } from '../../lib/context/resolve.js';
 
 // ===== Instruction Builders =====
 
@@ -40,7 +41,13 @@ export const {
  * @returns {Promise<string>} Entity specification as descriptive text
  */
 export async function entitySpec(prompt, config = {}) {
-  const { llm, maxAttempts = 3, onProgress, abortSignal, ...rest } = config;
+  config = withOperation('entities:spec', config);
+  const { llm, maxAttempts, retryDelay, retryOnAll } = await resolveAll(config, {
+    llm: undefined,
+    maxAttempts: 3,
+    retryDelay: 1000,
+    retryOnAll: false,
+  });
 
   const specSystemPrompt = `You are an entity specification generator. Create a clear, concise specification for entity extraction.`;
 
@@ -58,15 +65,17 @@ Keep it simple and actionable.`;
   const response = await retry(
     () =>
       callLlm(specUserPrompt, {
+        ...config,
         llm,
         modelOptions: { systemPrompt: specSystemPrompt },
-        ...rest,
       }),
     {
       label: 'entities-spec',
       maxAttempts,
-      onProgress,
-      abortSignal,
+      retryDelay,
+      retryOnAll,
+      onProgress: config.onProgress,
+      abortSignal: config.abortSignal,
     }
   );
 
@@ -81,7 +90,13 @@ Keep it simple and actionable.`;
  * @returns {Promise<Object>} Object with entities array
  */
 export async function applyEntities(text, specification, config = {}) {
-  const { llm, maxAttempts = 3, onProgress, abortSignal, ...options } = config;
+  config = withOperation('entities:apply', config);
+  const { llm, maxAttempts, retryDelay, retryOnAll } = await resolveAll(config, {
+    llm: undefined,
+    maxAttempts: 3,
+    retryDelay: 1000,
+    retryOnAll: false,
+  });
 
   const prompt = `Apply the entity specification to extract entities from this text.
 
@@ -98,6 +113,7 @@ Each entity should include:
   const response = await retry(
     () =>
       callLlm(prompt, {
+        ...config,
         llm,
         modelOptions: {
           response_format: {
@@ -108,13 +124,14 @@ Each entity should include:
             },
           },
         },
-        ...options,
       }),
     {
       label: 'entities-apply',
       maxAttempts,
-      onProgress,
-      abortSignal,
+      retryDelay,
+      retryOnAll,
+      onProgress: config.onProgress,
+      abortSignal: config.abortSignal,
     }
   );
 
@@ -129,23 +146,24 @@ Each entity should include:
  * @returns {Promise<Object>} Object with entities array
  */
 export async function extractEntities(text, instructions, config = {}) {
-  const { onProgress, now = new Date(), ...restConfig } = config;
+  config = withOperation('entities', config);
+  const now = config.now ?? new Date();
 
-  emitStepProgress(onProgress, 'entities', 'generating-specification', {
+  emitStepProgress(config.onProgress, 'entities', 'generating-specification', {
     instructions,
     now: new Date(),
     chainStartTime: now,
   });
 
-  const spec = await entitySpec(instructions, { onProgress, now, ...restConfig });
+  const spec = config.spec || (await entitySpec(instructions, config));
 
-  emitStepProgress(onProgress, 'entities', 'extracting-entities', {
+  emitStepProgress(config.onProgress, 'entities', 'extracting-entities', {
     specification: spec,
     now: new Date(),
     chainStartTime: now,
   });
 
-  return await applyEntities(text, spec, { onProgress, now, ...restConfig });
+  return await applyEntities(text, spec, config);
 }
 
 // ===== Advanced Entity Functions =====

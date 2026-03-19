@@ -3,6 +3,7 @@ import { asXML } from '../../prompts/wrap-variable.js';
 import { reduceAccumulatorJsonSchema } from './schemas.js';
 import { createLifecycleLogger, extractBatchConfig } from '../../lib/lifecycle-logger/index.js';
 import { createBatches, retry, batchTracker } from '../../lib/index.js';
+import { resolveAll, withOperation } from '../../lib/context/resolve.js';
 
 // Default response format for reduce operations - simple string accumulator
 const DEFAULT_REDUCE_RESPONSE_FORMAT = {
@@ -11,28 +12,27 @@ const DEFAULT_REDUCE_RESPONSE_FORMAT = {
 };
 
 const reduce = async function reduce(list, instructions, config = {}) {
-  const {
-    initial,
-    listStyle,
-    autoModeThreshold,
-    responseFormat,
-    llm,
-    logger,
-    maxAttempts = 3,
-    onProgress,
-    abortSignal,
-    now = new Date(),
-    ...options
-  } = config;
+  config = withOperation('reduce', config);
+  const { llm, maxAttempts, retryDelay, retryOnAll, progressMode, accumulatorMode } =
+    await resolveAll(config, {
+      llm: undefined,
+      maxAttempts: 3,
+      retryDelay: 1000,
+      retryOnAll: false,
+      progressMode: 'detailed',
+      accumulatorMode: 'auto',
+    });
 
-  const lifecycleLogger = createLifecycleLogger(logger, 'chain:reduce');
+  const lifecycleLogger = createLifecycleLogger(config.logger, 'chain:reduce');
 
-  let acc = initial;
+  let acc = config.initial;
 
   // If initial is an array and we're using default format, wrap it
-  const needsItemsWrapper = Array.isArray(initial) && !responseFormat;
+  const needsItemsWrapper =
+    accumulatorMode === 'collection' ||
+    (accumulatorMode === 'auto' && Array.isArray(config.initial) && !config.responseFormat);
   if (needsItemsWrapper) {
-    acc = { items: initial };
+    acc = { items: config.initial };
   }
 
   const batches = createBatches(list, config);
@@ -47,7 +47,11 @@ const reduce = async function reduce(list, instructions, config = {}) {
     })
   );
 
-  const tracker = batchTracker('reduce', list.length, { onProgress, now });
+  const tracker = batchTracker('reduce', list.length, {
+    onProgress: config.onProgress,
+    progressMode,
+    now: config.now ?? new Date(),
+  });
 
   tracker.start(activeBatches.length);
 
@@ -57,7 +61,7 @@ const reduce = async function reduce(list, instructions, config = {}) {
       continue;
     }
 
-    const batchStyle = determineStyle(listStyle, items, autoModeThreshold);
+    const batchStyle = determineStyle(config.listStyle, items, config.autoModeThreshold);
 
     const reduceInstructions = ({ style, count }) => {
       const itemFormat = style === ListStyle.XML ? 'XML' : '';
@@ -81,26 +85,27 @@ ${asXML(
 Process exactly ${count} items from the ${itemFormat} list below and return the final accumulator value.`;
     };
 
-    const effectiveResponseFormat = responseFormat || DEFAULT_REDUCE_RESPONSE_FORMAT;
+    const effectiveResponseFormat = config.responseFormat || DEFAULT_REDUCE_RESPONSE_FORMAT;
 
     const prompt = reduceInstructions({ style: batchStyle, count: items.length });
     const listBatchOptions = {
+      ...config,
       listStyle: batchStyle,
-      autoModeThreshold,
       responseFormat: effectiveResponseFormat,
       llm,
       logger: lifecycleLogger,
-      ...options,
     };
 
     const result = await retry(() => listBatch(items, prompt, listBatchOptions), {
       label: 'reduce:batch',
       maxAttempts,
+      retryDelay,
+      retryOnAll,
       onProgress: tracker.forBatch(startIndex, items.length),
-      abortSignal,
+      abortSignal: config.abortSignal,
     });
 
-    if (!responseFormat && result?.accumulator !== undefined) {
+    if (!config.responseFormat && result?.accumulator !== undefined) {
       acc = result.accumulator;
     } else {
       acc = result;

@@ -36,6 +36,22 @@ const summarize = ({ budget, type, value, fixes = [], modelOptions, sensitivity 
  * SummaryMap is a utility class for automatically summarizing prompt inputs
  *   to fit within a desired desired token budget.
  */
+// ===== Option Mappers =====
+
+const DEFAULT_SUMMARY_RATIO = 0.3;
+
+/**
+ * Map summaryDetail option to a targetTokensTotalRatio.
+ * Accepts 'low'|'high' or a raw number (0-1).
+ * @param {string|number|undefined} value
+ * @returns {number} Token ratio (lower = more detailed summary)
+ */
+export const mapSummaryDetail = (value) => {
+  if (value === undefined) return DEFAULT_SUMMARY_RATIO;
+  if (typeof value === 'number') return value;
+  return { low: 0.4, med: DEFAULT_SUMMARY_RATIO, high: 0.2 }[value] ?? DEFAULT_SUMMARY_RATIO;
+};
+
 export default class SummaryMap extends Map {
   constructor({
     maxTokensPerValue,
@@ -43,8 +59,9 @@ export default class SummaryMap extends Map {
     modelOptions = { modelName: model.name },
     promptText,
     targetTokens,
+    summaryDetail,
     // used with promptText, when targetTokens isn't supplied
-    targetTokensTotalRatio = 0.3,
+    targetTokensTotalRatio = mapSummaryDetail(summaryDetail),
   }) {
     super();
     this.cache = new Map();

@@ -3,6 +3,7 @@ import retry from '../../lib/retry/index.js';
 import score from '../score/index.js';
 import disambiguateMeaningsSchema from './disambiguate-meanings-result.json';
 import { emitStepProgress, scopeProgress } from '../../lib/progress-callback/index.js';
+import { resolveAll, withOperation } from '../../lib/context/resolve.js';
 
 const disambiguateResponseFormat = {
   type: 'json_schema',
@@ -18,20 +19,28 @@ Return a JSON object with a "meanings" array containing the distinct meanings.`;
 };
 
 export const getMeanings = async (term, config = {}) => {
-  const { llm = 'fastGoodCheap', maxAttempts = 3, onProgress, abortSignal, ...options } = config;
+  config = withOperation('disambiguate:meanings', config);
+  const { llm, maxAttempts, retryDelay, retryOnAll } = await resolveAll(config, {
+    llm: 'fastGoodCheap',
+    maxAttempts: 3,
+    retryDelay: 1000,
+    retryOnAll: false,
+  });
   const prompt = meaningsPrompt(term);
   const response = await retry(
     () =>
       callLlm(prompt, {
+        ...config,
         llm,
         modelOptions: { response_format: disambiguateResponseFormat },
-        ...options,
       }),
     {
       label: 'disambiguate-get-meanings',
       maxAttempts,
-      onProgress,
-      abortSignal,
+      retryDelay,
+      retryOnAll,
+      onProgress: config.onProgress,
+      abortSignal: config.abortSignal,
     }
   );
 
@@ -39,24 +48,29 @@ export const getMeanings = async (term, config = {}) => {
   return Array.isArray(resultArray) ? resultArray.filter(Boolean) : [];
 };
 
-export default async function disambiguate({ term, context, maxAttempts = 3, ...config } = {}) {
-  const { llm, onProgress, now = new Date(), ...options } = config;
+export default async function disambiguate({ term, context, ...config } = {}) {
+  config = withOperation('disambiguate', config);
+  const { llm, maxAttempts, retryDelay } = await resolveAll(config, {
+    llm: undefined,
+    maxAttempts: 3,
+    retryDelay: 1000,
+  });
+  const now = config.now ?? new Date();
 
-  emitStepProgress(onProgress, 'disambiguate', 'extracting-meanings', {
+  emitStepProgress(config.onProgress, 'disambiguate', 'extracting-meanings', {
     term,
     now: new Date(),
     chainStartTime: now,
   });
 
   const meanings = await getMeanings(term, {
+    ...config,
     llm,
     maxAttempts,
-    onProgress,
-    now,
-    ...options,
+    retryDelay,
   });
 
-  emitStepProgress(onProgress, 'disambiguate', 'scoring-meanings', {
+  emitStepProgress(config.onProgress, 'disambiguate', 'scoring-meanings', {
     term,
     meaningCount: meanings.length,
     now: new Date(),
@@ -66,7 +80,7 @@ export default async function disambiguate({ term, context, maxAttempts = 3, ...
   const scores = await score(
     meanings,
     `how well this meaning of "${term}" matches the context: ${context}`,
-    { llm, maxAttempts, onProgress: scopeProgress(onProgress, 'score:relevance'), now, ...options }
+    { ...config, llm, maxAttempts, onProgress: scopeProgress(config.onProgress, 'score:relevance') }
   );
 
   let bestIndex = 0;

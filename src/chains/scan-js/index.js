@@ -7,6 +7,7 @@ import retry from '../../lib/retry/index.js';
 import search from '../../lib/search-js-files/index.js';
 import codeFeaturesPrompt from '../../prompts/code-features.js';
 import makeJSONSchema from '../../prompts/features-json-schema.js';
+import { resolve, resolveAll, withOperation } from '../../lib/context/resolve.js';
 
 const codeFeatureDefinitions = JSON.parse(
   await fs.readFile(
@@ -20,10 +21,16 @@ const visit = async ({
   state: stateInitial,
   features: featuresInitial = 'maintainability',
   llm,
-  maxAttempts = 3,
+  maxAttempts: maxAttemptsRaw,
+  retryDelay: retryDelayRaw,
+  retryOnAll: retryOnAllRaw,
   onProgress,
   abortSignal,
 }) => {
+  const { maxAttempts, retryDelay, retryOnAll } = await resolveAll(
+    { maxAttempts: maxAttemptsRaw, retryDelay: retryDelayRaw, retryOnAll: retryOnAllRaw },
+    { maxAttempts: 3, retryDelay: 1000, retryOnAll: false }
+  );
   if (!node.functionName) {
     return stateInitial;
   }
@@ -79,7 +86,7 @@ const visit = async ({
       state.abbreviations = state.abbreviations ?? {};
       state.abbreviations[id] = state.abbreviations[id] ?? state.nodesFound;
     },
-    { label: 'scan-js', maxAttempts, onProgress, abortSignal }
+    { label: 'scan-js', maxAttempts, retryDelay, retryOnAll, onProgress, abortSignal }
   );
 
   return state;
@@ -87,8 +94,10 @@ const visit = async ({
 
 // node: { filename: './src/index.js' },
 export default async (moduleOptions) => {
+  const scopedOptions = withOperation('scan-js', moduleOptions);
+  const llm = await resolve('llm', scopedOptions, undefined);
   const state = await search({
-    ...moduleOptions,
+    ...scopedOptions,
   });
 
   const preState = {
@@ -97,16 +106,18 @@ export default async (moduleOptions) => {
   };
 
   return search({
-    ...moduleOptions,
+    ...scopedOptions,
     state: preState,
     visit: (options) =>
       visit({
         ...options,
-        features: moduleOptions.features,
-        llm: moduleOptions.llm,
-        maxAttempts: moduleOptions.maxAttempts,
-        onProgress: moduleOptions.onProgress,
-        abortSignal: moduleOptions.abortSignal,
+        features: scopedOptions.features,
+        llm,
+        maxAttempts: scopedOptions.maxAttempts,
+        retryDelay: scopedOptions.retryDelay,
+        retryOnAll: scopedOptions.retryOnAll,
+        onProgress: scopedOptions.onProgress,
+        abortSignal: scopedOptions.abortSignal,
       }),
   });
 };

@@ -2,11 +2,37 @@ import { debug } from '../../lib/debug/index.js';
 import llm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { extractCodeWindow } from '../../lib/code-extractor/index.js';
+import { resolve, resolveAll, mapped, withOperation } from '../../lib/context/resolve.js';
 
 // File-level constants
-const MAX_TOKENS = 300;
-const MAX_WINDOW = 50;
+const DEFAULT_MAX_TOKENS = 300;
+const DEFAULT_MAX_WINDOW = 50;
 const DEFAULT_CONTEXT = 25;
+const DEFAULT_ANALYSIS_DEPTH = {
+  context: DEFAULT_CONTEXT,
+  maxWindow: DEFAULT_MAX_WINDOW,
+  maxTokens: DEFAULT_MAX_TOKENS,
+};
+
+const ANALYSIS_DEPTH_LEVELS = {
+  low: { context: 10, maxWindow: 25, maxTokens: 150 },
+  med: DEFAULT_ANALYSIS_DEPTH,
+  high: { context: 50, maxWindow: 100, maxTokens: 600 },
+};
+
+// ===== Option Mappers =====
+
+/**
+ * Map analysisDepth option to context/window/token config.
+ * Accepts 'low'|'high' or a raw {context, maxWindow, maxTokens} object.
+ * @param {string|Object|undefined} value
+ * @returns {{ context: number, maxWindow: number, maxTokens: number }}
+ */
+export const mapAnalysisDepth = (value) => {
+  if (value === undefined) return DEFAULT_ANALYSIS_DEPTH;
+  if (typeof value === 'object') return value;
+  return ANALYSIS_DEPTH_LEVELS[value] ?? DEFAULT_ANALYSIS_DEPTH;
+};
 
 // Pure predicates
 const isEvent = (event) => (log) => log.event === event;
@@ -27,20 +53,27 @@ const getAssertions = (logs) => logs.filter(isAssertion);
 const getFailedAssertion = (logs) => getAssertions(logs).find(isFailed);
 
 // Pure window calculation
-const calculateCodeWindow = (testLine, testLineCount, assertionLine) => {
-  if (!testLine || !assertionLine) return DEFAULT_CONTEXT;
+const calculateCodeWindow = (
+  testLine,
+  testLineCount,
+  assertionLine,
+  { context, maxWindow } = {}
+) => {
+  const contextSize = context || DEFAULT_CONTEXT;
+  const windowLimit = maxWindow || DEFAULT_MAX_WINDOW;
+  if (!testLine || !assertionLine) return contextSize;
 
   const testEndLine = testLine + (testLineCount || 0);
   const beforeAssertion = assertionLine - testLine;
   const afterAssertion = testEndLine - assertionLine;
 
   // Show whole test if it fits
-  if (testLineCount && testLineCount <= MAX_WINDOW) {
+  if (testLineCount && testLineCount <= windowLimit) {
     return Math.max(beforeAssertion, afterAssertion) + 2;
   }
 
   // Otherwise balance around assertion within test bounds
-  return Math.min(DEFAULT_CONTEXT, Math.max(beforeAssertion, afterAssertion));
+  return Math.min(contextSize, Math.max(beforeAssertion, afterAssertion));
 };
 
 /**
@@ -49,7 +82,24 @@ const calculateCodeWindow = (testLine, testLineCount, assertionLine) => {
  * @param {Object} options - Options including maxAttempts
  */
 export default async function analyzeTestError(logs, options = {}) {
-  const { llm: llmConfig, maxAttempts = 3, onProgress, abortSignal } = options;
+  options = withOperation('test-analyzer', options);
+  const { onProgress, abortSignal } = options;
+  const {
+    llm: llmConfig,
+    analysisDepth: depthConfig,
+    maxAttempts,
+    retryDelay,
+    retryOnAll,
+  } = await resolveAll(options, {
+    llm: undefined,
+    analysisDepth: mapped(mapAnalysisDepth),
+    maxAttempts: 3,
+    retryDelay: 1000,
+    retryOnAll: false,
+  });
+  const contextSize = await resolve('contextSize', options, depthConfig.context);
+  const maxWindow = await resolve('maxWindow', options, depthConfig.maxWindow);
+  const maxTokens = await resolve('maxTokens', options, depthConfig.maxTokens);
   if (!logs || logs.length === 0) {
     debug('analyzeTestError: No logs provided');
     return '';
@@ -78,7 +128,10 @@ export default async function analyzeTestError(logs, options = {}) {
   // Extract test code showing the failed assertion
   const assertionLine = failedAssertion?.line || testInfo.line;
 
-  const windowSize = calculateCodeWindow(testInfo.line, testInfo.lineCount, assertionLine);
+  const windowSize = calculateCodeWindow(testInfo.line, testInfo.lineCount, assertionLine, {
+    context: contextSize,
+    maxWindow,
+  });
 
   const testSnippet =
     actualTestFile && assertionLine
@@ -143,10 +196,12 @@ Discussion:
 
   try {
     const response = await retry(
-      () => llm(prompt, { llm: llmConfig, modelOptions: { max_tokens: MAX_TOKENS } }),
+      () => llm(prompt, { llm: llmConfig, modelOptions: { max_tokens: maxTokens } }),
       {
         label: 'test-analyzer',
         maxAttempts,
+        retryDelay,
+        retryOnAll,
         onProgress,
         abortSignal,
       }

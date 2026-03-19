@@ -7,7 +7,32 @@ import map from '../map/index.js';
 import reduce from '../reduce/index.js';
 import { timelineEventJsonSchema } from './schemas.js';
 import { debug } from '../../lib/debug/index.js';
-import { resolveOption } from '../../lib/context/resolve.js';
+import { resolve, resolveAll, mapped, withOperation } from '../../lib/context/resolve.js';
+
+// ===== Option Mappers =====
+
+const DEFAULT_ENRICHMENT = { llmDedup: true, knowledgeBase: false, enrichMap: false };
+
+/**
+ * Map enrichment option to a timeline processing posture.
+ * Coordinates three phase gates in the timeline pipeline.
+ * low: extraction + deterministic merge only — no LLM dedup, no knowledge enrichment. Cheapest.
+ * high: full pipeline — LLM dedup + knowledge base building + enrichment mapping. Richest output.
+ * Default: extraction + LLM dedup (current behavior without enrichWithKnowledge).
+ * @param {string|object|undefined} value
+ * @returns {{ llmDedup: boolean, knowledgeBase: boolean, enrichMap: boolean }}
+ */
+export const mapEnrichment = (value) => {
+  if (value === undefined) return DEFAULT_ENRICHMENT;
+  if (typeof value === 'object') return value;
+  return (
+    {
+      low: { llmDedup: false, knowledgeBase: false, enrichMap: false },
+      med: DEFAULT_ENRICHMENT,
+      high: { llmDedup: true, knowledgeBase: true, enrichMap: true },
+    }[value] ?? DEFAULT_ENRICHMENT
+  );
+};
 
 const extractTimelineInstructions = `Extract timeline events from this text chunk.
 
@@ -65,7 +90,7 @@ function mergeTimelineEvents(eventArrays) {
  * Extract events from a single chunk
  */
 async function extractFromChunk(chunk, options = {}) {
-  const { llm, ...remainingOptions } = options;
+  const { llm, ...restOptions } = options;
 
   const response = await callLlm(chunk, {
     llm,
@@ -76,7 +101,7 @@ async function extractFromChunk(chunk, options = {}) {
         json_schema: timelineEventJsonSchema,
       },
     },
-    ...remainingOptions,
+    ...restOptions,
   });
 
   return response.events || [];
@@ -95,21 +120,35 @@ async function extractFromChunk(chunk, options = {}) {
  * @returns {Promise<Array>} Array of timeline events with {timestamp, name}
  */
 export default async function timeline(text, options = {}) {
+  options = withOperation('timeline', options);
+  const { onProgress, batchSize, now = new Date() } = options;
   const {
-    chunkSize = 2000,
-    maxParallel = 3,
-    maxAttempts = 3,
-    onProgress,
     llm,
-    enrichWithKnowledge: _enrichWithKnowledge,
-    batchSize,
-    now = new Date(),
-    ...remainingOptions
-  } = options;
-  const enrichWithKnowledge = resolveOption('enrichWithKnowledge', options, false);
+    enrichment: enrichmentConfig,
+    chunkSize,
+    overlap,
+    maxParallel,
+    maxAttempts,
+    retryDelay,
+    retryOnAll,
+    errorPosture,
+  } = await resolveAll(options, {
+    llm: undefined,
+    enrichment: mapped(mapEnrichment),
+    chunkSize: 2000,
+    overlap: 200,
+    maxParallel: 3,
+    maxAttempts: 3,
+    retryDelay: 1000,
+    retryOnAll: false,
+    errorPosture: 'resilient',
+  });
+  const llmDedup = await resolve('llmDedup', options, enrichmentConfig.llmDedup);
+  const knowledgeBase = await resolve('knowledgeBase', options, enrichmentConfig.knowledgeBase);
+  const _enrichMap = await resolve('enrichMap', options, enrichmentConfig.enrichMap);
 
   // Create overlapping chunks to avoid missing events at boundaries
-  const chunks = chunkSentences(text, chunkSize, { overlap: 200 });
+  const chunks = chunkSentences(text, chunkSize, { overlap });
 
   // Process chunks in parallel batches
   const allEvents = [];
@@ -118,19 +157,19 @@ export default async function timeline(text, options = {}) {
     chunks,
     async (chunk, chunkIndex) => {
       try {
-        const events = await retry(
-          () => extractFromChunk(chunk, { llm, now, ...remainingOptions }),
-          {
-            label: `timeline chunk ${chunkIndex + 1}`,
-            maxAttempts,
-            abortSignal: remainingOptions.abortSignal,
-          }
-        );
+        const events = await retry(() => extractFromChunk(chunk, { ...options, llm, now }), {
+          label: `timeline chunk ${chunkIndex + 1}`,
+          maxAttempts,
+          retryDelay,
+          retryOnAll,
+          abortSignal: options.abortSignal,
+        });
         allEvents.push(...events);
         onProgress?.(chunkIndex + 1, chunks.length);
       } catch (error) {
-        if (remainingOptions.logger?.warn) {
-          remainingOptions.logger.warn(
+        if (errorPosture === 'strict') throw error;
+        if (options.logger?.warn) {
+          options.logger.warn(
             `Timeline extraction failed for chunk ${chunkIndex + 1}:`,
             error.message
           );
@@ -140,6 +179,7 @@ export default async function timeline(text, options = {}) {
     },
     {
       maxParallel,
+      errorPosture,
       label: 'timeline chunks',
     }
   );
@@ -152,7 +192,7 @@ export default async function timeline(text, options = {}) {
   // Deduplicate using a single structured LLM call rather than reduce's string
   // accumulator, which is fragile for structured data (events get lost during
   // string serialization round-trips).
-  if (mergedEvents.length > 0) {
+  if (llmDedup && mergedEvents.length > 0) {
     const eventList = mergedEvents.map((e) => `- ${e.timestamp}: ${e.name}`).join('\n');
 
     const deduplicationPrompt = `Consolidate these timeline events by merging duplicates that refer to the same occurrence. Keep the most descriptive version of each event and preserve ALL unique events.
@@ -170,7 +210,7 @@ ${eventList}`;
           json_schema: timelineEventJsonSchema,
         },
       },
-      ...remainingOptions,
+      ...options,
     });
 
     const deduplicatedEvents = deduplicatedResult?.events || deduplicatedResult;
@@ -180,7 +220,7 @@ ${eventList}`;
   }
 
   // Enrich with knowledge if requested
-  if (enrichWithKnowledge && mergedEvents.length > 0) {
+  if (knowledgeBase && mergedEvents.length > 0) {
     // First, use reduce to build a knowledge base of known dates
     const knowledgeBaseInstructions = `You are building a historical knowledge base. 
 Given the current knowledge base and a new event, return an updated knowledge base that:
@@ -207,7 +247,7 @@ Return as JSON with the same event format, maintaining chronological order.`;
       maxAttempts,
       onProgress: scopeProgress(onProgress, 'reduce:knowledge-base'),
       now,
-      ...remainingOptions,
+      ...options,
     });
 
     let knownEvents = [];
@@ -245,7 +285,7 @@ Return the enriched event as: "YYYY-MM-DD: Event name" or with the appropriate t
         llm,
         onProgress: scopeProgress(onProgress, 'map:enrichment'),
         now,
-        ...remainingOptions,
+        ...options,
       }
     );
 

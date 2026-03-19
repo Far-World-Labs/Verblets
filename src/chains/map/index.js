@@ -6,6 +6,7 @@ import {
   extractPromptAnalysis,
 } from '../../lib/lifecycle-logger/index.js';
 import { createBatches, parallel, retry, batchTracker } from '../../lib/index.js';
+import { resolveAll, withOperation } from '../../lib/context/resolve.js';
 
 /**
  * Map over a list of items by calling `listBatch` on XML-enriched batches.
@@ -23,7 +24,14 @@ import { createBatches, parallel, retry, batchTracker } from '../../lib/index.js
  * @returns { Promise<(string|undefined)[]> } results aligned with input order
  */
 const mapOnce = async function (list, instructions, config = {}) {
-  const { maxParallel = 3, onProgress, now = new Date(), chainStartTime } = config;
+  const {
+    maxParallel = 3,
+    errorPosture,
+    progressMode,
+    onProgress,
+    now = new Date(),
+    chainStartTime,
+  } = config;
 
   const results = new Array(list.length);
   const batches = createBatches(list, config);
@@ -47,7 +55,11 @@ const mapOnce = async function (list, instructions, config = {}) {
   }
 
   const effectiveStartTime = chainStartTime || now;
-  const tracker = batchTracker('map', list.length, { onProgress, now: effectiveStartTime });
+  const tracker = batchTracker('map', list.length, {
+    onProgress,
+    progressMode,
+    now: effectiveStartTime,
+  });
 
   tracker.start(batchesToProcess.length, maxParallel);
 
@@ -113,6 +125,8 @@ Preserve all formatting and newlines within each <item> element.`;
         const output = await retry(() => listBatch(items, compiledPrompt, listBatchOptions), {
           label: 'map:batch',
           maxAttempts: config.maxAttempts || 3,
+          retryDelay: config.retryDelay || 1000,
+          retryOnAll: config.retryOnAll || false,
           onProgress: tracker.forBatch(startIndex, items.length),
           abortSignal: config.abortSignal,
         });
@@ -136,6 +150,7 @@ Preserve all formatting and newlines within each <item> element.`;
           });
         }
       } catch (error) {
+        if (errorPosture === 'strict') throw error;
         // Log the error before marking items as undefined
         if (config.logger?.error) {
           config.logger.error(`Map batch ${startIndex}-${startIndex + items.length - 1} failed`, {
@@ -152,6 +167,7 @@ Preserve all formatting and newlines within each <item> element.`;
     },
     {
       maxParallel,
+      errorPosture,
       label: 'map batches',
     }
   );
@@ -177,7 +193,17 @@ Preserve all formatting and newlines within each <item> element.`;
  * @returns { Promise<(string|undefined)[]> }
  */
 const map = async function (list, instructions, config = {}) {
-  const { maxAttempts = 3, logger, now = new Date() } = config;
+  config = withOperation('map', config);
+  const { logger, now = new Date() } = config;
+  const { maxAttempts, retryDelay, retryOnAll, maxParallel, errorPosture, progressMode } =
+    await resolveAll(config, {
+      maxAttempts: 3,
+      retryDelay: 1000,
+      retryOnAll: false,
+      maxParallel: 3,
+      errorPosture: 'resilient',
+      progressMode: 'detailed',
+    });
 
   // Create logger for map chain
   const lifecycleLogger = createLifecycleLogger(logger, 'chain:map');
@@ -207,6 +233,12 @@ const map = async function (list, instructions, config = {}) {
 
   const results = await mapOnce(list, instructions, {
     ...config,
+    maxAttempts,
+    retryDelay,
+    retryOnAll,
+    maxParallel,
+    errorPosture,
+    progressMode,
     logger: lifecycleLogger,
     now,
     chainStartTime: now,
@@ -236,6 +268,8 @@ const map = async function (list, instructions, config = {}) {
 
     const retryResults = await mapOnce(missingItems, instructions, {
       ...config,
+      maxAttempts,
+      maxParallel,
       logger: lifecycleLogger,
       now: new Date(),
       chainStartTime: now,

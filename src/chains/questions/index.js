@@ -2,7 +2,23 @@ import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { constants as promptConstants, asXML } from '../../prompts/index.js';
 import { questionsListSchema, selectedQuestionSchema } from './schemas.js';
-import { resolveOption } from '../../lib/context/resolve.js';
+import { resolve, resolveAll, mapped, withOperation } from '../../lib/context/resolve.js';
+
+// ===== Option Mappers =====
+
+/**
+ * Map exploration option to a search breadth value.
+ * Controls the breadth vs. depth trade-off in question generation.
+ * low: narrow breadth (0.3) — depth-first, drills into random questions, finds niche angles.
+ * high: wide breadth (0.8) — breadth-first, keeps most generated questions, maximum diversity.
+ * @param {string|number|undefined} value
+ * @returns {number} Search breadth between 0 and 1
+ */
+export const mapExploration = (value) => {
+  if (value === undefined) return 0.5;
+  if (typeof value === 'number') return value;
+  return { low: 0.3, med: 0.5, high: 0.8 }[value] ?? 0.5;
+};
 
 const { contentIsChoices } = promptConstants;
 
@@ -48,23 +64,27 @@ One question per string.`;
 };
 
 const generateQuestions = async function* generateQuestionsGenerator(text, options = {}) {
+  options = withOperation('questions', options);
   const resultsAll = [];
   const resultsAllMap = {};
   const drilldownResults = [];
   let isDone = false;
   let textSelected = text;
 
+  const { shouldSkip = shouldSkipNull, shouldStop = shouldStopNull } = options;
   const {
     llm,
-    searchBreadth: _searchBreadth,
-    shouldSkip = shouldSkipNull,
-    shouldStop = shouldStopNull,
-    maxAttempts = 3,
-    onProgress,
-    abortSignal,
-    ...restOptions
-  } = options;
-  const searchBreadth = resolveOption('searchBreadth', options, 0.5);
+    exploration: searchBreadth,
+    maxAttempts,
+    retryDelay,
+    retryOnAll,
+  } = await resolveAll(options, {
+    llm: undefined,
+    exploration: mapped(mapExploration),
+    maxAttempts: 3,
+    retryDelay: 1000,
+    retryOnAll: false,
+  });
 
   let attempts = 0;
   while (!isDone) {
@@ -79,8 +99,8 @@ const generateQuestions = async function* generateQuestionsGenerator(text, optio
       const selectedResult = await retry(
         () =>
           callLlm(pickInterestingQuestionPrompt, {
+            ...options,
             llm,
-            ...restOptions,
             modelOptions: {
               response_format: {
                 type: 'json_schema',
@@ -94,8 +114,10 @@ const generateQuestions = async function* generateQuestionsGenerator(text, optio
         {
           label: 'questions-pick-interesting',
           maxAttempts,
-          onProgress,
-          abortSignal,
+          retryDelay,
+          retryOnAll,
+          onProgress: options.onProgress,
+          abortSignal: options.abortSignal,
         }
       );
       textSelected = selectedResult.question;
@@ -105,11 +127,12 @@ const generateQuestions = async function* generateQuestionsGenerator(text, optio
     const promptCreated = formatQuestionsPrompt(textSelected, {
       existing: resultsAll,
     });
+    const temperature = await resolve('temperature', options, 1);
     const llmConfig = {
+      ...options,
       llm,
-      ...restOptions,
       modelOptions: {
-        temperature: 1,
+        temperature,
         response_format: {
           type: 'json_schema',
           json_schema: {
@@ -124,8 +147,10 @@ const generateQuestions = async function* generateQuestionsGenerator(text, optio
     const results = await retry(() => callLlm(promptCreated, llmConfig), {
       label: 'questions-generate',
       maxAttempts,
-      onProgress,
-      abortSignal,
+      retryDelay,
+      retryOnAll,
+      onProgress: options.onProgress,
+      abortSignal: options.abortSignal,
     });
     const resultsNew = getRandomSubset(results, searchBreadth);
     if (searchBreadth < 0.5) {

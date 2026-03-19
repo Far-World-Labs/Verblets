@@ -3,9 +3,21 @@ import llm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { testResultJsonSchema } from './schemas.js';
+import { resolveAll, withOperation } from '../../lib/context/resolve.js';
 
 export default async function test(path, instructions, options = {}) {
-  const { maxAttempts = 3, onProgress, abortSignal, ...restOptions } = options;
+  options = withOperation('test', options);
+  const {
+    llm: llmConfig,
+    maxAttempts,
+    retryDelay,
+    retryOnAll,
+  } = await resolveAll(options, {
+    llm: undefined,
+    maxAttempts: 3,
+    retryDelay: 1000,
+    retryOnAll: false,
+  });
   try {
     const code = await fs.readFile(path, 'utf-8');
 
@@ -27,16 +39,24 @@ GUIDELINES:
     const result = await retry(
       () =>
         llm(prompt, {
-          ...restOptions,
+          ...options,
+          llm: llmConfig,
           modelOptions: {
-            ...restOptions.modelOptions,
+            ...options.modelOptions,
             response_format: {
               type: 'json_schema',
               json_schema: testResultJsonSchema,
             },
           },
         }),
-      { label: 'test chain', maxAttempts, onProgress, abortSignal }
+      {
+        label: 'test chain',
+        maxAttempts,
+        retryDelay,
+        retryOnAll,
+        onProgress: options.onProgress,
+        abortSignal: options.abortSignal,
+      }
     );
 
     // With structured output, we get a validated object

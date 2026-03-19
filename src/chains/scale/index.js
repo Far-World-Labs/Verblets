@@ -4,6 +4,7 @@ import { asXML } from '../../prompts/wrap-variable.js';
 import buildInstructions from '../../lib/build-instructions/index.js';
 import { scaleSpecificationJsonSchema } from './schemas.js';
 import scaleResultSchema from './scale-result.json';
+import { resolveAll, withOperation } from '../../lib/context/resolve.js';
 
 // ===== Instruction Builders =====
 
@@ -40,7 +41,13 @@ export const {
  * @returns {Promise<Object>} Scale specification with domain, range, and mapping
  */
 export async function scaleSpec(prompt, config = {}) {
-  const { llm, maxAttempts = 3, onProgress, abortSignal, ...rest } = config;
+  config = withOperation('scale:spec', config);
+  const { llm, maxAttempts, retryDelay, retryOnAll } = await resolveAll(config, {
+    llm: undefined,
+    maxAttempts: 3,
+    retryDelay: 1000,
+    retryOnAll: false,
+  });
 
   const specSystemPrompt = `You are a scale specification generator. Analyze the scaling instructions and produce a clear, comprehensive specification.`;
 
@@ -58,6 +65,7 @@ IMPORTANT: Each property must be a simple string value, not a nested object or a
   const response = await retry(
     () =>
       callLlm(specUserPrompt, {
+        ...config,
         llm,
         modelOptions: {
           systemPrompt: specSystemPrompt,
@@ -66,13 +74,14 @@ IMPORTANT: Each property must be a simple string value, not a nested object or a
             json_schema: scaleSpecificationJsonSchema,
           },
         },
-        ...rest,
       }),
     {
       label: 'scale spec',
       maxAttempts,
-      onProgress,
-      abortSignal,
+      retryDelay,
+      retryOnAll,
+      onProgress: config.onProgress,
+      abortSignal: config.abortSignal,
     }
   );
 
@@ -88,7 +97,13 @@ IMPORTANT: Each property must be a simple string value, not a nested object or a
  * @returns {Promise<*>} Scaled value (type depends on specification range)
  */
 export async function applyScale(item, specification, config = {}) {
-  const { llm, maxAttempts = 3, onProgress, abortSignal, ...options } = config;
+  config = withOperation('scale:apply', config);
+  const { llm, maxAttempts, retryDelay, retryOnAll } = await resolveAll(config, {
+    llm: undefined,
+    maxAttempts: 3,
+    retryDelay: 1000,
+    retryOnAll: false,
+  });
 
   const prompt = `Apply the scale specification to transform this item.
 
@@ -102,6 +117,7 @@ Return a JSON object with a "value" property containing the scaled result.`;
   const response = await retry(
     () =>
       callLlm(prompt, {
+        ...config,
         llm,
         modelOptions: {
           response_format: {
@@ -112,13 +128,14 @@ Return a JSON object with a "value" property containing the scaled result.`;
             },
           },
         },
-        ...options,
       }),
     {
       label: 'scale item',
       maxAttempts,
-      onProgress,
-      abortSignal,
+      retryDelay,
+      retryOnAll,
+      onProgress: config.onProgress,
+      abortSignal: config.abortSignal,
     }
   );
 

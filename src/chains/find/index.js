@@ -4,6 +4,7 @@ import { findResultJsonSchema } from './schemas.js';
 import { createLifecycleLogger, extractBatchConfig } from '../../lib/lifecycle-logger/index.js';
 import { createBatches, parallel, retry, batchTracker } from '../../lib/index.js';
 import { debug } from '../../lib/debug/index.js';
+import { resolveAll, withOperation } from '../../lib/context/resolve.js';
 
 const findResponseFormat = {
   type: 'json_schema',
@@ -11,21 +12,19 @@ const findResponseFormat = {
 };
 
 const find = async function find(list, instructions, config = {}) {
-  const {
-    maxParallel = 3,
-    maxAttempts = 3,
-    listStyle,
-    autoModeThreshold,
-    responseFormat,
-    llm,
-    logger,
-    onProgress,
-    abortSignal,
-    now = new Date(),
-    ...options
-  } = config;
+  config = withOperation('find', config);
+  const { llm, maxParallel, maxAttempts, retryDelay, retryOnAll, errorPosture, progressMode } =
+    await resolveAll(config, {
+      llm: undefined,
+      maxParallel: 3,
+      maxAttempts: 3,
+      retryDelay: 1000,
+      retryOnAll: false,
+      errorPosture: 'resilient',
+      progressMode: 'detailed',
+    });
 
-  const lifecycleLogger = createLifecycleLogger(logger, 'chain:find');
+  const lifecycleLogger = createLifecycleLogger(config.logger, 'chain:find');
 
   const batches = createBatches(list, config);
   const findInstructions = ({ style, count }) => {
@@ -65,7 +64,11 @@ Process exactly ${count} items from the XML list below and return the single bes
     })
   );
 
-  const tracker = batchTracker('find', list.length, { onProgress, now });
+  const tracker = batchTracker('find', list.length, {
+    onProgress: config.onProgress,
+    progressMode,
+    now: config.now ?? new Date(),
+  });
 
   tracker.start(batchesToProcess.length, maxParallel);
 
@@ -76,24 +79,25 @@ Process exactly ${count} items from the XML list below and return the single bes
     await parallel(
       chunk,
       async ({ items, startIndex }) => {
-        const batchStyle = determineStyle(listStyle, items, autoModeThreshold);
+        const batchStyle = determineStyle(config.listStyle, items, config.autoModeThreshold);
 
         try {
           const result = await retry(
             () =>
               listBatch(items, findInstructions({ style: batchStyle, count: items.length }), {
+                ...config,
                 listStyle: batchStyle,
-                autoModeThreshold,
-                responseFormat: responseFormat || findResponseFormat,
+                responseFormat: config.responseFormat || findResponseFormat,
                 llm,
                 logger: lifecycleLogger,
-                ...options,
               }),
             {
               label: 'find:batch',
               maxAttempts,
+              retryDelay,
+              retryOnAll,
               onProgress: tracker.forBatch(startIndex, items.length),
-              abortSignal,
+              abortSignal: config.abortSignal,
             }
           );
 
@@ -109,11 +113,13 @@ Process exactly ${count} items from the XML list below and return the single bes
 
           tracker.batchDone(startIndex, items.length);
         } catch (error) {
+          if (errorPosture === 'strict') throw error;
           debug(`find batch at index ${startIndex} failed: ${error.message}`);
         }
       },
       {
         maxParallel,
+        errorPosture,
         label: 'find batches',
       }
     );

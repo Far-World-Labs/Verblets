@@ -2,7 +2,7 @@ import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import popReferenceSchema from './pop-reference-result.json';
-import { resolveOption } from '../../lib/context/resolve.js';
+import { resolveAll, withOperation } from '../../lib/context/resolve.js';
 
 const modelOptions = {
   response_format: {
@@ -22,18 +22,17 @@ const modelOptions = {
  * @returns {Promise<Array>} Array of PopCultureReference objects
  */
 export default async function popReference(sentence, description, options = {}) {
-  const {
-    include = [],
-    referenceContext: _referenceContext,
-    referencesPerSource: _referencesPerSource,
-    llm,
-    maxAttempts = 3,
-    onProgress,
-    abortSignal,
-    ...restOptions
-  } = options;
-  const referenceContext = resolveOption('referenceContext', options, false);
-  const referencesPerSource = resolveOption('referencesPerSource', options, 2);
+  options = withOperation('pop-reference', options);
+  const { include = [] } = options;
+  const { llm, referenceContext, referencesPerSource, maxAttempts, retryDelay, retryOnAll } =
+    await resolveAll(options, {
+      llm: undefined,
+      referenceContext: false,
+      referencesPerSource: 2,
+      maxAttempts: 3,
+      retryDelay: 1000,
+      retryOnAll: false,
+    });
 
   // Build the include list description
   let includeDescription = '';
@@ -86,15 +85,17 @@ Requirements:
   const response = await retry(
     () =>
       callLlm(prompt, {
+        ...options,
         llm,
         modelOptions,
-        ...restOptions,
       }),
     {
       label: 'pop-reference',
       maxAttempts,
-      onProgress,
-      abortSignal,
+      retryDelay,
+      retryOnAll,
+      onProgress: options.onProgress,
+      abortSignal: options.abortSignal,
     }
   );
 

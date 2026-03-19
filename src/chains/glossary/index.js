@@ -2,7 +2,7 @@ import nlp from 'compromise';
 import sort from '../sort/index.js';
 import map from '../map/index.js';
 import { glossaryExtractionJsonSchema } from './schemas.js';
-import { resolveOption } from '../../lib/context/resolve.js';
+import { resolveAll, withOperation } from '../../lib/context/resolve.js';
 
 // Response format for map: each chunk produces an array of terms
 const GLOSSARY_RESPONSE_FORMAT = {
@@ -23,16 +23,13 @@ const GLOSSARY_RESPONSE_FORMAT = {
  * @returns {Promise<string[]>} list of important terms, sorted by relevance
  */
 export default async function glossary(text, options = {}) {
-  const {
-    maxTerms: _maxTerms,
-    sortBy: _sortBy,
-    sentencesPerBatch = 3,
-    overlap = 1,
-    batchSize = 1,
-    ...restOptions
-  } = options;
-  const maxTerms = resolveOption('maxTerms', options, 10);
-  const sortBy = resolveOption('sortBy', options, 'importance for understanding the content');
+  options = withOperation('glossary', options);
+  const { maxTerms, sortBy, sentencesPerBatch, overlap } = await resolveAll(options, {
+    maxTerms: 10,
+    sortBy: 'importance for understanding the content',
+    sentencesPerBatch: 3,
+    overlap: 1,
+  });
   if (!text || !text.trim()) return [];
 
   // Parse sentences using compromise
@@ -55,9 +52,9 @@ export default async function glossary(text, options = {}) {
 Return a "terms" object containing an array of the extracted terms.`;
 
   const mapped = await map(textChunks, instructions, {
-    batchSize,
+    ...options,
+    batchSize: options.batchSize ?? 1,
     responseFormat: GLOSSARY_RESPONSE_FORMAT,
-    ...restOptions,
   });
 
   const termSet = new Set();
@@ -76,7 +73,7 @@ Return a "terms" object containing an array of the extracted terms.`;
   if (terms.length === 0) return [];
 
   // Sort by importance for understanding the content
-  const sorted = await sort(terms, sortBy, restOptions);
+  const sorted = await sort(terms, sortBy, options);
 
   return sorted.slice(0, maxTerms);
 }

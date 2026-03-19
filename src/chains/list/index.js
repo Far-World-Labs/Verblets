@@ -7,6 +7,7 @@ import {
   constants as promptConstants,
 } from '../../prompts/index.js';
 import listResultSchema from './list-result.json';
+import { resolveAll, withOperation } from '../../lib/context/resolve.js';
 
 const DEFAULT_LIST_TIMEOUT_MS = 90_000;
 
@@ -41,25 +42,27 @@ const shouldSkipDefault = ({ result, resultsAll } = {}) => {
   return resultsAll.includes(result);
 };
 
-const shouldStopDefault = ({ queryCount, startTime } = {}) => {
-  return queryCount > 5 || new Date() - startTime > DEFAULT_LIST_TIMEOUT_MS;
+const shouldStopDefault = ({ queryCount, startTime, queryLimit, timeoutMs } = {}) => {
+  return queryCount > queryLimit || new Date() - startTime > timeoutMs;
 };
 
 export const generateList = async function* generateListGenerator(text, options = {}) {
+  options = withOperation('list:generate', options);
   const resultsAll = [];
   const resultsAllMap = {};
   let isDone = false;
-  const {
-    shouldSkip = shouldSkipDefault,
-    shouldStop = shouldStopDefault,
-    llm = 'fastGoodCheap',
-    maxAttempts = 3,
-    onProgress,
-    abortSignal,
-    // eslint-disable-next-line no-unused-vars
-    _schema,
-    ...passThroughOptions
-  } = options;
+  const { shouldSkip = shouldSkipDefault, shouldStop = shouldStopDefault } = options;
+  const { llm, maxAttempts, retryDelay, retryOnAll, queryLimit, timeoutMs } = await resolveAll(
+    options,
+    {
+      llm: 'fastGoodCheap',
+      maxAttempts: 3,
+      retryDelay: 1000,
+      retryOnAll: false,
+      queryLimit: 5,
+      timeoutMs: DEFAULT_LIST_TIMEOUT_MS,
+    }
+  );
 
   const startTime = new Date();
   let queryCount = 0;
@@ -74,15 +77,14 @@ export const generateList = async function* generateListGenerator(text, options 
     try {
       const modelOptions = createModelOptions();
       // eslint-disable-next-line no-await-in-loop
-      const results = await retry(
-        () => callLlm(listPrompt, { llm, modelOptions, ...passThroughOptions }),
-        {
-          label: 'list-generate',
-          maxAttempts,
-          onProgress,
-          abortSignal,
-        }
-      );
+      const results = await retry(() => callLlm(listPrompt, { ...options, llm, modelOptions }), {
+        label: 'list-generate',
+        maxAttempts,
+        retryDelay,
+        retryOnAll,
+        onProgress: options.onProgress,
+        abortSignal: options.abortSignal,
+      });
 
       const resultArray = results?.items || results;
       resultsNew = Array.isArray(resultArray) ? resultArray.filter(Boolean) : [];
@@ -110,6 +112,8 @@ export const generateList = async function* generateListGenerator(text, options 
         resultsNew,
         queryCount,
         startTime,
+        queryLimit,
+        timeoutMs,
       };
 
       // eslint-disable-next-line no-await-in-loop
@@ -133,6 +137,8 @@ export const generateList = async function* generateListGenerator(text, options 
       resultsNew,
       queryCount,
       startTime,
+      queryLimit,
+      timeoutMs,
     };
 
     // eslint-disable-next-line no-await-in-loop
@@ -143,15 +149,24 @@ export const generateList = async function* generateListGenerator(text, options 
 };
 
 export default async function list(prompt, config = {}) {
-  const { llm, schema, maxAttempts = 3, onProgress, abortSignal, ...options } = config;
+  config = withOperation('list', config);
+  const { schema } = config;
+  const { llm, maxAttempts, retryDelay, retryOnAll } = await resolveAll(config, {
+    llm: undefined,
+    maxAttempts: 3,
+    retryDelay: 1000,
+    retryOnAll: false,
+  });
   const fullPrompt = prompt;
 
   const modelOptions = createModelOptions();
-  const response = await retry(() => callLlm(fullPrompt, { llm, modelOptions, ...options }), {
+  const response = await retry(() => callLlm(fullPrompt, { ...config, llm, modelOptions }), {
     label: 'list-main',
     maxAttempts,
-    onProgress,
-    abortSignal,
+    retryDelay,
+    retryOnAll,
+    onProgress: config.onProgress,
+    abortSignal: config.abortSignal,
   });
 
   // Extract items from the object structure
@@ -163,11 +178,13 @@ export default async function list(prompt, config = {}) {
     const transformedItems = [];
     for (const item of items) {
       const transformPrompt = outputTransformPrompt(item, schema);
-      const transformResponse = await retry(() => callLlm(transformPrompt, { llm, ...options }), {
+      const transformResponse = await retry(() => callLlm(transformPrompt, { ...config, llm }), {
         label: 'list-transform',
         maxAttempts,
-        onProgress,
-        abortSignal,
+        retryDelay,
+        retryOnAll,
+        onProgress: config.onProgress,
+        abortSignal: config.abortSignal,
       });
       try {
         const transformedItem = JSON.parse(transformResponse);

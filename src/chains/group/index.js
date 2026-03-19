@@ -4,18 +4,54 @@ import { asXML } from '../../prompts/wrap-variable.js';
 import { emitPhaseProgress } from '../../lib/progress-callback/index.js';
 import { createBatches, parallel, retry, batchTracker, scopeProgress } from '../../lib/index.js';
 import { debug } from '../../lib/debug/index.js';
-import { resolveOption } from '../../lib/context/resolve.js';
+import { resolve, resolveAll, mapped, withOperation } from '../../lib/context/resolve.js';
 
-const createCategoryDiscoveryPrompt = (instructions, categoryPrompt) => {
+// ===== Option Mappers =====
+
+const DEFAULT_GRANULARITY = { guidance: undefined, topN: undefined };
+
+/**
+ * Map granularity option to category discovery guidance + topN coordination.
+ * low: fewer, broader categories — merge aggressively, lower topN.
+ * high: finer-grained categories — preserve distinctions, higher topN.
+ * med: explicit normal mode — default behavior, existing topN.
+ * @param {string|object|undefined} value
+ * @returns {{ guidance: string|undefined, topN: number|undefined }}
+ */
+export const mapGranularity = (value) => {
+  if (value === undefined) return DEFAULT_GRANULARITY;
+  if (typeof value === 'object') return value;
+  return (
+    {
+      low: {
+        guidance:
+          'Prefer fewer, broader categories. Merge aggressively — only keep categories that are clearly distinct. Aim for high-level groupings.',
+        topN: 5,
+      },
+      med: DEFAULT_GRANULARITY,
+      high: {
+        guidance:
+          'Prefer finer-grained categories. Preserve subtle distinctions between items. Only merge categories that are nearly identical.',
+        topN: 20,
+      },
+    }[value] ?? DEFAULT_GRANULARITY
+  );
+};
+
+const createCategoryDiscoveryPrompt = (instructions, categoryPrompt, granularityGuidance) => {
   const defaultCategoryPrompt =
     'Build a clean, consistent set of categories. Merge similar categories, standardize naming, remove outliers, and ensure consistent abstraction levels.';
   const mergeInstructions = categoryPrompt || defaultCategoryPrompt;
+
+  const granularityBlock = granularityGuidance
+    ? `\n\n${asXML(granularityGuidance, { tag: 'granularity-guidance' })}`
+    : '';
 
   return `For each item, determine what category it should belong to according to the grouping instructions. Build and refine a comprehensive category system as you process items.
 
 ${asXML(instructions, { tag: 'grouping-criteria' })}
 
-${asXML(mergeInstructions, { tag: 'category-refinement-guidelines' })}
+${asXML(mergeInstructions, { tag: 'category-refinement-guidelines' })}${granularityBlock}
 
 PROCESS:
 1. Examine each new item against the grouping criteria
@@ -78,19 +114,36 @@ const applyTopNFilter = (groups, topN) => {
 };
 
 export default async function group(list, instructions, config = {}) {
+  config = withOperation('group', config);
   const {
-    maxParallel = 3,
-    topN: _topN,
     categoryPrompt,
     listStyle,
     autoModeThreshold,
-    llm,
     onProgress,
     abortSignal,
     now = new Date(),
-    ...options
   } = config;
-  const topN = resolveOption('topN', config, undefined);
+  const {
+    llm,
+    granularity: granularityConfig,
+    maxParallel,
+    maxAttempts,
+    retryDelay,
+    retryOnAll,
+    errorPosture,
+    progressMode,
+  } = await resolveAll(config, {
+    llm: undefined,
+    granularity: mapped(mapGranularity),
+    maxParallel: 3,
+    maxAttempts: 3,
+    retryDelay: 1000,
+    retryOnAll: false,
+    errorPosture: 'resilient',
+    progressMode: 'detailed',
+  });
+  const topN = await resolve('topN', config, granularityConfig.topN);
+  const granularityGuidance = granularityConfig.guidance;
 
   // Phase 1: Category Discovery - reduce pass to build taxonomy
   if (onProgress) {
@@ -101,12 +154,16 @@ export default async function group(list, instructions, config = {}) {
     });
   }
 
-  const categoryDiscoveryPrompt = createCategoryDiscoveryPrompt(instructions, categoryPrompt);
+  const categoryDiscoveryPrompt = createCategoryDiscoveryPrompt(
+    instructions,
+    categoryPrompt,
+    granularityGuidance
+  );
   const categoriesString = await reduce(list, categoryDiscoveryPrompt, {
+    ...config,
     initial: '',
     llm,
     abortSignal,
-    ...options,
     now,
     onProgress: scopeProgress(onProgress, 'reduce:category-discovery'),
   });
@@ -133,7 +190,7 @@ export default async function group(list, instructions, config = {}) {
   // Filter out skip batches
   const batchesToProcess = batches.filter((batch) => !batch.skip);
 
-  const tracker = batchTracker('group', list.length, { onProgress, now });
+  const tracker = batchTracker('group', list.length, { onProgress, progressMode, now });
 
   tracker.start(batchesToProcess.length, maxParallel);
 
@@ -145,10 +202,10 @@ export default async function group(list, instructions, config = {}) {
 
       try {
         const listBatchOptions = {
+          ...config,
           listStyle: batchStyle,
           autoModeThreshold,
           llm,
-          ...options,
         };
 
         const labels = await retry(
@@ -160,7 +217,9 @@ export default async function group(list, instructions, config = {}) {
             ),
           {
             label: 'group:batch',
-            maxAttempts: options.maxAttempts || 3,
+            maxAttempts,
+            retryDelay,
+            retryOnAll,
             onProgress: tracker.forBatch(startIndex, items.length),
             abortSignal,
           }
@@ -175,6 +234,7 @@ export default async function group(list, instructions, config = {}) {
 
         tracker.batchDone(startIndex, items.length);
       } catch (error) {
+        if (errorPosture === 'strict') throw error;
         debug(`group batch at index ${startIndex} failed, using fallback labels: ${error.message}`);
         const fallbackLabels = new Array(items.length).fill('other');
         batchResults.push({ items, labels: fallbackLabels, startIndex });
@@ -182,6 +242,7 @@ export default async function group(list, instructions, config = {}) {
     },
     {
       maxParallel,
+      errorPosture,
       label: 'group assignment batches',
     }
   );

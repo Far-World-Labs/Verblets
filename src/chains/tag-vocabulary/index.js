@@ -2,6 +2,7 @@ import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import tagVocabularyResultSchema from './tag-vocabulary-result.json';
+import { resolveAll, withOperation } from '../../lib/context/resolve.js';
 
 // ===== Pure Helper Functions =====
 
@@ -119,7 +120,14 @@ export function computeTagStatistics(vocabulary, taggedItems, options = {}) {
  * @returns {Promise<Object>} Initial tag vocabulary
  */
 async function generateInitialVocabulary(tagSystemSpec, sampleItems, config = {}) {
-  const { llm, maxAttempts = 3, onProgress, abortSignal, ...options } = config;
+  config = withOperation('tag-vocabulary:generate', config);
+  const { onProgress, abortSignal } = config;
+  const { llm, maxAttempts, retryDelay, retryOnAll } = await resolveAll(config, {
+    llm: undefined,
+    maxAttempts: 3,
+    retryDelay: 1000,
+    retryOnAll: false,
+  });
 
   const prompt = `Generate a comprehensive tag vocabulary for categorizing items.
 
@@ -141,6 +149,7 @@ The vocabulary should be complete enough to categorize diverse items along the i
   const response = await retry(
     () =>
       callLlm(prompt, {
+        ...config,
         llm,
         modelOptions: {
           response_format: {
@@ -151,11 +160,12 @@ The vocabulary should be complete enough to categorize diverse items along the i
             },
           },
         },
-        ...options,
       }),
     {
       label: 'tag-vocabulary-initial',
       maxAttempts,
+      retryDelay,
+      retryOnAll,
       onProgress,
       abortSignal,
     }
@@ -173,15 +183,14 @@ The vocabulary should be complete enough to categorize diverse items along the i
  * @returns {Promise<Object>} Refined tag vocabulary
  */
 async function refineVocabulary(vocabulary, taggedItems, tagSystemSpec, config = {}) {
-  const {
-    llm,
-    topN = 3,
-    bottomN = 3,
-    maxAttempts = 3,
-    onProgress,
-    abortSignal,
-    ...options
-  } = config;
+  config = withOperation('tag-vocabulary:refine', config);
+  const { topN = 3, bottomN = 3, onProgress, abortSignal } = config;
+  const { llm, maxAttempts, retryDelay, retryOnAll } = await resolveAll(config, {
+    llm: undefined,
+    maxAttempts: 3,
+    retryDelay: 1000,
+    retryOnAll: false,
+  });
 
   // Compute statistics using pure function
   const analysis = computeTagStatistics(vocabulary, taggedItems, { topN, bottomN });
@@ -214,6 +223,7 @@ Return an improved vocabulary that provides better coverage and clearer distinct
   const response = await retry(
     () =>
       callLlm(prompt, {
+        ...config,
         llm,
         modelOptions: {
           response_format: {
@@ -224,11 +234,12 @@ Return an improved vocabulary that provides better coverage and clearer distinct
             },
           },
         },
-        ...options,
       }),
     {
       label: 'tag-vocabulary-refine',
       maxAttempts,
+      retryDelay,
+      retryOnAll,
       onProgress,
       abortSignal,
     }
@@ -245,7 +256,12 @@ Return an improved vocabulary that provides better coverage and clearer distinct
  * @returns {Promise<Object>} Final refined tag vocabulary
  */
 export default async function tagVocabulary(tagSystemSpec, items, config = {}) {
-  const { tagger, sampleSize = 50, maxAttempts = 3, ...options } = config;
+  config = withOperation('tag-vocabulary', config);
+  const { tagger, sampleSize = 50 } = config;
+  const { maxAttempts, retryDelay } = await resolveAll(config, {
+    maxAttempts: 3,
+    retryDelay: 1000,
+  });
 
   if (!tagger) {
     throw new Error('A tagger function must be provided in config');
@@ -256,8 +272,9 @@ export default async function tagVocabulary(tagSystemSpec, items, config = {}) {
 
   // Generate initial vocabulary
   const initialVocab = await generateInitialVocabulary(tagSystemSpec, sampleItems, {
+    ...config,
     maxAttempts,
-    ...options,
+    retryDelay,
   });
 
   // Apply tags to all items using the provided tagger
@@ -266,8 +283,9 @@ export default async function tagVocabulary(tagSystemSpec, items, config = {}) {
 
   // Refine vocabulary based on usage
   const finalVocab = await refineVocabulary(initialVocab, taggedItems, tagSystemSpec, {
+    ...config,
     maxAttempts,
-    ...options,
+    retryDelay,
   });
 
   return finalVocab;

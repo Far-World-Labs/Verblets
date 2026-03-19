@@ -8,13 +8,42 @@ import {
   extractResultValue,
 } from '../../lib/lifecycle-logger/index.js';
 import { emitStepProgress } from '../../lib/progress-callback/index.js';
+import { resolveOptionMapped, resolveOption, withOperation } from '../../lib/context/resolve.js';
 
-// Socratic method guidelines
-const socraticGuidelines = `Using the Socratic method, ask one short question that challenges assumptions`;
+// ===== Option Mappers =====
+
+const DEFAULT_CHALLENGE = { challenge: undefined, temperature: 0.7 };
+
+/**
+ * Map challenge option to dialogue style + temperature coordination.
+ * low: guided hints, lower temperature (predictable).
+ * high: confronts weakest point, higher temperature (creative).
+ * med: explicit normal mode — exploratory, default temperature.
+ * @param {string|object|undefined} value
+ * @returns {{ challenge: string|undefined, temperature: number }}
+ */
+export const mapChallenge = (value) => {
+  if (value === undefined) return DEFAULT_CHALLENGE;
+  if (typeof value === 'object') return value;
+  return (
+    {
+      low: { challenge: 'low', temperature: 0.3 },
+      med: DEFAULT_CHALLENGE,
+      high: { challenge: 'high', temperature: 0.9 },
+    }[value] ?? DEFAULT_CHALLENGE
+  );
+};
+
+// Socratic method guidelines by challenge level
+const CHALLENGE_GUIDELINES = {
+  low: `Using the Socratic method, ask one short question that gently guides toward the answer with a helpful hint`,
+  default: `Using the Socratic method, ask one short question that challenges assumptions`,
+  high: `Using the Socratic method, ask one short, provocative question that directly confronts the weakest point in the reasoning`,
+};
 
 // Prompt builders
-const buildAskPrompt = (topic, historyText) =>
-  `${historyText ? `${historyText}\n` : ''}${socraticGuidelines} about "${topic}".`;
+const buildAskPrompt = (topic, historyText, challenge) =>
+  `${historyText ? `${historyText}\n` : ''}${CHALLENGE_GUIDELINES[challenge] || CHALLENGE_GUIDELINES.default} about "${topic}".`;
 
 const buildAnswerPrompt = (question, historyText) => `${
   historyText ? `${historyText}\n` : ''
@@ -27,11 +56,14 @@ const defaultAsk = async ({
   llm,
   logger,
   maxAttempts = 3,
+  retryOnAll = false,
+  temperature = 0.7,
+  challenge,
   onProgress,
   abortSignal,
 } = {}) => {
   const historyText = history.map((turn) => `Q: ${turn.question}\nA: ${turn.answer}`).join('\n');
-  const prompt = buildAskPrompt(topic, historyText);
+  const prompt = buildAskPrompt(topic, historyText, challenge);
 
   logger?.logEvent('ask-prompt', extractPromptAnalysis(prompt));
 
@@ -40,7 +72,7 @@ const defaultAsk = async ({
       callLlm(prompt, {
         llm,
         modelOptions: {
-          temperature: 0.7,
+          temperature,
           response_format: {
             type: 'json_schema',
             json_schema: {
@@ -54,6 +86,7 @@ const defaultAsk = async ({
     {
       label: 'socratic-ask',
       maxAttempts,
+      retryOnAll,
       onProgress,
       abortSignal,
     }
@@ -69,6 +102,8 @@ const defaultAnswer = async ({
   llm,
   logger,
   maxAttempts = 3,
+  retryOnAll = false,
+  temperature = 0.7,
   onProgress,
   abortSignal,
 } = {}) => {
@@ -82,7 +117,7 @@ const defaultAnswer = async ({
       callLlm(prompt, {
         llm,
         modelOptions: {
-          temperature: 0.7,
+          temperature,
           response_format: {
             type: 'json_schema',
             json_schema: {
@@ -96,6 +131,7 @@ const defaultAnswer = async ({
     {
       label: 'socratic-answer',
       maxAttempts,
+      retryOnAll,
       onProgress,
       abortSignal,
     }
@@ -112,18 +148,38 @@ class SocraticMethod {
       answer = defaultAnswer,
       llm,
       logger,
-      maxAttempts = 3,
+      maxAttempts: _maxAttempts,
+      temperature: _temperature,
+      challenge: _challenge,
       onProgress,
       abortSignal,
       now = new Date(),
+      ...restOptions
     } = {}
   ) {
+    const options = withOperation('socratic', {
+      ask,
+      answer,
+      llm,
+      logger,
+      maxAttempts: _maxAttempts,
+      temperature: _temperature,
+      challenge: _challenge,
+      onProgress,
+      abortSignal,
+      now,
+      ...restOptions,
+    });
     this.statement = statement;
     this.ask = ask;
     this.answer = answer;
     this.llm = llm;
     this.history = [];
-    this.maxAttempts = maxAttempts;
+    this.maxAttempts = resolveOption('maxAttempts', options, 3);
+    this.retryOnAll = resolveOption('retryOnAll', options, false);
+    const challengeConfig = resolveOptionMapped('challenge', options, mapChallenge);
+    this.challenge = challengeConfig.challenge;
+    this.temperature = resolveOption('temperature', options, challengeConfig.temperature);
     this.onProgress = onProgress;
     this.abortSignal = abortSignal;
     this.now = now;
@@ -134,7 +190,7 @@ class SocraticMethod {
       statement,
       hasCustomAsk: ask !== defaultAsk,
       hasCustomAnswer: answer !== defaultAnswer,
-      maxAttempts,
+      maxAttempts: this.maxAttempts,
     });
   }
 
@@ -170,6 +226,9 @@ class SocraticMethod {
       llm: this.llm,
       logger: this.logger,
       maxAttempts: this.maxAttempts,
+      retryOnAll: this.retryOnAll,
+      temperature: this.temperature,
+      challenge: this.challenge,
       onProgress: this.onProgress,
       abortSignal: this.abortSignal,
       now: this.now,
@@ -194,6 +253,8 @@ class SocraticMethod {
       llm: this.llm,
       logger: this.logger,
       maxAttempts: this.maxAttempts,
+      retryOnAll: this.retryOnAll,
+      temperature: this.temperature,
       onProgress: this.onProgress,
       abortSignal: this.abortSignal,
       now: this.now,

@@ -7,7 +7,7 @@ import { constants as promptConstants } from '../../prompts/index.js';
 import { intersectionElementsSchema } from './schemas.js';
 import intersectionResultSchema from './intersection-result.json';
 import { debug } from '../../lib/debug/index.js';
-import { resolveOption } from '../../lib/context/resolve.js';
+import { resolveAll, withOperation } from '../../lib/context/resolve.js';
 
 const { strictFormat, contentIsQuestion } = promptConstants;
 
@@ -46,7 +46,16 @@ const parseElements = (elements) => {
 const processCombo = async (
   combo,
   instructions,
-  { maxAttempts = 3, onProgress, abortSignal, now = new Date(), llm, ...options } = {}
+  {
+    maxAttempts = 3,
+    retryDelay = 1000,
+    retryOnAll = false,
+    onProgress,
+    abortSignal,
+    now = new Date(),
+    llm,
+    ...options
+  } = {}
 ) => {
   const comboKey = combo.join(' + ');
 
@@ -70,6 +79,8 @@ const processCombo = async (
       {
         label: 'intersections-elements',
         maxAttempts,
+        retryDelay,
+        retryOnAll,
         onProgress,
         abortSignal,
       }
@@ -110,20 +121,28 @@ export default async function intersections(items, options = {}) {
     return {};
   }
 
+  options = withOperation('intersections', options);
   const {
     instructions,
     minSize = 2,
     maxSize = items.length,
     batchSize = 10,
-    llm = 'fastGoodCheap',
     useSchemaValidation: _useSchemaValidation,
-    maxAttempts = 3,
     onProgress,
     abortSignal,
     now = new Date(),
     ...restOptions
   } = options;
-  const useSchemaValidation = resolveOption('useSchemaValidation', options, false);
+  const { llm, useSchemaValidation, maxAttempts, retryDelay, retryOnAll } = await resolveAll(
+    options,
+    {
+      llm: 'fastGoodCheap',
+      useSchemaValidation: false,
+      maxAttempts: 3,
+      retryDelay: 1000,
+      retryOnAll: false,
+    }
+  );
 
   // Generate all combinations
   const allCombinations = rangeCombinations(items, minSize, maxSize);
@@ -140,12 +159,14 @@ export default async function intersections(items, options = {}) {
     const batchResults = await Promise.all(
       batch.map((combo) =>
         processCombo(combo, instructions, {
+          ...restOptions,
           maxAttempts,
+          retryDelay,
+          retryOnAll,
           onProgress,
           abortSignal,
           now,
           llm,
-          ...restOptions,
         })
       )
     );
@@ -162,6 +183,8 @@ export default async function intersections(items, options = {}) {
       results,
       llm,
       maxAttempts,
+      retryDelay,
+      retryOnAll,
       onProgress,
       abortSignal
     );
@@ -198,6 +221,8 @@ async function validateIntersectionResults(
   intersections,
   llm = 'fastGoodCheap',
   maxAttempts = 3,
+  retryDelay = 1000,
+  retryOnAll = false,
   onProgress,
   abortSignal
 ) {
@@ -221,6 +246,8 @@ Return the properly structured JSON object with an "intersections" property cont
     const response = await retry(() => callLlm(prompt, { llm, modelOptions }), {
       label: 'intersections-validation',
       maxAttempts,
+      retryDelay,
+      retryOnAll,
       onProgress,
       abortSignal,
     });

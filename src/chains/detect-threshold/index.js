@@ -5,6 +5,7 @@ import { scopeProgress } from '../../lib/progress-callback/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { debug } from '../../lib/debug/index.js';
 import thresholdResultSchema from './threshold-result.json';
+import { resolveAll, withOperation } from '../../lib/context/resolve.js';
 
 export function calculateStatistics(data, targetProperty) {
   const values = data
@@ -56,13 +57,18 @@ export default async function detectThreshold({
   data,
   targetProperty,
   goal,
-  batchSize = 50,
-  llm = { good: true },
-  maxAttempts = 3,
   onProgress,
   now = new Date(),
   ...options
 }) {
+  const configBag = withOperation('detect-threshold', options);
+  const { llm, batchSize, maxAttempts, retryDelay, retryOnAll } = await resolveAll(configBag, {
+    llm: { good: true },
+    batchSize: 50,
+    maxAttempts: 3,
+    retryDelay: 1000,
+    retryOnAll: false,
+  });
   if (!data || !Array.isArray(data) || data.length === 0) {
     throw new Error('Data must be a non-empty array');
   }
@@ -159,6 +165,7 @@ Return the updated accumulator as valid JSON.`;
   }
 
   const analysisResult = await reduce(dataStrings, instructions, {
+    ...options,
     initial: JSON.stringify(initialAccumulator),
     batchSize,
     llm,
@@ -172,7 +179,6 @@ Return the updated accumulator as valid JSON.`;
     },
     onProgress: scopeProgress(onProgress, 'reduce:analysis'),
     now,
-    ...options,
   });
 
   const accumulated = analysisResult;
@@ -225,9 +231,11 @@ Return threshold candidates with their rationales.`;
     },
   };
 
-  const result = await retry(() => callLlm(finalPrompt, { llm, modelOptions, ...options }), {
+  const result = await retry(() => callLlm(finalPrompt, { ...options, llm, modelOptions }), {
     label: 'detect-threshold-analysis',
     maxAttempts,
+    retryDelay,
+    retryOnAll,
     onProgress,
     abortSignal: options.abortSignal,
   });

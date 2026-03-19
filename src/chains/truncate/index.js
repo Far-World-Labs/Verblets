@@ -1,6 +1,23 @@
 import score from '../score/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
-import { resolveOption } from '../../lib/context/resolve.js';
+import { resolveAll, mapped, withOperation } from '../../lib/context/resolve.js';
+
+// ===== Option Mappers =====
+
+const DEFAULT_THRESHOLD = 6;
+
+/**
+ * Map aggression option to a score threshold for content removal.
+ * low: higher threshold (7) — only removes content the LLM strongly considers removable. Conservative.
+ * high: lower threshold (4) — removes anything the LLM isn't confident should stay. Aggressive.
+ * @param {string|number|undefined} value
+ * @returns {number} Score threshold (0-10) below which chunks are removed
+ */
+export const mapAggression = (value) => {
+  if (value === undefined) return DEFAULT_THRESHOLD;
+  if (typeof value === 'number') return value;
+  return { low: 7, med: DEFAULT_THRESHOLD, high: 4 }[value] ?? DEFAULT_THRESHOLD;
+};
 
 /**
  * Create chunks of text with tracked end positions.
@@ -74,8 +91,11 @@ function createChunks(text, chunkSize) {
  * @returns {number} Character index where to truncate
  */
 export default async function truncate(text, instructions, config = {}) {
-  const chunkSize = config.chunkSize ?? 1000;
-  const threshold = resolveOption('threshold', config, 6);
+  config = withOperation('truncate', config);
+  const { chunkSize, aggression: threshold } = await resolveAll(config, {
+    chunkSize: 1000,
+    aggression: mapped(mapAggression),
+  });
 
   // Create chunks with tracked end positions
   const chunks = createChunks(text, chunkSize);

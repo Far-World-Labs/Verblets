@@ -1,26 +1,51 @@
 import { embedChunked } from '../../lib/embed/index.js';
 import { cosineSimilarity } from '../../lib/pure/index.js';
-import { resolveOption } from '../../lib/context/resolve.js';
+import { resolveAll, mapped, withOperation } from '../../lib/context/resolve.js';
+
+// ===== Option Mappers =====
+
+const DEFAULT_THRESHOLD = 0.4;
 
 /**
- * Scan text for probe matches against a set of pre-embedded probes.
+ * Map detection option to a cosine similarity threshold.
+ * Accepts 'low'|'high' or a raw number.
+ * low: higher threshold (0.55) — fewer hits, fewer false positives.
+ * high: lower threshold (0.3) — more hits, catches weaker signals.
+ * @param {string|number|undefined} value
+ * @returns {number} Cosine similarity threshold
+ */
+export const mapDetection = (value) => {
+  if (value === undefined) return DEFAULT_THRESHOLD;
+  if (typeof value === 'number') return value;
+  return { low: 0.55, med: DEFAULT_THRESHOLD, high: 0.3 }[value] ?? DEFAULT_THRESHOLD;
+};
+
+/**
+ * Scan text (or pre-embedded chunks) for probe matches against a set of pre-embedded probes.
  *
  * Uses local embeddings (no data leaves the machine) to compare text chunks
  * against probe vectors. Works with any probe set — privacy, topic, compliance, etc.
  *
- * @param {string} text - Text to scan
+ * @param {string | Array<{text: string, vector: Float32Array, start: number, end: number}>} textOrChunks - Text to scan, or pre-embedded chunks
  * @param {Array<{ category: string, label: string, vector: Float32Array }>} probes - Pre-embedded probes from embedProbes()
  * @param {object} [options]
- * @param {number} [options.threshold=0.4] - Min cosine similarity to flag
+ * @param {string|number} [options.detection] - Detection intensity: 'low' (fewer hits), 'high' (more hits), or raw threshold number
  * @param {string[]} [options.categories] - Only scan for these category strings
  * @param {number} [options.maxTokens=256] - Chunk size for long texts
  * @returns {Promise<{ flagged: boolean, hits: Array<{ category: string, label: string, score: number, chunk: { text: string, start: number, end: number } }> }>}
  */
-export default async function probeScan(text, probes, options = {}) {
-  const { categories, maxTokens = 256 } = options;
-  const threshold = resolveOption('threshold', options, 0.4);
+export default async function probeScan(textOrChunks, probes, options = {}) {
+  options = withOperation('probe-scan', options);
+  const { categories } = options;
+  const { detection: threshold, maxTokens } = await resolveAll(options, {
+    detection: mapped(mapDetection),
+    maxTokens: 256,
+  });
 
-  const chunks = await embedChunked(text, { maxTokens });
+  const chunks =
+    typeof textOrChunks === 'string'
+      ? await embedChunked(textOrChunks, { maxTokens })
+      : textOrChunks;
 
   const activeProbes = categories ? probes.filter((p) => categories.includes(p.category)) : probes;
 

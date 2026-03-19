@@ -3,9 +3,35 @@ import { chunk } from '../../lib/pure/index.js';
 import retry from '../../lib/retry/index.js';
 import { sort as sortPromptInitial } from '../../prompts/index.js';
 import sortSchema from './sort-result.json';
-import { emitStart, emitComplete, emitStepProgress } from '../../lib/progress-callback/index.js';
+import {
+  emitStart,
+  emitComplete,
+  emitStepProgress,
+  filterProgress,
+} from '../../lib/progress-callback/index.js';
 import { debug } from '../../lib/debug/index.js';
-import { resolveOption } from '../../lib/context/resolve.js';
+import { resolve, resolveAll, mapped, withOperation } from '../../lib/context/resolve.js';
+
+// ===== Option Mappers =====
+
+/**
+ * Map effort option to a sorting posture coordinating iterations, extremeK, and selectBottom.
+ * low: one pass, small extremes window, top-only — fast, rough ordering.
+ * high: multiple passes, larger extremes window, both ends — expensive, precise full ordering.
+ * @param {string|object|undefined} value
+ * @returns {{ iterations: number, extremeK: number, selectBottom: boolean }}
+ */
+export const mapEffort = (value) => {
+  if (value === undefined) return { iterations: 1, extremeK: 10, selectBottom: true };
+  if (typeof value === 'object') return value;
+  return (
+    {
+      low: { iterations: 1, extremeK: 5, selectBottom: false },
+      med: { iterations: 1, extremeK: 10, selectBottom: true },
+      high: { iterations: 2, extremeK: 15, selectBottom: true },
+    }[value] ?? { iterations: 1, extremeK: 10, selectBottom: true }
+  );
+};
 
 /**
  * Create model options for structured outputs
@@ -44,18 +70,29 @@ const sanitizeList = (list) => {
 };
 
 const sort = async (list, criteria, config = {}) => {
+  config = withOperation('sort', config);
+  const { onProgress: _onProgress = undefined, now = new Date() } = config;
   const {
-    batchSize = defaultSortBatchSize,
-    extremeK = defaultSortExtremeK,
-    iterations = defaultSortIterations,
-    selectBottom: _selectBottom,
-    onProgress = undefined, // Callback: ({top, bottom, processed, total}) => void
     llm,
-    maxAttempts = 3,
-    now = new Date(),
-    ...options
-  } = config;
-  const selectBottom = resolveOption('selectBottom', config, true);
+    effort: effortConfig,
+    batchSize,
+    maxAttempts,
+    retryDelay,
+    retryOnAll,
+    progressMode,
+  } = await resolveAll(config, {
+    llm: undefined,
+    effort: mapped(mapEffort),
+    batchSize: defaultSortBatchSize,
+    maxAttempts: 3,
+    retryDelay: 1000,
+    retryOnAll: false,
+    progressMode: 'detailed',
+  });
+  const extremeK = await resolve('extremeK', config, effortConfig.extremeK);
+  const iterations = await resolve('iterations', config, effortConfig.iterations);
+  const selectBottom = await resolve('selectBottom', config, effortConfig.selectBottom);
+  const onProgress = filterProgress(_onProgress, progressMode);
 
   const items = sanitizeList(list);
 
@@ -80,11 +117,13 @@ const sort = async (list, criteria, config = {}) => {
 
     const modelOptions = createModelOptions();
 
-    const result = await retry(() => callLlm(prompt, { llm, modelOptions, ...options }), {
+    const result = await retry(() => callLlm(prompt, { ...config, llm, modelOptions }), {
       label: 'sort-batch',
       maxAttempts,
+      retryDelay,
+      retryOnAll,
       onProgress,
-      abortSignal: options.abortSignal,
+      abortSignal: config.abortSignal,
     });
 
     const resultArray = result?.items || result;

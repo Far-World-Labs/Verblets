@@ -2,6 +2,7 @@ import conversationTurnReduce from '../conversation-turn-reduce/index.js';
 import { defaultTurnPolicy } from './turn-policies.js';
 import pLimit from 'p-limit';
 import { debug } from '../../lib/debug/index.js';
+import { resolveOption, withOperation } from '../../lib/context/resolve.js';
 
 /**
  * @typedef {Object} Speaker
@@ -40,15 +41,17 @@ export default class Conversation {
       idSet.add(p.id);
     });
 
+    const scopedOptions = withOperation('conversation', options);
+
     const {
       rules = {},
       speakFn,
       bulkSpeakFn,
-      maxParallel = 3,
+      maxParallel: _maxParallel,
       llm,
       clock,
       ...otherOptions
-    } = options;
+    } = scopedOptions;
 
     if (rules.shouldContinue && typeof rules.shouldContinue !== 'function') {
       throw new Error('shouldContinue must be a function');
@@ -56,16 +59,17 @@ export default class Conversation {
 
     this.topic = topic;
     this.speakers = speakers.slice();
+    const depth = resolveOption('depth', scopedOptions, 3);
     this.rules = Object.assign(
       {
-        shouldContinue: (round) => round < 3, // Default to 3 rounds
+        shouldContinue: (round) => round < depth,
         turnPolicy: rules.turnPolicy || defaultTurnPolicy(this.speakers),
       },
       rules
     );
     this.speakFn = speakFn;
     this.bulkSpeakFn = bulkSpeakFn;
-    this.maxParallel = maxParallel;
+    this.maxParallel = resolveOption('maxParallel', scopedOptions, 3);
 
     // If no functions provided, default to our conversationTurnReduce
     if (!this.speakFn && !this.bulkSpeakFn) {

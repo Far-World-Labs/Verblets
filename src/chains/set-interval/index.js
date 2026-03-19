@@ -7,6 +7,7 @@ import date from '../date/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import templateReplace from '../../lib/template-replace/index.js';
 import { constants as promptConstants } from '../../prompts/index.js';
+import { resolveOption, withOperation } from '../../lib/context/resolve.js';
 
 const { contentIsInstructions, explainAndSeparate, explainAndSeparatePrimitive } = promptConstants;
 
@@ -64,10 +65,13 @@ export default function setInterval({
   initial = null,
   onTick,
   llm,
-  maxAttempts = 3,
+  maxAttempts: _maxAttempts,
   onProgress,
   ...options
 } = {}) {
+  const scopedOptions = withOperation('set-interval', { maxAttempts: _maxAttempts, ...options });
+  const maxAttempts = resolveOption('maxAttempts', scopedOptions, 3);
+  const retryOnAll = resolveOption('retryOnAll', scopedOptions, false);
   let timer;
   let count = 0;
   let lastResult = initial;
@@ -108,6 +112,7 @@ Next wait:`;
         {
           label: 'set-interval',
           maxAttempts,
+          retryOnAll,
           onProgress,
           abortSignal: options.abortSignal,
         }

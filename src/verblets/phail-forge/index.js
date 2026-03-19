@@ -17,7 +17,7 @@
  */
 
 import callLlm from '../../lib/llm/index.js';
-import { resolveOption } from '../../lib/context/resolve.js';
+import { resolveAll } from '../../lib/context/resolve.js';
 
 const ENHANCEMENT_PROMPT = `You are an expert prompt engineer tasked with transforming a basic prompt into an expert-level "phial" - a precisely crafted, portable prompt specification.
 
@@ -61,13 +61,12 @@ Provide:
 export default async function phailForge(prompt, options = {}) {
   const {
     llm,
-    analyze: _analyze,
     context = '', // Additional context about the domain
-    style: _style,
-    ...restOptions
   } = options;
-  const analyze = resolveOption('analyze', options, false);
-  const style = resolveOption('style', options, 'technical');
+  const { analyze, style } = await resolveAll(options, {
+    analyze: false,
+    style: 'technical',
+  });
 
   // Build the enhancement request
   const fullPrompt = [
@@ -142,7 +141,7 @@ export default async function phailForge(prompt, options = {}) {
         },
       },
     },
-    ...restOptions,
+    ...options,
   });
 
   // Calculate expansion ratio
@@ -198,7 +197,7 @@ export default async function phailForge(prompt, options = {}) {
           },
         },
       },
-      ...restOptions,
+      ...options,
     });
 
     enhancedResponse.analysis = analysis;

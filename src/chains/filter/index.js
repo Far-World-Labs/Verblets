@@ -3,6 +3,39 @@ import { asXML } from '../../prompts/wrap-variable.js';
 import { filterDecisionsJsonSchema } from './schemas.js';
 import { createLifecycleLogger, extractBatchConfig } from '../../lib/lifecycle-logger/index.js';
 import { createBatches, retry, batchTracker } from '../../lib/index.js';
+import { resolve, resolveAll, mapped, withOperation } from '../../lib/context/resolve.js';
+
+// ===== Option Mappers =====
+
+const DEFAULT_STRICTNESS = { guidance: undefined, errorPosture: 'strict' };
+
+/**
+ * Map strictness option to borderline handling guidance + error posture coordination.
+ * low: include when uncertain, resilient error handling (fewer false negatives).
+ * high: exclude when uncertain, strict error handling (fewer false positives).
+ * med: explicit normal mode — default behavior.
+ * @param {string|object|undefined} value
+ * @returns {{ guidance: string|undefined, errorPosture: string }}
+ */
+export const mapStrictness = (value) => {
+  if (value === undefined) return DEFAULT_STRICTNESS;
+  if (typeof value === 'object') return value;
+  return (
+    {
+      low: {
+        guidance:
+          'When uncertain whether an item satisfies the criteria, err on the side of inclusion — return "yes". Only exclude items that clearly fail.',
+        errorPosture: 'resilient',
+      },
+      med: DEFAULT_STRICTNESS,
+      high: {
+        guidance:
+          'When uncertain whether an item satisfies the criteria, err on the side of exclusion — return "no". Only include items that clearly pass.',
+        errorPosture: 'strict',
+      },
+    }[value] ?? DEFAULT_STRICTNESS
+  );
+};
 
 const filterResponseFormat = {
   type: 'json_schema',
@@ -10,20 +43,26 @@ const filterResponseFormat = {
 };
 
 const filter = async function filter(list, instructions, config = {}) {
+  config = withOperation('filter', config);
   const {
-    listStyle,
-    autoModeThreshold,
-    responseFormat,
     llm,
-    maxAttempts = 3,
-    logger,
-    onProgress,
-    abortSignal,
-    now = new Date(),
-    ...options
-  } = config;
+    strictness: strictnessConfig,
+    maxAttempts,
+    retryDelay,
+    retryOnAll,
+    progressMode,
+  } = await resolveAll(config, {
+    llm: undefined,
+    strictness: mapped(mapStrictness),
+    maxAttempts: 3,
+    retryDelay: 1000,
+    retryOnAll: false,
+    progressMode: 'detailed',
+  });
+  const strictnessGuidance = strictnessConfig.guidance;
+  const errorPosture = await resolve('errorPosture', config, strictnessConfig.errorPosture);
 
-  const lifecycleLogger = createLifecycleLogger(logger, 'chain:filter');
+  const lifecycleLogger = createLifecycleLogger(config.logger, 'chain:filter');
 
   lifecycleLogger.logStart(
     extractBatchConfig({
@@ -43,7 +82,11 @@ const filter = async function filter(list, instructions, config = {}) {
     batchSizes: batches.map((b) => b.items?.length || 0),
   });
 
-  const tracker = batchTracker('filter', list.length, { onProgress, now });
+  const tracker = batchTracker('filter', list.length, {
+    onProgress: config.onProgress,
+    progressMode,
+    now: config.now ?? new Date(),
+  });
 
   tracker.start(activeBatches.length);
 
@@ -58,12 +101,16 @@ const filter = async function filter(list, instructions, config = {}) {
       itemCount: items.length,
     });
 
-    const batchStyle = determineStyle(listStyle, items, autoModeThreshold);
+    const batchStyle = determineStyle(config.listStyle, items, config.autoModeThreshold);
 
     const filterInstructions = ({ style, count }) => {
+      const strictnessBlock = strictnessGuidance
+        ? `\n\n${asXML(strictnessGuidance, { tag: 'borderline-handling' })}`
+        : '';
+
       const baseInstructions = `For each item in the list below, determine if it satisfies the filtering criteria. Return "yes" to include the item or "no" to exclude it. Return exactly one decision per item, in the same order as the input list.
 
-${asXML(instructions, { tag: 'filtering-criteria' })}
+${asXML(instructions, { tag: 'filtering-criteria' })}${strictnessBlock}
 
 IMPORTANT:
 - Evaluate each item independently
@@ -84,12 +131,11 @@ Process exactly ${count} items from the XML list below and return ${count} yes/n
 
     const prompt = filterInstructions({ style: batchStyle, count: items.length });
     const listBatchOptions = {
+      ...config,
       listStyle: batchStyle,
-      autoModeThreshold,
-      responseFormat: responseFormat ?? filterResponseFormat,
+      responseFormat: config.responseFormat ?? filterResponseFormat,
       llm,
       logger: lifecycleLogger,
-      ...options,
     };
 
     let response;
@@ -97,12 +143,15 @@ Process exactly ${count} items from the XML list below and return ${count} yes/n
       response = await retry(() => listBatch(items, prompt, listBatchOptions), {
         label: 'filter:batch',
         maxAttempts,
+        retryDelay,
+        retryOnAll,
         onProgress: tracker.forBatch(startIndex, items.length),
-        abortSignal,
+        abortSignal: config.abortSignal,
       });
     } catch (error) {
       lifecycleLogger.logError(error, { batchIndex, itemCount: items.length });
-      throw error;
+      if (errorPosture === 'strict') throw error;
+      continue;
     }
 
     // listBatch now returns arrays directly
