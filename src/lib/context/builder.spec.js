@@ -92,7 +92,7 @@ describe('context builder', () => {
   describe('withContent', () => {
     it('returns a new builder with content kind', () => {
       const builder = createContextBuilder();
-      const derived = builder.withContent({ flagged: true, sensitivityLevel: 'high' });
+      const derived = builder.withContent({ flagged: true, language: 'en' });
       expect(derived).not.toBe(builder);
     });
 
@@ -156,7 +156,6 @@ describe('context builder', () => {
         openai: true,
         anthropic: true,
         openwebui: false,
-        sensitivityCapable: 'none',
         embeddingAvailable: false,
         redisConfigured: true,
       });
@@ -167,10 +166,10 @@ describe('context builder', () => {
           compliance: 'hipaa',
           qualityIntent: 'critical',
           costPosture: 'normal',
-          chain: 'sensitivity-guard',
+          chain: 'entities',
         })
         .withContent({
-          sensitivityLevel: 'high',
+          language: 'en',
           flagged: true,
           categories: ['medical-record', 'pii-name'],
         })
@@ -179,10 +178,9 @@ describe('context builder', () => {
       expect(ctx.application.environment).toBe('production');
       expect(ctx.application.version).toBe('2.0.0');
       expect(ctx.providers.openai).toBe(true);
-      expect(ctx.providers.sensitivityCapable).toBe('none');
       expect(ctx.request.domain).toBe('medical');
       expect(ctx.request.compliance).toBe('hipaa');
-      expect(ctx.request.chain).toBe('sensitivity-guard');
+      expect(ctx.request.chain).toBe('entities');
       expect(ctx.content.flagged).toBe(true);
       expect(ctx.content.categories).toEqual(['medical-record', 'pii-name']);
     });

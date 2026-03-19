@@ -43,9 +43,9 @@ export const get = async (redis, inputData) => {
   return { created: !foundInRedis, result };
 };
 
-export const set = async (redis, inputData, outputData) => {
+export const set = async (redis, inputData, outputData, ttl = cacheTTL) => {
   const key = await toKey(omitVariableKeys(inputData));
   await redis.set(key, JSON.stringify(outputData), {
-    EX: cacheTTL,
+    EX: ttl,
   });
 };

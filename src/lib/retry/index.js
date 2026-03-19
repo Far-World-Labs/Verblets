@@ -69,7 +69,8 @@ async function retry(fn, opts = {}) {
     } catch (error) {
       lastError = error;
 
-      const isRetry = retryOnAll || (error.response && error.response.status === 429);
+      const status = error.response?.status;
+      const isRetry = retryOnAll || status === 429 || (status >= 500 && status < 600);
 
       const isLastAttempt = !isRetry || attempt >= maxAttempts - 1;
 

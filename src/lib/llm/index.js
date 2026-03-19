@@ -20,6 +20,7 @@ import extractJson from '../extract-json/index.js';
 import stripResponse from '../strip-response/index.js';
 import { onlyJSON, contentIsSchema } from '../../prompts/constants.js';
 import { asXML } from '../../prompts/wrap-variable.js';
+import { resolve } from '../context/resolve.js';
 
 /**
  * Configure the appropriate abort signal for fetch requests.
@@ -161,7 +162,7 @@ export const run = async (prompt, config = {}) => {
     abortSignal,
     debugPrompt,
     debugResult,
-    forceQuery,
+    forceQuery: _forceQuery,
     llm,
     logger,
     modelOptions: modelOptionsRaw = {},
@@ -172,6 +173,7 @@ export const run = async (prompt, config = {}) => {
     unwrapValues,
     unwrapCollections,
   } = options;
+  const forceQuery = await resolve('forceQuery', options, false);
 
   // Merge llm shorthand into modelOptions (explicit modelOptions keys win)
   const modelOptions = { ...normalizeLlm(llm), ...modelOptionsRaw };
@@ -252,8 +254,11 @@ export const run = async (prompt, config = {}) => {
     fetchConfig = { ...rest, messages };
   }
 
-  // Check if caching is disabled via environment variable
-  const cachingDisabled = configGet('DISABLE_CACHE') === true;
+  // Check if caching is disabled — per-call option takes precedence over environment variable
+  const cacheEnabled = await resolve('cacheEnabled', options, undefined);
+  const cachingDisabled =
+    cacheEnabled === false || (cacheEnabled === undefined && configGet('DISABLE_CACHE') === true);
+  const cacheTTL = await resolve('cacheTTL', options, undefined);
 
   let cacheResult = null;
   let cache = null;
@@ -320,7 +325,12 @@ export const run = async (prompt, config = {}) => {
 
     // Only cache the result if caching is not disabled
     if (!cachingDisabled && cache) {
-      await setPromptResult(cache, requestConfig, result);
+      await setPromptResult(
+        cache,
+        requestConfig,
+        result,
+        ...(cacheTTL !== undefined ? [cacheTTL] : [])
+      );
     }
   }
 

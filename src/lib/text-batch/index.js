@@ -1,4 +1,5 @@
 import modelService, { resolveModel } from '../../services/llm-model/index.js';
+import { resolveOption } from '../context/resolve.js';
 
 const FALLBACK_TOKENS_PER_CHAR = 0.25;
 const SAFETY_MARGIN = 1.2;
@@ -92,11 +93,13 @@ function buildBatches(list, { targetBatchSize, budget, model }) {
 export default function createBatches(list, config = {}) {
   const {
     batchSize: providedBatchSize,
-    outputRatio = DEFAULT_OUTPUT_RATIO,
-    maxTokenBudget = DEFAULT_MAX_TOKEN_BUDGET,
+    outputRatio: _outputRatio,
+    maxTokenBudget: _maxTokenBudget,
     contextBuffer = DEFAULT_CONTEXT_BUFFER,
     llm,
   } = config;
+  const outputRatio = resolveOption('outputRatio', config, DEFAULT_OUTPUT_RATIO);
+  const maxTokenBudget = resolveOption('maxTokenBudget', config, DEFAULT_MAX_TOKEN_BUDGET);
 
   const modelName = resolveModel(llm) || modelService.bestPublicModelKey;
   const model = modelService.getModel(modelName);

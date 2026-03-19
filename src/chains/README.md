@@ -75,7 +75,6 @@ Available chains:
 - [disambiguate](./disambiguate)
 - [dismantle](./dismantle)
 - [document-shrink](./document-shrink)
-- [embed-expand-query](./embed-expand-query)
 - [entities](./entities)
 - [expect](./expect)
 - [extract-blocks](./extract-blocks)

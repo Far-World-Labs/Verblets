@@ -72,6 +72,60 @@ describe('Retry', () => {
     await expect(promise).rejects.toThrow('Error 500');
   });
 
+  it('Retries on 5xx server errors', async () => {
+    let callCount = 0;
+    const fn = async () => {
+      callCount += 1;
+      if (callCount === 1) {
+        const error = new Error('Internal Server Error');
+        error.response = { status: 500 };
+        throw error;
+      }
+      return 'Success';
+    };
+
+    const promise = retry(fn, { retryDelay: retryDelayGlobal });
+    await vi.runAllTimersAsync();
+    const result = await promise;
+    expect(result).toStrictEqual('Success');
+    expect(callCount).toStrictEqual(2);
+  });
+
+  it('Retries on 502 Bad Gateway', async () => {
+    let callCount = 0;
+    const fn = async () => {
+      callCount += 1;
+      if (callCount === 1) {
+        const error = new Error('Bad Gateway');
+        error.response = { status: 502 };
+        throw error;
+      }
+      return 'Success';
+    };
+
+    const promise = retry(fn, { retryDelay: retryDelayGlobal });
+    await vi.runAllTimersAsync();
+    const result = await promise;
+    expect(result).toStrictEqual('Success');
+    expect(callCount).toStrictEqual(2);
+  });
+
+  it('Does not retry on 4xx errors other than 429', async () => {
+    let callCount = 0;
+    const fn = async () => {
+      callCount += 1;
+      const error = new Error('Bad Request');
+      error.response = { status: 400 };
+      throw error;
+    };
+
+    const promise = retry(fn, { retryDelay: retryDelayGlobal, maxAttempts: 3 });
+    promise.catch(() => {});
+    await vi.runAllTimersAsync();
+    await expect(promise).rejects.toThrow('Bad Request');
+    expect(callCount).toStrictEqual(1);
+  });
+
   it('Retries on all errors when retryOnAll is true', async () => {
     let callCount = 0;
     const maxAttempts = 3;

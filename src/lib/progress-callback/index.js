@@ -202,7 +202,12 @@ export const emitPhaseProgress = (callback, step, phase, metadata = {}) => {
  * @param {Date} [options.now] - Reference timestamp
  * @returns {{ start, forBatch, batchDone, complete }}
  */
-export function batchTracker(chainName, totalItems, { onProgress, now = new Date() } = {}) {
+export function batchTracker(
+  chainName,
+  totalItems,
+  { onProgress, progressMode, now = new Date() } = {}
+) {
+  const filteredProgress = filterProgress(onProgress, progressMode);
   const chainStartTime = now;
   let processedBatches = 0;
   let processedItems = 0;
@@ -211,7 +216,7 @@ export function batchTracker(chainName, totalItems, { onProgress, now = new Date
   return {
     start(batchCount, maxParallel) {
       totalBatches = batchCount;
-      emitBatchStart(onProgress, chainName, totalItems, {
+      emitBatchStart(filteredProgress, chainName, totalItems, {
         totalBatches: batchCount,
         ...(maxParallel !== undefined && { maxParallel }),
         now: chainStartTime,
@@ -221,7 +226,7 @@ export function batchTracker(chainName, totalItems, { onProgress, now = new Date
 
     forBatch(startIndex, batchSize) {
       return createBatchProgressCallback(
-        onProgress,
+        filteredProgress,
         createBatchContext({
           batchIndex: processedBatches,
           batchSize,
@@ -237,7 +242,7 @@ export function batchTracker(chainName, totalItems, { onProgress, now = new Date
       processedItems += batchSize;
       processedBatches++;
       emitBatchProcessed(
-        onProgress,
+        filteredProgress,
         chainName,
         {
           totalItems,
@@ -255,7 +260,7 @@ export function batchTracker(chainName, totalItems, { onProgress, now = new Date
     },
 
     complete(metadata = {}) {
-      emitBatchComplete(onProgress, chainName, totalItems, {
+      emitBatchComplete(filteredProgress, chainName, totalItems, {
         totalBatches,
         now: new Date(),
         chainStartTime,
@@ -264,7 +269,7 @@ export function batchTracker(chainName, totalItems, { onProgress, now = new Date
     },
 
     scopedProgress(phase) {
-      return scopeProgress(onProgress, phase);
+      return scopeProgress(filteredProgress, phase);
     },
   };
 }
@@ -282,6 +287,36 @@ export function scopeProgress(onProgress, phase) {
   return (event) => {
     const composed = event.phase ? `${phase}/${event.phase}` : phase;
     onProgress({ ...event, phase: composed });
+  };
+}
+
+/**
+ * Wrap an onProgress callback to filter events by granularity level.
+ * Returns undefined when no callback is provided so callers can pass-through safely.
+ *
+ * Modes:
+ * - 'none'     — suppress all progress events
+ * - 'coarse'   — only start/complete events
+ * - 'batch'    — start/complete + batch:complete events
+ * - 'detailed' — all events (default, no filtering)
+ *
+ * @param {Function} [onProgress] - Progress callback to wrap
+ * @param {string} [mode='detailed'] - Granularity level
+ * @returns {Function|undefined}
+ */
+export function filterProgress(onProgress, mode = 'detailed') {
+  if (!onProgress || mode === 'detailed') return onProgress;
+  if (mode === 'none') return undefined;
+
+  const allowedEvents =
+    mode === 'coarse'
+      ? new Set(['start', 'complete'])
+      : new Set(['start', 'complete', 'batch:complete']); // 'batch'
+
+  return (event) => {
+    if (allowedEvents.has(event.event)) {
+      onProgress(event);
+    }
   };
 }
 
