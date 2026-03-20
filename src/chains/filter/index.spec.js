@@ -1,4 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  testObjectMapper,
+  testLifecycleLogger,
+  testPromptShapingOption,
+} from '../../lib/test-utils/index.js';
 import filter, { mapStrictness } from './index.js';
 import listBatch from '../../verblets/list-batch/index.js';
 
@@ -64,12 +69,10 @@ describe('filter', () => {
     });
   });
 
-  it('forwards lifecycle logger to listBatch', async () => {
-    const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
-    await filter(['apple', 'box'], 'contains a', { batchSize: 10, logger });
-    const callConfig = listBatch.mock.calls[0][2];
-    expect(callConfig.logger.logEvent).toBeTypeOf('function');
-    expect(callConfig.logger.info).toBe(logger.info);
+  testLifecycleLogger('to listBatch', {
+    invoke: (config) => filter(['apple', 'box'], 'contains a', { batchSize: 10, ...config }),
+    setupMocks: () => {},
+    target: { mock: listBatch, argIndex: 2 },
   });
 
   it('retries failed batches', async () => {
@@ -88,48 +91,13 @@ describe('filter', () => {
     expect(listBatch).toHaveBeenCalledTimes(3);
   });
 
-  it('includes strictness guidance in prompt when set to low', async () => {
-    await filter(['apple', 'box'], 'contains a', { batchSize: 10, strictness: 'low' });
-
-    const [, prompt] = listBatch.mock.calls[0];
-    expect(prompt).toContain('borderline-handling');
-    expect(prompt).toContain('err on the side of inclusion');
-  });
-
-  it('includes strictness guidance in prompt when set to high', async () => {
-    await filter(['apple', 'box'], 'contains a', { batchSize: 10, strictness: 'high' });
-
-    const [, prompt] = listBatch.mock.calls[0];
-    expect(prompt).toContain('borderline-handling');
-    expect(prompt).toContain('err on the side of exclusion');
-  });
-
-  it('omits strictness guidance when not specified', async () => {
-    await filter(['apple', 'box'], 'contains a', { batchSize: 10 });
-
-    const [, prompt] = listBatch.mock.calls[0];
-    expect(prompt).not.toContain('borderline-handling');
+  testPromptShapingOption('strictness', {
+    invoke: (config) => filter(['apple', 'box'], 'contains a', { batchSize: 10, ...config }),
+    setupMocks: () => {},
+    llmMock: listBatch,
+    markers: { low: 'err on the side of inclusion', high: 'err on the side of exclusion' },
+    promptArgIndex: 1,
   });
 });
 
-describe('mapStrictness', () => {
-  it('all levels return same shape', () => {
-    const keys = ['low', 'med', 'high'].map((l) => Object.keys(mapStrictness(l)).sort());
-    expect(keys[0]).toEqual(keys[1]);
-    expect(keys[1]).toEqual(keys[2]);
-  });
-
-  it('undefined returns default', () => {
-    expect(mapStrictness(undefined)).toBeDefined();
-    expect(typeof mapStrictness(undefined)).toBe('object');
-  });
-
-  it('passes through object for power consumers', () => {
-    const custom = { a: 1, b: 2 };
-    expect(mapStrictness(custom)).toBe(custom);
-  });
-
-  it('unknown string falls back to default', () => {
-    expect(mapStrictness('zzz')).toEqual(mapStrictness(undefined));
-  });
-});
+testObjectMapper('mapStrictness', mapStrictness);

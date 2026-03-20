@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { testForwardsConfig, testScopesProgress } from '../../lib/test-utils/index.js';
 import centralTendency from './index.js';
 import map from '../map/index.js';
 
@@ -28,37 +29,21 @@ describe('centralTendency chain', () => {
     expect(mapItems).toStrictEqual(items);
     expect(mapInstructions).toContain('banana, orange');
     expect(mapConfig.batchSize).toBe(5);
-    expect(mapConfig.maxAttempts).toBe(3);
     expect(mapConfig.responseFormat).toBeDefined();
     expect(mapConfig.responseFormat.type).toBe('json_schema');
   });
 
-  it('forwards llm config to map', async () => {
-    map.mockResolvedValueOnce([mockResult(0.5, 'ok', 0.6)]);
-
-    const llm = { model: 'claude-3-opus' };
-    await centralTendency(['item'], ['seed'], { llm });
-
-    const mapConfig = map.mock.calls[0][2];
-    expect(mapConfig.llm).toBe(llm);
-  });
-
-  it('forwards batchSize to map', async () => {
-    map.mockResolvedValueOnce([mockResult(0.5, 'ok', 0.6)]);
-
-    await centralTendency(['item'], ['seed'], { batchSize: 10 });
-
-    const mapConfig = map.mock.calls[0][2];
-    expect(mapConfig.batchSize).toBe(10);
-  });
-
-  it('forwards maxAttempts to map', async () => {
-    map.mockResolvedValueOnce([mockResult(0.5, 'ok', 0.6)]);
-
-    await centralTendency(['item'], ['seed'], { maxAttempts: 5 });
-
-    const mapConfig = map.mock.calls[0][2];
-    expect(mapConfig.maxAttempts).toBe(5);
+  testForwardsConfig('forwards config to map', {
+    invoke: (config) => centralTendency(['item'], ['seed'], config),
+    setupMocks: () => {
+      map.mockResolvedValueOnce([mockResult(0.5, 'ok', 0.6)]);
+    },
+    target: { mock: map, argIndex: 2 },
+    options: {
+      llm: { value: { model: 'claude-3-opus' } },
+      batchSize: { value: 10 },
+      maxAttempts: { value: 5 },
+    },
   });
 
   it('includes context in the instructions passed to map', async () => {
@@ -114,15 +99,11 @@ describe('centralTendency chain', () => {
     expect(output[1]).toBeUndefined();
   });
 
-  it('scopes onProgress to map:evaluation phase', async () => {
-    map.mockResolvedValueOnce([mockResult(0.5, 'ok', 0.6)]);
-    const onProgress = vi.fn();
-
-    await centralTendency(['item'], ['seed'], { onProgress });
-
-    const mapConfig = map.mock.calls[0][2];
-    expect(mapConfig.onProgress).toBeTypeOf('function');
-    // The scoped callback wraps the original onProgress
-    expect(mapConfig.onProgress).not.toBe(onProgress);
+  testScopesProgress('to map', {
+    invoke: (config) => centralTendency(['item'], ['seed'], config),
+    setupMocks: () => {
+      map.mockResolvedValueOnce([mockResult(0.5, 'ok', 0.6)]);
+    },
+    target: { mock: map, argIndex: 2 },
   });
 });

@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { testObjectMapper } from '../../lib/test-utils/index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(),
@@ -11,27 +12,7 @@ vi.mock('../../lib/retry/index.js', () => ({
 import veiledVariants, { mapCoverage } from './index.js';
 import callLlm from '../../lib/llm/index.js';
 
-describe('mapCoverage', () => {
-  it('all levels return same shape', () => {
-    const keys = ['low', 'med', 'high'].map((l) => Object.keys(mapCoverage(l)).sort());
-    expect(keys[0]).toEqual(keys[1]);
-    expect(keys[1]).toEqual(keys[2]);
-  });
-
-  it('undefined returns default', () => {
-    expect(mapCoverage(undefined)).toBeDefined();
-    expect(typeof mapCoverage(undefined)).toBe('object');
-  });
-
-  it('passes through object for power consumers', () => {
-    const custom = { a: 1, b: 2 };
-    expect(mapCoverage(custom)).toBe(custom);
-  });
-
-  it('unknown string falls back to default', () => {
-    expect(mapCoverage('zzz')).toEqual(mapCoverage(undefined));
-  });
-});
+testObjectMapper('mapCoverage', mapCoverage);
 
 describe('veiledVariants', () => {
   it('returns 15 masked queries from 3 framing strategies', async () => {

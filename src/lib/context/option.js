@@ -13,6 +13,7 @@ export function scopeOperation(operation, options) {
   const parent = options.evalContext?.operation;
   const composed = parent ? `${parent}/${operation}` : operation;
   return {
+    now: new Date(),
     ...options,
     evalContext: { ...options.evalContext, operation: composed },
   };

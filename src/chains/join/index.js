@@ -50,14 +50,10 @@ export default async function join(
   if (list.length === 1) return list[0];
 
   config = scopeOperation('join', config);
-  const { styleHint, maxAttempts, retryDelay, retryOnAll, windowSize, overlapPercent } =
-    await getOptions(config, {
-      fidelity: withPolicy(mapFidelity, ['windowSize', 'overlapPercent']),
-      styleHint: '',
-      maxAttempts: 3,
-      retryDelay: 1000,
-      retryOnAll: false,
-    });
+  const { styleHint, windowSize, overlapPercent } = await getOptions(config, {
+    fidelity: withPolicy(mapFidelity, ['windowSize', 'overlapPercent']),
+    styleHint: '',
+  });
 
   // Create overlapping windows using the windowFor utility
   const windows = windowFor(list, windowSize, overlapPercent);
@@ -75,14 +71,9 @@ ${fragmentList}
 
 Important: This is part of a larger sequence. Join these fragments while being mindful that this result will be combined with other processed windows. Add necessary connecting words, prepositions, conjunctions, or other filler text to create a coherent, grammatically correct, and semantically meaningful result. Output only the joined result for this window.`;
 
-    const llmConfig = config;
-    const result = await retry(() => callLlm(instruction, llmConfig), {
+    const result = await retry(() => callLlm(instruction, config), {
       label: `join-window-${windowIndex + 1}`,
-      maxAttempts,
-      retryDelay,
-      retryOnAll,
-      onProgress: config.onProgress,
-      abortSignal: config.abortSignal,
+      config,
     });
 
     windowResults.push({
@@ -130,13 +121,9 @@ The terminal ends of both sections should be preserved. Only resolve the overlap
 
 Add necessary connecting words, prepositions, conjunctions, or other filler text to create a coherent, grammatically correct, and semantically meaningful result. Output only the final stitched result with terminals preserved.`;
 
-      const stitchConfig = config;
-      const stitchResult = await retry(() => callLlm(stitchInstruction, stitchConfig), {
+      const stitchResult = await retry(() => callLlm(stitchInstruction, config), {
         label: `join-stitch-${i}`,
-        maxAttempts,
-        retryDelay,
-        onProgress: config.onProgress,
-        abortSignal: config.abortSignal,
+        config,
       });
 
       stitchedResult = stitchResult || stitchedResult;
@@ -150,13 +137,9 @@ Join these two non-overlapping sections:
 
 Add necessary connecting words, prepositions, conjunctions, or other filler text to create a coherent, grammatically correct, and semantically meaningful result. Output only the joined result.`;
 
-      const joinConfig = config;
-      const joinResult = await retry(() => callLlm(joinInstruction, joinConfig), {
+      const joinResult = await retry(() => callLlm(joinInstruction, config), {
         label: `join-nonoverlap-${i}`,
-        maxAttempts,
-        retryDelay,
-        onProgress: config.onProgress,
-        abortSignal: config.abortSignal,
+        config,
       });
 
       stitchedResult = joinResult || stitchedResult;

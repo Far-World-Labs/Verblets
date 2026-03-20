@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import sort, { useTestSortPrompt, mapEffort } from './index.js';
+import { testObjectMapper } from '../../lib/test-utils/index.js';
 
 useTestSortPrompt();
 
@@ -110,24 +111,4 @@ describe('Sort', () => {
   });
 });
 
-describe('mapEffort', () => {
-  it('all levels return same shape', () => {
-    const keys = ['low', 'med', 'high'].map((l) => Object.keys(mapEffort(l)).sort());
-    expect(keys[0]).toEqual(keys[1]);
-    expect(keys[1]).toEqual(keys[2]);
-  });
-
-  it('undefined returns default', () => {
-    expect(mapEffort(undefined)).toBeDefined();
-    expect(typeof mapEffort(undefined)).toBe('object');
-  });
-
-  it('passes through object for power consumers', () => {
-    const custom = { a: 1, b: 2 };
-    expect(mapEffort(custom)).toBe(custom);
-  });
-
-  it('unknown string falls back to default', () => {
-    expect(mapEffort('zzz')).toEqual(mapEffort(undefined));
-  });
-});
+testObjectMapper('mapEffort', mapEffort);

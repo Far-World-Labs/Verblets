@@ -4,7 +4,7 @@ import { asXML } from '../../prompts/wrap-variable.js';
 import buildInstructions from '../../lib/build-instructions/index.js';
 import { scaleSpecificationJsonSchema } from './schemas.js';
 import scaleResultSchema from './scale-result.json';
-import { getOptions, scopeOperation } from '../../lib/context/option.js';
+import { scopeOperation } from '../../lib/context/option.js';
 
 // ===== Instruction Builders =====
 
@@ -42,11 +42,6 @@ export const {
  */
 export async function scaleSpec(prompt, config = {}) {
   config = scopeOperation('scale:spec', config);
-  const { maxAttempts, retryDelay, retryOnAll } = await getOptions(config, {
-    maxAttempts: 3,
-    retryDelay: 1000,
-    retryOnAll: false,
-  });
 
   const specSystemPrompt = `You are a scale specification generator. Analyze the scaling instructions and produce a clear, comprehensive specification.`;
 
@@ -73,11 +68,7 @@ IMPORTANT: Each property must be a simple string value, not a nested object or a
       }),
     {
       label: 'scale spec',
-      maxAttempts,
-      retryDelay,
-      retryOnAll,
-      onProgress: config.onProgress,
-      abortSignal: config.abortSignal,
+      config,
     }
   );
 
@@ -94,11 +85,6 @@ IMPORTANT: Each property must be a simple string value, not a nested object or a
  */
 export async function applyScale(item, specification, config = {}) {
   config = scopeOperation('scale:apply', config);
-  const { maxAttempts, retryDelay, retryOnAll } = await getOptions(config, {
-    maxAttempts: 3,
-    retryDelay: 1000,
-    retryOnAll: false,
-  });
 
   const prompt = `Apply the scale specification to transform this item.
 
@@ -123,11 +109,7 @@ Return a JSON object with a "value" property containing the scaled result.`;
       }),
     {
       label: 'scale item',
-      maxAttempts,
-      retryDelay,
-      retryOnAll,
-      onProgress: config.onProgress,
-      abortSignal: config.abortSignal,
+      config,
     }
   );
 

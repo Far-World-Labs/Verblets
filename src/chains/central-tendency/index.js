@@ -65,11 +65,8 @@ export default async function centralTendency(items, seedItems, config = {}) {
     throw new Error('seedItems must be a non-empty array');
   }
 
-  const { batchSize, maxAttempts, retryDelay, retryOnAll } = await getOptions(config, {
+  const { batchSize } = await getOptions(config, {
     batchSize: 5,
-    maxAttempts: 3,
-    retryDelay: 1000,
-    retryOnAll: false,
   });
 
   // Create lifecycle logger for the chain
@@ -96,9 +93,6 @@ export default async function centralTendency(items, seedItems, config = {}) {
     const results = await map(items, instructions, {
       ...config,
       batchSize,
-      maxAttempts,
-      retryDelay,
-      retryOnAll,
       responseFormat: centralTendencyResponseFormat,
       logger: lifecycleLogger,
       onProgress: scopeProgress(config.onProgress, 'map:evaluation'),

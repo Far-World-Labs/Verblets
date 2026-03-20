@@ -90,16 +90,13 @@ function mergeTimelineEvents(eventArrays) {
  * Extract events from a single chunk
  */
 async function extractFromChunk(chunk, options = {}) {
-  const { llm, ...restOptions } = options;
-
   const response = await callLlm(chunk, {
-    llm,
+    ...options,
     systemPrompt: extractTimelineInstructions,
     response_format: {
       type: 'json_schema',
       json_schema: timelineEventJsonSchema,
     },
-    ...restOptions,
   });
 
   return response.events || [];
@@ -119,14 +116,11 @@ async function extractFromChunk(chunk, options = {}) {
  */
 export default async function timeline(text, config = {}) {
   config = scopeOperation('timeline', config);
-  const { onProgress, batchSize, now = new Date() } = config;
+  const { onProgress, batchSize, now } = config;
   const {
     chunkSize,
     overlap,
     maxParallel,
-    maxAttempts,
-    retryDelay,
-    retryOnAll,
     errorPosture,
     llmDedup,
     knowledgeBase,
@@ -136,9 +130,6 @@ export default async function timeline(text, config = {}) {
     chunkSize: 2000,
     overlap: 200,
     maxParallel: 3,
-    maxAttempts: 3,
-    retryDelay: 1000,
-    retryOnAll: false,
     errorPosture: 'resilient',
   });
 
@@ -154,10 +145,7 @@ export default async function timeline(text, config = {}) {
       try {
         const events = await retry(() => extractFromChunk(chunk, { ...config, now }), {
           label: `timeline chunk ${chunkIndex + 1}`,
-          maxAttempts,
-          retryDelay,
-          retryOnAll,
-          abortSignal: config.abortSignal,
+          config,
         });
         allEvents.push(...events);
         onProgress?.(chunkIndex + 1, chunks.length);
@@ -236,9 +224,7 @@ Return as JSON with the same event format, maintaining chronological order.`;
         json_schema: timelineEventJsonSchema,
       },
       ...(batchSize !== undefined && { batchSize }),
-      maxAttempts,
       onProgress: scopeProgress(onProgress, 'reduce:knowledge-base'),
-      now,
     });
 
     let knownEvents = [];
@@ -273,9 +259,7 @@ Return the enriched event as: "YYYY-MM-DD: Event name" or with the appropriate t
         ...config,
         ...(batchSize !== undefined && { batchSize }),
         maxParallel,
-        maxAttempts,
         onProgress: scopeProgress(onProgress, 'map:enrichment'),
-        now,
       }
     );
 

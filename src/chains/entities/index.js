@@ -4,7 +4,7 @@ import { asXML } from '../../prompts/wrap-variable.js';
 import buildInstructions from '../../lib/build-instructions/index.js';
 import entityResultSchema from './entity-result.json';
 import { emitStepProgress } from '../../lib/progress-callback/index.js';
-import { getOptions, scopeOperation } from '../../lib/context/option.js';
+import { scopeOperation } from '../../lib/context/option.js';
 
 // ===== Instruction Builders =====
 
@@ -42,11 +42,6 @@ export const {
  */
 export async function entitySpec(prompt, config = {}) {
   config = scopeOperation('entities:spec', config);
-  const { maxAttempts, retryDelay, retryOnAll } = await getOptions(config, {
-    maxAttempts: 3,
-    retryDelay: 1000,
-    retryOnAll: false,
-  });
 
   const specSystemPrompt = `You are an entity specification generator. Create a clear, concise specification for entity extraction.`;
 
@@ -69,11 +64,7 @@ Keep it simple and actionable.`;
       }),
     {
       label: 'entities-spec',
-      maxAttempts,
-      retryDelay,
-      retryOnAll,
-      onProgress: config.onProgress,
-      abortSignal: config.abortSignal,
+      config,
     }
   );
 
@@ -89,11 +80,6 @@ Keep it simple and actionable.`;
  */
 export async function applyEntities(text, specification, config = {}) {
   config = scopeOperation('entities:apply', config);
-  const { maxAttempts, retryDelay, retryOnAll } = await getOptions(config, {
-    maxAttempts: 3,
-    retryDelay: 1000,
-    retryOnAll: false,
-  });
 
   const prompt = `Apply the entity specification to extract entities from this text.
 
@@ -121,11 +107,7 @@ Each entity should include:
       }),
     {
       label: 'entities-apply',
-      maxAttempts,
-      retryDelay,
-      retryOnAll,
-      onProgress: config.onProgress,
-      abortSignal: config.abortSignal,
+      config,
     }
   );
 

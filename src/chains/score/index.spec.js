@@ -15,6 +15,8 @@ import { scaleSpec } from '../scale/index.js';
 import listBatch from '../../verblets/list-batch/index.js';
 import createBatches from '../../lib/text-batch/index.js';
 import filter from '../filter/index.js';
+import { testEnumMapper } from '../../lib/test-utils/index.js';
+import { testInstructionBuilders } from '../../lib/test-utils/index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(),
@@ -263,68 +265,20 @@ describe('score chain', () => {
     });
   });
 
-  describe('instruction builders', () => {
-    describe('mapInstructions', () => {
-      it('creates map instructions from specification', () => {
-        const instructions = mapInstructions({ specification: mockSpec });
-
-        expect(instructions).toContain('score-specification');
-        expect(instructions).toContain('Return ONLY the score value');
-      });
-    });
-
-    describe('filterInstructions', () => {
-      it('creates filter instructions from specification', () => {
-        const instructions = filterInstructions({
-          specification: mockSpec,
-          processing: 'keep scores above 7',
-        });
-
-        expect(instructions).toContain('score-specification');
-        expect(instructions).toContain('filter-condition');
-        expect(instructions).toContain('keep scores above 7');
-      });
-    });
-
-    describe('reduceInstructions', () => {
-      it('creates reduce instructions from specification', () => {
-        const instructions = reduceInstructions({
-          specification: mockSpec,
-          processing: 'sum all scores',
-        });
-
-        expect(instructions).toContain('score-specification');
-        expect(instructions).toContain('reduce-operation');
-        expect(instructions).toContain('sum all scores');
-      });
-    });
-
-    describe('findInstructions', () => {
-      it('creates find instructions from specification', () => {
-        const instructions = findInstructions({
-          specification: mockSpec,
-          processing: 'highest scoring item',
-        });
-
-        expect(instructions).toContain('score-specification');
-        expect(instructions).toContain('selection-criteria');
-        expect(instructions).toContain('highest scoring item');
-      });
-    });
-
-    describe('groupInstructions', () => {
-      it('creates group instructions from specification', () => {
-        const instructions = groupInstructions({
-          specification: mockSpec,
-          processing: 'group into low, medium, high',
-        });
-
-        expect(instructions).toContain('score-specification');
-        expect(instructions).toContain('grouping-strategy');
-        expect(instructions).toContain('group into low, medium, high');
-      });
-    });
-  });
+  testInstructionBuilders(
+    {
+      mapInstructions,
+      filterInstructions,
+      reduceInstructions,
+      findInstructions,
+      groupInstructions,
+    },
+    {
+      specTag: 'score-specification',
+      specification: mockSpec,
+      xmlTags: { filter: 'filter-condition' },
+    }
+  );
 
   describe('anchoring option', () => {
     it('skips anchors with anchoring low', async () => {
@@ -376,17 +330,4 @@ describe('score chain', () => {
   });
 });
 
-describe('mapAnchoring', () => {
-  it('produces distinct values across levels', () => {
-    const values = ['low', 'med', 'high'].map(mapAnchoring);
-    expect(new Set(values).size).toBe(3);
-  });
-
-  it('undefined returns default', () => {
-    expect(mapAnchoring(undefined)).toBeDefined();
-  });
-
-  it('unknown string falls back to default', () => {
-    expect(mapAnchoring('zzz')).toBe(mapAnchoring(undefined));
-  });
-});
+testEnumMapper('mapAnchoring', mapAnchoring);

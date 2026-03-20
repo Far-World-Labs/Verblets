@@ -70,21 +70,16 @@ ${asXML(numberedLines, { tag: 'window' })}`;
  * @param {number} config.windowSize - Lines per window (default: 100)
  * @param {number} config.overlapSize - Lines of overlap between windows (default: 20)
  * @param {number} config.maxParallel - Max parallel window processing (default: 3)
- * @param {number} config.maxAttempts - Max retry attempts for failed requests (default: 3)
  * @param {Object} config.logger - Logger instance
  * @returns {Promise<Array<Array<string>>>} Array of blocks, each block is array of lines
  */
 export async function extractBlocks(text, instructions, config = {}) {
   config = scopeOperation('extract-blocks', config);
-  const { logger, onProgress, now = new Date() } = config;
-  const { maxParallel, maxAttempts, retryDelay, retryOnAll, windowSize, overlapSize } =
-    await getOptions(config, {
-      precision: withPolicy(mapPrecision, ['windowSize', 'overlapSize']),
-      maxParallel: 3,
-      maxAttempts: 3,
-      retryDelay: 1000,
-      retryOnAll: false,
-    });
+  const { logger, onProgress, now } = config;
+  const { maxParallel, windowSize, overlapSize } = await getOptions(config, {
+    precision: withPolicy(mapPrecision, ['windowSize', 'overlapSize']),
+    maxParallel: 3,
+  });
 
   const lifecycleLogger = createLifecycleLogger(logger, 'chain:extract-blocks');
 
@@ -148,10 +143,7 @@ export async function extractBlocks(text, instructions, config = {}) {
           }),
         {
           label: `extract-blocks:window`,
-          maxAttempts,
-          retryDelay,
-          retryOnAll,
-          abortSignal: config.abortSignal,
+          config,
           onProgress: createBatchProgressCallback(onProgress, {
             totalItems: lines.length,
             processedItems: Math.min(windowStart + windowSize, lines.length),

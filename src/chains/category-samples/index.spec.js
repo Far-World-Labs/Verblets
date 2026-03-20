@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { testObjectMapper } from '../../lib/test-utils/index.js';
 import categorySamples, {
   buildSeedGenerationPrompt,
   SAMPLE_GENERATION_PROMPT,
@@ -107,50 +108,28 @@ describe('categorySamples', () => {
     });
   });
 
-  describe('forwards maxAttempts to retry', () => {
-    it('passes maxAttempts to outer retry wrapper', async () => {
+  describe('forwards config to retry', () => {
+    it('passes config to outer retry wrapper', async () => {
       await categorySamples('colors', { maxAttempts: 5 });
 
       const retryConfig = retry.mock.calls[0][1];
-      expect(retryConfig.maxAttempts).toBe(5);
+      expect(retryConfig.config).toBeDefined();
+      expect(retryConfig.config.maxAttempts).toBe(5);
     });
 
-    it('passes maxAttempts to list chain inside retry', async () => {
+    it('passes config with maxAttempts to list chain inside retry', async () => {
       await categorySamples('shapes', { maxAttempts: 7 });
 
       const listConfig = list.mock.calls[0][1];
       expect(listConfig.maxAttempts).toBe(7);
     });
 
-    it('uses default maxAttempts of 3', async () => {
+    it('uses config with defaults when no overrides given', async () => {
       await categorySamples('genres');
 
       const retryConfig = retry.mock.calls[0][1];
-      expect(retryConfig.maxAttempts).toBe(3);
-
-      const listConfig = list.mock.calls[0][1];
-      expect(listConfig.maxAttempts).toBe(3);
-    });
-
-    it('passes retryDelay to retry wrapper', async () => {
-      await categorySamples('tools', { retryDelay: 2000 });
-
-      const retryConfig = retry.mock.calls[0][1];
-      expect(retryConfig.retryDelay).toBe(2000);
-    });
-
-    it('uses default retryDelay of 1000', async () => {
-      await categorySamples('instruments');
-
-      const retryConfig = retry.mock.calls[0][1];
-      expect(retryConfig.retryDelay).toBe(1000);
-    });
-
-    it('passes retryOnAll: true to retry wrapper', async () => {
-      await categorySamples('languages');
-
-      const retryConfig = retry.mock.calls[0][1];
-      expect(retryConfig.retryOnAll).toBe(true);
+      expect(retryConfig.config).toBeDefined();
+      expect(retryConfig.label).toBe('category-samples');
     });
 
     it('passes label to retry wrapper', async () => {
@@ -162,12 +141,12 @@ describe('categorySamples', () => {
   });
 
   describe('forwards onProgress to retry', () => {
-    it('passes onProgress to outer retry wrapper', async () => {
+    it('passes onProgress via config to outer retry wrapper', async () => {
       const onProgress = vi.fn();
       await categorySamples('sports', { onProgress });
 
       const retryConfig = retry.mock.calls[0][1];
-      expect(retryConfig.onProgress).toBe(onProgress);
+      expect(retryConfig.config.onProgress).toBe(onProgress);
     });
 
     it('passes scoped onProgress to list chain', async () => {
@@ -360,24 +339,4 @@ describe('categorySamplesList', () => {
   });
 });
 
-describe('mapDiversity', () => {
-  it('all levels return same shape', () => {
-    const keys = ['low', 'med', 'high'].map((l) => Object.keys(mapDiversity(l)).sort());
-    expect(keys[0]).toEqual(keys[1]);
-    expect(keys[1]).toEqual(keys[2]);
-  });
-
-  it('undefined returns default', () => {
-    expect(mapDiversity(undefined)).toBeDefined();
-    expect(typeof mapDiversity(undefined)).toBe('object');
-  });
-
-  it('passes through object for power consumers', () => {
-    const custom = { a: 1, b: 2 };
-    expect(mapDiversity(custom)).toBe(custom);
-  });
-
-  it('unknown string falls back to default', () => {
-    expect(mapDiversity('zzz')).toEqual(mapDiversity(undefined));
-  });
-});
+testObjectMapper('mapDiversity', mapDiversity);

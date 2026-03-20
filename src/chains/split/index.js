@@ -62,18 +62,12 @@ export default async function split(text, instructions, config = {}) {
   const {
     chunkLen,
     targetSplitsPerChunk,
-    maxAttempts,
-    retryDelay,
     temperature,
-    retryOnAll,
     preservation: preservationConfig,
   } = await getOptions(config, {
     chunkLen: 4000,
     targetSplitsPerChunk: null,
-    maxAttempts: 2,
-    retryDelay: 1000,
     temperature: 0.1,
-    retryOnAll: false,
     preservation: withPolicy(mapPreservation),
   });
   const preservationShort = await getOption('preservationShort', config, preservationConfig.short);
@@ -96,11 +90,7 @@ export default async function split(text, instructions, config = {}) {
     try {
       const output = await retry(() => callLlm(prompt, llmConfig), {
         label: 'split',
-        maxAttempts,
-        retryDelay,
-        retryOnAll,
-        onProgress: config.onProgress,
-        abortSignal: config.abortSignal,
+        config,
       });
 
       const outputWithoutDelimiters = output.replace(

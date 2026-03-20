@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { testNumericMapper } from '../../lib/test-utils/index.js';
 
 vi.mock('../../lib/embed/index.js', () => ({
   embedChunked: vi.fn(),
@@ -183,26 +184,4 @@ describe('probeScan', () => {
   });
 });
 
-describe('mapDetection', () => {
-  it('produces distinct values across levels', () => {
-    const values = ['low', 'med', 'high'].map(mapDetection);
-    expect(new Set(values).size).toBe(3);
-  });
-
-  it('high < low (more detection sensitivity = lower threshold)', () => {
-    expect(mapDetection('high')).toBeLessThan(mapDetection('med'));
-    expect(mapDetection('med')).toBeLessThan(mapDetection('low'));
-  });
-
-  it('undefined returns default', () => {
-    expect(mapDetection(undefined)).toBeDefined();
-  });
-
-  it('passes through raw numbers', () => {
-    expect(mapDetection(0.42)).toBe(0.42);
-  });
-
-  it('unknown string falls back to default', () => {
-    expect(mapDetection('zzz')).toBe(mapDetection(undefined));
-  });
-});
+testNumericMapper('mapDetection', mapDetection, { order: 'desc' });

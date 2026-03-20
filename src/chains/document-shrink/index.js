@@ -193,8 +193,6 @@ function createChunks(document, baseChunkSize, targetSize) {
   const reductionRatio = calculateReductionRatio(targetSize, docLength);
   const chunkSize = calculateAdaptiveChunkSize(baseChunkSize, reductionRatio, docLength);
 
-  // console.log(`[createChunks] Creating chunks of size ${chunkSize} from document of length ${docLength} (reduction ratio: ${reductionRatio.toFixed(2)})`);
-
   const chunks = [];
   for (let i = 0; i < docLength; i += chunkSize) {
     chunks.push({
@@ -204,7 +202,6 @@ function createChunks(document, baseChunkSize, targetSize) {
       size: Math.min(chunkSize, docLength - i),
     });
   }
-  // console.log(`[createChunks] Created ${chunks.length} chunks`);
   return chunks;
 }
 
@@ -221,7 +218,6 @@ async function expandQuery(query, tokenBudget, options = {}) {
       chunkLen: 500,
       onProgress: scopeProgress(options.onProgress, 'collect-terms:query-expansion'),
     });
-    // console.log(`[expandQuery] Collected ${terms.length} terms:`, terms);
 
     // Include original query and the extracted terms
     const expansions = [query, ...terms];
@@ -237,8 +233,6 @@ async function expandQuery(query, tokenBudget, options = {}) {
 
 // Pure function: Score chunks with TF-IDF
 function scoreChunksWithTfIdf(chunks, expansions) {
-  // console.log(`[scoreChunksWithTfIdf] Scoring ${chunks.length} chunks with ${expansions.length} expansions`);
-
   // Create a TextSimilarity instance
   const similarity = new TextSimilarity();
 
@@ -290,7 +284,6 @@ function selectChunksByTfIdf(scoredChunks, tfIdfBudget) {
   const selectedIndices = new Set(selected.map((c) => c.index));
   const candidates = scoredChunks.filter((c) => !selectedIndices.has(c.index));
 
-  // console.log(`[selectChunksByTfIdf] Selected ${selected.length} chunks (${sizeUsed}/${tfIdfBudget} chars) from ${scoredChunks.length} total`);
   // if (selected.length > 0) {
   //   console.log(`[selectChunksByTfIdf] Selected chunk indices:`, selected.map(c => c.index));
   // }
@@ -307,7 +300,6 @@ async function scoreEdgeChunks(candidates, query, maxChunks, options = {}) {
 
   // Take chunks near the boundary
   const toScore = candidates.slice(0, maxChunks);
-  // console.log(`[scoreEdgeChunks] Scoring ${toScore.length} chunks with LLM`);
 
   // Extract key sentences from chunks for scoring
   const cleanedChunks = toScore.map((chunk) => {
@@ -319,11 +311,8 @@ async function scoreEdgeChunks(candidates, query, maxChunks, options = {}) {
     // Find first complete sentence (up to 300 chars for better context)
     const firstSentence = text.match(/^[^.!?]{1,300}[.!?]/)?.[0] || text.slice(0, 300);
 
-    // console.log(`[scoreEdgeChunks] Extracted for scoring:`, firstSentence.slice(0, 100) + '...');
     return firstSentence.trim();
   });
-
-  // console.log(`[scoreEdgeChunks] Scoring ${cleanedChunks.length} cleaned chunks`);
 
   const scores = await score(
     cleanedChunks,
@@ -335,15 +324,12 @@ async function scoreEdgeChunks(candidates, query, maxChunks, options = {}) {
     }
   );
 
-  // console.log(`[scoreEdgeChunks] Received scores:`, scores);
-
   const scored = toScore.map((chunk, i) => ({
     ...chunk,
     llmScore: scores[i] / 10,
     finalScore: chunk.tfIdfScore * (1 - llmWeight) + (scores[i] / 10) * llmWeight,
   }));
 
-  // console.log(`[scoreEdgeChunks] Scored ${scored.length} chunks successfully`);
   return {
     scored: scored.sort((a, b) => b.finalScore - a.finalScore),
     tokensUsed: toScore.length * TOKENS_PER_CHUNK_SCORE,
@@ -377,8 +363,6 @@ async function compressHighValueChunks(
   if (compressible.length === 0) {
     return { compressed: [], tokensUsed: 0 };
   }
-
-  // console.log(`[compressHighValueChunks] Compressing ${compressible.length} chunks, min size: ${minCompressSize}`);
 
   // Clean chunks before compression
   const cleanedTexts = compressible.map((c) => c.text.replace(/\s+/g, ' ').trim());
@@ -415,8 +399,6 @@ async function compressHighValueChunks(
       spaceUsed += cleaned.length;
     }
   });
-
-  // console.log(`[compressHighValueChunks] Compressed ${compressed.length} chunks, saved ${spaceUsed} chars`);
 
   return {
     compressed,
@@ -554,7 +536,7 @@ function selectGapFillers(allChunks, selectedChunks, gapFillerBudget) {
 // Main function with proper budget planning
 export default async function documentShrink(document, query, config = {}) {
   config = scopeOperation('document-shrink', config);
-  const { onProgress, now = new Date() } = config;
+  const { now } = config;
   const {
     targetSize,
     tokenBudget: tokenBudgetInit,
@@ -600,17 +582,12 @@ export default async function documentShrink(document, query, config = {}) {
     };
   }
 
-  // console.log(`[documentShrink] Starting with document length: ${document.length}, query: "${query}"`);
-  // console.log(`[documentShrink] Config:`, config);
-
   // Validate and fix merged values
   if (merged.targetSize <= 0) merged.targetSize = DEFAULT_OPTIONS.targetSize;
   if (merged.chunkSize <= 0) merged.chunkSize = DEFAULT_OPTIONS.chunkSize;
   if (merged.tokenBudget <= 0) merged.tokenBudget = DEFAULT_OPTIONS.tokenBudget;
 
   let tokenBudget = merged.tokenBudget;
-
-  // console.log(`[documentShrink] Merged:`, merged);
 
   // Step 1: Create chunks
   const chunks = createChunks(document, merged.chunkSize, merged.targetSize);
@@ -628,17 +605,13 @@ export default async function documentShrink(document, query, config = {}) {
     allocation.tfIdfBudget = merged.targetSize;
     allocation.reservedSpace = 0;
   }
-  // console.log(`[documentShrink] Space allocation:`, allocation);
-  // console.time(`[documentShrink] Full processing for "${query}"`);
 
   // Step 3: Expand query (gated by thoroughness)
-  const subOptions = { ...config, onProgress, now };
+  const subOptions = { ...config, now };
   const { expansions, tokensUsed: expansionTokens } = queryExpansion
     ? await expandQuery(query, tokenBudget, subOptions)
     : { expansions: [query], tokensUsed: 0 };
   tokenBudget -= expansionTokens;
-  // console.log(`[documentShrink] Token budget after expansion: ${tokenBudget}`);
-  // console.log(`[documentShrink] Expansions:`, expansions);
 
   // Step 4: Score with TF-IDF
   const scoredChunks = scoreChunksWithTfIdf(chunks, expansions);
@@ -648,7 +621,6 @@ export default async function documentShrink(document, query, config = {}) {
     scoredChunks,
     allocation.tfIdfBudget
   );
-  // console.log(`[documentShrink] TF-IDF selected ${selected.length} chunks, ${candidates.length} candidates remain`);
 
   // Step 6: Use LLM to find high-value edge chunks (gated by thoroughness)
   const { scored, tokensUsed: scoreTokens } = llmScoring
@@ -658,7 +630,6 @@ export default async function documentShrink(document, query, config = {}) {
       })
     : { scored: [], tokensUsed: 0 };
   tokenBudget -= scoreTokens;
-  // console.log(`[documentShrink] Scored ${scored.length} edge chunks, tokens remaining: ${tokenBudget}`);
 
   // Step 7: Add scored chunks that fit
   let result = addChunksThatFit(selected, sizeUsed, scored, merged.targetSize);
@@ -717,8 +688,6 @@ export default async function documentShrink(document, query, config = {}) {
   if (content.length > merged.targetSize * 3) {
     content = trimToLastSentence(content.slice(0, merged.targetSize * 2));
   }
-
-  // console.timeEnd(`[documentShrink] Full processing for "${query}"`);
 
   return {
     content,

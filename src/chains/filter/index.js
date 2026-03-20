@@ -44,21 +44,16 @@ const filterResponseFormat = {
 
 const filter = async function filter(list, instructions, config = {}) {
   config = scopeOperation('filter', config);
-  const { guidance, maxAttempts, retryDelay, retryOnAll, progressMode, errorPosture } =
-    await getOptions(config, {
-      strictness: withPolicy(mapStrictness, ['guidance', 'errorPosture']),
-      maxAttempts: 3,
-      retryDelay: 1000,
-      retryOnAll: false,
-      progressMode: 'detailed',
-    });
+  const { guidance, progressMode, errorPosture } = await getOptions(config, {
+    strictness: withPolicy(mapStrictness, ['guidance', 'errorPosture']),
+    progressMode: 'detailed',
+  });
   const lifecycleLogger = createLifecycleLogger(config.logger, 'chain:filter');
 
   lifecycleLogger.logStart(
     extractBatchConfig({
       totalItems: list.length,
       batchSize: config.batchSize,
-      maxAttempts,
     })
   );
 
@@ -131,11 +126,8 @@ Process exactly ${count} items from the XML list below and return ${count} yes/n
     try {
       response = await retry(() => listBatch(items, prompt, listBatchOptions), {
         label: 'filter:batch',
-        maxAttempts,
-        retryDelay,
-        retryOnAll,
+        config,
         onProgress: tracker.forBatch(startIndex, items.length),
-        abortSignal: config.abortSignal,
       });
     } catch (error) {
       lifecycleLogger.logError(error, { batchIndex, itemCount: items.length });

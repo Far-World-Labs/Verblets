@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { testObjectMapper } from '../../lib/test-utils/index.js';
 import extractBlocks, { mapPrecision } from './index.js';
 
 // Mock the dependencies
@@ -8,27 +9,7 @@ vi.mock('../../lib/retry/index.js');
 import llm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 
-describe('mapPrecision', () => {
-  it('all levels return same shape', () => {
-    const keys = ['low', 'med', 'high'].map((l) => Object.keys(mapPrecision(l)).sort());
-    expect(keys[0]).toEqual(keys[1]);
-    expect(keys[1]).toEqual(keys[2]);
-  });
-
-  it('undefined returns default', () => {
-    expect(mapPrecision(undefined)).toBeDefined();
-    expect(typeof mapPrecision(undefined)).toBe('object');
-  });
-
-  it('passes through object for power consumers', () => {
-    const custom = { a: 1, b: 2 };
-    expect(mapPrecision(custom)).toBe(custom);
-  });
-
-  it('unknown string falls back to default', () => {
-    expect(mapPrecision('zzz')).toEqual(mapPrecision(undefined));
-  });
-});
+testObjectMapper('mapPrecision', mapPrecision);
 
 describe('extract-blocks', () => {
   beforeEach(() => {

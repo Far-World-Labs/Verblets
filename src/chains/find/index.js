@@ -13,15 +13,11 @@ const findResponseFormat = {
 
 const find = async function find(list, instructions, config = {}) {
   config = scopeOperation('find', config);
-  const { maxParallel, maxAttempts, retryDelay, retryOnAll, errorPosture, progressMode } =
-    await getOptions(config, {
-      maxParallel: 3,
-      maxAttempts: 3,
-      retryDelay: 1000,
-      retryOnAll: false,
-      errorPosture: 'resilient',
-      progressMode: 'detailed',
-    });
+  const { maxParallel, errorPosture, progressMode } = await getOptions(config, {
+    maxParallel: 3,
+    errorPosture: 'resilient',
+    progressMode: 'detailed',
+  });
 
   const lifecycleLogger = createLifecycleLogger(config.logger, 'chain:find');
 
@@ -91,11 +87,8 @@ Process exactly ${count} items from the XML list below and return the single bes
               }),
             {
               label: 'find:batch',
-              maxAttempts,
-              retryDelay,
-              retryOnAll,
+              config,
               onProgress: tracker.forBatch(startIndex, items.length),
-              abortSignal: config.abortSignal,
             }
           );
 

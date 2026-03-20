@@ -58,15 +58,12 @@ export default async function detectThreshold({
   targetProperty,
   goal,
   onProgress,
-  now = new Date(),
+  now,
   ...options
 }) {
   const config = scopeOperation('detect-threshold', { llm: { good: true }, ...options });
-  const { batchSize, maxAttempts, retryDelay, retryOnAll } = await getOptions(config, {
+  const { batchSize } = await getOptions(config, {
     batchSize: 50,
-    maxAttempts: 3,
-    retryDelay: 1000,
-    retryOnAll: false,
   });
   if (!data || !Array.isArray(data) || data.length === 0) {
     throw new Error('Data must be a non-empty array');
@@ -167,7 +164,6 @@ Return the updated accumulator as valid JSON.`;
     ...config,
     initial: JSON.stringify(initialAccumulator),
     batchSize,
-    maxAttempts,
     responseFormat: {
       type: 'json_schema',
       json_schema: {
@@ -233,11 +229,8 @@ Return threshold candidates with their rationales.`;
       }),
     {
       label: 'detect-threshold-analysis',
-      maxAttempts,
-      retryDelay,
-      retryOnAll,
+      config,
       onProgress,
-      abortSignal: options.abortSignal,
     }
   );
 

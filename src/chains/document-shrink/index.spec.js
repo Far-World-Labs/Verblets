@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { testNumericMapper, testObjectMapper } from '../../lib/test-utils/index.js';
 import documentShrink, { mapCompression, mapRanking, mapThoroughness } from './index.js';
 
 // Mock the questions chain
@@ -283,79 +284,17 @@ In conclusion, both coffee and relationships benefit from patience and attention
   });
 });
 
-describe('mapThoroughness', () => {
-  it('all levels return same shape', () => {
-    const keys = ['low', 'med', 'high'].map((l) => Object.keys(mapThoroughness(l)).sort());
-    expect(keys[0]).toEqual(keys[1]);
-    expect(keys[1]).toEqual(keys[2]);
-  });
-
-  it('undefined returns default', () => {
-    expect(mapThoroughness(undefined)).toBeDefined();
-    expect(typeof mapThoroughness(undefined)).toBe('object');
-  });
-
-  it('passes through object for power consumers', () => {
-    const custom = { a: 1, b: 2 };
-    expect(mapThoroughness(custom)).toBe(custom);
-  });
-
-  it('unknown string falls back to default', () => {
-    expect(mapThoroughness('zzz')).toEqual(mapThoroughness(undefined));
-  });
-
-  it('low disables all LLM phases', () => {
-    const result = mapThoroughness('low');
-    expect(result.queryExpansion).toBe(false);
-    expect(result.llmScoring).toBe(false);
-    expect(result.llmCompression).toBe(false);
-  });
+testObjectMapper('mapThoroughness', mapThoroughness, {
+  extra: (mapFn, { it, expect }) => {
+    it('low disables all LLM phases', () => {
+      const result = mapFn('low');
+      expect(result.queryExpansion).toBe(false);
+      expect(result.llmScoring).toBe(false);
+      expect(result.llmCompression).toBe(false);
+    });
+  },
 });
 
-describe('mapCompression', () => {
-  it('produces distinct values across levels', () => {
-    const values = ['low', 'med', 'high'].map(mapCompression);
-    expect(new Set(values).size).toBe(3);
-  });
+testNumericMapper('mapCompression', mapCompression, { order: 'desc' });
 
-  it('high < low (more compression = lower number)', () => {
-    expect(mapCompression('high')).toBeLessThan(mapCompression('med'));
-    expect(mapCompression('med')).toBeLessThan(mapCompression('low'));
-  });
-
-  it('undefined returns default', () => {
-    expect(mapCompression(undefined)).toBeDefined();
-  });
-
-  it('passes through raw numbers', () => {
-    expect(mapCompression(0.42)).toBe(0.42);
-  });
-
-  it('unknown string falls back to default', () => {
-    expect(mapCompression('zzz')).toBe(mapCompression(undefined));
-  });
-});
-
-describe('mapRanking', () => {
-  it('produces distinct values across levels', () => {
-    const values = ['low', 'med', 'high'].map(mapRanking);
-    expect(new Set(values).size).toBe(3);
-  });
-
-  it('low < med < high', () => {
-    expect(mapRanking('low')).toBeLessThan(mapRanking('med'));
-    expect(mapRanking('med')).toBeLessThan(mapRanking('high'));
-  });
-
-  it('undefined returns default', () => {
-    expect(mapRanking(undefined)).toBeDefined();
-  });
-
-  it('passes through raw numbers', () => {
-    expect(mapRanking(0.42)).toBe(0.42);
-  });
-
-  it('unknown string falls back to default', () => {
-    expect(mapRanking('zzz')).toBe(mapRanking(undefined));
-  });
-});
+testNumericMapper('mapRanking', mapRanking, { order: 'asc' });

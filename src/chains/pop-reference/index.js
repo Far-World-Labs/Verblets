@@ -22,14 +22,10 @@ const popReferenceResponseFormat = {
 export default async function popReference(sentence, description, config = {}) {
   config = scopeOperation('pop-reference', config);
   const { include = [] } = config;
-  const { referenceContext, referencesPerSource, maxAttempts, retryDelay, retryOnAll } =
-    await getOptions(config, {
-      referenceContext: false,
-      referencesPerSource: 2,
-      maxAttempts: 3,
-      retryDelay: 1000,
-      retryOnAll: false,
-    });
+  const { referenceContext, referencesPerSource } = await getOptions(config, {
+    referenceContext: false,
+    referencesPerSource: 2,
+  });
 
   // Build the include list description
   let includeDescription = '';
@@ -87,11 +83,7 @@ Requirements:
       }),
     {
       label: 'pop-reference',
-      maxAttempts,
-      retryDelay,
-      retryOnAll,
-      onProgress: config.onProgress,
-      abortSignal: config.abortSignal,
+      config,
     }
   );
 

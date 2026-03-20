@@ -7,7 +7,7 @@ import date from '../date/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import templateReplace from '../../lib/template-replace/index.js';
 import { constants as promptConstants } from '../../prompts/index.js';
-import { getOptions, scopeOperation } from '../../lib/context/option.js';
+import { scopeOperation } from '../../lib/context/option.js';
 
 const { contentIsInstructions, explainAndSeparate, explainAndSeparatePrimitive } = promptConstants;
 
@@ -65,15 +65,9 @@ export default function setInterval({
   initial = null,
   onTick,
   llm,
-  maxAttempts: _maxAttempts,
-  onProgress,
   ...options
 } = {}) {
-  const config = scopeOperation('set-interval', { maxAttempts: _maxAttempts, ...options });
-  const optionsReady = getOptions(config, {
-    maxAttempts: 3,
-    retryOnAll: false,
-  });
+  const config = scopeOperation('set-interval', { llm, ...options });
   let timer;
   let count = 0;
   let lastResult = initial;
@@ -82,7 +76,6 @@ export default function setInterval({
 
   const step = async () => {
     if (!active) return;
-    const { maxAttempts, retryOnAll } = await optionsReady;
 
     try {
       // Get data for AI decision making
@@ -114,10 +107,7 @@ Next wait:`;
           }),
         {
           label: 'set-interval',
-          maxAttempts,
-          retryOnAll,
-          onProgress,
-          abortSignal: options.abortSignal,
+          config,
         }
       );
 

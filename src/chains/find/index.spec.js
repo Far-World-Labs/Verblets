@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { testForwardsConfig, testLifecycleLogger } from '../../lib/test-utils/index.js';
 import find from './index.js';
 import listBatch from '../../verblets/list-batch/index.js';
 import retry from '../../lib/retry/index.js';
@@ -43,31 +44,33 @@ describe('find chain', () => {
     expect(result).toBe('');
   });
 
-  it('forwards maxAttempts to retry', async () => {
+  it('forwards maxAttempts to retry via config', async () => {
     await find(['a', 'b'], 'find a', { batchSize: 10, maxAttempts: 7 });
-    const retryConfig = retry.mock.calls[0][1];
-    expect(retryConfig.maxAttempts).toBe(7);
+    const retryOpts = retry.mock.calls[0][1];
+    expect(retryOpts.config).toBeDefined();
+    expect(retryOpts.config.maxAttempts).toBe(7);
   });
 
-  it('defaults maxAttempts to 3', async () => {
+  it('passes config to retry for default resolution', async () => {
     await find(['a', 'b'], 'find a', { batchSize: 10 });
-    const retryConfig = retry.mock.calls[0][1];
-    expect(retryConfig.maxAttempts).toBe(3);
+    const retryOpts = retry.mock.calls[0][1];
+    expect(retryOpts.config).toBeDefined();
+    expect(retryOpts.maxAttempts).toBeUndefined();
   });
 
-  it('forwards llm config to listBatch', async () => {
-    const llm = { model: 'test-model' };
-    await find(['a'], 'find', { batchSize: 10, llm });
-    const callConfig = listBatch.mock.calls[0][2];
-    expect(callConfig.llm).toBe(llm);
+  testForwardsConfig('forwards config to listBatch', {
+    invoke: (config) => find(['a'], 'find', { batchSize: 10, ...config }),
+    setupMocks: () => {},
+    target: { mock: listBatch, argIndex: 2 },
+    options: {
+      llm: { value: { model: 'test-model' } },
+    },
   });
 
-  it('forwards lifecycle logger to listBatch', async () => {
-    const logger = { info: vi.fn(), debug: vi.fn() };
-    await find(['a', 'b'], 'find a', { batchSize: 10, logger });
-    const callConfig = listBatch.mock.calls[0][2];
-    expect(callConfig.logger.logEvent).toBeTypeOf('function');
-    expect(callConfig.logger.info).toBe(logger.info);
+  testLifecycleLogger('to listBatch', {
+    invoke: (config) => find(['a', 'b'], 'find a', { batchSize: 10, ...config }),
+    setupMocks: () => {},
+    target: { mock: listBatch, argIndex: 2 },
   });
 
   it('returns earliest match when multiple batches find results', async () => {

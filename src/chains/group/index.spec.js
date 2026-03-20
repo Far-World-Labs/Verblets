@@ -2,6 +2,7 @@ import group, { mapGranularity } from './index.js';
 import listBatch from '../../verblets/list-batch/index.js';
 import reduce from '../reduce/index.js';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
+import { testObjectMapper } from '../../lib/test-utils/index.js';
 
 vi.mock('../../verblets/list-batch/index.js', () => ({
   default: vi.fn(),
@@ -98,24 +99,4 @@ describe('group chain', () => {
   });
 });
 
-describe('mapGranularity', () => {
-  it('all levels return same shape', () => {
-    const keys = ['low', 'med', 'high'].map((l) => Object.keys(mapGranularity(l)).sort());
-    expect(keys[0]).toEqual(keys[1]);
-    expect(keys[1]).toEqual(keys[2]);
-  });
-
-  it('undefined returns default', () => {
-    expect(mapGranularity(undefined)).toBeDefined();
-    expect(typeof mapGranularity(undefined)).toBe('object');
-  });
-
-  it('passes through object for power consumers', () => {
-    const custom = { a: 1, b: 2 };
-    expect(mapGranularity(custom)).toBe(custom);
-  });
-
-  it('unknown string falls back to default', () => {
-    expect(mapGranularity('zzz')).toEqual(mapGranularity(undefined));
-  });
-});
+testObjectMapper('mapGranularity', mapGranularity);

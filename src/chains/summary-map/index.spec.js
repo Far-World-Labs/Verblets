@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { testNumericMapper } from '../../lib/test-utils/index.js';
 import pave from '../../lib/pave/index.js';
 import SummaryMap, { mapSummaryDetail } from './index.js';
 import llm from '../../lib/llm/index.js';
@@ -169,26 +170,4 @@ describe('Summary map', () => {
   });
 });
 
-describe('mapSummaryDetail', () => {
-  it('produces distinct values across levels', () => {
-    const values = ['low', 'med', 'high'].map(mapSummaryDetail);
-    expect(new Set(values).size).toBe(3);
-  });
-
-  it('high < low (more detail = lower ratio)', () => {
-    expect(mapSummaryDetail('high')).toBeLessThan(mapSummaryDetail('med'));
-    expect(mapSummaryDetail('med')).toBeLessThan(mapSummaryDetail('low'));
-  });
-
-  it('undefined returns default', () => {
-    expect(mapSummaryDetail(undefined)).toBeDefined();
-  });
-
-  it('passes through raw numbers', () => {
-    expect(mapSummaryDetail(0.42)).toBe(0.42);
-  });
-
-  it('unknown string falls back to default', () => {
-    expect(mapSummaryDetail('zzz')).toBe(mapSummaryDetail(undefined));
-  });
-});
+testNumericMapper('mapSummaryDetail', mapSummaryDetail, { order: 'desc' });

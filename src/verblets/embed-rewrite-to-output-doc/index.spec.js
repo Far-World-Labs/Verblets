@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { testForwardsConfig } from '../../lib/test-utils/index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(),
@@ -31,22 +32,13 @@ describe('embedRewriteToOutputDoc', () => {
     expect(options.response_format.json_schema.schema.properties.value.type).toBe('string');
   });
 
-  it('forwards llm config', async () => {
-    callLlm.mockResolvedValueOnce('A passage about dogs.');
-
-    await embedRewriteToOutputDoc('dogs', { llm: { fast: true } });
-
-    const [, options] = callLlm.mock.calls[0];
-    expect(options.llm).toEqual({ fast: true });
-  });
-
-  it('forwards extra options like logger', async () => {
-    const logger = { log: vi.fn() };
-    callLlm.mockResolvedValueOnce('A passage.');
-
-    await embedRewriteToOutputDoc('query', { logger });
-
-    const [, options] = callLlm.mock.calls[0];
-    expect(options.logger).toBe(logger);
+  testForwardsConfig('forwards config to callLlm', {
+    invoke: (config) => embedRewriteToOutputDoc('query', config),
+    setupMocks: () => callLlm.mockResolvedValueOnce('A passage.'),
+    target: { mock: callLlm, argIndex: 1 },
+    options: {
+      llm: { value: { fast: true } },
+      logger: { value: { log: vi.fn() } },
+    },
   });
 });

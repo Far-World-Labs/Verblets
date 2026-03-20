@@ -3,7 +3,7 @@ import retry from '../../lib/retry/index.js';
 import score from '../score/index.js';
 import disambiguateMeaningsSchema from './disambiguate-meanings-result.json';
 import { emitStepProgress, scopeProgress } from '../../lib/progress-callback/index.js';
-import { getOptions, scopeOperation } from '../../lib/context/option.js';
+import { scopeOperation } from '../../lib/context/option.js';
 
 const disambiguateResponseFormat = {
   type: 'json_schema',
@@ -20,11 +20,6 @@ Return a JSON object with a "meanings" array containing the distinct meanings.`;
 
 export const getMeanings = async (term, config = {}) => {
   config = scopeOperation('disambiguate:meanings', { llm: 'fastGoodCheap', ...config });
-  const { maxAttempts, retryDelay, retryOnAll } = await getOptions(config, {
-    maxAttempts: 3,
-    retryDelay: 1000,
-    retryOnAll: false,
-  });
   const prompt = meaningsPrompt(term);
   const response = await retry(
     () =>
@@ -34,11 +29,7 @@ export const getMeanings = async (term, config = {}) => {
       }),
     {
       label: 'disambiguate-get-meanings',
-      maxAttempts,
-      retryDelay,
-      retryOnAll,
-      onProgress: config.onProgress,
-      abortSignal: config.abortSignal,
+      config,
     }
   );
 
@@ -48,11 +39,7 @@ export const getMeanings = async (term, config = {}) => {
 
 export default async function disambiguate({ term, context, ...config } = {}) {
   config = scopeOperation('disambiguate', config);
-  const { maxAttempts, retryDelay } = await getOptions(config, {
-    maxAttempts: 3,
-    retryDelay: 1000,
-  });
-  const now = config.now ?? new Date();
+  const { now } = config;
 
   emitStepProgress(config.onProgress, 'disambiguate', 'extracting-meanings', {
     term,
@@ -60,11 +47,7 @@ export default async function disambiguate({ term, context, ...config } = {}) {
     chainStartTime: now,
   });
 
-  const meanings = await getMeanings(term, {
-    ...config,
-    maxAttempts,
-    retryDelay,
-  });
+  const meanings = await getMeanings(term, config);
 
   emitStepProgress(config.onProgress, 'disambiguate', 'scoring-meanings', {
     term,
@@ -76,7 +59,7 @@ export default async function disambiguate({ term, context, ...config } = {}) {
   const scores = await score(
     meanings,
     `how well this meaning of "${term}" matches the context: ${context}`,
-    { ...config, maxAttempts, onProgress: scopeProgress(config.onProgress, 'score:relevance') }
+    { ...config, onProgress: scopeProgress(config.onProgress, 'score:relevance') }
   );
 
   let bestIndex = 0;

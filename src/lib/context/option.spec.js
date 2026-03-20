@@ -42,6 +42,17 @@ describe('scopeOperation', () => {
     expect(config.evalContext.operation).toBeUndefined();
   });
 
+  it('defaults now to a Date when not provided', () => {
+    const result = scopeOperation('filter', {});
+    expect(result.now).toBeInstanceOf(Date);
+  });
+
+  it('preserves caller-provided now', () => {
+    const custom = new Date('2020-01-01');
+    const result = scopeOperation('filter', { now: custom });
+    expect(result.now).toBe(custom);
+  });
+
   it('operation is visible to policy functions via getOption', async () => {
     const config = scopeOperation('filter', {
       policy: {

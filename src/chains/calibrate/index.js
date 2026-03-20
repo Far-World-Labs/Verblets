@@ -81,16 +81,10 @@ function computeScanStatistics(scans) {
 export async function calibrateSpec(scans, config = {}) {
   config = scopeOperation('calibrate:spec', config);
   const { instructions } = config;
-  const { maxAttempts, retryDelay, retryOnAll, thresholdStrategy, sensitivity } = await getOptions(
-    config,
-    {
-      maxAttempts: 3,
-      retryDelay: 1000,
-      retryOnAll: false,
-      thresholdStrategy: 'statistical',
-      sensitivity: withPolicy(mapSensitivity),
-    }
-  );
+  const { thresholdStrategy, sensitivity } = await getOptions(config, {
+    thresholdStrategy: 'statistical',
+    sensitivity: withPolicy(mapSensitivity),
+  });
 
   const statistics = computeScanStatistics(scans);
 
@@ -140,11 +134,7 @@ IMPORTANT: Each property must be a simple string value, not a nested object or a
       }),
     {
       label: 'calibrate spec',
-      maxAttempts,
-      retryDelay,
-      retryOnAll,
-      onProgress: config.onProgress,
-      abortSignal: config.abortSignal,
+      config,
     }
   );
 
@@ -161,11 +151,6 @@ IMPORTANT: Each property must be a simple string value, not a nested object or a
  */
 export async function applyCalibrate(scan, specification, config = {}) {
   config = scopeOperation('calibrate:apply', config);
-  const { maxAttempts, retryDelay, retryOnAll } = await getOptions(config, {
-    maxAttempts: 3,
-    retryDelay: 1000,
-    retryOnAll: false,
-  });
 
   const prompt = `Classify this scan result against the calibration specification.
 
@@ -194,11 +179,7 @@ Return a JSON object with:
       }),
     {
       label: 'calibrate classify',
-      maxAttempts,
-      retryDelay,
-      retryOnAll,
-      onProgress: config.onProgress,
-      abortSignal: config.abortSignal,
+      config,
     }
   );
 

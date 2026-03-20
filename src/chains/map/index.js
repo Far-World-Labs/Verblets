@@ -124,11 +124,8 @@ Preserve all formatting and newlines within each <item> element.`;
 
         const output = await retry(() => listBatch(items, compiledPrompt, listBatchOptions), {
           label: 'map:batch',
-          maxAttempts: config.maxAttempts || 3,
-          retryDelay: config.retryDelay || 1000,
-          retryOnAll: config.retryOnAll || false,
+          config,
           onProgress: tracker.forBatch(startIndex, items.length),
-          abortSignal: config.abortSignal,
         });
 
         // listBatch now returns arrays directly
@@ -194,16 +191,13 @@ Preserve all formatting and newlines within each <item> element.`;
  */
 const map = async function (list, instructions, config = {}) {
   config = scopeOperation('map', config);
-  const { logger, now = new Date() } = config;
-  const { maxAttempts, retryDelay, retryOnAll, maxParallel, errorPosture, progressMode } =
-    await getOptions(config, {
-      maxAttempts: 3,
-      retryDelay: 1000,
-      retryOnAll: false,
-      maxParallel: 3,
-      errorPosture: 'resilient',
-      progressMode: 'detailed',
-    });
+  const { logger, now } = config;
+  const { maxAttempts, maxParallel, errorPosture, progressMode } = await getOptions(config, {
+    maxAttempts: 3,
+    maxParallel: 3,
+    errorPosture: 'resilient',
+    progressMode: 'detailed',
+  });
 
   // Create logger for map chain
   const lifecycleLogger = createLifecycleLogger(logger, 'chain:map');
@@ -234,8 +228,6 @@ const map = async function (list, instructions, config = {}) {
   const results = await mapOnce(list, instructions, {
     ...config,
     maxAttempts,
-    retryDelay,
-    retryOnAll,
     maxParallel,
     errorPosture,
     progressMode,

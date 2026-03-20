@@ -13,16 +13,10 @@ const DEFAULT_REDUCE_RESPONSE_FORMAT = {
 
 const reduce = async function reduce(list, instructions, config = {}) {
   config = scopeOperation('reduce', config);
-  const { maxAttempts, retryDelay, retryOnAll, progressMode, accumulatorMode } = await getOptions(
-    config,
-    {
-      maxAttempts: 3,
-      retryDelay: 1000,
-      retryOnAll: false,
-      progressMode: 'detailed',
-      accumulatorMode: 'auto',
-    }
-  );
+  const { progressMode, accumulatorMode } = await getOptions(config, {
+    progressMode: 'detailed',
+    accumulatorMode: 'auto',
+  });
 
   const lifecycleLogger = createLifecycleLogger(config.logger, 'chain:reduce');
 
@@ -44,7 +38,6 @@ const reduce = async function reduce(list, instructions, config = {}) {
       totalItems: list.length,
       totalBatches: activeBatches.length,
       batchSize: config.batchSize,
-      maxAttempts,
     })
   );
 
@@ -98,11 +91,8 @@ Process exactly ${count} items from the ${itemFormat} list below and return the 
 
     const result = await retry(() => listBatch(items, prompt, listBatchOptions), {
       label: 'reduce:batch',
-      maxAttempts,
-      retryDelay,
-      retryOnAll,
+      config,
       onProgress: tracker.forBatch(startIndex, items.length),
-      abortSignal: config.abortSignal,
     });
 
     if (!config.responseFormat && result?.accumulator !== undefined) {

@@ -122,11 +122,7 @@ export function parseRelations(relations) {
  */
 export async function relationSpec(prompt, config = {}) {
   config = scopeOperation('relations:spec', config);
-  const { onProgress, abortSignal } = config;
-  const { maxAttempts, retryDelay, retryOnAll, canonicalization } = await getOptions(config, {
-    maxAttempts: 3,
-    retryDelay: 1000,
-    retryOnAll: false,
+  const { canonicalization } = await getOptions(config, {
     canonicalization: withPolicy(mapCanonicalization),
   });
 
@@ -187,11 +183,7 @@ Use natural language, not symbolic identifiers or linked data formats.`;
       }),
     {
       label: 'relations-spec',
-      maxAttempts,
-      retryDelay,
-      retryOnAll,
-      onProgress,
-      abortSignal,
+      config,
     }
   );
 
@@ -208,11 +200,8 @@ Use natural language, not symbolic identifiers or linked data formats.`;
  */
 export async function applyRelations(text, specification, config = {}) {
   config = scopeOperation('relations:apply', config);
-  const { entities, onProgress, abortSignal } = config;
-  const { maxAttempts, retryDelay, retryOnAll, canonicalization } = await getOptions(config, {
-    maxAttempts: 3,
-    retryDelay: 1000,
-    retryOnAll: false,
+  const { entities } = config;
+  const { canonicalization } = await getOptions(config, {
     canonicalization: withPolicy(mapCanonicalization),
   });
 
@@ -269,11 +258,7 @@ Example: {"object": "42^^xsd:integer"} NOT {"object": '"42"^^xsd:integer'}`;
       }),
     {
       label: 'relations-apply',
-      maxAttempts,
-      retryDelay,
-      retryOnAll,
-      onProgress,
-      abortSignal,
+      config,
     }
   );
 

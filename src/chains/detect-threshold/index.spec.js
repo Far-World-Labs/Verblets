@@ -1,7 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { testForwardsConfig, testScopesProgress } from '../../lib/test-utils/index.js';
 import detectThreshold, { calculateStatistics } from './index.js';
 import reduce from '../reduce/index.js';
 import callLlm from '../../lib/llm/index.js';
+import retry from '../../lib/retry/index.js';
 
 vi.mock('../reduce/index.js', () => ({ default: vi.fn() }));
 vi.mock('../../lib/llm/index.js', () => ({ default: vi.fn() }));
@@ -198,79 +200,40 @@ describe('detectThreshold', () => {
   });
 
   describe('delegation to reduce', () => {
-    it('passes llm to reduce config', async () => {
+    const setupReduceAndLlm = () => {
       reduce.mockResolvedValueOnce(mockReduceResult);
       callLlm.mockResolvedValueOnce(mockLlmResult);
+    };
 
-      const llm = { modelName: 'test-model' };
-      await detectThreshold({ data: KNOWN_DATA, targetProperty: 'score', goal: defaultGoal, llm });
-
-      const reduceConfig = reduce.mock.calls[0][2];
-      expect(reduceConfig.llm).toBe(llm);
+    testForwardsConfig('forwards config to reduce', {
+      invoke: (config) =>
+        detectThreshold({
+          data: KNOWN_DATA,
+          targetProperty: 'score',
+          goal: defaultGoal,
+          ...config,
+        }),
+      setupMocks: setupReduceAndLlm,
+      target: { mock: reduce, argIndex: 2 },
+      options: {
+        llm: { value: { modelName: 'test-model' } },
+        maxAttempts: { value: 7 },
+        batchSize: { value: 25 },
+        now: { value: new Date('2025-06-15T12:00:00Z') },
+        temperature: { value: 0.3 },
+      },
     });
 
-    it('passes maxAttempts to reduce config', async () => {
-      reduce.mockResolvedValueOnce(mockReduceResult);
-      callLlm.mockResolvedValueOnce(mockLlmResult);
-
-      await detectThreshold({
-        data: KNOWN_DATA,
-        targetProperty: 'score',
-        goal: defaultGoal,
-        maxAttempts: 7,
-      });
-
-      const reduceConfig = reduce.mock.calls[0][2];
-      expect(reduceConfig.maxAttempts).toBe(7);
-    });
-
-    it('passes batchSize to reduce config', async () => {
-      reduce.mockResolvedValueOnce(mockReduceResult);
-      callLlm.mockResolvedValueOnce(mockLlmResult);
-
-      await detectThreshold({
-        data: KNOWN_DATA,
-        targetProperty: 'score',
-        goal: defaultGoal,
-        batchSize: 25,
-      });
-
-      const reduceConfig = reduce.mock.calls[0][2];
-      expect(reduceConfig.batchSize).toBe(25);
-    });
-
-    it('scopes onProgress to reduce:analysis phase', async () => {
-      reduce.mockResolvedValueOnce(mockReduceResult);
-      callLlm.mockResolvedValueOnce(mockLlmResult);
-
-      const onProgress = vi.fn();
-      await detectThreshold({
-        data: KNOWN_DATA,
-        targetProperty: 'score',
-        goal: defaultGoal,
-        onProgress,
-      });
-
-      const reduceConfig = reduce.mock.calls[0][2];
-      // onProgress is wrapped by scopeProgress, so it should be a function but not the original
-      expect(reduceConfig.onProgress).toBeTypeOf('function');
-      expect(reduceConfig.onProgress).not.toBe(onProgress);
-    });
-
-    it('passes now to reduce config', async () => {
-      reduce.mockResolvedValueOnce(mockReduceResult);
-      callLlm.mockResolvedValueOnce(mockLlmResult);
-
-      const now = new Date('2025-06-15T12:00:00Z');
-      await detectThreshold({
-        data: KNOWN_DATA,
-        targetProperty: 'score',
-        goal: defaultGoal,
-        now,
-      });
-
-      const reduceConfig = reduce.mock.calls[0][2];
-      expect(reduceConfig.now).toBe(now);
+    testScopesProgress('to reduce', {
+      invoke: (config) =>
+        detectThreshold({
+          data: KNOWN_DATA,
+          targetProperty: 'score',
+          goal: defaultGoal,
+          ...config,
+        }),
+      setupMocks: setupReduceAndLlm,
+      target: { mock: reduce, argIndex: 2 },
     });
 
     it('passes initial accumulator as JSON string to reduce', async () => {
@@ -341,33 +304,28 @@ describe('detectThreshold', () => {
       expect(firstBatch).toHaveLength(20);
       expect(secondBatch).toHaveLength(5);
     });
-
-    it('forwards extra options through to reduce', async () => {
-      reduce.mockResolvedValueOnce(mockReduceResult);
-      callLlm.mockResolvedValueOnce(mockLlmResult);
-
-      await detectThreshold({
-        data: KNOWN_DATA,
-        targetProperty: 'score',
-        goal: defaultGoal,
-        temperature: 0.3,
-      });
-
-      const reduceConfig = reduce.mock.calls[0][2];
-      expect(reduceConfig.temperature).toBe(0.3);
-    });
   });
 
   describe('delegation to callLlm', () => {
-    it('forwards llm to callLlm', async () => {
+    const setupReduceAndLlm = () => {
       reduce.mockResolvedValueOnce(mockReduceResult);
       callLlm.mockResolvedValueOnce(mockLlmResult);
+    };
 
-      const llm = { modelName: 'analysis-model' };
-      await detectThreshold({ data: KNOWN_DATA, targetProperty: 'score', goal: defaultGoal, llm });
-
-      const callLlmConfig = callLlm.mock.calls[0][1];
-      expect(callLlmConfig.llm).toBe(llm);
+    testForwardsConfig('forwards config to callLlm', {
+      invoke: (config) =>
+        detectThreshold({
+          data: KNOWN_DATA,
+          targetProperty: 'score',
+          goal: defaultGoal,
+          ...config,
+        }),
+      setupMocks: setupReduceAndLlm,
+      target: { mock: callLlm, argIndex: 1 },
+      options: {
+        llm: { value: { modelName: 'analysis-model' } },
+        temperature: { value: 0.1 },
+      },
     });
 
     it('forwards same llm to both reduce and callLlm', async () => {
@@ -416,21 +374,6 @@ describe('detectThreshold', () => {
       expect(finalPrompt).toContain('<accumulated-analysis>');
       expect(finalPrompt).toContain('<statistics>');
       expect(finalPrompt).toContain('between 2 and 80');
-    });
-
-    it('forwards extra options through to callLlm', async () => {
-      reduce.mockResolvedValueOnce(mockReduceResult);
-      callLlm.mockResolvedValueOnce(mockLlmResult);
-
-      await detectThreshold({
-        data: KNOWN_DATA,
-        targetProperty: 'score',
-        goal: defaultGoal,
-        temperature: 0.1,
-      });
-
-      const callLlmConfig = callLlm.mock.calls[0][1];
-      expect(callLlmConfig.temperature).toBe(0.1);
     });
   });
 
@@ -688,14 +631,14 @@ describe('detectThreshold', () => {
       expect(reduceConfig.batchSize).toBe(50);
     });
 
-    it('uses maxAttempts 3 by default', async () => {
+    it('passes config to retry wrapper (retry resolves maxAttempts from config)', async () => {
       reduce.mockResolvedValueOnce(mockReduceResult);
       callLlm.mockResolvedValueOnce(mockLlmResult);
 
       await detectThreshold({ data: KNOWN_DATA, targetProperty: 'score', goal: defaultGoal });
 
-      const reduceConfig = reduce.mock.calls[0][2];
-      expect(reduceConfig.maxAttempts).toBe(3);
+      const retryConfig = retry.mock.calls[0][1];
+      expect(retryConfig.config).toBeDefined();
     });
   });
 });

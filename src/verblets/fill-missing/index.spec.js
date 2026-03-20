@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import fillMissing, { mapCreativity } from './index.js';
+import { testStringMapper, testPromptShapingOption } from '../../lib/test-utils/index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn().mockResolvedValue({
@@ -11,27 +12,9 @@ vi.mock('../../lib/llm/index.js', () => ({
   }),
 }));
 
-describe('mapCreativity', () => {
-  it('returns undefined when undefined', () => {
-    expect(mapCreativity(undefined)).toBeUndefined();
-  });
+const mockLlm = (await import('../../lib/llm/index.js')).default;
 
-  it('maps low to conservative guidance', () => {
-    const guidance = mapCreativity('low');
-    expect(guidance).toContain('conservative');
-    expect(guidance).toContain('[UNKNOWN]');
-  });
-
-  it('maps high to speculative guidance', () => {
-    const guidance = mapCreativity('high');
-    expect(guidance).toContain('speculative');
-    expect(guidance).toContain('best educated guess');
-  });
-
-  it('returns undefined on unknown string', () => {
-    expect(mapCreativity('wild')).toBeUndefined();
-  });
-});
+testStringMapper('mapCreativity', mapCreativity);
 
 describe('fillMissing verblet', () => {
   it('returns imputed text structure', async () => {
@@ -45,38 +28,16 @@ describe('fillMissing verblet', () => {
     });
   });
 
-  it('injects conservative guidance with creativity low', async () => {
-    const llm = (await import('../../lib/llm/index.js')).default;
-
-    await fillMissing('Missing ??? text', { creativity: 'low' });
-    const prompt = llm.mock.calls.at(-1)[0];
-    expect(prompt).toContain('conservative');
-    expect(prompt).toContain('[UNKNOWN]');
-  });
-
-  it('injects speculative guidance with creativity high', async () => {
-    const llm = (await import('../../lib/llm/index.js')).default;
-
-    await fillMissing('Missing ??? text', { creativity: 'high' });
-    const prompt = llm.mock.calls.at(-1)[0];
-    expect(prompt).toContain('speculative');
-    expect(prompt).toContain('best educated guess');
-  });
-
-  it('omits creativity guidance when not specified', async () => {
-    const llm = (await import('../../lib/llm/index.js')).default;
-
-    await fillMissing('Missing ??? text');
-    const prompt = llm.mock.calls.at(-1)[0];
-    expect(prompt).not.toContain('conservative');
-    expect(prompt).not.toContain('speculative');
+  testPromptShapingOption('creativity', {
+    invoke: (config) => fillMissing('Missing ??? text', config),
+    setupMocks: () => mockLlm.mockClear(),
+    llmMock: mockLlm,
+    markers: { low: 'conservative', high: 'speculative' },
   });
 
   it('uses JSON schema validation', async () => {
-    const llm = (await import('../../lib/llm/index.js')).default;
-
     await fillMissing('Missing ??? text');
-    const options = llm.mock.calls[0][1];
+    const options = mockLlm.mock.calls[0][1];
     expect(options).toHaveProperty('response_format');
     expect(options.response_format.type).toBe('json_schema');
     expect(options.response_format.json_schema.name).toBe('fill_missing_result');

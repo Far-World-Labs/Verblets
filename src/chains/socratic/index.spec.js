@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { testObjectMapper } from '../../lib/test-utils/index.js';
 import { socratic, mapChallenge } from './index.js';
 
 vi.mock('../../lib/llm/index.js', () => {
@@ -23,24 +24,4 @@ describe('socratic chain', () => {
   });
 });
 
-describe('mapChallenge', () => {
-  it('all levels return same shape', () => {
-    const keys = ['low', 'med', 'high'].map((l) => Object.keys(mapChallenge(l)).sort());
-    expect(keys[0]).toEqual(keys[1]);
-    expect(keys[1]).toEqual(keys[2]);
-  });
-
-  it('undefined returns default', () => {
-    expect(mapChallenge(undefined)).toBeDefined();
-    expect(typeof mapChallenge(undefined)).toBe('object');
-  });
-
-  it('passes through object for power consumers', () => {
-    const custom = { a: 1, b: 2 };
-    expect(mapChallenge(custom)).toBe(custom);
-  });
-
-  it('unknown string falls back to default', () => {
-    expect(mapChallenge('zzz')).toEqual(mapChallenge(undefined));
-  });
-});
+testObjectMapper('mapChallenge', mapChallenge);

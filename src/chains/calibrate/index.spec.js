@@ -6,6 +6,7 @@ import calibrate, {
   mapSensitivity,
 } from './index.js';
 import llm from '../../lib/llm/index.js';
+import { testStringMapper } from '../../lib/test-utils/index.js';
 
 vi.mock('../../lib/llm/index.js');
 
@@ -255,17 +256,4 @@ describe('calibrate (default export)', () => {
   });
 });
 
-describe('mapSensitivity', () => {
-  it('valid enum values return themselves', () => {
-    expect(mapSensitivity('low')).toBe('low');
-    expect(mapSensitivity('high')).toBe('high');
-  });
-
-  it('undefined returns default', () => {
-    expect(mapSensitivity(undefined)).toBeUndefined();
-  });
-
-  it('unknown string falls back to default', () => {
-    expect(mapSensitivity('zzz')).toBe(mapSensitivity(undefined));
-  });
-});
+testStringMapper('mapSensitivity', mapSensitivity);

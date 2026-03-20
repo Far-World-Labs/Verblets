@@ -137,20 +137,20 @@ describe('intersections chain', () => {
   });
 
   describe('retry options forwarding', () => {
-    it('forwards maxAttempts to retry', async () => {
+    it('forwards config to retry so it can resolve maxAttempts internally', async () => {
       await intersections(['A', 'B'], { maxAttempts: 7 });
 
       const retryOpts = retry.mock.calls[0][1];
-      expect(retryOpts.maxAttempts).toBe(7);
+      expect(retryOpts.config.maxAttempts).toBe(7);
       expect(retryOpts.label).toBe('intersections-elements');
     });
 
-    it('forwards onProgress to retry', async () => {
+    it('forwards config with onProgress to retry', async () => {
       const onProgress = vi.fn();
       await intersections(['A', 'B'], { onProgress });
 
       const retryOpts = retry.mock.calls[0][1];
-      expect(retryOpts.onProgress).toBe(onProgress);
+      expect(retryOpts.config.onProgress).toBe(onProgress);
     });
 
     it('forwards onProgress to commonalities', async () => {
@@ -161,11 +161,12 @@ describe('intersections chain', () => {
       expect(commonalitiesArgs.onProgress).toBe(onProgress);
     });
 
-    it('uses default maxAttempts of 3 when not specified', async () => {
+    it('passes config to retry for default maxAttempts resolution', async () => {
       await intersections(['A', 'B']);
 
       const retryOpts = retry.mock.calls[0][1];
-      expect(retryOpts.maxAttempts).toBe(3);
+      expect(retryOpts.config).toBeDefined();
+      expect(retryOpts.label).toBe('intersections-elements');
     });
   });
 
@@ -345,7 +346,7 @@ describe('intersections chain', () => {
       expect(result['A + B'].elements).toStrictEqual(['elem1']);
     });
 
-    it('forwards llm and maxAttempts to validation retry', async () => {
+    it('forwards llm and config to validation retry', async () => {
       const llmConfig = { modelName: 'validation-model' };
       callLlm.mockResolvedValueOnce(['elem1']);
       callLlm.mockResolvedValueOnce({ intersections: {} });
@@ -360,9 +361,9 @@ describe('intersections chain', () => {
       const validationCallArgs = callLlm.mock.calls[1];
       expect(validationCallArgs[1].llm).toBe(llmConfig);
 
-      // Validation retry should get maxAttempts
+      // Validation retry should get config with maxAttempts
       const validationRetryOpts = retry.mock.calls[1][1];
-      expect(validationRetryOpts.maxAttempts).toBe(5);
+      expect(validationRetryOpts.config.maxAttempts).toBe(5);
     });
 
     it('uses intersection_result json_schema for validation config', async () => {
@@ -430,34 +431,21 @@ describe('intersections chain', () => {
       expect(commonalitiesArgs.temperature).toBe(0.9);
     });
 
-    it('does not forward intersections-specific options to callLlm', async () => {
+    it('passes full config to sub-calls (config flows through as-is)', async () => {
       await intersections(['A', 'B'], {
         minSize: 2,
         maxSize: 3,
         batchSize: 5,
         useSchemaValidation: false,
+        customKey: 'customValue',
       });
 
+      // Config is passed through to processCombo; sub-calls receive the full config
       const callLlmArgs = callLlm.mock.calls[0];
-      expect(callLlmArgs[1].minSize).toBeUndefined();
-      expect(callLlmArgs[1].maxSize).toBeUndefined();
-      expect(callLlmArgs[1].batchSize).toBeUndefined();
-      expect(callLlmArgs[1].useSchemaValidation).toBeUndefined();
-    });
-
-    it('does not forward intersections-specific options to commonalities', async () => {
-      await intersections(['A', 'B'], {
-        minSize: 2,
-        maxSize: 3,
-        batchSize: 5,
-        useSchemaValidation: false,
-      });
+      expect(callLlmArgs[1].customKey).toBe('customValue');
 
       const commonalitiesArgs = commonalities.mock.calls[0][1];
-      expect(commonalitiesArgs.minSize).toBeUndefined();
-      expect(commonalitiesArgs.maxSize).toBeUndefined();
-      expect(commonalitiesArgs.batchSize).toBeUndefined();
-      expect(commonalitiesArgs.useSchemaValidation).toBeUndefined();
+      expect(commonalitiesArgs.customKey).toBe('customValue');
     });
   });
 

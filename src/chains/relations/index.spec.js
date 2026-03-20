@@ -14,6 +14,7 @@ import relations, {
   mapCanonicalization,
 } from './index.js';
 import { debug } from '../../lib/debug/index.js';
+import { testStringMapper } from '../../lib/test-utils/index.js';
 
 // Mock the llm module
 vi.mock('../../lib/llm/index.js', () => ({
@@ -386,17 +387,4 @@ describe('relations', () => {
   });
 });
 
-describe('mapCanonicalization', () => {
-  it('valid enum values return themselves', () => {
-    expect(mapCanonicalization('low')).toBe('low');
-    expect(mapCanonicalization('high')).toBe('high');
-  });
-
-  it('undefined returns default', () => {
-    expect(mapCanonicalization(undefined)).toBeUndefined();
-  });
-
-  it('unknown string falls back to default', () => {
-    expect(mapCanonicalization('zzz')).toBe(mapCanonicalization(undefined));
-  });
-});
+testStringMapper('mapCanonicalization', mapCanonicalization);

@@ -7,7 +7,7 @@ import {
   constants as promptConstants,
 } from '../../prompts/index.js';
 import listResultSchema from './list-result.json';
-import { getOptions, scopeOperation } from '../../lib/context/option.js';
+import { scopeOperation } from '../../lib/context/option.js';
 
 const DEFAULT_LIST_TIMEOUT_MS = 90_000;
 
@@ -52,13 +52,7 @@ export const generateList = async function* generateListGenerator(text, config =
   const resultsAllMap = {};
   let isDone = false;
   const { shouldSkip = shouldSkipDefault, shouldStop = shouldStopDefault } = config;
-  const { maxAttempts, retryDelay, retryOnAll, queryLimit, timeoutMs } = await getOptions(config, {
-    maxAttempts: 3,
-    retryDelay: 1000,
-    retryOnAll: false,
-    queryLimit: 5,
-    timeoutMs: DEFAULT_LIST_TIMEOUT_MS,
-  });
+  const { queryLimit = 5, timeoutMs = DEFAULT_LIST_TIMEOUT_MS } = config;
 
   const startTime = new Date();
   let queryCount = 0;
@@ -76,11 +70,7 @@ export const generateList = async function* generateListGenerator(text, config =
         () => callLlm(listPrompt, { ...config, ...createModelOptions() }),
         {
           label: 'list-generate',
-          maxAttempts,
-          retryDelay,
-          retryOnAll,
-          onProgress: config.onProgress,
-          abortSignal: config.abortSignal,
+          config,
         }
       );
 
@@ -149,20 +139,11 @@ export const generateList = async function* generateListGenerator(text, config =
 export default async function list(prompt, config = {}) {
   config = scopeOperation('list', config);
   const { schema } = config;
-  const { maxAttempts, retryDelay, retryOnAll } = await getOptions(config, {
-    maxAttempts: 3,
-    retryDelay: 1000,
-    retryOnAll: false,
-  });
   const fullPrompt = prompt;
 
   const response = await retry(() => callLlm(fullPrompt, { ...config, ...createModelOptions() }), {
     label: 'list-main',
-    maxAttempts,
-    retryDelay,
-    retryOnAll,
-    onProgress: config.onProgress,
-    abortSignal: config.abortSignal,
+    config,
   });
 
   // Extract items from the object structure
@@ -176,11 +157,7 @@ export default async function list(prompt, config = {}) {
       const transformPrompt = outputTransformPrompt(item, schema);
       const transformResponse = await retry(() => callLlm(transformPrompt, config), {
         label: 'list-transform',
-        maxAttempts,
-        retryDelay,
-        retryOnAll,
-        onProgress: config.onProgress,
-        abortSignal: config.abortSignal,
+        config,
       });
       try {
         const transformedItem = JSON.parse(transformResponse);

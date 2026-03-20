@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import embedSubquestions, { mapGranularity } from './index.js';
+import {
+  testStringMapper,
+  testForwardsConfig,
+  testPromptShapingOption,
+} from '../../lib/test-utils/index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(),
@@ -11,27 +16,7 @@ beforeEach(() => {
   mockLlm.mockReset();
 });
 
-describe('mapGranularity', () => {
-  it('returns undefined when undefined', () => {
-    expect(mapGranularity(undefined)).toBeUndefined();
-  });
-
-  it('maps low to coarse decomposition guidance', () => {
-    const guidance = mapGranularity('low');
-    expect(guidance).toContain('2-3 broad');
-    expect(guidance).toContain('major facet');
-  });
-
-  it('maps high to fine-grained decomposition guidance', () => {
-    const guidance = mapGranularity('high');
-    expect(guidance).toContain('fine-grained');
-    expect(guidance).toContain('single specific fact');
-  });
-
-  it('returns undefined on unknown string', () => {
-    expect(mapGranularity('extreme')).toBeUndefined();
-  });
-});
+testStringMapper('mapGranularity', mapGranularity);
 
 describe('embedSubquestions', () => {
   it('calls LLM with query in prompt and returns sub-questions', async () => {
@@ -77,52 +62,20 @@ describe('embedSubquestions', () => {
     expect(prompt).not.toMatch(/Generate \d+ /);
   });
 
-  it('passes llm config through to callLlm', async () => {
-    mockLlm.mockResolvedValueOnce([]);
-
-    await embedSubquestions('query', { llm: { modelName: 'test-model' } });
-
-    const callConfig = mockLlm.mock.calls[0][1];
-    expect(callConfig.llm).toEqual({ modelName: 'test-model' });
+  testForwardsConfig('forwards config to callLlm', {
+    invoke: (config) => embedSubquestions('query', config),
+    setupMocks: () => mockLlm.mockResolvedValueOnce([]),
+    target: { mock: mockLlm, argIndex: 1 },
+    options: {
+      llm: { value: { modelName: 'test-model' } },
+      logger: { value: { info: vi.fn() } },
+    },
   });
 
-  it('passes logger through to LLM call', async () => {
-    const logger = { info: vi.fn() };
-    mockLlm.mockResolvedValueOnce([]);
-
-    await embedSubquestions('query', { logger });
-
-    const callConfig = mockLlm.mock.calls[0][1];
-    expect(callConfig.logger).toBe(logger);
-  });
-
-  it('injects low granularity guidance into prompt', async () => {
-    mockLlm.mockResolvedValueOnce([]);
-
-    await embedSubquestions('complex query', { granularity: 'low' });
-
-    const prompt = mockLlm.mock.calls.at(-1)[0];
-    expect(prompt).toContain('2-3 broad');
-    expect(prompt).toContain('major facet');
-  });
-
-  it('injects high granularity guidance into prompt', async () => {
-    mockLlm.mockResolvedValueOnce([]);
-
-    await embedSubquestions('complex query', { granularity: 'high' });
-
-    const prompt = mockLlm.mock.calls.at(-1)[0];
-    expect(prompt).toContain('fine-grained');
-    expect(prompt).toContain('single specific fact');
-  });
-
-  it('omits granularity guidance when not specified', async () => {
-    mockLlm.mockResolvedValueOnce([]);
-
-    await embedSubquestions('complex query');
-
-    const prompt = mockLlm.mock.calls.at(-1)[0];
-    expect(prompt).not.toContain('2-3 broad');
-    expect(prompt).not.toContain('fine-grained');
+  testPromptShapingOption('granularity', {
+    invoke: (config) => embedSubquestions('complex query', config),
+    setupMocks: () => mockLlm.mockResolvedValueOnce([]),
+    llmMock: mockLlm,
+    markers: { low: '2-3 broad', high: 'fine-grained' },
   });
 });

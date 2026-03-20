@@ -115,29 +115,16 @@ const applyTopNFilter = (groups, topN) => {
 
 export default async function group(list, instructions, config = {}) {
   config = scopeOperation('group', config);
-  const {
-    categoryPrompt,
-    listStyle,
-    autoModeThreshold,
-    onProgress,
-    abortSignal,
-    now = new Date(),
-  } = config;
+  const { categoryPrompt, listStyle, autoModeThreshold, onProgress, now } = config;
   const {
     guidance: granularityGuidance,
     maxParallel,
-    maxAttempts,
-    retryDelay,
-    retryOnAll,
     errorPosture,
     progressMode,
     topN,
   } = await getOptions(config, {
     granularity: withPolicy(mapGranularity, ['guidance', 'topN']),
     maxParallel: 3,
-    maxAttempts: 3,
-    retryDelay: 1000,
-    retryOnAll: false,
     errorPosture: 'resilient',
     progressMode: 'detailed',
   });
@@ -159,7 +146,6 @@ export default async function group(list, instructions, config = {}) {
   const categoriesString = await reduce(list, categoryDiscoveryPrompt, {
     ...config,
     initial: '',
-    abortSignal,
     now,
     onProgress: scopeProgress(onProgress, 'reduce:category-discovery'),
   });
@@ -200,7 +186,6 @@ export default async function group(list, instructions, config = {}) {
         const listBatchOptions = {
           ...config,
           listStyle: batchStyle,
-          autoModeThreshold,
         };
 
         const labels = await retry(
@@ -212,11 +197,8 @@ export default async function group(list, instructions, config = {}) {
             ),
           {
             label: 'group:batch',
-            maxAttempts,
-            retryDelay,
-            retryOnAll,
+            config,
             onProgress: tracker.forBatch(startIndex, items.length),
-            abortSignal,
           }
         );
 

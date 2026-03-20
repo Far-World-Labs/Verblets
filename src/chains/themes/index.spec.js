@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { testForwardsConfig } from '../../lib/test-utils/index.js';
 import themes from './index.js';
 import reduce from '../reduce/index.js';
 
@@ -43,13 +44,16 @@ describe('themes chain', () => {
     expect(refinePrompt).not.toContain('top');
   });
 
-  it('forwards batchSize and llm to reduce', async () => {
-    reduce.mockResolvedValueOnce('a').mockResolvedValueOnce('a');
-    const llm = { model: 'test' };
-    await themes('x\n\ny', { batchSize: 3, llm });
-    const firstCallConfig = reduce.mock.calls[0][2];
-    expect(firstCallConfig.batchSize).toBe(3);
-    expect(firstCallConfig.llm).toBe(llm);
+  testForwardsConfig('forwards config to reduce', {
+    invoke: (config) => themes('x\n\ny', config),
+    setupMocks: () => {
+      reduce.mockResolvedValueOnce('a').mockResolvedValueOnce('a');
+    },
+    target: { mock: reduce, argIndex: 2 },
+    options: {
+      batchSize: { value: 3 },
+      llm: { value: { model: 'test' } },
+    },
   });
 
   it('feeds first pass themes as list into second reduce', async () => {

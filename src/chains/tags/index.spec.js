@@ -12,6 +12,7 @@ import tags, {
   findInstructions,
   groupInstructions,
 } from './index.js';
+import { testInstructionBuilders } from '../../lib/test-utils/index.js';
 
 // Mock the dependencies
 vi.mock('../../lib/llm/index.js', () => ({
@@ -127,30 +128,23 @@ describe('tags', () => {
     });
   });
 
-  describe('instruction builders', () => {
-    it('should create map instructions', () => {
-      const instructions = mapInstructions({
-        specification: 'Test spec',
-        vocabulary: mockVocabulary,
-      });
+  testInstructionBuilders(
+    {
+      mapInstructions,
+      filterInstructions,
+      reduceInstructions,
+      findInstructions,
+      groupInstructions,
+    },
+    {
+      specTag: 'tag-specification',
+      specification: 'Test spec',
+      extraArgs: { vocabulary: mockVocabulary },
+      xmlTags: { filter: 'filter-criteria' },
+    }
+  );
 
-      expect(instructions).toContain('Test spec');
-      expect(instructions).toContain('tag-specification');
-      expect(instructions).toContain('available-tags'); // The actual XML tag used
-    });
-
-    it('should create filter instructions', () => {
-      const instructions = filterInstructions({
-        specification: 'Test spec',
-        vocabulary: mockVocabulary,
-        processing: 'Keep urgent items',
-      });
-
-      expect(instructions).toContain('Test spec');
-      expect(instructions).toContain('Keep urgent items');
-      expect(instructions).toContain('filter-criteria');
-    });
-
+  describe('instruction builders — throw on missing processing', () => {
     it('should throw error for filter without processing', () => {
       expect(() =>
         filterInstructions({
@@ -160,29 +154,6 @@ describe('tags', () => {
       ).toThrow('Filter processing criteria must be provided');
     });
 
-    it('should create reduce instructions', () => {
-      const instructions = reduceInstructions({
-        specification: 'Test spec',
-        vocabulary: mockVocabulary,
-        processing: 'Count tags by frequency',
-      });
-
-      expect(instructions).toContain('Test spec');
-      expect(instructions).toContain('Count tags by frequency');
-    });
-
-    it('should create find instructions', () => {
-      const instructions = findInstructions({
-        specification: 'Test spec',
-        vocabulary: mockVocabulary,
-        processing: 'Find most urgent',
-      });
-
-      expect(instructions).toContain('Test spec');
-      expect(instructions).toContain('Find most urgent');
-      expect(instructions).toContain('selection-criteria');
-    });
-
     it('should throw error for find without processing', () => {
       expect(() =>
         findInstructions({
@@ -190,18 +161,6 @@ describe('tags', () => {
           vocabulary: mockVocabulary,
         })
       ).toThrow('Find selection criteria must be provided');
-    });
-
-    it('should create group instructions', () => {
-      const instructions = groupInstructions({
-        specification: 'Test spec',
-        vocabulary: mockVocabulary,
-        processing: 'Group by category',
-      });
-
-      expect(instructions).toContain('Test spec');
-      expect(instructions).toContain('Group by category');
-      expect(instructions).toContain('grouping-strategy');
     });
   });
 

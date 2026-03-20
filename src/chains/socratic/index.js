@@ -55,12 +55,9 @@ const defaultAsk = async ({
   history = [],
   llm,
   logger,
-  maxAttempts = 3,
-  retryOnAll = false,
   temperature = 0.7,
   challenge,
-  onProgress,
-  abortSignal,
+  config,
 } = {}) => {
   const historyText = history.map((turn) => `Q: ${turn.question}\nA: ${turn.answer}`).join('\n');
   const prompt = buildAskPrompt(topic, historyText, challenge);
@@ -83,10 +80,7 @@ const defaultAsk = async ({
       }),
     {
       label: 'socratic-ask',
-      maxAttempts,
-      retryOnAll,
-      onProgress,
-      abortSignal,
+      config,
     }
   );
 
@@ -99,11 +93,8 @@ const defaultAnswer = async ({
   _topic,
   llm,
   logger,
-  maxAttempts = 3,
-  retryOnAll = false,
   temperature = 0.7,
-  onProgress,
-  abortSignal,
+  config,
 } = {}) => {
   const historyText = history.map((turn) => `Q: ${turn.question}\nA: ${turn.answer}`).join('\n');
   const prompt = buildAnswerPrompt(question, historyText);
@@ -126,10 +117,7 @@ const defaultAnswer = async ({
       }),
     {
       label: 'socratic-answer',
-      maxAttempts,
-      retryOnAll,
-      onProgress,
-      abortSignal,
+      config,
     }
   );
 
@@ -139,14 +127,10 @@ const defaultAnswer = async ({
 class SocraticMethod {
   static async create(statement, options = {}) {
     const config = scopeOperation('socratic', options);
-    const { maxAttempts, retryOnAll, challenge, temperature } = await getOptions(config, {
-      maxAttempts: 3,
-      retryOnAll: false,
+    const { challenge, temperature } = await getOptions(config, {
       challenge: withPolicy(mapChallenge, ['challenge', 'temperature']),
     });
-    return new SocraticMethod(statement, options, {
-      maxAttempts,
-      retryOnAll,
+    return new SocraticMethod(statement, config, {
       challenge,
       temperature,
     });
@@ -166,9 +150,8 @@ class SocraticMethod {
     this.ask = ask;
     this.answer = answer;
     this.llm = llm;
+    this.config = options;
     this.history = [];
-    this.maxAttempts = resolved.maxAttempts ?? options.maxAttempts ?? 3;
-    this.retryOnAll = resolved.retryOnAll ?? options.retryOnAll ?? false;
     this.challenge =
       resolved.challenge ??
       (options.challenge !== undefined ? mapChallenge(options.challenge).challenge : undefined);
@@ -183,7 +166,6 @@ class SocraticMethod {
       statement,
       hasCustomAsk: ask !== defaultAsk,
       hasCustomAnswer: answer !== defaultAnswer,
-      maxAttempts: this.maxAttempts,
     });
   }
 
@@ -218,13 +200,9 @@ class SocraticMethod {
       history: this.history,
       llm: this.llm,
       logger: this.logger,
-      maxAttempts: this.maxAttempts,
-      retryOnAll: this.retryOnAll,
       temperature: this.temperature,
       challenge: this.challenge,
-      onProgress: this.onProgress,
-      abortSignal: this.abortSignal,
-      now: this.now,
+      config: this.config,
     });
 
     // Log question as intermediate event
@@ -245,12 +223,8 @@ class SocraticMethod {
       topic: this.statement,
       llm: this.llm,
       logger: this.logger,
-      maxAttempts: this.maxAttempts,
-      retryOnAll: this.retryOnAll,
       temperature: this.temperature,
-      onProgress: this.onProgress,
-      abortSignal: this.abortSignal,
-      now: this.now,
+      config: this.config,
     });
 
     const turn = { question, answer };

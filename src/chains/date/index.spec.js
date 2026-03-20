@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { testObjectMapper } from '../../lib/test-utils/index.js';
 import date, { mapRigor } from './index.js';
 import bool from '../../verblets/bool/index.js';
 
@@ -12,36 +13,18 @@ vi.mock('../../verblets/bool/index.js', () => ({
 
 const llm = (await import('../../lib/llm/index.js')).default;
 
-describe('mapRigor', () => {
-  it('all levels return same shape', () => {
-    const keys = ['low', 'med', 'high'].map((l) => Object.keys(mapRigor(l)).sort());
-    expect(keys[0]).toEqual(keys[1]);
-    expect(keys[1]).toEqual(keys[2]);
-  });
+testObjectMapper('mapRigor', mapRigor, {
+  extra: (mapFn, { it, expect }) => {
+    it('low disables validation', () => {
+      const result = mapFn('low');
+      expect(result.validate).toBe(false);
+    });
 
-  it('undefined returns default', () => {
-    expect(mapRigor(undefined)).toBeDefined();
-    expect(typeof mapRigor(undefined)).toBe('object');
-  });
-
-  it('passes through object for power consumers', () => {
-    const custom = { a: 1, b: 2 };
-    expect(mapRigor(custom)).toBe(custom);
-  });
-
-  it('unknown string falls back to default', () => {
-    expect(mapRigor('zzz')).toEqual(mapRigor(undefined));
-  });
-
-  it('low disables validation', () => {
-    const result = mapRigor('low');
-    expect(result.validate).toBe(false);
-  });
-
-  it('high disables returnBestEffort', () => {
-    const result = mapRigor('high');
-    expect(result.returnBestEffort).toBe(false);
-  });
+    it('high disables returnBestEffort', () => {
+      const result = mapFn('high');
+      expect(result.returnBestEffort).toBe(false);
+    });
+  },
 });
 
 describe('date chain', () => {

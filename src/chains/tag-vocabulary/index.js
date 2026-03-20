@@ -2,7 +2,7 @@ import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import tagVocabularyResultSchema from './tag-vocabulary-result.json';
-import { getOptions, scopeOperation } from '../../lib/context/option.js';
+import { scopeOperation } from '../../lib/context/option.js';
 
 // ===== Pure Helper Functions =====
 
@@ -121,12 +121,6 @@ export function computeTagStatistics(vocabulary, taggedItems, options = {}) {
  */
 async function generateInitialVocabulary(tagSystemSpec, sampleItems, config = {}) {
   config = scopeOperation('tag-vocabulary:generate', config);
-  const { onProgress, abortSignal } = config;
-  const { maxAttempts, retryDelay, retryOnAll } = await getOptions(config, {
-    maxAttempts: 3,
-    retryDelay: 1000,
-    retryOnAll: false,
-  });
 
   const prompt = `Generate a comprehensive tag vocabulary for categorizing items.
 
@@ -159,11 +153,7 @@ The vocabulary should be complete enough to categorize diverse items along the i
       }),
     {
       label: 'tag-vocabulary-initial',
-      maxAttempts,
-      retryDelay,
-      retryOnAll,
-      onProgress,
-      abortSignal,
+      config,
     }
   );
 
@@ -180,12 +170,7 @@ The vocabulary should be complete enough to categorize diverse items along the i
  */
 async function refineVocabulary(vocabulary, taggedItems, tagSystemSpec, config = {}) {
   config = scopeOperation('tag-vocabulary:refine', config);
-  const { topN = 3, bottomN = 3, onProgress, abortSignal } = config;
-  const { maxAttempts, retryDelay, retryOnAll } = await getOptions(config, {
-    maxAttempts: 3,
-    retryDelay: 1000,
-    retryOnAll: false,
-  });
+  const { topN = 3, bottomN = 3 } = config;
 
   // Compute statistics using pure function
   const analysis = computeTagStatistics(vocabulary, taggedItems, { topN, bottomN });
@@ -229,11 +214,7 @@ Return an improved vocabulary that provides better coverage and clearer distinct
       }),
     {
       label: 'tag-vocabulary-refine',
-      maxAttempts,
-      retryDelay,
-      retryOnAll,
-      onProgress,
-      abortSignal,
+      config,
     }
   );
 
@@ -250,10 +231,6 @@ Return an improved vocabulary that provides better coverage and clearer distinct
 export default async function tagVocabulary(tagSystemSpec, items, config = {}) {
   config = scopeOperation('tag-vocabulary', config);
   const { tagger, sampleSize = 50 } = config;
-  const { maxAttempts, retryDelay } = await getOptions(config, {
-    maxAttempts: 3,
-    retryDelay: 1000,
-  });
 
   if (!tagger) {
     throw new Error('A tagger function must be provided in config');
@@ -263,22 +240,14 @@ export default async function tagVocabulary(tagSystemSpec, items, config = {}) {
   const sampleItems = items.slice(0, Math.min(sampleSize, items.length));
 
   // Generate initial vocabulary
-  const initialVocab = await generateInitialVocabulary(tagSystemSpec, sampleItems, {
-    ...config,
-    maxAttempts,
-    retryDelay,
-  });
+  const initialVocab = await generateInitialVocabulary(tagSystemSpec, sampleItems, config);
 
   // Apply tags to all items using the provided tagger
   // The tagger should be a configured tags chain function
   const taggedItems = await tagger(items, initialVocab);
 
   // Refine vocabulary based on usage
-  const finalVocab = await refineVocabulary(initialVocab, taggedItems, tagSystemSpec, {
-    ...config,
-    maxAttempts,
-    retryDelay,
-  });
+  const finalVocab = await refineVocabulary(initialVocab, taggedItems, tagSystemSpec, config);
 
   return finalVocab;
 }

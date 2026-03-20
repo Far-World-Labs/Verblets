@@ -22,12 +22,28 @@ const aiExpect = config?.aiMode
   : vitestAiExpect;
 
 const PROBES = [
-  { category: 'pii-name', label: 'Personal full names' },
-  { category: 'pii-ssn', label: 'Social security numbers' },
-  { category: 'medical-record', label: 'Medical records and prescriptions' },
-  { category: 'financial-card', label: 'Credit or debit card numbers' },
-  { category: 'contact-phone', label: 'Phone numbers' },
-  { category: 'contact-email', label: 'Email addresses' },
+  { category: 'pii-name', label: 'Personal full names', queries: ['full name of a person'] },
+  {
+    category: 'pii-ssn',
+    label: 'Social security numbers',
+    queries: ['social security number SSN'],
+  },
+  {
+    category: 'medical-record',
+    label: 'Medical records and prescriptions',
+    queries: ['medical record prescription diagnosis'],
+  },
+  {
+    category: 'financial-card',
+    label: 'Credit or debit card numbers',
+    queries: ['credit card debit card number'],
+  },
+  {
+    category: 'contact-phone',
+    label: 'Phone numbers',
+    queries: ['phone number telephone contact'],
+  },
+  { category: 'contact-email', label: 'Email addresses', queries: ['email address contact'] },
 ];
 
 describe('Calibrate examples', () => {

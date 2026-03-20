@@ -83,17 +83,8 @@ const calculateCodeWindow = (
  */
 export default async function analyzeTestError(logs, config = {}) {
   config = scopeOperation('test-analyzer', config);
-  const { onProgress, abortSignal } = config;
-  const {
-    analysisDepth: depthConfig,
-    maxAttempts,
-    retryDelay,
-    retryOnAll,
-  } = await getOptions(config, {
+  const { analysisDepth: depthConfig } = await getOptions(config, {
     analysisDepth: withPolicy(mapAnalysisDepth),
-    maxAttempts: 3,
-    retryDelay: 1000,
-    retryOnAll: false,
   });
   const contextSize = await getOption('contextSize', config, depthConfig.context);
   const maxWindow = await getOption('maxWindow', config, depthConfig.maxWindow);
@@ -195,11 +186,7 @@ Discussion:
   try {
     const response = await retry(() => llm(prompt, { ...config, maxTokens }), {
       label: 'test-analyzer',
-      maxAttempts,
-      retryDelay,
-      retryOnAll,
-      onProgress,
-      abortSignal,
+      config,
     });
     return response.trim();
   } catch (error) {

@@ -91,8 +91,6 @@ export function buildSeedGenerationPrompt(categoryName, { context = '', diversit
  * @param {number} [options.count=30] - Number of sample items to generate
  * @param {string} [options.diversity] - 'low' or 'high' (default: balanced behavior)
  * @param {string|Object} [options.llm='fastGoodCheap'] - LLM model to use
- * @param {number} [options.maxAttempts=3] - Maximum retry attempts
- * @param {number} [options.retryDelay=1000] - Delay between retries in milliseconds
  * @returns {Promise<string[]>}
  */
 export default async function categorySamples(categoryName, config = {}) {
@@ -101,21 +99,17 @@ export default async function categorySamples(categoryName, config = {}) {
   }
 
   config = scopeOperation('category-samples', { llm: 'fastGoodCheap', ...config });
-  const { context = '', onProgress, abortSignal, now = new Date() } = config;
-  const { diversity, maxAttempts, retryDelay, retryOnAll, count } = await getOptions(config, {
+  const { context = '', now } = config;
+  const { diversity, count } = await getOptions(config, {
     diversity: withPolicy(mapDiversity, ['diversity', 'count']),
-    maxAttempts: 3,
-    retryDelay: 1000,
-    retryOnAll: true,
   });
   const generateWithRetry = async () => {
     const prompt = buildSeedGenerationPrompt(categoryName, { context, diversity });
 
     const results = await list(prompt, {
       ...config,
-      maxAttempts,
       shouldStop: ({ resultsAll }) => resultsAll.length >= count,
-      onProgress: scopeProgress(onProgress, 'list:sampling'),
+      onProgress: scopeProgress(config.onProgress, 'list:sampling'),
       now,
     });
 
@@ -129,11 +123,7 @@ export default async function categorySamples(categoryName, config = {}) {
 
   return await retry(generateWithRetry, {
     label: 'category-samples',
-    maxAttempts,
-    retryDelay,
-    retryOnAll,
-    onProgress,
-    abortSignal,
+    config,
   });
 }
 

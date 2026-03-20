@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import glossary from './index.js';
 import map from '../map/index.js';
 import sort from '../sort/index.js';
+import { testForwardsConfig } from '../../lib/test-utils/index.js';
 
 vi.mock('../map/index.js', () => ({
   default: vi.fn(() =>
@@ -34,32 +35,25 @@ describe('glossary', () => {
     expect(map).not.toHaveBeenCalled();
   });
 
-  it('forwards batchSize to map call', async () => {
-    await glossary('some text here.', { batchSize: 7 });
-    const mapConfig = map.mock.calls[0][2];
-    expect(mapConfig.batchSize).toBe(7);
+  testForwardsConfig('forwards config to map', {
+    invoke: (config) => glossary('some text here.', config),
+    setupMocks: () => {},
+    target: { mock: map, argIndex: 2 },
+    options: {
+      llm: { value: { model: 'test-model' } },
+      batchSize: { value: 7 },
+      onProgress: { value: vi.fn() },
+    },
   });
 
-  it('forwards llm config to both map and sort', async () => {
-    const llm = { model: 'test-model' };
-    await glossary('some text here.', { llm });
-
-    const mapConfig = map.mock.calls[0][2];
-    expect(mapConfig.llm).toBe(llm);
-
-    const sortConfig = sort.mock.calls[0][2];
-    expect(sortConfig.llm).toBe(llm);
-  });
-
-  it('forwards onProgress to both map and sort', async () => {
-    const onProgress = vi.fn();
-    await glossary('some text here.', { onProgress });
-
-    const mapConfig = map.mock.calls[0][2];
-    expect(mapConfig.onProgress).toBe(onProgress);
-
-    const sortConfig = sort.mock.calls[0][2];
-    expect(sortConfig.onProgress).toBe(onProgress);
+  testForwardsConfig('forwards config to sort', {
+    invoke: (config) => glossary('some text here.', config),
+    setupMocks: () => {},
+    target: { mock: sort, argIndex: 2 },
+    options: {
+      llm: { value: { model: 'test-model' } },
+      onProgress: { value: vi.fn() },
+    },
   });
 
   it('passes sortBy criteria to sort', async () => {

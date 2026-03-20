@@ -116,15 +116,10 @@ async function validateDate(dateValue, expectations, llm, logger, options) {
 
 export default async function date(text, config = {}) {
   config = scopeOperation('date', config);
-  const { logger, onProgress, abortSignal } = config;
-  const { retryDelay, retryOnAll, maxAttempts, validate, returnBestEffort } = await getOptions(
-    config,
-    {
-      rigor: withPolicy(mapRigor, ['validate', 'maxAttempts', 'returnBestEffort']),
-      retryDelay: 1000,
-      retryOnAll: true,
-    }
-  );
+  const { logger } = config;
+  const { maxAttempts, validate, returnBestEffort } = await getOptions(config, {
+    rigor: withPolicy(mapRigor, ['validate', 'maxAttempts', 'returnBestEffort']),
+  });
 
   // Create lifecycle logger with date chain namespace
   const lifecycleLogger = createLifecycleLogger(logger, 'chain:date');
@@ -238,11 +233,9 @@ export default async function date(text, config = {}) {
     },
     {
       label: 'date-chain',
+      config,
       maxAttempts,
-      retryDelay,
-      retryOnAll,
-      onProgress,
-      abortSignal,
+      retryOnAll: true,
     }
   );
 

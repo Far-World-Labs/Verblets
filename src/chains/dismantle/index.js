@@ -82,12 +82,9 @@ const defaultDecompose = async ({
   rootName,
   fixes,
   llm,
-  maxAttempts = 3,
-  retryOnAll = false,
+  config,
   temperature,
   variety,
-  onProgress,
-  abortSignal,
 } = {}) => {
   const focusFormatted = focus ? `: ${focus}` : '';
 
@@ -108,10 +105,7 @@ const defaultDecompose = async ({
       }),
     {
       label: 'dismantle-decompose',
-      maxAttempts,
-      retryOnAll,
-      onProgress,
-      abortSignal,
+      config,
     }
   );
   return result;
@@ -122,12 +116,9 @@ const defaultEnhance = async ({
   rootName,
   fixes,
   llm,
-  maxAttempts = 3,
-  retryOnAll = false,
+  config,
   temperature,
   variety,
-  onProgress,
-  abortSignal,
 } = {}) => {
   const promptCreated = componentOptionsPrompt(name, rootName, fixes);
   const enhanceVariety = variety ? variety * 0.7 : DEFAULT_ENHANCE_PENALTY;
@@ -147,10 +138,7 @@ const defaultEnhance = async ({
       }),
     {
       label: 'dismantle-enhance',
-      maxAttempts,
-      retryOnAll,
-      onProgress,
-      abortSignal,
+      config,
     }
   );
   const options = result;
@@ -172,10 +160,8 @@ const makeNode = async ({
   makeId = uuid,
   enhanceFixes,
   decomposeFixes,
-  maxAttempts = 3,
+  config,
   variety,
-  onProgress,
-  abortSignal,
   now = new Date(),
 } = {}) => {
   const name = nameInitial ?? rootName;
@@ -188,10 +174,8 @@ const makeNode = async ({
       rootName,
       fixes: enhanceFixes,
       llm,
-      maxAttempts,
+      config,
       variety,
-      onProgress,
-      abortSignal,
       now,
     });
     nodeNew.isEnhanced = true;
@@ -204,10 +188,8 @@ const makeNode = async ({
       rootName,
       fixes: decomposeFixes,
       llm,
-      maxAttempts,
+      config,
       variety,
-      onProgress,
-      abortSignal,
       now,
     });
     nodeNew.children = childNames.map((childName) => ({
@@ -237,10 +219,8 @@ const makeSubtree = async ({
   enhanceFixes,
   decomposeFixes,
   makeId,
-  maxAttempts = 3,
-  variety: _variety,
-  onProgress,
-  abortSignal,
+  config,
+  variety,
   now = new Date(),
 } = {}) => {
   let tree = { ...(treeInitial ?? {}) };
@@ -255,9 +235,8 @@ const makeSubtree = async ({
     makeId,
     enhanceFixes,
     decomposeFixes,
-    maxAttempts,
-    onProgress,
-    abortSignal,
+    config,
+    variety,
     now,
   });
 
@@ -283,9 +262,8 @@ const makeSubtree = async ({
       makeId,
       enhanceFixes,
       decomposeFixes,
-      maxAttempts,
-      onProgress,
-      abortSignal,
+      config,
+      variety,
       now,
     });
 
@@ -318,17 +296,15 @@ export const simplifyTree = (node) => {
 class ChainTree {
   static async create(name, options = {}) {
     const config = scopeOperation('dismantle', options);
-    const { maxAttempts, retryOnAll, temperature, variety } = await getOptions(config, {
-      maxAttempts: 3,
-      retryOnAll: false,
+    const { temperature, variety } = await getOptions(config, {
       temperature: undefined,
       variety: withPolicy(mapVariety),
     });
-    return new ChainTree(name, options, { maxAttempts, retryOnAll, temperature, variety });
+    return new ChainTree(name, options, config, { temperature, variety });
   }
 
-  constructor(name, options = {}, resolved = {}) {
-    const { decompose, enhance, llm, makeId, enhanceFixes, decomposeFixes, abortSignal } = options;
+  constructor(name, options = {}, config = {}, resolved = {}) {
+    const { decompose, enhance, llm, makeId, enhanceFixes, decomposeFixes } = options;
     this.rootName = name;
     this.tree = {};
     this.decompose = decompose;
@@ -337,9 +313,7 @@ class ChainTree {
     this.makeId = makeId;
     this.enhanceFixes = enhanceFixes;
     this.decomposeFixes = decomposeFixes;
-    this.abortSignal = abortSignal;
-    this.maxAttempts = resolved.maxAttempts ?? options.maxAttempts ?? 3;
-    this.retryOnAll = resolved.retryOnAll ?? options.retryOnAll ?? false;
+    this.config = config;
     this.temperature = resolved.temperature ?? options.temperature;
     this.variety =
       resolved.variety ?? (options.variety !== undefined ? mapVariety(options.variety) : undefined);

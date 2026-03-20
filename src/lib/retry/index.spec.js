@@ -247,4 +247,83 @@ describe('Retry', () => {
       expect(callCount).toBe(1);
     });
   });
+
+  describe('config parameter', () => {
+    it('resolves maxAttempts from config', async () => {
+      let callCount = 0;
+      const fn = async () => {
+        callCount += 1;
+        const error = new Error('Retriable');
+        error.response = { status: 429 };
+        throw error;
+      };
+
+      const config = { maxAttempts: 2 };
+      const promise = retry(fn, { retryDelay: retryDelayGlobal, config });
+      promise.catch(() => {});
+      await vi.runAllTimersAsync();
+      await expect(promise).rejects.toThrow('Retriable');
+      expect(callCount).toBe(2);
+    });
+
+    it('resolves onProgress and abortSignal from config', async () => {
+      const onProgress = vi.fn();
+      const config = { onProgress };
+
+      const promise = retry(mockFn, {
+        label: 'test-config',
+        retryDelay: retryDelayGlobal,
+        config,
+      });
+      await vi.runAllTimersAsync();
+      await promise;
+
+      expect(onProgress).toHaveBeenCalledWith(
+        expect.objectContaining({ step: 'test-config', event: 'start' })
+      );
+    });
+
+    it('explicit opts override config values', async () => {
+      let callCount = 0;
+      const fn = async () => {
+        callCount += 1;
+        const error = new Error('Retriable');
+        error.response = { status: 429 };
+        throw error;
+      };
+
+      const config = { maxAttempts: 5 };
+      const promise = retry(fn, { maxAttempts: 2, retryDelay: retryDelayGlobal, config });
+      promise.catch(() => {});
+      await vi.runAllTimersAsync();
+      await expect(promise).rejects.toThrow('Retriable');
+      expect(callCount).toBe(2); // explicit maxAttempts=2 wins over config.maxAttempts=5
+    });
+
+    it('resolves maxAttempts from config policy', async () => {
+      let callCount = 0;
+      const fn = async () => {
+        callCount += 1;
+        const error = new Error('Retriable');
+        error.response = { status: 429 };
+        throw error;
+      };
+
+      const config = {
+        policy: { maxAttempts: () => 2 },
+      };
+      const promise = retry(fn, { retryDelay: retryDelayGlobal, config });
+      promise.catch(() => {});
+      await vi.runAllTimersAsync();
+      await expect(promise).rejects.toThrow('Retriable');
+      expect(callCount).toBe(2);
+    });
+
+    it('falls back to defaults when config has no retry values', async () => {
+      const promise = retry(mockFn, { retryDelay: retryDelayGlobal, config: {} });
+      await vi.runAllTimersAsync();
+      const result = await promise;
+      expect(result).toBe('Success');
+    });
+  });
 });

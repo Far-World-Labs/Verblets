@@ -1,4 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { testNumericMapper } from '../../lib/test-utils/index.js';
 import truncate, { mapAggression } from './index.js';
 
 // Mock the score chain to prevent actual API calls
@@ -151,26 +152,4 @@ describe('truncate', () => {
   });
 });
 
-describe('mapAggression', () => {
-  it('produces distinct values across levels', () => {
-    const values = ['low', 'med', 'high'].map(mapAggression);
-    expect(new Set(values).size).toBe(3);
-  });
-
-  it('high < low (more aggressive = fewer sentences = lower number)', () => {
-    expect(mapAggression('high')).toBeLessThan(mapAggression('med'));
-    expect(mapAggression('med')).toBeLessThan(mapAggression('low'));
-  });
-
-  it('undefined returns default', () => {
-    expect(mapAggression(undefined)).toBeDefined();
-  });
-
-  it('passes through raw numbers', () => {
-    expect(mapAggression(0.42)).toBe(0.42);
-  });
-
-  it('unknown string falls back to default', () => {
-    expect(mapAggression('zzz')).toBe(mapAggression(undefined));
-  });
-});
+testNumericMapper('mapAggression', mapAggression, { order: 'desc' });

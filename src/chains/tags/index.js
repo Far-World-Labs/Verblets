@@ -36,11 +36,6 @@ const tagsMapSchema = {
  */
 export async function tagSpec(instructions, config = {}) {
   config = scopeOperation('tags:spec', config);
-  const { maxAttempts, retryDelay, retryOnAll } = await getOptions(config, {
-    maxAttempts: 3,
-    retryDelay: 1000,
-    retryOnAll: false,
-  });
 
   const specSystemPrompt = `You are a tag specification generator. Create clear, actionable tagging criteria.`;
 
@@ -64,11 +59,7 @@ Keep it concise and actionable.`;
       }),
     {
       label: 'tags-spec',
-      maxAttempts,
-      retryDelay,
-      retryOnAll,
-      onProgress: config.onProgress,
-      abortSignal: config.abortSignal,
+      config,
     }
   );
 
@@ -85,10 +76,7 @@ Keep it concise and actionable.`;
  */
 export async function applyTags(item, specification, vocabulary, config = {}) {
   config = scopeOperation('tags:apply', config);
-  const { maxAttempts, retryDelay, retryOnAll, vocabularyMode } = await getOptions(config, {
-    maxAttempts: 3,
-    retryDelay: 1000,
-    retryOnAll: false,
+  const { vocabularyMode } = await getOptions(config, {
     vocabularyMode: 'strict',
   });
 
@@ -126,11 +114,7 @@ Do NOT return tag labels, descriptions, or full tag objects - ONLY the string ID
       }),
     {
       label: 'tags-apply',
-      maxAttempts,
-      retryDelay,
-      retryOnAll,
-      onProgress: config.onProgress,
-      abortSignal: config.abortSignal,
+      config,
     }
   );
 

@@ -7,7 +7,7 @@ import retry from '../../lib/retry/index.js';
 import search from '../../lib/search-js-files/index.js';
 import codeFeaturesPrompt from '../../prompts/code-features.js';
 import makeJSONSchema from '../../prompts/features-json-schema.js';
-import { getOption, getOptions, scopeOperation } from '../../lib/context/option.js';
+import { getOption, scopeOperation } from '../../lib/context/option.js';
 
 const codeFeatureDefinitions = JSON.parse(
   await fs.readFile(
@@ -21,16 +21,8 @@ const visit = async ({
   state: stateInitial,
   features: featuresInitial = 'maintainability',
   llm,
-  maxAttempts: maxAttemptsRaw,
-  retryDelay: retryDelayRaw,
-  retryOnAll: retryOnAllRaw,
-  onProgress,
-  abortSignal,
+  config,
 }) => {
-  const { maxAttempts, retryDelay, retryOnAll } = await getOptions(
-    { maxAttempts: maxAttemptsRaw, retryDelay: retryDelayRaw, retryOnAll: retryOnAllRaw },
-    { maxAttempts: 3, retryDelay: 1000, retryOnAll: false }
-  );
   if (!node.functionName) {
     return stateInitial;
   }
@@ -84,7 +76,7 @@ const visit = async ({
       state.abbreviations = state.abbreviations ?? {};
       state.abbreviations[id] = state.abbreviations[id] ?? state.nodesFound;
     },
-    { label: 'scan-js', maxAttempts, retryDelay, retryOnAll, onProgress, abortSignal }
+    { label: 'scan-js', config }
   );
 
   return state;
@@ -111,11 +103,7 @@ export default async (moduleOptions) => {
         ...options,
         features: config.features,
         llm,
-        maxAttempts: config.maxAttempts,
-        retryDelay: config.retryDelay,
-        retryOnAll: config.retryOnAll,
-        onProgress: config.onProgress,
-        abortSignal: config.abortSignal,
+        config,
       }),
   });
 };

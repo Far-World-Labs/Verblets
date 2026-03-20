@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import embedRewriteQuery from './index.js';
+import { testForwardsConfig } from '../../lib/test-utils/index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(),
@@ -40,22 +41,13 @@ describe('embedRewriteQuery', () => {
     expect(schema.required).toContain('value');
   });
 
-  it('passes llm config through to callLlm', async () => {
-    mockLlm.mockResolvedValueOnce('rewritten');
-
-    await embedRewriteQuery('query', { llm: { modelName: 'test-model', temperature: 0.5 } });
-
-    const callConfig = mockLlm.mock.calls[0][1];
-    expect(callConfig.llm).toEqual({ modelName: 'test-model', temperature: 0.5 });
-  });
-
-  it('passes logger through to LLM call', async () => {
-    const logger = { info: vi.fn() };
-    mockLlm.mockResolvedValueOnce('rewritten');
-
-    await embedRewriteQuery('query', { logger });
-
-    const callConfig = mockLlm.mock.calls[0][1];
-    expect(callConfig.logger).toBe(logger);
+  testForwardsConfig('forwards config to callLlm', {
+    invoke: (config) => embedRewriteQuery('query', config),
+    setupMocks: () => mockLlm.mockResolvedValueOnce('rewritten'),
+    target: { mock: mockLlm, argIndex: 1 },
+    options: {
+      llm: { value: { modelName: 'test-model', temperature: 0.5 } },
+      logger: { value: { info: vi.fn() } },
+    },
   });
 });

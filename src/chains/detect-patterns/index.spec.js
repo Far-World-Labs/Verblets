@@ -1,5 +1,6 @@
 import { expect } from 'chai';
 import { vi, describe, beforeEach, it } from 'vitest';
+import { testObjectMapper } from '../../lib/test-utils/index.js';
 import detectPatterns, { mapThoroughness } from './index.js';
 
 vi.mock('../reduce/index.js', () => ({
@@ -8,27 +9,7 @@ vi.mock('../reduce/index.js', () => ({
 
 import reduce from '../reduce/index.js';
 
-describe('mapThoroughness', () => {
-  it('all levels return same shape', () => {
-    const keys = ['low', 'med', 'high'].map((l) => Object.keys(mapThoroughness(l)).sort());
-    expect(keys[0]).to.deep.equal(keys[1]);
-    expect(keys[1]).to.deep.equal(keys[2]);
-  });
-
-  it('undefined returns default', () => {
-    expect(mapThoroughness(undefined)).to.not.be.undefined;
-    expect(typeof mapThoroughness(undefined)).to.equal('object');
-  });
-
-  it('passes through object for power consumers', () => {
-    const custom = { a: 1, b: 2 };
-    expect(mapThoroughness(custom)).to.equal(custom);
-  });
-
-  it('unknown string falls back to default', () => {
-    expect(mapThoroughness('zzz')).to.deep.equal(mapThoroughness(undefined));
-  });
-});
+testObjectMapper('mapThoroughness', mapThoroughness);
 
 describe('detect-patterns', () => {
   beforeEach(() => {

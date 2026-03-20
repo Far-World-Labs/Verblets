@@ -102,12 +102,6 @@ export const scoreSpec = scaleSpec;
  */
 export async function applyScore(item, specification, config = {}) {
   config = scopeOperation('score:item', config);
-  const { onProgress, abortSignal } = config;
-  const { maxAttempts, retryDelay, retryOnAll } = await getOptions(config, {
-    maxAttempts: 3,
-    retryDelay: 1000,
-    retryOnAll: false,
-  });
 
   const prompt = `Apply the score specification to evaluate this item.
 
@@ -131,11 +125,7 @@ ${asXML(item, { tag: 'item' })}`;
 
   const response = await retry(() => callLlm(prompt, llmConfig), {
     label: 'score item',
-    maxAttempts,
-    retryDelay,
-    retryOnAll,
-    onProgress,
-    abortSignal,
+    config,
   });
 
   // llm auto-unwraps single value property, returns the number directly
@@ -162,18 +152,7 @@ export async function scoreItem(item, instructions, config = {}) {
  * Failed batches leave items as undefined (never throws).
  */
 async function scoreOnce(list, prompt, batchConfig, options) {
-  const {
-    maxParallel,
-    maxAttempts,
-    retryDelay,
-    retryOnAll,
-    errorPosture,
-    onProgress,
-    abortSignal,
-    now,
-    logger,
-    anchoring,
-  } = options;
+  const { maxParallel, errorPosture, onProgress, now, logger, anchoring } = options;
 
   const batches = await createBatches(list, batchConfig);
   const batchesToProcess = batches.filter((b) => !b.skip);
@@ -196,11 +175,7 @@ async function scoreOnce(list, prompt, batchConfig, options) {
     try {
       const scores = await retry(() => listBatch(first.items, prompt, batchConfig), {
         label: 'score:batch',
-        maxAttempts,
-        retryDelay,
-        retryOnAll,
-        onProgress,
-        abortSignal,
+        config: options,
       });
       alignScores(scores, first.items.length).forEach((s, j) => {
         results[first.startIndex + j] = s;
@@ -239,10 +214,7 @@ async function scoreOnce(list, prompt, batchConfig, options) {
         try {
           const scores = await retry(() => listBatch(items, anchoredPrompt, batchConfig), {
             label: 'score:batch',
-            maxAttempts,
-            retryDelay,
-            onProgress,
-            abortSignal,
+            config: options,
           });
           alignScores(scores, items.length).forEach((s, j) => {
             results[startIndex + j] = s;
@@ -292,32 +264,16 @@ async function scoreOnce(list, prompt, batchConfig, options) {
  */
 export async function mapScore(list, instructions, config = {}) {
   config = scopeOperation('score', config);
-  const {
-    spec: providedSpec,
-    onProgress: _onProgress,
-    now = new Date(),
-    abortSignal,
-    logger,
-  } = config;
-  const {
-    maxParallel,
-    maxAttempts,
-    retryDelay,
-    temperature,
-    retryOnAll,
-    errorPosture,
-    progressMode,
-    anchoring,
-  } = await getOptions(config, {
-    maxParallel: 3,
-    maxAttempts: 3,
-    retryDelay: 1000,
-    temperature: 0,
-    retryOnAll: false,
-    errorPosture: 'resilient',
-    progressMode: 'detailed',
-    anchoring: withPolicy(mapAnchoring),
-  });
+  const { spec: providedSpec, onProgress: _onProgress, now } = config;
+  const { maxParallel, maxAttempts, temperature, errorPosture, progressMode, anchoring } =
+    await getOptions(config, {
+      maxParallel: 3,
+      maxAttempts: 3,
+      temperature: 0,
+      errorPosture: 'resilient',
+      progressMode: 'detailed',
+      anchoring: withPolicy(mapAnchoring),
+    });
   const onProgress = filterProgress(_onProgress, progressMode);
 
   emitPhaseProgress(onProgress, 'score', 'generating-specification');
@@ -332,18 +288,14 @@ export async function mapScore(list, instructions, config = {}) {
     ...config,
     responseFormat: scoreBatchResponseFormat,
     temperature,
-    logger,
   };
   const passOptions = {
+    ...config,
     maxParallel,
     maxAttempts,
-    retryDelay,
-    retryOnAll,
     errorPosture,
     onProgress,
-    abortSignal,
     now,
-    logger,
     anchoring,
   };
 

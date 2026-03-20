@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import embedStepBack, { mapAbstraction } from './index.js';
+import {
+  testStringMapper,
+  testForwardsConfig,
+  testPromptShapingOption,
+} from '../../lib/test-utils/index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(),
@@ -11,27 +16,7 @@ beforeEach(() => {
   mockLlm.mockReset();
 });
 
-describe('mapAbstraction', () => {
-  it('returns undefined when undefined', () => {
-    expect(mapAbstraction(undefined)).toBeUndefined();
-  });
-
-  it('maps low to close-generalization guidance', () => {
-    const guidance = mapAbstraction('low');
-    expect(guidance).toContain('one level more general');
-    expect(guidance).toContain('same domain');
-  });
-
-  it('maps high to foundational-principles guidance', () => {
-    const guidance = mapAbstraction('high');
-    expect(guidance).toContain('foundational principles');
-    expect(guidance).toContain('first principles');
-  });
-
-  it('returns undefined on unknown string', () => {
-    expect(mapAbstraction('cosmic')).toBeUndefined();
-  });
-});
+testStringMapper('mapAbstraction', mapAbstraction);
 
 describe('embedStepBack', () => {
   it('calls LLM with query and count in prompt and returns broader questions', async () => {
@@ -76,52 +61,20 @@ describe('embedStepBack', () => {
     expect(prompt).toContain('generate 5 broader');
   });
 
-  it('passes llm config through to callLlm', async () => {
-    mockLlm.mockResolvedValueOnce([]);
-
-    await embedStepBack('query', { llm: { modelName: 'test-model' } });
-
-    const callConfig = mockLlm.mock.calls[0][1];
-    expect(callConfig.llm).toEqual({ modelName: 'test-model' });
+  testForwardsConfig('forwards config to callLlm', {
+    invoke: (config) => embedStepBack('query', config),
+    setupMocks: () => mockLlm.mockResolvedValueOnce([]),
+    target: { mock: mockLlm, argIndex: 1 },
+    options: {
+      llm: { value: { modelName: 'test-model' } },
+      logger: { value: { info: vi.fn() } },
+    },
   });
 
-  it('passes logger through to LLM call', async () => {
-    const logger = { info: vi.fn() };
-    mockLlm.mockResolvedValueOnce([]);
-
-    await embedStepBack('query', { logger });
-
-    const callConfig = mockLlm.mock.calls[0][1];
-    expect(callConfig.logger).toBe(logger);
-  });
-
-  it('injects low abstraction guidance into prompt', async () => {
-    mockLlm.mockResolvedValueOnce([]);
-
-    await embedStepBack('query', { abstraction: 'low' });
-
-    const prompt = mockLlm.mock.calls.at(-1)[0];
-    expect(prompt).toContain('one level more general');
-    expect(prompt).toContain('same domain');
-  });
-
-  it('injects high abstraction guidance into prompt', async () => {
-    mockLlm.mockResolvedValueOnce([]);
-
-    await embedStepBack('query', { abstraction: 'high' });
-
-    const prompt = mockLlm.mock.calls.at(-1)[0];
-    expect(prompt).toContain('foundational principles');
-    expect(prompt).toContain('first principles');
-  });
-
-  it('omits abstraction guidance when not specified', async () => {
-    mockLlm.mockResolvedValueOnce([]);
-
-    await embedStepBack('query');
-
-    const prompt = mockLlm.mock.calls.at(-1)[0];
-    expect(prompt).not.toContain('one level more general');
-    expect(prompt).not.toContain('foundational principles');
+  testPromptShapingOption('abstraction', {
+    invoke: (config) => embedStepBack('query', config),
+    setupMocks: () => mockLlm.mockResolvedValueOnce([]),
+    llmMock: mockLlm,
+    markers: { low: 'one level more general', high: 'foundational principles' },
   });
 });

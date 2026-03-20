@@ -71,22 +71,10 @@ const sanitizeList = (list) => {
 
 const sort = async (list, criteria, config = {}) => {
   config = scopeOperation('sort', config);
-  const { onProgress: _onProgress = undefined, now = new Date() } = config;
-  const {
-    batchSize,
-    maxAttempts,
-    retryDelay,
-    retryOnAll,
-    progressMode,
-    extremeK,
-    iterations,
-    selectBottom,
-  } = await getOptions(config, {
+  const { onProgress: _onProgress = undefined, now } = config;
+  const { batchSize, progressMode, extremeK, iterations, selectBottom } = await getOptions(config, {
     effort: withPolicy(mapEffort, ['extremeK', 'iterations', 'selectBottom']),
     batchSize: defaultSortBatchSize,
-    maxAttempts: 3,
-    retryDelay: 1000,
-    retryOnAll: false,
     progressMode: 'detailed',
   });
   const onProgress = filterProgress(_onProgress, progressMode);
@@ -114,11 +102,8 @@ const sort = async (list, criteria, config = {}) => {
 
     const result = await retry(() => callLlm(prompt, { ...config, ...createModelOptions() }), {
       label: 'sort-batch',
-      maxAttempts,
-      retryDelay,
-      retryOnAll,
+      config,
       onProgress,
-      abortSignal: config.abortSignal,
     });
 
     const resultArray = result?.items || result;

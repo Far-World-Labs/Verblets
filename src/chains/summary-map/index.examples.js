@@ -74,7 +74,19 @@ describe('Summary map', () => {
       const entries = Array.from(await map.entries());
       const result = entries.reduce((acc, [k, v]) => pave(acc, k, v), {});
 
-      expect(result).toBe(result);
+      // Verify structure matches the keys we set
+      expect(result).toHaveProperty('a');
+      expect(result).toHaveProperty('e');
+      expect(result.a).toHaveProperty('d');
+      expect(result.a).toHaveProperty('b');
+
+      // Code summary should preserve function signatures or key identifiers
+      await aiExpect(result.a.d).toSatisfy(
+        'contains references to functions related to key generation, XOR, or encoding/decoding'
+      );
+
+      // Legal text summary should be shorter than original
+      expect(result.a.b.c.length).toBeLessThan(legalText.length);
     },
     extendedTestTimeout
   );

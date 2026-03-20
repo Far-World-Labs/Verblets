@@ -16,6 +16,7 @@ const responseFormat = {
         },
       },
       required: ['items'],
+      additionalProperties: false,
     },
   },
 };
@@ -96,26 +97,16 @@ export const mapCoverage = (value) => {
 const veiledVariants = async (inputConfig = {}) => {
   const { prompt } = inputConfig;
   const config = scopeOperation('veiled-variants', { llm: { sensitive: true }, ...inputConfig });
-  const { maxAttempts, retryDelay, retryOnAll, strategies, variantCount } = await getOptions(
-    config,
-    {
-      maxAttempts: 3,
-      retryDelay: 1000,
-      retryOnAll: false,
-      coverage: withPolicy(mapCoverage, ['strategies', 'variantCount']),
-    }
-  );
+  const { strategies, variantCount } = await getOptions(config, {
+    coverage: withPolicy(mapCoverage, ['strategies', 'variantCount']),
+  });
   const prompts = strategies.map((name) => STRATEGY_FNS[name](prompt, variantCount));
 
   const results = await Promise.all(
     prompts.map((p) =>
       retry(() => callLlm(p, { ...config, response_format: responseFormat }), {
         label: 'veiled-variants',
-        maxAttempts,
-        retryDelay,
-        retryOnAll,
-        onProgress: config.onProgress,
-        abortSignal: config.abortSignal,
+        config,
       })
     )
   );

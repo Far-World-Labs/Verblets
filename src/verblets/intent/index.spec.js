@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import intent, { mapTolerance } from './index.js';
+import { testStringMapper, testPromptShapingOption } from '../../lib/test-utils/index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn().mockImplementation((text) => {
@@ -36,27 +37,9 @@ const examples = [
   },
 ];
 
-describe('mapTolerance', () => {
-  it('returns undefined when undefined', () => {
-    expect(mapTolerance(undefined)).toBeUndefined();
-  });
+testStringMapper('mapTolerance', mapTolerance);
 
-  it('maps low to strict matching guidance', () => {
-    const guidance = mapTolerance('low');
-    expect(guidance).toContain('strict');
-    expect(guidance).toContain('null');
-  });
-
-  it('maps high to lenient matching guidance', () => {
-    const guidance = mapTolerance('high');
-    expect(guidance).toContain('lenient');
-    expect(guidance).toContain('Infer reasonable parameter values');
-  });
-
-  it('returns undefined on unknown string', () => {
-    expect(mapTolerance('extreme')).toBeUndefined();
-  });
-});
+const operations = [{ name: 'search', description: 'Search for items' }];
 
 describe('Intent verblet', () => {
   examples.forEach((example) => {
@@ -68,30 +51,10 @@ describe('Intent verblet', () => {
     });
   });
 
-  it('injects low tolerance guidance into prompt', async () => {
-    const operations = [{ name: 'search', description: 'Search for items' }];
-    await intent('find stuff', operations, { tolerance: 'low' });
-
-    const prompt = mockLlm.mock.calls.at(-1)[0];
-    expect(prompt).toContain('strict');
-    expect(prompt).toContain('null');
-  });
-
-  it('injects high tolerance guidance into prompt', async () => {
-    const operations = [{ name: 'search', description: 'Search for items' }];
-    await intent('find stuff', operations, { tolerance: 'high' });
-
-    const prompt = mockLlm.mock.calls.at(-1)[0];
-    expect(prompt).toContain('lenient');
-    expect(prompt).toContain('Infer reasonable parameter values');
-  });
-
-  it('omits tolerance guidance when not specified', async () => {
-    const operations = [{ name: 'search', description: 'Search for items' }];
-    await intent('find stuff', operations);
-
-    const prompt = mockLlm.mock.calls.at(-1)[0];
-    expect(prompt).not.toContain('strict about matching');
-    expect(prompt).not.toContain('lenient about matching');
+  testPromptShapingOption('tolerance', {
+    invoke: (config) => intent('find stuff', operations, config),
+    setupMocks: () => mockLlm.mockClear(),
+    llmMock: mockLlm,
+    markers: { low: 'strict', high: 'lenient' },
   });
 });

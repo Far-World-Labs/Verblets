@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { testObjectMapper } from '../../lib/test-utils/index.js';
 import join, { mapFidelity } from './index.js';
 
 // Mock the llm function to avoid actual API calls
@@ -28,27 +29,7 @@ beforeEach(() => {
   });
 });
 
-describe('mapFidelity', () => {
-  it('all levels return same shape', () => {
-    const keys = ['low', 'med', 'high'].map((l) => Object.keys(mapFidelity(l)).sort());
-    expect(keys[0]).toEqual(keys[1]);
-    expect(keys[1]).toEqual(keys[2]);
-  });
-
-  it('undefined returns default', () => {
-    expect(mapFidelity(undefined)).toBeDefined();
-    expect(typeof mapFidelity(undefined)).toBe('object');
-  });
-
-  it('passes through object for power consumers', () => {
-    const custom = { a: 1, b: 2 };
-    expect(mapFidelity(custom)).toBe(custom);
-  });
-
-  it('unknown string falls back to default', () => {
-    expect(mapFidelity('zzz')).toEqual(mapFidelity(undefined));
-  });
-});
+testObjectMapper('mapFidelity', mapFidelity);
 
 describe('join chain', () => {
   it('joins fragments with AI-generated transitions', async () => {

@@ -3,15 +3,10 @@ import llm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { testResultJsonSchema } from './schemas.js';
-import { getOptions, scopeOperation } from '../../lib/context/option.js';
+import { scopeOperation } from '../../lib/context/option.js';
 
 export default async function test(path, instructions, config = {}) {
   config = scopeOperation('test', config);
-  const { maxAttempts, retryDelay, retryOnAll } = await getOptions(config, {
-    maxAttempts: 3,
-    retryDelay: 1000,
-    retryOnAll: false,
-  });
   try {
     const code = await fs.readFile(path, 'utf-8');
 
@@ -41,11 +36,7 @@ GUIDELINES:
         }),
       {
         label: 'test chain',
-        maxAttempts,
-        retryDelay,
-        retryOnAll,
-        onProgress: config.onProgress,
-        abortSignal: config.abortSignal,
+        config,
       }
     );
 

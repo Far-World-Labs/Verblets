@@ -72,17 +72,10 @@ const generateQuestions = async function* generateQuestionsGenerator(text, confi
   let textSelected = text;
 
   const { shouldSkip = shouldSkipNull, shouldStop = shouldStopNull } = config;
-  const {
-    exploration: searchBreadth,
-    maxAttempts,
-    retryDelay,
-    retryOnAll,
-  } = await getOptions(config, {
+  const { exploration: searchBreadth } = await getOptions(config, {
     exploration: withPolicy(mapExploration),
-    maxAttempts: 3,
-    retryDelay: 1000,
-    retryOnAll: false,
   });
+  const temperature = await getOption('temperature', config, 1);
 
   let attempts = 0;
   while (!isDone) {
@@ -108,11 +101,7 @@ const generateQuestions = async function* generateQuestionsGenerator(text, confi
           }),
         {
           label: 'questions-pick-interesting',
-          maxAttempts,
-          retryDelay,
-          retryOnAll,
-          onProgress: config.onProgress,
-          abortSignal: config.abortSignal,
+          config,
         }
       );
       textSelected = selectedResult.question;
@@ -122,7 +111,6 @@ const generateQuestions = async function* generateQuestionsGenerator(text, confi
     const promptCreated = formatQuestionsPrompt(textSelected, {
       existing: resultsAll,
     });
-    const temperature = await getOption('temperature', config, 1);
     const llmConfig = {
       ...config,
       temperature,
@@ -138,11 +126,7 @@ const generateQuestions = async function* generateQuestionsGenerator(text, confi
     // eslint-disable-next-line no-await-in-loop
     const results = await retry(() => callLlm(promptCreated, llmConfig), {
       label: 'questions-generate',
-      maxAttempts,
-      retryDelay,
-      retryOnAll,
-      onProgress: config.onProgress,
-      abortSignal: config.abortSignal,
+      config,
     });
     const resultsNew = getRandomSubset(results, searchBreadth);
     if (searchBreadth < 0.5) {
