@@ -7,4 +7,5 @@ export {
   testScopesProgress,
   testLifecycleLogger,
   testPromptShapingOption,
+  testResponseFormat,
 } from './config-forwarding.js';

@@ -1,3 +1,19 @@
+// ==========================================
+// Config Test Utilities
+// ==========================================
+//
+// Shared infrastructure behavior (config forwarding, response_format,
+// progress scoping, lifecycle logging) is tested centrally in
+// config-integration.spec.js against representative chains.
+//
+// These utilities are available for chains that need chain-SPECIFIC
+// config tests (e.g., testing that a chain-specific option like
+// 'strictness' produces different prompt text).
+//
+// DO NOT add generic config forwarding tests to per-chain spec files.
+// Test chain-specific behavior only.
+// ==========================================
+
 import { describe, expect, it, vi } from 'vitest';
 
 /**
@@ -121,5 +137,33 @@ export function testPromptShapingOption(
       expect(prompt).not.toContain(markers.low);
       expect(prompt).not.toContain(markers.high);
     });
+  });
+}
+
+/**
+ * Test that a chain passes a structured response_format to the LLM mock.
+ *
+ * @param {string} label - Test label
+ * @param {Object} setup
+ * @param {Function} setup.invoke - (config) => chain(args, config)
+ * @param {Function} setup.setupMocks - Called before the test
+ * @param {Object} setup.llmMock - The mocked callLlm/llm function
+ * @param {string} setup.schemaName - Expected json_schema.name
+ * @param {number} [setup.callIndex] - Which mock call to check (default 0)
+ */
+export function testResponseFormat(
+  label,
+  { invoke, setupMocks, llmMock, schemaName, callIndex = 0 }
+) {
+  it(`passes ${schemaName} response format ${label}`, async () => {
+    setupMocks();
+    await invoke({});
+    const options = llmMock.mock.calls[callIndex][1];
+    expect(options.response_format).toEqual(
+      expect.objectContaining({
+        type: 'json_schema',
+        json_schema: expect.objectContaining({ name: schemaName }),
+      })
+    );
   });
 }
