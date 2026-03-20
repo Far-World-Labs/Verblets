@@ -81,9 +81,9 @@ const toUTCDate = (date) => {
 };
 
 // Extract date with retry support
-async function extractDate(prompt, llm, logger, config) {
+async function extractDate(prompt, config) {
   const response = await callLlm(prompt, {
-    llm,
+    ...config,
     response_format: {
       type: 'json_schema',
       json_schema: {
@@ -91,8 +91,6 @@ async function extractDate(prompt, llm, logger, config) {
         schema: dateValueSchema,
       },
     },
-    logger,
-    ...config,
   });
 
   if (response === 'undefined') return undefined;
@@ -100,12 +98,13 @@ async function extractDate(prompt, llm, logger, config) {
 }
 
 // Validate date against expectations
-async function validateDate(dateValue, expectations, llm, logger, config) {
+async function validateDate(dateValue, expectations, config) {
+  const { logger } = config;
   for (const check of expectations) {
     const validationPrompt = buildValidationPrompt(dateValue, check);
     logger?.logEvent('validation-prompt', extractPromptAnalysis(validationPrompt));
 
-    const passed = await bool(validationPrompt, { llm, logger, ...config });
+    const passed = await bool(validationPrompt, config);
 
     if (!passed) {
       return { passed: false, failedCheck: check };
@@ -142,7 +141,7 @@ export default async function date(text, config = {}) {
 
   // Low rigor: extraction only — skip expectations and validation
   if (!validate) {
-    const firstDate = await extractDate(datePrompt, config.llm, lifecycleLogger, config);
+    const firstDate = await extractDate(datePrompt, { ...config, logger: lifecycleLogger });
 
     lifecycleLogger.logResult(
       firstDate,
@@ -164,7 +163,7 @@ export default async function date(text, config = {}) {
       },
       logger: lifecycleLogger,
     }),
-    extractDate(datePrompt, config.llm, lifecycleLogger, config),
+    extractDate(datePrompt, { ...config, logger: lifecycleLogger }),
   ]);
 
   const expectations =
@@ -193,13 +192,10 @@ export default async function date(text, config = {}) {
       });
 
       // Validate current date
-      const validation = await validateDate(
-        currentDate,
-        expectations,
-        config.llm,
-        lifecycleLogger,
-        config
-      );
+      const validation = await validateDate(currentDate, expectations, {
+        ...config,
+        logger: lifecycleLogger,
+      });
 
       if (validation.passed) {
         return currentDate;
@@ -218,7 +214,7 @@ export default async function date(text, config = {}) {
       const retryPrompt = buildDatePrompt(currentText);
       lifecycleLogger.logEvent('retry-prompt', extractPromptAnalysis(retryPrompt));
 
-      const newDate = await extractDate(retryPrompt, config.llm, lifecycleLogger, config);
+      const newDate = await extractDate(retryPrompt, { ...config, logger: lifecycleLogger });
 
       if (!newDate) {
         // High rigor: return undefined on exhaustion instead of best-effort

@@ -7,7 +7,7 @@ import retry from '../../lib/retry/index.js';
 import search from '../../lib/search-js-files/index.js';
 import codeFeaturesPrompt from '../../prompts/code-features.js';
 import makeJSONSchema from '../../prompts/features-json-schema.js';
-import { getOption, scopeOperation } from '../../lib/context/option.js';
+import { scopeOperation } from '../../lib/context/option.js';
 
 const codeFeatureDefinitions = JSON.parse(
   await fs.readFile(
@@ -20,7 +20,6 @@ const visit = async ({
   node,
   state: stateInitial,
   features: featuresInitial = 'maintainability',
-  llm,
   config,
 }) => {
   if (!node.functionName) {
@@ -31,9 +30,9 @@ const visit = async ({
     codeFeatureDefinitions.map((d) => d.criteria),
     `best criteria for looking at "${featuresInitial}" within code`,
     {
+      ...config,
       batchSize: 4,
       extremeK: 4,
-      llm,
     }
   );
   const sortCriteria = sortResults.slice(0, 5);
@@ -59,7 +58,7 @@ const visit = async ({
   await retry(
     async () => {
       const resultParsed = await callLlm(visitPrompt, {
-        llm,
+        ...config,
         response_format: {
           type: 'json_schema',
           json_schema: {
@@ -85,7 +84,6 @@ const visit = async ({
 // node: { filename: './src/index.js' },
 export default async (moduleOptions) => {
   const config = scopeOperation('scan-js', moduleOptions);
-  const llm = await getOption('llm', config, undefined);
   const state = await search({
     ...config,
   });
@@ -102,7 +100,6 @@ export default async (moduleOptions) => {
       visit({
         ...options,
         features: config.features,
-        llm,
         config,
       }),
   });
