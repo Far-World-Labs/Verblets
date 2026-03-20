@@ -85,14 +85,14 @@ function getImports(filePath) {
   }
 }
 
-async function findModuleUnderTest(filePath, lineNumber) {
+async function findModuleUnderTest(filePath, lineNumber, config = {}) {
   const context = getCodeContext(filePath, lineNumber);
   const imports = getImports(filePath);
   const prompt = `Given the following code snippet and import list, identify the import path of the function or module under test.\nImports:\n${imports}\n\nSnippet:\n${
     context?.lines.join('\n') || ''
   }\n\nRespond with the import path or 'unknown'.`;
   try {
-    return (await llm(prompt, { modelName: 'fastGoodCheapCoding' })).trim();
+    return (await llm(prompt, { ...config, modelName: 'fastGoodCheapCoding' })).trim();
   } catch {
     return 'unknown';
   }
@@ -106,7 +106,8 @@ async function generateAdviceWithIntrospection(
   expected,
   constraint,
   codeContext,
-  callerInfo
+  callerInfo,
+  config = {}
 ) {
   const contextInfo = codeContext
     ? `\nCode context around assertion (line ${codeContext.assertionLine}):\n${wrapVariable(
@@ -151,11 +152,11 @@ CONTEXT: [Additional context about the problem and potential root causes]
 Keep your response concise but actionable. Focus on practical solutions.`;
 
   try {
-    return await llm(prompt, { modelName: 'fastGoodCheapCoding' });
+    return await llm(prompt, { ...config, modelName: 'fastGoodCheapCoding' });
   } catch {
     // Fallback to shared generateAdvice if introspection fails
     const { generateAdvice } = await import('./shared.js');
-    return await generateAdvice(actual, expected, constraint, codeContext, callerInfo);
+    return await generateAdvice(actual, expected, constraint, codeContext, callerInfo, config);
   }
 }
 
@@ -185,7 +186,7 @@ export async function expect(actual, expected, constraint, config = {}) {
   // Try to find module under test if codeContext is available and introspection is enabled
   if (codeContext && introspection) {
     try {
-      const moduleUnderTest = await findModuleUnderTest(callerInfo.file, callerInfo.line);
+      const moduleUnderTest = await findModuleUnderTest(callerInfo.file, callerInfo.line, config);
       if (moduleUnderTest !== 'unknown') {
         callerInfo.module = moduleUnderTest;
       }
@@ -200,7 +201,13 @@ export async function expect(actual, expected, constraint, config = {}) {
   }
 
   // Run core expect with context
-  const passes = await expectCore(actual, expected, constraint, { callerInfo, codeContext });
+  const passes = await expectCore(
+    actual,
+    expected,
+    constraint,
+    { callerInfo, codeContext },
+    config
+  );
 
   // Generate advice if needed
   let advice = null;
@@ -211,11 +218,12 @@ export async function expect(actual, expected, constraint, config = {}) {
         expected,
         constraint,
         codeContext,
-        callerInfo
+        callerInfo,
+        config
       );
     } else {
       const { generateAdvice } = await import('./shared.js');
-      advice = await generateAdvice(actual, expected, constraint, codeContext, callerInfo);
+      advice = await generateAdvice(actual, expected, constraint, codeContext, callerInfo, config);
     }
   }
 
