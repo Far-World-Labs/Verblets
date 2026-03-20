@@ -105,13 +105,13 @@ async function extractFromChunk(chunk, options = {}) {
 /**
  * Extract timeline events from text using multi-chunk processing
  * @param {string} text - The text to extract timeline from
- * @param {Object} options - Configuration options
- * @param {number} [options.chunkSize=2000] - Size of text chunks
- * @param {number} [options.maxParallel=3] - Maximum parallel processing
- * @param {Function} [options.onProgress] - Progress callback
- * @param {Object} [options.llm] - LLM configuration
- * @param {boolean} [options.enrichWithKnowledge=false] - Enrich dates with LLM knowledge
- * @param {number} [options.batchSize] - Batch size for reduce/map operations when enriching (auto-calculated if not provided)
+ * @param {Object} config - Configuration options
+ * @param {number} [config.chunkSize=2000] - Size of text chunks
+ * @param {number} [config.maxParallel=3] - Maximum parallel processing
+ * @param {Function} [config.onProgress] - Progress callback
+ * @param {Object} [config.llm] - LLM configuration
+ * @param {boolean} [config.enrichWithKnowledge=false] - Enrich dates with LLM knowledge
+ * @param {number} [config.batchSize] - Batch size for reduce/map operations when enriching (auto-calculated if not provided)
  * @returns {Promise<Array>} Array of timeline events with {timestamp, name}
  */
 export default async function timeline(text, config = {}) {

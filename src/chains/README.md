@@ -5,6 +5,7 @@ Chains are complex, multi-step workflows that combine multiple verblets and util
 ## What are Chains?
 
 Chains orchestrate multiple operations to:
+
 - Process data through multiple stages
 - Handle complex business logic
 - Manage state and context across operations
@@ -28,16 +29,16 @@ All chains support standard model configuration options:
 ```javascript
 const result = await chainName(input, instructions, {
   llm: {
-    modelName: 'gpt-4',           // Specific model selection
-    temperature: 0.7,             // Response randomness (0.0-1.0)
-    maxTokens: 1000,              // Maximum response length
-    topP: 0.9,                    // Nucleus sampling parameter
-    frequencyPenalty: 0.0,        // Reduce repetition
-    presencePenalty: 0.0          // Encourage topic diversity
+    modelName: 'gpt-4', // Specific model selection
+    temperature: 0.7, // Response randomness (0.0-1.0)
+    maxTokens: 1000, // Maximum response length
+    topP: 0.9, // Nucleus sampling parameter
+    frequencyPenalty: 0.0, // Reduce repetition
+    presencePenalty: 0.0, // Encourage topic diversity
   },
   // Chain-specific configuration options vary by chain
-  maxAttempts: 3,                 // Common retry configuration
-  timeout: 30000                  // Common timeout configuration
+  maxAttempts: 3, // Common retry configuration
+  timeout: 30000, // Common timeout configuration
 });
 ```
 
@@ -45,19 +46,19 @@ const result = await chainName(input, instructions, {
 
 ```javascript
 // Privacy-first for sensitive data
-{ llm: { modelName: 'privacy' } }
+{ llm: { sensitive: true } }
 
 // Optimized for bulk operations
-{ llm: { negotiate: { fast: true, cheap: true } } }
+{ llm: { fast: true, cheap: true } }
 
 // Quality-critical operations
-{ llm: { negotiate: { good: true } } }
+{ llm: { good: true } }
 
 // Complex reasoning tasks
-{ llm: { negotiate: { reasoning: true } } }
+{ llm: { reasoning: true } }
 
 // Default balanced approach
-{ llm: { modelName: 'fastGoodCheap' } }
+{ llm: 'fastGoodCheap' }
 ```
 
 Available chains:
@@ -111,4 +112,3 @@ Available chains:
 - [veiled-variants](./veiled-variants)
 
 Chains are free to use any utilities from [`../lib`](../lib/README.md) and often rely on one or more verblets from [`../verblets`](../verblets/README.md).
-

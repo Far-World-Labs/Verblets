@@ -16,7 +16,7 @@ const popReferenceResponseFormat = {
  * Find pop culture references that metaphorically match given sentences
  * @param {string} sentence - The sentence to metaphorically compare
  * @param {string} description - A descriptor guiding tone, intent, or interpretive nuance
- * @param {Object} options - Configuration options
+ * @param {Object} config - Configuration options
  * @returns {Promise<Array>} Array of PopCultureReference objects
  */
 export default async function popReference(sentence, description, config = {}) {

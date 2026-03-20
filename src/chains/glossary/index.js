@@ -14,12 +14,12 @@ const GLOSSARY_RESPONSE_FORMAT = {
  * Extract uncommon or technical terms from text that would benefit from definition.
  *
  * @param {string} text - source text
- * @param {object} [options]
- * @param {number} [options.maxTerms=10] - maximum terms to return
- * @param {number} [options.sentencesPerBatch=3] - number of sentences per batch
- * @param {number} [options.overlap=1] - number of overlapping sentences between batches
- * @param {number} [options.batchSize=1] - items per LLM batch
- * @param {string} [options.sortBy='importance for understanding the content'] - sorting criteria
+ * @param {object} [config]
+ * @param {number} [config.maxTerms=10] - maximum terms to return
+ * @param {number} [config.sentencesPerBatch=3] - number of sentences per batch
+ * @param {number} [config.overlap=1] - number of overlapping sentences between batches
+ * @param {number} [config.batchSize=1] - items per LLM batch
+ * @param {string} [config.sortBy='importance for understanding the content'] - sorting criteria
  * @returns {Promise<string[]>} list of important terms, sorted by relevance
  */
 export default async function glossary(text, config = {}) {

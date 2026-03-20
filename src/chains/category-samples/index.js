@@ -86,11 +86,11 @@ export function buildSeedGenerationPrompt(categoryName, { context = '', diversit
  * Creates diverse, representative examples across the typicality spectrum.
  *
  * @param {string} categoryName - Name of the category
- * @param {Object} [options={}] - Configuration options
- * @param {string} [options.context=''] - Context for sample generation
- * @param {number} [options.count=30] - Number of sample items to generate
- * @param {string} [options.diversity] - 'low' or 'high' (default: balanced behavior)
- * @param {string|Object} [options.llm='fastGoodCheap'] - LLM model to use
+ * @param {Object} [config={}] - Configuration options
+ * @param {string} [config.context=''] - Context for sample generation
+ * @param {number} [config.count=30] - Number of sample items to generate
+ * @param {string} [config.diversity] - 'low' or 'high' (default: balanced behavior)
+ * @param {string|Object} [config.llm='fastGoodCheap'] - LLM model to use
  * @returns {Promise<string[]>}
  */
 export default async function categorySamples(categoryName, config = {}) {

@@ -79,7 +79,7 @@ const calculateCodeWindow = (
 /**
  * Analyzes test failures using AI
  * @param {Array} logs - Complete test execution logs from test-start to test-complete
- * @param {Object} options - Options including maxAttempts
+ * @param {Object} config - Options including maxAttempts
  */
 export default async function analyzeTestError(logs, config = {}) {
   config = scopeOperation('test-analyzer', config);

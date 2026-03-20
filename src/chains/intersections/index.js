@@ -87,13 +87,13 @@ const processCombo = async (combo, instructions, config = {}) => {
  * Find intersections for all combinations of items with consistent results
  *
  * @param {Array} items - Array of items to find intersections between
- * @param {Object} options - Configuration options
- * @param {string} options.instructions - Custom instructions for intersection finding
- * @param {number} options.minSize - Minimum combination size (default: 2)
- * @param {number} options.maxSize - Maximum combination size (default: items.length)
- * @param {number} options.batchSize - Number of combinations to process in parallel (default: 10)
- * @param {string|Object} options.llm - LLM model to use (default: 'fastGoodCheap')
- * @param {boolean} options.useSchemaValidation - Whether to validate results with JSON schema (default: false)
+ * @param {Object} config - Configuration options
+ * @param {string} config.instructions - Custom instructions for intersection finding
+ * @param {number} config.minSize - Minimum combination size (default: 2)
+ * @param {number} config.maxSize - Maximum combination size (default: items.length)
+ * @param {number} config.batchSize - Number of combinations to process in parallel (default: 10)
+ * @param {string|Object} config.llm - LLM model to use (default: 'fastGoodCheap')
+ * @param {boolean} config.useSchemaValidation - Whether to validate results with JSON schema (default: false)
  * @returns {Object} Results with combinations, elements, and intersections
  */
 export default async function intersections(items, config = {}) {
