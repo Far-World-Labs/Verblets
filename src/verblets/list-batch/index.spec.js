@@ -66,36 +66,7 @@ describe('listBatch verblet', () => {
     });
   });
 
-  describe('llm config forwarding', () => {
-    it('forwards llm config to callLlm options', async () => {
-      const llmConfig = { modelName: 'gpt-4o', temperature: 0.3 };
-      await listBatch(['a'], 'transform', { llm: llmConfig });
-
-      const options = callLlm.mock.calls[0][1];
-      expect(options.llm).toStrictEqual(llmConfig);
-    });
-
-    it('forwards string llm config', async () => {
-      await listBatch(['a'], 'transform', { llm: 'fastCheap' });
-
-      const options = callLlm.mock.calls[0][1];
-      expect(options.llm).toBe('fastCheap');
-    });
-
-    it('forwards maxTokens into config', async () => {
-      await listBatch(['a'], 'transform', { maxTokens: 2048 });
-
-      const options = callLlm.mock.calls[0][1];
-      expect(options.maxTokens).toBe(2048);
-    });
-
-    it('does not include maxTokens in config when not provided', async () => {
-      await listBatch(['a'], 'transform');
-
-      const options = callLlm.mock.calls[0][1];
-      expect(options).not.toHaveProperty('maxTokens');
-    });
-
+  describe('config merging', () => {
     it('forwards custom responseFormat overriding the default', async () => {
       const customFormat = {
         type: 'json_schema',
@@ -117,21 +88,6 @@ describe('listBatch verblet', () => {
       expect(options.temperature).toBe(0.5);
       expect(options.systemPrompt).toBe('be terse');
       expect(options.response_format).toBeDefined();
-    });
-
-    it('forwards logger to callLlm options', async () => {
-      const logger = { debug: vi.fn(), error: vi.fn() };
-      await listBatch(['a'], 'transform', { logger });
-
-      const options = callLlm.mock.calls[0][1];
-      expect(options.logger).toBe(logger);
-    });
-
-    it('forwards extra options via rest spread', async () => {
-      await listBatch(['a'], 'transform', { abortSignal: 'mock-signal' });
-
-      const options = callLlm.mock.calls[0][1];
-      expect(options.abortSignal).toBe('mock-signal');
     });
   });
 

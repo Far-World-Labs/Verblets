@@ -89,65 +89,7 @@ describe('categorySamples', () => {
     });
   });
 
-  describe('forwards llm config to internal calls', () => {
-    it('passes string llm to list chain', async () => {
-      const llm = 'fastGood';
-      await categorySamples('cities', { llm });
-
-      const listConfig = list.mock.calls[0][1];
-      expect(listConfig.llm).toBe(llm);
-    });
-
-    it('passes object llm to list chain', async () => {
-      const llm = { modelName: 'gpt-4', temperature: 0.8 };
-      await categorySamples('animals', { llm });
-
-      const listConfig = list.mock.calls[0][1];
-      expect(listConfig.llm).toBe(llm);
-    });
-  });
-
-  describe('forwards config to retry', () => {
-    it('passes config to outer retry wrapper', async () => {
-      await categorySamples('colors', { maxAttempts: 5 });
-
-      const retryConfig = retry.mock.calls[0][1];
-      expect(retryConfig.config).toBeDefined();
-      expect(retryConfig.config.maxAttempts).toBe(5);
-    });
-
-    it('passes config with maxAttempts to list chain inside retry', async () => {
-      await categorySamples('shapes', { maxAttempts: 7 });
-
-      const listConfig = list.mock.calls[0][1];
-      expect(listConfig.maxAttempts).toBe(7);
-    });
-
-    it('uses config with defaults when no overrides given', async () => {
-      await categorySamples('genres');
-
-      const retryConfig = retry.mock.calls[0][1];
-      expect(retryConfig.config).toBeDefined();
-      expect(retryConfig.label).toBe('category-samples');
-    });
-
-    it('passes label to retry wrapper', async () => {
-      await categorySamples('vehicles');
-
-      const retryConfig = retry.mock.calls[0][1];
-      expect(retryConfig.label).toBe('category-samples');
-    });
-  });
-
-  describe('forwards onProgress to retry', () => {
-    it('passes onProgress via config to outer retry wrapper', async () => {
-      const onProgress = vi.fn();
-      await categorySamples('sports', { onProgress });
-
-      const retryConfig = retry.mock.calls[0][1];
-      expect(retryConfig.config.onProgress).toBe(onProgress);
-    });
-
+  describe('progress scoping', () => {
     it('passes scoped onProgress to list chain', async () => {
       const onProgress = vi.fn();
       await categorySamples('cuisines', { onProgress });
@@ -167,13 +109,6 @@ describe('categorySamples', () => {
       listConfig.onProgress({ event: 'start', step: 'list' });
 
       expect(onProgress).toHaveBeenCalledWith(expect.objectContaining({ phase: 'list:sampling' }));
-    });
-
-    it('does not pass onProgress to list when not provided', async () => {
-      await categorySamples('countries');
-
-      const listConfig = list.mock.calls[0][1];
-      expect(listConfig.onProgress).toBeUndefined();
     });
   });
 

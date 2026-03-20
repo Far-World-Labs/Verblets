@@ -3,8 +3,6 @@ import { testForwardsConfig, testScopesProgress } from '../../lib/test-utils/ind
 import detectThreshold, { calculateStatistics } from './index.js';
 import reduce from '../reduce/index.js';
 import callLlm from '../../lib/llm/index.js';
-import retry from '../../lib/retry/index.js';
-
 vi.mock('../reduce/index.js', () => ({ default: vi.fn() }));
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(),
@@ -331,19 +329,6 @@ describe('detectThreshold', () => {
       },
     });
 
-    it('forwards same llm to both reduce and callLlm', async () => {
-      reduce.mockResolvedValueOnce(mockReduceResult);
-      callLlm.mockResolvedValueOnce(mockLlmResult);
-
-      const llm = { fast: true, good: 'prefer' };
-      await detectThreshold({ data: KNOWN_DATA, targetProperty: 'score', goal: defaultGoal, llm });
-
-      const reduceLlm = reduce.mock.calls[0][2].llm;
-      const callLlmLlm = callLlm.mock.calls[0][1].llm;
-      expect(reduceLlm).toBe(llm);
-      expect(callLlmLlm).toBe(llm);
-    });
-
     it('passes threshold_result schema in config', async () => {
       reduce.mockResolvedValueOnce(mockReduceResult);
       callLlm.mockResolvedValueOnce(mockLlmResult);
@@ -632,16 +617,6 @@ describe('detectThreshold', () => {
 
       const reduceConfig = reduce.mock.calls[0][2];
       expect(reduceConfig.batchSize).toBe(50);
-    });
-
-    it('passes config to retry wrapper (retry resolves maxAttempts from config)', async () => {
-      reduce.mockResolvedValueOnce(mockReduceResult);
-      callLlm.mockResolvedValueOnce(mockLlmResult);
-
-      await detectThreshold({ data: KNOWN_DATA, targetProperty: 'score', goal: defaultGoal });
-
-      const retryConfig = retry.mock.calls[0][1];
-      expect(retryConfig.config).toBeDefined();
     });
   });
 });

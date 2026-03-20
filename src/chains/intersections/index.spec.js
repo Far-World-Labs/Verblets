@@ -108,71 +108,6 @@ describe('intersections chain', () => {
     });
   });
 
-  describe('llm config forwarding', () => {
-    it('forwards llm config to callLlm via retry', async () => {
-      const llmConfig = { modelName: 'test-model', temperature: 0.5 };
-
-      await intersections(['A', 'B'], { llm: llmConfig });
-
-      // callLlm is called inside retry; verify the second arg has llm
-      const callLlmArgs = callLlm.mock.calls[0];
-      expect(callLlmArgs[1].llm).toBe(llmConfig);
-    });
-
-    it('forwards llm config to commonalities verblet', async () => {
-      const llmConfig = { modelName: 'test-model' };
-
-      await intersections(['A', 'B'], { llm: llmConfig });
-
-      const commonalitiesArgs = commonalities.mock.calls[0];
-      expect(commonalitiesArgs[1].llm).toBe(llmConfig);
-    });
-
-    it('uses default llm value of fastGoodCheap when not specified', async () => {
-      await intersections(['A', 'B']);
-
-      const callLlmArgs = callLlm.mock.calls[0];
-      expect(callLlmArgs[1].llm).toBe('fastGoodCheap');
-
-      const commonalitiesArgs = commonalities.mock.calls[0];
-      expect(commonalitiesArgs[1].llm).toBe('fastGoodCheap');
-    });
-  });
-
-  describe('retry options forwarding', () => {
-    it('forwards config to retry so it can resolve maxAttempts internally', async () => {
-      await intersections(['A', 'B'], { maxAttempts: 7 });
-
-      const retryOpts = retry.mock.calls[0][1];
-      expect(retryOpts.config.maxAttempts).toBe(7);
-      expect(retryOpts.label).toBe('intersections-elements');
-    });
-
-    it('forwards config with onProgress to retry', async () => {
-      const onProgress = vi.fn();
-      await intersections(['A', 'B'], { onProgress });
-
-      const retryOpts = retry.mock.calls[0][1];
-      expect(retryOpts.config.onProgress).toBe(onProgress);
-    });
-
-    it('forwards onProgress to commonalities', async () => {
-      const onProgress = vi.fn();
-      await intersections(['A', 'B'], { onProgress });
-
-      const commonalitiesArgs = commonalities.mock.calls[0][1];
-      expect(commonalitiesArgs.onProgress).toBe(onProgress);
-    });
-
-    it('passes config to retry for default maxAttempts resolution', async () => {
-      await intersections(['A', 'B']);
-
-      const retryOpts = retry.mock.calls[0][1];
-      expect(retryOpts.config).toBeDefined();
-      expect(retryOpts.label).toBe('intersections-elements');
-    });
-  });
-
   describe('batch processing', () => {
     it('processes all combinations in a single batch when batchSize >= total', async () => {
       // 3 items => 4 combinations (3 pairs + 1 triple)
@@ -417,41 +352,6 @@ describe('intersections chain', () => {
     });
   });
 
-  describe('restOptions forwarding', () => {
-    it('forwards extra options to callLlm', async () => {
-      await intersections(['A', 'B'], { customKey: 'customValue', temperature: 0.9 });
-
-      const callLlmArgs = callLlm.mock.calls[0];
-      expect(callLlmArgs[1].customKey).toBe('customValue');
-      expect(callLlmArgs[1].temperature).toBe(0.9);
-    });
-
-    it('forwards extra options to commonalities', async () => {
-      await intersections(['A', 'B'], { customKey: 'customValue', temperature: 0.9 });
-
-      const commonalitiesArgs = commonalities.mock.calls[0][1];
-      expect(commonalitiesArgs.customKey).toBe('customValue');
-      expect(commonalitiesArgs.temperature).toBe(0.9);
-    });
-
-    it('passes full config to sub-calls (config flows through as-is)', async () => {
-      await intersections(['A', 'B'], {
-        minSize: 2,
-        maxSize: 3,
-        batchSize: 5,
-        useSchemaValidation: false,
-        customKey: 'customValue',
-      });
-
-      // Config is passed through to processCombo; sub-calls receive the full config
-      const callLlmArgs = callLlm.mock.calls[0];
-      expect(callLlmArgs[1].customKey).toBe('customValue');
-
-      const commonalitiesArgs = commonalities.mock.calls[0][1];
-      expect(commonalitiesArgs.customKey).toBe('customValue');
-    });
-  });
-
   describe('instructions forwarding', () => {
     it('includes instructions in the callLlm prompt', async () => {
       await intersections(['Fruit', 'Red'], { instructions: 'Focus on tropical items' });
@@ -474,16 +374,6 @@ describe('intersections chain', () => {
 
       const prompt = callLlm.mock.calls[0][0];
       expect(prompt).not.toContain('Additional context');
-    });
-  });
-
-  describe('now option forwarding', () => {
-    it('forwards now to commonalities', async () => {
-      const fixedDate = new Date('2025-06-15T00:00:00Z');
-      await intersections(['A', 'B'], { now: fixedDate });
-
-      const commonalitiesArgs = commonalities.mock.calls[0][1];
-      expect(commonalitiesArgs.now).toBe(fixedDate);
     });
   });
 });

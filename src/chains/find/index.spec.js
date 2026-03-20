@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { testForwardsConfig, testLifecycleLogger } from '../../lib/test-utils/index.js';
 import find from './index.js';
 import listBatch from '../../verblets/list-batch/index.js';
-import retry from '../../lib/retry/index.js';
 
 vi.mock('../../verblets/list-batch/index.js', () => ({
   default: vi.fn(async (items) => {
@@ -23,10 +22,6 @@ vi.mock('../../lib/text-batch/index.js', () => ({
   }),
 }));
 
-vi.mock('../../lib/retry/index.js', () => ({
-  default: vi.fn(async (fn) => fn()),
-}));
-
 beforeEach(() => {
   vi.clearAllMocks();
 });
@@ -42,20 +37,6 @@ describe('find chain', () => {
     listBatch.mockResolvedValueOnce([]);
     const result = await find(['a', 'b'], 'find nothing', { batchSize: 10 });
     expect(result).toBe('');
-  });
-
-  it('forwards maxAttempts to retry via config', async () => {
-    await find(['a', 'b'], 'find a', { batchSize: 10, maxAttempts: 7 });
-    const retryOpts = retry.mock.calls[0][1];
-    expect(retryOpts.config).toBeDefined();
-    expect(retryOpts.config.maxAttempts).toBe(7);
-  });
-
-  it('passes config to retry for default resolution', async () => {
-    await find(['a', 'b'], 'find a', { batchSize: 10 });
-    const retryOpts = retry.mock.calls[0][1];
-    expect(retryOpts.config).toBeDefined();
-    expect(retryOpts.maxAttempts).toBeUndefined();
   });
 
   testForwardsConfig('forwards config to listBatch', {

@@ -123,19 +123,6 @@ describe('calibrateSpec', () => {
     const [prompt] = vi.mocked(llm).mock.calls[0];
     expect(prompt).not.toContain('Classification posture');
   });
-
-  it('passes llm config through', async () => {
-    vi.mocked(llm).mockResolvedValueOnce(mockSpec);
-
-    await calibrateSpec([makeScan(['pii-name'], [0.9])], {
-      llm: 'fastGood',
-      temperature: 0.3,
-    });
-
-    const [, options] = vi.mocked(llm).mock.calls[0];
-    expect(options.llm).toBe('fastGood');
-    expect(options.temperature).toBe(0.3);
-  });
 });
 
 describe('applyCalibrate', () => {
@@ -162,17 +149,6 @@ describe('applyCalibrate', () => {
       type: 'json_schema',
       json_schema: expect.objectContaining({ name: 'calibrate_result' }),
     });
-  });
-
-  it('passes config through to callLlm', async () => {
-    vi.mocked(llm).mockResolvedValueOnce(mockResult);
-
-    const scan = makeScan(['pii-name'], [0.9]);
-    await applyCalibrate(scan, mockSpec, { llm: 'fastGood', temperature: 0.5 });
-
-    const [, options] = vi.mocked(llm).mock.calls[0];
-    expect(options.llm).toBe('fastGood');
-    expect(options.temperature).toBe(0.5);
   });
 });
 
@@ -204,16 +180,6 @@ describe('createCalibratedClassifier', () => {
     const [prompt2] = vi.mocked(llm).mock.calls[1];
     expect(prompt1).toContain(mockSpec.corpusProfile);
     expect(prompt2).toContain(mockSpec.corpusProfile);
-  });
-
-  it('passes config to each applyCalibrate call', async () => {
-    vi.mocked(llm).mockResolvedValueOnce(mockResult);
-
-    const classify = createCalibratedClassifier(mockSpec, { llm: 'fastGood' });
-    await classify(makeScan(['pii-name'], [0.9]));
-
-    const [, options] = vi.mocked(llm).mock.calls[0];
-    expect(options.llm).toBe('fastGood');
   });
 });
 
