@@ -2,7 +2,7 @@ import conversationTurnReduce from '../conversation-turn-reduce/index.js';
 import { defaultTurnPolicy } from './turn-policies.js';
 import pLimit from 'p-limit';
 import { debug } from '../../lib/debug/index.js';
-import { getOptions, scopeOperation } from '../../lib/context/option.js';
+import { initChain, scopeOperation } from '../../lib/context/option.js';
 
 /**
  * @typedef {Object} Speaker
@@ -41,8 +41,7 @@ export default class Conversation {
       idSet.add(p.id);
     });
 
-    const config = scopeOperation('conversation', options);
-    const { depth, maxParallel } = await getOptions(config, {
+    const { depth, maxParallel } = await initChain('conversation', options, {
       depth: 3,
       maxParallel: 3,
     });

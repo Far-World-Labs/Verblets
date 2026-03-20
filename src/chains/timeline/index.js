@@ -1,4 +1,4 @@
-import callLlm from '../../lib/llm/index.js';
+import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import chunkSentences from '../../lib/chunk-sentences/index.js';
 import retry from '../../lib/retry/index.js';
 import parallelBatch from '../../lib/parallel-batch/index.js';
@@ -7,7 +7,7 @@ import map from '../map/index.js';
 import reduce from '../reduce/index.js';
 import { timelineEventJsonSchema } from './schemas.js';
 import { debug } from '../../lib/debug/index.js';
-import { getOptions, withPolicy, scopeOperation } from '../../lib/context/option.js';
+import { initChain, withPolicy } from '../../lib/context/option.js';
 
 // ===== Option Mappers =====
 
@@ -93,10 +93,7 @@ async function extractFromChunk(chunk, options = {}) {
   const response = await callLlm(chunk, {
     ...options,
     systemPrompt: extractTimelineInstructions,
-    response_format: {
-      type: 'json_schema',
-      json_schema: timelineEventJsonSchema,
-    },
+    response_format: jsonSchema(timelineEventJsonSchema.name, timelineEventJsonSchema.schema),
   });
 
   return response.events || [];
@@ -115,9 +112,8 @@ async function extractFromChunk(chunk, options = {}) {
  * @returns {Promise<Array>} Array of timeline events with {timestamp, name}
  */
 export default async function timeline(text, config = {}) {
-  config = scopeOperation('timeline', config);
-  const { onProgress, batchSize, now } = config;
   const {
+    config: scopedConfig,
     chunkSize,
     overlap,
     maxParallel,
@@ -125,13 +121,15 @@ export default async function timeline(text, config = {}) {
     llmDedup,
     knowledgeBase,
     enrichMap: _enrichMap,
-  } = await getOptions(config, {
+  } = await initChain('timeline', config, {
     enrichment: withPolicy(mapEnrichment, ['llmDedup', 'knowledgeBase', 'enrichMap']),
     chunkSize: 2000,
     overlap: 200,
     maxParallel: 3,
     errorPosture: 'resilient',
   });
+  config = scopedConfig;
+  const { onProgress, batchSize, now } = config;
 
   // Create overlapping chunks to avoid missing events at boundaries
   const chunks = chunkSentences(text, chunkSize, { overlap });
@@ -187,10 +185,7 @@ ${eventList}`;
       ...config,
       systemPrompt:
         'You are a timeline deduplication engine. Return all unique events, merging only true duplicates.',
-      response_format: {
-        type: 'json_schema',
-        json_schema: timelineEventJsonSchema,
-      },
+      response_format: jsonSchema(timelineEventJsonSchema.name, timelineEventJsonSchema.schema),
     });
 
     const deduplicatedEvents = deduplicatedResult?.events || deduplicatedResult;
@@ -219,10 +214,7 @@ Return as JSON with the same event format, maintaining chronological order.`;
     const knowledgeBase = await reduce(eventStrings, knowledgeBaseInstructions, {
       ...config,
       initial: JSON.stringify({ events: [] }),
-      responseFormat: {
-        type: 'json_schema',
-        json_schema: timelineEventJsonSchema,
-      },
+      responseFormat: jsonSchema(timelineEventJsonSchema.name, timelineEventJsonSchema.schema),
       ...(batchSize !== undefined && { batchSize }),
       onProgress: scopeProgress(onProgress, 'reduce:knowledge-base'),
     });

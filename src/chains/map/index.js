@@ -6,7 +6,7 @@ import {
   extractPromptAnalysis,
 } from '../../lib/lifecycle-logger/index.js';
 import { createBatches, parallel, retry, batchTracker } from '../../lib/index.js';
-import { getOptions, scopeOperation } from '../../lib/context/option.js';
+import { initChain } from '../../lib/context/option.js';
 
 /**
  * Map over a list of items by calling `listBatch` on XML-enriched batches.
@@ -24,14 +24,7 @@ import { getOptions, scopeOperation } from '../../lib/context/option.js';
  * @returns { Promise<(string|undefined)[]> } results aligned with input order
  */
 const mapOnce = async function (list, instructions, config = {}) {
-  const {
-    maxParallel = 3,
-    errorPosture,
-    progressMode,
-    onProgress,
-    now = new Date(),
-    chainStartTime,
-  } = config;
+  const { maxParallel = 3, errorPosture, progressMode, onProgress, now, chainStartTime } = config;
 
   const results = new Array(list.length);
   const batches = await createBatches(list, config);
@@ -190,14 +183,20 @@ Preserve all formatting and newlines within each <item> element.`;
  * @returns { Promise<(string|undefined)[]> }
  */
 const map = async function (list, instructions, config = {}) {
-  config = scopeOperation('map', config);
-  const { logger, now } = config;
-  const { maxAttempts, maxParallel, errorPosture, progressMode } = await getOptions(config, {
+  const {
+    config: scopedConfig,
+    maxAttempts,
+    maxParallel,
+    errorPosture,
+    progressMode,
+  } = await initChain('map', config, {
     maxAttempts: 3,
     maxParallel: 3,
     errorPosture: 'resilient',
     progressMode: 'detailed',
   });
+  config = scopedConfig;
+  const { logger, now } = config;
 
   // Create logger for map chain
   const lifecycleLogger = createLifecycleLogger(logger, 'chain:map');

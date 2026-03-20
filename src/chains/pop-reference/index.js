@@ -1,16 +1,10 @@
-import callLlm from '../../lib/llm/index.js';
+import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import popReferenceSchema from './pop-reference-result.json';
-import { getOptions, scopeOperation } from '../../lib/context/option.js';
+import { initChain } from '../../lib/context/option.js';
 
-const popReferenceResponseFormat = {
-  type: 'json_schema',
-  json_schema: {
-    name: 'pop_reference_result',
-    schema: popReferenceSchema,
-  },
-};
+const popReferenceResponseFormat = jsonSchema('pop_reference_result', popReferenceSchema);
 
 /**
  * Find pop culture references that metaphorically match given sentences
@@ -20,12 +14,16 @@ const popReferenceResponseFormat = {
  * @returns {Promise<Array>} Array of PopCultureReference objects
  */
 export default async function popReference(sentence, description, config = {}) {
-  config = scopeOperation('pop-reference', config);
-  const { include = [] } = config;
-  const { referenceContext, referencesPerSource } = await getOptions(config, {
+  const {
+    config: scopedConfig,
+    referenceContext,
+    referencesPerSource,
+  } = await initChain('pop-reference', config, {
     referenceContext: false,
     referencesPerSource: 2,
   });
+  config = scopedConfig;
+  const { include = [] } = config;
 
   // Build the include list description
   let includeDescription = '';

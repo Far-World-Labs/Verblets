@@ -6,7 +6,10 @@ import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 
 vi.mock('../reduce/index.js', () => ({ default: vi.fn() }));
-vi.mock('../../lib/llm/index.js', () => ({ default: vi.fn() }));
+vi.mock('../../lib/llm/index.js', () => ({
+  default: vi.fn(),
+  jsonSchema: (name, schema) => ({ type: 'json_schema', json_schema: { name, schema } }),
+}));
 vi.mock('../../lib/retry/index.js', () => ({ default: vi.fn(async (fn) => fn()) }));
 
 beforeEach(() => {

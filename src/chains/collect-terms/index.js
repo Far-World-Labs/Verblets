@@ -1,6 +1,6 @@
 import list from '../list/index.js';
 import score from '../score/index.js';
-import { getOptions, scopeOperation } from '../../lib/context/option.js';
+import { initChain } from '../../lib/context/option.js';
 
 const splitIntoChunks = (text, maxLen) => {
   const words = text.split(/\s+/);
@@ -19,11 +19,15 @@ const splitIntoChunks = (text, maxLen) => {
 };
 
 export default async function collectTerms(text, config = {}) {
-  config = scopeOperation('collect-terms', config);
-  const { topN, chunkLen } = await getOptions(config, {
+  const {
+    config: scopedConfig,
+    topN,
+    chunkLen,
+  } = await initChain('collect-terms', config, {
     topN: 20,
     chunkLen: 1000,
   });
+  config = scopedConfig;
   const chunks = splitIntoChunks(text, chunkLen);
 
   // Collect terms from each chunk

@@ -5,6 +5,7 @@ vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(async () => ({
     people: [{ name: 'Alice Smith', bio: 'Experienced baker specializing in sourdough', age: 32 }],
   })),
+  jsonSchema: (name, schema) => ({ type: 'json_schema', json_schema: { name, schema } }),
 }));
 
 vi.mock('../../lib/retry/index.js', () => ({

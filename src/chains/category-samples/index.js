@@ -1,7 +1,7 @@
 import list from '../list/index.js';
 import retry from '../../lib/retry/index.js';
 import { scopeProgress } from '../../lib/progress-callback/index.js';
-import { getOptions, withPolicy, scopeOperation } from '../../lib/context/option.js';
+import { initChain, withPolicy } from '../../lib/context/option.js';
 
 // ===== Option Mappers =====
 
@@ -98,11 +98,19 @@ export default async function categorySamples(categoryName, config = {}) {
     throw new Error('categoryName must be a non-empty string');
   }
 
-  config = scopeOperation('category-samples', { llm: 'fastGoodCheap', ...config });
-  const { context = '', now } = config;
-  const { diversity, count } = await getOptions(config, {
-    diversity: withPolicy(mapDiversity, ['diversity', 'count']),
-  });
+  const {
+    config: scopedConfig,
+    diversity,
+    count,
+  } = await initChain(
+    'category-samples',
+    { llm: 'fastGoodCheap', ...config },
+    {
+      diversity: withPolicy(mapDiversity, ['diversity', 'count']),
+    }
+  );
+  config = scopedConfig;
+  const { context = '' } = config;
   const generateWithRetry = async () => {
     const prompt = buildSeedGenerationPrompt(categoryName, { context, diversity });
 
@@ -110,7 +118,6 @@ export default async function categorySamples(categoryName, config = {}) {
       ...config,
       shouldStop: ({ resultsAll }) => resultsAll.length >= count,
       onProgress: scopeProgress(config.onProgress, 'list:sampling'),
-      now,
     });
 
     if (!results || results.length === 0) {

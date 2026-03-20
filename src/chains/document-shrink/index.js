@@ -4,7 +4,7 @@ import map from '../map/index.js';
 import { scopeProgress } from '../../lib/progress-callback/index.js';
 import TextSimilarity from '../../lib/text-similarity/index.js';
 import { debug } from '../../lib/debug/index.js';
-import { getOptions, withPolicy, scopeOperation } from '../../lib/context/option.js';
+import { initChain, withPolicy } from '../../lib/context/option.js';
 
 // Token cost estimates
 const TOKENS_PER_EXPANSION = 200;
@@ -535,9 +535,8 @@ function selectGapFillers(allChunks, selectedChunks, gapFillerBudget) {
 
 // Main function with proper budget planning
 export default async function documentShrink(document, query, config = {}) {
-  config = scopeOperation('document-shrink', config);
-  const { now } = config;
   const {
+    config: scopedConfig,
     targetSize,
     tokenBudget: tokenBudgetInit,
     gapFillerBudgetRatio,
@@ -547,7 +546,7 @@ export default async function documentShrink(document, query, config = {}) {
     llmScoring,
     llmCompression,
     scoringTokenRatio,
-  } = await getOptions(config, {
+  } = await initChain('document-shrink', config, {
     targetSize: DEFAULT_OPTIONS.targetSize,
     tokenBudget: DEFAULT_OPTIONS.tokenBudget,
     gapFillerBudgetRatio: DEFAULT_OPTIONS.gapFillerBudgetRatio,
@@ -560,6 +559,7 @@ export default async function documentShrink(document, query, config = {}) {
       'scoringTokenRatio',
     ]),
   });
+  config = scopedConfig;
   const merged = {
     ...DEFAULT_OPTIONS,
     ...config,
@@ -607,7 +607,7 @@ export default async function documentShrink(document, query, config = {}) {
   }
 
   // Step 3: Expand query (gated by thoroughness)
-  const subOptions = { ...config, now };
+  const subOptions = config;
   const { expansions, tokensUsed: expansionTokens } = queryExpansion
     ? await expandQuery(query, tokenBudget, subOptions)
     : { expansions: [query], tokensUsed: 0 };

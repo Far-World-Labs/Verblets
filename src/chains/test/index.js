@@ -1,5 +1,5 @@
 import fs from 'node:fs/promises';
-import llm from '../../lib/llm/index.js';
+import llm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { testResultJsonSchema } from './schemas.js';
@@ -29,10 +29,7 @@ GUIDELINES:
       () =>
         llm(prompt, {
           ...config,
-          response_format: {
-            type: 'json_schema',
-            json_schema: testResultJsonSchema,
-          },
+          response_format: jsonSchema(testResultJsonSchema.name, testResultJsonSchema.schema),
         }),
       {
         label: 'test chain',

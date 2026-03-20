@@ -1,10 +1,10 @@
 import { v4 as uuid } from 'uuid';
 
-import callLlm from '../../lib/llm/index.js';
+import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { outputSuccinctNames } from '../../prompts/index.js';
 import { subComponentsSchema, componentOptionsSchema } from './schemas.js';
-import { getOptions, withPolicy, scopeOperation } from '../../lib/context/option.js';
+import { initChain, withPolicy } from '../../lib/context/option.js';
 
 // ===== Option Mappers =====
 
@@ -95,13 +95,7 @@ const defaultDecompose = async ({
         llm,
         frequencyPenalty: variety ?? DEFAULT_DECOMPOSE_PENALTY,
         temperature: temperature ?? 0.7,
-        response_format: {
-          type: 'json_schema',
-          json_schema: {
-            name: 'subcomponents',
-            schema: subComponentsSchema,
-          },
-        },
+        response_format: jsonSchema('subcomponents', subComponentsSchema),
       }),
     {
       label: 'dismantle-decompose',
@@ -128,13 +122,7 @@ const defaultEnhance = async ({
         llm,
         frequencyPenalty: enhanceVariety,
         temperature: temperature ?? 0.3,
-        response_format: {
-          type: 'json_schema',
-          json_schema: {
-            name: 'component_options',
-            schema: componentOptionsSchema,
-          },
-        },
+        response_format: jsonSchema('component_options', componentOptionsSchema),
       }),
     {
       label: 'dismantle-enhance',
@@ -162,7 +150,7 @@ const makeNode = async ({
   decomposeFixes,
   config,
   variety,
-  now = new Date(),
+  now,
 } = {}) => {
   const name = nameInitial ?? rootName;
 
@@ -221,7 +209,7 @@ const makeSubtree = async ({
   makeId,
   config,
   variety,
-  now = new Date(),
+  now,
 } = {}) => {
   let tree = { ...(treeInitial ?? {}) };
 
@@ -295,8 +283,7 @@ export const simplifyTree = (node) => {
 
 class ChainTree {
   static async create(name, options = {}) {
-    const config = scopeOperation('dismantle', options);
-    const { temperature, variety } = await getOptions(config, {
+    const { config, temperature, variety } = await initChain('dismantle', options, {
       temperature: undefined,
       variety: withPolicy(mapVariety),
     });

@@ -1,4 +1,4 @@
-import callLlm from '../../lib/llm/index.js';
+import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import socraticQuestionSchema from './socratic-question-schema.js';
 import socraticAnswerSchema from './socratic-answer-schema.js';
@@ -8,7 +8,7 @@ import {
   extractResultValue,
 } from '../../lib/lifecycle-logger/index.js';
 import { emitStepProgress } from '../../lib/progress-callback/index.js';
-import { getOptions, withPolicy, scopeOperation } from '../../lib/context/option.js';
+import { initChain, withPolicy } from '../../lib/context/option.js';
 
 // ===== Option Mappers =====
 
@@ -69,13 +69,7 @@ const defaultAsk = async ({
       callLlm(prompt, {
         llm,
         temperature,
-        response_format: {
-          type: 'json_schema',
-          json_schema: {
-            name: 'socratic_question',
-            schema: socraticQuestionSchema,
-          },
-        },
+        response_format: jsonSchema('socratic_question', socraticQuestionSchema),
         logger,
       }),
     {
@@ -106,13 +100,7 @@ const defaultAnswer = async ({
       callLlm(prompt, {
         llm,
         temperature,
-        response_format: {
-          type: 'json_schema',
-          json_schema: {
-            name: 'socratic_answer',
-            schema: socraticAnswerSchema,
-          },
-        },
+        response_format: jsonSchema('socratic_answer', socraticAnswerSchema),
         logger,
       }),
     {
@@ -126,8 +114,7 @@ const defaultAnswer = async ({
 
 class SocraticMethod {
   static async create(statement, options = {}) {
-    const config = scopeOperation('socratic', options);
-    const { challenge, temperature } = await getOptions(config, {
+    const { config, challenge, temperature } = await initChain('socratic', options, {
       challenge: withPolicy(mapChallenge, ['challenge', 'temperature']),
     });
     return new SocraticMethod(statement, config, {
@@ -144,7 +131,7 @@ class SocraticMethod {
       logger,
       onProgress,
       abortSignal,
-      now = new Date(),
+      now,
     } = options;
     this.statement = statement;
     this.ask = ask;

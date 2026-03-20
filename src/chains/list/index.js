@@ -1,4 +1,4 @@
-import callLlm from '../../lib/llm/index.js';
+import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { debug } from '../../lib/debug/index.js';
 import {
@@ -20,13 +20,7 @@ const { onlyJSON, contentIsTransformationSource } = promptConstants;
  */
 function createModelOptions() {
   return {
-    response_format: {
-      type: 'json_schema',
-      json_schema: {
-        name: 'list_result',
-        schema: listResultSchema,
-      },
-    },
+    response_format: jsonSchema('list_result', listResultSchema),
   };
 }
 

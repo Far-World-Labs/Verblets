@@ -1,4 +1,4 @@
-import callLlm from '../../lib/llm/index.js';
+import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import toDate from '../../lib/to-date/index.js';
 import bool from '../../verblets/bool/index.js';
 import retry from '../../lib/retry/index.js';
@@ -10,7 +10,7 @@ import {
   extractPromptAnalysis,
   extractResultValue,
 } from '../../lib/lifecycle-logger/index.js';
-import { getOptions, withPolicy, scopeOperation } from '../../lib/context/option.js';
+import { initChain, withPolicy } from '../../lib/context/option.js';
 
 const {
   asDate,
@@ -84,13 +84,7 @@ const toUTCDate = (date) => {
 async function extractDate(prompt, config) {
   const response = await callLlm(prompt, {
     ...config,
-    response_format: {
-      type: 'json_schema',
-      json_schema: {
-        name: 'date_extraction',
-        schema: dateValueSchema,
-      },
-    },
+    response_format: jsonSchema('date_extraction', dateValueSchema),
   });
 
   if (response === 'undefined') return undefined;
@@ -114,11 +108,16 @@ async function validateDate(dateValue, expectations, config) {
 }
 
 export default async function date(text, config = {}) {
-  config = scopeOperation('date', config);
-  const { logger } = config;
-  const { maxAttempts, validate, returnBestEffort } = await getOptions(config, {
+  const {
+    config: scopedConfig,
+    maxAttempts,
+    validate,
+    returnBestEffort,
+  } = await initChain('date', config, {
     rigor: withPolicy(mapRigor, ['validate', 'maxAttempts', 'returnBestEffort']),
   });
+  config = scopedConfig;
+  const { logger } = config;
 
   // Create lifecycle logger with date chain namespace
   const lifecycleLogger = createLifecycleLogger(logger, 'chain:date');
@@ -154,13 +153,7 @@ export default async function date(text, config = {}) {
   const [expectationsResult, firstDate] = await Promise.all([
     callLlm(expectationPrompt, {
       ...config,
-      response_format: {
-        type: 'json_schema',
-        json_schema: {
-          name: 'date_expectations',
-          schema: dateExpectationsSchema,
-        },
-      },
+      response_format: jsonSchema('date_expectations', dateExpectationsSchema),
       logger: lifecycleLogger,
     }),
     extractDate(datePrompt, { ...config, logger: lifecycleLogger }),

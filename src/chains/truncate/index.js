@@ -1,6 +1,6 @@
 import score from '../score/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
-import { getOptions, withPolicy, scopeOperation } from '../../lib/context/option.js';
+import { initChain, withPolicy } from '../../lib/context/option.js';
 
 // ===== Option Mappers =====
 
@@ -91,11 +91,15 @@ function createChunks(text, chunkSize) {
  * @returns {number} Character index where to truncate
  */
 export default async function truncate(text, instructions, config = {}) {
-  config = scopeOperation('truncate', config);
-  const { chunkSize, aggression: threshold } = await getOptions(config, {
+  const {
+    config: scopedConfig,
+    chunkSize,
+    aggression: threshold,
+  } = await initChain('truncate', config, {
     chunkSize: 1000,
     aggression: withPolicy(mapAggression),
   });
+  config = scopedConfig;
 
   // Create chunks with tracked end positions
   const chunks = createChunks(text, chunkSize);

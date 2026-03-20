@@ -1,4 +1,4 @@
-import callLlm from '../../lib/llm/index.js';
+import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import buildInstructions from '../../lib/build-instructions/index.js';
@@ -97,13 +97,7 @@ Each entity should include:
     () =>
       callLlm(prompt, {
         ...config,
-        response_format: {
-          type: 'json_schema',
-          json_schema: {
-            name: 'entity_result',
-            schema: entityResultSchema,
-          },
-        },
+        response_format: jsonSchema('entity_result', entityResultSchema),
       }),
     {
       label: 'entities-apply',
@@ -123,20 +117,19 @@ Each entity should include:
  */
 export async function extractEntities(text, instructions, config = {}) {
   config = scopeOperation('entities', config);
-  const now = config.now ?? new Date();
 
   emitStepProgress(config.onProgress, 'entities', 'generating-specification', {
     instructions,
-    now: new Date(),
-    chainStartTime: now,
+    now: config.now,
+    chainStartTime: config.now,
   });
 
   const spec = config.spec || (await entitySpec(instructions, config));
 
   emitStepProgress(config.onProgress, 'entities', 'extracting-entities', {
     specification: spec,
-    now: new Date(),
-    chainStartTime: now,
+    now: config.now,
+    chainStartTime: config.now,
   });
 
   return await applyEntities(text, spec, config);

@@ -10,7 +10,7 @@ import {
   emitBatchProcessed,
   createBatchProgressCallback,
 } from '../../lib/progress-callback/index.js';
-import { getOptions, withPolicy, scopeOperation } from '../../lib/context/option.js';
+import { initChain, withPolicy } from '../../lib/context/option.js';
 
 // ===== Option Mappers =====
 
@@ -74,12 +74,17 @@ ${asXML(numberedLines, { tag: 'window' })}`;
  * @returns {Promise<Array<Array<string>>>} Array of blocks, each block is array of lines
  */
 export async function extractBlocks(text, instructions, config = {}) {
-  config = scopeOperation('extract-blocks', config);
-  const { logger, onProgress, now } = config;
-  const { maxParallel, windowSize, overlapSize } = await getOptions(config, {
+  const {
+    config: scopedConfig,
+    maxParallel,
+    windowSize,
+    overlapSize,
+  } = await initChain('extract-blocks', config, {
     precision: withPolicy(mapPrecision, ['windowSize', 'overlapSize']),
     maxParallel: 3,
   });
+  config = scopedConfig;
+  const { logger, onProgress, now } = config;
 
   const lifecycleLogger = createLifecycleLogger(logger, 'chain:extract-blocks');
 
@@ -170,7 +175,7 @@ export async function extractBlocks(text, instructions, config = {}) {
           windowStart,
           totalWindows: windowStarts.length,
           blocksFound: (result.blocks || []).length,
-          now: new Date(),
+          now,
           chainStartTime: now,
         }
       );
@@ -210,7 +215,7 @@ export async function extractBlocks(text, instructions, config = {}) {
   emitBatchComplete(onProgress, 'extract-blocks', lines.length, {
     totalWindows: windowStarts.length,
     blocksExtracted: blocks.length,
-    now: new Date(),
+    now,
     chainStartTime: now,
   });
 

@@ -1,6 +1,6 @@
 import reduce from '../reduce/index.js';
 import shuffle from '../../lib/shuffle/index.js';
-import { getOptions, scopeOperation } from '../../lib/context/option.js';
+import { initChain } from '../../lib/context/option.js';
 
 const splitText = (text) =>
   text
@@ -9,10 +9,10 @@ const splitText = (text) =>
     .filter(Boolean);
 
 export default async function themes(text, config = {}) {
-  config = scopeOperation('themes', config);
-  const { topN } = await getOptions(config, {
+  const { config: scopedConfig, topN } = await initChain('themes', config, {
     topN: undefined,
   });
+  config = scopedConfig;
   const pieces = splitText(text);
   const reducePrompt =
     'Update the accumulator with short themes from this text. Avoid duplicates. Return ONLY a comma-separated list of themes with no explanation or additional text.';

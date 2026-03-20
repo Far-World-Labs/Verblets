@@ -1,4 +1,4 @@
-import callLlm from '../../lib/llm/index.js';
+import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import tagVocabularyResultSchema from './tag-vocabulary-result.json';
@@ -143,13 +143,7 @@ The vocabulary should be complete enough to categorize diverse items along the i
     () =>
       callLlm(prompt, {
         ...config,
-        response_format: {
-          type: 'json_schema',
-          json_schema: {
-            name: 'tag_vocabulary_result',
-            schema: tagVocabularyResultSchema,
-          },
-        },
+        response_format: jsonSchema('tag_vocabulary_result', tagVocabularyResultSchema),
       }),
     {
       label: 'tag-vocabulary-initial',
@@ -204,13 +198,7 @@ Return an improved vocabulary that provides better coverage and clearer distinct
     () =>
       callLlm(prompt, {
         ...config,
-        response_format: {
-          type: 'json_schema',
-          json_schema: {
-            name: 'tag_vocabulary_result',
-            schema: tagVocabularyResultSchema,
-          },
-        },
+        response_format: jsonSchema('tag_vocabulary_result', tagVocabularyResultSchema),
       }),
     {
       label: 'tag-vocabulary-refine',

@@ -2,9 +2,9 @@ import listBatch, { ListStyle, determineStyle } from '../../verblets/list-batch/
 import reduce from '../reduce/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { emitPhaseProgress } from '../../lib/progress-callback/index.js';
-import { createBatches, parallel, retry, batchTracker, scopeProgress } from '../../lib/index.js';
+import { parallel, retry, prepareBatches, scopeProgress } from '../../lib/index.js';
 import { debug } from '../../lib/debug/index.js';
-import { getOptions, withPolicy, scopeOperation } from '../../lib/context/option.js';
+import { initChain, withPolicy } from '../../lib/context/option.js';
 
 // ===== Option Mappers =====
 
@@ -114,20 +114,21 @@ const applyTopNFilter = (groups, topN) => {
 };
 
 export default async function group(list, instructions, config = {}) {
-  config = scopeOperation('group', config);
-  const { categoryPrompt, listStyle, autoModeThreshold, onProgress, now } = config;
   const {
+    config: scopedConfig,
     guidance: granularityGuidance,
     maxParallel,
     errorPosture,
     progressMode,
     topN,
-  } = await getOptions(config, {
+  } = await initChain('group', config, {
     granularity: withPolicy(mapGranularity, ['guidance', 'topN']),
     maxParallel: 3,
     errorPosture: 'resilient',
     progressMode: 'detailed',
   });
+  config = scopedConfig;
+  const { categoryPrompt, listStyle, autoModeThreshold, onProgress, now } = config;
 
   // Phase 1: Category Discovery - reduce pass to build taxonomy
   if (onProgress) {
@@ -165,16 +166,13 @@ export default async function group(list, instructions, config = {}) {
     });
   }
 
-  const batches = await createBatches(list, config);
   const batchResults = [];
   const assignmentInstructions = createAssignmentInstructions(categories);
 
-  // Filter out skip batches
-  const batchesToProcess = batches.filter((batch) => !batch.skip);
-
-  const tracker = batchTracker('group', list.length, { onProgress, progressMode, now });
-
-  tracker.start(batchesToProcess.length, maxParallel);
+  const { batches: allBatches, tracker } = await prepareBatches('group', list, config, {
+    progressMode,
+  });
+  const batchesToProcess = allBatches.filter((batch) => !batch.skip);
 
   // Process batches in parallel using parallelBatch
   await parallel(

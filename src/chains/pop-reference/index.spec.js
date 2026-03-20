@@ -5,6 +5,7 @@ import llm from '../../lib/llm/index.js';
 // Mock dependencies
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(),
+  jsonSchema: (name, schema) => ({ type: 'json_schema', json_schema: { name, schema } }),
 }));
 
 // Mock fs/promises for schema loading

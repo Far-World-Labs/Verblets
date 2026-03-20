@@ -1,17 +1,14 @@
-import callLlm from '../../lib/llm/index.js';
+import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import score from '../score/index.js';
 import disambiguateMeaningsSchema from './disambiguate-meanings-result.json';
 import { emitStepProgress, scopeProgress } from '../../lib/progress-callback/index.js';
 import { scopeOperation } from '../../lib/context/option.js';
 
-const disambiguateResponseFormat = {
-  type: 'json_schema',
-  json_schema: {
-    name: 'disambiguate_meanings_result',
-    schema: disambiguateMeaningsSchema,
-  },
-};
+const disambiguateResponseFormat = jsonSchema(
+  'disambiguate_meanings_result',
+  disambiguateMeaningsSchema
+);
 
 const meaningsPrompt = (term) => {
   return `List all distinct dictionary meanings or common uses of "${term}".
@@ -39,12 +36,11 @@ export const getMeanings = async (term, config = {}) => {
 
 export default async function disambiguate({ term, context, ...config } = {}) {
   config = scopeOperation('disambiguate', config);
-  const { now } = config;
 
   emitStepProgress(config.onProgress, 'disambiguate', 'extracting-meanings', {
     term,
-    now: new Date(),
-    chainStartTime: now,
+    now: config.now,
+    chainStartTime: config.now,
   });
 
   const meanings = await getMeanings(term, config);
@@ -52,8 +48,8 @@ export default async function disambiguate({ term, context, ...config } = {}) {
   emitStepProgress(config.onProgress, 'disambiguate', 'scoring-meanings', {
     term,
     meaningCount: meanings.length,
-    now: new Date(),
-    chainStartTime: now,
+    now: config.now,
+    chainStartTime: config.now,
   });
 
   const scores = await score(

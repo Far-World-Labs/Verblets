@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 
 import sort from '../sort/index.js';
-import callLlm from '../../lib/llm/index.js';
+import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import pathAliases from '../../lib/path-aliases/index.js';
 import retry from '../../lib/retry/index.js';
 import search from '../../lib/search-js-files/index.js';
@@ -59,13 +59,7 @@ const visit = async ({
     async () => {
       const resultParsed = await callLlm(visitPrompt, {
         ...config,
-        response_format: {
-          type: 'json_schema',
-          json_schema: {
-            name: 'code_features_analysis',
-            schema,
-          },
-        },
+        response_format: jsonSchema('code_features_analysis', schema),
       });
 
       const id = `${node.filename}:::${node.functionName}`;

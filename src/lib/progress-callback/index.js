@@ -3,6 +3,8 @@
  * Works in both Node.js and browser environments
  */
 
+import createBatches from '../text-batch/index.js';
+
 /**
  * Emit a progress event
  * @param {Object} params - Progress parameters
@@ -190,6 +192,28 @@ export const emitPhaseProgress = (callback, step, phase, metadata = {}) => {
     ...metadata,
   });
 };
+
+/**
+ * Set up batches and a progress tracker for a batch-processing chain.
+ * Combines createBatches + batchTracker setup into one call.
+ *
+ * @param {string} chainName - Name of the chain (e.g. 'filter', 'map')
+ * @param {Array} list - Items to batch
+ * @param {object} config - Config object (from scopeOperation/initChain)
+ * @param {object} [resolved] - Resolved options from getOptions/initChain
+ * @param {string} [resolved.progressMode] - Progress granularity mode
+ * @returns {Promise<{ batches: Array, tracker: object }>}
+ */
+export async function prepareBatches(chainName, list, config, { progressMode } = {}) {
+  const batches = await createBatches(list, config);
+  const tracker = batchTracker(chainName, list.length, {
+    onProgress: config.onProgress,
+    progressMode,
+    now: config.now,
+  });
+  tracker.start(batches.filter((b) => !b.skip).length);
+  return { batches, tracker };
+}
 
 /**
  * Stateful tracker that absorbs counter management and emit boilerplate

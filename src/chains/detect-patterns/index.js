@@ -1,6 +1,7 @@
 import reduce from '../reduce/index.js';
 import { patternCandidatesJsonSchema } from './schemas.js';
-import { getOptions, withPolicy, scopeOperation } from '../../lib/context/option.js';
+import { jsonSchema } from '../../lib/llm/index.js';
+import { initChain, withPolicy } from '../../lib/context/option.js';
 
 // ===== Option Mappers =====
 
@@ -28,10 +29,10 @@ export const mapThoroughness = (value) => {
 };
 
 // Response format for pattern detection - uses items wrapper for array
-const PATTERN_RESPONSE_FORMAT = {
-  type: 'json_schema',
-  json_schema: patternCandidatesJsonSchema,
-};
+const PATTERN_RESPONSE_FORMAT = jsonSchema(
+  patternCandidatesJsonSchema.name,
+  patternCandidatesJsonSchema.schema
+);
 
 function filterObject(obj, maxStringLength = 50, maxArrayLength = 10) {
   if (typeof obj !== 'object' || obj === null) {
@@ -60,12 +61,18 @@ function filterObject(obj, maxStringLength = 50, maxArrayLength = 10) {
 }
 
 export default async function detectPatterns(objects, config = {}) {
-  config = scopeOperation('detect-patterns', config);
-  const { maxStringLength, maxArrayLength, topN, capacity } = await getOptions(config, {
+  const {
+    config: scopedConfig,
+    maxStringLength,
+    maxArrayLength,
+    topN,
+    capacity,
+  } = await initChain('detect-patterns', config, {
     thoroughness: withPolicy(mapThoroughness, ['topN', 'capacity']),
     maxStringLength: 50,
     maxArrayLength: 10,
   });
+  config = scopedConfig;
 
   const filteredObjects = objects.map((obj) => filterObject(obj, maxStringLength, maxArrayLength));
   const stringifiedObjects = filteredObjects.map((obj) => JSON.stringify(obj, null, 0));

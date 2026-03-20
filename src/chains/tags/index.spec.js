@@ -17,6 +17,7 @@ import { testInstructionBuilders } from '../../lib/test-utils/index.js';
 // Mock the dependencies
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(),
+  jsonSchema: (name, schema) => ({ type: 'json_schema', json_schema: { name, schema } }),
 }));
 
 vi.mock('../map/index.js', () => ({

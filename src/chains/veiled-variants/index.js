@@ -1,25 +1,21 @@
-import callLlm from '../../lib/llm/index.js';
+import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/index.js';
-import { getOptions, withPolicy, scopeOperation } from '../../lib/context/option.js';
+import { initChain, withPolicy } from '../../lib/context/option.js';
 
-const responseFormat = {
-  type: 'json_schema',
-  json_schema: {
-    name: 'veiled_variants',
-    schema: {
-      type: 'object',
-      properties: {
-        items: {
-          type: 'array',
-          items: { type: 'string' },
-        },
-      },
-      required: ['items'],
-      additionalProperties: false,
+const veiledVariantsSchema = {
+  type: 'object',
+  properties: {
+    items: {
+      type: 'array',
+      items: { type: 'string' },
     },
   },
+  required: ['items'],
+  additionalProperties: false,
 };
+
+const responseFormat = jsonSchema('veiled_variants', veiledVariantsSchema);
 
 export const scientificFramingPrompt = (
   prompt,
@@ -96,10 +92,13 @@ export const mapCoverage = (value) => {
 
 const veiledVariants = async (inputConfig = {}) => {
   const { prompt } = inputConfig;
-  const config = scopeOperation('veiled-variants', { llm: { sensitive: true }, ...inputConfig });
-  const { strategies, variantCount } = await getOptions(config, {
-    coverage: withPolicy(mapCoverage, ['strategies', 'variantCount']),
-  });
+  const { config, strategies, variantCount } = await initChain(
+    'veiled-variants',
+    { llm: { sensitive: true }, ...inputConfig },
+    {
+      coverage: withPolicy(mapCoverage, ['strategies', 'variantCount']),
+    }
+  );
   const prompts = strategies.map((name) => STRATEGY_FNS[name](prompt, variantCount));
 
   const results = await Promise.all(

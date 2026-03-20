@@ -2,26 +2,27 @@ import listBatch, { ListStyle, determineStyle } from '../../verblets/list-batch/
 import { asXML } from '../../prompts/wrap-variable.js';
 import { findResultJsonSchema } from './schemas.js';
 import { createLifecycleLogger, extractBatchConfig } from '../../lib/lifecycle-logger/index.js';
-import { createBatches, parallel, retry, batchTracker } from '../../lib/index.js';
+import { prepareBatches, parallel, retry } from '../../lib/index.js';
+import { jsonSchema } from '../../lib/llm/index.js';
 import { debug } from '../../lib/debug/index.js';
-import { getOptions, scopeOperation } from '../../lib/context/option.js';
+import { initChain } from '../../lib/context/option.js';
 
-const findResponseFormat = {
-  type: 'json_schema',
-  json_schema: findResultJsonSchema,
-};
+const findResponseFormat = jsonSchema(findResultJsonSchema.name, findResultJsonSchema.schema);
 
 const find = async function find(list, instructions, config = {}) {
-  config = scopeOperation('find', config);
-  const { maxParallel, errorPosture, progressMode } = await getOptions(config, {
+  const {
+    config: scopedConfig,
+    maxParallel,
+    errorPosture,
+    progressMode,
+  } = await initChain('find', config, {
     maxParallel: 3,
     errorPosture: 'resilient',
     progressMode: 'detailed',
   });
+  config = scopedConfig;
 
   const lifecycleLogger = createLifecycleLogger(config.logger, 'chain:find');
-
-  const batches = await createBatches(list, config);
   const findInstructions = ({ style, count }) => {
     const baseInstructions = `From the list below, identify and return the SINGLE item that BEST matches the search criteria.
 
@@ -48,7 +49,7 @@ Process exactly ${count} items from the XML list below and return the single bes
   const results = [];
   let foundEarly = false;
 
-  // Filter out skip batches
+  const { batches, tracker } = await prepareBatches('find', list, config, { progressMode });
   const batchesToProcess = batches.filter((batch) => !batch.skip);
 
   lifecycleLogger.logStart(
@@ -58,14 +59,6 @@ Process exactly ${count} items from the XML list below and return the single bes
       maxParallel,
     })
   );
-
-  const tracker = batchTracker('find', list.length, {
-    onProgress: config.onProgress,
-    progressMode,
-    now: config.now ?? new Date(),
-  });
-
-  tracker.start(batchesToProcess.length, maxParallel);
 
   // Process in chunks to allow early termination
   for (let i = 0; i < batchesToProcess.length && !foundEarly; i += maxParallel) {

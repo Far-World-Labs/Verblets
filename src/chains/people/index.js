@@ -1,4 +1,4 @@
-import callLlm from '../../lib/llm/index.js';
+import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { peopleListJsonSchema } from './schemas.js';
@@ -16,10 +16,7 @@ ${instructions}`;
     () =>
       callLlm(prompt, {
         ...config,
-        response_format: {
-          type: 'json_schema',
-          json_schema: peopleListJsonSchema,
-        },
+        response_format: jsonSchema(peopleListJsonSchema.name, peopleListJsonSchema.schema),
       }),
     {
       label: `people-list generation for ${count} people`,

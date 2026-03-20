@@ -2,7 +2,7 @@ import { debug } from '../../lib/debug/index.js';
 import llm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { extractCodeWindow } from '../../lib/code-extractor/index.js';
-import { getOption, getOptions, withPolicy, scopeOperation } from '../../lib/context/option.js';
+import { getOption, initChain, withPolicy } from '../../lib/context/option.js';
 
 // File-level constants
 const DEFAULT_MAX_TOKENS = 300;
@@ -82,10 +82,14 @@ const calculateCodeWindow = (
  * @param {Object} config - Options including maxAttempts
  */
 export default async function analyzeTestError(logs, config = {}) {
-  config = scopeOperation('test-analyzer', config);
-  const { analysisDepth: depthConfig } = await getOptions(config, {
-    analysisDepth: withPolicy(mapAnalysisDepth),
-  });
+  const { config: scopedConfig, analysisDepth: depthConfig } = await initChain(
+    'test-analyzer',
+    config,
+    {
+      analysisDepth: withPolicy(mapAnalysisDepth),
+    }
+  );
+  config = scopedConfig;
   const contextSize = await getOption('contextSize', config, depthConfig.context);
   const maxWindow = await getOption('maxWindow', config, depthConfig.maxWindow);
   const maxTokens = await getOption('maxTokens', config, depthConfig.maxTokens);

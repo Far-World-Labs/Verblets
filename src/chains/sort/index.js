@@ -1,4 +1,4 @@
-import callLlm from '../../lib/llm/index.js';
+import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import { chunk } from '../../lib/pure/index.js';
 import retry from '../../lib/retry/index.js';
 import { sort as sortPromptInitial } from '../../prompts/index.js';
@@ -10,7 +10,7 @@ import {
   filterProgress,
 } from '../../lib/progress-callback/index.js';
 import { debug } from '../../lib/debug/index.js';
-import { getOptions, withPolicy, scopeOperation } from '../../lib/context/option.js';
+import { initChain, withPolicy } from '../../lib/context/option.js';
 
 // ===== Option Mappers =====
 
@@ -33,22 +33,7 @@ export const mapEffort = (value) => {
   );
 };
 
-/**
- * Create model options for structured outputs
- * @param {string|Object} llm - LLM model name or configuration object
- * @returns {Object} Model options for llm
- */
-function createModelOptions() {
-  return {
-    response_format: {
-      type: 'json_schema',
-      json_schema: {
-        name: 'sort_result',
-        schema: sortSchema,
-      },
-    },
-  };
-}
+const sortResponseFormat = jsonSchema('sort_result', sortSchema);
 
 // redeclared so it's clearer how tests can override the sorter
 let sortPrompt = sortPromptInitial;
@@ -70,13 +55,20 @@ const sanitizeList = (list) => {
 };
 
 const sort = async (list, criteria, config = {}) => {
-  config = scopeOperation('sort', config);
-  const { onProgress: _onProgress = undefined, now } = config;
-  const { batchSize, progressMode, extremeK, iterations, selectBottom } = await getOptions(config, {
+  const {
+    config: scopedConfig,
+    batchSize,
+    progressMode,
+    extremeK,
+    iterations,
+    selectBottom,
+  } = await initChain('sort', config, {
     effort: withPolicy(mapEffort, ['extremeK', 'iterations', 'selectBottom']),
     batchSize: defaultSortBatchSize,
     progressMode: 'detailed',
   });
+  config = scopedConfig;
+  const { onProgress: _onProgress = undefined, now } = config;
   const onProgress = filterProgress(_onProgress, progressMode);
 
   const items = sanitizeList(list);
@@ -100,11 +92,14 @@ const sort = async (list, criteria, config = {}) => {
       return prompt;
     }
 
-    const result = await retry(() => callLlm(prompt, { ...config, ...createModelOptions() }), {
-      label: 'sort-batch',
-      config,
-      onProgress,
-    });
+    const result = await retry(
+      () => callLlm(prompt, { ...config, response_format: sortResponseFormat }),
+      {
+        label: 'sort-batch',
+        config,
+        onProgress,
+      }
+    );
 
     const resultArray = result?.items || result;
     return Array.isArray(resultArray) ? resultArray.filter(Boolean) : [];

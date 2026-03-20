@@ -3,7 +3,10 @@ import timeline, { mapEnrichment } from './index.js';
 import { testObjectMapper } from '../../lib/test-utils/index.js';
 
 // Mock all dependencies
-vi.mock('../../lib/llm/index.js');
+vi.mock('../../lib/llm/index.js', async (importOriginal) => ({
+  ...(await importOriginal()),
+  default: vi.fn(),
+}));
 vi.mock('../../lib/strip-response/index.js');
 vi.mock('../../lib/chunk-sentences/index.js');
 vi.mock('../../lib/retry/index.js');
@@ -92,7 +95,6 @@ describe('timeline', () => {
                 }),
               }),
             }),
-            strict: true,
           },
         },
       })

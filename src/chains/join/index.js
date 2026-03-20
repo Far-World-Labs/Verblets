@@ -1,7 +1,7 @@
 import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import windowFor from '../../lib/window-for/index.js';
-import { getOptions, withPolicy, scopeOperation } from '../../lib/context/option.js';
+import { initChain, withPolicy } from '../../lib/context/option.js';
 
 // ===== Option Mappers =====
 
@@ -49,11 +49,16 @@ export default async function join(
   if (list.length === 0) return '';
   if (list.length === 1) return list[0];
 
-  config = scopeOperation('join', config);
-  const { styleHint, windowSize, overlapPercent } = await getOptions(config, {
+  const {
+    config: scopedConfig,
+    styleHint,
+    windowSize,
+    overlapPercent,
+  } = await initChain('join', config, {
     fidelity: withPolicy(mapFidelity, ['windowSize', 'overlapPercent']),
     styleHint: '',
   });
+  config = scopedConfig;
 
   // Create overlapping windows using the windowFor utility
   const windows = windowFor(list, windowSize, overlapPercent);

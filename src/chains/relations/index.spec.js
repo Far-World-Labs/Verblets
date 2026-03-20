@@ -18,6 +18,7 @@ import { testStringMapper } from '../../lib/test-utils/index.js';
 
 // Mock the llm module
 vi.mock('../../lib/llm/index.js', () => ({
+  jsonSchema: (name, schema) => ({ type: 'json_schema', json_schema: { name, schema } }),
   default: vi.fn().mockImplementation((prompt, config) => {
     // For debugging - uncomment to see what's being called
     debug('Mock llm called with:', {

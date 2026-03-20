@@ -2,13 +2,14 @@ import nlp from 'compromise';
 import sort from '../sort/index.js';
 import map from '../map/index.js';
 import { glossaryExtractionJsonSchema } from './schemas.js';
-import { getOptions, scopeOperation } from '../../lib/context/option.js';
+import { initChain } from '../../lib/context/option.js';
+import { jsonSchema } from '../../lib/llm/index.js';
 
 // Response format for map: each chunk produces an array of terms
-const GLOSSARY_RESPONSE_FORMAT = {
-  type: 'json_schema',
-  json_schema: glossaryExtractionJsonSchema,
-};
+const GLOSSARY_RESPONSE_FORMAT = jsonSchema(
+  glossaryExtractionJsonSchema.name,
+  glossaryExtractionJsonSchema.schema
+);
 
 /**
  * Extract uncommon or technical terms from text that would benefit from definition.
@@ -23,13 +24,19 @@ const GLOSSARY_RESPONSE_FORMAT = {
  * @returns {Promise<string[]>} list of important terms, sorted by relevance
  */
 export default async function glossary(text, config = {}) {
-  config = scopeOperation('glossary', config);
-  const { maxTerms, sortBy, sentencesPerBatch, overlap } = await getOptions(config, {
+  const {
+    config: scopedConfig,
+    maxTerms,
+    sortBy,
+    sentencesPerBatch,
+    overlap,
+  } = await initChain('glossary', config, {
     maxTerms: 10,
     sortBy: 'importance for understanding the content',
     sentencesPerBatch: 3,
     overlap: 1,
   });
+  config = scopedConfig;
   if (!text || !text.trim()) return [];
 
   // Parse sentences using compromise
@@ -51,15 +58,15 @@ export default async function glossary(text, config = {}) {
 
 Return a "terms" object containing an array of the extracted terms.`;
 
-  const withPolicy = await map(textChunks, instructions, {
+  const mapResults = await map(textChunks, instructions, {
     ...config,
     batchSize: config.batchSize ?? 1,
     responseFormat: GLOSSARY_RESPONSE_FORMAT,
   });
 
   const termSet = new Set();
-  withPolicy.forEach((result) => {
-    // Each withPolicy item is an object with a 'terms' array
+  mapResults.forEach((result) => {
+    // Each mapResults item is an object with a 'terms' array
     if (result && result.terms && Array.isArray(result.terms)) {
       result.terms.forEach((term) => {
         if (term && typeof term === 'string') {

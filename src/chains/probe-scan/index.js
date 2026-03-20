@@ -1,6 +1,6 @@
 import { embedChunked } from '../../lib/embed/index.js';
 import { cosineSimilarity } from '../../lib/pure/index.js';
-import { getOptions, withPolicy, scopeOperation } from '../../lib/context/option.js';
+import { initChain, withPolicy } from '../../lib/context/option.js';
 
 // ===== Option Mappers =====
 
@@ -35,12 +35,16 @@ export const mapDetection = (value) => {
  * @returns {Promise<{ flagged: boolean, hits: Array<{ category: string, label: string, score: number, chunk: { text: string, start: number, end: number } }> }>}
  */
 export default async function probeScan(textOrChunks, probes, config = {}) {
-  config = scopeOperation('probe-scan', config);
-  const { categories } = config;
-  const { detection: threshold, maxTokens } = await getOptions(config, {
+  const {
+    config: scopedConfig,
+    detection: threshold,
+    maxTokens,
+  } = await initChain('probe-scan', config, {
     detection: withPolicy(mapDetection),
     maxTokens: 256,
   });
+  config = scopedConfig;
+  const { categories } = config;
 
   const chunks =
     typeof textOrChunks === 'string'

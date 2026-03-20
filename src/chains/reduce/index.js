@@ -2,21 +2,27 @@ import listBatch, { ListStyle, determineStyle } from '../../verblets/list-batch/
 import { asXML } from '../../prompts/wrap-variable.js';
 import { reduceAccumulatorJsonSchema } from './schemas.js';
 import { createLifecycleLogger, extractBatchConfig } from '../../lib/lifecycle-logger/index.js';
-import { createBatches, retry, batchTracker } from '../../lib/index.js';
-import { getOptions, scopeOperation } from '../../lib/context/option.js';
+import { retry, prepareBatches } from '../../lib/index.js';
+import { initChain } from '../../lib/context/option.js';
+
+import { jsonSchema } from '../../lib/llm/index.js';
 
 // Default response format for reduce operations - simple string accumulator
-const DEFAULT_REDUCE_RESPONSE_FORMAT = {
-  type: 'json_schema',
-  json_schema: reduceAccumulatorJsonSchema,
-};
+const DEFAULT_REDUCE_RESPONSE_FORMAT = jsonSchema(
+  reduceAccumulatorJsonSchema.name,
+  reduceAccumulatorJsonSchema.schema
+);
 
 const reduce = async function reduce(list, instructions, config = {}) {
-  config = scopeOperation('reduce', config);
-  const { progressMode, accumulatorMode } = await getOptions(config, {
+  const {
+    config: scopedConfig,
+    progressMode,
+    accumulatorMode,
+  } = await initChain('reduce', config, {
     progressMode: 'detailed',
     accumulatorMode: 'auto',
   });
+  config = scopedConfig;
 
   const lifecycleLogger = createLifecycleLogger(config.logger, 'chain:reduce');
 
@@ -30,7 +36,7 @@ const reduce = async function reduce(list, instructions, config = {}) {
     acc = { items: config.initial };
   }
 
-  const batches = await createBatches(list, config);
+  const { batches, tracker } = await prepareBatches('reduce', list, config, { progressMode });
   const activeBatches = batches.filter((b) => !b.skip);
 
   lifecycleLogger.logStart(
@@ -40,14 +46,6 @@ const reduce = async function reduce(list, instructions, config = {}) {
       batchSize: config.batchSize,
     })
   );
-
-  const tracker = batchTracker('reduce', list.length, {
-    onProgress: config.onProgress,
-    progressMode,
-    now: config.now ?? new Date(),
-  });
-
-  tracker.start(activeBatches.length);
 
   for (const [batchIndex, { items, skip, startIndex }] of batches.entries()) {
     if (skip) {

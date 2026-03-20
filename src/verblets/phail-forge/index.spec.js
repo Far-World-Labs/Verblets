@@ -4,6 +4,7 @@ import makePrompt from './index.js';
 // Mock llm
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(),
+  jsonSchema: (name, schema) => ({ type: 'json_schema', json_schema: { name, schema } }),
 }));
 
 describe('phailForge/makePrompt', () => {

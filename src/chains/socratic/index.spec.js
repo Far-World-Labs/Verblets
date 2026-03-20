@@ -9,6 +9,7 @@ vi.mock('../../lib/llm/index.js', () => {
       call += 1;
       return call % 2 === 1 ? `Q${call}` : `A${call}`;
     }),
+    jsonSchema: (name, schema) => ({ type: 'json_schema', json_schema: { name, schema } }),
   };
 });
 

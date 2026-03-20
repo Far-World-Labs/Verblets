@@ -8,6 +8,7 @@ import tagVocabulary, {
 // Mock the llm module
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(),
+  jsonSchema: (name, schema) => ({ type: 'json_schema', json_schema: { name, schema } }),
 }));
 
 import llm from '../../lib/llm/index.js';

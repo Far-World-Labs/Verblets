@@ -1,8 +1,8 @@
-import callLlm from '../../lib/llm/index.js';
+import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import buildInstructions from '../../lib/build-instructions/index.js';
-import { getOptions, withPolicy, scopeOperation } from '../../lib/context/option.js';
+import { initChain, withPolicy } from '../../lib/context/option.js';
 import relationResultSchema from './relation-result.json';
 
 // ===== Option Mappers =====
@@ -121,10 +121,10 @@ export function parseRelations(relations) {
  * @returns {Promise<string>} Relation specification as descriptive text
  */
 export async function relationSpec(prompt, config = {}) {
-  config = scopeOperation('relations:spec', config);
-  const { canonicalization } = await getOptions(config, {
+  const { config: scopedConfig, canonicalization } = await initChain('relations:spec', config, {
     canonicalization: withPolicy(mapCanonicalization),
   });
+  config = scopedConfig;
 
   const specSystemPrompt = `You are a relation specification generator. Create a clear, concise specification for relation extraction.`;
 
@@ -199,11 +199,11 @@ Use natural language, not symbolic identifiers or linked data formats.`;
  * @returns {Promise<Object>} Object with relations array
  */
 export async function applyRelations(text, specification, config = {}) {
-  config = scopeOperation('relations:apply', config);
-  const { entities } = config;
-  const { canonicalization } = await getOptions(config, {
+  const { config: scopedConfig, canonicalization } = await initChain('relations:apply', config, {
     canonicalization: withPolicy(mapCanonicalization),
   });
+  config = scopedConfig;
+  const { entities } = config;
 
   let prompt = `Apply the relation specification to extract relations from this text.
 
@@ -248,13 +248,7 @@ Example: {"object": "42^^xsd:integer"} NOT {"object": '"42"^^xsd:integer'}`;
     () =>
       callLlm(prompt, {
         ...config,
-        response_format: {
-          type: 'json_schema',
-          json_schema: {
-            name: 'relation_result',
-            schema: relationResultSchema,
-          },
-        },
+        response_format: jsonSchema('relation_result', relationResultSchema),
       }),
     {
       label: 'relations-apply',
@@ -284,10 +278,9 @@ Example: {"object": "42^^xsd:integer"} NOT {"object": '"42"^^xsd:integer'}`;
  * @returns {Promise<Array>} Array of relation objects
  */
 export async function extractRelations(text, instructions, config = {}) {
-  const { spec: providedSpec, ...restConfig } = config;
-  const spec = providedSpec || (await relationSpec(instructions, restConfig));
-  const entities = typeof instructions === 'object' ? instructions.entities : restConfig.entities;
-  const result = await applyRelations(text, spec, { ...restConfig, entities });
+  const spec = config.spec || (await relationSpec(instructions, config));
+  const entities = typeof instructions === 'object' ? instructions.entities : config.entities;
+  const result = await applyRelations(text, spec, { ...config, entities });
   return result.items || [];
 }
 

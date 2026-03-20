@@ -20,6 +20,7 @@ import { testInstructionBuilders } from '../../lib/test-utils/index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(),
+  jsonSchema: (name, schema) => ({ type: 'json_schema', json_schema: { name, schema } }),
 }));
 
 vi.mock('../scale/index.js', () => ({
@@ -207,7 +208,7 @@ describe('score chain', () => {
 
       const result = await scoreItem('test item', 'score by length');
 
-      expect(scaleSpec).toHaveBeenCalledWith('score by length', { now: expect.any(Date) });
+      expect(scaleSpec).toHaveBeenCalledWith('score by length', {});
       expect(llm).toHaveBeenCalledWith(expect.stringContaining('test item'), expect.any(Object));
       expect(result).toBe(7);
     });
@@ -232,10 +233,7 @@ describe('score chain', () => {
       scaleSpec.mockResolvedValueOnce(mockSpec);
       const scorer = await score.with('technical depth');
       expect(typeof scorer).toBe('function');
-      expect(scaleSpec).toHaveBeenCalledWith(
-        'technical depth',
-        expect.objectContaining({ now: expect.any(Date) })
-      );
+      expect(scaleSpec).toHaveBeenCalledWith('technical depth', expect.any(Object));
     });
 
     it('calls scoreSpec once during factory creation', async () => {

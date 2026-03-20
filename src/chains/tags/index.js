@@ -1,8 +1,8 @@
-import callLlm from '../../lib/llm/index.js';
+import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import map from '../map/index.js';
-import { getOptions, scopeOperation } from '../../lib/context/option.js';
+import { initChain, scopeOperation } from '../../lib/context/option.js';
 import tagsResultSchema from './tags-result.json';
 
 // Schema for map operation - array of tag arrays
@@ -75,10 +75,10 @@ Keep it concise and actionable.`;
  * @returns {Promise<Array>} Array of tag IDs
  */
 export async function applyTags(item, specification, vocabulary, config = {}) {
-  config = scopeOperation('tags:apply', config);
-  const { vocabularyMode } = await getOptions(config, {
+  const { config: scopedConfig, vocabularyMode } = await initChain('tags:apply', config, {
     vocabularyMode: 'strict',
   });
+  config = scopedConfig;
 
   const vocabularyConstraint =
     vocabularyMode === 'open'
@@ -104,13 +104,7 @@ Do NOT return tag labels, descriptions, or full tag objects - ONLY the string ID
     () =>
       callLlm(prompt, {
         ...config,
-        response_format: {
-          type: 'json_schema',
-          json_schema: {
-            name: 'tags_result',
-            schema: tagsResultSchema,
-          },
-        },
+        response_format: jsonSchema('tags_result', tagsResultSchema),
       }),
     {
       label: 'tags-apply',
@@ -131,9 +125,9 @@ Do NOT return tag labels, descriptions, or full tag objects - ONLY the string ID
  * @returns {Promise<Array>} Array of tag IDs
  */
 export async function tagItem(item, instructions, vocabulary, config = {}) {
-  const { spec: providedSpec, now = new Date(), ...restConfig } = config;
-  const spec = providedSpec || (await tagSpec(instructions, { now, ...restConfig }));
-  return await applyTags(item, spec, vocabulary, { now, ...restConfig });
+  const { spec: providedSpec } = config;
+  const spec = providedSpec || (await tagSpec(instructions, config));
+  return await applyTags(item, spec, vocabulary, config);
 }
 
 /**
@@ -145,14 +139,9 @@ export async function tagItem(item, instructions, vocabulary, config = {}) {
  * @returns {Promise<Array>} Array of tag arrays
  */
 export async function mapTags(list, instructions, vocabulary, config = {}) {
-  const {
-    spec: providedSpec,
-    vocabularyMode: _vocabularyMode,
-    now = new Date(),
-    ...restConfig
-  } = config;
+  const { spec: providedSpec, vocabularyMode: _vocabularyMode } = config;
   const vocabularyMode = _vocabularyMode || 'strict';
-  const spec = providedSpec || (await tagSpec(instructions, { now, ...restConfig }));
+  const spec = providedSpec || (await tagSpec(instructions, config));
   const mapInstr = mapInstructions({ specification: spec, vocabulary, vocabularyMode });
 
   // Ensure items are properly serialized for the map chain
@@ -163,15 +152,8 @@ export async function mapTags(list, instructions, vocabulary, config = {}) {
 
   // Configure map to use our structured schema for tag arrays
   const mapConfig = {
-    ...restConfig,
-    now,
-    responseFormat: {
-      type: 'json_schema',
-      json_schema: {
-        name: 'tags_map_result',
-        schema: tagsMapSchema,
-      },
-    },
+    ...config,
+    responseFormat: jsonSchema('tags_map_result', tagsMapSchema),
   };
 
   // Map will return array of tag arrays directly

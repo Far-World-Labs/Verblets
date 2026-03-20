@@ -1,12 +1,12 @@
 import list from '../list/index.js';
 import score from '../score/index.js';
-import { getOptions, scopeOperation } from '../../lib/context/option.js';
+import { initChain } from '../../lib/context/option.js';
 
 export default async function filterAmbiguous(text, config = {}) {
-  config = scopeOperation('filter-ambiguous', config);
-  const { topN } = await getOptions(config, {
+  const { config: scopedConfig, topN } = await initChain('filter-ambiguous', config, {
     topN: 10,
   });
+  config = scopedConfig;
   if (!text) return [];
   const sentences = text
     .split('\n')

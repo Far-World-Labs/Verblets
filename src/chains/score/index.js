@@ -1,4 +1,4 @@
-import callLlm from '../../lib/llm/index.js';
+import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { scaleSpec } from '../scale/index.js';
 import listBatch from '../../verblets/list-batch/index.js';
@@ -10,7 +10,7 @@ import {
   filterProgress,
 } from '../../lib/progress-callback/index.js';
 import { createBatches, parallel, retry } from '../../lib/index.js';
-import { getOptions, withPolicy, scopeOperation } from '../../lib/context/option.js';
+import { initChain, withPolicy, scopeOperation } from '../../lib/context/option.js';
 import scoreSingleResultSchema from './score-single-result.json';
 
 // ===== Option Mappers =====
@@ -28,20 +28,16 @@ export const mapAnchoring = (value) => {
   return { low: 'none', med: 'default', high: 'rich' }[value] ?? 'default';
 };
 
-const scoreBatchResponseFormat = {
-  type: 'json_schema',
-  json_schema: {
-    name: 'score_batch',
-    schema: {
-      type: 'object',
-      properties: {
-        items: { type: 'array', items: { type: 'number' } },
-      },
-      required: ['items'],
-      additionalProperties: false,
-    },
+const scoreBatchSchema = {
+  type: 'object',
+  properties: {
+    items: { type: 'array', items: { type: 'number' } },
   },
+  required: ['items'],
+  additionalProperties: false,
 };
+
+const scoreBatchResponseFormat = jsonSchema('score_batch', scoreBatchSchema);
 
 function buildScoringAnchors(items, scores, anchoring = 'default') {
   if (anchoring === 'none') return '';
@@ -114,13 +110,7 @@ ${asXML(item, { tag: 'item' })}`;
 
   const llmConfig = {
     ...config,
-    response_format: {
-      type: 'json_schema',
-      json_schema: {
-        name: 'score_single_result',
-        schema: scoreSingleResultSchema,
-      },
-    },
+    response_format: jsonSchema('score_single_result', scoreSingleResultSchema),
   };
 
   const response = await retry(() => callLlm(prompt, llmConfig), {
@@ -140,9 +130,8 @@ ${asXML(item, { tag: 'item' })}`;
  * @returns {Promise<*>} Score value
  */
 export async function scoreItem(item, instructions, config = {}) {
-  const { now = new Date(), ...restConfig } = config;
-  const spec = await scoreSpec(instructions, { now, ...restConfig });
-  return await applyScore(item, spec, { now, ...restConfig });
+  const spec = await scoreSpec(instructions, config);
+  return await applyScore(item, spec, config);
 }
 
 /**
@@ -263,21 +252,28 @@ async function scoreOnce(list, prompt, batchConfig, config) {
  * @returns {Promise<Array>} Array of scores
  */
 export async function mapScore(list, instructions, config = {}) {
-  config = scopeOperation('score', config);
   const { spec: providedSpec, onProgress: _onProgress, now } = config;
-  const { maxParallel, maxAttempts, temperature, errorPosture, progressMode, anchoring } =
-    await getOptions(config, {
-      maxParallel: 3,
-      maxAttempts: 3,
-      temperature: 0,
-      errorPosture: 'resilient',
-      progressMode: 'detailed',
-      anchoring: withPolicy(mapAnchoring),
-    });
+  const {
+    config: scopedConfig,
+    maxParallel,
+    maxAttempts,
+    temperature,
+    errorPosture,
+    progressMode,
+    anchoring,
+  } = await initChain('score', config, {
+    maxParallel: 3,
+    maxAttempts: 3,
+    temperature: 0,
+    errorPosture: 'resilient',
+    progressMode: 'detailed',
+    anchoring: withPolicy(mapAnchoring),
+  });
+  config = scopedConfig;
   const onProgress = filterProgress(_onProgress, progressMode);
 
   emitPhaseProgress(onProgress, 'score', 'generating-specification');
-  const spec = providedSpec || (await scoreSpec(instructions, { ...config, now }));
+  const spec = providedSpec || (await scoreSpec(instructions, config));
   emitPhaseProgress(onProgress, 'score', 'scoring-items', { specification: spec });
 
   const scoringPrompt = buildScoringInstructions(
@@ -424,10 +420,9 @@ ${processing}
 }
 
 mapScore.with = async function (instructions, config = {}) {
-  const { now = new Date(), ...restConfig } = config;
-  const spec = await scoreSpec(instructions, { now, ...restConfig });
+  const spec = await scoreSpec(instructions, config);
   return async (item) => {
-    return await applyScore(item, spec, { now, ...restConfig });
+    return await applyScore(item, spec, config);
   };
 };
 

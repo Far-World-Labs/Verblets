@@ -1,7 +1,7 @@
-import callLlm from '../../lib/llm/index.js';
+import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
-import { getOptions, withPolicy, scopeOperation } from '../../lib/context/option.js';
+import { initChain, withPolicy, scopeOperation } from '../../lib/context/option.js';
 import { calibrateSpecificationJsonSchema } from './schemas.js';
 import calibrateResultSchema from './calibrate-result.json';
 
@@ -79,12 +79,16 @@ function computeScanStatistics(scans) {
  * @returns {Promise<{ corpusProfile: string, classificationCriteria: string, salienceCriteria: string, categoryNotes: string }>}
  */
 export async function calibrateSpec(scans, config = {}) {
-  config = scopeOperation('calibrate:spec', config);
-  const { instructions } = config;
-  const { thresholdStrategy, sensitivity } = await getOptions(config, {
+  const {
+    config: scopedConfig,
+    thresholdStrategy,
+    sensitivity,
+  } = await initChain('calibrate:spec', config, {
     thresholdStrategy: 'statistical',
     sensitivity: withPolicy(mapSensitivity),
   });
+  config = scopedConfig;
+  const { instructions } = config;
 
   const statistics = computeScanStatistics(scans);
 
@@ -127,10 +131,10 @@ IMPORTANT: Each property must be a simple string value, not a nested object or a
       callLlm(specUserPrompt, {
         ...config,
         systemPrompt: specSystemPrompt,
-        response_format: {
-          type: 'json_schema',
-          json_schema: calibrateSpecificationJsonSchema,
-        },
+        response_format: jsonSchema(
+          calibrateSpecificationJsonSchema.name,
+          calibrateSpecificationJsonSchema.schema
+        ),
       }),
     {
       label: 'calibrate spec',
@@ -169,13 +173,7 @@ Return a JSON object with:
     () =>
       callLlm(prompt, {
         ...config,
-        response_format: {
-          type: 'json_schema',
-          json_schema: {
-            name: 'calibrate_result',
-            schema: calibrateResultSchema,
-          },
-        },
+        response_format: jsonSchema('calibrate_result', calibrateResultSchema),
       }),
     {
       label: 'calibrate classify',

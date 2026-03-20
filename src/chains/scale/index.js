@@ -1,4 +1,4 @@
-import callLlm from '../../lib/llm/index.js';
+import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import buildInstructions from '../../lib/build-instructions/index.js';
@@ -61,10 +61,10 @@ IMPORTANT: Each property must be a simple string value, not a nested object or a
       callLlm(specUserPrompt, {
         ...config,
         systemPrompt: specSystemPrompt,
-        response_format: {
-          type: 'json_schema',
-          json_schema: scaleSpecificationJsonSchema,
-        },
+        response_format: jsonSchema(
+          scaleSpecificationJsonSchema.name,
+          scaleSpecificationJsonSchema.schema
+        ),
       }),
     {
       label: 'scale spec',
@@ -99,13 +99,7 @@ Return a JSON object with a "value" property containing the scaled result.`;
     () =>
       callLlm(prompt, {
         ...config,
-        response_format: {
-          type: 'json_schema',
-          json_schema: {
-            name: 'scale_result',
-            schema: scaleResultSchema,
-          },
-        },
+        response_format: jsonSchema('scale_result', scaleResultSchema),
       }),
     {
       label: 'scale item',
@@ -124,9 +118,8 @@ Return a JSON object with a "value" property containing the scaled result.`;
  * @returns {Promise<*>} Scaled value
  */
 export async function scaleItem(item, instructions, config = {}) {
-  const { now = new Date(), ...restConfig } = config;
-  const spec = await scaleSpec(instructions, { now, ...restConfig });
-  return await applyScale(item, spec, { now, ...restConfig });
+  const spec = await scaleSpec(instructions, config);
+  return await applyScale(item, spec, config);
 }
 
 // ===== Advanced Scale Functions =====

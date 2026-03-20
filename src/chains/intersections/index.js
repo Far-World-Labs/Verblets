@@ -1,13 +1,13 @@
 import commonalities from '../../verblets/commonalities/index.js';
 import { rangeCombinations } from '../../lib/combinations/index.js';
-import callLlm from '../../lib/llm/index.js';
+import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 import { intersectionElementsSchema } from './schemas.js';
 import intersectionResultSchema from './intersection-result.json';
 import { debug } from '../../lib/debug/index.js';
-import { getOptions, scopeOperation } from '../../lib/context/option.js';
+import { initChain } from '../../lib/context/option.js';
 
 const { strictFormat, contentIsQuestion } = promptConstants;
 
@@ -52,13 +52,7 @@ const processCombo = async (combo, instructions, config = {}) => {
       () =>
         callLlm(INTERSECTION_PROMPT(combo, instructions), {
           ...config,
-          response_format: {
-            type: 'json_schema',
-            json_schema: {
-              name: 'intersection_elements',
-              schema: intersectionElementsSchema,
-            },
-          },
+          response_format: jsonSchema('intersection_elements', intersectionElementsSchema),
         }),
       {
         label: 'intersections-elements',
@@ -101,11 +95,15 @@ export default async function intersections(items, config = {}) {
     return {};
   }
 
-  config = scopeOperation('intersections', { llm: 'fastGoodCheap', ...config });
+  const { config: scopedConfig, useSchemaValidation } = await initChain(
+    'intersections',
+    { llm: 'fastGoodCheap', ...config },
+    {
+      useSchemaValidation: false,
+    }
+  );
+  config = scopedConfig;
   const { instructions, minSize = 2, maxSize = items.length, batchSize = 10 } = config;
-  const { useSchemaValidation } = await getOptions(config, {
-    useSchemaValidation: false,
-  });
 
   // Generate all combinations
   const allCombinations = rangeCombinations(items, minSize, maxSize);
@@ -145,13 +143,7 @@ export default async function intersections(items, config = {}) {
  */
 function createModelOptions(schemaName = 'intersection_result') {
   return {
-    response_format: {
-      type: 'json_schema',
-      json_schema: {
-        name: schemaName,
-        schema: intersectionResultSchema,
-      },
-    },
+    response_format: jsonSchema(schemaName, intersectionResultSchema),
   };
 }
 

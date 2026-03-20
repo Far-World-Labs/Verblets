@@ -8,7 +8,10 @@ import calibrate, {
 import llm from '../../lib/llm/index.js';
 import { testStringMapper } from '../../lib/test-utils/index.js';
 
-vi.mock('../../lib/llm/index.js');
+vi.mock('../../lib/llm/index.js', async (importOriginal) => ({
+  ...(await importOriginal()),
+  default: vi.fn(),
+}));
 
 const mockSpec = {
   corpusProfile: 'Mixed PII and financial data across 3 documents',

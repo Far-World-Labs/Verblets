@@ -2,7 +2,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import scale, { createScale, scaleSpec, applyScale } from './index.js';
 import llm from '../../lib/llm/index.js';
 
-vi.mock('../../lib/llm/index.js');
+vi.mock('../../lib/llm/index.js', async (importOriginal) => ({
+  ...(await importOriginal()),
+  default: vi.fn(),
+}));
 
 describe('scale', () => {
   beforeEach(() => {

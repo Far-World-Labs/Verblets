@@ -1,11 +1,11 @@
 import reduce from '../reduce/index.js';
-import callLlm from '../../lib/llm/index.js';
+import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { scopeProgress } from '../../lib/progress-callback/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { debug } from '../../lib/debug/index.js';
 import thresholdResultSchema from './threshold-result.json';
-import { getOptions, scopeOperation } from '../../lib/context/option.js';
+import { initChain } from '../../lib/context/option.js';
 
 export function calculateStatistics(data, targetProperty) {
   const values = data
@@ -53,18 +53,17 @@ export function calculateStatistics(data, targetProperty) {
   };
 }
 
-export default async function detectThreshold({
-  data,
-  targetProperty,
-  goal,
-  onProgress,
-  now,
-  ...options
-}) {
-  const config = scopeOperation('detect-threshold', { llm: { good: true }, ...options });
-  const { batchSize } = await getOptions(config, {
-    batchSize: 50,
-  });
+export default async function detectThreshold(options = {}) {
+  const { data, targetProperty, goal, onProgress } = options;
+  let config;
+  let batchSize;
+  ({ config, batchSize } = await initChain(
+    'detect-threshold',
+    { llm: { good: true }, ...options },
+    {
+      batchSize: 50,
+    }
+  ));
   if (!data || !Array.isArray(data) || data.length === 0) {
     throw new Error('Data must be a non-empty array');
   }
@@ -164,15 +163,8 @@ Return the updated accumulator as valid JSON.`;
     ...config,
     initial: JSON.stringify(initialAccumulator),
     batchSize,
-    responseFormat: {
-      type: 'json_schema',
-      json_schema: {
-        name: 'analysis_accumulator',
-        schema: accumulatorSchema,
-      },
-    },
+    responseFormat: jsonSchema('analysis_accumulator', accumulatorSchema),
     onProgress: scopeProgress(onProgress, 'reduce:analysis'),
-    now,
   });
 
   const accumulated = analysisResult;
@@ -219,13 +211,7 @@ Return threshold candidates with their rationales.`;
     () =>
       callLlm(finalPrompt, {
         ...config,
-        response_format: {
-          type: 'json_schema',
-          json_schema: {
-            name: 'threshold_result',
-            schema: thresholdResultSchema,
-          },
-        },
+        response_format: jsonSchema('threshold_result', thresholdResultSchema),
       }),
     {
       label: 'detect-threshold-analysis',

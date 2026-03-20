@@ -1,8 +1,8 @@
-import callLlm from '../../lib/llm/index.js';
+import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { constants as promptConstants, asXML } from '../../prompts/index.js';
 import { questionsListSchema, selectedQuestionSchema } from './schemas.js';
-import { getOption, getOptions, withPolicy, scopeOperation } from '../../lib/context/option.js';
+import { getOption, initChain, withPolicy } from '../../lib/context/option.js';
 
 // ===== Option Mappers =====
 
@@ -64,7 +64,14 @@ One question per string.`;
 };
 
 const generateQuestions = async function* generateQuestionsGenerator(text, config = {}) {
-  config = scopeOperation('questions', config);
+  const { config: scopedConfig, exploration: searchBreadth } = await initChain(
+    'questions',
+    config,
+    {
+      exploration: withPolicy(mapExploration),
+    }
+  );
+  config = scopedConfig;
   const resultsAll = [];
   const resultsAllMap = {};
   const drilldownResults = [];
@@ -72,9 +79,6 @@ const generateQuestions = async function* generateQuestionsGenerator(text, confi
   let textSelected = text;
 
   const { shouldSkip = shouldSkipNull, shouldStop = shouldStopNull } = config;
-  const { exploration: searchBreadth } = await getOptions(config, {
-    exploration: withPolicy(mapExploration),
-  });
   const temperature = await getOption('temperature', config, 1);
 
   let attempts = 0;
@@ -91,13 +95,7 @@ const generateQuestions = async function* generateQuestionsGenerator(text, confi
         () =>
           callLlm(pickInterestingQuestionPrompt, {
             ...config,
-            response_format: {
-              type: 'json_schema',
-              json_schema: {
-                name: 'selected_question',
-                schema: selectedQuestionSchema,
-              },
-            },
+            response_format: jsonSchema('selected_question', selectedQuestionSchema),
           }),
         {
           label: 'questions-pick-interesting',
@@ -114,13 +112,7 @@ const generateQuestions = async function* generateQuestionsGenerator(text, confi
     const llmConfig = {
       ...config,
       temperature,
-      response_format: {
-        type: 'json_schema',
-        json_schema: {
-          name: 'questions_list',
-          schema: questionsListSchema,
-        },
-      },
+      response_format: jsonSchema('questions_list', questionsListSchema),
     };
 
     // eslint-disable-next-line no-await-in-loop

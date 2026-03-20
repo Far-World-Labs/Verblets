@@ -2,8 +2,9 @@ import listBatch, { ListStyle, determineStyle } from '../../verblets/list-batch/
 import { asXML } from '../../prompts/wrap-variable.js';
 import { filterDecisionsJsonSchema } from './schemas.js';
 import { createLifecycleLogger, extractBatchConfig } from '../../lib/lifecycle-logger/index.js';
-import { createBatches, retry, batchTracker } from '../../lib/index.js';
-import { getOptions, withPolicy, scopeOperation } from '../../lib/context/option.js';
+import { prepareBatches, retry } from '../../lib/index.js';
+import { jsonSchema } from '../../lib/llm/index.js';
+import { initChain, withPolicy } from '../../lib/context/option.js';
 
 // ===== Option Mappers =====
 
@@ -37,17 +38,22 @@ export const mapStrictness = (value) => {
   );
 };
 
-const filterResponseFormat = {
-  type: 'json_schema',
-  json_schema: filterDecisionsJsonSchema,
-};
+const filterResponseFormat = jsonSchema(
+  filterDecisionsJsonSchema.name,
+  filterDecisionsJsonSchema.schema
+);
 
 const filter = async function filter(list, instructions, config = {}) {
-  config = scopeOperation('filter', config);
-  const { guidance, progressMode, errorPosture } = await getOptions(config, {
+  const {
+    config: scopedConfig,
+    guidance,
+    progressMode,
+    errorPosture,
+  } = await initChain('filter', config, {
     strictness: withPolicy(mapStrictness, ['guidance', 'errorPosture']),
     progressMode: 'detailed',
   });
+  config = scopedConfig;
   const lifecycleLogger = createLifecycleLogger(config.logger, 'chain:filter');
 
   lifecycleLogger.logStart(
@@ -58,22 +64,13 @@ const filter = async function filter(list, instructions, config = {}) {
   );
 
   const results = [];
-  const batches = await createBatches(list, config);
-  const activeBatches = batches.filter((b) => !b.skip);
+  const { batches, tracker } = await prepareBatches('filter', list, config, { progressMode });
 
   lifecycleLogger.logEvent('batches-created', {
     totalBatches: batches.length,
-    activeBatches: activeBatches.length,
+    activeBatches: batches.filter((b) => !b.skip).length,
     batchSizes: batches.map((b) => b.items?.length || 0),
   });
-
-  const tracker = batchTracker('filter', list.length, {
-    onProgress: config.onProgress,
-    progressMode,
-    now: config.now ?? new Date(),
-  });
-
-  tracker.start(activeBatches.length);
 
   for (const [batchIndex, { items, skip, startIndex }] of batches.entries()) {
     if (skip) {

@@ -3,12 +3,13 @@ import { CENTRAL_TENDENCY_PROMPT } from '../../verblets/central-tendency-lines/i
 import { centralTendencyResultsJsonSchema } from './schemas.js';
 import { createLifecycleLogger, extractPromptAnalysis } from '../../lib/lifecycle-logger/index.js';
 import { scopeProgress } from '../../lib/progress-callback/index.js';
-import { getOptions, scopeOperation } from '../../lib/context/option.js';
+import { jsonSchema } from '../../lib/llm/index.js';
+import { initChain } from '../../lib/context/option.js';
 
-const centralTendencyResponseFormat = {
-  type: 'json_schema',
-  json_schema: centralTendencyResultsJsonSchema,
-};
+const centralTendencyResponseFormat = jsonSchema(
+  centralTendencyResultsJsonSchema.name,
+  centralTendencyResultsJsonSchema.schema
+);
 
 /**
  * Build instructions for central tendency evaluation using the core verblet prompt
@@ -52,7 +53,6 @@ ${corePrompt}`;
  * @returns {Promise<Array>} Array of central tendency results
  */
 export default async function centralTendency(items, seedItems, config = {}) {
-  config = scopeOperation('central-tendency', config);
   if (!Array.isArray(items)) {
     throw new Error('Items must be an array');
   }
@@ -65,9 +65,10 @@ export default async function centralTendency(items, seedItems, config = {}) {
     throw new Error('seedItems must be a non-empty array');
   }
 
-  const { batchSize } = await getOptions(config, {
+  const { config: scopedConfig, batchSize } = await initChain('central-tendency', config, {
     batchSize: 5,
   });
+  config = scopedConfig;
 
   // Create lifecycle logger for the chain
   const lifecycleLogger = createLifecycleLogger(config.logger, 'central-tendency-chain');

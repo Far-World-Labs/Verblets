@@ -2,7 +2,7 @@ import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import chunkSentences from '../../lib/chunk-sentences/index.js';
 import wrapVariable from '../../prompts/wrap-variable.js';
-import { getOption, getOptions, withPolicy, scopeOperation } from '../../lib/context/option.js';
+import { getOption, initChain, withPolicy } from '../../lib/context/option.js';
 
 // ===== Option Mappers =====
 
@@ -57,19 +57,24 @@ IMPORTANT RULES:
 };
 
 export default async function split(text, instructions, config = {}) {
-  config = scopeOperation('split', { llm: 'fastGoodCheapCoding', ...config });
-  const { delimiter = defaultDelimiter } = config;
   const {
+    config: scopedConfig,
     chunkLen,
     targetSplitsPerChunk,
     temperature,
     preservation: preservationConfig,
-  } = await getOptions(config, {
-    chunkLen: 4000,
-    targetSplitsPerChunk: null,
-    temperature: 0.1,
-    preservation: withPolicy(mapPreservation),
-  });
+  } = await initChain(
+    'split',
+    { llm: 'fastGoodCheapCoding', ...config },
+    {
+      chunkLen: 4000,
+      targetSplitsPerChunk: null,
+      temperature: 0.1,
+      preservation: withPolicy(mapPreservation),
+    }
+  );
+  config = scopedConfig;
+  const { delimiter = defaultDelimiter } = config;
   const preservationShort = await getOption('preservationShort', config, preservationConfig.short);
   const preservationLong = await getOption('preservationLong', config, preservationConfig.long);
 

@@ -5,6 +5,7 @@ import bool from '../../verblets/bool/index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(),
+  jsonSchema: (name, schema) => ({ type: 'json_schema', json_schema: { name, schema } }),
 }));
 
 vi.mock('../../verblets/bool/index.js', () => ({

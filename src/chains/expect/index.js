@@ -6,7 +6,7 @@ import wrapVariable from '../../prompts/wrap-variable.js';
 import { env } from '../../lib/env/index.js';
 import { expectCore, handleAssertionResult } from './shared.js';
 import { extractFileContext } from '../../lib/logger/index.js';
-import { getOptions, withPolicy, scopeOperation } from '../../lib/context/option.js';
+import { initChain, withPolicy } from '../../lib/context/option.js';
 
 // ===== Option Mappers =====
 
@@ -164,11 +164,15 @@ Keep your response concise but actionable. Focus on practical solutions.`;
  * Enhanced LLM expectation with debugging features
  */
 export async function expect(actual, expected, constraint, config = {}) {
-  config = scopeOperation('expect', config);
-  const { mode, introspection } = await getOptions(config, {
+  const {
+    config: scopedConfig,
+    mode,
+    introspection,
+  } = await initChain('expect', config, {
     mode: env.LLM_EXPECT_MODE || 'none',
     advice: withPolicy(mapAdvice, ['introspection']),
   });
+  config = scopedConfig;
 
   const callerInfo = extractFileContext(5);
 

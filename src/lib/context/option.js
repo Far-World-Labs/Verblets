@@ -97,3 +97,19 @@ export async function getOptions(config, spec) {
   }
   return result;
 }
+
+/**
+ * Combined scopeOperation + getOptions in one call.
+ * Scopes the config to the named operation, resolves all options from the spec,
+ * and returns both the scoped config and resolved values.
+ *
+ * @param {string} operation - Operation name
+ * @param {object} inputConfig - The config object to scope
+ * @param {object} [spec] - Option spec (same as getOptions spec). Omit if no options needed.
+ * @returns {Promise<{ config: object, ...resolvedOptions }>}
+ */
+export async function initChain(operation, inputConfig, spec) {
+  const config = scopeOperation(operation, inputConfig);
+  const options = spec ? await getOptions(config, spec) : {};
+  return { config, ...options };
+}
