@@ -1,20 +1,9 @@
-import { describe, it as vitestIt, expect as vitestExpect } from 'vitest';
+import { describe } from 'vitest';
 import analyzeTestError from './index.js';
-import vitestAiExpect from '../expect/index.js';
 import { longTestTimeout } from '../../constants/common.js';
-import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
-import { getConfig } from '../test-analysis/config.js';
+import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 
-const config = getConfig();
-const it = config?.aiMode
-  ? wrapIt(vitestIt, { baseProps: { suite: 'Test-analyzer chain' } })
-  : vitestIt;
-const expect = config?.aiMode
-  ? wrapExpect(vitestExpect, { baseProps: { suite: 'Test-analyzer chain' } })
-  : vitestExpect;
-const aiExpect = config?.aiMode
-  ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'Test-analyzer chain' } })
-  : vitestAiExpect;
+const { it, expect, aiExpect } = getTestHelpers('Test-analyzer chain');
 
 describe('test-analyzer chain', () => {
   it(

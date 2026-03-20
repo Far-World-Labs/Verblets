@@ -1,25 +1,11 @@
-import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
+import { describe } from 'vitest';
 import { calibrateSpec, applyCalibrate, createCalibratedClassifier } from './index.js';
 import probeScan from '../probe-scan/index.js';
 import embedProbes from '../../lib/embed-probes/index.js';
-import vitestAiExpect from '../expect/index.js';
-import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
-import { getConfig } from '../test-analysis/config.js';
 import { extendedTestTimeout } from '../../constants/common.js';
-import { get as configGet } from '../../lib/config/index.js';
+import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 
-const skipEmbedding = !configGet('OPENWEBUI_API_KEY');
-
-const config = getConfig();
-const it = config?.aiMode
-  ? wrapIt(vitestIt, { baseProps: { suite: 'Calibrate chain' } })
-  : vitestIt;
-const expect = config?.aiMode
-  ? wrapExpect(vitestExpect, { baseProps: { suite: 'Calibrate chain' } })
-  : vitestExpect;
-const aiExpect = config?.aiMode
-  ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'Calibrate chain' } })
-  : vitestAiExpect;
+const { it, expect, aiExpect } = getTestHelpers('Calibrate chain');
 
 const PROBES = [
   { category: 'pii-name', label: 'Personal full names', queries: ['full name of a person'] },
@@ -47,7 +33,7 @@ const PROBES = [
 ];
 
 describe('Calibrate examples', () => {
-  it.skipIf(skipEmbedding)(
+  it(
     'LLM-enhanced classification: learn severity rules from corpus scans',
     { timeout: extendedTestTimeout },
     async () => {
@@ -95,7 +81,7 @@ describe('Calibrate examples', () => {
     }
   );
 
-  it.skipIf(skipEmbedding)(
+  it(
     'createCalibratedClassifier: reusable classifier for streaming classification',
     { timeout: extendedTestTimeout },
     async () => {

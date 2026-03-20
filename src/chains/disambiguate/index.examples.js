@@ -1,20 +1,9 @@
-import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
+import { describe } from 'vitest';
 import disambiguate from './index.js';
-import vitestAiExpect from '../expect/index.js';
 import { longTestTimeout } from '../../constants/common.js';
-import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
-import { getConfig } from '../test-analysis/config.js';
+import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 
-const config = getConfig();
-const it = config?.aiMode
-  ? wrapIt(vitestIt, { baseProps: { suite: 'Disambiguate chain' } })
-  : vitestIt;
-const expect = config?.aiMode
-  ? wrapExpect(vitestExpect, { baseProps: { suite: 'Disambiguate chain' } })
-  : vitestExpect;
-const aiExpect = config?.aiMode
-  ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'Disambiguate chain' } })
-  : vitestAiExpect;
+const { it, expect, aiExpect } = getTestHelpers('Disambiguate chain');
 
 describe('Disambiguate chain', () => {
   it(

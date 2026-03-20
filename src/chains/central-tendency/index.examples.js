@@ -1,20 +1,13 @@
-import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
+import { describe } from 'vitest';
 import { longTestTimeout } from '../../constants/common.js';
-import vitestAiExpect from '../expect/index.js';
 import centralTendency from './index.js';
-import {
-  makeWrappedIt,
-  makeWrappedExpect,
-  makeWrappedAiExpect,
-} from '../test-analysis/test-wrappers.js';
+import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 import { getConfig } from '../test-analysis/config.js';
 
 const config = getConfig();
 const suite = 'Central-tendency chain';
 
-const it = makeWrappedIt(vitestIt, suite, config);
-const expect = makeWrappedExpect(vitestExpect, suite, config);
-const aiExpect = makeWrappedAiExpect(vitestAiExpect, suite, config);
+const { it, expect, aiExpect } = getTestHelpers(suite);
 
 // Higher-order function to create test-specific loggers
 const makeTestLogger = (testName) => {

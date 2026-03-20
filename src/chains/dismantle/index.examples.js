@@ -1,21 +1,10 @@
-import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
+import { describe } from 'vitest';
 
 import Dismantle from './index.js';
-import vitestAiExpect from '../expect/index.js';
 import { longTestTimeout, shouldRunLongExamples } from '../../constants/common.js';
-import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
-import { getConfig } from '../test-analysis/config.js';
+import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 
-const config = getConfig();
-const it = config?.aiMode
-  ? wrapIt(vitestIt, { baseProps: { suite: 'Dismantle chain' } })
-  : vitestIt;
-const expect = config?.aiMode
-  ? wrapExpect(vitestExpect, { baseProps: { suite: 'Dismantle chain' } })
-  : vitestExpect;
-const aiExpect = config?.aiMode
-  ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'Dismantle chain' } })
-  : vitestAiExpect;
+const { it, expect } = getTestHelpers('Dismantle chain');
 
 describe('Dismantle chain', () => {
   it.skipIf(!shouldRunLongExamples)(

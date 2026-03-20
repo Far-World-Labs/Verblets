@@ -3,17 +3,12 @@
  * Demonstrates cognitive science applications in prototype theory and graded typicality
  */
 
-import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
+import { describe } from 'vitest';
 import centralTendency from './index.js';
 import categorySamples from '../../chains/category-samples/index.js';
 import centralTendencyChain from '../../chains/central-tendency/index.js';
 import { longTestTimeout } from '../../constants/common.js';
-import vitestAiExpect from '../../chains/expect/index.js';
-import {
-  makeWrappedIt,
-  makeWrappedExpect,
-  makeWrappedAiExpect,
-} from '../../chains/test-analysis/test-wrappers.js';
+import { getTestHelpers } from '../../chains/test-analysis/test-wrappers.js';
 import { getConfig } from '../../chains/test-analysis/config.js';
 
 //
@@ -22,9 +17,7 @@ import { getConfig } from '../../chains/test-analysis/config.js';
 const config = getConfig();
 const suite = 'centralTendency examples';
 
-const it = makeWrappedIt(vitestIt, suite, config);
-const expect = makeWrappedExpect(vitestExpect, suite, config);
-const aiExpect = makeWrappedAiExpect(vitestAiExpect, suite, config);
+const { it, expect, aiExpect } = getTestHelpers(suite);
 
 // Higher-order function to create test-specific loggers
 const makeTestLogger = (testName) => {

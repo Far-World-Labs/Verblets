@@ -1,24 +1,14 @@
-import { beforeAll, afterAll } from 'vitest';
-import { describe, it as vitestIt, expect as vitestExpect } from 'vitest';
+import { beforeAll, afterAll, describe } from 'vitest';
 import scanJs from './index.js';
-import vitestAiExpect from '../expect/index.js';
 import { longTestTimeout, shouldRunLongExamples } from '../../constants/common.js';
-import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
-import { getConfig } from '../test-analysis/config.js';
+import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
 let testDir;
 
-const config = getConfig();
-const it = config?.aiMode ? wrapIt(vitestIt, { baseProps: { suite: 'Scan-js chain' } }) : vitestIt;
-const expect = config?.aiMode
-  ? wrapExpect(vitestExpect, { baseProps: { suite: 'Scan-js chain' } })
-  : vitestExpect;
-const aiExpect = config?.aiMode
-  ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'Scan-js chain' } })
-  : vitestAiExpect;
+const { it, expect, aiExpect } = getTestHelpers('Scan-js chain');
 
 describe.skipIf(!shouldRunLongExamples)('scan-js chain', () => {
   beforeAll(async () => {

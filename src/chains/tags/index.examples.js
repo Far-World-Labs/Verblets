@@ -1,20 +1,9 @@
-import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
+import { describe } from 'vitest';
 import tags, { tagItem, mapTags, createTagger, createTagExtractor, tagSpec } from './index.js';
-import vitestAiExpect from '../expect/index.js';
 import { longTestTimeout } from '../../constants/common.js';
-import {
-  makeWrappedIt,
-  makeWrappedExpect,
-  makeWrappedAiExpect,
-} from '../test-analysis/test-wrappers.js';
-import { getConfig } from '../test-analysis/config.js';
+import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 
-const config = getConfig();
-const suite = 'Tags chain';
-
-const it = makeWrappedIt(vitestIt, suite, config);
-const expect = makeWrappedExpect(vitestExpect, suite, config);
-const aiExpect = makeWrappedAiExpect(vitestAiExpect, suite, config);
+const { it, expect, aiExpect } = getTestHelpers('Tags chain');
 
 describe('tags examples', () => {
   const expenseVocabulary = {

@@ -1,20 +1,9 @@
-import { describe, it as vitestIt, expect as vitestExpect } from 'vitest';
+import { describe } from 'vitest';
 import intersections from './index.js';
-import vitestAiExpect from '../expect/index.js';
 import { longTestTimeout, shouldRunLongExamples } from '../../constants/common.js';
-import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
-import { getConfig } from '../test-analysis/config.js';
+import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 
-const config = getConfig();
-const it = config?.aiMode
-  ? wrapIt(vitestIt, { baseProps: { suite: 'Intersections chain' } })
-  : vitestIt;
-const expect = config?.aiMode
-  ? wrapExpect(vitestExpect, { baseProps: { suite: 'Intersections chain' } })
-  : vitestExpect;
-const aiExpect = config?.aiMode
-  ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'Intersections chain' } })
-  : vitestAiExpect;
+const { it, expect, aiExpect } = getTestHelpers('Intersections chain');
 
 describe.skipIf(!shouldRunLongExamples)('intersections chain examples', () => {
   it(

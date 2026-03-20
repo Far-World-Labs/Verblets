@@ -1,22 +1,13 @@
-import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
+import { describe } from 'vitest';
 
 import auto from './index.js';
-import vitestAiExpect from '../../chains/expect/index.js';
 import { longTestTimeout } from '../../constants/common.js';
-import { wrapIt, wrapExpect, wrapAiExpect } from '../../chains/test-analysis/test-wrappers.js';
-import { getConfig } from '../../chains/test-analysis/config.js';
+import { getTestHelpers } from '../../chains/test-analysis/test-wrappers.js';
 
 //
 // Setup AI test wrappers
 //
-const config = getConfig();
-const it = config?.aiMode ? wrapIt(vitestIt, { baseProps: { suite: 'Auto verblet' } }) : vitestIt;
-const expect = config?.aiMode
-  ? wrapExpect(vitestExpect, { baseProps: { suite: 'Auto verblet' } })
-  : vitestExpect;
-const aiExpect = config?.aiMode
-  ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'Auto verblet' } })
-  : vitestAiExpect;
+const { it, expect, aiExpect } = getTestHelpers('Auto verblet');
 
 //
 // Test suite

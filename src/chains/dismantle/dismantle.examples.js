@@ -1,20 +1,9 @@
-import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
+import { describe } from 'vitest';
 import { longTestTimeout } from '../../constants/common.js';
 import { dismantle } from './index.js';
-import vitestAiExpect from '../expect/index.js';
-import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
-import { getConfig } from '../test-analysis/config.js';
+import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 
-const config = getConfig();
-const it = config?.aiMode
-  ? wrapIt(vitestIt, { baseProps: { suite: 'Dismantle chain (basic)' } })
-  : vitestIt;
-const expect = config?.aiMode
-  ? wrapExpect(vitestExpect, { baseProps: { suite: 'Dismantle chain (basic)' } })
-  : vitestExpect;
-const aiExpect = config?.aiMode
-  ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'Dismantle chain (basic)' } })
-  : vitestAiExpect;
+const { it, expect } = getTestHelpers('Dismantle chain (basic)');
 
 const examples = [
   {

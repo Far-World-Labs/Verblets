@@ -1,18 +1,9 @@
-import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
+import { describe } from 'vitest';
 import reduce from './index.js';
-import vitestAiExpect from '../expect/index.js';
 import { longTestTimeout } from '../../constants/common.js';
-import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
-import { getConfig } from '../test-analysis/config.js';
+import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 
-const config = getConfig();
-const it = config?.aiMode ? wrapIt(vitestIt, { baseProps: { suite: 'Reduce chain' } }) : vitestIt;
-const expect = config?.aiMode
-  ? wrapExpect(vitestExpect, { baseProps: { suite: 'Reduce chain' } })
-  : vitestExpect;
-const aiExpect = config?.aiMode
-  ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'Reduce chain' } })
-  : vitestAiExpect;
+const { it, expect } = getTestHelpers('Reduce chain');
 
 describe('reduce examples', () => {
   it(

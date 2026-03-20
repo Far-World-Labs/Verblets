@@ -1,6 +1,5 @@
-import { describe, expect as vitestExpect, it as vitestIt, vi } from 'vitest';
-import { getConfig } from '../../chains/test-analysis/config.js';
-import { wrapIt, wrapExpect } from '../../chains/test-analysis/test-wrappers.js';
+import { describe, vi } from 'vitest';
+import { getTestHelpers } from '../../chains/test-analysis/test-wrappers.js';
 import bool from './index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
@@ -14,12 +13,7 @@ vi.mock('../../lib/llm/index.js', () => ({
   }),
 }));
 
-// Setup AI test wrappers
-const config = getConfig();
-const it = config?.aiMode ? wrapIt(vitestIt, { baseProps: { suite: 'bool verblet' } }) : vitestIt;
-const expect = config?.aiMode
-  ? wrapExpect(vitestExpect, { baseProps: { suite: 'bool verblet' } })
-  : vitestExpect;
+const { it, expect } = getTestHelpers('bool verblet');
 
 const examples = [
   {

@@ -1,14 +1,7 @@
-import { describe, it as vitestIt, expect as vitestExpect } from 'vitest';
-import { wrapIt, wrapExpect } from '../test-analysis/test-wrappers.js';
-import { getConfig } from '../test-analysis/config.js';
+import { describe } from 'vitest';
+import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 
-const config = getConfig();
-const it = config?.aiMode
-  ? wrapIt(vitestIt, { baseProps: { suite: 'Llm-logger chain' } })
-  : vitestIt;
-const expect = config?.aiMode
-  ? wrapExpect(vitestExpect, { baseProps: { suite: 'Llm-logger chain' } })
-  : vitestExpect;
+const { it, expect } = getTestHelpers('Llm-logger chain');
 
 describe('llm-logger chain', () => {
   it('is a logging utility tested through integration', () => {

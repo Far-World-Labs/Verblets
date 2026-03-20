@@ -1,14 +1,7 @@
-import { describe, it as vitestIt, expect as vitestExpect } from 'vitest';
-import { wrapIt, wrapExpect } from './test-wrappers.js';
-import { getConfig } from './config.js';
+import { describe } from 'vitest';
+import { getTestHelpers } from './test-wrappers.js';
 
-const config = getConfig();
-const it = config?.aiMode
-  ? wrapIt(vitestIt, { baseProps: { suite: 'Test analysis chain' } })
-  : vitestIt;
-const expect = config?.aiMode
-  ? wrapExpect(vitestExpect, { baseProps: { suite: 'Test analysis chain' } })
-  : vitestExpect;
+const { it, expect } = getTestHelpers('Test analysis chain');
 
 // Helper to delay execution
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -104,7 +97,7 @@ describe('test-analysis race condition tests', () => {
 });
 
 describe('test-analysis edge cases', () => {
-  const skipIt = config?.aiMode ? it.skip : vitestIt.skip;
+  const skipIt = it.skip;
 
   it('test that completes after async delay', async () => {
     await delay(5);

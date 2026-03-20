@@ -1,16 +1,9 @@
-import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
+import { describe } from 'vitest';
 import TextSimilarity from './index.js';
 import { longTestTimeout } from '../../constants/common.js';
-import { wrapIt, wrapExpect } from '../../chains/test-analysis/test-wrappers.js';
-import { getConfig } from '../../chains/test-analysis/config.js';
+import { getTestHelpers } from '../../chains/test-analysis/test-wrappers.js';
 
-const config = getConfig();
-const it = config?.aiMode
-  ? wrapIt(vitestIt, { baseProps: { suite: 'Text similarity lib' } })
-  : vitestIt;
-const expect = config?.aiMode
-  ? wrapExpect(vitestExpect, { baseProps: { suite: 'Text similarity lib' } })
-  : vitestExpect;
+const { it, expect } = getTestHelpers('Text similarity lib');
 
 describe('TextSimilarity examples', () => {
   it(

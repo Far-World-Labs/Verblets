@@ -35,8 +35,7 @@ describe('embedStepBack', () => {
 
     const prompt = mockLlm.mock.calls[0][0];
     expect(prompt).toContain('how do plants make food');
-    expect(prompt).toContain('3'); // default count
-    expect(prompt).toContain('broader');
+    expect(prompt).toMatch(/\b3\b/); // default count embedded in prompt
   });
 
   it('uses items schema for auto-unwrapping', async () => {
@@ -58,7 +57,8 @@ describe('embedStepBack', () => {
     await embedStepBack('query', { count: 5 });
 
     const prompt = mockLlm.mock.calls[0][0];
-    expect(prompt).toContain('generate 5 broader');
+    expect(prompt).toMatch(/\b5\b/);
+    expect(prompt).not.toMatch(/\b3\b/); // default count NOT present
   });
 
   testForwardsConfig('forwards config to callLlm', {

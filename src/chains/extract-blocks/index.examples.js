@@ -1,16 +1,15 @@
-import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
+import { describe } from 'vitest';
 import extractBlocks from './index.js';
 import map from '../map/index.js';
 import { longTestTimeout } from '../../constants/common.js';
-import { makeWrappedIt, makeWrappedExpect } from '../test-analysis/test-wrappers.js';
+import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 import { getConfig } from '../test-analysis/config.js';
 import { logBatchSchema } from './log-batch-schema.js';
 
 const config = getConfig();
 const suite = 'Extract Blocks chain';
 
-const it = makeWrappedIt(vitestIt, suite, config);
-const expect = makeWrappedExpect(vitestExpect, suite, config);
+const { it, expect } = getTestHelpers(suite);
 
 // Higher-order function to create test-specific loggers
 const makeTestLogger = (testName) => {

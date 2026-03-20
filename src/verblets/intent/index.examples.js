@@ -1,24 +1,15 @@
 import Ajv from 'ajv';
-import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
-import vitestAiExpect from '../../chains/expect/index.js';
+import { describe } from 'vitest';
 
 import { intent as intentSchema } from '../../json-schemas/index.js';
 import { longTestTimeout } from '../../constants/common.js';
 import { env } from '../../lib/env/index.js';
 import { debug } from '../../lib/debug/index.js';
-import { wrapIt, wrapExpect, wrapAiExpect } from '../../chains/test-analysis/test-wrappers.js';
-import { getConfig } from '../../chains/test-analysis/config.js';
+import { getTestHelpers } from '../../chains/test-analysis/test-wrappers.js';
 
 import intent from './index.js';
 
-const config = getConfig();
-const it = config?.aiMode ? wrapIt(vitestIt, { baseProps: { suite: 'Intent verblet' } }) : vitestIt;
-const expect = config?.aiMode
-  ? wrapExpect(vitestExpect, { baseProps: { suite: 'Intent verblet' } })
-  : vitestExpect;
-const aiExpect = config?.aiMode
-  ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'Intent verblet' } })
-  : vitestAiExpect;
+const { it, expect, aiExpect } = getTestHelpers('Intent verblet');
 
 const travelOperations = [
   {

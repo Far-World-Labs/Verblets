@@ -1,21 +1,10 @@
-import { describe, it as vitestIt, expect as vitestExpect } from 'vitest';
+import { describe } from 'vitest';
 import ConversationChain from './index.js';
-import vitestAiExpect from '../expect/index.js';
 import { longTestTimeout } from '../../constants/common.js';
 import { roundRobin } from './turn-policies.js';
-import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
-import { getConfig } from '../test-analysis/config.js';
+import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 
-const config = getConfig();
-const it = config?.aiMode
-  ? wrapIt(vitestIt, { baseProps: { suite: 'Conversation chain' } })
-  : vitestIt;
-const expect = config?.aiMode
-  ? wrapExpect(vitestExpect, { baseProps: { suite: 'Conversation chain' } })
-  : vitestExpect;
-const aiExpect = config?.aiMode
-  ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'Conversation chain' } })
-  : vitestAiExpect;
+const { it, expect, aiExpect } = getTestHelpers('Conversation chain');
 
 // Fixed clock for deterministic timestamps — makes LLM prompts cacheable
 const fixedClock = () => new Date('2024-06-15T12:00:00Z');

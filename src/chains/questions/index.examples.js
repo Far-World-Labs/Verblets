@@ -1,23 +1,12 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
+import { describe } from 'vitest';
 
 import { longTestTimeout } from '../../constants/common.js';
 import questions from './index.js';
-import vitestAiExpect from '../expect/index.js';
-import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
-import { getConfig } from '../test-analysis/config.js';
+import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 
-const config = getConfig();
-const it = config?.aiMode
-  ? wrapIt(vitestIt, { baseProps: { suite: 'Questions verblet' } })
-  : vitestIt;
-const expect = config?.aiMode
-  ? wrapExpect(vitestExpect, { baseProps: { suite: 'Questions verblet' } })
-  : vitestExpect;
-const aiExpect = config?.aiMode
-  ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'Questions verblet' } })
-  : vitestAiExpect;
+const { it, expect } = getTestHelpers('Questions verblet');
 
 const ensureDirectoryExists = async (directoryPath) => {
   try {

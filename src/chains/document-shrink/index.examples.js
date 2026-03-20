@@ -1,23 +1,12 @@
-import { describe, it as vitestIt, expect as vitestExpect } from 'vitest';
+import { describe } from 'vitest';
 import documentShrink from './index.js';
-import vitestAiExpect from '../expect/index.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { debug } from '../../lib/debug/index.js';
 import { shouldRunLongExamples } from '../../constants/common.js';
-import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
-import { getConfig } from '../test-analysis/config.js';
+import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 
-const config = getConfig();
-const it = config?.aiMode
-  ? wrapIt(vitestIt, { baseProps: { suite: 'Document shrink chain' } })
-  : vitestIt;
-const expect = config?.aiMode
-  ? wrapExpect(vitestExpect, { baseProps: { suite: 'Document shrink chain' } })
-  : vitestExpect;
-const aiExpect = config?.aiMode
-  ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'Document shrink chain' } })
-  : vitestAiExpect;
+const { it, expect, aiExpect } = getTestHelpers('Document shrink chain');
 
 // Helper to show cache message after 5 seconds
 function withCacheMessage(testFn) {

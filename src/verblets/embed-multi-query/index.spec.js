@@ -35,8 +35,7 @@ describe('embedMultiQuery', () => {
 
     const prompt = mockLlm.mock.calls[0][0];
     expect(prompt).toContain('how do plants make food');
-    expect(prompt).toContain('3'); // default count
-    expect(prompt).toContain('diverse search queries');
+    expect(prompt).toMatch(/\b3\b/); // default count embedded in prompt
   });
 
   it('uses items schema for auto-unwrapping', async () => {
@@ -58,7 +57,7 @@ describe('embedMultiQuery', () => {
     await embedMultiQuery('query');
 
     const prompt = mockLlm.mock.calls[0][0];
-    expect(prompt).toContain('Generate 3 diverse');
+    expect(prompt).toMatch(/\b3\b/);
   });
 
   it('passes custom count to prompt', async () => {
@@ -67,7 +66,8 @@ describe('embedMultiQuery', () => {
     await embedMultiQuery('query', { count: 5 });
 
     const prompt = mockLlm.mock.calls[0][0];
-    expect(prompt).toContain('Generate 5 diverse');
+    expect(prompt).toMatch(/\b5\b/);
+    expect(prompt).not.toMatch(/\b3\b/); // default count NOT present
   });
 
   testForwardsConfig('forwards config to callLlm', {

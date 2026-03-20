@@ -1,18 +1,9 @@
-import { describe, it as vitestIt, expect as vitestExpect } from 'vitest';
+import { describe } from 'vitest';
 import glossary from './index.js';
 import { longTestTimeout } from '../../constants/common.js';
-import vitestAiExpect from '../expect/index.js';
-import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
-import { getConfig } from '../test-analysis/config.js';
+import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 
-const config = getConfig();
-const it = config?.aiMode ? wrapIt(vitestIt, { baseProps: { suite: 'Glossary chain' } }) : vitestIt;
-const expect = config?.aiMode
-  ? wrapExpect(vitestExpect, { baseProps: { suite: 'Glossary chain' } })
-  : vitestExpect;
-const aiExpect = config?.aiMode
-  ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'Glossary chain' } })
-  : vitestAiExpect;
+const { it, expect, aiExpect } = getTestHelpers('Glossary chain');
 
 describe('glossary examples', () => {
   it(
