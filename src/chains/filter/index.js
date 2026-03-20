@@ -3,7 +3,7 @@ import { asXML } from '../../prompts/wrap-variable.js';
 import { filterDecisionsJsonSchema } from './schemas.js';
 import { createLifecycleLogger, extractBatchConfig } from '../../lib/lifecycle-logger/index.js';
 import { createBatches, retry, batchTracker } from '../../lib/index.js';
-import { resolve, resolveAll, mapped, withOperation } from '../../lib/context/resolve.js';
+import { getOptions, withPolicy, scopeOperation } from '../../lib/context/option.js';
 
 // ===== Option Mappers =====
 
@@ -43,25 +43,15 @@ const filterResponseFormat = {
 };
 
 const filter = async function filter(list, instructions, config = {}) {
-  config = withOperation('filter', config);
-  const {
-    llm,
-    strictness: strictnessConfig,
-    maxAttempts,
-    retryDelay,
-    retryOnAll,
-    progressMode,
-  } = await resolveAll(config, {
-    llm: undefined,
-    strictness: mapped(mapStrictness),
-    maxAttempts: 3,
-    retryDelay: 1000,
-    retryOnAll: false,
-    progressMode: 'detailed',
-  });
-  const strictnessGuidance = strictnessConfig.guidance;
-  const errorPosture = await resolve('errorPosture', config, strictnessConfig.errorPosture);
-
+  config = scopeOperation('filter', config);
+  const { guidance, maxAttempts, retryDelay, retryOnAll, progressMode, errorPosture } =
+    await getOptions(config, {
+      strictness: withPolicy(mapStrictness, ['guidance', 'errorPosture']),
+      maxAttempts: 3,
+      retryDelay: 1000,
+      retryOnAll: false,
+      progressMode: 'detailed',
+    });
   const lifecycleLogger = createLifecycleLogger(config.logger, 'chain:filter');
 
   lifecycleLogger.logStart(
@@ -73,7 +63,7 @@ const filter = async function filter(list, instructions, config = {}) {
   );
 
   const results = [];
-  const batches = createBatches(list, config);
+  const batches = await createBatches(list, config);
   const activeBatches = batches.filter((b) => !b.skip);
 
   lifecycleLogger.logEvent('batches-created', {
@@ -104,8 +94,8 @@ const filter = async function filter(list, instructions, config = {}) {
     const batchStyle = determineStyle(config.listStyle, items, config.autoModeThreshold);
 
     const filterInstructions = ({ style, count }) => {
-      const strictnessBlock = strictnessGuidance
-        ? `\n\n${asXML(strictnessGuidance, { tag: 'borderline-handling' })}`
+      const strictnessBlock = guidance
+        ? `\n\n${asXML(guidance, { tag: 'borderline-handling' })}`
         : '';
 
       const baseInstructions = `For each item in the list below, determine if it satisfies the filtering criteria. Return "yes" to include the item or "no" to exclude it. Return exactly one decision per item, in the same order as the input list.
@@ -134,7 +124,6 @@ Process exactly ${count} items from the XML list below and return ${count} yes/n
       ...config,
       listStyle: batchStyle,
       responseFormat: config.responseFormat ?? filterResponseFormat,
-      llm,
       logger: lifecycleLogger,
     };
 

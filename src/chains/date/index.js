@@ -10,7 +10,7 @@ import {
   extractPromptAnalysis,
   extractResultValue,
 } from '../../lib/lifecycle-logger/index.js';
-import { resolve, resolveAll, mapped, withOperation } from '../../lib/context/resolve.js';
+import { getOptions, withPolicy, scopeOperation } from '../../lib/context/option.js';
 
 const {
   asDate,
@@ -84,13 +84,11 @@ const toUTCDate = (date) => {
 async function extractDate(prompt, llm, logger, options) {
   const response = await callLlm(prompt, {
     llm,
-    modelOptions: {
-      response_format: {
-        type: 'json_schema',
-        json_schema: {
-          name: 'date_extraction',
-          schema: dateValueSchema,
-        },
+    response_format: {
+      type: 'json_schema',
+      json_schema: {
+        name: 'date_extraction',
+        schema: dateValueSchema,
       },
     },
     logger,
@@ -117,20 +115,16 @@ async function validateDate(dateValue, expectations, llm, logger, options) {
 }
 
 export default async function date(text, config = {}) {
-  config = withOperation('date', config);
+  config = scopeOperation('date', config);
   const { logger, onProgress, abortSignal } = config;
-  const {
-    llm,
-    rigor: rigorConfig,
-    retryDelay,
-    retryOnAll,
-  } = await resolveAll(config, {
-    llm: undefined,
-    rigor: mapped(mapRigor),
-    retryDelay: 1000,
-    retryOnAll: true,
-  });
-  const maxAttempts = await resolve('maxAttempts', config, rigorConfig.maxAttempts);
+  const { retryDelay, retryOnAll, maxAttempts, validate, returnBestEffort } = await getOptions(
+    config,
+    {
+      rigor: withPolicy(mapRigor, ['validate', 'maxAttempts', 'returnBestEffort']),
+      retryDelay: 1000,
+      retryOnAll: true,
+    }
+  );
 
   // Create lifecycle logger with date chain namespace
   const lifecycleLogger = createLifecycleLogger(logger, 'chain:date');
@@ -139,7 +133,7 @@ export default async function date(text, config = {}) {
   lifecycleLogger.logStart({
     input: text,
     maxAttempts,
-    ...extractLLMConfig(llm),
+    ...extractLLMConfig(config.llm),
   });
 
   // Build all prompts upfront and log them
@@ -152,8 +146,8 @@ export default async function date(text, config = {}) {
   });
 
   // Low rigor: extraction only — skip expectations and validation
-  if (!rigorConfig.validate) {
-    const firstDate = await extractDate(datePrompt, llm, lifecycleLogger, config);
+  if (!validate) {
+    const firstDate = await extractDate(datePrompt, config.llm, lifecycleLogger, config);
 
     lifecycleLogger.logResult(
       firstDate,
@@ -166,19 +160,16 @@ export default async function date(text, config = {}) {
   const [expectationsResult, firstDate] = await Promise.all([
     callLlm(expectationPrompt, {
       ...config,
-      llm,
-      modelOptions: {
-        response_format: {
-          type: 'json_schema',
-          json_schema: {
-            name: 'date_expectations',
-            schema: dateExpectationsSchema,
-          },
+      response_format: {
+        type: 'json_schema',
+        json_schema: {
+          name: 'date_expectations',
+          schema: dateExpectationsSchema,
         },
       },
       logger: lifecycleLogger,
     }),
-    extractDate(datePrompt, llm, lifecycleLogger, config),
+    extractDate(datePrompt, config.llm, lifecycleLogger, config),
   ]);
 
   const expectations =
@@ -210,7 +201,7 @@ export default async function date(text, config = {}) {
       const validation = await validateDate(
         currentDate,
         expectations,
-        llm,
+        config.llm,
         lifecycleLogger,
         config
       );
@@ -232,11 +223,11 @@ export default async function date(text, config = {}) {
       const retryPrompt = buildDatePrompt(currentText);
       lifecycleLogger.logEvent('retry-prompt', extractPromptAnalysis(retryPrompt));
 
-      const newDate = await extractDate(retryPrompt, llm, lifecycleLogger, config);
+      const newDate = await extractDate(retryPrompt, config.llm, lifecycleLogger, config);
 
       if (!newDate) {
         // High rigor: return undefined on exhaustion instead of best-effort
-        if (!rigorConfig.returnBestEffort) return undefined;
+        if (!returnBestEffort) return undefined;
         return currentDate;
       }
 

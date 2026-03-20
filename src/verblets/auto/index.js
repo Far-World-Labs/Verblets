@@ -23,10 +23,8 @@ export default async (text, config = {}) => {
 
   const response = await callLlm(text, {
     llm,
-    modelOptions: {
-      // toolChoice: 'auto' // by default
-      tools,
-    },
+    // toolChoice: 'auto' // by default
+    tools,
     ...options,
   });
 

@@ -4,7 +4,7 @@ import { findResultJsonSchema } from './schemas.js';
 import { createLifecycleLogger, extractBatchConfig } from '../../lib/lifecycle-logger/index.js';
 import { createBatches, parallel, retry, batchTracker } from '../../lib/index.js';
 import { debug } from '../../lib/debug/index.js';
-import { resolveAll, withOperation } from '../../lib/context/resolve.js';
+import { getOptions, scopeOperation } from '../../lib/context/option.js';
 
 const findResponseFormat = {
   type: 'json_schema',
@@ -12,10 +12,9 @@ const findResponseFormat = {
 };
 
 const find = async function find(list, instructions, config = {}) {
-  config = withOperation('find', config);
-  const { llm, maxParallel, maxAttempts, retryDelay, retryOnAll, errorPosture, progressMode } =
-    await resolveAll(config, {
-      llm: undefined,
+  config = scopeOperation('find', config);
+  const { maxParallel, maxAttempts, retryDelay, retryOnAll, errorPosture, progressMode } =
+    await getOptions(config, {
       maxParallel: 3,
       maxAttempts: 3,
       retryDelay: 1000,
@@ -26,7 +25,7 @@ const find = async function find(list, instructions, config = {}) {
 
   const lifecycleLogger = createLifecycleLogger(config.logger, 'chain:find');
 
-  const batches = createBatches(list, config);
+  const batches = await createBatches(list, config);
   const findInstructions = ({ style, count }) => {
     const baseInstructions = `From the list below, identify and return the SINGLE item that BEST matches the search criteria.
 
@@ -88,7 +87,6 @@ Process exactly ${count} items from the XML list below and return the single bes
                 ...config,
                 listStyle: batchStyle,
                 responseFormat: config.responseFormat || findResponseFormat,
-                llm,
                 logger: lifecycleLogger,
               }),
             {

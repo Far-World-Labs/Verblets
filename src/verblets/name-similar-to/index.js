@@ -20,13 +20,11 @@ export default async function nameSimilarTo(description, exampleNames = [], conf
   const prompt = buildPrompt(description, exampleNames);
   const response = await callLlm(prompt, {
     llm,
-    modelOptions: {
-      response_format: {
-        type: 'json_schema',
-        json_schema: {
-          name: 'similar_name',
-          schema: nameSimilarSchema,
-        },
+    response_format: {
+      type: 'json_schema',
+      json_schema: {
+        name: 'similar_name',
+        schema: nameSimilarSchema,
       },
     },
     ...options,

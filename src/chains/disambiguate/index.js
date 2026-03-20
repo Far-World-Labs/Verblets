@@ -3,7 +3,7 @@ import retry from '../../lib/retry/index.js';
 import score from '../score/index.js';
 import disambiguateMeaningsSchema from './disambiguate-meanings-result.json';
 import { emitStepProgress, scopeProgress } from '../../lib/progress-callback/index.js';
-import { resolveAll, withOperation } from '../../lib/context/resolve.js';
+import { getOptions, scopeOperation } from '../../lib/context/option.js';
 
 const disambiguateResponseFormat = {
   type: 'json_schema',
@@ -19,9 +19,8 @@ Return a JSON object with a "meanings" array containing the distinct meanings.`;
 };
 
 export const getMeanings = async (term, config = {}) => {
-  config = withOperation('disambiguate:meanings', config);
-  const { llm, maxAttempts, retryDelay, retryOnAll } = await resolveAll(config, {
-    llm: 'fastGoodCheap',
+  config = scopeOperation('disambiguate:meanings', { llm: 'fastGoodCheap', ...config });
+  const { maxAttempts, retryDelay, retryOnAll } = await getOptions(config, {
     maxAttempts: 3,
     retryDelay: 1000,
     retryOnAll: false,
@@ -31,8 +30,7 @@ export const getMeanings = async (term, config = {}) => {
     () =>
       callLlm(prompt, {
         ...config,
-        llm,
-        modelOptions: { response_format: disambiguateResponseFormat },
+        response_format: disambiguateResponseFormat,
       }),
     {
       label: 'disambiguate-get-meanings',
@@ -49,9 +47,8 @@ export const getMeanings = async (term, config = {}) => {
 };
 
 export default async function disambiguate({ term, context, ...config } = {}) {
-  config = withOperation('disambiguate', config);
-  const { llm, maxAttempts, retryDelay } = await resolveAll(config, {
-    llm: undefined,
+  config = scopeOperation('disambiguate', config);
+  const { maxAttempts, retryDelay } = await getOptions(config, {
     maxAttempts: 3,
     retryDelay: 1000,
   });
@@ -65,7 +62,6 @@ export default async function disambiguate({ term, context, ...config } = {}) {
 
   const meanings = await getMeanings(term, {
     ...config,
-    llm,
     maxAttempts,
     retryDelay,
   });
@@ -80,7 +76,7 @@ export default async function disambiguate({ term, context, ...config } = {}) {
   const scores = await score(
     meanings,
     `how well this meaning of "${term}" matches the context: ${context}`,
-    { ...config, llm, maxAttempts, onProgress: scopeProgress(config.onProgress, 'score:relevance') }
+    { ...config, maxAttempts, onProgress: scopeProgress(config.onProgress, 'score:relevance') }
   );
 
   let bestIndex = 0;

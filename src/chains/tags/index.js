@@ -2,7 +2,7 @@ import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import map from '../map/index.js';
-import { resolveAll, withOperation } from '../../lib/context/resolve.js';
+import { getOptions, scopeOperation } from '../../lib/context/option.js';
 import tagsResultSchema from './tags-result.json';
 
 // Schema for map operation - array of tag arrays
@@ -35,9 +35,8 @@ const tagsMapSchema = {
  * @returns {Promise<string>} Tag specification
  */
 export async function tagSpec(instructions, config = {}) {
-  config = withOperation('tags:spec', config);
-  const { llm, maxAttempts, retryDelay, retryOnAll } = await resolveAll(config, {
-    llm: undefined,
+  config = scopeOperation('tags:spec', config);
+  const { maxAttempts, retryDelay, retryOnAll } = await getOptions(config, {
     maxAttempts: 3,
     retryDelay: 1000,
     retryOnAll: false,
@@ -61,8 +60,7 @@ Keep it concise and actionable.`;
     () =>
       callLlm(specUserPrompt, {
         ...config,
-        llm,
-        modelOptions: { systemPrompt: specSystemPrompt },
+        systemPrompt: specSystemPrompt,
       }),
     {
       label: 'tags-spec',
@@ -86,9 +84,8 @@ Keep it concise and actionable.`;
  * @returns {Promise<Array>} Array of tag IDs
  */
 export async function applyTags(item, specification, vocabulary, config = {}) {
-  config = withOperation('tags:apply', config);
-  const { llm, maxAttempts, retryDelay, retryOnAll, vocabularyMode } = await resolveAll(config, {
-    llm: undefined,
+  config = scopeOperation('tags:apply', config);
+  const { maxAttempts, retryDelay, retryOnAll, vocabularyMode } = await getOptions(config, {
     maxAttempts: 3,
     retryDelay: 1000,
     retryOnAll: false,
@@ -119,14 +116,11 @@ Do NOT return tag labels, descriptions, or full tag objects - ONLY the string ID
     () =>
       callLlm(prompt, {
         ...config,
-        llm,
-        modelOptions: {
-          response_format: {
-            type: 'json_schema',
-            json_schema: {
-              name: 'tags_result',
-              schema: tagsResultSchema,
-            },
+        response_format: {
+          type: 'json_schema',
+          json_schema: {
+            name: 'tags_result',
+            schema: tagsResultSchema,
           },
         },
       }),

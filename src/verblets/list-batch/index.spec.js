@@ -32,7 +32,7 @@ describe('listBatch verblet', () => {
       await listBatch(['x'], 'transform');
 
       const options = callLlm.mock.calls[0][1];
-      const responseFormat = options.modelOptions.response_format;
+      const responseFormat = options.response_format;
       expect(responseFormat.type).toBe('json_schema');
       expect(responseFormat.json_schema.name).toBe('list_result');
       expect(responseFormat.json_schema.schema).toStrictEqual({
@@ -82,18 +82,18 @@ describe('listBatch verblet', () => {
       expect(options.llm).toBe('fastCheap');
     });
 
-    it('forwards maxTokens into modelOptions', async () => {
+    it('forwards maxTokens into config', async () => {
       await listBatch(['a'], 'transform', { maxTokens: 2048 });
 
       const options = callLlm.mock.calls[0][1];
-      expect(options.modelOptions.maxTokens).toBe(2048);
+      expect(options.maxTokens).toBe(2048);
     });
 
-    it('does not include maxTokens in modelOptions when not provided', async () => {
+    it('does not include maxTokens in config when not provided', async () => {
       await listBatch(['a'], 'transform');
 
       const options = callLlm.mock.calls[0][1];
-      expect(options.modelOptions).not.toHaveProperty('maxTokens');
+      expect(options).not.toHaveProperty('maxTokens');
     });
 
     it('forwards custom responseFormat overriding the default', async () => {
@@ -107,17 +107,16 @@ describe('listBatch verblet', () => {
       await listBatch(['a'], 'transform', { responseFormat: customFormat });
 
       const options = callLlm.mock.calls[0][1];
-      expect(options.modelOptions.response_format).toStrictEqual(customFormat);
+      expect(options.response_format).toStrictEqual(customFormat);
     });
 
-    it('forwards incoming modelOptions and merges with response_format', async () => {
-      const modelOpts = { temperature: 0.5, systemPrompt: 'be terse' };
-      await listBatch(['a'], 'transform', { modelOptions: modelOpts });
+    it('forwards incoming model keys and merges with response_format', async () => {
+      await listBatch(['a'], 'transform', { temperature: 0.5, systemPrompt: 'be terse' });
 
       const options = callLlm.mock.calls[0][1];
-      expect(options.modelOptions.temperature).toBe(0.5);
-      expect(options.modelOptions.systemPrompt).toBe('be terse');
-      expect(options.modelOptions.response_format).toBeDefined();
+      expect(options.temperature).toBe(0.5);
+      expect(options.systemPrompt).toBe('be terse');
+      expect(options.response_format).toBeDefined();
     });
 
     it('forwards logger to callLlm options', async () => {

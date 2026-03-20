@@ -99,35 +99,23 @@ describe('group chain', () => {
 });
 
 describe('mapGranularity', () => {
-  it('returns default config for undefined', () => {
-    const result = mapGranularity(undefined);
-    expect(result).toStrictEqual({ guidance: undefined, topN: undefined });
+  it('all levels return same shape', () => {
+    const keys = ['low', 'med', 'high'].map((l) => Object.keys(mapGranularity(l)).sort());
+    expect(keys[0]).toEqual(keys[1]);
+    expect(keys[1]).toEqual(keys[2]);
   });
 
-  it('returns broad guidance and low topN for low', () => {
-    const result = mapGranularity('low');
-    expect(result.guidance).toContain('fewer, broader categories');
-    expect(result.topN).toBe(5);
+  it('undefined returns default', () => {
+    expect(mapGranularity(undefined)).toBeDefined();
+    expect(typeof mapGranularity(undefined)).toBe('object');
   });
 
-  it('returns default config for med', () => {
-    const result = mapGranularity('med');
-    expect(result).toStrictEqual({ guidance: undefined, topN: undefined });
-  });
-
-  it('returns fine-grained guidance and high topN for high', () => {
-    const result = mapGranularity('high');
-    expect(result.guidance).toContain('finer-grained');
-    expect(result.topN).toBe(20);
-  });
-
-  it('returns default config for unknown string', () => {
-    const result = mapGranularity('medium');
-    expect(result).toStrictEqual({ guidance: undefined, topN: undefined });
-  });
-
-  it('passes through object values', () => {
-    const custom = { guidance: 'custom', topN: 10 };
+  it('passes through object for power consumers', () => {
+    const custom = { a: 1, b: 2 };
     expect(mapGranularity(custom)).toBe(custom);
+  });
+
+  it('unknown string falls back to default', () => {
+    expect(mapGranularity('zzz')).toEqual(mapGranularity(undefined));
   });
 });

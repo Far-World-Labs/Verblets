@@ -1,6 +1,6 @@
 import list from '../list/index.js';
 import score from '../score/index.js';
-import { resolveAll, withOperation } from '../../lib/context/resolve.js';
+import { getOptions, scopeOperation } from '../../lib/context/option.js';
 
 const splitIntoChunks = (text, maxLen) => {
   const words = text.split(/\s+/);
@@ -19,9 +19,8 @@ const splitIntoChunks = (text, maxLen) => {
 };
 
 export default async function collectTerms(text, config = {}) {
-  config = withOperation('collect-terms', config);
-  const { llm, topN, chunkLen } = await resolveAll(config, {
-    llm: undefined,
+  config = scopeOperation('collect-terms', config);
+  const { topN, chunkLen } = await getOptions(config, {
     topN: 20,
     chunkLen: 1000,
   });
@@ -32,10 +31,7 @@ export default async function collectTerms(text, config = {}) {
   for (const chunk of chunks) {
     const terms = await list(
       `key words and phrases that would help find documents about: ${chunk}`,
-      {
-        ...config,
-        llm,
-      }
+      config
     );
     allTerms.push(...terms);
   }
@@ -49,7 +45,7 @@ export default async function collectTerms(text, config = {}) {
   const scores = await score(
     uniqueTerms,
     `relevance as a search term for finding information (1-10, higher is more important)`,
-    { ...config, llm }
+    config
   );
 
   // Sort by score and take top N

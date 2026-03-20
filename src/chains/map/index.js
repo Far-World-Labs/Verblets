@@ -6,7 +6,7 @@ import {
   extractPromptAnalysis,
 } from '../../lib/lifecycle-logger/index.js';
 import { createBatches, parallel, retry, batchTracker } from '../../lib/index.js';
-import { resolveAll, withOperation } from '../../lib/context/resolve.js';
+import { getOptions, scopeOperation } from '../../lib/context/option.js';
 
 /**
  * Map over a list of items by calling `listBatch` on XML-enriched batches.
@@ -34,7 +34,7 @@ const mapOnce = async function (list, instructions, config = {}) {
   } = config;
 
   const results = new Array(list.length);
-  const batches = createBatches(list, config);
+  const batches = await createBatches(list, config);
 
   // Filter out skip batches
   const batchesToProcess = batches.filter((batch) => {
@@ -193,10 +193,10 @@ Preserve all formatting and newlines within each <item> element.`;
  * @returns { Promise<(string|undefined)[]> }
  */
 const map = async function (list, instructions, config = {}) {
-  config = withOperation('map', config);
+  config = scopeOperation('map', config);
   const { logger, now = new Date() } = config;
   const { maxAttempts, retryDelay, retryOnAll, maxParallel, errorPosture, progressMode } =
-    await resolveAll(config, {
+    await getOptions(config, {
       maxAttempts: 3,
       retryDelay: 1000,
       retryOnAll: false,

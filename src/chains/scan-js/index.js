@@ -7,7 +7,7 @@ import retry from '../../lib/retry/index.js';
 import search from '../../lib/search-js-files/index.js';
 import codeFeaturesPrompt from '../../prompts/code-features.js';
 import makeJSONSchema from '../../prompts/features-json-schema.js';
-import { resolve, resolveAll, withOperation } from '../../lib/context/resolve.js';
+import { getOption, getOptions, scopeOperation } from '../../lib/context/option.js';
 
 const codeFeatureDefinitions = JSON.parse(
   await fs.readFile(
@@ -27,7 +27,7 @@ const visit = async ({
   onProgress,
   abortSignal,
 }) => {
-  const { maxAttempts, retryDelay, retryOnAll } = await resolveAll(
+  const { maxAttempts, retryDelay, retryOnAll } = await getOptions(
     { maxAttempts: maxAttemptsRaw, retryDelay: retryDelayRaw, retryOnAll: retryOnAllRaw },
     { maxAttempts: 3, retryDelay: 1000, retryOnAll: false }
   );
@@ -68,13 +68,11 @@ const visit = async ({
     async () => {
       const resultParsed = await callLlm(visitPrompt, {
         llm,
-        modelOptions: {
-          response_format: {
-            type: 'json_schema',
-            json_schema: {
-              name: 'code_features_analysis',
-              schema,
-            },
+        response_format: {
+          type: 'json_schema',
+          json_schema: {
+            name: 'code_features_analysis',
+            schema,
           },
         },
       });
@@ -94,8 +92,8 @@ const visit = async ({
 
 // node: { filename: './src/index.js' },
 export default async (moduleOptions) => {
-  const config = withOperation('scan-js', moduleOptions);
-  const llm = await resolve('llm', config, undefined);
+  const config = scopeOperation('scan-js', moduleOptions);
+  const llm = await getOption('llm', config, undefined);
   const state = await search({
     ...config,
   });

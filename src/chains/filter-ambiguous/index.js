@@ -1,11 +1,10 @@
 import list from '../list/index.js';
 import score from '../score/index.js';
-import { resolveAll, withOperation } from '../../lib/context/resolve.js';
+import { getOptions, scopeOperation } from '../../lib/context/option.js';
 
 export default async function filterAmbiguous(text, config = {}) {
-  config = withOperation('filter-ambiguous', config);
-  const { llm, topN } = await resolveAll(config, {
-    llm: undefined,
+  config = scopeOperation('filter-ambiguous', config);
+  const { topN } = await getOptions(config, {
     topN: 10,
   });
   if (!text) return [];
@@ -18,7 +17,7 @@ export default async function filterAmbiguous(text, config = {}) {
   const sentenceScores = await score(
     sentences,
     'How ambiguous or easily misinterpreted is this sentence?',
-    { ...config, llm }
+    config
   );
 
   const rankedSentences = sentences
@@ -33,7 +32,6 @@ export default async function filterAmbiguous(text, config = {}) {
       ...config,
       attachments: { text: sentence },
       targetNewItemsCount: 5,
-      llm,
     });
     terms.forEach((term) => {
       termPairs.push({ term, sentence });
@@ -45,7 +43,7 @@ export default async function filterAmbiguous(text, config = {}) {
   const scores = await score(
     termPairs.map((p) => `${p.term} | ${p.sentence}`),
     'Score how ambiguous the term is within the sentence.',
-    { ...config, llm }
+    config
   );
 
   const scored = termPairs.map((p, i) => ({ ...p, score: scores[i] }));

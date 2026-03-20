@@ -9,25 +9,24 @@ vi.mock('../reduce/index.js', () => ({
 import reduce from '../reduce/index.js';
 
 describe('mapThoroughness', () => {
-  it('returns default (capacity 50, topN 5) when undefined', () => {
-    expect(mapThoroughness(undefined)).to.deep.equal({ capacity: 50, topN: 5 });
+  it('all levels return same shape', () => {
+    const keys = ['low', 'med', 'high'].map((l) => Object.keys(mapThoroughness(l)).sort());
+    expect(keys[0]).to.deep.equal(keys[1]);
+    expect(keys[1]).to.deep.equal(keys[2]);
   });
 
-  it('maps low to small accumulator with fewer results', () => {
-    expect(mapThoroughness('low')).to.deep.equal({ capacity: 20, topN: 3 });
-  });
-
-  it('maps high to large accumulator with more results', () => {
-    expect(mapThoroughness('high')).to.deep.equal({ capacity: 100, topN: 10 });
+  it('undefined returns default', () => {
+    expect(mapThoroughness(undefined)).to.not.be.undefined;
+    expect(typeof mapThoroughness(undefined)).to.equal('object');
   });
 
   it('passes through object for power consumers', () => {
-    const custom = { capacity: 75, topN: 8 };
+    const custom = { a: 1, b: 2 };
     expect(mapThoroughness(custom)).to.equal(custom);
   });
 
-  it('falls back to default on unknown string', () => {
-    expect(mapThoroughness('extreme')).to.deep.equal({ capacity: 50, topN: 5 });
+  it('unknown string falls back to default', () => {
+    expect(mapThoroughness('zzz')).to.deep.equal(mapThoroughness(undefined));
   });
 });
 

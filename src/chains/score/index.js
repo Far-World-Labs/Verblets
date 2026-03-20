@@ -10,7 +10,7 @@ import {
   filterProgress,
 } from '../../lib/progress-callback/index.js';
 import { createBatches, parallel, retry } from '../../lib/index.js';
-import { resolveAll, mapped, withOperation } from '../../lib/context/resolve.js';
+import { getOptions, withPolicy, scopeOperation } from '../../lib/context/option.js';
 import scoreSingleResultSchema from './score-single-result.json';
 
 // ===== Option Mappers =====
@@ -101,10 +101,9 @@ export const scoreSpec = scaleSpec;
  * @returns {Promise<*>} Score value (type depends on specification range)
  */
 export async function applyScore(item, specification, config = {}) {
-  config = withOperation('score:item', config);
+  config = scopeOperation('score:item', config);
   const { onProgress, abortSignal } = config;
-  const { llm, maxAttempts, retryDelay, retryOnAll } = await resolveAll(config, {
-    llm: undefined,
+  const { maxAttempts, retryDelay, retryOnAll } = await getOptions(config, {
     maxAttempts: 3,
     retryDelay: 1000,
     retryOnAll: false,
@@ -121,14 +120,11 @@ ${asXML(item, { tag: 'item' })}`;
 
   const llmConfig = {
     ...config,
-    llm,
-    modelOptions: {
-      response_format: {
-        type: 'json_schema',
-        json_schema: {
-          name: 'score_single_result',
-          schema: scoreSingleResultSchema,
-        },
+    response_format: {
+      type: 'json_schema',
+      json_schema: {
+        name: 'score_single_result',
+        schema: scoreSingleResultSchema,
       },
     },
   };
@@ -179,7 +175,7 @@ async function scoreOnce(list, prompt, batchConfig, options) {
     anchoring,
   } = options;
 
-  const batches = createBatches(list, batchConfig);
+  const batches = await createBatches(list, batchConfig);
   const batchesToProcess = batches.filter((b) => !b.skip);
   const results = new Array(list.length);
   batches.forEach((b) => {
@@ -295,7 +291,7 @@ async function scoreOnce(list, prompt, batchConfig, options) {
  * @returns {Promise<Array>} Array of scores
  */
 export async function mapScore(list, instructions, config = {}) {
-  config = withOperation('score', config);
+  config = scopeOperation('score', config);
   const {
     spec: providedSpec,
     onProgress: _onProgress,
@@ -304,7 +300,6 @@ export async function mapScore(list, instructions, config = {}) {
     logger,
   } = config;
   const {
-    llm,
     maxParallel,
     maxAttempts,
     retryDelay,
@@ -313,8 +308,7 @@ export async function mapScore(list, instructions, config = {}) {
     errorPosture,
     progressMode,
     anchoring,
-  } = await resolveAll(config, {
-    llm: undefined,
+  } = await getOptions(config, {
     maxParallel: 3,
     maxAttempts: 3,
     retryDelay: 1000,
@@ -322,12 +316,12 @@ export async function mapScore(list, instructions, config = {}) {
     retryOnAll: false,
     errorPosture: 'resilient',
     progressMode: 'detailed',
-    anchoring: mapped(mapAnchoring),
+    anchoring: withPolicy(mapAnchoring),
   });
   const onProgress = filterProgress(_onProgress, progressMode);
 
   emitPhaseProgress(onProgress, 'score', 'generating-specification');
-  const spec = providedSpec || (await scoreSpec(instructions, { ...config, now, llm }));
+  const spec = providedSpec || (await scoreSpec(instructions, { ...config, now }));
   emitPhaseProgress(onProgress, 'score', 'scoring-items', { specification: spec });
 
   const scoringPrompt = buildScoringInstructions(
@@ -337,8 +331,7 @@ export async function mapScore(list, instructions, config = {}) {
   const batchConfig = {
     ...config,
     responseFormat: scoreBatchResponseFormat,
-    llm,
-    modelOptions: { temperature },
+    temperature,
     logger,
   };
   const passOptions = {

@@ -45,7 +45,7 @@ export default async function fillMissing(text, config = {}) {
   const prompt = buildPrompt(text, { creativityGuidance });
   const response = await callLlm(prompt, {
     llm,
-    modelOptions: { response_format: responseFormat },
+    response_format: responseFormat,
     ...options,
   });
   return response;

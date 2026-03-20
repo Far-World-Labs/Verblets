@@ -14,13 +14,11 @@ export default async function embedRewriteQuery(query, config = {}) {
 
   return await callLlm(rewriteQueryPrompt(query), {
     llm,
-    modelOptions: {
-      response_format: {
-        type: 'json_schema',
-        json_schema: {
-          name: 'rewrite_query',
-          schema: embedRewriteQuerySchema,
-        },
+    response_format: {
+      type: 'json_schema',
+      json_schema: {
+        name: 'rewrite_query',
+        schema: embedRewriteQuerySchema,
       },
     },
     ...options,

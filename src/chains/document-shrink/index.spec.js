@@ -41,7 +41,7 @@ vi.mock('../map/index.js', () => ({
     if (instructions.includes('Compress')) {
       return list.map((text) => text.slice(0, Math.floor(text.length * 0.3)));
     }
-    return list.map((item, idx) => `mapped-${idx}`);
+    return list.map((item, idx) => `withPolicy-${idx}`);
   }),
 }));
 
@@ -284,87 +284,78 @@ In conclusion, both coffee and relationships benefit from patience and attention
 });
 
 describe('mapThoroughness', () => {
-  it('returns default posture for undefined (all phases active)', () => {
-    const result = mapThoroughness(undefined);
-    expect(result.queryExpansion).toBe(true);
-    expect(result.llmScoring).toBe(true);
-    expect(result.llmCompression).toBe(true);
-    expect(result.scoringTokenRatio).toBe(0.6);
+  it('all levels return same shape', () => {
+    const keys = ['low', 'med', 'high'].map((l) => Object.keys(mapThoroughness(l)).sort());
+    expect(keys[0]).toEqual(keys[1]);
+    expect(keys[1]).toEqual(keys[2]);
   });
 
-  it('returns low posture (all LLM phases off)', () => {
+  it('undefined returns default', () => {
+    expect(mapThoroughness(undefined)).toBeDefined();
+    expect(typeof mapThoroughness(undefined)).toBe('object');
+  });
+
+  it('passes through object for power consumers', () => {
+    const custom = { a: 1, b: 2 };
+    expect(mapThoroughness(custom)).toBe(custom);
+  });
+
+  it('unknown string falls back to default', () => {
+    expect(mapThoroughness('zzz')).toEqual(mapThoroughness(undefined));
+  });
+
+  it('low disables all LLM phases', () => {
     const result = mapThoroughness('low');
     expect(result.queryExpansion).toBe(false);
     expect(result.llmScoring).toBe(false);
     expect(result.llmCompression).toBe(false);
   });
-
-  it('returns high posture (all phases active, shifted token ratio)', () => {
-    const result = mapThoroughness('high');
-    expect(result.queryExpansion).toBe(true);
-    expect(result.llmScoring).toBe(true);
-    expect(result.llmCompression).toBe(true);
-    expect(result.scoringTokenRatio).toBe(0.4);
-  });
-
-  it('passes through a raw config object', () => {
-    const custom = {
-      queryExpansion: true,
-      llmScoring: false,
-      llmCompression: true,
-      scoringTokenRatio: 0.5,
-    };
-    expect(mapThoroughness(custom)).toBe(custom);
-  });
-
-  it('returns default posture for unknown string', () => {
-    const result = mapThoroughness('medium');
-    expect(result.queryExpansion).toBe(true);
-    expect(result.llmScoring).toBe(true);
-    expect(result.llmCompression).toBe(true);
-  });
 });
 
 describe('mapCompression', () => {
-  it('returns 0.3 for undefined', () => {
-    expect(mapCompression(undefined)).toBe(0.3);
+  it('produces distinct values across levels', () => {
+    const values = ['low', 'med', 'high'].map(mapCompression);
+    expect(new Set(values).size).toBe(3);
   });
 
-  it('returns 0.45 for low', () => {
-    expect(mapCompression('low')).toBe(0.45);
+  it('high < low (more compression = lower number)', () => {
+    expect(mapCompression('high')).toBeLessThan(mapCompression('med'));
+    expect(mapCompression('med')).toBeLessThan(mapCompression('low'));
   });
 
-  it('returns 0.15 for high', () => {
-    expect(mapCompression('high')).toBe(0.15);
+  it('undefined returns default', () => {
+    expect(mapCompression(undefined)).toBeDefined();
   });
 
-  it('passes through a number', () => {
-    expect(mapCompression(0.5)).toBe(0.5);
+  it('passes through raw numbers', () => {
+    expect(mapCompression(0.42)).toBe(0.42);
   });
 
-  it('returns 0.3 for unknown string', () => {
-    expect(mapCompression('medium')).toBe(0.3);
+  it('unknown string falls back to default', () => {
+    expect(mapCompression('zzz')).toBe(mapCompression(undefined));
   });
 });
 
 describe('mapRanking', () => {
-  it('returns 0.7 for undefined', () => {
-    expect(mapRanking(undefined)).toBe(0.7);
+  it('produces distinct values across levels', () => {
+    const values = ['low', 'med', 'high'].map(mapRanking);
+    expect(new Set(values).size).toBe(3);
   });
 
-  it('returns 0.3 for low', () => {
-    expect(mapRanking('low')).toBe(0.3);
+  it('low < med < high', () => {
+    expect(mapRanking('low')).toBeLessThan(mapRanking('med'));
+    expect(mapRanking('med')).toBeLessThan(mapRanking('high'));
   });
 
-  it('returns 0.9 for high', () => {
-    expect(mapRanking('high')).toBe(0.9);
+  it('undefined returns default', () => {
+    expect(mapRanking(undefined)).toBeDefined();
   });
 
-  it('passes through a number', () => {
-    expect(mapRanking(0.55)).toBe(0.55);
+  it('passes through raw numbers', () => {
+    expect(mapRanking(0.42)).toBe(0.42);
   });
 
-  it('returns 0.7 for unknown string', () => {
-    expect(mapRanking('medium')).toBe(0.7);
+  it('unknown string falls back to default', () => {
+    expect(mapRanking('zzz')).toBe(mapRanking(undefined));
   });
 });

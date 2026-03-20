@@ -2,15 +2,13 @@ import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import popReferenceSchema from './pop-reference-result.json';
-import { resolveAll, withOperation } from '../../lib/context/resolve.js';
+import { getOptions, scopeOperation } from '../../lib/context/option.js';
 
-const modelOptions = {
-  response_format: {
-    type: 'json_schema',
-    json_schema: {
-      name: 'pop_reference_result',
-      schema: popReferenceSchema,
-    },
+const popReferenceResponseFormat = {
+  type: 'json_schema',
+  json_schema: {
+    name: 'pop_reference_result',
+    schema: popReferenceSchema,
   },
 };
 
@@ -22,11 +20,10 @@ const modelOptions = {
  * @returns {Promise<Array>} Array of PopCultureReference objects
  */
 export default async function popReference(sentence, description, config = {}) {
-  config = withOperation('pop-reference', config);
+  config = scopeOperation('pop-reference', config);
   const { include = [] } = config;
-  const { llm, referenceContext, referencesPerSource, maxAttempts, retryDelay, retryOnAll } =
-    await resolveAll(config, {
-      llm: undefined,
+  const { referenceContext, referencesPerSource, maxAttempts, retryDelay, retryOnAll } =
+    await getOptions(config, {
       referenceContext: false,
       referencesPerSource: 2,
       maxAttempts: 3,
@@ -86,8 +83,7 @@ Requirements:
     () =>
       callLlm(prompt, {
         ...config,
-        llm,
-        modelOptions,
+        response_format: popReferenceResponseFormat,
       }),
     {
       label: 'pop-reference',

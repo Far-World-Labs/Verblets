@@ -6,7 +6,7 @@ import bool from './index.js';
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn().mockImplementation((text, options) => {
     // When responseFormat is used, auto-unwrapping will return the value directly
-    const systemPrompt = options?.modelOptions?.systemPrompt || '';
+    const systemPrompt = options?.systemPrompt || '';
     if (/purple lightsaber/.test(text) || /purple lightsaber/.test(systemPrompt)) {
       return 'true';
     }

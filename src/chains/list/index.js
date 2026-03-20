@@ -7,7 +7,7 @@ import {
   constants as promptConstants,
 } from '../../prompts/index.js';
 import listResultSchema from './list-result.json';
-import { resolveAll, withOperation } from '../../lib/context/resolve.js';
+import { getOptions, scopeOperation } from '../../lib/context/option.js';
 
 const DEFAULT_LIST_TIMEOUT_MS = 90_000;
 
@@ -47,22 +47,18 @@ const shouldStopDefault = ({ queryCount, startTime, queryLimit, timeoutMs } = {}
 };
 
 export const generateList = async function* generateListGenerator(text, config = {}) {
-  config = withOperation('list:generate', config);
+  config = scopeOperation('list:generate', { llm: 'fastGoodCheap', ...config });
   const resultsAll = [];
   const resultsAllMap = {};
   let isDone = false;
   const { shouldSkip = shouldSkipDefault, shouldStop = shouldStopDefault } = config;
-  const { llm, maxAttempts, retryDelay, retryOnAll, queryLimit, timeoutMs } = await resolveAll(
-    config,
-    {
-      llm: 'fastGoodCheap',
-      maxAttempts: 3,
-      retryDelay: 1000,
-      retryOnAll: false,
-      queryLimit: 5,
-      timeoutMs: DEFAULT_LIST_TIMEOUT_MS,
-    }
-  );
+  const { maxAttempts, retryDelay, retryOnAll, queryLimit, timeoutMs } = await getOptions(config, {
+    maxAttempts: 3,
+    retryDelay: 1000,
+    retryOnAll: false,
+    queryLimit: 5,
+    timeoutMs: DEFAULT_LIST_TIMEOUT_MS,
+  });
 
   const startTime = new Date();
   let queryCount = 0;
@@ -75,16 +71,18 @@ export const generateList = async function* generateListGenerator(text, config =
 
     let resultsNew = [];
     try {
-      const modelOptions = createModelOptions();
       // eslint-disable-next-line no-await-in-loop
-      const results = await retry(() => callLlm(listPrompt, { ...config, llm, modelOptions }), {
-        label: 'list-generate',
-        maxAttempts,
-        retryDelay,
-        retryOnAll,
-        onProgress: config.onProgress,
-        abortSignal: config.abortSignal,
-      });
+      const results = await retry(
+        () => callLlm(listPrompt, { ...config, ...createModelOptions() }),
+        {
+          label: 'list-generate',
+          maxAttempts,
+          retryDelay,
+          retryOnAll,
+          onProgress: config.onProgress,
+          abortSignal: config.abortSignal,
+        }
+      );
 
       const resultArray = results?.items || results;
       resultsNew = Array.isArray(resultArray) ? resultArray.filter(Boolean) : [];
@@ -149,18 +147,16 @@ export const generateList = async function* generateListGenerator(text, config =
 };
 
 export default async function list(prompt, config = {}) {
-  config = withOperation('list', config);
+  config = scopeOperation('list', config);
   const { schema } = config;
-  const { llm, maxAttempts, retryDelay, retryOnAll } = await resolveAll(config, {
-    llm: undefined,
+  const { maxAttempts, retryDelay, retryOnAll } = await getOptions(config, {
     maxAttempts: 3,
     retryDelay: 1000,
     retryOnAll: false,
   });
   const fullPrompt = prompt;
 
-  const modelOptions = createModelOptions();
-  const response = await retry(() => callLlm(fullPrompt, { ...config, llm, modelOptions }), {
+  const response = await retry(() => callLlm(fullPrompt, { ...config, ...createModelOptions() }), {
     label: 'list-main',
     maxAttempts,
     retryDelay,
@@ -178,7 +174,7 @@ export default async function list(prompt, config = {}) {
     const transformedItems = [];
     for (const item of items) {
       const transformPrompt = outputTransformPrompt(item, schema);
-      const transformResponse = await retry(() => callLlm(transformPrompt, { ...config, llm }), {
+      const transformResponse = await retry(() => callLlm(transformPrompt, config), {
         label: 'list-transform',
         maxAttempts,
         retryDelay,

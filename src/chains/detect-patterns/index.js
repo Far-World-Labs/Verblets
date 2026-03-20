@@ -1,6 +1,6 @@
 import reduce from '../reduce/index.js';
 import { patternCandidatesJsonSchema } from './schemas.js';
-import { resolve, resolveAll, mapped, withOperation } from '../../lib/context/resolve.js';
+import { getOptions, withPolicy, scopeOperation } from '../../lib/context/option.js';
 
 // ===== Option Mappers =====
 
@@ -60,20 +60,12 @@ function filterObject(obj, maxStringLength = 50, maxArrayLength = 10) {
 }
 
 export default async function detectPatterns(objects, config = {}) {
-  config = withOperation('detect-patterns', config);
-  const {
-    llm,
-    thoroughness: thoroughnessConfig,
-    maxStringLength,
-    maxArrayLength,
-  } = await resolveAll(config, {
-    llm: undefined,
-    thoroughness: mapped(mapThoroughness),
+  config = scopeOperation('detect-patterns', config);
+  const { maxStringLength, maxArrayLength, topN, capacity } = await getOptions(config, {
+    thoroughness: withPolicy(mapThoroughness, ['topN', 'capacity']),
     maxStringLength: 50,
     maxArrayLength: 10,
   });
-  const topN = await resolve('topN', config, thoroughnessConfig.topN);
-  const capacity = await resolve('capacity', config, thoroughnessConfig.capacity);
 
   const filteredObjects = objects.map((obj) => filterObject(obj, maxStringLength, maxArrayLength));
   const stringifiedObjects = filteredObjects.map((obj) => JSON.stringify(obj, null, 0));
@@ -111,7 +103,6 @@ export default async function detectPatterns(objects, config = {}) {
     ...config,
     initial: [],
     responseFormat: PATTERN_RESPONSE_FORMAT,
-    llm,
   });
 
   // Since PATTERN_RESPONSE_FORMAT is a simple collection schema,

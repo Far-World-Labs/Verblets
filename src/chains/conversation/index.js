@@ -2,7 +2,7 @@ import conversationTurnReduce from '../conversation-turn-reduce/index.js';
 import { defaultTurnPolicy } from './turn-policies.js';
 import pLimit from 'p-limit';
 import { debug } from '../../lib/debug/index.js';
-import { resolveOption, withOperation } from '../../lib/context/resolve.js';
+import { getOptions, scopeOperation } from '../../lib/context/option.js';
 
 /**
  * @typedef {Object} Speaker
@@ -28,7 +28,7 @@ import { resolveOption, withOperation } from '../../lib/context/resolve.js';
  */
 
 export default class Conversation {
-  constructor(topic, speakers, options = {}) {
+  static async create(topic, speakers, options = {}) {
     if (!speakers || speakers.length === 0) {
       throw new Error('Speakers required');
     }
@@ -41,17 +41,18 @@ export default class Conversation {
       idSet.add(p.id);
     });
 
-    const config = withOperation('conversation', options);
+    const config = scopeOperation('conversation', options);
+    const { depth, maxParallel } = await getOptions(config, {
+      depth: 3,
+      maxParallel: 3,
+    });
+    return new Conversation(topic, speakers, options, { depth, maxParallel });
+  }
 
-    const {
-      rules = {},
-      speakFn,
-      bulkSpeakFn,
-      maxParallel: _maxParallel,
-      llm,
-      clock,
-      ...otherOptions
-    } = config;
+  constructor(topic, speakers, options = {}, resolved = {}) {
+    const config = scopeOperation('conversation', options);
+
+    const { rules = {}, speakFn, bulkSpeakFn, llm, clock, ...otherOptions } = config;
 
     if (rules.shouldContinue && typeof rules.shouldContinue !== 'function') {
       throw new Error('shouldContinue must be a function');
@@ -59,7 +60,7 @@ export default class Conversation {
 
     this.topic = topic;
     this.speakers = speakers.slice();
-    const depth = resolveOption('depth', config, 3);
+    const depth = resolved.depth ?? config.depth ?? 3;
     this.rules = Object.assign(
       {
         shouldContinue: (round) => round < depth,
@@ -69,7 +70,7 @@ export default class Conversation {
     );
     this.speakFn = speakFn;
     this.bulkSpeakFn = bulkSpeakFn;
-    this.maxParallel = resolveOption('maxParallel', config, 3);
+    this.maxParallel = resolved.maxParallel ?? config.maxParallel ?? 3;
 
     // If no functions provided, default to our conversationTurnReduce
     if (!this.speakFn && !this.bulkSpeakFn) {

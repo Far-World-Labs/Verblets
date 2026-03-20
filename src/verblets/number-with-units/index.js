@@ -31,7 +31,7 @@ ${asNumberWithUnits}`;
 
   const response = await callLlm(numberText, {
     llm,
-    modelOptions: { response_format: responseFormat },
+    response_format: responseFormat,
     ...options,
   });
 

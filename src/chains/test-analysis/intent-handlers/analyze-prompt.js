@@ -154,11 +154,9 @@ async function runAnalysis(promptText) {
   const analysis = await retry(
     () =>
       llm(analysisPrompt, {
-        modelOptions: {
-          response_format: {
-            type: 'json_schema',
-            json_schema: promptAnalysisSchema,
-          },
+        response_format: {
+          type: 'json_schema',
+          json_schema: promptAnalysisSchema,
         },
       }),
     { maxAttempts: 2, label: 'prompt analysis' }

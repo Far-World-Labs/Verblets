@@ -41,13 +41,11 @@ export default async function embedSubquestions(query, config = {}) {
 
   return await callLlm(decomposeQueryPrompt(query, { granularityGuidance }), {
     llm,
-    modelOptions: {
-      response_format: {
-        type: 'json_schema',
-        json_schema: {
-          name: 'decompose_query',
-          schema: embedSubquestionsSchema,
-        },
+    response_format: {
+      type: 'json_schema',
+      json_schema: {
+        name: 'decompose_query',
+        schema: embedSubquestionsSchema,
       },
     },
     ...options,

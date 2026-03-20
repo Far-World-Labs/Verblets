@@ -3,7 +3,7 @@ import { asXML } from '../../prompts/wrap-variable.js';
 import { reduceAccumulatorJsonSchema } from './schemas.js';
 import { createLifecycleLogger, extractBatchConfig } from '../../lib/lifecycle-logger/index.js';
 import { createBatches, retry, batchTracker } from '../../lib/index.js';
-import { resolveAll, withOperation } from '../../lib/context/resolve.js';
+import { getOptions, scopeOperation } from '../../lib/context/option.js';
 
 // Default response format for reduce operations - simple string accumulator
 const DEFAULT_REDUCE_RESPONSE_FORMAT = {
@@ -12,16 +12,17 @@ const DEFAULT_REDUCE_RESPONSE_FORMAT = {
 };
 
 const reduce = async function reduce(list, instructions, config = {}) {
-  config = withOperation('reduce', config);
-  const { llm, maxAttempts, retryDelay, retryOnAll, progressMode, accumulatorMode } =
-    await resolveAll(config, {
-      llm: undefined,
+  config = scopeOperation('reduce', config);
+  const { maxAttempts, retryDelay, retryOnAll, progressMode, accumulatorMode } = await getOptions(
+    config,
+    {
       maxAttempts: 3,
       retryDelay: 1000,
       retryOnAll: false,
       progressMode: 'detailed',
       accumulatorMode: 'auto',
-    });
+    }
+  );
 
   const lifecycleLogger = createLifecycleLogger(config.logger, 'chain:reduce');
 
@@ -35,7 +36,7 @@ const reduce = async function reduce(list, instructions, config = {}) {
     acc = { items: config.initial };
   }
 
-  const batches = createBatches(list, config);
+  const batches = await createBatches(list, config);
   const activeBatches = batches.filter((b) => !b.skip);
 
   lifecycleLogger.logStart(
@@ -92,7 +93,6 @@ Process exactly ${count} items from the ${itemFormat} list below and return the 
       ...config,
       listStyle: batchStyle,
       responseFormat: effectiveResponseFormat,
-      llm,
       logger: lifecycleLogger,
     };
 

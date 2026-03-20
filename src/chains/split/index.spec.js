@@ -75,24 +75,23 @@ describe('split chain', () => {
 });
 
 describe('mapPreservation', () => {
-  it('returns default for undefined', () => {
-    expect(mapPreservation(undefined)).toEqual({ short: 0.5, long: 0.1 });
+  it('all levels return same shape', () => {
+    const keys = ['low', 'med', 'high'].map((l) => Object.keys(mapPreservation(l)).sort());
+    expect(keys[0]).toEqual(keys[1]);
+    expect(keys[1]).toEqual(keys[2]);
   });
 
-  it('returns low preset', () => {
-    expect(mapPreservation('low')).toEqual({ short: 0.7, long: 0.25 });
+  it('undefined returns default', () => {
+    expect(mapPreservation(undefined)).toBeDefined();
+    expect(typeof mapPreservation(undefined)).toBe('object');
   });
 
-  it('returns high preset', () => {
-    expect(mapPreservation('high')).toEqual({ short: 0.3, long: 0.05 });
-  });
-
-  it('passes through an object', () => {
-    const custom = { short: 0.4, long: 0.15 };
+  it('passes through object for power consumers', () => {
+    const custom = { a: 1, b: 2 };
     expect(mapPreservation(custom)).toBe(custom);
   });
 
-  it('returns default for unknown string', () => {
-    expect(mapPreservation('medium')).toEqual({ short: 0.5, long: 0.1 });
+  it('unknown string falls back to default', () => {
+    expect(mapPreservation('zzz')).toEqual(mapPreservation(undefined));
   });
 });

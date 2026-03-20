@@ -145,9 +145,9 @@ describe('centralTendency', () => {
 
     await centralTendency('item', ['seed1', 'seed2'], {});
 
-    const modelOptions = llm.mock.calls[0][1].modelOptions;
-    expect(modelOptions).toHaveProperty('response_format');
-    expect(modelOptions.response_format.type).toBe('json_schema');
-    expect(modelOptions.response_format.json_schema.name).toBe('central_tendency_result');
+    const options = llm.mock.calls[0][1];
+    expect(options).toHaveProperty('response_format');
+    expect(options.response_format.type).toBe('json_schema');
+    expect(options.response_format.json_schema.name).toBe('central_tendency_result');
   });
 });

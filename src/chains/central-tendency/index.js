@@ -3,7 +3,7 @@ import { CENTRAL_TENDENCY_PROMPT } from '../../verblets/central-tendency-lines/i
 import { centralTendencyResultsJsonSchema } from './schemas.js';
 import { createLifecycleLogger, extractPromptAnalysis } from '../../lib/lifecycle-logger/index.js';
 import { scopeProgress } from '../../lib/progress-callback/index.js';
-import { resolveAll, withOperation } from '../../lib/context/resolve.js';
+import { getOptions, scopeOperation } from '../../lib/context/option.js';
 
 const centralTendencyResponseFormat = {
   type: 'json_schema',
@@ -52,7 +52,7 @@ ${corePrompt}`;
  * @returns {Promise<Array>} Array of central tendency results
  */
 export default async function centralTendency(items, seedItems, config = {}) {
-  config = withOperation('central-tendency', config);
+  config = scopeOperation('central-tendency', config);
   if (!Array.isArray(items)) {
     throw new Error('Items must be an array');
   }
@@ -65,8 +65,7 @@ export default async function centralTendency(items, seedItems, config = {}) {
     throw new Error('seedItems must be a non-empty array');
   }
 
-  const { llm, batchSize, maxAttempts, retryDelay, retryOnAll } = await resolveAll(config, {
-    llm: undefined,
+  const { batchSize, maxAttempts, retryDelay, retryOnAll } = await getOptions(config, {
     batchSize: 5,
     maxAttempts: 3,
     retryDelay: 1000,
@@ -103,7 +102,6 @@ export default async function centralTendency(items, seedItems, config = {}) {
       responseFormat: centralTendencyResponseFormat,
       logger: lifecycleLogger,
       onProgress: scopeProgress(config.onProgress, 'map:evaluation'),
-      llm,
     });
 
     // Log the final output from the chain

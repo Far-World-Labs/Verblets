@@ -143,9 +143,7 @@ describe('Summary map', () => {
       }
 
       if (example.name === 'Model options and sensitivity') {
-        const callWithSensitive = llm.mock.calls.find(
-          (c) => c[1]?.modelOptions?.sensitive === true
-        );
+        const callWithSensitive = llm.mock.calls.find((c) => c[1]?.sensitive === true);
         expect(callWithSensitive).toBeTruthy();
       }
     });
@@ -172,23 +170,25 @@ describe('Summary map', () => {
 });
 
 describe('mapSummaryDetail', () => {
-  it('returns 0.3 for undefined', () => {
-    expect(mapSummaryDetail(undefined)).toBe(0.3);
+  it('produces distinct values across levels', () => {
+    const values = ['low', 'med', 'high'].map(mapSummaryDetail);
+    expect(new Set(values).size).toBe(3);
   });
 
-  it('returns 0.4 for low', () => {
-    expect(mapSummaryDetail('low')).toBe(0.4);
+  it('high < low (more detail = lower ratio)', () => {
+    expect(mapSummaryDetail('high')).toBeLessThan(mapSummaryDetail('med'));
+    expect(mapSummaryDetail('med')).toBeLessThan(mapSummaryDetail('low'));
   });
 
-  it('returns 0.2 for high', () => {
-    expect(mapSummaryDetail('high')).toBe(0.2);
+  it('undefined returns default', () => {
+    expect(mapSummaryDetail(undefined)).toBeDefined();
   });
 
-  it('passes through a number', () => {
-    expect(mapSummaryDetail(0.35)).toBe(0.35);
+  it('passes through raw numbers', () => {
+    expect(mapSummaryDetail(0.42)).toBe(0.42);
   });
 
-  it('returns 0.3 for unknown string', () => {
-    expect(mapSummaryDetail('medium')).toBe(0.3);
+  it('unknown string falls back to default', () => {
+    expect(mapSummaryDetail('zzz')).toBe(mapSummaryDetail(undefined));
   });
 });

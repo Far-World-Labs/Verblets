@@ -6,7 +6,7 @@ import wrapVariable from '../../prompts/wrap-variable.js';
 import { env } from '../../lib/env/index.js';
 import { expectCore, handleAssertionResult } from './shared.js';
 import { extractFileContext } from '../../lib/logger/index.js';
-import { resolve, resolveAll, mapped, withOperation } from '../../lib/context/resolve.js';
+import { getOptions, withPolicy, scopeOperation } from '../../lib/context/option.js';
 
 // ===== Option Mappers =====
 
@@ -92,7 +92,7 @@ async function findModuleUnderTest(filePath, lineNumber) {
     context?.lines.join('\n') || ''
   }\n\nRespond with the import path or 'unknown'.`;
   try {
-    return (await llm(prompt, { modelOptions: { modelName: 'fastGoodCheapCoding' } })).trim();
+    return (await llm(prompt, { modelName: 'fastGoodCheapCoding' })).trim();
   } catch {
     return 'unknown';
   }
@@ -151,7 +151,7 @@ CONTEXT: [Additional context about the problem and potential root causes]
 Keep your response concise but actionable. Focus on practical solutions.`;
 
   try {
-    return await llm(prompt, { modelOptions: { modelName: 'fastGoodCheapCoding' } });
+    return await llm(prompt, { modelName: 'fastGoodCheapCoding' });
   } catch {
     // Fallback to shared generateAdvice if introspection fails
     const { generateAdvice } = await import('./shared.js');
@@ -163,12 +163,11 @@ Keep your response concise but actionable. Focus on practical solutions.`;
  * Enhanced LLM expectation with debugging features
  */
 export async function expect(actual, expected, constraint, config = {}) {
-  config = withOperation('expect', config);
-  const { mode, advice: adviceConfig } = await resolveAll(config, {
+  config = scopeOperation('expect', config);
+  const { mode, introspection } = await getOptions(config, {
     mode: env.LLM_EXPECT_MODE || 'none',
-    advice: mapped(mapAdvice),
+    advice: withPolicy(mapAdvice, ['introspection']),
   });
-  const introspection = await resolve('introspection', config, adviceConfig.introspection);
 
   const callerInfo = extractFileContext(5);
 

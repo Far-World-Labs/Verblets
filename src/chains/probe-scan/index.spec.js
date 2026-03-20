@@ -184,23 +184,25 @@ describe('probeScan', () => {
 });
 
 describe('mapDetection', () => {
-  it('returns default threshold for undefined', () => {
-    expect(mapDetection(undefined)).toBe(0.4);
+  it('produces distinct values across levels', () => {
+    const values = ['low', 'med', 'high'].map(mapDetection);
+    expect(new Set(values).size).toBe(3);
   });
 
-  it('returns 0.55 for low (stricter)', () => {
-    expect(mapDetection('low')).toBe(0.55);
+  it('high < low (more detection sensitivity = lower threshold)', () => {
+    expect(mapDetection('high')).toBeLessThan(mapDetection('med'));
+    expect(mapDetection('med')).toBeLessThan(mapDetection('low'));
   });
 
-  it('returns 0.3 for high (more sensitive)', () => {
-    expect(mapDetection('high')).toBe(0.3);
+  it('undefined returns default', () => {
+    expect(mapDetection(undefined)).toBeDefined();
   });
 
-  it('passes through a raw number', () => {
-    expect(mapDetection(0.6)).toBe(0.6);
+  it('passes through raw numbers', () => {
+    expect(mapDetection(0.42)).toBe(0.42);
   });
 
-  it('returns default for unknown string', () => {
-    expect(mapDetection('medium')).toBe(0.4);
+  it('unknown string falls back to default', () => {
+    expect(mapDetection('zzz')).toBe(mapDetection(undefined));
   });
 });

@@ -14,13 +14,11 @@ export default async function sentiment(text, config = {}) {
 
   const response = await callLlm(prompt, {
     llm,
-    modelOptions: {
-      response_format: {
-        type: 'json_schema',
-        json_schema: {
-          name: 'sentiment_analysis',
-          schema: sentimentSchema,
-        },
+    response_format: {
+      type: 'json_schema',
+      json_schema: {
+        name: 'sentiment_analysis',
+        schema: sentimentSchema,
       },
     },
     ...options,

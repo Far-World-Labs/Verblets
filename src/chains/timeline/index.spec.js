@@ -101,24 +101,22 @@ describe('timeline', () => {
     expect(llm).toHaveBeenCalledWith(
       'some text',
       expect.objectContaining({
-        modelOptions: expect.objectContaining({
-          systemPrompt: expect.stringContaining('Extract timeline events'),
-          response_format: {
-            type: 'json_schema',
-            json_schema: {
-              name: 'timeline_events',
-              schema: expect.objectContaining({
-                type: 'object',
-                properties: expect.objectContaining({
-                  events: expect.objectContaining({
-                    type: 'array',
-                  }),
+        systemPrompt: expect.stringContaining('Extract timeline events'),
+        response_format: {
+          type: 'json_schema',
+          json_schema: {
+            name: 'timeline_events',
+            schema: expect.objectContaining({
+              type: 'object',
+              properties: expect.objectContaining({
+                events: expect.objectContaining({
+                  type: 'array',
                 }),
               }),
-              strict: true,
-            },
+            }),
+            strict: true,
           },
-        }),
+        },
       })
     );
   });

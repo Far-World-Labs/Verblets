@@ -21,15 +21,15 @@ vi.mock('../../lib/llm/index.js', () => ({
     // For debugging - uncomment to see what's being called
     debug('Mock llm called with:', {
       promptSnippet: prompt.substring(0, 100),
-      hasModelOptions: !!config?.modelOptions,
-      responseFormat: config?.modelOptions?.response_format?.type,
-      schemaName: config?.modelOptions?.response_format?.json_schema?.name,
+      hasModelOptions: !!config,
+      responseFormat: config?.response_format?.type,
+      schemaName: config?.response_format?.json_schema?.name,
     });
 
     // Check for relation extraction with JSON schema first (more specific)
     if (
-      config?.modelOptions?.response_format?.type === 'json_schema' &&
-      config?.modelOptions?.response_format?.json_schema?.name === 'relation_result'
+      config?.response_format?.type === 'json_schema' &&
+      config?.response_format?.json_schema?.name === 'relation_result'
     ) {
       // Return object with items array (as the actual API would)
       return Promise.resolve({
@@ -387,19 +387,16 @@ describe('relations', () => {
 });
 
 describe('mapCanonicalization', () => {
-  it('returns undefined for undefined', () => {
-    expect(mapCanonicalization(undefined)).toBeUndefined();
-  });
-
-  it('returns low for low', () => {
+  it('valid enum values return themselves', () => {
     expect(mapCanonicalization('low')).toBe('low');
-  });
-
-  it('returns high for high', () => {
     expect(mapCanonicalization('high')).toBe('high');
   });
 
-  it('returns undefined for unknown string', () => {
-    expect(mapCanonicalization('medium')).toBeUndefined();
+  it('undefined returns default', () => {
+    expect(mapCanonicalization(undefined)).toBeUndefined();
+  });
+
+  it('unknown string falls back to default', () => {
+    expect(mapCanonicalization('zzz')).toBe(mapCanonicalization(undefined));
   });
 });

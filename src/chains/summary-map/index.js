@@ -4,7 +4,7 @@ import shortenText from '../../lib/shorten-text/index.js';
 import { summarize as basicSummarize, tokenBudget } from '../../prompts/index.js';
 import modelService from '../../services/llm-model/index.js';
 
-const summarize = ({ budget, type, value, fixes = [], modelOptions, sensitivity }) => {
+const summarize = ({ budget, type, value, fixes = [], llmOptions, sensitivity }) => {
   if (budget) {
     fixes.push(tokenBudget(budget));
   }
@@ -28,7 +28,7 @@ const summarize = ({ budget, type, value, fixes = [], modelOptions, sensitivity 
   const fixesAsBullets = fixes.map((fix) => ` - ${fix}`);
 
   return llm(basicSummarize(value, `${fixesAsBullets.join('\n')}`), {
-    modelOptions,
+    ...llmOptions,
   });
 };
 
@@ -68,7 +68,7 @@ export default class SummaryMap extends Map {
     this.data = new Map();
     this.isCacheValid = false;
     this.maxTokensPerValue = maxTokensPerValue ?? model.maxTokens;
-    this.modelOptions = { modelName: model.name, ...modelOptions };
+    this.llmOptions = { modelName: model.name, ...modelOptions };
 
     if (targetTokens) {
       this.targetTokens = targetTokens;
@@ -111,37 +111,37 @@ export default class SummaryMap extends Map {
     for (const { key, budget } of budgets) {
       const valueObject = this.data.get(key);
 
-      const entryModelOptions = {
-        ...this.modelOptions,
+      const entryLlmOptions = {
+        ...this.llmOptions,
         ...valueObject.modelOptions,
       };
 
       if (valueObject.sensitivity?.whitelist || valueObject.sensitivity?.blacklist) {
-        entryModelOptions.sensitive = true;
+        entryLlmOptions.sensitive = true;
       }
 
       const value = shortenText(valueObject.value, {
         targetTokenCount: this.maxTokensPerValue,
-        model: modelService.getModel(entryModelOptions.modelName),
+        model: modelService.getModel(entryLlmOptions.modelName),
       });
 
       // omit weight to skip summarization
       let summarizedValue = value;
       if (budget) {
-        const summarizeModelOptions = {
-          ...this.modelOptions,
+        const summarizeLlmOptions = {
+          ...this.llmOptions,
           ...valueObject.modelOptions,
         };
 
         if (valueObject.sensitivity?.whitelist || valueObject.sensitivity?.blacklist) {
-          summarizeModelOptions.sensitive = true;
+          summarizeLlmOptions.sensitive = true;
         }
 
         // eslint-disable-next-line no-await-in-loop
         summarizedValue = await summarize({
           budget,
           fixes: valueObject.fixes,
-          modelOptions: summarizeModelOptions,
+          llmOptions: summarizeLlmOptions,
           sensitivity: valueObject.sensitivity,
           type: valueObject.type,
           value,

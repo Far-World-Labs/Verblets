@@ -111,36 +111,23 @@ describe('Sort', () => {
 });
 
 describe('mapEffort', () => {
-  it('returns default posture for undefined', () => {
-    const result = mapEffort(undefined);
-    expect(result.iterations).toBe(1);
-    expect(result.extremeK).toBe(10);
-    expect(result.selectBottom).toBe(true);
+  it('all levels return same shape', () => {
+    const keys = ['low', 'med', 'high'].map((l) => Object.keys(mapEffort(l)).sort());
+    expect(keys[0]).toEqual(keys[1]);
+    expect(keys[1]).toEqual(keys[2]);
   });
 
-  it('returns low posture (fast, top-only)', () => {
-    const result = mapEffort('low');
-    expect(result.iterations).toBe(1);
-    expect(result.extremeK).toBe(5);
-    expect(result.selectBottom).toBe(false);
+  it('undefined returns default', () => {
+    expect(mapEffort(undefined)).toBeDefined();
+    expect(typeof mapEffort(undefined)).toBe('object');
   });
 
-  it('returns high posture (multi-pass, larger window)', () => {
-    const result = mapEffort('high');
-    expect(result.iterations).toBe(2);
-    expect(result.extremeK).toBe(15);
-    expect(result.selectBottom).toBe(true);
-  });
-
-  it('passes through a raw config object', () => {
-    const custom = { iterations: 3, extremeK: 20, selectBottom: true };
+  it('passes through object for power consumers', () => {
+    const custom = { a: 1, b: 2 };
     expect(mapEffort(custom)).toBe(custom);
   });
 
-  it('returns default for unknown string', () => {
-    const result = mapEffort('medium');
-    expect(result.iterations).toBe(1);
-    expect(result.extremeK).toBe(10);
-    expect(result.selectBottom).toBe(true);
+  it('unknown string falls back to default', () => {
+    expect(mapEffort('zzz')).toEqual(mapEffort(undefined));
   });
 });

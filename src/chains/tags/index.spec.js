@@ -49,9 +49,7 @@ describe('tags', () => {
       expect(llm).toHaveBeenCalledWith(
         expect.stringContaining('Tag by priority and type'),
         expect.objectContaining({
-          modelOptions: expect.objectContaining({
-            systemPrompt: expect.stringContaining('tag specification generator'),
-          }),
+          systemPrompt: expect.stringContaining('tag specification generator'),
         })
       );
       expect(spec).toBe(mockSpec);
@@ -71,10 +69,8 @@ describe('tags', () => {
       expect(llm).toHaveBeenCalledWith(
         expect.stringContaining(item),
         expect.objectContaining({
-          modelOptions: expect.objectContaining({
-            response_format: expect.objectContaining({
-              type: 'json_schema',
-            }),
+          response_format: expect.objectContaining({
+            type: 'json_schema',
           }),
         })
       );

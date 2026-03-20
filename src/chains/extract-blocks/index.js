@@ -10,7 +10,7 @@ import {
   emitBatchProcessed,
   createBatchProgressCallback,
 } from '../../lib/progress-callback/index.js';
-import { resolve, resolveAll, mapped, withOperation } from '../../lib/context/resolve.js';
+import { getOptions, withPolicy, scopeOperation } from '../../lib/context/option.js';
 
 // ===== Option Mappers =====
 
@@ -75,25 +75,16 @@ ${asXML(numberedLines, { tag: 'window' })}`;
  * @returns {Promise<Array<Array<string>>>} Array of blocks, each block is array of lines
  */
 export async function extractBlocks(text, instructions, config = {}) {
-  config = withOperation('extract-blocks', config);
+  config = scopeOperation('extract-blocks', config);
   const { logger, onProgress, now = new Date() } = config;
-  const {
-    llm,
-    precision: precisionConfig,
-    maxParallel,
-    maxAttempts,
-    retryDelay,
-    retryOnAll,
-  } = await resolveAll(config, {
-    llm: undefined,
-    precision: mapped(mapPrecision),
-    maxParallel: 3,
-    maxAttempts: 3,
-    retryDelay: 1000,
-    retryOnAll: false,
-  });
-  const windowSize = await resolve('windowSize', config, precisionConfig.windowSize);
-  const overlapSize = await resolve('overlapSize', config, precisionConfig.overlapSize);
+  const { maxParallel, maxAttempts, retryDelay, retryOnAll, windowSize, overlapSize } =
+    await getOptions(config, {
+      precision: withPolicy(mapPrecision, ['windowSize', 'overlapSize']),
+      maxParallel: 3,
+      maxAttempts: 3,
+      retryDelay: 1000,
+      retryOnAll: false,
+    });
 
   const lifecycleLogger = createLifecycleLogger(logger, 'chain:extract-blocks');
 
@@ -152,10 +143,7 @@ export async function extractBlocks(text, instructions, config = {}) {
         () =>
           callLlm(prompt, {
             ...config,
-            llm,
-            modelOptions: {
-              response_format: blockExtractionSchema,
-            },
+            response_format: blockExtractionSchema,
             logger: lifecycleLogger,
           }),
         {

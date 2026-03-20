@@ -1,7 +1,7 @@
 import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/index.js';
-import { resolve, resolveAll, mapped, withOperation } from '../../lib/context/resolve.js';
+import { getOptions, withPolicy, scopeOperation } from '../../lib/context/option.js';
 
 const responseFormat = {
   type: 'json_schema',
@@ -95,37 +95,28 @@ export const mapCoverage = (value) => {
 
 const veiledVariants = async (inputConfig = {}) => {
   const { prompt } = inputConfig;
-  const config = withOperation('veiled-variants', inputConfig);
-  const {
-    llm,
-    maxAttempts,
-    retryDelay,
-    retryOnAll,
-    coverage: coverageConfig,
-  } = await resolveAll(config, {
-    llm: { sensitive: true },
-    maxAttempts: 3,
-    retryDelay: 1000,
-    retryOnAll: false,
-    coverage: mapped(mapCoverage),
-  });
-  const strategies = await resolve('strategies', config, coverageConfig.strategies);
-  const variantCount = await resolve('variantCount', config, coverageConfig.variantCount);
+  const config = scopeOperation('veiled-variants', { llm: { sensitive: true }, ...inputConfig });
+  const { maxAttempts, retryDelay, retryOnAll, strategies, variantCount } = await getOptions(
+    config,
+    {
+      maxAttempts: 3,
+      retryDelay: 1000,
+      retryOnAll: false,
+      coverage: withPolicy(mapCoverage, ['strategies', 'variantCount']),
+    }
+  );
   const prompts = strategies.map((name) => STRATEGY_FNS[name](prompt, variantCount));
 
   const results = await Promise.all(
     prompts.map((p) =>
-      retry(
-        () => callLlm(p, { ...config, llm, modelOptions: { response_format: responseFormat } }),
-        {
-          label: 'veiled-variants',
-          maxAttempts,
-          retryDelay,
-          retryOnAll,
-          onProgress: config.onProgress,
-          abortSignal: config.abortSignal,
-        }
-      )
+      retry(() => callLlm(p, { ...config, response_format: responseFormat }), {
+        label: 'veiled-variants',
+        maxAttempts,
+        retryDelay,
+        retryOnAll,
+        onProgress: config.onProgress,
+        abortSignal: config.abortSignal,
+      })
     )
   );
 

@@ -5,7 +5,7 @@ import { scopeProgress } from '../../lib/progress-callback/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { debug } from '../../lib/debug/index.js';
 import thresholdResultSchema from './threshold-result.json';
-import { resolveAll, withOperation } from '../../lib/context/resolve.js';
+import { getOptions, scopeOperation } from '../../lib/context/option.js';
 
 export function calculateStatistics(data, targetProperty) {
   const values = data
@@ -61,9 +61,8 @@ export default async function detectThreshold({
   now = new Date(),
   ...options
 }) {
-  const config = withOperation('detect-threshold', options);
-  const { llm, batchSize, maxAttempts, retryDelay, retryOnAll } = await resolveAll(config, {
-    llm: { good: true },
+  const config = scopeOperation('detect-threshold', { llm: { good: true }, ...options });
+  const { batchSize, maxAttempts, retryDelay, retryOnAll } = await getOptions(config, {
     batchSize: 50,
     maxAttempts: 3,
     retryDelay: 1000,
@@ -165,10 +164,9 @@ Return the updated accumulator as valid JSON.`;
   }
 
   const analysisResult = await reduce(dataStrings, instructions, {
-    ...options,
+    ...config,
     initial: JSON.stringify(initialAccumulator),
     batchSize,
-    llm,
     maxAttempts,
     responseFormat: {
       type: 'json_schema',
@@ -221,24 +219,27 @@ Generate specific threshold recommendations that:
 
 Return threshold candidates with their rationales.`;
 
-  const modelOptions = {
-    response_format: {
-      type: 'json_schema',
-      json_schema: {
-        name: 'threshold_result',
-        schema: thresholdResultSchema,
-      },
-    },
-  };
-
-  const result = await retry(() => callLlm(finalPrompt, { ...options, llm, modelOptions }), {
-    label: 'detect-threshold-analysis',
-    maxAttempts,
-    retryDelay,
-    retryOnAll,
-    onProgress,
-    abortSignal: options.abortSignal,
-  });
+  const result = await retry(
+    () =>
+      callLlm(finalPrompt, {
+        ...config,
+        response_format: {
+          type: 'json_schema',
+          json_schema: {
+            name: 'threshold_result',
+            schema: thresholdResultSchema,
+          },
+        },
+      }),
+    {
+      label: 'detect-threshold-analysis',
+      maxAttempts,
+      retryDelay,
+      retryOnAll,
+      onProgress,
+      abortSignal: options.abortSignal,
+    }
+  );
 
   // Validate and fix threshold values to be within data range
   if (result.thresholdCandidates) {

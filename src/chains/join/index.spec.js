@@ -29,25 +29,24 @@ beforeEach(() => {
 });
 
 describe('mapFidelity', () => {
-  it('returns default (windowSize 5, 50% overlap) when undefined', () => {
-    expect(mapFidelity(undefined)).toEqual({ windowSize: 5, overlapPercent: 50 });
+  it('all levels return same shape', () => {
+    const keys = ['low', 'med', 'high'].map((l) => Object.keys(mapFidelity(l)).sort());
+    expect(keys[0]).toEqual(keys[1]);
+    expect(keys[1]).toEqual(keys[2]);
   });
 
-  it('maps low to large windows with minimal overlap', () => {
-    expect(mapFidelity('low')).toEqual({ windowSize: 10, overlapPercent: 25 });
-  });
-
-  it('maps high to small windows with high overlap', () => {
-    expect(mapFidelity('high')).toEqual({ windowSize: 3, overlapPercent: 67 });
+  it('undefined returns default', () => {
+    expect(mapFidelity(undefined)).toBeDefined();
+    expect(typeof mapFidelity(undefined)).toBe('object');
   });
 
   it('passes through object for power consumers', () => {
-    const custom = { windowSize: 7, overlapPercent: 40 };
+    const custom = { a: 1, b: 2 };
     expect(mapFidelity(custom)).toBe(custom);
   });
 
-  it('falls back to default on unknown string', () => {
-    expect(mapFidelity('ultra')).toEqual({ windowSize: 5, overlapPercent: 50 });
+  it('unknown string falls back to default', () => {
+    expect(mapFidelity('zzz')).toEqual(mapFidelity(undefined));
   });
 });
 

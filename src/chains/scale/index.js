@@ -4,7 +4,7 @@ import { asXML } from '../../prompts/wrap-variable.js';
 import buildInstructions from '../../lib/build-instructions/index.js';
 import { scaleSpecificationJsonSchema } from './schemas.js';
 import scaleResultSchema from './scale-result.json';
-import { resolveAll, withOperation } from '../../lib/context/resolve.js';
+import { getOptions, scopeOperation } from '../../lib/context/option.js';
 
 // ===== Instruction Builders =====
 
@@ -41,9 +41,8 @@ export const {
  * @returns {Promise<Object>} Scale specification with domain, range, and mapping
  */
 export async function scaleSpec(prompt, config = {}) {
-  config = withOperation('scale:spec', config);
-  const { llm, maxAttempts, retryDelay, retryOnAll } = await resolveAll(config, {
-    llm: undefined,
+  config = scopeOperation('scale:spec', config);
+  const { maxAttempts, retryDelay, retryOnAll } = await getOptions(config, {
     maxAttempts: 3,
     retryDelay: 1000,
     retryOnAll: false,
@@ -66,13 +65,10 @@ IMPORTANT: Each property must be a simple string value, not a nested object or a
     () =>
       callLlm(specUserPrompt, {
         ...config,
-        llm,
-        modelOptions: {
-          systemPrompt: specSystemPrompt,
-          response_format: {
-            type: 'json_schema',
-            json_schema: scaleSpecificationJsonSchema,
-          },
+        systemPrompt: specSystemPrompt,
+        response_format: {
+          type: 'json_schema',
+          json_schema: scaleSpecificationJsonSchema,
         },
       }),
     {
@@ -97,9 +93,8 @@ IMPORTANT: Each property must be a simple string value, not a nested object or a
  * @returns {Promise<*>} Scaled value (type depends on specification range)
  */
 export async function applyScale(item, specification, config = {}) {
-  config = withOperation('scale:apply', config);
-  const { llm, maxAttempts, retryDelay, retryOnAll } = await resolveAll(config, {
-    llm: undefined,
+  config = scopeOperation('scale:apply', config);
+  const { maxAttempts, retryDelay, retryOnAll } = await getOptions(config, {
     maxAttempts: 3,
     retryDelay: 1000,
     retryOnAll: false,
@@ -118,14 +113,11 @@ Return a JSON object with a "value" property containing the scaled result.`;
     () =>
       callLlm(prompt, {
         ...config,
-        llm,
-        modelOptions: {
-          response_format: {
-            type: 'json_schema',
-            json_schema: {
-              name: 'scale_result',
-              schema: scaleResultSchema,
-            },
+        response_format: {
+          type: 'json_schema',
+          json_schema: {
+            name: 'scale_result',
+            schema: scaleResultSchema,
           },
         },
       }),

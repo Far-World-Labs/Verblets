@@ -38,7 +38,7 @@ export default async function listExpand(list, count = list.length * 2, config =
   const { llm, ...options } = config;
   const output = await callLlm(buildPrompt(list, count), {
     llm,
-    modelOptions: { response_format: responseFormat },
+    response_format: responseFormat,
     ...options,
   });
 

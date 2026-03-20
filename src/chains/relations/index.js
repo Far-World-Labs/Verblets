@@ -2,7 +2,7 @@ import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import buildInstructions from '../../lib/build-instructions/index.js';
-import { resolveAll, mapped, withOperation } from '../../lib/context/resolve.js';
+import { getOptions, withPolicy, scopeOperation } from '../../lib/context/option.js';
 import relationResultSchema from './relation-result.json';
 
 // ===== Option Mappers =====
@@ -121,14 +121,13 @@ export function parseRelations(relations) {
  * @returns {Promise<string>} Relation specification as descriptive text
  */
 export async function relationSpec(prompt, config = {}) {
-  config = withOperation('relations:spec', config);
+  config = scopeOperation('relations:spec', config);
   const { onProgress, abortSignal } = config;
-  const { llm, maxAttempts, retryDelay, retryOnAll, canonicalization } = await resolveAll(config, {
-    llm: undefined,
+  const { maxAttempts, retryDelay, retryOnAll, canonicalization } = await getOptions(config, {
     maxAttempts: 3,
     retryDelay: 1000,
     retryOnAll: false,
-    canonicalization: mapped(mapCanonicalization),
+    canonicalization: withPolicy(mapCanonicalization),
   });
 
   const specSystemPrompt = `You are a relation specification generator. Create a clear, concise specification for relation extraction.`;
@@ -184,8 +183,7 @@ Use natural language, not symbolic identifiers or linked data formats.`;
     () =>
       callLlm(specUserPrompt, {
         ...config,
-        llm,
-        modelOptions: { systemPrompt: specSystemPrompt },
+        systemPrompt: specSystemPrompt,
       }),
     {
       label: 'relations-spec',
@@ -209,14 +207,13 @@ Use natural language, not symbolic identifiers or linked data formats.`;
  * @returns {Promise<Object>} Object with relations array
  */
 export async function applyRelations(text, specification, config = {}) {
-  config = withOperation('relations:apply', config);
+  config = scopeOperation('relations:apply', config);
   const { entities, onProgress, abortSignal } = config;
-  const { llm, maxAttempts, retryDelay, retryOnAll, canonicalization } = await resolveAll(config, {
-    llm: undefined,
+  const { maxAttempts, retryDelay, retryOnAll, canonicalization } = await getOptions(config, {
     maxAttempts: 3,
     retryDelay: 1000,
     retryOnAll: false,
-    canonicalization: mapped(mapCanonicalization),
+    canonicalization: withPolicy(mapCanonicalization),
   });
 
   let prompt = `Apply the relation specification to extract relations from this text.
@@ -262,14 +259,11 @@ Example: {"object": "42^^xsd:integer"} NOT {"object": '"42"^^xsd:integer'}`;
     () =>
       callLlm(prompt, {
         ...config,
-        llm,
-        modelOptions: {
-          response_format: {
-            type: 'json_schema',
-            json_schema: {
-              name: 'relation_result',
-              schema: relationResultSchema,
-            },
+        response_format: {
+          type: 'json_schema',
+          json_schema: {
+            name: 'relation_result',
+            schema: relationResultSchema,
           },
         },
       }),

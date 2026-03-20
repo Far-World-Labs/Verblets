@@ -8,7 +8,7 @@ import {
   extractResultValue,
 } from '../../lib/lifecycle-logger/index.js';
 import { emitStepProgress } from '../../lib/progress-callback/index.js';
-import { resolveOptionMapped, resolveOption, withOperation } from '../../lib/context/resolve.js';
+import { getOptions, withPolicy, scopeOperation } from '../../lib/context/option.js';
 
 // ===== Option Mappers =====
 
@@ -71,14 +71,12 @@ const defaultAsk = async ({
     () =>
       callLlm(prompt, {
         llm,
-        modelOptions: {
-          temperature,
-          response_format: {
-            type: 'json_schema',
-            json_schema: {
-              name: 'socratic_question',
-              schema: socraticQuestionSchema,
-            },
+        temperature,
+        response_format: {
+          type: 'json_schema',
+          json_schema: {
+            name: 'socratic_question',
+            schema: socraticQuestionSchema,
           },
         },
         logger,
@@ -116,14 +114,12 @@ const defaultAnswer = async ({
     () =>
       callLlm(prompt, {
         llm,
-        modelOptions: {
-          temperature,
-          response_format: {
-            type: 'json_schema',
-            json_schema: {
-              name: 'socratic_answer',
-              schema: socraticAnswerSchema,
-            },
+        temperature,
+        response_format: {
+          type: 'json_schema',
+          json_schema: {
+            name: 'socratic_answer',
+            schema: socraticAnswerSchema,
           },
         },
         logger,
@@ -141,45 +137,42 @@ const defaultAnswer = async ({
 };
 
 class SocraticMethod {
-  constructor(
-    statement,
-    {
+  static async create(statement, options = {}) {
+    const config = scopeOperation('socratic', options);
+    const { maxAttempts, retryOnAll, challenge, temperature } = await getOptions(config, {
+      maxAttempts: 3,
+      retryOnAll: false,
+      challenge: withPolicy(mapChallenge, ['challenge', 'temperature']),
+    });
+    return new SocraticMethod(statement, options, {
+      maxAttempts,
+      retryOnAll,
+      challenge,
+      temperature,
+    });
+  }
+
+  constructor(statement, options = {}, resolved = {}) {
+    const {
       ask = defaultAsk,
       answer = defaultAnswer,
       llm,
       logger,
-      maxAttempts: _maxAttempts,
-      temperature: _temperature,
-      challenge: _challenge,
       onProgress,
       abortSignal,
       now = new Date(),
-      ...restOptions
-    } = {}
-  ) {
-    const config = withOperation('socratic', {
-      ask,
-      answer,
-      llm,
-      logger,
-      maxAttempts: _maxAttempts,
-      temperature: _temperature,
-      challenge: _challenge,
-      onProgress,
-      abortSignal,
-      now,
-      ...restOptions,
-    });
+    } = options;
     this.statement = statement;
     this.ask = ask;
     this.answer = answer;
     this.llm = llm;
     this.history = [];
-    this.maxAttempts = resolveOption('maxAttempts', config, 3);
-    this.retryOnAll = resolveOption('retryOnAll', config, false);
-    const challengeConfig = resolveOptionMapped('challenge', config, mapChallenge);
-    this.challenge = challengeConfig.challenge;
-    this.temperature = resolveOption('temperature', config, challengeConfig.temperature);
+    this.maxAttempts = resolved.maxAttempts ?? options.maxAttempts ?? 3;
+    this.retryOnAll = resolved.retryOnAll ?? options.retryOnAll ?? false;
+    this.challenge =
+      resolved.challenge ??
+      (options.challenge !== undefined ? mapChallenge(options.challenge).challenge : undefined);
+    this.temperature = resolved.temperature ?? options.temperature ?? 0.7;
     this.onProgress = onProgress;
     this.abortSignal = abortSignal;
     this.now = now;
@@ -291,6 +284,7 @@ class SocraticMethod {
   }
 }
 
-export const socratic = (statement, options) => new SocraticMethod(statement, options);
+export const socratic = async (statement, options) =>
+  await SocraticMethod.create(statement, options);
 
 export default SocraticMethod;

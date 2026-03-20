@@ -5,23 +5,13 @@ import commonalitiesSchema from './commonalities-result.json';
 
 const { contentIsQuestion, tryCompleteData } = promptConstants;
 
-/**
- * Create model options for structured outputs
- * @returns {Object} Model options for callLlm
- */
-function createModelOptions() {
-  const schema = commonalitiesSchema;
-
-  const responseFormat = {
-    type: 'json_schema',
-    json_schema: {
-      name: 'commonalities_result',
-      schema,
-    },
-  };
-
-  return { response_format: responseFormat };
-}
+const responseFormat = {
+  type: 'json_schema',
+  json_schema: {
+    name: 'commonalities_result',
+    schema: commonalitiesSchema,
+  },
+};
 
 // ===== Option Mappers =====
 
@@ -73,11 +63,9 @@ export default async function commonalities(items, config = {}) {
 
   const { llm, depth, ...options } = config;
   const depthGuidance = mapDepth(depth);
-  const modelOptions = createModelOptions();
-
   const output = await callLlm(buildPrompt(items, { ...options, depthGuidance }), {
     llm,
-    modelOptions,
+    response_format: responseFormat,
     ...options,
   });
 

@@ -27,10 +27,8 @@ describe('embedRewriteToOutputDoc', () => {
     const [prompt, options] = callLlm.mock.calls[0];
     expect(prompt).toContain('how does photosynthesis work');
     expect(prompt).toContain('write a short passage');
-    expect(options.modelOptions.response_format.json_schema.name).toBe('hyde_output_doc');
-    expect(options.modelOptions.response_format.json_schema.schema.properties.value.type).toBe(
-      'string'
-    );
+    expect(options.response_format.json_schema.name).toBe('hyde_output_doc');
+    expect(options.response_format.json_schema.schema.properties.value.type).toBe('string');
   });
 
   it('forwards llm config', async () => {

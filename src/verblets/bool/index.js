@@ -36,14 +36,12 @@ The value should be "true", "false", or "undefined".`;
     // Make LLM call with logger
     const response = await callLlm(text, {
       llm,
-      modelOptions: {
-        systemPrompt,
-        response_format: {
-          type: 'json_schema',
-          json_schema: {
-            name: 'boolean_evaluation',
-            schema: booleanSchema,
-          },
+      systemPrompt,
+      response_format: {
+        type: 'json_schema',
+        json_schema: {
+          name: 'boolean_evaluation',
+          schema: booleanSchema,
         },
       },
       logger: lifecycleLogger,

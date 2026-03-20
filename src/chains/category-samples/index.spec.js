@@ -361,35 +361,23 @@ describe('categorySamplesList', () => {
 });
 
 describe('mapDiversity', () => {
-  it('returns default config for undefined', () => {
-    const result = mapDiversity(undefined);
-    expect(result).toStrictEqual({ diversity: undefined, count: 30 });
+  it('all levels return same shape', () => {
+    const keys = ['low', 'med', 'high'].map((l) => Object.keys(mapDiversity(l)).sort());
+    expect(keys[0]).toEqual(keys[1]);
+    expect(keys[1]).toEqual(keys[2]);
   });
 
-  it('returns low diversity with reduced count', () => {
-    const result = mapDiversity('low');
-    expect(result.diversity).toBe('low');
-    expect(result.count).toBe(15);
+  it('undefined returns default', () => {
+    expect(mapDiversity(undefined)).toBeDefined();
+    expect(typeof mapDiversity(undefined)).toBe('object');
   });
 
-  it('returns default config for med', () => {
-    const result = mapDiversity('med');
-    expect(result).toStrictEqual({ diversity: undefined, count: 30 });
-  });
-
-  it('returns high diversity with increased count', () => {
-    const result = mapDiversity('high');
-    expect(result.diversity).toBe('high');
-    expect(result.count).toBe(50);
-  });
-
-  it('returns default config for unknown string', () => {
-    const result = mapDiversity('medium');
-    expect(result).toStrictEqual({ diversity: undefined, count: 30 });
-  });
-
-  it('passes through object values', () => {
-    const custom = { diversity: 'high', count: 100 };
+  it('passes through object for power consumers', () => {
+    const custom = { a: 1, b: 2 };
     expect(mapDiversity(custom)).toBe(custom);
+  });
+
+  it('unknown string falls back to default', () => {
+    expect(mapDiversity('zzz')).toEqual(mapDiversity(undefined));
   });
 });

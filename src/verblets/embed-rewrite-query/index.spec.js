@@ -34,13 +34,13 @@ describe('embedRewriteQuery', () => {
     await embedRewriteQuery('test query');
 
     const callConfig = mockLlm.mock.calls[0][1];
-    const schema = callConfig.modelOptions.response_format.json_schema.schema;
+    const schema = callConfig.response_format.json_schema.schema;
     expect(schema.properties).toHaveProperty('value');
     expect(schema.properties.value.type).toBe('string');
     expect(schema.required).toContain('value');
   });
 
-  it('passes llm config through to modelOptions', async () => {
+  it('passes llm config through to callLlm', async () => {
     mockLlm.mockResolvedValueOnce('rewritten');
 
     await embedRewriteQuery('query', { llm: { modelName: 'test-model', temperature: 0.5 } });

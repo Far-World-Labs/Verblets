@@ -203,18 +203,18 @@ describe('intersections chain', () => {
   });
 
   describe('response_format with json_schema', () => {
-    it('passes intersection_elements json_schema in modelOptions to callLlm', async () => {
+    it('passes intersection_elements json_schema in config to callLlm', async () => {
       await intersections(['A', 'B']);
 
       const callLlmArgs = callLlm.mock.calls[0];
-      const modelOptions = callLlmArgs[1].modelOptions;
+      const config = callLlmArgs[1];
 
-      expect(modelOptions).toBeDefined();
-      expect(modelOptions.response_format.type).toBe('json_schema');
-      expect(modelOptions.response_format.json_schema.name).toBe('intersection_elements');
-      expect(modelOptions.response_format.json_schema.schema).toBeDefined();
-      expect(modelOptions.response_format.json_schema.schema.type).toBe('object');
-      expect(modelOptions.response_format.json_schema.schema.properties.items).toBeDefined();
+      expect(config.response_format).toBeDefined();
+      expect(config.response_format.type).toBe('json_schema');
+      expect(config.response_format.json_schema.name).toBe('intersection_elements');
+      expect(config.response_format.json_schema.schema).toBeDefined();
+      expect(config.response_format.json_schema.schema.type).toBe('object');
+      expect(config.response_format.json_schema.schema.properties.items).toBeDefined();
     });
   });
 
@@ -365,16 +365,16 @@ describe('intersections chain', () => {
       expect(validationRetryOpts.maxAttempts).toBe(5);
     });
 
-    it('uses intersection_result json_schema for validation modelOptions', async () => {
+    it('uses intersection_result json_schema for validation config', async () => {
       callLlm.mockResolvedValueOnce(['elem1']);
       callLlm.mockResolvedValueOnce({ intersections: {} });
 
       await intersections(['A', 'B'], { useSchemaValidation: true });
 
       const validationCallArgs = callLlm.mock.calls[1];
-      const modelOptions = validationCallArgs[1].modelOptions;
-      expect(modelOptions.response_format.type).toBe('json_schema');
-      expect(modelOptions.response_format.json_schema.name).toBe('intersection_result');
+      const config = validationCallArgs[1];
+      expect(config.response_format.type).toBe('json_schema');
+      expect(config.response_format.json_schema.name).toBe('intersection_result');
     });
   });
 

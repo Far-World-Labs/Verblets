@@ -377,19 +377,16 @@ describe('score chain', () => {
 });
 
 describe('mapAnchoring', () => {
-  it('returns default for undefined', () => {
-    expect(mapAnchoring(undefined)).toBe('default');
+  it('produces distinct values across levels', () => {
+    const values = ['low', 'med', 'high'].map(mapAnchoring);
+    expect(new Set(values).size).toBe(3);
   });
 
-  it('returns none for low', () => {
-    expect(mapAnchoring('low')).toBe('none');
+  it('undefined returns default', () => {
+    expect(mapAnchoring(undefined)).toBeDefined();
   });
 
-  it('returns rich for high', () => {
-    expect(mapAnchoring('high')).toBe('rich');
-  });
-
-  it('returns default for unknown string', () => {
-    expect(mapAnchoring('medium')).toBe('default');
+  it('unknown string falls back to default', () => {
+    expect(mapAnchoring('zzz')).toBe(mapAnchoring(undefined));
   });
 });

@@ -54,23 +54,21 @@ Evaluation rules:
 
   // Make the LLM call
   const response = await llm(prompt, {
-    modelOptions: {
-      temperature: context.temperature ?? 0,
-      response_format: {
-        type: 'json_schema',
-        json_schema: {
-          name: 'assertion_result',
-          strict: true,
-          schema: {
-            type: 'object',
-            properties: {
-              value: {
-                type: 'boolean',
-              },
+    temperature: context.temperature ?? 0,
+    response_format: {
+      type: 'json_schema',
+      json_schema: {
+        name: 'assertion_result',
+        strict: true,
+        schema: {
+          type: 'object',
+          properties: {
+            value: {
+              type: 'boolean',
             },
-            required: ['value'],
-            additionalProperties: false,
           },
+          required: ['value'],
+          additionalProperties: false,
         },
       },
     },
@@ -122,9 +120,7 @@ Provide:
 Keep the advice concise and actionable.`;
 
   return await llm(prompt, {
-    modelOptions: {
-      temperature: 0.3,
-    },
+    temperature: 0.3,
   });
 }
 

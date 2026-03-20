@@ -2,7 +2,7 @@ import nlp from 'compromise';
 import sort from '../sort/index.js';
 import map from '../map/index.js';
 import { glossaryExtractionJsonSchema } from './schemas.js';
-import { resolveAll, withOperation } from '../../lib/context/resolve.js';
+import { getOptions, scopeOperation } from '../../lib/context/option.js';
 
 // Response format for map: each chunk produces an array of terms
 const GLOSSARY_RESPONSE_FORMAT = {
@@ -23,8 +23,8 @@ const GLOSSARY_RESPONSE_FORMAT = {
  * @returns {Promise<string[]>} list of important terms, sorted by relevance
  */
 export default async function glossary(text, config = {}) {
-  config = withOperation('glossary', config);
-  const { maxTerms, sortBy, sentencesPerBatch, overlap } = await resolveAll(config, {
+  config = scopeOperation('glossary', config);
+  const { maxTerms, sortBy, sentencesPerBatch, overlap } = await getOptions(config, {
     maxTerms: 10,
     sortBy: 'importance for understanding the content',
     sentencesPerBatch: 3,
@@ -51,15 +51,15 @@ export default async function glossary(text, config = {}) {
 
 Return a "terms" object containing an array of the extracted terms.`;
 
-  const mapped = await map(textChunks, instructions, {
+  const withPolicy = await map(textChunks, instructions, {
     ...config,
     batchSize: config.batchSize ?? 1,
     responseFormat: GLOSSARY_RESPONSE_FORMAT,
   });
 
   const termSet = new Set();
-  mapped.forEach((result) => {
-    // Each mapped item is an object with a 'terms' array
+  withPolicy.forEach((result) => {
+    // Each withPolicy item is an object with a 'terms' array
     if (result && result.terms && Array.isArray(result.terms)) {
       result.terms.forEach((term) => {
         if (term && typeof term === 'string') {

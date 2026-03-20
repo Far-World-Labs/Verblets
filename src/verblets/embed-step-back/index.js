@@ -42,13 +42,11 @@ export default async function embedStepBack(query, config = {}) {
 
   return await callLlm(stepBackPrompt(query, count, { abstractionGuidance }), {
     llm,
-    modelOptions: {
-      response_format: {
-        type: 'json_schema',
-        json_schema: {
-          name: 'step_back',
-          schema: embedStepBackSchema,
-        },
+    response_format: {
+      type: 'json_schema',
+      json_schema: {
+        name: 'step_back',
+        schema: embedStepBackSchema,
       },
     },
     ...options,

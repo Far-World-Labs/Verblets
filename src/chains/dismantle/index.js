@@ -4,7 +4,7 @@ import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { outputSuccinctNames } from '../../prompts/index.js';
 import { subComponentsSchema, componentOptionsSchema } from './schemas.js';
-import { resolveOption, resolveOptionMapped, withOperation } from '../../lib/context/resolve.js';
+import { getOptions, withPolicy, scopeOperation } from '../../lib/context/option.js';
 
 // ===== Option Mappers =====
 
@@ -13,7 +13,7 @@ const DEFAULT_ENHANCE_PENALTY = 0.5;
 
 /**
  * Map variety option to a frequency penalty. Accepts 'low'|'high' or a raw number.
- * When set, enhance penalty is derived as `mapped * 0.7`.
+ * When set, enhance penalty is derived as `withPolicy * 0.7`.
  * @param {string|number|undefined} value
  * @returns {number|undefined} Frequency penalty for decompose (undefined = use defaults)
  */
@@ -96,15 +96,13 @@ const defaultDecompose = async ({
     () =>
       callLlm(promptCreated, {
         llm,
-        modelOptions: {
-          frequencyPenalty: variety ?? DEFAULT_DECOMPOSE_PENALTY,
-          temperature: temperature ?? 0.7,
-          response_format: {
-            type: 'json_schema',
-            json_schema: {
-              name: 'subcomponents',
-              schema: subComponentsSchema,
-            },
+        frequencyPenalty: variety ?? DEFAULT_DECOMPOSE_PENALTY,
+        temperature: temperature ?? 0.7,
+        response_format: {
+          type: 'json_schema',
+          json_schema: {
+            name: 'subcomponents',
+            schema: subComponentsSchema,
           },
         },
       }),
@@ -137,15 +135,13 @@ const defaultEnhance = async ({
     () =>
       callLlm(promptCreated, {
         llm,
-        modelOptions: {
-          frequencyPenalty: enhanceVariety,
-          temperature: temperature ?? 0.3,
-          response_format: {
-            type: 'json_schema',
-            json_schema: {
-              name: 'component_options',
-              schema: componentOptionsSchema,
-            },
+        frequencyPenalty: enhanceVariety,
+        temperature: temperature ?? 0.3,
+        response_format: {
+          type: 'json_schema',
+          json_schema: {
+            name: 'component_options',
+            schema: componentOptionsSchema,
           },
         },
       }),
@@ -320,26 +316,19 @@ export const simplifyTree = (node) => {
 };
 
 class ChainTree {
-  constructor(
-    name,
-    {
-      decompose,
-      enhance,
-      llm,
-      makeId,
-      enhanceFixes,
-      decomposeFixes,
-      abortSignal,
-      maxAttempts: _maxAttempts,
-      temperature: _temperature,
-      ...restOptions
-    } = {}
-  ) {
-    const config = withOperation('dismantle', {
-      maxAttempts: _maxAttempts,
-      temperature: _temperature,
-      ...restOptions,
+  static async create(name, options = {}) {
+    const config = scopeOperation('dismantle', options);
+    const { maxAttempts, retryOnAll, temperature, variety } = await getOptions(config, {
+      maxAttempts: 3,
+      retryOnAll: false,
+      temperature: undefined,
+      variety: withPolicy(mapVariety),
     });
+    return new ChainTree(name, options, { maxAttempts, retryOnAll, temperature, variety });
+  }
+
+  constructor(name, options = {}, resolved = {}) {
+    const { decompose, enhance, llm, makeId, enhanceFixes, decomposeFixes, abortSignal } = options;
     this.rootName = name;
     this.tree = {};
     this.decompose = decompose;
@@ -349,11 +338,11 @@ class ChainTree {
     this.enhanceFixes = enhanceFixes;
     this.decomposeFixes = decomposeFixes;
     this.abortSignal = abortSignal;
-    this.maxAttempts = resolveOption('maxAttempts', config, 3);
-    this.retryOnAll = resolveOption('retryOnAll', config, false);
-    this.temperature = resolveOption('temperature', config, undefined);
-
-    this.variety = resolveOptionMapped('variety', config, mapVariety);
+    this.maxAttempts = resolved.maxAttempts ?? options.maxAttempts ?? 3;
+    this.retryOnAll = resolved.retryOnAll ?? options.retryOnAll ?? false;
+    this.temperature = resolved.temperature ?? options.temperature;
+    this.variety =
+      resolved.variety ?? (options.variety !== undefined ? mapVariety(options.variety) : undefined);
   }
 
   getTree() {
@@ -405,8 +394,8 @@ class ChainTree {
   }
 }
 
-export const dismantle = (text, options) => {
-  return new ChainTree(text, options);
+export const dismantle = async (text, options) => {
+  return await ChainTree.create(text, options);
 };
 
 export default ChainTree;

@@ -20,7 +20,7 @@ import extractJson from '../extract-json/index.js';
 import stripResponse from '../strip-response/index.js';
 import { onlyJSON, contentIsSchema } from '../../prompts/constants.js';
 import { asXML } from '../../prompts/wrap-variable.js';
-import { resolve } from '../context/resolve.js';
+import { getOption } from '../context/option.js';
 
 /**
  * Configure the appropriate abort signal for fetch requests.
@@ -149,11 +149,26 @@ const onAfterRequestDefault = ({ debugResult, isCached, resultShaped }) => {
   }
 };
 
+// Keys that belong to the model/request layer (as opposed to callLlm control keys).
+// Exported so consumers can discover which keys are policy-resolvable at the LLM level.
+export const MODEL_KEYS = [
+  'response_format',
+  'temperature',
+  'frequencyPenalty',
+  'presencePenalty',
+  'systemPrompt',
+  'requestTimeout',
+  'tools',
+  'toolChoice',
+  'maxTokens',
+  'topP',
+];
+
 export const run = async (prompt, config = {}) => {
   // Handle config parameter - can be string (model name) or object (full options)
   let options;
   if (typeof config === 'string') {
-    options = { modelOptions: { modelName: config } };
+    options = { modelName: config };
   } else {
     options = config;
   }
@@ -165,7 +180,6 @@ export const run = async (prompt, config = {}) => {
     forceQuery: _forceQuery,
     llm,
     logger,
-    modelOptions: modelOptionsRaw = {},
     onAfterRequest = onAfterRequestDefault,
     onBeforeRequest = onBeforeRequestDefault,
     shapeOutput = shapeOutputDefault,
@@ -173,10 +187,19 @@ export const run = async (prompt, config = {}) => {
     unwrapValues,
     unwrapCollections,
   } = options;
-  const forceQuery = await resolve('forceQuery', options, false);
+  const forceQuery = await getOption('forceQuery', options, false);
 
-  // Merge llm shorthand into modelOptions (explicit modelOptions keys win)
-  const modelOptions = { ...normalizeLlm(llm), ...modelOptionsRaw };
+  // Build modelOptions from flat config, resolving through context system.
+  // This allows per-operation behavioral policy via the policy channel.
+  const modelOptions = { ...normalizeLlm(llm) };
+  for (const key of MODEL_KEYS) {
+    const resolved = await getOption(key, options, undefined);
+    if (resolved !== undefined) modelOptions[key] = resolved;
+  }
+  for (const key of CAPABILITY_KEYS) {
+    const resolved = await getOption(key, options, undefined);
+    if (resolved !== undefined) modelOptions[key] = resolved;
+  }
 
   // Log start of llm execution
   const startTime = Date.now();
@@ -255,10 +278,10 @@ export const run = async (prompt, config = {}) => {
   }
 
   // Check if caching is disabled — per-call option takes precedence over environment variable
-  const cacheEnabled = await resolve('cacheEnabled', options, undefined);
+  const cacheEnabled = await getOption('cacheEnabled', options, undefined);
   const cachingDisabled =
     cacheEnabled === false || (cacheEnabled === undefined && configGet('DISABLE_CACHE') === true);
-  const cacheTTL = await resolve('cacheTTL', options, undefined);
+  const cacheTTL = await getOption('cacheTTL', options, undefined);
 
   let cacheResult = null;
   let cache = null;

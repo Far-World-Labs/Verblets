@@ -36,19 +36,24 @@ describe('Dismantle chain', () => {
 });
 
 describe('mapVariety', () => {
-  it('returns undefined for undefined', () => {
+  it('produces distinct values across levels', () => {
+    const values = ['low', 'high'].map(mapVariety);
+    expect(new Set(values).size).toBe(2);
+  });
+
+  it('low < high', () => {
+    expect(mapVariety('low')).toBeLessThan(mapVariety('high'));
+  });
+
+  it('undefined returns default', () => {
     expect(mapVariety(undefined)).toBeUndefined();
   });
 
-  it('returns 0.3 for low', () => {
-    expect(mapVariety('low')).toBe(0.3);
+  it('passes through raw numbers', () => {
+    expect(mapVariety(0.42)).toBe(0.42);
   });
 
-  it('returns 0.9 for high', () => {
-    expect(mapVariety('high')).toBe(0.9);
-  });
-
-  it('passes through a number', () => {
-    expect(mapVariety(0.6)).toBe(0.6);
+  it('unknown string falls back to default', () => {
+    expect(mapVariety('zzz')).toBe(mapVariety(undefined));
   });
 });

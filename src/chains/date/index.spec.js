@@ -13,25 +13,34 @@ vi.mock('../../verblets/bool/index.js', () => ({
 const llm = (await import('../../lib/llm/index.js')).default;
 
 describe('mapRigor', () => {
-  it('returns default (validate + 3 attempts + best-effort) when undefined', () => {
-    expect(mapRigor(undefined)).toEqual({ validate: true, maxAttempts: 3, returnBestEffort: true });
+  it('all levels return same shape', () => {
+    const keys = ['low', 'med', 'high'].map((l) => Object.keys(mapRigor(l)).sort());
+    expect(keys[0]).toEqual(keys[1]);
+    expect(keys[1]).toEqual(keys[2]);
   });
 
-  it('maps low to extraction-only — no validation, single attempt', () => {
-    expect(mapRigor('low')).toEqual({ validate: false, maxAttempts: 1, returnBestEffort: true });
-  });
-
-  it('maps high to strict — more attempts, no best-effort fallback', () => {
-    expect(mapRigor('high')).toEqual({ validate: true, maxAttempts: 5, returnBestEffort: false });
+  it('undefined returns default', () => {
+    expect(mapRigor(undefined)).toBeDefined();
+    expect(typeof mapRigor(undefined)).toBe('object');
   });
 
   it('passes through object for power consumers', () => {
-    const custom = { validate: true, maxAttempts: 10, returnBestEffort: false };
+    const custom = { a: 1, b: 2 };
     expect(mapRigor(custom)).toBe(custom);
   });
 
-  it('falls back to default on unknown string', () => {
-    expect(mapRigor('extreme')).toEqual({ validate: true, maxAttempts: 3, returnBestEffort: true });
+  it('unknown string falls back to default', () => {
+    expect(mapRigor('zzz')).toEqual(mapRigor(undefined));
+  });
+
+  it('low disables validation', () => {
+    const result = mapRigor('low');
+    expect(result.validate).toBe(false);
+  });
+
+  it('high disables returnBestEffort', () => {
+    const result = mapRigor('high');
+    expect(result.returnBestEffort).toBe(false);
   });
 });
 

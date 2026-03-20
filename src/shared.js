@@ -43,12 +43,10 @@ export {
   createContextBuilder,
   observeApplication,
   observeProviders,
-  withOperation,
-  resolve,
-  resolveAll,
-  resolveOption,
-  resolveAsyncOption,
-  mapped,
+  scopeOperation,
+  getOption,
+  getOptions,
+  withPolicy,
 } from './lib/context/index.js';
 
 // Lists

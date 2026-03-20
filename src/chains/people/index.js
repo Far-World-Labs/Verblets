@@ -2,12 +2,11 @@ import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { peopleListJsonSchema } from './schemas.js';
-import { resolveAll, withOperation } from '../../lib/context/resolve.js';
+import { getOptions, scopeOperation } from '../../lib/context/option.js';
 
 export default async function peopleList(description, count = 3, config = {}) {
-  config = withOperation('people', config);
-  const { llm, maxAttempts, retryDelay, retryOnAll } = await resolveAll(config, {
-    llm: undefined,
+  config = scopeOperation('people', config);
+  const { maxAttempts, retryDelay, retryOnAll } = await getOptions(config, {
     maxAttempts: 3,
     retryDelay: 1000,
     retryOnAll: false,
@@ -22,12 +21,9 @@ ${instructions}`;
     () =>
       callLlm(prompt, {
         ...config,
-        llm,
-        modelOptions: {
-          response_format: {
-            type: 'json_schema',
-            json_schema: peopleListJsonSchema,
-          },
+        response_format: {
+          type: 'json_schema',
+          json_schema: peopleListJsonSchema,
         },
       }),
     {

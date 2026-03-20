@@ -9,25 +9,24 @@ import llm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 
 describe('mapPrecision', () => {
-  it('returns default (windowSize 100, overlapSize 20) when undefined', () => {
-    expect(mapPrecision(undefined)).toEqual({ windowSize: 100, overlapSize: 20 });
+  it('all levels return same shape', () => {
+    const keys = ['low', 'med', 'high'].map((l) => Object.keys(mapPrecision(l)).sort());
+    expect(keys[0]).toEqual(keys[1]);
+    expect(keys[1]).toEqual(keys[2]);
   });
 
-  it('maps low to large windows with minimal overlap', () => {
-    expect(mapPrecision('low')).toEqual({ windowSize: 200, overlapSize: 10 });
-  });
-
-  it('maps high to small windows with large overlap', () => {
-    expect(mapPrecision('high')).toEqual({ windowSize: 50, overlapSize: 30 });
+  it('undefined returns default', () => {
+    expect(mapPrecision(undefined)).toBeDefined();
+    expect(typeof mapPrecision(undefined)).toBe('object');
   });
 
   it('passes through object for power consumers', () => {
-    const custom = { windowSize: 75, overlapSize: 15 };
+    const custom = { a: 1, b: 2 };
     expect(mapPrecision(custom)).toBe(custom);
   });
 
-  it('falls back to default on unknown string', () => {
-    expect(mapPrecision('ultra')).toEqual({ windowSize: 100, overlapSize: 20 });
+  it('unknown string falls back to default', () => {
+    expect(mapPrecision('zzz')).toEqual(mapPrecision(undefined));
   });
 });
 

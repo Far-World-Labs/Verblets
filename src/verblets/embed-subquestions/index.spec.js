@@ -60,7 +60,7 @@ describe('embedSubquestions', () => {
     await embedSubquestions('test query');
 
     const callConfig = mockLlm.mock.calls[0][1];
-    const schema = callConfig.modelOptions.response_format.json_schema.schema;
+    const schema = callConfig.response_format.json_schema.schema;
     expect(schema.properties).toHaveProperty('items');
     expect(schema.properties.items.type).toBe('array');
     expect(schema.properties.items.items.type).toBe('string');
@@ -77,7 +77,7 @@ describe('embedSubquestions', () => {
     expect(prompt).not.toMatch(/Generate \d+ /);
   });
 
-  it('passes llm config through to modelOptions', async () => {
+  it('passes llm config through to callLlm', async () => {
     mockLlm.mockResolvedValueOnce([]);
 
     await embedSubquestions('query', { llm: { modelName: 'test-model' } });

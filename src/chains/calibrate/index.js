@@ -1,7 +1,7 @@
 import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
-import { resolveAll, mapped, withOperation } from '../../lib/context/resolve.js';
+import { getOptions, withPolicy, scopeOperation } from '../../lib/context/option.js';
 import { calibrateSpecificationJsonSchema } from './schemas.js';
 import calibrateResultSchema from './calibrate-result.json';
 
@@ -79,17 +79,18 @@ function computeScanStatistics(scans) {
  * @returns {Promise<{ corpusProfile: string, classificationCriteria: string, salienceCriteria: string, categoryNotes: string }>}
  */
 export async function calibrateSpec(scans, config = {}) {
-  config = withOperation('calibrate:spec', config);
+  config = scopeOperation('calibrate:spec', config);
   const { instructions } = config;
-  const { llm, maxAttempts, retryDelay, retryOnAll, thresholdStrategy, sensitivity } =
-    await resolveAll(config, {
-      llm: undefined,
+  const { maxAttempts, retryDelay, retryOnAll, thresholdStrategy, sensitivity } = await getOptions(
+    config,
+    {
       maxAttempts: 3,
       retryDelay: 1000,
       retryOnAll: false,
       thresholdStrategy: 'statistical',
-      sensitivity: mapped(mapSensitivity),
-    });
+      sensitivity: withPolicy(mapSensitivity),
+    }
+  );
 
   const statistics = computeScanStatistics(scans);
 
@@ -131,13 +132,10 @@ IMPORTANT: Each property must be a simple string value, not a nested object or a
     () =>
       callLlm(specUserPrompt, {
         ...config,
-        llm,
-        modelOptions: {
-          systemPrompt: specSystemPrompt,
-          response_format: {
-            type: 'json_schema',
-            json_schema: calibrateSpecificationJsonSchema,
-          },
+        systemPrompt: specSystemPrompt,
+        response_format: {
+          type: 'json_schema',
+          json_schema: calibrateSpecificationJsonSchema,
         },
       }),
     {
@@ -162,9 +160,8 @@ IMPORTANT: Each property must be a simple string value, not a nested object or a
  * @returns {Promise<{ severity: string, salience: string, categories: object, summary: string }>}
  */
 export async function applyCalibrate(scan, specification, config = {}) {
-  config = withOperation('calibrate:apply', config);
-  const { llm, maxAttempts, retryDelay, retryOnAll } = await resolveAll(config, {
-    llm: undefined,
+  config = scopeOperation('calibrate:apply', config);
+  const { maxAttempts, retryDelay, retryOnAll } = await getOptions(config, {
     maxAttempts: 3,
     retryDelay: 1000,
     retryOnAll: false,
@@ -187,14 +184,11 @@ Return a JSON object with:
     () =>
       callLlm(prompt, {
         ...config,
-        llm,
-        modelOptions: {
-          response_format: {
-            type: 'json_schema',
-            json_schema: {
-              name: 'calibrate_result',
-              schema: calibrateResultSchema,
-            },
+        response_format: {
+          type: 'json_schema',
+          json_schema: {
+            name: 'calibrate_result',
+            schema: calibrateResultSchema,
           },
         },
       }),

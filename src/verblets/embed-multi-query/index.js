@@ -39,13 +39,11 @@ export default async function embedMultiQuery(query, config = {}) {
 
   return await callLlm(multiQueryPrompt(query, count, { divergenceGuidance }), {
     llm,
-    modelOptions: {
-      response_format: {
-        type: 'json_schema',
-        json_schema: {
-          name: 'multi_query',
-          schema: embedMultiQuerySchema,
-        },
+    response_format: {
+      type: 'json_schema',
+      json_schema: {
+        name: 'multi_query',
+        schema: embedMultiQuerySchema,
       },
     },
     ...options,

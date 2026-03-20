@@ -2,7 +2,7 @@ import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import tagVocabularyResultSchema from './tag-vocabulary-result.json';
-import { resolveAll, withOperation } from '../../lib/context/resolve.js';
+import { getOptions, scopeOperation } from '../../lib/context/option.js';
 
 // ===== Pure Helper Functions =====
 
@@ -120,10 +120,9 @@ export function computeTagStatistics(vocabulary, taggedItems, options = {}) {
  * @returns {Promise<Object>} Initial tag vocabulary
  */
 async function generateInitialVocabulary(tagSystemSpec, sampleItems, config = {}) {
-  config = withOperation('tag-vocabulary:generate', config);
+  config = scopeOperation('tag-vocabulary:generate', config);
   const { onProgress, abortSignal } = config;
-  const { llm, maxAttempts, retryDelay, retryOnAll } = await resolveAll(config, {
-    llm: undefined,
+  const { maxAttempts, retryDelay, retryOnAll } = await getOptions(config, {
     maxAttempts: 3,
     retryDelay: 1000,
     retryOnAll: false,
@@ -150,14 +149,11 @@ The vocabulary should be complete enough to categorize diverse items along the i
     () =>
       callLlm(prompt, {
         ...config,
-        llm,
-        modelOptions: {
-          response_format: {
-            type: 'json_schema',
-            json_schema: {
-              name: 'tag_vocabulary_result',
-              schema: tagVocabularyResultSchema,
-            },
+        response_format: {
+          type: 'json_schema',
+          json_schema: {
+            name: 'tag_vocabulary_result',
+            schema: tagVocabularyResultSchema,
           },
         },
       }),
@@ -183,10 +179,9 @@ The vocabulary should be complete enough to categorize diverse items along the i
  * @returns {Promise<Object>} Refined tag vocabulary
  */
 async function refineVocabulary(vocabulary, taggedItems, tagSystemSpec, config = {}) {
-  config = withOperation('tag-vocabulary:refine', config);
+  config = scopeOperation('tag-vocabulary:refine', config);
   const { topN = 3, bottomN = 3, onProgress, abortSignal } = config;
-  const { llm, maxAttempts, retryDelay, retryOnAll } = await resolveAll(config, {
-    llm: undefined,
+  const { maxAttempts, retryDelay, retryOnAll } = await getOptions(config, {
     maxAttempts: 3,
     retryDelay: 1000,
     retryOnAll: false,
@@ -224,14 +219,11 @@ Return an improved vocabulary that provides better coverage and clearer distinct
     () =>
       callLlm(prompt, {
         ...config,
-        llm,
-        modelOptions: {
-          response_format: {
-            type: 'json_schema',
-            json_schema: {
-              name: 'tag_vocabulary_result',
-              schema: tagVocabularyResultSchema,
-            },
+        response_format: {
+          type: 'json_schema',
+          json_schema: {
+            name: 'tag_vocabulary_result',
+            schema: tagVocabularyResultSchema,
           },
         },
       }),
@@ -256,9 +248,9 @@ Return an improved vocabulary that provides better coverage and clearer distinct
  * @returns {Promise<Object>} Final refined tag vocabulary
  */
 export default async function tagVocabulary(tagSystemSpec, items, config = {}) {
-  config = withOperation('tag-vocabulary', config);
+  config = scopeOperation('tag-vocabulary', config);
   const { tagger, sampleSize = 50 } = config;
-  const { maxAttempts, retryDelay } = await resolveAll(config, {
+  const { maxAttempts, retryDelay } = await getOptions(config, {
     maxAttempts: 3,
     retryDelay: 1000,
   });

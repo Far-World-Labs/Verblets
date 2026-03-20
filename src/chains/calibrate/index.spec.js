@@ -63,8 +63,8 @@ describe('calibrateSpec', () => {
     expect(prompt).toContain('"financial-card"');
     expect(prompt).not.toContain('<classification-instructions>');
 
-    expect(options.modelOptions.systemPrompt).toContain('calibration specification generator');
-    expect(options.modelOptions.response_format).toEqual({
+    expect(options.systemPrompt).toContain('calibration specification generator');
+    expect(options.response_format).toEqual({
       type: 'json_schema',
       json_schema: expect.objectContaining({ name: 'calibrate_specification' }),
     });
@@ -156,7 +156,7 @@ describe('applyCalibrate', () => {
     const [prompt, options] = vi.mocked(llm).mock.calls[0];
     expect(prompt).toContain('<calibration-specification>');
     expect(prompt).toContain('<scan-result>');
-    expect(options.modelOptions.response_format).toEqual({
+    expect(options.response_format).toEqual({
       type: 'json_schema',
       json_schema: expect.objectContaining({ name: 'calibrate_result' }),
     });
@@ -256,19 +256,16 @@ describe('calibrate (default export)', () => {
 });
 
 describe('mapSensitivity', () => {
-  it('returns undefined for undefined', () => {
-    expect(mapSensitivity(undefined)).toBeUndefined();
-  });
-
-  it('returns low for low', () => {
+  it('valid enum values return themselves', () => {
     expect(mapSensitivity('low')).toBe('low');
-  });
-
-  it('returns high for high', () => {
     expect(mapSensitivity('high')).toBe('high');
   });
 
-  it('returns undefined for unknown string', () => {
-    expect(mapSensitivity('medium')).toBeUndefined();
+  it('undefined returns default', () => {
+    expect(mapSensitivity(undefined)).toBeUndefined();
+  });
+
+  it('unknown string falls back to default', () => {
+    expect(mapSensitivity('zzz')).toBe(mapSensitivity(undefined));
   });
 });

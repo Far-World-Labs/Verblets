@@ -4,7 +4,7 @@ import map from '../map/index.js';
 import { scopeProgress } from '../../lib/progress-callback/index.js';
 import TextSimilarity from '../../lib/text-similarity/index.js';
 import { debug } from '../../lib/debug/index.js';
-import { resolve, resolveAll, mapped, withOperation } from '../../lib/context/resolve.js';
+import { getOptions, withPolicy, scopeOperation } from '../../lib/context/option.js';
 
 // Token cost estimates
 const TOKENS_PER_EXPANSION = 200;
@@ -553,33 +553,31 @@ function selectGapFillers(allChunks, selectedChunks, gapFillerBudget) {
 
 // Main function with proper budget planning
 export default async function documentShrink(document, query, config = {}) {
-  config = withOperation('document-shrink', config);
+  config = scopeOperation('document-shrink', config);
   const { onProgress, now = new Date() } = config;
   const {
-    llm,
     targetSize,
     tokenBudget: tokenBudgetInit,
     gapFillerBudgetRatio,
     compression: compressionRatio,
     ranking: llmWeight,
-    thoroughness: thoroughnessConfig,
-  } = await resolveAll(config, {
-    llm: undefined,
+    queryExpansion,
+    llmScoring,
+    llmCompression,
+    scoringTokenRatio,
+  } = await getOptions(config, {
     targetSize: DEFAULT_OPTIONS.targetSize,
     tokenBudget: DEFAULT_OPTIONS.tokenBudget,
     gapFillerBudgetRatio: DEFAULT_OPTIONS.gapFillerBudgetRatio,
-    compression: mapped(mapCompression),
-    ranking: mapped(mapRanking),
-    thoroughness: mapped(mapThoroughness),
+    compression: withPolicy(mapCompression),
+    ranking: withPolicy(mapRanking),
+    thoroughness: withPolicy(mapThoroughness, [
+      'queryExpansion',
+      'llmScoring',
+      'llmCompression',
+      'scoringTokenRatio',
+    ]),
   });
-  const queryExpansion = await resolve('queryExpansion', config, thoroughnessConfig.queryExpansion);
-  const llmScoring = await resolve('llmScoring', config, thoroughnessConfig.llmScoring);
-  const llmCompression = await resolve('llmCompression', config, thoroughnessConfig.llmCompression);
-  const scoringTokenRatio = await resolve(
-    'scoringTokenRatio',
-    config,
-    thoroughnessConfig.scoringTokenRatio
-  );
   const merged = {
     ...DEFAULT_OPTIONS,
     ...config,
@@ -634,7 +632,7 @@ export default async function documentShrink(document, query, config = {}) {
   // console.time(`[documentShrink] Full processing for "${query}"`);
 
   // Step 3: Expand query (gated by thoroughness)
-  const subOptions = { ...config, llm, onProgress, now };
+  const subOptions = { ...config, onProgress, now };
   const { expansions, tokensUsed: expansionTokens } = queryExpansion
     ? await expandQuery(query, tokenBudget, subOptions)
     : { expansions: [query], tokensUsed: 0 };

@@ -22,13 +22,11 @@ The value should be the number or "undefined".`;
 
   const result = await callLlm(numberText, {
     llm,
-    modelOptions: {
-      response_format: {
-        type: 'json_schema',
-        json_schema: {
-          name: 'number_extraction',
-          schema: numberSchema,
-        },
+    response_format: {
+      type: 'json_schema',
+      json_schema: {
+        name: 'number_extraction',
+        schema: numberSchema,
       },
     },
     ...options,

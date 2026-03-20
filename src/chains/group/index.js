@@ -4,7 +4,7 @@ import { asXML } from '../../prompts/wrap-variable.js';
 import { emitPhaseProgress } from '../../lib/progress-callback/index.js';
 import { createBatches, parallel, retry, batchTracker, scopeProgress } from '../../lib/index.js';
 import { debug } from '../../lib/debug/index.js';
-import { resolve, resolveAll, mapped, withOperation } from '../../lib/context/resolve.js';
+import { getOptions, withPolicy, scopeOperation } from '../../lib/context/option.js';
 
 // ===== Option Mappers =====
 
@@ -114,7 +114,7 @@ const applyTopNFilter = (groups, topN) => {
 };
 
 export default async function group(list, instructions, config = {}) {
-  config = withOperation('group', config);
+  config = scopeOperation('group', config);
   const {
     categoryPrompt,
     listStyle,
@@ -124,17 +124,16 @@ export default async function group(list, instructions, config = {}) {
     now = new Date(),
   } = config;
   const {
-    llm,
-    granularity: granularityConfig,
+    guidance: granularityGuidance,
     maxParallel,
     maxAttempts,
     retryDelay,
     retryOnAll,
     errorPosture,
     progressMode,
-  } = await resolveAll(config, {
-    llm: undefined,
-    granularity: mapped(mapGranularity),
+    topN,
+  } = await getOptions(config, {
+    granularity: withPolicy(mapGranularity, ['guidance', 'topN']),
     maxParallel: 3,
     maxAttempts: 3,
     retryDelay: 1000,
@@ -142,8 +141,6 @@ export default async function group(list, instructions, config = {}) {
     errorPosture: 'resilient',
     progressMode: 'detailed',
   });
-  const topN = await resolve('topN', config, granularityConfig.topN);
-  const granularityGuidance = granularityConfig.guidance;
 
   // Phase 1: Category Discovery - reduce pass to build taxonomy
   if (onProgress) {
@@ -162,7 +159,6 @@ export default async function group(list, instructions, config = {}) {
   const categoriesString = await reduce(list, categoryDiscoveryPrompt, {
     ...config,
     initial: '',
-    llm,
     abortSignal,
     now,
     onProgress: scopeProgress(onProgress, 'reduce:category-discovery'),
@@ -183,7 +179,7 @@ export default async function group(list, instructions, config = {}) {
     });
   }
 
-  const batches = createBatches(list, config);
+  const batches = await createBatches(list, config);
   const batchResults = [];
   const assignmentInstructions = createAssignmentInstructions(categories);
 
@@ -205,7 +201,6 @@ export default async function group(list, instructions, config = {}) {
           ...config,
           listStyle: batchStyle,
           autoModeThreshold,
-          llm,
         };
 
         const labels = await retry(

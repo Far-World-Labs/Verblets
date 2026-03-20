@@ -10,7 +10,7 @@ import {
   filterProgress,
 } from '../../lib/progress-callback/index.js';
 import { debug } from '../../lib/debug/index.js';
-import { resolve, resolveAll, mapped, withOperation } from '../../lib/context/resolve.js';
+import { getOptions, withPolicy, scopeOperation } from '../../lib/context/option.js';
 
 // ===== Option Mappers =====
 
@@ -70,28 +70,25 @@ const sanitizeList = (list) => {
 };
 
 const sort = async (list, criteria, config = {}) => {
-  config = withOperation('sort', config);
+  config = scopeOperation('sort', config);
   const { onProgress: _onProgress = undefined, now = new Date() } = config;
   const {
-    llm,
-    effort: effortConfig,
     batchSize,
     maxAttempts,
     retryDelay,
     retryOnAll,
     progressMode,
-  } = await resolveAll(config, {
-    llm: undefined,
-    effort: mapped(mapEffort),
+    extremeK,
+    iterations,
+    selectBottom,
+  } = await getOptions(config, {
+    effort: withPolicy(mapEffort, ['extremeK', 'iterations', 'selectBottom']),
     batchSize: defaultSortBatchSize,
     maxAttempts: 3,
     retryDelay: 1000,
     retryOnAll: false,
     progressMode: 'detailed',
   });
-  const extremeK = await resolve('extremeK', config, effortConfig.extremeK);
-  const iterations = await resolve('iterations', config, effortConfig.iterations);
-  const selectBottom = await resolve('selectBottom', config, effortConfig.selectBottom);
   const onProgress = filterProgress(_onProgress, progressMode);
 
   const items = sanitizeList(list);
@@ -115,9 +112,7 @@ const sort = async (list, criteria, config = {}) => {
       return prompt;
     }
 
-    const modelOptions = createModelOptions();
-
-    const result = await retry(() => callLlm(prompt, { ...config, llm, modelOptions }), {
+    const result = await retry(() => callLlm(prompt, { ...config, ...createModelOptions() }), {
       label: 'sort-batch',
       maxAttempts,
       retryDelay,

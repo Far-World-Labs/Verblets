@@ -3,17 +3,11 @@ import llm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { testResultJsonSchema } from './schemas.js';
-import { resolveAll, withOperation } from '../../lib/context/resolve.js';
+import { getOptions, scopeOperation } from '../../lib/context/option.js';
 
 export default async function test(path, instructions, config = {}) {
-  config = withOperation('test', config);
-  const {
-    llm: llmConfig,
-    maxAttempts,
-    retryDelay,
-    retryOnAll,
-  } = await resolveAll(config, {
-    llm: undefined,
+  config = scopeOperation('test', config);
+  const { maxAttempts, retryDelay, retryOnAll } = await getOptions(config, {
     maxAttempts: 3,
     retryDelay: 1000,
     retryOnAll: false,
@@ -40,13 +34,9 @@ GUIDELINES:
       () =>
         llm(prompt, {
           ...config,
-          llm: llmConfig,
-          modelOptions: {
-            ...config.modelOptions,
-            response_format: {
-              type: 'json_schema',
-              json_schema: testResultJsonSchema,
-            },
+          response_format: {
+            type: 'json_schema',
+            json_schema: testResultJsonSchema,
           },
         }),
       {

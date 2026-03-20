@@ -2,7 +2,7 @@ import { debug } from '../../lib/debug/index.js';
 import llm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { extractCodeWindow } from '../../lib/code-extractor/index.js';
-import { resolve, resolveAll, mapped, withOperation } from '../../lib/context/resolve.js';
+import { getOption, getOptions, withPolicy, scopeOperation } from '../../lib/context/option.js';
 
 // File-level constants
 const DEFAULT_MAX_TOKENS = 300;
@@ -82,24 +82,22 @@ const calculateCodeWindow = (
  * @param {Object} options - Options including maxAttempts
  */
 export default async function analyzeTestError(logs, config = {}) {
-  config = withOperation('test-analyzer', config);
+  config = scopeOperation('test-analyzer', config);
   const { onProgress, abortSignal } = config;
   const {
-    llm: llmConfig,
     analysisDepth: depthConfig,
     maxAttempts,
     retryDelay,
     retryOnAll,
-  } = await resolveAll(config, {
-    llm: undefined,
-    analysisDepth: mapped(mapAnalysisDepth),
+  } = await getOptions(config, {
+    analysisDepth: withPolicy(mapAnalysisDepth),
     maxAttempts: 3,
     retryDelay: 1000,
     retryOnAll: false,
   });
-  const contextSize = await resolve('contextSize', config, depthConfig.context);
-  const maxWindow = await resolve('maxWindow', config, depthConfig.maxWindow);
-  const maxTokens = await resolve('maxTokens', config, depthConfig.maxTokens);
+  const contextSize = await getOption('contextSize', config, depthConfig.context);
+  const maxWindow = await getOption('maxWindow', config, depthConfig.maxWindow);
+  const maxTokens = await getOption('maxTokens', config, depthConfig.maxTokens);
   if (!logs || logs.length === 0) {
     debug('analyzeTestError: No logs provided');
     return '';
@@ -195,17 +193,14 @@ Discussion:
 </analysis-guidelines>`;
 
   try {
-    const response = await retry(
-      () => llm(prompt, { llm: llmConfig, modelOptions: { max_tokens: maxTokens } }),
-      {
-        label: 'test-analyzer',
-        maxAttempts,
-        retryDelay,
-        retryOnAll,
-        onProgress,
-        abortSignal,
-      }
-    );
+    const response = await retry(() => llm(prompt, { ...config, maxTokens }), {
+      label: 'test-analyzer',
+      maxAttempts,
+      retryDelay,
+      retryOnAll,
+      onProgress,
+      abortSignal,
+    });
     return response.trim();
   } catch (error) {
     debug(`AI analysis failed: ${error.message}`);

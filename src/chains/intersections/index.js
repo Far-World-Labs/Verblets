@@ -7,7 +7,7 @@ import { constants as promptConstants } from '../../prompts/index.js';
 import { intersectionElementsSchema } from './schemas.js';
 import intersectionResultSchema from './intersection-result.json';
 import { debug } from '../../lib/debug/index.js';
-import { resolveAll, withOperation } from '../../lib/context/resolve.js';
+import { getOptions, scopeOperation } from '../../lib/context/option.js';
 
 const { strictFormat, contentIsQuestion } = promptConstants;
 
@@ -66,13 +66,11 @@ const processCombo = async (
         callLlm(INTERSECTION_PROMPT(combo, instructions), {
           llm,
           ...options,
-          modelOptions: {
-            response_format: {
-              type: 'json_schema',
-              json_schema: {
-                name: 'intersection_elements',
-                schema: intersectionElementsSchema,
-              },
+          response_format: {
+            type: 'json_schema',
+            json_schema: {
+              name: 'intersection_elements',
+              schema: intersectionElementsSchema,
             },
           },
         }),
@@ -121,7 +119,7 @@ export default async function intersections(items, config = {}) {
     return {};
   }
 
-  config = withOperation('intersections', config);
+  config = scopeOperation('intersections', { llm: 'fastGoodCheap', ...config });
   const {
     instructions,
     minSize = 2,
@@ -133,16 +131,12 @@ export default async function intersections(items, config = {}) {
     now = new Date(),
     ...restOptions
   } = config;
-  const { llm, useSchemaValidation, maxAttempts, retryDelay, retryOnAll } = await resolveAll(
-    config,
-    {
-      llm: 'fastGoodCheap',
-      useSchemaValidation: false,
-      maxAttempts: 3,
-      retryDelay: 1000,
-      retryOnAll: false,
-    }
-  );
+  const { useSchemaValidation, maxAttempts, retryDelay, retryOnAll } = await getOptions(config, {
+    useSchemaValidation: false,
+    maxAttempts: 3,
+    retryDelay: 1000,
+    retryOnAll: false,
+  });
 
   // Generate all combinations
   const allCombinations = rangeCombinations(items, minSize, maxSize);
@@ -166,7 +160,6 @@ export default async function intersections(items, config = {}) {
           onProgress,
           abortSignal,
           now,
-          llm,
         })
       )
     );
@@ -181,7 +174,7 @@ export default async function intersections(items, config = {}) {
   if (useSchemaValidation && Object.keys(results).length > 0) {
     const validated = await validateIntersectionResults(
       results,
-      llm,
+      config.llm,
       maxAttempts,
       retryDelay,
       retryOnAll,
@@ -242,15 +235,17 @@ Ensure each intersection has:
 Return the properly structured JSON object with an "intersections" property containing the results.`;
 
   try {
-    const modelOptions = createModelOptions('intersection_result');
-    const response = await retry(() => callLlm(prompt, { llm, modelOptions }), {
-      label: 'intersections-validation',
-      maxAttempts,
-      retryDelay,
-      retryOnAll,
-      onProgress,
-      abortSignal,
-    });
+    const response = await retry(
+      () => callLlm(prompt, { llm, ...createModelOptions('intersection_result') }),
+      {
+        label: 'intersections-validation',
+        maxAttempts,
+        retryDelay,
+        retryOnAll,
+        onProgress,
+        abortSignal,
+      }
+    );
     // Extract intersections from the object structure
     const resultIntersections = response?.intersections || response;
 

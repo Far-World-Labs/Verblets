@@ -16,13 +16,11 @@ The value should be your selection.`;
 
   const result = await callLlm(enumText, {
     llm,
-    modelOptions: {
-      response_format: {
-        type: 'json_schema',
-        json_schema: {
-          name: 'enum_selection',
-          schema,
-        },
+    response_format: {
+      type: 'json_schema',
+      json_schema: {
+        name: 'enum_selection',
+        schema,
       },
     },
     ...options,

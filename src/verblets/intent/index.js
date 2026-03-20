@@ -79,7 +79,7 @@ Return the result as a structured JSON object with the operation name, extracted
 
   const response = await callLlm(prompt, {
     llm,
-    modelOptions: { response_format: responseFormat },
+    response_format: responseFormat,
     ...options,
   });
 

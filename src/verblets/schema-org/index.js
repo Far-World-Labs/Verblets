@@ -14,23 +14,19 @@ export default async (text, type, config = {}) => {
   const { llm, ...options } = config;
   const schema = type ? getSchema(type) : undefined;
 
-  const modelOptions = schema
+  const response_format = schema
     ? {
-        response_format: {
-          type: 'json_schema',
-          json_schema: {
-            name: `schema_org_${type.toLowerCase()}`,
-            schema,
-          },
+        type: 'json_schema',
+        json_schema: {
+          name: `schema_org_${type.toLowerCase()}`,
+          schema,
         },
       }
-    : {
-        response_format: { type: 'json_object' },
-      };
+    : { type: 'json_object' };
 
   const response = await callLlm(asSchemaOrgText(text, type, schema), {
     llm,
-    modelOptions,
+    response_format,
     ...options,
   });
   return response;

@@ -2,7 +2,7 @@ import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { constants as promptConstants, asXML } from '../../prompts/index.js';
 import { questionsListSchema, selectedQuestionSchema } from './schemas.js';
-import { resolve, resolveAll, mapped, withOperation } from '../../lib/context/resolve.js';
+import { getOption, getOptions, withPolicy, scopeOperation } from '../../lib/context/option.js';
 
 // ===== Option Mappers =====
 
@@ -64,7 +64,7 @@ One question per string.`;
 };
 
 const generateQuestions = async function* generateQuestionsGenerator(text, config = {}) {
-  config = withOperation('questions', config);
+  config = scopeOperation('questions', config);
   const resultsAll = [];
   const resultsAllMap = {};
   const drilldownResults = [];
@@ -73,14 +73,12 @@ const generateQuestions = async function* generateQuestionsGenerator(text, confi
 
   const { shouldSkip = shouldSkipNull, shouldStop = shouldStopNull } = config;
   const {
-    llm,
     exploration: searchBreadth,
     maxAttempts,
     retryDelay,
     retryOnAll,
-  } = await resolveAll(config, {
-    llm: undefined,
-    exploration: mapped(mapExploration),
+  } = await getOptions(config, {
+    exploration: withPolicy(mapExploration),
     maxAttempts: 3,
     retryDelay: 1000,
     retryOnAll: false,
@@ -100,14 +98,11 @@ const generateQuestions = async function* generateQuestionsGenerator(text, confi
         () =>
           callLlm(pickInterestingQuestionPrompt, {
             ...config,
-            llm,
-            modelOptions: {
-              response_format: {
-                type: 'json_schema',
-                json_schema: {
-                  name: 'selected_question',
-                  schema: selectedQuestionSchema,
-                },
+            response_format: {
+              type: 'json_schema',
+              json_schema: {
+                name: 'selected_question',
+                schema: selectedQuestionSchema,
               },
             },
           }),
@@ -127,18 +122,15 @@ const generateQuestions = async function* generateQuestionsGenerator(text, confi
     const promptCreated = formatQuestionsPrompt(textSelected, {
       existing: resultsAll,
     });
-    const temperature = await resolve('temperature', config, 1);
+    const temperature = await getOption('temperature', config, 1);
     const llmConfig = {
       ...config,
-      llm,
-      modelOptions: {
-        temperature,
-        response_format: {
-          type: 'json_schema',
-          json_schema: {
-            name: 'questions_list',
-            schema: questionsListSchema,
-          },
+      temperature,
+      response_format: {
+        type: 'json_schema',
+        json_schema: {
+          name: 'questions_list',
+          schema: questionsListSchema,
         },
       },
     };

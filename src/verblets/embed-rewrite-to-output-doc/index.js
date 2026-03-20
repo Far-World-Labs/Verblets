@@ -16,11 +16,9 @@ export default async function embedRewriteToOutputDoc(query, config = {}) {
   const { llm, ...options } = config;
   return await callLlm(hydeOutputDoc(query), {
     llm,
-    modelOptions: {
-      response_format: {
-        type: 'json_schema',
-        json_schema: { name: 'hyde_output_doc', schema },
-      },
+    response_format: {
+      type: 'json_schema',
+      json_schema: { name: 'hyde_output_doc', schema },
     },
     ...options,
   });

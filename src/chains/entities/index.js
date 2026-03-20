@@ -4,7 +4,7 @@ import { asXML } from '../../prompts/wrap-variable.js';
 import buildInstructions from '../../lib/build-instructions/index.js';
 import entityResultSchema from './entity-result.json';
 import { emitStepProgress } from '../../lib/progress-callback/index.js';
-import { resolveAll, withOperation } from '../../lib/context/resolve.js';
+import { getOptions, scopeOperation } from '../../lib/context/option.js';
 
 // ===== Instruction Builders =====
 
@@ -41,9 +41,8 @@ export const {
  * @returns {Promise<string>} Entity specification as descriptive text
  */
 export async function entitySpec(prompt, config = {}) {
-  config = withOperation('entities:spec', config);
-  const { llm, maxAttempts, retryDelay, retryOnAll } = await resolveAll(config, {
-    llm: undefined,
+  config = scopeOperation('entities:spec', config);
+  const { maxAttempts, retryDelay, retryOnAll } = await getOptions(config, {
     maxAttempts: 3,
     retryDelay: 1000,
     retryOnAll: false,
@@ -66,8 +65,7 @@ Keep it simple and actionable.`;
     () =>
       callLlm(specUserPrompt, {
         ...config,
-        llm,
-        modelOptions: { systemPrompt: specSystemPrompt },
+        systemPrompt: specSystemPrompt,
       }),
     {
       label: 'entities-spec',
@@ -90,9 +88,8 @@ Keep it simple and actionable.`;
  * @returns {Promise<Object>} Object with entities array
  */
 export async function applyEntities(text, specification, config = {}) {
-  config = withOperation('entities:apply', config);
-  const { llm, maxAttempts, retryDelay, retryOnAll } = await resolveAll(config, {
-    llm: undefined,
+  config = scopeOperation('entities:apply', config);
+  const { maxAttempts, retryDelay, retryOnAll } = await getOptions(config, {
     maxAttempts: 3,
     retryDelay: 1000,
     retryOnAll: false,
@@ -114,14 +111,11 @@ Each entity should include:
     () =>
       callLlm(prompt, {
         ...config,
-        llm,
-        modelOptions: {
-          response_format: {
-            type: 'json_schema',
-            json_schema: {
-              name: 'entity_result',
-              schema: entityResultSchema,
-            },
+        response_format: {
+          type: 'json_schema',
+          json_schema: {
+            name: 'entity_result',
+            schema: entityResultSchema,
           },
         },
       }),
@@ -146,7 +140,7 @@ Each entity should include:
  * @returns {Promise<Object>} Object with entities array
  */
 export async function extractEntities(text, instructions, config = {}) {
-  config = withOperation('entities', config);
+  config = scopeOperation('entities', config);
   const now = config.now ?? new Date();
 
   emitStepProgress(config.onProgress, 'entities', 'generating-specification', {

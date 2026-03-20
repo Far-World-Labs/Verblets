@@ -383,14 +383,14 @@ describe('detectThreshold', () => {
       expect(callLlmLlm).toBe(llm);
     });
 
-    it('passes threshold_result schema in modelOptions', async () => {
+    it('passes threshold_result schema in config', async () => {
       reduce.mockResolvedValueOnce(mockReduceResult);
       callLlm.mockResolvedValueOnce(mockLlmResult);
 
       await detectThreshold({ data: KNOWN_DATA, targetProperty: 'score', goal: defaultGoal });
 
       const callLlmConfig = callLlm.mock.calls[0][1];
-      expect(callLlmConfig.modelOptions.response_format).toEqual({
+      expect(callLlmConfig.response_format).toEqual({
         type: 'json_schema',
         json_schema: {
           name: 'threshold_result',

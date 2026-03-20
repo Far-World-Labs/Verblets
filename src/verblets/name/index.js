@@ -16,13 +16,11 @@ export default async function name(subject, config = {}) {
 
   const response = await callLlm(prompt, {
     llm,
-    modelOptions: {
-      response_format: {
-        type: 'json_schema',
-        json_schema: {
-          name: 'name_suggestion',
-          schema: nameSchema,
-        },
+    response_format: {
+      type: 'json_schema',
+      json_schema: {
+        name: 'name_suggestion',
+        schema: nameSchema,
       },
     },
     ...options,

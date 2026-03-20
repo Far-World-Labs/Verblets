@@ -2,7 +2,7 @@ import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import chunkSentences from '../../lib/chunk-sentences/index.js';
 import wrapVariable from '../../prompts/wrap-variable.js';
-import { resolve, resolveAll, mapped, withOperation } from '../../lib/context/resolve.js';
+import { getOption, getOptions, withPolicy, scopeOperation } from '../../lib/context/option.js';
 
 // ===== Option Mappers =====
 
@@ -57,10 +57,9 @@ IMPORTANT RULES:
 };
 
 export default async function split(text, instructions, config = {}) {
-  config = withOperation('split', config);
+  config = scopeOperation('split', { llm: 'fastGoodCheapCoding', ...config });
   const { delimiter = defaultDelimiter } = config;
   const {
-    llm,
     chunkLen,
     targetSplitsPerChunk,
     maxAttempts,
@@ -68,18 +67,17 @@ export default async function split(text, instructions, config = {}) {
     temperature,
     retryOnAll,
     preservation: preservationConfig,
-  } = await resolveAll(config, {
-    llm: 'fastGoodCheapCoding',
+  } = await getOptions(config, {
     chunkLen: 4000,
     targetSplitsPerChunk: null,
     maxAttempts: 2,
     retryDelay: 1000,
     temperature: 0.1,
     retryOnAll: false,
-    preservation: mapped(mapPreservation),
+    preservation: withPolicy(mapPreservation),
   });
-  const preservationShort = await resolve('preservationShort', config, preservationConfig.short);
-  const preservationLong = await resolve('preservationLong', config, preservationConfig.long);
+  const preservationShort = await getOption('preservationShort', config, preservationConfig.short);
+  const preservationLong = await getOption('preservationLong', config, preservationConfig.long);
 
   const chunks = chunkSentences(text, chunkLen);
 
@@ -92,10 +90,7 @@ export default async function split(text, instructions, config = {}) {
     const prompt = buildPrompt(chunk, instructions, delimiter, context);
     const llmConfig = {
       ...config,
-      llm,
-      modelOptions: {
-        temperature,
-      },
+      temperature,
     };
 
     try {

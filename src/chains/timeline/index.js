@@ -7,7 +7,7 @@ import map from '../map/index.js';
 import reduce from '../reduce/index.js';
 import { timelineEventJsonSchema } from './schemas.js';
 import { debug } from '../../lib/debug/index.js';
-import { resolve, resolveAll, mapped, withOperation } from '../../lib/context/resolve.js';
+import { getOptions, withPolicy, scopeOperation } from '../../lib/context/option.js';
 
 // ===== Option Mappers =====
 
@@ -94,12 +94,10 @@ async function extractFromChunk(chunk, options = {}) {
 
   const response = await callLlm(chunk, {
     llm,
-    modelOptions: {
-      systemPrompt: extractTimelineInstructions,
-      response_format: {
-        type: 'json_schema',
-        json_schema: timelineEventJsonSchema,
-      },
+    systemPrompt: extractTimelineInstructions,
+    response_format: {
+      type: 'json_schema',
+      json_schema: timelineEventJsonSchema,
     },
     ...restOptions,
   });
@@ -120,11 +118,9 @@ async function extractFromChunk(chunk, options = {}) {
  * @returns {Promise<Array>} Array of timeline events with {timestamp, name}
  */
 export default async function timeline(text, config = {}) {
-  config = withOperation('timeline', config);
+  config = scopeOperation('timeline', config);
   const { onProgress, batchSize, now = new Date() } = config;
   const {
-    llm,
-    enrichment: enrichmentConfig,
     chunkSize,
     overlap,
     maxParallel,
@@ -132,9 +128,11 @@ export default async function timeline(text, config = {}) {
     retryDelay,
     retryOnAll,
     errorPosture,
-  } = await resolveAll(config, {
-    llm: undefined,
-    enrichment: mapped(mapEnrichment),
+    llmDedup,
+    knowledgeBase,
+    enrichMap: _enrichMap,
+  } = await getOptions(config, {
+    enrichment: withPolicy(mapEnrichment, ['llmDedup', 'knowledgeBase', 'enrichMap']),
     chunkSize: 2000,
     overlap: 200,
     maxParallel: 3,
@@ -143,9 +141,6 @@ export default async function timeline(text, config = {}) {
     retryOnAll: false,
     errorPosture: 'resilient',
   });
-  const llmDedup = await resolve('llmDedup', config, enrichmentConfig.llmDedup);
-  const knowledgeBase = await resolve('knowledgeBase', config, enrichmentConfig.knowledgeBase);
-  const _enrichMap = await resolve('enrichMap', config, enrichmentConfig.enrichMap);
 
   // Create overlapping chunks to avoid missing events at boundaries
   const chunks = chunkSentences(text, chunkSize, { overlap });
@@ -157,7 +152,7 @@ export default async function timeline(text, config = {}) {
     chunks,
     async (chunk, chunkIndex) => {
       try {
-        const events = await retry(() => extractFromChunk(chunk, { ...config, llm, now }), {
+        const events = await retry(() => extractFromChunk(chunk, { ...config, now }), {
           label: `timeline chunk ${chunkIndex + 1}`,
           maxAttempts,
           retryDelay,
@@ -202,14 +197,11 @@ ${eventList}`;
 
     const deduplicatedResult = await callLlm(deduplicationPrompt, {
       ...config,
-      llm,
-      modelOptions: {
-        systemPrompt:
-          'You are a timeline deduplication engine. Return all unique events, merging only true duplicates.',
-        response_format: {
-          type: 'json_schema',
-          json_schema: timelineEventJsonSchema,
-        },
+      systemPrompt:
+        'You are a timeline deduplication engine. Return all unique events, merging only true duplicates.',
+      response_format: {
+        type: 'json_schema',
+        json_schema: timelineEventJsonSchema,
       },
     });
 
@@ -244,7 +236,6 @@ Return as JSON with the same event format, maintaining chronological order.`;
         json_schema: timelineEventJsonSchema,
       },
       ...(batchSize !== undefined && { batchSize }),
-      llm,
       maxAttempts,
       onProgress: scopeProgress(onProgress, 'reduce:knowledge-base'),
       now,
@@ -283,7 +274,6 @@ Return the enriched event as: "YYYY-MM-DD: Event name" or with the appropriate t
         ...(batchSize !== undefined && { batchSize }),
         maxParallel,
         maxAttempts,
-        llm,
         onProgress: scopeProgress(onProgress, 'map:enrichment'),
         now,
       }
