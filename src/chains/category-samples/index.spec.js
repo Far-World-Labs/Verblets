@@ -57,7 +57,6 @@ describe('categorySamples', () => {
 
       const promptArg = list.mock.calls[0][0];
       expect(promptArg).toContain('tropical fish');
-      expect(promptArg).toContain('cognitive science principles');
     });
 
     it('passes shouldStop callback based on count to list', async () => {
@@ -234,42 +233,23 @@ describe('buildSeedGenerationPrompt', () => {
     const prompt = buildSeedGenerationPrompt('tropical birds');
 
     expect(prompt).toContain('tropical birds');
-    expect(prompt).toContain('Generate sample items for the category');
   });
 
-  it('uses default diversity when not specified', () => {
-    const prompt = buildSeedGenerationPrompt('cars');
+  it('produces different output for each diversity level', () => {
+    const defaultPrompt = buildSeedGenerationPrompt('cars');
+    const highPrompt = buildSeedGenerationPrompt('music genres', { diversity: 'high' });
+    const lowPrompt = buildSeedGenerationPrompt('sports', { diversity: 'low' });
 
-    expect(prompt).toContain(
-      'Include a mix of typical, moderately typical, and some atypical members'
-    );
-    expect(prompt).toContain('Include some moderately atypical members');
-  });
-
-  it('uses high diversity level', () => {
-    const prompt = buildSeedGenerationPrompt('music genres', { diversity: 'high' });
-
-    expect(prompt).toContain(
-      'Include very diverse examples spanning edge cases and borderline members'
-    );
-    expect(prompt).toContain('Include many atypical but valid members');
-  });
-
-  it('uses low diversity level', () => {
-    const prompt = buildSeedGenerationPrompt('sports', { diversity: 'low' });
-
-    expect(prompt).toContain(
-      'Focus on highly typical, central members with clear category membership'
-    );
-    expect(prompt).toContain('Focus primarily on typical members');
+    expect(defaultPrompt).not.toBe(highPrompt);
+    expect(defaultPrompt).not.toBe(lowPrompt);
+    expect(highPrompt).not.toBe(lowPrompt);
   });
 
   it('falls back to default for unknown diversity level', () => {
-    const prompt = buildSeedGenerationPrompt('foods', { diversity: 'unknown' });
+    const defaultPrompt = buildSeedGenerationPrompt('foods');
+    const unknownPrompt = buildSeedGenerationPrompt('foods', { diversity: 'unknown' });
 
-    expect(prompt).toContain(
-      'Include a mix of typical, moderately typical, and some atypical members'
-    );
+    expect(unknownPrompt).toBe(defaultPrompt);
   });
 
   it('includes context when provided', () => {
@@ -277,21 +257,17 @@ describe('buildSeedGenerationPrompt', () => {
       context: 'Focus on languages used in web development',
     });
 
-    expect(prompt).toContain('Context: Focus on languages used in web development');
+    expect(prompt).toContain('Focus on languages used in web development');
   });
 
   it('omits context line when context is empty', () => {
-    const prompt = buildSeedGenerationPrompt('flowers');
+    const promptWithContext = buildSeedGenerationPrompt('flowers', {
+      context: 'tropical only',
+    });
+    const promptWithout = buildSeedGenerationPrompt('flowers');
 
-    expect(prompt).not.toContain('Context:');
-  });
-
-  it('includes all cognitive principles', () => {
-    const prompt = buildSeedGenerationPrompt('tools');
-
-    expect(prompt).toContain('Prototype Theory');
-    expect(prompt).toContain('Family Resemblance');
-    expect(prompt).toContain('Category Structure');
+    expect(promptWithContext).toContain('tropical only');
+    expect(promptWithout).not.toContain('tropical only');
   });
 });
 

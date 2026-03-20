@@ -36,10 +36,9 @@ describe('Bulk Central Tendency Chain', () => {
       expect(results.every((r) => r && typeof r.confidence === 'number')).toBe(true);
 
       // Use expect-chain for loose verification
-      const isValidCentralityScoring = await aiExpect(results).toSatisfy(
+      await aiExpect(results).toSatisfy(
         'Do these centrality scores make sense? Common fruits like apple, orange, banana should have higher scores than exotic fruits like durian and jackfruit.'
       );
-      expect(isValidCentralityScoring).toBe(true);
     },
     longTestTimeout
   );
@@ -60,10 +59,9 @@ describe('Bulk Central Tendency Chain', () => {
       expect(results.every((r) => r && r.score >= 0 && r.score <= 1)).toBe(true);
 
       // Use expect-chain for loose verification
-      const isValidToolScoring = await aiExpect(results).toSatisfy(
+      await aiExpect(results).toSatisfy(
         'Do these tool centrality scores make sense? Basic hand tools like hammer, screwdriver, wrench should have high scores, while chainsaw (power tool) should have a lower score.'
       );
-      expect(isValidToolScoring).toBe(true);
     },
     longTestTimeout
   );
@@ -84,10 +82,9 @@ describe('Bulk Central Tendency Chain', () => {
       expect(results.every((r) => r && typeof r.score === 'number')).toBe(true);
 
       // Use expect-chain for loose verification
-      const isValidBirdScoring = await aiExpect(results).toSatisfy(
+      await aiExpect(results).toSatisfy(
         'Given the context of "small songbirds commonly seen in backyards", does robin have the highest centrality score, while penguin and ostrich have much lower scores?'
       );
-      expect(isValidBirdScoring).toBe(true);
     },
     longTestTimeout
   );
@@ -108,10 +105,9 @@ describe('Bulk Central Tendency Chain', () => {
       expect(results.every((r) => r && typeof r.score === 'number')).toBe(true);
       expect(results.every((r) => r && r.score >= 0 && r.score <= 1)).toBe(true);
 
-      const isValidPetScoring = await aiExpect(results).toSatisfy(
+      await aiExpect(results).toSatisfy(
         'Are these reasonable centrality scores for household pets, with cat, dog, and hamster having higher scores than elephant?'
       );
-      expect(isValidPetScoring).toBe(true);
     },
     longTestTimeout
   );

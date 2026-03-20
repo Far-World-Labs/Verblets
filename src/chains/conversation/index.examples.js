@@ -204,10 +204,9 @@ describe('conversation chain examples', () => {
       expect(participantIds.size).toBe(3);
 
       // AI validation of philosophical depth
-      const hasPhilosophicalDepth = await aiExpect(messages).toSatisfy(
+      await aiExpect(messages).toSatisfy(
         'Discussion about whether machines can truly think, with multiple perspectives'
       );
-      expect(hasPhilosophicalDepth).toBe(true);
     },
     longTestTimeout
   );
@@ -269,10 +268,9 @@ describe('conversation chain examples', () => {
         expect(messages[messages.length - 1].id).toBe('summarizer');
       }
 
-      const focusesOnSafety = await aiExpect(messages).toSatisfy(
+      await aiExpect(messages).toSatisfy(
         'Discussion about AI safety and responsible AGI development'
       );
-      expect(focusesOnSafety).toBe(true);
     },
     longTestTimeout
   );
@@ -332,10 +330,9 @@ describe('conversation chain examples', () => {
       // Questioner closes round 1 (last message)
       expect(messages[messages.length - 1].id).toBe('questioner');
 
-      const hasSocraticDepth = await aiExpect(messages).toSatisfy(
+      await aiExpect(messages).toSatisfy(
         'Philosophical inquiry about machine understanding with questioning and opposing viewpoints'
       );
-      expect(hasSocraticDepth).toBe(true);
     },
     longTestTimeout
   );

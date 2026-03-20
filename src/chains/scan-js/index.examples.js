@@ -76,10 +76,9 @@ describe.skipIf(!shouldRunLongExamples)('scan-js chain', () => {
       });
 
       // AI validation of analysis quality
-      const hasValidAnalysis = await aiExpect(analysisResults).toSatisfy(
+      await aiExpect(analysisResults).toSatisfy(
         'Should contain objects with numeric code quality metric scores (values between 0 and 1). The specific metric names may vary but should relate to code quality aspects like maintainability, readability, complexity, testability, or similar software engineering concerns.'
       );
-      expect(hasValidAnalysis).toBe(true);
     },
     longTestTimeout
   );

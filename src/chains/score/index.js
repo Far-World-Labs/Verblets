@@ -151,8 +151,8 @@ export async function scoreItem(item, instructions, config = {}) {
  * run in parallel with those anchors embedded in the prompt.
  * Failed batches leave items as undefined (never throws).
  */
-async function scoreOnce(list, prompt, batchConfig, options) {
-  const { maxParallel, errorPosture, onProgress, now, logger, anchoring } = options;
+async function scoreOnce(list, prompt, batchConfig, config) {
+  const { maxParallel, errorPosture, onProgress, now, logger, anchoring } = config;
 
   const batches = await createBatches(list, batchConfig);
   const batchesToProcess = batches.filter((b) => !b.skip);
@@ -175,7 +175,7 @@ async function scoreOnce(list, prompt, batchConfig, options) {
     try {
       const scores = await retry(() => listBatch(first.items, prompt, batchConfig), {
         label: 'score:batch',
-        config: options,
+        config,
       });
       alignScores(scores, first.items.length).forEach((s, j) => {
         results[first.startIndex + j] = s;
@@ -214,7 +214,7 @@ async function scoreOnce(list, prompt, batchConfig, options) {
         try {
           const scores = await retry(() => listBatch(items, anchoredPrompt, batchConfig), {
             label: 'score:batch',
-            config: options,
+            config,
           });
           alignScores(scores, items.length).forEach((s, j) => {
             results[startIndex + j] = s;

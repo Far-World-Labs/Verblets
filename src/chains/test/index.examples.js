@@ -58,10 +58,9 @@ describe('test chain', () => {
       expect(issues.length).toBeGreaterThan(0);
 
       // Should identify multiple issues
-      const hasValidIssues = await aiExpect(issues).toSatisfy(
+      await aiExpect(issues).toSatisfy(
         'Should identify issues like missing error handling, missing await, division by zero check, or off-by-one errors'
       );
-      expect(hasValidIssues).toBe(true);
     },
     longTestTimeout
   );
@@ -114,10 +113,9 @@ describe('test chain', () => {
       // Just verify it finds fewer issues than in problematic code
       if (issues.length > 0) {
         // If issues are found, they should be minor suggestions
-        const hasMinorIssues = await aiExpect(issues).toSatisfy(
+        await aiExpect(issues).toSatisfy(
           'Should only contain minor suggestions or best practice improvements, not critical errors'
         );
-        expect(hasMinorIssues).toBe(true);
       }
     },
     longTestTimeout
@@ -156,10 +154,9 @@ describe('test chain', () => {
       expect(issues.length).toBeGreaterThan(0);
 
       // Should identify security issues
-      const hasSecurityIssues = await aiExpect(issues).toSatisfy(
+      await aiExpect(issues).toSatisfy(
         'Should identify security vulnerabilities like SQL injection, XSS, or use of eval'
       );
-      expect(hasSecurityIssues).toBe(true);
     },
     longTestTimeout
   );

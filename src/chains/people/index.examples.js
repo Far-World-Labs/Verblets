@@ -20,10 +20,9 @@ describe('people chain', () => {
         expect(person).toHaveProperty('name');
       });
 
-      const matchesDescription = await aiExpect(people).toSatisfy(
+      await aiExpect(people).toSatisfy(
         'Should be 3 people with startup founder backgrounds in Silicon Valley'
       );
-      expect(matchesDescription).toBe(true);
     },
     longTestTimeout
   );
@@ -39,10 +38,9 @@ describe('people chain', () => {
       expect(Array.isArray(people)).toBe(true);
       expect(people.length).toBe(5);
 
-      const hasDiversity = await aiExpect(people).toSatisfy(
+      await aiExpect(people).toSatisfy(
         'Should represent diverse backgrounds, specialties, and perspectives for a software engineering team'
       );
-      expect(hasDiversity).toBe(true);
     },
     longTestTimeout
   );

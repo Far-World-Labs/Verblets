@@ -25,6 +25,7 @@ const privateModel = await negotiate({ privacy: true, fast: true });
 ### `negotiate(criteria, options)`
 
 **Parameters:**
+
 - `criteria` (Object): Capability requirements
   - `fast` (boolean): Prioritize response speed
   - `cheap` (boolean): Optimize for cost efficiency
@@ -41,7 +42,9 @@ const privateModel = await negotiate({ privacy: true, fast: true });
 ## Model Selection Strategy
 
 ### Privacy First Rule
+
 Privacy models take **absolute precedence** over all other criteria:
+
 ```javascript
 // Privacy overrides everything
 const model = await negotiate({ privacy: true, fast: true, good: true });
@@ -49,18 +52,20 @@ const model = await negotiate({ privacy: true, fast: true, good: true });
 ```
 
 ### Capability Matrix
+
 The service maintains a capability matrix mapping models to their strengths:
 
-| Model | Fast | Cheap | Good | Reasoning | Multi | Privacy |
-|-------|------|-------|------|-----------|-------|---------|
-| gpt-3.5-turbo | ✓ | ✓ | - | - | - | - |
-| gpt-4 | - | - | ✓ | ✓ | - | - |
-| gpt-4-vision | - | - | ✓ | ✓ | ✓ | - |
-| claude-3-haiku | ✓ | ✓ | - | - | - | - |
-| claude-3-sonnet | - | - | ✓ | ✓ | - | - |
-| llama-local | - | - | - | - | - | ✓ |
+| Model           | Fast | Cheap | Good | Reasoning | Multi | Privacy |
+| --------------- | ---- | ----- | ---- | --------- | ----- | ------- |
+| gpt-3.5-turbo   | ✓    | ✓     | -    | -         | -     | -       |
+| gpt-4           | -    | -     | ✓    | ✓         | -     | -       |
+| gpt-4-vision    | -    | -     | ✓    | ✓         | ✓     | -       |
+| claude-3-haiku  | ✓    | ✓     | -    | -         | -     | -       |
+| claude-3-sonnet | -    | -     | ✓    | ✓         | -     | -       |
+| llama-local     | -    | -     | -    | -         | -     | ✓       |
 
 ### Negotiation Algorithm
+
 1. **Privacy Check**: If privacy is required, return privacy model immediately
 2. **Capability Matching**: Find models that satisfy all required capabilities
 3. **Optimization**: Among matching models, select based on preference order
@@ -69,18 +74,18 @@ The service maintains a capability matrix mapping models to their strengths:
 ## Use Cases
 
 ### Bulk Processing Optimization
+
 ```javascript
 import { negotiate } from './index.js';
 
 // Process large datasets efficiently
 const bulkModel = await negotiate({ fast: true, cheap: true });
 
-const results = await Promise.all(
-  largeDataset.map(item => processWithModel(item, bulkModel))
-);
+const results = await Promise.all(largeDataset.map((item) => processWithModel(item, bulkModel)));
 ```
 
 ### Quality-Critical Analysis
+
 ```javascript
 // Complex reasoning tasks
 const analysisModel = await negotiate({ good: true, reasoning: true });
@@ -89,6 +94,7 @@ const insights = await analyzeWithModel(complexData, analysisModel);
 ```
 
 ### Privacy-Sensitive Operations
+
 ```javascript
 // Personal data processing
 const privateModel = await negotiate({ privacy: true });
@@ -97,6 +103,7 @@ const anonymized = await processPersonalData(sensitiveData, privateModel);
 ```
 
 ### Multimodal Applications
+
 ```javascript
 // Image and text processing
 const visionModel = await negotiate({ multi: true, good: true });
@@ -107,22 +114,21 @@ const analysis = await analyzeImageWithText(image, description, visionModel);
 ## Advanced Configuration
 
 ### Custom Fallback Strategy
+
 ```javascript
-const model = await negotiate(
-  { reasoning: true, multi: true }, 
-  { fallback: 'gpt-4' }
-);
+const model = await negotiate({ reasoning: true, multi: true }, { fallback: 'gpt-4' });
 ```
 
 ### Constraint-Based Selection
+
 ```javascript
 const model = await negotiate(
   { fast: true, good: true },
-  { 
-    constraints: { 
+  {
+    constraints: {
       maxTokens: 4000,
-      maxCostPerToken: 0.001 
-    }
+      maxCostPerToken: 0.001,
+    },
   }
 );
 ```
@@ -130,15 +136,19 @@ const model = await negotiate(
 ## Integration Patterns
 
 ### With LLM Service
+
 ```javascript
 import llm from '../llm/index.js';
-import { negotiate } from './llm-model/index.js';
 
-const model = await negotiate({ fast: true, cheap: true });
-const response = await llm(prompt, { modelOptions: model });
+// Pass capabilities as flat llm config
+const response = await llm(prompt, { llm: { fast: true, cheap: true } });
+
+// Or use a named shorthand
+const response2 = await llm(prompt, { llm: 'fastCheap' });
 ```
 
 ### Dynamic Model Selection
+
 ```javascript
 const selectModel = async (taskType) => {
   switch (taskType) {
@@ -153,4 +163,5 @@ const selectModel = async (taskType) => {
   }
 };
 ```
+
 The `llm-model` service returns the best model configuration for your tasks based on cost, speed, and privacy needs.

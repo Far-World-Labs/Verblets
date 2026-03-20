@@ -19,10 +19,9 @@ describe('Category Samples Chain', () => {
       expect(seeds.every((seed) => seed.length > 0)).toBe(true);
 
       // Use expect-chain for loose verification
-      const isValidFruitList = await aiExpect(seeds).toSatisfy(
+      await aiExpect(seeds).toSatisfy(
         'Are these reasonable fruit names that represent a balanced mix of typical and moderately typical fruits?'
       );
-      expect(isValidFruitList).toBe(true);
     },
     longTestTimeout
   );
@@ -40,10 +39,9 @@ describe('Category Samples Chain', () => {
       expect(seeds.every((seed) => typeof seed === 'string')).toBe(true);
 
       // Use expect-chain for loose verification
-      const isValidBirdList = await aiExpect(seeds).toSatisfy(
+      await aiExpect(seeds).toSatisfy(
         'Are these reasonable names of common backyard birds that would be found in North America?'
       );
-      expect(isValidBirdList).toBe(true);
     },
     longTestTimeout
   );
@@ -60,10 +58,9 @@ describe('Category Samples Chain', () => {
       expect(seeds.every((seed) => typeof seed === 'string')).toBe(true);
 
       // Use expect-chain for loose verification - check for diversity without being overly specific
-      const isValidVehicleList = await aiExpect(seeds).toSatisfy(
+      await aiExpect(seeds).toSatisfy(
         'Are these vehicle names reasonably diverse, showing variety in the types of vehicles represented?'
       );
-      expect(isValidVehicleList).toBe(true);
     },
     longTestTimeout
   );
@@ -87,10 +84,7 @@ describe('Category Samples Chain', () => {
       expect(seeds.every((seed) => typeof seed === 'string')).toBe(true);
 
       // Use expect-chain for loose verification
-      const isValidAnimalList = await aiExpect(seeds).toSatisfy(
-        'Are these reasonable animal names?'
-      );
-      expect(isValidAnimalList).toBe(true);
+      await aiExpect(seeds).toSatisfy('Are these reasonable animal names?');
     },
     longTestTimeout
   );

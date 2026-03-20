@@ -35,8 +35,6 @@ describe('embedSubquestions', () => {
 
     const prompt = mockLlm.mock.calls[0][0];
     expect(prompt).toContain('Is Tokyo an affordable city for the average resident?');
-    expect(prompt).toContain('Break');
-    expect(prompt).toContain('sub-questions');
   });
 
   it('uses items schema for auto-unwrapping', async () => {

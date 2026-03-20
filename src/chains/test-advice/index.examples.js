@@ -51,10 +51,9 @@ describe.skipIf(!shouldRunLongExamples)('test-advice chain', () => {
       expect(advice.length).toBeGreaterThan(5);
 
       // Should contain various types of advice
-      const hasComprehensiveAdvice = await aiExpect(advice).toSatisfy(
+      await aiExpect(advice).toSatisfy(
         'Should contain diverse testing advice including boundary conditions, success cases, failure cases, and code quality suggestions'
       );
-      expect(hasComprehensiveAdvice).toBe(true);
     },
     longTestTimeout
   );
@@ -96,10 +95,9 @@ describe.skipIf(!shouldRunLongExamples)('test-advice chain', () => {
       expect(advice.length).toBeGreaterThan(0);
 
       // Should identify multiple issues
-      const identifiesIssues = await aiExpect(advice).toSatisfy(
+      await aiExpect(advice).toSatisfy(
         'Should identify issues like off-by-one errors, missing null/empty array checks, and other bugs'
       );
-      expect(identifiesIssues).toBe(true);
     },
     longTestTimeout
   );

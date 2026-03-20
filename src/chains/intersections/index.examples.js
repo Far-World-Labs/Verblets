@@ -31,10 +31,9 @@ describe.skipIf(!shouldRunLongExamples)('intersections chain examples', () => {
       }
 
       // AI validation of technology intersections
-      const hasValidTechIntersections = await aiExpect(result).toSatisfy(
+      await aiExpect(result).toSatisfy(
         'Should contain meaningful intersections between technology categories with relevant examples'
       );
-      expect(hasValidTechIntersections).toBe(true);
     },
     longTestTimeout
   );
@@ -58,10 +57,9 @@ describe.skipIf(!shouldRunLongExamples)('intersections chain examples', () => {
         expect(firstIntersection.combination).toContain('science');
 
         // AI validation of meaningful intersections
-        const hasMeaningfulIntersections = await aiExpect(result).toSatisfy(
+        await aiExpect(result).toSatisfy(
           'Should contain meaningful intersections between art and science with relevant examples'
         );
-        expect(hasMeaningfulIntersections).toBe(true);
       }
     },
     longTestTimeout
@@ -147,10 +145,9 @@ describe.skipIf(!shouldRunLongExamples)('intersections chain examples', () => {
         expect(hasTwoWayIntersection).toBe(true);
 
         // AI validation of scientific intersections
-        const hasValidScienceIntersections = await aiExpect(result).toSatisfy(
+        await aiExpect(result).toSatisfy(
           'Should contain meaningful intersections between scientific disciplines with relevant examples'
         );
-        expect(hasValidScienceIntersections).toBe(true);
       }
     },
     longTestTimeout
@@ -234,10 +231,9 @@ describe.skipIf(!shouldRunLongExamples)('intersections chain examples', () => {
         expect(Array.isArray(firstIntersection.elements)).toBe(true);
 
         // AI validation that results follow custom instructions
-        const followsInstructions = await aiExpect(firstIntersection).toSatisfy(
+        await aiExpect(firstIntersection).toSatisfy(
           'Should list specific project ideas and avoid abstract themes as requested in custom instructions'
         );
-        expect(followsInstructions).toBe(true);
       }
     },
     longTestTimeout

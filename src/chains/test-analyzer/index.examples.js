@@ -48,10 +48,9 @@ describe('test-analyzer chain', () => {
       expect(analysis.length).toBeGreaterThan(0);
 
       // Should provide meaningful analysis of the failure
-      const hasInsightfulAnalysis = await aiExpect(analysis).toSatisfy(
+      await aiExpect(analysis).toSatisfy(
         'Identifies that the test expected 6 but got 5, and suggests a possible cause such as an off-by-one error or incorrect calculation'
       );
-      expect(hasInsightfulAnalysis).toBe(true);
     },
     longTestTimeout
   );
@@ -96,10 +95,7 @@ describe('test-analyzer chain', () => {
       expect(analysis.length).toBeGreaterThan(0);
 
       // Should identify JSON syntax issues
-      const identifiesJsonIssue = await aiExpect(analysis).toSatisfy(
-        'Should identify that the JSON is malformed or invalid'
-      );
-      expect(identifiesJsonIssue).toBe(true);
+      await aiExpect(analysis).toSatisfy('Should identify that the JSON is malformed or invalid');
     },
     longTestTimeout
   );

@@ -17,7 +17,7 @@
  */
 
 import callLlm from '../../lib/llm/index.js';
-import { getOptions } from '../../lib/context/option.js';
+import { getOptions, scopeOperation } from '../../lib/context/option.js';
 
 const ENHANCEMENT_PROMPT = `You are an expert prompt engineer tasked with transforming a basic prompt into an expert-level "phial" - a precisely crafted, portable prompt specification.
 
@@ -55,15 +55,15 @@ Provide:
 /**
  * Enhance a prompt to expert level
  * @param {string} prompt - The original prompt to enhance
- * @param {Object} options - Enhancement options
+ * @param {Object} config - Enhancement config
  * @returns {Promise<Object>} Enhanced prompt with metadata
  */
-export default async function phailForge(prompt, options = {}) {
+export default async function phailForge(prompt, config = {}) {
+  config = scopeOperation('phail-forge', config);
   const {
-    llm,
     context = '', // Additional context about the domain
-  } = options;
-  const { analyze, style } = await getOptions(options, {
+  } = config;
+  const { analyze, style } = await getOptions(config, {
     analyze: false,
     style: 'technical',
   });
@@ -80,7 +80,7 @@ export default async function phailForge(prompt, options = {}) {
 
   // Get the enhanced prompt
   const enhancedResponse = await callLlm(fullPrompt, {
-    llm,
+    ...config,
     response_format: {
       type: 'json_schema',
       json_schema: {
@@ -139,7 +139,6 @@ export default async function phailForge(prompt, options = {}) {
         },
       },
     },
-    ...options,
   });
 
   // Calculate expansion ratio
@@ -153,7 +152,7 @@ export default async function phailForge(prompt, options = {}) {
     const analysisPrompt = `${ANALYSIS_PROMPT}\n\nPrompt to analyze:\n${enhancedResponse.enhanced}`;
 
     const analysis = await callLlm(analysisPrompt, {
-      llm,
+      ...config,
       response_format: {
         type: 'json_schema',
         json_schema: {
@@ -193,7 +192,6 @@ export default async function phailForge(prompt, options = {}) {
           },
         },
       },
-      ...options,
     });
 
     enhancedResponse.analysis = analysis;

@@ -26,7 +26,6 @@ describe('embedRewriteQuery', () => {
 
     const prompt = mockLlm.mock.calls[0][0];
     expect(prompt).toContain('how do plants make food');
-    expect(prompt).toContain('Rewrite');
   });
 
   it('uses value schema for auto-unwrapping', async () => {

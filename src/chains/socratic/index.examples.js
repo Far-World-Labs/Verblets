@@ -41,10 +41,9 @@ describe('Socratic method chain', () => {
       expect(dialogue[0]).toBe(turn);
 
       // AI validation of Socratic questioning
-      const isSocratic = await aiExpect(turn.question).toSatisfy(
+      await aiExpect(turn.question).toSatisfy(
         'Should be a Socratic question that challenges assumptions about "knowledge is power"'
       );
-      expect(isSocratic).toBe(true);
     },
     longTestTimeout
   );
@@ -68,10 +67,9 @@ describe('Socratic method chain', () => {
       expect(dialogue[1]).toBe(turn2);
 
       // Verify second question builds on first
-      const progressesLogically = await aiExpect(dialogue).toSatisfy(
+      await aiExpect(dialogue).toSatisfy(
         'The second question should build upon or relate to the first question and answer, showing logical progression in the Socratic dialogue'
       );
-      expect(progressesLogically).toBe(true);
     },
     longTestTimeout
   );
@@ -136,10 +134,9 @@ describe('Socratic method chain', () => {
       });
 
       // AI validation of philosophical depth
-      const hasPhilosophicalDepth = await aiExpect(dialogue).toSatisfy(
+      await aiExpect(dialogue).toSatisfy(
         'Does this dialogue explore free will and consciousness through a series of questions and answers, with the questions probing assumptions about determinism or agency?'
       );
-      expect(hasPhilosophicalDepth).toBe(true);
     },
     longTestTimeout
   );

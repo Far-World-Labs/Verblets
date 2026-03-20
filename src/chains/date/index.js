@@ -81,7 +81,7 @@ const toUTCDate = (date) => {
 };
 
 // Extract date with retry support
-async function extractDate(prompt, llm, logger, options) {
+async function extractDate(prompt, llm, logger, config) {
   const response = await callLlm(prompt, {
     llm,
     response_format: {
@@ -92,7 +92,7 @@ async function extractDate(prompt, llm, logger, options) {
       },
     },
     logger,
-    ...options,
+    ...config,
   });
 
   if (response === 'undefined') return undefined;
@@ -100,12 +100,12 @@ async function extractDate(prompt, llm, logger, options) {
 }
 
 // Validate date against expectations
-async function validateDate(dateValue, expectations, llm, logger, options) {
+async function validateDate(dateValue, expectations, llm, logger, config) {
   for (const check of expectations) {
     const validationPrompt = buildValidationPrompt(dateValue, check);
     logger?.logEvent('validation-prompt', extractPromptAnalysis(validationPrompt));
 
-    const passed = await bool(validationPrompt, { llm, logger, ...options });
+    const passed = await bool(validationPrompt, { llm, logger, ...config });
 
     if (!passed) {
       return { passed: false, failedCheck: check };

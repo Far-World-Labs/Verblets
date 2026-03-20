@@ -25,7 +25,7 @@ const logTestEvent = async (event, data, logger) => {
   return result;
 };
 
-export const wrapIt = (it, config = {}) => {
+const wrapIt = (it, config = {}) => {
   const { baseProps = {}, logger } = config;
 
   // Simple local counter for this wrapIt instance
@@ -167,7 +167,7 @@ const createExpectProxy = (expectation, handler) =>
       typeof target[method] !== 'function' ? target[method] : handler(target, method),
   });
 
-export const wrapExpect =
+const wrapExpect =
   (expect, config = {}) =>
   (actual) => {
     const { baseProps = {}, logger } = config;
@@ -206,7 +206,7 @@ export const wrapExpect =
     });
   };
 
-export const wrapAiExpect =
+const wrapAiExpect =
   (aiExpect, config = {}) =>
   (actual) => {
     const { baseProps = {}, logger } = config;

@@ -97,11 +97,9 @@ describe('LLM Expect Chain', () => {
       const businessRecommendation =
         'Increase marketing budget by 20% for next quarter to expand market reach and target demographics aged 25-45 through social media campaigns, aiming for 15% increase in engagement';
 
-      const result = await aiExpect(businessRecommendation).toSatisfy(
+      await aiExpect(businessRecommendation).toSatisfy(
         'Is this recommendation specific, actionable, and includes measurable targets?'
       );
-
-      expect(result).toBe(true);
     },
     longTestTimeout
   );
@@ -112,11 +110,9 @@ describe('LLM Expect Chain', () => {
       const storyOpening =
         'Once upon a time, in a land far away, there lived a brave knight who embarked on a quest to save the kingdom from an ancient curse that had plagued the realm for centuries.';
 
-      const result = await aiExpect(storyOpening).toSatisfy(
+      await aiExpect(storyOpening).toSatisfy(
         'Is this story opening engaging, sets up clear conflict, and follows good narrative structure?'
       );
-
-      expect(result).toBe(true);
     },
     longTestTimeout
   );

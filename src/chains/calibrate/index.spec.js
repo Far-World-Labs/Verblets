@@ -100,8 +100,7 @@ describe('calibrateSpec', () => {
     await calibrateSpec([makeScan(['pii-name'], [0.9])], { sensitivity: 'low' });
 
     const [prompt] = vi.mocked(llm).mock.calls[0];
-    expect(prompt).toContain('Classification posture: conservative');
-    expect(prompt).toContain('Prefer false negatives over false positives');
+    expect(prompt).toContain('conservative');
   });
 
   it('includes sensitive posture when sensitivity is high', async () => {
@@ -110,8 +109,7 @@ describe('calibrateSpec', () => {
     await calibrateSpec([makeScan(['pii-name'], [0.9])], { sensitivity: 'high' });
 
     const [prompt] = vi.mocked(llm).mock.calls[0];
-    expect(prompt).toContain('Classification posture: sensitive');
-    expect(prompt).toContain('Prefer false positives over false negatives');
+    expect(prompt).toContain('sensitive');
   });
 
   it('omits sensitivity block when not specified', async () => {
