@@ -1,5 +1,5 @@
 import { describe, expect as vitestExpect, it, vi, beforeEach, afterEach } from 'vitest';
-import { expectSimple, expect } from './entry.js';
+import { expectSimple, expect } from './index.js';
 import { mapAdvice } from './index.js';
 import { longTestTimeout } from '../../constants/common.js';
 import { setTestEnv, saveTestEnv } from './test-utils.js';

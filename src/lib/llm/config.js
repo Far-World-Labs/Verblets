@@ -15,6 +15,15 @@ import { runtime } from '../env/index.js';
 
 let projectOverrides;
 
+/**
+ * Set project overrides from an external source.
+ * Called by the Node entry point after reading .verblets.json.
+ * @param {object} overrides - Model name overrides keyed by capability alias
+ */
+export const setProjectOverrides = (overrides) => {
+  projectOverrides = overrides;
+};
+
 /* global window */
 const loadProjectOverrides = () => {
   if (projectOverrides !== undefined) return projectOverrides;
@@ -24,30 +33,10 @@ const loadProjectOverrides = () => {
     return projectOverrides;
   }
 
-  // Node.js: lazy-load fs via dynamic import (cached after first call)
-  // Falls through to empty overrides if .verblets.json doesn't exist
+  // Node.js: defaults to empty if entry point hasn't called setProjectOverrides
   projectOverrides = {};
   return projectOverrides;
 };
-
-// Async initialization for Node.js — reads .verblets.json if it exists
-const initNodeOverrides = async () => {
-  if (runtime.isBrowser || projectOverrides !== undefined) return;
-
-  try {
-    const { readFileSync } = await import('fs');
-    const { resolve } = await import('path');
-    const filePath = resolve(process.cwd(), '.verblets.json');
-    projectOverrides = JSON.parse(readFileSync(filePath, 'utf8'));
-  } catch {
-    projectOverrides = {};
-  }
-};
-
-// Fire-and-forget initialization in Node.js
-if (!runtime.isBrowser) {
-  initNodeOverrides();
-}
 
 // ── Resolve ─────────────────────────────────────────────────────────
 
