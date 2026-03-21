@@ -7,6 +7,7 @@
  * - All transformations, viewmodels, and renderers are imported
  */
 
+import { join } from 'path';
 import { BaseProcessor } from './base-processor.js';
 import { getConfig } from '../config.js';
 import { createSeparator, red, gray, badges, createBoxedCode } from '../output-utils.js';
@@ -147,7 +148,6 @@ export class DetailsProcessor extends BaseProcessor {
       return this.moduleCollector.gatherContext(moduleDir);
     }
 
-    const { join } = await import('path');
     const additionalModulePaths = referenceModules.map((ref) => join(projectRoot, ref));
 
     if (process.env.VERBLETS_DEBUG) {
