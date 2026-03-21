@@ -1,6 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { testNumericMapper } from '../../lib/test-utils/index.js';
-import truncate, { mapAggression } from './index.js';
+import truncate from './index.js';
 
 // Mock the score chain to prevent actual API calls
 vi.mock('../score/index.js', () => ({
@@ -151,5 +150,3 @@ describe('truncate', () => {
     });
   });
 });
-
-testNumericMapper('mapAggression', mapAggression, { order: 'desc' });

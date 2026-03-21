@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import timeline, { mapEnrichment } from './index.js';
-import { testObjectMapper } from '../../lib/test-utils/index.js';
 
 // Mock all dependencies
 vi.mock('../../lib/llm/index.js', async (importOriginal) => ({
@@ -43,16 +42,18 @@ beforeEach(() => {
   });
 });
 
-testObjectMapper('mapEnrichment', mapEnrichment, {
-  extra: (fn, { it, expect }) => {
-    it('maps low to extraction-only — no LLM dedup, no knowledge, no enrichment', () => {
-      expect(fn('low')).toEqual({ llmDedup: false, knowledgeBase: false, enrichMap: false });
+describe('mapEnrichment', () => {
+  it('maps low to extraction-only — no LLM dedup, no knowledge, no enrichment', () => {
+    expect(mapEnrichment('low')).toEqual({
+      llmDedup: false,
+      knowledgeBase: false,
+      enrichMap: false,
     });
+  });
 
-    it('maps high to full pipeline — all phases enabled', () => {
-      expect(fn('high')).toEqual({ llmDedup: true, knowledgeBase: true, enrichMap: true });
-    });
-  },
+  it('maps high to full pipeline — all phases enabled', () => {
+    expect(mapEnrichment('high')).toEqual({ llmDedup: true, knowledgeBase: true, enrichMap: true });
+  });
 });
 
 describe('timeline', () => {

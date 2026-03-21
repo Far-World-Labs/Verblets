@@ -1,21 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 // ==========================================
-// Centralized Config Integration Tests
+// Centralized Config Infrastructure Tests
 // ==========================================
 //
-// These tests verify shared config infrastructure (initChain, jsonSchema,
-// config forwarding, retry integration, response_format, progress callbacks)
-// against representative chains. Per-chain spec files should test
-// chain-SPECIFIC behavior only — not these shared patterns.
-//
-// Representative chains chosen to cover all infrastructure patterns:
-//   filter  — batching, retry, response_format, progress, lifecycleLogger
-//   sort    — chunked batching, retry, response_format, progress, initChain
-//   score   — parallel batching, retry, response_format, anchoring
-//
-// If you're adding a new shared feature to the config system, add a test
-// HERE against these representative chains rather than in every chain's spec.
+// Tests for shared config infrastructure (initChain, jsonSchema, withPolicy,
+// scopeOperation). Per-chain spec files test chain-SPECIFIC behavior only.
 // ==========================================
 
 import { initChain, scopeOperation, withPolicy } from '../context/option.js';

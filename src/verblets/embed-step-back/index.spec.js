@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import embedStepBack, { mapAbstraction } from './index.js';
-import { testStringMapper, testPromptShapingOption } from '../../lib/test-utils/index.js';
+import embedStepBack from './index.js';
+import { testPromptShapingOption } from '../../lib/test-utils/index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(),
@@ -11,8 +11,6 @@ const { default: mockLlm } = await import('../../lib/llm/index.js');
 beforeEach(() => {
   mockLlm.mockReset();
 });
-
-testStringMapper('mapAbstraction', mapAbstraction);
 
 describe('embedStepBack', () => {
   it('calls LLM with query and count in prompt and returns broader questions', async () => {

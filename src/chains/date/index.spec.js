@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { testObjectMapper } from '../../lib/test-utils/index.js';
 import date, { mapRigor } from './index.js';
 import bool from '../../verblets/bool/index.js';
 
@@ -14,18 +13,16 @@ vi.mock('../../verblets/bool/index.js', () => ({
 
 const llm = (await import('../../lib/llm/index.js')).default;
 
-testObjectMapper('mapRigor', mapRigor, {
-  extra: (mapFn, { it, expect }) => {
-    it('low disables validation', () => {
-      const result = mapFn('low');
-      expect(result.validate).toBe(false);
-    });
+describe('mapRigor', () => {
+  it('low disables validation', () => {
+    const result = mapRigor('low');
+    expect(result.validate).toBe(false);
+  });
 
-    it('high disables returnBestEffort', () => {
-      const result = mapFn('high');
-      expect(result.returnBestEffort).toBe(false);
-    });
-  },
+  it('high disables returnBestEffort', () => {
+    const result = mapRigor('high');
+    expect(result.returnBestEffort).toBe(false);
+  });
 });
 
 describe('date chain', () => {

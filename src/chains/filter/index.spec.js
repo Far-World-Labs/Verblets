@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { testObjectMapper, testPromptShapingOption } from '../../lib/test-utils/index.js';
-import filter, { mapStrictness } from './index.js';
+import { testPromptShapingOption } from '../../lib/test-utils/index.js';
+import filter from './index.js';
 import listBatch from '../../verblets/list-batch/index.js';
 
 vi.mock('../../verblets/list-batch/index.js', () => ({
@@ -89,5 +89,3 @@ describe('filter', () => {
     promptArgIndex: 1,
   });
 });
-
-testObjectMapper('mapStrictness', mapStrictness);

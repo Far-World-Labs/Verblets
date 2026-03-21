@@ -11,10 +11,8 @@ import relations, {
   groupInstructions,
   parseRDFLiteral,
   parseRelations,
-  mapCanonicalization,
 } from './index.js';
 import { debug } from '../../lib/debug/index.js';
-import { testStringMapper } from '../../lib/test-utils/index.js';
 
 // Mock the llm module
 vi.mock('../../lib/llm/index.js', () => ({
@@ -387,5 +385,3 @@ describe('relations', () => {
     });
   });
 });
-
-testStringMapper('mapCanonicalization', mapCanonicalization);

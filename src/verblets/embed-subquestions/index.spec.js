@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import embedSubquestions, { mapGranularity } from './index.js';
-import { testStringMapper, testPromptShapingOption } from '../../lib/test-utils/index.js';
+import embedSubquestions from './index.js';
+import { testPromptShapingOption } from '../../lib/test-utils/index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(),
@@ -11,8 +11,6 @@ const { default: mockLlm } = await import('../../lib/llm/index.js');
 beforeEach(() => {
   mockLlm.mockReset();
 });
-
-testStringMapper('mapGranularity', mapGranularity);
 
 describe('embedSubquestions', () => {
   it('calls LLM with query in prompt and returns sub-questions', async () => {

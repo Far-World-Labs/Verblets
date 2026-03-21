@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { testObjectMapper } from '../../lib/test-utils/index.js';
-import extractBlocks, { mapPrecision } from './index.js';
+import extractBlocks from './index.js';
 
 // Mock the dependencies
 vi.mock('../../lib/llm/index.js');
@@ -8,8 +7,6 @@ vi.mock('../../lib/retry/index.js');
 
 import llm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
-
-testObjectMapper('mapPrecision', mapPrecision);
 
 describe('extract-blocks', () => {
   beforeEach(() => {

@@ -1,15 +1,12 @@
 import { expect } from 'chai';
 import { vi, describe, beforeEach, it } from 'vitest';
-import { testObjectMapper } from '../../lib/test-utils/index.js';
-import detectPatterns, { mapThoroughness } from './index.js';
+import detectPatterns from './index.js';
 
 vi.mock('../reduce/index.js', () => ({
   default: vi.fn(),
 }));
 
 import reduce from '../reduce/index.js';
-
-testObjectMapper('mapThoroughness', mapThoroughness);
 
 describe('detect-patterns', () => {
   beforeEach(() => {

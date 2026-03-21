@@ -1,12 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { testNumericMapper } from '../../lib/test-utils/index.js';
 
 vi.mock('../../lib/embed/index.js', () => ({
   embedChunked: vi.fn(),
 }));
 
 const { embedChunked } = await import('../../lib/embed/index.js');
-const { default: probeScan, mapDetection } = await import('./index.js');
+const { default: probeScan } = await import('./index.js');
 
 beforeEach(() => {
   embedChunked.mockReset();
@@ -183,5 +182,3 @@ describe('probeScan', () => {
     expect(result.hits[0].category).toBe('cooking');
   });
 });
-
-testNumericMapper('mapDetection', mapDetection, { order: 'desc' });

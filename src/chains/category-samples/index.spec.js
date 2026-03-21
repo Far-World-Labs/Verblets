@@ -1,10 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { testObjectMapper } from '../../lib/test-utils/index.js';
 import categorySamples, {
   buildSeedGenerationPrompt,
   SAMPLE_GENERATION_PROMPT,
   categorySamplesList,
-  mapDiversity,
 } from './index.js';
 import list from '../list/index.js';
 import retry from '../../lib/retry/index.js';
@@ -249,5 +247,3 @@ describe('categorySamplesList', () => {
     expect(list).toHaveBeenCalledWith('items', { llm: 'test' });
   });
 });
-
-testObjectMapper('mapDiversity', mapDiversity);

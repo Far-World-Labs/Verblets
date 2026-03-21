@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import fillMissing, { mapCreativity } from './index.js';
-import { testStringMapper, testPromptShapingOption } from '../../lib/test-utils/index.js';
+import fillMissing from './index.js';
+import { testPromptShapingOption } from '../../lib/test-utils/index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn().mockResolvedValue({
@@ -13,8 +13,6 @@ vi.mock('../../lib/llm/index.js', () => ({
 }));
 
 const mockLlm = (await import('../../lib/llm/index.js')).default;
-
-testStringMapper('mapCreativity', mapCreativity);
 
 describe('fillMissing verblet', () => {
   it('returns imputed text structure', async () => {

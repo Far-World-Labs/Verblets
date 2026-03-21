@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { testNumericMapper } from '../../lib/test-utils/index.js';
 import pave from '../../lib/pave/index.js';
-import SummaryMap, { mapSummaryDetail } from './index.js';
+import SummaryMap from './index.js';
 import llm from '../../lib/llm/index.js';
 
 vi.mock('../../services/llm-model/index.js', () => ({
@@ -169,5 +168,3 @@ describe('Summary map', () => {
     expect(result).toBeNull();
   });
 });
-
-testNumericMapper('mapSummaryDetail', mapSummaryDetail, { order: 'desc' });

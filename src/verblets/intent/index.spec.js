@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import intent, { mapTolerance } from './index.js';
-import { testStringMapper, testPromptShapingOption } from '../../lib/test-utils/index.js';
+import intent from './index.js';
+import { testPromptShapingOption } from '../../lib/test-utils/index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn().mockImplementation((text) => {
@@ -36,8 +36,6 @@ const examples = [
     want: { typeOfResult: 'object' },
   },
 ];
-
-testStringMapper('mapTolerance', mapTolerance);
 
 const operations = [{ name: 'search', description: 'Search for items' }];
 

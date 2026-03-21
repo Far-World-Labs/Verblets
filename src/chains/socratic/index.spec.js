@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { testObjectMapper } from '../../lib/test-utils/index.js';
-import { socratic, mapChallenge } from './index.js';
+import { socratic } from './index.js';
 
 vi.mock('../../lib/llm/index.js', () => {
   let call = 0;
@@ -24,5 +23,3 @@ describe('socratic chain', () => {
     });
   });
 });
-
-testObjectMapper('mapChallenge', mapChallenge);

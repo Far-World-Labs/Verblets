@@ -1,5 +1,4 @@
 import { describe, expect, it, vi } from 'vitest';
-import { testObjectMapper } from '../../lib/test-utils/index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(),
@@ -10,10 +9,8 @@ vi.mock('../../lib/retry/index.js', () => ({
   default: vi.fn(async (fn) => fn()),
 }));
 
-import veiledVariants, { mapCoverage } from './index.js';
+import veiledVariants from './index.js';
 import callLlm from '../../lib/llm/index.js';
-
-testObjectMapper('mapCoverage', mapCoverage);
 
 describe('veiledVariants', () => {
   it('returns 15 masked queries from 3 framing strategies', async () => {

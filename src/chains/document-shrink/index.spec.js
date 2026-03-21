@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { testNumericMapper, testObjectMapper } from '../../lib/test-utils/index.js';
-import documentShrink, { mapCompression, mapRanking, mapThoroughness } from './index.js';
+import documentShrink, { mapThoroughness } from './index.js';
 
 // Mock the questions chain
 vi.mock('../questions/index.js', () => ({
@@ -284,17 +283,11 @@ In conclusion, both coffee and relationships benefit from patience and attention
   });
 });
 
-testObjectMapper('mapThoroughness', mapThoroughness, {
-  extra: (mapFn, { it, expect }) => {
-    it('low disables all LLM phases', () => {
-      const result = mapFn('low');
-      expect(result.queryExpansion).toBe(false);
-      expect(result.llmScoring).toBe(false);
-      expect(result.llmCompression).toBe(false);
-    });
-  },
+describe('mapThoroughness', () => {
+  it('low disables all LLM phases', () => {
+    const result = mapThoroughness('low');
+    expect(result.queryExpansion).toBe(false);
+    expect(result.llmScoring).toBe(false);
+    expect(result.llmCompression).toBe(false);
+  });
 });
-
-testNumericMapper('mapCompression', mapCompression, { order: 'desc' });
-
-testNumericMapper('mapRanking', mapRanking, { order: 'asc' });

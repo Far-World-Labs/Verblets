@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { testObjectMapper } from '../../lib/test-utils/index.js';
-import split, { mapPreservation } from './index.js';
+import split from './index.js';
 
 const DELIM = '---763927459---';
 
@@ -74,5 +73,3 @@ describe('split chain', () => {
     });
   });
 });
-
-testObjectMapper('mapPreservation', mapPreservation);

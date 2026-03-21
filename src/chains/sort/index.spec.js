@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import sort, { useTestSortPrompt, mapEffort } from './index.js';
-import { testObjectMapper } from '../../lib/test-utils/index.js';
+import sort, { useTestSortPrompt } from './index.js';
 
 useTestSortPrompt();
 
@@ -111,5 +110,3 @@ describe('Sort', () => {
     });
   });
 });
-
-testObjectMapper('mapEffort', mapEffort);

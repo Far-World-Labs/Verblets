@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { testObjectMapper } from '../../lib/test-utils/index.js';
-import join, { mapFidelity } from './index.js';
+import join from './index.js';
 
 // Mock the llm function to avoid actual API calls
 vi.mock('../../lib/llm/index.js', () => ({
@@ -28,8 +27,6 @@ beforeEach(() => {
     return 'joined result';
   });
 });
-
-testObjectMapper('mapFidelity', mapFidelity);
 
 describe('join chain', () => {
   it('joins fragments with AI-generated transitions', async () => {

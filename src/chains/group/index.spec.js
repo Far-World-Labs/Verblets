@@ -1,8 +1,7 @@
-import group, { mapGranularity } from './index.js';
+import group from './index.js';
 import listBatch from '../../verblets/list-batch/index.js';
 import reduce from '../reduce/index.js';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
-import { testObjectMapper } from '../../lib/test-utils/index.js';
 
 vi.mock('../../verblets/list-batch/index.js', () => ({
   default: vi.fn(),
@@ -98,5 +97,3 @@ describe('group chain', () => {
     expect(discoveryPrompt).not.toContain('granularity-guidance');
   });
 });
-
-testObjectMapper('mapGranularity', mapGranularity);

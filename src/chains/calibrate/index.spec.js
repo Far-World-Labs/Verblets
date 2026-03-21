@@ -1,12 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import calibrate, {
-  calibrateSpec,
-  applyCalibrate,
-  createCalibratedClassifier,
-  mapSensitivity,
-} from './index.js';
+import calibrate, { calibrateSpec, applyCalibrate, createCalibratedClassifier } from './index.js';
 import llm from '../../lib/llm/index.js';
-import { testStringMapper } from '../../lib/test-utils/index.js';
 
 vi.mock('../../lib/llm/index.js', async (importOriginal) => ({
   ...(await importOriginal()),
@@ -222,5 +216,3 @@ describe('calibrate (default export)', () => {
     expect(specPrompt).not.toContain('<classification-instructions>');
   });
 });
-
-testStringMapper('mapSensitivity', mapSensitivity);

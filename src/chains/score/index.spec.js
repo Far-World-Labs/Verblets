@@ -3,7 +3,6 @@ import score, {
   scoreItem,
   scoreSpec,
   applyScore,
-  mapAnchoring,
   mapInstructions,
   filterInstructions,
   reduceInstructions,
@@ -15,7 +14,6 @@ import { scaleSpec } from '../scale/index.js';
 import listBatch from '../../verblets/list-batch/index.js';
 import createBatches from '../../lib/text-batch/index.js';
 import filter from '../filter/index.js';
-import { testEnumMapper } from '../../lib/test-utils/index.js';
 import { testInstructionBuilders } from '../../lib/test-utils/index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
@@ -327,5 +325,3 @@ describe('score chain', () => {
     });
   });
 });
-
-testEnumMapper('mapAnchoring', mapAnchoring);

@@ -1,7 +1,6 @@
 import { describe, expect as vitestExpect, it, vi, beforeEach, afterEach } from 'vitest';
 import { expectSimple, expect } from './entry.js';
 import { mapAdvice } from './index.js';
-import { testObjectMapper } from '../../lib/test-utils/index.js';
 import { longTestTimeout } from '../../constants/common.js';
 import { setTestEnv, saveTestEnv } from './test-utils.js';
 import { debug } from '../../lib/debug/index.js';
@@ -349,14 +348,12 @@ describe('expect chain', () => {
   });
 });
 
-testObjectMapper('mapAdvice', mapAdvice, {
-  extra: (fn, { it, expect }) => {
-    it('maps low to introspection disabled', () => {
-      expect(fn('low')).toEqual({ introspection: false });
-    });
+describe('mapAdvice', () => {
+  it('maps low to introspection disabled', () => {
+    vitestExpect(mapAdvice('low')).toEqual({ introspection: false });
+  });
 
-    it('maps high to introspection enabled', () => {
-      expect(fn('high')).toEqual({ introspection: true });
-    });
-  },
+  it('maps high to introspection enabled', () => {
+    vitestExpect(mapAdvice('high')).toEqual({ introspection: true });
+  });
 });

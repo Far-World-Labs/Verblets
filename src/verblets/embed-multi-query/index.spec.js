@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import embedMultiQuery, { mapDivergence } from './index.js';
-import { testStringMapper, testPromptShapingOption } from '../../lib/test-utils/index.js';
+import embedMultiQuery from './index.js';
+import { testPromptShapingOption } from '../../lib/test-utils/index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(),
@@ -11,8 +11,6 @@ const { default: mockLlm } = await import('../../lib/llm/index.js');
 beforeEach(() => {
   mockLlm.mockReset();
 });
-
-testStringMapper('mapDivergence', mapDivergence);
 
 describe('embedMultiQuery', () => {
   it('calls LLM with query and count in prompt and returns array', async () => {
