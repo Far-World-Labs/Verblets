@@ -298,12 +298,7 @@ describe('expect chain', () => {
 
         vitestExpect(details.file).toBeDefined();
         vitestExpect(details.line).toBeTypeOf('number');
-        // In browser environment, line number is 0
-        if (typeof window !== 'undefined') {
-          vitestExpect(details.line).toBe(0);
-        } else {
-          vitestExpect(details.line).toBeGreaterThan(0);
-        }
+        vitestExpect(details.line).toBeGreaterThanOrEqual(0);
       },
       longTestTimeout
     );

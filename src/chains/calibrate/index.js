@@ -98,21 +98,24 @@ export async function calibrateSpec(scans, config = {}) {
     ? `\n\n${asXML(instructions, { tag: 'classification-instructions' })}`
     : '';
 
+  const thresholdGuidance = {
+    percentile:
+      '\n- Use percentile-based boundaries (e.g., top 10% = critical, top 25% = high)\n- Calibrate severity thresholds relative to the score distribution\n- Salience should reflect how unusual an item is within its percentile band',
+    fixed:
+      '\n- Use fixed severity boundaries independent of corpus distribution\n- Apply consistent thresholds regardless of how common or rare detections are\n- Salience should reflect absolute significance, not relative standing',
+  };
+
   const thresholdBlock =
     thresholdStrategy !== 'statistical'
-      ? `\n\nThreshold derivation strategy: ${thresholdStrategy}${
-          thresholdStrategy === 'percentile'
-            ? '\n- Use percentile-based boundaries (e.g., top 10% = critical, top 25% = high)\n- Calibrate severity thresholds relative to the score distribution\n- Salience should reflect how unusual an item is within its percentile band'
-            : '\n- Use fixed severity boundaries independent of corpus distribution\n- Apply consistent thresholds regardless of how common or rare detections are\n- Salience should reflect absolute significance, not relative standing'
-        }`
+      ? `\n\nThreshold derivation strategy: ${thresholdStrategy}${thresholdGuidance[thresholdStrategy] || thresholdGuidance.fixed}`
       : '';
 
-  const sensitivityBlock =
-    sensitivity === 'low'
-      ? '\n\nClassification posture: conservative. Prefer false negatives over false positives. Only flag items with strong, unambiguous signals. Set severity and salience thresholds high — routine items should classify as none/routine unless clearly elevated.'
-      : sensitivity === 'high'
-        ? '\n\nClassification posture: sensitive. Prefer false positives over false negatives. Flag items with even weak or ambiguous signals. Set severity and salience thresholds low to catch edge cases — when in doubt, classify higher.'
-        : '';
+  const sensitivityPosture = {
+    low: '\n\nClassification posture: conservative. Prefer false negatives over false positives. Only flag items with strong, unambiguous signals. Set severity and salience thresholds high — routine items should classify as none/routine unless clearly elevated.',
+    high: '\n\nClassification posture: sensitive. Prefer false positives over false negatives. Flag items with even weak or ambiguous signals. Set severity and salience thresholds low to catch edge cases — when in doubt, classify higher.',
+  };
+
+  const sensitivityBlock = sensitivityPosture[sensitivity] || '';
 
   const specUserPrompt = `Analyze these corpus scan statistics and generate a calibration specification.
 

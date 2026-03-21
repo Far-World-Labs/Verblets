@@ -4,10 +4,6 @@ import SummaryMap from './index.js';
 import { extendedTestTimeout } from '../../constants/common.js';
 import pave from '../../lib/pave/index.js';
 import { getTestHelpers } from '../test-analysis/test-wrappers.js';
-import { models } from '../../constants/model-mappings.js';
-import { get as configGet } from '../../lib/config/index.js';
-
-const skipSensitivity = configGet('SENSITIVITY_TEST_SKIP') || !models.sensitive;
 
 const { it, expect, aiExpect } = getTestHelpers('Summary-map chain');
 
@@ -41,7 +37,7 @@ function encodeDecode(input, seed) {
 `;
 
 describe('Summary map', () => {
-  it.skipIf(skipSensitivity)(
+  it(
     'Example',
     async () => {
       const map = new SummaryMap({
@@ -51,7 +47,6 @@ describe('Summary map', () => {
       map.set('a.b.c', {
         value: legalText,
         weight: 0.01,
-        sensitivity: { blacklist: 'names and addresses' },
       });
       map.set('a.d', { value: codeText, type: 'code', weight: 0.7 });
       map.set('e.0', { value: 'abc', weight: 0.01 });

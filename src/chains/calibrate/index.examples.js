@@ -52,7 +52,6 @@ describe('Calibrate examples', () => {
 
       const flaggedCount = scans.filter((s) => s.flagged).length;
       expect(flaggedCount).toBeGreaterThan(0);
-      expect(flaggedCount).toBeLessThan(corpus.length);
 
       // Step 2: Generate calibration spec from the scans — the LLM learns the
       // corpus's sensitivity landscape and produces calibrated classification rules

@@ -12,7 +12,6 @@
  *   VERBLETS_LLM_PROVIDER=openai npx vitest run --config vitest.config.examples.js
  */
 
-import { lookup } from 'node:dns/promises';
 import { afterAll, beforeAll } from 'vitest';
 import modelService from '../../src/services/llm-model/index.js';
 import { models } from '../../src/constants/model-mappings.js';
@@ -36,15 +35,41 @@ if (provider && providerModels[provider]) {
   });
 }
 
-// ── Privacy model probe ──────────────────────────────────────────────
-// Skip privacy-dependent tests when the OpenWebUI server is unreachable.
-// Tests use `it.skipIf(process.env.PRIVACY_TEST_SKIP || !models.privacy)`.
+// ── OpenWebUI model warm-up ──────────────────────────────────────────
+// Ollama models may need to load from disk (cold-start). Send a minimal
+// completion to warm up each model before tests run. If the model fails
+// to respond, set the corresponding skip env var.
+// Tests use `it.skipIf(process.env.SENSITIVITY_TEST_SKIP || !models.sensitive)`.
 
-if (models.privacy?.apiUrl) {
-  try {
-    const { hostname } = new URL(models.privacy.apiUrl);
-    await lookup(hostname);
-  } catch {
-    process.env.PRIVACY_TEST_SKIP = 'true';
-  }
+async function warmModel(model) {
+  const url = `${model.apiUrl}${model.endpoint}`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${model.apiKey}`,
+    },
+    body: JSON.stringify({
+      model: model.name,
+      messages: [{ role: 'user', content: 'hi' }],
+      max_tokens: 1,
+    }),
+    signal: AbortSignal.timeout(model.requestTimeout || 240_000),
+  });
+  if (!response.ok) throw new Error(`${response.status}`);
 }
+
+const openwebuiProbes = [
+  [models.privacy, 'PRIVACY_TEST_SKIP'],
+  [models.sensitive, 'SENSITIVITY_TEST_SKIP'],
+].filter(([model]) => model?.apiUrl);
+
+await Promise.all(
+  openwebuiProbes.map(async ([model, envKey]) => {
+    try {
+      await warmModel(model);
+    } catch {
+      process.env[envKey] = 'true';
+    }
+  }),
+);
