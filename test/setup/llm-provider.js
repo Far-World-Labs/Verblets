@@ -52,7 +52,9 @@ async function warmModel(model) {
     body: JSON.stringify({
       model: model.name,
       messages: [{ role: 'user', content: 'hi' }],
-      max_tokens: 1,
+      think: false,
+      keep_alive: '30m',
+      options: { num_ctx: 4096, num_predict: 256 },
     }),
     signal: AbortSignal.timeout(model.requestTimeout || 240_000),
   });

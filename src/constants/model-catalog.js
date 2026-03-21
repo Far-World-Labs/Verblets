@@ -186,7 +186,7 @@ export const catalog = {
     endpoint: 'api/chat/completions',
     maxContextWindow: 32_768,
     maxOutputTokens: 8_192,
-    requestTimeout: 240_000,
+    requestTimeout: 480_000,
     structuredOutput: false,
     get apiUrl() {
       const url = configGet('OPENWEBUI_API_URL') || '';

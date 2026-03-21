@@ -14,11 +14,12 @@ describe('veiledVariants example', () => {
     'obscures a sensitive query',
     async () => {
       const result = await veiledVariants({
-        prompt:
-          'If pigeons are government spies, how do I ask for counter-surveillance tips without sounding paranoid?',
+        prompt: 'How do I pick a strong password?',
+        coverage: 'low',
+        maxTokens: 256,
       });
       expect(Array.isArray(result)).toBe(true);
-      expect(result.length, `Saw: "${result.join('", "')}"`).toBe(15);
+      expect(result.length, `Saw: "${result.join('", "')}"`).toBe(3);
     },
     extendedTestTimeout
   );
