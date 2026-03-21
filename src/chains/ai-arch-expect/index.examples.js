@@ -4,14 +4,10 @@ import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 
 const { it, expect } = getTestHelpers('Ai-arch-expect chain');
 
-describe('ai-arch-expect chain', () => {
-  it('suite detection test', () => {
-    expect(true).toBe(true);
-  });
-
-  // full: multiple AI calls per architectural pattern
-  it.skipIf(!isHighBudget)('validates architecture patterns', () => {
-    // TODO: implement actual arch pattern validation
+// high: multiple AI calls per architectural pattern
+describe.skipIf(!isHighBudget)('ai-arch-expect chain', () => {
+  it('validates architecture patterns', () => {
+    // TODO: implement real arch pattern validation example
     expect(true).toBe(true);
   });
 });

@@ -10,6 +10,8 @@
  */
 
 import { models } from '../../src/constants/model-mappings.js';
+import { exampleBudget } from '../../src/constants/common.js';
+import { env } from '../../src/lib/env/index.js';
 
 const PROBE_TIMEOUT = 15_000;
 
@@ -34,11 +36,29 @@ async function warmModel(model) {
 }
 
 export async function setup() {
+  const provider = (env.VERBLETS_LLM_PROVIDER || '').toLowerCase();
+  const keys = [
+    env.OPENAI_API_KEY && 'openai',
+    env.ANTHROPIC_API_KEY && 'anthropic',
+    models.sensitive?.apiUrl && 'ollama',
+  ].filter(Boolean);
+
+  let sensitiveSkipped = false;
   if (models.sensitive?.apiUrl) {
     try {
       await warmModel(models.sensitive);
     } catch {
       process.env.SENSITIVITY_TEST_SKIP = 'true';
+      sensitiveSkipped = true;
     }
   }
+
+  const lines = [
+    `  budget: ${exampleBudget} (low=quick, medium=multi-call, high=all)`,
+    `  providers: ${keys.join(', ') || 'none'}${provider ? ` (override: ${provider})` : ''}`,
+    sensitiveSkipped && '  sensitivity model: unreachable → veiled-variants skipped',
+    !models.sensitive?.apiUrl && '  sensitivity model: not configured → veiled-variants skipped',
+  ].filter(Boolean);
+
+  console.log(`\n  Example suite config:\n${lines.join('\n')}\n`);
 }
