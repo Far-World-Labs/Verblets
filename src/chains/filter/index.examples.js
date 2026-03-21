@@ -19,6 +19,10 @@ describe('filter examples', () => {
         batchSize: 2,
       });
       expect(dreams.length).toBeGreaterThan(0);
+      expect(dreams.length).toBeLessThan(notes.length);
+      await aiExpect(dreams).toSatisfy(
+        'contains only items about aspirations or dreams, not mundane tasks'
+      );
     },
     longTestTimeout
   );

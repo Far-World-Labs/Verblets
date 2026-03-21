@@ -3,7 +3,7 @@ import themes from './index.js';
 import { longTestTimeout } from '../../constants/common.js';
 import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 
-const { it, expect } = getTestHelpers('Themes chain');
+const { it, expect, aiExpect } = getTestHelpers('Themes chain');
 
 describe('themes chain', () => {
   it(
@@ -14,6 +14,10 @@ new flavors but complain about long lines. Local farmers provide beans while
 young entrepreneurs drive innovation.`;
       const result = await themes(text, { topN: 2 });
       expect(Array.isArray(result)).toBe(true);
+      expect(result.length).toBeGreaterThanOrEqual(1);
+      await aiExpect(result).toSatisfy(
+        'themes related to coffee shops, local business, or community'
+      );
     },
     longTestTimeout
   );

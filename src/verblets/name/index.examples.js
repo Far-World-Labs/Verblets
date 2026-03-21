@@ -1,34 +1,22 @@
 import { describe } from 'vitest';
-
 import name from './index.js';
 import { getTestHelpers } from '../../chains/test-analysis/test-wrappers.js';
 
-//
-// Setup AI test wrappers
-//
 const { it, expect, aiExpect } = getTestHelpers('name verblet');
 
-//
-// Test suite
-//
-
 const examples = [
-  { got: { text: 'Chat logs for customer support' }, want: 'chatSupportLogs' },
-  { got: { text: 'Sensor readings from smart home devices' }, want: 'smartHomeSensorReadings' },
-  {
-    got: {
-      text: 'Voice memos from friends sharing their hopes and worries',
-    },
-    want: 'voiceMemos',
-  },
+  'Chat logs for customer support',
+  'Sensor readings from smart home devices',
+  'Voice memos from friends sharing their hopes and worries',
 ];
 
 describe('name verblet', () => {
-  examples.forEach((example) => {
-    it(example.got.text, async () => {
-      const result = await name(example.got.text);
+  examples.forEach((text) => {
+    it(text, async () => {
+      const result = await name(text);
       expect(typeof result).toBe('string');
       expect(result.length).toBeGreaterThan(0);
+      await aiExpect(result).toSatisfy(`a concise, memorable name that relates to: "${text}"`);
     });
   });
 });

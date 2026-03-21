@@ -1,72 +1,23 @@
-import fs from 'node:fs/promises';
-import path from 'node:path';
 import { describe } from 'vitest';
-
 import { longTestTimeout } from '../../constants/common.js';
 import questions from './index.js';
 import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 
-const { it, expect } = getTestHelpers('Questions verblet');
-
-const ensureDirectoryExists = async (directoryPath) => {
-  try {
-    await fs.access(directoryPath);
-    // eslint-disable-next-line no-unused-vars
-  } catch (error) {
-    await fs.mkdir(directoryPath, { recursive: true });
-  }
-};
-
-const readFileOrUndefined = async (filePath) => {
-  let result;
-  try {
-    result = (await fs.readFile(filePath)).toString();
-    // eslint-disable-next-line no-unused-vars
-  } catch (error) {
-    // do nothing
-  }
-  return result;
-};
-
-const cacheDir = path.join(process.env.HOME, '.cache', 'puck');
-const cacheFile = `${cacheDir}/questions-verblet-test-cache-1.json`;
-
-const examples = [
-  {
-    inputs: {
-      text: 'Writing a prompt toolkit for ChatGPT',
-      exploration: 0.5,
-    },
-    want: { minLength: 10 },
-  },
-];
+const { it, expect, aiExpect } = getTestHelpers('Questions verblet');
 
 describe('Questions verblet', () => {
-  examples.forEach((example) => {
-    it(
-      example.inputs.text,
-      async () => {
-        const canUseCache = process.env.RUN_TESTS_WITH_RANDOMNESS_ONCE;
-
-        const cache = await readFileOrUndefined(cacheFile);
-
-        let result;
-        if (canUseCache && cache) {
-          result = JSON.parse(cache);
-        } else {
-          result = await questions(example.inputs.text);
-        }
-
-        if (canUseCache) {
-          await ensureDirectoryExists(cacheDir);
-          await fs.writeFile(cacheFile, JSON.stringify(result));
-        }
-
-        if (example.want.minLength) {
-          expect(result.length).gt(example.want.minLength);
-        }
-      },
-      longTestTimeout
-    );
-  });
+  it(
+    'Writing a prompt toolkit for ChatGPT',
+    async () => {
+      const result = await questions('Writing a prompt toolkit for ChatGPT', {
+        exploration: 0.5,
+      });
+      expect(Array.isArray(result)).toBe(true);
+      expect(result.length).toBeGreaterThan(5);
+      await aiExpect(result).toSatisfy(
+        'questions relevant to building a prompt toolkit or working with ChatGPT'
+      );
+    },
+    longTestTimeout
+  );
 });
