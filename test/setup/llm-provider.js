@@ -38,8 +38,7 @@ if (provider && providerModels[provider]) {
 // ── OpenWebUI model warm-up ──────────────────────────────────────────
 // Ollama models may need to load from disk (cold-start). Send a minimal
 // completion to warm up each model before tests run. If the model fails
-// to respond, set the corresponding skip env var.
-// Tests use `it.skipIf(process.env.SENSITIVITY_TEST_SKIP || !models.sensitive)`.
+// to respond, set SENSITIVITY_TEST_SKIP so example tests skip gracefully.
 
 async function warmModel(model) {
   const url = `${model.apiUrl}${model.endpoint}`;
@@ -61,17 +60,10 @@ async function warmModel(model) {
   if (!response.ok) throw new Error(`${response.status}`);
 }
 
-const openwebuiProbes = [
-  [models.privacy, 'PRIVACY_TEST_SKIP'],
-  [models.sensitive, 'SENSITIVITY_TEST_SKIP'],
-].filter(([model]) => model?.apiUrl);
-
-await Promise.all(
-  openwebuiProbes.map(async ([model, envKey]) => {
-    try {
-      await warmModel(model);
-    } catch {
-      process.env[envKey] = 'true';
-    }
-  }),
-);
+if (models.sensitive?.apiUrl) {
+  try {
+    await warmModel(models.sensitive);
+  } catch {
+    process.env.SENSITIVITY_TEST_SKIP = 'true';
+  }
+}

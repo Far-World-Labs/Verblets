@@ -1,6 +1,5 @@
 import { describe } from 'vitest';
 import veiledVariants from './index.js';
-import { extendedTestTimeout } from '../../constants/common.js';
 import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 import { models } from '../../constants/model-mappings.js';
 import { get as configGet } from '../../lib/config/index.js';
@@ -21,6 +20,6 @@ describe('veiledVariants example', () => {
       expect(Array.isArray(result)).toBe(true);
       expect(result.length, `Saw: "${result.join('", "')}"`).toBe(3);
     },
-    extendedTestTimeout
+    10 * 60 * 1000
   );
 });
