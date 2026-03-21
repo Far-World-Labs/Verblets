@@ -5,19 +5,8 @@ import { mapInstructions as scoreMapInstructions, scoreSpec } from '../score/ind
 import { longTestTimeout, isMediumBudget } from '../../constants/common.js'; // standard: 5-6 LLM calls
 import transactions from './dummy-transactions.json';
 import { getTestHelpers } from '../test-analysis/test-wrappers.js';
-import { getConfig } from '../test-analysis/config.js';
 
-const config = getConfig();
-const suite = 'Extract Features chain';
-
-const { it, expect, aiExpect } = getTestHelpers(suite);
-
-// Higher-order function to create test-specific loggers
-const makeTestLogger = (testName) => {
-  return config?.aiMode && globalThis.logger
-    ? globalThis.logger.child({ suite, testName })
-    : undefined;
-};
+const { it, expect, aiExpect, makeLogger } = getTestHelpers('Extract Features chain');
 
 // Tag vocabularies
 const CATEGORY_SECTOR_TAGS = [
@@ -114,7 +103,7 @@ describe.skipIf(!isMediumBudget)('[medium] extract-features examples', () => {
     { timeout: longTestTimeout },
     async () => {
       // Create logger for the test
-      const logger = makeTestLogger('categorize financial transactions');
+      const logger = makeLogger('categorize financial transactions');
 
       // Build the spending wisdom penalty specification
       const wisdomSpec =

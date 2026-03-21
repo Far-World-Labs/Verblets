@@ -293,6 +293,10 @@ export function getTestHelpers(suite) {
     it: makeWrappedIt(vitestIt, suite, config),
     expect: makeWrappedExpect(vitestExpect, suite, config),
     aiExpect: makeWrappedAiExpect(vitestAiExpect, suite, config),
+    makeLogger: (testName) =>
+      config?.aiMode && globalThis.logger
+        ? globalThis.logger.child({ suite, testName })
+        : undefined,
   };
 }
 

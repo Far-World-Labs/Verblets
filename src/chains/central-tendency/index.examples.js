@@ -2,19 +2,8 @@ import { describe } from 'vitest';
 import { longTestTimeout } from '../../constants/common.js';
 import centralTendency from './index.js';
 import { getTestHelpers } from '../test-analysis/test-wrappers.js';
-import { getConfig } from '../test-analysis/config.js';
 
-const config = getConfig();
-const suite = 'Central-tendency chain';
-
-const { it, expect, aiExpect } = getTestHelpers(suite);
-
-// Higher-order function to create test-specific loggers
-const makeTestLogger = (testName) => {
-  return config?.aiMode && globalThis.logger
-    ? globalThis.logger.child({ suite, testName })
-    : undefined;
-};
+const { it, expect, aiExpect, makeLogger } = getTestHelpers('Central-tendency chain');
 
 describe('Bulk Central Tendency Chain', () => {
   it(
@@ -23,7 +12,7 @@ describe('Bulk Central Tendency Chain', () => {
       const items = ['apple', 'orange', 'durian', 'jackfruit', 'banana'];
       const seedItems = ['apple', 'orange', 'banana', 'grape', 'strawberry'];
 
-      const logger = makeTestLogger('processes multiple fruit items');
+      const logger = makeLogger('processes multiple fruit items');
       const results = await centralTendency(items, seedItems, {
         context: 'Common fruits found in grocery stores',
         logger,
@@ -72,7 +61,7 @@ describe('Bulk Central Tendency Chain', () => {
       const items = ['robin', 'eagle', 'penguin', 'ostrich'];
       const seedItems = ['robin', 'sparrow', 'cardinal', 'blue jay'];
 
-      const logger = makeTestLogger('demonstrates context effects');
+      const logger = makeLogger('demonstrates context effects');
       const results = await centralTendency(items, seedItems, {
         context: 'Small songbirds commonly seen in backyards',
         logger,
@@ -95,7 +84,7 @@ describe('Bulk Central Tendency Chain', () => {
       const items = ['cat', 'dog', 'elephant', 'hamster', 'goldfish'];
       const seedItems = ['cat', 'dog', 'rabbit', 'hamster', 'guinea pig'];
 
-      const logger = makeTestLogger('varying centrality');
+      const logger = makeLogger('varying centrality');
       const results = await centralTendency(items, seedItems, {
         context: 'Common household pets',
         logger,
@@ -132,7 +121,7 @@ describe('Bulk Central Tendency Chain', () => {
       const items = Array.from({ length: 15 }, (_, i) => `item${i + 1}`);
       const seedItems = ['item1', 'item2', 'item3', 'item4', 'item5'];
 
-      const logger = makeTestLogger('processes large batches');
+      const logger = makeLogger('processes large batches');
       const results = await centralTendency(items, seedItems, {
         batchSize: 3,
         logger,

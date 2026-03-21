@@ -2,26 +2,15 @@ import { describe } from 'vitest';
 import date from './index.js';
 import { longTestTimeout } from '../../constants/common.js';
 import { getTestHelpers } from '../test-analysis/test-wrappers.js';
-import { getConfig } from '../test-analysis/config.js';
 
-const config = getConfig();
-const suite = 'Date chain';
-
-const { it, expect, aiExpect } = getTestHelpers(suite);
-
-// Higher-order function to create test-specific loggers
-const makeTestLogger = (testName) => {
-  return config?.aiMode && globalThis.logger
-    ? globalThis.logger.child({ suite, testName })
-    : undefined;
-};
+const { it, expect, aiExpect, makeLogger } = getTestHelpers('Date chain');
 
 describe('date examples', () => {
   it(
     'gets Star Wars release date',
     async () => {
       const result = await date('When was the original Star Wars released?', {
-        logger: makeTestLogger('gets Star Wars release date'),
+        logger: makeLogger('gets Star Wars release date'),
       });
       expect(result instanceof Date).toBe(true);
       await aiExpect(`Star Wars release date: ${result.toISOString()}`).toSatisfy(
@@ -35,7 +24,7 @@ describe('date examples', () => {
     'finds Christmas 2025',
     async () => {
       const result = await date('What date is Christmas Day 2025?', {
-        logger: makeTestLogger('finds Christmas 2025'),
+        logger: makeLogger('finds Christmas 2025'),
       });
       expect(result instanceof Date).toBe(true);
       expect(result.getUTCFullYear()).toBe(2025);

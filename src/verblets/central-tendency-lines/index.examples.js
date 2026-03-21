@@ -9,22 +9,12 @@ import categorySamples from '../../chains/category-samples/index.js';
 import centralTendencyChain from '../../chains/central-tendency/index.js';
 import { longTestTimeout } from '../../constants/common.js';
 import { getTestHelpers } from '../../chains/test-analysis/test-wrappers.js';
-import { getConfig } from '../../chains/test-analysis/config.js';
 
 //
 // Setup AI test wrappers
 //
-const config = getConfig();
-const suite = 'centralTendency examples';
 
-const { it, expect, aiExpect } = getTestHelpers(suite);
-
-// Higher-order function to create test-specific loggers
-const makeTestLogger = (testName) => {
-  return config?.aiMode && globalThis.logger
-    ? globalThis.logger.child({ suite, testName })
-    : undefined;
-};
+const { it, expect, aiExpect, makeLogger } = getTestHelpers('centralTendency examples');
 
 //
 // Test suite
@@ -39,7 +29,7 @@ describe('centralTendency examples', () => {
       const config = {
         context: 'Evaluate based on typical bird characteristics and behavior',
         coreFeatures: ['feathers', 'beak', 'lays eggs', 'flight'],
-        logger: makeTestLogger('evaluates bird centrality'),
+        logger: makeLogger('evaluates bird centrality'),
       };
 
       // Test prototypical bird
@@ -125,7 +115,7 @@ describe('centralTendency examples', () => {
         coreFeatures: ['warm-blooded', 'hair/fur', 'mammary glands', 'live birth'],
         chunkSize: 3,
         maxAttempts: 2,
-        logger: makeTestLogger('processes bulk items'),
+        logger: makeLogger('processes bulk items'),
       };
 
       const results = await centralTendencyChain(testAnimals, mammalSeeds, config);

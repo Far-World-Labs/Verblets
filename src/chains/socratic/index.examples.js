@@ -2,19 +2,8 @@ import { describe } from 'vitest';
 import SocraticMethod from './index.js';
 import { longTestTimeout } from '../../constants/common.js';
 import { getTestHelpers } from '../test-analysis/test-wrappers.js';
-import { getConfig } from '../test-analysis/config.js';
 
-const config = getConfig();
-const suite = 'Socratic chain';
-
-const { it, expect, aiExpect } = getTestHelpers(suite);
-
-// Higher-order function to create test-specific loggers
-const makeTestLogger = (testName) => {
-  return config?.aiMode && globalThis.logger
-    ? globalThis.logger.child({ suite, testName })
-    : undefined;
-};
+const { it, expect, aiExpect, makeLogger } = getTestHelpers('Socratic chain');
 
 describe('Socratic method chain', () => {
   it(
@@ -22,7 +11,7 @@ describe('Socratic method chain', () => {
     async () => {
       const statement = 'Knowledge is power';
       const socratic = new SocraticMethod(statement, {
-        logger: makeTestLogger('explores a simple concept through questioning'),
+        logger: makeLogger('explores a simple concept through questioning'),
       });
 
       // Take a single step
@@ -53,7 +42,7 @@ describe('Socratic method chain', () => {
     async () => {
       const statement = 'Success is measured by wealth';
       const socratic = new SocraticMethod(statement, {
-        logger: makeTestLogger('maintains dialogue history across multiple steps'),
+        logger: makeLogger('maintains dialogue history across multiple steps'),
       });
 
       // Take multiple steps
@@ -97,7 +86,7 @@ describe('Socratic method chain', () => {
       const socratic = new SocraticMethod('Custom topic', {
         ask: customAsk,
         answer: customAnswer,
-        logger: makeTestLogger('allows custom ask and answer functions'),
+        logger: makeLogger('allows custom ask and answer functions'),
       });
 
       const turn = await socratic.step();
