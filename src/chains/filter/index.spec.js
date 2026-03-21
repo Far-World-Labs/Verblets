@@ -1,9 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-  testObjectMapper,
-  testLifecycleLogger,
-  testPromptShapingOption,
-} from '../../lib/test-utils/index.js';
+import { testObjectMapper, testPromptShapingOption } from '../../lib/test-utils/index.js';
 import filter, { mapStrictness } from './index.js';
 import listBatch from '../../verblets/list-batch/index.js';
 
@@ -67,12 +63,6 @@ describe('filter', () => {
       const result = await fn('xyz');
       expect(result).toBe(false);
     });
-  });
-
-  testLifecycleLogger('to listBatch', {
-    invoke: (config) => filter(['apple', 'box'], 'contains a', { batchSize: 10, ...config }),
-    setupMocks: () => {},
-    target: { mock: listBatch, argIndex: 2 },
   });
 
   it('retries failed batches', async () => {

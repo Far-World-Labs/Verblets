@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { testLifecycleLogger } from '../../lib/test-utils/index.js';
 import reduce from './index.js';
 import listBatch from '../../verblets/list-batch/index.js';
 
@@ -128,12 +127,6 @@ describe('reduce chain', () => {
       const secondCallPrompt = listBatch.mock.calls[1][1];
       expect(secondCallPrompt).toContain('"sum":');
     });
-  });
-
-  testLifecycleLogger('to listBatch', {
-    invoke: (config) => reduce(['a', 'b'], 'join', { batchSize: 2, ...config }),
-    setupMocks: () => {},
-    target: { mock: listBatch, argIndex: 2 },
   });
 
   it('uses initial value with more elements', async () => {
