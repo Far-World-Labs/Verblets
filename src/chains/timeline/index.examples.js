@@ -1,6 +1,6 @@
 import { describe } from 'vitest';
 import timeline from './index.js';
-import { longTestTimeout, isFullBudget } from '../../constants/common.js'; // full: 12-18 LLM calls with enrichment
+import { longTestTimeout, isHighBudget } from '../../constants/common.js'; // full: 12-18 LLM calls with enrichment
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -11,7 +11,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const { it, expect, aiExpect } = getTestHelpers('Timeline chain');
 
-describe.skipIf(!isFullBudget)('timeline', () => {
+describe.skipIf(!isHighBudget)('timeline', () => {
   it('extracts events from simple narrative', { timeout: longTestTimeout }, async () => {
     const text = `The company was founded in early 2010 by two college roommates. 
     They secured their first major funding round in March 2012. 

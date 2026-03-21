@@ -2,7 +2,7 @@ import { describe } from 'vitest';
 import extractFeatures from './index.js';
 import map from '../map/index.js';
 import { mapInstructions as scoreMapInstructions, scoreSpec } from '../score/index.js';
-import { longTestTimeout, isStandardBudget } from '../../constants/common.js'; // standard: 5-6 LLM calls
+import { longTestTimeout, isMediumBudget } from '../../constants/common.js'; // standard: 5-6 LLM calls
 import transactions from './dummy-transactions.json';
 import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 import { getConfig } from '../test-analysis/config.js';
@@ -108,7 +108,7 @@ const NECESSITY_TAGS = [
 
 const ACTION_TAGS = ['action/keep', 'action/optimize', 'action/investigate', 'action/cuttable'];
 
-describe.skipIf(!isStandardBudget)('extract-features examples', () => {
+describe.skipIf(!isMediumBudget)('extract-features examples', () => {
   it(
     'should categorize and score financial transactions',
     { timeout: longTestTimeout },

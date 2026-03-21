@@ -1,6 +1,6 @@
 import { beforeAll, afterAll, describe } from 'vitest';
 import testAdvice from './index.js';
-import { longTestTimeout, isFullBudget } from '../../constants/common.js'; // full: 16 LLM calls per test
+import { longTestTimeout, isHighBudget } from '../../constants/common.js'; // full: 16 LLM calls per test
 import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 import fs from 'node:fs/promises';
 import os from 'node:os';
@@ -10,7 +10,7 @@ const { it, expect, aiExpect } = getTestHelpers('Test-advice chain');
 
 let testDir;
 
-describe.skipIf(!isFullBudget)('test-advice chain', () => {
+describe.skipIf(!isHighBudget)('test-advice chain', () => {
   beforeAll(async () => {
     testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'test-advice-test-'));
   });

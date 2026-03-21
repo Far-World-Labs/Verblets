@@ -1,13 +1,13 @@
 import { describe } from 'vitest';
 
 import Dismantle from './index.js';
-import { longTestTimeout, isStandardBudget } from '../../constants/common.js'; // standard: 3 LLM calls
+import { longTestTimeout, isMediumBudget } from '../../constants/common.js'; // standard: 3 LLM calls
 import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 
 const { it, expect } = getTestHelpers('Dismantle chain');
 
 describe('Dismantle chain', () => {
-  it.skipIf(!isStandardBudget)(
+  it.skipIf(!isMediumBudget)(
     '2022 Aprilia Tuono 660',
     async () => {
       const dismantleBike = new Dismantle('2022 Aprilia Tuono 660', {

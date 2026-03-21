@@ -3,7 +3,7 @@ import documentShrink from './index.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { debug } from '../../lib/debug/index.js';
-import { isStandardBudget } from '../../constants/common.js'; // standard: 2-4 LLM calls per test
+import { isMediumBudget } from '../../constants/common.js'; // standard: 2-4 LLM calls per test
 import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 
 const { it, expect, aiExpect } = getTestHelpers('Document shrink chain');
@@ -33,7 +33,7 @@ function withCacheMessage(testFn) {
   };
 }
 
-describe.skipIf(!isStandardBudget)('document-shrink examples', () => {
+describe.skipIf(!isMediumBudget)('document-shrink examples', () => {
   const samplesDir = path.join(process.cwd(), 'src/samples/txt');
 
   it(

@@ -79,7 +79,7 @@ export const ENV_VARS = {
   ARCH_DEBUG: { type: 'boolean', default: false, scope: 'test' },
 
   // ── Example / CI Flags ───────────────────────────────────────────────
-  EXAMPLE_BUDGET: { type: 'string', default: 'quick', scope: 'test' },
+  EXAMPLE_BUDGET: { type: 'string', default: 'low', scope: 'test' },
   REDIS_TEST_SKIP: { type: 'boolean', default: false, scope: 'test' },
   DEBUG_EVENTS: { type: 'boolean', default: false, scope: 'test' },
 };

@@ -1,6 +1,6 @@
 import { beforeAll, afterAll, describe } from 'vitest';
 import scanJs from './index.js';
-import { longTestTimeout, isStandardBudget } from '../../constants/common.js'; // standard: 2-3 LLM calls per test
+import { longTestTimeout, isMediumBudget } from '../../constants/common.js'; // standard: 2-3 LLM calls per test
 import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 import fs from 'node:fs/promises';
 import os from 'node:os';
@@ -10,7 +10,7 @@ let testDir;
 
 const { it, expect, aiExpect } = getTestHelpers('Scan-js chain');
 
-describe.skipIf(!isStandardBudget)('scan-js chain', () => {
+describe.skipIf(!isMediumBudget)('scan-js chain', () => {
   beforeAll(async () => {
     testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'scan-js-test-'));
   });

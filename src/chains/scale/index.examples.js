@@ -1,11 +1,11 @@
 import { describe } from 'vitest';
 import scale, { createScale, scaleSpec, applyScale } from './index.js';
-import { longTestTimeout, isStandardBudget } from '../../constants/common.js'; // standard: 2-3 LLM calls per test
+import { longTestTimeout, isMediumBudget } from '../../constants/common.js'; // standard: 2-3 LLM calls per test
 import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 
 const { it, expect, aiExpect } = getTestHelpers('Scale chain');
 
-describe.skipIf(!isStandardBudget)('scale examples', () => {
+describe.skipIf(!isMediumBudget)('scale examples', () => {
   it(
     'should handle plain numeric input',
     async () => {
@@ -266,7 +266,7 @@ Calculate: base_score * objection_multiplier = final effectiveness`;
   );
 });
 
-describe.skipIf(!isStandardBudget)('createScale examples', () => {
+describe.skipIf(!isMediumBudget)('createScale examples', () => {
   it(
     'should generate and use a consistent specification',
     { timeout: longTestTimeout },
@@ -339,7 +339,7 @@ describe.skipIf(!isStandardBudget)('createScale examples', () => {
   );
 });
 
-describe.skipIf(!isStandardBudget)('scaleSpec and applyScale examples', () => {
+describe.skipIf(!isMediumBudget)('scaleSpec and applyScale examples', () => {
   it(
     'should generate a specification and apply it separately',
     { timeout: longTestTimeout },

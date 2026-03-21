@@ -3,8 +3,8 @@ import relations, { createRelationExtractor, relationSpec, applyRelations } from
 import {
   longTestTimeout,
   extendedTestTimeout,
-  isStandardBudget,
-  isFullBudget,
+  isMediumBudget,
+  isHighBudget,
 } from '../../constants/common.js';
 import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 
@@ -30,7 +30,7 @@ const techChunks = techCompanyArticle.split('\n\n').filter((chunk) => chunk.trim
 const historyChunks = historicalNarrative.split('\n\n').filter((chunk) => chunk.trim().length > 0);
 
 // full: uses map/reduce/filter/group chains (8+ LLM calls per test)
-describe.skipIf(!isFullBudget)('relations examples', () => {
+describe.skipIf(!isHighBudget)('relations examples', () => {
   it(
     'should extract relations from tech company text',
     async () => {
@@ -277,7 +277,7 @@ describe.skipIf(!isFullBudget)('relations examples', () => {
 });
 
 // standard: 3 LLM calls
-describe.skipIf(!isStandardBudget)('createRelationExtractor examples', () => {
+describe.skipIf(!isMediumBudget)('createRelationExtractor examples', () => {
   it(
     'should create reusable extractor with entities',
     async () => {
@@ -306,7 +306,7 @@ describe.skipIf(!isStandardBudget)('createRelationExtractor examples', () => {
 });
 
 // standard: 2-3 LLM calls
-describe.skipIf(!isStandardBudget)('relationSpec and applyRelations examples', () => {
+describe.skipIf(!isMediumBudget)('relationSpec and applyRelations examples', () => {
   it(
     'should generate and apply relation specification',
     async () => {

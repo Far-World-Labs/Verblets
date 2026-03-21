@@ -24,11 +24,11 @@ export const CAPABILITY_KEYS = ['fast', 'cheap', 'good', 'reasoning', 'multi', '
 export const INTENSITY_LEVELS = ['low', 'high'];
 
 // Example test cost tiers, gated by EXAMPLE_BUDGET env var.
-// 'quick'    (default) — single-call examples only (~185 tests)
-// 'standard'          — adds multi-call chains up to ~6 LLM calls per test
-// 'full'              — all examples including 10+ call chains
+// 'low'    (default) — single-call examples only (~190 tests)
+// 'medium'           — adds multi-call chains up to ~6 LLM calls per test
+// 'high'             — all examples including 10+ call chains
 //
-// Usage: EXAMPLE_BUDGET=standard npm run examples
-export const exampleBudget = (env.EXAMPLE_BUDGET || 'quick').toLowerCase();
-export const isStandardBudget = ['standard', 'full'].includes(exampleBudget);
-export const isFullBudget = exampleBudget === 'full';
+// Usage: EXAMPLE_BUDGET=medium npm run examples
+export const exampleBudget = (env.EXAMPLE_BUDGET || 'low').toLowerCase();
+export const isMediumBudget = ['medium', 'high'].includes(exampleBudget);
+export const isHighBudget = exampleBudget === 'high';
