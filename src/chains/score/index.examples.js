@@ -41,8 +41,8 @@ describe('score examples', () => {
         })
       );
 
-      expect(bestValue).toBeDefined();
       expect(typeof bestValue).toBe('string');
+      expect(products).toContain(bestValue);
     },
     longTestTimeout
   );

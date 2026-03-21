@@ -15,6 +15,9 @@ describe('Disambiguate chain', () => {
       });
       expect(typeof result.meaning).toBe('string');
       expect(result.meaning.length).toBeGreaterThan(0);
+      await aiExpect(result.meaning).toSatisfy(
+        'describes a financial institution, not a river bank or other meaning'
+      );
     },
     longTestTimeout
   );

@@ -3,7 +3,7 @@ import find from './index.js';
 import { longTestTimeout } from '../../constants/common.js';
 import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 
-const { it, expect } = getTestHelpers('Find chain');
+const { it, expect, aiExpect } = getTestHelpers('Find chain');
 
 describe('find examples', () => {
   it(
@@ -16,7 +16,10 @@ describe('find examples', () => {
         'future tech thriller',
       ];
       const result = await find(titles, 'Which title feels most futuristic?', { batchSize: 2 });
-      expect(result).toBeDefined();
+      expect(titles).toContain(result);
+      await aiExpect(result).toSatisfy(
+        'a title that feels futuristic (space, tech, or future-related)'
+      );
     },
     longTestTimeout
   );
