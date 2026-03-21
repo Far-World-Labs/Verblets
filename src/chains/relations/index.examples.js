@@ -30,7 +30,7 @@ const techChunks = techCompanyArticle.split('\n\n').filter((chunk) => chunk.trim
 const historyChunks = historicalNarrative.split('\n\n').filter((chunk) => chunk.trim().length > 0);
 
 // full: uses map/reduce/filter/group chains (8+ LLM calls per test)
-describe.skipIf(!isHighBudget)('relations examples', () => {
+describe.skipIf(!isHighBudget)('[high] relations examples', () => {
   it(
     'should extract relations from tech company text',
     async () => {
@@ -277,7 +277,7 @@ describe.skipIf(!isHighBudget)('relations examples', () => {
 });
 
 // standard: 3 LLM calls
-describe.skipIf(!isMediumBudget)('createRelationExtractor examples', () => {
+describe.skipIf(!isMediumBudget)('[medium] createRelationExtractor examples', () => {
   it(
     'should create reusable extractor with entities',
     async () => {
@@ -306,7 +306,7 @@ describe.skipIf(!isMediumBudget)('createRelationExtractor examples', () => {
 });
 
 // standard: 2-3 LLM calls
-describe.skipIf(!isMediumBudget)('relationSpec and applyRelations examples', () => {
+describe.skipIf(!isMediumBudget)('[medium] relationSpec and applyRelations examples', () => {
   it(
     'should generate and apply relation specification',
     async () => {

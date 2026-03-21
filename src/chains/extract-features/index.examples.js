@@ -108,7 +108,7 @@ const NECESSITY_TAGS = [
 
 const ACTION_TAGS = ['action/keep', 'action/optimize', 'action/investigate', 'action/cuttable'];
 
-describe.skipIf(!isMediumBudget)('extract-features examples', () => {
+describe.skipIf(!isMediumBudget)('[medium] extract-features examples', () => {
   it(
     'should categorize and score financial transactions',
     { timeout: longTestTimeout },

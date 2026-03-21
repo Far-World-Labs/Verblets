@@ -5,7 +5,7 @@ import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 
 const { it, expect, aiExpect } = getTestHelpers('Scale chain');
 
-describe.skipIf(!isMediumBudget)('scale examples', () => {
+describe.skipIf(!isMediumBudget)('[medium] scale examples', () => {
   it(
     'should handle plain numeric input',
     async () => {
@@ -266,7 +266,7 @@ Calculate: base_score * objection_multiplier = final effectiveness`;
   );
 });
 
-describe.skipIf(!isMediumBudget)('createScale examples', () => {
+describe.skipIf(!isMediumBudget)('[medium] createScale examples', () => {
   it(
     'should generate and use a consistent specification',
     { timeout: longTestTimeout },
@@ -339,7 +339,7 @@ describe.skipIf(!isMediumBudget)('createScale examples', () => {
   );
 });
 
-describe.skipIf(!isMediumBudget)('scaleSpec and applyScale examples', () => {
+describe.skipIf(!isMediumBudget)('[medium] scaleSpec and applyScale examples', () => {
   it(
     'should generate a specification and apply it separately',
     { timeout: longTestTimeout },

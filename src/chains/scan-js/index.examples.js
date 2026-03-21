@@ -10,7 +10,7 @@ let testDir;
 
 const { it, expect, aiExpect } = getTestHelpers('Scan-js chain');
 
-describe.skipIf(!isMediumBudget)('scan-js chain', () => {
+describe.skipIf(!isMediumBudget)('[medium] scan-js chain', () => {
   beforeAll(async () => {
     testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'scan-js-test-'));
   });

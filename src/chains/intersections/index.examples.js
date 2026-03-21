@@ -5,7 +5,7 @@ import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 
 const { it, expect, aiExpect } = getTestHelpers('Intersections chain');
 
-describe.skipIf(!isHighBudget)('intersections chain examples', () => {
+describe.skipIf(!isHighBudget)('[high] intersections chain examples', () => {
   it(
     'analyzes technology categories comprehensively',
     async () => {

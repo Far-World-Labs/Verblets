@@ -33,7 +33,7 @@ function withCacheMessage(testFn) {
   };
 }
 
-describe.skipIf(!isMediumBudget)('document-shrink examples', () => {
+describe.skipIf(!isMediumBudget)('[medium] document-shrink examples', () => {
   const samplesDir = path.join(process.cwd(), 'src/samples/txt');
 
   it(

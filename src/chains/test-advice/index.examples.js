@@ -10,7 +10,7 @@ const { it, expect, aiExpect } = getTestHelpers('Test-advice chain');
 
 let testDir;
 
-describe.skipIf(!isHighBudget)('test-advice chain', () => {
+describe.skipIf(!isHighBudget)('[high] test-advice chain', () => {
   beforeAll(async () => {
     testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'test-advice-test-'));
   });

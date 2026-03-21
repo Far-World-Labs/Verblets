@@ -11,7 +11,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const { it, expect, aiExpect } = getTestHelpers('Timeline chain');
 
-describe.skipIf(!isHighBudget)('timeline', () => {
+describe.skipIf(!isHighBudget)('[high] timeline', () => {
   it('extracts events from simple narrative', { timeout: longTestTimeout }, async () => {
     const text = `The company was founded in early 2010 by two college roommates. 
     They secured their first major funding round in March 2012. 

@@ -7,7 +7,7 @@ import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 
 const { it, expect, aiExpect } = getTestHelpers('Split chain');
 
-describe.skipIf(!isMediumBudget)('split chain examples', () => {
+describe.skipIf(!isMediumBudget)('[medium] split chain examples', () => {
   const comedySet = fs.readFileSync(
     path.join(process.cwd(), 'src/samples/txt/taylor-tomlinson-10-2024.txt'),
     'utf8'
