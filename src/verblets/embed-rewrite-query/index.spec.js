@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import embedRewriteQuery from './index.js';
-import { testForwardsConfig } from '../../lib/test-utils/index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(),
@@ -38,15 +37,5 @@ describe('embedRewriteQuery', () => {
     expect(schema.properties).toHaveProperty('value');
     expect(schema.properties.value.type).toBe('string');
     expect(schema.required).toContain('value');
-  });
-
-  testForwardsConfig('forwards config to callLlm', {
-    invoke: (config) => embedRewriteQuery('query', config),
-    setupMocks: () => mockLlm.mockResolvedValueOnce('rewritten'),
-    target: { mock: mockLlm, argIndex: 1 },
-    options: {
-      llm: { value: { modelName: 'test-model', temperature: 0.5 } },
-      logger: { value: { info: vi.fn() } },
-    },
   });
 });

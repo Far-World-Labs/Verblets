@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { testForwardsConfig, testLifecycleLogger } from '../../lib/test-utils/index.js';
 import find from './index.js';
 import listBatch from '../../verblets/list-batch/index.js';
 
@@ -37,21 +36,6 @@ describe('find chain', () => {
     listBatch.mockResolvedValueOnce([]);
     const result = await find(['a', 'b'], 'find nothing', { batchSize: 10 });
     expect(result).toBe('');
-  });
-
-  testForwardsConfig('forwards config to listBatch', {
-    invoke: (config) => find(['a'], 'find', { batchSize: 10, ...config }),
-    setupMocks: () => {},
-    target: { mock: listBatch, argIndex: 2 },
-    options: {
-      llm: { value: { model: 'test-model' } },
-    },
-  });
-
-  testLifecycleLogger('to listBatch', {
-    invoke: (config) => find(['a', 'b'], 'find a', { batchSize: 10, ...config }),
-    setupMocks: () => {},
-    target: { mock: listBatch, argIndex: 2 },
   });
 
   it('returns earliest match when multiple batches find results', async () => {

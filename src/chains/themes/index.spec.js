@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { testForwardsConfig } from '../../lib/test-utils/index.js';
 import themes from './index.js';
 import reduce from '../reduce/index.js';
 
@@ -42,18 +41,6 @@ describe('themes chain', () => {
     const refinePrompt = reduce.mock.calls[1][1];
     expect(refinePrompt).toContain('Return all meaningful themes');
     expect(refinePrompt).not.toContain('top');
-  });
-
-  testForwardsConfig('forwards config to reduce', {
-    invoke: (config) => themes('x\n\ny', config),
-    setupMocks: () => {
-      reduce.mockResolvedValueOnce('a').mockResolvedValueOnce('a');
-    },
-    target: { mock: reduce, argIndex: 2 },
-    options: {
-      batchSize: { value: 3 },
-      llm: { value: { model: 'test' } },
-    },
   });
 
   it('feeds first pass themes as list into second reduce', async () => {

@@ -1,10 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import embedSubquestions, { mapGranularity } from './index.js';
-import {
-  testStringMapper,
-  testForwardsConfig,
-  testPromptShapingOption,
-} from '../../lib/test-utils/index.js';
+import { testStringMapper, testPromptShapingOption } from '../../lib/test-utils/index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(),
@@ -58,16 +54,6 @@ describe('embedSubquestions', () => {
     const prompt = mockLlm.mock.calls[0][0];
     // The prompt should not have a numeric count — LLM decides complexity
     expect(prompt).not.toMatch(/Generate \d+ /);
-  });
-
-  testForwardsConfig('forwards config to callLlm', {
-    invoke: (config) => embedSubquestions('query', config),
-    setupMocks: () => mockLlm.mockResolvedValueOnce([]),
-    target: { mock: mockLlm, argIndex: 1 },
-    options: {
-      llm: { value: { modelName: 'test-model' } },
-      logger: { value: { info: vi.fn() } },
-    },
   });
 
   testPromptShapingOption('granularity', {

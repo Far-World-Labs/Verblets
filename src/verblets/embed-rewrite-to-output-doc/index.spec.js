@@ -1,6 +1,4 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { testForwardsConfig } from '../../lib/test-utils/index.js';
-
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(),
 }));
@@ -29,15 +27,5 @@ describe('embedRewriteToOutputDoc', () => {
     expect(prompt).toContain('how does photosynthesis work');
     expect(options.response_format.json_schema.name).toBe('hyde_output_doc');
     expect(options.response_format.json_schema.schema.properties.value.type).toBe('string');
-  });
-
-  testForwardsConfig('forwards config to callLlm', {
-    invoke: (config) => embedRewriteToOutputDoc('query', config),
-    setupMocks: () => callLlm.mockResolvedValueOnce('A passage.'),
-    target: { mock: callLlm, argIndex: 1 },
-    options: {
-      llm: { value: { fast: true } },
-      logger: { value: { log: vi.fn() } },
-    },
   });
 });

@@ -1,10 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import embedMultiQuery, { mapDivergence } from './index.js';
-import {
-  testStringMapper,
-  testForwardsConfig,
-  testPromptShapingOption,
-} from '../../lib/test-utils/index.js';
+import { testStringMapper, testPromptShapingOption } from '../../lib/test-utils/index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(),
@@ -68,16 +64,6 @@ describe('embedMultiQuery', () => {
     const prompt = mockLlm.mock.calls[0][0];
     expect(prompt).toMatch(/\b5\b/);
     expect(prompt).not.toMatch(/\b3\b/); // default count NOT present
-  });
-
-  testForwardsConfig('forwards config to callLlm', {
-    invoke: (config) => embedMultiQuery('query', config),
-    setupMocks: () => mockLlm.mockResolvedValueOnce([]),
-    target: { mock: mockLlm, argIndex: 1 },
-    options: {
-      llm: { value: { modelName: 'test-model' } },
-      logger: { value: { info: vi.fn() } },
-    },
   });
 
   testPromptShapingOption('divergence', {

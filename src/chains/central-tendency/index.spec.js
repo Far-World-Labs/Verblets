@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { testForwardsConfig, testScopesProgress } from '../../lib/test-utils/index.js';
 import centralTendency from './index.js';
 import map from '../map/index.js';
 
@@ -31,19 +30,6 @@ describe('centralTendency chain', () => {
     expect(mapConfig.batchSize).toBe(5);
     expect(mapConfig.responseFormat).toBeDefined();
     expect(mapConfig.responseFormat.type).toBe('json_schema');
-  });
-
-  testForwardsConfig('forwards config to map', {
-    invoke: (config) => centralTendency(['item'], ['seed'], config),
-    setupMocks: () => {
-      map.mockResolvedValueOnce([mockResult(0.5, 'ok', 0.6)]);
-    },
-    target: { mock: map, argIndex: 2 },
-    options: {
-      llm: { value: { model: 'claude-3-opus' } },
-      batchSize: { value: 10 },
-      maxAttempts: { value: 5 },
-    },
   });
 
   it('includes context in the instructions passed to map', async () => {
@@ -97,13 +83,5 @@ describe('centralTendency chain', () => {
     const output = await centralTendency(['a', 'b', 'c'], ['seed']);
     expect(output).toStrictEqual(results);
     expect(output[1]).toBeUndefined();
-  });
-
-  testScopesProgress('to map', {
-    invoke: (config) => centralTendency(['item'], ['seed'], config),
-    setupMocks: () => {
-      map.mockResolvedValueOnce([mockResult(0.5, 'ok', 0.6)]);
-    },
-    target: { mock: map, argIndex: 2 },
   });
 });

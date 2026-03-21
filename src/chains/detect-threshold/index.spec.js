@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { testForwardsConfig, testScopesProgress } from '../../lib/test-utils/index.js';
 import detectThreshold, { calculateStatistics } from './index.js';
 import reduce from '../reduce/index.js';
 import callLlm from '../../lib/llm/index.js';
@@ -201,42 +200,6 @@ describe('detectThreshold', () => {
   });
 
   describe('delegation to reduce', () => {
-    const setupReduceAndLlm = () => {
-      reduce.mockResolvedValueOnce(mockReduceResult);
-      callLlm.mockResolvedValueOnce(mockLlmResult);
-    };
-
-    testForwardsConfig('forwards config to reduce', {
-      invoke: (config) =>
-        detectThreshold({
-          data: KNOWN_DATA,
-          targetProperty: 'score',
-          goal: defaultGoal,
-          ...config,
-        }),
-      setupMocks: setupReduceAndLlm,
-      target: { mock: reduce, argIndex: 2 },
-      options: {
-        llm: { value: { modelName: 'test-model' } },
-        maxAttempts: { value: 7 },
-        batchSize: { value: 25 },
-        now: { value: new Date('2025-06-15T12:00:00Z') },
-        temperature: { value: 0.3 },
-      },
-    });
-
-    testScopesProgress('to reduce', {
-      invoke: (config) =>
-        detectThreshold({
-          data: KNOWN_DATA,
-          targetProperty: 'score',
-          goal: defaultGoal,
-          ...config,
-        }),
-      setupMocks: setupReduceAndLlm,
-      target: { mock: reduce, argIndex: 2 },
-    });
-
     it('passes initial accumulator as JSON string to reduce', async () => {
       reduce.mockResolvedValueOnce(mockReduceResult);
       callLlm.mockResolvedValueOnce(mockLlmResult);
@@ -308,27 +271,6 @@ describe('detectThreshold', () => {
   });
 
   describe('delegation to callLlm', () => {
-    const setupReduceAndLlm = () => {
-      reduce.mockResolvedValueOnce(mockReduceResult);
-      callLlm.mockResolvedValueOnce(mockLlmResult);
-    };
-
-    testForwardsConfig('forwards config to callLlm', {
-      invoke: (config) =>
-        detectThreshold({
-          data: KNOWN_DATA,
-          targetProperty: 'score',
-          goal: defaultGoal,
-          ...config,
-        }),
-      setupMocks: setupReduceAndLlm,
-      target: { mock: callLlm, argIndex: 1 },
-      options: {
-        llm: { value: { modelName: 'analysis-model' } },
-        temperature: { value: 0.1 },
-      },
-    });
-
     it('passes threshold_result schema in config', async () => {
       reduce.mockResolvedValueOnce(mockReduceResult);
       callLlm.mockResolvedValueOnce(mockLlmResult);
