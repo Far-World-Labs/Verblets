@@ -97,8 +97,6 @@ describe('test-analysis race condition tests', () => {
 });
 
 describe('test-analysis edge cases', () => {
-  const skipIt = it.skip;
-
   it('test that completes after async delay', async () => {
     await delay(5);
 
@@ -106,8 +104,8 @@ describe('test-analysis edge cases', () => {
     expect(true).toBe(true);
   });
 
-  skipIt('skipped test should not cause race conditions', () => {
-    // This test is skipped and should be properly tracked
+  // Intentionally skipped: verifies skip tracking doesn't execute assertions
+  it.skip('skipped test should not cause race conditions', () => {
     expect(true).toBe(false);
   });
 });

@@ -1,25 +1,16 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { get, getAsync, setRuntimeProvider, validate, _resetWarnings } from './index.js';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { get, getAsync, setRuntimeProvider, validate } from './index.js';
 
 describe('config provider', () => {
-  let warnSpy;
-
   beforeEach(() => {
     vi.unstubAllEnvs();
-    _resetWarnings();
     setRuntimeProvider(undefined);
-    warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-  });
-
-  afterEach(() => {
-    warnSpy.mockRestore();
   });
 
   describe('get() defaults', () => {
     it('returns registry default when env var is unset', () => {
       // VERBLETS_TEMPERATURE has default 0
       delete process.env.VERBLETS_TEMPERATURE;
-      delete process.env.CHATGPT_TEMPERATURE;
       expect(get('VERBLETS_TEMPERATURE')).toBe(0);
     });
 
@@ -66,43 +57,7 @@ describe('config provider', () => {
 
     it('returns default for empty string env var', () => {
       vi.stubEnv('VERBLETS_TEMPERATURE', '');
-      delete process.env.CHATGPT_TEMPERATURE;
       expect(get('VERBLETS_TEMPERATURE')).toBe(0);
-    });
-  });
-
-  describe('get() deprecated alias fallback', () => {
-    it('falls back to deprecated var when canonical is unset', () => {
-      delete process.env.VERBLETS_TEMPERATURE;
-      vi.stubEnv('CHATGPT_TEMPERATURE', '0.5');
-      expect(get('VERBLETS_TEMPERATURE')).toBe(0.5);
-    });
-
-    it('emits deprecation warning on first access', () => {
-      delete process.env.VERBLETS_TEMPERATURE;
-      vi.stubEnv('CHATGPT_TEMPERATURE', '0.5');
-      get('VERBLETS_TEMPERATURE');
-      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('CHATGPT_TEMPERATURE'));
-      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('VERBLETS_TEMPERATURE'));
-    });
-
-    it('warns only once per deprecated var', () => {
-      delete process.env.VERBLETS_TEMPERATURE;
-      vi.stubEnv('CHATGPT_TEMPERATURE', '0.5');
-      get('VERBLETS_TEMPERATURE');
-      get('VERBLETS_TEMPERATURE');
-      get('VERBLETS_TEMPERATURE');
-      const deprecationCalls = warnSpy.mock.calls.filter((args) =>
-        args[0].includes('CHATGPT_TEMPERATURE')
-      );
-      expect(deprecationCalls.length).toBe(1);
-    });
-
-    it('canonical var wins over deprecated alias', () => {
-      vi.stubEnv('VERBLETS_TEMPERATURE', '0.9');
-      vi.stubEnv('CHATGPT_TEMPERATURE', '0.5');
-      expect(get('VERBLETS_TEMPERATURE')).toBe(0.9);
-      expect(warnSpy).not.toHaveBeenCalled();
     });
   });
 
@@ -113,16 +68,8 @@ describe('config provider', () => {
       expect(get('VERBLETS_TEMPERATURE')).toBe(0.9);
     });
 
-    it('force override wins over deprecated alias', () => {
-      delete process.env.VERBLETS_TEMPERATURE;
-      vi.stubEnv('CHATGPT_TEMPERATURE', '0.5');
-      vi.stubEnv('VERBLETS_FORCE_VERBLETS_TEMPERATURE', '1.0');
-      expect(get('VERBLETS_TEMPERATURE')).toBe(1.0);
-    });
-
     it('force override wins over defaults', () => {
       delete process.env.VERBLETS_CACHE_TTL;
-      delete process.env.CHATGPT_CACHE_TTL;
       vi.stubEnv('VERBLETS_FORCE_VERBLETS_CACHE_TTL', '3600');
       expect(get('VERBLETS_CACHE_TTL')).toBe(3600);
     });
@@ -131,7 +78,6 @@ describe('config provider', () => {
   describe('type coercion edge cases', () => {
     it('falls through to registry default for NaN number coercion', () => {
       vi.stubEnv('VERBLETS_TEMPERATURE', 'notanumber');
-      delete process.env.CHATGPT_TEMPERATURE;
       const result = get('VERBLETS_TEMPERATURE');
       // coerceNumber('notanumber') → undefined → falls through to registry default (0)
       expect(result).toBe(0);
@@ -161,7 +107,6 @@ describe('config provider', () => {
       const provider = { get: vi.fn().mockResolvedValue(0.42) };
       setRuntimeProvider(provider);
       delete process.env.VERBLETS_TEMPERATURE;
-      delete process.env.CHATGPT_TEMPERATURE;
       expect(await getAsync('VERBLETS_TEMPERATURE')).toBe(0.42);
       expect(provider.get).toHaveBeenCalledWith('VERBLETS_TEMPERATURE');
     });

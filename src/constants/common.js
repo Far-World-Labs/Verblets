@@ -23,7 +23,12 @@ export const CAPABILITY_KEYS = ['fast', 'cheap', 'good', 'reasoning', 'multi', '
 // Recognized intensity levels for behavioral dial options
 export const INTENSITY_LEVELS = ['low', 'high'];
 
-// Utility to conditionally skip long-running examples
-// Set ENABLE_LONG_EXAMPLES=true to run all examples
-// Set ENABLE_LONG_EXAMPLES=false or leave unset to skip long examples
-export const shouldRunLongExamples = truthyValues.includes(env.ENABLE_LONG_EXAMPLES);
+// Example test cost tiers, gated by EXAMPLE_BUDGET env var.
+// 'quick'    (default) — single-call examples only (~185 tests)
+// 'standard'          — adds multi-call chains up to ~6 LLM calls per test
+// 'full'              — all examples including 10+ call chains
+//
+// Usage: EXAMPLE_BUDGET=standard npm run examples
+export const exampleBudget = (env.EXAMPLE_BUDGET || 'quick').toLowerCase();
+export const isStandardBudget = ['standard', 'full'].includes(exampleBudget);
+export const isFullBudget = exampleBudget === 'full';

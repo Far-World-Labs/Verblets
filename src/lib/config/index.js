@@ -7,11 +7,10 @@
  *   1. Force overrides:  env vars prefixed VERBLETS_FORCE_*
  *   2. Runtime provider:  async source (future LD) — only via getAsync()
  *   3. Normal env vars:   via isomorphic env proxy
- *   4. Deprecated aliases: old CHATGPT_* names with one-shot warning
- *   5. Registry defaults:  from ENV_VARS
+ *   4. Registry defaults:  from ENV_VARS
  */
 
-import { ENV_VARS, CONSTRAINTS, DEPRECATED_VARS } from '../../constants/env-vars.js';
+import { ENV_VARS, CONSTRAINTS } from '../../constants/env-vars.js';
 import { env } from '../env/index.js';
 import { truthyValues, falsyValues } from '../../constants/common.js';
 
@@ -38,21 +37,6 @@ const coerce = {
   boolean: coerceBoolean,
 };
 
-// ── Deprecation ─────────────────────────────────────────────────────
-
-// Reverse map: canonical name → old deprecated name
-const canonicalToDeprecated = Object.fromEntries(
-  Object.entries(DEPRECATED_VARS).map(([old, canonical]) => [canonical, old])
-);
-
-const warned = new Set();
-
-function warnDeprecated(oldName, canonicalName) {
-  if (warned.has(oldName)) return;
-  warned.add(oldName);
-  console.warn(`[verblets] env var "${oldName}" is deprecated — use "${canonicalName}" instead.`);
-}
-
 // ── Sync get ─────────────────────────────────────────────────────────
 
 export function get(key) {
@@ -73,20 +57,7 @@ export function get(key) {
     if (coerced !== undefined) return coerced;
   }
 
-  // 3. Deprecated alias
-  const deprecatedName = canonicalToDeprecated[key];
-  if (deprecatedName) {
-    const depRaw = env[deprecatedName];
-    if (depRaw !== undefined && depRaw !== '') {
-      const coerced = typeFn(depRaw);
-      if (coerced !== undefined) {
-        warnDeprecated(deprecatedName, key);
-        return coerced;
-      }
-    }
-  }
-
-  // 4. Registry default
+  // 3. Registry default
   return spec?.default;
 }
 
@@ -160,10 +131,4 @@ export function validate() {
   }
 
   return errors;
-}
-
-// ── Testing helpers ──────────────────────────────────────────────────
-
-export function _resetWarnings() {
-  warned.clear();
 }

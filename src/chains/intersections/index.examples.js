@@ -1,11 +1,11 @@
 import { describe } from 'vitest';
 import intersections from './index.js';
-import { longTestTimeout, shouldRunLongExamples } from '../../constants/common.js';
+import { longTestTimeout, isFullBudget } from '../../constants/common.js'; // full: 20-40 LLM calls
 import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 
 const { it, expect, aiExpect } = getTestHelpers('Intersections chain');
 
-describe.skipIf(!shouldRunLongExamples)('intersections chain examples', () => {
+describe.skipIf(!isFullBudget)('intersections chain examples', () => {
   it(
     'analyzes technology categories comprehensively',
     async () => {

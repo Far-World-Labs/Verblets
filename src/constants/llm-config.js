@@ -2,7 +2,7 @@
  * LLM Config Constants
  *
  * Module-load-time config values read via the config provider.
- * Config provider handles deprecated CHATGPT_* fallbacks and type coercion.
+ * Config provider handles type coercion and force overrides.
  */
 
 import { get as configGet } from '../lib/config/index.js';

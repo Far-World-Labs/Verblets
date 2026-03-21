@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ENV_VARS, CONSTRAINTS, DEPRECATED_VARS, VALID_SCOPES, VALID_TYPES } from './env-vars.js';
+import { ENV_VARS, CONSTRAINTS, VALID_SCOPES, VALID_TYPES } from './env-vars.js';
 
 describe('env-vars registry', () => {
   const entries = Object.entries(ENV_VARS);
@@ -24,50 +24,6 @@ describe('env-vars registry', () => {
     const keys = entries.map(([k]) => k);
     const unique = new Set(keys);
     expect(unique.size).toBe(keys.length);
-  });
-
-  it('ENV_VARS entries have no deprecated field (managed in DEPRECATED_VARS)', () => {
-    for (const [key, spec] of entries) {
-      expect(spec.deprecated, `${key} still has deprecated field`).toBeUndefined();
-    }
-  });
-
-  it('DEPRECATED_VARS maps old names to canonical names', () => {
-    expect(DEPRECATED_VARS.CHATGPT_TEMPERATURE).toBe('VERBLETS_TEMPERATURE');
-    expect(DEPRECATED_VARS.CHATGPT_TOPP).toBe('VERBLETS_TOPP');
-    expect(DEPRECATED_VARS.CHATGPT_CACHE_TTL).toBe('VERBLETS_CACHE_TTL');
-    expect(DEPRECATED_VARS.CHATGPT_FREQUENCY_PENALTY).toBe('VERBLETS_FREQUENCY_PENALTY');
-    expect(DEPRECATED_VARS.CHATGPT_PRESENCE_PENALTY).toBe('VERBLETS_PRESENCE_PENALTY');
-    expect(DEPRECATED_VARS.CHATGPT_DEBUG_PROMPT).toBe('VERBLETS_DEBUG_PROMPT');
-    expect(DEPRECATED_VARS.CHATGPT_DEBUG_REQUEST_IF_CHANGED).toBe(
-      'VERBLETS_DEBUG_REQUEST_IF_CHANGED'
-    );
-    expect(DEPRECATED_VARS.CHATGPT_DEBUG_RESPONSE).toBe('VERBLETS_DEBUG_RESPONSE');
-    expect(DEPRECATED_VARS.CHATGPT_DEBUG_RESPONSE_IF_CHANGED).toBe(
-      'VERBLETS_DEBUG_RESPONSE_IF_CHANGED'
-    );
-  });
-
-  it('DEPRECATED_VARS has exactly 9 entries', () => {
-    expect(Object.keys(DEPRECATED_VARS).length).toBe(9);
-  });
-
-  it('no deprecated name collides with a canonical name', () => {
-    for (const oldName of Object.keys(DEPRECATED_VARS)) {
-      expect(
-        ENV_VARS[oldName],
-        `deprecated name "${oldName}" collides with canonical key`
-      ).toBeUndefined();
-    }
-  });
-
-  it('every DEPRECATED_VARS target is a canonical key', () => {
-    for (const [oldName, canonical] of Object.entries(DEPRECATED_VARS)) {
-      expect(
-        ENV_VARS[canonical],
-        `deprecated "${oldName}" maps to "${canonical}" which is not a canonical key`
-      ).toBeDefined();
-    }
   });
 
   it('credential-scoped vars have no defaults', () => {

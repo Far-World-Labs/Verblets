@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // models.js reads env vars at module scope via the env proxy, so we need
 // dynamic imports and vi.stubEnv to test different configurations.
-// These tests protect the config constants and their deprecated-name fallbacks.
+// These tests protect the config constants and their env-var defaults.
 
 describe('models.js config exports', () => {
   beforeEach(() => {
@@ -23,19 +23,6 @@ describe('models.js config exports', () => {
       vi.stubEnv('VERBLETS_CACHE_TTL', '3600');
       const { cacheTTL } = await importModels();
       expect(cacheTTL).toBe(3600);
-    });
-
-    it('falls back to CHATGPT_CACHE_TTL when VERBLETS_CACHE_TTL is unset', async () => {
-      vi.stubEnv('CHATGPT_CACHE_TTL', '7200');
-      const { cacheTTL } = await importModels();
-      expect(cacheTTL).toBe(7200);
-    });
-
-    it('VERBLETS_CACHE_TTL takes priority over CHATGPT_CACHE_TTL', async () => {
-      vi.stubEnv('VERBLETS_CACHE_TTL', '100');
-      vi.stubEnv('CHATGPT_CACHE_TTL', '200');
-      const { cacheTTL } = await importModels();
-      expect(cacheTTL).toBe(100);
     });
   });
 
@@ -69,12 +56,6 @@ describe('models.js config exports', () => {
       const { temperature } = await importModels();
       expect(temperature).toBe(0.7);
     });
-
-    it('falls back to CHATGPT_TEMPERATURE', async () => {
-      vi.stubEnv('CHATGPT_TEMPERATURE', '0.5');
-      const { temperature } = await importModels();
-      expect(temperature).toBe(0.5);
-    });
   });
 
   describe('topP', () => {
@@ -87,12 +68,6 @@ describe('models.js config exports', () => {
       vi.stubEnv('VERBLETS_TOPP', '0.9');
       const { topP } = await importModels();
       expect(topP).toBe(0.9);
-    });
-
-    it('falls back to CHATGPT_TOPP', async () => {
-      vi.stubEnv('CHATGPT_TOPP', '0.3');
-      const { topP } = await importModels();
-      expect(topP).toBe(0.3);
     });
   });
 
@@ -107,12 +82,6 @@ describe('models.js config exports', () => {
       const { frequencyPenalty } = await importModels();
       expect(frequencyPenalty).toBe(0.2);
     });
-
-    it('falls back to CHATGPT_FREQUENCY_PENALTY', async () => {
-      vi.stubEnv('CHATGPT_FREQUENCY_PENALTY', '0.1');
-      const { frequencyPenalty } = await importModels();
-      expect(frequencyPenalty).toBe(0.1);
-    });
   });
 
   describe('presencePenalty', () => {
@@ -126,12 +95,6 @@ describe('models.js config exports', () => {
       const { presencePenalty } = await importModels();
       expect(presencePenalty).toBe(0.4);
     });
-
-    it('falls back to CHATGPT_PRESENCE_PENALTY', async () => {
-      vi.stubEnv('CHATGPT_PRESENCE_PENALTY', '0.3');
-      const { presencePenalty } = await importModels();
-      expect(presencePenalty).toBe(0.3);
-    });
   });
 
   describe('debugPromptGlobally', () => {
@@ -142,12 +105,6 @@ describe('models.js config exports', () => {
 
     it('reads VERBLETS_DEBUG_PROMPT from env', async () => {
       vi.stubEnv('VERBLETS_DEBUG_PROMPT', 'true');
-      const { debugPromptGlobally } = await importModels();
-      expect(debugPromptGlobally).toBe(true);
-    });
-
-    it('falls back to CHATGPT_DEBUG_PROMPT', async () => {
-      vi.stubEnv('CHATGPT_DEBUG_PROMPT', 'true');
       const { debugPromptGlobally } = await importModels();
       expect(debugPromptGlobally).toBe(true);
     });

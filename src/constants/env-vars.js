@@ -79,26 +79,9 @@ export const ENV_VARS = {
   ARCH_DEBUG: { type: 'boolean', default: false, scope: 'test' },
 
   // ── Example / CI Flags ───────────────────────────────────────────────
-  SENSITIVITY_TEST_SKIP: { type: 'boolean', default: false, scope: 'test' },
-  ENABLE_LONG_EXAMPLES: { type: 'boolean', default: false, scope: 'test' },
+  EXAMPLE_BUDGET: { type: 'string', default: 'quick', scope: 'test' },
   REDIS_TEST_SKIP: { type: 'boolean', default: false, scope: 'test' },
   DEBUG_EVENTS: { type: 'boolean', default: false, scope: 'test' },
-};
-
-/**
- * Deprecated env var names → canonical names.
- * Old CHATGPT_* names still honoured with a one-shot console warning.
- */
-export const DEPRECATED_VARS = {
-  CHATGPT_TEMPERATURE: 'VERBLETS_TEMPERATURE',
-  CHATGPT_FREQUENCY_PENALTY: 'VERBLETS_FREQUENCY_PENALTY',
-  CHATGPT_PRESENCE_PENALTY: 'VERBLETS_PRESENCE_PENALTY',
-  CHATGPT_TOPP: 'VERBLETS_TOPP',
-  CHATGPT_CACHE_TTL: 'VERBLETS_CACHE_TTL',
-  CHATGPT_DEBUG_PROMPT: 'VERBLETS_DEBUG_PROMPT',
-  CHATGPT_DEBUG_REQUEST_IF_CHANGED: 'VERBLETS_DEBUG_REQUEST_IF_CHANGED',
-  CHATGPT_DEBUG_RESPONSE: 'VERBLETS_DEBUG_RESPONSE',
-  CHATGPT_DEBUG_RESPONSE_IF_CHANGED: 'VERBLETS_DEBUG_RESPONSE_IF_CHANGED',
 };
 
 /** Valid scopes for env var classification. */

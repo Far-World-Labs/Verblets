@@ -589,16 +589,4 @@ export function createLLMLogger(config = {}) {
   };
 }
 
-// Legacy exports for backward compatibility (deprecated)
-export const initLogger = createLLMLogger;
-export const log = (data, logger) => {
-  if (logger && typeof logger.log === 'function') {
-    return logger.log(data);
-  }
-  console.warn(
-    'LLM Logger: log() called without proper logger instance. Use createLLMLogger() and setLogger().'
-  );
-};
-
-// Default export
 export default createLLMLogger;

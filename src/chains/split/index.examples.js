@@ -2,12 +2,12 @@ import { describe } from 'vitest';
 import split from './index.js';
 import fs from 'node:fs';
 import path from 'node:path';
-import { longTestTimeout, shouldRunLongExamples } from '../../constants/common.js';
+import { longTestTimeout, isStandardBudget } from '../../constants/common.js'; // standard: 1-2 LLM calls per chunk
 import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 
 const { it, expect, aiExpect } = getTestHelpers('Split chain');
 
-describe.skipIf(!shouldRunLongExamples)('split chain examples', () => {
+describe.skipIf(!isStandardBudget)('split chain examples', () => {
   const comedySet = fs.readFileSync(
     path.join(process.cwd(), 'src/samples/txt/taylor-tomlinson-10-2024.txt'),
     'utf8'

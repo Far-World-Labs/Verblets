@@ -1,6 +1,6 @@
 import { describe } from 'vitest';
 import commonalities from './index.js';
-import { longTestTimeout, shouldRunLongExamples } from '../../constants/common.js';
+import { longTestTimeout } from '../../constants/common.js';
 import { getTestHelpers } from '../../chains/test-analysis/test-wrappers.js';
 
 //
@@ -12,7 +12,7 @@ const { it, expect, aiExpect } = getTestHelpers('commonalities');
 // Test suite
 //
 
-describe.skipIf(!shouldRunLongExamples)('commonalities verblet', () => {
+describe('commonalities verblet', () => {
   it(
     'finds shared traits between technology devices',
     async () => {
@@ -82,7 +82,7 @@ describe.skipIf(!shouldRunLongExamples)('commonalities verblet', () => {
   );
 });
 
-describe.skipIf(!shouldRunLongExamples)('commonalities examples', () => {
+describe('commonalities examples', () => {
   it(
     'finds commonalities among devices',
     async () => {
