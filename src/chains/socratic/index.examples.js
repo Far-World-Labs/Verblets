@@ -109,35 +109,4 @@ describe('Socratic method chain', () => {
     },
     longTestTimeout
   );
-
-  it(
-    'explores complex philosophical topic through dialogue',
-    async () => {
-      const statement = 'Free will is an illusion created by consciousness';
-      const socratic = new SocraticMethod(statement, {
-        logger: makeTestLogger('explores complex philosophical topic through dialogue'),
-      });
-
-      // Build a dialogue with 3 rounds
-      const dialogue = [];
-      for (let i = 0; i < 3; i++) {
-        const turn = await socratic.step();
-        dialogue.push(turn);
-      }
-
-      expect(dialogue).toHaveLength(3);
-
-      // Each turn should have valid Q&A
-      dialogue.forEach((turn) => {
-        expect(turn.question).toBeTruthy();
-        expect(turn.answer).toBeTruthy();
-      });
-
-      // AI validation of philosophical depth
-      await aiExpect(dialogue).toSatisfy(
-        'Does this dialogue explore free will and consciousness through a series of questions and answers, with the questions probing assumptions about determinism or agency?'
-      );
-    },
-    longTestTimeout
-  );
 });

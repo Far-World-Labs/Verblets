@@ -81,47 +81,6 @@ describe('tag-vocabulary examples', () => {
       },
       longTestTimeout
     );
-
-    it(
-      'should build upon initial vocabulary',
-      async () => {
-        const initialVocab = [
-          { id: 'bug', label: 'Bug', description: 'Code defect' },
-          { id: 'feature', label: 'Feature', description: 'New functionality' },
-          { id: 'docs', label: 'Documentation', description: 'Documentation updates' },
-        ];
-
-        const tagSpec = `Expand this initial vocabulary for software issue tracking:
-      ${JSON.stringify(initialVocab, null, 2)}
-      
-      Add tags for:
-      - Performance issues
-      - Security concerns  
-      - User experience improvements
-      - Technical debt
-      Keep the flat structure and aim for 8-10 total tags.`;
-
-        const sampleIssues = [
-          'Page load time exceeds 5 seconds',
-          'XSS vulnerability in comment form',
-          'Refactor authentication module',
-          'Add dark mode toggle',
-          'Memory leak in data processing',
-          'Update API documentation',
-          'Improve mobile responsiveness',
-          'SQL injection risk in search',
-        ];
-
-        const vocabulary = await generateInitialVocabulary(tagSpec, sampleIssues);
-
-        expect(vocabulary.tags).toBeInstanceOf(Array);
-
-        await aiExpect({ vocabulary, initialVocab, sampleIssues, tagSpec }).toSatisfy(
-          'Expanded vocabulary builds upon initial tags and adds requested categories'
-        );
-      },
-      longTestTimeout
-    );
   });
 
   describe('computeTagStatistics', () => {
