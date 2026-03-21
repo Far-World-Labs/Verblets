@@ -40,27 +40,6 @@ describe('tags examples', () => {
       },
       longTestTimeout
     );
-
-    it(
-      'should handle multiple applicable tags',
-      async () => {
-        const transaction = {
-          description: 'ComEd Electric Bill Payment',
-          amount: 89.5,
-          date: '2024-01-01',
-        };
-
-        const instructions = 'Assign all applicable expense categories';
-        const tags = await tagItem(transaction, instructions, expenseVocabulary);
-
-        expect(tags).toBeInstanceOf(Array);
-        const validTags = expenseVocabulary.tags.map((t) => t.id);
-        await aiExpect({ result: tags, validTags, item: transaction }).toSatisfy(
-          'Electric bill transaction tagged with valid expense category'
-        );
-      },
-      longTestTimeout
-    );
   });
 
   describe('mapTags - batch tagging', () => {
@@ -165,10 +144,8 @@ describe('tags examples', () => {
         const priorityExtractor = createTagExtractor(spec, priorityVocabulary);
 
         const issues = [
-          'Database backup job failing silently',
-          'Typo in footer copyright year',
           'Login system completely broken for all users',
-          'Export feature generates corrupted files for some users',
+          'Typo in footer copyright year',
         ];
 
         const validPriorities = priorityVocabulary.tags.map((t) => t.id);

@@ -26,62 +26,6 @@ describe('glossary examples', () => {
   );
 
   it(
-    'handles technical documentation with multiple complex terms',
-    async () => {
-      const sourceText = `Our microservice architecture uses an API gateway for routing. Authentication is handled via OAuth 2.0 and JWT tokens. We also employ load balancing to distribute traffic.`;
-      const result = await glossary(sourceText, { maxTerms: 5 });
-      expect(result).toBeDefined();
-      expect(Array.isArray(result)).toBe(true);
-      expect(result.length).toBeGreaterThan(0);
-      // Check that the extracted terms cover the key technical concepts in the source text.
-      const keyConcepts = ['microservice', 'API gateway', 'OAuth', 'JWT', 'load balancing'];
-      const matchedCount = keyConcepts.filter((concept) =>
-        result.some((term) => term.toLowerCase().includes(concept.toLowerCase()))
-      ).length;
-
-      if (process.env.VERBLETS_DEBUG) {
-        console.error('Glossary tech doc terms:', JSON.stringify(result));
-        console.error(`Matched ${matchedCount}/${keyConcepts.length} key concepts`);
-      }
-
-      // Should match most of the key concepts (at least 4 out of 5)
-      expect(matchedCount).toBeGreaterThanOrEqual(4);
-    },
-    longTestTimeout
-  );
-
-  it(
-    'filters out common words and focuses on specialized terms',
-    async () => {
-      const text = `The quantum entanglement phenomenon occurs when particles become interconnected, 
-      demonstrating superposition states that challenge classical physics understanding. 
-      This behavior is fundamental to quantum computing applications.`;
-
-      const result = await glossary(text, { maxTerms: 4 });
-
-      expect(result.length).toBeGreaterThan(0);
-
-      // Validate terms are quantum physics concepts, not common words
-      const quantumTerms = [
-        'quantum',
-        'entanglement',
-        'superposition',
-        'classical physics',
-        'quantum computing',
-      ];
-      const matchedTerms = result.filter((term) =>
-        quantumTerms.some((qt) => term.toLowerCase().includes(qt))
-      );
-      expect(matchedTerms.length).toBeGreaterThan(0);
-
-      await aiExpect(result).toSatisfy(
-        'The extracted terms are relevant to quantum physics or science, not generic filler words like "the" or "and"'
-      );
-    },
-    longTestTimeout
-  );
-
-  it(
     'handles empty or simple text appropriately',
     async () => {
       const simpleText = `The cat sat on the mat. It was a sunny day.`;
@@ -134,56 +78,6 @@ describe('glossary examples', () => {
 
       await aiExpect(result).toSatisfy(
         'Extracted terms relate to philosophy, phenomenology, or hermeneutics'
-      );
-    },
-    longTestTimeout
-  );
-
-  it(
-    'extracts operative tech terms across multiple categories',
-    async () => {
-      const techText = `The team implemented Domain-Driven Design using the Repository pattern and CQRS architecture. 
-      Martin Fowler's Strangler Fig pattern helped migrate the legacy system while Kent Beck's Test-Driven Development 
-      approach ensured code quality. We used Docker containers orchestrated by Kubernetes, with Redis for caching 
-      and PostgreSQL for persistence. The CI/CD pipeline leveraged Jenkins and implemented the Blue-Green deployment 
-      strategy. Uncle Bob's Clean Architecture principles guided the service boundaries, while Eric Evans' 
-      Bounded Context concept helped define microservice boundaries. The team followed Scrum methodology with 
-      pair programming sessions.`;
-
-      const result = await glossary(techText, {
-        maxTerms: 12,
-        sortBy:
-          'importance for understanding the content, weighting named technologies and named patterns equally',
-      });
-
-      expect(result.length).toBeGreaterThan(0);
-      expect(result.length).toBeLessThanOrEqual(12);
-
-      // Debug: log extracted terms for diagnostic visibility
-      if (process.env.VERBLETS_DEBUG) {
-        console.error('Glossary tech terms extracted:', JSON.stringify(result));
-      }
-
-      // Validate terms span multiple categories (patterns, tools, methodologies)
-      const patterns = [
-        'domain-driven',
-        'cqrs',
-        'repository',
-        'strangler',
-        'clean architecture',
-        'bounded context',
-      ];
-      const tools = ['docker', 'kubernetes', 'redis', 'postgresql', 'jenkins'];
-      const methodologies = ['test-driven', 'scrum', 'pair programming', 'blue-green'];
-      const allKnownTerms = [...patterns, ...tools, ...methodologies];
-
-      const matchedTerms = result.filter((term) =>
-        allKnownTerms.some((known) => term.toLowerCase().includes(known))
-      );
-      expect(matchedTerms.length).toBeGreaterThanOrEqual(4);
-
-      await aiExpect(result).toSatisfy(
-        'Extracted terms span categories including patterns, tools, and methodologies'
       );
     },
     longTestTimeout

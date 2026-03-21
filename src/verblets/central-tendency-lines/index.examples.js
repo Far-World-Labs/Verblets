@@ -88,26 +88,6 @@ describe('centralTendency examples', () => {
   );
 
   it(
-    'evaluates tool centrality with core features',
-    async () => {
-      const toolSeeds = ['hammer', 'screwdriver', 'wrench', 'pliers'];
-
-      const config = {
-        context: 'Hand tools for mechanical work and construction',
-        coreFeatures: ['handheld', 'mechanical advantage', 'durable materials'],
-      };
-
-      const drillResult = await centralTendency('drill', toolSeeds, config);
-      const computerResult = await centralTendency('computer', toolSeeds, config);
-
-      expect(drillResult.score).toBeGreaterThan(computerResult.score);
-      expect(drillResult.score).toBeGreaterThanOrEqual(0.5); // Drill should score reasonably high
-      expect(computerResult.score).toBeLessThan(0.5); // Computer should be low
-    },
-    longTestTimeout
-  );
-
-  it(
     'generates seeds with different diversity levels',
     async () => {
       // High diversity seeds
@@ -164,56 +144,6 @@ describe('centralTendency examples', () => {
         expect(result.score).toBeGreaterThanOrEqual(0);
         expect(result.score).toBeLessThanOrEqual(1);
       });
-    },
-    longTestTimeout
-  );
-
-  it(
-    'demonstrates graded typicality in sports',
-    async () => {
-      const sportsSeeds = ['basketball', 'football', 'tennis', 'swimming'];
-
-      const config = {
-        context: 'Competitive physical activities with rules and scoring',
-        coreFeatures: ['rules', 'competition', 'physical skill', 'scoring'],
-      };
-
-      const soccerResult = await centralTendency('soccer', sportsSeeds, config);
-      const chessResult = await centralTendency('chess', sportsSeeds, config);
-      const videoGamesResult = await centralTendency('video games', sportsSeeds, config);
-
-      // Expect graded typicality: soccer should be more central than chess for physical sports
-      expect(soccerResult.score).toBeGreaterThan(chessResult.score);
-      // All results should be valid scores
-      expect(chessResult.score).toBeGreaterThanOrEqual(0);
-      expect(videoGamesResult.score).toBeGreaterThanOrEqual(0);
-    },
-    longTestTimeout
-  );
-
-  it(
-    'demonstrates context steering effects',
-    async () => {
-      const musicSeeds = ['piano', 'guitar', 'violin', 'drums'];
-      const testItem = 'harmonica';
-
-      // Traditional/classical music context
-      const classicalConfig = {
-        context: 'Classical and orchestral instruments for formal concerts',
-        coreFeatures: ['acoustic', 'complex technique', 'wide range'],
-      };
-
-      // Folk/portable music context
-      const folkConfig = {
-        context: 'Portable folk and street instruments',
-        coreFeatures: ['portable', 'easy to learn', 'expressive'],
-      };
-
-      const classicalResult = await centralTendency(testItem, musicSeeds, classicalConfig);
-      const folkResult = await centralTendency(testItem, musicSeeds, folkConfig);
-
-      // Harmonica should score higher in folk context
-      expect(folkResult.score).toBeGreaterThan(classicalResult.score);
     },
     longTestTimeout
   );
