@@ -6,7 +6,6 @@ import { nameSchema } from './schema.js';
 const { asUndefinedByDefault, contentIsQuestion } = promptConstants;
 
 export default async function name(subject, config = {}) {
-  const { llm, ...options } = config;
   const prompt = `${contentIsQuestion} Suggest a concise, memorable name for the <subject>.\n\n${asXML(
     subject,
     {
@@ -15,7 +14,7 @@ export default async function name(subject, config = {}) {
   )} ${asUndefinedByDefault}\n\nThe value should be the suggested name.`;
 
   const response = await callLlm(prompt, {
-    llm,
+    ...config,
     response_format: {
       type: 'json_schema',
       json_schema: {
@@ -23,7 +22,6 @@ export default async function name(subject, config = {}) {
         schema: nameSchema,
       },
     },
-    ...options,
   });
 
   return response === 'undefined' ? undefined : response;

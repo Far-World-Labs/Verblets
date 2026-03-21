@@ -16,10 +16,9 @@ The value should be the generated name.`;
 };
 
 export default async function nameSimilarTo(description, exampleNames = [], config = {}) {
-  const { llm, ...options } = config;
   const prompt = buildPrompt(description, exampleNames);
   const response = await callLlm(prompt, {
-    llm,
+    ...config,
     response_format: {
       type: 'json_schema',
       json_schema: {
@@ -27,7 +26,6 @@ export default async function nameSimilarTo(description, exampleNames = [], conf
         schema: nameSimilarSchema,
       },
     },
-    ...options,
   });
   return response;
 }

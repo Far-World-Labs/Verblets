@@ -34,11 +34,11 @@ export const mapDivergence = (value) => {
  * @returns {Promise<string[]>}
  */
 export default async function embedMultiQuery(query, config = {}) {
-  const { llm, count = 3, divergence, ...options } = config;
-  const divergenceGuidance = mapDivergence(divergence);
+  const { count = 3 } = config;
+  const divergenceGuidance = mapDivergence(config.divergence);
 
   return await callLlm(multiQueryPrompt(query, count, { divergenceGuidance }), {
-    llm,
+    ...config,
     response_format: {
       type: 'json_schema',
       json_schema: {
@@ -46,6 +46,5 @@ export default async function embedMultiQuery(query, config = {}) {
         schema: embedMultiQuerySchema,
       },
     },
-    ...options,
   });
 }

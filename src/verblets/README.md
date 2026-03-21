@@ -36,15 +36,12 @@ All verblets support standard model configuration options:
 
 ```javascript
 const result = await verbletName(input, prompt, {
-  llm: {
-    modelName: 'gpt-4', // Specific model selection
-    temperature: 0.7, // Response randomness (0.0-1.0)
-    maxTokens: 500, // Maximum response length
-    topP: 0.9, // Nucleus sampling parameter
-    frequencyPenalty: 0.0, // Reduce repetition
-    presencePenalty: 0.0, // Encourage topic diversity
-  },
-  // Most verblets have minimal additional configuration
+  llm: 'fastGoodCheap', // Model selection (string shorthand, capability object, or { modelName })
+  temperature: 0.7, // Response randomness (0.0-1.0)
+  maxTokens: 500, // Maximum response length
+  topP: 0.9, // Nucleus sampling parameter
+  frequencyPenalty: 0.0, // Reduce repetition
+  presencePenalty: 0.0, // Encourage topic diversity
 });
 ```
 

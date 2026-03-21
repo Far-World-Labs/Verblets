@@ -51,8 +51,7 @@ export default async function intent(text, operations, config = {}) {
     }
   }
 
-  const { llm, tolerance, ...options } = config;
-  const toleranceGuidance = mapTolerance(tolerance);
+  const toleranceGuidance = mapTolerance(config.tolerance);
 
   const operationsText = operations
     .map((op) => {
@@ -78,9 +77,8 @@ Determine:
 Return the result as a structured JSON object with the operation name, extracted parameters, and any optional parameters that might be useful.${toleranceGuidance ? `\n\n${toleranceGuidance}` : ''}`;
 
   const response = await callLlm(prompt, {
-    llm,
+    ...config,
     response_format: responseFormat,
-    ...options,
   });
 
   return response;

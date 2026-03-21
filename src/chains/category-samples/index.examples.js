@@ -11,7 +11,6 @@ describe('Category Samples Chain', () => {
     async () => {
       const seeds = await categorySamples('fruit', {
         count: 5,
-        diversityLevel: 'balanced',
       });
 
       expect(seeds).toHaveLength(5);
@@ -32,7 +31,7 @@ describe('Category Samples Chain', () => {
       const seeds = await categorySamples('bird', {
         context: 'Common backyard birds in North America',
         count: 4,
-        diversityLevel: 'focused',
+        diversity: 'low',
       });
 
       expect(seeds).toHaveLength(4);
@@ -51,7 +50,7 @@ describe('Category Samples Chain', () => {
     async () => {
       const seeds = await categorySamples('vehicle', {
         count: 6,
-        diversityLevel: 'high',
+        diversity: 'high',
       });
 
       expect(seeds).toHaveLength(6);

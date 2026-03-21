@@ -129,8 +129,7 @@ In conclusion, both coffee and relationships benefit from patience and attention
       const query = 'coffee and relationships';
       const result = await documentShrink(sampleDocument, query, {
         targetSize: 1000,
-        maxIterations: 3,
-        aggressiveness: 0.8,
+        compression: 0.8,
       });
 
       expect(result).toHaveProperty('content');
@@ -149,7 +148,7 @@ In conclusion, both coffee and relationships benefit from patience and attention
       const query = 'making coffee for partner';
       const result = await documentShrink(sampleDocument, query, {
         targetSize: 800,
-        aggressiveness: 0.5,
+        compression: 0.5,
       });
 
       // Should contain coffee-related chunks
@@ -179,7 +178,7 @@ In conclusion, both coffee and relationships benefit from patience and attention
     it('should apply different chunk actions based on relevance', async () => {
       const result = await documentShrink(sampleDocument, 'coffee making request', {
         targetSize: 1500,
-        aggressiveness: 0.8,
+        compression: 0.8,
       });
 
       // Check that we got reduced content
@@ -191,18 +190,18 @@ In conclusion, both coffee and relationships benefit from patience and attention
       expect(result.metadata.chunks.tfIdfSelected).toBeGreaterThanOrEqual(0);
     });
 
-    it('should respect aggressiveness setting', async () => {
+    it('should respect compression setting', async () => {
       const gentleResult = await documentShrink(sampleDocument, 'relationships', {
         targetSize: 1000,
-        aggressiveness: 0.3,
+        compression: 'low',
       });
 
       const aggressiveResult = await documentShrink(sampleDocument, 'relationships', {
         targetSize: 1000,
-        aggressiveness: 0.9,
+        compression: 'high',
       });
 
-      // More aggressive should try harder to meet target
+      // Higher compression should try harder to meet target
       expect(gentleResult.metadata.finalSize).toBeGreaterThanOrEqual(0);
       expect(aggressiveResult.metadata.finalSize).toBeGreaterThanOrEqual(0);
     });
@@ -212,7 +211,6 @@ In conclusion, both coffee and relationships benefit from patience and attention
     it('should maintain document structure with XML chunks', async () => {
       const result = await documentShrink(sampleDocument, 'comedy show transcript', {
         targetSize: 2000,
-        preserveStructure: true,
       });
 
       // Verify we get structured output
@@ -237,21 +235,19 @@ In conclusion, both coffee and relationships benefit from patience and attention
   });
 
   describe('options handling', () => {
-    it('should respect maxIterations limit', async () => {
+    it('should handle custom token budget', async () => {
       const result = await documentShrink(sampleDocument, 'test query', {
         targetSize: 100, // Very small to force reduction
-        maxIterations: 2,
+        tokenBudget: 500,
       });
 
       expect(result.content.length).toBeGreaterThan(0);
-      // Should still produce some output even with iteration limit
+      // Should still produce some output even with limited budget
     });
 
     it('should handle custom chunk sizes', async () => {
       const result = await documentShrink(sampleDocument, 'relationships', {
         targetSize: 1500,
-        chunkSize: 200, // Smaller chunks
-        minChunkSize: 50,
       });
 
       expect(result).toHaveProperty('content');

@@ -64,14 +64,8 @@ describe('centralTendency chain', () => {
     await expect(centralTendency('not-array', ['seed'])).rejects.toThrow('Items must be an array');
   });
 
-  it('throws for empty seedItems', async () => {
-    await expect(centralTendency(['item'], [])).rejects.toThrow(
-      'seedItems must be a non-empty array'
-    );
-  });
-
-  it('throws for null seedItems', async () => {
-    await expect(centralTendency(['item'], null)).rejects.toThrow(
+  it.each([[], null])('throws for invalid seedItems: %j', async (seedItems) => {
+    await expect(centralTendency(['item'], seedItems)).rejects.toThrow(
       'seedItems must be a non-empty array'
     );
   });

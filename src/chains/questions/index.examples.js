@@ -35,7 +35,7 @@ const examples = [
   {
     inputs: {
       text: 'Writing a prompt toolkit for ChatGPT',
-      searchBreadth: 0.5,
+      exploration: 0.5,
     },
     want: { minLength: 10 },
   },

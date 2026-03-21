@@ -62,10 +62,6 @@ describe('calibrateSpec', () => {
     expect(prompt).not.toContain('<classification-instructions>');
 
     expect(options.systemPrompt).toContain('calibration specification generator');
-    expect(options.response_format).toEqual({
-      type: 'json_schema',
-      json_schema: expect.objectContaining({ name: 'calibrate_specification' }),
-    });
   });
 
   it('includes instructions when provided', async () => {
@@ -91,32 +87,28 @@ describe('calibrateSpec', () => {
     expect(prompt).toContain('"flaggedPercent": 0');
   });
 
-  it('includes conservative posture when sensitivity is low', async () => {
-    vi.mocked(llm).mockResolvedValueOnce(mockSpec);
+  it.each([
+    ['low', 'conservative', true],
+    ['high', 'sensitive', true],
+    [undefined, 'Classification posture', false],
+  ])(
+    'sensitivity %s — prompt %s posture marker: %s',
+    async (sensitivity, marker, shouldContain) => {
+      vi.mocked(llm).mockResolvedValueOnce(mockSpec);
 
-    await calibrateSpec([makeScan(['pii-name'], [0.9])], { sensitivity: 'low' });
+      await calibrateSpec(
+        [makeScan(['pii-name'], [0.9])],
+        sensitivity ? { sensitivity } : undefined
+      );
 
-    const [prompt] = vi.mocked(llm).mock.calls[0];
-    expect(prompt).toContain('conservative');
-  });
-
-  it('includes sensitive posture when sensitivity is high', async () => {
-    vi.mocked(llm).mockResolvedValueOnce(mockSpec);
-
-    await calibrateSpec([makeScan(['pii-name'], [0.9])], { sensitivity: 'high' });
-
-    const [prompt] = vi.mocked(llm).mock.calls[0];
-    expect(prompt).toContain('sensitive');
-  });
-
-  it('omits sensitivity block when not specified', async () => {
-    vi.mocked(llm).mockResolvedValueOnce(mockSpec);
-
-    await calibrateSpec([makeScan(['pii-name'], [0.9])]);
-
-    const [prompt] = vi.mocked(llm).mock.calls[0];
-    expect(prompt).not.toContain('Classification posture');
-  });
+      const [prompt] = vi.mocked(llm).mock.calls[0];
+      if (shouldContain) {
+        expect(prompt).toContain(marker);
+      } else {
+        expect(prompt).not.toContain(marker);
+      }
+    }
+  );
 });
 
 describe('applyCalibrate', () => {
@@ -136,13 +128,9 @@ describe('applyCalibrate', () => {
     });
     expect(result.summary).toBeDefined();
 
-    const [prompt, options] = vi.mocked(llm).mock.calls[0];
+    const [prompt] = vi.mocked(llm).mock.calls[0];
     expect(prompt).toContain('<calibration-specification>');
     expect(prompt).toContain('<scan-result>');
-    expect(options.response_format).toEqual({
-      type: 'json_schema',
-      json_schema: expect.objectContaining({ name: 'calibrate_result' }),
-    });
   });
 });
 

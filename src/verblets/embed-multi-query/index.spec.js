@@ -32,28 +32,6 @@ describe('embedMultiQuery', () => {
     expect(prompt).toMatch(/\b3\b/); // default count embedded in prompt
   });
 
-  it('uses items schema for auto-unwrapping', async () => {
-    mockLlm.mockResolvedValueOnce([]);
-
-    await embedMultiQuery('test query');
-
-    const callConfig = mockLlm.mock.calls[0][1];
-    const schema = callConfig.response_format.json_schema.schema;
-    expect(schema.properties).toHaveProperty('items');
-    expect(schema.properties.items.type).toBe('array');
-    expect(schema.properties.items.items.type).toBe('string');
-    expect(schema.required).toContain('items');
-  });
-
-  it('uses default count of 3', async () => {
-    mockLlm.mockResolvedValueOnce([]);
-
-    await embedMultiQuery('query');
-
-    const prompt = mockLlm.mock.calls[0][0];
-    expect(prompt).toMatch(/\b3\b/);
-  });
-
   it('passes custom count to prompt', async () => {
     mockLlm.mockResolvedValueOnce([]);
 

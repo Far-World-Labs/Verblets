@@ -30,7 +30,7 @@ import { mapAdvice } from '../../chains/expect/index.js';
 import { mapThoroughness as mapDocShrinkThoroughness } from '../../chains/document-shrink/index.js';
 
 // --- Numeric mappers (low/med/high → number, undefined → default, raw number → passthrough) ---
-import { mapAggression } from '../../chains/truncate/index.js';
+import { mapStrictness as mapTruncateStrictness } from '../../chains/truncate/index.js';
 import { mapDetection } from '../../chains/probe-scan/index.js';
 import { mapSummaryDetail } from '../../chains/summary-map/index.js';
 import { mapExploration } from '../../chains/questions/index.js';
@@ -68,7 +68,7 @@ const objectMappers = [
 ];
 
 const numericMappers = [
-  ['mapAggression', mapAggression, 'desc'],
+  ['mapTruncateStrictness', mapTruncateStrictness, 'asc'],
   ['mapDetection', mapDetection, 'desc'],
   ['mapSummaryDetail', mapSummaryDetail, 'desc'],
   ['mapExploration', mapExploration, 'asc'],

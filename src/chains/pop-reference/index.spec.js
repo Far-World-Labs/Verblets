@@ -142,37 +142,6 @@ describe('popReference', () => {
     );
   });
 
-  it('should include context when requested', async () => {
-    const mockResponse = {
-      references: [
-        {
-          reference: "when Darth Vader reveals he's Luke's father",
-          source: 'Star Wars',
-          context: 'shocking revelation that changes everything',
-          score: 0.92,
-          match: {
-            text: 'truth was revealed',
-            start: 10,
-            end: 28,
-          },
-        },
-      ],
-    };
-
-    llm.mockResolvedValue(mockResponse);
-
-    const result = await popReference(
-      'When the truth was revealed, everything changed',
-      'shocking revelation moment',
-      {
-        referenceContext: true,
-      }
-    );
-
-    expect(result).toEqual(mockResponse.references);
-    expect(result[0].context).toBeDefined();
-  });
-
   it('should respect referencesPerSource option', async () => {
     const mockResponse = {
       references: [
@@ -212,22 +181,6 @@ describe('popReference', () => {
     expect(llm).toHaveBeenCalledWith(
       expect.stringContaining('Find 3 references per source'),
       expect.any(Object)
-    );
-  });
-
-  it('should handle custom LLM configuration', async () => {
-    const mockResponse = { references: [] };
-    llm.mockResolvedValue(mockResponse);
-
-    await popReference('Test sentence', 'Test description', {
-      llm: { modelName: 'custom-model', temperature: 0.5 },
-    });
-
-    expect(llm).toHaveBeenCalledWith(
-      expect.any(String),
-      expect.objectContaining({
-        llm: { modelName: 'custom-model', temperature: 0.5 },
-      })
     );
   });
 

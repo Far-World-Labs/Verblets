@@ -47,11 +47,6 @@ describe('filter', () => {
   });
 
   describe('filter.with', () => {
-    it('returns a function', () => {
-      const fn = filter.with('contains letter a');
-      expect(typeof fn).toBe('function');
-    });
-
     it('returns true for matching items', async () => {
       const fn = filter.with('contains letter a');
       const result = await fn('apple');

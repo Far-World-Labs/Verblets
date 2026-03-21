@@ -206,7 +206,7 @@ describe.skipIf(!shouldRunLongExamples)('timeline', () => {
     // Then with enrichment - use smaller batch size to test batching
     const enrichedResult = await timeline(text, {
       chunkSize: 5000,
-      enrichWithKnowledge: true,
+      enrichment: 'high',
       batchSize: 2, // Process 2 events per batch to test batching
     });
 

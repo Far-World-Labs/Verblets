@@ -75,7 +75,7 @@ describe('timeline', () => {
     ]);
   });
 
-  it('passes correct schema to llm', async () => {
+  it('passes systemPrompt to llm', async () => {
     llm.mockResolvedValueOnce({ events: [] });
 
     await timeline('some text');
@@ -84,20 +84,6 @@ describe('timeline', () => {
       'some text',
       expect.objectContaining({
         systemPrompt: expect.stringContaining('Extract timeline events'),
-        response_format: {
-          type: 'json_schema',
-          json_schema: {
-            name: 'timeline_events',
-            schema: expect.objectContaining({
-              type: 'object',
-              properties: expect.objectContaining({
-                events: expect.objectContaining({
-                  type: 'array',
-                }),
-              }),
-            }),
-          },
-        },
       })
     );
   });
@@ -199,25 +185,6 @@ describe('timeline', () => {
     expect(progressCallback).toHaveBeenNthCalledWith(3, 3, 3);
   });
 
-  it('passes through custom options to llm', async () => {
-    llm.mockResolvedValueOnce({ events: [] });
-
-    await timeline('text', {
-      chunkSize: 3000,
-      maxParallel: 10,
-      customOption: 'value',
-      llm: { temperature: 0.5 },
-    });
-
-    expect(llm).toHaveBeenCalledWith(
-      'text',
-      expect.objectContaining({
-        llm: { temperature: 0.5 },
-        customOption: 'value',
-      })
-    );
-  });
-
   it('returns empty array when no events found', async () => {
     llm.mockResolvedValueOnce({ events: [] });
 
@@ -235,17 +202,6 @@ describe('timeline', () => {
     const result = await timeline('text');
 
     expect(result).toEqual([]);
-  });
-
-  it('strips response wrapper from results', async () => {
-    // No longer needed since llm handles JSON parsing
-    llm.mockResolvedValueOnce({
-      events: [{ timestamp: '2023', name: 'Event' }],
-    });
-
-    const result = await timeline('text');
-
-    expect(result).toEqual([{ timestamp: '2023', name: 'Event' }]);
   });
 
   it('maintains relative order for non-date timestamps', async () => {

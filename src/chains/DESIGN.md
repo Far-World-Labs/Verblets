@@ -34,12 +34,12 @@ Each chain directory contains:
 
 ## Config System
 
-Every chain participates in the config resolution system. The pattern is:
+Every chain participates in the config resolution system via `initChain`:
 
 ```javascript
 import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
-import { getOptions, withPolicy, scopeOperation } from '../../lib/context/option.js';
+import { initChain, withPolicy } from '../../lib/context/option.js';
 
 export const mapEffort = (value) => {
   if (value === undefined) return { iterations: 1, extremeK: 10 };
@@ -51,8 +51,7 @@ export const mapEffort = (value) => {
 };
 
 export default async function myChain(items, inputConfig = {}) {
-  const config = scopeOperation('my-chain', inputConfig);
-  const { iterations, extremeK } = await getOptions(config, {
+  const { config, iterations, extremeK } = await initChain('my-chain', inputConfig, {
     effort: withPolicy(mapEffort, ['iterations', 'extremeK']),
   });
 
@@ -68,11 +67,10 @@ export default async function myChain(items, inputConfig = {}) {
 
 ### Key principles
 
-- **`scopeOperation(name, config)`** scopes the config to this chain. Composes hierarchically (`'parent/child'`). Defaults `now` to `new Date()`.
-- **`getOptions(config, spec)`** batch-resolves options. Spec entries are either plain fallbacks or `withPolicy(mapperFn, overrides?)`.
+- **`initChain(name, config, spec)`** combines `scopeOperation` + `getOptions` in one call. Returns `{ config, ...resolvedOptions }`.
 - **`withPolicy` override keys** flatten sub-properties into the result. `withPolicy(mapEffort, ['iterations', 'extremeK'])` makes each sub-key individually overridable by the consumer.
 - **Config flows through directly** — pass `config` to `callLlm`, `retry`, and sub-chain calls. No need to extract and re-pass `llm`, `onProgress`, `abortSignal`, or retry params.
-- **`callLlm` resolves `llm` from config** — chains with non-standard model defaults set them on `scopeOperation`: `scopeOperation('name', { llm: 'fastGoodCheap', ...inputConfig })`.
+- **`callLlm` resolves `llm` from config** — chains with non-standard model defaults set them in `initChain`: `initChain('name', { llm: 'fastGoodCheap', ...inputConfig }, spec)`.
 - **`retry` is config-aware** — resolves `maxAttempts`, `retryDelay`, `retryOnAll` from config via `getOption`. Pass `{ label, config }` instead of explicit retry params.
 
 ### Model Configuration
@@ -103,55 +101,35 @@ Requirements:
 ${onlyJSON}`;
 ```
 
-### Batch Processing Strategies
+### Batch Processing with Progress Tracking
 
-Chains must decide how to process multiple items efficiently:
+Use `prepareBatches` to combine batching, progress tracking, and config resolution:
 
 ```javascript
-import { createBatches } from '../../lib/text-batch/index.js';
+import { prepareBatches } from '../../lib/progress-callback/index.js';
 import parallel from '../../lib/parallel-batch/index.js';
 
 export default async function myChain(items, inputConfig = {}) {
-  const config = scopeOperation('my-chain', inputConfig);
-  const { batchSize } = await getOptions(config, { batchSize: 5 });
+  const { config, progressMode } = await initChain('my-chain', inputConfig, {
+    progressMode: 'batch',
+  });
 
-  const batches = createBatches(items, { batchSize });
+  const { batches, tracker } = await prepareBatches('my-chain', items, config, { progressMode });
   const results = await parallel(batches, async (batch) => {
-    return retry(
-      () => callLlm(buildPrompt(batch), config),
+    const result = await retry(
+      () => callLlm(buildPrompt(batch.items), config),
       { label: 'my-chain:batch', config }
     );
+    tracker.batchDone(batch.items.length);
+    return result;
   }, { maxParallel: config.maxParallel ?? 3 });
 
+  tracker.complete();
   return results.flat();
 }
 ```
 
-### Progress Tracking and Callbacks
-
-Long-running chains should provide progress feedback via `batchTracker`:
-
-```javascript
-import { emitBatchStart, emitBatchDone, emitComplete } from '../../lib/progress-callback/index.js';
-
-async function myChain(items, inputConfig = {}) {
-  const config = scopeOperation('my-chain', inputConfig);
-
-  emitBatchStart(config.onProgress, 'my-chain', items.length, { now: config.now });
-
-  await parallel(batches, async (batch, i) => {
-    await retry(
-      () => callLlm(buildPrompt(batch), config),
-      { label: 'my-chain:batch', config }
-    );
-    emitBatchDone(config.onProgress, 'my-chain', i, batch.length);
-  }, { maxParallel: config.maxParallel ?? 3 });
-
-  emitComplete(config.onProgress, 'my-chain');
-}
-```
-
-`onProgress` is read directly from config — no need to destructure or forward it.
+`prepareBatches` handles `createBatches` + `batchTracker` + `start` in one call. The tracker manages counters and emits progress events to `config.onProgress`.
 
 ### Scoping Progress for Nested Chains
 
@@ -181,12 +159,11 @@ Chains need sophisticated error recovery:
 
 ```javascript
 async function processWithFailureHandling(items, inputConfig = {}) {
-  const config = scopeOperation('my-chain', inputConfig);
-  const { errorPosture } = await getOptions(config, {
-    strictness: withPolicy(mapStrictness),
+  const { config, errorPosture } = await initChain('my-chain', inputConfig, {
+    strictness: withPolicy(mapStrictness, ['errorPosture']),
   });
-  const ep = await getOption('errorPosture', config, errorPosture);
 
+  const results = [];
   for (const item of items) {
     try {
       const result = await retry(
@@ -195,7 +172,7 @@ async function processWithFailureHandling(items, inputConfig = {}) {
       );
       results.push(result);
     } catch (error) {
-      if (ep === 'strict') throw error;
+      if (errorPosture === 'strict') throw error;
       results.push(undefined);
     }
   }
@@ -242,7 +219,7 @@ export const mapEffort = (value) => { /* ... */ };
 /**
  * Process items using AI-powered workflow
  * @param {Array} items - Items to process
- * @param {Object} [config] - Configuration (passed to scopeOperation)
+ * @param {Object} [config] - Configuration (passed to initChain)
  * @returns {Promise<Array>} Processed results
  */
 export default async function chainName(items, config = {}) {

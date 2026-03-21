@@ -114,7 +114,7 @@ describe('centralTendency examples', () => {
       const highDiversitySeeds = await categorySamples('animal', {
         context: 'Diverse animal kingdom representation across phyla',
         count: 6,
-        diversityLevel: 'high',
+        diversity: 'high',
       });
 
       expect(Array.isArray(highDiversitySeeds)).toBe(true);
@@ -125,7 +125,7 @@ describe('centralTendency examples', () => {
       const focusedSeeds = await categorySamples('bird', {
         context: 'Common backyard birds',
         count: 5,
-        diversityLevel: 'focused',
+        diversity: 'low',
       });
 
       expect(Array.isArray(focusedSeeds)).toBe(true);

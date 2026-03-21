@@ -37,11 +37,11 @@ export const mapAbstraction = (value) => {
  * @returns {Promise<string[]>}
  */
 export default async function embedStepBack(query, config = {}) {
-  const { llm, count = 3, abstraction, ...options } = config;
-  const abstractionGuidance = mapAbstraction(abstraction);
+  const { count = 3 } = config;
+  const abstractionGuidance = mapAbstraction(config.abstraction);
 
   return await callLlm(stepBackPrompt(query, count, { abstractionGuidance }), {
-    llm,
+    ...config,
     response_format: {
       type: 'json_schema',
       json_schema: {
@@ -49,6 +49,5 @@ export default async function embedStepBack(query, config = {}) {
         schema: embedStepBackSchema,
       },
     },
-    ...options,
   });
 }

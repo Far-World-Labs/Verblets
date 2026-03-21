@@ -86,7 +86,7 @@ const examples = [
     name: 'Model options and sensitivity',
     inputs: {
       targetTokens: 50,
-      modelOptions: { modelName: 'fastGood' },
+      llm: 'fastGood',
       keys: [
         {
           key: 'example.text',
@@ -111,7 +111,7 @@ describe('Summary map', () => {
       vi.clearAllMocks();
       const map = new SummaryMap({
         targetTokens: example.inputs.targetTokens,
-        ...(example.inputs.modelOptions && { modelOptions: example.inputs.modelOptions }),
+        ...(example.inputs.llm && { llm: example.inputs.llm }),
       });
 
       for (const input of example.inputs.keys) {

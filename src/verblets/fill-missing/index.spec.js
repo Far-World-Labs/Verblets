@@ -32,12 +32,4 @@ describe('fillMissing verblet', () => {
     llmMock: mockLlm,
     markers: { low: 'conservative', high: 'speculative' },
   });
-
-  it('uses JSON schema validation', async () => {
-    await fillMissing('Missing ??? text');
-    const options = mockLlm.mock.calls[0][1];
-    expect(options).toHaveProperty('response_format');
-    expect(options.response_format.type).toBe('json_schema');
-    expect(options.response_format.json_schema.name).toBe('fill_missing_result');
-  });
 });

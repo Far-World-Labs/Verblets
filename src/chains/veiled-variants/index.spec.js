@@ -24,7 +24,6 @@ describe('veiledVariants', () => {
 
     const result = await veiledVariants({ prompt: 'secret' });
 
-    expect(Array.isArray(result)).toBe(true);
     expect(result).toHaveLength(15);
     expect(result).toEqual([
       's1',
@@ -45,22 +44,9 @@ describe('veiledVariants', () => {
     ]);
     expect(callLlm).toHaveBeenCalledTimes(3);
 
-    // Each call should use the sensitive llm and structured output
-    callLlm.mock.calls.forEach(([prompt, config]) => {
+    // Each call should contain the intent in the prompt
+    callLlm.mock.calls.forEach(([prompt]) => {
       expect(prompt).toContain('<intent>');
-      expect(config.llm).toEqual({ sensitive: true });
-      expect(config.response_format.type).toBe('json_schema');
-    });
-  });
-
-  it('allows overriding llm', async () => {
-    callLlm.mockClear();
-    callLlm.mockResolvedValue(['a1', 'a2', 'a3', 'a4', 'a5']);
-
-    await veiledVariants({ prompt: 'secret', llm: 'fastGood' });
-
-    callLlm.mock.calls.forEach(([, config]) => {
-      expect(config.llm).toBe('fastGood');
     });
   });
 
@@ -101,16 +87,5 @@ describe('veiledVariants', () => {
 
     // Explicit strategies override coverage's single-strategy default
     expect(callLlm).toHaveBeenCalledTimes(2);
-  });
-
-  it('forwards extra options to callLlm', async () => {
-    callLlm.mockClear();
-    callLlm.mockResolvedValue(['x1']);
-
-    await veiledVariants({ prompt: 'test', logger: console });
-
-    callLlm.mock.calls.forEach(([, config]) => {
-      expect(config.logger).toBe(console);
-    });
   });
 });

@@ -40,13 +40,11 @@ export const buildPrompt = (text, { creativityGuidance } = {}) =>
   `"candidate", and "confidence".${creativityGuidance ? `\n\n${creativityGuidance}` : ''}`;
 
 export default async function fillMissing(text, config = {}) {
-  const { llm, creativity, ...options } = config;
-  const creativityGuidance = mapCreativity(creativity);
+  const creativityGuidance = mapCreativity(config.creativity);
   const prompt = buildPrompt(text, { creativityGuidance });
   const response = await callLlm(prompt, {
-    llm,
+    ...config,
     response_format: responseFormat,
-    ...options,
   });
   return response;
 }

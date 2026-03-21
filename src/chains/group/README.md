@@ -33,6 +33,7 @@ const organized = await group(tasks, 'organize by work type');
 - `config` (Object): Configuration options
   - `batchSize` (number): Items per batch (auto-calculated from model context window)
   - `maxParallel` (number): Maximum parallel batch processing (default: 3)
+  - `granularity` (`'low'`|`'high'`): Controls category discovery breadth. `'low'` prefers fewer, broader categories with aggressive merging (topN 5). `'high'` preserves finer-grained distinctions between items (topN 20). Default: no guidance, no topN limit
   - `topN` (number): Limit to top N groups by size
   - `categoryPrompt` (string): Custom category refinement guidelines
   - `maxAttempts` (number): Retry attempts per LLM call (default: 3)
@@ -42,21 +43,3 @@ const organized = await group(tasks, 'organize by work type');
 
 **Returns:** Promise<Object> - Object with group names as keys and arrays of items as values
 
-## Use Cases
-
-### Content Organization
-```javascript
-import group from './index.js';
-
-const articles = [
-  'How to secure your database',
-  'Best practices for UI design',
-  'Understanding machine learning basics',
-  'CSS grid layout tutorial',
-  'Introduction to neural networks',
-  'SQL injection prevention guide'
-];
-
-const categories = await group(articles, 'group by technical domain');
-// Returns organized articles by programming area
-```

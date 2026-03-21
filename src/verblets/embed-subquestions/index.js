@@ -36,11 +36,10 @@ export const mapGranularity = (value) => {
  * @returns {Promise<string[]>}
  */
 export default async function embedSubquestions(query, config = {}) {
-  const { llm, granularity, ...options } = config;
-  const granularityGuidance = mapGranularity(granularity);
+  const granularityGuidance = mapGranularity(config.granularity);
 
   return await callLlm(decomposeQueryPrompt(query, { granularityGuidance }), {
-    llm,
+    ...config,
     response_format: {
       type: 'json_schema',
       json_schema: {
@@ -48,6 +47,5 @@ export default async function embedSubquestions(query, config = {}) {
         schema: embedSubquestionsSchema,
       },
     },
-    ...options,
   });
 }

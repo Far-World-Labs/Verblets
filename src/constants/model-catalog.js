@@ -132,7 +132,6 @@ export const catalog = {
       return configGet('OPENWEBUI_API_KEY');
     },
     systemPrompt,
-    modelOptions: {},
   },
   'gemma3:4b-it-qat': {
     provider: 'openwebui',
@@ -149,7 +148,6 @@ export const catalog = {
       return configGet('OPENWEBUI_API_KEY');
     },
     systemPrompt,
-    modelOptions: {},
   },
   'qwen3:8b': {
     provider: 'openwebui',
@@ -166,7 +164,6 @@ export const catalog = {
       return configGet('OPENWEBUI_API_KEY');
     },
     systemPrompt,
-    modelOptions: {},
   },
   'qwen3.5:4b': {
     provider: 'openwebui',
@@ -183,7 +180,6 @@ export const catalog = {
       return configGet('OPENWEBUI_API_KEY');
     },
     systemPrompt,
-    modelOptions: {},
   },
   'qwen3.5:2b': {
     provider: 'openwebui',
@@ -200,6 +196,5 @@ export const catalog = {
       return configGet('OPENWEBUI_API_KEY');
     },
     systemPrompt,
-    modelOptions: {},
   },
 };

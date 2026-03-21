@@ -61,12 +61,10 @@ export default async function commonalities(items, config = {}) {
     return [];
   }
 
-  const { llm, depth, ...options } = config;
-  const depthGuidance = mapDepth(depth);
-  const output = await callLlm(buildPrompt(items, { ...options, depthGuidance }), {
-    llm,
+  const depthGuidance = mapDepth(config.depth);
+  const output = await callLlm(buildPrompt(items, { ...config, depthGuidance }), {
+    ...config,
     response_format: responseFormat,
-    ...options,
   });
 
   const resultArray = output?.items || output;

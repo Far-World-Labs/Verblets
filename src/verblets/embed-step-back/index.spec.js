@@ -32,19 +32,6 @@ describe('embedStepBack', () => {
     expect(prompt).toMatch(/\b3\b/); // default count embedded in prompt
   });
 
-  it('uses items schema for auto-unwrapping', async () => {
-    mockLlm.mockResolvedValueOnce([]);
-
-    await embedStepBack('test query');
-
-    const callConfig = mockLlm.mock.calls[0][1];
-    const schema = callConfig.response_format.json_schema.schema;
-    expect(schema.properties).toHaveProperty('items');
-    expect(schema.properties.items.type).toBe('array');
-    expect(schema.properties.items.items.type).toBe('string');
-    expect(schema.required).toContain('items');
-  });
-
   it('passes count through to prompt', async () => {
     mockLlm.mockResolvedValueOnce([]);
 

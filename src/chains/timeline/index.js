@@ -18,7 +18,7 @@ const DEFAULT_ENRICHMENT = { llmDedup: true, knowledgeBase: false, enrichMap: fa
  * Coordinates three phase gates in the timeline pipeline.
  * low: extraction + deterministic merge only — no LLM dedup, no knowledge enrichment. Cheapest.
  * high: full pipeline — LLM dedup + knowledge base building + enrichment mapping. Richest output.
- * Default: extraction + LLM dedup (current behavior without enrichWithKnowledge).
+ * Default: extraction + LLM dedup only.
  * @param {string|object|undefined} value
  * @returns {{ llmDedup: boolean, knowledgeBase: boolean, enrichMap: boolean }}
  */
@@ -106,8 +106,8 @@ async function extractFromChunk(chunk, options = {}) {
  * @param {number} [config.chunkSize=2000] - Size of text chunks
  * @param {number} [config.maxParallel=3] - Maximum parallel processing
  * @param {Function} [config.onProgress] - Progress callback
- * @param {Object} [config.llm] - LLM configuration
- * @param {boolean} [config.enrichWithKnowledge=false] - Enrich dates with LLM knowledge
+ * @param {string|Object} [config.llm] - LLM configuration
+ * @param {string|Object} [config.enrichment] - Controls post-extraction phases ('low'|'high' or object with {llmDedup, knowledgeBase, enrichMap})
  * @param {number} [config.batchSize] - Batch size for reduce/map operations when enriching (auto-calculated if not provided)
  * @returns {Promise<Array>} Array of timeline events with {timestamp, name}
  */

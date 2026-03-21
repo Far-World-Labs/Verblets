@@ -28,17 +28,13 @@ All chains support standard model configuration options:
 
 ```javascript
 const result = await chainName(input, instructions, {
-  llm: {
-    modelName: 'gpt-4', // Specific model selection
-    temperature: 0.7, // Response randomness (0.0-1.0)
-    maxTokens: 1000, // Maximum response length
-    topP: 0.9, // Nucleus sampling parameter
-    frequencyPenalty: 0.0, // Reduce repetition
-    presencePenalty: 0.0, // Encourage topic diversity
-  },
-  // Chain-specific configuration options vary by chain
-  maxAttempts: 3, // Common retry configuration
-  timeout: 30000, // Common timeout configuration
+  llm: 'fastGoodCheap', // Model selection (string shorthand, capability object, or { modelName })
+  temperature: 0.7, // Response randomness (0.0-1.0)
+  maxTokens: 1000, // Maximum response length
+  topP: 0.9, // Nucleus sampling parameter
+  frequencyPenalty: 0.0, // Reduce repetition
+  presencePenalty: 0.0, // Encourage topic diversity
+  maxAttempts: 3, // Retry configuration (resolved by retry from config)
 });
 ```
 

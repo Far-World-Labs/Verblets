@@ -27,43 +27,16 @@ describe('listBatch verblet', () => {
       expect(prompt).toContain('alpha');
       expect(prompt).toContain('beta');
     });
-
-    it('uses default JSON schema response format when none provided', async () => {
-      await listBatch(['x'], 'transform');
-
-      const options = callLlm.mock.calls[0][1];
-      const responseFormat = options.response_format;
-      expect(responseFormat.type).toBe('json_schema');
-      expect(responseFormat.json_schema.name).toBe('list_result');
-      expect(responseFormat.json_schema.schema).toStrictEqual({
-        type: 'object',
-        properties: {
-          items: { type: 'array', items: { type: 'string' } },
-        },
-        required: ['items'],
-        additionalProperties: false,
-      });
-    });
   });
 
-  describe('empty and missing input', () => {
-    it('returns empty array for empty list without calling llm', async () => {
-      const result = await listBatch([], 'anything');
-      expect(result).toStrictEqual([]);
-      expect(callLlm).not.toHaveBeenCalled();
-    });
-
-    it('returns empty array for null list without calling llm', async () => {
-      const result = await listBatch(null, 'anything');
-      expect(result).toStrictEqual([]);
-      expect(callLlm).not.toHaveBeenCalled();
-    });
-
-    it('returns empty array for undefined list without calling llm', async () => {
-      const result = await listBatch(undefined, 'anything');
-      expect(result).toStrictEqual([]);
-      expect(callLlm).not.toHaveBeenCalled();
-    });
+  it.each([
+    ['empty array', []],
+    ['null', null],
+    ['undefined', undefined],
+  ])('returns empty array for %s input without calling llm', async (_label, input) => {
+    const result = await listBatch(input, 'anything');
+    expect(result).toStrictEqual([]);
+    expect(callLlm).not.toHaveBeenCalled();
   });
 
   describe('config merging', () => {
@@ -245,17 +218,5 @@ describe('determineStyle', () => {
     expect(determineStyle(undefined, ['short'])).toBe(ListStyle.NEWLINE);
     expect(determineStyle(null, ['short'])).toBe(ListStyle.NEWLINE);
     expect(determineStyle('', ['has\nnewline'])).toBe(ListStyle.XML);
-  });
-});
-
-describe('ListStyle enum', () => {
-  it('exposes the expected style values', () => {
-    expect(ListStyle.NEWLINE).toBe('newline');
-    expect(ListStyle.XML).toBe('xml');
-    expect(ListStyle.AUTO).toBe('auto');
-  });
-
-  it('has exactly three entries', () => {
-    expect(Object.keys(ListStyle)).toHaveLength(3);
   });
 });

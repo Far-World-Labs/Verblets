@@ -36,8 +36,7 @@ const story = await join(chapters, 'Merge these chapters into a flowing narrativ
 - `fragments` (Array): Text fragments to merge together
 - `prompt` (string): Instructions for how to merge the fragments
 - `config` (Object): Configuration options
-  - `windowSize` (number): Size of overlapping windows (default: 5)
-  - `overlapPercent` (number): Percentage of overlap between windows (default: 50)
+  - `fidelity` (`'low'`|`'high'`|Object): Coordinates window size and overlap. `'low'` uses larger windows with less overlap (10/25%). `'high'` uses smaller windows with more overlap (3/67%). Default: 5 windows, 50% overlap
   - `styleHint` (string): Optional additional style guidance
   - `maxAttempts` (number): Maximum retry attempts (default: 3)
   - `llm` (string|Object): LLM model options

@@ -11,7 +11,6 @@ const {
 } = promptConstants;
 
 export default async (text, config = {}) => {
-  const { llm, ...options } = config;
   const numberText = `${contentIsQuestion} ${text}
 
 ${explainAndSeparate} ${explainAndSeparatePrimitive}
@@ -21,7 +20,7 @@ ${asNumber} ${asUndefinedByDefault}
 The value should be the number or "undefined".`;
 
   const result = await callLlm(numberText, {
-    llm,
+    ...config,
     response_format: {
       type: 'json_schema',
       json_schema: {
@@ -29,7 +28,6 @@ The value should be the number or "undefined".`;
         schema: numberSchema,
       },
     },
-    ...options,
   });
 
   return result === 'undefined' ? undefined : result;

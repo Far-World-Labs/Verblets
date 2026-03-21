@@ -1,28 +1,21 @@
 # number
 
-Convert a block of text to a single number using AI-powered extraction and interpretation.
-
-## Usage
+Extract a single number from natural language text.
 
 ```javascript
-const quantity = await number('I need about three dozen eggs');
-// 36
+import number from '@anthropic/verblets/verblets/number';
+
+await number('The recipe calls for three-quarters of a cup');  // 0.75
+await number('About two and a half million visitors per year'); // 2500000
+await number('No numeric information here');                    // undefined
 ```
 
 ## API
 
-### `number(text, config)`
+### `number(text, config?)`
 
-**Parameters:**
-- `text` (string): Text containing numeric information
-- `config` (Object): Configuration options
-  - `llm` (Object): LLM configuration
+- **text** (string): Text containing numeric information
+- **config** (Object): Configuration options
+  - **llm**: LLM configuration
 
-**Returns:** Promise<number|undefined> - Extracted number or undefined if none found
-
-## Features
-
-- **Natural language parsing**: Understands words, fractions, and expressions
-- **Context awareness**: Interprets "dozen" as 12, "quarter" as 0.25, etc.
-- **Undefined handling**: Returns undefined when no number is present
-- **Decimal support**: Handles both integers and floating-point numbers
+**Returns:** Promise\<number | undefined\> — Extracted number, or undefined if none found

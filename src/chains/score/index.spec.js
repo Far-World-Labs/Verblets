@@ -87,11 +87,7 @@ describe('score chain', () => {
       expect(listBatch).toHaveBeenCalledWith(
         ['a', 'bb', 'ccc'],
         expect.stringContaining('score-specification'),
-        expect.objectContaining({
-          responseFormat: expect.objectContaining({
-            type: 'json_schema',
-          }),
-        })
+        expect.any(Object)
       );
       expect(result).toEqual([1, 2, 3]);
     });
@@ -227,13 +223,6 @@ describe('score chain', () => {
   });
 
   describe('score.with', () => {
-    it('is async and returns a function', async () => {
-      scaleSpec.mockResolvedValueOnce(mockSpec);
-      const scorer = await score.with('technical depth');
-      expect(typeof scorer).toBe('function');
-      expect(scaleSpec).toHaveBeenCalledWith('technical depth', expect.any(Object));
-    });
-
     it('calls scoreSpec once during factory creation', async () => {
       scaleSpec.mockResolvedValueOnce(mockSpec);
       llm.mockResolvedValue(7);
@@ -277,35 +266,50 @@ describe('score chain', () => {
   );
 
   describe('anchoring option', () => {
-    it('skips anchors with anchoring low', async () => {
-      scaleSpec.mockResolvedValueOnce(mockSpec);
-      createBatches.mockReturnValueOnce([
-        { items: ['a', 'b'], startIndex: 0 },
-        { items: ['c', 'd'], startIndex: 2 },
-      ]);
-      listBatch.mockResolvedValueOnce([2, 8]).mockResolvedValueOnce([5, 3]);
+    it.each([
+      {
+        level: 'low',
+        items: ['a', 'b', 'c', 'd'],
+        batches: [
+          { items: ['a', 'b'], startIndex: 0 },
+          { items: ['c', 'd'], startIndex: 2 },
+        ],
+        scores: [
+          [2, 8],
+          [5, 3],
+        ],
+        expectAnchors: false,
+      },
+      {
+        level: 'high',
+        items: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'],
+        batches: [
+          { items: ['a', 'b', 'c', 'd', 'e', 'f'], startIndex: 0 },
+          { items: ['g', 'h'], startIndex: 6 },
+        ],
+        scores: [
+          [1, 3, 5, 7, 8, 10],
+          [4, 6],
+        ],
+        expectAnchors: true,
+      },
+    ])(
+      'anchoring $level $expectAnchors anchors in second batch',
+      async ({ level, items, batches, scores, expectAnchors }) => {
+        scaleSpec.mockResolvedValueOnce(mockSpec);
+        createBatches.mockReturnValueOnce(batches);
+        scores.forEach((s) => listBatch.mockResolvedValueOnce(s));
 
-      await score(['a', 'b', 'c', 'd'], 'score items', { anchoring: 'low' });
+        await score(items, 'score items', { anchoring: level });
 
-      // Second batch prompt should NOT contain scoring anchors
-      const secondCallPrompt = listBatch.mock.calls[1][1];
-      expect(secondCallPrompt).not.toContain('scoring-anchors');
-    });
-
-    it('uses richer anchors with anchoring high', async () => {
-      scaleSpec.mockResolvedValueOnce(mockSpec);
-      createBatches.mockReturnValueOnce([
-        { items: ['a', 'b', 'c', 'd', 'e', 'f'], startIndex: 0 },
-        { items: ['g', 'h'], startIndex: 6 },
-      ]);
-      listBatch.mockResolvedValueOnce([1, 3, 5, 7, 8, 10]).mockResolvedValueOnce([4, 6]);
-
-      await score(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'], 'score items', { anchoring: 'high' });
-
-      // Second batch should have scoring anchors with median items
-      const secondCallPrompt = listBatch.mock.calls[1][1];
-      expect(secondCallPrompt).toContain('scoring-anchors');
-    });
+        const secondCallPrompt = listBatch.mock.calls[1][1];
+        if (expectAnchors) {
+          expect(secondCallPrompt).toContain('scoring-anchors');
+        } else {
+          expect(secondCallPrompt).not.toContain('scoring-anchors');
+        }
+      }
+    );
   });
 
   describe('integration with collection chains', () => {

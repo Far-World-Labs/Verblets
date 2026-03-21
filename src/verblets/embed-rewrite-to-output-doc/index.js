@@ -13,13 +13,11 @@ import { schema } from './schema.js';
  * @returns {Promise<string>}
  */
 export default async function embedRewriteToOutputDoc(query, config = {}) {
-  const { llm, ...options } = config;
   return await callLlm(hydeOutputDoc(query), {
-    llm,
+    ...config,
     response_format: {
       type: 'json_schema',
       json_schema: { name: 'hyde_output_doc', schema },
     },
-    ...options,
   });
 }

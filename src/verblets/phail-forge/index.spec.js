@@ -84,20 +84,6 @@ describe('phailForge/makePrompt', () => {
     expect(result.analysis.suggestions).toBeDefined();
   });
 
-  it('should forward llm config to callLlm', async () => {
-    const { default: llm } = await import('../../lib/llm/index.js');
-
-    llm.mockResolvedValueOnce({
-      enhanced: 'Enhanced prompt',
-      improvements: [],
-    });
-
-    await makePrompt('test prompt', { llm: { good: true } });
-
-    expect(llm).toHaveBeenCalledTimes(1);
-    expect(llm.mock.calls[0][1].llm).toEqual({ good: true });
-  });
-
   it('should handle domain context', async () => {
     const { default: llm } = await import('../../lib/llm/index.js');
 

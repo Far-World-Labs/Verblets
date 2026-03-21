@@ -10,10 +10,8 @@ import { embedRewriteQuerySchema } from './schema.js';
  * @returns {Promise<string>}
  */
 export default async function embedRewriteQuery(query, config = {}) {
-  const { llm, ...options } = config;
-
   return await callLlm(rewriteQueryPrompt(query), {
-    llm,
+    ...config,
     response_format: {
       type: 'json_schema',
       json_schema: {
@@ -21,6 +19,5 @@ export default async function embedRewriteQuery(query, config = {}) {
         schema: embedRewriteQuerySchema,
       },
     },
-    ...options,
   });
 }

@@ -3,8 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { dismantle, mapVariety } from './index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
-  default: vi.fn().mockImplementation((text, _options) => {
-    // When responseFormat is used, auto-unwrapping will return the value directly
+  default: vi.fn().mockImplementation((text) => {
     if (/subcomponents/.test(text)) {
       return ['component1', 'component2'];
     }
@@ -15,23 +14,17 @@ vi.mock('../../lib/llm/index.js', () => ({
   }),
 }));
 
-const examples = [
-  {
-    name: 'Basic usage',
-    inputs: { text: 'test' },
-    want: { result: {} },
-  },
-];
+vi.mock('../../lib/retry/index.js', () => ({
+  default: vi.fn(async (fn) => fn()),
+}));
 
 describe('Dismantle chain', () => {
-  examples.forEach((example) => {
-    it(example.name, async () => {
-      const result = await dismantle(example.inputs.text);
+  it('returns a ChainTree with tree and rootName', async () => {
+    const result = await dismantle('test');
 
-      if (example.want.typeOfResult) {
-        expect(JSON.stringify(result.tree)).toStrictEqual(JSON.stringify(example.want.result));
-      }
-    });
+    expect(result.rootName).toBe('test');
+    expect(result).toHaveProperty('tree');
+    expect(result.getTree()).toStrictEqual({});
   });
 });
 

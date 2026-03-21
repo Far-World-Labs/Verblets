@@ -92,7 +92,7 @@ async function findModuleUnderTest(filePath, lineNumber, config = {}) {
     context?.lines.join('\n') || ''
   }\n\nRespond with the import path or 'unknown'.`;
   try {
-    return (await llm(prompt, { ...config, modelName: 'fastGoodCheapCoding' })).trim();
+    return (await llm(prompt, { ...config, llm: 'fastGoodCheapCoding' })).trim();
   } catch {
     return 'unknown';
   }
@@ -152,7 +152,7 @@ CONTEXT: [Additional context about the problem and potential root causes]
 Keep your response concise but actionable. Focus on practical solutions.`;
 
   try {
-    return await llm(prompt, { ...config, modelName: 'fastGoodCheapCoding' });
+    return await llm(prompt, { ...config, llm: 'fastGoodCheapCoding' });
   } catch {
     // Fallback to shared generateAdvice if introspection fails
     return await generateAdvice(actual, expected, constraint, codeContext, callerInfo, config);

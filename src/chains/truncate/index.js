@@ -7,16 +7,16 @@ import { initChain, withPolicy } from '../../lib/context/option.js';
 const DEFAULT_THRESHOLD = 6;
 
 /**
- * Map aggression option to a score threshold for content removal.
- * low: higher threshold (7) — only removes content the LLM strongly considers removable. Conservative.
- * high: lower threshold (4) — removes anything the LLM isn't confident should stay. Aggressive.
+ * Map strictness option to a score threshold for content removal.
+ * low: lower threshold (4) — removes anything the LLM isn't confident should stay. Lenient about what to cut.
+ * high: higher threshold (7) — only removes content the LLM strongly considers removable. Strict about keeping content.
  * @param {string|number|undefined} value
  * @returns {number} Score threshold (0-10) below which chunks are removed
  */
-export const mapAggression = (value) => {
+export const mapStrictness = (value) => {
   if (value === undefined) return DEFAULT_THRESHOLD;
   if (typeof value === 'number') return value;
-  return { low: 7, med: DEFAULT_THRESHOLD, high: 4 }[value] ?? DEFAULT_THRESHOLD;
+  return { low: 4, med: DEFAULT_THRESHOLD, high: 7 }[value] ?? DEFAULT_THRESHOLD;
 };
 
 /**
@@ -94,10 +94,10 @@ export default async function truncate(text, instructions, config = {}) {
   const {
     config: scopedConfig,
     chunkSize,
-    aggression: threshold,
+    strictness: threshold,
   } = await initChain('truncate', config, {
     chunkSize: 1000,
-    aggression: withPolicy(mapAggression),
+    strictness: withPolicy(mapStrictness),
   });
   config = scopedConfig;
 
