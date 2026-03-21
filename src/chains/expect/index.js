@@ -4,7 +4,7 @@ import path from 'node:path';
 import { execSync } from 'node:child_process';
 import wrapVariable from '../../prompts/wrap-variable.js';
 import { env } from '../../lib/env/index.js';
-import { expectCore, handleAssertionResult } from './shared.js';
+import { expectCore, handleAssertionResult, generateAdvice } from './shared.js';
 import { extractFileContext } from '../../lib/logger/index.js';
 import { initChain, withPolicy } from '../../lib/context/option.js';
 
@@ -155,7 +155,6 @@ Keep your response concise but actionable. Focus on practical solutions.`;
     return await llm(prompt, { ...config, modelName: 'fastGoodCheapCoding' });
   } catch {
     // Fallback to shared generateAdvice if introspection fails
-    const { generateAdvice } = await import('./shared.js');
     return await generateAdvice(actual, expected, constraint, codeContext, callerInfo, config);
   }
 }
@@ -226,7 +225,6 @@ export async function expect(actual, expected, constraint, config = {}) {
         config
       );
     } else {
-      const { generateAdvice } = await import('./shared.js');
       advice = await generateAdvice(actual, expected, constraint, codeContext, callerInfo, config);
     }
   }
