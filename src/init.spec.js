@@ -9,7 +9,7 @@ describe('init()', () => {
     config.setRuntimeProvider(undefined);
   });
 
-  it('returns config and modelService when called with no args', () => {
+  it('returns config and modelService', () => {
     const result = init();
     expect(result.config).toBeDefined();
     expect(result.config.get).toBe(config.get);
@@ -50,7 +50,20 @@ describe('init()', () => {
     expect(() => init({ redis: undefined, modelOverrides: undefined })).not.toThrow();
   });
 
-  describe('structural validation', () => {
+  describe('validation', () => {
+    it('throws when no API keys are configured', () => {
+      vi.stubEnv('OPENAI_API_KEY', '');
+      vi.stubEnv('ANTHROPIC_API_KEY', '');
+      delete process.env.OPENAI_API_KEY;
+      delete process.env.ANTHROPIC_API_KEY;
+      expect(() => init()).toThrow('At least one of OPENAI_API_KEY, ANTHROPIC_API_KEY');
+    });
+
+    it('passes with a valid API key', () => {
+      vi.stubEnv('OPENAI_API_KEY', 'sk-test');
+      expect(() => init()).not.toThrow();
+    });
+
     it('throws requiredIf error when OPENWEBUI_API_KEY set without URL', () => {
       vi.stubEnv('OPENAI_API_KEY', 'sk-test');
       vi.stubEnv('OPENWEBUI_API_KEY', 'sk-owui');
@@ -58,14 +71,14 @@ describe('init()', () => {
       expect(() => init()).toThrow('OPENWEBUI_API_URL is required when OPENWEBUI_API_KEY is set');
     });
 
-    it('passes without any API keys — keys validated at point of use', () => {
+    it('validates before wiring — bad config does not partially configure', () => {
       vi.stubEnv('OPENAI_API_KEY', '');
       vi.stubEnv('ANTHROPIC_API_KEY', '');
-      vi.stubEnv('OPENWEBUI_API_KEY', '');
       delete process.env.OPENAI_API_KEY;
       delete process.env.ANTHROPIC_API_KEY;
-      delete process.env.OPENWEBUI_API_KEY;
-      expect(() => init()).not.toThrow();
+      const provider = { get: vi.fn() };
+      expect(() => init({ runtimeProvider: provider })).toThrow('Config validation failed');
+      expect(config.getRuntimeProvider()).not.toBe(provider);
     });
   });
 });

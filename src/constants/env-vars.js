@@ -12,9 +12,7 @@
  */
 
 // Group constraints (evaluated by config.validate())
-// API keys are validated at point of use (callLlm), not at startup —
-// the library should load and configure without credentials present.
-export const CONSTRAINTS = [];
+export const CONSTRAINTS = [{ oneOf: ['OPENAI_API_KEY', 'ANTHROPIC_API_KEY'] }];
 
 export const ENV_VARS = {
   // ── Credentials ──────────────────────────────────────────────────────

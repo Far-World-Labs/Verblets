@@ -19,17 +19,17 @@ import { createContextBuilder, observeApplication, observeProviders } from './li
 export default function init(options = {}) {
   const { redis, modelOverrides, runtimeProvider } = options;
 
+  const errors = validate();
+  if (errors.length > 0) {
+    throw new Error(`Config validation failed:\n  ${errors.join('\n  ')}`);
+  }
+
   if (runtimeProvider) config.setRuntimeProvider(runtimeProvider);
   if (redis) setClient(redis);
   if (modelOverrides) {
     for (const [key, value] of Object.entries(modelOverrides)) {
       modelService.setGlobalOverride(key, value);
     }
-  }
-
-  const errors = validate();
-  if (errors.length > 0) {
-    throw new Error(`Config validation failed:\n  ${errors.join('\n  ')}`);
   }
 
   const context = createContextBuilder();
