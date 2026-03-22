@@ -1,16 +1,28 @@
-import { beforeAll, afterAll, describe } from 'vitest';
+import { beforeAll, afterAll } from 'vitest';
+import { describe, it as vitestIt, expect as vitestExpect } from 'vitest';
 import testAdvice from './index.js';
-import { longTestTimeout, isHighBudget } from '../../constants/common.js'; // full: 16 LLM calls per test
-import { getTestHelpers } from '../test-analysis/test-wrappers.js';
+import vitestAiExpect from '../expect/index.js';
+import { longTestTimeout, shouldRunLongExamples } from '../../constants/common.js';
+import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
+import { getConfig } from '../test-analysis/config.js';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
-const { it, expect, aiExpect } = getTestHelpers('Test-advice chain');
+const config = getConfig();
+const it = config?.aiMode
+  ? wrapIt(vitestIt, { baseProps: { suite: 'Test-advice chain' } })
+  : vitestIt;
+const expect = config?.aiMode
+  ? wrapExpect(vitestExpect, { baseProps: { suite: 'Test-advice chain' } })
+  : vitestExpect;
+const aiExpect = config?.aiMode
+  ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'Test-advice chain' } })
+  : vitestAiExpect;
 
 let testDir;
 
-describe.skipIf(!isHighBudget)('[high] test-advice chain', () => {
+describe.skipIf(!shouldRunLongExamples)('test-advice chain', () => {
   beforeAll(async () => {
     testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'test-advice-test-'));
   });
@@ -51,9 +63,10 @@ describe.skipIf(!isHighBudget)('[high] test-advice chain', () => {
       expect(advice.length).toBeGreaterThan(5);
 
       // Should contain various types of advice
-      await aiExpect(advice).toSatisfy(
+      const hasComprehensiveAdvice = await aiExpect(advice).toSatisfy(
         'Should contain diverse testing advice including boundary conditions, success cases, failure cases, and code quality suggestions'
       );
+      expect(hasComprehensiveAdvice).toBe(true);
     },
     longTestTimeout
   );
@@ -95,9 +108,10 @@ describe.skipIf(!isHighBudget)('[high] test-advice chain', () => {
       expect(advice.length).toBeGreaterThan(0);
 
       // Should identify multiple issues
-      await aiExpect(advice).toSatisfy(
+      const identifiesIssues = await aiExpect(advice).toSatisfy(
         'Should identify issues like off-by-one errors, missing null/empty array checks, and other bugs'
       );
+      expect(identifiesIssues).toBe(true);
     },
     longTestTimeout
   );

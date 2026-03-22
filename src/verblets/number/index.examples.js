@@ -1,10 +1,15 @@
-import { describe } from 'vitest';
+import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
 
 import number from './index.js';
 import { longTestTimeout } from '../../constants/common.js';
-import { getTestHelpers } from '../../chains/test-analysis/test-wrappers.js';
+import { wrapIt, wrapExpect } from '../../chains/test-analysis/test-wrappers.js';
+import { getConfig } from '../../chains/test-analysis/config.js';
 
-const { it, expect } = getTestHelpers('Number verblet');
+const config = getConfig();
+const it = config?.aiMode ? wrapIt(vitestIt, { baseProps: { suite: 'Number verblet' } }) : vitestIt;
+const expect = config?.aiMode
+  ? wrapExpect(vitestExpect, { baseProps: { suite: 'Number verblet' } })
+  : vitestExpect;
 
 const examples = [
   {

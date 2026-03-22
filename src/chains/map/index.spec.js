@@ -98,6 +98,11 @@ describe('map', () => {
   });
 
   describe('map.with', () => {
+    it('returns a function', () => {
+      const fn = map.with('translate to French');
+      expect(typeof fn).toBe('function');
+    });
+
     it('processes a single item', async () => {
       listBatch.mockImplementationOnce(async (items) => items.map((i) => `${i}-mapped`));
       const fn = map.with('transform');

@@ -1,24 +1,7 @@
-import callLlm, { jsonSchema } from '../../lib/llm/index.js';
+import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { constants as promptConstants, asXML } from '../../prompts/index.js';
 import { questionsListSchema, selectedQuestionSchema } from './schemas.js';
-import { getOption, initChain, withPolicy } from '../../lib/context/option.js';
-
-// ===== Option Mappers =====
-
-/**
- * Map exploration option to a search breadth value.
- * Controls the breadth vs. depth trade-off in question generation.
- * low: narrow breadth (0.3) — depth-first, drills into random questions, finds niche angles.
- * high: wide breadth (0.8) — breadth-first, keeps most generated questions, maximum diversity.
- * @param {string|number|undefined} value
- * @returns {number} Search breadth between 0 and 1
- */
-export const mapExploration = (value) => {
-  if (value === undefined) return 0.5;
-  if (typeof value === 'number') return value;
-  return { low: 0.3, med: 0.5, high: 0.8 }[value] ?? 0.5;
-};
 
 const { contentIsChoices } = promptConstants;
 
@@ -63,23 +46,23 @@ ${existing.length > 0 ? `Questions to omit: ${asXML(existingJoined, { tag: 'omit
 One question per string.`;
 };
 
-const generateQuestions = async function* generateQuestionsGenerator(text, config = {}) {
-  const { config: scopedConfig, exploration: searchBreadth } = await initChain(
-    'questions',
-    config,
-    {
-      exploration: withPolicy(mapExploration),
-    }
-  );
-  config = scopedConfig;
+const generateQuestions = async function* generateQuestionsGenerator(text, options = {}) {
   const resultsAll = [];
   const resultsAllMap = {};
   const drilldownResults = [];
   let isDone = false;
   let textSelected = text;
 
-  const { shouldSkip = shouldSkipNull, shouldStop = shouldStopNull } = config;
-  const temperature = await getOption('temperature', config, 1);
+  const {
+    llm,
+    searchBreadth = 0.5,
+    shouldSkip = shouldSkipNull,
+    shouldStop = shouldStopNull,
+    maxAttempts = 3,
+    onProgress,
+    abortSignal,
+    ...restOptions
+  } = options;
 
   let attempts = 0;
   while (!isDone) {
@@ -94,12 +77,23 @@ const generateQuestions = async function* generateQuestionsGenerator(text, confi
       const selectedResult = await retry(
         () =>
           callLlm(pickInterestingQuestionPrompt, {
-            ...config,
-            response_format: jsonSchema('selected_question', selectedQuestionSchema),
+            llm,
+            ...restOptions,
+            modelOptions: {
+              response_format: {
+                type: 'json_schema',
+                json_schema: {
+                  name: 'selected_question',
+                  schema: selectedQuestionSchema,
+                },
+              },
+            },
           }),
         {
           label: 'questions-pick-interesting',
-          config,
+          maxAttempts,
+          onProgress,
+          abortSignal,
         }
       );
       textSelected = selectedResult.question;
@@ -110,15 +104,26 @@ const generateQuestions = async function* generateQuestionsGenerator(text, confi
       existing: resultsAll,
     });
     const llmConfig = {
-      ...config,
-      temperature,
-      response_format: jsonSchema('questions_list', questionsListSchema),
+      llm,
+      ...restOptions,
+      modelOptions: {
+        temperature: 1,
+        response_format: {
+          type: 'json_schema',
+          json_schema: {
+            name: 'questions_list',
+            schema: questionsListSchema,
+          },
+        },
+      },
     };
 
     // eslint-disable-next-line no-await-in-loop
     const results = await retry(() => callLlm(promptCreated, llmConfig), {
       label: 'questions-generate',
-      config,
+      maxAttempts,
+      onProgress,
+      abortSignal,
     });
     const resultsNew = getRandomSubset(results, searchBreadth);
     if (searchBreadth < 0.5) {
@@ -145,8 +150,8 @@ const generateQuestions = async function* generateQuestionsGenerator(text, confi
   }
 };
 
-export default async (text, config) => {
-  const generator = generateQuestions(text, config);
+export default async (text, options) => {
+  const generator = generateQuestions(text, options);
 
   const results = [];
   for await (const result of generator) {

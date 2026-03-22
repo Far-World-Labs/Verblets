@@ -1,14 +1,16 @@
 import { pipeline } from '@huggingface/transformers';
 import { encode } from 'gpt-tokenizer';
 
-import { get as configGet } from '../config/index.js';
+import { env } from '../env/index.js';
 import embedNormalizeText from '../embed-normalize-text/index.js';
+
+const DEFAULT_MODEL = 'mixedbread-ai/mxbai-embed-xsmall-v1';
 
 let extractorPromise;
 
 function getExtractor() {
   if (!extractorPromise) {
-    const model = configGet('VERBLETS_EMBED_MODEL');
+    const model = env.VERBLETS_EMBED_MODEL || DEFAULT_MODEL;
     extractorPromise = pipeline('feature-extraction', model, {
       dtype: 'fp32',
     });

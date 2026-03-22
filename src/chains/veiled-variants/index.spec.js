@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(),
-  jsonSchema: (name, schema) => ({ type: 'json_schema', json_schema: { name, schema } }),
 }));
 
 vi.mock('../../lib/retry/index.js', () => ({
@@ -24,6 +23,7 @@ describe('veiledVariants', () => {
 
     const result = await veiledVariants({ prompt: 'secret' });
 
+    expect(Array.isArray(result)).toBe(true);
     expect(result).toHaveLength(15);
     expect(result).toEqual([
       's1',
@@ -44,48 +44,33 @@ describe('veiledVariants', () => {
     ]);
     expect(callLlm).toHaveBeenCalledTimes(3);
 
-    // Each call should contain the intent in the prompt
-    callLlm.mock.calls.forEach(([prompt]) => {
+    // Each call should use the sensitive llm and structured output
+    callLlm.mock.calls.forEach(([prompt, config]) => {
       expect(prompt).toContain('<intent>');
+      expect(config.llm).toEqual({ sensitive: true });
+      expect(config.modelOptions.response_format.type).toBe('json_schema');
     });
   });
 
-  it('uses only 1 strategy with coverage low', async () => {
+  it('allows overriding llm', async () => {
     callLlm.mockClear();
-    callLlm.mockResolvedValue(['v1', 'v2', 'v3']);
+    callLlm.mockResolvedValue(['a1', 'a2', 'a3', 'a4', 'a5']);
 
-    const result = await veiledVariants({ prompt: 'secret', coverage: 'low' });
+    await veiledVariants({ prompt: 'secret', llm: 'fastGood' });
 
-    expect(callLlm).toHaveBeenCalledTimes(1);
-    expect(result).toHaveLength(3);
-    expect(callLlm).toHaveBeenCalledTimes(1);
-  });
-
-  it('generates more variants per strategy with coverage high', async () => {
-    callLlm.mockClear();
-    callLlm.mockResolvedValue(['v1', 'v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8']);
-
-    const result = await veiledVariants({ prompt: 'secret', coverage: 'high' });
-
-    expect(callLlm).toHaveBeenCalledTimes(3);
-    expect(result).toHaveLength(24);
-    // Each prompt should include the variant count
-    callLlm.mock.calls.forEach(([prompt]) => {
-      expect(prompt).toMatch(/\b8\b/);
+    callLlm.mock.calls.forEach(([, config]) => {
+      expect(config.llm).toBe('fastGood');
     });
   });
 
-  it('allows explicit strategies to override coverage', async () => {
+  it('forwards extra options to callLlm', async () => {
     callLlm.mockClear();
-    callLlm.mockResolvedValue(['v1', 'v2', 'v3']);
+    callLlm.mockResolvedValue(['x1']);
 
-    await veiledVariants({
-      prompt: 'secret',
-      coverage: 'low',
-      strategies: ['causal', 'softCover'],
+    await veiledVariants({ prompt: 'test', logger: console });
+
+    callLlm.mock.calls.forEach(([, config]) => {
+      expect(config.logger).toBe(console);
     });
-
-    // Explicit strategies override coverage's single-strategy default
-    expect(callLlm).toHaveBeenCalledTimes(2);
   });
 });

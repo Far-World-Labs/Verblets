@@ -2,8 +2,6 @@
  * Helper functions for ring buffer calculations
  */
 
-const DEFAULT_MAX_SIZE = 1000;
-
 // Calculate available items for a reader
 const calculateAvailable = (sequence, lastReadSequence) =>
   Math.max(0, sequence - (lastReadSequence + 1));
@@ -152,7 +150,7 @@ class Reader {
  * Reader-friendly API with object-oriented readers.
  */
 export default class RingBuffer {
-  constructor(maxSize = DEFAULT_MAX_SIZE) {
+  constructor(maxSize = 1000) {
     this.maxSize = maxSize;
     this.writeIndex = 0;
     this.sequence = 0;

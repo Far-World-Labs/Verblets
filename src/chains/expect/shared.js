@@ -10,7 +10,7 @@ import { asXML } from '../../prompts/wrap-variable.js';
  * @param {Object} context - Optional context (file info, code context, etc.)
  * @returns {Promise<boolean>} - Whether the assertion passes
  */
-export async function expectCore(actual, expected, constraint, context = {}, config = {}) {
+export async function expectCore(actual, expected, constraint, context = {}) {
   const { callerInfo, codeContext } = context;
 
   // Build debug context if available
@@ -54,22 +54,23 @@ Evaluation rules:
 
   // Make the LLM call
   const response = await llm(prompt, {
-    ...config,
-    temperature: context.temperature ?? 0,
-    response_format: {
-      type: 'json_schema',
-      json_schema: {
-        name: 'assertion_result',
-        strict: true,
-        schema: {
-          type: 'object',
-          properties: {
-            value: {
-              type: 'boolean',
+    modelOptions: {
+      temperature: 0,
+      response_format: {
+        type: 'json_schema',
+        json_schema: {
+          name: 'assertion_result',
+          strict: true,
+          schema: {
+            type: 'object',
+            properties: {
+              value: {
+                type: 'boolean',
+              },
             },
+            required: ['value'],
+            additionalProperties: false,
           },
-          required: ['value'],
-          additionalProperties: false,
         },
       },
     },
@@ -82,14 +83,7 @@ Evaluation rules:
 /**
  * Generate advice for failed assertions
  */
-export async function generateAdvice(
-  actual,
-  expected,
-  constraint,
-  codeContext,
-  callerInfo,
-  config = {}
-) {
+export async function generateAdvice(actual, expected, constraint, codeContext, callerInfo) {
   // Build debug context if available
   let debugContext = '';
   if (codeContext) {
@@ -128,8 +122,9 @@ Provide:
 Keep the advice concise and actionable.`;
 
   return await llm(prompt, {
-    ...config,
-    temperature: 0.3,
+    modelOptions: {
+      temperature: 0.3,
+    },
   });
 }
 

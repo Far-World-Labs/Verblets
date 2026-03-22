@@ -34,6 +34,34 @@ describe('glossary', () => {
     expect(map).not.toHaveBeenCalled();
   });
 
+  it('forwards batchSize to map call', async () => {
+    await glossary('some text here.', { batchSize: 7 });
+    const mapConfig = map.mock.calls[0][2];
+    expect(mapConfig.batchSize).toBe(7);
+  });
+
+  it('forwards llm config to both map and sort', async () => {
+    const llm = { model: 'test-model' };
+    await glossary('some text here.', { llm });
+
+    const mapConfig = map.mock.calls[0][2];
+    expect(mapConfig.llm).toBe(llm);
+
+    const sortConfig = sort.mock.calls[0][2];
+    expect(sortConfig.llm).toBe(llm);
+  });
+
+  it('forwards onProgress to both map and sort', async () => {
+    const onProgress = vi.fn();
+    await glossary('some text here.', { onProgress });
+
+    const mapConfig = map.mock.calls[0][2];
+    expect(mapConfig.onProgress).toBe(onProgress);
+
+    const sortConfig = sort.mock.calls[0][2];
+    expect(sortConfig.onProgress).toBe(onProgress);
+  });
+
   it('passes sortBy criteria to sort', async () => {
     await glossary('some text here.', { sortBy: 'alphabetical' });
     const sortCriteria = sort.mock.calls[0][1];

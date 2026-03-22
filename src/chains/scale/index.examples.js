@@ -1,11 +1,20 @@
-import { describe } from 'vitest';
+import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
 import scale, { createScale, scaleSpec, applyScale } from './index.js';
-import { longTestTimeout, isMediumBudget } from '../../constants/common.js'; // standard: 2-3 LLM calls per test
-import { getTestHelpers } from '../test-analysis/test-wrappers.js';
+import vitestAiExpect from '../expect/index.js';
+import { longTestTimeout, shouldRunLongExamples } from '../../constants/common.js';
+import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
+import { getConfig } from '../test-analysis/config.js';
 
-const { it, expect, aiExpect } = getTestHelpers('Scale chain');
+const config = getConfig();
+const it = config?.aiMode ? wrapIt(vitestIt, { baseProps: { suite: 'Scale chain' } }) : vitestIt;
+const expect = config?.aiMode
+  ? wrapExpect(vitestExpect, { baseProps: { suite: 'Scale chain' } })
+  : vitestExpect;
+const aiExpect = config?.aiMode
+  ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'Scale chain' } })
+  : vitestAiExpect;
 
-describe.skipIf(!isMediumBudget)('[medium] scale examples', () => {
+describe.skipIf(!shouldRunLongExamples)('scale examples', () => {
   it(
     'should handle plain numeric input',
     async () => {
@@ -141,15 +150,30 @@ Weight location and space slightly higher, but consider that perfect scores in a
       });
 
       // All should score relatively high but differently
-      await aiExpect(urbanLoft).toSatisfy('a desirability score between 70 and 90');
+      const urbanLoftCheck = await aiExpect(urbanLoft).toSatisfy(
+        'a desirability score between 70 and 90'
+      );
+      expect(urbanLoftCheck).toBe(true);
 
-      await aiExpect(gardenCourtyard).toSatisfy('a desirability score between 65 and 85');
+      const gardenCheck = await aiExpect(gardenCourtyard).toSatisfy(
+        'a desirability score between 65 and 85'
+      );
+      expect(gardenCheck).toBe(true);
 
-      await aiExpect(historicBrownstone).toSatisfy('a desirability score between 68 and 88');
+      const brownstoneCheck = await aiExpect(historicBrownstone).toSatisfy(
+        'a desirability score between 68 and 88'
+      );
+      expect(brownstoneCheck).toBe(true);
 
-      await aiExpect(modernHighRise).toSatisfy('a desirability score between 67 and 87');
+      const highRiseCheck = await aiExpect(modernHighRise).toSatisfy(
+        'a desirability score between 67 and 87'
+      );
+      expect(highRiseCheck).toBe(true);
 
-      await aiExpect(artistColony).toSatisfy('a desirability score between 69 and 89');
+      const artistCheck = await aiExpect(artistColony).toSatisfy(
+        'a desirability score between 69 and 89'
+      );
+      expect(artistCheck).toBe(true);
     },
     longTestTimeout
   );
@@ -231,25 +255,30 @@ Calculate: base_score * objection_multiplier = final effectiveness`;
       });
 
       // Verify they return appropriate effectiveness scores
-      await aiExpect(smallGroupPref).toSatisfy(
+      const smallGroupCheck = await aiExpect(smallGroupPref).toSatisfy(
         'a number between 0 and 100 representing effectiveness score for high consensus with mild preference objection'
       );
+      expect(smallGroupCheck).toBe(true);
 
-      await aiExpect(mediumGroupFund).toSatisfy(
+      const mediumGroupCheck = await aiExpect(mediumGroupFund).toSatisfy(
         'a number between 0 and 100 representing effectiveness score showing impact of fundamental objection on medium group'
       );
+      expect(mediumGroupCheck).toBe(true);
 
-      await aiExpect(largeGroupRes).toSatisfy(
+      const largeGroupCheck = await aiExpect(largeGroupRes).toSatisfy(
         'a number between 0 and 100 representing effectiveness score for large group with resource concerns'
       );
+      expect(largeGroupCheck).toBe(true);
 
-      await aiExpect(massiveGroupProc).toSatisfy(
+      const massiveGroupCheck = await aiExpect(massiveGroupProc).toSatisfy(
         'a number between 0 and 100 representing effectiveness score for massive group with process objection'
       );
+      expect(massiveGroupCheck).toBe(true);
 
-      await aiExpect(complexCase).toSatisfy(
+      const complexCaseCheck = await aiExpect(complexCase).toSatisfy(
         'a number between 0 and 100 representing effectiveness score where fundamental objections impact high approval'
       );
+      expect(complexCaseCheck).toBe(true);
 
       // Verify scores show meaningful differentiation (not all the same)
       const scores = [
@@ -266,7 +295,7 @@ Calculate: base_score * objection_multiplier = final effectiveness`;
   );
 });
 
-describe.skipIf(!isMediumBudget)('[medium] createScale examples', () => {
+describe.skipIf(!shouldRunLongExamples)('createScale examples', () => {
   it(
     'should generate and use a consistent specification',
     { timeout: longTestTimeout },
@@ -291,15 +320,20 @@ describe.skipIf(!isMediumBudget)('[medium] createScale examples', () => {
       const result3 = await tempScale(28);
 
       // Check results match expected descriptions
-      await aiExpect(result1).toSatisfy(
+      const check1 = await aiExpect(result1).toSatisfy(
         'a comfort description for around 22°C, likely "comfortable"'
       );
+      expect(check1).toBe(true);
 
-      await aiExpect(result2).toSatisfy(
+      const check2 = await aiExpect(result2).toSatisfy(
         'a comfort description indicating very cold temperatures (freezing, very cold, or similar)'
       );
+      expect(check2).toBe(true);
 
-      await aiExpect(result3).toSatisfy('a comfort description for 28°C, likely "warm"');
+      const check3 = await aiExpect(result3).toSatisfy(
+        'a comfort description for 28°C, likely "warm"'
+      );
+      expect(check3).toBe(true);
 
       // Check that specification is accessible
       expect(tempScale.specification).toBeTruthy();
@@ -339,7 +373,7 @@ describe.skipIf(!isMediumBudget)('[medium] createScale examples', () => {
   );
 });
 
-describe.skipIf(!isMediumBudget)('[medium] scaleSpec and applyScale examples', () => {
+describe.skipIf(!shouldRunLongExamples)('scaleSpec and applyScale examples', () => {
   it(
     'should generate a specification and apply it separately',
     { timeout: longTestTimeout },
@@ -358,9 +392,10 @@ describe.skipIf(!isMediumBudget)('[medium] scaleSpec and applyScale examples', (
       expect(spec).toHaveProperty('range');
       expect(spec).toHaveProperty('mapping');
 
-      await aiExpect(spec).toSatisfy(
+      const specCheck = await aiExpect(spec).toSatisfy(
         'a scale specification object with domain, range, and mapping properties that maps priority levels to numeric ranges'
       );
+      expect(specCheck).toBe(true);
 
       // Apply the specification multiple times
       const low = await applyScale('low', spec);

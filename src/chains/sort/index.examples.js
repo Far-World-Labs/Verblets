@@ -1,14 +1,23 @@
-import { describe } from 'vitest';
+import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sort from './index.js';
+import vitestAiExpect from '../expect/index.js';
 import { longTestTimeout } from '../../constants/common.js';
-import { getTestHelpers } from '../test-analysis/test-wrappers.js';
+import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
+import { getConfig } from '../test-analysis/config.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const { it, expect, aiExpect } = getTestHelpers('Sort chain');
+const config = getConfig();
+const it = config?.aiMode ? wrapIt(vitestIt, { baseProps: { suite: 'Sort chain' } }) : vitestIt;
+const expect = config?.aiMode
+  ? wrapExpect(vitestExpect, { baseProps: { suite: 'Sort chain' } })
+  : vitestExpect;
+const aiExpect = config?.aiMode
+  ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'Sort chain' } })
+  : vitestAiExpect;
 
 describe('sort examples', () => {
   it(

@@ -17,5 +17,6 @@ test-results.xml
 coverage/
 *.log
 
-# Local reference docs (not part of this repo)
+# Local reference docs and agent working files (not part of this repo)
 .claude/design-reference.md
+.claude/projections/

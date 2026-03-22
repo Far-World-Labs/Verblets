@@ -1,52 +1,143 @@
 # tags
 
-Categorize items against a controlled vocabulary using AI-interpreted tagging rules.
+Apply vocabulary-based tags to categorize items using flexible tagging rules.
 
-## Example
+## Usage
 
 ```javascript
-import tags, { createTagger } from './index.js';
+import tags from './index.js';
 
+// Create a sentiment tagger
+const sentimentTagger = tags('Analyze emotional tone and intent');
+const result = await sentimentTagger(
+  'Your product is amazing! Best purchase ever!',
+  sentimentVocabulary
+);
+// => ['positive', 'praise']
+
+// Tag expense transactions  
 const expenseVocabulary = {
   tags: [
     { id: 'food', label: 'Food & Dining', description: 'Groceries, restaurants' },
     { id: 'transport', label: 'Transportation', description: 'Gas, rideshare, transit' },
-    { id: 'housing', label: 'Housing', description: 'Rent, utilities, maintenance' }
+    { id: 'housing', label: 'Housing', description: 'Rent, utilities' }
   ]
 };
 
 const tagger = tags('Categorize by expense type');
-const result = await tagger(
+const tags = await tagger(
   { description: 'Whole Foods Market', amount: 87.43 },
   expenseVocabulary
 );
 // => ['food']
-
-// Vocabulary-bound tagger for repeated use
-const expenseTagger = createTagger(expenseVocabulary);
-const tags1 = await expenseTagger('Uber ride to airport', 'Categorize by expense type');
-// => ['transport']
 ```
 
-## API
+## Vocabulary Structure
 
-### Default: `tags(instructions, config)` — returns a tagger function requiring vocabulary at call time
+Vocabularies define available tags with metadata:
 
-### Named exports
+```javascript
+const vocabulary = {
+  tags: [
+    { 
+      id: 'urgent',           // Required: unique identifier  
+      label: 'Urgent',        // Display name
+      description: 'Needs immediate attention',
+      parent: 'priority'      // Optional: for hierarchical tags
+    }
+  ]
+};
+```
 
-- `tagItem(item, instructions, vocabulary, config)` — tag a single item
-- `mapTags(list, instructions, vocabulary, config)` — tag multiple items in batches
-- `tagSpec(instructions, config)` — generate reusable tagging specification
-- `applyTags(item, specification, vocabulary, config)` — apply pre-generated spec
-- `createTagger(vocabulary, config)` — vocabulary-bound tagger
-- `createTagExtractor(specification, vocabulary, config)` — fixed spec + vocabulary extractor
+## Core Functions
 
-### Instruction builders (for collection chains)
+### Default Export: `tags(instructions, config)`
 
-- `mapInstructions({ specification, vocabulary, processing })`
-- `filterInstructions({ specification, vocabulary, processing })`
-- `reduceInstructions({ specification, vocabulary, processing })`
-- `findInstructions({ specification, vocabulary, processing })`
-- `groupInstructions({ specification, vocabulary, processing })`
+Create a stateless tagger requiring vocabulary at call time.
 
-Only valid tag IDs from the vocabulary are returned.
+### Named Exports
+
+#### `tagItem(item, instructions, vocabulary, config)`
+Tag a single item.
+
+#### `mapTags(list, instructions, vocabulary, config)`
+Tag multiple items in batches.
+
+#### `tagSpec(instructions, config)`
+Generate reusable tagging specifications.
+
+#### `applyTags(item, specification, vocabulary, config)`
+Apply pre-generated specification with vocabulary.
+
+#### `createTagger(vocabulary, config)`
+Create vocabulary-bound tagger for consistent categorization.
+
+#### `createTagExtractor(specification, vocabulary, config)`
+Create optimized extractor with fixed specification and vocabulary.
+
+## Collection Processing
+
+The tags chain provides instruction builders for collection operations:
+
+```javascript
+import map from '../map/index.js';
+import { mapInstructions } from './index.js';
+
+const spec = await tagSpec('Product categorization rules');
+const tagged = await map(
+  products,
+  mapInstructions({ specification: spec, vocabulary: productVocab })
+);
+```
+
+### Instruction Builders
+
+- `mapInstructions({ specification, vocabulary, processing })` - Transform items to tag arrays
+- `filterInstructions({ specification, vocabulary, processing })` - Filter by tag criteria  
+- `reduceInstructions({ specification, vocabulary, processing })` - Aggregate tag data
+- `findInstructions({ specification, vocabulary, processing })` - Find by tag patterns
+- `groupInstructions({ specification, vocabulary, processing })` - Group by tags
+
+## Advanced Usage
+
+### Vocabulary-Bound Tagger
+
+```javascript
+import { createTagger } from './index.js';
+
+const projectTagger = createTagger(projectVocabulary);
+
+// Works with single items or arrays
+const tags1 = await projectTagger(task, 'Identify work type');
+const tagsBatch = await projectTagger(tasks, 'Categorize all tasks');
+```
+
+### Pre-generated Specifications
+
+```javascript
+import { tagSpec, createTagExtractor } from './index.js';
+
+// Generate once
+const spec = await tagSpec('Assign priority based on impact and urgency');
+
+// Create reusable extractor
+const priorityExtractor = createTagExtractor(spec, priorityVocabulary);
+
+// Use consistently
+const priority = await priorityExtractor('Database backup failing');
+// => ['p0']
+
+// Access internals
+console.log(priorityExtractor.specification);
+console.log(priorityExtractor.vocabulary);
+```
+
+## Architecture
+
+The tags chain implements a specification-vocabulary pattern:
+
+- **Specifications** define tagging rules and criteria
+- **Vocabularies** provide the available tag set
+- **Taggers** combine both for consistent categorization
+
+This separation enables reusable tagging logic across different vocabularies and ensures only valid tag IDs from the vocabulary are returned.

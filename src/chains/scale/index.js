@@ -1,10 +1,9 @@
-import callLlm, { jsonSchema } from '../../lib/llm/index.js';
+import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import buildInstructions from '../../lib/build-instructions/index.js';
 import { scaleSpecificationJsonSchema } from './schemas.js';
 import scaleResultSchema from './scale-result.json';
-import { scopeOperation } from '../../lib/context/option.js';
 
 // ===== Instruction Builders =====
 
@@ -41,7 +40,7 @@ export const {
  * @returns {Promise<Object>} Scale specification with domain, range, and mapping
  */
 export async function scaleSpec(prompt, config = {}) {
-  config = scopeOperation('scale:spec', config);
+  const { llm, maxAttempts = 3, onProgress, abortSignal, ...rest } = config;
 
   const specSystemPrompt = `You are a scale specification generator. Analyze the scaling instructions and produce a clear, comprehensive specification.`;
 
@@ -59,16 +58,21 @@ IMPORTANT: Each property must be a simple string value, not a nested object or a
   const response = await retry(
     () =>
       callLlm(specUserPrompt, {
-        ...config,
-        systemPrompt: specSystemPrompt,
-        response_format: jsonSchema(
-          scaleSpecificationJsonSchema.name,
-          scaleSpecificationJsonSchema.schema
-        ),
+        llm,
+        modelOptions: {
+          systemPrompt: specSystemPrompt,
+          response_format: {
+            type: 'json_schema',
+            json_schema: scaleSpecificationJsonSchema,
+          },
+        },
+        ...rest,
       }),
     {
       label: 'scale spec',
-      config,
+      maxAttempts,
+      onProgress,
+      abortSignal,
     }
   );
 
@@ -84,7 +88,7 @@ IMPORTANT: Each property must be a simple string value, not a nested object or a
  * @returns {Promise<*>} Scaled value (type depends on specification range)
  */
 export async function applyScale(item, specification, config = {}) {
-  config = scopeOperation('scale:apply', config);
+  const { llm, maxAttempts = 3, onProgress, abortSignal, ...options } = config;
 
   const prompt = `Apply the scale specification to transform this item.
 
@@ -98,12 +102,23 @@ Return a JSON object with a "value" property containing the scaled result.`;
   const response = await retry(
     () =>
       callLlm(prompt, {
-        ...config,
-        response_format: jsonSchema('scale_result', scaleResultSchema),
+        llm,
+        modelOptions: {
+          response_format: {
+            type: 'json_schema',
+            json_schema: {
+              name: 'scale_result',
+              schema: scaleResultSchema,
+            },
+          },
+        },
+        ...options,
       }),
     {
       label: 'scale item',
-      config,
+      maxAttempts,
+      onProgress,
+      abortSignal,
     }
   );
 
@@ -118,8 +133,9 @@ Return a JSON object with a "value" property containing the scaled result.`;
  * @returns {Promise<*>} Scaled value
  */
 export async function scaleItem(item, instructions, config = {}) {
-  const spec = await scaleSpec(instructions, config);
-  return await applyScale(item, spec, config);
+  const { now = new Date(), ...restConfig } = config;
+  const spec = await scaleSpec(instructions, { now, ...restConfig });
+  return await applyScale(item, spec, { now, ...restConfig });
 }
 
 // ===== Advanced Scale Functions =====

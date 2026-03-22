@@ -19,6 +19,12 @@ const cutPoint = await truncate(article, 'advertisements and footer content');
 const cleaned = article.slice(0, cutPoint);
 ```
 
+## Features
+
+- **Backwards Processing**: Analyzes text from end to beginning to identify unwanted content
+- **Threshold-Based Scoring**: Configurable scoring system with early termination when threshold is breached
+- **Sentence-Aware Chunking**: Intelligently splits text on sentence boundaries while preserving context
+
 ## API
 
 ### `truncate(text, removalCriteria, config)`
@@ -27,7 +33,7 @@ const cleaned = article.slice(0, cutPoint);
 - `text` (string) - The text to analyze for truncation
 - `removalCriteria` (string) - Description of what content to remove from the end
 - `config` (Object) - Configuration options
-  - `strictness` (`'low'`|`'high'`|number) - Controls how strictly content is kept. `'high'` (threshold 7) only removes content scored strongly for removal — strict about keeping. `'low'` (threshold 4) removes anything not confidently worth keeping — lenient about cutting. A raw number sets the threshold directly. Default: 6
+  - `threshold` (number) - Score threshold above which to remove content (default: 6)
   - `chunkSize` (number) - Target characters per chunk (default: 1000)
   - `batchSize` (number) - Items per scoring batch (auto-calculated from model context window)
   - `llm` (string|Object) - LLM model configuration (passed through to scoring)
@@ -40,8 +46,17 @@ Returns a number representing the character index where to truncate the text.
 
 ```javascript
 const cutPoint = await truncate(text, 'boilerplate and footers', {
-  strictness: 'low',   // Lenient about cutting — removes borderline content
-  chunkSize: 500       // Smaller chunks for finer control
+  threshold: 7,   // Higher threshold = more aggressive removal
+  chunkSize: 500  // Smaller chunks for finer control
 });
 ```
 
+## Usage Pattern
+
+```javascript
+// Specify what to truncate from the end
+const cutPoint = await truncate(text, 'off-topic content and metadata');
+
+// Apply the truncation
+const cleaned = text.slice(0, cutPoint);
+```

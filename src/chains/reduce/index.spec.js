@@ -64,6 +64,11 @@ describe('reduce chain', () => {
   });
 
   describe('reduce.with', () => {
+    it('returns a function', () => {
+      const fn = reduce.with('join values');
+      expect(typeof fn).toBe('function');
+    });
+
     it('reduces with accumulator', async () => {
       const fn = reduce.with('join');
       const result = await fn('start', 'next');
@@ -122,6 +127,14 @@ describe('reduce chain', () => {
       const secondCallPrompt = listBatch.mock.calls[1][1];
       expect(secondCallPrompt).toContain('"sum":');
     });
+  });
+
+  it('forwards lifecycle logger to listBatch', async () => {
+    const logger = { info: vi.fn(), debug: vi.fn() };
+    await reduce(['a', 'b'], 'join', { batchSize: 2, logger });
+    const callConfig = listBatch.mock.calls[0][2];
+    expect(callConfig.logger.logEvent).toBeTypeOf('function');
+    expect(callConfig.logger.info).toBe(logger.info);
   });
 
   it('uses initial value with more elements', async () => {

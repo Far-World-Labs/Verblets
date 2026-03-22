@@ -1,32 +1,6 @@
 import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import windowFor from '../../lib/window-for/index.js';
-import { initChain, withPolicy } from '../../lib/context/option.js';
-
-// ===== Option Mappers =====
-
-const DEFAULT_FIDELITY = { windowSize: 5, overlapPercent: 50 };
-
-/**
- * Map fidelity option to a window processing posture.
- * Coordinates window granularity and overlap density.
- * low: large windows, minimal overlap — fewer LLM calls, rougher transitions.
- * high: small windows, high overlap — more LLM calls, smoother transitions.
- * Default: balanced (windowSize 5, 50% overlap).
- * @param {string|object|undefined} value
- * @returns {{ windowSize: number, overlapPercent: number }}
- */
-export const mapFidelity = (value) => {
-  if (value === undefined) return DEFAULT_FIDELITY;
-  if (typeof value === 'object') return value;
-  return (
-    {
-      low: { windowSize: 10, overlapPercent: 25 },
-      med: DEFAULT_FIDELITY,
-      high: { windowSize: 3, overlapPercent: 67 },
-    }[value] ?? DEFAULT_FIDELITY
-  );
-};
 
 /**
  * Join text fragments using AI with windowed processing for equal context exposure.
@@ -50,15 +24,15 @@ export default async function join(
   if (list.length === 1) return list[0];
 
   const {
-    config: scopedConfig,
-    styleHint,
-    windowSize,
-    overlapPercent,
-  } = await initChain('join', config, {
-    fidelity: withPolicy(mapFidelity, ['windowSize', 'overlapPercent']),
-    styleHint: '',
-  });
-  config = scopedConfig;
+    windowSize = 5,
+    overlapPercent = 50,
+    styleHint = '',
+    maxAttempts = 3,
+    llm,
+    onProgress,
+    abortSignal,
+    ...options
+  } = config;
 
   // Create overlapping windows using the windowFor utility
   const windows = windowFor(list, windowSize, overlapPercent);
@@ -76,9 +50,12 @@ ${fragmentList}
 
 Important: This is part of a larger sequence. Join these fragments while being mindful that this result will be combined with other processed windows. Add necessary connecting words, prepositions, conjunctions, or other filler text to create a coherent, grammatically correct, and semantically meaningful result. Output only the joined result for this window.`;
 
-    const result = await retry(() => callLlm(instruction, config), {
+    const llmConfig = { llm, ...options };
+    const result = await retry(() => callLlm(instruction, llmConfig), {
       label: `join-window-${windowIndex + 1}`,
-      config,
+      maxAttempts,
+      onProgress,
+      abortSignal,
     });
 
     windowResults.push({
@@ -126,9 +103,12 @@ The terminal ends of both sections should be preserved. Only resolve the overlap
 
 Add necessary connecting words, prepositions, conjunctions, or other filler text to create a coherent, grammatically correct, and semantically meaningful result. Output only the final stitched result with terminals preserved.`;
 
-      const stitchResult = await retry(() => callLlm(stitchInstruction, config), {
+      const stitchConfig = { llm, ...options };
+      const stitchResult = await retry(() => callLlm(stitchInstruction, stitchConfig), {
         label: `join-stitch-${i}`,
-        config,
+        maxAttempts,
+        onProgress,
+        abortSignal,
       });
 
       stitchedResult = stitchResult || stitchedResult;
@@ -142,9 +122,12 @@ Join these two non-overlapping sections:
 
 Add necessary connecting words, prepositions, conjunctions, or other filler text to create a coherent, grammatically correct, and semantically meaningful result. Output only the joined result.`;
 
-      const joinResult = await retry(() => callLlm(joinInstruction, config), {
+      const joinConfig = { llm, ...options };
+      const joinResult = await retry(() => callLlm(joinInstruction, joinConfig), {
         label: `join-nonoverlap-${i}`,
-        config,
+        maxAttempts,
+        onProgress,
+        abortSignal,
       });
 
       stitchedResult = joinResult || stitchedResult;

@@ -1,133 +1,171 @@
 # llm
 
-Core LLM integration for making API calls with capability-based model selection, config-aware option resolution, and structured response handling.
+Core LLM integration for making API calls with intelligent model selection, retry logic, and structured response handling.
 
 ## Usage
 
 ```javascript
-import callLlm from './index.js';
+import llm from './index.js';
 
-// Basic usage — default model
-const response = await callLlm('Explain quantum computing in simple terms');
+// Basic usage with default model
+const response = await llm('Explain quantum computing in simple terms');
 
-// With config from a chain (typical usage)
-const config = scopeOperation('my-chain', { llm: 'fastGoodCheap', ...inputConfig });
-const result = await callLlm(prompt, { ...config, response_format: responseFormat });
-
-// With capability-based model selection
-const result = await callLlm(prompt, {
-  llm: { fast: true, good: 'prefer' },
-  temperature: 0.7,
-  response_format: {
-    type: 'json_schema',
-    json_schema: {
-      name: 'colors',
-      schema: {
-        type: 'object',
-        properties: {
-          items: { type: 'array', items: { type: 'string' } },
-        },
-        required: ['items'],
-        additionalProperties: false,
-      },
-    },
-  },
+// With specific model configuration
+const result = await llm('Generate a JSON list of colors', {
+  modelOptions: {
+    modelName: 'fastGoodCheap',
+    response_format: {
+      type: 'json_schema',
+      json_schema: {
+        name: 'colors',
+        schema: {
+          type: 'object',
+          properties: {
+            colors: { type: 'array', items: { type: 'string' } }
+          }
+        }
+      }
+    }
+  }
 });
 ```
 
 ## API
 
-### `callLlm(prompt, options)`
+### `llm(prompt, options)`
 
 **Parameters:**
 - `prompt` (string): The text prompt to send to the LLM
-- `options` (object, optional): Configuration — all keys are flat on the options object
-  - `llm` (string | object): Model selection — string shorthand (`'fastGoodCheap'`), capability object (`{ fast: true, good: 'prefer' }`), or full config (`{ modelName: 'model-key' }`)
-  - `response_format` (object): Structured output schema
-  - `temperature` (number): Sampling temperature
-  - `frequencyPenalty` (number): Frequency penalty
-  - `presencePenalty` (number): Presence penalty
-  - `systemPrompt` (string): System message
-  - `requestTimeout` (number): Request timeout in milliseconds
-  - `tools` (array): Tool definitions
-  - `toolChoice` (string | object): Tool choice strategy
-  - `maxTokens` (number): Maximum output tokens
-  - `topP` (number): Nucleus sampling parameter
-  - `logger` (object): Logger instance
-  - `onBeforeRequest` (function): Hook called before the API request
-  - `abortSignal` (AbortSignal): Signal to cancel the request
+- `options` (object, optional): Configuration options
+  - `modelOptions` (object): Model configuration
+    - `modelName` (string): Specific model to use ('fastGoodCheap', 'privacy', etc.)
+    - `negotiate` (object): Model negotiation criteria
+      - `fast` (boolean): Prioritize speed
+      - `good` (boolean): Prioritize quality
+      - `cheap` (boolean): Prioritize cost
+      - `reasoning` (boolean): Prioritize reasoning capabilities
+      - `multi` (boolean): Prioritize multimodal capabilities
+    - `response_format` (object): Structured output format
+  - `retryOptions` (object): Retry configuration
+  - `timeout` (number): Request timeout in milliseconds
+  - `unwrapValues` (boolean, default: true): Auto-unwrap `{value: ...}` responses
+  - `unwrapCollections` (boolean, default: true): Auto-unwrap `{items: [...]}` responses
+  - `skipResponseParse` (boolean, default: false): Skip JSON parsing
 
-**Returns:** Promise that resolves with the LLM response (string, or parsed object for structured outputs with auto-unwrapping of `{value: ...}` and `{items: [...]}` patterns).
+**Returns:** Promise that resolves with the LLM response (string or parsed object for structured outputs)
 
-## Config-aware resolution
+## Model Selection
 
-All model keys (`response_format`, `temperature`, `frequencyPenalty`, `presencePenalty`, `systemPrompt`, `requestTimeout`, `tools`, `toolChoice`, `maxTokens`, `topP`) and capability keys (`fast`, `cheap`, `good`, `reasoning`, `multi`, `sensitive`) are resolved through `getOption` before building the internal model options. This means any of these can be set via the `policy` channel:
-
+### Privacy-First Rule
 ```javascript
-const config = {
-  policy: {
-    temperature: (ctx) => ctx.operation === 'socratic' ? 0.9 : 0.5,
-    sensitive: (ctx) => ctx.operation.startsWith('veiled'),
-  },
-};
+// Always use privacy models for sensitive operations
+const result = await llm(prompt, {
+  modelOptions: { modelName: 'privacy' }
+});
 ```
 
-The `llm` parameter itself is also resolved from config — chains with non-standard model defaults set them on `scopeOperation`:
-
+### Model Negotiation
 ```javascript
-const config = scopeOperation('my-chain', { llm: 'fastGoodCheap', ...inputConfig });
-// callLlm resolves llm from config automatically
-await callLlm(prompt, config);
-```
-
-## Model selection
-
-### Capability values
-- `true` — require this capability
-- `false` — exclude models with this capability
-- `'prefer'` — soft preference, use if available
-
-### Capability keys
-`fast`, `cheap`, `good`, `reasoning`, `multi`, `sensitive`
-
-```javascript
-// Fast and cheap for bulk operations
-await callLlm(prompt, { llm: { fast: true, cheap: true } });
-
-// Quality-focused
-await callLlm(prompt, { llm: { good: true } });
-
-// Sensitive data — routes to privacy-capable models
-await callLlm(prompt, { llm: { sensitive: true } });
-```
-
-## Structured outputs
-
-```javascript
-const result = await callLlm('List 5 programming languages', {
-  response_format: {
-    type: 'json_schema',
-    json_schema: {
-      name: 'languages',
-      schema: {
-        type: 'object',
-        properties: {
-          items: { type: 'array', items: { type: 'string' } },
-        },
-        required: ['items'],
-        additionalProperties: false,
-      },
-    },
-  },
+// Optimize for speed and cost (bulk operations)
+const result = await llm(prompt, {
+  modelOptions: { negotiate: { fast: true, cheap: true } }
 });
 
-// Result is automatically parsed; {items: [...]} is auto-unwrapped to the array
-console.log(result); // ['JavaScript', 'Python', 'Java', 'C++', 'Go']
+// Optimize for quality (critical operations)
+const result = await llm(prompt, {
+  modelOptions: { negotiate: { good: true } }
+});
+
+// Complex reasoning tasks
+const result = await llm(prompt, {
+  modelOptions: { negotiate: { reasoning: true } }
+});
 ```
+
+## Structured Outputs
+
+### JSON Schema (Recommended)
+```javascript
+const schema = {
+  type: 'object',
+  properties: {
+    items: { type: 'array', items: { type: 'string' } },
+    count: { type: 'number' }
+  },
+  required: ['items', 'count']
+};
+
+const result = await llm('List 5 programming languages', {
+  modelOptions: {
+    modelName: 'fastGoodCheap',
+    response_format: {
+      type: 'json_schema',
+      json_schema: { name: 'languages', schema }
+    }
+  }
+});
+
+// Result is automatically parsed and validated
+console.log(result.items); // ['JavaScript', 'Python', 'Java', 'C++', 'Go']
+```
+
+## Use Cases
+
+### Basic Text Generation
+```javascript
+const explanation = await llm(
+  'Explain the concept of recursion in programming',
+  { modelOptions: { modelName: 'fastGoodCheap' } }
+);
+```
+
+### Structured Data Extraction
+```javascript
+const extractedData = await llm(
+  'Extract key information from this text: "John Smith, age 30, works at Tech Corp"',
+  {
+    modelOptions: {
+      modelName: 'fastGoodCheap',
+      response_format: {
+        type: 'json_schema',
+        json_schema: {
+          name: 'person',
+          schema: {
+            type: 'object',
+            properties: {
+              name: { type: 'string' },
+              age: { type: 'number' },
+              company: { type: 'string' }
+            }
+          }
+        }
+      }
+    }
+  }
+);
+```
+
+### Privacy-Sensitive Operations
+```javascript
+// Use privacy models for sensitive data
+const anonymized = await llm(
+  'Anonymize this personal information: [sensitive data]',
+  { modelOptions: { modelName: 'privacy' } }
+);
+```
+
+## Features
+
+- **Intelligent Model Selection**: Automatic model negotiation based on requirements
+- **Privacy-First Architecture**: Dedicated privacy model support with absolute precedence
+- **Structured Output Support**: JSON schema validation and parsing
+- **Automatic Retry Logic**: Built-in resilience for transient failures
+- **Timeout Handling**: Configurable request timeouts
+- **Response Validation**: Automatic parsing and validation of structured responses
+- **Smart Unwrapping**: Auto-unwraps `{value: ...}` and `{items: [...]}` patterns
 
 ## Related Modules
 
-- [`context/option`](../context/option.js) - `getOption` used for config-aware resolution
 - [`llm-model`](../../services/llm-model/README.md) - Model negotiation and selection service
-- [`retry`](../retry/README.md) - Retry logic (used by chains wrapping callLlm)
-- [`normalize-llm`](../normalize-llm/index.js) - Normalizes `llm` parameter to model config
+- [`retry`](../retry/README.md) - Retry logic implementation
+- [`with-inactivity-timeout`](../with-inactivity-timeout/README.md) - Timeout handling utilities 

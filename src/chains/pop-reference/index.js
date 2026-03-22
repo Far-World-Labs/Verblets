@@ -1,29 +1,36 @@
-import callLlm, { jsonSchema } from '../../lib/llm/index.js';
+import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import popReferenceSchema from './pop-reference-result.json';
-import { initChain } from '../../lib/context/option.js';
 
-const popReferenceResponseFormat = jsonSchema('pop_reference_result', popReferenceSchema);
+const modelOptions = {
+  response_format: {
+    type: 'json_schema',
+    json_schema: {
+      name: 'pop_reference_result',
+      schema: popReferenceSchema,
+    },
+  },
+};
 
 /**
  * Find pop culture references that metaphorically match given sentences
  * @param {string} sentence - The sentence to metaphorically compare
  * @param {string} description - A descriptor guiding tone, intent, or interpretive nuance
- * @param {Object} config - Configuration options
+ * @param {Object} options - Configuration options
  * @returns {Promise<Array>} Array of PopCultureReference objects
  */
-export default async function popReference(sentence, description, config = {}) {
+export default async function popReference(sentence, description, options = {}) {
   const {
-    config: scopedConfig,
-    referenceContext,
-    referencesPerSource,
-  } = await initChain('pop-reference', config, {
-    referenceContext: false,
-    referencesPerSource: 2,
-  });
-  config = scopedConfig;
-  const { include = [] } = config;
+    include = [],
+    referenceContext = false,
+    referencesPerSource = 2,
+    llm,
+    maxAttempts = 3,
+    onProgress,
+    abortSignal,
+    ...restOptions
+  } = options;
 
   // Build the include list description
   let includeDescription = '';
@@ -76,12 +83,15 @@ Requirements:
   const response = await retry(
     () =>
       callLlm(prompt, {
-        ...config,
-        response_format: popReferenceResponseFormat,
+        llm,
+        modelOptions,
+        ...restOptions,
       }),
     {
       label: 'pop-reference',
-      config,
+      maxAttempts,
+      onProgress,
+      abortSignal,
     }
   );
 

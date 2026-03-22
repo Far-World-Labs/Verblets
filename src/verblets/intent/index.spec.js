@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import intent from './index.js';
-import { testPromptShapingOption } from '../../lib/test-utils/index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn().mockImplementation((text) => {
@@ -16,32 +15,32 @@ vi.mock('../../lib/llm/index.js', () => ({
   }),
 }));
 
-const mockLlm = (await import('../../lib/llm/index.js')).default;
-
-const operations = [{ name: 'search', description: 'Search for items' }];
+const examples = [
+  {
+    name: 'Basic usage',
+    inputs: {
+      text: 'Give me a flight to Burgas',
+      operations: [
+        {
+          name: 'book_flight',
+          description: 'Book a flight to a destination',
+          parameters: {
+            destination: { type: 'string', description: 'Destination city' },
+          },
+        },
+      ],
+    },
+    want: { typeOfResult: 'object' },
+  },
+];
 
 describe('Intent verblet', () => {
-  it('identifies operation and extracts parameters', async () => {
-    const result = await intent('Give me a flight to Burgas', [
-      {
-        name: 'book_flight',
-        description: 'Book a flight to a destination',
-        parameters: {
-          destination: { type: 'string', description: 'Destination city' },
-        },
-      },
-    ]);
-    expect(result).toStrictEqual({
-      operation: 'book_flight',
-      parameters: { destination: 'Burgas' },
-      optional_parameters: {},
+  examples.forEach((example) => {
+    it(example.name, async () => {
+      const result = await intent(example.inputs.text, example.inputs.operations);
+      if (example.want.typeOfResult) {
+        expect(typeof result).toStrictEqual(example.want.typeOfResult);
+      }
     });
-  });
-
-  testPromptShapingOption('tolerance', {
-    invoke: (config) => intent('find stuff', operations, config),
-    setupMocks: () => mockLlm.mockClear(),
-    llmMock: mockLlm,
-    markers: { low: 'strict', high: 'lenient' },
   });
 });

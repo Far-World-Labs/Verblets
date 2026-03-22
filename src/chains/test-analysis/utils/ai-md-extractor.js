@@ -47,11 +47,13 @@ export async function extractAIMdConfig(moduleDir) {
     const response = await retry(
       () =>
         llm(prompt, {
-          response_format: {
-            type: 'json_schema',
-            json_schema: {
-              name: 'ai_md_extraction',
-              schema: aiMdExtractionSchema,
+          modelOptions: {
+            response_format: {
+              type: 'json_schema',
+              json_schema: {
+                name: 'ai_md_extraction',
+                schema: aiMdExtractionSchema,
+              },
             },
           },
         }),

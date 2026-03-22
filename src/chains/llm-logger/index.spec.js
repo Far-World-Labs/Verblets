@@ -284,6 +284,33 @@ describe('LLM Logger - Factory Pattern', () => {
     });
   });
 
+  describe('Legacy API (Deprecated)', () => {
+    it('should warn when using legacy log function', async () => {
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      // Import the legacy log function
+      const { log } = await import('./index.js');
+      log('test', null);
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'LLM Logger: log() called without proper logger instance. Use createLLMLogger() and setLogger().'
+      );
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should work with legacy log function when logger provided', async () => {
+      const mockLogger = {
+        log: vi.fn(),
+      };
+
+      const { log } = await import('./index.js');
+      log('test message', mockLogger);
+
+      expect(mockLogger.log).toHaveBeenCalledWith('test message');
+    });
+  });
+
   describe('Complex Scenarios', () => {
     it('should handle mixed data types', async () => {
       const writer = vi.fn();

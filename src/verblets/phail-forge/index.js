@@ -16,8 +16,7 @@
  * expert at whatever." - u/stunspot
  */
 
-import callLlm, { jsonSchema } from '../../lib/llm/index.js';
-import { initChain } from '../../lib/context/option.js';
+import callLlm from '../../lib/llm/index.js';
 
 const ENHANCEMENT_PROMPT = `You are an expert prompt engineer tasked with transforming a basic prompt into an expert-level "phial" - a precisely crafted, portable prompt specification.
 
@@ -42,7 +41,7 @@ Examine from dual perspectives:
 Evaluate across five dimensions:
 
 1. **Alignment Precision**: How well it addresses specific vs generic needs
-2. **Information Architecture**: Organization, hierarchy, navigational clarity
+2. **Information Architecture**: Organization, hierarchy, navigational clarity  
 3. **Accuracy & Completeness**: Factual correctness, comprehensive coverage
 4. **Cognitive Accessibility**: Language precision, concept clarity, assumption management
 5. **Actionability & Impact**: Practical utility, implementation readiness
@@ -52,112 +51,20 @@ Provide:
 - 2-3 refinement opportunities with details
 - 3-5 concrete improvement suggestions`;
 
-const enhancementSchema = {
-  type: 'object',
-  properties: {
-    enhanced: {
-      type: 'string',
-      description: 'The expertly enhanced prompt',
-    },
-    improvements: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          category: {
-            type: 'string',
-            enum: ['specificity', 'technical', 'structure', 'defaults', 'constraints'],
-          },
-          description: {
-            type: 'string',
-            maxLength: 200,
-          },
-        },
-        required: ['category', 'description'],
-      },
-      maxItems: 5,
-      description: 'Key improvements made',
-    },
-    keywords: {
-      type: 'array',
-      items: { type: 'string' },
-      maxItems: 10,
-      description: 'Technical terms and jargon added',
-    },
-    metadata: {
-      type: 'object',
-      properties: {
-        domain: {
-          type: 'string',
-          description: 'Identified domain/field',
-        },
-        complexity: {
-          type: 'string',
-          enum: ['basic', 'intermediate', 'advanced', 'expert'],
-        },
-        expansionRatio: {
-          type: 'number',
-          description: 'How much longer the enhanced version is',
-        },
-      },
-    },
-  },
-  required: ['enhanced', 'improvements'],
-};
-
-const analysisSchema = {
-  type: 'object',
-  properties: {
-    strengths: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          aspect: { type: 'string', maxLength: 50 },
-          detail: { type: 'string', maxLength: 200 },
-        },
-      },
-      maxItems: 3,
-    },
-    opportunities: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          aspect: { type: 'string', maxLength: 50 },
-          detail: { type: 'string', maxLength: 200 },
-        },
-      },
-      maxItems: 3,
-    },
-    suggestions: {
-      type: 'array',
-      items: { type: 'string', maxLength: 200 },
-      maxItems: 5,
-    },
-  },
-  required: ['strengths', 'opportunities', 'suggestions'],
-};
-
 /**
  * Enhance a prompt to expert level
  * @param {string} prompt - The original prompt to enhance
- * @param {Object} config - Enhancement config
+ * @param {Object} options - Enhancement options
  * @returns {Promise<Object>} Enhanced prompt with metadata
  */
-export default async function phailForge(prompt, config = {}) {
+export default async function phailForge(prompt, options = {}) {
   const {
-    config: scopedConfig,
-    analyze,
-    style,
-  } = await initChain('phail-forge', config, {
-    analyze: false,
-    style: 'technical',
-  });
-  config = scopedConfig;
-  const {
+    llm,
+    analyze = false, // Also provide analysis of the enhancement
     context = '', // Additional context about the domain
-  } = config;
+    style = 'technical', // Enhancement style: technical, creative, analytical
+    ...restOptions
+  } = options;
 
   // Build the enhancement request
   const fullPrompt = [
@@ -171,8 +78,68 @@ export default async function phailForge(prompt, config = {}) {
 
   // Get the enhanced prompt
   const enhancedResponse = await callLlm(fullPrompt, {
-    ...config,
-    response_format: jsonSchema('phail_enhancement', enhancementSchema),
+    llm,
+    modelOptions: {
+      response_format: {
+        type: 'json_schema',
+        json_schema: {
+          name: 'phail_enhancement',
+          schema: {
+            type: 'object',
+            properties: {
+              enhanced: {
+                type: 'string',
+                description: 'The expertly enhanced prompt',
+              },
+              improvements: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    category: {
+                      type: 'string',
+                      enum: ['specificity', 'technical', 'structure', 'defaults', 'constraints'],
+                    },
+                    description: {
+                      type: 'string',
+                      maxLength: 200,
+                    },
+                  },
+                  required: ['category', 'description'],
+                },
+                maxItems: 5,
+                description: 'Key improvements made',
+              },
+              keywords: {
+                type: 'array',
+                items: { type: 'string' },
+                maxItems: 10,
+                description: 'Technical terms and jargon added',
+              },
+              metadata: {
+                type: 'object',
+                properties: {
+                  domain: {
+                    type: 'string',
+                    description: 'Identified domain/field',
+                  },
+                  complexity: {
+                    type: 'string',
+                    enum: ['basic', 'intermediate', 'advanced', 'expert'],
+                  },
+                  expansionRatio: {
+                    type: 'number',
+                    description: 'How much longer the enhanced version is',
+                  },
+                },
+              },
+            },
+            required: ['enhanced', 'improvements'],
+          },
+        },
+      },
+    },
+    ...restOptions,
   });
 
   // Calculate expansion ratio
@@ -186,8 +153,49 @@ export default async function phailForge(prompt, config = {}) {
     const analysisPrompt = `${ANALYSIS_PROMPT}\n\nPrompt to analyze:\n${enhancedResponse.enhanced}`;
 
     const analysis = await callLlm(analysisPrompt, {
-      ...config,
-      response_format: jsonSchema('prompt_analysis', analysisSchema),
+      llm,
+      modelOptions: {
+        response_format: {
+          type: 'json_schema',
+          json_schema: {
+            name: 'prompt_analysis',
+            schema: {
+              type: 'object',
+              properties: {
+                strengths: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      aspect: { type: 'string', maxLength: 50 },
+                      detail: { type: 'string', maxLength: 200 },
+                    },
+                  },
+                  maxItems: 3,
+                },
+                opportunities: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      aspect: { type: 'string', maxLength: 50 },
+                      detail: { type: 'string', maxLength: 200 },
+                    },
+                  },
+                  maxItems: 3,
+                },
+                suggestions: {
+                  type: 'array',
+                  items: { type: 'string', maxLength: 200 },
+                  maxItems: 5,
+                },
+              },
+              required: ['strengths', 'opportunities', 'suggestions'],
+            },
+          },
+        },
+      },
+      ...restOptions,
     });
 
     enhancedResponse.analysis = analysis;

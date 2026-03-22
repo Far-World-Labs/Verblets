@@ -86,7 +86,7 @@ const examples = [
     name: 'Model options and sensitivity',
     inputs: {
       targetTokens: 50,
-      llm: 'fastGood',
+      modelOptions: { modelName: 'fastGood' },
       keys: [
         {
           key: 'example.text',
@@ -111,7 +111,7 @@ describe('Summary map', () => {
       vi.clearAllMocks();
       const map = new SummaryMap({
         targetTokens: example.inputs.targetTokens,
-        ...(example.inputs.llm && { llm: example.inputs.llm }),
+        ...(example.inputs.modelOptions && { modelOptions: example.inputs.modelOptions }),
       });
 
       for (const input of example.inputs.keys) {
@@ -143,7 +143,9 @@ describe('Summary map', () => {
       }
 
       if (example.name === 'Model options and sensitivity') {
-        const callWithSensitive = llm.mock.calls.find((c) => c[1]?.sensitive === true);
+        const callWithSensitive = llm.mock.calls.find(
+          (c) => c[1]?.modelOptions?.sensitive === true
+        );
         expect(callWithSensitive).toBeTruthy();
       }
     });

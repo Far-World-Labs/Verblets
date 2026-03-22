@@ -96,7 +96,7 @@ Retrieval utilities transform queries and prepare text for search and RAG workfl
 - [embed-multi-query](./src/verblets/embed-multi-query) - Generate diverse query variants for broader retrieval
 - [embed-step-back](./src/verblets/embed-step-back) - Broaden queries to underlying concepts and principles
 - [embed-subquestions](./src/verblets/embed-subquestions) - Split complex queries into atomic sub-questions
-
+- [embed-expand-query](./src/chains/embed-expand-query) - Expand a query using multiple strategies in parallel
 
 ### Utility Operations
 

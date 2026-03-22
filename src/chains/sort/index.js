@@ -1,39 +1,27 @@
-import callLlm, { jsonSchema } from '../../lib/llm/index.js';
+import callLlm from '../../lib/llm/index.js';
 import { chunk } from '../../lib/pure/index.js';
 import retry from '../../lib/retry/index.js';
 import { sort as sortPromptInitial } from '../../prompts/index.js';
 import sortSchema from './sort-result.json';
-import {
-  emitStart,
-  emitComplete,
-  emitStepProgress,
-  filterProgress,
-} from '../../lib/progress-callback/index.js';
+import { emitStart, emitComplete, emitStepProgress } from '../../lib/progress-callback/index.js';
 import { debug } from '../../lib/debug/index.js';
-import { initChain, withPolicy } from '../../lib/context/option.js';
-
-// ===== Option Mappers =====
 
 /**
- * Map effort option to a sorting posture coordinating iterations, extremeK, and selectBottom.
- * low: one pass, small extremes window, top-only — fast, rough ordering.
- * high: multiple passes, larger extremes window, both ends — expensive, precise full ordering.
- * @param {string|object|undefined} value
- * @returns {{ iterations: number, extremeK: number, selectBottom: boolean }}
+ * Create model options for structured outputs
+ * @param {string|Object} llm - LLM model name or configuration object
+ * @returns {Object} Model options for llm
  */
-export const mapEffort = (value) => {
-  if (value === undefined) return { iterations: 1, extremeK: 10, selectBottom: true };
-  if (typeof value === 'object') return value;
-  return (
-    {
-      low: { iterations: 1, extremeK: 5, selectBottom: false },
-      med: { iterations: 1, extremeK: 10, selectBottom: true },
-      high: { iterations: 2, extremeK: 15, selectBottom: true },
-    }[value] ?? { iterations: 1, extremeK: 10, selectBottom: true }
-  );
-};
-
-const sortResponseFormat = jsonSchema('sort_result', sortSchema);
+function createModelOptions() {
+  return {
+    response_format: {
+      type: 'json_schema',
+      json_schema: {
+        name: 'sort_result',
+        schema: sortSchema,
+      },
+    },
+  };
+}
 
 // redeclared so it's clearer how tests can override the sorter
 let sortPrompt = sortPromptInitial;
@@ -56,20 +44,16 @@ const sanitizeList = (list) => {
 
 const sort = async (list, criteria, config = {}) => {
   const {
-    config: scopedConfig,
-    batchSize,
-    progressMode,
-    extremeK,
-    iterations,
-    selectBottom,
-  } = await initChain('sort', config, {
-    effort: withPolicy(mapEffort, ['extremeK', 'iterations', 'selectBottom']),
-    batchSize: defaultSortBatchSize,
-    progressMode: 'detailed',
-  });
-  config = scopedConfig;
-  const { onProgress: _onProgress = undefined, now } = config;
-  const onProgress = filterProgress(_onProgress, progressMode);
+    batchSize = defaultSortBatchSize,
+    extremeK = defaultSortExtremeK,
+    iterations = defaultSortIterations,
+    selectBottom = true, // New parameter to control bottom selection
+    onProgress = undefined, // Callback: ({top, bottom, processed, total}) => void
+    llm,
+    maxAttempts = 3,
+    now = new Date(),
+    ...options
+  } = config;
 
   const items = sanitizeList(list);
 
@@ -92,14 +76,14 @@ const sort = async (list, criteria, config = {}) => {
       return prompt;
     }
 
-    const result = await retry(
-      () => callLlm(prompt, { ...config, response_format: sortResponseFormat }),
-      {
-        label: 'sort-batch',
-        config,
-        onProgress,
-      }
-    );
+    const modelOptions = createModelOptions();
+
+    const result = await retry(() => callLlm(prompt, { llm, modelOptions, ...options }), {
+      label: 'sort-batch',
+      maxAttempts,
+      onProgress,
+      abortSignal: options.abortSignal,
+    });
 
     const resultArray = result?.items || result;
     return Array.isArray(resultArray) ? resultArray.filter(Boolean) : [];

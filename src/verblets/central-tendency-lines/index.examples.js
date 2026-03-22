@@ -3,14 +3,39 @@
  * Demonstrates cognitive science applications in prototype theory and graded typicality
  */
 
-import { describe } from 'vitest';
+import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
 import centralTendency from './index.js';
 import categorySamples from '../../chains/category-samples/index.js';
 import centralTendencyChain from '../../chains/central-tendency/index.js';
 import { longTestTimeout } from '../../constants/common.js';
-import { getTestHelpers } from '../../chains/test-analysis/test-wrappers.js';
+import vitestAiExpect from '../../chains/expect/index.js';
+import {
+  makeWrappedIt,
+  makeWrappedExpect,
+  makeWrappedAiExpect,
+} from '../../chains/test-analysis/test-wrappers.js';
+import { getConfig } from '../../chains/test-analysis/config.js';
 
-const { it, expect, aiExpect, makeLogger } = getTestHelpers('centralTendency examples');
+//
+// Setup AI test wrappers
+//
+const config = getConfig();
+const suite = 'centralTendency examples';
+
+const it = makeWrappedIt(vitestIt, suite, config);
+const expect = makeWrappedExpect(vitestExpect, suite, config);
+const aiExpect = makeWrappedAiExpect(vitestAiExpect, suite, config);
+
+// Higher-order function to create test-specific loggers
+const makeTestLogger = (testName) => {
+  return config?.aiMode && globalThis.logger
+    ? globalThis.logger.child({ suite, testName })
+    : undefined;
+};
+
+//
+// Test suite
+//
 
 describe('centralTendency examples', () => {
   it(
@@ -21,7 +46,7 @@ describe('centralTendency examples', () => {
       const config = {
         context: 'Evaluate based on typical bird characteristics and behavior',
         coreFeatures: ['feathers', 'beak', 'lays eggs', 'flight'],
-        logger: makeLogger('evaluates bird centrality'),
+        logger: makeTestLogger('evaluates bird centrality'),
       };
 
       // Test prototypical bird
@@ -70,13 +95,33 @@ describe('centralTendency examples', () => {
   );
 
   it(
+    'evaluates tool centrality with core features',
+    async () => {
+      const toolSeeds = ['hammer', 'screwdriver', 'wrench', 'pliers'];
+
+      const config = {
+        context: 'Hand tools for mechanical work and construction',
+        coreFeatures: ['handheld', 'mechanical advantage', 'durable materials'],
+      };
+
+      const drillResult = await centralTendency('drill', toolSeeds, config);
+      const computerResult = await centralTendency('computer', toolSeeds, config);
+
+      expect(drillResult.score).toBeGreaterThan(computerResult.score);
+      expect(drillResult.score).toBeGreaterThanOrEqual(0.5); // Drill should score reasonably high
+      expect(computerResult.score).toBeLessThan(0.5); // Computer should be low
+    },
+    longTestTimeout
+  );
+
+  it(
     'generates seeds with different diversity levels',
     async () => {
       // High diversity seeds
       const highDiversitySeeds = await categorySamples('animal', {
         context: 'Diverse animal kingdom representation across phyla',
         count: 6,
-        diversity: 'high',
+        diversityLevel: 'high',
       });
 
       expect(Array.isArray(highDiversitySeeds)).toBe(true);
@@ -87,7 +132,7 @@ describe('centralTendency examples', () => {
       const focusedSeeds = await categorySamples('bird', {
         context: 'Common backyard birds',
         count: 5,
-        diversity: 'low',
+        diversityLevel: 'focused',
       });
 
       expect(Array.isArray(focusedSeeds)).toBe(true);
@@ -107,7 +152,7 @@ describe('centralTendency examples', () => {
         coreFeatures: ['warm-blooded', 'hair/fur', 'mammary glands', 'live birth'],
         chunkSize: 3,
         maxAttempts: 2,
-        logger: makeLogger('processes bulk items'),
+        logger: makeTestLogger('processes bulk items'),
       };
 
       const results = await centralTendencyChain(testAnimals, mammalSeeds, config);
@@ -126,6 +171,56 @@ describe('centralTendency examples', () => {
         expect(result.score).toBeGreaterThanOrEqual(0);
         expect(result.score).toBeLessThanOrEqual(1);
       });
+    },
+    longTestTimeout
+  );
+
+  it(
+    'demonstrates graded typicality in sports',
+    async () => {
+      const sportsSeeds = ['basketball', 'football', 'tennis', 'swimming'];
+
+      const config = {
+        context: 'Competitive physical activities with rules and scoring',
+        coreFeatures: ['rules', 'competition', 'physical skill', 'scoring'],
+      };
+
+      const soccerResult = await centralTendency('soccer', sportsSeeds, config);
+      const chessResult = await centralTendency('chess', sportsSeeds, config);
+      const videoGamesResult = await centralTendency('video games', sportsSeeds, config);
+
+      // Expect graded typicality: soccer should be more central than chess for physical sports
+      expect(soccerResult.score).toBeGreaterThan(chessResult.score);
+      // All results should be valid scores
+      expect(chessResult.score).toBeGreaterThanOrEqual(0);
+      expect(videoGamesResult.score).toBeGreaterThanOrEqual(0);
+    },
+    longTestTimeout
+  );
+
+  it(
+    'demonstrates context steering effects',
+    async () => {
+      const musicSeeds = ['piano', 'guitar', 'violin', 'drums'];
+      const testItem = 'harmonica';
+
+      // Traditional/classical music context
+      const classicalConfig = {
+        context: 'Classical and orchestral instruments for formal concerts',
+        coreFeatures: ['acoustic', 'complex technique', 'wide range'],
+      };
+
+      // Folk/portable music context
+      const folkConfig = {
+        context: 'Portable folk and street instruments',
+        coreFeatures: ['portable', 'easy to learn', 'expressive'],
+      };
+
+      const classicalResult = await centralTendency(testItem, musicSeeds, classicalConfig);
+      const folkResult = await centralTendency(testItem, musicSeeds, folkConfig);
+
+      // Harmonica should score higher in folk context
+      expect(folkResult.score).toBeGreaterThan(classicalResult.score);
     },
     longTestTimeout
   );

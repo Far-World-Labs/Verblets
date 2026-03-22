@@ -2,27 +2,32 @@ import listBatch, { ListStyle, determineStyle } from '../../verblets/list-batch/
 import { asXML } from '../../prompts/wrap-variable.js';
 import { findResultJsonSchema } from './schemas.js';
 import { createLifecycleLogger, extractBatchConfig } from '../../lib/lifecycle-logger/index.js';
-import { prepareBatches, parallel, retry } from '../../lib/index.js';
-import { jsonSchema } from '../../lib/llm/index.js';
+import { createBatches, parallel, retry, batchTracker } from '../../lib/index.js';
 import { debug } from '../../lib/debug/index.js';
-import { initChain } from '../../lib/context/option.js';
 
-const findResponseFormat = jsonSchema(findResultJsonSchema.name, findResultJsonSchema.schema);
+const findResponseFormat = {
+  type: 'json_schema',
+  json_schema: findResultJsonSchema,
+};
 
 const find = async function find(list, instructions, config = {}) {
   const {
-    config: scopedConfig,
-    maxParallel,
-    errorPosture,
-    progressMode,
-  } = await initChain('find', config, {
-    maxParallel: 3,
-    errorPosture: 'resilient',
-    progressMode: 'detailed',
-  });
-  config = scopedConfig;
+    maxParallel = 3,
+    maxAttempts = 3,
+    listStyle,
+    autoModeThreshold,
+    responseFormat,
+    llm,
+    logger,
+    onProgress,
+    abortSignal,
+    now = new Date(),
+    ...options
+  } = config;
 
-  const lifecycleLogger = createLifecycleLogger(config.logger, 'chain:find');
+  const lifecycleLogger = createLifecycleLogger(logger, 'chain:find');
+
+  const batches = createBatches(list, config);
   const findInstructions = ({ style, count }) => {
     const baseInstructions = `From the list below, identify and return the SINGLE item that BEST matches the search criteria.
 
@@ -49,7 +54,7 @@ Process exactly ${count} items from the XML list below and return the single bes
   const results = [];
   let foundEarly = false;
 
-  const { batches, tracker } = await prepareBatches('find', list, config, { progressMode });
+  // Filter out skip batches
   const batchesToProcess = batches.filter((batch) => !batch.skip);
 
   lifecycleLogger.logStart(
@@ -60,6 +65,10 @@ Process exactly ${count} items from the XML list below and return the single bes
     })
   );
 
+  const tracker = batchTracker('find', list.length, { onProgress, now });
+
+  tracker.start(batchesToProcess.length, maxParallel);
+
   // Process in chunks to allow early termination
   for (let i = 0; i < batchesToProcess.length && !foundEarly; i += maxParallel) {
     const chunk = batchesToProcess.slice(i, i + maxParallel);
@@ -67,21 +76,24 @@ Process exactly ${count} items from the XML list below and return the single bes
     await parallel(
       chunk,
       async ({ items, startIndex }) => {
-        const batchStyle = determineStyle(config.listStyle, items, config.autoModeThreshold);
+        const batchStyle = determineStyle(listStyle, items, autoModeThreshold);
 
         try {
           const result = await retry(
             () =>
               listBatch(items, findInstructions({ style: batchStyle, count: items.length }), {
-                ...config,
                 listStyle: batchStyle,
-                responseFormat: config.responseFormat || findResponseFormat,
+                autoModeThreshold,
+                responseFormat: responseFormat || findResponseFormat,
+                llm,
                 logger: lifecycleLogger,
+                ...options,
               }),
             {
               label: 'find:batch',
-              config,
+              maxAttempts,
               onProgress: tracker.forBatch(startIndex, items.length),
+              abortSignal,
             }
           );
 
@@ -97,13 +109,11 @@ Process exactly ${count} items from the XML list below and return the single bes
 
           tracker.batchDone(startIndex, items.length);
         } catch (error) {
-          if (errorPosture === 'strict') throw error;
           debug(`find batch at index ${startIndex} failed: ${error.message}`);
         }
       },
       {
         maxParallel,
-        errorPosture,
         label: 'find batches',
       }
     );

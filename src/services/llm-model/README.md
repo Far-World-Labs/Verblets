@@ -1,83 +1,156 @@
 # llm-model
 
-Capability-based model selection service. Negotiates the best LLM for a task by matching required and preferred capabilities against registered models.
+Intelligent model selection service that negotiates the best LLM for specific tasks using capability-based matching and optimization strategies.
 
 ## Usage
 
 ```javascript
-import modelService, { resolveModel, getCapabilities } from './index.js';
+import { negotiate } from './index.js';
 
-// Negotiate by capability flags
-modelService.negotiateModel(null, { fast: true, cheap: true });
-// → 'fastCheap'
+// Negotiate for fast, cheap processing
+const model = await negotiate({ fast: true, cheap: true });
+// Returns: { modelName: 'gpt-3.5-turbo', provider: 'openai', ... }
 
-// Sensitive models take absolute priority
-modelService.negotiateModel(null, { sensitive: true });
-// → 'sensitive' (local model)
+// Negotiate for high-quality reasoning
+const reasoningModel = await negotiate({ good: true, reasoning: true });
+// Returns: { modelName: 'gpt-4', provider: 'openai', ... }
 
-// Preferred model wins if it satisfies constraints
-modelService.negotiateModel('fastGood', { fast: true });
-// → 'fastGood'
-
-// Resolve an llm config to a model key (same shapes chains accept)
-resolveModel('fastGood');                          // → 'fastGood'
-resolveModel({ fast: true, good: 'prefer' });      // → 'fastGoodCheap' or similar
-resolveModel({ modelName: 'good', cheap: true });  // → negotiated key
-
-// Inspect capabilities
-getCapabilities('fastGoodCheap');  // → Set(['fast', 'good', 'cheap'])
+// Privacy-first selection (overrides all other criteria)
+const privateModel = await negotiate({ privacy: true, fast: true });
+// Returns: { modelName: 'llama-local', provider: 'local', ... }
 ```
 
 ## API
 
-### `modelService.negotiateModel(preferred, negotiation)`
+### `negotiate(criteria, options)`
 
-Selects the best model key for a set of capability constraints.
+**Parameters:**
+- `criteria` (Object): Capability requirements
+  - `fast` (boolean): Prioritize response speed
+  - `cheap` (boolean): Optimize for cost efficiency
+  - `good` (boolean): Prioritize output quality
+  - `reasoning` (boolean): Require advanced reasoning capabilities
+  - `multi` (boolean): Need multimodal support (text + images)
+  - `privacy` (boolean): Require privacy-preserving models (overrides all others)
+- `options` (Object): Configuration options
+  - `fallback` (string): Fallback model if negotiation fails
+  - `constraints` (Object): Additional constraints (token limits, etc.)
 
-- `preferred` (string|null) — model key to use if it satisfies all hard constraints
-- `negotiation` (object) — capability flags:
-  - `fast`, `cheap`, `good`, `reasoning`, `multi`, `sensitive`
-  - `true` — hard require
-  - `false` — hard exclude
-  - `'prefer'` — soft preference (used to rank when multiple models match)
+**Returns:** Promise<Object> - Selected model configuration
 
-Returns a model key string or `undefined`.
+## Model Selection Strategy
 
-### `resolveModel(llm)`
-
-Resolves the same `llm` shapes that chains and verblets accept:
-
-- `string` — model key lookup (`'fastGood'`)
-- `{ fast: true, good: 'prefer' }` — capability flags → negotiation
-- `{ modelName: 'fastGood', cheap: true }` — preferred + flags
-
-Returns the resolved model key or `undefined`.
-
-### `getCapabilities(modelKey)`
-
-Returns the `Set` of capability strings for a registered model key, or `undefined` if unregistered.
-
-### `modelService.getModel(name)`
-
-Looks up a model by key, then by catalog name. Returns a `Model` instance with `name`, `maxContextWindow`, `maxOutputTokens`, `requestTimeout`, `endpoint`, `apiUrl`, `apiKey`, `systemPrompt`, `toTokens(text)`, and `budgetTokens(text, options)`.
-
-### `modelService.getRequestConfig(options)`
-
-Builds a provider-ready request object from `{ prompt, modelName, temperature, maxTokens, topP, frequencyPenalty, presencePenalty, systemPrompt, response_format, tools, toolChoice }`.
-
-### Global overrides
-
+### Privacy First Rule
+Privacy models take **absolute precedence** over all other criteria:
 ```javascript
-modelService.setGlobalOverride('temperature', 0.9);
-modelService.clearGlobalOverride('temperature');
-modelService.getAllGlobalOverrides();
+// Privacy overrides everything
+const model = await negotiate({ privacy: true, fast: true, good: true });
+// Always returns a privacy-preserving model regardless of other flags
 ```
 
-Valid keys: `modelName`, `negotiate`, `temperature`, `maxTokens`, `topP`, `frequencyPenalty`, `presencePenalty`.
+### Capability Matrix
+The service maintains a capability matrix mapping models to their strengths:
 
-## Negotiation algorithm
+| Model | Fast | Cheap | Good | Reasoning | Multi | Privacy |
+|-------|------|-------|------|-----------|-------|---------|
+| gpt-3.5-turbo | ✓ | ✓ | - | - | - | - |
+| gpt-4 | - | - | ✓ | ✓ | - | - |
+| gpt-4-vision | - | - | ✓ | ✓ | ✓ | - |
+| claude-3-haiku | ✓ | ✓ | - | - | - | - |
+| claude-3-sonnet | - | - | ✓ | ✓ | - | - |
+| llama-local | - | - | - | - | - | ✓ |
 
-1. **Sensitive check** — if `sensitive: true` or `sensitive: 'prefer'`, return the sensitive model immediately (with `good` routing to `sensitiveGood` when available)
-2. **Preferred model** — if `preferred` satisfies all hard constraints, return it
-3. **Priority scan** — walk a prioritized model list; filter by hard constraints, rank by prefer score
-4. **Best match** — return the highest-scoring model, or `undefined` if none match
+### Negotiation Algorithm
+1. **Privacy Check**: If privacy is required, return privacy model immediately
+2. **Capability Matching**: Find models that satisfy all required capabilities
+3. **Optimization**: Among matching models, select based on preference order
+4. **Fallback**: If no perfect match, use closest approximation or fallback
+
+## Use Cases
+
+### Bulk Processing Optimization
+```javascript
+import { negotiate } from './index.js';
+
+// Process large datasets efficiently
+const bulkModel = await negotiate({ fast: true, cheap: true });
+
+const results = await Promise.all(
+  largeDataset.map(item => processWithModel(item, bulkModel))
+);
+```
+
+### Quality-Critical Analysis
+```javascript
+// Complex reasoning tasks
+const analysisModel = await negotiate({ good: true, reasoning: true });
+
+const insights = await analyzeWithModel(complexData, analysisModel);
+```
+
+### Privacy-Sensitive Operations
+```javascript
+// Personal data processing
+const privateModel = await negotiate({ privacy: true });
+
+const anonymized = await processPersonalData(sensitiveData, privateModel);
+```
+
+### Multimodal Applications
+```javascript
+// Image and text processing
+const visionModel = await negotiate({ multi: true, good: true });
+
+const analysis = await analyzeImageWithText(image, description, visionModel);
+```
+
+## Advanced Configuration
+
+### Custom Fallback Strategy
+```javascript
+const model = await negotiate(
+  { reasoning: true, multi: true }, 
+  { fallback: 'gpt-4' }
+);
+```
+
+### Constraint-Based Selection
+```javascript
+const model = await negotiate(
+  { fast: true, good: true },
+  { 
+    constraints: { 
+      maxTokens: 4000,
+      maxCostPerToken: 0.001 
+    }
+  }
+);
+```
+
+## Integration Patterns
+
+### With LLM Service
+```javascript
+import llm from '../llm/index.js';
+import { negotiate } from './llm-model/index.js';
+
+const model = await negotiate({ fast: true, cheap: true });
+const response = await llm(prompt, { modelOptions: model });
+```
+
+### Dynamic Model Selection
+```javascript
+const selectModel = async (taskType) => {
+  switch (taskType) {
+    case 'bulk':
+      return await negotiate({ fast: true, cheap: true });
+    case 'analysis':
+      return await negotiate({ good: true, reasoning: true });
+    case 'privacy':
+      return await negotiate({ privacy: true });
+    default:
+      return await negotiate({ good: true });
+  }
+};
+```
+The `llm-model` service returns the best model configuration for your tasks based on cost, speed, and privacy needs.

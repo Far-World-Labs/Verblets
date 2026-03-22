@@ -29,15 +29,7 @@ export const browserExclusions = [
   'src/chains/ai-arch-expect/**',
   'src/chains/test/**',
   'src/chains/test-advice/**',
-  'src/chains/test-analysis/config.spec.js',
   'src/lib/embed/**',
-  'src/constants/arch.spec.js',
-  'src/constants/arch-debug.spec.js',
-  'src/constants/models-config.spec.js',
-  'src/lib/debug/index.spec.js',
-  'src/services/redis/config.spec.js',
-  'src/lib/config/index.spec.js',
-  'src/init.spec.js',
 ];
 
 // Browser-specific aliases for modules with browser versions

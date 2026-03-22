@@ -28,8 +28,37 @@ describe('centralTendency chain', () => {
     expect(mapItems).toStrictEqual(items);
     expect(mapInstructions).toContain('banana, orange');
     expect(mapConfig.batchSize).toBe(5);
+    expect(mapConfig.maxAttempts).toBe(3);
     expect(mapConfig.responseFormat).toBeDefined();
     expect(mapConfig.responseFormat.type).toBe('json_schema');
+  });
+
+  it('forwards llm config to map', async () => {
+    map.mockResolvedValueOnce([mockResult(0.5, 'ok', 0.6)]);
+
+    const llm = { model: 'claude-3-opus' };
+    await centralTendency(['item'], ['seed'], { llm });
+
+    const mapConfig = map.mock.calls[0][2];
+    expect(mapConfig.llm).toBe(llm);
+  });
+
+  it('forwards batchSize to map', async () => {
+    map.mockResolvedValueOnce([mockResult(0.5, 'ok', 0.6)]);
+
+    await centralTendency(['item'], ['seed'], { batchSize: 10 });
+
+    const mapConfig = map.mock.calls[0][2];
+    expect(mapConfig.batchSize).toBe(10);
+  });
+
+  it('forwards maxAttempts to map', async () => {
+    map.mockResolvedValueOnce([mockResult(0.5, 'ok', 0.6)]);
+
+    await centralTendency(['item'], ['seed'], { maxAttempts: 5 });
+
+    const mapConfig = map.mock.calls[0][2];
+    expect(mapConfig.maxAttempts).toBe(5);
   });
 
   it('includes context in the instructions passed to map', async () => {
@@ -64,8 +93,14 @@ describe('centralTendency chain', () => {
     await expect(centralTendency('not-array', ['seed'])).rejects.toThrow('Items must be an array');
   });
 
-  it.each([[], null])('throws for invalid seedItems: %j', async (seedItems) => {
-    await expect(centralTendency(['item'], seedItems)).rejects.toThrow(
+  it('throws for empty seedItems', async () => {
+    await expect(centralTendency(['item'], [])).rejects.toThrow(
+      'seedItems must be a non-empty array'
+    );
+  });
+
+  it('throws for null seedItems', async () => {
+    await expect(centralTendency(['item'], null)).rejects.toThrow(
       'seedItems must be a non-empty array'
     );
   });
@@ -77,5 +112,17 @@ describe('centralTendency chain', () => {
     const output = await centralTendency(['a', 'b', 'c'], ['seed']);
     expect(output).toStrictEqual(results);
     expect(output[1]).toBeUndefined();
+  });
+
+  it('scopes onProgress to map:evaluation phase', async () => {
+    map.mockResolvedValueOnce([mockResult(0.5, 'ok', 0.6)]);
+    const onProgress = vi.fn();
+
+    await centralTendency(['item'], ['seed'], { onProgress });
+
+    const mapConfig = map.mock.calls[0][2];
+    expect(mapConfig.onProgress).toBeTypeOf('function');
+    // The scoped callback wraps the original onProgress
+    expect(mapConfig.onProgress).not.toBe(onProgress);
   });
 });

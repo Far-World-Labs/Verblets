@@ -1,45 +1,31 @@
-import { describe } from 'vitest';
+import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
 import { calibrateSpec, applyCalibrate, createCalibratedClassifier } from './index.js';
-import probeScan from '../probe-scan/index.js';
-import embedProbes from '../../lib/embed-probes/index.js';
+import sensitivityScan from '../sensitivity-scan/index.js';
+import vitestAiExpect from '../expect/index.js';
+import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
+import { getConfig } from '../test-analysis/config.js';
 import { extendedTestTimeout } from '../../constants/common.js';
-import { getTestHelpers } from '../test-analysis/test-wrappers.js';
+import { models } from '../../constants/models.js';
 
-const { it, expect, aiExpect } = getTestHelpers('Calibrate chain');
+const skipSensitivity = process.env.SENSITIVITY_TEST_SKIP || !models.sensitive;
 
-const PROBES = [
-  { category: 'pii-name', label: 'Personal full names', queries: ['full name of a person'] },
-  {
-    category: 'pii-ssn',
-    label: 'Social security numbers',
-    queries: ['social security number SSN'],
-  },
-  {
-    category: 'medical-record',
-    label: 'Medical records and prescriptions',
-    queries: ['medical record prescription diagnosis'],
-  },
-  {
-    category: 'financial-card',
-    label: 'Credit or debit card numbers',
-    queries: ['credit card debit card number'],
-  },
-  {
-    category: 'contact-phone',
-    label: 'Phone numbers',
-    queries: ['phone number telephone contact'],
-  },
-  { category: 'contact-email', label: 'Email addresses', queries: ['email address contact'] },
-];
+const config = getConfig();
+const it = config?.aiMode
+  ? wrapIt(vitestIt, { baseProps: { suite: 'Calibrate chain' } })
+  : vitestIt;
+const expect = config?.aiMode
+  ? wrapExpect(vitestExpect, { baseProps: { suite: 'Calibrate chain' } })
+  : vitestExpect;
+const aiExpect = config?.aiMode
+  ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'Calibrate chain' } })
+  : vitestAiExpect;
 
 describe('Calibrate examples', () => {
-  it(
+  it.skipIf(skipSensitivity)(
     'LLM-enhanced classification: learn severity rules from corpus scans',
     { timeout: extendedTestTimeout },
     async () => {
-      const probes = await embedProbes(PROBES);
-
-      // Step 1: Scan a representative corpus with custom probes
+      // Step 1: Scan a representative corpus with sensitivity probes
       const corpus = [
         'The quarterly earnings report shows 12% revenue growth.',
         'Employee James Lee (SSN: 111-22-3333) filed a leave request.',
@@ -48,10 +34,11 @@ describe('Calibrate examples', () => {
         'Credit card ending in 8842 was charged $3,200 on 2024-08-15.',
       ];
 
-      const scans = await Promise.all(corpus.map((text) => probeScan(text, probes)));
+      const scans = await Promise.all(corpus.map((text) => sensitivityScan(text)));
 
       const flaggedCount = scans.filter((s) => s.flagged).length;
       expect(flaggedCount).toBeGreaterThan(0);
+      expect(flaggedCount).toBeLessThan(corpus.length);
 
       // Step 2: Generate calibration spec from the scans — the LLM learns the
       // corpus's sensitivity landscape and produces calibrated classification rules
@@ -80,12 +67,10 @@ describe('Calibrate examples', () => {
     }
   );
 
-  it(
+  it.skipIf(skipSensitivity)(
     'createCalibratedClassifier: reusable classifier for streaming classification',
     { timeout: extendedTestTimeout },
     async () => {
-      const probes = await embedProbes(PROBES);
-
       // Train on a small corpus
       const trainingTexts = [
         'Robert Chen called from (555) 012-3456 about his prescription.',
@@ -93,7 +78,7 @@ describe('Calibrate examples', () => {
         'Invoice #7841 for $8,500 sent to accounts@client.org.',
       ];
 
-      const trainingScans = await Promise.all(trainingTexts.map((text) => probeScan(text, probes)));
+      const trainingScans = await Promise.all(trainingTexts.map((text) => sensitivityScan(text)));
 
       const spec = await calibrateSpec(trainingScans, {
         instructions:
@@ -105,9 +90,8 @@ describe('Calibrate examples', () => {
       expect(classifier.specification).toBe(spec);
 
       // Classify new, unseen texts
-      const newScan = await probeScan(
-        'Lisa Wang (DOB: 1995-02-14) requested prescription refill. Callback: (415) 555-9988.',
-        probes
+      const newScan = await sensitivityScan(
+        'Lisa Wang (DOB: 1995-02-14) requested prescription refill. Callback: (415) 555-9988.'
       );
 
       const result = await classifier(newScan);

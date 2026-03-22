@@ -1,14 +1,14 @@
 import * as tokenizer from 'gpt-tokenizer';
 
 import Model from './model.js';
-import { catalog } from '../../constants/model-catalog.js';
-import { models } from '../../constants/model-mappings.js';
 import {
+  catalog,
   frequencyPenalty as frequencyPenaltyConfig,
+  models,
   presencePenalty as presencePenaltyConfig,
   temperature as temperatureConfig,
   topP as topPConfig,
-} from '../../constants/llm-config.js';
+} from '../../constants/models.js';
 import { CAPABILITY_KEYS } from '../../constants/common.js';
 
 // Get or lazily derive capability Set for a model key
@@ -393,4 +393,15 @@ export function getCapabilities(modelKey) {
   const model = modelService.models[modelKey];
   if (!model) return undefined;
   return getModelCapabilities(model, modelKey);
+}
+
+/**
+ * Check whether sensitive models are configured.
+ *
+ *   sensitivityAvailable()  // → { available: true, fast: true, good: true }
+ */
+export function sensitivityAvailable() {
+  const good = !!modelService.models.sensitiveGood;
+  const fast = !!modelService.models.sensitive;
+  return { available: good || fast, fast, good };
 }

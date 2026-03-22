@@ -1,10 +1,9 @@
-import callLlm, { jsonSchema } from '../../lib/llm/index.js';
+import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import buildInstructions from '../../lib/build-instructions/index.js';
 import entityResultSchema from './entity-result.json';
 import { emitStepProgress } from '../../lib/progress-callback/index.js';
-import { scopeOperation } from '../../lib/context/option.js';
 
 // ===== Instruction Builders =====
 
@@ -41,7 +40,7 @@ export const {
  * @returns {Promise<string>} Entity specification as descriptive text
  */
 export async function entitySpec(prompt, config = {}) {
-  config = scopeOperation('entities:spec', config);
+  const { llm, maxAttempts = 3, onProgress, abortSignal, ...rest } = config;
 
   const specSystemPrompt = `You are an entity specification generator. Create a clear, concise specification for entity extraction.`;
 
@@ -59,12 +58,15 @@ Keep it simple and actionable.`;
   const response = await retry(
     () =>
       callLlm(specUserPrompt, {
-        ...config,
-        systemPrompt: specSystemPrompt,
+        llm,
+        modelOptions: { systemPrompt: specSystemPrompt },
+        ...rest,
       }),
     {
       label: 'entities-spec',
-      config,
+      maxAttempts,
+      onProgress,
+      abortSignal,
     }
   );
 
@@ -79,7 +81,7 @@ Keep it simple and actionable.`;
  * @returns {Promise<Object>} Object with entities array
  */
 export async function applyEntities(text, specification, config = {}) {
-  config = scopeOperation('entities:apply', config);
+  const { llm, maxAttempts = 3, onProgress, abortSignal, ...options } = config;
 
   const prompt = `Apply the entity specification to extract entities from this text.
 
@@ -96,12 +98,23 @@ Each entity should include:
   const response = await retry(
     () =>
       callLlm(prompt, {
-        ...config,
-        response_format: jsonSchema('entity_result', entityResultSchema),
+        llm,
+        modelOptions: {
+          response_format: {
+            type: 'json_schema',
+            json_schema: {
+              name: 'entity_result',
+              schema: entityResultSchema,
+            },
+          },
+        },
+        ...options,
       }),
     {
       label: 'entities-apply',
-      config,
+      maxAttempts,
+      onProgress,
+      abortSignal,
     }
   );
 
@@ -116,23 +129,23 @@ Each entity should include:
  * @returns {Promise<Object>} Object with entities array
  */
 export async function extractEntities(text, instructions, config = {}) {
-  config = scopeOperation('entities', config);
+  const { onProgress, now = new Date(), ...restConfig } = config;
 
-  emitStepProgress(config.onProgress, 'entities', 'generating-specification', {
+  emitStepProgress(onProgress, 'entities', 'generating-specification', {
     instructions,
-    now: config.now,
-    chainStartTime: config.now,
+    now: new Date(),
+    chainStartTime: now,
   });
 
-  const spec = config.spec || (await entitySpec(instructions, config));
+  const spec = await entitySpec(instructions, { onProgress, now, ...restConfig });
 
-  emitStepProgress(config.onProgress, 'entities', 'extracting-entities', {
+  emitStepProgress(onProgress, 'entities', 'extracting-entities', {
     specification: spec,
-    now: config.now,
-    chainStartTime: config.now,
+    now: new Date(),
+    chainStartTime: now,
   });
 
-  return await applyEntities(text, spec, config);
+  return await applyEntities(text, spec, { onProgress, now, ...restConfig });
 }
 
 // ===== Advanced Entity Functions =====

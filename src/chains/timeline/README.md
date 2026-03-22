@@ -35,7 +35,7 @@ const events = await timeline(newsFragments);
   - `onProgress` (Function): Progress callback `(event) => void`. Events from nested reduce/map calls are tagged with `phase` (`'reduce:knowledge-base'`, `'map:enrichment'`)
   - `abortSignal` (AbortSignal): Signal to cancel the operation
   - `llm` (string|Object): LLM model configuration
-  - `enrichment` (`'low'`|`'high'`): Controls timeline enrichment depth. `'low'` skips LLM dedup and knowledge enrichment. `'high'` enables LLM dedup + knowledge base building + enrichment mapping. Default: LLM dedup only
+  - `enrichWithKnowledge` (boolean): Enrich dates with LLM's historical knowledge (default: false)
   - `batchSize` (number): Items per batch for reduce/map when enriching (auto-calculated if omitted)
 
 **Returns:** Promise<Array<Event>> - Chronologically sorted timeline events
@@ -60,17 +60,17 @@ const events = await timeline(newsFragments);
 
 ## Knowledge Enrichment
 
-With `enrichment: 'high'`, the chain:
+When `enrichWithKnowledge: true`, the chain:
 1. Extracts events normally from the text
-2. Deduplicates events via LLM (also enabled by default)
-3. Uses reduce to build a knowledge base of accurate historical dates
-4. Maps over extracted events to correct/improve dates based on knowledge
+2. Uses reduce to build a knowledge base of accurate historical dates
+3. Maps over extracted events to correct/improve dates based on knowledge
+4. Adds important contextual events that fit within the timeline scope
 
 ```javascript
 // Example: Enrich vague dates with precise historical knowledge
 const text = "The Wright brothers flew. Pearl Harbor was attacked. Man landed on moon.";
-const enriched = await timeline(text, {
-  enrichment: 'high',
+const enriched = await timeline(text, { 
+  enrichWithKnowledge: true,
   batchSize: 2  // Process in smaller batches
 });
 // Returns events with precise dates: 1903-12-17, 1941-12-07, 1969-07-20

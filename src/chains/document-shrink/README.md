@@ -25,12 +25,10 @@ console.log(result.metadata.reductionRatio);
 
 ## Options
 
-- `targetSize` (number): Target document size in characters (default: 4000)
-- `tokenBudget` (number): Maximum LLM tokens to use (default: 1000)
-- `compression` (`'low'`|`'high'`|number): TF-IDF relevance cutoff ratio. `'low'` keeps more content (0.45), `'high'` prunes aggressively (0.85). Default: 0.65
-- `ranking` (`'low'`|`'high'`|number): LLM scoring weight vs TF-IDF. `'low'` trusts TF-IDF (0.1), `'high'` relies on LLM scoring (0.9). Default: 0.5
-- `thoroughness` (`'low'`|`'high'`): Controls which pipeline stages are enabled. `'low'` disables query expansion, LLM scoring, and LLM compression (pure TF-IDF). `'high'` enables all stages with more token budget for scoring. Default: query expansion + LLM scoring enabled
-- `llm` (string|Object): LLM configuration
+- `targetSize`: Target document size in characters (default: 4000)
+- `tokenBudget`: Maximum LLM tokens to use (default: 1000)
+- `chunkSize`: Base chunk size for processing (default: 500)
+- `llm`: LLM configuration
 
 ## How it works
 

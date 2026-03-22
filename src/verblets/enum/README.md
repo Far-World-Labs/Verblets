@@ -1,26 +1,33 @@
 # enum
 
-Classify free-form text into exactly one of several predefined categories.
+Convert free-form input to exactly one of several predefined options using AI-powered matching.
+
+## Usage
 
 ```javascript
-import classify from '@anthropic/verblets/verblets/enum';
+const priority = await enum('This needs to be done ASAP!!!', ['low', 'medium', 'high', 'critical']);
+// 'critical'
 
-// Understands intent, not just keywords
-await classify('This needs to be done ASAP!!!', ['low', 'medium', 'high', 'critical']);
-// => 'critical'
-
-// Returns undefined when nothing fits
-await classify('quantum physics research', ['sports', 'cooking', 'fashion']);
-// => undefined
+// Returns undefined when no option fits
+const category = await enum('quantum physics research', ['sports', 'cooking', 'fashion']);
+// undefined
 ```
 
 ## API
 
-### `classify(text, options, config?)`
+### `enum(text, options, config)`
 
-- **text** (string): Input text to classify
-- **options** (string[]): Possible categories to choose from
-- **config** (Object): Configuration options
-  - **llm**: LLM configuration
+**Parameters:**
+- `text` (string): The input text to classify
+- `options` (Array<string>): Array of possible values to choose from
+- `config` (Object): Configuration options
+  - `llm` (Object): LLM configuration
 
-**Returns:** Promise\<string | undefined\> — One of the provided options, or undefined
+**Returns:** Promise<string|undefined> - One of the provided options, or undefined if none fit
+
+## Features
+
+- **Flexible matching**: Understands context and meaning, not just keywords
+- **Undefined handling**: Returns undefined when input doesn't match any option
+- **Type safety**: Guarantees output is from your predefined options
+- **Natural language understanding**: Handles synonyms, implications, and context

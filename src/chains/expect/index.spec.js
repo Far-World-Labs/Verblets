@@ -1,6 +1,5 @@
 import { describe, expect as vitestExpect, it, vi, beforeEach, afterEach } from 'vitest';
-import { expectSimple, expect } from './index.js';
-import { mapAdvice } from './index.js';
+import { expectSimple, expect } from './entry.js';
 import { longTestTimeout } from '../../constants/common.js';
 import { setTestEnv, saveTestEnv } from './test-utils.js';
 import { debug } from '../../lib/debug/index.js';
@@ -298,7 +297,12 @@ describe('expect chain', () => {
 
         vitestExpect(details.file).toBeDefined();
         vitestExpect(details.line).toBeTypeOf('number');
-        vitestExpect(details.line).toBeGreaterThanOrEqual(0);
+        // In browser environment, line number is 0
+        if (typeof window !== 'undefined') {
+          vitestExpect(details.line).toBe(0);
+        } else {
+          vitestExpect(details.line).toBeGreaterThan(0);
+        }
       },
       longTestTimeout
     );
@@ -340,15 +344,5 @@ describe('expect chain', () => {
       },
       longTestTimeout
     );
-  });
-});
-
-describe('mapAdvice', () => {
-  it('maps low to introspection disabled', () => {
-    vitestExpect(mapAdvice('low')).toEqual({ introspection: false });
-  });
-
-  it('maps high to introspection enabled', () => {
-    vitestExpect(mapAdvice('high')).toEqual({ introspection: true });
   });
 });

@@ -1,0 +1,27 @@
+{
+  "type": "object",
+  "properties": {
+    "method": {
+      "type": "string",
+      "enum": ["light", "balanced", "strict"]
+    },
+    "preservationRules": {
+      "type": "string",
+      "description": "What content and characteristics to preserve"
+    },
+    "removalTargets": {
+      "type": "string",
+      "description": "What stylistic markers and patterns to remove"
+    },
+    "consistencyGuidelines": {
+      "type": "string",
+      "description": "How to maintain consistency across texts"
+    },
+    "contextNotes": {
+      "type": "string",
+      "description": "Additional context-specific handling notes"
+    }
+  },
+  "required": ["method", "preservationRules", "removalTargets", "consistencyGuidelines", "contextNotes"],
+  "additionalProperties": false
+}

@@ -1,7 +1,14 @@
-import { describe } from 'vitest';
-import { getTestHelpers } from './test-wrappers.js';
+import { describe, it as vitestIt, expect as vitestExpect } from 'vitest';
+import { wrapIt, wrapExpect } from './test-wrappers.js';
+import { getConfig } from './config.js';
 
-const { it, expect } = getTestHelpers('Test analysis chain');
+const config = getConfig();
+const it = config?.aiMode
+  ? wrapIt(vitestIt, { baseProps: { suite: 'Test analysis chain' } })
+  : vitestIt;
+const expect = config?.aiMode
+  ? wrapExpect(vitestExpect, { baseProps: { suite: 'Test analysis chain' } })
+  : vitestExpect;
 
 // Helper to delay execution
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -97,6 +104,8 @@ describe('test-analysis race condition tests', () => {
 });
 
 describe('test-analysis edge cases', () => {
+  const skipIt = config?.aiMode ? it.skip : vitestIt.skip;
+
   it('test that completes after async delay', async () => {
     await delay(5);
 
@@ -104,8 +113,8 @@ describe('test-analysis edge cases', () => {
     expect(true).toBe(true);
   });
 
-  // Intentionally skipped: verifies skip tracking doesn't execute assertions
-  it.skip('skipped test should not cause race conditions', () => {
+  skipIt('skipped test should not cause race conditions', () => {
+    // This test is skipped and should be properly tracked
     expect(true).toBe(false);
   });
 });

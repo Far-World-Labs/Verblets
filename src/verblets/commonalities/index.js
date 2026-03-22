@@ -5,37 +5,25 @@ import commonalitiesSchema from './commonalities-result.json';
 
 const { contentIsQuestion, tryCompleteData } = promptConstants;
 
-const responseFormat = {
-  type: 'json_schema',
-  json_schema: {
-    name: 'commonalities_result',
-    schema: commonalitiesSchema,
-  },
-};
-
-// ===== Option Mappers =====
-
 /**
- * Map depth option to prompt guidance for commonality analysis depth.
- * low: surface-level — literal, observable shared features.
- * high: deep/abstract — structural patterns, functional relationships, philosophical connections.
- * Default: balanced mix (current behavior, no extra guidance).
- * @param {string|undefined} value
- * @returns {string|undefined} Prompt guidance string or undefined
+ * Create model options for structured outputs
+ * @returns {Object} Model options for callLlm
  */
-export const mapDepth = (value) => {
-  if (value === undefined) return undefined;
-  if (typeof value === 'string') {
-    return {
-      low: 'Focus on literal, directly observable shared features. Report concrete, surface-level commonalities such as shared physical properties, obvious category membership, or explicit shared attributes. Do not infer abstract or metaphorical connections.',
-      med: undefined,
-      high: 'Look beyond surface features to find deep structural patterns, functional relationships, and abstract connections. Identify shared underlying mechanisms, analogous roles, philosophical parallels, and non-obvious conceptual links. Prefer insightful, non-trivial commonalities over obvious ones.',
-    }[value];
-  }
-  return undefined;
-};
+function createModelOptions() {
+  const schema = commonalitiesSchema;
 
-export const buildPrompt = (items, { instructions, depthGuidance } = {}) => {
+  const responseFormat = {
+    type: 'json_schema',
+    json_schema: {
+      name: 'commonalities_result',
+      schema,
+    },
+  };
+
+  return { response_format: responseFormat };
+}
+
+export const buildPrompt = (items, { instructions } = {}) => {
   const itemsList = items.join(' | ');
   const itemsBlock = asXML(itemsList, { tag: 'items' });
   const intro =
@@ -46,7 +34,7 @@ export const buildPrompt = (items, { instructions, depthGuidance } = {}) => {
 
 ${itemsBlock}
 
-Provide a clear, focused list of items that represent the intersection or commonality between all the given categories.${depthGuidance ? `\n\n${depthGuidance}` : ''}
+Provide a clear, focused list of items that represent the intersection or commonality between all the given categories.
 
 ${tryCompleteData}`;
 };
@@ -61,10 +49,13 @@ export default async function commonalities(items, config = {}) {
     return [];
   }
 
-  const depthGuidance = mapDepth(config.depth);
-  const output = await callLlm(buildPrompt(items, { ...config, depthGuidance }), {
-    ...config,
-    response_format: responseFormat,
+  const { llm, ...options } = config;
+  const modelOptions = createModelOptions();
+
+  const output = await callLlm(buildPrompt(items, options), {
+    llm,
+    modelOptions,
+    ...options,
   });
 
   const resultArray = output?.items || output;

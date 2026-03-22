@@ -1,11 +1,16 @@
-import { describe } from 'vitest';
+import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
 import map from './index.js';
 import { longTestTimeout } from '../../constants/common.js';
-import { getTestHelpers } from '../test-analysis/test-wrappers.js';
+import { makeWrappedIt, makeWrappedExpect } from '../test-analysis/test-wrappers.js';
+import { getConfig } from '../test-analysis/config.js';
 import { fakeTransactions } from './fake-transactions.js';
 import { transactionBatchSchema } from './transaction-batch-schema.js';
 
-const { it, expect } = getTestHelpers('Map chain - Structured Extraction');
+const config = getConfig();
+const suite = 'Map chain - Structured Extraction';
+
+const it = makeWrappedIt(vitestIt, suite, config);
+const expect = makeWrappedExpect(vitestExpect, suite, config);
 
 describe('map structured extraction examples', () => {
   it(

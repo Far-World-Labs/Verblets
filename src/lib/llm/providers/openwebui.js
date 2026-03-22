@@ -16,16 +16,10 @@ export const buildRequest = (apiUrl, apiKey, endpoint, requestConfig) => {
     headers.Authorization = `Bearer ${apiKey}`;
   }
 
-  const ollamaConfig = {
-    ...requestConfig,
-    think: false,
-    keep_alive: '30m',
-  };
-
   const fetchOptions = {
     method: 'POST',
     headers,
-    body: JSON.stringify(ollamaConfig),
+    body: JSON.stringify(requestConfig),
   };
 
   return { url, fetchOptions };

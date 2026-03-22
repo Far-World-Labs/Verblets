@@ -1,11 +1,16 @@
-import { describe } from 'vitest';
+import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
 import { embed, embedBatch, embedChunked, embedWarmup } from './index.js';
 import { cosineSimilarity, vectorSearch } from '../pure/index.js';
 import { extendedTestTimeout } from '../../constants/common.js';
 
-import { getTestHelpers } from '../../chains/test-analysis/test-wrappers.js';
+import { makeWrappedIt, makeWrappedExpect } from '../../chains/test-analysis/test-wrappers.js';
+import { getConfig } from '../../chains/test-analysis/config.js';
 
-const { it, expect } = getTestHelpers('Embed verblet');
+const config = getConfig();
+const suite = 'Embed verblet';
+
+const it = makeWrappedIt(vitestIt, suite, config);
+const expect = makeWrappedExpect(vitestExpect, suite, config);
 
 describe('Embed verblet', () => {
   it(

@@ -1,9 +1,18 @@
-import { describe } from 'vitest';
+import { describe, it as vitestIt, expect as vitestExpect } from 'vitest';
 import peopleList from './index.js';
+import vitestAiExpect from '../expect/index.js';
 import { longTestTimeout } from '../../constants/common.js';
-import { getTestHelpers } from '../test-analysis/test-wrappers.js';
+import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
+import { getConfig } from '../test-analysis/config.js';
 
-const { it, expect, aiExpect } = getTestHelpers('People chain');
+const config = getConfig();
+const it = config?.aiMode ? wrapIt(vitestIt, { baseProps: { suite: 'People chain' } }) : vitestIt;
+const expect = config?.aiMode
+  ? wrapExpect(vitestExpect, { baseProps: { suite: 'People chain' } })
+  : vitestExpect;
+const aiExpect = config?.aiMode
+  ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'People chain' } })
+  : vitestAiExpect;
 
 describe('people chain', () => {
   it(
@@ -20,9 +29,10 @@ describe('people chain', () => {
         expect(person).toHaveProperty('name');
       });
 
-      await aiExpect(people).toSatisfy(
+      const matchesDescription = await aiExpect(people).toSatisfy(
         'Should be 3 people with startup founder backgrounds in Silicon Valley'
       );
+      expect(matchesDescription).toBe(true);
     },
     longTestTimeout
   );
@@ -38,9 +48,10 @@ describe('people chain', () => {
       expect(Array.isArray(people)).toBe(true);
       expect(people.length).toBe(5);
 
-      await aiExpect(people).toSatisfy(
+      const hasDiversity = await aiExpect(people).toSatisfy(
         'Should represent diverse backgrounds, specialties, and perspectives for a software engineering team'
       );
+      expect(hasDiversity).toBe(true);
     },
     longTestTimeout
   );

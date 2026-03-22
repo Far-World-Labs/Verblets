@@ -49,4 +49,21 @@ const transform = map.with('translate to French');
 const results = await pMap(items, transform, { concurrency: 5 });
 ```
 
+## Reliability Features
+
+- **Automatic chunking**: Large lists are processed in manageable batches
+- **Retry logic**: Failed items are automatically retried up to `maxAttempts` times
+- **Order preservation**: Results maintain the same order as input items
+- **Partial success**: Successfully processed items are returned even if some fail
+
+## Integration with Other Chains
+
+```javascript
+import map from './index.js';
+import score from '../score/index.js';
+
+// Transform items, then score the results
+const descriptions = await map(items, 'Write a one-line description');
+const { scores } = await score(descriptions, 'How engaging is this description?');
+```
 
