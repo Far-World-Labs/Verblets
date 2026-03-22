@@ -1,7 +1,6 @@
 import callLlm from '../../lib/llm/index.js';
 import { schemas as defaultSchemas } from '../../json-schemas/index.js';
 
-//TODO:DOCS_OBSERVATIONS anonymous arrow export — should be a named function `auto` for consistency with other modules and better stack traces
 export default async (text, config = {}) => {
   // Use provided schemas or fall back to default schemas
   const schemasToUse = config.schemas || defaultSchemas;

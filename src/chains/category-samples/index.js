@@ -133,16 +133,3 @@ export default async function categorySamples(categoryName, config = {}) {
     config,
   });
 }
-
-//TODO:DOCS_OBSERVATIONS categorySamplesList is dead code — never imported anywhere, duplicates list() with an unused _count param. Remove or integrate.
-/**
- * Generate sample items for a category using list generation
- * @param {string} category - The category to generate samples for
- * @param {number} _count - Target number of samples (unused, kept for API compatibility)
- * @param {Object} options - Additional options
- * @returns {Promise<string[]>} Array of sample items
- */
-export function categorySamplesList(category, _count = 10, options = {}) {
-  // Use the list chain to generate samples for the category
-  return list(category, options);
-}

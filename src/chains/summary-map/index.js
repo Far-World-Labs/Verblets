@@ -182,7 +182,7 @@ export default class SummaryMap extends Map {
 
   get(key) {
     if (!this.data.has(key)) {
-      return null; //TODO:DOCS_OBSERVATIONS project rule: never use null — return undefined
+      return undefined;
     }
 
     if (!this.isCacheValid) {

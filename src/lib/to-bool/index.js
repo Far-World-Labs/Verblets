@@ -1,8 +1,11 @@
 import stripResponse from '../strip-response/index.js';
 
-//TODO:DOCS_OBSERVATIONS only handles "true"/"false" — consider adding "yes"/"no", "1"/"0" for broader LLM response coverage
 export default (val) => {
   const valLower = stripResponse(val.toLowerCase());
+  if (valLower === '1') return true;
+  if (valLower === '0') return false;
+  if (valLower === 'yes') return true;
+  if (valLower === 'no') return true;
   if (valLower === 'true') return true;
   if (valLower === 'false') return false;
   return undefined;
