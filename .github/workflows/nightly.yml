@@ -128,7 +128,7 @@ jobs:
           path: results.txt
 
   notify:
-    name: Telegram
+    name: Send report
     needs: [gate, server, client, examples]
     if: always() && needs.gate.outputs.should_run == 'true'
     runs-on: ubuntu-latest
