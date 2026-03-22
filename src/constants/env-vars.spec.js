@@ -97,10 +97,9 @@ describe('env-vars registry', () => {
   });
 
   describe('CONSTRAINTS', () => {
-    it('requires at least one LLM API key', () => {
-      expect(CONSTRAINTS).toContainEqual({
-        oneOf: ['OPENAI_API_KEY', 'ANTHROPIC_API_KEY'],
-      });
+    it('has no startup key requirements — keys validated at point of use', () => {
+      const oneOfRules = CONSTRAINTS.filter((c) => c.oneOf);
+      expect(oneOfRules).toHaveLength(0);
     });
   });
 

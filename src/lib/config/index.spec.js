@@ -157,24 +157,13 @@ describe('config provider', () => {
       expect(errors).toEqual([]);
     });
 
-    it('returns oneOf error when no API key is set', () => {
+    it('passes without any API keys — keys validated at point of use', () => {
       vi.stubEnv('OPENAI_API_KEY', '');
       vi.stubEnv('ANTHROPIC_API_KEY', '');
-      // Ensure neither key is set via process.env either
       delete process.env.OPENAI_API_KEY;
       delete process.env.ANTHROPIC_API_KEY;
       const errors = validate();
-      expect(errors).toContainEqual(
-        expect.stringContaining('At least one of OPENAI_API_KEY, ANTHROPIC_API_KEY')
-      );
-    });
-
-    it('passes oneOf when only ANTHROPIC_API_KEY is set', () => {
-      delete process.env.OPENAI_API_KEY;
-      vi.stubEnv('ANTHROPIC_API_KEY', 'sk-ant-test');
-      const errors = validate();
-      const oneOfErrors = errors.filter((e) => e.includes('OPENAI_API_KEY'));
-      expect(oneOfErrors).toHaveLength(0);
+      expect(errors).toEqual([]);
     });
 
     it('returns requiredIf error when OPENWEBUI_API_KEY is set without OPENWEBUI_API_URL', () => {
