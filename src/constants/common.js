@@ -23,12 +23,12 @@ export const CAPABILITY_KEYS = ['fast', 'cheap', 'good', 'reasoning', 'multi', '
 // Recognized intensity levels for behavioral dial options
 export const INTENSITY_LEVELS = ['low', 'high'];
 
-// Example test cost tiers, gated by EXAMPLE_BUDGET env var.
+// Example test cost tiers, gated by VERBLETS_EXAMPLE_BUDGET env var.
 // 'low'    (default) — single-call examples only (~190 tests)
 // 'medium'           — adds multi-call chains up to ~6 LLM calls per test
 // 'high'             — all examples including 10+ call chains
 //
-// Usage: EXAMPLE_BUDGET=medium npm run examples
-export const exampleBudget = (env.EXAMPLE_BUDGET || 'low').toLowerCase();
+// Usage: VERBLETS_EXAMPLE_BUDGET=medium npm run examples
+export const exampleBudget = (env.VERBLETS_EXAMPLE_BUDGET || 'low').toLowerCase();
 export const isMediumBudget = ['medium', 'high'].includes(exampleBudget);
 export const isHighBudget = exampleBudget === 'high';

@@ -10,7 +10,7 @@ import { getOptions, scopeOperation } from '../../lib/context/option.js';
 export async function expect(actual, expected, constraint, config = {}) {
   config = scopeOperation('expect', config);
   const { mode } = await getOptions(config, {
-    mode: env.LLM_EXPECT_MODE || 'none',
+    mode: env.VERBLETS_LLM_EXPECT_MODE || 'none',
   });
 
   // Validate inputs

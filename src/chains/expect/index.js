@@ -168,7 +168,7 @@ export async function expect(actual, expected, constraint, config = {}) {
     mode,
     introspection,
   } = await initChain('expect', config, {
-    mode: env.LLM_EXPECT_MODE || 'none',
+    mode: env.VERBLETS_LLM_EXPECT_MODE || 'none',
     advice: withPolicy(mapAdvice, ['introspection']),
   });
   config = scopedConfig;

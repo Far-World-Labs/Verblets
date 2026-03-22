@@ -68,7 +68,7 @@ describe('env-vars registry', () => {
 
   it('includes cache and redis vars', () => {
     expect(ENV_VARS.VERBLETS_CACHE_TTL).toBeDefined();
-    expect(ENV_VARS.DISABLE_CACHE).toBeDefined();
+    expect(ENV_VARS.VERBLETS_DISABLE_CACHE).toBeDefined();
     expect(ENV_VARS.REDIS_HOST).toBeDefined();
     expect(ENV_VARS.REDIS_PORT).toBeDefined();
   });
@@ -117,9 +117,9 @@ describe('env-vars registry', () => {
     });
   });
 
-  it('ARCH_LOG has no default (string type, no boolean mismatch)', () => {
-    expect(ENV_VARS.ARCH_LOG.type).toBe('string');
-    expect(ENV_VARS.ARCH_LOG.default).toBeUndefined();
+  it('VERBLETS_ARCH_LOG has no default (string type, no boolean mismatch)', () => {
+    expect(ENV_VARS.VERBLETS_ARCH_LOG.type).toBe('string');
+    expect(ENV_VARS.VERBLETS_ARCH_LOG.default).toBeUndefined();
   });
 
   it('REDIS_HOST and REDIS_PORT have no defaults (Redis is optional)', () => {

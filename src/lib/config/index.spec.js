@@ -36,13 +36,13 @@ describe('config provider', () => {
     });
 
     it('coerces boolean env var (truthy)', () => {
-      vi.stubEnv('DISABLE_CACHE', 'true');
-      expect(get('DISABLE_CACHE')).toBe(true);
+      vi.stubEnv('VERBLETS_DISABLE_CACHE', 'true');
+      expect(get('VERBLETS_DISABLE_CACHE')).toBe(true);
     });
 
     it('coerces boolean env var (falsy)', () => {
-      vi.stubEnv('DISABLE_CACHE', 'false');
-      expect(get('DISABLE_CACHE')).toBe(false);
+      vi.stubEnv('VERBLETS_DISABLE_CACHE', 'false');
+      expect(get('VERBLETS_DISABLE_CACHE')).toBe(false);
     });
 
     it('coerces boolean "1" to true', () => {
@@ -84,9 +84,9 @@ describe('config provider', () => {
     });
 
     it('falls through to registry default for unrecognized boolean string', () => {
-      vi.stubEnv('DISABLE_CACHE', 'maybe');
+      vi.stubEnv('VERBLETS_DISABLE_CACHE', 'maybe');
       // 'maybe' not in truthyValues/falsyValues → undefined → falls through to default (false)
-      expect(get('DISABLE_CACHE')).toBe(false);
+      expect(get('VERBLETS_DISABLE_CACHE')).toBe(false);
     });
 
     it('treats already-boolean values correctly', () => {

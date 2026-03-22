@@ -163,7 +163,7 @@ export class DetailsProcessor extends BaseProcessor {
     const eventType = event.type || event.event;
 
     // Uncomment for debugging event flow - DO NOT DELETE
-    if (process.env.DEBUG_EVENTS) debugProcessEvent(event);
+    if (process.env.VERBLETS_DEBUG_EVENTS) debugProcessEvent(event);
 
     // Skip run-start - no initial separator needed
 

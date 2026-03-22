@@ -41,10 +41,10 @@ npm run test
 npm run examples
 
 # Architecture tests (single run with debug output)
-ARCH_LOG=debug npm run arch:once
+VERBLETS_ARCH_LOG=debug npm run arch:once
 
 # Individual architecture test (for performance)
-source .env && ARCH_LOG=debug ARCH_SHUFFLE=true vitest --config .vitest.config.arch.js --run index.arch.js
+source .env && VERBLETS_ARCH_LOG=debug VERBLETS_ARCH_SHUFFLE=true vitest --config .vitest.config.arch.js --run index.arch.js
 ```
 
 ### Development

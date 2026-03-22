@@ -5,7 +5,7 @@ Intelligent assertions with debugging context and environment-aware behavior. Ex
 ```javascript
 import { expect } from './index.js';
 
-process.env.LLM_EXPECT_MODE = 'info'; // 'none' (default) | 'info' | 'error'
+process.env.VERBLETS_LLM_EXPECT_MODE = 'info'; // 'none' (default) | 'info' | 'error'
 
 const [passed, details] = await expect(
   generatedCopy,
@@ -33,7 +33,7 @@ if (!passed) {
 - `config` (Object): Configuration options
   - `advice` (`'low'`|`'high'`): Controls introspection depth on failure. `'low'` disables code analysis. `'high'` (default) reads surrounding source and module under test
 
-### Environment modes (`LLM_EXPECT_MODE`)
+### Environment modes (`VERBLETS_LLM_EXPECT_MODE`)
 
 - **`none`** (default): Returns structured results silently
 - **`info`**: Logs failures with context and advice to console

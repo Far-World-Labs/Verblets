@@ -27,19 +27,19 @@ describe('models.js config exports', () => {
   });
 
   describe('cachingEnabled', () => {
-    it('defaults to true when DISABLE_CACHE is unset', async () => {
+    it('defaults to true when VERBLETS_DISABLE_CACHE is unset', async () => {
       const { cachingEnabled } = await importModels();
       expect(cachingEnabled).toBe(true);
     });
 
-    it('is false when DISABLE_CACHE is "true"', async () => {
-      vi.stubEnv('DISABLE_CACHE', 'true');
+    it('is false when VERBLETS_DISABLE_CACHE is "true"', async () => {
+      vi.stubEnv('VERBLETS_DISABLE_CACHE', 'true');
       const { cachingEnabled } = await importModels();
       expect(cachingEnabled).toBe(false);
     });
 
-    it('is true when DISABLE_CACHE is any other value', async () => {
-      vi.stubEnv('DISABLE_CACHE', 'false');
+    it('is true when VERBLETS_DISABLE_CACHE is any other value', async () => {
+      vi.stubEnv('VERBLETS_DISABLE_CACHE', 'false');
       const { cachingEnabled } = await importModels();
       expect(cachingEnabled).toBe(true);
     });

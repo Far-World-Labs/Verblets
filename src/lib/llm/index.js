@@ -293,7 +293,8 @@ export const run = async (prompt, config = {}) => {
   // Check if caching is disabled — per-call option takes precedence over environment variable
   const cacheEnabled = await getOption('cacheEnabled', options, undefined);
   const cachingDisabled =
-    cacheEnabled === false || (cacheEnabled === undefined && configGet('DISABLE_CACHE') === true);
+    cacheEnabled === false ||
+    (cacheEnabled === undefined && configGet('VERBLETS_DISABLE_CACHE') === true);
   const cacheTTL = await getOption('cacheTTL', options, undefined);
 
   let cacheResult = null;

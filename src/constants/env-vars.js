@@ -32,7 +32,7 @@ export const ENV_VARS = {
 
   // ── Cache ────────────────────────────────────────────────────────────
   VERBLETS_CACHE_TTL: { type: 'number', default: 31_536_000, scope: 'deploy' },
-  DISABLE_CACHE: { type: 'boolean', default: false, scope: 'deploy' },
+  VERBLETS_DISABLE_CACHE: { type: 'boolean', default: false, scope: 'deploy' },
 
   // ── Debug & Logging ──────────────────────────────────────────────────
   VERBLETS_DEBUG: { type: 'boolean', default: false, scope: 'debug' },
@@ -57,7 +57,7 @@ export const ENV_VARS = {
 
   // ── Runtime ──────────────────────────────────────────────────────────
   NODE_ENV: { type: 'string', scope: 'deploy' },
-  LLM_EXPECT_MODE: { type: 'string', scope: 'deploy', default: 'none' },
+  VERBLETS_LLM_EXPECT_MODE: { type: 'string', scope: 'deploy', default: 'none' },
 
   // ── Test Analysis ────────────────────────────────────────────────────
   VERBLETS_AI_LOGS_ONLY: { type: 'boolean', default: false, scope: 'test' },
@@ -74,14 +74,15 @@ export const ENV_VARS = {
   VERBLETS_NO_SUITE_OUTPUT: { type: 'boolean', default: false, scope: 'test' },
 
   // ── Arch Tests ───────────────────────────────────────────────────────
-  ARCH_LOG: { type: 'string', scope: 'test' },
-  ARCH_SHUFFLE: { type: 'boolean', default: false, scope: 'test' },
-  ARCH_DEBUG: { type: 'boolean', default: false, scope: 'test' },
+  VERBLETS_ARCH_LOG: { type: 'string', scope: 'test' },
+  VERBLETS_ARCH_SHUFFLE: { type: 'boolean', default: false, scope: 'test' },
+  VERBLETS_ARCH_DEBUG: { type: 'boolean', default: false, scope: 'test' },
 
   // ── Example / CI Flags ───────────────────────────────────────────────
-  EXAMPLE_BUDGET: { type: 'string', default: 'low', scope: 'test' },
-  REDIS_TEST_SKIP: { type: 'boolean', default: false, scope: 'test' },
-  DEBUG_EVENTS: { type: 'boolean', default: false, scope: 'test' },
+  VERBLETS_EXAMPLE_BUDGET: { type: 'string', default: 'low', scope: 'test' },
+  VERBLETS_REDIS_TEST_SKIP: { type: 'boolean', default: false, scope: 'test' },
+  VERBLETS_DEBUG_EVENTS: { type: 'boolean', default: false, scope: 'test' },
+  VERBLETS_SENSITIVITY_TEST_SKIP: { type: 'boolean', default: false, scope: 'test' },
 };
 
 /** Valid scopes for env var classification. */

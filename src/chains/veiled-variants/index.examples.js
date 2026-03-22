@@ -8,7 +8,7 @@ import { env } from '../../lib/env/index.js';
 // Sensitivity model (local Ollama) can be much slower than cloud LLMs
 const sensitivityTimeout = 2 * extendedTestTimeout;
 
-const skipSensitivity = env.SENSITIVITY_TEST_SKIP || !models.sensitive;
+const skipSensitivity = env.VERBLETS_SENSITIVITY_TEST_SKIP || !models.sensitive;
 
 const { it, expect, aiExpect } = getTestHelpers('Veiled variants chain');
 

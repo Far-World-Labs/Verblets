@@ -2,7 +2,7 @@
 
 ## Budget Tiers
 
-Example tests are gated by `EXAMPLE_BUDGET` (env var, default `low`).
+Example tests are gated by `VERBLETS_EXAMPLE_BUDGET` (env var, default `low`).
 
 | Tier     | Gate             | What runs                              |
 |----------|------------------|----------------------------------------|
@@ -10,7 +10,7 @@ Example tests are gated by `EXAMPLE_BUDGET` (env var, default `low`).
 | `medium` | `isMediumBudget` | Multi-call chains (2-10 LLM calls)     |
 | `high`   | `isHighBudget`   | Expensive pipelines (10+ LLM calls)    |
 
-Set via: `EXAMPLE_BUDGET=medium npx vitest run --config vitest.config.examples.js`
+Set via: `VERBLETS_EXAMPLE_BUDGET=medium npx vitest run --config vitest.config.examples.js`
 
 ## Skip Tagging Convention
 

@@ -9,43 +9,43 @@ describe('arch config', () => {
     vi.unstubAllEnvs();
   });
 
-  describe('ARCH_LOG', () => {
-    it('defaults to false when ARCH_LOG is unset', async () => {
-      delete process.env.ARCH_LOG;
-      const { ARCH_LOG } = await import('./arch.js');
-      expect(ARCH_LOG).toBe(false);
+  describe('VERBLETS_ARCH_LOG', () => {
+    it('defaults to false when VERBLETS_ARCH_LOG is unset', async () => {
+      delete process.env.VERBLETS_ARCH_LOG;
+      const { VERBLETS_ARCH_LOG } = await import('./arch.js');
+      expect(VERBLETS_ARCH_LOG).toBe(false);
     });
 
-    it('reads ARCH_LOG string value from env', async () => {
-      vi.stubEnv('ARCH_LOG', 'debug');
-      const { ARCH_LOG } = await import('./arch.js');
-      expect(ARCH_LOG).toBe('debug');
+    it('reads VERBLETS_ARCH_LOG string value from env', async () => {
+      vi.stubEnv('VERBLETS_ARCH_LOG', 'debug');
+      const { VERBLETS_ARCH_LOG } = await import('./arch.js');
+      expect(VERBLETS_ARCH_LOG).toBe('debug');
     });
   });
 
-  describe('ARCH_SHUFFLE', () => {
-    it('defaults to false when ARCH_SHUFFLE is unset', async () => {
-      delete process.env.ARCH_SHUFFLE;
-      const { ARCH_SHUFFLE } = await import('./arch.js');
-      expect(ARCH_SHUFFLE).toBe(false);
+  describe('VERBLETS_ARCH_SHUFFLE', () => {
+    it('defaults to false when VERBLETS_ARCH_SHUFFLE is unset', async () => {
+      delete process.env.VERBLETS_ARCH_SHUFFLE;
+      const { VERBLETS_ARCH_SHUFFLE } = await import('./arch.js');
+      expect(VERBLETS_ARCH_SHUFFLE).toBe(false);
     });
 
-    it('is true when ARCH_SHUFFLE is "true"', async () => {
-      vi.stubEnv('ARCH_SHUFFLE', 'true');
-      const { ARCH_SHUFFLE } = await import('./arch.js');
-      expect(ARCH_SHUFFLE).toBe(true);
+    it('is true when VERBLETS_ARCH_SHUFFLE is "true"', async () => {
+      vi.stubEnv('VERBLETS_ARCH_SHUFFLE', 'true');
+      const { VERBLETS_ARCH_SHUFFLE } = await import('./arch.js');
+      expect(VERBLETS_ARCH_SHUFFLE).toBe(true);
     });
 
     it('accepts truthy aliases like "yes"', async () => {
-      vi.stubEnv('ARCH_SHUFFLE', 'yes');
-      const { ARCH_SHUFFLE } = await import('./arch.js');
-      expect(ARCH_SHUFFLE).toBe(true);
+      vi.stubEnv('VERBLETS_ARCH_SHUFFLE', 'yes');
+      const { VERBLETS_ARCH_SHUFFLE } = await import('./arch.js');
+      expect(VERBLETS_ARCH_SHUFFLE).toBe(true);
     });
 
     it('is false for unrecognized strings', async () => {
-      vi.stubEnv('ARCH_SHUFFLE', 'maybe');
-      const { ARCH_SHUFFLE } = await import('./arch.js');
-      expect(ARCH_SHUFFLE).toBe(false);
+      vi.stubEnv('VERBLETS_ARCH_SHUFFLE', 'maybe');
+      const { VERBLETS_ARCH_SHUFFLE } = await import('./arch.js');
+      expect(VERBLETS_ARCH_SHUFFLE).toBe(false);
     });
   });
 });

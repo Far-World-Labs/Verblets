@@ -9,7 +9,7 @@ import { get as configGet } from '../lib/config/index.js';
 
 export const cacheTTL = configGet('VERBLETS_CACHE_TTL');
 
-export const cachingEnabled = configGet('DISABLE_CACHE') !== true;
+export const cachingEnabled = configGet('VERBLETS_DISABLE_CACHE') !== true;
 
 export const debugPromptGlobally = configGet('VERBLETS_DEBUG_PROMPT');
 

@@ -185,22 +185,22 @@ Set the environment variable when running tests:
 
 ```bash
 # Enable debugging for all architecture tests
-ARCH_LOG=debug npm run arch
+VERBLETS_ARCH_LOG=debug npm run arch
 
 # Or for specific test files
-ARCH_LOG=debug npx vitest index.arch.js
+VERBLETS_ARCH_LOG=debug npx vitest index.arch.js
 ```
 
 ### Enable Debugging for Individual Tests
 
-Use Vitest spies to override the `ARCH_LOG` constant within specific tests:
+Use Vitest spies to override the `VERBLETS_ARCH_LOG` constant within specific tests:
 
 ```javascript
 import { vi } from 'vitest';
-import { ARCH_LOG } from './src/constants/arch.js';
+import { VERBLETS_ARCH_LOG } from './src/constants/arch.js';
 
 test('my specific test with debugging', async () => {
-  const logSpy = vi.spyOn(process.env, 'ARCH_LOG', 'get').mockReturnValue('debug');
+  const logSpy = vi.spyOn(process.env, 'VERBLETS_ARCH_LOG', 'get').mockReturnValue('debug');
   
   await aiArchExpect(eachFile('src/**/*.js'))
     .satisfies('Files meet quality standards')
@@ -221,7 +221,7 @@ describe('my test suite with debugging', () => {
   let logSpy;
   
   beforeEach(() => {
-    logSpy = vi.spyOn(process.env, 'ARCH_LOG', 'get').mockReturnValue('debug');
+    logSpy = vi.spyOn(process.env, 'VERBLETS_ARCH_LOG', 'get').mockReturnValue('debug');
   });
   
   afterEach(() => {

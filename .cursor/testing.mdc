@@ -138,14 +138,14 @@ npm run test
 npm run examples
 
 # Architecture tests (with debug output)
-ARCH_LOG=debug npm run arch:once
+VERBLETS_ARCH_LOG=debug npm run arch:once
 
 # Individual architecture test
-source .env && ARCH_LOG=debug ARCH_SHUFFLE=true vitest --config .vitest.config.arch.js --run index.arch.js
+source .env && VERBLETS_ARCH_LOG=debug VERBLETS_ARCH_SHUFFLE=true vitest --config .vitest.config.arch.js --run index.arch.js
 ```
 
 ### Performance Notes
-- Use `ARCH_LOG=debug` for architecture test visibility
+- Use `VERBLETS_ARCH_LOG=debug` for architecture test visibility
 - Run individual tests for better performance
 - Configure appropriate bulk sizes and concurrency
 - Use `source .env` for environment variable setup
