@@ -12,21 +12,15 @@ Each verblet directory contains:
 - `index.examples.js` — integration examples (real LLM)
 - `README.md` — optional for simple verblets, required for complex ones
 
-## Schema Passing and Structured Output
+## Structured Output
 
-Proper schema configuration is the most critical aspect of reliable verblets. Pass `response_format` flat on the config object — callLlm parses the response and auto-unwraps `{ value }` and `{ items }` wrappers.
-
-### Correct Schema Configuration
-
-Pass `response_format` flat on the config object:
+Pass `response_format` flat on the config object alongside other options. callLlm handles JSON parsing and auto-unwraps `{ value }` and `{ items }` wrappers. See [JSON Schema Guidelines](../../guidelines/JSON_SCHEMAS.md) for schema design patterns, collection conventions, and common mistakes.
 
 ```javascript
 import callLlm from '../../lib/llm/index.js';
 
 export default async function sentiment(text, config = {}) {
-  const prompt = `Analyze the sentiment of this text: ${text}`;
-
-  const response = await callLlm(prompt, {
+  return callLlm(`Analyze the sentiment of this text: ${text}`, {
     ...config,
     response_format: {
       type: 'json_schema',
@@ -35,10 +29,7 @@ export default async function sentiment(text, config = {}) {
         schema: {
           type: 'object',
           properties: {
-            sentiment: {
-              type: 'string',
-              enum: ['positive', 'negative', 'neutral'],
-            },
+            sentiment: { type: 'string', enum: ['positive', 'negative', 'neutral'] },
             confidence: { type: 'number' },
             reasoning: { type: 'string' },
           },
@@ -48,78 +39,12 @@ export default async function sentiment(text, config = {}) {
       },
     },
   });
-
-  // callLlm parses structured output automatically
-  return response;
 }
 ```
 
-### Schema Design Best Practices
-
-**Use Specific Types and Constraints:**
-```javascript
-const schema = {
-  type: 'object',
-  properties: {
-    category: {
-      type: 'string',
-      enum: ['urgent', 'normal', 'low'],
-    },
-    score: { type: 'number' },
-    description: { type: 'string' },
-  },
-  required: ['category', 'score', 'description'],
-  additionalProperties: false,
-};
-```
-
-**Always include `additionalProperties: false`** on object schemas — required by the structured output API.
-
-**Array Processing Schemas:**
-```javascript
-const listSchema = {
-  type: 'object',
-  properties: {
-    items: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          id: { type: 'string' },
-          processed: { type: 'boolean' },
-          result: { type: 'string' },
-        },
-        required: ['id', 'processed', 'result'],
-        additionalProperties: false,
-      },
-    },
-  },
-  required: ['items'],
-  additionalProperties: false,
-};
-```
-
-### Common Schema Passing Mistakes
-
-**Wrong: Embedding schema in prompt**
-```javascript
-const prompt = `Return JSON with this structure: {"sentiment": "positive|negative|neutral"}`;
-// This leads to unreliable parsing and markdown-wrapped responses
-```
-
-**Wrong: Not including additionalProperties: false**
-```javascript
-const schema = { type: 'object', properties: { ... }, required: ['...'] };
-// Missing additionalProperties: false — will get 400 errors from the API
-```
-
-### Response Handling
-
-callLlm automatically parses structured output and auto-unwraps `{value: ...}` and `{items: [...]}` patterns. No manual JSON parsing needed.
-
 ## Config System
 
-Verblets participate in the same config system as chains. Prompt-shaping options use `getOption` directly (verblets typically have 1-2 options, so `getOptions` batch resolution is unnecessary):
+Verblets participate in the same config system as chains (see [option resolution](../../docs/option-resolution.md)). The difference: verblets typically have 1-2 options, so they use `getOption` directly rather than `getOptions` batch resolution.
 
 ```javascript
 import callLlm from '../../lib/llm/index.js';
@@ -144,8 +69,6 @@ export default async function multiQuery(query, config = {}) {
   return callLlm(prompt, { ...config, response_format: schema });
 }
 ```
-
-For verblets, `callLlm` resolves `llm` and all model keys from config — just spread config and add any verblet-specific keys.
 
 ## Expected Exports
 
@@ -199,18 +122,8 @@ README is optional for verblets with a single parameter and obvious behavior. Re
 
 ## Anti-Patterns
 
-### Schema and Response Handling
-- **Missing `additionalProperties: false` on object schemas** — causes 400 errors from the structured output API
-- **Not handling both string and object response types from structured output**
-- **Assuming all LLM responses will be markdown-wrapped (structured output returns clean JSON)**
-
-### Config Handling
-- **Nesting model keys under `modelOptions`** — pass `response_format`, `temperature`, etc. flat on config
-- **Extracting `llm` from config to re-pass** — callLlm resolves it from config automatically
-- **Hard-coding model names** — use capability-based selection via `llm` parameter
-
-### General Patterns
-- Over-defensive input validation for simple cases
-- Embedding schemas directly in prompts
-- Complex configuration for simple operations
-- Hard-coding timeouts or retry logic without configuration options
+- Embedding schemas in prompts instead of using `response_format` (see [JSON Schema Guidelines](../../guidelines/JSON_SCHEMAS.md))
+- Nesting model keys under `modelOptions` — pass `response_format`, `temperature`, etc. flat on config
+- Extracting `llm` from config to re-pass — callLlm resolves it automatically
+- Over-defensive input validation for simple single-parameter verblets
+- Hard-coding model names instead of capability-based selection

@@ -48,6 +48,7 @@ export default class Conversation {
     return new Conversation(topic, speakers, options, { depth, maxParallel });
   }
 
+  //TODO:DOCS_OBSERVATIONS constructor is public but callers should use static create() — consider making constructor private or documenting the resolved parameter contract
   constructor(topic, speakers, options = {}, resolved = {}) {
     const config = scopeOperation('conversation', options);
 

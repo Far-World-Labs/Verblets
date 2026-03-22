@@ -10,11 +10,7 @@ import { llm as callLlm } from '@far-world-labs/verblets';
 // Basic usage — default model
 const response = await callLlm('Explain quantum computing in simple terms');
 
-// With config from a chain (typical usage)
-const config = scopeOperation('my-chain', { llm: 'fastGoodCheap', ...inputConfig });
-const result = await callLlm(prompt, { ...config, response_format: responseFormat });
-
-// With capability-based model selection
+// With capability-based model selection and structured output
 const result = await callLlm(prompt, {
   llm: { fast: true, good: 'prefer' },
   temperature: 0.7,
@@ -34,6 +30,8 @@ const result = await callLlm(prompt, {
   },
 });
 ```
+
+Inside chains, callLlm receives the scoped config object directly — see [option resolution](../../../docs/option-resolution.md) for how `initChain` and `scopeOperation` prepare config.
 
 ## API
 
@@ -61,47 +59,13 @@ const result = await callLlm(prompt, {
 
 ## Config-aware resolution
 
-All model keys (`response_format`, `temperature`, `frequencyPenalty`, `presencePenalty`, `systemPrompt`, `requestTimeout`, `tools`, `toolChoice`, `maxTokens`, `topP`) and capability keys (`fast`, `cheap`, `good`, `reasoning`, `multi`, `sensitive`) are resolved through `getOption` before building the internal model options. This means any of these can be set via the `policy` channel:
+All model keys and capability keys are resolved through `getOption` before building the request. This means every parameter — `temperature`, `llm`, `response_format`, etc. — can be set directly on config, or dynamically via the `policy` channel.
 
-```javascript
-const config = {
-  policy: {
-    temperature: (ctx) => ctx.operation === 'socratic' ? 0.9 : 0.5,
-    sensitive: (ctx) => ctx.operation.startsWith('veiled'),
-  },
-};
-```
-
-The `llm` parameter itself is also resolved from config — chains with non-standard model defaults set them on `scopeOperation`:
-
-```javascript
-const config = scopeOperation('my-chain', { llm: 'fastGoodCheap', ...inputConfig });
-// callLlm resolves llm from config automatically
-await callLlm(prompt, config);
-```
-
-## Model selection
-
-### Capability values
-- `true` — require this capability
-- `false` — exclude models with this capability
-- `'prefer'` — soft preference, use if available
-
-### Capability keys
-`fast`, `cheap`, `good`, `reasoning`, `multi`, `sensitive`
-
-```javascript
-// Fast and cheap for bulk operations
-await callLlm(prompt, { llm: { fast: true, cheap: true } });
-
-// Quality-focused
-await callLlm(prompt, { llm: { good: true } });
-
-// Sensitive data — routes to privacy-capable models
-await callLlm(prompt, { llm: { sensitive: true } });
-```
+See [configuration](../../../docs/configuration.md) for model selection, capabilities, and policy. See [option resolution](../../../docs/option-resolution.md) for how `getOption` works.
 
 ## Structured outputs
+
+When `response_format` is set, callLlm automatically parses JSON responses and unwraps common patterns: `{items: [...]}` becomes the array, `{value: x}` becomes `x`. Pass `skipResponseParse: true` to get the raw string.
 
 ```javascript
 const result = await callLlm('List 5 programming languages', {
@@ -120,10 +84,10 @@ const result = await callLlm('List 5 programming languages', {
     },
   },
 });
-
-// Result is automatically parsed; {items: [...]} is auto-unwrapped to the array
-console.log(result); // ['JavaScript', 'Python', 'Java', 'C++', 'Go']
+// => ['JavaScript', 'Python', 'Java', 'C++', 'Go']
 ```
+
+See [JSON Schema Guidelines](../../../guidelines/JSON_SCHEMAS.md) for schema design patterns.
 
 ## Related Modules
 

@@ -1,62 +1,31 @@
 # detect-threshold
 
-Analyzes numeric distributions to recommend adaptive threshold values based on operational goals and risk profiles.
+Recommend threshold values for a numeric property by combining statistical analysis with LLM reasoning about operational goals.
 
-## Usage
+The chain first computes percentiles and distribution statistics, then streams enriched data through `reduce` so the LLM can observe patterns across batches. A final LLM call synthesizes those observations into concrete threshold candidates with rationales. Candidates outside the observed data range are automatically discarded.
 
 ```javascript
 import { detectThreshold } from '@far-world-labs/verblets';
 
-const transactions = [
-  { amount: 100, riskScore: 0.1, merchant: 'Coffee Shop' },
-  { amount: 5000, riskScore: 0.85, merchant: 'Electronics Store' },
-  { amount: 250, riskScore: 0.3, merchant: 'Gas Station' },
-  // ... more transactions
-];
-
 const result = await detectThreshold({
   data: transactions,
   targetProperty: 'riskScore',
-  goal: 'Minimize false positives while catching high-risk transactions. Prioritize customer experience but flag definite fraud patterns.'
+  goal: 'Minimize false positives while catching high-risk transactions'
 });
 
-// result.thresholdCandidates[0] === {
-//   value: 0.65,
-//   rationale: "Conservative threshold capturing clear fraud patterns",
-//   percentilePosition: 95,
-//   riskProfile: "conservative",
-//   falsePositiveRate: 0.05,
-//   falseNegativeRate: 0.15,
-//   confidence: 0.85,
-//   coverageAbove: 0.05,
-//   coverageBelow: 0.95,
-//   distributionInsight: "Natural break before high-risk outliers"
-// }
-
-// result.distributionAnalysis === {
-//   mean: 0.35,
-//   median: 0.30,
-//   standardDeviation: 0.25,
-//   skewness: "right",
-//   outlierPresence: "moderate",
-//   distributionType: "long-tail"
-// }
+// result.thresholdCandidates — array of { value, rationale }
+// result.distributionAnalysis — { mean, median, standardDeviation, min, max, percentiles, dataPoints }
 ```
 
 ## API
 
-### `detectThreshold({ data, targetProperty, goal, [options] })`
+### `detectThreshold({ data, targetProperty, goal, ...options })`
 
-Analyzes a dataset to recommend threshold values that align with specified operational goals.
+- **data** (`Array<Object>`): Records containing the target property
+- **targetProperty** (`string`): Numeric property to analyze
+- **goal** (`string`): Natural language description of what the threshold should optimize for
+- **batchSize** (`number`, default: 50): Records per reduce batch
+- **onProgress** (`Function`): Progress callback
+- **llm** (`string|Object`): LLM configuration (defaults to `{ good: true }`)
 
-- `data` (`Array<Object>`): Dataset of records containing the target property
-- `targetProperty` (`string`): The numeric property to analyze for thresholds
-- `goal` (`string`): Description of operational context and risk tradeoffs
-- `options.llm` (`string|Object`): LLM configuration
-- `options.maxAttempts` (`number`): Maximum retry attempts (default: 3)
-- `options.onProgress` (`Function`): Progress callback
-- `options.abortSignal` (`AbortSignal`): Signal to cancel the operation
-
-Returns `Promise<Object>` with:
-- `thresholdCandidates`: Array of recommended thresholds with metrics
-- `distributionAnalysis`: Statistical insights about the data distribution
+Returns `{ thresholdCandidates, distributionAnalysis }`. The `calculateStatistics` helper is also exported for use outside the chain.

@@ -1,13 +1,16 @@
 # to-bool
 
-Parse an LLM response string into a boolean. Strips markdown formatting, then checks for exact `"true"` or `"false"` (case-insensitive).
+Parse an LLM response string into a boolean. Strips markdown formatting, then matches against common truthy/falsy strings (case-insensitive).
 
 ```javascript
 import { toBool } from '@far-world-labs/verblets';
 
 toBool('true');    // => true
 toBool('False');   // => false
-toBool('TRUE');    // => true
+toBool('yes');     // => true
+toBool('no');      // => false
+toBool('1');       // => true
+toBool('0');       // => false
 toBool('maybe');   // => undefined
 ```
 
@@ -15,9 +18,11 @@ toBool('maybe');   // => undefined
 
 ### `toBool(value)`
 
-- **value** (any): Lowercased, stripped of markdown formatting via `stripResponse`, then matched against `"true"` and `"false"`.
+- **value** (any): Lowercased, stripped of markdown formatting via `stripResponse`, then matched.
 
-**Returns:** `true`, `false`, or `undefined` if the cleaned string is neither.
+**Truthy:** `"true"`, `"yes"`, `"1"`. **Falsy:** `"false"`, `"no"`, `"0"`.
+
+**Returns:** `true`, `false`, or `undefined` if the cleaned string doesn't match any known value.
 
 ## Related
 

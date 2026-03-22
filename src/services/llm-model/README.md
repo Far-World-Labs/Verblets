@@ -8,11 +8,11 @@ Capability-based model selection service. Negotiates the best LLM for a task by 
 import modelService, { resolveModel, getCapabilities } from './index.js';
 
 // Negotiate by capability flags
-modelService.negotiateModel(null, { fast: true, cheap: true });
+modelService.negotiateModel(undefined, { fast: true, cheap: true });
 // → 'fastCheap'
 
 // Sensitive models take absolute priority
-modelService.negotiateModel(null, { sensitive: true });
+modelService.negotiateModel(undefined, { sensitive: true });
 // → 'sensitive' (local model)
 
 // Preferred model wins if it satisfies constraints
@@ -34,7 +34,7 @@ getCapabilities('fastGoodCheap');  // → Set(['fast', 'good', 'cheap'])
 
 Selects the best model key for a set of capability constraints.
 
-- `preferred` (string|null) — model key to use if it satisfies all hard constraints
+- `preferred` (string|undefined) — model key to use if it satisfies all hard constraints
 - `negotiation` (object) — capability flags:
   - `fast`, `cheap`, `good`, `reasoning`, `multi`, `sensitive`
   - `true` — hard require

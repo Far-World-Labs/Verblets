@@ -55,7 +55,7 @@ export function extractStrings(sourceCode, options = {}) {
                     lineCount: parentFunction.loc.end.line - parentFunction.loc.start.line + 1,
                     type: parentFunction.type,
                   }
-                : null,
+                : undefined,
               isTopLevel: !parentFunction,
             });
           }
@@ -89,7 +89,7 @@ export function extractStrings(sourceCode, options = {}) {
                     lineCount: parentFunction.loc.end.line - parentFunction.loc.start.line + 1,
                     type: parentFunction.type,
                   }
-                : null,
+                : undefined,
               isTopLevel: !parentFunction,
             });
           }

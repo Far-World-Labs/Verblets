@@ -34,7 +34,7 @@ Each chain directory contains:
 
 ## Config System
 
-Every chain participates in the config resolution system via `initChain`:
+Every chain resolves options through `initChain` and passes `config` directly to `callLlm`, `retry`, and sub-chains. See [option resolution](../../docs/option-resolution.md) for the full API (`initChain`, `getOption`, `withPolicy`, mappers, override keys).
 
 ```javascript
 import callLlm from '../../lib/llm/index.js';
@@ -55,29 +55,12 @@ export default async function myChain(items, inputConfig = {}) {
     effort: withPolicy(mapEffort, ['iterations', 'extremeK']),
   });
 
-  // Use resolved values; pass config to callLlm and retry
-  const result = await retry(
+  return retry(
     () => callLlm(prompt, config),
     { label: 'my-chain', config }
   );
-
-  return result;
 }
 ```
-
-### Key principles
-
-- **`initChain(name, config, spec)`** combines `scopeOperation` + `getOptions` in one call. Returns `{ config, ...resolvedOptions }`.
-- **`withPolicy` override keys** flatten sub-properties into the result. `withPolicy(mapEffort, ['iterations', 'extremeK'])` makes each sub-key individually overridable by the consumer.
-- **Config flows through directly** — pass `config` to `callLlm`, `retry`, and sub-chain calls. No need to extract and re-pass `llm`, `onProgress`, `abortSignal`, or retry params.
-- **`callLlm` resolves `llm` from config** — chains with non-standard model defaults set them in `initChain`: `initChain('name', { llm: 'fastGoodCheap', ...inputConfig }, spec)`.
-- **`retry` is config-aware** — resolves `maxAttempts`, `retryDelay`, `retryOnAll` from config via `getOption`. Pass `{ label, config }` instead of explicit retry params.
-
-### Model Configuration
-
-- **Use capability-based selection** — pass `llm` as a string shorthand (`'fastGoodCheap'`), capability object (`{ fast: true, good: 'prefer' }`), or full config (`{ modelName: 'model-key' }`)
-- Set model defaults on `scopeOperation`, not as destructured fallbacks
-- Only specify non-default model keys when specific capabilities are needed (e.g., `{ sensitive: true }`)
 
 ### Prompt Engineering Best Practices
 
@@ -103,89 +86,15 @@ ${onlyJSON}`;
 
 ### Batch Processing with Progress Tracking
 
-Use `prepareBatches` to combine batching, progress tracking, and config resolution:
+The standard pattern uses `prepareBatches` + `parallelBatch` + `batchTracker`. See [batching](../../docs/batching.md) for the full pattern with auto-sizing and code example, and [progress tracking](../../docs/progress-tracking.md) for the event lifecycle, `scopeProgress`, and `filterProgress`.
 
-```javascript
-import { prepareBatches } from '../../lib/progress-callback/index.js';
-import parallel from '../../lib/parallel-batch/index.js';
+### Failure Handling
 
-export default async function myChain(items, inputConfig = {}) {
-  const { config, progressMode } = await initChain('my-chain', inputConfig, {
-    progressMode: 'batch',
-  });
-
-  const { batches, tracker } = await prepareBatches('my-chain', items, config, { progressMode });
-  const results = await parallel(batches, async (batch) => {
-    const result = await retry(
-      () => callLlm(buildPrompt(batch.items), config),
-      { label: 'my-chain:batch', config }
-    );
-    tracker.batchDone(batch.items.length);
-    return result;
-  }, { maxParallel: config.maxParallel ?? 3 });
-
-  tracker.complete();
-  return results.flat();
-}
-```
-
-`prepareBatches` handles `createBatches` + `batchTracker` + `start` in one call. The tracker manages counters and emits progress events to `config.onProgress`.
-
-### Scoping Progress for Nested Chains
-
-When a chain passes `onProgress` to a nested chain call, use `scopeProgress` to tag events with a `phase` field so consumers can distinguish parent events from nested events:
-
-```javascript
-import { scopeProgress } from '../../lib/progress-callback/index.js';
-
-// Phase format: chainName:purpose
-const results = await reduce(items, prompt, {
-  ...config,
-  onProgress: scopeProgress(config.onProgress, 'reduce:category-discovery'),
-});
-```
-
-Phases compose recursively with `/` when scoped chains are themselves wrapped by an outer scope:
-
-```js
-// Consumer sees: { step: 'reduce', phase: 'group:workflow/reduce:category-discovery', ... }
-```
-
-Phase naming convention is `chainName:purpose` — the chain being called plus a short description of its role. This speciates when the same chain is called multiple times (e.g. `reduce:extraction` vs `reduce:refinement`).
-
-### Failure Handling Strategies
-
-Chains need sophisticated error recovery:
-
-```javascript
-async function processWithFailureHandling(items, inputConfig = {}) {
-  const { config, errorPosture } = await initChain('my-chain', inputConfig, {
-    strictness: withPolicy(mapStrictness, ['errorPosture']),
-  });
-
-  const results = [];
-  for (const item of items) {
-    try {
-      const result = await retry(
-        () => callLlm(buildPrompt(item), config),
-        { label: 'my-chain:item', config }
-      );
-      results.push(result);
-    } catch (error) {
-      if (errorPosture === 'strict') throw error;
-      results.push(undefined);
-    }
-  }
-
-  return results;
-}
-```
+Retry is config-aware — see [retry](../../docs/retry.md) for the full API. Chains that need per-item error control resolve an error posture through their option mapper (e.g., `strictness: withPolicy(mapStrictness, ['errorPosture'])`). `'strict'` re-throws on failure; `'resilient'` pushes `undefined` and continues. `parallelBatch` also supports `errorPosture` directly.
 
 ## Chain-Specific Schema Patterns
 
-### Bulk Processing Schemas
-
-Chains often need schemas that handle arrays of results:
+For schema design fundamentals, see [JSON Schema Guidelines](../../guidelines/JSON_SCHEMAS.md). Chains commonly need bulk processing schemas that handle arrays of results:
 
 ```javascript
 const bulkSchema = {
@@ -245,9 +154,7 @@ README structure and quality standards are in [DOCUMENTATION.md](../../guideline
 
 ## Anti-Patterns
 
-- Destructuring config params and re-passing them individually — pass config directly
-- Resolving retry params (`maxAttempts`, `retryDelay`, `retryOnAll`) in chains — retry resolves them from config
-- Extracting `llm` from config to re-pass to callLlm — callLlm resolves it from config
-- Hard-coded processing strategies without configuration options
-- Poor error messages that don't indicate which items failed
+- Destructuring config params and re-passing them individually — pass config directly (see [option resolution](../../docs/option-resolution.md))
+- Resolving retry or llm params in chains — retry and callLlm resolve them from config (see [retry](../../docs/retry.md))
+- Hard-coded processing strategies without dial options
 - Missing progress feedback for long-running operations

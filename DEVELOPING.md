@@ -112,12 +112,10 @@ All public exports are defined in `src/shared.js`, which is re-exported by both 
 
 ## Config System
 
-All chains and verblets accept a `config` object as their last argument. Chains resolve their options through `initChain`, which scopes the operation and resolves each option from the config.
-
-A consumer sets an option by name on the config object:
+All chains and verblets accept a `config` object as their last argument. Consumers set options by name on that object — model selection, dial options, batch/retry tuning — and the chain resolves everything internally:
 
 ```javascript
-aimport { truncate } from '@far-world-labs/verblets';
+import { truncate } from '@far-world-labs/verblets';
 
 await truncate(longText, 'keep the technical details', {
   strictness: 'high',   // dial option — resolved by the chain's mapper
@@ -126,38 +124,13 @@ await truncate(longText, 'keep the technical details', {
 });
 ```
 
-Inside the chain, `initChain` resolves these values. Here's a simplified view of what `truncate` does:
+Config flows through without extraction — pass `config` directly to `callLlm`, `retry`, and sub-chains. Each subsystem resolves what it needs from the same object.
 
-```javascript
-const { config: scopedConfig, chunkSize, strictness: threshold } =
-  await initChain('truncate', config, {
-    chunkSize: 1000,                       // plain fallback
-    strictness: withPolicy(mapStrictness), // resolved through mapper
-  });
-```
+Detailed documentation by audience:
 
-The mapper translates string dials into concrete values. When the consumer passes `strictness: 'high'`, the mapper returns `7`:
-
-```javascript
-const mapStrictness = (value) => {
-  if (value === undefined) return 6;          // default
-  if (typeof value === 'number') return value; // passthrough
-  return { low: 4, med: 6, high: 7 }[value] ?? 6;
-};
-```
-
-Some chains use `withPolicy` with override keys to flatten nested results. For example, `detect-patterns` resolves a single `thoroughness` dial into two separate values:
-
-```javascript
-const { topN, capacity } = await initChain('detect-patterns', config, {
-  thoroughness: withPolicy(mapThoroughness, ['topN', 'capacity']),
-});
-
-// Consumer writes: { thoroughness: 'high' }
-// Mapper returns:  { capacity: 100, topN: 10 }
-// Destructured as: topN = 10, capacity = 100  (flattened, 'thoroughness' itself excluded)
-```
-
-Config flows through without extraction — pass `config` directly to `callLlm`, `retry`, and sub-chains. The `llm` key, model parameters, and retry settings all resolve from the same config object.
-
-See [docs/configuration.md](./docs/configuration.md) for the full resolution flow and [src/chains/DESIGN.md](./src/chains/DESIGN.md) for chain-specific patterns.
+- [Configuration](./docs/configuration.md) — consumer-facing: model selection, capabilities, parameters, policy
+- [Option Resolution](./docs/option-resolution.md) — chain author internals: `initChain`, `getOption`, `withPolicy`, mappers
+- [Batching](./docs/batching.md) — auto-sizing, `parallelBatch`, `prepareBatches`
+- [Progress Tracking](./docs/progress-tracking.md) — `onProgress`, `scopeProgress`, event lifecycle
+- [Retry](./docs/retry.md) — config-aware retries, retryable errors, abort signal
+- [JSON Schemas](./guidelines/JSON_SCHEMAS.md) — `response_format`, schema design, auto-unwrapping

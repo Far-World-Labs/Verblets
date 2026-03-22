@@ -1,206 +1,56 @@
 # Documentation Guidelines
 
-Documentation serves different audiences and purposes across the system. Each type should be clear, concise, and high signal-to-noise ratio.
+## Document Types
 
-## Documentation Types
+**Module READMEs** help developers understand and use individual modules. **Parent-level READMEs** (chains/, verblets/, lib/) explain the category and help choose between modules. **Guidelines** define standards for architecture tests and code quality. **DESIGN.md files** document architectural decisions and design patterns.
 
-### Module README Files
-**Purpose**: Help developers understand and use individual modules  
-**Audience**: Developers implementing or integrating the module
+## Module README Structure
 
-**Structure Requirements**:
-1. **Title**: Module name only (no redundant "README" or verbose descriptions)
-2. **Brief description**: One sentence explaining what the module does and when to use it
-3. **Cross-references**: Link to related modules (variants, alternatives) early
-4. **Usage example**: Practical, relatable scenario showing core functionality
-5. **API documentation**: Parameters, return values, configuration options
-6. **Features** (Optional): Only for modules with genuinely powerful or non-obvious capabilities
-7. **Integration patterns**: How it works with other modules (if applicable)
+1. **Title** — the module's kebab-case directory name
+2. **Opening paragraph** — one or two sentences on what the module does and when to use it. Cross-reference related modules here if relevant.
+3. **Code example** — a realistic scenario showing the primary use case, using the package import path (`import { name } from '@far-world-labs/verblets'`)
+4. **API section** — parameters, return values, configuration options. Use flat dot notation for config sub-properties (`config.batchSize`) rather than nested indentation.
+5. **Features** (optional) — only for genuinely non-obvious capabilities. Standard chain behaviors (batching, retries, parallel processing) do not warrant a Features section.
 
-**Quality Standards**:
-- **Consumer-facing imports** - every example should use `import { name } from '@far-world-labs/verblets'`, not internal paths like `./index.js`
-- **Lead with salient, differentiating benefits** - what makes this uniquely powerful
-- **Show natural language parameters** - verblets and chains accept natural language instructions/prompts
-- **Examples should showcase unique AI capabilities** - things computers can't currently do easily
-- **Use defaults in examples** - don't complicate with non-functional details like bulk processing
-- Use realistic, non-trivial examples that demonstrate practical value
-- Show actual return values, not just parameter lists
-- **List non-functional benefits after core capabilities** - parallel processing, batching, etc. are important but secondary
-- **Flat API parameter style** — document config sub-properties with dot notation (`config.batchSize`) rather than nesting under a `config (Object)` parent. This is more scannable and avoids indentation bloat
-- Group related configuration options logically
-- Avoid redundant explanations between sections
-- Link to shared design concepts rather than repeating them
-- Each bullet point in lists must add unique value
+### Quality standards
 
-**Anti-patterns**:
-- Verbose introductions explaining obvious concepts
-- Repeating the module name unnecessarily
-- **Boring or obvious examples** - avoid simple string manipulation or basic operations
-- **Code-only examples** - missing the natural language instruction/prompt parameters
-- Lists of benefits where items overlap or are obvious
-- Copying boilerplate text between similar modules
-- Explaining implementation details users don't need
-- **Bullet point use cases** - always show code examples instead of generic bullet lists
-- **Separate "Examples" sections** - integrate examples directly into Use Cases
-- **Sub-example variations** - avoid multiple similar examples within one use case that are variations on the same theme
+Lead with what makes the module distinctive. Show natural language parameters — these are the unique power of verblets. Examples should demonstrate AI capabilities that would be difficult with traditional code, using realistic inputs (a real paragraph, a plausible dataset) rather than placeholder text.
 
-### Root-Level README
-**Purpose**: Project overview and getting started guide  
-**Audience**: New contributors, users evaluating the project
+Use defaults in examples. Don't complicate the first example with bulk processing configuration or model selection unless that's the module's primary purpose. List non-functional benefits (parallel processing, batching) after core capabilities.
 
-**Must Include**:
-- Project purpose and scope
-- Installation and setup instructions
-- Architecture overview with links to detailed documentation
-- Contribution guidelines reference
-- License and project status
+Generic model configuration (temperature, maxTokens, llm selection) belongs in [docs/configuration.md](../docs/configuration.md), not in individual module READMEs. Include an "Advanced Usage" section only when the module has genuinely specialized configuration beyond standard model options.
 
-### Module Parent Level README (chains/, verblets/, lib/)
-**Purpose**: Explain the category and help choose between modules  
-**Audience**: Developers selecting the right module for their needs
+Cross-cutting subsystems have their own centralized documentation in `docs/`. Module READMEs should reference these rather than re-explaining common behaviors:
 
-**Must Include**:
-- Category definition and use cases
-- Decision matrix or selection criteria
-- Links to individual modules with brief descriptions
-- Shared design principles (link to DESIGN.md)
+- [Configuration](../docs/configuration.md) — model selection, capabilities, model parameters
+- [Option Resolution](../docs/option-resolution.md) — `initChain`, `getOption`, `withPolicy`, mappers, policy
+- [Batching](../docs/batching.md) — auto-sizing, `parallelBatch`, `prepareBatches`, `batchSize`/`maxParallel`
+- [Progress Tracking](../docs/progress-tracking.md) — `onProgress`, `scopeProgress`, `batchTracker`, event lifecycle
+- [Retry](../docs/retry.md) — config-aware retries, retryable errors, abort signal
+- [JSON Schemas](../guidelines/JSON_SCHEMAS.md) — `response_format`, schema design, auto-unwrapping
 
-### Guidelines Files (guidelines/)
-**Purpose**: Define standards for architecture tests and code quality  
-**Audience**: Architecture tests, contributors maintaining code quality
+### Common mistakes
 
-**Must Include**:
-- Specific, testable criteria
-- Examples of correct and incorrect implementations
-- Rationale for rules when not obvious
-- Clear pass/fail conditions for automated testing
+Verbose introductions that restate what the title already says. Boring examples using trivial string operations. Bullet-point use cases without code. Multiple similar examples that are minor variations of the same scenario. Separate "Examples" sections instead of integrating examples into the API or use case documentation. Generic feature lists that apply to every chain.
 
-### Design Files (DESIGN.md at parent levels)
-**Purpose**: Document architectural decisions and design patterns  
-**Audience**: Contributors understanding system design, architecture tests
+## Parent-Level READMEs
 
-**Must Include**:
-- Design principles and rationale
-- Common patterns and anti-patterns
-- Technical constraints and trade-offs
-- Integration guidelines between modules
+These should explain what the category is, provide selection guidance (when to use which module), and link to individual modules with brief descriptions. Link to the corresponding DESIGN.md for shared principles.
+
+## Guidelines Files
+
+Guidelines are consumed by both humans and architecture tests. Each rule should be specific and testable, with examples of correct and incorrect implementations. Include rationale when the reasoning isn't obvious.
 
 ## Writing Standards
 
-### Clarity
-- Write for busy developers who scan before reading
-- Lead with the most important information
-- Use concrete examples over abstract descriptions
-- Prefer active voice and present tense
+Write for developers who scan before reading. Lead with the most important information. Use concrete examples over abstract descriptions. Every sentence should add unique value — combine redundant information rather than repeating it. Link to shared concepts rather than explaining them in multiple places.
 
-### Conciseness
-- Every sentence must add unique value
-- Combine redundant information rather than repeating it
-- Use bullet points for scannable lists
-- Link to shared concepts rather than explaining them repeatedly
-
-### Accuracy
-- Keep examples up-to-date with actual API
-- Test code examples to ensure they work
-- Maintain consistency in terminology across files
-- Update cross-references when modules change
-
-### Organization
-- Structure information by user priority, not internal logic
-- Group related concepts together
-- Use consistent heading hierarchy
-- Provide clear navigation between related documents
-
-## Examples
-
-Good documentation examples to reference:
-- **[set-interval chain](../src/chains/set-interval/)** - Shows adaptive behavior through natural language programming
-- **Main README** - Long orchestration example demonstrating AI workflow power
-
-Key practices demonstrated:
-- Natural language parameters that express complex logic
-- Examples showcasing unique AI capabilities (adaptive timing, contextual reasoning)
-- Real-world scenarios that would be difficult with traditional code
-- Well-organized API documentation
-- Integration examples showing ecosystem usage
+Structure by user priority, not internal logic. Terminology should be consistent across all documentation files.
 
 ## Maintenance
 
-- Review documentation when changing module APIs
-- Update cross-references when adding or removing modules
-- Consolidate information when multiple files cover similar topics
-- Remove outdated examples and references
-- Ensure architectural tests validate these guidelines 
+Review documentation when changing module APIs. Update cross-references when adding or removing modules. When multiple files cover similar topics, consolidate into one canonical location and cross-reference from the others.
 
-### Anti-patterns to Avoid
-- Generic use cases that could apply to any module
-- Excessive lists of similar examples
-- Contrived scenarios that don't reflect real usage
-- Configuration examples without meaningful context
-- Bullet point use cases — always show code examples instead of generic bullet lists
-- Separate "Examples" sections — integrate examples directly into use cases
-- Sub-example variations — avoid multiple similar examples within one use case
-- Verbose titles — use the module's kebab-case directory name as the `#` heading, not "X Verblet" or "X Library"
-- **Generic "Advanced Usage" sections** - don't create Advanced Usage sections that only show basic model configuration (llm options, temperature, etc.) unless there's genuinely advanced functionality beyond standard config
+## Reference Examples
 
-### Advanced Usage Guidelines
-
-**Only include "Advanced Usage" sections when showing functionality that goes beyond basic model configuration.**
-
-**Generic model configuration (temperature, maxTokens, modelName, etc.) should be documented in:**
-- Core library documentation (`src/lib/llm/README.md`)
-- Main chains documentation (`src/chains/README.md`) 
-- Main verblets documentation (`src/verblets/README.md`)
-
-**Advanced Usage sections should only exist for:**
-- Complex integration patterns specific to that module
-- Specialized configuration options unique to that module
-- Multi-step workflows that demonstrate advanced capabilities
-- Error handling patterns specific to that module's domain
-- Performance optimization techniques for that specific use case
-
-**Examples of what NOT to include in Advanced Usage:**
-```javascript
-// DON'T - This is just basic model configuration
-const result = await myFunction(input, {
-  llm: {
-    temperature: 0.1,
-    maxTokens: 150
-  }
-});
-```
-
-**Examples of what TO include in Advanced Usage:**
-```javascript
-// DO - This shows module-specific advanced functionality
-const result = await complexChain(input, {
-  stages: ['analyze', 'transform', 'validate'],
-  retryStrategy: 'exponential',
-  fallbackMode: 'graceful'
-});
-``` 
-
-### Features Section Guidelines
-
-**Only include a Features section when the module has:**
-- Genuinely powerful capabilities not obvious from the description/example
-- Exotic or advanced features that aren't immediately apparent
-- Sophisticated algorithms or processing strategies worth highlighting
-
-**Common features to avoid listing:**
-- Basic bulk processing or parallelism (standard for chains)
-- Standard LLM integration patterns
-- Basic error handling or retries
-- Simple configuration options
-
-**Examples of when to include Features:**
-- Advanced windowing algorithms (like join chain's overlapping windows)
-- Sophisticated scoring or ranking systems
-- Complex multi-step processing workflows
-- Unique optimization strategies
-- Advanced parsing or analysis capabilities
-
-**Format:**
-- Keep features concise (1-2 lines each)
-- Focus on what makes the module special
-- Avoid generic capabilities that apply to most modules 
+The [set-interval](../src/chains/set-interval/) README demonstrates adaptive behavior through natural language programming. The root README shows a longer orchestration workflow.

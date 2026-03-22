@@ -53,6 +53,8 @@ await filter(items, 'relevant', {
 });
 ```
 
+For deeper coverage of these subsystems, see [batching](./batching.md), [retry](./retry.md), and [progress tracking](./progress-tracking.md).
+
 ## Chain-Specific Options
 
 Many chains have their own tuning parameters that control how deeply or broadly they operate. All dial-style options accept `'low'` or `'high'` as string shorthands, or a structured object for fine-grained control.
@@ -77,7 +79,7 @@ await filter(items, 'urgent', config);
 await score(items, 'quality', config);
 ```
 
-See [option resolution](../src/lib/context/option.js) for the full API: `getOption`, `getOptions`, `withPolicy`, `scopeOperation`, `initChain`.
+See [option resolution](./option-resolution.md) for the full internal API (`initChain`, `getOption`, `withPolicy`, mappers).
 
 ## Structured Output
 

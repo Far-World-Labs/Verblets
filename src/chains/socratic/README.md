@@ -1,35 +1,41 @@
 # socratic
 
-Generate thought-provoking questions using the Socratic method to encourage deeper thinking and self-discovery through intelligent questioning.
-
-## Usage
+Generate a dialogue that explores a topic through the Socratic method — alternating questions and answers that progressively move from surface-level inquiry toward underlying assumptions.
 
 ```javascript
 import { socratic } from '@far-world-labs/verblets';
 
-const topic = "Should social media platforms be regulated?";
-const method = await socratic(topic, { challenge: 'high' });
-const questions = await method.run(3);
-
-// Returns: [
-//   "What fundamental rights might be at stake when regulating social media?",
-//   "How do we balance free speech with preventing harm?",
-//   "Who should have the authority to determine what content is acceptable?",
-//   "What are the potential consequences of both regulation and non-regulation?",
-//   "How might different stakeholders be affected by these decisions?"
+const method = await socratic('Should social media platforms be regulated?', {
+  challenge: 'high',
+});
+const dialogue = await method.run(3);
+// [
+//   { question: 'What fundamental rights conflict when platforms moderate content?',
+//     answer: 'Freedom of expression and protection from harm...' },
+//   { question: 'Who decides what constitutes "harm" — and by whose standard?',
+//     answer: 'Currently platforms themselves, which raises questions about...' },
+//   { question: 'If we distrust both platforms and governments to moderate fairly, what alternative remains?',
+//     answer: 'Some propose community-based moderation or transparency requirements...' },
 // ]
 ```
 
+Each round builds on the previous dialogue. At `challenge: 'high'`, the questions confront the weakest point in the reasoning; at `'low'`, they gently guide toward insight.
+
 ## API
 
-### `socratic(statement, config)` / `SocraticMethod.create(statement, config)`
+### `socratic(statement, config?)` / `SocraticMethod.create(statement, config?)`
 
-**Parameters:**
-- `statement` (string): Subject or statement to explore
-- `config` (Object): Configuration options
-  - `challenge` (`'low'`|`'high'`): Controls dialogue intensity. `'low'` uses gentle hints with lower temperature (0.3). `'high'` uses provocative confrontation with higher temperature (0.9). Default: moderate challenge
-  - `llm` (string|Object): LLM model configuration
+Both return `Promise<SocraticMethod>`. The `socratic` function is a convenience wrapper around `SocraticMethod.create`.
 
-**Returns:** Promise<SocraticMethod> - Socratic dialogue instance. Call `.run(depth)` to generate questions (default depth: 3)
+- **statement** (string): Topic or claim to explore
+- **config.challenge** (`'low'`|`'med'`|`'high'`): Dialogue intensity. `'low'` uses gentle hints with temperature 0.3. `'high'` uses provocative confrontation with temperature 0.9. Default: exploratory, temperature 0.7.
+- **config.ask** (function): Custom question generator — receives `{ topic, history, llm, temperature, challenge, config }`
+- **config.answer** (function): Custom answer generator — receives `{ question, history, topic, llm, temperature, config }`
+- **config.llm** (string|Object): LLM configuration
+- **config.onProgress** (function): Progress callback (emits step events for each turn)
 
-Each round builds on previous questions, progressively moving from surface-level inquiry toward underlying assumptions and values. The `challenge` dial controls the tone — from gentle hints at `'low'` to provocative confrontation at `'high'`.
+### Instance methods
+
+- **`run(depth?)`** — Run `depth` rounds (default: 3). Returns the full dialogue history as `Array<{ question, answer }>`.
+- **`step()`** — Run a single question-answer round. Returns the turn `{ question, answer }`.
+- **`getDialogue()`** — Return the accumulated dialogue history so far.

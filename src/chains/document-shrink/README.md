@@ -42,7 +42,7 @@ console.log(result.metadata);
 
 - `targetSize` (number): Target document size in characters. Default: 4000
 - `tokenBudget` (number): Maximum LLM tokens across all phases. Default: 1000
-- `thoroughness` (`'low'`|`'high'`): Controls which pipeline stages run. `'low'` disables all LLM phases (pure TF-IDF, fast and free). `'high'` enables everything with more token budget for compression. Default: all phases enabled.
+- `thoroughness` (`'low'`|`'med'`|`'high'`): Controls which pipeline stages run. `'low'` disables all LLM phases (pure TF-IDF, fast and free). `'med'` (default) enables all phases with standard token ratios. `'high'` enables everything with more token budget allocated to compression.
 - `compression` (`'low'`|`'high'`|number): Compression ratio for the LLM compression phase. `'low'` (0.45) keeps more of each chunk. `'high'` (0.15) compresses aggressively. Default: 0.3
 - `ranking` (`'low'`|`'high'`|number): LLM weight in the combined score for edge chunks. `'low'` (0.3) trusts TF-IDF more. `'high'` (0.9) trusts LLM scoring more. Default: 0.7
 - `gapFillerBudgetRatio` (number, 0-1): Portion of target size allocated for gap filling. Default: 0 (disabled)

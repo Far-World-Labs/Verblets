@@ -62,7 +62,7 @@ export const withPolicy = (fn, overrides) => ({
   ...(overrides ? { overrides } : {}),
 });
 
-const isPolicy = (v) => v !== null && typeof v === 'object' && v.__policy === true;
+const isPolicy = (v) => typeof v === 'object' && v !== undefined && v.__policy === true;
 
 /**
  * Batch-get multiple options from a spec object.

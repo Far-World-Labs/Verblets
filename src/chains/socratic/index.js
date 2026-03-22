@@ -50,6 +50,7 @@ const buildAnswerPrompt = (question, historyText) => `${
 }Answer the question thoughtfully and briefly:
 "${question}"`;
 
+//TODO:DOCS_OBSERVATIONS defaultAsk and defaultAnswer pass llm/temperature directly instead of through config — inconsistent with config-threading pattern used elsewhere
 const defaultAsk = async ({
   topic,
   history = [],

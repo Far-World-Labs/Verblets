@@ -26,7 +26,7 @@ const paper = await join(
 
 - **fragments** (Array): Text fragments to merge
 - **prompt** (string): Instructions for how to merge (controls style, format, level of synthesis)
-- **config.fidelity** (`'low'`|`'high'`|Object): Coordinates window size and overlap. `'low'` uses larger windows with less overlap (10 fragments / 25% overlap) for fewer LLM calls. `'high'` uses smaller windows with more overlap (3 / 67%) for smoother transitions. Default: 5 windows, 50% overlap
+- **config.fidelity** (`'low'`|`'med'`|`'high'`|Object): Coordinates window size and overlap. `'low'` uses larger windows with less overlap (windowSize 10, 25% overlap) for fewer LLM calls. `'med'` (default) balances both (windowSize 5, 50% overlap). `'high'` uses smaller windows with more overlap (windowSize 3, 67%) for smoother transitions. Pass an object `{ windowSize, overlapPercent }` for fine-grained control.
 - **config.styleHint** (string): Additional style guidance appended to the prompt
 - **config.maxAttempts** (number): Maximum retry attempts (default: 3)
 - **config.llm** (string|Object): LLM model configuration
