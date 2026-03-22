@@ -62,7 +62,7 @@ describe.skipIf(!isMediumBudget)('[medium] entities chain operations', () => {
   it(
     'maps entities across chunks',
     async () => {
-      const instructions = await mapInstructions('Extract companies and people');
+      const instructions = mapInstructions({ specification: 'Extract companies and people' });
       const results = await map(chunks.slice(0, 3), instructions);
 
       expect(Array.isArray(results)).toBe(true);
@@ -73,8 +73,8 @@ describe.skipIf(!isMediumBudget)('[medium] entities chain operations', () => {
   );
 
   it('reduces entities to consolidated list', async () => {
-    const instructions = await reduceInstructions({
-      entities: 'Extract all companies',
+    const instructions = reduceInstructions({
+      specification: 'Extract all companies',
       processing: 'Merge duplicates into single list',
     });
 
@@ -84,8 +84,8 @@ describe.skipIf(!isMediumBudget)('[medium] entities chain operations', () => {
   }, 25000);
 
   it('filters chunks containing specific entities', async () => {
-    const instructions = await filterInstructions({
-      entities: 'Extract companies',
+    const instructions = filterInstructions({
+      specification: 'Extract companies',
       processing: 'Keep chunks mentioning Apple or Microsoft',
     });
 
@@ -99,8 +99,8 @@ describe.skipIf(!isMediumBudget)('[medium] entities chain operations', () => {
   it(
     'finds chunk with most entities',
     async () => {
-      const instructions = await findInstructions({
-        entities: 'Extract all named entities',
+      const instructions = findInstructions({
+        specification: 'Extract all named entities',
         processing: 'Select chunk with highest entity density',
       });
 
@@ -113,8 +113,8 @@ describe.skipIf(!isMediumBudget)('[medium] entities chain operations', () => {
   );
 
   it('groups chunks by entity types', async () => {
-    const instructions = await groupInstructions({
-      entities: 'Extract companies and financial figures',
+    const instructions = groupInstructions({
+      specification: 'Extract companies and financial figures',
       processing: 'Group by whether chunk contains acquisitions vs partnerships',
     });
 

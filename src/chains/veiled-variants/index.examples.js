@@ -1,8 +1,12 @@
 import { describe } from 'vitest';
 import veiledVariants from './index.js';
 import { getTestHelpers } from '../test-analysis/test-wrappers.js';
+import { extendedTestTimeout } from '../../constants/common.js';
 import { models } from '../../constants/model-mappings.js';
 import { env } from '../../lib/env/index.js';
+
+// Sensitivity model (local Ollama) can be much slower than cloud LLMs
+const sensitivityTimeout = 2 * extendedTestTimeout;
 
 const skipSensitivity = env.SENSITIVITY_TEST_SKIP || !models.sensitive;
 
@@ -24,6 +28,6 @@ describe('veiledVariants example', () => {
         'Three rephrased variants of a password-strength question, each obscured enough to not directly mention passwords while still asking about the same concept'
       );
     },
-    10 * 60 * 1000
+    sensitivityTimeout
   );
 });

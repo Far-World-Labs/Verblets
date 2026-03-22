@@ -1,6 +1,6 @@
 import { describe } from 'vitest';
 import ConversationChain from './index.js';
-import { longTestTimeout } from '../../constants/common.js';
+import { longTestTimeout, isMediumBudget } from '../../constants/common.js';
 import { roundRobin } from './turn-policies.js';
 import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 
@@ -9,7 +9,7 @@ const { it, expect, aiExpect } = getTestHelpers('Conversation chain');
 // Fixed clock for deterministic timestamps — makes LLM prompts cacheable
 const fixedClock = () => new Date('2024-06-15T12:00:00Z');
 
-describe('conversation chain examples', () => {
+describe.skipIf(!isMediumBudget)('[medium] conversation chain examples', () => {
   it(
     'roundRobin policy cycles through speakers one per round',
     async () => {
