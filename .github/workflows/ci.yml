@@ -61,6 +61,12 @@ jobs:
           path: ~/.npm
           key: npm-global-${{ runner.os }}-${{ matrix.node-version }}
       - run: npm ci
+      - name: Verify API keys are available
+        run: |
+          if [ -z "$OPENAI_API_KEY" ]; then echo "::error::OPENAI_API_KEY is empty"; fi
+          if [ -z "$ANTHROPIC_API_KEY" ]; then echo "::error::ANTHROPIC_API_KEY is empty"; fi
+          if [ -n "$OPENAI_API_KEY" ]; then echo "OPENAI_API_KEY: set (${#OPENAI_API_KEY} chars)"; fi
+          if [ -n "$ANTHROPIC_API_KEY" ]; then echo "ANTHROPIC_API_KEY: set (${#ANTHROPIC_API_KEY} chars)"; fi
       - name: Run tests
         run: npm test -- --run
       - name: Run browser tests
