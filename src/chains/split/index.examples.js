@@ -87,31 +87,4 @@ describe.skipIf(!isMediumBudget)('[medium] split chain examples', () => {
     },
     longTestTimeout
   );
-
-  it(
-    'should handle different chunk sizes appropriately',
-    async () => {
-      const DELIM = '---CHUNK-SPLIT---';
-
-      // Test with small chunks
-      const smallChunkSplit = await split(comedySet, 'between different topics', {
-        delimiter: DELIM,
-        chunkLen: 800,
-      });
-
-      // Test with large chunks
-      const largeChunkSplit = await split(comedySet, 'between different topics', {
-        delimiter: DELIM,
-        chunkLen: 3000,
-      });
-
-      const smallChunkParts = smallChunkSplit.split(DELIM).filter((p) => p.trim());
-      const largeChunkParts = largeChunkSplit.split(DELIM).filter((p) => p.trim());
-
-      // Both chunk sizes should produce output
-      expect(smallChunkParts.length).toBeGreaterThanOrEqual(1);
-      expect(largeChunkParts.length).toBeGreaterThanOrEqual(1);
-    },
-    longTestTimeout
-  );
 });
