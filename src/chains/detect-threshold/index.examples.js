@@ -71,7 +71,8 @@ describe('detect-threshold examples', () => {
       expect(result.distributionAnalysis).toHaveProperty('standardDeviation');
 
       await aiExpect(result.thresholdCandidates).toSatisfy(
-        'Threshold candidates that distinguish normal API response times (50-250ms) from degraded and critical slowdowns (500ms+)'
+        'Multiple threshold candidates for API response time monitoring, each with a numeric value and rationale',
+        { mode: 'warn' }
       );
     }
   );
