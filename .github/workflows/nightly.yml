@@ -122,7 +122,7 @@ jobs:
           path: results.txt
 
   notify:
-    name: Telegram
+    name: Send report
     needs: [gate, server, client, examples]
     if: always() && needs.gate.outputs.should_run == 'true'
     runs-on: ubuntu-latest
@@ -148,7 +148,12 @@ jobs:
 
           failures() {
             local f="artifacts/$1/results.txt"
-            [ -f "$f" ] && grep -E 'FAIL\s+src/' "$f" | sed 's/^\s*//' | head -5 || true
+            if [ -f "$f" ]; then
+              # Show failed test files
+              grep -E 'FAIL\s+src/' "$f" | sed 's/^\s*//' | head -5
+              # Show individual failed test names
+              grep -E '^\s*×' "$f" | sed 's/^\s*//' | head -10
+            fi
           }
 
           icon() {
@@ -163,35 +168,44 @@ jobs:
           C="${{ needs.client.result }}"
           E="${{ needs.examples.result }}"
 
+          # Per-suite status from artifact results
+          suite_icon() {
+            local f="artifacts/$1/results.txt"
+            if [ ! -f "$f" ]; then echo "⏭️"; return; fi
+            if grep -qE 'FAIL\s+src/' "$f"; then echo "❌"; else echo "✅"; fi
+          }
+
           MSG="$(icon "$S")$(icon "$C")$(icon "$E") Nightly $(date -u +%m/%d)
 
-          Server ($S):
+          $(icon "$S") Server:
           $(summary server)
 
-          Client ($C):
+          $(icon "$C") Client:
           $(summary client)
 
-          Examples low:
+          $(suite_icon examples-low) Examples low:
           $(summary examples-low)
 
-          Examples medium:
+          $(suite_icon examples-medium) Examples medium:
           $(summary examples-medium)
 
-          Examples high:
+          $(suite_icon examples-high) Examples high:
           $(summary examples-high)"
 
           FAILS=""
           for suite in server client examples-low examples-medium examples-high; do
             F=$(failures "$suite")
-            [ -n "$F" ] && FAILS="${FAILS}${F}
-          "
+            if [ -n "$F" ]; then
+              FAILS="${FAILS}
+          ${suite}:
+          ${F}"
+            fi
           done
 
           if [ -n "$FAILS" ]; then
             MSG="$MSG
 
-          Failures:
-          $FAILS"
+          Failures:${FAILS}"
           fi
 
           MSG="$MSG
