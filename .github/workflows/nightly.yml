@@ -130,90 +130,17 @@ jobs:
       TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
         continue-on-error: true
 
       - name: Build and send report
-        run: |
-          # Strip ANSI escape codes from results files
-          strip() { sed 's/\x1b\[[0-9;]*m//g' "$1"; }
-
-          summary() {
-            local f="artifacts/$1/results.txt"
-            if [ -f "$f" ]; then
-              strip "$f" | grep -E '^\s*(Test Files|Tests|Duration)' | sed 's/^\s*//' | head -3
-            else
-              echo "skipped"
-            fi
-          }
-
-          failures() {
-            local f="artifacts/$1/results.txt"
-            if [ -f "$f" ]; then
-              strip "$f" | grep -E 'FAIL\s+src/' | sed 's/^\s*//' | head -5
-              strip "$f" | grep -E '^\s*×' | sed 's/^\s*//' | head -10
-            fi
-          }
-
-          icon() {
-            case "$1" in
-              success) echo "✅" ;;
-              skipped) echo "⏭️" ;;
-              *) echo "❌" ;;
-            esac
-          }
-
-          S="${{ needs.server.result }}"
-          C="${{ needs.client.result }}"
-          E="${{ needs.examples.result }}"
-
-          # Per-suite status from artifact results
-          suite_icon() {
-            local f="artifacts/$1/results.txt"
-            if [ ! -f "$f" ]; then echo "⏭️"; return; fi
-            if strip "$f" | grep -qE 'FAIL\s+src/'; then echo "❌"; else echo "✅"; fi
-          }
-
-          MSG="$(icon "$S")$(icon "$C")$(icon "$E") Nightly $(date -u +%m/%d)
-
-          $(icon "$S") Server:
-          $(summary server)
-
-          $(icon "$C") Client:
-          $(summary client)
-
-          $(suite_icon examples-low) Examples low:
-          $(summary examples-low)
-
-          $(suite_icon examples-medium) Examples medium:
-          $(summary examples-medium)
-
-          $(suite_icon examples-high) Examples high:
-          $(summary examples-high)"
-
-          FAILS=""
-          for suite in server client examples-low examples-medium examples-high; do
-            F=$(failures "$suite")
-            if [ -n "$F" ]; then
-              FAILS="${FAILS}
-          ${suite}:
-          ${F}"
-            fi
-          done
-
-          if [ -n "$FAILS" ]; then
-            MSG="$MSG
-
-          Failures:${FAILS}"
-          fi
-
-          MSG="$MSG
-
-          ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-
-          curl -sf -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-            -d chat_id="${TELEGRAM_CHAT_ID}" \
-            -d text="$MSG" \
-            -d disable_web_page_preview=true
+        env:
+          SERVER_RESULT: ${{ needs.server.result }}
+          CLIENT_RESULT: ${{ needs.client.result }}
+          EXAMPLES_RESULT: ${{ needs.examples.result }}
+          ARTIFACTS_DIR: artifacts
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: ./scripts/nightly-report.sh
