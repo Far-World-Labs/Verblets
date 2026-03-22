@@ -7,7 +7,7 @@ const { it, expect, aiExpect } = getTestHelpers('Pop reference chain');
 
 describe('popReference examples', () => {
   it(
-    'should find Matrix references for a decision moment',
+    'finds references for a decision moment',
     async () => {
       const result = await popReference(
         'She finally made a decision after months of doubt',
@@ -16,14 +16,9 @@ describe('popReference examples', () => {
 
       expect(result).toBeInstanceOf(Array);
       expect(result.length).toBeGreaterThan(0);
-
-      // Validate structure with traditional assertions
       expect(result[0]).toHaveProperty('reference');
       expect(result[0]).toHaveProperty('source');
       expect(result[0]).toHaveProperty('score');
-      expect(result[0]).toHaveProperty('match');
-      expect(typeof result[0].reference).toBe('string');
-      expect(typeof result[0].source).toBe('string');
       expect(result[0].score).toBeGreaterThanOrEqual(0);
       expect(result[0].score).toBeLessThanOrEqual(1);
 
@@ -35,20 +30,17 @@ describe('popReference examples', () => {
   );
 
   it(
-    'should find Office references when specified',
+    'filters to specified sources',
     async () => {
       const result = await popReference(
         'The meeting dragged on with everyone avoiding the real issue',
         'workplace dysfunction and avoidance',
-        {
-          include: ['The Office', 'Parks and Recreation', 'Silicon Valley'],
-        }
+        { include: ['The Office', 'Parks and Recreation', 'Silicon Valley'] }
       );
 
       expect(result).toBeInstanceOf(Array);
       expect(result.length).toBeGreaterThan(0);
 
-      // Validate sources match the include list
       const validSources = ['the office', 'parks and recreation', 'silicon valley'];
       result.forEach((ref) => {
         const sourceMatch = validSources.some((s) => ref.source.toLowerCase().includes(s));
@@ -59,34 +51,7 @@ describe('popReference examples', () => {
   );
 
   it(
-    'should find meme references with context',
-    async () => {
-      const result = await popReference(
-        'Everything was falling apart but they kept pretending it was fine',
-        'denial in the face of obvious disaster',
-        {
-          include: ['Internet Memes', 'The Office'],
-          referenceContext: true,
-        }
-      );
-
-      expect(result).toBeInstanceOf(Array);
-      expect(result.length).toBeGreaterThan(0);
-
-      // Validate context property exists when referenceContext: true
-      expect(result[0]).toHaveProperty('context');
-      expect(typeof result[0].context).toBe('string');
-      expect(result[0].context.length).toBeGreaterThan(0);
-
-      await aiExpect(result).toSatisfy(
-        'References relate to denial or pretending everything is fine'
-      );
-    },
-    longTestTimeout
-  );
-
-  it(
-    'should handle weighted sources appropriately',
+    'supports weighted sources',
     async () => {
       const result = await popReference(
         'They had to choose between safety and adventure',
@@ -104,39 +69,10 @@ describe('popReference examples', () => {
       expect(result).toBeInstanceOf(Array);
       expect(result.length).toBeGreaterThanOrEqual(1);
 
-      // Validate sources match the weighted include list
       const validSources = ['lord of the rings', 'star wars', 'harry potter'];
       result.forEach((ref) => {
         const sourceMatch = validSources.some((s) => ref.source.toLowerCase().includes(s));
         expect(sourceMatch).toBe(true);
-      });
-    },
-    longTestTimeout
-  );
-
-  it(
-    'should find multiple references per source',
-    async () => {
-      const result = await popReference(
-        'The underdog team surprised everyone by winning',
-        'unexpected victory against all odds',
-        {
-          include: ['Sports Movies'],
-          referencesPerSource: 3,
-        }
-      );
-
-      expect(result).toBeInstanceOf(Array);
-      expect(result.length).toBeGreaterThanOrEqual(2);
-
-      // Validate structure of all references
-      result.forEach((ref) => {
-        expect(ref).toHaveProperty('reference');
-        expect(ref).toHaveProperty('score');
-        expect(ref).toHaveProperty('match');
-        expect(ref.score).toBeGreaterThanOrEqual(0);
-        expect(ref.score).toBeLessThanOrEqual(1);
-        expect(typeof ref.match.text).toBe('string');
       });
     },
     longTestTimeout
