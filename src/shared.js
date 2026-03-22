@@ -172,7 +172,13 @@ export { default as sentiment } from './verblets/sentiment/index.js';
 export { default as setInterval } from './chains/set-interval/index.js';
 
 // Embedding Primitives
-export { embed, embedBatch, embedChunked, embedWarmup } from './lib/embed/index.js';
+export {
+  embed,
+  embedBatch,
+  embedChunked,
+  embedWarmup,
+  setEmbedEnabled,
+} from './lib/embed/index.js';
 
 // Embedding Collection
 export { default as embedScore } from './lib/embed-score/index.js';

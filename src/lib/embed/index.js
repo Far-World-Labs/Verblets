@@ -4,13 +4,31 @@ import { encode } from 'gpt-tokenizer';
 import { get as configGet } from '../config/index.js';
 import embedNormalizeText from '../embed-normalize-text/index.js';
 
+let enabled = false;
 let extractorPromise;
+
+/**
+ * Enable or disable local embeddings.
+ * Called by init({ embed: true }) — disabled by default.
+ */
+export function setEmbedEnabled(value) {
+  enabled = value;
+  if (!value) extractorPromise = undefined;
+}
 
 function getExtractor() {
   if (!extractorPromise) {
+    if (!enabled) {
+      throw new Error('Local embeddings are disabled. Call init({ embed: true }) to enable.');
+    }
     const model = configGet('VERBLETS_EMBED_MODEL');
+    const startTime = Date.now();
+    console.error(`[verblets:embed] Loading model "${model}"…`);
     extractorPromise = pipeline('feature-extraction', model, {
       dtype: 'fp32',
+    }).then((extractor) => {
+      console.error(`[verblets:embed] Model "${model}" ready (${Date.now() - startTime}ms)`);
+      return extractor;
     });
   }
   return extractorPromise;

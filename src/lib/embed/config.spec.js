@@ -9,6 +9,16 @@ describe('embed model configuration', () => {
     vi.unstubAllEnvs();
   });
 
+  it('throws when embed is not enabled', async () => {
+    vi.doMock('@huggingface/transformers', () => ({
+      pipeline: vi.fn(() => Promise.resolve(() => ({}))),
+    }));
+
+    const { embedWarmup, setEmbedEnabled } = await import('./index.js');
+    setEmbedEnabled(false);
+    await expect(embedWarmup()).rejects.toThrow('Local embeddings are disabled');
+  });
+
   it('defaults to mixedbread-ai/mxbai-embed-xsmall-v1 when VERBLETS_EMBED_MODEL is unset', async () => {
     let capturedModel;
     vi.doMock('@huggingface/transformers', () => ({
@@ -18,7 +28,8 @@ describe('embed model configuration', () => {
       }),
     }));
 
-    const { embedWarmup } = await import('./index.js');
+    const { embedWarmup, setEmbedEnabled } = await import('./index.js');
+    setEmbedEnabled(true);
     await embedWarmup();
 
     expect(capturedModel).toBe('mixedbread-ai/mxbai-embed-xsmall-v1');
@@ -35,7 +46,8 @@ describe('embed model configuration', () => {
       }),
     }));
 
-    const { embedWarmup } = await import('./index.js');
+    const { embedWarmup, setEmbedEnabled } = await import('./index.js');
+    setEmbedEnabled(true);
     await embedWarmup();
 
     expect(capturedModel).toBe('custom/model-v2');

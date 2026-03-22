@@ -38,6 +38,7 @@ export default defineConfig({
         'compromise',
         'dependency-tree',
         'glob',
+        '@huggingface/transformers',
         'gpt-tokenizer',
         'gpt4-tokenizer',
         'mocha',
