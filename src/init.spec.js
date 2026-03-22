@@ -6,7 +6,6 @@ import { getClient } from './services/redis/index.js';
 
 describe('init()', () => {
   beforeEach(() => {
-    vi.stubEnv('OPENAI_API_KEY', 'sk-test');
     config.setRuntimeProvider(undefined);
   });
 
