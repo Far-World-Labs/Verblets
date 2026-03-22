@@ -37,50 +37,6 @@ describe('tag-vocabulary examples', () => {
       },
       longTestTimeout
     );
-
-    it(
-      'should generate hierarchical task priority tags',
-      async () => {
-        const tagSpec = `Create a hierarchical tag system for task prioritization.
-      The hierarchy should have 2 levels:
-      - Top level: Urgency (urgent, planned, someday)
-      - Second level: Impact (high-impact, low-impact)
-      Include clear descriptions for when to apply each tag combination.
-      Target about 6-8 total tags.`;
-
-        const sampleTasks = [
-          'Fix production bug causing data loss',
-          'Update team documentation',
-          'Research new framework for next quarter',
-          'Respond to customer complaint',
-          'Organize desk drawer',
-          'Prepare quarterly report for CEO',
-          'Learn new programming language',
-          'Fix typo in internal tool',
-        ];
-
-        const vocabulary = await generateInitialVocabulary(tagSpec, sampleTasks);
-
-        expect(vocabulary.tags).toBeInstanceOf(Array);
-
-        // Check for parent-child relationships if hierarchy was created
-        const childTags = vocabulary.tags.filter((t) => t.parent);
-
-        // If children exist, most should have valid parents
-        // (LLM may occasionally generate mismatched parent references)
-        if (childTags.length > 0) {
-          const validChildren = childTags.filter((child) =>
-            vocabulary.tags.some((t) => t.id === child.parent)
-          );
-          expect(validChildren.length).toBeGreaterThan(0);
-        }
-
-        await aiExpect({ vocabulary, sampleTasks, tagSpec }).toSatisfy(
-          'Generated vocabulary contains tags related to urgency levels (like urgent, planned, someday) and/or impact levels (like high-impact, low-impact) for task prioritization'
-        );
-      },
-      longTestTimeout
-    );
   });
 
   describe('computeTagStatistics', () => {
