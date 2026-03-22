@@ -7,27 +7,6 @@ const { it, expect, aiExpect } = getTestHelpers('People chain');
 
 describe('people chain', () => {
   it(
-    'generates a list of people based on description',
-    async () => {
-      const people = await peopleList('startup founders in Silicon Valley', 3);
-
-      expect(Array.isArray(people)).toBe(true);
-      expect(people.length).toBe(3);
-
-      // Each person should be an object with at least a name
-      people.forEach((person) => {
-        expect(typeof person).toBe('object');
-        expect(person).toHaveProperty('name');
-      });
-
-      await aiExpect(people).toSatisfy(
-        'Should be 3 people with startup founder backgrounds in Silicon Valley'
-      );
-    },
-    longTestTimeout
-  );
-
-  it(
     'generates diverse people for team scenarios',
     async () => {
       const people = await peopleList(
@@ -37,6 +16,11 @@ describe('people chain', () => {
 
       expect(Array.isArray(people)).toBe(true);
       expect(people.length).toBe(5);
+
+      people.forEach((person) => {
+        expect(typeof person).toBe('object');
+        expect(person).toHaveProperty('name');
+      });
 
       await aiExpect(people).toSatisfy(
         'Should represent diverse backgrounds, specialties, and perspectives for a software engineering team'

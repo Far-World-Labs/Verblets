@@ -6,7 +6,7 @@ import { env } from '../../lib/env/index.js';
 
 const skipSensitivity = env.SENSITIVITY_TEST_SKIP || !models.sensitive;
 
-const { it, expect } = getTestHelpers('Veiled variants chain');
+const { it, expect, aiExpect } = getTestHelpers('Veiled variants chain');
 
 describe('veiledVariants example', () => {
   it.skipIf(skipSensitivity)(
@@ -19,6 +19,10 @@ describe('veiledVariants example', () => {
       });
       expect(Array.isArray(result)).toBe(true);
       expect(result.length, `Saw: "${result.join('", "')}"`).toBe(3);
+
+      await aiExpect(result).toSatisfy(
+        'Three rephrased variants of a password-strength question, each obscured enough to not directly mention passwords while still asking about the same concept'
+      );
     },
     10 * 60 * 1000
   );

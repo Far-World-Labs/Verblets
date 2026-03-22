@@ -3,7 +3,6 @@ import detectThreshold from './index.js';
 import { longTestTimeout } from '../../constants/common.js';
 import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 
-// eslint-disable-next-line no-unused-vars
 const { it, expect, aiExpect } = getTestHelpers('Detect-threshold chain');
 
 describe('detect-threshold examples', () => {
@@ -39,6 +38,10 @@ describe('detect-threshold examples', () => {
       expect(candidate.value).toBeGreaterThanOrEqual(0);
       expect(candidate.value).toBeLessThanOrEqual(1);
     });
+
+    await aiExpect(result.thresholdCandidates).toSatisfy(
+      'Threshold candidates that separate low-risk (auto-approve), medium-risk (review), and high-risk (decline) transactions based on risk scores'
+    );
   });
 
   it(
@@ -66,6 +69,10 @@ describe('detect-threshold examples', () => {
       expect(result.thresholdCandidates).toBeInstanceOf(Array);
       expect(result.distributionAnalysis).toHaveProperty('mean');
       expect(result.distributionAnalysis).toHaveProperty('standardDeviation');
+
+      await aiExpect(result.thresholdCandidates).toSatisfy(
+        'Threshold candidates that distinguish normal API response times (50-250ms) from degraded and critical slowdowns (500ms+)'
+      );
     }
   );
 });

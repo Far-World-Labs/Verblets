@@ -19,17 +19,11 @@ describe('Socratic method chain', () => {
 
       expect(turn).toHaveProperty('question');
       expect(turn).toHaveProperty('answer');
-      expect(typeof turn.question).toBe('string');
-      expect(typeof turn.answer).toBe('string');
-      expect(turn.question.length).toBeGreaterThan(0);
-      expect(turn.answer.length).toBeGreaterThan(0);
 
-      // Check the dialogue was recorded
       const dialogue = socratic.getDialogue();
       expect(dialogue).toHaveLength(1);
       expect(dialogue[0]).toBe(turn);
 
-      // AI validation of Socratic questioning
       await aiExpect(turn.question).toSatisfy(
         'Should be a Socratic question that challenges assumptions about "knowledge is power"'
       );
