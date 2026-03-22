@@ -1,65 +1,37 @@
-# Auto Function Selection Verblet
+# auto
 
-Automatically select and execute the most appropriate verblet function for any given task. This verblet uses AI to analyze your request and choose the best tool from the available schema library, making it perfect for dynamic workflows and intelligent task routing.
-
-## Usage
-
-### Chatbot Integration
+Select the most appropriate function for a task using LLM tool calling. Converts JSON schemas into function tools, sends them to the LLM alongside your text, and returns the selected function name with prepared arguments. The LLM decides which function to call — you dispatch the result.
 
 ```javascript
-// Build a smart chatbot that automatically selects the right processing
-const chatbotHandler = async (userMessage) => {
-  const taskAnalysis = await auto(`
-    User message: "${userMessage}"
-    
-    Determine what the user wants to accomplish and select the appropriate function.
-  `);
-  
-  // The AI has selected the best function and prepared the arguments
-  console.log(`Processing with: ${taskAnalysis.name}`);
-  
-  // You can now execute the selected function with the prepared arguments
-  return taskAnalysis;
-};
+import { auto } from '@far-world-labs/verblets';
 
-// Examples of what the chatbot can handle:
-await chatbotHandler("How are people feeling about our new product launch?");
-// Might select: sentiment analysis or data processing functions
+const result = await auto('remind me to call john tomorrow at 3pm');
+// {
+//   name: 'setReminder',
+//   arguments: { time: 'tomorrow at 3pm', message: 'call john' },
+//   functionArgsAsArray: [{ time: 'tomorrow at 3pm', message: 'call john' }],
+//   noMatch: false
+// }
 
-await chatbotHandler("Can you help me brainstorm marketing ideas?");
-// Might select: list generation or creative content functions
+// Dispatch to your handler
+const handlers = { setReminder, sendEmail, searchFiles };
+await handlers[result.name](...result.functionArgsAsArray);
 ```
 
-## API Reference
+## API
 
 ### `auto(text, config)`
 
-Analyzes the input text and automatically selects the most appropriate function from the available schema library.
+- `text` (string): Natural language description of the task
+- `config` (Object):
+  - `schemas` (Object): Map of function name → JSON schema. Each schema needs `description` and `properties`. Default: the library's built-in schema set from `src/json-schemas/`.
+  - `defaultFunction` (string): Function name to return when no schema matches
+  - `defaultArguments` (Object): Arguments to return on no match
+  - `llm` (string|Object): LLM configuration
 
-**Parameters**
-
-- `text` (string): Natural language description of the task or request to be processed
-- `config` (object, optional): Configuration options
-  - `llm` (object): Language model configuration options
-  - Additional options passed to the underlying LLM service
-
-**Returns**
-
-- `Promise<object>`: Function selection result containing:
-  - `name` (string): Name of the selected function
-  - `arguments` (object): Arguments prepared for the selected function
-  - `functionArgsAsArray` (array): Arguments formatted as an array for compatibility
-
-**Example Response Structure**
-
-```javascript
-{
-  name: 'sentiment',
-  arguments: { 
-    text: "This is the text to analyze" 
-  },
-  functionArgsAsArray: [{ 
-    text: "This is the text to analyze" 
-  }]
-}
-```
+**Returns:** `Promise<Object>` with:
+- `name` (string|null): Selected function name, or `defaultFunction` / `null` on no match
+- `arguments` (Object): Prepared arguments for the function
+- `functionArgsAsArray` (Array): Arguments as an array for spread-style invocation
+- `noMatch` (boolean): `true` if no function was selected
+- `reason` (string, when `noMatch`): The LLM's text response explaining why

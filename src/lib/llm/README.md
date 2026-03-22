@@ -5,7 +5,7 @@ Core LLM integration for making API calls with capability-based model selection,
 ## Usage
 
 ```javascript
-import callLlm from './index.js';
+import { llm as callLlm } from '@far-world-labs/verblets';
 
 // Basic usage — default model
 const response = await callLlm('Explain quantum computing in simple terms');

@@ -1,35 +1,35 @@
-# Schema.org Verblet
+# schema-org
 
-Convert natural language content into structured Schema.org objects using AI-powered semantic understanding. This verblet identifies entities, relationships, and properties to create valid Schema.org markup for improved SEO and semantic web compatibility.
-
-## Usage
+Extract structured Schema.org objects from natural language text.
 
 ```javascript
-import schemaOrg from './index.js';
+import { schemaOrg } from '@far-world-labs/verblets';
 
-await schemaOrg("John Smith is a software engineer at TechCorp in San Francisco", "Person");
-// Returns Schema.org Person object with name, jobTitle, worksFor, etc.
+const person = await schemaOrg(
+  'John Smith is a software engineer at TechCorp in San Francisco',
+  'Person'
+);
+// => {
+//   '@type': 'Person',
+//   name: 'John Smith',
+//   jobTitle: 'Software Engineer',
+//   worksFor: { '@type': 'Organization', name: 'TechCorp' },
+//   address: { '@type': 'PostalAddress', addressLocality: 'San Francisco' }
+// }
 
-await schemaOrg("Amazing Italian restaurant downtown with 5-star reviews", "LocalBusiness");  
-// Returns Schema.org LocalBusiness object with cuisine, location, rating, etc.
+const business = await schemaOrg(
+  'Amazing Italian restaurant downtown with 5-star reviews',
+  'LocalBusiness'
+);
+// => { '@type': 'LocalBusiness', servesCuisine: 'Italian', aggregateRating: { ratingValue: 5 }, ... }
 ```
 
-## API Reference
+## API
 
-### `schemaOrg(text, schemaType, config = {})`
+### `schemaOrg(text, schemaType, config?)`
 
-Analyzes natural language text and extracts structured data conforming to Schema.org specifications.
+- **text** (string): Natural language content to analyze
+- **schemaType** (string): Target Schema.org type (`"Person"`, `"LocalBusiness"`, `"Event"`, etc.)
+- **config.llm** (string|Object): LLM model configuration
 
-**Parameters**
-
-- `text` (string): The natural language content to analyze and structure
-- `schemaType` (string): The target Schema.org type (e.g., "Person", "LocalBusiness", "Event")  
-- `config` (object, optional): Configuration options including LLM settings
-
-**Returns**
-
-- `Promise<object>`: A promise that resolves to a structured object following Schema.org specifications for the specified type
-
-**Examples**
-
-See [example.js](./example.js) for comprehensive usage examples and real-world scenarios. 
+**Returns:** `Promise<Object>` — Schema.org-conformant object with `@type` and extracted properties

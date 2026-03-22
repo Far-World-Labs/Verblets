@@ -3,7 +3,7 @@
 Generate broader, more fundamental questions from a specific query. Steps back from the specifics to underlying concepts and principles.
 
 ```javascript
-import embedStepBack from '@verblets/verblets/embed-step-back';
+import { embedStepBack } from '@far-world-labs/verblets';
 
 const broader = await embedStepBack('why do lithium batteries swell');
 // → [

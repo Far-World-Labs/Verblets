@@ -5,7 +5,7 @@ Extract structured blocks of information from unstructured text using AI-powered
 ## Usage
 
 ```javascript
-import { extractBlocks } from './index.js';
+import { extractBlocks } from '@far-world-labs/verblets';
 
 const logText = `
 2024-04-01 10:15:23 INFO Starting batch process

@@ -5,7 +5,7 @@ Score items on a numeric scale using AI-generated evaluation criteria.
 ## Example
 
 ```javascript
-import score, { scoreSpec } from './index.js';
+import { score, scoreSpec } from '@far-world-labs/verblets';
 
 // Score job applicant cover letters on persuasiveness
 const scores = await score(

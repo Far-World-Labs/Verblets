@@ -7,7 +7,7 @@ Generate and refine tag vocabularies by analyzing sample data. The chain creates
 Bootstrap a tagging system for incident reports — the AI discovers the categories your data actually needs:
 
 ```javascript
-import tagVocabulary from './index.js';
+import { tagVocabulary } from '@far-world-labs/verblets';
 
 const incidents = [
   'Production database CPU at 98% for 30 minutes',

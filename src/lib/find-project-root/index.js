@@ -23,5 +23,5 @@ export async function findProjectRoot(startDir) {
     }
   }
 
-  return null;
+  return null; //TODO:DOCS_OBSERVATIONS project rule: never use null — return undefined
 }

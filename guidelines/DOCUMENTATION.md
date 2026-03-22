@@ -18,6 +18,7 @@ Documentation serves different audiences and purposes across the system. Each ty
 7. **Integration patterns**: How it works with other modules (if applicable)
 
 **Quality Standards**:
+- **Consumer-facing imports** - every example should use `import { name } from '@far-world-labs/verblets'`, not internal paths like `./index.js`
 - **Lead with salient, differentiating benefits** - what makes this uniquely powerful
 - **Show natural language parameters** - verblets and chains accept natural language instructions/prompts
 - **Examples should showcase unique AI capabilities** - things computers can't currently do easily
@@ -25,6 +26,7 @@ Documentation serves different audiences and purposes across the system. Each ty
 - Use realistic, non-trivial examples that demonstrate practical value
 - Show actual return values, not just parameter lists
 - **List non-functional benefits after core capabilities** - parallel processing, batching, etc. are important but secondary
+- **Flat API parameter style** — document config sub-properties with dot notation (`config.batchSize`) rather than nesting under a `config (Object)` parent. This is more scannable and avoids indentation bloat
 - Group related configuration options logically
 - Avoid redundant explanations between sections
 - Link to shared design concepts rather than repeating them
@@ -135,9 +137,10 @@ Key practices demonstrated:
 - Excessive lists of similar examples
 - Contrived scenarios that don't reflect real usage
 - Configuration examples without meaningful context
-- Bullet point use cases - always show code examples instead of generic bullet lists
-- Separate "Examples" sections - integrate examples directly into Use Cases
-- Sub-example variations - avoid multiple similar examples within one use case that are variations on the same theme
+- Bullet point use cases — always show code examples instead of generic bullet lists
+- Separate "Examples" sections — integrate examples directly into use cases
+- Sub-example variations — avoid multiple similar examples within one use case
+- Verbose titles — use the module's kebab-case directory name as the `#` heading, not "X Verblet" or "X Library"
 - **Generic "Advanced Usage" sections** - don't create Advanced Usage sections that only show basic model configuration (llm options, temperature, etc.) unless there's genuinely advanced functionality beyond standard config
 
 ### Advanced Usage Guidelines

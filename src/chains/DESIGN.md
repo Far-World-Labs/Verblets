@@ -15,7 +15,7 @@ Chains are AI-powered workflows that handle complex, multi-step processes. They 
 | **Input** | Individual items or simple data | Arrays, batches, complex datasets |
 | **Processing** | Direct LLM calls | Batch processing, retry logic, progress tracking |
 | **State** | Stateless operations | Stateful workflows with coordination |
-| **Examples** | `sentiment()`, `classify()` | `aiArchExpect()`, `bulkAnalysis()` |
+| **Examples** | `sentiment()`, `classify()` | `aiArchExpect()`, `documentShrink()` |
 
 ## Module Structure
 
@@ -227,70 +227,21 @@ export default async function chainName(items, config = {}) {
 }
 ```
 
-## Common Chain Types
+## Adding a New Chain
 
-- **Analysis Chains**: Multi-step analysis workflows (`aiArchExpect`, `centralTendency`)
-- **Transformation Chains**: Bulk data transformation with validation
-- **Orchestration Chains**: Coordinate multiple verblets or external services
-- **Aggregation Chains**: Collect and summarize results from multiple sources
+1. Add the export to `src/shared.js`
+2. Add a line to the root `README.md` and `src/chains/README.md`
+3. Follow the module structure above (`index.js`, `index.spec.js`, `index.examples.js`, `README.md`)
 
-## Integration Requirements
+## Testing Patterns
 
-### Adding New Chains
-1. Add entry to `src/index.js` exports
-2. Add entry to main `README.md` under appropriate category
-3. Follow the established export pattern for both named and verblets exports
+**Unit tests** (`index.spec.js`): mock LLM calls; cover option mapper behavior (structural contracts, not exact values), config forwarding to callLlm and retry, failure handling, and progress callbacks.
 
-### Testing Integration
-- Import as: `import expect from '../expect/index.js';`
-- Use pattern: `await expect(actual).toSatisfy(constraint)`
+**Integration tests** (`index.examples.js`): real LLM calls; validate end-to-end workflows with realistic data. See [example test conventions](../../docs/example-test-conventions.md) for budget tiers and skip tagging.
 
-## Chain-Specific Documentation Requirements
+## Documentation
 
-**README Always Required For:**
-- Batch processing strategies and configuration
-- Progress tracking and callback patterns
-- Complex failure handling logic
-- Multi-step workflows with dependencies
-- Performance considerations for large datasets
-- Avoid generic feature lists (bulk processing, retries, etc.)
-
-**README Structure:**
-```markdown
-# Chain Name
-
-Brief description of the multi-step workflow.
-
-## Usage
-
-\`\`\`javascript
-import { chainName } from '@far-world-labs/verblets';
-
-const results = await chainName(items, {
-  effort: 'high',
-  onProgress: (event) => console.log(`${event.step} ${event.event}`),
-});
-\`\`\`
-
-## Options
-- `effort` - `'low'` | `'high'` — controls iterations and precision
-- `onProgress` - Progress callback
-
-## Performance Notes
-[Guidance on batch sizes, concurrency, memory usage]
-```
-
-## Chain-Specific Testing Patterns
-
-**Unit Tests should cover:**
-- Option mapper behavior (structural contracts, not exact values)
-- Config forwarding to callLlm and retry
-- Failure handling and recovery scenarios
-- Progress tracking and callback functionality
-
-**Integration Tests should validate:**
-- End-to-end workflows with real data
-- Performance characteristics with various dataset sizes
+README structure and quality standards are in [DOCUMENTATION.md](../../guidelines/DOCUMENTATION.md). Key chain-specific points: avoid generic feature lists (bulk processing, retries), show the dial options the chain accepts, include realistic examples that demonstrate AI capabilities.
 
 ## Anti-Patterns
 

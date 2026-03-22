@@ -1,110 +1,120 @@
 # Chains
 
-Chains are complex, multi-step workflows that combine multiple verblets and utilities to perform sophisticated operations.
+Chains orchestrate multi-step AI workflows — batching, retries, progress tracking, and multi-call reasoning. They build on [verblets](../verblets/) for individual operations and [library utilities](../lib/) for infrastructure. For implementation patterns and config system details, see [DESIGN.md](./DESIGN.md).
 
-## What are Chains?
+## Configuration
 
-Chains orchestrate multiple operations to:
-
-- Process data through multiple stages
-- Handle complex business logic
-- Manage state and context across operations
-- Provide high-level abstractions for common workflows
-
-## Key Features
-
-- **Multi-step Processing**: Execute multiple operations in sequence
-- **Context Management**: Maintain state across processing steps
-- **Error Handling**: Robust error management and recovery
-- **Composability**: Chains can be combined with other chains and verblets
-
-## Usage
-
-Chains are used for complex operations that require multiple steps or sophisticated logic that goes beyond what individual verblets can provide.
-
-## Model Configuration
-
-All chains support standard model configuration options:
+All chains accept a config object with model selection and tuning parameters:
 
 ```javascript
 const result = await chainName(input, instructions, {
-  llm: 'fastGoodCheap', // Model selection (string shorthand, capability object, or { modelName })
-  temperature: 0.7, // Response randomness (0.0-1.0)
-  maxTokens: 1000, // Maximum response length
-  topP: 0.9, // Nucleus sampling parameter
-  frequencyPenalty: 0.0, // Reduce repetition
-  presencePenalty: 0.0, // Encourage topic diversity
-  maxAttempts: 3, // Retry configuration (resolved by retry from config)
+  llm: { fast: true, good: true },  // capability-based model selection
+  temperature: 0.7,                   // response randomness
+  maxTokens: 1000,                    // maximum response length
+  maxAttempts: 3,                     // retry attempts (resolved by retry)
+  onProgress: (event) => {},          // progress callback
 });
 ```
 
-### Model Selection Strategies
+Model selection accepts a string shorthand (`'fastGoodCheap'`), a capability object (`{ fast: true, cheap: true }`), or a full config (`{ modelName: 'model-key' }`). Capability keys: `fast`, `cheap`, `good`, `reasoning`, `multi`, `sensitive`.
+
+## Collection Instruction Builders
+
+Several chains (scale, score, entities, tags, relations) export instruction builder functions that compose their specifications with collection chains. This lets you build a specification once and apply it across `map`, `filter`, `reduce`, `find`, or `group`:
 
 ```javascript
-// Privacy-first for sensitive data
-{ llm: { sensitive: true } }
+import { map, filter, scoreSpec, scoreMapInstructions, scoreFilterInstructions } from '@far-world-labs/verblets';
 
-// Optimized for bulk operations
-{ llm: { fast: true, cheap: true } }
+const spec = await scoreSpec('Rate persuasiveness 0-10');
 
-// Quality-critical operations
-{ llm: { good: true } }
+// Score every item
+const scores = await map(articles, scoreMapInstructions({ specification: spec }));
 
-// Complex reasoning tasks
-{ llm: { reasoning: true } }
-
-// Default balanced approach
-{ llm: 'fastGoodCheap' }
+// Keep only high-scoring items
+const best = await filter(articles, scoreFilterInstructions({
+  specification: spec,
+  processing: 'Keep items scoring 8 or above',
+}));
 ```
 
-Available chains:
+Each builder accepts `{ specification, processing? }` and returns a string instruction suitable for the corresponding collection chain. See [build-instructions](../lib/build-instructions/) for the full pattern.
 
-- [ai-arch-expect](./ai-arch-expect)
-- [anonymize](./anonymize)
-- [category-samples](./category-samples)
-- [central-tendency](./central-tendency)
-- [collect-terms](./collect-terms)
-- [conversation](./conversation)
-- [conversation-turn-reduce](./conversation-turn-reduce)
-- [date](./date)
-- [detect-patterns](./detect-patterns)
-- [detect-threshold](./detect-threshold)
-- [disambiguate](./disambiguate)
-- [dismantle](./dismantle)
-- [document-shrink](./document-shrink)
-- [entities](./entities)
-- [expect](./expect)
-- [extract-blocks](./extract-blocks)
-- [extract-features](./extract-features)
-- [filter](./filter)
-- [filter-ambiguous](./filter-ambiguous)
-- [find](./find)
-- [glossary](./glossary)
-- [group](./group)
-- [intersections](./intersections)
-- [join](./join)
-- [list](./list)
-- [llm-logger](./llm-logger)
-- [map](./map)
-- [people](./people)
-- [pop-reference](./pop-reference)
-- [questions](./questions)
-- [reduce](./reduce)
-- [relations](./relations)
-- [scale](./scale)
-- [scan-js](./scan-js)
-- [score](./score)
-- [set-interval](./set-interval)
-- [socratic](./socratic)
-- [sort](./sort)
-- [split](./split)
-- [summary-map](./summary-map)
-- [tags](./tags)
-- [tag-vocabulary](./tag-vocabulary)
-- [themes](./themes)
-- [timeline](./timeline)
-- [to-object](./to-object)
-- [truncate](./truncate)
-- [veiled-variants](./veiled-variants)
+## List Operations
 
-Chains are free to use any utilities from [`../lib`](../lib/README.md) and often rely on one or more verblets from [`../verblets`](../verblets/README.md).
+Transform, filter, and organize collections with parallel batch processing.
+
+- [filter](./filter) — Keep items matching natural language criteria
+- [find](./find) — Return the single best match with early stopping
+- [map](./map) — Transform each item using consistent rules
+- [reduce](./reduce) — Combine items sequentially into an accumulator
+- [sort](./sort) — Order by complex criteria using tournament comparisons
+- [group](./group) — Cluster items by discovering categories then assigning members
+- [score](./score) — Rate items on multiple weighted criteria
+- [tags](./tags) — Apply vocabulary-based tags to categorize items
+- [entities](./entities) — Extract names, places, organizations, and custom types
+- [relations](./relations) — Extract relationship tuples from text
+- [intersections](./intersections) — Find overlapping concepts between item pairs
+- [central-tendency](./central-tendency) — Find the most representative examples
+- [detect-patterns](./detect-patterns) — Identify repeating structures or sequences
+- [detect-threshold](./detect-threshold) — Find meaningful breakpoints in numeric values
+- [filter-ambiguous](./filter-ambiguous) — Flag items that need human clarification
+
+## Content Processing
+
+Generate, transform, and analyze text while preserving structure and meaning.
+
+- [list](./list) — Extract lists from prose, tables, or generate from descriptions
+- [split](./split) — Find topic boundaries in continuous text
+- [join](./join) — Connect text fragments with transitions
+- [extract-blocks](./extract-blocks) — Extract structured blocks with windowed processing
+- [document-shrink](./document-shrink) — Compress documents with adaptive TF-IDF scoring
+- [truncate](./truncate) — Remove content after a semantic boundary
+- [to-object](./to-object) — Extract key-value pairs from natural language
+- [glossary](./glossary) — Extract key terms and generate definitions
+- [themes](./themes) — Surface recurring ideas through multi-pass extraction
+- [collect-terms](./collect-terms) — Find domain-specific vocabulary
+- [disambiguate](./disambiguate) — Determine which meaning fits the context
+- [dismantle](./dismantle) — Break down systems into parts and connections
+- [tag-vocabulary](./tag-vocabulary) — Generate and refine tag vocabularies iteratively
+- [timeline](./timeline) — Order events chronologically from scattered mentions
+
+## Conversation & Dialogue
+
+- [Conversation](./conversation) — Generate multi-speaker transcripts with distinct personas
+- [conversation-turn-reduce](./conversation-turn-reduce) — Compress conversation history
+- [SocraticMethod](./socratic) — Progressive questioning with configurable challenge intensity
+- [questions](./questions) — Generate branching follow-up questions
+
+## Creative & Generative
+
+- [category-samples](./category-samples) — Generate examples from prototypical to edge cases
+- [people](./people) — Build artificial person profiles with consistent traits
+- [pop-reference](./pop-reference) — Match concepts to cultural touchstones
+- [veiled-variants](./veiled-variants) — Reframe queries through scientific, causal, and soft-cover strategies
+- [fill-missing](../verblets/fill-missing) — Predict content for redacted or corrupted sections
+
+## Math & Scoring
+
+- [scale](./scale) — Convert qualitative descriptions to numeric values
+- [calibrate](./calibrate) — Build specification-based classifiers with adjustable sensitivity
+- [probe-scan](./probe-scan) — Scan items for relevance using embedding similarity
+
+## Data Structures
+
+- [SummaryMap](./summary-map) — Token-budget hash table that compresses values to fit a target size
+
+## Testing & Development
+
+- [aiExpect](./expect) — AI-powered test expectations with source introspection
+- [ai-arch-expect](./ai-arch-expect) — Validate architecture constraints using AI analysis
+- [scan-js](./scan-js) — Examine JavaScript for patterns and issues
+- [test](./test) — Generate test cases for code
+- [llm-logger](./llm-logger) — Summarize log patterns across time windows
+- [test-analysis](./test-analysis) — Vitest reporter with AI-powered failure analysis
+- [test-advice](./test-advice) — Multi-category code analysis (boundaries, defects, best practices)
+- [test-analyzer](./test-analyzer) — Diagnose test failures with AI-generated fix suggestions
+
+## Scheduling
+
+- [date](./date) — Parse dates from natural language and relative expressions
+- [set-interval](./set-interval) — Schedule tasks using natural language time descriptions

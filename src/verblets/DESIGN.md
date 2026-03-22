@@ -1,38 +1,20 @@
 # Verblet Module Guidelines
 
-## Overview
+Verblets are single-purpose AI functions — one LLM call, one focused task, structured output via JSON schema. They are the building blocks that chains compose into multi-step workflows.
 
-Verblets are AI-powered functions that emulate constructs from classical programming while adding intelligence. They represent single-purpose operations that transform input data through LLM processing, providing structured outputs with schema validation.
-
-**For complex multi-step workflows, see [Chain Design Guidelines](../chains/DESIGN.md)** - chains build on these verblet patterns to orchestrate batch processing, retry logic, and stateful operations.
-
-## What is a Verblet?
-
-Verblets are the foundational building blocks of the AI function library. They handle:
-- **Single Purpose Operations**: Each verblet performs one clear, focused task
-- **Reliable Structured Output**: Consistent JSON responses using schemas
-- **Input Validation**: Contract-based validation with meaningful errors
-- **LLM Integration**: Seamless interaction with language models
+**For chains, see [Chain Design Guidelines](../chains/DESIGN.md).**
 
 ## Module Structure
 
 Each verblet directory contains:
-- `index.js` - Main implementation
-- `index.spec.js` - Unit tests (mock LLM calls)
-- `index.examples.js` - Integration examples (real LLM calls)
-- `README.md` - **Optional for simple verblets**, required for complex ones
-
-## Core Characteristics
-
-- **Single Purpose**: Each verblet performs one clear operation
-- **Reliable Output**: Consistent structured responses using schemas
-- **Error Handling**: Graceful failure with meaningful error messages
-- **Async Behavior**: All verblets return promises
-- **Schema-Driven**: Use JSON schemas for structured output validation
+- `index.js` — implementation
+- `index.spec.js` — unit tests (mocked LLM)
+- `index.examples.js` — integration examples (real LLM)
+- `README.md` — optional for simple verblets, required for complex ones
 
 ## Schema Passing and Structured Output
 
-**This is the most critical aspect for reliable verblets.** Understanding proper schema configuration prevents JSON parsing issues and ensures consistent responses.
+Proper schema configuration is the most critical aspect of reliable verblets. Pass `response_format` flat on the config object — callLlm parses the response and auto-unwraps `{ value }` and `{ items }` wrappers.
 
 ### Correct Schema Configuration
 
@@ -207,82 +189,13 @@ export default async function sentiment(text, config = {}) {
 }
 ```
 
-## Documentation Standards
+## Documentation
 
-### When README is Required
+README is optional for verblets with a single parameter and obvious behavior. Required when there are multiple config options, non-obvious edge cases, or custom schemas. See [DOCUMENTATION.md](../../guidelines/DOCUMENTATION.md) for structure and quality standards.
 
-**Complex verblets need documentation when they have:**
-- Multiple configuration options beyond basic `llm` settings
-- Non-obvious behavior or edge cases
-- Custom schema requirements
-- Performance considerations
+## Testing
 
-### When README is Optional
-
-**Simple verblets can skip documentation when they:**
-- Have single parameter input with obvious behavior
-- Use standard verblet patterns without customization
-- Are self-explanatory from function name and JSDoc
-
-### README Structure (when needed)
-
-```markdown
-# Verblet Name
-
-Brief description of what it does and when to use it.
-
-## Usage
-
-\`\`\`javascript
-import { verbletName } from '@far-world-labs/verblets';
-const result = await verbletName(input, { divergence: 'high' });
-\`\`\`
-
-## Options
-- `divergence` - `'low'` | `'high'` — controls variant diversity
-- `llm` - Model selection (string, capability object, or full config)
-
-## Returns
-Description of output structure and format
-```
-
-## Testing Standards
-
-### Unit Tests (index.spec.js)
-
-Mock LLM calls for fast, deterministic tests:
-
-```javascript
-import { vi, describe, it, expect } from 'vitest';
-import sentiment from './index.js';
-import llm from '../../lib/llm/index.js';
-
-vi.mock('../../lib/llm/index.js');
-
-describe('sentiment', () => {
-  it('should analyze positive sentiment', async () => {
-    llm.mockResolvedValue({
-      sentiment: 'positive',
-      confidence: 0.95,
-      reasoning: 'Expresses joy and satisfaction',
-    });
-
-    const result = await sentiment('I love this product!');
-
-    expect(result.sentiment).toBe('positive');
-    expect(llm).toHaveBeenCalledWith(
-      expect.stringContaining('I love this product!'),
-      expect.objectContaining({
-        response_format: expect.any(Object),
-      })
-    );
-  });
-});
-```
-
-### Integration Tests (index.examples.js)
-
-Use real LLM calls for validation with vitest test wrappers.
+**Unit tests** (`index.spec.js`): mock `callLlm`, verify the prompt contains expected content and `response_format` is passed. **Integration tests** (`index.examples.js`): real LLM calls with vitest test wrappers. See [example test conventions](../../docs/example-test-conventions.md).
 
 ## Anti-Patterns
 

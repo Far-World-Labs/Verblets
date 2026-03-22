@@ -5,17 +5,17 @@ Evaluate how prototypical an item is within a cognitive category. Returns a grad
 ## Example
 
 ```javascript
-import { centralTendency } from './index.js';
+import { centralTendencyLines } from '@far-world-labs/verblets';
 
 const birdSeeds = ['robin', 'sparrow', 'bluejay', 'cardinal'];
 
-const robin = await centralTendency('robin', birdSeeds, {
+const robin = await centralTendencyLines('robin', birdSeeds, {
   context: 'Typical bird characteristics and behavior',
   coreFeatures: ['feathers', 'beak', 'flight', 'lays eggs'],
 });
 // => { score: 0.92, reason: "Robin exemplifies core bird features...", confidence: 0.88 }
 
-const penguin = await centralTendency('penguin', birdSeeds, {
+const penguin = await centralTendencyLines('penguin', birdSeeds, {
   context: 'Typical bird characteristics and behavior',
   coreFeatures: ['feathers', 'beak', 'flight', 'lays eggs'],
 });

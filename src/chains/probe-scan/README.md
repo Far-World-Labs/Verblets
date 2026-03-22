@@ -2,11 +2,11 @@
 
 Scan text for probe matches using local embeddings. Compares text chunks against pre-embedded probe vectors using cosine similarity — no data leaves the machine.
 
-## Usage
+Probes are pre-embedded vectors built with `embedProbes` from the embed-probes library module:
 
 ```javascript
-import probeScan from './index.js';
-import { embedProbes } from '../../lib/embed/index.js';
+import { probeScan } from '@far-world-labs/verblets';
+import { embedProbes } from '@far-world-labs/verblets/lib/embed-probes/index.js';
 
 const probes = await embedProbes([
   { category: 'pii', label: 'email address' },
@@ -14,7 +14,7 @@ const probes = await embedProbes([
 ]);
 
 const result = await probeScan('Contact me at john@example.com', probes);
-// Returns: { flagged: true, hits: [{ category: 'pii', label: 'email address', score: 0.82, chunk: { text: '...', start: 0, end: 30 } }] }
+// => { flagged: true, hits: [{ category: 'pii', label: 'email address', score: 0.82, chunk: { text: '...', start: 0, end: 30 } }] }
 ```
 
 ## API

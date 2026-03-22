@@ -5,7 +5,7 @@ Generate realistic multi-speaker transcripts with contextual turn-taking.
 ## Example
 
 ```javascript
-import Conversation from './index.js';
+import { Conversation } from '@far-world-labs/verblets';
 
 // Simulate a focus group with distinct personas
 const focusGroup = new Conversation('mobile app redesign feedback', [

@@ -3,7 +3,7 @@
 Find common threads between multiple items using an LLM. The verblet checks every combination from pairs up to the full set. If no relationship is obvious, an empty array is returned.
 
 ```javascript
-import commonalities from './index.js';
+import { commonalities } from '@far-world-labs/verblets';
 
 await commonalities(['smartphone', 'tablet', 'laptop']);
 // => ['Portable electronics', 'Portable computers']

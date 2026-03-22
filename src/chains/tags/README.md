@@ -5,7 +5,7 @@ Categorize items against a controlled vocabulary using AI-interpreted tagging ru
 ## Example
 
 ```javascript
-import tags, { createTagger } from './index.js';
+import { tags, createTagger } from '@far-world-labs/verblets';
 
 const expenseVocabulary = {
   tags: [

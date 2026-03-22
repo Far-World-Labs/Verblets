@@ -1,77 +1,43 @@
 # split
 
-Intelligently split text into meaningful segments using AI-powered analysis with context-aware boundaries and semantic understanding.
-
-## Usage
+Split text into segments at semantically meaningful boundaries. The AI places split markers based on your criteria — topic shifts, argument boundaries, tone changes — then the chain validates that the output preserves the original text.
 
 ```javascript
-import split from './index.js';
+import { split } from '@far-world-labs/verblets';
 
-const article = `
-Machine learning is transforming industries worldwide. Companies are adopting AI solutions to improve efficiency and reduce costs.
+const legalBrief = `The defendant entered the premises at approximately 11:30 PM.
+Security footage shows them proceeding directly to the server room.
+They accessed three terminals over a period of forty minutes.
+Meanwhile, the night security guard was conducting rounds on the second floor.
+At 12:15 AM, an automated alert triggered when the backup system detected
+an unauthorized export of the customer database.
+The guard responded within four minutes and found the server room empty.
+Digital forensics later confirmed that 2.3 million records were copied
+to an external device during the forty-minute window.`;
 
-The healthcare sector has seen remarkable advances with AI-powered diagnostics. Medical professionals can now detect diseases earlier and more accurately.
-
-Education is also being revolutionized through personalized learning platforms. Students receive customized instruction based on their individual needs and learning styles.
-`;
-
-const sections = await split(article, 'split into topic-based paragraphs');
-// Returns: [
-//   'Machine learning is transforming industries worldwide...',
-//   'The healthcare sector has seen remarkable advances...',
-//   'Education is also being revolutionized...'
+const segments = await split(legalBrief, 'separate by narrative event');
+// => [
+//   'The defendant entered the premises... forty minutes.',
+//   'Meanwhile, the night security guard... server room empty.',
+//   'Digital forensics later confirmed... forty-minute window.'
 // ]
 ```
+
+The criteria describe *what kind of boundary to look for*, and the AI decides where those boundaries fall. This handles cases where a regex or sentence splitter would miss the semantic structure.
 
 ## API
 
 ### `split(text, criteria, config)`
 
-**Parameters:**
-- `text` (string): Text to split
-- `criteria` (string): Natural language description of how to split
-- `config` (Object): Configuration options
-  - `chunkLen` (number): Maximum character length per processing chunk (default: 4000)
-  - `delimiter` (string): Delimiter string for marking split points (default: internal boundary)
-  - `targetSplitsPerChunk` (number): Target number of splits per chunk (optional)
-  - `preservation` (`'low'`|`'high'`|Object): Output difference thresholds for short and long chunks. `'low'` allows more deviation (0.7 short, 0.25 long). `'high'` enforces tighter fidelity (0.3 short, 0.05 long). Default: 0.5 short, 0.1 long
-  - `llm` (string|Object): LLM model options (default: `'fastGoodCheapCoding'`)
-  - `maxAttempts` (number): Maximum retry attempts (default: 2)
-  - `onProgress` (Function): Progress callback
-  - `abortSignal` (AbortSignal): Signal to cancel the operation
+- **text** (string): Text to split
+- **criteria** (string): Natural language description of where to split
+- **config.chunkLen** (number): Maximum characters per processing chunk (default: 4000)
+- **config.targetSplitsPerChunk** (number): Approximate splits per chunk
+- **config.preservation** (`'low'`|`'high'`|Object): How closely the output must match the original text. `'low'` allows more deviation (0.7 short / 0.25 long thresholds). `'high'` enforces tight fidelity (0.3 / 0.05). Default: 0.5 / 0.1
+- **config.delimiter** (string): Custom delimiter string for marking split points
+- **config.maxAttempts** (number): Maximum retry attempts (default: 2)
+- **config.llm** (string|Object): LLM model configuration (default: `'fastGoodCheapCoding'`)
+- **config.onProgress** (function): Progress callback
+- **config.abortSignal** (AbortSignal): Signal to cancel the operation
 
-**Returns:** Promise<Array<string>> - Array of text segments
-
-## Use Cases
-
-### Document Processing
-```javascript
-import split from './index.js';
-
-const manual = `
-Chapter 1: Getting Started
-This chapter covers the basics of installation and setup.
-
-Chapter 2: Configuration
-Learn how to configure the system for optimal performance.
-
-Chapter 3: Advanced Features
-Explore advanced functionality and customization options.
-`;
-
-const chapters = await split(manual, 'separate by chapters');
-// Returns each chapter as a separate segment
-```
-
-### Content Analysis
-```javascript
-const transcript = `
-Speaker A: Welcome to today's meeting. Let's start with the quarterly review.
-Speaker B: Thank you. Our sales numbers show a 15% increase this quarter.
-Speaker A: That's excellent news. What about our marketing initiatives?
-Speaker B: The new campaign launched successfully and generated significant interest.
-`;
-
-const turns = await split(transcript, 'separate by speaker turns');
-// Returns each speaker's contribution as separate segments
-```
+**Returns:** `Promise<string[]>` — Array of text segments

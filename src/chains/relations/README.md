@@ -7,7 +7,7 @@ Extract structured relationship tuples from text as subject-predicate-object tri
 Turn unstructured news into a structured knowledge graph — extracting not just entities but how they relate:
 
 ```javascript
-import relations from './index.js';
+import { relations } from '@far-world-labs/verblets';
 
 const extractor = relations({
   relations: 'Extract geopolitical and economic relationships',

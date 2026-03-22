@@ -5,7 +5,8 @@ AI-powered architectural testing. Assert expectations across files and directori
 ## Example
 
 ```javascript
-import { aiArchExpect, eachFile, eachDir, countItems } from './index.js';
+import { aiArchExpect } from '@far-world-labs/verblets';
+// eachFile, eachDir, countItems are separate lib modules — import them directly
 
 // Verify coding conventions across an entire codebase
 await aiArchExpect(eachFile('src/**/*.js'))

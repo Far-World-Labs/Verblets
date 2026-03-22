@@ -3,7 +3,7 @@
 Classify free-form text into exactly one of several predefined categories.
 
 ```javascript
-import classify from '@anthropic/verblets/verblets/enum';
+import { classify } from '@far-world-labs/verblets';
 
 // Understands intent, not just keywords
 await classify('This needs to be done ASAP!!!', ['low', 'medium', 'high', 'critical']);

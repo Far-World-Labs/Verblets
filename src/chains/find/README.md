@@ -1,53 +1,34 @@
 # find
 
-Find items in arrays that match specific criteria using AI-powered search with intelligent reasoning and context understanding.
-
-## Usage
+Return the single best match from a list based on natural language criteria. Processes items in parallel batches and short-circuits once a match is found.
 
 ```javascript
-import find from './index.js';
+import { find } from '@far-world-labs/verblets';
 
-const documents = [
-  'Meeting notes from Q1 planning session',
-  'Budget proposal for new marketing campaign',
-  'Technical specification for API endpoints',
-  'Employee handbook updates for remote work',
-  'Security audit report findings'
+const reviews = [
+  'Great battery life, easily lasts two days of heavy use',
+  'The screen is gorgeous but the bezels are huge',
+  'Camera quality is stunning in low light conditions',
+  'Feels cheap and plasticky despite the premium price',
+  'Face unlock is instant, never had a false reject'
 ];
 
-const technical = await find(documents, 'technical documentation');
-// Returns: 'Technical specification for API endpoints'
+const complaint = await find(reviews, 'a review that criticizes build quality or materials');
+// => 'Feels cheap and plasticky despite the premium price'
 ```
+
+The AI evaluates meaning, not keywords — it would match "plasticky" to "build quality" even though the words don't overlap.
 
 ## API
 
 ### `find(array, criteria, config)`
 
-**Parameters:**
-- `array` (Array): Items to search through
-- `criteria` (string): Natural language description of what to find
-- `config` (Object): Configuration options
-  - `batchSize` (number): Items per batch (auto-calculated if omitted)
-  - `maxAttempts` (number): Retry attempts per batch (default: 3)
-  - `maxParallel` (number): Concurrent batch operations (default: 3)
-  - `llm` (Object): LLM model options
+- **array** (Array): Items to search through
+- **criteria** (string): Natural language description of what to find
+- **config.batchSize** (number): Items per batch (auto-calculated if omitted)
+- **config.maxParallel** (number): Concurrent batch operations (default: 3)
+- **config.onProgress** (function): Progress callback
+- **config.abortSignal** (AbortSignal): Signal to cancel the operation
+- **config.llm** (string|Object): LLM model configuration
 
-**Returns:** Promise\<string> - Best matching item, or empty string if none found
-
-## Use Cases
-
-### Document Search
-```javascript
-import find from './index.js';
-
-const files = [
-  'project-timeline.pdf',
-  'budget-2024.xlsx',
-  'user-manual.docx',
-  'meeting-notes.txt',
-  'invoice-template.pdf'
-];
-
-const userDoc = await find(files, 'user documentation or manual');
-// Returns: 'user-manual.docx'
-```
+**Returns:** `Promise<string>` — Best matching item, or empty string if none found

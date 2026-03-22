@@ -1,33 +1,33 @@
 # category-samples
 
-Generate representative sample items for a category using cognitive science principles. Creates diverse, representative examples across the typicality spectrum using prototype theory and family resemblance.
+Generate representative items for a category using cognitive science principles. The prompt invokes prototype theory and family resemblance to produce examples across the typicality spectrum — from prototypical members through moderately typical to borderline edge cases.
 
-## Usage
+Internally uses the `list` chain for iterative generation: keeps calling the LLM until enough items are collected, then truncates to the requested count.
 
 ```javascript
-import categorySamples from './index.js';
+import { categorySamples } from '@far-world-labs/verblets';
 
-const fruits = await categorySamples('fruit', { count: 5 });
-// Returns: ['apple', 'banana', 'mango', 'dragonfruit', 'fig']
+const fruits = await categorySamples('fruit', { diversity: 'high', count: 8 });
+// Generates up to 50 candidates with edge cases, returns the first 8:
+// ['apple', 'banana', 'dragonfruit', 'tomato', 'avocado', 'olive', 'fig', 'jackfruit']
 
 const birds = await categorySamples('bird', {
   context: 'Common backyard birds in North America',
-  count: 4,
   diversity: 'low',
 });
-// Returns: ['robin', 'sparrow', 'cardinal', 'bluejay']
+// Focuses on typical members, generates 15 candidates:
+// ['robin', 'sparrow', 'cardinal', 'blue jay', 'finch', ...]
 ```
 
 ## API
 
 ### `categorySamples(categoryName, config)`
 
-**Parameters:**
-- `categoryName` (string): Name of the category to generate samples for
-- `config` (Object): Configuration options
-  - `diversity` (`'low'`|`'high'`): Controls sampling strategy. `'low'` focuses on typical, central members with fewer candidates (15). `'high'` spans edge cases and borderline members with more candidates (50). Default: balanced behavior with 30 candidates
-  - `count` (number): Override number of sample items to return
-  - `context` (string): Context description for generation (default: '')
-  - `llm` (string|Object): LLM model configuration (default: `'fastGoodCheap'`)
+- `categoryName` (string, required): The category to generate samples for
+- `config` (Object):
+  - `diversity` (`'low'`|`'high'`): Controls both the prompt framing and how many items are generated before truncation. `'low'` focuses on typical central members (15 items). `'high'` spans edge cases and borderline members (50 items). Default: balanced (30 items).
+  - `count` (number): Override the number of items to return (independent of `diversity`)
+  - `context` (string): Domain context to guide generation (e.g., "North American species")
+  - `llm` (string|Object): LLM configuration. Default: `'fastGoodCheap'`
 
-**Returns:** Promise<string[]> - Array of representative category member names
+**Returns:** `Promise<string[]>` — array of category member names

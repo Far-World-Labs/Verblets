@@ -3,7 +3,7 @@
 Generate a short, catchy name for something using the style of existing names. This verblet relies on a language model to capture the tone and brevity of your sample names.
 
 ```javascript
-import nameSimilarTo from './index.js';
+import { nameSimilarTo } from '@far-world-labs/verblets';
 
 const newName = await nameSimilarTo(
   'dataset of daily coffee tasting notes',

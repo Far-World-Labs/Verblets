@@ -2,9 +2,9 @@
 
 Analyze code files against custom test criteria using AI-powered inspection. Returns specific, actionable feedback about issues found.
 
-## Usage
-
 ```javascript
+import { test } from '@far-world-labs/verblets';
+
 const securityIssues = await test(
   './src/api/userAuth.js', 
   'check for common security vulnerabilities like SQL injection, XSS, exposed secrets, or missing input validation'
@@ -30,17 +30,4 @@ const cleanCode = await test('./src/utils/helpers.js', 'check for code smells an
 
 **Returns:** Promise<Array<string>> - Array of issue descriptions with actionable feedback, or empty array if no issues found
 
-## Features
-
-- **Focused analysis**: Only reports issues related to your specific test criteria
-- **Actionable feedback**: Provides specific line numbers and concrete fix suggestions
-- **Error handling**: Gracefully handles file read errors
-- **Efficient processing**: Uses fast model for quick analysis
-
-## Output Format
-
-Each issue in the returned array includes:
-- Description of the problem
-- Specific location (line numbers when possible)
-- Suggested fix or improvement
-- Context about why it matters
+Each issue in the returned array includes a description, location (line numbers when possible), and a suggested fix.

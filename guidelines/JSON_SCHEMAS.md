@@ -29,6 +29,7 @@ const schema = {
     },
   },
   required: ['items'],
+  additionalProperties: false,
 };
 
 // Use schema in LLM call — flat config pattern
@@ -160,7 +161,8 @@ const result = await llm(prompt, {
       items: { type: 'string' }
     }
   },
-  required: ['items']
+  required: ['items'],
+  additionalProperties: false,
 }
 // Note: This will be auto-unwrapped by llm module
 ```
@@ -179,35 +181,14 @@ const result = await llm(prompt, {
           item: { type: 'string' },
           score: { type: 'number' }
         },
-        required: ['item', 'score']
+        required: ['item', 'score'],
+        additionalProperties: false,
       }
     }
   },
-  required: ['results']
+  required: ['results'],
+  additionalProperties: false,
 }
 ```
 
-### Error Handling
-
-```javascript
-{
-  type: 'object',
-  properties: {
-    success: { type: 'boolean' },
-    data: { type: 'array', items: { type: 'string' } },
-    error: { type: 'string' }
-  },
-  required: ['success'],
-  oneOf: [
-    { properties: { success: { const: true } }, required: ['data'] },
-    { properties: { success: { const: false } }, required: ['error'] }
-  ]
-}
-```
-
-## Enforcement
-
-- Architecture tests will validate no `toObject` usage in new code
-- All PR reviews must check for proper schema usage
-- Unit tests must mock schema-compliant responses
-- Example tests should demonstrate schema patterns
+Architecture tests validate that new code uses `response_format` instead of `toObject`. Unit test mocks must return parsed objects matching the schema structure.

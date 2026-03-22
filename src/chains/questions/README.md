@@ -1,69 +1,37 @@
 # questions
 
-AI-powered question generator that creates relevant, thought-provoking questions from any input text. Uses an iterative approach to explore different angles and drill down into interesting areas.
-
-## Usage
+Generate questions from input text using an iterative exploration strategy. Each round picks interesting questions from the previous round and uses them as seeds for deeper inquiry, building a branching tree of questions that covers the topic from multiple angles.
 
 ```javascript
-import questions from './src/chains/questions/index.js';
+import { questions } from '@far-world-labs/verblets';
 
-const inputText = "The impact of artificial intelligence on modern healthcare";
-
-// Generate questions with default settings
-const generatedQuestions = await questions(inputText);
-
-// Generate questions with custom configuration
-const customQuestions = await questions(inputText, {
-  exploration: 'low',  // More focused exploration (vs 'high' for broad)
-  llm: 'fastGoodCheap',
-  shouldSkip: (question, existing) => existing.includes(question),
-  shouldStop: (question, all, recent, attempts) => all.length > 20
-});
+const qs = await questions(
+  'The city of Venice is sinking at a rate of 1-2mm per year while sea levels rise',
+  {
+    exploration: 'high',
+    shouldStop: (q, all) => all.length > 25
+  }
+);
+// => [
+//   'What engineering solutions have been proposed to counteract subsidence?',
+//   'How does the salt content of the Adriatic affect foundation erosion?',
+//   'What would a managed retreat from Venice look like economically?',
+//   ...25 more questions spanning engineering, ecology, economics, history
+// ]
 ```
 
-## Parameters
+## API
 
-- **text** (string): The input text to generate questions about
-- **config** (object, optional):
-  - **exploration** (`'low'`|`'high'`|number): Controls exploration breadth. `'low'` focuses narrowly (0.3), `'high'` explores broadly (0.7). A raw number (0-1) passes through directly. Default: 0.5
-  - **llm** (string|Object): LLM model configuration
-  - **shouldSkip** (function): Custom logic to skip certain questions. Receives `(question, allQuestions)` and returns boolean
-  - **shouldStop** (function): Custom logic to stop generation. Receives `(question, allQuestions, recentQuestions, attempts)` and returns boolean
+### `questions(text, config?)`
 
-## Returns
+- **text** (string): Input text to generate questions about
+- **config.exploration** (`'low'`|`'high'`|number): Controls breadth of exploration. `'low'` focuses narrowly (0.3). `'high'` explores broadly (0.7). A raw number (0–1) passes through directly. Default: 0.5
+- **config.shouldSkip** (function): Skip specific questions. Receives `(question, allQuestions)`, returns boolean
+- **config.shouldStop** (function): Stop generation early. Receives `(question, allQuestions, recentQuestions, attempts)`, returns boolean
+- **config.llm** (string|Object): LLM model configuration
 
-Array of unique questions sorted alphabetically.
+**Returns:** `Promise<string[]>` — Unique questions, sorted alphabetically
 
 ## Algorithm
 
-1. **Initial Generation**: Creates questions directly from input text
-2. **Iterative Refinement**: 
-   - Picks interesting questions from previous results
-   - Uses selected questions as new input for deeper exploration
-   - Applies breadth control to balance focus vs. exploration
-3. **Quality Control**: Filters duplicates and applies custom skip/stop logic
-4. **Termination**: Stops when reaching limits (50+ questions or 5+ attempts by default)
-
-## Examples
-
-### Research Analysis
-```javascript
-const researchQuestions = await questions(
-  "Climate change effects on polar ice caps",
-  {
-    exploration: 'high',  // Broad exploration
-    shouldStop: (q, all) => all.length > 30
-  }
-);
-```
-
-### Focused Inquiry
-```javascript
-const focusedQuestions = await questions(
-  "Machine learning model interpretability",
-  {
-    exploration: 'low',  // Deep, narrow focus
-    shouldStop: (q, all) => all.length > 15
-  }
-);
-``` 
+The chain works in rounds. The first round generates questions directly from the input text. Each subsequent round selects the most interesting questions from the previous batch and uses them as new input, with the `exploration` dial controlling how broadly or narrowly to branch. Duplicates are filtered automatically. Generation stops when either the `shouldStop` callback returns true or built-in limits are reached (50+ questions or 5+ attempts). 

@@ -1,72 +1,55 @@
 # reduce
 
-Accumulate values across a collection by applying transformation instructions sequentially, supporting both simple and structured outputs.
-
-## Usage
+Accumulate a result across a collection by processing items in batches. Each batch sees the current accumulator and folds the next items into it, so the AI maintains running context throughout.
 
 ```javascript
-import reduce from './index.js';
+import { reduce } from '@far-world-labs/verblets';
 
-// Simple accumulation
-const items = ['one', 'two', 'three', 'four'];
-const result = await reduce(items, 'concatenate with commas', { initial: '' });
-// Returns: "one, two, three, four"
+const witnessStatements = [
+  'I saw a red car run the light at approximately 3:15 PM.',
+  'The vehicle was dark-colored, maybe maroon. It was speeding.',
+  'A red sedan hit the pedestrian. The driver stopped briefly then fled.',
+  'I didn\'t see the accident but heard tires screech and a loud impact.',
+  'The car had a dented front bumper and partial plate starting with 7J.'
+];
 
-// Structured output with response format
-const scores = [85, 92, 78, 95, 88];
 const summary = await reduce(
-  scores,
-  'calculate statistics',
-  {
-    initial: { sum: 0, count: 0, max: 0, min: 100 },
-    responseFormat: {
-      type: 'json_schema',
-      json_schema: {
-        name: 'stats',
-        schema: {
-          type: 'object',
-          properties: {
-            sum: { type: 'number' },
-            count: { type: 'number' },
-            max: { type: 'number' },
-            min: { type: 'number' },
-            average: { type: 'number' }
-          },
-          required: ['sum', 'count', 'max', 'min', 'average']
-        }
-      }
-    }
-  }
+  witnessStatements,
+  'Synthesize these witness statements into a single coherent account. Resolve contradictions by noting agreement levels. Preserve all unique details.',
+  { initial: 'No statements processed yet.' }
 );
-// Returns: { sum: 438, count: 5, max: 95, min: 78, average: 87.6 }
+// => "A red or dark maroon sedan ran a red light at approximately 3:15 PM
+//     while speeding. The vehicle struck a pedestrian, and the driver stopped
+//     briefly before fleeing the scene. The car had a dented front bumper
+//     with a partial license plate beginning with '7J'. One witness heard
+//     but did not see the collision. All visual witnesses agree on the color
+//     (red to maroon) and the running of the light."
 ```
+
+For structured accumulation, pass a `responseFormat` JSON schema — the accumulator will be an object instead of a string.
 
 ## API
 
-### `reduce(list, instructions, config)`
+### `reduce(list, instructions, config?)`
 
-**Parameters:**
-- `list` (Array): Items to reduce
-- `instructions` (string): Transformation instructions for accumulation
-- `config` (Object): Configuration options
-  - `initial` (*): Initial accumulator value
-  - `responseFormat` (Object): JSON schema for structured outputs
-  - `batchSize` (number): Items per batch (auto-calculated from model context window)
-  - `listStyle` (string): Input format style ('auto', 'newline', 'xml')
-  - `autoModeThreshold` (number): Character threshold for auto XML mode
-  - `maxAttempts` (number): Retry attempts per LLM call (default: 3)
-  - `onProgress` (function): Progress callback
-  - `abortSignal` (AbortSignal): Signal to cancel the operation
-  - `llm` (string|Object): LLM model configuration
+- **list** (Array): Items to reduce
+- **instructions** (string): How to fold each batch into the accumulator
+- **config.initial** (*): Initial accumulator value
+- **config.responseFormat** (Object): JSON schema for structured accumulation
+- **config.batchSize** (number): Items per batch (auto-calculated from model context window)
+- **config.maxAttempts** (number): Retry attempts per batch (default: 3)
+- **config.onProgress** (function): Progress callback
+- **config.abortSignal** (AbortSignal): Signal to cancel the operation
+- **config.llm** (string|Object): LLM model configuration
 
-**Returns:** Promise<*> - Final accumulated value (type depends on instructions and responseFormat)
+**Returns:** `Promise<*>` — Final accumulated value (type depends on instructions and responseFormat)
 
 ## Per-Item Mode
 
 Use `reduce.with()` to create a step function compatible with `p-reduce` and similar async utilities:
 
 ```javascript
-import reduce from './index.js';
+import { reduce } from '@far-world-labs/verblets';
 import pReduce from 'p-reduce';
 
 const step = reduce.with('sum the values');

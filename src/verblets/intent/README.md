@@ -2,9 +2,9 @@
 
 Extract action and parameters from natural language commands. Maps user input to function names and extracts named parameters, enabling natural language function dispatch without manual argument mapping.
 
-## Usage
-
 ```javascript
+import { intent } from '@far-world-labs/verblets';
+
 const operations = [
   {
     name: 'sendEmail',
@@ -56,9 +56,4 @@ await handlers[result.operation](result.parameters);
 - `parameters`: Object with named parameters ready to pass to the function
 - `optionalParameters`: Additional parameters that might be useful
 
-## Features
-
-- **Function dispatch**: Returns exact function names from your operations list
-- **Named parameters**: Extracts parameters as key-value pairs matching your function signatures
-- **Direct invocation**: Output can be used directly with spread operator or destructuring
-- **Natural language understanding**: Users can phrase commands naturally without knowing function names
+The AI matches the user's phrasing to the closest operation and extracts parameters by name, so you can dispatch to handler functions directly.

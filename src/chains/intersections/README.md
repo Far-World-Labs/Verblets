@@ -1,74 +1,47 @@
 # intersections
 
-Find overlapping elements and relationships between multiple categories using AI-powered analysis with intelligent reasoning about commonalities and shared characteristics.
-
-## Usage
+Find what lies at the overlap between categories. Given a list of domains, the chain generates all pairwise (and higher-order) combinations, then uses the AI to discover elements that exist at each intersection.
 
 ```javascript
-import intersections from './index.js';
+import { intersections } from '@far-world-labs/verblets';
 
-const categories = ['technology', 'healthcare', 'sustainability'];
-const results = await intersections(categories, {
-  instructions: 'Find innovations and solutions that exist in all these areas'
+const disciplines = ['linguistics', 'neuroscience', 'computer science'];
+const results = await intersections(disciplines, {
+  instructions: 'Find research fields and methods that span these areas'
 });
-
-// Returns:
-// {
-//   'technology + healthcare': {
-//     combination: ['technology', 'healthcare'],
-//     description: 'Digital health solutions and medical technology',
-//     elements: ['Electronic health records', 'Telemedicine platforms', 'Medical imaging AI']
+// => {
+//   'linguistics + neuroscience': {
+//     combination: ['linguistics', 'neuroscience'],
+//     description: 'How the brain processes and produces language',
+//     elements: ['Aphasia studies', 'ERP language experiments', 'Bilingual brain imaging']
 //   },
-//   'technology + sustainability': {
-//     combination: ['technology', 'sustainability'],
-//     description: 'Green technology and environmental solutions',
-//     elements: ['Smart grid systems', 'Electric vehicle charging', 'Solar panel monitoring']
+//   'linguistics + computer science': {
+//     combination: ['linguistics', 'computer science'],
+//     description: 'Computational approaches to language',
+//     elements: ['Parsing algorithms', 'Machine translation', 'Corpus linguistics']
 //   },
-//   'healthcare + sustainability': {
-//     combination: ['healthcare', 'sustainability'],
-//     description: 'Sustainable healthcare practices',
-//     elements: ['Green hospital design', 'Eco-friendly medical supplies', 'Waste reduction programs']
+//   'neuroscience + computer science': {
+//     combination: ['neuroscience', 'computer science'],
+//     description: 'Brain-inspired and brain-interfacing computation',
+//     elements: ['Neural networks', 'Brain-computer interfaces', 'Connectomics']
 //   },
-//   'technology + healthcare + sustainability': {
-//     combination: ['technology', 'healthcare', 'sustainability'],
-//     description: 'Sustainable digital health innovations',
-//     elements: ['Carbon-neutral data centers for health apps', 'Biodegradable medical sensors', 'AI-optimized energy use in hospitals']
+//   'linguistics + neuroscience + computer science': {
+//     combination: ['linguistics', 'neuroscience', 'computer science'],
+//     description: 'The full convergence: modeling language in the brain computationally',
+//     elements: ['Large language models as cognitive models', 'Neural decoding of speech', 'Computational psycholinguistics']
 //   }
 // }
 ```
 
-## Features
-
-- **Exhaustive Combination Generation**: Automatically generates all possible combinations within specified size ranges
-- **Parallel Processing**: Processes multiple combinations simultaneously with configurable batch sizes
-- **Dual Analysis**: Combines intersection finding with commonality analysis for comprehensive results
-- **JSON Schema Validation**: Optional structured output validation for consistent results
-
 ## API
 
-### `intersections(categories, config)`
+### `intersections(categories, config?)`
 
-**Parameters:**
-- `categories` (Array): Array of categories to find intersections between
-- `config` (Object): Configuration options
-  - `instructions` (string): Custom instructions for intersection finding
-  - `minSize` (number): Minimum combination size (default: 2)
-  - `maxSize` (number): Maximum combination size (default: categories.length)
-  - `batchSize` (number): Number of combinations to process in parallel (default: 10)
-  - `llm` (Object): LLM model options
+- **categories** (Array): Domains or concepts to find intersections between
+- **config.instructions** (string): Guide what kind of intersections to look for
+- **config.minSize** (number): Minimum combination size (default: 2)
+- **config.maxSize** (number): Maximum combination size (default: categories.length)
+- **config.batchSize** (number): Combinations to process in parallel (default: 10)
+- **config.llm** (string|Object): LLM model configuration
 
-**Returns:** Promise<Object> - Object with combination keys and intersection details
-
-## Use Cases
-
-### Market Research
-```javascript
-import intersections from './index.js';
-
-const markets = ['fitness', 'technology', 'social media'];
-const opportunities = await intersections(markets, {
-  instructions: 'Find business opportunities and product ideas'
-});
-
-// Discovers intersection opportunities like fitness apps, social fitness platforms, etc.
-```
+**Returns:** `Promise<Object>` — Keys are `"A + B"` strings, values are `{ combination, description, elements }` objects

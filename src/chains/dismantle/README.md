@@ -5,7 +5,7 @@ Break down complex systems into a tree of components using an LLM. `dismantle` c
 ## Example
 
 ```javascript
-import { dismantle, simplifyTree } from './index.js';
+import { dismantle, simplifyTree } from '@far-world-labs/verblets';
 
 // Break down complex systems into components
 const chain = dismantle('AirPods Pro');

@@ -1,66 +1,57 @@
 # veiled-variants
 
-Generate alternative versions of sensitive text that maintain meaning while obscuring identifying details using privacy-preserving transformations.
+Reframe a prompt through multiple cognitive lenses to generate alternative phrasings. Useful when a direct query might trigger content filters or when you want diverse angles on the same question. Runs parallel LLM calls — one per strategy — and returns all variants in a flat array.
 
-## Usage
+The three built-in strategies:
+- **Scientific framing** — recasts the prompt as an academic research query using terminology from biology, epidemiology, or public health
+- **Causal framing** — explores causes, co-conditions, and consequences adjacent to the topic
+- **Soft cover** — reframes as general wellness or diagnostic concerns with a clinical, approachable tone
 
 ```javascript
-import veiledVariants from './index.js';
+import { veiledVariants } from '@far-world-labs/verblets';
 
-const sensitive = "John Smith from Acme Corp called about the merger with TechStart Inc.";
-const variants = await veiledVariants(sensitive, 'business communication', { count: 3 });
+const variants = await veiledVariants({
+  prompt: 'What are the effects of long-term sleep deprivation?',
+});
 
-// Returns:
+// Returns 15 variants (5 per strategy):
 // [
-//   "A representative from a major corporation called about the acquisition with a startup company.",
-//   "The business contact discussed the potential partnership with the technology firm.",
-//   "An executive from the established company mentioned the deal with the emerging business."
+//   "What neurological biomarkers correlate with chronic sleep deficit in longitudinal cohort studies?",
+//   "How does sustained wakefulness beyond 72 hours alter hypothalamic-pituitary axis regulation?",
+//   ...
+//   "What environmental and behavioral factors contribute to persistent inability to maintain sleep?",
+//   ...
+//   "What general wellness indicators suggest someone may not be getting adequate rest?",
+//   ...
 // ]
 ```
 
 ## API
 
-### `veiledVariants(text, context, config)`
+### `veiledVariants(config)`
 
-**Parameters:**
-- `text` (string): Sensitive text to transform
-- `context` (string): Context description for appropriate transformation
-- `config` (Object): Configuration options
-  - `coverage` (`'low'`|`'high'`): Controls strategy breadth and variant count. `'low'` uses 1 strategy with 3 variants. `'high'` uses all 3 strategies with 8 variants each. Default: all strategies with 5 variants
-  - `strategies` (Array): Override which framing strategies to use
-  - `variantCount` (number): Override variants per strategy
-  - `llm` (string|Object): LLM model configuration (automatically uses privacy model)
+The entire input is a single config object.
 
-**Returns:** Promise<Array<string>> - Array of privacy-preserving variants
+- `prompt` (string, required): The text to reframe
+- `coverage` (`'low'`|`'high'`): Controls strategy breadth and variant count. `'low'` runs 1 strategy producing 3 variants. `'high'` runs all 3 strategies with 8 variants each (24 total). Default: all 3 strategies with 5 each (15 total).
+- `strategies` (Array): Override which strategies to use. Values: `'scientific'`, `'causal'`, `'softCover'`
+- `variantCount` (number): Override variants per strategy
+- `llm` (string|Object): Model selection. Defaults to `{ sensitive: true }`, requesting a privacy-capable model.
 
-## Privacy Model
+**Returns:** `Promise<string[]>` — flat array of all generated variants across strategies.
 
-This function automatically uses privacy-preserving models for all transformations, ensuring sensitive data never leaves your secure environment.
+## Exported Prompts
 
-## Use Cases
+The individual strategy prompt builders are exported for direct use:
 
-### Legal Document Processing
 ```javascript
-import veiledVariants from './index.js';
+import {
+  scientificFramingPrompt,
+  causalFramePrompt,
+  softCoverPrompt,
+  veiledVariantStrategies, // ['scientific', 'causal', 'softCover']
+} from '@far-world-labs/verblets';
 
-const legal = "The plaintiff, Maria Rodriguez, filed suit against XYZ Medical Center on March 15, 2023.";
-const variants = await veiledVariants(legal, 'legal proceedings', { count: 2 });
-
-// Returns anonymized versions suitable for case studies or training
+const prompt = scientificFramingPrompt('effects of isolation on cognition', 3);
+// Returns a ready-to-use LLM prompt requesting 3 scientific reframings
 ```
-
-### Customer Support Analysis
-```javascript
-const complaint = "Customer Jane Doe from email jane@example.com complained about delayed delivery to 123 Main St.";
-const anonymous = await veiledVariants(complaint, 'customer service', { count: 1 });
-
-// Returns versions with identifying details obscured for analysis
-```
-
-## Features
-
-- **Automatic Privacy Protection**: Uses privacy-preserving models exclusively
-- **Context-Aware Transformation**: Maintains appropriate tone and meaning for the domain
-- **Flexible Anonymization**: Generates multiple variants with different levels of abstraction
-- **Structure Preservation**: Optionally maintains original sentence and paragraph structure
-- **Comprehensive Coverage**: Handles names, locations, organizations, dates, and other identifiers

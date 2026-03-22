@@ -3,7 +3,7 @@
 Normalize text for consistent processing. Applies NFC normalization, unifies line endings, collapses whitespace, and optionally strips patterns — all while preserving paragraph structure.
 
 ```javascript
-import embedNormalizeText from '@verblets/lib/embed-normalize-text';
+import { embedNormalizeText } from '@far-world-labs/verblets';
 
 const raw = "Café\r\n\r\nFirst   paragraph.\r\nSecond line.";
 const clean = embedNormalizeText(raw);

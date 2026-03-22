@@ -1,105 +1,163 @@
 # Developing Verblets
 
-This document explains the development workflow and testing strategy for the Verblets library.
+This is the guide for working on the verblets codebase. For design patterns and implementation details, see the DESIGN.md files in [chains](./src/chains/DESIGN.md) and [verblets](./src/verblets/DESIGN.md).
 
-## Testing Strategy
+## Architecture
 
-The Verblets library uses a dual testing approach with two types of test files:
+The project has three tiers of modules, each with clear responsibilities:
 
-### 1. Spec Files (`*.spec.js`)
-- **Purpose**: Deterministic unit tests with mocked LLM responses
-- **Reliability**: Should always pass consistently
-- **LLM Usage**: Uses mocked responses, no actual API calls
-- **Caching**: Uses in-memory `NullRedisClient` or local mocking (no Redis required)
-- **Speed**: Fast execution
-- **Use Case**: CI/CD, development validation, regression testing
+**Verblets** (`src/verblets/`) are single-purpose AI functions. Each makes at most one LLM call, has no retry logic, and returns a constrained output. Think of them as intelligent primitives — `classify`, `bool`, `sentiment`, `number`.
 
-### 2. Example Files (`*.examples.js`)
-- **Purpose**: Non-deterministic integration tests with real LLM calls
-- **Reliability**: May fail due to LLM response variability
-- **LLM Usage**: Makes actual API calls to language models
-- **Caching**: Uses Redis for response caching (when available)
-- **Speed**: Slower due to network calls (mitigated by caching)
-- **Use Case**: Manual testing, demonstrating real-world usage, validating LLM integration
+**Chains** (`src/chains/`) orchestrate multiple operations into workflows. They handle batching, retries, progress tracking, and multi-step reasoning. Chains can use verblets, other chains, and library utilities. Examples: `filter`, `map`, `score`, `document-shrink`, `SocraticMethod`.
 
-## Environment Configuration
+**Library utilities** (`src/lib/`) provide infrastructure with no direct LLM usage. The `llm` module is the exception — it's the LLM wrapper itself. Everything else is pure functions, data structures, and helpers: `retry`, `parallel-batch`, `ring-buffer`, `progress-callback`.
 
-### Spec Tests
-```bash
-npm test                    # Runs spec tests with mocked responses
+Dependency rules: verblets cannot import chains. Chains can import anything. Library utilities should minimize dependencies.
+
+## Module Structure
+
+Every module follows the same layout:
+
+```
+module-name/
+├── index.js          # Implementation (default export)
+├── index.spec.js     # Deterministic tests with mocked LLM
+├── index.examples.js # Integration tests with real LLM calls
+└── README.md         # Documentation
 ```
 
-### Example Tests
+See [guidelines/DOCUMENTATION.md](./guidelines/DOCUMENTATION.md) for README standards.
+
+## Isomorphic Design
+
+All modules are designed to work in both Node.js and the browser. The package has two entry points — `src/index.js` for Node and `src/index.browser.js` for the browser bundle — both re-exporting `src/shared.js`. The bundler's `browser` field in `package.json` selects the right one automatically.
+
+Modules that need platform-specific behavior use runtime detection (`src/lib/env/`) to adapt. For example, `src/lib/crypto/` uses `node:crypto` in Node and the Web Crypto API in browsers, behind a single `createHash` interface.
+
+### Dynamic Import Policy
+
+The project avoids dynamic `import()` in production code. Static imports keep bundles predictable and make dependency graphs visible at a glance. Two modules are the exceptions:
+
+- **`src/lib/transcribe/index.js`** — dynamically imports `whisper-node` and `node-record-lpcm16`, which are Node-only native dependencies that would break browser bundles.
+- **`src/lib/crypto/index.js`** — dynamically imports `node:crypto`, falling back to Web Crypto on browsers.
+
+Spec files also use dynamic imports for vitest module mocking, which is expected and fine — the restriction applies to production code.
+
+## Testing
+
+The project uses two kinds of tests, run by separate vitest configurations.
+
+**Spec tests** (`*.spec.js`) mock LLM calls for fast, deterministic results. They use table-driven `examples` arrays and run in CI. No API keys needed. Config: `.vitest.config.js`.
+
+**Example tests** (`*.examples.js`) make real LLM calls to validate behavior against actual models. They use `aiExpect` for semantic assertions and require API keys in `.env`. Config: `.vitest.config.examples.js`, which loads dotenv so tests can read `ANTHROPIC_API_KEY` and `OPENAI_API_KEY`. Each example test sets a two-minute timeout (`longTestTimeout` from `src/constants/common.js`) since real LLM round-trips are slow.
+
+### Commands
+
 ```bash
-npm run examples                # Runs example tests with real LLM calls
-EXAMPLES=true npm run examples  # Automatically set, enables Redis caching
+npm test                # Spec tests (mocked, fast)
+npm run examples        # Example tests (real LLM, slow)
+npm run lint            # Check code style
+npm run lint:fix        # Auto-fix lint issues
+npm run build           # Build for distribution
 ```
 
-### Caching Control
-```bash
-# Disable caching for all LLM calls (forces fresh API calls)
-VERBLETS_DISABLE_CACHE=true npm run examples
+### Test Budget Tiers
 
-# Enable caching (default behavior when Redis is available)
-npm run examples
+Example tests are grouped by cost. The `VERBLETS_EXAMPLE_BUDGET` env var controls which tiers run:
+
+```bash
+npm run examples                              # 'low' (default) — single-call examples only
+VERBLETS_EXAMPLE_BUDGET=medium npm run examples  # adds multi-call chains (up to ~6 LLM calls per test)
+VERBLETS_EXAMPLE_BUDGET=high npm run examples    # all examples including 10+ call chains
 ```
 
-## Caching System
+Tests gate themselves with `describe.skipIf(!isMediumBudget)` and `describe.skipIf(!isHighBudget)`, both exported from `src/constants/common.js`. The nightly CI workflow runs all three tiers in a matrix.
 
-### Redis Caching for Examples
-- Example tests use Redis to cache LLM responses based on prompt content
-- Cached responses reduce API costs and improve test speed
-- Falls back to in-memory caching if Redis is unavailable
+### Environment Variables
 
-### Cache Behavior
-- **Cache Hit**: Returns cached response instantly
-- **Cache Miss**: Makes LLM API call and caches the response
-- **TTL**: Cached responses expire after 365 days (configurable via `VERBLETS_CACHE_TTL`)
-- **Fallback**: Gracefully handles Redis connection failures
+| Variable | Effect |
+|---|---|
+| `VERBLETS_EXAMPLE_BUDGET` | Test cost tier: `low` (default), `medium`, `high` |
+| `VERBLETS_DISABLE_CACHE=true` | Skip Redis/memory cache, force fresh LLM calls |
+| `VERBLETS_CACHE_TTL` | Cache expiry in milliseconds (default: 365 days) |
+| `VERBLETS_ARCH_LOG=debug` | Verbose output from architecture test runs |
 
-## Development Workflow
+### Caching
 
-### Adding New Verblets or Chains
+Example tests cache LLM responses in Redis to reduce API costs and speed up repeat runs. When Redis is unavailable, tests fall back to in-memory caching. Set `VERBLETS_DISABLE_CACHE=true` to bypass caching entirely when you need fresh responses.
 
-When creating a new verblet or chain, you should add both types of tests:
+### Architecture Tests
 
-#### 1. Create Spec File (`index.spec.js`)
+A third vitest configuration (`.vitest.config.arch.js`) runs architecture tests that use AI analysis to validate code quality against guidelines:
+
+```bash
+VERBLETS_ARCH_LOG=debug npm run arch:once
+```
+
+## Adding a Module
+
+1. Create the module directory under the appropriate tier (`chains/`, `verblets/`, or `lib/`)
+2. Implement `index.js` with a default export
+3. Add `index.spec.js` with mocked LLM and table-driven examples
+4. Add `index.examples.js` with real LLM assertions
+5. Add `README.md` following [documentation guidelines](./guidelines/DOCUMENTATION.md)
+6. Export from `src/shared.js` (this feeds both Node and browser builds)
+7. Add to the appropriate section in the root `README.md`
+
+## Exports
+
+Internally, the project maintains clear tiers (chains, verblets, lib). Externally, everything exports flat from `@far-world-labs/verblets` — consumers don't need to know which tier a function lives in.
+
+All public exports are defined in `src/shared.js`, which is re-exported by both `src/index.js` (Node) and `src/index.browser.js` (browser bundle).
+
+## Config System
+
+All chains and verblets accept a `config` object as their last argument. Chains resolve their options through `initChain`, which scopes the operation and resolves each option from the config.
+
+A consumer sets an option by name on the config object:
+
 ```javascript
-import { describe, expect, it } from 'vitest';
-import myVerblet from './index.js';
+aimport { truncate } from '@far-world-labs/verblets';
 
-const examples = [
-  {
-    inputs: { text: 'test input' },
-    want: { result: 'expected output' },
-  },
-];
+await truncate(longText, 'keep the technical details', {
+  strictness: 'high',   // dial option — resolved by the chain's mapper
+  chunkSize: 2000,      // plain option — used directly
+  llm: 'fastGood',      // model selection — resolved by callLlm
+});
+```
 
-describe('My Verblet', () => {
-  examples.forEach((example) => {
-    it(example.inputs.text, async () => {
-      const result = await myVerblet(example.inputs.text);
-      expect(result).toStrictEqual(example.want.result);
-    });
+Inside the chain, `initChain` resolves these values. Here's a simplified view of what `truncate` does:
+
+```javascript
+const { config: scopedConfig, chunkSize, strictness: threshold } =
+  await initChain('truncate', config, {
+    chunkSize: 1000,                       // plain fallback
+    strictness: withPolicy(mapStrictness), // resolved through mapper
   });
-});
 ```
 
-#### 2. Create Example File (`index.examples.js`)
+The mapper translates string dials into concrete values. When the consumer passes `strictness: 'high'`, the mapper returns `7`:
+
 ```javascript
-import { describe, expect, it } from 'vitest';
-import myVerblet from './index.js';
-import { longTestTimeout } from '../../constants/common.js';
-
-describe('My Verblet Examples', () => {
-  it(
-    'processes real input',
-    async () => {
-      const result = await myVerblet('What is the capital of France?');
-      expect(typeof result).toBe('string');
-      expect(result.length).toBeGreaterThan(0);
-    },
-    longTestTimeout
-  );
-});
+const mapStrictness = (value) => {
+  if (value === undefined) return 6;          // default
+  if (typeof value === 'number') return value; // passthrough
+  return { low: 4, med: 6, high: 7 }[value] ?? 6;
+};
 ```
+
+Some chains use `withPolicy` with override keys to flatten nested results. For example, `detect-patterns` resolves a single `thoroughness` dial into two separate values:
+
+```javascript
+const { topN, capacity } = await initChain('detect-patterns', config, {
+  thoroughness: withPolicy(mapThoroughness, ['topN', 'capacity']),
+});
+
+// Consumer writes: { thoroughness: 'high' }
+// Mapper returns:  { capacity: 100, topN: 10 }
+// Destructured as: topN = 10, capacity = 100  (flattened, 'thoroughness' itself excluded)
+```
+
+Config flows through without extraction — pass `config` directly to `callLlm`, `retry`, and sub-chains. The `llm` key, model parameters, and retry settings all resolve from the same config object.
+
+See [docs/configuration.md](./docs/configuration.md) for the full resolution flow and [src/chains/DESIGN.md](./src/chains/DESIGN.md) for chain-specific patterns.

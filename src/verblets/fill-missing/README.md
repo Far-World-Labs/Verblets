@@ -5,8 +5,8 @@ Infer the missing or censored portions of text or structured data.
 This verblet analyzes context to suggest replacements for each missing section. It returns a template with numbered placeholders and a map of suggested values with confidence scores.
 
 ```javascript
-import fillMissing from './index.js';
-import templateReplace from '../../lib/template-replace/index.js';
+import { fillMissing } from '@far-world-labs/verblets';
+import { templateReplace } from '@far-world-labs/verblets';
 
 const { template, variables } = await fillMissing('The ??? sailed across the ??? river.');
 

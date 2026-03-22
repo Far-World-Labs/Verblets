@@ -7,7 +7,7 @@ Extract named entities from text using AI-powered recognition. Supports both sta
 Extract domain-specific entities that no pre-trained NER model knows about:
 
 ```javascript
-import entities from './index.js';
+import { entities } from '@far-world-labs/verblets';
 
 const extractThreats = entities(`
   Extract cybersecurity entities:

@@ -54,7 +54,7 @@ function getDisplayPath(filePath) {
  */
 function getCodeContext(filePath, lineNumber) {
   try {
-    if (!fs.existsSync(filePath)) return null;
+    if (!fs.existsSync(filePath)) return null; //TODO:DOCS_OBSERVATIONS project rule: never use null — return undefined
 
     const content = fs.readFileSync(filePath, 'utf8');
     const lines = content.split('\n');
@@ -69,7 +69,7 @@ function getCodeContext(filePath, lineNumber) {
       assertionLine: lineNumber,
     };
   } catch {
-    return null;
+    return null; //TODO:DOCS_OBSERVATIONS project rule: never use null — return undefined
   }
 }
 

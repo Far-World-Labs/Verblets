@@ -5,7 +5,7 @@ Intelligently find where to truncate text by identifying unwanted content from t
 ## Usage
 
 ```javascript
-import truncate from './index.js';
+import { truncate } from '@far-world-labs/verblets';
 
 const article = `
 Main content about the topic...

@@ -5,6 +5,8 @@ Analyzes numeric distributions to recommend adaptive threshold values based on o
 ## Usage
 
 ```javascript
+import { detectThreshold } from '@far-world-labs/verblets';
+
 const transactions = [
   { amount: 100, riskScore: 0.1, merchant: 'Coffee Shop' },
   { amount: 5000, riskScore: 0.85, merchant: 'Electronics Store' },

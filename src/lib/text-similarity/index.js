@@ -112,7 +112,7 @@ export class TextSimilarity {
   getChunk(id) {
     const chunk = this.chunks.get(id);
     if (!chunk) {
-      return null;
+      return null; //TODO:DOCS_OBSERVATIONS project rule: never use null — return undefined
     }
 
     return {

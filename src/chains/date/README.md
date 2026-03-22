@@ -5,7 +5,7 @@ Extract a single date from natural language text using AI-powered parsing with o
 ## Usage
 
 ```javascript
-import date from './index.js';
+import { date } from '@far-world-labs/verblets';
 
 const text = "The Berlin Wall fell on November 9th, 1989";
 const result = await date(text);

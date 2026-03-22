@@ -3,7 +3,7 @@
 Extract a single number from natural language text.
 
 ```javascript
-import number from '@anthropic/verblets/verblets/number';
+import { number } from '@far-world-labs/verblets';
 
 await number('The recipe calls for three-quarters of a cup');  // 0.75
 await number('About two and a half million visitors per year'); // 2500000

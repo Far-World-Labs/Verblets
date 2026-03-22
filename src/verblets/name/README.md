@@ -5,7 +5,7 @@ Generate contextually appropriate names for entities, objects, or concepts using
 ## Usage
 
 ```javascript
-import name from './index.js';
+import { name } from '@far-world-labs/verblets';
 
 const suggestions = await name('a productivity app for remote teams');
 // Returns: ['TeamSync', 'RemoteFlow', 'CollabHub', 'WorkTogether', 'TeamBridge']
@@ -24,22 +24,12 @@ const suggestions = await name('a productivity app for remote teams');
 
 **Returns:** Promise<Array<string>> - Array of suggested names
 
-## Use Cases
+The `style` option steers the output. For example, `'programming convention'` generates camelCase function names:
 
-### Product Naming
-```javascript
-const productNames = await name('eco-friendly water bottle with temperature display', {
-  count: 3,
-  style: 'modern and memorable'
-});
-// Returns creative product name suggestions
-```
-
-### Variable/Function Naming
 ```javascript
 const functionNames = await name('function that validates email addresses and returns boolean', {
   count: 5,
   style: 'programming convention'
 });
-// Returns: ['validateEmail', 'isValidEmail', 'checkEmailFormat', 'verifyEmailAddress', 'emailIsValid']
+// => ['validateEmail', 'isValidEmail', 'checkEmailFormat', 'verifyEmailAddress', 'emailIsValid']
 ```

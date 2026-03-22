@@ -31,9 +31,4 @@ The function runs eight different test scenarios:
 7. **Code Quality**: Identifies general quality issues
 8. **Refactoring**: Suggests structural improvements for composability
 
-## Features
-
-- **Comprehensive analysis**: Covers multiple aspects of code quality in one call
-- **Actionable feedback**: Each issue includes specific examples or line references
-- **Practical focus**: Emphasizes real defects and improvements over style nitpicks
-- **DBC awareness**: Assumes Design by Contract, respects JSDoc type specifications
+The analysis assumes Design by Contract and respects JSDoc type specifications. Issues include specific line references and concrete fix suggestions, focusing on real defects over style nitpicks.

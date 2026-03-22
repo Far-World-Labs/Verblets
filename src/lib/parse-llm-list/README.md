@@ -1,11 +1,11 @@
-# Parse LLM List
+# parse-llm-list
 
 A utility function for parsing lists from LLM responses that may be in JSON array or CSV format.
 
 ## Usage
 
 ```javascript
-import parseLLMList from './src/lib/parse-llm-list/index.js';
+import { parseLLMList } from '@far-world-labs/verblets';
 
 // Parse JSON array response
 const jsonResponse = '["term1", "term2", "term3"]';

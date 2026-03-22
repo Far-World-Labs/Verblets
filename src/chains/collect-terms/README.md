@@ -3,7 +3,7 @@
 Extract and rank the most relevant search terms from a document.
 
 ```javascript
-import collectTerms from '@anthropic/verblets/chains/collect-terms';
+import { collectTerms } from '@far-world-labs/verblets';
 
 const paper = `
 The quantum entanglement phenomenon demonstrates non-local correlations
