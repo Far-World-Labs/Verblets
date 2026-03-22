@@ -1,22 +1,11 @@
-import { describe, it as vitestIt, expect as vitestExpect } from 'vitest';
+import { describe } from 'vitest';
 import intersections from './index.js';
-import vitestAiExpect from '../expect/index.js';
-import { longTestTimeout, shouldRunLongExamples } from '../../constants/common.js';
-import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
-import { getConfig } from '../test-analysis/config.js';
+import { longTestTimeout, isHighBudget } from '../../constants/common.js'; // full: 20-40 LLM calls
+import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 
-const config = getConfig();
-const it = config?.aiMode
-  ? wrapIt(vitestIt, { baseProps: { suite: 'Intersections chain' } })
-  : vitestIt;
-const expect = config?.aiMode
-  ? wrapExpect(vitestExpect, { baseProps: { suite: 'Intersections chain' } })
-  : vitestExpect;
-const aiExpect = config?.aiMode
-  ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'Intersections chain' } })
-  : vitestAiExpect;
+const { it, expect, aiExpect } = getTestHelpers('Intersections chain');
 
-describe.skipIf(!shouldRunLongExamples)('intersections chain examples', () => {
+describe.skipIf(!isHighBudget)('[high] intersections chain examples', () => {
   it(
     'analyzes technology categories comprehensively',
     async () => {
@@ -42,10 +31,9 @@ describe.skipIf(!shouldRunLongExamples)('intersections chain examples', () => {
       }
 
       // AI validation of technology intersections
-      const hasValidTechIntersections = await aiExpect(result).toSatisfy(
+      await aiExpect(result).toSatisfy(
         'Should contain meaningful intersections between technology categories with relevant examples'
       );
-      expect(hasValidTechIntersections).toBe(true);
     },
     longTestTimeout
   );
@@ -69,10 +57,9 @@ describe.skipIf(!shouldRunLongExamples)('intersections chain examples', () => {
         expect(firstIntersection.combination).toContain('science');
 
         // AI validation of meaningful intersections
-        const hasMeaningfulIntersections = await aiExpect(result).toSatisfy(
+        await aiExpect(result).toSatisfy(
           'Should contain meaningful intersections between art and science with relevant examples'
         );
-        expect(hasMeaningfulIntersections).toBe(true);
       }
     },
     longTestTimeout
@@ -158,10 +145,9 @@ describe.skipIf(!shouldRunLongExamples)('intersections chain examples', () => {
         expect(hasTwoWayIntersection).toBe(true);
 
         // AI validation of scientific intersections
-        const hasValidScienceIntersections = await aiExpect(result).toSatisfy(
+        await aiExpect(result).toSatisfy(
           'Should contain meaningful intersections between scientific disciplines with relevant examples'
         );
-        expect(hasValidScienceIntersections).toBe(true);
       }
     },
     longTestTimeout
@@ -245,10 +231,9 @@ describe.skipIf(!shouldRunLongExamples)('intersections chain examples', () => {
         expect(Array.isArray(firstIntersection.elements)).toBe(true);
 
         // AI validation that results follow custom instructions
-        const followsInstructions = await aiExpect(firstIntersection).toSatisfy(
+        await aiExpect(firstIntersection).toSatisfy(
           'Should list specific project ideas and avoid abstract themes as requested in custom instructions'
         );
-        expect(followsInstructions).toBe(true);
       }
     },
     longTestTimeout

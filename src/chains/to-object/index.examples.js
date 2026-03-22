@@ -1,43 +1,20 @@
-import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
-
+import { describe } from 'vitest';
 import toObject from './index.js';
 import llm from '../../lib/llm/index.js';
-import vitestAiExpect from '../expect/index.js';
 import { longTestTimeout } from '../../constants/common.js';
-import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
-import { getConfig } from '../test-analysis/config.js';
+import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 
-const config = getConfig();
-const it = config?.aiMode
-  ? wrapIt(vitestIt, { baseProps: { suite: 'To-object chain' } })
-  : vitestIt;
-const expect = config?.aiMode
-  ? wrapExpect(vitestExpect, { baseProps: { suite: 'To-object chain' } })
-  : vitestExpect;
-const aiExpect = config?.aiMode
-  ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'To-object chain' } })
-  : vitestAiExpect;
-
-const examples = [
-  {
-    inputs: { text: 'Describe SpaceX Starship' },
-    want: { typeOfResult: 'object' },
-  },
-];
+const { it, expect } = getTestHelpers('To-object chain');
 
 describe('To object verblet', () => {
-  examples.forEach((example) => {
-    it(
-      example.inputs.text,
-      async () => {
-        const llmResult = await llm(example.inputs.text);
-        const result = await toObject(llmResult);
-
-        if (example.want.typeOfResult) {
-          expect(typeof result).toStrictEqual(example.want.typeOfResult);
-        }
-      },
-      longTestTimeout
-    );
-  });
+  it(
+    'Describe SpaceX Starship',
+    async () => {
+      const llmResult = await llm('Describe SpaceX Starship');
+      const result = await toObject(llmResult);
+      expect(typeof result).toBe('object');
+      expect(Object.keys(result).length).toBeGreaterThan(0);
+    },
+    longTestTimeout
+  );
 });

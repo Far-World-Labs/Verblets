@@ -4,7 +4,7 @@ import shortenText from '../../lib/shorten-text/index.js';
 import { summarize as basicSummarize, tokenBudget } from '../../prompts/index.js';
 import modelService from '../../services/llm-model/index.js';
 
-const summarize = ({ budget, type, value, fixes = [], modelOptions, sensitivity }) => {
+const summarize = ({ budget, type, value, fixes = [], llmOptions, sensitivity }) => {
   if (budget) {
     fixes.push(tokenBudget(budget));
   }
@@ -28,7 +28,7 @@ const summarize = ({ budget, type, value, fixes = [], modelOptions, sensitivity 
   const fixesAsBullets = fixes.map((fix) => ` - ${fix}`);
 
   return llm(basicSummarize(value, `${fixesAsBullets.join('\n')}`), {
-    modelOptions,
+    ...llmOptions,
   });
 };
 
@@ -36,6 +36,22 @@ const summarize = ({ budget, type, value, fixes = [], modelOptions, sensitivity 
  * SummaryMap is a utility class for automatically summarizing prompt inputs
  *   to fit within a desired desired token budget.
  */
+// ===== Option Mappers =====
+
+const DEFAULT_SUMMARY_RATIO = 0.3;
+
+/**
+ * Map summaryDetail option to a targetTokensTotalRatio.
+ * Accepts 'low'|'high' or a raw number (0-1).
+ * @param {string|number|undefined} value
+ * @returns {number} Token ratio (lower = more detailed summary)
+ */
+export const mapSummaryDetail = (value) => {
+  if (value === undefined) return DEFAULT_SUMMARY_RATIO;
+  if (typeof value === 'number') return value;
+  return { low: 0.4, med: DEFAULT_SUMMARY_RATIO, high: 0.2 }[value] ?? DEFAULT_SUMMARY_RATIO;
+};
+
 export default class SummaryMap extends Map {
   constructor({
     maxTokensPerValue,
@@ -43,15 +59,16 @@ export default class SummaryMap extends Map {
     modelOptions = { modelName: model.name },
     promptText,
     targetTokens,
+    summaryDetail,
     // used with promptText, when targetTokens isn't supplied
-    targetTokensTotalRatio = 0.3,
+    targetTokensTotalRatio = mapSummaryDetail(summaryDetail),
   }) {
     super();
     this.cache = new Map();
     this.data = new Map();
     this.isCacheValid = false;
     this.maxTokensPerValue = maxTokensPerValue ?? model.maxTokens;
-    this.modelOptions = { modelName: model.name, ...modelOptions };
+    this.llmOptions = { modelName: model.name, ...modelOptions };
 
     if (targetTokens) {
       this.targetTokens = targetTokens;
@@ -94,37 +111,37 @@ export default class SummaryMap extends Map {
     for (const { key, budget } of budgets) {
       const valueObject = this.data.get(key);
 
-      const entryModelOptions = {
-        ...this.modelOptions,
+      const entryLlmOptions = {
+        ...this.llmOptions,
         ...valueObject.modelOptions,
       };
 
       if (valueObject.sensitivity?.whitelist || valueObject.sensitivity?.blacklist) {
-        entryModelOptions.sensitive = true;
+        entryLlmOptions.sensitive = true;
       }
 
       const value = shortenText(valueObject.value, {
         targetTokenCount: this.maxTokensPerValue,
-        model: modelService.getModel(entryModelOptions.modelName),
+        model: modelService.getModel(entryLlmOptions.modelName),
       });
 
       // omit weight to skip summarization
       let summarizedValue = value;
       if (budget) {
-        const summarizeModelOptions = {
-          ...this.modelOptions,
+        const summarizeLlmOptions = {
+          ...this.llmOptions,
           ...valueObject.modelOptions,
         };
 
         if (valueObject.sensitivity?.whitelist || valueObject.sensitivity?.blacklist) {
-          summarizeModelOptions.sensitive = true;
+          summarizeLlmOptions.sensitive = true;
         }
 
         // eslint-disable-next-line no-await-in-loop
         summarizedValue = await summarize({
           budget,
           fixes: valueObject.fixes,
-          modelOptions: summarizeModelOptions,
+          llmOptions: summarizeLlmOptions,
           sensitivity: valueObject.sensitivity,
           type: valueObject.type,
           value,

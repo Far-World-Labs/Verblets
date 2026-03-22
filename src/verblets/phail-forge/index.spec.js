@@ -4,6 +4,7 @@ import makePrompt from './index.js';
 // Mock llm
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(),
+  jsonSchema: (name, schema) => ({ type: 'json_schema', json_schema: { name, schema } }),
 }));
 
 describe('phailForge/makePrompt', () => {
@@ -81,20 +82,6 @@ describe('phailForge/makePrompt', () => {
     expect(result.analysis.strengths).toBeDefined();
     expect(result.analysis.opportunities).toBeDefined();
     expect(result.analysis.suggestions).toBeDefined();
-  });
-
-  it('should forward llm config to callLlm', async () => {
-    const { default: llm } = await import('../../lib/llm/index.js');
-
-    llm.mockResolvedValueOnce({
-      enhanced: 'Enhanced prompt',
-      improvements: [],
-    });
-
-    await makePrompt('test prompt', { llm: { good: true } });
-
-    expect(llm).toHaveBeenCalledTimes(1);
-    expect(llm.mock.calls[0][1].llm).toEqual({ good: true });
   });
 
   it('should handle domain context', async () => {

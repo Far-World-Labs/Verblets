@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import modelService, { resolveModel, getCapabilities, sensitivityAvailable } from './index.js';
+import modelService, { resolveModel, getCapabilities } from './index.js';
 import Model from './model.js';
 
 // helper tokenizer
@@ -836,63 +836,5 @@ describe('getCapabilities', () => {
     const caps1 = getCapabilities('fastGoodCheap');
     const caps2 = getCapabilities('fastGoodCheap');
     expect(caps1).toBe(caps2);
-  });
-});
-
-describe('sensitivityAvailable', () => {
-  beforeEach(() => {
-    modelService.models = {};
-  });
-
-  it('returns all false when no sensitive models configured', () => {
-    modelService.models = {
-      fastGood: new Model({
-        name: 'fast-good',
-        maxContextWindow: 128000,
-        maxOutputTokens: 16384,
-        requestTimeout: 1000,
-        tokenizer,
-      }),
-    };
-
-    const result = sensitivityAvailable();
-    expect(result).toEqual({ available: false, fast: false, good: false });
-  });
-
-  it('returns fast only when only sensitive (fast tier) configured', () => {
-    modelService.models = {
-      sensitive: new Model({
-        name: 'qwen3.5:2b',
-        maxContextWindow: 32768,
-        maxOutputTokens: 8192,
-        requestTimeout: 1000,
-        tokenizer,
-      }),
-    };
-
-    const result = sensitivityAvailable();
-    expect(result).toEqual({ available: true, fast: true, good: false });
-  });
-
-  it('returns both tiers when both configured', () => {
-    modelService.models = {
-      sensitive: new Model({
-        name: 'qwen3.5:2b',
-        maxContextWindow: 32768,
-        maxOutputTokens: 8192,
-        requestTimeout: 1000,
-        tokenizer,
-      }),
-      sensitiveGood: new Model({
-        name: 'qwen3.5:4b',
-        maxContextWindow: 32768,
-        maxOutputTokens: 8192,
-        requestTimeout: 1000,
-        tokenizer,
-      }),
-    };
-
-    const result = sensitivityAvailable();
-    expect(result).toEqual({ available: true, fast: true, good: true });
   });
 });

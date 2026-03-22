@@ -8,7 +8,8 @@ Generate thought-provoking questions using the Socratic method to encourage deep
 import socratic from './index.js';
 
 const topic = "Should social media platforms be regulated?";
-const questions = await socratic(topic, 'explore ethical implications', { depth: 3 });
+const method = await socratic(topic, { challenge: 'high' });
+const questions = await method.run(3);
 
 // Returns: [
 //   "What fundamental rights might be at stake when regulating social media?",
@@ -21,18 +22,15 @@ const questions = await socratic(topic, 'explore ethical implications', { depth:
 
 ## API
 
-### `socratic(topic, focus, config)`
+### `socratic(statement, config)` / `SocraticMethod.create(statement, config)`
 
 **Parameters:**
-- `topic` (string): Subject or statement to explore
-- `focus` (string): Specific aspect or angle to examine
+- `statement` (string): Subject or statement to explore
 - `config` (Object): Configuration options
-  - `depth` (number): Number of question levels (default: 3)
-  - `questionCount` (number): Number of questions per level (default: 3)
-  - `style` (string): Questioning style ('probing', 'clarifying', 'challenging')
-  - `llm` (Object): LLM model options
+  - `challenge` (`'low'`|`'high'`): Controls dialogue intensity. `'low'` uses gentle hints with lower temperature (0.3). `'high'` uses provocative confrontation with higher temperature (0.9). Default: moderate challenge
+  - `llm` (string|Object): LLM model configuration
 
-**Returns:** Promise<Array<string>> - Array of Socratic questions
+**Returns:** Promise<SocraticMethod> - Socratic dialogue instance. Call `.run(depth)` to generate questions (default depth: 3)
 
 ## Features
 
@@ -49,7 +47,8 @@ const questions = await socratic(topic, 'explore ethical implications', { depth:
 import socratic from './index.js';
 
 const concept = "Democracy is the best form of government";
-const questions = await socratic(concept, 'examine underlying assumptions', { depth: 2 });
+const method = await socratic(concept, { challenge: 'high' });
+const questions = await method.run(2);
 
 // Returns questions that challenge students to think critically about democracy
 ```
@@ -57,10 +56,8 @@ const questions = await socratic(concept, 'examine underlying assumptions', { de
 ### Problem-Solving Sessions
 ```javascript
 const problem = "Our team productivity has decreased";
-const questions = await socratic(problem, 'identify root causes', { 
-  style: 'probing',
-  questionCount: 5 
-});
+const method = await socratic(problem, { challenge: 'low' });
+const questions = await method.run(5);
 
 // Returns questions to help teams discover underlying issues
 ```
@@ -68,7 +65,8 @@ const questions = await socratic(problem, 'identify root causes', {
 ### Self-Reflection Prompts
 ```javascript
 const statement = "I want to change careers";
-const questions = await socratic(statement, 'explore motivations and concerns', { depth: 4 });
+const method = await socratic(statement);
+const questions = await method.run(4);
 
 // Returns questions for personal reflection and decision-making
 ```

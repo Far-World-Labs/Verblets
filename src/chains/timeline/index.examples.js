@@ -1,26 +1,17 @@
-import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
+import { describe } from 'vitest';
 import timeline from './index.js';
-import vitestAiExpect from '../expect/index.js';
-import { longTestTimeout, shouldRunLongExamples } from '../../constants/common.js';
+import { longTestTimeout, isHighBudget } from '../../constants/common.js'; // full: 12-18 LLM calls with enrichment
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { debug } from '../../lib/debug/index.js';
-import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
-import { getConfig } from '../test-analysis/config.js';
+import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const config = getConfig();
-const it = config?.aiMode ? wrapIt(vitestIt, { baseProps: { suite: 'Timeline chain' } }) : vitestIt;
-const expect = config?.aiMode
-  ? wrapExpect(vitestExpect, { baseProps: { suite: 'Timeline chain' } })
-  : vitestExpect;
-const aiExpect = config?.aiMode
-  ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'Timeline chain' } })
-  : vitestAiExpect;
+const { it, expect, aiExpect } = getTestHelpers('Timeline chain');
 
-describe.skipIf(!shouldRunLongExamples)('timeline', () => {
+describe.skipIf(!isHighBudget)('[high] timeline', () => {
   it('extracts events from simple narrative', { timeout: longTestTimeout }, async () => {
     const text = `The company was founded in early 2010 by two college roommates. 
     They secured their first major funding round in March 2012. 
@@ -34,11 +25,10 @@ describe.skipIf(!shouldRunLongExamples)('timeline', () => {
     expect(result).toBeDefined();
     expect(result.length).toBeGreaterThan(0);
 
-    const expectResult = await aiExpect(result).toSatisfy(
+    await aiExpect(result).toSatisfy(
       `Should extract 5 key events: founding (early 2010), funding (March 2012), expansion (late 2013), product launch (2015), and IPO (September 2018)`
     );
 
-    expect(expectResult).toBe(true);
     expect(result.length).toBeGreaterThanOrEqual(5);
 
     // Verify chronological ordering
@@ -62,11 +52,9 @@ describe.skipIf(!shouldRunLongExamples)('timeline', () => {
     expect(result).toBeDefined();
     expect(result.length).toBeGreaterThan(0);
 
-    const expectResult = await aiExpect(result).toSatisfy(
+    await aiExpect(result).toSatisfy(
       `Should extract 4 events: discovery (September 1928), purification start (1940), first trial (February 1941), and D-Day mass production (1944)`
     );
-
-    expect(expectResult).toBe(true);
 
     // Verify we found the key discovery date
     const discoveryEvent = result.find(
@@ -85,11 +73,10 @@ describe.skipIf(!shouldRunLongExamples)('timeline', () => {
     expect(result).toBeDefined();
     expect(result.length).toBeGreaterThan(0);
 
-    const expectResult = await aiExpect(result).toSatisfy(
+    await aiExpect(result).toSatisfy(
       `Should extract 5 timestamped events occurring on July 15, 2023 from 9:00 AM through 11:00 AM inclusive`
     );
 
-    expect(expectResult).toBe(true);
     expect(result.length).toBeGreaterThanOrEqual(5);
   });
 
@@ -102,11 +89,10 @@ describe.skipIf(!shouldRunLongExamples)('timeline', () => {
     expect(result).toBeDefined();
     expect(result.length).toBeGreaterThan(0);
 
-    const expectResult = await aiExpect(result).toSatisfy(
+    await aiExpect(result).toSatisfy(
       `Should extract 4 events with relative timestamps: kickoff (Monday), requirements (3 days later), development (following week), testing (2 months later)`
     );
 
-    expect(expectResult).toBe(true);
     expect(result.length).toBeGreaterThanOrEqual(4);
   });
 
@@ -130,11 +116,9 @@ describe.skipIf(!shouldRunLongExamples)('timeline', () => {
     expect(result.length).toBeGreaterThan(0);
 
     // Should find these events even with chunking and deduplication
-    const expectResult = await aiExpect(result).toSatisfy(
+    await aiExpect(result).toSatisfy(
       `Should extract key computing milestones including abacus (2400 BCE), Pascaline (1642), Difference Engine (1822), first algorithm (1843), and ENIAC (1945), with no duplicates despite text repetition`
     );
-
-    expect(expectResult).toBe(true);
 
     // Check deduplication worked
     const eventNames = result.map((e) => e.name);
@@ -170,11 +154,10 @@ describe.skipIf(!shouldRunLongExamples)('timeline', () => {
     expect(result).toBeDefined();
     expect(result.length).toBeGreaterThan(0);
 
-    const expectResult = await aiExpect(result).toSatisfy(
+    await aiExpect(result).toSatisfy(
       `Should extract multiple startup milestones from the narrative. The timeline may include events like company formation, funding rounds, product launches, going public, and other significant business events. The extraction should capture various important dates and milestones throughout the company's journey.`
     );
 
-    expect(expectResult).toBe(true);
     expect(result.length).toBeGreaterThan(10); // Should find many events in this detailed narrative
   });
 
@@ -192,11 +175,9 @@ describe.skipIf(!shouldRunLongExamples)('timeline', () => {
     expect(result).toBeDefined();
     expect(result.length).toBeGreaterThan(0);
 
-    const expectResult = await aiExpect(result).toSatisfy(
+    await aiExpect(result).toSatisfy(
       `Should extract major computing milestones from ancient times (abacus) through modern era (AI, ChatGPT)`
     );
-
-    expect(expectResult).toBe(true);
 
     // Should find key events
     const hasAncient = result.some(
@@ -225,7 +206,7 @@ describe.skipIf(!shouldRunLongExamples)('timeline', () => {
     // Then with enrichment - use smaller batch size to test batching
     const enrichedResult = await timeline(text, {
       chunkSize: 5000,
-      enrichWithKnowledge: true,
+      enrichment: 'high',
       batchSize: 2, // Process 2 events per batch to test batching
     });
 
@@ -233,11 +214,9 @@ describe.skipIf(!shouldRunLongExamples)('timeline', () => {
     expect(enrichedResult.length).toBeGreaterThan(0);
 
     // Should have more precise dates than the vague original text
-    const hasEnrichedContent = await aiExpect(enrichedResult).toSatisfy(
+    await aiExpect(enrichedResult).toSatisfy(
       `Should contain multiple timeline events. At least some of the events should have year-level or day-level precise timestamps rather than vague temporal references. It is acceptable for some events to retain approximate timestamps if their exact date is debatable.`
     );
-
-    expect(hasEnrichedContent).toBe(true);
 
     // Enrichment should produce events — either refined timestamps or additional context events from the knowledge base
     expect(enrichedResult.length).toBeGreaterThan(0);

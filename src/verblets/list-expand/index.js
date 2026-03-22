@@ -35,11 +35,9 @@ const buildPrompt = function (list, count) {
  * @returns {Promise<string[]>} Expanded list
  */
 export default async function listExpand(list, count = list.length * 2, config = {}) {
-  const { llm, ...options } = config;
   const output = await callLlm(buildPrompt(list, count), {
-    llm,
-    modelOptions: { response_format: responseFormat },
-    ...options,
+    ...config,
+    response_format: responseFormat,
   });
 
   const items = output?.items || output;

@@ -9,7 +9,7 @@ import map from '../map/index.js';
  * @param {string} options.topic - The conversation topic
  * @param {Array} options.history - Array of previous messages
  * @param {Object} options.rules - Conversation rules including customPrompt
- * @param {Object} options.llm - LLM configuration
+ * @param {string|Object} options.llm - LLM configuration (resolved by callLlm)
  * @returns {Promise<Array<string>>} Array of responses, one per speaker
  */
 export default function conversationTurnReduce({
@@ -17,7 +17,6 @@ export default function conversationTurnReduce({
   topic,
   history = [],
   rules = {},
-  llm,
   ...options
 }) {
   if (!speakers || speakers.length === 0) {
@@ -60,8 +59,5 @@ ${baseContext}
 For the speaker described in the input, provide their response to the topic. The response should reflect their role, bio, and agenda if provided.`;
 
   // Generate all responses using map
-  return map(speakerDescriptions, instructions, {
-    llm,
-    ...options,
-  });
+  return map(speakerDescriptions, instructions, options);
 }

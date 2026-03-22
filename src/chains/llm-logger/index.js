@@ -133,70 +133,23 @@ export function createFileWriter(filePath) {
  * Create host logger integration - allows library to use external logger
  */
 export function createHostLoggerIntegration(hostLogger) {
+  const dispatch =
+    (method, fallbacks = []) =>
+    (data) => {
+      for (const name of [method, ...fallbacks]) {
+        if (typeof hostLogger[name] === 'function') return hostLogger[name](data);
+      }
+      if (typeof hostLogger === 'function') return hostLogger(data);
+    };
+
   return {
-    log: (data) => {
-      if (typeof hostLogger.log === 'function') {
-        return hostLogger.log(data);
-      } else if (typeof hostLogger === 'function') {
-        return hostLogger(data);
-      }
-    },
-    info: (data) => {
-      if (typeof hostLogger.info === 'function') {
-        return hostLogger.info(data);
-      } else if (typeof hostLogger.log === 'function') {
-        return hostLogger.log(data);
-      } else if (typeof hostLogger === 'function') {
-        return hostLogger(data);
-      }
-    },
-    warn: (data) => {
-      if (typeof hostLogger.warn === 'function') {
-        return hostLogger.warn(data);
-      } else if (typeof hostLogger.log === 'function') {
-        return hostLogger.log(data);
-      } else if (typeof hostLogger === 'function') {
-        return hostLogger(data);
-      }
-    },
-    error: (data) => {
-      if (typeof hostLogger.error === 'function') {
-        return hostLogger.error(data);
-      } else if (typeof hostLogger.log === 'function') {
-        return hostLogger.log(data);
-      } else if (typeof hostLogger === 'function') {
-        return hostLogger(data);
-      }
-    },
-    debug: (data) => {
-      if (typeof hostLogger.debug === 'function') {
-        return hostLogger.debug(data);
-      } else if (typeof hostLogger.log === 'function') {
-        return hostLogger.log(data);
-      } else if (typeof hostLogger === 'function') {
-        return hostLogger(data);
-      }
-    },
-    trace: (data) => {
-      if (typeof hostLogger.trace === 'function') {
-        return hostLogger.trace(data);
-      } else if (typeof hostLogger.log === 'function') {
-        return hostLogger.log(data);
-      } else if (typeof hostLogger === 'function') {
-        return hostLogger(data);
-      }
-    },
-    fatal: (data) => {
-      if (typeof hostLogger.fatal === 'function') {
-        return hostLogger.fatal(data);
-      } else if (typeof hostLogger.error === 'function') {
-        return hostLogger.error(data);
-      } else if (typeof hostLogger.log === 'function') {
-        return hostLogger.log(data);
-      } else if (typeof hostLogger === 'function') {
-        return hostLogger(data);
-      }
-    },
+    log: dispatch('log'),
+    info: dispatch('info', ['log']),
+    warn: dispatch('warn', ['log']),
+    error: dispatch('error', ['log']),
+    debug: dispatch('debug', ['log']),
+    trace: dispatch('trace', ['log']),
+    fatal: dispatch('fatal', ['error', 'log']),
   };
 }
 
@@ -636,16 +589,4 @@ export function createLLMLogger(config = {}) {
   };
 }
 
-// Legacy exports for backward compatibility (deprecated)
-export const initLogger = createLLMLogger;
-export const log = (data, logger) => {
-  if (logger && typeof logger.log === 'function') {
-    return logger.log(data);
-  }
-  console.warn(
-    'LLM Logger: log() called without proper logger instance. Use createLLMLogger() and setLogger().'
-  );
-};
-
-// Default export
 export default createLLMLogger;

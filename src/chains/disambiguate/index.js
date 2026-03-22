@@ -1,16 +1,14 @@
-import callLlm from '../../lib/llm/index.js';
+import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import score from '../score/index.js';
 import disambiguateMeaningsSchema from './disambiguate-meanings-result.json';
 import { emitStepProgress, scopeProgress } from '../../lib/progress-callback/index.js';
+import { scopeOperation } from '../../lib/context/option.js';
 
-const disambiguateResponseFormat = {
-  type: 'json_schema',
-  json_schema: {
-    name: 'disambiguate_meanings_result',
-    schema: disambiguateMeaningsSchema,
-  },
-};
+const disambiguateResponseFormat = jsonSchema(
+  'disambiguate_meanings_result',
+  disambiguateMeaningsSchema
+);
 
 const meaningsPrompt = (term) => {
   return `List all distinct dictionary meanings or common uses of "${term}".
@@ -18,20 +16,17 @@ Return a JSON object with a "meanings" array containing the distinct meanings.`;
 };
 
 export const getMeanings = async (term, config = {}) => {
-  const { llm = 'fastGoodCheap', maxAttempts = 3, onProgress, abortSignal, ...options } = config;
+  config = scopeOperation('disambiguate:meanings', { llm: 'fastGoodCheap', ...config });
   const prompt = meaningsPrompt(term);
   const response = await retry(
     () =>
       callLlm(prompt, {
-        llm,
-        modelOptions: { response_format: disambiguateResponseFormat },
-        ...options,
+        ...config,
+        response_format: disambiguateResponseFormat,
       }),
     {
       label: 'disambiguate-get-meanings',
-      maxAttempts,
-      onProgress,
-      abortSignal,
+      config,
     }
   );
 
@@ -39,34 +34,28 @@ export const getMeanings = async (term, config = {}) => {
   return Array.isArray(resultArray) ? resultArray.filter(Boolean) : [];
 };
 
-export default async function disambiguate({ term, context, maxAttempts = 3, ...config } = {}) {
-  const { llm, onProgress, now = new Date(), ...options } = config;
+export default async function disambiguate({ term, context, ...config } = {}) {
+  config = scopeOperation('disambiguate', config);
 
-  emitStepProgress(onProgress, 'disambiguate', 'extracting-meanings', {
+  emitStepProgress(config.onProgress, 'disambiguate', 'extracting-meanings', {
     term,
-    now: new Date(),
-    chainStartTime: now,
+    now: config.now,
+    chainStartTime: config.now,
   });
 
-  const meanings = await getMeanings(term, {
-    llm,
-    maxAttempts,
-    onProgress,
-    now,
-    ...options,
-  });
+  const meanings = await getMeanings(term, config);
 
-  emitStepProgress(onProgress, 'disambiguate', 'scoring-meanings', {
+  emitStepProgress(config.onProgress, 'disambiguate', 'scoring-meanings', {
     term,
     meaningCount: meanings.length,
-    now: new Date(),
-    chainStartTime: now,
+    now: config.now,
+    chainStartTime: config.now,
   });
 
   const scores = await score(
     meanings,
     `how well this meaning of "${term}" matches the context: ${context}`,
-    { llm, maxAttempts, onProgress: scopeProgress(onProgress, 'score:relevance'), now, ...options }
+    { ...config, onProgress: scopeProgress(config.onProgress, 'score:relevance') }
   );
 
   let bestIndex = 0;

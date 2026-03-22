@@ -70,7 +70,6 @@ export default async function listBatch(list, instructions, config = {}) {
     responseFormat,
     llm,
     logger,
-    modelOptions: incomingModelOptions,
     ...options
   } = config;
 
@@ -101,8 +100,7 @@ export default async function listBatch(list, instructions, config = {}) {
     },
   };
 
-  const modelOptions = {
-    ...incomingModelOptions,
+  const llmModelKeys = {
     ...(maxTokens && { maxTokens }),
     response_format: foundResponseFormat,
   };
@@ -110,10 +108,10 @@ export default async function listBatch(list, instructions, config = {}) {
   if (logger?.debug) {
     logger.debug('Calling llm', {
       promptLength: prompt.length,
-      modelOptions: {
+      llmConfig: {
         hasLLM: !!llm,
         llmKeys: llm && typeof llm === 'object' ? Object.keys(llm) : [],
-        hasResponseFormat: !!modelOptions.response_format,
+        hasResponseFormat: !!llmModelKeys.response_format,
       },
       optionKeys: Object.keys(options),
     });
@@ -123,7 +121,7 @@ export default async function listBatch(list, instructions, config = {}) {
   try {
     const llmOptions = {
       llm,
-      modelOptions,
+      ...llmModelKeys,
       logger,
       ...options,
     };
@@ -131,7 +129,7 @@ export default async function listBatch(list, instructions, config = {}) {
     if (logger?.debug) {
       logger.debug('LLM request starting', {
         hasAbortSignal: !!llmOptions.abortSignal,
-        modelOptionsKeys: Object.keys(modelOptions),
+        modelKeys: Object.keys(llmModelKeys),
       });
     }
 
@@ -147,7 +145,7 @@ export default async function listBatch(list, instructions, config = {}) {
     if (logger?.error) {
       logger.error('LLM request failed in listBatch', {
         error: error.message,
-        modelOptions: llm,
+        llmConfig: llm,
         promptLength: prompt?.length,
         itemCount: list?.length,
       });

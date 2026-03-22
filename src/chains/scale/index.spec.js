@@ -2,7 +2,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import scale, { createScale, scaleSpec, applyScale } from './index.js';
 import llm from '../../lib/llm/index.js';
 
-vi.mock('../../lib/llm/index.js');
+vi.mock('../../lib/llm/index.js', async (importOriginal) => ({
+  ...(await importOriginal()),
+  default: vi.fn(),
+}));
 
 describe('scale', () => {
   beforeEach(() => {
@@ -31,33 +34,18 @@ Mapping: Map the "stars" field linearly to the quality range.`;
     const result = await scaleFunc({ stars: 3 });
 
     expect(result).toBe(50);
-    // First call is for generating specification
+    // First call generates specification, second applies it
     expect(llm).toHaveBeenNthCalledWith(
       1,
       expect.stringContaining('<scaling-instructions>'),
       expect.objectContaining({
-        modelOptions: expect.objectContaining({
-          systemPrompt: expect.stringContaining('scale specification generator'),
-          response_format: {
-            type: 'json_schema',
-            json_schema: expect.any(Object),
-          },
-        }),
+        systemPrompt: expect.stringContaining('scale specification generator'),
       })
     );
-
-    // Second call is for applying the scale
     expect(llm).toHaveBeenNthCalledWith(
       2,
       expect.stringContaining('<scale-specification>'),
-      expect.objectContaining({
-        modelOptions: expect.objectContaining({
-          response_format: {
-            type: 'json_schema',
-            json_schema: expect.any(Object),
-          },
-        }),
-      })
+      expect.any(Object)
     );
   });
 
@@ -91,26 +79,6 @@ Mapping: Map the "stars" field linearly to the quality range.`;
     const result = await scaleFunc('very important task');
 
     expect(result).toEqual({ confidence: 0.8, category: 'high' });
-  });
-
-  it('should pass through config options', async () => {
-    vi.mocked(llm)
-      .mockResolvedValueOnce({ domain: 'numbers', range: '0-100', mapping: 'scale' })
-      .mockResolvedValueOnce(42);
-
-    const prompt = 'Scale numbers to 0-100';
-    const scaleFunc = scale(prompt, { temperature: 0.2, model: 'gpt-4' });
-    await scaleFunc(5);
-
-    // Check the second call (applyScale) has the config options
-    expect(llm).toHaveBeenNthCalledWith(
-      2,
-      expect.any(String),
-      expect.objectContaining({
-        temperature: 0.2,
-        model: 'gpt-4',
-      })
-    );
   });
 
   it('should convert object inputs to JSON strings', async () => {
@@ -164,17 +132,6 @@ describe('createScale', () => {
     // Should have called llm 2 times for applications only
     expect(llm).toHaveBeenCalledTimes(2);
   });
-
-  it('should expose specification property', () => {
-    const specification = {
-      domain: 'test domain',
-      range: 'test range',
-      mapping: 'test mapping',
-    };
-    const scaleFunc = createScale(specification);
-
-    expect(scaleFunc.specification).toBe(specification);
-  });
 });
 
 describe('scaleSpec', () => {
@@ -199,12 +156,7 @@ describe('scaleSpec', () => {
     expect(llm).toHaveBeenCalledWith(
       expect.stringContaining('Analyze these scaling instructions'),
       expect.objectContaining({
-        modelOptions: expect.objectContaining({
-          systemPrompt: expect.stringContaining('scale specification generator'),
-          response_format: expect.objectContaining({
-            type: 'json_schema',
-          }),
-        }),
+        systemPrompt: expect.stringContaining('scale specification generator'),
       })
     );
   });

@@ -1,0 +1,1712 @@
+[
+  {
+    "chain": "test-analysis",
+    "tier": "internal",
+    "dimension": "documentation",
+    "phase": "deterministic",
+    "level": 0,
+    "evidence": "No README.md file exists in the chain directory",
+    "gap": "Create README.md with description, API section, parameter table, example",
+    "nextAction": "Create README.md following the project README template"
+  },
+  {
+    "chain": "anonymize",
+    "tier": "standard",
+    "dimension": "architectural-fitness",
+    "phase": "design",
+    "level": 2,
+    "evidence": "The chain has 410 lines of code, indicating some unnecessary complexity for its purpose. It uses multiple helper functions and imports, suggesting a potential for simplification.",
+    "gap": "Refactor to reduce LOC and simplify the architecture, possibly by leveraging existing library primitives more effectively.",
+    "nextAction": "Conduct a code review to identify areas where existing library functions can replace custom implementations."
+  },
+  {
+    "chain": "anonymize",
+    "tier": "standard",
+    "dimension": "composition-fit",
+    "phase": "design",
+    "level": 2,
+    "evidence": "While the chain uses library primitives like map and filter, it does not expose itself as a composable element in larger pipelines.",
+    "gap": "Expose the chain as a composable element that can be integrated into larger workflows.",
+    "nextAction": "Refactor the chain to expose a clean function interface that can be used as a pipeline step."
+  },
+  {
+    "chain": "anonymize",
+    "tier": "standard",
+    "dimension": "design-efficiency",
+    "phase": "design",
+    "level": 2,
+    "evidence": "The chain's 410 lines of code and multiple helper functions suggest moderate complexity, with potential for simplification.",
+    "gap": "Reduce the number of helper functions and streamline the code to align with the core problem complexity.",
+    "nextAction": "Simplify the code by reducing helper functions and leveraging existing library capabilities."
+  },
+  {
+    "chain": "dismantle",
+    "tier": "standard",
+    "dimension": "strategic-value",
+    "phase": "design",
+    "level": 2,
+    "evidence": "The 'dismantle' chain provides a useful tool for breaking down complex systems into components, which can be moderately frequent in AI-driven projects that require system analysis or component extraction.",
+    "gap": "To increase strategic value, the chain could integrate more deeply with other AI-driven processes, enabling new workflows.",
+    "nextAction": "Explore integration with other AI modules to enhance its utility in broader contexts."
+  },
+  {
+    "chain": "dismantle",
+    "tier": "standard",
+    "dimension": "architectural-fitness",
+    "phase": "design",
+    "level": 2,
+    "evidence": "With 355 lines of code and 6 files, the architecture is adequate but shows some unnecessary complexity, such as the lack of a spec pattern and reliance on multiple imports.",
+    "gap": "Simplify the architecture by reducing the number of files and consolidating logic where possible.",
+    "nextAction": "Refactor to reduce the number of files and streamline the logic to improve clarity and maintainability."
+  },
+  {
+    "chain": "dismantle",
+    "tier": "standard",
+    "dimension": "generalizability",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The chain is mostly general, leveraging natural language instructions and working with various data inputs, but could be more adaptable to different runtime environments.",
+    "gap": "Ensure runtime dependencies are optional or swappable to enhance adaptability.",
+    "nextAction": "Abstract runtime dependencies to allow for easier adaptation to different environments."
+  },
+  {
+    "chain": "dismantle",
+    "tier": "standard",
+    "dimension": "design-efficiency",
+    "phase": "design",
+    "level": 2,
+    "evidence": "The implementation shows moderate efficiency with some unnecessary complexity, indicated by the high LOC and multiple helper functions.",
+    "gap": "Reduce the number of helper functions and streamline the code to align with the core problem complexity.",
+    "nextAction": "Conduct a code review to identify and eliminate redundant logic and simplify the implementation."
+  },
+  {
+    "chain": "document-shrink",
+    "tier": "standard",
+    "dimension": "strategic-value",
+    "phase": "design",
+    "level": 2,
+    "evidence": "The document-shrink chain provides a useful tool for reducing document size while maintaining relevance, which is a common need in AI-driven text processing workflows. However, it is not transformative as it doesn't enable entirely new workflows.",
+    "gap": "To increase strategic value, the chain could integrate more advanced AI capabilities that allow for more nuanced document transformations.",
+    "nextAction": "Explore integrating additional AI models that can enhance the document transformation process, such as sentiment analysis or entity recognition."
+  },
+  {
+    "chain": "document-shrink",
+    "tier": "standard",
+    "dimension": "architectural-fitness",
+    "phase": "design",
+    "level": 1,
+    "evidence": "The chain has 611 lines of code, which is high for the core idea of document shrinking. It lacks the use of the library's primitives like map or filter, indicating potential reimplementation of existing capabilities.",
+    "gap": "Refactor the chain to leverage existing library primitives for batch processing and scoring, reducing the overall complexity.",
+    "nextAction": "Identify parts of the code that can be replaced with existing library functions and refactor accordingly."
+  },
+  {
+    "chain": "document-shrink",
+    "tier": "standard",
+    "dimension": "generalizability",
+    "phase": "design",
+    "level": 2,
+    "evidence": "The chain is mostly general but has some context-specific elements, such as the reliance on TF-IDF and specific LLM configurations, which may limit its applicability across different domains.",
+    "gap": "Decouple the chain from specific LLM configurations and make it adaptable to various text processing contexts.",
+    "nextAction": "Introduce configuration options that allow users to plug in different models or algorithms for document processing."
+  },
+  {
+    "chain": "document-shrink",
+    "tier": "standard",
+    "dimension": "composition-fit",
+    "phase": "design",
+    "level": 1,
+    "evidence": "The chain uses other chains internally but does not expose a composable interface, making it a black box rather than a pipeline step.",
+    "gap": "Expose a clean function interface that allows the chain to be used as a step in larger pipelines.",
+    "nextAction": "Refactor the chain to expose its internal processing steps as composable functions that can be used independently."
+  },
+  {
+    "chain": "document-shrink",
+    "tier": "standard",
+    "dimension": "design-efficiency",
+    "phase": "design",
+    "level": 1,
+    "evidence": "The chain's high LOC and multiple helper functions suggest that the implementation is fighting the design, with potential reimplementation of existing capabilities.",
+    "gap": "Simplify the design by reducing the number of helper functions and leveraging existing library capabilities.",
+    "nextAction": "Conduct a code review to identify redundant logic and refactor to streamline the implementation."
+  },
+  {
+    "chain": "entities",
+    "tier": "core",
+    "dimension": "strategic-value",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The 'entities' chain is a core capability frequently needed in AI pipelines for extracting named entities from text, which is a common requirement in many AI applications.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "entities",
+    "tier": "core",
+    "dimension": "architectural-fitness",
+    "phase": "design",
+    "level": 2,
+    "evidence": "The module has 296 lines of code spread across 6 files, which suggests some unnecessary complexity. The use of multiple helper functions indicates that the design could be simplified.",
+    "gap": "Simplify the architecture by reducing the number of helper functions and consolidating logic where possible.",
+    "nextAction": "Review the module to identify opportunities for reducing complexity and improving clarity."
+  },
+  {
+    "chain": "entities",
+    "tier": "core",
+    "dimension": "generalizability",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The chain uses natural language instructions and works with any text data, making it broadly applicable across domains.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "entities",
+    "tier": "core",
+    "dimension": "composition-fit",
+    "phase": "design",
+    "level": 4,
+    "evidence": "The 'entities' chain follows the spec/apply pattern and integrates with all collection chains, making it a full composition citizen.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "entities",
+    "tier": "core",
+    "dimension": "design-efficiency",
+    "phase": "design",
+    "level": 2,
+    "evidence": "The module's 296 lines of code and multiple helper functions suggest moderate complexity that could be streamlined.",
+    "gap": "Reduce the number of helper functions and streamline the code to better align with the core design.",
+    "nextAction": "Conduct a code review to identify redundant logic and opportunities for simplification."
+  },
+  {
+    "chain": "expect",
+    "tier": "standard",
+    "dimension": "strategic-value",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The 'expect' chain provides advanced debugging and assertion capabilities, which are core needs in AI development pipelines. It enhances basic assertions with intelligent advice and structured results, making it a frequently used tool for developers.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "expect",
+    "tier": "standard",
+    "dimension": "architectural-fitness",
+    "phase": "design",
+    "level": 2,
+    "evidence": "The chain has 252 lines of code spread across 9 files, indicating some complexity. While it provides advanced features, the architecture could be simplified to reduce LOC and improve clarity.",
+    "gap": "Simplify the architecture by reducing the number of files and consolidating related functions.",
+    "nextAction": "Review the file structure and identify opportunities to merge related functionalities into fewer files."
+  },
+  {
+    "chain": "expect",
+    "tier": "standard",
+    "dimension": "generalizability",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The chain is mostly general, with no hard dependencies on specific frameworks or data formats. It uses natural language instructions, making it adaptable across domains.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "expect",
+    "tier": "standard",
+    "dimension": "composition-fit",
+    "phase": "design",
+    "level": 2,
+    "evidence": "The chain exports functions that can be used in pipelines, but it does not fully leverage the library's composition patterns like spec/apply.",
+    "gap": "Integrate spec/apply patterns to enhance composability.",
+    "nextAction": "Refactor the chain to expose spec/apply interfaces, enabling it to work seamlessly with other library chains."
+  },
+  {
+    "chain": "expect",
+    "tier": "standard",
+    "dimension": "design-efficiency",
+    "phase": "design",
+    "level": 2,
+    "evidence": "The chain's LOC is relatively high for its functionality, and it imports several internal libraries, suggesting some inefficiencies in design.",
+    "gap": "Reduce the number of helper functions and streamline imports to improve efficiency.",
+    "nextAction": "Conduct a code review to identify redundant helpers and unnecessary imports, and refactor to simplify the design."
+  },
+  {
+    "chain": "filter",
+    "tier": "core",
+    "dimension": "strategic-value",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The filter chain is a core capability in AI pipelines, frequently needed for tasks like content moderation and data cleaning.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "filter",
+    "tier": "core",
+    "dimension": "architectural-fitness",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The design is clean and proportional to the problem, with a clear batch processing approach and minimal unnecessary abstractions.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "filter",
+    "tier": "core",
+    "dimension": "generalizability",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The filter chain is general purpose, working with any text data and accepting natural language instructions.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "filter",
+    "tier": "core",
+    "dimension": "composition-fit",
+    "phase": "design",
+    "level": 2,
+    "evidence": "The filter chain exposes a clean function interface and works as a pipeline step, but does not fully leverage the library's composition patterns.",
+    "gap": "Consider integrating spec/apply patterns to enhance composability.",
+    "nextAction": "Integrate spec/apply patterns to enhance composability."
+  },
+  {
+    "chain": "filter",
+    "tier": "core",
+    "dimension": "design-efficiency",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The implementation is efficient, with LOC proportional to the complexity of batch processing and retry logic.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "group",
+    "tier": "core",
+    "dimension": "architectural-fitness",
+    "phase": "design",
+    "level": 2,
+    "evidence": "The module has 247 lines of code, which is relatively high for its purpose. It uses multiple imports and has a complex structure, indicating some unnecessary complexity.",
+    "gap": "Simplify the architecture by reducing the number of helper functions and imports.",
+    "nextAction": "Review the code to identify and eliminate redundant abstractions and streamline the process flow."
+  },
+  {
+    "chain": "group",
+    "tier": "core",
+    "dimension": "composition-fit",
+    "phase": "design",
+    "level": 2,
+    "evidence": "While the chain uses batch processing, it does not fully leverage the library's composition patterns, such as spec/apply.",
+    "gap": "Integrate spec/apply patterns to enhance composability.",
+    "nextAction": "Refactor the chain to expose a spec/apply interface, enabling it to be used more flexibly in compositions."
+  },
+  {
+    "chain": "group",
+    "tier": "core",
+    "dimension": "design-efficiency",
+    "phase": "design",
+    "level": 2,
+    "evidence": "The chain has a high LOC relative to its functionality, with multiple helper functions and imports, suggesting some inefficiency.",
+    "gap": "Reduce the number of helper functions and streamline the code to align with the core functionality.",
+    "nextAction": "Conduct a code review to identify areas of redundancy and refactor to improve efficiency."
+  },
+  {
+    "chain": "llm-logger",
+    "tier": "standard",
+    "dimension": "architectural-fitness",
+    "phase": "design",
+    "level": 2,
+    "evidence": "The module has 652 lines of code, which is relatively high for a logging utility. It includes multiple helper functions and imports, indicating some complexity.",
+    "gap": "Simplify the architecture by reducing the number of helper functions and consolidating similar functionalities.",
+    "nextAction": "Review the helper functions to identify opportunities for consolidation and simplification."
+  },
+  {
+    "chain": "llm-logger",
+    "tier": "standard",
+    "dimension": "composition-fit",
+    "phase": "design",
+    "level": 1,
+    "evidence": "The llm-logger does not use or expose the library's composition patterns, making it less composable with other chains.",
+    "gap": "Refactor the logger to utilize the library's primitives like map, filter, and reduce for better integration.",
+    "nextAction": "Explore how the logger can be refactored to use existing library primitives for batch processing and filtering."
+  },
+  {
+    "chain": "llm-logger",
+    "tier": "standard",
+    "dimension": "design-efficiency",
+    "phase": "design",
+    "level": 2,
+    "evidence": "The implementation is moderately complex with 652 lines of code and multiple configuration parameters, indicating some inefficiencies.",
+    "gap": "Reduce the number of configuration parameters and streamline the code to focus on core functionalities.",
+    "nextAction": "Conduct a code review to identify redundant configurations and streamline the codebase."
+  },
+  {
+    "chain": "map",
+    "tier": "core",
+    "dimension": "architectural-fitness",
+    "phase": "design",
+    "level": 2,
+    "evidence": "The chain has 309 lines of code, which is relatively high for its purpose. It uses multiple imports and has a complex configuration setup.",
+    "gap": "Simplify the configuration and reduce the number of helper functions.",
+    "nextAction": "Refactor to streamline configuration parameters and reduce LOC by consolidating helper functions."
+  },
+  {
+    "chain": "map",
+    "tier": "core",
+    "dimension": "composition-fit",
+    "phase": "design",
+    "level": 2,
+    "evidence": "While it uses library primitives, it does not expose a spec/apply pattern, limiting its composability.",
+    "gap": "Implement a spec/apply pattern to enhance composability.",
+    "nextAction": "Introduce a spec/apply pattern to allow the 'map' chain to be more easily integrated into larger compositions."
+  },
+  {
+    "chain": "map",
+    "tier": "core",
+    "dimension": "design-efficiency",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The implementation is clean with LOC proportional to its complexity, but there is room for improvement in reducing helper functions.",
+    "gap": "Reduce the number of helper functions to streamline the design.",
+    "nextAction": "Consolidate helper functions to improve design efficiency and reduce complexity."
+  },
+  {
+    "chain": "reduce",
+    "tier": "core",
+    "dimension": "architectural-fitness",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The design is clean and proportional to the problem, with 158 lines of code and no unnecessary abstractions.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "reduce",
+    "tier": "core",
+    "dimension": "composition-fit",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The 'reduce' chain follows library composition patterns and can be used as both a consumer and provider in pipelines.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "reduce",
+    "tier": "core",
+    "dimension": "design-efficiency",
+    "phase": "design",
+    "level": 4,
+    "evidence": "The implementation is efficient, with minimal code and a design that makes the implementation obvious.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "score",
+    "tier": "core",
+    "dimension": "architectural-fitness",
+    "phase": "design",
+    "level": 4,
+    "evidence": "The design is elegant with minimal code for maximum capability. The spec/apply pattern enables natural composition.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "score",
+    "tier": "core",
+    "dimension": "composition-fit",
+    "phase": "design",
+    "level": 3,
+    "evidence": "Follows library composition patterns, working as both consumer and provider with spec/apply and instruction builders.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "score",
+    "tier": "core",
+    "dimension": "design-efficiency",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The implementation is efficient with clean code proportional to genuine complexity, using the spec/apply pattern effectively.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "test-analysis",
+    "tier": "internal",
+    "dimension": "composition-fit",
+    "phase": "design",
+    "level": 0,
+    "evidence": "The chain does not utilize or expose any of the library's composition patterns, acting as a standalone module.",
+    "gap": "Integrate with existing library primitives.",
+    "nextAction": "Refactor to use map, filter, or reduce where applicable."
+  },
+  {
+    "chain": "test-analysis",
+    "tier": "internal",
+    "dimension": "design-efficiency",
+    "phase": "design",
+    "level": 4,
+    "evidence": "The implementation is minimal, with only 8 lines of code, indicating high design efficiency.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "anonymize",
+    "tier": "standard",
+    "dimension": "logging",
+    "phase": "code",
+    "level": 2,
+    "evidence": "Accepts `logger` config, uses `logger?.info()` inline in `anonymizeSpec` function.",
+    "gap": "Missing use of `createLifecycleLogger` for structured logging.",
+    "nextAction": "Integrate `createLifecycleLogger` to enhance structured logging capabilities."
+  },
+  {
+    "chain": "anonymize",
+    "tier": "standard",
+    "dimension": "events",
+    "phase": "code",
+    "level": 1,
+    "evidence": "Accepts `onProgress` in config but only passes through to inner calls in `anonymizeSpec`.",
+    "gap": "Does not emit standard events via `progress-callback`.",
+    "nextAction": "Implement standard event emission using `progress-callback` for better lifecycle management."
+  },
+  {
+    "chain": "anonymize",
+    "tier": "standard",
+    "dimension": "browser-server",
+    "phase": "code",
+    "level": 0,
+    "evidence": "No evidence of environment-specific handling or use of `lib/env`.",
+    "gap": "Lacks environment-agnostic code to support both browser and server.",
+    "nextAction": "Incorporate `lib/env` to ensure compatibility across environments."
+  },
+  {
+    "chain": "anonymize",
+    "tier": "standard",
+    "dimension": "token-management",
+    "phase": "code",
+    "level": 0,
+    "evidence": "No evidence of token management or chunking strategies.",
+    "gap": "Lacks token-budget-aware splitting or management.",
+    "nextAction": "Implement `createBatches` for token-budget-aware processing."
+  },
+  {
+    "chain": "anonymize",
+    "tier": "standard",
+    "dimension": "errors-retry",
+    "phase": "code",
+    "level": 1,
+    "evidence": "Uses `retry` library with default retry policy in `anonymizeSpec`.",
+    "gap": "No input validation or defined failure modes beyond basic retry.",
+    "nextAction": "Enhance error handling with input validation and defined failure modes."
+  },
+  {
+    "chain": "dismantle",
+    "tier": "standard",
+    "dimension": "logging",
+    "phase": "code",
+    "level": 0,
+    "evidence": "No imports or usage of `lib/lifecycle-logger` or any logging functions like `logStart`, `logResult`.",
+    "gap": "Needs to import and utilize `lib/lifecycle-logger` for structured logging.",
+    "nextAction": "Integrate `lib/lifecycle-logger` and implement basic logging functions like `logStart` and `logResult`."
+  },
+  {
+    "chain": "dismantle",
+    "tier": "standard",
+    "dimension": "events",
+    "phase": "code",
+    "level": 1,
+    "evidence": "Accepts `onProgress` in `defaultDecompose` and `defaultEnhance` but only passes through.",
+    "gap": "Does not emit any standard events using `lib/progress-callback`.",
+    "nextAction": "Implement event emission using `lib/progress-callback` for start, complete, and step events."
+  },
+  {
+    "chain": "dismantle",
+    "tier": "standard",
+    "dimension": "browser-server",
+    "phase": "code",
+    "level": 0,
+    "evidence": "No usage of `lib/env` or checks for `runtime.isBrowser`/`runtime.isNode`.",
+    "gap": "Needs to use `lib/env` for environment checks to ensure compatibility.",
+    "nextAction": "Integrate `lib/env` to handle environment-specific logic."
+  },
+  {
+    "chain": "dismantle",
+    "tier": "standard",
+    "dimension": "token-management",
+    "phase": "code",
+    "level": 1,
+    "evidence": "Uses `model.budgetTokens` for budget calculation in `defaultDecompose` and `defaultEnhance`.",
+    "gap": "Does not implement proportional multi-value budget management.",
+    "nextAction": "Implement proportional multi-value budget management with auto-summarization."
+  },
+  {
+    "chain": "dismantle",
+    "tier": "standard",
+    "dimension": "errors-retry",
+    "phase": "code",
+    "level": 1,
+    "evidence": "Uses `retry` library for basic retry in `defaultDecompose` and `defaultEnhance`.",
+    "gap": "Lacks input validation and defined failure modes.",
+    "nextAction": "Add input validation and define clear failure modes for error handling."
+  },
+  {
+    "chain": "document-shrink",
+    "tier": "standard",
+    "dimension": "logging",
+    "phase": "code",
+    "level": 0,
+    "evidence": "No imports or usage of `lib/lifecycle-logger` or `console.log` found.",
+    "gap": "No logging mechanism present.",
+    "nextAction": "Introduce basic logging using `console.log` for error handling."
+  },
+  {
+    "chain": "document-shrink",
+    "tier": "standard",
+    "dimension": "events",
+    "phase": "code",
+    "level": 1,
+    "evidence": "Accepts `onProgress` in `expandQuery` but does not emit events.",
+    "gap": "Does not emit any events.",
+    "nextAction": "Implement event emission using `lib/progress-callback`."
+  },
+  {
+    "chain": "document-shrink",
+    "tier": "standard",
+    "dimension": "browser-server",
+    "phase": "code",
+    "level": 0,
+    "evidence": "No usage of `lib/env` or `runtime.isBrowser`/`runtime.isNode`.",
+    "gap": "Lacks environment compatibility.",
+    "nextAction": "Use `lib/env` to ensure compatibility across environments."
+  },
+  {
+    "chain": "document-shrink",
+    "tier": "standard",
+    "dimension": "code-quality",
+    "phase": "code",
+    "level": 2,
+    "evidence": "Functions like `calculateReductionRatio` and `createChunks` are pure and well-named.",
+    "gap": "Could improve structure and separation of concerns.",
+    "nextAction": "Refactor to separate concerns and improve composability."
+  },
+  {
+    "chain": "document-shrink",
+    "tier": "standard",
+    "dimension": "token-management",
+    "phase": "code",
+    "level": 1,
+    "evidence": "Manual token allocation in `calculateTokenAllocation`.",
+    "gap": "Does not use `createBatches` for token management.",
+    "nextAction": "Integrate `createBatches` for better token management."
+  },
+  {
+    "chain": "document-shrink",
+    "tier": "standard",
+    "dimension": "errors-retry",
+    "phase": "code",
+    "level": 0,
+    "evidence": "No error handling or retry logic found.",
+    "gap": "Lacks error handling and retry mechanisms.",
+    "nextAction": "Implement basic error handling and retry logic using `lib/retry`."
+  },
+  {
+    "chain": "entities",
+    "tier": "core",
+    "dimension": "logging",
+    "phase": "code",
+    "level": 0,
+    "evidence": "No evidence of `lib/lifecycle-logger` or `logger` usage in the code.",
+    "gap": "Import and utilize `lib/lifecycle-logger` for structured logging.",
+    "nextAction": "Integrate `createLifecycleLogger` and use `logStart`, `logResult` for logging."
+  },
+  {
+    "chain": "entities",
+    "tier": "core",
+    "dimension": "events",
+    "phase": "code",
+    "level": 2,
+    "evidence": "Uses `emitStepProgress` from `lib/progress-callback` to emit standard events.",
+    "gap": "Implement batch-level events like `batchStart`, `batchProcessed`.",
+    "nextAction": "Enhance event emission to include batch-level events for better granularity."
+  },
+  {
+    "chain": "entities",
+    "tier": "core",
+    "dimension": "browser-server",
+    "phase": "code",
+    "level": 0,
+    "evidence": "No evidence of `lib/env` usage or environment-specific code.",
+    "gap": "Ensure compatibility with both browser and server environments using `lib/env`.",
+    "nextAction": "Refactor code to use `lib/env` for environment checks and compatibility."
+  },
+  {
+    "chain": "entities",
+    "tier": "core",
+    "dimension": "code-quality",
+    "phase": "code",
+    "level": 4,
+    "evidence": "Reference quality with consistent instruction builder pattern and clean spec/apply split.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "entities",
+    "tier": "core",
+    "dimension": "token-management",
+    "phase": "code",
+    "level": 0,
+    "evidence": "No evidence of token management or chunking strategies.",
+    "gap": "Implement token-aware processing using `createBatches`.",
+    "nextAction": "Integrate `createBatches` to manage token budgets effectively."
+  },
+  {
+    "chain": "entities",
+    "tier": "core",
+    "dimension": "errors-retry",
+    "phase": "code",
+    "level": 1,
+    "evidence": "Basic retry mechanism using `retry` with default settings.",
+    "gap": "Enhance error handling with input validation and defined failure modes.",
+    "nextAction": "Implement input validation and structured error handling for robustness."
+  },
+  {
+    "chain": "expect",
+    "tier": "standard",
+    "dimension": "logging",
+    "phase": "code",
+    "level": 2,
+    "evidence": "Imports `lib/logger` and uses `extractFileContext` for logging context.",
+    "gap": "Missing use of `createLifecycleLogger` for structured logging.",
+    "nextAction": "Integrate `createLifecycleLogger` to enhance structured logging capabilities."
+  },
+  {
+    "chain": "expect",
+    "tier": "standard",
+    "dimension": "events",
+    "phase": "code",
+    "level": 0,
+    "evidence": "No imports or usage of `lib/progress-callback` for event emission.",
+    "gap": "Lacks event emission capabilities.",
+    "nextAction": "Introduce `lib/progress-callback` and implement basic event emission."
+  },
+  {
+    "chain": "expect",
+    "tier": "standard",
+    "dimension": "browser-server",
+    "phase": "code",
+    "level": 2,
+    "evidence": "Uses `lib/env` for environment reads, ensuring compatibility.",
+    "gap": "Not tested in both environments with graceful degradation.",
+    "nextAction": "Conduct tests in both environments and implement graceful degradation strategies."
+  },
+  {
+    "chain": "expect",
+    "tier": "standard",
+    "dimension": "token-management",
+    "phase": "code",
+    "level": 0,
+    "evidence": "No evidence of token management or chunking strategies.",
+    "gap": "Lacks token management strategies.",
+    "nextAction": "Implement manual chunking or use `createBatches` for token management."
+  },
+  {
+    "chain": "expect",
+    "tier": "standard",
+    "dimension": "errors-retry",
+    "phase": "code",
+    "level": 0,
+    "evidence": "No error handling or retry mechanisms observed.",
+    "gap": "Lacks basic error handling and retry strategies.",
+    "nextAction": "Introduce basic retry mechanisms using `lib/retry` and implement error handling."
+  },
+  {
+    "chain": "filter",
+    "tier": "core",
+    "dimension": "logging",
+    "phase": "code",
+    "level": 2,
+    "evidence": "Accepts `logger` config, uses `logger?.info()` inline for structured logging.",
+    "gap": "Missing use of `createLifecycleLogger` for more comprehensive logging.",
+    "nextAction": "Integrate `createLifecycleLogger` to enhance logging capabilities."
+  },
+  {
+    "chain": "filter",
+    "tier": "core",
+    "dimension": "events",
+    "phase": "code",
+    "level": 3,
+    "evidence": "Emits batch-level events using `emitBatchStart`, `emitBatchProcessed`, and `emitBatchComplete`.",
+    "gap": "Missing phase-level events for multi-phase operations.",
+    "nextAction": "Implement phase-level events to capture more granular lifecycle stages."
+  },
+  {
+    "chain": "filter",
+    "tier": "core",
+    "dimension": "browser-server",
+    "phase": "code",
+    "level": 0,
+    "evidence": "No evidence of environment-specific handling or `lib/env` usage.",
+    "gap": "Lacks environment adaptability and testing.",
+    "nextAction": "Incorporate `lib/env` for environment checks and ensure compatibility across environments."
+  },
+  {
+    "chain": "filter",
+    "tier": "core",
+    "dimension": "token-management",
+    "phase": "code",
+    "level": 2,
+    "evidence": "Uses `createBatches` for token-budget-aware splitting.",
+    "gap": "Lacks model-aware budget calculation and proportional multi-value management.",
+    "nextAction": "Implement model-aware budget calculations to optimize token usage."
+  },
+  {
+    "chain": "filter",
+    "tier": "core",
+    "dimension": "errors-retry",
+    "phase": "code",
+    "level": 2,
+    "evidence": "Uses `retry` for error handling with rethrow strategy on failure.",
+    "gap": "Lacks multi-level retry and custom error types.",
+    "nextAction": "Develop custom error types and implement multi-level retry strategies."
+  },
+  {
+    "chain": "group",
+    "tier": "core",
+    "dimension": "logging",
+    "phase": "code",
+    "level": 0,
+    "evidence": "No imports or usage of `lib/lifecycle-logger` or `logger` config.",
+    "gap": "Import and use `lib/lifecycle-logger` for structured logging.",
+    "nextAction": "Integrate `createLifecycleLogger` and use `logStart`, `logResult` for logging."
+  },
+  {
+    "chain": "group",
+    "tier": "core",
+    "dimension": "events",
+    "phase": "code",
+    "level": 4,
+    "evidence": "Uses `lib/progress-callback` with `emitBatchStart`, `emitBatchComplete`, `emitBatchProcessed`, `emitPhaseProgress`.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "group",
+    "tier": "core",
+    "dimension": "browser-server",
+    "phase": "code",
+    "level": 0,
+    "evidence": "No usage of `lib/env` or `runtime.isBrowser`/`runtime.isNode`.",
+    "gap": "Use `lib/env` for environment checks.",
+    "nextAction": "Implement `lib/env` to ensure compatibility across environments."
+  },
+  {
+    "chain": "group",
+    "tier": "core",
+    "dimension": "code-quality",
+    "phase": "code",
+    "level": 3,
+    "evidence": "Clean two-phase design with extracted prompt builders and fallback to 'other' category.",
+    "gap": "Refactor to achieve reference-quality code.",
+    "nextAction": "Review and refine code structure for potential improvements."
+  },
+  {
+    "chain": "group",
+    "tier": "core",
+    "dimension": "token-management",
+    "phase": "code",
+    "level": 2,
+    "evidence": "Uses `createBatches` for token-budget-aware splitting.",
+    "gap": "Implement model-aware budget calculation.",
+    "nextAction": "Integrate `budgetTokens` for model-aware budget management."
+  },
+  {
+    "chain": "group",
+    "tier": "core",
+    "dimension": "errors-retry",
+    "phase": "code",
+    "level": 1,
+    "evidence": "Uses `retry` with default settings.",
+    "gap": "Implement input validation and defined failure modes.",
+    "nextAction": "Add input validation and define clear failure modes."
+  },
+  {
+    "chain": "llm-logger",
+    "tier": "standard",
+    "dimension": "logging",
+    "phase": "code",
+    "level": 2,
+    "evidence": "Imports `lib/logger`, uses `createConsoleWriter` and `createFileWriter` for logging.",
+    "gap": "Missing lifecycle logging with `createLifecycleLogger`.",
+    "nextAction": "Integrate `createLifecycleLogger` for structured lifecycle logging."
+  },
+  {
+    "chain": "llm-logger",
+    "tier": "standard",
+    "dimension": "events",
+    "phase": "code",
+    "level": 0,
+    "evidence": "No imports or usage of `lib/progress-callback`.",
+    "gap": "Lacks event emission capabilities.",
+    "nextAction": "Implement event emission using `lib/progress-callback`."
+  },
+  {
+    "chain": "llm-logger",
+    "tier": "standard",
+    "dimension": "browser-server",
+    "phase": "code",
+    "level": 0,
+    "evidence": "No evidence of environment-specific handling.",
+    "gap": "Does not handle browser-server compatibility.",
+    "nextAction": "Use `lib/env` for environment detection and handling."
+  },
+  {
+    "chain": "llm-logger",
+    "tier": "standard",
+    "dimension": "code-quality",
+    "phase": "code",
+    "level": 2,
+    "evidence": "Clear function definitions, no dead code, uses `setAtPath` and `getAtPath` for JSON path operations.",
+    "gap": "Could improve by separating concerns and enhancing composability.",
+    "nextAction": "Refactor to separate concerns and improve composability."
+  },
+  {
+    "chain": "llm-logger",
+    "tier": "standard",
+    "dimension": "token-management",
+    "phase": "code",
+    "level": 0,
+    "evidence": "No evidence of token management or chunking.",
+    "gap": "Lacks token management capabilities.",
+    "nextAction": "Implement token management using `createBatches` from `lib/text-batch`."
+  },
+  {
+    "chain": "llm-logger",
+    "tier": "standard",
+    "dimension": "errors-retry",
+    "phase": "code",
+    "level": 0,
+    "evidence": "No error handling or retry logic present.",
+    "gap": "Lacks error handling and retry mechanisms.",
+    "nextAction": "Introduce basic error handling and retry logic using `lib/retry`."
+  },
+  {
+    "chain": "map",
+    "tier": "core",
+    "dimension": "logging",
+    "phase": "code",
+    "level": 3,
+    "evidence": "Uses `createLifecycleLogger` for structured logging, calls `logStart` and `logResult`",
+    "gap": "Missing full lifecycle logging with `logConstruction`, `logProcessing`, `logEvent`, child loggers",
+    "nextAction": "Implement full lifecycle logging with additional log points and child loggers"
+  },
+  {
+    "chain": "map",
+    "tier": "core",
+    "dimension": "events",
+    "phase": "code",
+    "level": 3,
+    "evidence": "Emits batch-level events using `emitBatchStart`, `emitBatchProcessed`, `emitBatchComplete`",
+    "gap": "Missing phase-level events for multi-phase operations",
+    "nextAction": "Introduce phase-level events to capture multi-phase operations"
+  },
+  {
+    "chain": "map",
+    "tier": "core",
+    "dimension": "browser-server",
+    "phase": "code",
+    "level": 1,
+    "evidence": "Uses `process.env` directly",
+    "gap": "Does not use `lib/env` for environment reads",
+    "nextAction": "Refactor to use `lib/env` for environment variable access"
+  },
+  {
+    "chain": "map",
+    "tier": "core",
+    "dimension": "token-management",
+    "phase": "code",
+    "level": 2,
+    "evidence": "Uses `createBatches` for token-budget-aware splitting",
+    "gap": "Lacks model-aware budget calculation",
+    "nextAction": "Implement model-aware budget calculation via `budgetTokens`"
+  },
+  {
+    "chain": "map",
+    "tier": "core",
+    "dimension": "errors-retry",
+    "phase": "code",
+    "level": 3,
+    "evidence": "Multi-level retry with batch + item retry, uses `retry` library",
+    "gap": "Lacks custom error types and structured error context",
+    "nextAction": "Develop custom error types and attach structured context to errors"
+  },
+  {
+    "chain": "reduce",
+    "tier": "core",
+    "dimension": "logging",
+    "phase": "code",
+    "level": 2,
+    "evidence": "Accepts `logger` config, uses `logger?.info()` inline",
+    "gap": "Missing use of `createLifecycleLogger` for structured logging",
+    "nextAction": "Integrate `createLifecycleLogger` to enhance structured logging capabilities."
+  },
+  {
+    "chain": "reduce",
+    "tier": "core",
+    "dimension": "browser-server",
+    "phase": "code",
+    "level": 1,
+    "evidence": "Uses `process.env` directly",
+    "gap": "Does not use `lib/env` for environment reads",
+    "nextAction": "Refactor to use `lib/env` for environment reads to improve isomorphic compatibility."
+  },
+  {
+    "chain": "reduce",
+    "tier": "core",
+    "dimension": "errors-retry",
+    "phase": "code",
+    "level": 1,
+    "evidence": "Uses `retry` with default 429-only policy",
+    "gap": "Lacks multi-level retry and error context attachment",
+    "nextAction": "Implement multi-level retry and attach error context to results for better error handling."
+  },
+  {
+    "chain": "score",
+    "tier": "core",
+    "dimension": "logging",
+    "phase": "code",
+    "level": 2,
+    "evidence": "Accepts `logger` config, uses `logger?.info()` inline in `applyScore` and `mapScore` functions.",
+    "gap": "Missing use of `createLifecycleLogger` for structured logging.",
+    "nextAction": "Integrate `createLifecycleLogger` to enhance structured logging capabilities."
+  },
+  {
+    "chain": "score",
+    "tier": "core",
+    "dimension": "events",
+    "phase": "code",
+    "level": 1,
+    "evidence": "Accepts `onProgress` in config, passes through to inner calls in `mapScore`.",
+    "gap": "Does not emit standard events via `progress-callback`.",
+    "nextAction": "Implement standard event emission using `progress-callback` for start, complete, and step events."
+  },
+  {
+    "chain": "score",
+    "tier": "core",
+    "dimension": "browser-server",
+    "phase": "code",
+    "level": 0,
+    "evidence": "No evidence of using `lib/env` or `runtime.isBrowser`/`runtime.isNode`.",
+    "gap": "Lacks environment adaptability.",
+    "nextAction": "Incorporate `lib/env` to ensure compatibility across environments."
+  },
+  {
+    "chain": "score",
+    "tier": "core",
+    "dimension": "code-quality",
+    "phase": "code",
+    "level": 3,
+    "evidence": "Spec-based architecture with multiple extracted pure instruction builders. No dead code, clear naming.",
+    "gap": "Could improve by further separating concerns and enhancing composability.",
+    "nextAction": "Refactor to enhance composability and further separate concerns."
+  },
+  {
+    "chain": "score",
+    "tier": "core",
+    "dimension": "token-management",
+    "phase": "code",
+    "level": 0,
+    "evidence": "No evidence of token management or chunking.",
+    "gap": "Lacks token awareness and management.",
+    "nextAction": "Implement token management using `createBatches` for token-budget-aware splitting."
+  },
+  {
+    "chain": "score",
+    "tier": "core",
+    "dimension": "errors-retry",
+    "phase": "code",
+    "level": 1,
+    "evidence": "Uses `retry` library with default retry policy in `applyScore`.",
+    "gap": "Lacks input validation and defined failure modes.",
+    "nextAction": "Introduce input validation and define clear failure modes for better error handling."
+  },
+  {
+    "chain": "sort",
+    "tier": "core",
+    "dimension": "logging",
+    "phase": "code",
+    "level": 1,
+    "evidence": "Uses `console.warn` in `process.env.VERBLETS_DEBUG` mode.",
+    "gap": "Does not accept a `logger` config or use `logger?.info()`.",
+    "nextAction": "Introduce a `logger` parameter and replace `console.warn` with `logger?.info()` calls."
+  },
+  {
+    "chain": "sort",
+    "tier": "core",
+    "dimension": "events",
+    "phase": "code",
+    "level": 2,
+    "evidence": "Emits standard events using `emitStart`, `emitComplete`, and `emitStepProgress` from `lib/progress-callback`.",
+    "gap": "Does not emit batch-level or phase-level events.",
+    "nextAction": "Implement batch-level events such as `batchStart` and `batchComplete` using `emitBatchStart` and `emitBatchProcessed`."
+  },
+  {
+    "chain": "sort",
+    "tier": "core",
+    "dimension": "browser-server",
+    "phase": "code",
+    "level": 1,
+    "evidence": "Uses `process.env.VERBLETS_DEBUG` directly, indicating compatibility with both environments but not using `lib/env`.",
+    "gap": "Does not use `lib/env` for environment reads.",
+    "nextAction": "Refactor to use `lib/env` for environment variable access to ensure isomorphic compatibility."
+  },
+  {
+    "chain": "sort",
+    "tier": "core",
+    "dimension": "code-quality",
+    "phase": "code",
+    "level": 2,
+    "evidence": "Good algorithm structure, but `createModelOptions` is duplicated and `console.warn` is used instead of a logger.",
+    "gap": "Duplication of `createModelOptions` and use of `console.warn`.",
+    "nextAction": "Extract `createModelOptions` to a shared utility and replace `console.warn` with a logger."
+  },
+  {
+    "chain": "sort",
+    "tier": "core",
+    "dimension": "token-management",
+    "phase": "code",
+    "level": 0,
+    "evidence": "No evidence of token management or chunking based on token budget.",
+    "gap": "Lacks any form of token management or chunking.",
+    "nextAction": "Implement token-aware chunking using `createBatches` from `lib/text-batch`."
+  },
+  {
+    "chain": "sort",
+    "tier": "core",
+    "dimension": "errors-retry",
+    "phase": "code",
+    "level": 1,
+    "evidence": "Uses `retry` from `lib/retry` with default settings.",
+    "gap": "No input validation or defined failure modes.",
+    "nextAction": "Introduce input validation and define clear failure modes, such as rethrowing or returning default values."
+  },
+  {
+    "chain": "test-analysis",
+    "tier": "internal",
+    "dimension": "logging",
+    "phase": "code",
+    "level": 0,
+    "evidence": "No imports related to logging found in the source code.",
+    "gap": "Import and use a logging library such as `lib/lifecycle-logger`.",
+    "nextAction": "Integrate `lib/lifecycle-logger` and implement basic logging functions like `logStart` and `logResult`."
+  },
+  {
+    "chain": "test-analysis",
+    "tier": "internal",
+    "dimension": "events",
+    "phase": "code",
+    "level": 0,
+    "evidence": "No imports or usage of event-related libraries such as `lib/progress-callback`.",
+    "gap": "Implement event emission using `lib/progress-callback`.",
+    "nextAction": "Add `onProgress` callback support and emit basic events like start and complete."
+  },
+  {
+    "chain": "test-analysis",
+    "tier": "internal",
+    "dimension": "browser-server",
+    "phase": "code",
+    "level": 0,
+    "evidence": "No evidence of environment-specific code or imports like `lib/env`.",
+    "gap": "Ensure compatibility with both browser and server environments.",
+    "nextAction": "Refactor code to use `lib/env` for environment checks."
+  },
+  {
+    "chain": "test-analysis",
+    "tier": "internal",
+    "dimension": "code-quality",
+    "phase": "code",
+    "level": 0,
+    "evidence": "Minimal code provided, no evidence of code quality practices.",
+    "gap": "Implement basic code quality practices such as clear naming and separation of concerns.",
+    "nextAction": "Refactor code to improve readability and maintainability."
+  },
+  {
+    "chain": "test-analysis",
+    "tier": "internal",
+    "dimension": "token-management",
+    "phase": "code",
+    "level": 0,
+    "evidence": "No imports or usage of token management libraries like `lib/text-batch`.",
+    "gap": "Implement token management using `createBatches`.",
+    "nextAction": "Integrate `lib/text-batch` to handle token budgets effectively."
+  },
+  {
+    "chain": "test-analysis",
+    "tier": "internal",
+    "dimension": "errors-retry",
+    "phase": "code",
+    "level": 0,
+    "evidence": "No error handling or retry logic found in the source code.",
+    "gap": "Implement basic error handling and retry mechanisms.",
+    "nextAction": "Use `lib/retry` to add retry logic for error handling."
+  },
+  {
+    "chain": "anonymize",
+    "tier": "standard",
+    "dimension": "documentation",
+    "phase": "interface",
+    "level": 2,
+    "evidence": "README has API section listing `anonymizeMethod`, `anonymizeSpec`, `applyAnonymization`",
+    "gap": "Lacks multiple examples, behavioral notes, and integration examples",
+    "nextAction": "Add more examples and detailed usage scenarios in the README"
+  },
+  {
+    "chain": "anonymize",
+    "tier": "standard",
+    "dimension": "api-surface",
+    "phase": "interface",
+    "level": 3,
+    "evidence": "Exports `anonymizeMethod`, `anonymizeSpec`, `applyAnonymization`, `createAnonymizer`",
+    "gap": "Missing factory functions and calibration utilities",
+    "nextAction": "Introduce factory functions and utilities for calibration"
+  },
+  {
+    "chain": "anonymize",
+    "tier": "standard",
+    "dimension": "composability",
+    "phase": "interface",
+    "level": 3,
+    "evidence": "Exports `anonymizeSpec()` and `applyAnonymization()` split",
+    "gap": "Lacks factory functions for all collection chains",
+    "nextAction": "Develop factory functions to enhance composability"
+  },
+  {
+    "chain": "anonymize",
+    "tier": "standard",
+    "dimension": "testing",
+    "phase": "interface",
+    "level": 4,
+    "evidence": "Has `index.spec.js` with unit tests and `index.examples.js` using `aiExpect`",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "dismantle",
+    "tier": "standard",
+    "dimension": "documentation",
+    "phase": "interface",
+    "level": 2,
+    "evidence": "README has API section listing `dismantle(name, [options])` and example usage",
+    "gap": "Lacks multiple examples, behavioral notes, and integration examples",
+    "nextAction": "Add more examples and detailed usage scenarios in the README"
+  },
+  {
+    "chain": "dismantle",
+    "tier": "standard",
+    "dimension": "api-surface",
+    "phase": "interface",
+    "level": 1,
+    "evidence": "Exports `simplifyTree`, `dismantle`, default export present",
+    "gap": "All exports need documentation and shared config destructuring",
+    "nextAction": "Document all exports and ensure shared config destructuring is clear"
+  },
+  {
+    "chain": "dismantle",
+    "tier": "standard",
+    "dimension": "testing",
+    "phase": "interface",
+    "level": 3,
+    "evidence": "Has `index.spec.js` with unit tests and `index.examples.js` using `aiExpect`",
+    "gap": "Lacks property-based tests and regression tests",
+    "nextAction": "Implement property-based tests and regression tests to cover more scenarios"
+  },
+  {
+    "chain": "document-shrink",
+    "tier": "standard",
+    "dimension": "documentation",
+    "phase": "interface",
+    "level": 2,
+    "evidence": "README has API section listing `documentShrink(article, query, { targetSize, tokenBudget })`",
+    "gap": "Lacks multiple examples, behavioral notes, and integration examples",
+    "nextAction": "Add more examples and integration notes to README"
+  },
+  {
+    "chain": "document-shrink",
+    "tier": "standard",
+    "dimension": "api-surface",
+    "phase": "interface",
+    "level": 1,
+    "evidence": "Exports default `documentShrink`, lacks shared config destructuring",
+    "gap": "All exports need documentation and shared config destructuring",
+    "nextAction": "Document all exports and implement shared config destructuring"
+  },
+  {
+    "chain": "document-shrink",
+    "tier": "standard",
+    "dimension": "composability",
+    "phase": "interface",
+    "level": 0,
+    "evidence": "Single-purpose function, no composition interfaces",
+    "gap": "Needs to accept/return standard types for manual chaining",
+    "nextAction": "Refactor to accept/return standard types for better chaining"
+  },
+  {
+    "chain": "document-shrink",
+    "tier": "standard",
+    "dimension": "testing",
+    "phase": "interface",
+    "level": 3,
+    "evidence": "Has `index.spec.js` with unit tests and `index.examples.js` using `aiExpect`",
+    "gap": "Lacks property-based tests and regression tests",
+    "nextAction": "Implement property-based and regression tests"
+  },
+  {
+    "chain": "entities",
+    "tier": "core",
+    "dimension": "documentation",
+    "phase": "interface",
+    "level": 3,
+    "evidence": "README has API section listing `entities(prompt, config)`, `extractEntities(text, instructions, config)`, `entitySpec(prompt, config)`, `applyEntities(text, specification, config)`, `createEntityExtractor(specification, config)` with examples and performance notes.",
+    "gap": "Missing architecture section and composition guidance.",
+    "nextAction": "Add an architecture section and detailed composition guidance to the README."
+  },
+  {
+    "chain": "entities",
+    "tier": "core",
+    "dimension": "api-surface",
+    "phase": "interface",
+    "level": 4,
+    "evidence": "Exports `entitySpec`, `applyEntities`, `extractEntities`, `mapInstructions`, `filterInstructions`, `reduceInstructions`, `findInstructions`, `groupInstructions`, `createEntityExtractor`. Follows full spec + factory functions + calibration utilities pattern.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "entities",
+    "tier": "core",
+    "dimension": "composability",
+    "phase": "interface",
+    "level": 4,
+    "evidence": "Exports `entitySpec()` and `applyEntities()` split; instruction builders for all 5 collection chains: `mapInstructions`, `filterInstructions`, `reduceInstructions`, `findInstructions`, `groupInstructions`.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "entities",
+    "tier": "core",
+    "dimension": "testing",
+    "phase": "interface",
+    "level": 3,
+    "evidence": "Has `index.spec.js` with unit tests and `index.examples.js` using `aiExpect`.",
+    "gap": "Lacks property-based tests and regression tests.",
+    "nextAction": "Implement property-based tests and regression tests to enhance coverage."
+  },
+  {
+    "chain": "expect",
+    "tier": "standard",
+    "dimension": "documentation",
+    "phase": "interface",
+    "level": 3,
+    "evidence": "README has API section listing `expect(actual, expected?, constraint?)`, multiple examples, and behavioral notes.",
+    "gap": "Missing architecture section, edge cases, performance notes, and composition guidance.",
+    "nextAction": "Add an architecture section and notes on edge cases and performance in the README."
+  },
+  {
+    "chain": "expect",
+    "tier": "standard",
+    "dimension": "api-surface",
+    "phase": "interface",
+    "level": 2,
+    "evidence": "Exports `expect`, `aiExpect`, `expectSimple`, but `aiExpect` and `expectSimple` are undocumented.",
+    "gap": "Instruction builders and spec/apply split are missing.",
+    "nextAction": "Document `aiExpect` and `expectSimple` in the README and consider adding instruction builders."
+  },
+  {
+    "chain": "expect",
+    "tier": "standard",
+    "dimension": "composability",
+    "phase": "interface",
+    "level": 1,
+    "evidence": "Exports `expect` which can be used in a chain, but lacks spec/apply split.",
+    "gap": "Does not compose other chains internally or provide a spec/apply split.",
+    "nextAction": "Introduce a spec/apply split to enhance composability."
+  },
+  {
+    "chain": "expect",
+    "tier": "standard",
+    "dimension": "testing",
+    "phase": "interface",
+    "level": 3,
+    "evidence": "Has `index.spec.js` with unit tests and `index.examples.js` using `aiExpect`.",
+    "gap": "Lacks property-based tests and regression tests.",
+    "nextAction": "Add property-based tests and regression tests to improve coverage."
+  },
+  {
+    "chain": "filter",
+    "tier": "core",
+    "dimension": "documentation",
+    "phase": "interface",
+    "level": 3,
+    "evidence": "README has API section listing `filter(list, instructions, config)`, multiple examples, and shared config reference",
+    "gap": "Lacks comprehensive architecture section and performance notes",
+    "nextAction": "Add architecture section and performance notes to README"
+  },
+  {
+    "chain": "filter",
+    "tier": "core",
+    "dimension": "api-surface",
+    "phase": "interface",
+    "level": 2,
+    "evidence": "Exports `filterOnce`, accepts shared config params `llm`, `maxAttempts`, `onProgress`",
+    "gap": "Lacks instruction builders and spec/apply split",
+    "nextAction": "Implement instruction builders and spec/apply split"
+  },
+  {
+    "chain": "filter",
+    "tier": "core",
+    "dimension": "testing",
+    "phase": "interface",
+    "level": 3,
+    "evidence": "Has `index.spec.js` with unit tests and `index.examples.js` using `aiExpect`",
+    "gap": "Lacks property-based tests and regression tests",
+    "nextAction": "Add property-based tests and regression tests"
+  },
+  {
+    "chain": "group",
+    "tier": "core",
+    "dimension": "documentation",
+    "phase": "interface",
+    "level": 3,
+    "evidence": "README has API section listing `group(list, instructions, config)`, includes parameter table and multiple examples",
+    "gap": "Lacks comprehensive architecture section and performance notes",
+    "nextAction": "Add architecture section and performance notes to README"
+  },
+  {
+    "chain": "group",
+    "tier": "core",
+    "dimension": "api-surface",
+    "phase": "interface",
+    "level": 1,
+    "evidence": "Exports default `group`, lacks additional named exports",
+    "gap": "No additional named exports or instruction builders",
+    "nextAction": "Document any additional exports and consider adding instruction builders"
+  },
+  {
+    "chain": "group",
+    "tier": "core",
+    "dimension": "testing",
+    "phase": "interface",
+    "level": 3,
+    "evidence": "Has `index.spec.js` with unit tests and `index.examples.js` using `aiExpect`",
+    "gap": "Lacks property-based tests and regression tests",
+    "nextAction": "Implement property-based tests and regression tests"
+  },
+  {
+    "chain": "llm-logger",
+    "tier": "standard",
+    "dimension": "documentation",
+    "phase": "interface",
+    "level": 3,
+    "evidence": "README has API section listing `createLLMLogger`, `createConsoleWriter`, and parameter table for `config`.",
+    "gap": "Missing architecture section and performance notes.",
+    "nextAction": "Add architecture section and performance notes to README."
+  },
+  {
+    "chain": "llm-logger",
+    "tier": "standard",
+    "dimension": "api-surface",
+    "phase": "interface",
+    "level": 2,
+    "evidence": "Exports `initLogger`, `log`, `createConsoleWriter`, `createFileWriter`, `createHostLoggerIntegration`, `createLLMLogger`.",
+    "gap": "Lacks instruction builders and spec/apply split.",
+    "nextAction": "Introduce instruction builders and spec/apply split for enhanced API surface."
+  },
+  {
+    "chain": "llm-logger",
+    "tier": "standard",
+    "dimension": "testing",
+    "phase": "interface",
+    "level": 3,
+    "evidence": "Has `index.spec.js` with unit tests and `index.examples.js` using example tests.",
+    "gap": "Lacks aiExpect coverage and property-based tests.",
+    "nextAction": "Integrate aiExpect for semantic validation and add property-based tests."
+  },
+  {
+    "chain": "map",
+    "tier": "core",
+    "dimension": "documentation",
+    "phase": "interface",
+    "level": 3,
+    "evidence": "README has API section listing `map(list, instructions, [config])`, includes multiple examples and integration notes",
+    "gap": "Lacks comprehensive architecture section and performance notes",
+    "nextAction": "Add architecture section and performance notes to README"
+  },
+  {
+    "chain": "map",
+    "tier": "core",
+    "dimension": "api-surface",
+    "phase": "interface",
+    "level": 2,
+    "evidence": "Exports `mapOnce`, no default export, config params `maxParallel`, `onProgress`, `now`, `chainStartTime`, `maxAttempts`, `logger`",
+    "gap": "Lacks instruction builders and spec/apply split",
+    "nextAction": "Introduce instruction builders and spec/apply split for enhanced API surface"
+  },
+  {
+    "chain": "map",
+    "tier": "core",
+    "dimension": "testing",
+    "phase": "interface",
+    "level": 2,
+    "evidence": "Has `index.spec.js` with unit tests and `index.examples.js` using example tests",
+    "gap": "Lacks aiExpect coverage and property-based tests",
+    "nextAction": "Incorporate aiExpect coverage and property-based tests to improve testing maturity"
+  },
+  {
+    "chain": "reduce",
+    "tier": "core",
+    "dimension": "documentation",
+    "phase": "interface",
+    "level": 3,
+    "evidence": "README has API section listing `reduce(list, instructions, config)`, parameter table, shared config reference, multiple examples",
+    "gap": "Comprehensive architecture section, edge cases, performance notes, composition guidance",
+    "nextAction": "Add architecture section and edge case handling notes to README"
+  },
+  {
+    "chain": "reduce",
+    "tier": "core",
+    "dimension": "api-surface",
+    "phase": "interface",
+    "level": 1,
+    "evidence": "Exports default `reduce`, no other exports documented",
+    "gap": "All exports documented, shared config destructuring",
+    "nextAction": "Document all exports and ensure shared config destructuring is clear"
+  },
+  {
+    "chain": "reduce",
+    "tier": "core",
+    "dimension": "testing",
+    "phase": "interface",
+    "level": 3,
+    "evidence": "Has `index.spec.js` with unit tests and `index.examples.js` using `aiExpect`",
+    "gap": "Property-based tests, regression tests",
+    "nextAction": "Implement property-based tests and regression tests"
+  },
+  {
+    "chain": "score",
+    "tier": "core",
+    "dimension": "documentation",
+    "phase": "interface",
+    "level": 3,
+    "evidence": "README has API section listing `mapScore(list, instructions, config)`, `scoreItem(item, instructions, config)`, `scoreSpec(instructions, config)`, `applyScore(item, specification, config)` with examples",
+    "gap": "Lacks comprehensive architecture section, edge cases, and performance notes",
+    "nextAction": "Add detailed architecture section and performance notes to README"
+  },
+  {
+    "chain": "score",
+    "tier": "core",
+    "dimension": "api-surface",
+    "phase": "interface",
+    "level": 3,
+    "evidence": "Exports `scoreSpec`, `applyScore`, `scoreItem`, `mapScore`, `mapInstructions`, `filterInstructions`, `reduceInstructions`, `findInstructions`, `groupInstructions`, `buildCalibrationReference`, `formatCalibrationBlock`",
+    "gap": "Missing factory functions and calibration utilities for full maturity",
+    "nextAction": "Introduce factory functions and expand calibration utilities"
+  },
+  {
+    "chain": "score",
+    "tier": "core",
+    "dimension": "composability",
+    "phase": "interface",
+    "level": 3,
+    "evidence": "Exports `scoreSpec()` and `applyScore()` split, instruction builders for multiple chains",
+    "gap": "Lacks factory functions for all collection chains",
+    "nextAction": "Develop factory functions for all collection chains"
+  },
+  {
+    "chain": "score",
+    "tier": "core",
+    "dimension": "testing",
+    "phase": "interface",
+    "level": 3,
+    "evidence": "Has `index.spec.js` with unit tests and `index.examples.js` using example tests",
+    "gap": "No aiExpect or property-based tests",
+    "nextAction": "Integrate aiExpect and add property-based tests"
+  },
+  {
+    "chain": "sort",
+    "tier": "core",
+    "dimension": "documentation",
+    "phase": "interface",
+    "level": 3,
+    "evidence": "README has API section listing `sort(list, criteria, config)`, parameter table, shared config reference, multiple examples",
+    "gap": "Comprehensive: architecture section, edge cases, performance notes, composition guidance",
+    "nextAction": "Add architecture section and edge case handling notes to README"
+  },
+  {
+    "chain": "sort",
+    "tier": "core",
+    "dimension": "api-surface",
+    "phase": "interface",
+    "level": 2,
+    "evidence": "Exports `defaultSortChunkSize`, `defaultSortExtremeK`, `defaultSortIterations`, `useTestSortPrompt`",
+    "gap": "Instruction builders, spec/apply split",
+    "nextAction": "Implement instruction builders and spec/apply split for better API surface"
+  },
+  {
+    "chain": "sort",
+    "tier": "core",
+    "dimension": "testing",
+    "phase": "interface",
+    "level": 3,
+    "evidence": "Has `index.spec.js` with unit tests and `index.examples.js` using `aiExpect`",
+    "gap": "Unit + example + aiExpect/ai-arch-expect, property-based tests, regression tests",
+    "nextAction": "Add property-based tests and regression tests to enhance coverage"
+  },
+  {
+    "chain": "test-analysis",
+    "tier": "internal",
+    "dimension": "documentation",
+    "phase": "interface",
+    "level": 0,
+    "evidence": "No README",
+    "gap": "README with basic description",
+    "nextAction": "Create a README with a basic description of the chain's functionality."
+  },
+  {
+    "chain": "test-analysis",
+    "tier": "internal",
+    "dimension": "api-surface",
+    "phase": "interface",
+    "level": 1,
+    "evidence": "Exports default from './reporter.js'",
+    "gap": "All exports documented, shared config destructuring",
+    "nextAction": "Document the default export and any shared configuration parameters."
+  },
+  {
+    "chain": "test-analysis",
+    "tier": "internal",
+    "dimension": "composability",
+    "phase": "interface",
+    "level": 0,
+    "evidence": "Single default export, no composition interfaces",
+    "gap": "Accepts/returns standard types, can be chained manually",
+    "nextAction": "Modify the chain to accept and return standard types to enable manual chaining."
+  },
+  {
+    "chain": "test-analysis",
+    "tier": "internal",
+    "dimension": "testing",
+    "phase": "interface",
+    "level": 1,
+    "evidence": "Has index.examples.js, no spec tests, no aiExpect",
+    "gap": "Example tests using vitest core wrappers, cover happy path",
+    "nextAction": "Add example tests using vitest core wrappers to cover the happy path."
+  },
+  {
+    "chain": "anonymize",
+    "tier": "standard",
+    "dimension": "prompt-engineering",
+    "phase": "prompt",
+    "level": 4,
+    "evidence": "- Uses `asXML` for variable wrapping in `specUserPrompt`.\n- System prompt: `specSystemPrompt` is defined and used.\n- No explicit temperature setting found.\n- Uses `response_format` with JSON schemas in `anonymizeSpec` function.\n- Utilizes shared prompt utilities like `retry` and `asXML`.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "dismantle",
+    "tier": "standard",
+    "dimension": "prompt-engineering",
+    "phase": "prompt",
+    "level": 3,
+    "evidence": "- Uses `promptConstants` such as `asJSON` and `asWrappedArrayJSON`.\n- System prompts are defined in `subComponentsPrompt` and `componentOptionsPrompt` functions.\n- Temperature settings are explicitly set to 0.7 and 0.3 in `defaultDecompose` and `defaultEnhance` functions respectively.\n- `response_format` is used with JSON schemas in `defaultDecompose` and `defaultEnhance` functions.",
+    "gap": "To reach level 4, the chain could implement multi-stage prompt pipelines and further tune frequency/presence penalties.",
+    "nextAction": "Implement multi-stage prompt pipelines and explore tuning frequency/presence penalties for more refined control over the output."
+  },
+  {
+    "chain": "document-shrink",
+    "tier": "standard",
+    "dimension": "prompt-engineering",
+    "phase": "prompt",
+    "level": 0,
+    "evidence": "No prompt-related imports or usage of prompt patterns like template literals, prompt constants, system prompts, temperature settings, or response_format. The code relies on inline string concatenation and lacks shared utilities.",
+    "gap": "To reach level 1, the chain should start using asXML for variable wrapping or other shared utilities.",
+    "nextAction": "Integrate asXML for variable wrapping to improve prompt engineering maturity."
+  },
+  {
+    "chain": "entities",
+    "tier": "core",
+    "dimension": "prompt-engineering",
+    "phase": "prompt",
+    "level": 3,
+    "evidence": "- Uses `asXML` for variable wrapping, indicating level 1 maturity.\n- Utilizes `promptConstants` such as `onlyJSON`, indicating level 2 maturity.\n- Incorporates system prompts and `response_format` with JSON schemas, indicating level 3 maturity.\n- No explicit temperature settings found, which is a gap for level 4.",
+    "gap": "Explicit temperature tuning is missing to reach level 4.",
+    "nextAction": "Introduce temperature settings to fine-tune the model's creativity and consistency."
+  },
+  {
+    "chain": "expect",
+    "tier": "standard",
+    "dimension": "prompt-engineering",
+    "phase": "prompt",
+    "level": 2,
+    "evidence": "- Uses `wrapVariable` for XML wrapping of variables.\n- Utilizes `chatgpt` for generating responses with specific model options.\n- Employs `prompt` constants like `asXML` for variable wrapping.\n- No explicit temperature settings or `response_format` usage observed.",
+    "gap": "To reach level 3, the chain needs to incorporate system prompts, temperature tuning, and `response_format` with JSON schemas.",
+    "nextAction": "Introduce system prompts and experiment with temperature settings to enhance response variability and control."
+  },
+  {
+    "chain": "group",
+    "tier": "core",
+    "dimension": "prompt-engineering",
+    "phase": "prompt",
+    "level": 2,
+    "evidence": "- Uses `asXML` for variable wrapping in `createCategoryDiscoveryPrompt` function.\n- Extracted prompt builder functions: `createCategoryDiscoveryPrompt`, `createAssignmentInstructions`.\n- No use of `promptConstants`.\n- No system prompts, temperature settings, or `response_format` usage observed.",
+    "gap": "To reach level 3, the chain needs to incorporate system prompts, temperature tuning, and `response_format` with JSON schemas.",
+    "nextAction": "Integrate system prompts and consider using `response_format` for structured output."
+  },
+  {
+    "chain": "llm-logger",
+    "tier": "standard",
+    "dimension": "prompt-engineering",
+    "phase": "prompt",
+    "level": 0,
+    "evidence": "No prompt-related imports or usage of prompt patterns such as template literals, prompt constants, system prompts, temperature settings, or response_format.",
+    "gap": "The module lacks any structured prompt engineering practices, such as using asXML for variable wrapping or any shared utilities.",
+    "nextAction": "Introduce basic prompt engineering practices by using asXML for variable wrapping to improve prompt structure and consistency."
+  },
+  {
+    "chain": "map",
+    "tier": "core",
+    "dimension": "prompt-engineering",
+    "phase": "prompt",
+    "level": 2,
+    "evidence": "- Uses `asXML` for variable wrapping in prompts.\n- Compiled prompt includes structured instructions with XML tags.\n- No mention of system prompts, temperature settings, or response_format usage.\n- Utilizes shared utilities like `listBatch`, `retry`, and `parallelBatch`.",
+    "gap": "To reach level 3, the chain needs to incorporate system prompts, temperature tuning, and response_format with JSON schemas.",
+    "nextAction": "Integrate system prompts and experiment with temperature settings to enhance prompt flexibility and control."
+  },
+  {
+    "chain": "score",
+    "tier": "core",
+    "dimension": "prompt-engineering",
+    "phase": "prompt",
+    "level": 3,
+    "evidence": "- Uses `asXML` for variable wrapping, indicating level 1 maturity.\n- Utilizes `promptConstants` with `onlyJSON`, indicating level 2 maturity.\n- Implements `response_format` with JSON schema for structured output, indicating level 3 maturity.\n- No evidence of system prompts or temperature settings, which are typical of level 3.",
+    "gap": "Incorporate system prompts and temperature tuning to reach level 4.",
+    "nextAction": "Introduce system prompts to define roles and experiment with temperature settings for better control over response creativity and consistency."
+  },
+  {
+    "chain": "sort",
+    "tier": "core",
+    "dimension": "prompt-engineering",
+    "phase": "prompt",
+    "level": 3,
+    "evidence": "- Uses `response_format` with JSON schema for structured outputs.\n- Imports and uses `sortPromptInitial` from shared `prompts` module.\n- No explicit temperature setting found.\n- System prompts not explicitly mentioned, but uses structured prompt patterns.\n- Utilizes `retry` and `progress-callback` for robust execution.",
+    "gap": "To reach level 4, the chain could implement multi-stage prompt pipelines and explore frequency/presence penalty tuning.",
+    "nextAction": "Introduce multi-stage prompt pipelines to handle complex sorting scenarios and experiment with frequency/presence penalty settings to optimize LLM responses."
+  },
+  {
+    "chain": "test-analysis",
+    "tier": "internal",
+    "dimension": "prompt-engineering",
+    "phase": "prompt",
+    "level": 0,
+    "evidence": "No prompt-related imports or shared utilities are used. The source code relies on inline string concatenation without any prompt engineering patterns or utilities.",
+    "gap": "The chain lacks the use of asXML for variable wrapping, which is necessary to reach level 1.",
+    "nextAction": "Introduce the use of asXML for variable wrapping to improve prompt engineering maturity."
+  }
+]

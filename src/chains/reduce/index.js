@@ -2,40 +2,41 @@ import listBatch, { ListStyle, determineStyle } from '../../verblets/list-batch/
 import { asXML } from '../../prompts/wrap-variable.js';
 import { reduceAccumulatorJsonSchema } from './schemas.js';
 import { createLifecycleLogger, extractBatchConfig } from '../../lib/lifecycle-logger/index.js';
-import { createBatches, retry, batchTracker } from '../../lib/index.js';
+import { retry, prepareBatches } from '../../lib/index.js';
+import { initChain } from '../../lib/context/option.js';
+
+import { jsonSchema } from '../../lib/llm/index.js';
 
 // Default response format for reduce operations - simple string accumulator
-const DEFAULT_REDUCE_RESPONSE_FORMAT = {
-  type: 'json_schema',
-  json_schema: reduceAccumulatorJsonSchema,
-};
+const DEFAULT_REDUCE_RESPONSE_FORMAT = jsonSchema(
+  reduceAccumulatorJsonSchema.name,
+  reduceAccumulatorJsonSchema.schema
+);
 
 const reduce = async function reduce(list, instructions, config = {}) {
   const {
-    initial,
-    listStyle,
-    autoModeThreshold,
-    responseFormat,
-    llm,
-    logger,
-    maxAttempts = 3,
-    onProgress,
-    abortSignal,
-    now = new Date(),
-    ...options
-  } = config;
+    config: scopedConfig,
+    progressMode,
+    accumulatorMode,
+  } = await initChain('reduce', config, {
+    progressMode: 'detailed',
+    accumulatorMode: 'auto',
+  });
+  config = scopedConfig;
 
-  const lifecycleLogger = createLifecycleLogger(logger, 'chain:reduce');
+  const lifecycleLogger = createLifecycleLogger(config.logger, 'chain:reduce');
 
-  let acc = initial;
+  let acc = config.initial;
 
   // If initial is an array and we're using default format, wrap it
-  const needsItemsWrapper = Array.isArray(initial) && !responseFormat;
+  const needsItemsWrapper =
+    accumulatorMode === 'collection' ||
+    (accumulatorMode === 'auto' && Array.isArray(config.initial) && !config.responseFormat);
   if (needsItemsWrapper) {
-    acc = { items: initial };
+    acc = { items: config.initial };
   }
 
-  const batches = createBatches(list, config);
+  const { batches, tracker } = await prepareBatches('reduce', list, config, { progressMode });
   const activeBatches = batches.filter((b) => !b.skip);
 
   lifecycleLogger.logStart(
@@ -43,13 +44,8 @@ const reduce = async function reduce(list, instructions, config = {}) {
       totalItems: list.length,
       totalBatches: activeBatches.length,
       batchSize: config.batchSize,
-      maxAttempts,
     })
   );
-
-  const tracker = batchTracker('reduce', list.length, { onProgress, now });
-
-  tracker.start(activeBatches.length);
 
   for (const [batchIndex, { items, skip, startIndex }] of batches.entries()) {
     if (skip) {
@@ -57,7 +53,7 @@ const reduce = async function reduce(list, instructions, config = {}) {
       continue;
     }
 
-    const batchStyle = determineStyle(listStyle, items, autoModeThreshold);
+    const batchStyle = determineStyle(config.listStyle, items, config.autoModeThreshold);
 
     const reduceInstructions = ({ style, count }) => {
       const itemFormat = style === ListStyle.XML ? 'XML' : '';
@@ -81,26 +77,23 @@ ${asXML(
 Process exactly ${count} items from the ${itemFormat} list below and return the final accumulator value.`;
     };
 
-    const effectiveResponseFormat = responseFormat || DEFAULT_REDUCE_RESPONSE_FORMAT;
+    const effectiveResponseFormat = config.responseFormat || DEFAULT_REDUCE_RESPONSE_FORMAT;
 
     const prompt = reduceInstructions({ style: batchStyle, count: items.length });
     const listBatchOptions = {
+      ...config,
       listStyle: batchStyle,
-      autoModeThreshold,
       responseFormat: effectiveResponseFormat,
-      llm,
       logger: lifecycleLogger,
-      ...options,
     };
 
     const result = await retry(() => listBatch(items, prompt, listBatchOptions), {
       label: 'reduce:batch',
-      maxAttempts,
+      config,
       onProgress: tracker.forBatch(startIndex, items.length),
-      abortSignal,
     });
 
-    if (!responseFormat && result?.accumulator !== undefined) {
+    if (!config.responseFormat && result?.accumulator !== undefined) {
       acc = result.accumulator;
     } else {
       acc = result;

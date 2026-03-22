@@ -7,6 +7,7 @@ import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import stripResponse from '../../lib/strip-response/index.js';
 import { constants as promptConstants, asXML } from '../../prompts/index.js';
+import { scopeOperation } from '../../lib/context/option.js';
 
 const { contentIsSchema, contentToJSON, onlyJSON, shapeAsJSON } = promptConstants;
 
@@ -91,7 +92,7 @@ function logDebugInfo(attempt, prompt, response, error) {
  * Converts text to structured JSON object using LLM assistance
  */
 export default async function toObject(text, schema, config = {}) {
-  const { llm = 'fastGood', maxAttempts = 3, onProgress, abortSignal, ...options } = config;
+  config = scopeOperation('to-object', { llm: 'fastGood', ...config });
   let errorDetails;
 
   // First attempt: try direct parsing
@@ -105,11 +106,9 @@ export default async function toObject(text, schema, config = {}) {
   // Second attempt: use LLM to fix JSON
   try {
     const prompt = buildJsonPrompt(text, schema, errorDetails);
-    const response = await retry(() => callLlm(prompt, { llm, ...options }), {
+    const response = await retry(() => callLlm(prompt, config), {
       label: 'to-object json fix',
-      maxAttempts,
-      onProgress,
-      abortSignal,
+      config,
     });
 
     const result = parseAndValidate(response, schema);
@@ -122,11 +121,9 @@ export default async function toObject(text, schema, config = {}) {
   // Third attempt: final retry with updated errors
   try {
     const prompt = buildJsonPrompt(text, schema, errorDetails);
-    const response = await retry(() => callLlm(prompt, { llm, ...options }), {
+    const response = await retry(() => callLlm(prompt, config), {
       label: 'to-object final retry',
-      maxAttempts,
-      onProgress,
-      abortSignal,
+      config,
     });
 
     const result = parseAndValidate(response, schema);
