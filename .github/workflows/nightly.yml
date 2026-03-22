@@ -137,10 +137,13 @@ jobs:
 
       - name: Build and send report
         run: |
+          # Strip ANSI escape codes from results files
+          strip() { sed 's/\x1b\[[0-9;]*m//g' "$1"; }
+
           summary() {
             local f="artifacts/$1/results.txt"
             if [ -f "$f" ]; then
-              grep -E '^\s*(Test Files|Tests|Duration)' "$f" | sed 's/^\s*//' | head -3
+              strip "$f" | grep -E '^\s*(Test Files|Tests|Duration)' | sed 's/^\s*//' | head -3
             else
               echo "skipped"
             fi
@@ -149,10 +152,8 @@ jobs:
           failures() {
             local f="artifacts/$1/results.txt"
             if [ -f "$f" ]; then
-              # Show failed test files
-              grep -E 'FAIL\s+src/' "$f" | sed 's/^\s*//' | head -5
-              # Show individual failed test names
-              grep -E '^\s*×' "$f" | sed 's/^\s*//' | head -10
+              strip "$f" | grep -E 'FAIL\s+src/' | sed 's/^\s*//' | head -5
+              strip "$f" | grep -E '^\s*×' | sed 's/^\s*//' | head -10
             fi
           }
 
@@ -172,7 +173,7 @@ jobs:
           suite_icon() {
             local f="artifacts/$1/results.txt"
             if [ ! -f "$f" ]; then echo "⏭️"; return; fi
-            if grep -qE 'FAIL\s+src/' "$f"; then echo "❌"; else echo "✅"; fi
+            if strip "$f" | grep -qE 'FAIL\s+src/'; then echo "❌"; else echo "✅"; fi
           }
 
           MSG="$(icon "$S")$(icon "$C")$(icon "$E") Nightly $(date -u +%m/%d)
