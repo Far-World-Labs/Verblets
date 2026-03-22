@@ -22,7 +22,6 @@ const responseFormat = {
  * @returns {Promise<Object>} Object with value and unit properties
  */
 export default async function numberWithUnits(text, config = {}) {
-  const { llm, ...options } = config;
   const numberText = `${contentIsQuestion} ${text} \n\n${explainAndSeparate} ${explainAndSeparateJSON}
 
 Answer the question and provide the numeric value and unit. If the question is unanswerable or the specific numeric value cannot be determined, set "value" to null but still identify the unit being asked for.
@@ -30,9 +29,8 @@ Answer the question and provide the numeric value and unit. If the question is u
 ${asNumberWithUnits}`;
 
   const response = await callLlm(numberText, {
-    llm,
-    modelOptions: { response_format: responseFormat },
-    ...options,
+    ...config,
+    response_format: responseFormat,
   });
 
   // With structured output, response is already parsed

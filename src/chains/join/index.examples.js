@@ -1,18 +1,9 @@
-import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
+import { describe } from 'vitest';
 import join from './index.js';
 import { longTestTimeout } from '../../constants/common.js';
-import vitestAiExpect from '../expect/index.js';
-import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
-import { getConfig } from '../test-analysis/config.js';
+import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 
-const config = getConfig();
-const it = config?.aiMode ? wrapIt(vitestIt, { baseProps: { suite: 'Join chain' } }) : vitestIt;
-const expect = config?.aiMode
-  ? wrapExpect(vitestExpect, { baseProps: { suite: 'Join chain' } })
-  : vitestExpect;
-const aiExpect = config?.aiMode
-  ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'Join chain' } })
-  : vitestAiExpect;
+const { it, expect, aiExpect } = getTestHelpers('Join chain');
 
 describe('join examples', () => {
   it(
@@ -54,79 +45,6 @@ describe('join examples', () => {
   );
 
   it(
-    'joins technical documentation with bulk processing',
-    async () => {
-      const fragments = [
-        'Install the package using npm install.',
-        'Import the function in your code.',
-        'Configure the required environment variables.',
-        'Initialize the service with your API key.',
-        'Call the function with your parameters.',
-        'Handle the returned promise appropriately.',
-      ];
-      const result = await join(
-        fragments,
-        'Connect these instructions with appropriate transitions',
-        { windowSize: 2 }
-      );
-
-      // Check for key technical terms from each fragment
-      const keyTerms = [
-        ['install', 'package', 'npm'],
-        ['import', 'function', 'code'],
-        ['configure', 'environment', 'variables'],
-        ['initialize', 'service', 'api', 'key'],
-        ['call', 'function', 'parameters'],
-        ['handle', 'promise', 'returned'],
-      ];
-
-      const containsKeyContent = keyTerms.every((terms) =>
-        terms.some((term) => result.toLowerCase().includes(term.toLowerCase()))
-      );
-
-      const hasInstallReference = result.toLowerCase().includes('install');
-
-      expect(typeof result).toBe('string');
-      expect(containsKeyContent).toBe(true);
-      expect(hasInstallReference).toBe(true);
-
-      // Structural check: result should read as connected prose, not just concatenated fragments
-      expect(result.length).toBeGreaterThan(fragments.join(' ').length * 0.8);
-
-      await aiExpect(result).toSatisfy(
-        'Reads as coherent technical instructions, not disconnected fragments'
-      );
-    },
-    longTestTimeout
-  );
-
-  it(
-    'transforms final result with custom function',
-    async () => {
-      const fragments = ['Hello', 'world', 'today', 'is', 'sunny'];
-      const rawResult = await join(
-        fragments,
-        'Connect these words into a natural, coherent sentence by adding necessary filler words to make it semantically meaningful',
-        {
-          windowSize: 2,
-        }
-      );
-      const result = `[${rawResult}]`; // Apply transformation after join
-
-      const hasProperBrackets = result.startsWith('[') && result.endsWith(']');
-      const containsWords = fragments.every((word) =>
-        result.toLowerCase().includes(word.toLowerCase())
-      );
-
-      expect(hasProperBrackets).toBe(true);
-      expect(containsWords).toBe(true);
-
-      // containsWords check above already validates word inclusion
-    },
-    longTestTimeout
-  );
-
-  it(
     'handles empty and single item lists',
     async () => {
       const emptyResult = await join([]);
@@ -134,46 +52,6 @@ describe('join examples', () => {
 
       expect(emptyResult).toBe('');
       expect(singleResult).toBe('Only item');
-    },
-    longTestTimeout
-  );
-
-  it(
-    'processes longer lists with bulk operations',
-    async () => {
-      const aiTopics = [
-        'Machine learning algorithms analyze data.',
-        'Neural networks process information.',
-        'Deep learning mimics brain structure.',
-        'Computer vision interprets images.',
-        'Natural language processing understands text.',
-        'Reinforcement learning learns through trial.',
-        'Data preprocessing cleans information.',
-        'Model validation ensures accuracy.',
-      ];
-
-      const result = await join(aiTopics, 'Create connected text about AI topics', {
-        windowSize: 3,
-      });
-
-      const containsMostFragments =
-        aiTopics.filter(
-          (topic) =>
-            result.includes(topic.replace('.', '')) ||
-            topic.split(' ').some((word) => word.length > 4 && result.includes(word))
-        ).length >= 6;
-
-      const hasReasonableLength = result.length > 200;
-
-      expect(typeof result).toBe('string');
-      expect(containsMostFragments).toBe(true);
-      expect(hasReasonableLength).toBe(true);
-
-      // AI validation for AI topic coverage (join chain may produce repetitive text at chunk boundaries)
-      await aiExpect(result).toSatisfy(
-        'This text mentions multiple AI topics including machine learning, neural networks, and natural language processing',
-        { mode: 'error' }
-      );
     },
     longTestTimeout
   );

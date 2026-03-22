@@ -1,4 +1,4 @@
-import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
+import { describe } from 'vitest';
 import entities, { createEntityExtractor, entitySpec, applyEntities } from './index.js';
 import {
   mapInstructions,
@@ -13,28 +13,17 @@ import filter from '../filter/index.js';
 import group from '../group/index.js';
 import find from '../find/index.js';
 import { techCompanyArticle } from './sample-text.js';
-import { longTestTimeout } from '../../constants/common.js';
-import vitestAiExpect from '../expect/index.js';
-import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
-import { getConfig } from '../test-analysis/config.js';
+import { longTestTimeout, isMediumBudget } from '../../constants/common.js';
+import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 
-const config = getConfig();
-const it = config?.aiMode ? wrapIt(vitestIt, { baseProps: { suite: 'Entities chain' } }) : vitestIt;
-const expect = config?.aiMode
-  ? wrapExpect(vitestExpect, { baseProps: { suite: 'Entities chain' } })
-  : vitestExpect;
-const aiExpect = config?.aiMode
-  ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'Entities chain' } })
-  : vitestAiExpect;
+const { it, expect, aiExpect } = getTestHelpers('Entities chain');
 
-// Split the article into chunks
 const chunks = techCompanyArticle.split('\n\n').filter((chunk) => chunk.trim().length > 0);
 
 describe('entities examples', () => {
   it(
-    'should extract entities from text',
+    'extracts entities from text',
     async () => {
-      // chunks[0] is the headline; chunks[1] is the first paragraph with actual entities
       const text = chunks[1];
       const extractor = entities('Extract companies and people');
       const result = await extractor(text);
@@ -42,35 +31,61 @@ describe('entities examples', () => {
       expect(result).toHaveProperty('entities');
       expect(Array.isArray(result.entities)).toBe(true);
       expect(result.entities.length).toBeGreaterThan(0);
+
+      await aiExpect(result.entities).toSatisfy(
+        'Contains named entities (companies or people) extracted from a tech article'
+      );
     },
     longTestTimeout
   );
 
-  it('should map entities across chunks', async () => {
-    const instructions = await mapInstructions('Extract companies and people');
-    const results = await map(chunks.slice(0, 3), instructions);
+  it(
+    'generates and applies entity specification',
+    async () => {
+      const spec = await entitySpec('Extract companies, people, and locations');
 
-    expect(Array.isArray(results)).toBe(true);
-    expect(results.length).toBe(3);
-    // Map returns the transformed items directly, which should be entity objects/arrays
-    expect(results[0]).toBeTruthy();
-  }, 20000);
+      expect(typeof spec).toBe('string');
+      expect(spec.length).toBeGreaterThan(0);
 
-  it('should reduce entities to consolidated list', async () => {
-    const instructions = await reduceInstructions({
-      entities: 'Extract all companies',
+      const result = await applyEntities(chunks[0], spec);
+
+      expect(result).toHaveProperty('entities');
+      expect(Array.isArray(result.entities)).toBe(true);
+    },
+    longTestTimeout
+  );
+});
+
+// Each instruction generator (mapInstructions, reduceInstructions, etc.) produces
+// entity-aware prompts — these test that the DSL flows correctly through each chain.
+describe.skipIf(!isMediumBudget)('[medium] entities chain operations', () => {
+  it(
+    'maps entities across chunks',
+    async () => {
+      const instructions = mapInstructions({ specification: 'Extract companies and people' });
+      const results = await map(chunks.slice(0, 3), instructions);
+
+      expect(Array.isArray(results)).toBe(true);
+      expect(results.length).toBe(3);
+      expect(results[0]).toBeTruthy();
+    },
+    longTestTimeout
+  );
+
+  it('reduces entities to consolidated list', async () => {
+    const instructions = reduceInstructions({
+      specification: 'Extract all companies',
       processing: 'Merge duplicates into single list',
     });
 
     const consolidated = await reduce(chunks.slice(0, 5), instructions, []);
 
-    // Reduce should return an array of entities
     expect(consolidated).toBeTruthy();
   }, 25000);
 
-  it('should filter chunks containing specific entities', async () => {
-    const instructions = await filterInstructions({
-      entities: 'Extract companies',
+  it('filters chunks containing specific entities', async () => {
+    const instructions = filterInstructions({
+      specification: 'Extract companies',
       processing: 'Keep chunks mentioning Apple or Microsoft',
     });
 
@@ -81,21 +96,25 @@ describe('entities examples', () => {
     expect(filtered.length).toBeLessThan(10);
   }, 25000);
 
-  it('should find chunk with most entities', async () => {
-    const instructions = await findInstructions({
-      entities: 'Extract all named entities',
-      processing: 'Select chunk with highest entity density',
-    });
+  it(
+    'finds chunk with most entities',
+    async () => {
+      const instructions = findInstructions({
+        specification: 'Extract all named entities',
+        processing: 'Select chunk with highest entity density',
+      });
 
-    const found = await find(chunks.slice(0, 5), instructions);
+      const found = await find(chunks.slice(0, 5), instructions);
 
-    expect(typeof found).toBe('string');
-    expect(found.length).toBeGreaterThan(0);
-  }, 20000);
+      expect(typeof found).toBe('string');
+      expect(found.length).toBeGreaterThan(0);
+    },
+    longTestTimeout
+  );
 
-  it('should group chunks by entity types', async () => {
-    const instructions = await groupInstructions({
-      entities: 'Extract companies and financial figures',
+  it('groups chunks by entity types', async () => {
+    const instructions = groupInstructions({
+      specification: 'Extract companies and financial figures',
       processing: 'Group by whether chunk contains acquisitions vs partnerships',
     });
 
@@ -104,32 +123,20 @@ describe('entities examples', () => {
     expect(typeof grouped).toBe('object');
     expect(Object.keys(grouped).length).toBeGreaterThan(0);
   }, 25000);
-});
 
-describe('createEntityExtractor examples', () => {
-  it('should create reusable extractor', async () => {
-    const spec = await entitySpec('Extract tech companies and their CEOs');
-    const extractor = createEntityExtractor(spec);
+  it(
+    'creates reusable extractor with spec',
+    async () => {
+      const spec = await entitySpec('Extract tech companies and their CEOs');
+      const extractor = createEntityExtractor(spec);
 
-    const result1 = await extractor(chunks[0]);
-    const result2 = await extractor(chunks[1]);
+      const result1 = await extractor(chunks[0]);
+      const result2 = await extractor(chunks[1]);
 
-    expect(result1).toBeTruthy();
-    expect(result2).toBeTruthy();
-    expect(extractor.specification).toBe(spec);
-  }, 20000);
-});
-
-describe('entitySpec and applyEntities examples', () => {
-  it('should generate and apply entity specification', async () => {
-    const spec = await entitySpec('Extract companies, people, and locations');
-
-    expect(typeof spec).toBe('string');
-    expect(spec.length).toBeGreaterThan(0);
-
-    const result = await applyEntities(chunks[0], spec);
-
-    expect(result).toHaveProperty('entities');
-    expect(Array.isArray(result.entities)).toBe(true);
-  }, 15000);
+      expect(result1).toBeTruthy();
+      expect(result2).toBeTruthy();
+      expect(extractor.specification).toBe(spec);
+    },
+    longTestTimeout
+  );
 });

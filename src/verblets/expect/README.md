@@ -47,13 +47,13 @@ For advanced debugging, detailed error analysis, and enhanced features, use the 
 
 ```bash
 # Silent operation (default)
-export LLM_EXPECT_MODE=none
+export VERBLETS_LLM_EXPECT_MODE=none
 
 # Log debugging advice on failures
-export LLM_EXPECT_MODE=info
+export VERBLETS_LLM_EXPECT_MODE=info
 
 # Throw with detailed debugging advice
-export LLM_EXPECT_MODE=error
+export VERBLETS_LLM_EXPECT_MODE=error
 ```
 
 ## Best Practices

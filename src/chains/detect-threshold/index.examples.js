@@ -1,21 +1,9 @@
-import { describe, it as vitestIt, expect as vitestExpect } from 'vitest';
+import { describe } from 'vitest';
 import detectThreshold from './index.js';
-import vitestAiExpect from '../expect/index.js';
-import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
-import { getConfig } from '../test-analysis/config.js';
 import { longTestTimeout } from '../../constants/common.js';
+import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 
-const config = getConfig();
-const it = config?.aiMode
-  ? wrapIt(vitestIt, { baseProps: { suite: 'Detect-threshold chain' } })
-  : vitestIt;
-const expect = config?.aiMode
-  ? wrapExpect(vitestExpect, { baseProps: { suite: 'Detect-threshold chain' } })
-  : vitestExpect;
-// eslint-disable-next-line no-unused-vars
-const aiExpect = config?.aiMode
-  ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'Detect-threshold chain' } })
-  : vitestAiExpect;
+const { it, expect, aiExpect } = getTestHelpers('Detect-threshold chain');
 
 describe('detect-threshold examples', () => {
   it('should analyze risk scores for fraud detection', { timeout: longTestTimeout }, async () => {
@@ -50,6 +38,10 @@ describe('detect-threshold examples', () => {
       expect(candidate.value).toBeGreaterThanOrEqual(0);
       expect(candidate.value).toBeLessThanOrEqual(1);
     });
+
+    await aiExpect(result.thresholdCandidates).toSatisfy(
+      'Threshold candidates that separate low-risk (auto-approve), medium-risk (review), and high-risk (decline) transactions based on risk scores'
+    );
   });
 
   it(
@@ -77,6 +69,11 @@ describe('detect-threshold examples', () => {
       expect(result.thresholdCandidates).toBeInstanceOf(Array);
       expect(result.distributionAnalysis).toHaveProperty('mean');
       expect(result.distributionAnalysis).toHaveProperty('standardDeviation');
+
+      await aiExpect(result.thresholdCandidates).toSatisfy(
+        'Multiple threshold candidates for API response time monitoring, each with a numeric value and rationale',
+        { mode: 'warn' }
+      );
     }
   );
 });

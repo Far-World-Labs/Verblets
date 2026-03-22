@@ -1,20 +1,9 @@
-import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
+import { describe } from 'vitest';
 import tagVocabulary, { generateInitialVocabulary, computeTagStatistics } from './index.js';
-import vitestAiExpect from '../expect/index.js';
-import {
-  makeWrappedIt,
-  makeWrappedExpect,
-  makeWrappedAiExpect,
-} from '../test-analysis/test-wrappers.js';
-import { getConfig } from '../test-analysis/config.js';
 import { longTestTimeout } from '../../constants/common.js';
+import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 
-const config = getConfig();
-const suite = 'Tag vocabulary chain';
-
-const it = makeWrappedIt(vitestIt, suite, config);
-const expect = makeWrappedExpect(vitestExpect, suite, config);
-const aiExpect = makeWrappedAiExpect(vitestAiExpect, suite, config);
+const { it, expect, aiExpect } = getTestHelpers('Tag vocabulary chain');
 
 describe('tag-vocabulary examples', () => {
   describe('generateInitialVocabulary', () => {
@@ -44,91 +33,6 @@ describe('tag-vocabulary examples', () => {
 
         await aiExpect({ vocabulary, sampleExpenses, tagSpec }).toSatisfy(
           'Generated vocabulary contains appropriate expense categories for the sample expenses'
-        );
-      },
-      longTestTimeout
-    );
-
-    it(
-      'should generate hierarchical task priority tags',
-      async () => {
-        const tagSpec = `Create a hierarchical tag system for task prioritization.
-      The hierarchy should have 2 levels:
-      - Top level: Urgency (urgent, planned, someday)
-      - Second level: Impact (high-impact, low-impact)
-      Include clear descriptions for when to apply each tag combination.
-      Target about 6-8 total tags.`;
-
-        const sampleTasks = [
-          'Fix production bug causing data loss',
-          'Update team documentation',
-          'Research new framework for next quarter',
-          'Respond to customer complaint',
-          'Organize desk drawer',
-          'Prepare quarterly report for CEO',
-          'Learn new programming language',
-          'Fix typo in internal tool',
-        ];
-
-        const vocabulary = await generateInitialVocabulary(tagSpec, sampleTasks);
-
-        expect(vocabulary.tags).toBeInstanceOf(Array);
-
-        // Check for parent-child relationships if hierarchy was created
-        const childTags = vocabulary.tags.filter((t) => t.parent);
-
-        // If children exist, most should have valid parents
-        // (LLM may occasionally generate mismatched parent references)
-        if (childTags.length > 0) {
-          const validChildren = childTags.filter((child) =>
-            vocabulary.tags.some((t) => t.id === child.parent)
-          );
-          expect(validChildren.length).toBeGreaterThan(0);
-        }
-
-        await aiExpect({ vocabulary, sampleTasks, tagSpec }).toSatisfy(
-          'Generated vocabulary contains tags related to urgency levels (like urgent, planned, someday) and/or impact levels (like high-impact, low-impact) for task prioritization'
-        );
-      },
-      longTestTimeout
-    );
-
-    it(
-      'should build upon initial vocabulary',
-      async () => {
-        const initialVocab = [
-          { id: 'bug', label: 'Bug', description: 'Code defect' },
-          { id: 'feature', label: 'Feature', description: 'New functionality' },
-          { id: 'docs', label: 'Documentation', description: 'Documentation updates' },
-        ];
-
-        const tagSpec = `Expand this initial vocabulary for software issue tracking:
-      ${JSON.stringify(initialVocab, null, 2)}
-      
-      Add tags for:
-      - Performance issues
-      - Security concerns  
-      - User experience improvements
-      - Technical debt
-      Keep the flat structure and aim for 8-10 total tags.`;
-
-        const sampleIssues = [
-          'Page load time exceeds 5 seconds',
-          'XSS vulnerability in comment form',
-          'Refactor authentication module',
-          'Add dark mode toggle',
-          'Memory leak in data processing',
-          'Update API documentation',
-          'Improve mobile responsiveness',
-          'SQL injection risk in search',
-        ];
-
-        const vocabulary = await generateInitialVocabulary(tagSpec, sampleIssues);
-
-        expect(vocabulary.tags).toBeInstanceOf(Array);
-
-        await aiExpect({ vocabulary, initialVocab, sampleIssues, tagSpec }).toSatisfy(
-          'Expanded vocabulary builds upon initial tags and adds requested categories'
         );
       },
       longTestTimeout

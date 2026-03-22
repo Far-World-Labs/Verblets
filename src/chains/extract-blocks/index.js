@@ -10,6 +10,32 @@ import {
   emitBatchProcessed,
   createBatchProgressCallback,
 } from '../../lib/progress-callback/index.js';
+import { initChain, withPolicy } from '../../lib/context/option.js';
+
+// ===== Option Mappers =====
+
+const DEFAULT_PRECISION = { windowSize: 100, overlapSize: 20 };
+
+/**
+ * Map precision option to a block detection posture.
+ * Coordinates window granularity and overlap size.
+ * low: large windows, minimal overlap — fast scan, may miss subtle boundaries.
+ * high: small windows, large overlap — thorough, catches boundaries near window edges.
+ * Default: windowSize 100, overlapSize 20.
+ * @param {string|object|undefined} value
+ * @returns {{ windowSize: number, overlapSize: number }}
+ */
+export const mapPrecision = (value) => {
+  if (value === undefined) return DEFAULT_PRECISION;
+  if (typeof value === 'object') return value;
+  return (
+    {
+      low: { windowSize: 200, overlapSize: 10 },
+      med: DEFAULT_PRECISION,
+      high: { windowSize: 50, overlapSize: 30 },
+    }[value] ?? DEFAULT_PRECISION
+  );
+};
 
 const buildBlockExtractionPrompt = (windowLines, windowStart, instructions) => {
   // Add global line numbers to each line for easier reference
@@ -44,22 +70,21 @@ ${asXML(numberedLines, { tag: 'window' })}`;
  * @param {number} config.windowSize - Lines per window (default: 100)
  * @param {number} config.overlapSize - Lines of overlap between windows (default: 20)
  * @param {number} config.maxParallel - Max parallel window processing (default: 3)
- * @param {number} config.maxAttempts - Max retry attempts for failed requests (default: 3)
  * @param {Object} config.logger - Logger instance
  * @returns {Promise<Array<Array<string>>>} Array of blocks, each block is array of lines
  */
 export async function extractBlocks(text, instructions, config = {}) {
   const {
-    windowSize = 100,
-    overlapSize = 20,
-    maxParallel = 3,
-    maxAttempts = 3,
-    logger,
-    llm,
-    onProgress,
-    now = new Date(),
-    ...options
-  } = config;
+    config: scopedConfig,
+    maxParallel,
+    windowSize,
+    overlapSize,
+  } = await initChain('extract-blocks', config, {
+    precision: withPolicy(mapPrecision, ['windowSize', 'overlapSize']),
+    maxParallel: 3,
+  });
+  config = scopedConfig;
+  const { logger, onProgress, now } = config;
 
   const lifecycleLogger = createLifecycleLogger(logger, 'chain:extract-blocks');
 
@@ -117,17 +142,13 @@ export async function extractBlocks(text, instructions, config = {}) {
       const result = await retry(
         () =>
           callLlm(prompt, {
-            llm,
-            modelOptions: {
-              response_format: blockExtractionSchema,
-            },
+            ...config,
+            response_format: blockExtractionSchema,
             logger: lifecycleLogger,
-            ...options,
           }),
         {
           label: `extract-blocks:window`,
-          maxAttempts,
-          abortSignal: options.abortSignal,
+          config,
           onProgress: createBatchProgressCallback(onProgress, {
             totalItems: lines.length,
             processedItems: Math.min(windowStart + windowSize, lines.length),
@@ -154,7 +175,7 @@ export async function extractBlocks(text, instructions, config = {}) {
           windowStart,
           totalWindows: windowStarts.length,
           blocksFound: (result.blocks || []).length,
-          now: new Date(),
+          now,
           chainStartTime: now,
         }
       );
@@ -194,7 +215,7 @@ export async function extractBlocks(text, instructions, config = {}) {
   emitBatchComplete(onProgress, 'extract-blocks', lines.length, {
     totalWindows: windowStarts.length,
     blocksExtracted: blocks.length,
-    now: new Date(),
+    now,
     chainStartTime: now,
   });
 

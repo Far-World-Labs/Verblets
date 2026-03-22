@@ -41,7 +41,7 @@ describe('sentiment', () => {
 
     it('should handle mixed sentiment text', async () => {
       const result = await sentiment('The food was amazing but the service was terrible');
-      expect(typeof result).toBe('string');
+      expect(['positive', 'negative', 'neutral']).toContain(result);
     });
   });
 });

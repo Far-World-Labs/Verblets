@@ -30,74 +30,24 @@ export {
   createCalibratedClassifier,
 } from './chains/calibrate/index.js';
 
-// Sensitivity — Detection
+// Context
 export {
-  default as sensitivityScan,
-  createSensitivityScanner,
-} from './chains/sensitivity-scan/index.js';
+  CONTEXT_KINDS,
+  ENVIRONMENT,
+  DOMAIN,
+  COMPLIANCE,
+  QUALITY_INTENT,
+  COST_POSTURE,
+} from './constants/context.js';
 export {
-  default as sensitivityCheck,
-  createSensitivityChecker,
-} from './chains/sensitivity-check/index.js';
-export {
-  default as sensitivityAudit,
-  aggregateAudit,
-  createSensitivityAuditor,
-} from './chains/sensitivity-audit/index.js';
-export {
-  default as sensitivityClassify,
-  policyFromClassification,
-  policyFromAudit,
-} from './lib/sensitivity-classify/index.js';
-
-// Sensitivity — Protection
-export {
-  default as redact,
-  redactMode,
-  redactSpec,
-  applyRedact,
-  createRedactor,
-  mapInstructions as redactMapInstructions,
-  filterInstructions as redactFilterInstructions,
-  reduceInstructions as redactReduceInstructions,
-  findInstructions as redactFindInstructions,
-  groupInstructions as redactGroupInstructions,
-} from './chains/redact/index.js';
-export {
-  default as depersonalize,
-  depersonalizeMethod,
-  depersonalizeSpec,
-  applyDepersonalize,
-  createDepersonalizer,
-  mapInstructions as depersonalizeMapInstructions,
-  filterInstructions as depersonalizeFilterInstructions,
-  reduceInstructions as depersonalizeReduceInstructions,
-  findInstructions as depersonalizeFindInstructions,
-  groupInstructions as depersonalizeGroupInstructions,
-} from './chains/depersonalize/index.js';
-
-// Sensitivity — Orchestration
-export {
-  default as sensitivityGuard,
-  protectionStrategy,
-  createSensitivityGuard,
-  mapInstructions as sensitivityGuardMapInstructions,
-  filterInstructions as sensitivityGuardFilterInstructions,
-  reduceInstructions as sensitivityGuardReduceInstructions,
-  findInstructions as sensitivityGuardFindInstructions,
-  groupInstructions as sensitivityGuardGroupInstructions,
-} from './chains/sensitivity-guard/index.js';
-
-// Sensitivity — Configuration & Constants
-export { sensitivityPolicy } from './constants/sensitivity-policy.js';
-export {
-  SEVERITY_ORDER,
-  severityAtLeast,
-  CATEGORY_SEVERITY,
-  PLACEHOLDER_PREFIXES,
-  GENERALIZATIONS,
-} from './constants/sensitivity-categories.js';
-export { default as embedProbes } from './lib/embed-probes/index.js';
+  createContextBuilder,
+  observeApplication,
+  observeProviders,
+  scopeOperation,
+  getOption,
+  getOptions,
+  withPolicy,
+} from './lib/context/index.js';
 
 // Lists
 export { default as centralTendency } from './chains/central-tendency/index.js';
@@ -204,6 +154,7 @@ export { default as toObject } from './chains/to-object/index.js';
 export { default as truncate } from './chains/truncate/index.js';
 export {
   default as veiledVariants,
+  ALL_STRATEGIES as veiledVariantStrategies,
   scientificFramingPrompt,
   causalFramePrompt,
   softCoverPrompt,
@@ -223,15 +174,15 @@ export { default as setInterval } from './chains/set-interval/index.js';
 // Embedding Primitives
 export { embed, embedBatch, embedChunked, embedWarmup } from './lib/embed/index.js';
 
+// Embedding Collection
+export { default as embedScore } from './lib/embed-score/index.js';
+
 // RAG Helpers
-export {
-  default as embedExpandQuery,
-  ALL_STRATEGIES as embedStrategies,
-  embedRewriteQuery,
-  embedMultiQuery,
-  embedStepBack,
-  embedSubquestions,
-} from './chains/embed-expand-query/index.js';
+export { default as embedRewriteQuery } from './verblets/embed-rewrite-query/index.js';
+export { default as embedMultiQuery } from './verblets/embed-multi-query/index.js';
+export { default as embedStepBack } from './verblets/embed-step-back/index.js';
+export { default as embedSubquestions } from './verblets/embed-subquestions/index.js';
+export { default as embedRewriteToOutputDoc } from './verblets/embed-rewrite-to-output-doc/index.js';
 export { default as embedNormalizeText } from './lib/embed-normalize-text/index.js';
 export {
   default as embedNeighborChunks,
@@ -267,6 +218,7 @@ export {
   createBatchContext,
   batchTracker,
   scopeProgress,
+  filterProgress,
 } from './lib/progress-callback/index.js';
 export { default as version } from './lib/version/index.js';
 export { default as windowFor } from './lib/window-for/index.js';
@@ -291,6 +243,7 @@ export {
   last,
   omit,
   pick,
+  sortBy,
   unionBy,
   vectorSearch,
   zipWith,
@@ -305,15 +258,19 @@ export * as promptCache from './lib/prompt-cache/index.js';
 export * as promptPiece from './lib/prompt-piece/index.js';
 
 import * as common from './constants/common.js';
+import * as contextConsts from './constants/context.js';
 import * as messages from './constants/messages.js';
 import * as models from './constants/models.js';
 import * as redis from './services/redis/index.js';
 import modelService from './services/llm-model/model.js';
-export { resolveModel, getCapabilities, sensitivityAvailable } from './services/llm-model/index.js';
+export { resolveModel, getCapabilities } from './services/llm-model/index.js';
 export { CAPABILITY_KEYS } from './constants/common.js';
+export { default as init } from './init.js';
+export * as config from './lib/config/index.js';
 
 export const constants = {
   common,
+  context: contextConsts,
   messages,
   models,
 };

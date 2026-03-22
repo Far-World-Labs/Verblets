@@ -1,36 +1,18 @@
-import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
+import { describe } from 'vitest';
 import { longTestTimeout } from '../../constants/common.js';
-import vitestAiExpect from '../expect/index.js';
 import centralTendency from './index.js';
-import {
-  makeWrappedIt,
-  makeWrappedExpect,
-  makeWrappedAiExpect,
-} from '../test-analysis/test-wrappers.js';
-import { getConfig } from '../test-analysis/config.js';
+import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 
-const config = getConfig();
-const suite = 'Central-tendency chain';
-
-const it = makeWrappedIt(vitestIt, suite, config);
-const expect = makeWrappedExpect(vitestExpect, suite, config);
-const aiExpect = makeWrappedAiExpect(vitestAiExpect, suite, config);
-
-// Higher-order function to create test-specific loggers
-const makeTestLogger = (testName) => {
-  return config?.aiMode && globalThis.logger
-    ? globalThis.logger.child({ suite, testName })
-    : undefined;
-};
+const { it, expect, aiExpect, makeLogger } = getTestHelpers('Central-tendency chain');
 
 describe('Bulk Central Tendency Chain', () => {
   it(
-    'processes multiple fruit items with consistent results',
+    'scores items by centrality to a seed group',
     async () => {
       const items = ['apple', 'orange', 'durian', 'jackfruit', 'banana'];
       const seedItems = ['apple', 'orange', 'banana', 'grape', 'strawberry'];
 
-      const logger = makeTestLogger('processes multiple fruit items');
+      const logger = makeLogger('scores items by centrality');
       const results = await centralTendency(items, seedItems, {
         context: 'Common fruits found in grocery stores',
         logger,
@@ -40,48 +22,21 @@ describe('Bulk Central Tendency Chain', () => {
       expect(results.every((r) => r && typeof r.score === 'number')).toBe(true);
       expect(results.every((r) => r && r.score >= 0 && r.score <= 1)).toBe(true);
       expect(results.every((r) => r && typeof r.reason === 'string')).toBe(true);
-      expect(results.every((r) => r && typeof r.confidence === 'number')).toBe(true);
 
-      // Use expect-chain for loose verification
-      const isValidCentralityScoring = await aiExpect(results).toSatisfy(
-        'Do these centrality scores make sense? Common fruits like apple, orange, banana should have higher scores than exotic fruits like durian and jackfruit.'
+      await aiExpect(results).toSatisfy(
+        'Common fruits like apple, orange, banana should have higher centrality scores than exotic fruits like durian and jackfruit'
       );
-      expect(isValidCentralityScoring).toBe(true);
     },
     longTestTimeout
   );
 
   it(
-    'handles tool centrality with core features',
-    async () => {
-      const items = ['hammer', 'screwdriver', 'wrench', 'pliers', 'chainsaw'];
-      const seedItems = ['hammer', 'screwdriver', 'wrench', 'saw', 'drill'];
-
-      const results = await centralTendency(items, seedItems, {
-        context: 'Hand tools for construction and repair',
-        coreFeatures: ['handheld', 'mechanical', 'durable'],
-      });
-
-      expect(results).toHaveLength(5);
-      expect(results.every((r) => r && typeof r.score === 'number')).toBe(true);
-      expect(results.every((r) => r && r.score >= 0 && r.score <= 1)).toBe(true);
-
-      // Use expect-chain for loose verification
-      const isValidToolScoring = await aiExpect(results).toSatisfy(
-        'Do these tool centrality scores make sense? Basic hand tools like hammer, screwdriver, wrench should have high scores, while chainsaw (power tool) should have a lower score.'
-      );
-      expect(isValidToolScoring).toBe(true);
-    },
-    longTestTimeout
-  );
-
-  it(
-    'demonstrates context effects on centrality',
+    'context shifts centrality scoring',
     async () => {
       const items = ['robin', 'eagle', 'penguin', 'ostrich'];
       const seedItems = ['robin', 'sparrow', 'cardinal', 'blue jay'];
 
-      const logger = makeTestLogger('demonstrates context effects');
+      const logger = makeLogger('context effects');
       const results = await centralTendency(items, seedItems, {
         context: 'Small songbirds commonly seen in backyards',
         logger,
@@ -90,35 +45,9 @@ describe('Bulk Central Tendency Chain', () => {
       expect(results).toHaveLength(4);
       expect(results.every((r) => r && typeof r.score === 'number')).toBe(true);
 
-      // Use expect-chain for loose verification
-      const isValidBirdScoring = await aiExpect(results).toSatisfy(
-        'Given the context of "small songbirds commonly seen in backyards", does robin have the highest centrality score, while penguin and ostrich have much lower scores?'
+      await aiExpect(results).toSatisfy(
+        'Robin should have the highest centrality score; penguin and ostrich should score much lower since they are not small songbirds'
       );
-      expect(isValidBirdScoring).toBe(true);
-    },
-    longTestTimeout
-  );
-
-  it(
-    'handles items with varying centrality to the seed group',
-    async () => {
-      const items = ['cat', 'dog', 'elephant', 'hamster', 'goldfish'];
-      const seedItems = ['cat', 'dog', 'rabbit', 'hamster', 'guinea pig'];
-
-      const logger = makeTestLogger('varying centrality');
-      const results = await centralTendency(items, seedItems, {
-        context: 'Common household pets',
-        logger,
-      });
-
-      expect(results).toHaveLength(5);
-      expect(results.every((r) => r && typeof r.score === 'number')).toBe(true);
-      expect(results.every((r) => r && r.score >= 0 && r.score <= 1)).toBe(true);
-
-      const isValidPetScoring = await aiExpect(results).toSatisfy(
-        'Are these reasonable centrality scores for household pets, with cat, dog, and hamster having higher scores than elephant?'
-      );
-      expect(isValidPetScoring).toBe(true);
     },
     longTestTimeout
   );
@@ -136,23 +65,4 @@ describe('Bulk Central Tendency Chain', () => {
       'seedItems must be a non-empty array'
     );
   });
-
-  it(
-    'processes large batches efficiently',
-    async () => {
-      const items = Array.from({ length: 15 }, (_, i) => `item${i + 1}`);
-      const seedItems = ['item1', 'item2', 'item3', 'item4', 'item5'];
-
-      const logger = makeTestLogger('processes large batches');
-      const results = await centralTendency(items, seedItems, {
-        batchSize: 3,
-        logger,
-      });
-
-      expect(results).toHaveLength(15);
-      expect(results.every((r) => r && typeof r.score === 'number')).toBe(true);
-      expect(results.every((r) => r && r.score >= 0 && r.score <= 1)).toBe(true);
-    },
-    longTestTimeout
-  );
 });

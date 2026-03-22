@@ -7,6 +7,7 @@ import date from '../date/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import templateReplace from '../../lib/template-replace/index.js';
 import { constants as promptConstants } from '../../prompts/index.js';
+import { scopeOperation } from '../../lib/context/option.js';
 
 const { contentIsInstructions, explainAndSeparate, explainAndSeparatePrimitive } = promptConstants;
 
@@ -64,10 +65,9 @@ export default function setInterval({
   initial = null,
   onTick,
   llm,
-  maxAttempts = 3,
-  onProgress,
   ...options
 } = {}) {
+  const config = scopeOperation('set-interval', { llm, ...options });
   let timer;
   let count = 0;
   let lastResult = initial;
@@ -107,9 +107,7 @@ Next wait:`;
           }),
         {
           label: 'set-interval',
-          maxAttempts,
-          onProgress,
-          abortSignal: options.abortSignal,
+          config,
         }
       );
 

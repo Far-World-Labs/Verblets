@@ -38,7 +38,7 @@ EXAMPLES=true npm run examples  # Automatically set, enables Redis caching
 ### Caching Control
 ```bash
 # Disable caching for all LLM calls (forces fresh API calls)
-DISABLE_CACHE=true npm run examples
+VERBLETS_DISABLE_CACHE=true npm run examples
 
 # Enable caching (default behavior when Redis is available)
 npm run examples
@@ -54,7 +54,7 @@ npm run examples
 ### Cache Behavior
 - **Cache Hit**: Returns cached response instantly
 - **Cache Miss**: Makes LLM API call and caches the response
-- **TTL**: Cached responses expire after 365 days (configurable via `CHATGPT_CACHE_TTL`)
+- **TTL**: Cached responses expire after 365 days (configurable via `VERBLETS_CACHE_TTL`)
 - **Fallback**: Gracefully handles Redis connection failures
 
 ## Development Workflow

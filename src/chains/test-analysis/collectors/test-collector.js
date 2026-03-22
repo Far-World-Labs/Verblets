@@ -16,7 +16,7 @@ export class TestCollector {
     const eventType = event.type || event.event;
 
     // Debug: Log all events to understand the data structure
-    if (process.env.DEBUG_EVENTS) {
+    if (process.env.VERBLETS_DEBUG_EVENTS) {
       console.log('[DEBUG EVENT]', eventType, JSON.stringify(event, null, 2));
     }
 

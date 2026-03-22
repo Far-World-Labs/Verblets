@@ -35,13 +35,11 @@ If no dependencies are explicitly listed, return an empty array.`;
     const result = await retry(
       () =>
         llm(prompt, {
-          modelOptions: {
-            response_format: {
-              type: 'json_schema',
-              json_schema: {
-                name: 'module_dependencies',
-                schema,
-              },
+          response_format: {
+            type: 'json_schema',
+            json_schema: {
+              name: 'module_dependencies',
+              schema,
             },
           },
         }),

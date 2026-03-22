@@ -27,13 +27,11 @@ async function getAiMdContext(moduleDir) {
     const compressed = await retry(
       () =>
         llm(prompt, {
-          modelOptions: {
-            response_format: {
-              type: 'json_schema',
-              json_schema: {
-                name: 'compressed_context',
-                schema: compressedContextSchema,
-              },
+          response_format: {
+            type: 'json_schema',
+            json_schema: {
+              name: 'compressed_context',
+              schema: compressedContextSchema,
             },
           },
         }),

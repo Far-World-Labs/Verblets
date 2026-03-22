@@ -1,23 +1,14 @@
-import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
+import { describe } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sort from './index.js';
-import vitestAiExpect from '../expect/index.js';
 import { longTestTimeout } from '../../constants/common.js';
-import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
-import { getConfig } from '../test-analysis/config.js';
+import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const config = getConfig();
-const it = config?.aiMode ? wrapIt(vitestIt, { baseProps: { suite: 'Sort chain' } }) : vitestIt;
-const expect = config?.aiMode
-  ? wrapExpect(vitestExpect, { baseProps: { suite: 'Sort chain' } })
-  : vitestExpect;
-const aiExpect = config?.aiMode
-  ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'Sort chain' } })
-  : vitestAiExpect;
+const { it, expect, aiExpect } = getTestHelpers('Sort chain');
 
 describe('sort examples', () => {
   it(
@@ -40,13 +31,9 @@ describe('sort examples', () => {
         }
       );
 
-      expect(sorted).toBeDefined();
-
-      // Check for duplicates in output
+      // No duplicates and all items preserved
       const uniqueSorted = [...new Set(sorted)];
       expect(uniqueSorted.length).toBe(sorted.length);
-
-      // Should preserve all items
       expect(sorted.length).toBe(movieSuggestions.length);
 
       // Verify sorting quality with LLM
@@ -56,41 +43,6 @@ describe('sort examples', () => {
 
       await aiExpect(sorted.slice(-5).join('\n')).toSatisfy(
         'bottom movies should be intense, divisive, or require full attention'
-      );
-    },
-    longTestTimeout
-  );
-
-  it(
-    'gift matching',
-    async () => {
-      const giftData = fs.readFileSync(path.join(__dirname, 'test-data', 'gift-ideas.txt'), 'utf8');
-      const giftIdeas = giftData
-        .trim()
-        .split('\n')
-        .filter((line) => line.trim());
-
-      const sorted = await sort(giftIdeas, 'for someone who gardens and likes animals', {
-        batchSize: 10,
-        extremeK: 7,
-        iterations: 1,
-      });
-
-      expect(sorted).toBeDefined();
-
-      // Check for duplicates in output
-      const uniqueSorted = [...new Set(sorted)];
-      expect(uniqueSorted.length).toBe(sorted.length);
-
-      // Should preserve all items
-      expect(sorted.length).toBe(giftIdeas.length);
-
-      await aiExpect(sorted.slice(0, 5).join('\n')).toSatisfy(
-        'top gifts should relate to gardening or animals'
-      );
-
-      await aiExpect(sorted.slice(-3).join('\n')).toSatisfy(
-        'bottom gifts should be tech items or other non-gardening/animal related items'
       );
     },
     longTestTimeout

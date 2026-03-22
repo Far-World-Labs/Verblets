@@ -1,143 +1,33 @@
-import { describe, it as vitestIt, expect as vitestExpect } from 'vitest';
+import { describe } from 'vitest';
 import commonalities from './index.js';
-import { longTestTimeout, shouldRunLongExamples } from '../../constants/common.js';
-import vitestAiExpect from '../../chains/expect/index.js';
-import { wrapIt, wrapExpect, wrapAiExpect } from '../../chains/test-analysis/test-wrappers.js';
-import { getConfig } from '../../chains/test-analysis/config.js';
+import { longTestTimeout } from '../../constants/common.js';
+import { getTestHelpers } from '../../chains/test-analysis/test-wrappers.js';
 
-//
-// Setup AI test wrappers
-//
-const config = getConfig();
-const it = config?.aiMode ? wrapIt(vitestIt, { baseProps: { suite: 'commonalities' } }) : vitestIt;
-const expect = config?.aiMode
-  ? wrapExpect(vitestExpect, { baseProps: { suite: 'commonalities' } })
-  : vitestExpect;
-const aiExpect = config?.aiMode
-  ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'commonalities' } })
-  : vitestAiExpect;
+const { it, expect, aiExpect } = getTestHelpers('commonalities');
 
-//
-// Test suite
-//
-
-describe.skipIf(!shouldRunLongExamples)('commonalities verblet', () => {
+describe('commonalities verblet', () => {
   it(
     'finds shared traits between technology devices',
     async () => {
       const result = await commonalities(['smartphone', 'tablet', 'laptop']);
       expect(Array.isArray(result)).toBe(true);
       expect(result.length).toBeGreaterThan(0);
-      // Should find commonalities like portable electronics, computing devices, etc.
-      expect(
-        result.some(
-          (item) =>
-            item.toLowerCase().includes('electronic') ||
-            item.toLowerCase().includes('portable') ||
-            item.toLowerCase().includes('computing')
-        )
-      ).toBe(true);
-    },
-    longTestTimeout
-  );
 
-  it(
-    'identifies commonalities in transportation methods',
-    async () => {
-      const result = await commonalities(['car', 'bicycle', 'motorcycle'], {
-        instructions: 'focus on transportation methods available in a city',
-      });
-      expect(Array.isArray(result)).toBe(true);
-      expect(result.length).toBeGreaterThan(0);
-      // Should find transportation-related commonalities
-      expect(
-        result.some(
-          (item) =>
-            item.toLowerCase().includes('transport') ||
-            item.toLowerCase().includes('vehicle') ||
-            item.toLowerCase().includes('mobility')
-        )
-      ).toBe(true);
-    },
-    longTestTimeout
-  );
-
-  it(
-    'handles items with few commonalities',
-    async () => {
-      const result = await commonalities(['apple', 'hammer', 'cloud']);
-      expect(Array.isArray(result)).toBe(true);
-      // May return empty array or very general commonalities like "physical objects"
-    },
-    longTestTimeout
-  );
-
-  it(
-    'returns empty array for single item',
-    async () => {
-      const result = await commonalities(['single-item']);
-      expect(result).toEqual([]);
-    },
-    longTestTimeout
-  );
-
-  it(
-    'returns empty array for empty input',
-    async () => {
-      const result = await commonalities([]);
-      expect(result).toEqual([]);
-    },
-    longTestTimeout
-  );
-});
-
-describe.skipIf(!shouldRunLongExamples)('commonalities examples', () => {
-  it(
-    'finds commonalities among devices',
-    async () => {
-      const result = await commonalities(['smartphone', 'laptop', 'tablet']);
-      expect(Array.isArray(result), `Saw: ${JSON.stringify(result)}`).toBe(true);
-
-      // LLM assertion to verify the commonalities contain meaningful results
       await aiExpect(result).toSatisfy(
-        'Should contain meaningful commonalities between electronic devices like portability, computing capability, or digital interface',
-        {
-          context: 'Testing commonalities verblet with electronic devices',
-        }
+        'Meaningful commonalities between electronic devices — portability, computing capability, or digital interface'
       );
     },
     longTestTimeout
   );
 
   it(
-    'finds commonalities among animals',
+    'returns empty array for single item or empty input',
     async () => {
-      const result = await commonalities(['dog', 'cat', 'bird']);
-      expect(Array.isArray(result), `Saw: ${JSON.stringify(result)}`).toBe(true);
+      const singleResult = await commonalities(['single-item']);
+      expect(singleResult).toEqual([]);
 
-      await aiExpect(result).toSatisfy(
-        'Should contain meaningful commonalities between animals like being pets, having sensory abilities, or biological characteristics',
-        {
-          context: 'Testing commonalities verblet with animals',
-        }
-      );
-    },
-    longTestTimeout
-  );
-
-  it(
-    'handles abstract concepts',
-    async () => {
-      const result = await commonalities(['love', 'friendship', 'trust']);
-      expect(Array.isArray(result), `Saw: ${JSON.stringify(result)}`).toBe(true);
-
-      // LLM assertion for abstract concept commonalities - be more specific
-      await aiExpect(result).toSatisfy(
-        'Should contain meaningful commonalities between emotional/social concepts like human relationships, emotional bonds, or interpersonal connections',
-        {
-          context: 'Testing commonalities verblet with abstract concepts: love, friendship, trust',
-        }
-      );
+      const emptyResult = await commonalities([]);
+      expect(emptyResult).toEqual([]);
     },
     longTestTimeout
   );

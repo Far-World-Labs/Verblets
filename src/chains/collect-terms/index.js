@@ -1,5 +1,6 @@
 import list from '../list/index.js';
 import score from '../score/index.js';
+import { initChain } from '../../lib/context/option.js';
 
 const splitIntoChunks = (text, maxLen) => {
   const words = text.split(/\s+/);
@@ -18,7 +19,15 @@ const splitIntoChunks = (text, maxLen) => {
 };
 
 export default async function collectTerms(text, config = {}) {
-  const { chunkLen = 1000, topN = 20, llm, ...options } = config;
+  const {
+    config: scopedConfig,
+    topN,
+    chunkLen,
+  } = await initChain('collect-terms', config, {
+    topN: 20,
+    chunkLen: 1000,
+  });
+  config = scopedConfig;
   const chunks = splitIntoChunks(text, chunkLen);
 
   // Collect terms from each chunk
@@ -26,10 +35,7 @@ export default async function collectTerms(text, config = {}) {
   for (const chunk of chunks) {
     const terms = await list(
       `key words and phrases that would help find documents about: ${chunk}`,
-      {
-        llm,
-        ...options,
-      }
+      config
     );
     allTerms.push(...terms);
   }
@@ -43,7 +49,7 @@ export default async function collectTerms(text, config = {}) {
   const scores = await score(
     uniqueTerms,
     `relevance as a search term for finding information (1-10, higher is more important)`,
-    { llm, ...options }
+    config
   );
 
   // Sort by score and take top N

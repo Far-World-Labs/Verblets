@@ -15,7 +15,7 @@ const getAllReaderOffsets = async (redis, key) => {
   return offsets.map((o) => parseInt(o));
 };
 
-const skipRedisTests = process.env.REDIS_TEST_SKIP === 'true';
+const skipRedisTests = process.env.VERBLETS_REDIS_TEST_SKIP === 'true';
 const conditionalDescribe = skipRedisTests ? describe.skip : describe;
 
 conditionalDescribe('RedisRingBuffer Integration', () => {

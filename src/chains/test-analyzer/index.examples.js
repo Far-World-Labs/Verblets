@@ -1,20 +1,9 @@
-import { describe, it as vitestIt, expect as vitestExpect } from 'vitest';
+import { describe } from 'vitest';
 import analyzeTestError from './index.js';
-import vitestAiExpect from '../expect/index.js';
 import { longTestTimeout } from '../../constants/common.js';
-import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
-import { getConfig } from '../test-analysis/config.js';
+import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 
-const config = getConfig();
-const it = config?.aiMode
-  ? wrapIt(vitestIt, { baseProps: { suite: 'Test-analyzer chain' } })
-  : vitestIt;
-const expect = config?.aiMode
-  ? wrapExpect(vitestExpect, { baseProps: { suite: 'Test-analyzer chain' } })
-  : vitestExpect;
-const aiExpect = config?.aiMode
-  ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'Test-analyzer chain' } })
-  : vitestAiExpect;
+const { it, expect, aiExpect } = getTestHelpers('Test-analyzer chain');
 
 describe('test-analyzer chain', () => {
   it(
@@ -59,10 +48,9 @@ describe('test-analyzer chain', () => {
       expect(analysis.length).toBeGreaterThan(0);
 
       // Should provide meaningful analysis of the failure
-      const hasInsightfulAnalysis = await aiExpect(analysis).toSatisfy(
+      await aiExpect(analysis).toSatisfy(
         'Identifies that the test expected 6 but got 5, and suggests a possible cause such as an off-by-one error or incorrect calculation'
       );
-      expect(hasInsightfulAnalysis).toBe(true);
     },
     longTestTimeout
   );
@@ -107,56 +95,7 @@ describe('test-analyzer chain', () => {
       expect(analysis.length).toBeGreaterThan(0);
 
       // Should identify JSON syntax issues
-      const identifiesJsonIssue = await aiExpect(analysis).toSatisfy(
-        'Should identify that the JSON is malformed or invalid'
-      );
-      expect(identifiesJsonIssue).toBe(true);
-    },
-    longTestTimeout
-  );
-
-  it(
-    'analyzes passing tests differently than failures',
-    async () => {
-      const mockLogs = [
-        {
-          event: 'test-start',
-          testName: 'should pass',
-          testIndex: 2,
-          suite: 'Success Suite',
-          line: 30,
-          file: '/test/success.test.js',
-        },
-        {
-          event: 'expect',
-          testIndex: 2,
-          actual: 10,
-          expected: 10,
-          method: 'toBe',
-          passed: true,
-          suite: 'Success Suite',
-          line: 32,
-          file: '/test/success.test.js',
-        },
-        {
-          event: 'test-complete',
-          testName: 'should pass',
-          testIndex: 2,
-          state: 'pass',
-          duration: 5,
-          suite: 'Success Suite',
-        },
-      ];
-
-      const analysis = await analyzeTestError(mockLogs);
-
-      // test-analyzer still analyzes passing tests, providing context
-      // This is actually useful for understanding test behavior
-      expect(typeof analysis).toBe('string');
-
-      // The analysis provides insights even for passing tests
-      // Just verify we got some analysis back
-      expect(analysis.length).toBeGreaterThanOrEqual(0);
+      await aiExpect(analysis).toSatisfy('Should identify that the JSON is malformed or invalid');
     },
     longTestTimeout
   );

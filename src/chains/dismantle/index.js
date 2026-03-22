@@ -1,9 +1,27 @@
 import { v4 as uuid } from 'uuid';
 
-import callLlm from '../../lib/llm/index.js';
+import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { outputSuccinctNames } from '../../prompts/index.js';
 import { subComponentsSchema, componentOptionsSchema } from './schemas.js';
+import { initChain, withPolicy } from '../../lib/context/option.js';
+
+// ===== Option Mappers =====
+
+const DEFAULT_DECOMPOSE_PENALTY = 0.7;
+const DEFAULT_ENHANCE_PENALTY = 0.5;
+
+/**
+ * Map variety option to a frequency penalty. Accepts 'low'|'high' or a raw number.
+ * When set, enhance penalty is derived as `withPolicy * 0.7`.
+ * @param {string|number|undefined} value
+ * @returns {number|undefined} Frequency penalty for decompose (undefined = use defaults)
+ */
+export const mapVariety = (value) => {
+  if (value === undefined) return undefined;
+  if (typeof value === 'number') return value;
+  return { low: 0.3, med: undefined, high: 0.9 }[value];
+};
 
 const subComponentsPrompt = (component, thing, fixes = '') => {
   let focus = '';
@@ -64,9 +82,9 @@ const defaultDecompose = async ({
   rootName,
   fixes,
   llm,
-  maxAttempts = 3,
-  onProgress,
-  abortSignal,
+  config,
+  temperature,
+  variety,
 } = {}) => {
   const focusFormatted = focus ? `: ${focus}` : '';
 
@@ -75,23 +93,13 @@ const defaultDecompose = async ({
     () =>
       callLlm(promptCreated, {
         llm,
-        modelOptions: {
-          frequencyPenalty: 0.7,
-          temperature: 0.7,
-          response_format: {
-            type: 'json_schema',
-            json_schema: {
-              name: 'subcomponents',
-              schema: subComponentsSchema,
-            },
-          },
-        },
+        frequencyPenalty: variety ?? DEFAULT_DECOMPOSE_PENALTY,
+        temperature: temperature ?? 0.7,
+        response_format: jsonSchema('subcomponents', subComponentsSchema),
       }),
     {
       label: 'dismantle-decompose',
-      maxAttempts,
-      onProgress,
-      abortSignal,
+      config,
     }
   );
   return result;
@@ -102,32 +110,23 @@ const defaultEnhance = async ({
   rootName,
   fixes,
   llm,
-  maxAttempts = 3,
-  onProgress,
-  abortSignal,
+  config,
+  temperature,
+  variety,
 } = {}) => {
   const promptCreated = componentOptionsPrompt(name, rootName, fixes);
+  const enhanceVariety = variety ? variety * 0.7 : DEFAULT_ENHANCE_PENALTY;
   const result = await retry(
     () =>
       callLlm(promptCreated, {
         llm,
-        modelOptions: {
-          frequencyPenalty: 0.5,
-          temperature: 0.3,
-          response_format: {
-            type: 'json_schema',
-            json_schema: {
-              name: 'component_options',
-              schema: componentOptionsSchema,
-            },
-          },
-        },
+        frequencyPenalty: enhanceVariety,
+        temperature: temperature ?? 0.3,
+        response_format: jsonSchema('component_options', componentOptionsSchema),
       }),
     {
       label: 'dismantle-enhance',
-      maxAttempts,
-      onProgress,
-      abortSignal,
+      config,
     }
   );
   const options = result;
@@ -149,10 +148,9 @@ const makeNode = async ({
   makeId = uuid,
   enhanceFixes,
   decomposeFixes,
-  maxAttempts = 3,
-  onProgress,
-  abortSignal,
-  now = new Date(),
+  config,
+  variety,
+  now,
 } = {}) => {
   const name = nameInitial ?? rootName;
 
@@ -164,9 +162,8 @@ const makeNode = async ({
       rootName,
       fixes: enhanceFixes,
       llm,
-      maxAttempts,
-      onProgress,
-      abortSignal,
+      config,
+      variety,
       now,
     });
     nodeNew.isEnhanced = true;
@@ -179,9 +176,8 @@ const makeNode = async ({
       rootName,
       fixes: decomposeFixes,
       llm,
-      maxAttempts,
-      onProgress,
-      abortSignal,
+      config,
+      variety,
       now,
     });
     nodeNew.children = childNames.map((childName) => ({
@@ -211,10 +207,9 @@ const makeSubtree = async ({
   enhanceFixes,
   decomposeFixes,
   makeId,
-  maxAttempts = 3,
-  onProgress,
-  abortSignal,
-  now = new Date(),
+  config,
+  variety,
+  now,
 } = {}) => {
   let tree = { ...(treeInitial ?? {}) };
 
@@ -228,9 +223,8 @@ const makeSubtree = async ({
     makeId,
     enhanceFixes,
     decomposeFixes,
-    maxAttempts,
-    onProgress,
-    abortSignal,
+    config,
+    variety,
     now,
   });
 
@@ -256,9 +250,8 @@ const makeSubtree = async ({
       makeId,
       enhanceFixes,
       decomposeFixes,
-      maxAttempts,
-      onProgress,
-      abortSignal,
+      config,
+      variety,
       now,
     });
 
@@ -289,10 +282,16 @@ export const simplifyTree = (node) => {
 };
 
 class ChainTree {
-  constructor(
-    name,
-    { decompose, enhance, llm, makeId, enhanceFixes, decomposeFixes, abortSignal } = {}
-  ) {
+  static async create(name, options = {}) {
+    const { config, temperature, variety } = await initChain('dismantle', options, {
+      temperature: undefined,
+      variety: withPolicy(mapVariety),
+    });
+    return new ChainTree(name, options, config, { temperature, variety });
+  }
+
+  constructor(name, options = {}, config = {}, resolved = {}) {
+    const { decompose, enhance, llm, makeId, enhanceFixes, decomposeFixes } = options;
     this.rootName = name;
     this.tree = {};
     this.decompose = decompose;
@@ -301,7 +300,10 @@ class ChainTree {
     this.makeId = makeId;
     this.enhanceFixes = enhanceFixes;
     this.decomposeFixes = decomposeFixes;
-    this.abortSignal = abortSignal;
+    this.config = config;
+    this.temperature = resolved.temperature ?? options.temperature;
+    this.variety =
+      resolved.variety ?? (options.variety !== undefined ? mapVariety(options.variety) : undefined);
   }
 
   getTree() {
@@ -353,8 +355,8 @@ class ChainTree {
   }
 }
 
-export const dismantle = (text, options) => {
-  return new ChainTree(text, options);
+export const dismantle = async (text, options) => {
+  return await ChainTree.create(text, options);
 };
 
 export default ChainTree;

@@ -84,23 +84,21 @@ ${prompt}`;
 }
 
 /**
- * Create model options for structured outputs
+ * Create response format for structured outputs
  * @param {string} schemaName - Name for the JSON schema
  * @param {Object} [customSchema] - Custom schema to use instead of default
- * @returns {Object} Model options for callLlm
+ * @returns {Object} response_format object for callLlm
  */
-function createModelOptions(schemaName = 'central_tendency_result', customSchema = null) {
+function createResponseFormat(schemaName = 'central_tendency_result', customSchema = null) {
   const schema = customSchema || centralTendencySchema;
 
-  const responseFormat = {
+  return {
     type: 'json_schema',
     json_schema: {
       name: schemaName,
       schema,
     },
   };
-
-  return { response_format: responseFormat };
 }
 
 /**
@@ -135,12 +133,12 @@ export default async function centralTendency(item, seedItems, config = {}) {
   lifecycleLogger.logStart({ item, seedItems, context, coreFeatures });
 
   const prompt = buildCentralTendencyPrompt(item, seedItems, { context, coreFeatures });
-  const modelOptions = createModelOptions('central_tendency_result');
+  const responseFormat = createResponseFormat('central_tendency_result');
 
   // Log prompt construction
   lifecycleLogger.logConstruction(prompt, {
     ...extractPromptAnalysis(prompt),
-    ...extractLLMConfig(modelOptions),
+    ...extractLLMConfig({ response_format: responseFormat }),
     itemLength: item.length,
     seedCount: seedItems.length,
     hasCoreFeatures: coreFeatures.length > 0,
@@ -149,7 +147,7 @@ export default async function centralTendency(item, seedItems, config = {}) {
   try {
     const response = await callLlm(prompt, {
       llm,
-      modelOptions,
+      response_format: responseFormat,
       logger: lifecycleLogger,
       ...options,
     });

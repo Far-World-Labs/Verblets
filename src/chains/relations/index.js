@@ -1,8 +1,22 @@
-import callLlm from '../../lib/llm/index.js';
+import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import buildInstructions from '../../lib/build-instructions/index.js';
+import { initChain, withPolicy } from '../../lib/context/option.js';
 import relationResultSchema from './relation-result.json';
+
+// ===== Option Mappers =====
+
+/**
+ * Map canonicalization option. Accepts 'low'|'high' or passes through undefined.
+ * @param {string|undefined} value
+ * @returns {string|undefined} 'low', 'high', or undefined (default moderate)
+ */
+export const mapCanonicalization = (value) => {
+  if (value === undefined) return undefined;
+  if (value === 'low' || value === 'med' || value === 'high') return value;
+  return undefined;
+};
 
 // ===== Instruction Builders =====
 
@@ -107,7 +121,10 @@ export function parseRelations(relations) {
  * @returns {Promise<string>} Relation specification as descriptive text
  */
 export async function relationSpec(prompt, config = {}) {
-  const { llm, maxAttempts = 3, onProgress, abortSignal, ...rest } = config;
+  const { config: scopedConfig, canonicalization } = await initChain('relations:spec', config, {
+    canonicalization: withPolicy(mapCanonicalization),
+  });
+  config = scopedConfig;
 
   const specSystemPrompt = `You are a relation specification generator. Create a clear, concise specification for relation extraction.`;
 
@@ -139,6 +156,14 @@ Focus on these specific relation types:
 ${asXML(predicates, { tag: 'predicates' })}`;
   }
 
+  if (canonicalization === 'high') {
+    specUserPrompt += `\n\nCanonicalization strictness: strict`;
+    specUserPrompt += `\n- Enforce exact canonical forms for all entities\n- Normalize variations aggressively (e.g., "Apple Inc.", "Apple", "AAPL" all become one canonical form)\n- Reject ambiguous or partial entity references`;
+  } else if (canonicalization === 'low') {
+    specUserPrompt += `\n\nCanonicalization strictness: loose`;
+    specUserPrompt += `\n- Accept more variation in entity forms\n- Preserve original phrasing when canonical form is uncertain\n- Only canonicalize when entities are clearly identical`;
+  }
+
   specUserPrompt += `
 
 Provide a specification describing:
@@ -153,15 +178,12 @@ Use natural language, not symbolic identifiers or linked data formats.`;
   const response = await retry(
     () =>
       callLlm(specUserPrompt, {
-        llm,
-        modelOptions: { systemPrompt: specSystemPrompt },
-        ...rest,
+        ...config,
+        systemPrompt: specSystemPrompt,
       }),
     {
       label: 'relations-spec',
-      maxAttempts,
-      onProgress,
-      abortSignal,
+      config,
     }
   );
 
@@ -177,7 +199,11 @@ Use natural language, not symbolic identifiers or linked data formats.`;
  * @returns {Promise<Object>} Object with relations array
  */
 export async function applyRelations(text, specification, config = {}) {
-  const { llm, entities, maxAttempts = 3, onProgress, abortSignal, ...options } = config;
+  const { config: scopedConfig, canonicalization } = await initChain('relations:apply', config, {
+    canonicalization: withPolicy(mapCanonicalization),
+  });
+  config = scopedConfig;
+  const { entities } = config;
 
   let prompt = `Apply the relation specification to extract relations from this text.
 
@@ -212,26 +238,21 @@ Each relation should be a tuple with:
 IMPORTANT: In the JSON output, write RDF literals WITHOUT quotes around the value part.
 Example: {"object": "42^^xsd:integer"} NOT {"object": '"42"^^xsd:integer'}`;
 
+  if (canonicalization === 'high') {
+    prompt += `\n\nCanonicalization: STRICT — normalize all entity references to their most common or official canonical form. Merge all variations.`;
+  } else if (canonicalization === 'low') {
+    prompt += `\n\nCanonicalization: LOOSE — preserve original entity forms from the text. Only merge entities when they are unambiguously identical.`;
+  }
+
   const response = await retry(
     () =>
       callLlm(prompt, {
-        llm,
-        modelOptions: {
-          response_format: {
-            type: 'json_schema',
-            json_schema: {
-              name: 'relation_result',
-              schema: relationResultSchema,
-            },
-          },
-        },
-        ...options,
+        ...config,
+        response_format: jsonSchema('relation_result', relationResultSchema),
       }),
     {
       label: 'relations-apply',
-      maxAttempts,
-      onProgress,
-      abortSignal,
+      config,
     }
   );
 
@@ -257,7 +278,7 @@ Example: {"object": "42^^xsd:integer"} NOT {"object": '"42"^^xsd:integer'}`;
  * @returns {Promise<Array>} Array of relation objects
  */
 export async function extractRelations(text, instructions, config = {}) {
-  const spec = await relationSpec(instructions, config);
+  const spec = config.spec || (await relationSpec(instructions, config));
   const entities = typeof instructions === 'object' ? instructions.entities : config.entities;
   const result = await applyRelations(text, spec, { ...config, entities });
   return result.items || [];

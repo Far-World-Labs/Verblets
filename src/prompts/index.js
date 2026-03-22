@@ -23,7 +23,6 @@ export { default as wrapList } from './wrap-list.js';
 export * as promptPiece from './prompt-piece.js';
 
 // RAG prompt fragments
-export { default as sensitivityProbes } from './sensitivity-probes.js';
 export {
   rewriteQuery as embedRewriteQuery,
   multiQuery as embedMultiQuery,

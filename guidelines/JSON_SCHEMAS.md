@@ -25,21 +25,19 @@ const schema = {
   properties: {
     items: {
       type: 'array',
-      items: { type: 'string' }
-    }
+      items: { type: 'string' },
+    },
   },
-  required: ['items']
+  required: ['items'],
 };
 
-// Use schema in LLM call
+// Use schema in LLM call — flat config pattern
 const result = await llm(prompt, {
-  modelOptions: {
-    modelName: 'fastGoodCheap',
-    response_format: {
-      type: 'json_schema',
-      json_schema: { name: 'result', schema }
-    }
-  }
+  llm: 'fastGoodCheap',
+  response_format: {
+    type: 'json_schema',
+    json_schema: { name: 'result', schema },
+  },
 });
 
 // Result is pre-parsed and validated
@@ -56,7 +54,9 @@ const items = result.items; // Type-safe access
 // src/chains/questions/schemas.js
 export const questionListJsonSchema = {
   name: 'question_list',
-  schema: { /* ... */ }
+  schema: {
+    /* ... */
+  },
 };
 ```
 
@@ -67,7 +67,7 @@ Mock responses must return objects matching the schema structure:
 ```javascript
 // CORRECT: Mock returns parsed object
 mockLlm.mockResolvedValueOnce({
-  items: ['item1', 'item2', 'item3']
+  items: ['item1', 'item2', 'item3'],
 });
 
 // INCORRECT: Mock returns string (old toObject pattern)
@@ -77,6 +77,7 @@ mockLlm.mockResolvedValueOnce({
 ## Migration from toObject
 
 ### Identify Usage
+
 ```bash
 # Find all toObject imports
 grep -r "toObject" src/
@@ -86,23 +87,23 @@ grep -r "toObject(" src/
 ```
 
 ### Replace Pattern
+
 ```javascript
 // OLD: Using toObject chain
 import toObject from '../to-object/index.js';
 const result = await llm(prompt, options);
 const parsed = await toObject(result);
 
-// NEW: Using JSON schema
-const schema = { /* define schema */ };
+// NEW: Using JSON schema — flat config pattern
+const schema = {
+  /* define schema */
+};
 const result = await llm(prompt, {
   ...options,
-  modelOptions: {
-    ...options.modelOptions,
-    response_format: {
-      type: 'json_schema',
-      json_schema: { name: 'result', schema }
-    }
-  }
+  response_format: {
+    type: 'json_schema',
+    json_schema: { name: 'result', schema },
+  },
 });
 // result is already parsed and validated
 ```
@@ -110,17 +111,20 @@ const result = await llm(prompt, {
 ## OpenAI API Behavior & Response Handling
 
 ### Key API Behaviors
+
 - OpenAI returns JSON **strings** when using `response_format`, not parsed objects
 - Root schema must be object type, cannot be array
 - The `.items` wrapper is an API requirement for collections
 
 ### LLM Module Auto-Handling
+
 - The llm module automatically parses JSON when `response_format` is provided
 - Simple collection schemas (single `items` property containing array) are auto-unwrapped
 - Use `skipResponseParse: true` in options for edge cases needing raw strings
 - Import `isSimpleCollectionSchema` from llm module to detect collection patterns
 
 ### Collection Operations Guidelines
+
 - **Core principle**: Keep `.items` wrapper internal, chains work with arrays
 - Map/Filter/Find return arrays directly to consumers
 - Reduce is special - it's not a collection operation, it builds accumulators
@@ -129,6 +133,7 @@ const result = await llm(prompt, {
 ## Response Format Design Guidelines
 
 ### Best Practices
+
 - Include descriptions in schemas to guide LLM behavior
 - Avoid unnecessary nesting (no array of arrays)
 - Design formats based on what chains actually need
@@ -136,6 +141,7 @@ const result = await llm(prompt, {
 - Use `responseFormat` naming consistently (not `structuredOutput`)
 
 ### API Consistency
+
 - Always name the parameter `responseFormat` in chain/verblet APIs
 - Break and repair when making API changes - no legacy support
 - Chains should work with clean data structures, not wrapped formats
@@ -143,6 +149,7 @@ const result = await llm(prompt, {
 ## Common Schema Patterns
 
 ### Array of Strings (Simple Collection)
+
 ```javascript
 {
   type: 'object',
@@ -159,6 +166,7 @@ const result = await llm(prompt, {
 ```
 
 ### Scored Results
+
 ```javascript
 {
   type: 'object',
@@ -180,6 +188,7 @@ const result = await llm(prompt, {
 ```
 
 ### Error Handling
+
 ```javascript
 {
   type: 'object',
@@ -201,4 +210,4 @@ const result = await llm(prompt, {
 - Architecture tests will validate no `toObject` usage in new code
 - All PR reviews must check for proper schema usage
 - Unit tests must mock schema-compliant responses
-- Example tests should demonstrate schema patterns 
+- Example tests should demonstrate schema patterns

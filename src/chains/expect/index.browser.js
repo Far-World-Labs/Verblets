@@ -1,13 +1,17 @@
 // Browser version of expect chain - no file introspection
 import { env } from '../../lib/env/index.js';
 import { expectCore, generateAdvice, handleAssertionResult } from './shared.js';
+import { getOptions, scopeOperation } from '../../lib/context/option.js';
 
 /**
  * Browser-compatible expect function
  * Code introspection features are not available
  */
-export async function expect(actual, expected, constraint) {
-  const mode = env.LLM_EXPECT_MODE || 'none';
+export async function expect(actual, expected, constraint, config = {}) {
+  config = scopeOperation('expect', config);
+  const { mode } = await getOptions(config, {
+    mode: env.VERBLETS_LLM_EXPECT_MODE || 'none',
+  });
 
   // Validate inputs
   if (expected === undefined && !constraint) {
@@ -15,12 +19,12 @@ export async function expect(actual, expected, constraint) {
   }
 
   // Run core expect without file context
-  const passes = await expectCore(actual, expected, constraint);
+  const passes = await expectCore(actual, expected, constraint, {}, config);
 
   // Generate advice if needed
   let advice = null;
   if (!passes && (mode === 'warn' || mode === 'info' || mode === 'error')) {
-    advice = await generateAdvice(actual, expected, constraint);
+    advice = await generateAdvice(actual, expected, constraint, null, null, config);
   }
 
   // Browser caller info stub
@@ -48,8 +52,8 @@ export async function expect(actual, expected, constraint) {
 /**
  * Simple LLM expectation (backward compatibility)
  */
-export async function expectSimple(actual, expected, constraint) {
-  const [passed] = await expect(actual, expected, constraint);
+export async function expectSimple(actual, expected, constraint, config = {}) {
+  const [passed] = await expect(actual, expected, constraint, config);
   return passed;
 }
 

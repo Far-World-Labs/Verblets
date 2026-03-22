@@ -30,7 +30,7 @@ What if we do a minimal viable UX first, then iterate?`,
       topic: 'product development strategy',
       history: [],
       rules: {},
-      llm: { model: 'test' },
+      llm: 'test',
     });
 
     expect(responses).toHaveLength(2);
@@ -45,7 +45,7 @@ What if we do a minimal viable UX first, then iterate?`,
       ['Alice\nBio: software engineer', 'Bob\nBio: product manager'],
       expect.any(String),
       expect.objectContaining({
-        llm: { model: 'test' },
+        llm: 'test',
       })
     );
   });
@@ -60,7 +60,7 @@ What if we do a minimal viable UX first, then iterate?`,
       topic: 'test topic',
       history: [],
       rules: {},
-      llm: { model: 'test' },
+      llm: 'test',
     });
 
     expect(responses).toHaveLength(1);
@@ -74,7 +74,7 @@ What if we do a minimal viable UX first, then iterate?`,
         topic: 'test topic',
         history: [],
         rules: {},
-        llm: { model: 'test' },
+        llm: 'test',
       })
     ).toThrow('At least one speaker is required');
   });
@@ -86,7 +86,7 @@ What if we do a minimal viable UX first, then iterate?`,
         topic: '',
         history: [],
         rules: {},
-        llm: { model: 'test' },
+        llm: 'test',
       })
     ).toThrow('Topic is required');
   });

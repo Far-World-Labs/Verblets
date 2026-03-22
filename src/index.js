@@ -1,11 +1,17 @@
 // Node.js entry point for verblets
-// Load environment variables from .env file FIRST (Node.js only)
-import { runtime } from './lib/env/index.js';
+import dotenv from 'dotenv';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { setProjectOverrides } from './lib/llm/config.js';
 
-// Conditionally load dotenv in Node.js environments
-if (runtime.isNode) {
-  const dotenv = await import('dotenv');
-  dotenv.config();
+// Load environment variables from .env file
+dotenv.config();
+
+// Load project model overrides from .verblets.json (synchronous, no race)
+try {
+  setProjectOverrides(JSON.parse(readFileSync(resolve(process.cwd(), '.verblets.json'), 'utf8')));
+} catch {
+  // No .verblets.json — use defaults
 }
 
 // Export all shared browser-compatible modules

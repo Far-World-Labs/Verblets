@@ -1,29 +1,15 @@
-import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
+import { describe } from 'vitest';
 
 import aiExpectVerblet from './index.js';
 import { longTestTimeout } from '../../constants/common.js';
 
 import vitestAiExpect from '../../chains/expect/index.js';
-import { wrapIt, wrapExpect, wrapAiExpect } from '../../chains/test-analysis/test-wrappers.js';
-import { getConfig } from '../../chains/test-analysis/config.js';
+import { getTestHelpers } from '../../chains/test-analysis/test-wrappers.js';
 
-//
-// Setup AI test wrappers
-//
-const config = getConfig();
-const it = config?.aiMode
-  ? wrapIt(vitestIt, { baseProps: { suite: 'LLM Expect Verblet' } })
-  : vitestIt;
-const expect = config?.aiMode
-  ? wrapExpect(vitestExpect, { baseProps: { suite: 'LLM Expect Verblet' } })
-  : vitestExpect;
+const { it, expect } = getTestHelpers('LLM Expect Verblet');
 // Use the original aiExpect when testing aiExpect itself to avoid double logging
 // The outer expect wrapper will handle the logging for these tests
 const aiExpect = vitestAiExpect;
-
-//
-// Test suite
-//
 
 const examples = [
   {
@@ -119,12 +105,10 @@ describe('LLM Expect Verblet', () => {
       const businessRecommendation =
         'Increase marketing budget by 20% for next quarter to expand market reach and target demographics aged 25-45 through social media campaigns';
 
-      const result = await aiExpect(businessRecommendation).toSatisfy(
+      await aiExpect(businessRecommendation).toSatisfy(
         'Is this recommendation specific, actionable, and includes measurable targets?',
         { mode: 'none' }
       );
-
-      expect(result).toBe(true);
     },
     longTestTimeout
   );

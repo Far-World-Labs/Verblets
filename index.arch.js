@@ -4,11 +4,11 @@ import eachFile from './src/lib/each-file/index.js';
 import eachDir from './src/lib/each-dir/index.js';
 import withInactivityTimeout from './src/lib/with-inactivity-timeout/index.js';
 import { runDCRule } from './src/lib/dependency-cruiser/index.js';
-import { ARCH_DEBUG } from './src/constants/arch-debug.js';
+import { VERBLETS_ARCH_DEBUG } from './src/constants/arch-debug.js';
 
 // Helper function to conditionally log batch debug output
 function debugBatchLog(...args) {
-  if (ARCH_DEBUG.enabled) {
+  if (VERBLETS_ARCH_DEBUG.enabled) {
     console.log(...args);
   }
 }

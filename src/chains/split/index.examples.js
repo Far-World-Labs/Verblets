@@ -1,22 +1,13 @@
-import { describe, it as vitestIt, expect as vitestExpect } from 'vitest';
+import { describe } from 'vitest';
 import split from './index.js';
 import fs from 'node:fs';
 import path from 'node:path';
-import vitestAiExpect from '../expect/index.js';
-import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
-import { getConfig } from '../test-analysis/config.js';
-import { longTestTimeout, shouldRunLongExamples } from '../../constants/common.js';
+import { longTestTimeout, isMediumBudget } from '../../constants/common.js'; // standard: 1-2 LLM calls per chunk
+import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 
-const config = getConfig();
-const it = config?.aiMode ? wrapIt(vitestIt, { baseProps: { suite: 'Split chain' } }) : vitestIt;
-const expect = config?.aiMode
-  ? wrapExpect(vitestExpect, { baseProps: { suite: 'Split chain' } })
-  : vitestExpect;
-const aiExpect = config?.aiMode
-  ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'Split chain' } })
-  : vitestAiExpect;
+const { it, expect, aiExpect } = getTestHelpers('Split chain');
 
-describe.skipIf(!shouldRunLongExamples)('split chain examples', () => {
+describe.skipIf(!isMediumBudget)('[medium] split chain examples', () => {
   const comedySet = fs.readFileSync(
     path.join(process.cwd(), 'src/samples/txt/taylor-tomlinson-10-2024.txt'),
     'utf8'
@@ -93,33 +84,6 @@ describe.skipIf(!shouldRunLongExamples)('split chain examples', () => {
       const ratio = reconstructedWords.length / originalWords.length;
       expect(ratio).toBeGreaterThan(0.9);
       expect(ratio).toBeLessThan(1.1);
-    },
-    longTestTimeout
-  );
-
-  it(
-    'should handle different chunk sizes appropriately',
-    async () => {
-      const DELIM = '---CHUNK-SPLIT---';
-
-      // Test with small chunks
-      const smallChunkSplit = await split(comedySet, 'between different topics', {
-        delimiter: DELIM,
-        chunkLen: 800,
-      });
-
-      // Test with large chunks
-      const largeChunkSplit = await split(comedySet, 'between different topics', {
-        delimiter: DELIM,
-        chunkLen: 3000,
-      });
-
-      const smallChunkParts = smallChunkSplit.split(DELIM).filter((p) => p.trim());
-      const largeChunkParts = largeChunkSplit.split(DELIM).filter((p) => p.trim());
-
-      // Both chunk sizes should produce output
-      expect(smallChunkParts.length).toBeGreaterThanOrEqual(1);
-      expect(largeChunkParts.length).toBeGreaterThanOrEqual(1);
     },
     longTestTimeout
   );

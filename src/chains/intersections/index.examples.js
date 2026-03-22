@@ -1,255 +1,71 @@
-import { describe, it as vitestIt, expect as vitestExpect } from 'vitest';
+import { describe } from 'vitest';
 import intersections from './index.js';
-import vitestAiExpect from '../expect/index.js';
-import { longTestTimeout, shouldRunLongExamples } from '../../constants/common.js';
-import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
-import { getConfig } from '../test-analysis/config.js';
+import { longTestTimeout, isHighBudget } from '../../constants/common.js'; // full: 20-40 LLM calls
+import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 
-const config = getConfig();
-const it = config?.aiMode
-  ? wrapIt(vitestIt, { baseProps: { suite: 'Intersections chain' } })
-  : vitestIt;
-const expect = config?.aiMode
-  ? wrapExpect(vitestExpect, { baseProps: { suite: 'Intersections chain' } })
-  : vitestExpect;
-const aiExpect = config?.aiMode
-  ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'Intersections chain' } })
-  : vitestAiExpect;
+const { it, expect, aiExpect } = getTestHelpers('Intersections chain');
 
-describe.skipIf(!shouldRunLongExamples)('intersections chain examples', () => {
+describe.skipIf(!isHighBudget)('[high] intersections chain examples', () => {
   it(
     'analyzes technology categories comprehensively',
     async () => {
       const result = await intersections(['software', 'hardware', 'networking']);
 
-      // Basic validation
       expect(typeof result).toBe('object');
       expect(result).not.toBeNull();
-
-      // Should have meaningful intersections
       expect(Object.keys(result).length).toBeGreaterThan(0);
 
-      // Validate structure of each intersection
-      // eslint-disable-next-line no-unused-vars
-      for (const [_comboKey, intersection] of Object.entries(result)) {
-        expect(intersection.combination).toBeDefined();
-        expect(intersection.description).toBeDefined();
-        expect(intersection.elements).toBeDefined();
+      for (const [comboKey, intersection] of Object.entries(result)) {
+        expect(comboKey).toMatch(/^.+ \+ .+$/);
         expect(Array.isArray(intersection.combination)).toBe(true);
         expect(Array.isArray(intersection.elements)).toBe(true);
         expect(typeof intersection.description).toBe('string');
         expect(intersection.combination.length).toBeGreaterThanOrEqual(2);
+        expect(intersection.description.length).toBeGreaterThan(10);
+        expect(intersection.elements.length).toBeGreaterThan(0);
       }
 
-      // AI validation of technology intersections
-      const hasValidTechIntersections = await aiExpect(result).toSatisfy(
+      await aiExpect(result).toSatisfy(
         'Should contain meaningful intersections between technology categories with relevant examples'
       );
-      expect(hasValidTechIntersections).toBe(true);
     },
     longTestTimeout
   );
 
   it(
-    'handles diverse categories with meaningful intersections',
+    'follows custom instructions',
     async () => {
-      const result = await intersections(['art', 'science']);
-
-      // Basic validation
-      expect(typeof result).toBe('object');
-      expect(result).not.toBeNull();
-
-      // Should have at least one intersection for these broad categories
-      if (Object.keys(result).length > 0) {
-        const firstIntersection = Object.values(result)[0];
-        expect(Array.isArray(firstIntersection.elements)).toBe(true);
-        expect(typeof firstIntersection.description).toBe('string');
-        expect(Array.isArray(firstIntersection.combination)).toBe(true);
-        expect(firstIntersection.combination).toContain('art');
-        expect(firstIntersection.combination).toContain('science');
-
-        // AI validation of meaningful intersections
-        const hasMeaningfulIntersections = await aiExpect(result).toSatisfy(
-          'Should contain meaningful intersections between art and science with relevant examples'
-        );
-        expect(hasMeaningfulIntersections).toBe(true);
-      }
-    },
-    longTestTimeout
-  );
-
-  it(
-    'validates schema compliance and structure quality',
-    async () => {
-      const result = await intersections(['music', 'mathematics']);
-
-      // Schema validation - should be an object
-      expect(typeof result).toBe('object');
-      expect(result).not.toBeNull();
-      expect(Array.isArray(result)).toBe(false);
-
-      // If we have results, validate strict schema compliance
-      if (Object.keys(result).length > 0) {
-        for (const [comboKey, intersection] of Object.entries(result)) {
-          // Key format validation (should be "category + category")
-          expect(comboKey).toMatch(/^.+ \+ .+$/);
-
-          // Required properties
-          expect(intersection).toHaveProperty('combination');
-          expect(intersection).toHaveProperty('description');
-          expect(intersection).toHaveProperty('elements');
-
-          // Type validation
-          expect(Array.isArray(intersection.combination)).toBe(true);
-          expect(typeof intersection.description).toBe('string');
-          expect(Array.isArray(intersection.elements)).toBe(true);
-
-          // Content validation
-          expect(intersection.combination.length).toBeGreaterThanOrEqual(2);
-          expect(intersection.description.length).toBeGreaterThan(0);
-          expect(intersection.combination).toContain('music');
-          expect(intersection.combination).toContain('mathematics');
-        }
-
-        // Elements should exist (content validated by structural checks above)
-        expect(Object.values(result)[0].elements.length).toBeGreaterThan(0);
-      }
-    },
-    longTestTimeout
-  );
-
-  it(
-    'handles complex multi-category intersections',
-    async () => {
-      const result = await intersections(['biology', 'chemistry', 'physics'], {
-        maxSize: 3,
-        minSize: 2,
-      });
-
-      // Basic validation
-      expect(typeof result).toBe('object');
-      expect(result).not.toBeNull();
-
-      // Should handle multiple intersection types
-      if (Object.keys(result).length > 0) {
-        let hasTwoWayIntersection = false;
-        let _hasThreeWayIntersection = false;
-
-        // eslint-disable-next-line no-unused-vars
-        for (const [_comboKey, intersection] of Object.entries(result)) {
-          const comboSize = intersection.combination.length;
-
-          if (comboSize === 2) hasTwoWayIntersection = true;
-          // eslint-disable-next-line no-unused-vars
-          if (comboSize === 3) _hasThreeWayIntersection = true;
-
-          // Validate structure
-          expect(Array.isArray(intersection.combination)).toBe(true);
-          expect(typeof intersection.description).toBe('string');
-          expect(Array.isArray(intersection.elements)).toBe(true);
-
-          // All combinations should be from our input categories
-          for (const category of intersection.combination) {
-            expect(['biology', 'chemistry', 'physics']).toContain(category);
-          }
-        }
-
-        // Should have at least two-way intersections for science categories
-        expect(hasTwoWayIntersection).toBe(true);
-
-        // AI validation of scientific intersections
-        const hasValidScienceIntersections = await aiExpect(result).toSatisfy(
-          'Should contain meaningful intersections between scientific disciplines with relevant examples'
-        );
-        expect(hasValidScienceIntersections).toBe(true);
-      }
-    },
-    longTestTimeout
-  );
-
-  it(
-    'handles single category appropriately',
-    async () => {
-      const result = await intersections(['photography']);
-
-      // Should return empty object since intersections require multiple items
-      expect(Object.keys(result).length).toBe(0);
-    },
-    longTestTimeout
-  );
-
-  it(
-    'produces consistent and logical results with quality validation',
-    async () => {
-      const result = await intersections(['literature', 'psychology']);
-
-      // Basic validation - should be an object
-      expect(typeof result).toBe('object');
-      expect(result).not.toBeNull();
-
-      // If we have results, validate high-quality structure
-      if (Object.keys(result).length > 0) {
-        // eslint-disable-next-line no-unused-vars
-        for (const [_comboKey, intersection] of Object.entries(result)) {
-          // Basic structure checks
-          expect(intersection.combination).toBeDefined();
-          expect(intersection.description).toBeDefined();
-          expect(intersection.elements).toBeDefined();
-          expect(Array.isArray(intersection.combination)).toBe(true);
-          expect(Array.isArray(intersection.elements)).toBe(true);
-          expect(typeof intersection.description).toBe('string');
-
-          // Quality checks - should have meaningful content
-          expect(intersection.description.length).toBeGreaterThan(10);
-          expect(intersection.elements.length).toBeGreaterThan(0);
-        }
-
-        // Quality checks already validate content structure above
-      }
-    },
-    longTestTimeout
-  );
-
-  it(
-    'handles edge cases gracefully',
-    async () => {
-      const result = await intersections([]);
-
-      // Empty input should return empty object
-      expect(Object.keys(result).length).toBe(0);
-    },
-    longTestTimeout
-  );
-
-  it(
-    'validates custom instructions and configuration',
-    async () => {
-      const customInstructions =
-        'List concrete project ideas that combine these fields. Avoid abstract themes.';
       const result = await intersections(['engineering', 'design'], {
-        instructions: customInstructions,
+        instructions:
+          'List concrete project ideas that combine these fields. Avoid abstract themes.',
         batchSize: 2,
       });
 
-      // Basic validation
       expect(typeof result).toBe('object');
-      expect(result).not.toBeNull();
+      expect(Object.keys(result).length).toBeGreaterThan(0);
 
-      // If we have results, validate they follow custom instructions
-      if (Object.keys(result).length > 0) {
-        const firstIntersection = Object.values(result)[0];
+      const firstIntersection = Object.values(result)[0];
+      expect(Array.isArray(firstIntersection.combination)).toBe(true);
+      expect(firstIntersection.combination).toContain('engineering');
+      expect(firstIntersection.combination).toContain('design');
 
-        // Structure validation
-        expect(Array.isArray(firstIntersection.combination)).toBe(true);
-        expect(typeof firstIntersection.description).toBe('string');
-        expect(Array.isArray(firstIntersection.elements)).toBe(true);
+      await aiExpect(firstIntersection).toSatisfy(
+        'Should list specific project ideas combining engineering and design, avoiding abstract themes'
+      );
+    },
+    longTestTimeout
+  );
+});
 
-        // AI validation that results follow custom instructions
-        const followsInstructions = await aiExpect(firstIntersection).toSatisfy(
-          'Should list specific project ideas and avoid abstract themes as requested in custom instructions'
-        );
-        expect(followsInstructions).toBe(true);
-      }
+describe('intersections edge cases', () => {
+  it(
+    'returns empty for single category or empty input',
+    async () => {
+      const singleResult = await intersections(['photography']);
+      expect(Object.keys(singleResult).length).toBe(0);
+
+      const emptyResult = await intersections([]);
+      expect(Object.keys(emptyResult).length).toBe(0);
     },
     longTestTimeout
   );

@@ -8,6 +8,7 @@ vi.mock('../../lib/llm/index.js', () => ({
     }
     return { meanings: [] };
   }),
+  jsonSchema: (name, schema) => ({ type: 'json_schema', json_schema: { name, schema } }),
 }));
 
 vi.mock('../score/index.js', () => ({

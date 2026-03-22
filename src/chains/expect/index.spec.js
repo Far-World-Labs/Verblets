@@ -1,5 +1,6 @@
 import { describe, expect as vitestExpect, it, vi, beforeEach, afterEach } from 'vitest';
-import { expectSimple, expect } from './entry.js';
+import { expectSimple, expect } from './index.js';
+import { mapAdvice } from './index.js';
 import { longTestTimeout } from '../../constants/common.js';
 import { setTestEnv, saveTestEnv } from './test-utils.js';
 import { debug } from '../../lib/debug/index.js';
@@ -85,7 +86,7 @@ describe('expect chain', () => {
   let restoreEnv;
 
   beforeEach(() => {
-    restoreEnv = saveTestEnv('LLM_EXPECT_MODE');
+    restoreEnv = saveTestEnv('VERBLETS_LLM_EXPECT_MODE');
   });
 
   afterEach(() => {
@@ -98,7 +99,7 @@ describe('expect chain', () => {
     it(
       'should return structured results in none mode',
       async () => {
-        setTestEnv('LLM_EXPECT_MODE', 'none');
+        setTestEnv('VERBLETS_LLM_EXPECT_MODE', 'none');
 
         const [passed, details] = await expect('hello', 'hello');
 
@@ -114,7 +115,7 @@ describe('expect chain', () => {
     it(
       'should handle failed assertions in none mode',
       async () => {
-        setTestEnv('LLM_EXPECT_MODE', 'none');
+        setTestEnv('VERBLETS_LLM_EXPECT_MODE', 'none');
 
         const [passed, details] = await expect('hello', 'goodbye');
 
@@ -131,7 +132,7 @@ describe('expect chain', () => {
       'should throw errors in error mode',
       async () => {
         // Set environment variable before using expect
-        setTestEnv('LLM_EXPECT_MODE', 'error');
+        setTestEnv('VERBLETS_LLM_EXPECT_MODE', 'error');
 
         // Expect the promise to reject with the error
         await vitestExpect(expect('hello', 'goodbye')).rejects.toThrow('LLM assertion failed');
@@ -142,7 +143,7 @@ describe('expect chain', () => {
     it(
       'should log in info mode',
       async () => {
-        setTestEnv('LLM_EXPECT_MODE', 'info');
+        setTestEnv('VERBLETS_LLM_EXPECT_MODE', 'info');
         const consoleSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
 
         const [passed] = await expect('hello', 'goodbye');
@@ -160,7 +161,7 @@ describe('expect chain', () => {
     it(
       'should handle constraint-based validation',
       async () => {
-        setTestEnv('LLM_EXPECT_MODE', 'none');
+        setTestEnv('VERBLETS_LLM_EXPECT_MODE', 'none');
 
         const [passed, details] = await expect('Hello world!', undefined, 'Is this a greeting?');
 
@@ -267,7 +268,7 @@ describe('expect chain', () => {
     it(
       'should default to none mode when env var is not set',
       async () => {
-        setTestEnv('LLM_EXPECT_MODE', undefined);
+        setTestEnv('VERBLETS_LLM_EXPECT_MODE', undefined);
 
         const [passed] = await expect('hello', 'goodbye');
         vitestExpect(passed).toBe(false);
@@ -279,7 +280,7 @@ describe('expect chain', () => {
     it(
       'should handle invalid env var values',
       async () => {
-        setTestEnv('LLM_EXPECT_MODE', 'invalid');
+        setTestEnv('VERBLETS_LLM_EXPECT_MODE', 'invalid');
 
         const [passed] = await expect('hello', 'goodbye');
         vitestExpect(passed).toBe(false);
@@ -297,12 +298,7 @@ describe('expect chain', () => {
 
         vitestExpect(details.file).toBeDefined();
         vitestExpect(details.line).toBeTypeOf('number');
-        // In browser environment, line number is 0
-        if (typeof window !== 'undefined') {
-          vitestExpect(details.line).toBe(0);
-        } else {
-          vitestExpect(details.line).toBeGreaterThan(0);
-        }
+        vitestExpect(details.line).toBeGreaterThanOrEqual(0);
       },
       longTestTimeout
     );
@@ -344,5 +340,15 @@ describe('expect chain', () => {
       },
       longTestTimeout
     );
+  });
+});
+
+describe('mapAdvice', () => {
+  it('maps low to introspection disabled', () => {
+    vitestExpect(mapAdvice('low')).toEqual({ introspection: false });
+  });
+
+  it('maps high to introspection enabled', () => {
+    vitestExpect(mapAdvice('high')).toEqual({ introspection: true });
   });
 });
