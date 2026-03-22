@@ -1,25 +1,8 @@
-import callLlm, { jsonSchema } from '../../lib/llm/index.js';
+import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
-import { initChain, withPolicy, scopeOperation } from '../../lib/context/option.js';
 import { calibrateSpecificationJsonSchema } from './schemas.js';
 import calibrateResultSchema from './calibrate-result.json';
-
-// ===== Option Mappers =====
-
-/**
- * Map sensitivity option to a classification posture.
- * Accepts 'low'|'high' or passes through directly.
- * low: conservative — prefer false negatives, only flag strong signals.
- * high: sensitive — prefer false positives, flag weak or ambiguous signals.
- * @param {string|undefined} value
- * @returns {string|undefined} 'low'|'high'|undefined
- */
-export const mapSensitivity = (value) => {
-  if (value === undefined) return undefined;
-  if (value === 'low' || value === 'med' || value === 'high') return value;
-  return undefined;
-};
 
 // ===== Statistics =====
 
@@ -73,22 +56,13 @@ function computeScanStatistics(scans) {
  * Computes corpus statistics and asks the LLM to produce a calibrated
  * classification spec — how to assign severity and salience to individual items.
  *
- * @param {Array<{ flagged: boolean, hits: Array }>} scans - Scan results from probeScan
+ * @param {Array<{ flagged: boolean, hits: Array }>} scans - Scan results from probeScan/sensitivityScan
  * @param {object} [config]
  * @param {string} [config.instructions] - Domain-specific instructions (e.g. "Classify sensitivity risk in medical records")
  * @returns {Promise<{ corpusProfile: string, classificationCriteria: string, salienceCriteria: string, categoryNotes: string }>}
  */
 export async function calibrateSpec(scans, config = {}) {
-  const {
-    config: scopedConfig,
-    thresholdStrategy,
-    sensitivity,
-  } = await initChain('calibrate:spec', config, {
-    thresholdStrategy: 'statistical',
-    sensitivity: withPolicy(mapSensitivity),
-  });
-  config = scopedConfig;
-  const { instructions } = config;
+  const { instructions, llm, maxAttempts = 3, onProgress, abortSignal, ...rest } = config;
 
   const statistics = computeScanStatistics(scans);
 
@@ -98,28 +72,9 @@ export async function calibrateSpec(scans, config = {}) {
     ? `\n\n${asXML(instructions, { tag: 'classification-instructions' })}`
     : '';
 
-  const thresholdGuidance = {
-    percentile:
-      '\n- Use percentile-based boundaries (e.g., top 10% = critical, top 25% = high)\n- Calibrate severity thresholds relative to the score distribution\n- Salience should reflect how unusual an item is within its percentile band',
-    fixed:
-      '\n- Use fixed severity boundaries independent of corpus distribution\n- Apply consistent thresholds regardless of how common or rare detections are\n- Salience should reflect absolute significance, not relative standing',
-  };
-
-  const thresholdBlock =
-    thresholdStrategy !== 'statistical'
-      ? `\n\nThreshold derivation strategy: ${thresholdStrategy}${thresholdGuidance[thresholdStrategy] || thresholdGuidance.fixed}`
-      : '';
-
-  const sensitivityPosture = {
-    low: '\n\nClassification posture: conservative. Prefer false negatives over false positives. Only flag items with strong, unambiguous signals. Set severity and salience thresholds high — routine items should classify as none/routine unless clearly elevated.',
-    high: '\n\nClassification posture: sensitive. Prefer false positives over false negatives. Flag items with even weak or ambiguous signals. Set severity and salience thresholds low to catch edge cases — when in doubt, classify higher.',
-  };
-
-  const sensitivityBlock = sensitivityPosture[sensitivity] || '';
-
   const specUserPrompt = `Analyze these corpus scan statistics and generate a calibration specification.
 
-${asXML(statistics, { tag: 'scan-statistics' })}${instructionsBlock}${thresholdBlock}${sensitivityBlock}
+${asXML(statistics, { tag: 'scan-statistics' })}${instructionsBlock}
 
 Provide a JSON object with exactly four string properties:
 - corpusProfile: Overview of the corpus sensitivity landscape — what categories appear, how prevalent, overall risk profile
@@ -132,16 +87,21 @@ IMPORTANT: Each property must be a simple string value, not a nested object or a
   const response = await retry(
     () =>
       callLlm(specUserPrompt, {
-        ...config,
-        systemPrompt: specSystemPrompt,
-        response_format: jsonSchema(
-          calibrateSpecificationJsonSchema.name,
-          calibrateSpecificationJsonSchema.schema
-        ),
+        llm,
+        modelOptions: {
+          systemPrompt: specSystemPrompt,
+          response_format: {
+            type: 'json_schema',
+            json_schema: calibrateSpecificationJsonSchema,
+          },
+        },
+        ...rest,
       }),
     {
       label: 'calibrate spec',
-      config,
+      maxAttempts,
+      onProgress,
+      abortSignal,
     }
   );
 
@@ -151,13 +111,13 @@ IMPORTANT: Each property must be a simple string value, not a nested object or a
 /**
  * Apply a calibration specification to classify a single scan result (Pass 2).
  *
- * @param {object} scan - A single scan result from probeScan
+ * @param {object} scan - A single scan result from probeScan/sensitivityScan
  * @param {object} specification - Pre-generated calibration specification from calibrateSpec()
  * @param {object} [config]
  * @returns {Promise<{ severity: string, salience: string, categories: object, summary: string }>}
  */
 export async function applyCalibrate(scan, specification, config = {}) {
-  config = scopeOperation('calibrate:apply', config);
+  const { llm, maxAttempts = 3, onProgress, abortSignal, ...options } = config;
 
   const prompt = `Classify this scan result against the calibration specification.
 
@@ -175,12 +135,23 @@ Return a JSON object with:
   const response = await retry(
     () =>
       callLlm(prompt, {
-        ...config,
-        response_format: jsonSchema('calibrate_result', calibrateResultSchema),
+        llm,
+        modelOptions: {
+          response_format: {
+            type: 'json_schema',
+            json_schema: {
+              name: 'calibrate_result',
+              schema: calibrateResultSchema,
+            },
+          },
+        },
+        ...options,
       }),
     {
       label: 'calibrate classify',
-      config,
+      maxAttempts,
+      onProgress,
+      abortSignal,
     }
   );
 

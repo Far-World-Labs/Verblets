@@ -2,10 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import calibrate, { calibrateSpec, applyCalibrate, createCalibratedClassifier } from './index.js';
 import llm from '../../lib/llm/index.js';
 
-vi.mock('../../lib/llm/index.js', async (importOriginal) => ({
-  ...(await importOriginal()),
-  default: vi.fn(),
-}));
+vi.mock('../../lib/llm/index.js');
 
 const mockSpec = {
   corpusProfile: 'Mixed PII and financial data across 3 documents',
@@ -61,7 +58,11 @@ describe('calibrateSpec', () => {
     expect(prompt).toContain('"financial-card"');
     expect(prompt).not.toContain('<classification-instructions>');
 
-    expect(options.systemPrompt).toContain('calibration specification generator');
+    expect(options.modelOptions.systemPrompt).toContain('calibration specification generator');
+    expect(options.modelOptions.response_format).toEqual({
+      type: 'json_schema',
+      json_schema: expect.objectContaining({ name: 'calibrate_specification' }),
+    });
   });
 
   it('includes instructions when provided', async () => {
@@ -87,28 +88,18 @@ describe('calibrateSpec', () => {
     expect(prompt).toContain('"flaggedPercent": 0');
   });
 
-  it.each([
-    ['low', 'conservative', true],
-    ['high', 'sensitive', true],
-    [undefined, 'Classification posture', false],
-  ])(
-    'sensitivity %s — prompt %s posture marker: %s',
-    async (sensitivity, marker, shouldContain) => {
-      vi.mocked(llm).mockResolvedValueOnce(mockSpec);
+  it('passes llm config through', async () => {
+    vi.mocked(llm).mockResolvedValueOnce(mockSpec);
 
-      await calibrateSpec(
-        [makeScan(['pii-name'], [0.9])],
-        sensitivity ? { sensitivity } : undefined
-      );
+    await calibrateSpec([makeScan(['pii-name'], [0.9])], {
+      llm: 'fastGood',
+      temperature: 0.3,
+    });
 
-      const [prompt] = vi.mocked(llm).mock.calls[0];
-      if (shouldContain) {
-        expect(prompt).toContain(marker);
-      } else {
-        expect(prompt).not.toContain(marker);
-      }
-    }
-  );
+    const [, options] = vi.mocked(llm).mock.calls[0];
+    expect(options.llm).toBe('fastGood');
+    expect(options.temperature).toBe(0.3);
+  });
 });
 
 describe('applyCalibrate', () => {
@@ -128,9 +119,24 @@ describe('applyCalibrate', () => {
     });
     expect(result.summary).toBeDefined();
 
-    const [prompt] = vi.mocked(llm).mock.calls[0];
+    const [prompt, options] = vi.mocked(llm).mock.calls[0];
     expect(prompt).toContain('<calibration-specification>');
     expect(prompt).toContain('<scan-result>');
+    expect(options.modelOptions.response_format).toEqual({
+      type: 'json_schema',
+      json_schema: expect.objectContaining({ name: 'calibrate_result' }),
+    });
+  });
+
+  it('passes config through to callLlm', async () => {
+    vi.mocked(llm).mockResolvedValueOnce(mockResult);
+
+    const scan = makeScan(['pii-name'], [0.9]);
+    await applyCalibrate(scan, mockSpec, { llm: 'fastGood', temperature: 0.5 });
+
+    const [, options] = vi.mocked(llm).mock.calls[0];
+    expect(options.llm).toBe('fastGood');
+    expect(options.temperature).toBe(0.5);
   });
 });
 
@@ -162,6 +168,16 @@ describe('createCalibratedClassifier', () => {
     const [prompt2] = vi.mocked(llm).mock.calls[1];
     expect(prompt1).toContain(mockSpec.corpusProfile);
     expect(prompt2).toContain(mockSpec.corpusProfile);
+  });
+
+  it('passes config to each applyCalibrate call', async () => {
+    vi.mocked(llm).mockResolvedValueOnce(mockResult);
+
+    const classify = createCalibratedClassifier(mockSpec, { llm: 'fastGood' });
+    await classify(makeScan(['pii-name'], [0.9]));
+
+    const [, options] = vi.mocked(llm).mock.calls[0];
+    expect(options.llm).toBe('fastGood');
   });
 });
 

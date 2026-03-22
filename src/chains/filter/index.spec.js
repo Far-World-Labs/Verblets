@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { testPromptShapingOption } from '../../lib/test-utils/index.js';
 import filter from './index.js';
 import listBatch from '../../verblets/list-batch/index.js';
 
@@ -47,6 +46,11 @@ describe('filter', () => {
   });
 
   describe('filter.with', () => {
+    it('returns a function', () => {
+      const fn = filter.with('contains letter a');
+      expect(typeof fn).toBe('function');
+    });
+
     it('returns true for matching items', async () => {
       const fn = filter.with('contains letter a');
       const result = await fn('apple');
@@ -58,6 +62,14 @@ describe('filter', () => {
       const result = await fn('xyz');
       expect(result).toBe(false);
     });
+  });
+
+  it('forwards lifecycle logger to listBatch', async () => {
+    const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
+    await filter(['apple', 'box'], 'contains a', { batchSize: 10, logger });
+    const callConfig = listBatch.mock.calls[0][2];
+    expect(callConfig.logger.logEvent).toBeTypeOf('function');
+    expect(callConfig.logger.info).toBe(logger.info);
   });
 
   it('retries failed batches', async () => {
@@ -74,13 +86,5 @@ describe('filter', () => {
     });
     expect(result).toStrictEqual(['a']);
     expect(listBatch).toHaveBeenCalledTimes(3);
-  });
-
-  testPromptShapingOption('strictness', {
-    invoke: (config) => filter(['apple', 'box'], 'contains a', { batchSize: 10, ...config }),
-    setupMocks: () => {},
-    llmMock: listBatch,
-    markers: { low: 'err on the side of inclusion', high: 'err on the side of exclusion' },
-    promptArgIndex: 1,
   });
 });

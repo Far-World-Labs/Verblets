@@ -26,10 +26,9 @@ const variants = await veiledVariants(sensitive, 'business communication', { cou
 - `text` (string): Sensitive text to transform
 - `context` (string): Context description for appropriate transformation
 - `config` (Object): Configuration options
-  - `coverage` (`'low'`|`'high'`): Controls strategy breadth and variant count. `'low'` uses 1 strategy with 3 variants. `'high'` uses all 3 strategies with 8 variants each. Default: all strategies with 5 variants
-  - `strategies` (Array): Override which framing strategies to use
-  - `variantCount` (number): Override variants per strategy
-  - `llm` (string|Object): LLM model configuration (automatically uses privacy model)
+  - `count` (number): Number of variants to generate (default: 3)
+  - `preserveStructure` (boolean): Keep original sentence structure (default: true)
+  - `llm` (Object): LLM model options (automatically uses privacy model)
 
 **Returns:** Promise<Array<string>> - Array of privacy-preserving variants
 

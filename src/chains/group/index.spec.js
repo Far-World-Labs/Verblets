@@ -62,38 +62,4 @@ describe('group chain', () => {
     // Verify listBatch was called for assignment
     expect(listBatch).toHaveBeenCalledTimes(3);
   });
-
-  it('includes granularity guidance in category discovery prompt when set to low', async () => {
-    reduce.mockResolvedValueOnce('broad-category');
-    listBatch.mockResolvedValueOnce(['broad-category']);
-
-    await group(['a'], 'group items', { granularity: 'low' });
-
-    const [, discoveryPrompt] = reduce.mock.calls[0];
-    expect(discoveryPrompt).toContain('granularity-guidance');
-    expect(discoveryPrompt).toContain('fewer, broader categories');
-    expect(discoveryPrompt).toContain('Merge aggressively');
-  });
-
-  it('includes granularity guidance in category discovery prompt when set to high', async () => {
-    reduce.mockResolvedValueOnce('cat-a, cat-b, cat-c');
-    listBatch.mockResolvedValueOnce(['cat-a']);
-
-    await group(['a'], 'group items', { granularity: 'high' });
-
-    const [, discoveryPrompt] = reduce.mock.calls[0];
-    expect(discoveryPrompt).toContain('granularity-guidance');
-    expect(discoveryPrompt).toContain('finer-grained');
-    expect(discoveryPrompt).toContain('Preserve subtle distinctions');
-  });
-
-  it('omits granularity guidance when not specified', async () => {
-    reduce.mockResolvedValueOnce('cat-a');
-    listBatch.mockResolvedValueOnce(['cat-a']);
-
-    await group(['a'], 'group items');
-
-    const [, discoveryPrompt] = reduce.mock.calls[0];
-    expect(discoveryPrompt).not.toContain('granularity-guidance');
-  });
 });

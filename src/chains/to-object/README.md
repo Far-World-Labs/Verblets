@@ -1,33 +1,22 @@
-# to-object
+# to-object - JSON repair and validation
 
-Repair malformed JSON from LLM responses and optionally validate against a JSON Schema.
+This module is designed to take JSON results from LLM calls, which can often be imperfect or malformed, and repair them to create valid JSON. If a JSON Schema is provided, the module also validates the repaired JSON against it. This process ensures that the JSON data is both well-formed and conforms to the expected structure.
 
+## Usage
+
+The primary function exported by this module takes two arguments: a text string to be parsed into JSON, and an optional schema object which describes the expected format of the JSON data.
+
+Here is an example of how to use the module:
 ```javascript
-import toObject from '@anthropic/verblets/chains/to-object';
+import toObject from './path/to/module';
 
-// LLM returned broken JSON with trailing comma and unquoted key
-const broken = '{ name: "Alice", scores: [95, 87, 92,], }';
-const result = await toObject(broken);
-// => { name: 'Alice', scores: [95, 87, 92] }
+const text = '...';  // JSON string returned from an LLM call
+const schema = { ... };  // Optional JSON Schema
 
-// With schema validation — throws ValidationError if structure doesn't match
-const schema = {
-  type: 'object',
-  properties: { name: { type: 'string' }, scores: { type: 'array', items: { type: 'number' } } },
-  required: ['name', 'scores'],
-};
-const validated = await toObject(broken, schema);
+try {
+  const result = await toObject(text, schema);
+  console.error(result);  // Repaired and validated JSON
+} catch (error) {
+  console.error(error);  // Validation message if JSON doesn't meet the schema
+}
 ```
-
-## API
-
-### `toObject(text, schema?, config?)`
-
-- **text** (string): Raw text containing JSON (possibly malformed)
-- **schema** (Object): Optional JSON Schema for validation
-- **config** (Object): Configuration options
-  - **llm**: LLM configuration for repair calls
-
-**Returns:** Promise\<Object\> — Parsed and optionally validated object
-
-**Throws:** `ValidationError` when schema validation fails after repair attempts

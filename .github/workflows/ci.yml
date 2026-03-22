@@ -43,9 +43,6 @@ jobs:
     name: 🧪 Test on Node ${{ matrix.node-version }}
     needs: get-lts-versions
     runs-on: ubuntu-latest
-    env:
-      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
     strategy:
       matrix: ${{ fromJson(needs.get-lts-versions.outputs.matrix) }}
     steps:

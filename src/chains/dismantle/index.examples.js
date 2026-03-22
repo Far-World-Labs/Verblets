@@ -1,14 +1,25 @@
-import { describe } from 'vitest';
+import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
 
 import Dismantle from './index.js';
-import { longTestTimeout, isMediumBudget } from '../../constants/common.js'; // standard: 3 LLM calls
-import { getTestHelpers } from '../test-analysis/test-wrappers.js';
+import vitestAiExpect from '../expect/index.js';
+import { longTestTimeout, shouldRunLongExamples } from '../../constants/common.js';
+import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
+import { getConfig } from '../test-analysis/config.js';
 
-const { it, expect } = getTestHelpers('Dismantle chain');
+const config = getConfig();
+const it = config?.aiMode
+  ? wrapIt(vitestIt, { baseProps: { suite: 'Dismantle chain' } })
+  : vitestIt;
+const expect = config?.aiMode
+  ? wrapExpect(vitestExpect, { baseProps: { suite: 'Dismantle chain' } })
+  : vitestExpect;
+const aiExpect = config?.aiMode
+  ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'Dismantle chain' } })
+  : vitestAiExpect;
 
 describe('Dismantle chain', () => {
-  it.skipIf(!isMediumBudget)(
-    '[medium] 2022 Aprilia Tuono 660',
+  it.skipIf(!shouldRunLongExamples)(
+    '2022 Aprilia Tuono 660',
     async () => {
       const dismantleBike = new Dismantle('2022 Aprilia Tuono 660', {
         enhanceFixes: `

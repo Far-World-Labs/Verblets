@@ -1,10 +1,15 @@
-import { describe } from 'vitest';
+import { describe, it as vitestIt, expect as vitestExpect } from 'vitest';
 import { longTestTimeout } from '../../constants/common.js';
 import score, { reduceInstructions } from './index.js';
 import reduce from '../reduce/index.js';
-import { getTestHelpers } from '../test-analysis/test-wrappers.js';
+import { wrapIt, wrapExpect } from '../test-analysis/test-wrappers.js';
+import { getConfig } from '../test-analysis/config.js';
 
-const { it, expect } = getTestHelpers('Score chain');
+const config = getConfig();
+const it = config?.aiMode ? wrapIt(vitestIt, { baseProps: { suite: 'Score chain' } }) : vitestIt;
+const expect = config?.aiMode
+  ? wrapExpect(vitestExpect, { baseProps: { suite: 'Score chain' } })
+  : vitestExpect;
 
 describe('score examples', () => {
   it(
@@ -41,8 +46,8 @@ describe('score examples', () => {
         })
       );
 
+      expect(bestValue).toBeDefined();
       expect(typeof bestValue).toBe('string');
-      expect(products).toContain(bestValue);
     },
     longTestTimeout
   );

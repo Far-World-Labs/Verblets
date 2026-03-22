@@ -38,14 +38,14 @@ export default [
     },
     rules: {
       'prettier/prettier': 'error',
-
+      
       // TODO: Remove console statements and replace with proper logging
       'no-console': 'off',
-
+      
       // TODO: Refactor await-in-loop patterns to use Promise.all()
       'no-await-in-loop': 'off',
 
-      'no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+      'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
       'require-await': 'error',
       'prefer-arrow-callback': 'error',
       'prefer-template': 'error',
@@ -68,15 +68,11 @@ export default [
     files: ['**/*.spec.js', '**/*.test.js', '**/*.examples.js'],
     rules: {
       'require-await': 'off',
-      'no-unused-vars': [
-        'error',
-        {
-          argsIgnorePattern: '^_',
-          varsIgnorePattern:
-            '^(aiExpect|beforeAll|longTestTimeout|env|expect|aiExpectVerblet|formatIndentedLines|isRelevantForAnalysis|expectLocation|asXML|isTestStart)$',
-        },
-      ],
+      'no-unused-vars': ['error', { 
+        argsIgnorePattern: '^_',
+        varsIgnorePattern: '^(aiExpect|beforeAll|longTestTimeout|env|expect|aiExpectVerblet|wrapAiExpect|formatIndentedLines|isRelevantForAnalysis|expectLocation|asXML|isTestStart)$'
+      }],
     },
   },
   prettierConfig,
-];
+]; 

@@ -1,17 +1,29 @@
-import { describe } from 'vitest';
+import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
 import extractBlocks from './index.js';
 import map from '../map/index.js';
 import { longTestTimeout } from '../../constants/common.js';
-import { getTestHelpers } from '../test-analysis/test-wrappers.js';
+import { makeWrappedIt, makeWrappedExpect } from '../test-analysis/test-wrappers.js';
+import { getConfig } from '../test-analysis/config.js';
 import { logBatchSchema } from './log-batch-schema.js';
 
-const { it, expect, makeLogger } = getTestHelpers('Extract Blocks chain');
+const config = getConfig();
+const suite = 'Extract Blocks chain';
+
+const it = makeWrappedIt(vitestIt, suite, config);
+const expect = makeWrappedExpect(vitestExpect, suite, config);
+
+// Higher-order function to create test-specific loggers
+const makeTestLogger = (testName) => {
+  return config?.aiMode && globalThis.logger
+    ? globalThis.logger.child({ suite, testName })
+    : undefined;
+};
 
 describe('extract-blocks examples', () => {
   it(
     'should extract log entries from a system log file',
     async () => {
-      const logger = makeLogger('extract log entries');
+      const logger = makeTestLogger('extract log entries');
 
       // Simulate a system log with various entries
       const systemLog = `2024-01-15 08:23:45 [INFO] Application started
@@ -92,7 +104,7 @@ describe('extract-blocks examples', () => {
   it(
     'should extract transaction records from a financial statement',
     async () => {
-      const logger = makeLogger('extract transaction records');
+      const logger = makeTestLogger('extract transaction records');
 
       // Simulate a bank statement with transactions
       const statement = `CHECKING ACCOUNT STATEMENT
@@ -177,7 +189,7 @@ END OF STATEMENT`;
   it(
     'should extract code blocks from markdown documentation',
     async () => {
-      const logger = makeLogger('extract code blocks');
+      const logger = makeTestLogger('extract code blocks');
 
       const markdown = `# API Documentation
 

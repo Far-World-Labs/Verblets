@@ -1,21 +1,17 @@
 import { defaultMaxAttempts, retryDelay as retryDelayDefault } from '../../constants/common.js';
-import { getOption } from '../context/option.js';
 import emitProgress from '../progress-callback/index.js';
 
 const abortError = (signal) => signal?.reason ?? new Error('The operation was aborted.');
 
 async function retry(fn, opts = {}) {
-  const { label = '', config } = opts;
-  const maxAttempts =
-    opts.maxAttempts ??
-    (config ? await getOption('maxAttempts', config, defaultMaxAttempts) : defaultMaxAttempts);
-  const retryDelay =
-    opts.retryDelay ??
-    (config ? await getOption('retryDelay', config, retryDelayDefault) : retryDelayDefault);
-  const retryOnAll =
-    opts.retryOnAll ?? (config ? await getOption('retryOnAll', config, false) : false);
-  const onProgress = opts.onProgress ?? config?.onProgress;
-  const abortSignal = opts.abortSignal ?? config?.abortSignal;
+  const {
+    label = '',
+    maxAttempts = defaultMaxAttempts,
+    retryDelay = retryDelayDefault,
+    retryOnAll = false,
+    onProgress,
+    abortSignal,
+  } = opts;
 
   let attempt = 0;
   let lastError = new Error('Nothing to run');
@@ -73,8 +69,7 @@ async function retry(fn, opts = {}) {
     } catch (error) {
       lastError = error;
 
-      const status = error.response?.status;
-      const isRetry = retryOnAll || status === 429 || (status >= 500 && status < 600);
+      const isRetry = retryOnAll || (error.response && error.response.status === 429);
 
       const isLastAttempt = !isRetry || attempt >= maxAttempts - 1;
 

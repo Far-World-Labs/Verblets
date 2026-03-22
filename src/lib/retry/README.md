@@ -1,6 +1,6 @@
 # retry
 
-Executes functions with automatic retry logic for transient failures (429 rate limits, 5xx server errors). Returns the result of the operation if successful, or throws the final error if all attempts fail.
+Executes functions with automatic retry logic and exponential backoff. Returns the result of the operation if successful, or throws the final error if all attempts fail.
 
 ## Usage
 
@@ -9,95 +9,87 @@ import retry from './index.js';
 
 // Basic retry with default settings
 const result = await retry(async () => {
-  return await callLlm(prompt, config);
+  const response = await fetch('https://api.example.com/data');
+  if (!response.ok) throw new Error('Network error');
+  return response.json();
 });
 
-// With explicit opts
+// Custom retry configuration
 const data = await retry(
-  async () => unstableOperation(),
+  async () => {
+    return await unstableOperation();
+  },
   {
-    label: 'my-operation',
     maxAttempts: 5,
-    retryDelay: 200,
+    initialDelay: 1000,
+    maxDelay: 30000,
+    backoffFactor: 2,
+    retryCondition: (error) => error.message.includes('timeout')
   }
 );
-
-// Config-aware: resolves retry params from config via getOption (policy-aware)
-const result = await retry(() => callLlm(prompt, config), {
-  label: 'score:batch',
-  config,
-});
 ```
 
 ## API
 
-### `retry(fn, opts)`
+### `retry(fn, options)`
 
 **Parameters:**
-- `fn` (function): Async function to execute with retry logic (called with no arguments)
-- `opts` (object, optional): Configuration options
-  - `label` (string): Label for progress events (default: `''`)
-  - `maxAttempts` (number): Maximum number of attempts (default: 3, from `constants/common.js`)
-  - `retryDelay` (number): Delay in milliseconds between retries, multiplied by attempt number (default: from `constants/common.js`)
-  - `retryOnAll` (boolean): Retry on all errors, not just 429/5xx (default: `false`)
-  - `onProgress` (function): Progress callback for start/retry/complete/error events
-  - `abortSignal` (AbortSignal): Signal to cancel the operation mid-retry
-  - `config` (object): Config object from `scopeOperation` — when provided, `maxAttempts`, `retryDelay`, `retryOnAll`, `onProgress`, and `abortSignal` are resolved from config via `getOption` (policy-aware). Explicit opts always take precedence over config values.
+- `fn` (function): Async function to execute with retry logic
+- `options` (object, optional): Configuration options
+  - `maxAttempts` (number): Maximum number of attempts (default: 3)
+  - `initialDelay` (number): Initial delay in milliseconds (default: 1000)
+  - `maxDelay` (number): Maximum delay between attempts (default: 30000)
+  - `backoffFactor` (number): Multiplier for exponential backoff (default: 2)
+  - `retryCondition` (function): Function to determine if error should trigger retry (default: always retry)
 
-**Returns:** Promise that resolves with the function result or rejects with the final error.
+**Returns:** Promise that resolves with the function result or rejects with the final error
 
-**Retry logic:** Only retries on HTTP 429 (rate limit) and 5xx (server error) status codes by default. Set `retryOnAll: true` to retry on all errors. Non-retryable errors throw immediately.
+## Use Cases
 
-## Config-aware resolution
-
-When `config` is provided, retry resolves its parameters through `getOption`, which checks the policy channel first. This means a consumer can control retry behavior per-operation:
-
+### Network Operations
 ```javascript
-const config = {
-  policy: {
-    maxAttempts: (ctx) => ctx.operation === 'score' ? 5 : 3,
-    retryDelay: () => 500,
-  },
+import retry from './index.js';
+
+// Retry API calls with exponential backoff
+const fetchUserData = async (userId) => {
+  return retry(
+    async () => {
+      const response = await fetch(`/api/users/${userId}`);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return response.json();
+    },
+    {
+      maxAttempts: 3,
+      initialDelay: 500,
+      retryCondition: (error) => error.message.includes('HTTP 5')
+    }
+  );
 };
-
-// retry reads maxAttempts=5 from policy because operation is 'score'
-await retry(fn, { label: 'score', config: scopeOperation('score', config) });
 ```
 
-Explicit opts always win over config:
+### Custom Retry Logic
 ```javascript
-// maxAttempts=2 from opts, even though config.maxAttempts=5
-await retry(fn, { maxAttempts: 2, config });
-```
-
-## Abort signal
-
-```javascript
-const controller = new AbortController();
-
-// Abort cancels during sleep between retries
-setTimeout(() => controller.abort(), 1000);
-
-await retry(fn, {
-  maxAttempts: 10,
-  retryDelay: 500,
-  abortSignal: controller.signal,
-});
-```
-
-## Progress events
-
-```javascript
-await retry(fn, {
-  label: 'my-op',
-  onProgress: (event) => console.log(event),
-});
-
-// Events: { step: 'my-op', event: 'start' | 'retry' | 'complete' | 'error', ... }
+// Only retry on specific error types
+const processData = async (data) => {
+  return retry(
+    async () => {
+      return await complexDataProcessing(data);
+    },
+    {
+      maxAttempts: 5,
+      retryCondition: (error) => {
+        // Only retry on transient errors
+        return error.code === 'ECONNRESET' || 
+               error.code === 'ETIMEDOUT' ||
+               error.message.includes('temporary');
+      }
+    }
+  );
+};
 ```
 
 ## Related Modules
 
-- [`context/option`](../context/option.js) - `getOption` used for config-aware resolution
-- [`llm`](../llm/README.md) - Primary consumer of retry
-- [`progress-callback`](../progress-callback/index.js) - Progress event emission
+- [`with-inactivity-timeout`](../with-inactivity-timeout/README.md) - Timeout handling for long operations
+- [`llm`](../llm/README.md) - LLM integration with built-in retry logic
+- [`llm-logger`](../llm-logger/README.md) - Logging utilities for debugging retry behavior 

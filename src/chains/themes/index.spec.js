@@ -43,6 +43,15 @@ describe('themes chain', () => {
     expect(refinePrompt).not.toContain('top');
   });
 
+  it('forwards batchSize and llm to reduce', async () => {
+    reduce.mockResolvedValueOnce('a').mockResolvedValueOnce('a');
+    const llm = { model: 'test' };
+    await themes('x\n\ny', { batchSize: 3, llm });
+    const firstCallConfig = reduce.mock.calls[0][2];
+    expect(firstCallConfig.batchSize).toBe(3);
+    expect(firstCallConfig.llm).toBe(llm);
+  });
+
   it('feeds first pass themes as list into second reduce', async () => {
     reduce.mockResolvedValueOnce('alpha, beta, gamma').mockResolvedValueOnce('alpha, gamma');
     await themes('x\n\ny');

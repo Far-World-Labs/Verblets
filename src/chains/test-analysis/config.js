@@ -2,7 +2,7 @@
  * Test system configuration
  */
 
-import { get as configGet } from '../../lib/config/index.js';
+import { truthyValues } from '../../constants/common.js';
 
 // Shared constants
 export const CONSTANTS = {
@@ -16,11 +16,15 @@ export const CONSTANTS = {
 };
 
 export function getConfig() {
-  const aiLogsOnly = configGet('VERBLETS_AI_LOGS_ONLY') === true;
-  const aiPerSuite = configGet('VERBLETS_AI_PER_SUITE') === true;
-  const aiDetail = configGet('VERBLETS_AI_DETAIL') === true;
-  const debugMode = configGet('VERBLETS_DEBUG') === true;
-  const debugSuites = configGet('VERBLETS_DEBUG_SUITES') === true;
+  const aiLogsOnly =
+    process.env.VERBLETS_AI_LOGS_ONLY && truthyValues.includes(process.env.VERBLETS_AI_LOGS_ONLY);
+  const aiPerSuite =
+    process.env.VERBLETS_AI_PER_SUITE && truthyValues.includes(process.env.VERBLETS_AI_PER_SUITE);
+  const aiDetail =
+    process.env.VERBLETS_AI_DETAIL && truthyValues.includes(process.env.VERBLETS_AI_DETAIL);
+  const debugMode = process.env.VERBLETS_DEBUG && truthyValues.includes(process.env.VERBLETS_DEBUG);
+  const debugSuites =
+    process.env.VERBLETS_DEBUG_SUITES && truthyValues.includes(process.env.VERBLETS_DEBUG_SUITES);
 
   return {
     // Core functionality flags
@@ -34,25 +38,27 @@ export function getConfig() {
     },
 
     // Buffer configuration
-    ringBufferSize: configGet('VERBLETS_RING_BUFFER_SIZE'),
+    ringBufferSize:
+      parseInt(process.env.VERBLETS_RING_BUFFER_SIZE) || CONSTANTS.RING_BUFFER_DEFAULT_SIZE,
 
     // Polling configuration
     polling: {
-      interval: configGet('VERBLETS_POLL_INTERVAL'),
-      statusInterval: configGet('VERBLETS_STATUS_INTERVAL'),
+      interval: parseInt(process.env.VERBLETS_POLL_INTERVAL) || CONSTANTS.POLL_INTERVAL_MS,
+      statusInterval:
+        parseInt(process.env.VERBLETS_STATUS_INTERVAL) || CONSTANTS.WAIT_STATUS_INTERVAL_MS,
     },
 
     // Batch processing
     batch: {
-      size: configGet('VERBLETS_BATCH_SIZE'),
-      drainSize: configGet('VERBLETS_DRAIN_SIZE'),
-      lookbackSize: configGet('VERBLETS_LOOKBACK_SIZE'),
+      size: parseInt(process.env.VERBLETS_BATCH_SIZE) || CONSTANTS.BATCH_SIZE,
+      drainSize: parseInt(process.env.VERBLETS_DRAIN_SIZE) || CONSTANTS.DRAIN_BATCH_SIZE,
+      lookbackSize: parseInt(process.env.VERBLETS_LOOKBACK_SIZE) || CONSTANTS.LOOKBACK_SIZE,
     },
 
     // AI analysis
     ai: {
       enabled: (aiPerSuite || aiDetail) && !aiLogsOnly,
-      timeout: configGet('VERBLETS_AI_TIMEOUT'),
+      timeout: parseInt(process.env.VERBLETS_AI_TIMEOUT) || 120000,
     },
   };
 }

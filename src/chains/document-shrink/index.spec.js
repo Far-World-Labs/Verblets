@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import documentShrink, { mapThoroughness } from './index.js';
+import documentShrink from './index.js';
 
 // Mock the questions chain
 vi.mock('../questions/index.js', () => ({
@@ -41,7 +41,7 @@ vi.mock('../map/index.js', () => ({
     if (instructions.includes('Compress')) {
       return list.map((text) => text.slice(0, Math.floor(text.length * 0.3)));
     }
-    return list.map((item, idx) => `withPolicy-${idx}`);
+    return list.map((item, idx) => `mapped-${idx}`);
   }),
 }));
 
@@ -129,7 +129,8 @@ In conclusion, both coffee and relationships benefit from patience and attention
       const query = 'coffee and relationships';
       const result = await documentShrink(sampleDocument, query, {
         targetSize: 1000,
-        compression: 0.8,
+        maxIterations: 3,
+        aggressiveness: 0.8,
       });
 
       expect(result).toHaveProperty('content');
@@ -148,7 +149,7 @@ In conclusion, both coffee and relationships benefit from patience and attention
       const query = 'making coffee for partner';
       const result = await documentShrink(sampleDocument, query, {
         targetSize: 800,
-        compression: 0.5,
+        aggressiveness: 0.5,
       });
 
       // Should contain coffee-related chunks
@@ -178,7 +179,7 @@ In conclusion, both coffee and relationships benefit from patience and attention
     it('should apply different chunk actions based on relevance', async () => {
       const result = await documentShrink(sampleDocument, 'coffee making request', {
         targetSize: 1500,
-        compression: 0.8,
+        aggressiveness: 0.8,
       });
 
       // Check that we got reduced content
@@ -190,18 +191,18 @@ In conclusion, both coffee and relationships benefit from patience and attention
       expect(result.metadata.chunks.tfIdfSelected).toBeGreaterThanOrEqual(0);
     });
 
-    it('should respect compression setting', async () => {
+    it('should respect aggressiveness setting', async () => {
       const gentleResult = await documentShrink(sampleDocument, 'relationships', {
         targetSize: 1000,
-        compression: 'low',
+        aggressiveness: 0.3,
       });
 
       const aggressiveResult = await documentShrink(sampleDocument, 'relationships', {
         targetSize: 1000,
-        compression: 'high',
+        aggressiveness: 0.9,
       });
 
-      // Higher compression should try harder to meet target
+      // More aggressive should try harder to meet target
       expect(gentleResult.metadata.finalSize).toBeGreaterThanOrEqual(0);
       expect(aggressiveResult.metadata.finalSize).toBeGreaterThanOrEqual(0);
     });
@@ -211,6 +212,7 @@ In conclusion, both coffee and relationships benefit from patience and attention
     it('should maintain document structure with XML chunks', async () => {
       const result = await documentShrink(sampleDocument, 'comedy show transcript', {
         targetSize: 2000,
+        preserveStructure: true,
       });
 
       // Verify we get structured output
@@ -235,19 +237,21 @@ In conclusion, both coffee and relationships benefit from patience and attention
   });
 
   describe('options handling', () => {
-    it('should handle custom token budget', async () => {
+    it('should respect maxIterations limit', async () => {
       const result = await documentShrink(sampleDocument, 'test query', {
         targetSize: 100, // Very small to force reduction
-        tokenBudget: 500,
+        maxIterations: 2,
       });
 
       expect(result.content.length).toBeGreaterThan(0);
-      // Should still produce some output even with limited budget
+      // Should still produce some output even with iteration limit
     });
 
     it('should handle custom chunk sizes', async () => {
       const result = await documentShrink(sampleDocument, 'relationships', {
         targetSize: 1500,
+        chunkSize: 200, // Smaller chunks
+        minChunkSize: 50,
       });
 
       expect(result).toHaveProperty('content');
@@ -276,14 +280,5 @@ In conclusion, both coffee and relationships benefit from patience and attention
       expect(result.metadata.finalSize).toBeLessThanOrEqual(1500); // Some buffer
       expect(result.content).toBeTruthy();
     });
-  });
-});
-
-describe('mapThoroughness', () => {
-  it('low disables all LLM phases', () => {
-    const result = mapThoroughness('low');
-    expect(result.queryExpansion).toBe(false);
-    expect(result.llmScoring).toBe(false);
-    expect(result.llmCompression).toBe(false);
   });
 });

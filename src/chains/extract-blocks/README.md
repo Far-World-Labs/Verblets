@@ -48,7 +48,8 @@ const blocks = await extractBlocks(
 - `text` (string): The unstructured text to process
 - `instructions` (string): Natural language instructions for identifying block boundaries
 - `config` (Object): Configuration options
-  - `precision` (`'low'`|`'high'`|Object): Coordinates window and overlap size for boundary detection. `'low'` uses larger windows with less overlap (200/10). `'high'` uses smaller windows with more overlap (50/30). Default: 100 window, 20 overlap
+  - `windowSize` (number): Lines per processing window (default: 100)
+  - `overlapSize` (number): Lines of overlap between windows (default: 20)
   - `maxParallel` (number): Concurrent window processing (default: 3)
   - `maxAttempts` (number): Retry attempts per window (default: 3)
   - `llm` (string|Object): LLM model options

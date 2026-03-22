@@ -1,10 +1,21 @@
-import { describe } from 'vitest';
+import { describe, it as vitestIt, expect as vitestExpect } from 'vitest';
 import ConversationChain from './index.js';
+import vitestAiExpect from '../expect/index.js';
 import { longTestTimeout } from '../../constants/common.js';
 import { roundRobin } from './turn-policies.js';
-import { getTestHelpers } from '../test-analysis/test-wrappers.js';
+import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
+import { getConfig } from '../test-analysis/config.js';
 
-const { it, expect, aiExpect } = getTestHelpers('Conversation chain');
+const config = getConfig();
+const it = config?.aiMode
+  ? wrapIt(vitestIt, { baseProps: { suite: 'Conversation chain' } })
+  : vitestIt;
+const expect = config?.aiMode
+  ? wrapExpect(vitestExpect, { baseProps: { suite: 'Conversation chain' } })
+  : vitestExpect;
+const aiExpect = config?.aiMode
+  ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'Conversation chain' } })
+  : vitestAiExpect;
 
 // Fixed clock for deterministic timestamps — makes LLM prompts cacheable
 const fixedClock = () => new Date('2024-06-15T12:00:00Z');
@@ -156,6 +167,63 @@ describe('conversation chain examples', () => {
   );
 
   it(
+    'custom turn policy controls speaker ordering across rounds',
+    async () => {
+      const speakers = [
+        {
+          id: 'turing',
+          name: 'Alan Turing',
+          bio: 'Father of computer science, proposed the Turing Test in 1950',
+          agenda: 'Argue that machines can think and exhibit intelligent behavior',
+        },
+        {
+          id: 'minsky',
+          name: 'Marvin Minsky',
+          bio: 'Co-founder of MIT AI Lab, expert in cognitive science and AI',
+          agenda: 'Discuss the society of mind and modular intelligence',
+        },
+        {
+          id: 'mccarthy',
+          name: 'John McCarthy',
+          bio: 'Inventor of LISP, advocate for logical AI approaches',
+          agenda: 'Promote formal logic and symbolic reasoning in AI',
+        },
+      ];
+
+      const topic = 'Can machines truly think, or do they merely simulate thinking?';
+
+      const customTurnPolicy = (round) => {
+        if (round === 0) return ['turing', 'minsky', 'mccarthy'];
+        return ['minsky', 'mccarthy', 'turing'];
+      };
+
+      const chain = new ConversationChain(topic, speakers, {
+        clock: fixedClock,
+        rules: {
+          shouldContinue: (round) => round < 2,
+          turnPolicy: customTurnPolicy,
+        },
+      });
+
+      const messages = await chain.run();
+
+      // 2 rounds × 3 speakers
+      expect(messages.length).toBeGreaterThanOrEqual(4);
+
+      // All speakers should contribute
+      const participantIds = new Set(messages.map((m) => m.id));
+      expect(participantIds.size).toBe(3);
+
+      // AI validation of philosophical depth
+      const hasPhilosophicalDepth = await aiExpect(messages).toSatisfy(
+        'Discussion about whether machines can truly think, with multiple perspectives'
+      );
+      expect(hasPhilosophicalDepth).toBe(true);
+    },
+    longTestTimeout
+  );
+
+  it(
     'customPrompt guides the tone and a summarizer role speaks last',
     async () => {
       const speakers = [
@@ -212,9 +280,73 @@ describe('conversation chain examples', () => {
         expect(messages[messages.length - 1].id).toBe('summarizer');
       }
 
-      await aiExpect(messages).toSatisfy(
+      const focusesOnSafety = await aiExpect(messages).toSatisfy(
         'Discussion about AI safety and responsible AGI development'
       );
+      expect(focusesOnSafety).toBe(true);
+    },
+    longTestTimeout
+  );
+
+  it(
+    'questioner gets the last word via turn policy ordering',
+    async () => {
+      const speakers = [
+        {
+          id: 'questioner',
+          name: 'Socratic Questioner',
+          bio: 'Ask probing questions about AI consciousness and challenge assumptions',
+          agenda: 'Use the Socratic method to explore deeper truths about machine intelligence',
+        },
+        {
+          id: 'turing',
+          name: 'Alan Turing',
+          bio: 'Father of computer science, creator of the Turing Test',
+          agenda: 'Defend the possibility of machine consciousness and thinking',
+        },
+        {
+          id: 'skeptic',
+          name: 'AI Skeptic',
+          bio: 'Philosopher who questions whether machines can truly understand or just manipulate symbols',
+          agenda: 'Challenge claims about machine consciousness and understanding',
+        },
+      ];
+
+      const topic = 'What does it mean for a machine to truly understand?';
+
+      // Round 0: questioner opens. Round 1: questioner closes.
+      const dynamicTurnPolicy = (round) => {
+        if (round === 0) return ['questioner', 'turing', 'skeptic'];
+        return ['turing', 'skeptic', 'questioner'];
+      };
+
+      const chain = new ConversationChain(topic, speakers, {
+        clock: fixedClock,
+        rules: {
+          shouldContinue: (round) => round < 2,
+          turnPolicy: dynamicTurnPolicy,
+        },
+      });
+
+      const messages = await chain.run();
+
+      // 2 rounds × 3 speakers
+      expect(messages.length).toBeGreaterThanOrEqual(4);
+
+      // All three roles should participate
+      const participantIds = new Set(messages.map((m) => m.id));
+      expect(participantIds.size).toBe(3);
+
+      // Questioner opens round 0
+      expect(messages[0].id).toBe('questioner');
+
+      // Questioner closes round 1 (last message)
+      expect(messages[messages.length - 1].id).toBe('questioner');
+
+      const hasSocraticDepth = await aiExpect(messages).toSatisfy(
+        'Philosophical inquiry about machine understanding with questioning and opposing viewpoints'
+      );
+      expect(hasSocraticDepth).toBe(true);
     },
     longTestTimeout
   );

@@ -1,9 +1,20 @@
-import { describe } from 'vitest';
+import { describe, it as vitestIt, expect as vitestExpect } from 'vitest';
 import popReference from './index.js';
 import { longTestTimeout } from '../../constants/common.js';
-import { getTestHelpers } from '../test-analysis/test-wrappers.js';
+import vitestAiExpect from '../expect/index.js';
+import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
+import { getConfig } from '../test-analysis/config.js';
 
-const { it, expect, aiExpect } = getTestHelpers('Pop reference chain');
+const config = getConfig();
+const it = config?.aiMode
+  ? wrapIt(vitestIt, { baseProps: { suite: 'Pop reference chain' } })
+  : vitestIt;
+const expect = config?.aiMode
+  ? wrapExpect(vitestExpect, { baseProps: { suite: 'Pop reference chain' } })
+  : vitestExpect;
+const aiExpect = config?.aiMode
+  ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'Pop reference chain' } })
+  : vitestAiExpect;
 
 describe('popReference examples', () => {
   it(

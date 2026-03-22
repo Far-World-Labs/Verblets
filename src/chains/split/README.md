@@ -34,7 +34,6 @@ const sections = await split(article, 'split into topic-based paragraphs');
   - `chunkLen` (number): Maximum character length per processing chunk (default: 4000)
   - `delimiter` (string): Delimiter string for marking split points (default: internal boundary)
   - `targetSplitsPerChunk` (number): Target number of splits per chunk (optional)
-  - `preservation` (`'low'`|`'high'`|Object): Output difference thresholds for short and long chunks. `'low'` allows more deviation (0.7 short, 0.25 long). `'high'` enforces tighter fidelity (0.3 short, 0.05 long). Default: 0.5 short, 0.1 long
   - `llm` (string|Object): LLM model options (default: `'fastGoodCheapCoding'`)
   - `maxAttempts` (number): Maximum retry attempts (default: 2)
   - `onProgress` (Function): Progress callback

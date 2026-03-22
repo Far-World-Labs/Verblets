@@ -1,27 +1,65 @@
 # list-expand
 
-Generate additional items that naturally extend a given list by inferring the pattern.
+Generate additional items that naturally extend a given list using pattern recognition and contextual understanding.
+
+## Basic Usage
 
 ```javascript
-import listExpand from '@anthropic/verblets/verblets/list-expand';
+import listExpand from './index.js';
 
-// The AI infers "wellness activities for seniors" from just two examples
-const activities = ['gentle morning yoga', 'water aerobics'];
-const expanded = await listExpand(activities, 6, {
-  instructions: 'Activities suitable for a 65-year-old recovering from knee surgery',
-});
-// => ['gentle morning yoga', 'water aerobics', 'chair tai chi',
-//     'resistance band exercises', 'swimming laps', 'guided meditation walks']
+// Expand a list of programming languages
+const languages = ['JavaScript', 'Python'];
+const expanded = await listExpand(languages, 5);
+// => ['JavaScript', 'Python', 'Java', 'C++', 'Ruby']
 ```
 
-## API
+## Parameters
 
-### `listExpand(items, targetCount, config?)`
-
-- **items** (string[]): Seed list to expand from
-- **targetCount** (number): Desired total count including originals
+- **items** (string[]): Initial list of items to expand from
+- **targetCount** (number): Total number of items desired in the final list
 - **config** (Object): Configuration options
-  - **instructions** (string): Additional context to guide expansion
-  - **llm**: LLM configuration
+  - **llm** (Object): LLM model options (default: uses system default)
+  - **instructions** (string): Custom instructions for expansion (optional)
 
-**Returns:** Promise\<string[]\> — Expanded array up to targetCount
+## Return Value
+
+Returns an array containing the original items plus additional items that fit the same pattern or category, up to the target count.
+
+## Use Cases
+
+Common scenarios include brainstorming new ideas, expanding small seed lists for testing,
+and building complete datasets from a handful of samples.
+
+## Advanced Usage
+
+```javascript
+// Expand with custom instructions
+const hobbies = ['reading', 'hiking'];
+const expanded = await listExpand(
+  hobbies, 
+  6, 
+  { instructions: 'Focus on indoor and outdoor activities that promote wellness' }
+);
+// => ['reading', 'hiking', 'yoga', 'gardening', 'meditation', 'cycling']
+
+// Expand business concepts
+const strategies = ['content marketing', 'social media advertising'];
+const moreStrategies = await listExpand(strategies, 7);
+// => ['content marketing', 'social media advertising', 'email campaigns', 
+//     'SEO optimization', 'influencer partnerships', 'webinars', 'affiliate programs']
+```
+
+## Pattern Recognition
+
+The function analyzes the provided items to understand:
+- Category or domain (colors, foods, technologies, etc.)
+- Style or format (formal/informal, technical/simple)
+- Scope and specificity level
+- Relationships between existing items
+
+```javascript
+import listExpand from './index.js';
+
+await listExpand(['red', 'green'], 5);
+// => ['red', 'green', 'blue', 'yellow', 'purple']
+```

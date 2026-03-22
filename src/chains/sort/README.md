@@ -29,6 +29,16 @@ const sorted = await sort(
 // ]
 ```
 
+## How It Works
+
+The sort chain uses a tournament-style algorithm optimized for LLMs:
+
+1. **Chunked Processing**: Divides data into manageable chunks that fit within context windows
+2. **Global Competition**: Each chunk's items compete with the current global best/worst items
+3. **Progressive Extraction**: Maintains running champions that represent the true extremes across all data
+
+This ensures correctness - every item has a chance to compete for the top positions, regardless of which chunk it appears in.
+
 ## API
 
 ### sort(list, criteria, config)
@@ -37,14 +47,19 @@ const sorted = await sort(
 - `list` (Array): Items to sort
 - `criteria` (string): Natural language description of your sorting priorities
 - `config` (Object): Optional configuration
-  - `effort` (`'low'`|`'high'`): Controls sorting thoroughness. `'low'` uses fewer extremes (5) and 1 iteration. `'high'` extracts more extremes (15) over 2 iterations. Default: extremeK 10, 1 iteration
-  - `extremeK` (number): Override top/bottom items to extract per iteration
-  - `iterations` (number): Override sorting passes for refined results
-  - `selectBottom` (boolean): Override whether to also find worst items (default: true)
   - `batchSize` (number): Items to process per batch (default: 10)
+  - `extremeK` (number): Top/bottom items to extract per iteration (default: 10)
+  - `iterations` (number): Sorting passes for refined results (default: 1)
+  - `selectBottom` (boolean): Also find worst items (default: true)
+  - `maxAttempts` (number): Retry attempts per LLM call (default: 3)
   - `onProgress` (function): Called with `{top, bottom}` after each iteration
   - `abortSignal` (AbortSignal): Signal to cancel the operation
   - `llm` (string|Object): Model configuration
 
 **Returns:** Promise<Array> - Items sorted by semantic relevance to your criteria
 
+## Features
+
+- **Scales beyond context windows**: Process datasets of any size through intelligent chunking
+- **Semantic understanding**: Sorts by meaning, not just keywords or alphabetical order
+- **Efficient LLM usage**: Minimizes API calls while maintaining sorting quality

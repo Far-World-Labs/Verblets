@@ -1,11 +1,16 @@
-import { describe } from 'vitest';
+import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
 
 import aiExpect from './index.js';
 import { longTestTimeout } from '../../constants/common.js';
 
-import { getTestHelpers } from '../test-analysis/test-wrappers.js';
+import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
+import { getConfig } from '../test-analysis/config.js';
 
-const { it, expect } = getTestHelpers('Expect chain');
+const config = getConfig();
+const it = config?.aiMode ? wrapIt(vitestIt, { baseProps: { suite: 'Expect chain' } }) : vitestIt;
+const expect = config?.aiMode
+  ? wrapExpect(vitestExpect, { baseProps: { suite: 'Expect chain' } })
+  : vitestExpect;
 
 const examples = [
   {
@@ -97,9 +102,11 @@ describe('LLM Expect Chain', () => {
       const businessRecommendation =
         'Increase marketing budget by 20% for next quarter to expand market reach and target demographics aged 25-45 through social media campaigns, aiming for 15% increase in engagement';
 
-      await aiExpect(businessRecommendation).toSatisfy(
+      const result = await aiExpect(businessRecommendation).toSatisfy(
         'Is this recommendation specific, actionable, and includes measurable targets?'
       );
+
+      expect(result).toBe(true);
     },
     longTestTimeout
   );
@@ -110,9 +117,11 @@ describe('LLM Expect Chain', () => {
       const storyOpening =
         'Once upon a time, in a land far away, there lived a brave knight who embarked on a quest to save the kingdom from an ancient curse that had plagued the realm for centuries.';
 
-      await aiExpect(storyOpening).toSatisfy(
+      const result = await aiExpect(storyOpening).toSatisfy(
         'Is this story opening engaging, sets up clear conflict, and follows good narrative structure?'
       );
+
+      expect(result).toBe(true);
     },
     longTestTimeout
   );

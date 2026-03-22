@@ -1,14 +1,23 @@
-import { describe } from 'vitest';
+import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
 
 import { longTestTimeout, extendedTestTimeout } from '../../constants/common.js';
 import llm from '../../lib/llm/index.js';
 import { asJSONSchema } from '../../prompts/index.js';
 import toObject from '../to-object/index.js';
-import { getTestHelpers } from '../test-analysis/test-wrappers.js';
+import vitestAiExpect from '../expect/index.js';
+import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
+import { getConfig } from '../test-analysis/config.js';
 
 import list from './index.js';
 
-const { it, expect, aiExpect } = getTestHelpers('List chain');
+const config = getConfig();
+const it = config?.aiMode ? wrapIt(vitestIt, { baseProps: { suite: 'List chain' } }) : vitestIt;
+const expect = config?.aiMode
+  ? wrapExpect(vitestExpect, { baseProps: { suite: 'List chain' } })
+  : vitestExpect;
+const aiExpect = config?.aiMode
+  ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'List chain' } })
+  : vitestAiExpect;
 
 const examples = [
   {

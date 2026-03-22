@@ -1,4 +1,4 @@
-import { describe } from 'vitest';
+import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
 import entities, { createEntityExtractor, entitySpec, applyEntities } from './index.js';
 import {
   mapInstructions,
@@ -14,9 +14,18 @@ import group from '../group/index.js';
 import find from '../find/index.js';
 import { techCompanyArticle } from './sample-text.js';
 import { longTestTimeout } from '../../constants/common.js';
-import { getTestHelpers } from '../test-analysis/test-wrappers.js';
+import vitestAiExpect from '../expect/index.js';
+import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
+import { getConfig } from '../test-analysis/config.js';
 
-const { it, expect, aiExpect } = getTestHelpers('Entities chain');
+const config = getConfig();
+const it = config?.aiMode ? wrapIt(vitestIt, { baseProps: { suite: 'Entities chain' } }) : vitestIt;
+const expect = config?.aiMode
+  ? wrapExpect(vitestExpect, { baseProps: { suite: 'Entities chain' } })
+  : vitestExpect;
+const aiExpect = config?.aiMode
+  ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'Entities chain' } })
+  : vitestAiExpect;
 
 // Split the article into chunks
 const chunks = techCompanyArticle.split('\n\n').filter((chunk) => chunk.trim().length > 0);

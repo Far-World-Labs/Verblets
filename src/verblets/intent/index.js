@@ -2,28 +2,6 @@ import callLlm from '../../lib/llm/index.js';
 import { asXML } from '../../prompts/index.js';
 import { intent as intentSchema } from '../../json-schemas/index.js';
 
-// ===== Option Mappers =====
-
-/**
- * Map tolerance option to prompt guidance for intent matching strictness.
- * low: strict — only match if highly confident, otherwise null operation.
- * high: lenient — always return best match, infer parameters from context.
- * Default: balanced matching (current behavior, no extra guidance).
- * @param {string|undefined} value
- * @returns {string|undefined} Prompt guidance string or undefined
- */
-export const mapTolerance = (value) => {
-  if (value === undefined) return undefined;
-  if (typeof value === 'string') {
-    return {
-      low: "Be strict about matching. Only select an operation if you are highly confident the user's intent matches it. If the input is ambiguous or does not clearly match any operation, set the operation to null and explain the ambiguity. Only extract parameters that are explicitly stated in the input — do not infer or assume values.",
-      med: undefined,
-      high: 'Be lenient about matching. Always select the closest matching operation even if the match is imperfect. Explain any uncertainty in the optional_parameters field. Infer reasonable parameter values from context even when not explicitly stated. Prefer dispatching to an operation over returning no match.',
-    }[value];
-  }
-  return undefined;
-};
-
 const responseFormat = {
   type: 'json_schema',
   json_schema: {
@@ -51,7 +29,7 @@ export default async function intent(text, operations, config = {}) {
     }
   }
 
-  const toleranceGuidance = mapTolerance(config.tolerance);
+  const { llm, ...options } = config;
 
   const operationsText = operations
     .map((op) => {
@@ -74,11 +52,12 @@ Determine:
 2. Extract any parameters mentioned in the input
 3. Identify optional parameters that could be relevant
 
-Return the result as a structured JSON object with the operation name, extracted parameters, and any optional parameters that might be useful.${toleranceGuidance ? `\n\n${toleranceGuidance}` : ''}`;
+Return the result as a structured JSON object with the operation name, extracted parameters, and any optional parameters that might be useful.`;
 
   const response = await callLlm(prompt, {
-    ...config,
-    response_format: responseFormat,
+    llm,
+    modelOptions: { response_format: responseFormat },
+    ...options,
   });
 
   return response;

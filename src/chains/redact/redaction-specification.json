@@ -1,0 +1,27 @@
+{
+  "type": "object",
+  "properties": {
+    "mode": {
+      "type": "string",
+      "enum": ["placeholder", "generalize"]
+    },
+    "targetCategories": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "replacementRules": {
+      "type": "string",
+      "description": "Rules for how to replace sensitive content"
+    },
+    "edgeCases": {
+      "type": "string",
+      "description": "How to handle ambiguous or edge-case PII"
+    },
+    "contextNotes": {
+      "type": "string",
+      "description": "Additional context-specific handling notes"
+    }
+  },
+  "required": ["mode", "targetCategories", "replacementRules", "edgeCases", "contextNotes"],
+  "additionalProperties": false
+}

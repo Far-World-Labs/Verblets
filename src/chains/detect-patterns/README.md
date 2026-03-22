@@ -55,11 +55,8 @@ const successPatterns = await detectPatterns(successfulGardens, { topN: 3 });
 ## Parameters
 
 - `objects` - Array of objects to analyze
-- `config` (Object): Configuration options
-  - `thoroughness` (`'low'`|`'high'`): Controls analysis depth. `'low'` uses small accumulator (20 items, topN 3) for fast dominant-pattern scan. `'high'` uses large accumulator (100 items, topN 10) for deeper analysis. Default: capacity 50, topN 5
-  - `topN` (number): Override maximum patterns to return
-  - `capacity` (number): Override accumulator size
-  - `llm` (string|Object): LLM model configuration
+- `topN` - Maximum patterns to return (default: 5)
+- `llm` - Language model configuration
 
 ## Returns
 

@@ -2,8 +2,10 @@ import callLlm from '../../lib/llm/index.js';
 import { schemas as defaultSchemas } from '../../json-schemas/index.js';
 
 export default async (text, config = {}) => {
+  const { llm, schemas, ...options } = config;
+
   // Use provided schemas or fall back to default schemas
-  const schemasToUse = config.schemas || defaultSchemas;
+  const schemasToUse = schemas || defaultSchemas;
 
   // Convert JSON schemas to OpenAI function tools format
   const tools = Object.entries(schemasToUse).map(([schemaName, schema]) => ({
@@ -20,9 +22,12 @@ export default async (text, config = {}) => {
   }));
 
   const response = await callLlm(text, {
-    ...config,
-    // toolChoice: 'auto' // by default
-    tools,
+    llm,
+    modelOptions: {
+      // toolChoice: 'auto' // by default
+      tools,
+    },
+    ...options,
   });
 
   // Check if a function was called or if we got a text response

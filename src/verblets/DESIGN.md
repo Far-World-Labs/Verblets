@@ -36,35 +36,40 @@ Each verblet directory contains:
 
 ### Correct Schema Configuration
 
-Pass `response_format` flat on the config object:
+Use `modelOptions.response_format` for structured output with the llm module:
 
 ```javascript
-import callLlm from '../../lib/llm/index.js';
+import llm from '../../lib/llm/index.js';
 
-export default async function sentiment(text, config = {}) {
+export async function sentiment(text, options = {}) {
   const prompt = `Analyze the sentiment of this text: ${text}`;
-
-  const response = await callLlm(prompt, {
-    ...config,
-    response_format: {
-      type: 'json_schema',
-      json_schema: {
-        name: 'sentiment_result',
-        schema: {
-          type: 'object',
-          properties: {
-            sentiment: {
-              type: 'string',
-              enum: ['positive', 'negative', 'neutral'],
+  
+  const response = await llm(prompt, {
+    modelOptions: {
+      response_format: {
+        type: 'json_schema',
+        json_schema: {
+          name: 'sentiment_result',
+          schema: {
+            type: 'object',
+            properties: {
+              sentiment: { 
+                type: 'string', 
+                enum: ['positive', 'negative', 'neutral'] 
+              },
+              confidence: { 
+                type: 'number', 
+                minimum: 0, 
+                maximum: 1 
+              },
+              reasoning: { type: 'string' }
             },
-            confidence: { type: 'number' },
-            reasoning: { type: 'string' },
+            required: ['sentiment', 'confidence', 'reasoning']
           },
-          required: ['sentiment', 'confidence', 'reasoning'],
-          additionalProperties: false,
         },
       },
     },
+    ...options.llm,
   });
 
   // callLlm parses structured output automatically
@@ -79,19 +84,23 @@ export default async function sentiment(text, config = {}) {
 const schema = {
   type: 'object',
   properties: {
-    category: {
-      type: 'string',
-      enum: ['urgent', 'normal', 'low'],
+    // Use enums for limited options
+    category: { 
+      type: 'string', 
+      enum: ['urgent', 'normal', 'low'] 
     },
-    score: { type: 'number' },
-    description: { type: 'string' },
+    // Add ranges for numbers
+    score: { 
+      type: 'number', 
+      minimum: 0, 
+      maximum: 100 
+    },
+    // Require essential fields
+    description: { type: 'string' }
   },
-  required: ['category', 'score', 'description'],
-  additionalProperties: false,
+  required: ['category', 'score', 'description']
 };
 ```
-
-**Always include `additionalProperties: false`** on object schemas — required by the structured output API.
 
 **Array Processing Schemas:**
 ```javascript
@@ -105,81 +114,116 @@ const listSchema = {
         properties: {
           id: { type: 'string' },
           processed: { type: 'boolean' },
-          result: { type: 'string' },
+          result: { type: 'string' }
         },
-        required: ['id', 'processed', 'result'],
-        additionalProperties: false,
-      },
-    },
+        required: ['id', 'processed', 'result']
+      }
+    }
   },
-  required: ['items'],
-  additionalProperties: false,
+  required: ['items']
 };
 ```
 
 ### Common Schema Passing Mistakes
 
-**Wrong: Embedding schema in prompt**
+**❌ Wrong: Embedding schema in prompt**
 ```javascript
 const prompt = `Return JSON with this structure: {"sentiment": "positive|negative|neutral"}`;
 // This leads to unreliable parsing and markdown-wrapped responses
 ```
 
-**Wrong: Not including additionalProperties: false**
+**❌ Wrong: Using deprecated schema parameter**
 ```javascript
-const schema = { type: 'object', properties: { ... }, required: ['...'] };
-// Missing additionalProperties: false — will get 400 errors from the API
+const response = await llm(prompt, {
+  schema: mySchema, // Old pattern - don't use
+});
 ```
 
-### Response Handling
-
-callLlm automatically parses structured output and auto-unwraps `{value: ...}` and `{items: [...]}` patterns. No manual JSON parsing needed.
-
-## Config System
-
-Verblets participate in the same config system as chains. Prompt-shaping options use `getOption` directly (verblets typically have 1-2 options, so `getOptions` batch resolution is unnecessary):
-
+**❌ Wrong: Not handling response type variations**
 ```javascript
-import callLlm from '../../lib/llm/index.js';
-import { getOption } from '../../lib/context/option.js';
+const result = JSON.parse(response); // Fails if response is already an object
+```
 
-export const mapDivergence = (value) => {
-  if (value === undefined) return undefined;
-  if (typeof value === 'string') {
-    return {
-      low: 'Stay close to the original query with minor keyword variations.',
-      high: 'Generate maximally diverse variants with contrasting terminology.',
-    }[value];
+### Response Handling Patterns
+
+**Robust Response Processing:**
+```javascript
+try {
+  const response = await llm(prompt, {
+    modelOptions: { response_format: { /* schema */ } }
+  });
+  
+  // Validate required fields exist
+  if (!response.sentiment || typeof response.confidence !== 'number') {
+    throw new Error('Invalid response structure');
   }
-  return value;
-};
-
-export default async function multiQuery(query, config = {}) {
-  const divergence = await getOption('divergence', config, undefined);
-  const guidance = mapDivergence(divergence);
-
-  const prompt = buildPrompt(query, guidance);
-  return callLlm(prompt, { ...config, response_format: schema });
+  
+  return result;
+} catch (error) {
+  throw new Error(`Sentiment analysis failed: ${error.message}`);
 }
 ```
 
-For verblets, `callLlm` resolves `llm` and all model keys from config — just spread config and add any verblet-specific keys.
+**For List Processing Verblets:**
+```javascript
+export async function processItems(items, options = {}) {
+  const response = await llm(buildPrompt(items), {
+    modelOptions: {
+      response_format: {
+        type: 'json_schema',
+        json_schema: {
+          name: 'batch_result',
+          schema: batchSchema
+        }
+      }
+    },
+    ...options.llm
+  });
+
+  // Ensure we got the expected array structure
+  const results = response.items || response.results || response;
+  if (!Array.isArray(results)) {
+    throw new Error('Expected array response from batch processing');
+  }
+  
+  return results;
+}
+```
+
+### Integration with Other Functions
+
+When verblets call other functions that expect different schema formats:
+
+```javascript
+// For chains that use reduce function (which expects llm.response_format)
+import reduce from '../chains/reduce/index.js';
+
+const response = await reduce(items, prompt, {
+  llm: {
+    response_format: {
+      type: 'json_schema',
+      json_schema: { name: 'result', schema: mySchema }
+    }
+  }
+});
+```
 
 ## Expected Exports
 
 ```javascript
-// Optional: mapper for prompt-shaping options
-export const mapDivergence = (value) => { /* ... */ };
-
 /**
  * Extract sentiment from text input
  * @param {string} text - The text to analyze
- * @param {Object} [config] - Configuration (llm, policy, etc.)
+ * @param {Object} [options] - Configuration options
+ * @param {Object} [options.llm] - LLM configuration
  * @returns {Promise<Object>} Sentiment analysis result
  */
-export default async function sentiment(text, config = {}) {
+export async function sentiment(text, options = {}) {
   // Implementation
 }
+
+// Primary export
+export default sentiment;
 ```
 
 ## Common Verblet Types
@@ -188,22 +232,31 @@ export default async function sentiment(text, config = {}) {
 - **List**: Process arrays of items (`map`, `filter`, `reduce` operations)
 - **Content**: Generate or transform text content (`summarize`, `rewrite`)
 - **Analysis**: Analyze and classify content (`sentiment`, `intent`, `classify`)
-- **Embedding**: Query transforms for RAG (`embedMultiQuery`, `embedStepBack`, `embedSubquestions`)
+- **Utility**: Parse, validate, or format data (`parseDate`, `validateEmail`)
 
 ## Error Handling
 
 Use contract-based validation with meaningful error messages:
 
 ```javascript
-export default async function sentiment(text, config = {}) {
+export async function sentiment(text, options = {}) {
+  // Input validation
   if (!text || typeof text !== 'string') {
     throw new Error('Text input is required and must be a string');
   }
-
-  return callLlm(buildPrompt(text), {
-    ...config,
-    response_format: sentimentSchema,
-  });
+  
+  if (text.length > 10000) {
+    throw new Error('Text input is too long (max 10,000 characters)');
+  }
+  
+  try {
+    // LLM processing
+    const result = await processWithLLM(text, options);
+    return result;
+  } catch (error) {
+    // Provide context-specific error messages
+    throw new Error(`Sentiment analysis failed: ${error.message}`);
+  }
 }
 ```
 
@@ -214,6 +267,7 @@ export default async function sentiment(text, config = {}) {
 **Complex verblets need documentation when they have:**
 - Multiple configuration options beyond basic `llm` settings
 - Non-obvious behavior or edge cases
+- Integration with external systems
 - Custom schema requirements
 - Performance considerations
 
@@ -235,15 +289,19 @@ Brief description of what it does and when to use it.
 
 \`\`\`javascript
 import { verbletName } from '@far-world-labs/verblets';
-const result = await verbletName(input, { divergence: 'high' });
+const result = await verbletName(input, options);
 \`\`\`
 
-## Options
-- `divergence` - `'low'` | `'high'` — controls variant diversity
-- `llm` - Model selection (string, capability object, or full config)
+## Parameters
+- `input` - Description and constraints
+- `options.llm` - LLM configuration (optional)
+- `options.customOption` - Any verblet-specific options
 
 ## Returns
 Description of output structure and format
+
+## Examples (optional)
+Real-world usage scenarios for complex cases
 ```
 
 ## Testing Standards
@@ -254,7 +312,7 @@ Mock LLM calls for fast, deterministic tests:
 
 ```javascript
 import { vi, describe, it, expect } from 'vitest';
-import sentiment from './index.js';
+import { sentiment } from './index.js';
 import llm from '../../lib/llm/index.js';
 
 vi.mock('../../lib/llm/index.js');
@@ -264,16 +322,19 @@ describe('sentiment', () => {
     llm.mockResolvedValue({
       sentiment: 'positive',
       confidence: 0.95,
-      reasoning: 'Expresses joy and satisfaction',
+      reasoning: 'Expresses joy and satisfaction'
     });
 
     const result = await sentiment('I love this product!');
-
+    
     expect(result.sentiment).toBe('positive');
+    expect(result.confidence).toBeGreaterThan(0.9);
     expect(llm).toHaveBeenCalledWith(
       expect.stringContaining('I love this product!'),
       expect.objectContaining({
-        response_format: expect.any(Object),
+        modelOptions: expect.objectContaining({
+          response_format: expect.any(Object)
+        })
       })
     );
   });
@@ -282,22 +343,138 @@ describe('sentiment', () => {
 
 ### Integration Tests (index.examples.js)
 
-Use real LLM calls for validation with vitest test wrappers.
+Use real LLM calls for validation:
+
+```javascript
+import { sentiment } from './index.js';
+
+// Test with real data to validate AI behavior
+const examples = [
+  {
+    input: 'This product exceeded my expectations!',
+    expected: 'positive'
+  },
+  {
+    input: 'I hate waiting in long lines.',
+    expected: 'negative'
+  }
+];
+
+for (const example of examples) {
+  const result = await sentiment(example.input);
+  console.log(`Input: ${example.input}`);
+  console.log(`Result: ${JSON.stringify(result, null, 2)}`);
+  console.log(`Expected: ${example.expected}, Got: ${result.sentiment}`);
+  console.log('---');
+}
+```
+
+## Quality Patterns
+
+### Function Structure
+```javascript
+export async function verbletName(input, options = {}) {
+  // 1. Input validation
+  if (!input) {
+    throw new Error('Input is required');
+  }
+  
+  // 2. Configuration setup
+  const config = {
+    ...defaultOptions,
+    ...options
+  };
+  
+  // 3. LLM processing with proper schema
+  const response = await llm(prompt, {
+    modelOptions: {
+      response_format: { /* schema */ }
+    },
+    ...config.llm
+  });
+  
+  // 4. Return structured output
+  return response;
+}
+```
+
+### Configuration Handling
+- Accept `options.llm` for LLM configuration
+- Provide sensible defaults for verblet-specific options
+- Document required vs optional parameters in JSDoc
+- Use destructuring with defaults for clean option handling
+
+### Performance Considerations
+- Use appropriate timeout values for different operation types
+- Handle rate limiting gracefully with exponential backoff
+- Cache expensive operations when appropriate (with TTL)
+- Consider input size limits to prevent excessive API costs
+
+## Examples from Codebase
+
+**Simple Verblet:** `src/verblets/sentiment` - Basic text analysis with enum output
+**Complex Verblet:** `src/verblets/intent` - Multi-parameter operation with custom schema
+**List Processing:** `src/verblets/map` - Array transformation with individual item processing
 
 ## Anti-Patterns
 
 ### Schema and Response Handling
-- **Missing `additionalProperties: false` on object schemas** — causes 400 errors from the structured output API
+- **Using deprecated schema parameter instead of modelOptions.response_format**
 - **Not handling both string and object response types from structured output**
 - **Assuming all LLM responses will be markdown-wrapped (structured output returns clean JSON)**
-
-### Config Handling
-- **Nesting model keys under `modelOptions`** — pass `response_format`, `temperature`, etc. flat on config
-- **Extracting `llm` from config to re-pass** — callLlm resolves it from config automatically
-- **Hard-coding model names** — use capability-based selection via `llm` parameter
+- **Inconsistent schema passing patterns between different LLM function calls**
 
 ### General Patterns
 - Over-defensive input validation for simple cases
 - Embedding schemas directly in prompts
 - Complex configuration for simple operations
+- Poor error messages that don't guide users
+- Missing JSDoc for public functions
 - Hard-coding timeouts or retry logic without configuration options
+
+## Advanced Patterns
+
+### Conditional Schema Selection
+```javascript
+export async function analyze(text, options = {}) {
+  const { analysisType = 'basic' } = options;
+  
+  const schema = analysisType === 'detailed' 
+    ? detailedAnalysisSchema 
+    : basicAnalysisSchema;
+  
+  const response = await llm(prompt, {
+    modelOptions: {
+      response_format: {
+        type: 'json_schema',
+        json_schema: { name: 'analysis', schema }
+      }
+    }
+  });
+  
+  return response;
+}
+```
+
+### Streaming for Large Outputs
+```javascript
+export async function generateLongContent(prompt, options = {}) {
+  const { stream = false } = options;
+  
+  if (stream) {
+    // Handle streaming response for large content
+    return llm(prompt, { 
+      stream: true,
+      ...options.llm
+    });
+  }
+  
+  // Standard response for smaller content
+  return llm(prompt, {
+    modelOptions: {
+      response_format: { /* schema */ }
+    },
+    ...options.llm
+  });
+}
+``` 

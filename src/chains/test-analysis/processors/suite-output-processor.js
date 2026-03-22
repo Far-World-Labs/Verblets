@@ -6,8 +6,6 @@
  */
 
 import { BaseProcessor } from './base-processor.js';
-import { aggregateFromLogs } from '../aggregator.js';
-import { formatTestSummary } from '../output-utils.js';
 
 export class SuiteOutputProcessor extends BaseProcessor {
   constructor({ ringBuffer, policy }) {
@@ -158,6 +156,8 @@ export class SuiteOutputProcessor extends BaseProcessor {
       if (suiteLogs.length === 0) return;
 
       // Use the aggregator to get suite statistics
+      const { aggregateFromLogs } = await import('../aggregator.js');
+      const { formatTestSummary } = await import('../output-utils.js');
 
       const suites = aggregateFromLogs(suiteLogs);
       const suiteData = suites.find((s) => s.name === suiteName);

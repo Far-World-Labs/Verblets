@@ -1,38 +1,11 @@
 import reduce from '../reduce/index.js';
 import { patternCandidatesJsonSchema } from './schemas.js';
-import { jsonSchema } from '../../lib/llm/index.js';
-import { initChain, withPolicy } from '../../lib/context/option.js';
-
-// ===== Option Mappers =====
-
-const DEFAULT_THOROUGHNESS = { capacity: 50, topN: 5 };
-
-/**
- * Map thoroughness option to a pattern detection posture.
- * Coordinates accumulator capacity and output limit.
- * low: small accumulator, fewer results — fast scan for dominant patterns.
- * high: large accumulator, more results — deep analysis catching rare patterns.
- * Default: capacity 50, topN 5.
- * @param {string|object|undefined} value
- * @returns {{ capacity: number, topN: number }}
- */
-export const mapThoroughness = (value) => {
-  if (value === undefined) return DEFAULT_THOROUGHNESS;
-  if (typeof value === 'object') return value;
-  return (
-    {
-      low: { capacity: 20, topN: 3 },
-      med: DEFAULT_THOROUGHNESS,
-      high: { capacity: 100, topN: 10 },
-    }[value] ?? DEFAULT_THOROUGHNESS
-  );
-};
 
 // Response format for pattern detection - uses items wrapper for array
-const PATTERN_RESPONSE_FORMAT = jsonSchema(
-  patternCandidatesJsonSchema.name,
-  patternCandidatesJsonSchema.schema
-);
+const PATTERN_RESPONSE_FORMAT = {
+  type: 'json_schema',
+  json_schema: patternCandidatesJsonSchema,
+};
 
 function filterObject(obj, maxStringLength = 50, maxArrayLength = 10) {
   if (typeof obj !== 'object' || obj === null) {
@@ -61,24 +34,13 @@ function filterObject(obj, maxStringLength = 50, maxArrayLength = 10) {
 }
 
 export default async function detectPatterns(objects, config = {}) {
-  const {
-    config: scopedConfig,
-    maxStringLength,
-    maxArrayLength,
-    topN,
-    capacity,
-  } = await initChain('detect-patterns', config, {
-    thoroughness: withPolicy(mapThoroughness, ['topN', 'capacity']),
-    maxStringLength: 50,
-    maxArrayLength: 10,
-  });
-  config = scopedConfig;
+  const { topN = 5, maxStringLength = 50, maxArrayLength = 10, llm, ...options } = config;
 
   const filteredObjects = objects.map((obj) => filterObject(obj, maxStringLength, maxArrayLength));
   const stringifiedObjects = filteredObjects.map((obj) => JSON.stringify(obj, null, 0));
 
   const patternInstructions = `
-    Maintain an array of pattern candidates and individual instances. Maximum ${capacity} total items.
+    Maintain an array of pattern candidates and individual instances. Maximum 50 total items.
     
     Each item format: {"type": "pattern"|"instance", "template": {...}, "count": N}
     - "pattern": merged from 2+ objects, count >= 2
@@ -96,7 +58,7 @@ export default async function detectPatterns(objects, config = {}) {
       * { values: [val1, val2, ...] } for varying discrete values
     - Keep literal values when all merged objects have identical value
     
-    CAPACITY MANAGEMENT (when at ${capacity} items):
+    CAPACITY MANAGEMENT (when at 50 items):
     - Try merging new object with best match first
     - If no merge possible, evict lowest count instance
     - Prioritize keeping patterns over instances
@@ -107,9 +69,10 @@ export default async function detectPatterns(objects, config = {}) {
   `;
 
   const candidateArray = await reduce(stringifiedObjects, patternInstructions, {
-    ...config,
     initial: [],
     responseFormat: PATTERN_RESPONSE_FORMAT,
+    llm,
+    ...options,
   });
 
   // Since PATTERN_RESPONSE_FORMAT is a simple collection schema,

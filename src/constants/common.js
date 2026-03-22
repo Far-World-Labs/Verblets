@@ -20,15 +20,7 @@ export const falsyValues = ['0', 'false', 'FALSE', 'False', 'no', 'NO', 'No'];
 // Model capability keys recognized by negotiate and normalizeLlm
 export const CAPABILITY_KEYS = ['fast', 'cheap', 'good', 'reasoning', 'multi', 'sensitive'];
 
-// Recognized intensity levels for behavioral dial options
-export const INTENSITY_LEVELS = ['low', 'high'];
-
-// Example test cost tiers, gated by EXAMPLE_BUDGET env var.
-// 'low'    (default) — single-call examples only (~190 tests)
-// 'medium'           — adds multi-call chains up to ~6 LLM calls per test
-// 'high'             — all examples including 10+ call chains
-//
-// Usage: EXAMPLE_BUDGET=medium npm run examples
-export const exampleBudget = (env.EXAMPLE_BUDGET || 'low').toLowerCase();
-export const isMediumBudget = ['medium', 'high'].includes(exampleBudget);
-export const isHighBudget = exampleBudget === 'high';
+// Utility to conditionally skip long-running examples
+// Set ENABLE_LONG_EXAMPLES=true to run all examples
+// Set ENABLE_LONG_EXAMPLES=false or leave unset to skip long examples
+export const shouldRunLongExamples = truthyValues.includes(env.ENABLE_LONG_EXAMPLES);

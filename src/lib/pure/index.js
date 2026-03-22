@@ -35,12 +35,6 @@ export const cosineSimilarity = (a, b) => {
   return sum;
 };
 
-export const sortBy = (keyFn) => (a, b) => {
-  const ka = keyFn(a);
-  const kb = keyFn(b);
-  return ka < kb ? -1 : ka > kb ? 1 : 0;
-};
-
 // Search a corpus of { vector, ...metadata } objects, returning top-K by cosine similarity
 export const vectorSearch = (queryVector, corpus, { topK = 5 } = {}) =>
   corpus

@@ -1,6 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import commonalities from './index.js';
-import { testPromptShapingOption } from '../../lib/test-utils/index.js';
 
 // Mock the llm function
 vi.mock('../../lib/llm/index.js', () => ({
@@ -8,10 +7,6 @@ vi.mock('../../lib/llm/index.js', () => ({
 }));
 
 const mockLlm = (await import('../../lib/llm/index.js')).default;
-
-beforeEach(() => {
-  mockLlm.mockReset();
-});
 
 describe('commonalities', () => {
   it('returns empty array for empty input', async () => {
@@ -62,12 +57,5 @@ describe('commonalities', () => {
     });
 
     expect(result).toEqual(['Urban transport']);
-  });
-
-  testPromptShapingOption('depth', {
-    invoke: (config) => commonalities(['apple', 'orange'], config),
-    setupMocks: () => mockLlm.mockResolvedValueOnce({ items: ['Fruits'] }),
-    llmMock: mockLlm,
-    markers: { low: 'literal', high: 'structural patterns' },
   });
 });

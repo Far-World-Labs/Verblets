@@ -48,7 +48,6 @@ Returns a `ChainTree` for `name`. `options` lets you override how components are
   const chain = dismantle('Bike', { enhanceFixes: 'Prefer standard part names.' });
   ```
 - `decomposeFixes` – text appended to prompts used by `decompose`.
-- `variety` (`'low'`|`'high'`|number): Controls frequency penalty for decomposition diversity. `'low'` reduces diversity (0.3). `'high'` maximizes diversity (0.9). Default: no frequency penalty
 
 ### `ChainTree`
 Returned by `dismantle`. Methods:

@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import embedSubquestions from './index.js';
-import { testPromptShapingOption } from '../../lib/test-utils/index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(),
@@ -24,10 +23,26 @@ describe('embedSubquestions', () => {
     const result = await embedSubquestions('Is Tokyo an affordable city for the average resident?');
 
     expect(mockLlm).toHaveBeenCalledTimes(1);
+    expect(Array.isArray(result)).toBe(true);
     expect(result).toHaveLength(3);
 
     const prompt = mockLlm.mock.calls[0][0];
     expect(prompt).toContain('Is Tokyo an affordable city for the average resident?');
+    expect(prompt).toContain('Break');
+    expect(prompt).toContain('sub-questions');
+  });
+
+  it('uses items schema for auto-unwrapping', async () => {
+    mockLlm.mockResolvedValueOnce([]);
+
+    await embedSubquestions('test query');
+
+    const callConfig = mockLlm.mock.calls[0][1];
+    const schema = callConfig.modelOptions.response_format.json_schema.schema;
+    expect(schema.properties).toHaveProperty('items');
+    expect(schema.properties.items.type).toBe('array');
+    expect(schema.properties.items.items.type).toBe('string');
+    expect(schema.required).toContain('items');
   });
 
   it('does not include a count parameter in the prompt', async () => {
@@ -40,10 +55,22 @@ describe('embedSubquestions', () => {
     expect(prompt).not.toMatch(/Generate \d+ /);
   });
 
-  testPromptShapingOption('granularity', {
-    invoke: (config) => embedSubquestions('complex query', config),
-    setupMocks: () => mockLlm.mockResolvedValueOnce([]),
-    llmMock: mockLlm,
-    markers: { low: '2-3 broad', high: 'fine-grained' },
+  it('passes llm config through to modelOptions', async () => {
+    mockLlm.mockResolvedValueOnce([]);
+
+    await embedSubquestions('query', { llm: { modelName: 'test-model' } });
+
+    const callConfig = mockLlm.mock.calls[0][1];
+    expect(callConfig.llm).toEqual({ modelName: 'test-model' });
+  });
+
+  it('passes logger through to LLM call', async () => {
+    const logger = { info: vi.fn() };
+    mockLlm.mockResolvedValueOnce([]);
+
+    await embedSubquestions('query', { logger });
+
+    const callConfig = mockLlm.mock.calls[0][1];
+    expect(callConfig.logger).toBe(logger);
   });
 });

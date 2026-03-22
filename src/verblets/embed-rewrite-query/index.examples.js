@@ -1,18 +1,35 @@
-import { describe } from 'vitest';
+import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
 
 import embedRewriteQuery from './index.js';
 import { longTestTimeout } from '../../constants/common.js';
+import vitestAiExpect from '../../chains/expect/index.js';
 
-import { getTestHelpers } from '../../chains/test-analysis/test-wrappers.js';
+import {
+  makeWrappedIt,
+  makeWrappedExpect,
+  makeWrappedAiExpect,
+} from '../../chains/test-analysis/test-wrappers.js';
+import { getConfig } from '../../chains/test-analysis/config.js';
 
-const { it, expect, aiExpect, makeLogger } = getTestHelpers('embed-rewrite-query');
+const config = getConfig();
+const suite = 'embed-rewrite-query';
+
+const it = makeWrappedIt(vitestIt, suite, config);
+const expect = makeWrappedExpect(vitestExpect, suite, config);
+const aiExpect = makeWrappedAiExpect(vitestAiExpect, suite, config);
+
+const makeTestLogger = (testName) => {
+  return config?.aiMode && globalThis.logger
+    ? globalThis.logger.child({ suite, testName })
+    : undefined;
+};
 
 describe('embed-rewrite-query', () => {
   it(
     'rewrites an ambiguous query into a clearer version',
     async () => {
       const result = await embedRewriteQuery('plants food', {
-        logger: makeLogger('rewrites an ambiguous query into a clearer version'),
+        logger: makeTestLogger('rewrites an ambiguous query into a clearer version'),
       });
 
       expect(typeof result).toBe('string');
@@ -33,7 +50,7 @@ describe('embed-rewrite-query', () => {
     'expands abbreviations and jargon',
     async () => {
       const result = await embedRewriteQuery('JS async perf tips', {
-        logger: makeLogger('expands abbreviations and jargon'),
+        logger: makeTestLogger('expands abbreviations and jargon'),
       });
 
       expect(typeof result).toBe('string');

@@ -1,18 +1,35 @@
-import { describe } from 'vitest';
+import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
 
 import embedMultiQuery from './index.js';
 import { longTestTimeout } from '../../constants/common.js';
+import vitestAiExpect from '../../chains/expect/index.js';
 
-import { getTestHelpers } from '../../chains/test-analysis/test-wrappers.js';
+import {
+  makeWrappedIt,
+  makeWrappedExpect,
+  makeWrappedAiExpect,
+} from '../../chains/test-analysis/test-wrappers.js';
+import { getConfig } from '../../chains/test-analysis/config.js';
 
-const { it, expect, aiExpect, makeLogger } = getTestHelpers('embed-multi-query');
+const config = getConfig();
+const suite = 'embed-multi-query';
+
+const it = makeWrappedIt(vitestIt, suite, config);
+const expect = makeWrappedExpect(vitestExpect, suite, config);
+const aiExpect = makeWrappedAiExpect(vitestAiExpect, suite, config);
+
+const makeTestLogger = (testName) => {
+  return config?.aiMode && globalThis.logger
+    ? globalThis.logger.child({ suite, testName })
+    : undefined;
+};
 
 describe('embed-multi-query', () => {
   it(
     'generates diverse query variants',
     async () => {
       const result = await embedMultiQuery('how do plants make food', {
-        logger: makeLogger('generates diverse query variants'),
+        logger: makeTestLogger('generates diverse query variants'),
       });
 
       expect(Array.isArray(result)).toBe(true);
@@ -37,7 +54,7 @@ describe('embed-multi-query', () => {
     async () => {
       const result = await embedMultiQuery('machine learning basics', {
         count: 4,
-        logger: makeLogger('respects the count parameter'),
+        logger: makeTestLogger('respects the count parameter'),
       });
 
       expect(Array.isArray(result)).toBe(true);

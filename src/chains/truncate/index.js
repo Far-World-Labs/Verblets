@@ -1,23 +1,5 @@
 import score from '../score/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
-import { initChain, withPolicy } from '../../lib/context/option.js';
-
-// ===== Option Mappers =====
-
-const DEFAULT_THRESHOLD = 6;
-
-/**
- * Map strictness option to a score threshold for content removal.
- * low: lower threshold (4) — removes anything the LLM isn't confident should stay. Lenient about what to cut.
- * high: higher threshold (7) — only removes content the LLM strongly considers removable. Strict about keeping content.
- * @param {string|number|undefined} value
- * @returns {number} Score threshold (0-10) below which chunks are removed
- */
-export const mapStrictness = (value) => {
-  if (value === undefined) return DEFAULT_THRESHOLD;
-  if (typeof value === 'number') return value;
-  return { low: 4, med: DEFAULT_THRESHOLD, high: 7 }[value] ?? DEFAULT_THRESHOLD;
-};
 
 /**
  * Create chunks of text with tracked end positions.
@@ -91,15 +73,8 @@ function createChunks(text, chunkSize) {
  * @returns {number} Character index where to truncate
  */
 export default async function truncate(text, instructions, config = {}) {
-  const {
-    config: scopedConfig,
-    chunkSize,
-    strictness: threshold,
-  } = await initChain('truncate', config, {
-    chunkSize: 1000,
-    strictness: withPolicy(mapStrictness),
-  });
-  config = scopedConfig;
+  const chunkSize = config.chunkSize ?? 1000;
+  const threshold = config.threshold ?? 6;
 
   // Create chunks with tracked end positions
   const chunks = createChunks(text, chunkSize);

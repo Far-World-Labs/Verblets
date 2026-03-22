@@ -14,11 +14,9 @@ import { scaleSpec } from '../scale/index.js';
 import listBatch from '../../verblets/list-batch/index.js';
 import createBatches from '../../lib/text-batch/index.js';
 import filter from '../filter/index.js';
-import { testInstructionBuilders } from '../../lib/test-utils/index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(),
-  jsonSchema: (name, schema) => ({ type: 'json_schema', json_schema: { name, schema } }),
 }));
 
 vi.mock('../scale/index.js', () => ({
@@ -87,7 +85,11 @@ describe('score chain', () => {
       expect(listBatch).toHaveBeenCalledWith(
         ['a', 'bb', 'ccc'],
         expect.stringContaining('score-specification'),
-        expect.any(Object)
+        expect.objectContaining({
+          responseFormat: expect.objectContaining({
+            type: 'json_schema',
+          }),
+        })
       );
       expect(result).toEqual([1, 2, 3]);
     });
@@ -202,7 +204,7 @@ describe('score chain', () => {
 
       const result = await scoreItem('test item', 'score by length');
 
-      expect(scaleSpec).toHaveBeenCalledWith('score by length', {});
+      expect(scaleSpec).toHaveBeenCalledWith('score by length', { now: expect.any(Date) });
       expect(llm).toHaveBeenCalledWith(expect.stringContaining('test item'), expect.any(Object));
       expect(result).toBe(7);
     });
@@ -223,6 +225,16 @@ describe('score chain', () => {
   });
 
   describe('score.with', () => {
+    it('is async and returns a function', async () => {
+      scaleSpec.mockResolvedValueOnce(mockSpec);
+      const scorer = await score.with('technical depth');
+      expect(typeof scorer).toBe('function');
+      expect(scaleSpec).toHaveBeenCalledWith(
+        'technical depth',
+        expect.objectContaining({ now: expect.any(Date) })
+      );
+    });
+
     it('calls scoreSpec once during factory creation', async () => {
       scaleSpec.mockResolvedValueOnce(mockSpec);
       llm.mockResolvedValue(7);
@@ -250,66 +262,67 @@ describe('score chain', () => {
     });
   });
 
-  testInstructionBuilders(
-    {
-      mapInstructions,
-      filterInstructions,
-      reduceInstructions,
-      findInstructions,
-      groupInstructions,
-    },
-    {
-      specTag: 'score-specification',
-      specification: mockSpec,
-      xmlTags: { filter: 'filter-condition' },
-    }
-  );
+  describe('instruction builders', () => {
+    describe('mapInstructions', () => {
+      it('creates map instructions from specification', () => {
+        const instructions = mapInstructions({ specification: mockSpec });
 
-  describe('anchoring option', () => {
-    it.each([
-      {
-        level: 'low',
-        items: ['a', 'b', 'c', 'd'],
-        batches: [
-          { items: ['a', 'b'], startIndex: 0 },
-          { items: ['c', 'd'], startIndex: 2 },
-        ],
-        scores: [
-          [2, 8],
-          [5, 3],
-        ],
-        expectAnchors: false,
-      },
-      {
-        level: 'high',
-        items: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'],
-        batches: [
-          { items: ['a', 'b', 'c', 'd', 'e', 'f'], startIndex: 0 },
-          { items: ['g', 'h'], startIndex: 6 },
-        ],
-        scores: [
-          [1, 3, 5, 7, 8, 10],
-          [4, 6],
-        ],
-        expectAnchors: true,
-      },
-    ])(
-      'anchoring $level $expectAnchors anchors in second batch',
-      async ({ level, items, batches, scores, expectAnchors }) => {
-        scaleSpec.mockResolvedValueOnce(mockSpec);
-        createBatches.mockReturnValueOnce(batches);
-        scores.forEach((s) => listBatch.mockResolvedValueOnce(s));
+        expect(instructions).toContain('score-specification');
+        expect(instructions).toContain('Return ONLY the score value');
+      });
+    });
 
-        await score(items, 'score items', { anchoring: level });
+    describe('filterInstructions', () => {
+      it('creates filter instructions from specification', () => {
+        const instructions = filterInstructions({
+          specification: mockSpec,
+          processing: 'keep scores above 7',
+        });
 
-        const secondCallPrompt = listBatch.mock.calls[1][1];
-        if (expectAnchors) {
-          expect(secondCallPrompt).toContain('scoring-anchors');
-        } else {
-          expect(secondCallPrompt).not.toContain('scoring-anchors');
-        }
-      }
-    );
+        expect(instructions).toContain('score-specification');
+        expect(instructions).toContain('filter-condition');
+        expect(instructions).toContain('keep scores above 7');
+      });
+    });
+
+    describe('reduceInstructions', () => {
+      it('creates reduce instructions from specification', () => {
+        const instructions = reduceInstructions({
+          specification: mockSpec,
+          processing: 'sum all scores',
+        });
+
+        expect(instructions).toContain('score-specification');
+        expect(instructions).toContain('reduce-operation');
+        expect(instructions).toContain('sum all scores');
+      });
+    });
+
+    describe('findInstructions', () => {
+      it('creates find instructions from specification', () => {
+        const instructions = findInstructions({
+          specification: mockSpec,
+          processing: 'highest scoring item',
+        });
+
+        expect(instructions).toContain('score-specification');
+        expect(instructions).toContain('selection-criteria');
+        expect(instructions).toContain('highest scoring item');
+      });
+    });
+
+    describe('groupInstructions', () => {
+      it('creates group instructions from specification', () => {
+        const instructions = groupInstructions({
+          specification: mockSpec,
+          processing: 'group into low, medium, high',
+        });
+
+        expect(instructions).toContain('score-specification');
+        expect(instructions).toContain('grouping-strategy');
+        expect(instructions).toContain('group into low, medium, high');
+      });
+    });
   });
 
   describe('integration with collection chains', () => {

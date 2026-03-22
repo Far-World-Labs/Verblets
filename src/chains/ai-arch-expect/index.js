@@ -100,11 +100,13 @@ async function processIndividualItem(item, contextText, itemContextFns, descript
     const prompt = buildPrompt(fullContext, item, description, targetType === 'files');
 
     const response = await llm(prompt, {
-      response_format: {
-        type: 'json_schema',
-        json_schema: {
-          name: 'arch_result',
-          schema: resultSchema,
+      modelOptions: {
+        response_format: {
+          type: 'json_schema',
+          json_schema: {
+            name: 'arch_result',
+            schema: resultSchema,
+          },
         },
       },
     });

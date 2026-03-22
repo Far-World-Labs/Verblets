@@ -1,13 +1,12 @@
 import fs from 'node:fs/promises';
 
 import sort from '../sort/index.js';
-import callLlm, { jsonSchema } from '../../lib/llm/index.js';
+import callLlm from '../../lib/llm/index.js';
 import pathAliases from '../../lib/path-aliases/index.js';
 import retry from '../../lib/retry/index.js';
 import search from '../../lib/search-js-files/index.js';
 import codeFeaturesPrompt from '../../prompts/code-features.js';
 import makeJSONSchema from '../../prompts/features-json-schema.js';
-import { scopeOperation } from '../../lib/context/option.js';
 
 const codeFeatureDefinitions = JSON.parse(
   await fs.readFile(
@@ -20,7 +19,10 @@ const visit = async ({
   node,
   state: stateInitial,
   features: featuresInitial = 'maintainability',
-  config,
+  llm,
+  maxAttempts = 3,
+  onProgress,
+  abortSignal,
 }) => {
   if (!node.functionName) {
     return stateInitial;
@@ -30,9 +32,9 @@ const visit = async ({
     codeFeatureDefinitions.map((d) => d.criteria),
     `best criteria for looking at "${featuresInitial}" within code`,
     {
-      ...config,
       batchSize: 4,
       extremeK: 4,
+      llm,
     }
   );
   const sortCriteria = sortResults.slice(0, 5);
@@ -58,8 +60,16 @@ const visit = async ({
   await retry(
     async () => {
       const resultParsed = await callLlm(visitPrompt, {
-        ...config,
-        response_format: jsonSchema('code_features_analysis', schema),
+        llm,
+        modelOptions: {
+          response_format: {
+            type: 'json_schema',
+            json_schema: {
+              name: 'code_features_analysis',
+              schema,
+            },
+          },
+        },
       });
 
       const id = `${node.filename}:::${node.functionName}`;
@@ -69,7 +79,7 @@ const visit = async ({
       state.abbreviations = state.abbreviations ?? {};
       state.abbreviations[id] = state.abbreviations[id] ?? state.nodesFound;
     },
-    { label: 'scan-js', config }
+    { label: 'scan-js', maxAttempts, onProgress, abortSignal }
   );
 
   return state;
@@ -77,9 +87,8 @@ const visit = async ({
 
 // node: { filename: './src/index.js' },
 export default async (moduleOptions) => {
-  const config = scopeOperation('scan-js', moduleOptions);
   const state = await search({
-    ...config,
+    ...moduleOptions,
   });
 
   const preState = {
@@ -88,13 +97,16 @@ export default async (moduleOptions) => {
   };
 
   return search({
-    ...config,
+    ...moduleOptions,
     state: preState,
     visit: (options) =>
       visit({
         ...options,
-        features: config.features,
-        config,
+        features: moduleOptions.features,
+        llm: moduleOptions.llm,
+        maxAttempts: moduleOptions.maxAttempts,
+        onProgress: moduleOptions.onProgress,
+        abortSignal: moduleOptions.abortSignal,
       }),
   });
 };

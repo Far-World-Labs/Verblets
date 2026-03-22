@@ -71,7 +71,6 @@ Creates a new summary map instance for managing data compression within token bu
 
 - `targetTokens` (number): Maximum token budget for all compressed data
 - `compressionRatio` (number): Default compression ratio (default: 0.5)
-- `summaryDetail` (`'low'`|`'high'`|number): Controls token ratio reserved for summarization. `'low'` reserves more space for summaries (0.4 ratio). `'high'` reserves less, keeping summaries tighter (0.2 ratio). Default: 0.3
 
 ### `summaryMap.set(key, dataElement)`
 
