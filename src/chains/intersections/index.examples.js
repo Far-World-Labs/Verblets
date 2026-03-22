@@ -55,7 +55,9 @@ describe.skipIf(!isHighBudget)('[high] intersections chain examples', () => {
     },
     longTestTimeout
   );
+});
 
+describe('intersections edge cases', () => {
   it(
     'returns empty for single category or empty input',
     async () => {
