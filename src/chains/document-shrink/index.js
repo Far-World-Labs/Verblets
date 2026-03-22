@@ -4,15 +4,89 @@ import map from '../map/index.js';
 import { scopeProgress } from '../../lib/progress-callback/index.js';
 import TextSimilarity from '../../lib/text-similarity/index.js';
 import { debug } from '../../lib/debug/index.js';
+import { initChain, withPolicy } from '../../lib/context/option.js';
 
 // Token cost estimates
 const TOKENS_PER_EXPANSION = 200;
 const TOKENS_PER_CHUNK_SCORE = 80;
 const TOKENS_PER_CHUNK_COMPRESS = 150;
-const COMPRESSION_RATIO = 0.3;
+const DEFAULT_COMPRESSION_RATIO = 0.3;
+const DEFAULT_LLM_WEIGHT = 0.7;
+const DEFAULT_SCORING_TOKEN_RATIO = 0.6;
+
+// ===== Option Mappers =====
+
+/**
+ * Map compression option to a ratio. Accepts 'low'|'high' or a raw number.
+ * @param {string|number|undefined} value
+ * @returns {number} Compression ratio (lower = more aggressive)
+ */
+export const mapCompression = (value) => {
+  if (value === undefined) return DEFAULT_COMPRESSION_RATIO;
+  if (typeof value === 'number') return value;
+  return (
+    { low: 0.45, med: DEFAULT_COMPRESSION_RATIO, high: 0.15 }[value] ?? DEFAULT_COMPRESSION_RATIO
+  );
+};
+
+/**
+ * Map ranking option to an LLM weight. Accepts 'low'|'high' or a raw number.
+ * @param {string|number|undefined} value
+ * @returns {number} LLM weight for edge-chunk scoring (higher = more LLM influence)
+ */
+export const mapRanking = (value) => {
+  if (value === undefined) return DEFAULT_LLM_WEIGHT;
+  if (typeof value === 'number') return value;
+  return { low: 0.3, med: DEFAULT_LLM_WEIGHT, high: 0.9 }[value] ?? DEFAULT_LLM_WEIGHT;
+};
+
+const DEFAULT_THOROUGHNESS = {
+  queryExpansion: true,
+  llmScoring: true,
+  llmCompression: true,
+  scoringTokenRatio: DEFAULT_SCORING_TOKEN_RATIO,
+};
+
+const THOROUGHNESS_LEVELS = {
+  low: {
+    queryExpansion: false,
+    llmScoring: false,
+    llmCompression: false,
+    scoringTokenRatio: DEFAULT_SCORING_TOKEN_RATIO,
+  },
+  med: DEFAULT_THOROUGHNESS,
+  high: {
+    queryExpansion: true,
+    llmScoring: true,
+    llmCompression: true,
+    scoringTokenRatio: 0.4,
+  },
+};
+
+/**
+ * Map thoroughness option to a coordinated posture for all internal phases.
+ * Accepts 'low'|'high' or a raw config object.
+ * low: pure TF-IDF selection, no LLM calls (fast/cheap).
+ * high: all phases active, more token budget for compression (thorough/expensive).
+ * @param {string|Object|undefined} value
+ * @returns {{ queryExpansion: boolean, llmScoring: boolean, llmCompression: boolean, scoringTokenRatio: number }}
+ */
+export const mapThoroughness = (value) => {
+  if (value === undefined) return DEFAULT_THOROUGHNESS;
+  if (typeof value === 'object') return value;
+  return THOROUGHNESS_LEVELS[value] ?? DEFAULT_THOROUGHNESS;
+};
 const LLM_CHUNK_BATCH_SIZE = 20;
 const MAX_ADJACENCY_DISTANCE = 3;
 const MIN_COMPRESSED_TEXT_LENGTH = 20;
+
+// Adaptive thresholds
+const MIN_REDUCTION_RATIO = 0.1;
+const MIN_DOC_LENGTH = 2000;
+const MAX_TOKEN_ALLOCATION_RATIO = 0.8;
+const LOW_REDUCTION_THRESHOLD = 0.2;
+const LOW_REDUCTION_SPACE_RESERVE = 0.5;
+const HIGH_REDUCTION_SPACE_RESERVE = 0.3;
 
 // Trim text to last complete sentence to avoid mid-sentence cutoffs.
 // Returns original text if no sentence boundary found or text already ends cleanly.
@@ -38,10 +112,10 @@ function calculateReductionRatio(targetSize, documentSize) {
 
 // Pure function: Calculate adaptive chunk size
 function calculateAdaptiveChunkSize(baseChunkSize, reductionRatio, docLength) {
-  if (reductionRatio < 0.1) {
+  if (reductionRatio < MIN_REDUCTION_RATIO) {
     // Heavy reduction: larger chunks for better context
     return Math.min(baseChunkSize * 2, 1000);
-  } else if (docLength < 2000) {
+  } else if (docLength < MIN_DOC_LENGTH) {
     // Small document: smaller chunks for granularity
     return Math.max(baseChunkSize / 2, 200);
   }
@@ -49,19 +123,29 @@ function calculateAdaptiveChunkSize(baseChunkSize, reductionRatio, docLength) {
 }
 
 // Pure function: Calculate token allocation ratios
-function calculateTokenAllocation(reductionRatio, remainingTokens) {
+function calculateTokenAllocation(
+  reductionRatio,
+  remainingTokens,
+  scoringTokenRatio = DEFAULT_SCORING_TOKEN_RATIO
+) {
   // More aggressive reduction = more LLM usage for smart selection
-  const llmTokenRatio = Math.min(0.8, 1 - reductionRatio);
+  const llmTokenRatio = Math.min(MAX_TOKEN_ALLOCATION_RATIO, 1 - reductionRatio);
   const llmTokens = Math.floor(remainingTokens * llmTokenRatio);
 
   return {
-    scoringTokens: Math.floor(llmTokens * 0.6),
-    compressionTokens: Math.floor(llmTokens * 0.4),
+    scoringTokens: Math.floor(llmTokens * scoringTokenRatio),
+    compressionTokens: Math.floor(llmTokens * (1 - scoringTokenRatio)),
   };
 }
 
 // Pure function: Calculate adaptive space allocation based on document characteristics
-function calculateSpaceAllocation(chunks, targetSize, tokenBudget, documentSize) {
+function calculateSpaceAllocation(
+  chunks,
+  targetSize,
+  tokenBudget,
+  documentSize,
+  scoringTokenRatio = DEFAULT_SCORING_TOKEN_RATIO
+) {
   const reductionRatio = calculateReductionRatio(targetSize, documentSize);
   const totalChunks = chunks.length;
   const avgChunkSize = Math.floor(documentSize / totalChunks);
@@ -73,7 +157,8 @@ function calculateSpaceAllocation(chunks, targetSize, tokenBudget, documentSize)
   // Calculate token allocation
   const { scoringTokens, compressionTokens } = calculateTokenAllocation(
     reductionRatio,
-    remainingTokens
+    remainingTokens,
+    scoringTokenRatio
   );
 
   const chunksWeCanScore = Math.max(1, Math.floor(scoringTokens / TOKENS_PER_CHUNK_SCORE));
@@ -84,8 +169,12 @@ function calculateSpaceAllocation(chunks, targetSize, tokenBudget, documentSize)
 
   // Calculate space allocation dynamically
   // If we need heavy reduction, reserve more space for compressed chunks
-  const compressionPotential = chunksWeCanCompress * avgChunkSize * (1 - COMPRESSION_RATIO);
-  const maxReservedRatio = reductionRatio < 0.2 ? 0.5 : 0.3; // More reservation for aggressive reduction
+  const compressionPotential = chunksWeCanCompress * avgChunkSize * (1 - DEFAULT_COMPRESSION_RATIO);
+  // More reservation for aggressive reduction
+  const maxReservedRatio =
+    reductionRatio < LOW_REDUCTION_THRESHOLD
+      ? LOW_REDUCTION_SPACE_RESERVE
+      : HIGH_REDUCTION_SPACE_RESERVE;
   const reservedSpace = Math.min(targetSize * maxReservedRatio, compressionPotential);
 
   return {
@@ -104,8 +193,6 @@ function createChunks(document, baseChunkSize, targetSize) {
   const reductionRatio = calculateReductionRatio(targetSize, docLength);
   const chunkSize = calculateAdaptiveChunkSize(baseChunkSize, reductionRatio, docLength);
 
-  // console.log(`[createChunks] Creating chunks of size ${chunkSize} from document of length ${docLength} (reduction ratio: ${reductionRatio.toFixed(2)})`);
-
   const chunks = [];
   for (let i = 0; i < docLength; i += chunkSize) {
     chunks.push({
@@ -115,28 +202,22 @@ function createChunks(document, baseChunkSize, targetSize) {
       size: Math.min(chunkSize, docLength - i),
     });
   }
-  // console.log(`[createChunks] Created ${chunks.length} chunks`);
   return chunks;
 }
 
 // Pure function: Minimal query expansion
-async function expandQuery(query, tokenBudget, llm, onProgress, now = new Date()) {
-  // console.log(`[expandQuery] Expanding query: "${query}" with token budget: ${tokenBudget}`);
+async function expandQuery(query, tokenBudget, options = {}) {
   if (tokenBudget < TOKENS_PER_EXPANSION) {
-    // console.log(`[expandQuery] Insufficient token budget, returning original query only`);
     return { expansions: [query], tokensUsed: 0 };
   }
 
-  // console.log(`[expandQuery] Collecting key terms related to query...`);
   try {
     const terms = await collectTerms(query, {
+      ...options,
       topN: 5,
       chunkLen: 500,
-      llm,
-      onProgress: scopeProgress(onProgress, 'collect-terms:query-expansion'),
-      now,
+      onProgress: scopeProgress(options.onProgress, 'collect-terms:query-expansion'),
     });
-    // console.log(`[expandQuery] Collected ${terms.length} terms:`, terms);
 
     // Include original query and the extracted terms
     const expansions = [query, ...terms];
@@ -152,8 +233,6 @@ async function expandQuery(query, tokenBudget, llm, onProgress, now = new Date()
 
 // Pure function: Score chunks with TF-IDF
 function scoreChunksWithTfIdf(chunks, expansions) {
-  // console.log(`[scoreChunksWithTfIdf] Scoring ${chunks.length} chunks with ${expansions.length} expansions`);
-
   // Create a TextSimilarity instance
   const similarity = new TextSimilarity();
 
@@ -205,7 +284,6 @@ function selectChunksByTfIdf(scoredChunks, tfIdfBudget) {
   const selectedIndices = new Set(selected.map((c) => c.index));
   const candidates = scoredChunks.filter((c) => !selectedIndices.has(c.index));
 
-  // console.log(`[selectChunksByTfIdf] Selected ${selected.length} chunks (${sizeUsed}/${tfIdfBudget} chars) from ${scoredChunks.length} total`);
   // if (selected.length > 0) {
   //   console.log(`[selectChunksByTfIdf] Selected chunk indices:`, selected.map(c => c.index));
   // }
@@ -214,17 +292,14 @@ function selectChunksByTfIdf(scoredChunks, tfIdfBudget) {
 }
 
 // Pure function: Score edge chunks with LLM
-async function scoreEdgeChunks(candidates, query, maxChunks, llm, options = {}) {
-  const { onProgress, now = new Date() } = options;
-  // console.log(`[scoreEdgeChunks] Scoring ${candidates.length} candidates, max chunks: ${maxChunks}`);
+async function scoreEdgeChunks(candidates, query, maxChunks, options = {}) {
+  const { llmWeight = 0.7 } = options;
   if (candidates.length === 0 || maxChunks === 0) {
-    // console.log(`[scoreEdgeChunks] No candidates or maxChunks is 0, returning empty`);
     return { scored: [], tokensUsed: 0 };
   }
 
   // Take chunks near the boundary
   const toScore = candidates.slice(0, maxChunks);
-  // console.log(`[scoreEdgeChunks] Scoring ${toScore.length} chunks with LLM`);
 
   // Extract key sentences from chunks for scoring
   const cleanedChunks = toScore.map((chunk) => {
@@ -236,32 +311,25 @@ async function scoreEdgeChunks(candidates, query, maxChunks, llm, options = {}) 
     // Find first complete sentence (up to 300 chars for better context)
     const firstSentence = text.match(/^[^.!?]{1,300}[.!?]/)?.[0] || text.slice(0, 300);
 
-    // console.log(`[scoreEdgeChunks] Extracted for scoring:`, firstSentence.slice(0, 100) + '...');
     return firstSentence.trim();
   });
-
-  // console.log(`[scoreEdgeChunks] Scoring ${cleanedChunks.length} cleaned chunks`);
 
   const scores = await score(
     cleanedChunks,
     `relevance to query: "${query}" (0=unrelated, 5=partially related, 10=directly answers)`,
     {
+      ...options,
       batchSize: LLM_CHUNK_BATCH_SIZE,
-      llm,
-      onProgress: scopeProgress(onProgress, 'score:edge-ranking'),
-      now,
+      onProgress: scopeProgress(options.onProgress, 'score:edge-ranking'),
     }
   );
-
-  // console.log(`[scoreEdgeChunks] Received scores:`, scores);
 
   const scored = toScore.map((chunk, i) => ({
     ...chunk,
     llmScore: scores[i] / 10,
-    finalScore: chunk.tfIdfScore * 0.3 + (scores[i] / 10) * 0.7, // Weight LLM score higher
+    finalScore: chunk.tfIdfScore * (1 - llmWeight) + (scores[i] / 10) * llmWeight,
   }));
 
-  // console.log(`[scoreEdgeChunks] Scored ${scored.length} chunks successfully`);
   return {
     scored: scored.sort((a, b) => b.finalScore - a.finalScore),
     tokensUsed: toScore.length * TOKENS_PER_CHUNK_SCORE,
@@ -275,10 +343,9 @@ async function compressHighValueChunks(
   maxChunks,
   availableSpace,
   allocation,
-  llm,
   options = {}
 ) {
-  const { onProgress, now = new Date() } = options;
+  const { compressionRatio = DEFAULT_COMPRESSION_RATIO } = options;
   // Adaptive minimum size based on average chunk size
   const minCompressSize = Math.min(allocation.avgChunkSize * 0.8, 400);
 
@@ -297,21 +364,19 @@ async function compressHighValueChunks(
     return { compressed: [], tokensUsed: 0 };
   }
 
-  // console.log(`[compressHighValueChunks] Compressing ${compressible.length} chunks, min size: ${minCompressSize}`);
-
   // Clean chunks before compression
   const cleanedTexts = compressible.map((c) => c.text.replace(/\s+/g, ' ').trim());
 
   // Adaptive compression target based on reduction needs
   const compressionTarget =
     allocation.reductionRatio < 0.2
-      ? Math.floor(COMPRESSION_RATIO * 100)
-      : Math.floor(COMPRESSION_RATIO * 150); // Less aggressive compression if not much reduction needed
+      ? Math.floor(compressionRatio * 100)
+      : Math.floor(compressionRatio * 150); // Less aggressive compression if not much reduction needed
 
   const texts = await map(
     cleanedTexts,
     `Extract key parts answering: "${query}". Preserve important details. Target ${compressionTarget}% of original.`,
-    { batchSize: 10, llm, onProgress: scopeProgress(onProgress, 'map:compression'), now }
+    { ...options, batchSize: 10, onProgress: scopeProgress(options.onProgress, 'map:compression') }
   );
 
   const compressed = [];
@@ -334,8 +399,6 @@ async function compressHighValueChunks(
       spaceUsed += cleaned.length;
     }
   });
-
-  // console.log(`[compressHighValueChunks] Compressed ${compressed.length} chunks, saved ${spaceUsed} chars`);
 
   return {
     compressed,
@@ -471,9 +534,39 @@ function selectGapFillers(allChunks, selectedChunks, gapFillerBudget) {
 }
 
 // Main function with proper budget planning
-export default async function documentShrink(document, query, options = {}) {
-  const { onProgress, now = new Date(), ...rest } = options;
-  const config = { ...DEFAULT_OPTIONS, ...rest };
+export default async function documentShrink(document, query, config = {}) {
+  const {
+    config: scopedConfig,
+    targetSize,
+    tokenBudget: tokenBudgetInit,
+    gapFillerBudgetRatio,
+    compression: compressionRatio,
+    ranking: llmWeight,
+    queryExpansion,
+    llmScoring,
+    llmCompression,
+    scoringTokenRatio,
+  } = await initChain('document-shrink', config, {
+    targetSize: DEFAULT_OPTIONS.targetSize,
+    tokenBudget: DEFAULT_OPTIONS.tokenBudget,
+    gapFillerBudgetRatio: DEFAULT_OPTIONS.gapFillerBudgetRatio,
+    compression: withPolicy(mapCompression),
+    ranking: withPolicy(mapRanking),
+    thoroughness: withPolicy(mapThoroughness, [
+      'queryExpansion',
+      'llmScoring',
+      'llmCompression',
+      'scoringTokenRatio',
+    ]),
+  });
+  config = scopedConfig;
+  const merged = {
+    ...DEFAULT_OPTIONS,
+    ...config,
+    targetSize,
+    tokenBudget: tokenBudgetInit,
+    gapFillerBudgetRatio,
+  };
   // Handle edge cases early
   if (!document || document.length === 0) {
     return {
@@ -489,42 +582,36 @@ export default async function documentShrink(document, query, options = {}) {
     };
   }
 
-  // console.log(`[documentShrink] Starting with document length: ${document.length}, query: "${query}"`);
-  // console.log(`[documentShrink] Options:`, options);
+  // Validate and fix merged values
+  if (merged.targetSize <= 0) merged.targetSize = DEFAULT_OPTIONS.targetSize;
+  if (merged.chunkSize <= 0) merged.chunkSize = DEFAULT_OPTIONS.chunkSize;
+  if (merged.tokenBudget <= 0) merged.tokenBudget = DEFAULT_OPTIONS.tokenBudget;
 
-  // Validate and fix config values
-  if (config.targetSize <= 0) config.targetSize = DEFAULT_OPTIONS.targetSize;
-  if (config.chunkSize <= 0) config.chunkSize = DEFAULT_OPTIONS.chunkSize;
-  if (config.tokenBudget <= 0) config.tokenBudget = DEFAULT_OPTIONS.tokenBudget;
-
-  let tokenBudget = config.tokenBudget;
-
-  // console.log(`[documentShrink] Config:`, config);
+  let tokenBudget = merged.tokenBudget;
 
   // Step 1: Create chunks
-  const chunks = createChunks(document, config.chunkSize, config.targetSize);
+  const chunks = createChunks(document, merged.chunkSize, merged.targetSize);
 
   // Step 2: Calculate space allocation
   const allocation = calculateSpaceAllocation(
     chunks,
-    config.targetSize,
+    merged.targetSize,
     tokenBudget,
-    document.length
+    document.length,
+    scoringTokenRatio
   );
-  // console.log(`[documentShrink] Space allocation:`, allocation);
-  // console.time(`[documentShrink] Full processing for "${query}"`);
+  // When LLM phases are off, give all space to TF-IDF selection
+  if (!llmScoring && !llmCompression) {
+    allocation.tfIdfBudget = merged.targetSize;
+    allocation.reservedSpace = 0;
+  }
 
-  // Step 3: Expand query
-  const { expansions, tokensUsed: expansionTokens } = await expandQuery(
-    query,
-    tokenBudget,
-    config.llm,
-    onProgress,
-    now
-  );
+  // Step 3: Expand query (gated by thoroughness)
+  const subOptions = config;
+  const { expansions, tokensUsed: expansionTokens } = queryExpansion
+    ? await expandQuery(query, tokenBudget, subOptions)
+    : { expansions: [query], tokensUsed: 0 };
   tokenBudget -= expansionTokens;
-  // console.log(`[documentShrink] Token budget after expansion: ${tokenBudget}`);
-  // console.log(`[documentShrink] Expansions:`, expansions);
 
   // Step 4: Score with TF-IDF
   const scoredChunks = scoreChunksWithTfIdf(chunks, expansions);
@@ -534,29 +621,29 @@ export default async function documentShrink(document, query, options = {}) {
     scoredChunks,
     allocation.tfIdfBudget
   );
-  // console.log(`[documentShrink] TF-IDF selected ${selected.length} chunks, ${candidates.length} candidates remain`);
 
-  // Step 6: Use LLM to find high-value edge chunks
-  // console.log(`[documentShrink] About to score edge chunks...`);
-  const { scored, tokensUsed: scoreTokens } = await scoreEdgeChunks(
-    candidates,
-    query,
-    allocation.chunksWeCanScore,
-    config.llm,
-    { onProgress, now }
-  );
+  // Step 6: Use LLM to find high-value edge chunks (gated by thoroughness)
+  const { scored, tokensUsed: scoreTokens } = llmScoring
+    ? await scoreEdgeChunks(candidates, query, allocation.chunksWeCanScore, {
+        ...subOptions,
+        llmWeight,
+      })
+    : { scored: [], tokensUsed: 0 };
   tokenBudget -= scoreTokens;
-  // console.log(`[documentShrink] Scored ${scored.length} edge chunks, tokens remaining: ${tokenBudget}`);
 
   // Step 7: Add scored chunks that fit
-  let result = addChunksThatFit(selected, sizeUsed, scored, config.targetSize);
+  let result = addChunksThatFit(selected, sizeUsed, scored, merged.targetSize);
 
   // Step 8: Use remaining tokens to compress chunks for even more content
-  const remainingSpace = config.targetSize - result.size;
+  const remainingSpace = merged.targetSize - result.size;
   let compressTokens = 0;
   const minSpaceForCompression = Math.min(allocation.avgChunkSize * 0.5, 200);
 
-  if (remainingSpace > minSpaceForCompression && allocation.chunksWeCanCompress > 0) {
+  if (
+    llmCompression &&
+    remainingSpace > minSpaceForCompression &&
+    allocation.chunksWeCanCompress > 0
+  ) {
     const compressionCandidates = getUnselectedChunks(scoredChunks, result.chunks);
 
     const { compressed, tokensUsed } = await compressHighValueChunks(
@@ -565,22 +652,21 @@ export default async function documentShrink(document, query, options = {}) {
       allocation.chunksWeCanCompress,
       remainingSpace,
       allocation,
-      config.llm,
-      { onProgress, now }
+      { ...subOptions, compressionRatio }
     );
     compressTokens = tokensUsed;
     tokenBudget -= tokensUsed;
 
-    result = addChunksThatFit(result.chunks, result.size, compressed, config.targetSize);
+    result = addChunksThatFit(result.chunks, result.size, compressed, merged.targetSize);
   }
 
   // Step 9: Apply gap filling if configured
   let finalChunks = result.chunks;
   let gapFillerCount = 0;
 
-  if (config.gapFillerBudgetRatio > 0) {
-    const gapFillerBudget = Math.floor(config.targetSize * config.gapFillerBudgetRatio);
-    const remainingSpace = config.targetSize - result.size;
+  if (merged.gapFillerBudgetRatio > 0) {
+    const gapFillerBudget = Math.floor(merged.targetSize * merged.gapFillerBudgetRatio);
+    const remainingSpace = merged.targetSize - result.size;
     const actualGapBudget = Math.min(gapFillerBudget, remainingSpace);
 
     if (actualGapBudget > 0) {
@@ -599,11 +685,9 @@ export default async function documentShrink(document, query, options = {}) {
   // When content vastly exceeds the target (e.g. forced minimum chunk is
   // larger than the budget), trim to the last complete sentence.
   // Only applies when output is >3x target — normal slight overflows are fine.
-  if (content.length > config.targetSize * 3) {
-    content = trimToLastSentence(content.slice(0, config.targetSize * 2));
+  if (content.length > merged.targetSize * 3) {
+    content = trimToLastSentence(content.slice(0, merged.targetSize * 2));
   }
-
-  // console.timeEnd(`[documentShrink] Full processing for "${query}"`);
 
   return {
     content,
@@ -624,8 +708,8 @@ export default async function documentShrink(document, query, options = {}) {
         gapFillers: gapFillerCount,
       },
       tokens: {
-        budget: config.tokenBudget,
-        used: config.tokenBudget - tokenBudget,
+        budget: merged.tokenBudget,
+        used: merged.tokenBudget - tokenBudget,
         breakdown: {
           expansion: expansionTokens,
           scoring: scoreTokens || 0,

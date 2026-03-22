@@ -1,0 +1,2502 @@
+[
+  {
+    "chain": "ai-arch-expect",
+    "tier": "development",
+    "dimension": "strategic-value",
+    "phase": "design",
+    "level": 4,
+    "evidence": "Enables AI-powered architectural testing and validation with smart processing strategies and parallel execution, unlocking novel workflows for AI feature developers and process automation.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "ai-arch-expect",
+    "tier": "development",
+    "dimension": "architectural-fitness",
+    "phase": "design",
+    "level": 2,
+    "evidence": "622 lines in a single module with multiple helper functions and bespoke processing modes; some complexity may be unnecessary but generally fits the problem.",
+    "gap": "Refactor to reduce module size and separate concerns to improve clarity and maintainability.",
+    "nextAction": "Split the module into smaller focused components handling individual and bulk processing separately."
+  },
+  {
+    "chain": "ai-arch-expect",
+    "tier": "development",
+    "dimension": "generalizability",
+    "phase": "design",
+    "level": 3,
+    "evidence": "Uses natural language instructions and works with file and data contexts; no hard dependency on specific test frameworks or runtimes.",
+    "gap": "Further decouple from file system specifics to support broader data sources.",
+    "nextAction": "Abstract file system interactions to allow plugging in alternative data sources."
+  },
+  {
+    "chain": "ai-arch-expect",
+    "tier": "development",
+    "dimension": "composition-fit",
+    "phase": "design",
+    "level": 1,
+    "evidence": "Does not use other chains internally; reimplements batch processing and orchestration logic rather than composing existing primitives.",
+    "gap": "Leverage existing library primitives like map, reduce, and score to improve composability.",
+    "nextAction": "Refactor to build on core batch processing chains instead of bespoke orchestration."
+  },
+  {
+    "chain": "ai-arch-expect",
+    "tier": "development",
+    "dimension": "design-efficiency",
+    "phase": "design",
+    "level": 1,
+    "evidence": "High LOC (622) for a single export with multiple helper functions and complex configuration; indicates significant design strain.",
+    "gap": "Simplify design to reduce code size and helper function count.",
+    "nextAction": "Reduce complexity by modularizing and reusing existing library components."
+  },
+  {
+    "chain": "anonymize",
+    "tier": "standard",
+    "dimension": "strategic-value",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The anonymize chain is a core capability frequently needed in AI pipelines for privacy and data protection, enabling workflows that remove personal style and references from text. It supports multiple anonymization methods and integrates with LLMs, making it broadly useful.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "anonymize",
+    "tier": "standard",
+    "dimension": "architectural-fitness",
+    "phase": "design",
+    "level": 2,
+    "evidence": "At 410 lines in a single module, the chain is relatively large for its core idea. It uses the spec/apply pattern but does not use other library chains internally, suggesting some complexity that might be reduced by decomposing or leveraging existing primitives more.",
+    "gap": "Refactor to leverage existing batch processing chains (map, filter, reduce) internally to reduce bespoke orchestration and complexity.",
+    "nextAction": "Decompose anonymize into smaller chains that compose with core batch primitives instead of a monolithic implementation."
+  },
+  {
+    "chain": "anonymize",
+    "tier": "standard",
+    "dimension": "generalizability",
+    "phase": "design",
+    "level": 4,
+    "evidence": "The chain accepts natural language instructions and works with any text input. It has no hard dependencies on specific runtimes or data formats and is isomorphic, supporting private or self-hosted LLMs.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "anonymize",
+    "tier": "standard",
+    "dimension": "composition-fit",
+    "phase": "design",
+    "level": 2,
+    "evidence": "Exports spec/apply pattern and instruction builders, but internally does not compose with other library chains like map or filter. It could be expressed as a composition of existing chains rather than a standalone monolith.",
+    "gap": "Internal orchestration should be refactored to build on existing batch processing chains to improve composability.",
+    "nextAction": "Refactor internal logic to use map, filter, reduce chains for batch operations instead of bespoke implementations."
+  },
+  {
+    "chain": "anonymize",
+    "tier": "standard",
+    "dimension": "design-efficiency",
+    "phase": "design",
+    "level": 2,
+    "evidence": "410 lines for a single export with multiple helper functions indicates moderate complexity. The code includes multiple config parameters and some bespoke orchestration, suggesting some friction and potential overcomplexity.",
+    "gap": "Simplify design by reducing helper functions and configuration complexity, and by leveraging existing library primitives.",
+    "nextAction": "Streamline the implementation by extracting reusable components and reducing bespoke orchestration logic."
+  },
+  {
+    "chain": "category-samples",
+    "tier": "standard",
+    "dimension": "strategic-value",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The chain provides a core capability for generating representative samples across categories using AI, enabling workflows in educational content creation and marketing campaigns. It is frequently useful in AI pipelines for content generation.",
+    "gap": "Could increase strategic value by enabling more dynamic or interactive sample generation workflows.",
+    "nextAction": "Explore integration with interactive feedback loops or adaptive sample generation based on user input."
+  },
+  {
+    "chain": "category-samples",
+    "tier": "standard",
+    "dimension": "architectural-fitness",
+    "phase": "design",
+    "level": 3,
+    "evidence": "At 142 lines, the chain is concise and focused on its purpose. It builds on existing primitives like the 'list' chain and uses retry logic without reimplementing batch processing, showing proportional design.",
+    "gap": "Minor simplifications could be made to further clarify processing phases.",
+    "nextAction": "Document the top-level function phases more explicitly to improve clarity."
+  },
+  {
+    "chain": "category-samples",
+    "tier": "standard",
+    "dimension": "generalizability",
+    "phase": "design",
+    "level": 4,
+    "evidence": "The chain uses natural language instructions and works with any text input, without hard dependencies on specific runtimes or data formats, making it fully general and context-agnostic.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "category-samples",
+    "tier": "standard",
+    "dimension": "composition-fit",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The chain composes with the library's primitives such as 'list' and 'retry' chains, exposing a clean function interface and enabling integration into pipelines, though it does not fully implement spec/apply patterns.",
+    "gap": "Could adopt spec/apply and instruction builder patterns to enhance composability.",
+    "nextAction": "Refactor to expose spec/apply interfaces and instruction builders for better integration with other chains."
+  },
+  {
+    "chain": "category-samples",
+    "tier": "standard",
+    "dimension": "design-efficiency",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The implementation is clean and proportional to the problem complexity, with 142 lines and limited helper functions, avoiding unnecessary complexity or workarounds.",
+    "gap": "Minor improvements in helper function consolidation could improve efficiency.",
+    "nextAction": "Review helper functions for potential consolidation or simplification."
+  },
+  {
+    "chain": "central-tendency",
+    "tier": "standard",
+    "dimension": "strategic-value",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The chain provides a core capability for evaluating central tendency in datasets, enabling developers to assess graded typicality in AI pipelines. It is frequently useful for cognitive category analysis and batch processing of large datasets, which is a common need.",
+    "gap": "",
+    "nextAction": "Promote usage examples to increase adoption in AI feature development."
+  },
+  {
+    "chain": "central-tendency",
+    "tier": "standard",
+    "dimension": "architectural-fitness",
+    "phase": "design",
+    "level": 4,
+    "evidence": "The chain is 167 LOC, split into 2 files, uses the map chain for batch processing, and cleanly separates instruction building and processing logic. It avoids bespoke infrastructure and has clear phases.",
+    "gap": "",
+    "nextAction": "Maintain current modular design and monitor for complexity growth."
+  },
+  {
+    "chain": "central-tendency",
+    "tier": "standard",
+    "dimension": "generalizability",
+    "phase": "design",
+    "level": 4,
+    "evidence": "The chain uses natural language instructions and the core map chain, accepts generic string arrays, and has no hard dependencies on specific runtimes or data formats, making it fully general and context-agnostic.",
+    "gap": "",
+    "nextAction": "Document general usage scenarios to encourage broad adoption."
+  },
+  {
+    "chain": "central-tendency",
+    "tier": "standard",
+    "dimension": "composition-fit",
+    "phase": "design",
+    "level": 4,
+    "evidence": "The chain builds on the library's core map primitive, uses spec/apply patterns, and provides instruction builders, fitting fully into the composition philosophy and enabling novel workflows.",
+    "gap": "",
+    "nextAction": "Encourage integration with other spec/apply chains for extended workflows."
+  },
+  {
+    "chain": "central-tendency",
+    "tier": "standard",
+    "dimension": "design-efficiency",
+    "phase": "design",
+    "level": 4,
+    "evidence": "At 167 LOC with 2 files and minimal helper functions, the implementation is proportional to the problem complexity. It leverages existing primitives and avoids unnecessary complexity.",
+    "gap": "",
+    "nextAction": "Continue to refactor only as needed to keep code minimal and clear."
+  },
+  {
+    "chain": "collect-terms",
+    "tier": "standard",
+    "dimension": "strategic-value",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The chain provides a core capability frequently needed in AI pipelines: extracting key terms for search and retrieval, enabling improved document relevance. It is used across multiple domains as shown in README examples.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "collect-terms",
+    "tier": "standard",
+    "dimension": "architectural-fitness",
+    "phase": "design",
+    "level": 3,
+    "evidence": "At 55 lines, the chain is concise and proportional to its problem complexity. It builds on existing library primitives (list, score) rather than reimplementing batch processing. The design phases (chunking, term extraction, deduplication, scoring) are clear.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "collect-terms",
+    "tier": "standard",
+    "dimension": "generalizability",
+    "phase": "design",
+    "level": 4,
+    "evidence": "The chain accepts arbitrary text input and natural language instructions, with no hard dependencies on specific runtimes or data formats. It is isomorphic and context-agnostic.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "collect-terms",
+    "tier": "standard",
+    "dimension": "composition-fit",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The chain composes existing core chains (list, score) internally and exposes a clean async function interface. It acts as a pipeline step but does not export spec/apply or instruction builders itself.",
+    "gap": "Expose spec/apply pattern and instruction builders to fully integrate with library composition model.",
+    "nextAction": "Refactor to separate specification generation and application phases, and export instruction builders for use with collection chains."
+  },
+  {
+    "chain": "collect-terms",
+    "tier": "standard",
+    "dimension": "design-efficiency",
+    "phase": "design",
+    "level": 4,
+    "evidence": "The implementation is minimal (55 LOC), with no helper functions and no complex workarounds. It leverages existing chains to avoid duplicated logic, making the design obvious and efficient.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "conversation",
+    "tier": "standard",
+    "dimension": "strategic-value",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The conversation chain enables realistic multi-speaker transcript generation with intelligent turn-taking and contextual responses, a core capability frequently needed in AI pipelines for dialogue simulation and conversational AI. It supports configurable rules and custom LLM functions, making it broadly useful.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "conversation",
+    "tier": "standard",
+    "dimension": "architectural-fitness",
+    "phase": "design",
+    "level": 3,
+    "evidence": "At 249 LOC across 2 files, the design is proportional to the problem complexity. It uses a clear class structure with configurable policies and concurrency control, and leverages an existing conversationTurnReduce chain. The architecture is clean with clear phases and no unnecessary abstractions.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "conversation",
+    "tier": "standard",
+    "dimension": "generalizability",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The chain accepts natural language instructions and speaker metadata, works with any text data, and has optional LLM configuration. It does not depend on specific frameworks or data formats, making it general purpose across domains.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "conversation",
+    "tier": "standard",
+    "dimension": "composition-fit",
+    "phase": "design",
+    "level": 1,
+    "evidence": "The chain uses the conversationTurnReduce chain internally as a default bulkSpeakFn, but overall it is a standalone orchestrator class rather than a composable pipeline step. It does not expose spec/apply or instruction builders, limiting its integration with other library primitives.",
+    "gap": "Refactor to expose spec/apply pattern and instruction builders to enable composition with other chains.",
+    "nextAction": "Extract conversation turn generation into spec/apply chains and provide instruction builders for integration."
+  },
+  {
+    "chain": "conversation",
+    "tier": "standard",
+    "dimension": "design-efficiency",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The implementation is 249 LOC with a single main class and one helper module, proportional to the complexity of multi-speaker conversation orchestration. It uses concurrency control and configurable policies efficiently without excessive helpers or workarounds.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "conversation-turn-reduce",
+    "tier": "internal",
+    "dimension": "strategic-value",
+    "phase": "design",
+    "level": 2,
+    "evidence": "This internal helper module supports multi-speaker conversation generation, enabling a useful but specialized feature within the conversation chain. It is not directly used by developers but underpins a real problem solution, indicating moderate frequency and utility.",
+    "gap": "Increase direct usability or expose more general interfaces to broaden developer reach.",
+    "nextAction": "Refactor to expose composable interfaces or integrate with other chains for wider applicability."
+  },
+  {
+    "chain": "conversation-turn-reduce",
+    "tier": "internal",
+    "dimension": "architectural-fitness",
+    "phase": "design",
+    "level": 3,
+    "evidence": "At 68 lines, the module is concise and focused, using the map chain internally without reimplementing batch processing. The design is proportional to the problem with clear phases and no unnecessary abstractions.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "conversation-turn-reduce",
+    "tier": "internal",
+    "dimension": "generalizability",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The module uses natural language instructions and works with generic speaker descriptions and conversation history, without hard dependencies on specific runtimes or data formats, making it broadly applicable across domains.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "conversation-turn-reduce",
+    "tier": "internal",
+    "dimension": "composition-fit",
+    "phase": "design",
+    "level": 2,
+    "evidence": "The module uses the map chain internally but is an internal helper not designed as a composable pipeline step itself. It does not expose spec/apply or instruction builders for external composition.",
+    "gap": "Expose a clean function interface and instruction builders to enable composition with other chains.",
+    "nextAction": "Refactor to provide composable interfaces and integrate with the library's spec/apply pattern."
+  },
+  {
+    "chain": "conversation-turn-reduce",
+    "tier": "internal",
+    "dimension": "design-efficiency",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The implementation is concise (68 LOC), with no helper functions or complex configuration, proportional to the problem complexity. It leverages existing primitives without workarounds.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "date",
+    "tier": "standard",
+    "dimension": "strategic-value",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The date chain is a core capability frequently needed in AI pipelines for extracting and normalizing dates from text, enabling workflows like document processing and timeline extraction. It is used across many projects as indicated by its standard tier and integration in the portfolio.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "date",
+    "tier": "standard",
+    "dimension": "architectural-fitness",
+    "phase": "design",
+    "level": 2,
+    "evidence": "At 255 lines across 2 files, the chain is moderately complex but some complexity may be unnecessary. It does not use the spec/apply pattern and lacks default export, indicating room for simplification and clearer decomposition.",
+    "gap": "Refactor to use spec/apply pattern and reduce complexity by clearer phase separation.",
+    "nextAction": "Introduce spec/apply pattern to separate specification generation and application phases for date extraction."
+  },
+  {
+    "chain": "date",
+    "tier": "standard",
+    "dimension": "generalizability",
+    "phase": "design",
+    "level": 4,
+    "evidence": "The chain accepts natural language instructions and works with any text input without hard dependencies on specific frameworks or data formats, making it fully general and context-agnostic.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "date",
+    "tier": "standard",
+    "dimension": "composition-fit",
+    "phase": "design",
+    "level": 1,
+    "evidence": "The chain does not use other chains internally nor expose composition primitives; it is a standalone module without composable interfaces.",
+    "gap": "Refactor to build on existing library primitives like map or filter and expose spec/apply interfaces.",
+    "nextAction": "Decompose the date chain into spec/apply components and integrate with batch processing chains to enable composition."
+  },
+  {
+    "chain": "date",
+    "tier": "standard",
+    "dimension": "design-efficiency",
+    "phase": "design",
+    "level": 2,
+    "evidence": "255 lines with multiple imports and helper functions indicate moderate complexity; some helper functions and retry logic add to LOC but the design mostly works.",
+    "gap": "Reduce helper functions and simplify retry logic to improve efficiency.",
+    "nextAction": "Streamline helper functions and consolidate retry handling to reduce code complexity."
+  },
+  {
+    "chain": "detect-patterns",
+    "tier": "standard",
+    "dimension": "strategic-value",
+    "phase": "design",
+    "level": 3,
+    "evidence": "detect-patterns is a 128 LOC module that provides a core capability to find recurring patterns in object collections, enabling developers to discover common structures and value ranges. It solves a real problem frequently encountered in AI pipelines involving data analysis and transformation.",
+    "gap": "",
+    "nextAction": "Promote usage examples and integration to increase adoption frequency."
+  },
+  {
+    "chain": "detect-patterns",
+    "tier": "standard",
+    "dimension": "architectural-fitness",
+    "phase": "design",
+    "level": 3,
+    "evidence": "At 128 LOC and 2 files, the design is clean and proportional to the problem complexity. It builds on the reduce chain primitive rather than reimplementing batch processing, with clear phases: filtering input, generating instructions, and reducing to patterns.",
+    "gap": "",
+    "nextAction": "Maintain modularity and clarity in processing steps."
+  },
+  {
+    "chain": "detect-patterns",
+    "tier": "standard",
+    "dimension": "generalizability",
+    "phase": "design",
+    "level": 4,
+    "evidence": "The module accepts generic object arrays and uses natural language instructions for pattern detection, with no hard dependencies on specific runtimes or data formats, making it fully general and context-agnostic.",
+    "gap": "",
+    "nextAction": "Ensure continued adherence to generic input handling and optional runtime dependencies."
+  },
+  {
+    "chain": "detect-patterns",
+    "tier": "standard",
+    "dimension": "composition-fit",
+    "phase": "design",
+    "level": 2,
+    "evidence": "detect-patterns uses the reduce chain internally as an orchestrator but does not expose spec/apply or instruction builders for other collection chains, making it a pipeline step but not a full composition citizen.",
+    "gap": "Expose spec/apply pattern and instruction builders to integrate with other chains and enable novel workflows.",
+    "nextAction": "Refactor to provide spec/apply exports and instruction builders for pattern detection to enhance composability."
+  },
+  {
+    "chain": "detect-patterns",
+    "tier": "standard",
+    "dimension": "design-efficiency",
+    "phase": "design",
+    "level": 3,
+    "evidence": "With 128 LOC and minimal helper functions, the implementation is efficient and proportional to the problem complexity. It avoids unnecessary complexity and reuses existing primitives.",
+    "gap": "",
+    "nextAction": "Continue to monitor for opportunities to simplify or reduce LOC without sacrificing clarity."
+  },
+  {
+    "chain": "detect-threshold",
+    "tier": "standard",
+    "dimension": "strategic-value",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The detect-threshold chain addresses a core AI pipeline need: adaptive threshold detection for numeric data, enabling nuanced risk-based decisions. It is moderately sized (275 LOC) and used in standard tier, indicating frequent developer use. It unlocks workflows for dynamic thresholding that were previously manual or heuristic-based.",
+    "gap": "Could increase strategic value by integrating with more domain-specific workflows or exposing more composable interfaces.",
+    "nextAction": "Develop additional instruction builders or spec/apply patterns to enable easier integration in diverse AI pipelines."
+  },
+  {
+    "chain": "detect-threshold",
+    "tier": "standard",
+    "dimension": "architectural-fitness",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The design is clean and proportional: 275 LOC focused on a single responsibility (threshold detection). It builds on the reduce chain primitive and uses clear phases: statistics calculation, data enrichment, batch analysis, and final recommendation. No bespoke infrastructure or reimplementation of batch processing is evident.",
+    "gap": "Minor complexity in handling batch data strings and JSON schema could be simplified.",
+    "nextAction": "Refactor batch data preparation to use existing primitives more directly, reducing manual string handling."
+  },
+  {
+    "chain": "detect-threshold",
+    "tier": "standard",
+    "dimension": "generalizability",
+    "phase": "design",
+    "level": 4,
+    "evidence": "The chain accepts arbitrary data arrays and target property names, uses natural language goals, and relies on generic LLM calls. It has no hard dependencies on specific frameworks or data formats, making it fully general and adaptable.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "detect-threshold",
+    "tier": "standard",
+    "dimension": "composition-fit",
+    "phase": "design",
+    "level": 2,
+    "evidence": "The chain uses the reduce primitive internally but does not expose spec/apply or instruction builder patterns itself. It acts as a pipeline step with a clean function interface but is not yet a full composition citizen enabling novel workflows.",
+    "gap": "Expose spec/apply interfaces and instruction builders to align with library composition patterns.",
+    "nextAction": "Refactor to split analysis and application phases into composable chains with instruction builders."
+  },
+  {
+    "chain": "detect-threshold",
+    "tier": "standard",
+    "dimension": "design-efficiency",
+    "phase": "design",
+    "level": 3,
+    "evidence": "At 275 LOC with a single main export and moderate helper functions, the implementation is efficient and proportional to the problem complexity. It avoids excessive helpers or duplicated logic and uses imports judiciously.",
+    "gap": "Could reduce some manual data string batching and JSON schema handling to improve clarity.",
+    "nextAction": "Simplify data batching and schema validation by leveraging existing library utilities."
+  },
+  {
+    "chain": "disambiguate",
+    "tier": "standard",
+    "dimension": "strategic-value",
+    "phase": "design",
+    "level": 2,
+    "evidence": "The disambiguate chain solves a real problem of resolving ambiguous terms using LLMs, enabling moderately frequent use in AI workflows. It is not a core primitive but a useful tool as indicated by its moderate LOC (124) and focused functionality.",
+    "gap": "Increase its applicability by integrating with more pipelines or expanding its capabilities to handle more complex disambiguation scenarios.",
+    "nextAction": "Develop additional interfaces or composition patterns to allow easier integration with other chains and workflows."
+  },
+  {
+    "chain": "disambiguate",
+    "tier": "standard",
+    "dimension": "architectural-fitness",
+    "phase": "design",
+    "level": 3,
+    "evidence": "At 124 lines, the chain is concise and focused on its problem. It cleanly separates phases: meaning extraction and scoring, and builds on existing primitives like score without reimplementing batch processing.",
+    "gap": "Minor simplifications could be made but overall design is proportional and clear.",
+    "nextAction": "Review for any redundant abstractions and document the clear phase separation to maintain architectural clarity."
+  },
+  {
+    "chain": "disambiguate",
+    "tier": "standard",
+    "dimension": "generalizability",
+    "phase": "design",
+    "level": 4,
+    "evidence": "The chain accepts natural language instructions and works with any text input without hard dependencies on specific runtimes or data formats, making it fully general and context-agnostic.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "disambiguate",
+    "tier": "standard",
+    "dimension": "composition-fit",
+    "phase": "design",
+    "level": 2,
+    "evidence": "The chain exposes a clean function interface and uses the score chain internally, but does not itself expose spec/apply patterns or instruction builders for further composition.",
+    "gap": "Refactor to expose spec/apply interfaces and instruction builders to better align with the library's composition philosophy.",
+    "nextAction": "Extract spec generation and application steps as separate composable chains or functions to enable pipeline integration."
+  },
+  {
+    "chain": "disambiguate",
+    "tier": "standard",
+    "dimension": "design-efficiency",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The implementation is efficient and proportional to the problem complexity with 124 LOC and limited helper functions. It avoids unnecessary complexity and workarounds.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "dismantle",
+    "tier": "standard",
+    "dimension": "strategic-value",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The dismantle chain enables breaking down complex systems into component trees, a core capability useful in AI pipelines for system analysis and decomposition. It is frequently used in workflows involving hierarchical data and component analysis.",
+    "gap": "Could increase strategic value by enabling deeper integration with other chains for automated workflows.",
+    "nextAction": "Develop connectors or adapters to integrate dismantle outputs with other core chains like map or score."
+  },
+  {
+    "chain": "dismantle",
+    "tier": "standard",
+    "dimension": "architectural-fitness",
+    "phase": "design",
+    "level": 3,
+    "evidence": "At 389 LOC across 2 files, the design is proportional to the complexity of recursively decomposing components with LLM calls. It cleanly separates enhance and decompose phases and uses retry and LLM services appropriately.",
+    "gap": "Some complexity could be reduced by leveraging more existing batch processing primitives for recursion and tree management.",
+    "nextAction": "Refactor recursive subtree construction to use existing map or reduce chains where possible."
+  },
+  {
+    "chain": "dismantle",
+    "tier": "standard",
+    "dimension": "generalizability",
+    "phase": "design",
+    "level": 4,
+    "evidence": "The chain uses natural language prompts and LLM calls without hard dependencies on specific runtimes or data formats. It accepts customizable decompose and enhance functions, making it fully adaptable across domains.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "dismantle",
+    "tier": "standard",
+    "dimension": "composition-fit",
+    "phase": "design",
+    "level": 2,
+    "evidence": "The chain does not currently build on the library's core batch processing chains (map, filter, reduce) but implements its own recursive orchestration. It exposes a clean interface but is not fully composable with other chains.",
+    "gap": "Refactor to express recursive decomposition as a composition of existing batch processing chains to improve composability.",
+    "nextAction": "Redesign dismantle to leverage map or reduce chains for subtree expansion and node processing."
+  },
+  {
+    "chain": "dismantle",
+    "tier": "standard",
+    "dimension": "design-efficiency",
+    "phase": "design",
+    "level": 2,
+    "evidence": "389 LOC for a single main export with multiple helper functions indicates moderate complexity. The implementation includes retry logic and prompt construction, which adds necessary complexity but some helper functions could be consolidated.",
+    "gap": "Reduce helper function count and simplify prompt management to improve efficiency.",
+    "nextAction": "Consolidate prompt builders and retry wrappers to streamline codebase."
+  },
+  {
+    "chain": "document-shrink",
+    "tier": "standard",
+    "dimension": "strategic-value",
+    "phase": "design",
+    "level": 3,
+    "evidence": "document-shrink is a core capability frequently needed in AI pipelines for document summarization and query-focused content reduction, enabling workflows that handle large documents adaptively with LLM integration.",
+    "gap": "",
+    "nextAction": "Maintain and promote usage as a core pipeline component."
+  },
+  {
+    "chain": "document-shrink",
+    "tier": "standard",
+    "dimension": "architectural-fitness",
+    "phase": "design",
+    "level": 2,
+    "evidence": "At 632 lines in a single module with multiple helper functions and complex token budget calculations, the design is adequate but somewhat complex; it does not reimplement batch primitives but could be decomposed for clarity.",
+    "gap": "Refactor to split responsibilities into smaller modules or chains to reduce complexity and improve clarity.",
+    "nextAction": "Modularize the codebase by extracting token budget management and chunking logic into separate components."
+  },
+  {
+    "chain": "document-shrink",
+    "tier": "standard",
+    "dimension": "generalizability",
+    "phase": "design",
+    "level": 4,
+    "evidence": "The chain works with any text input, uses natural language instructions, and has no hard dependencies on specific runtimes or data formats, making it fully general and context-agnostic.",
+    "gap": "",
+    "nextAction": "Continue ensuring runtime-agnostic design and optional dependencies."
+  },
+  {
+    "chain": "document-shrink",
+    "tier": "standard",
+    "dimension": "composition-fit",
+    "phase": "design",
+    "level": 1,
+    "evidence": "document-shrink uses other chains internally (score, map) but is a black box without exposing composable interfaces or spec/apply patterns.",
+    "gap": "Expose internal steps as composable chains or spec/apply patterns to enable pipeline integration and reuse.",
+    "nextAction": "Refactor to break document-shrink into composable sub-chains with clear interfaces."
+  },
+  {
+    "chain": "document-shrink",
+    "tier": "standard",
+    "dimension": "design-efficiency",
+    "phase": "design",
+    "level": 1,
+    "evidence": "High LOC (632) for a single export with many helper functions and complex token budget arithmetic indicates significant strain and possible overcomplexity.",
+    "gap": "Simplify token budget management and reduce helper function proliferation by better abstraction.",
+    "nextAction": "Introduce a dedicated token budget manager abstraction to reduce arithmetic complexity and helper count."
+  },
+  {
+    "chain": "entities",
+    "tier": "core",
+    "dimension": "strategic-value",
+    "phase": "design",
+    "level": 3,
+    "evidence": "Entities chain is a core capability frequently used in AI pipelines for named entity extraction, enabling workflows that rely on structured data extraction from text. It integrates with batch processing chains and supports spec/apply patterns, making it broadly useful.",
+    "gap": "Could increase transformative impact by enabling novel feedback loops or more advanced entity reasoning.",
+    "nextAction": "Explore integration with AI feedback mechanisms to enhance entity extraction adaptively."
+  },
+  {
+    "chain": "entities",
+    "tier": "core",
+    "dimension": "architectural-fitness",
+    "phase": "design",
+    "level": 3,
+    "evidence": "At 296 lines, the chain has a clean design proportional to the problem complexity, using spec/apply and instruction builders without reimplementing batch processing. The code is modular and clear with few unnecessary abstractions.",
+    "gap": "Minor simplifications could be made to reduce helper functions or clarify phases further.",
+    "nextAction": "Review helper functions for potential consolidation to streamline architecture."
+  },
+  {
+    "chain": "entities",
+    "tier": "core",
+    "dimension": "generalizability",
+    "phase": "design",
+    "level": 4,
+    "evidence": "The chain accepts natural language instructions and works with any text input, with no hard dependencies on specific runtimes or data formats, making it fully general and context-agnostic.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "entities",
+    "tier": "core",
+    "dimension": "composition-fit",
+    "phase": "design",
+    "level": 4,
+    "evidence": "Follows the library's composition philosophy fully by exposing spec/apply pattern and instruction builders for all batch processing chains, enabling novel workflows through composition.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "entities",
+    "tier": "core",
+    "dimension": "design-efficiency",
+    "phase": "design",
+    "level": 3,
+    "evidence": "With 296 lines and a focused set of exports, the implementation is efficient and proportional to the problem complexity, avoiding excessive helper functions or workarounds.",
+    "gap": "Could reduce lines slightly by consolidating minor helpers or simplifying configuration.",
+    "nextAction": "Refactor minor helper functions to improve code conciseness without losing clarity."
+  },
+  {
+    "chain": "expect",
+    "tier": "standard",
+    "dimension": "strategic-value",
+    "phase": "design",
+    "level": 4,
+    "evidence": "The 'expect' chain is described as advanced intelligent assertions with debugging features, environment modes, and structured results, enabling powerful AI assertion workflows previously impossible. It is listed alongside core and transformative chains and noted for unlocking new feedback loops.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "expect",
+    "tier": "standard",
+    "dimension": "architectural-fitness",
+    "phase": "design",
+    "level": 2,
+    "evidence": "The module has 415 lines of code across 2 files, which is relatively large. It does not use other chains internally and has bespoke logic for code context extraction, git path resolution, and LLM-based advice generation, indicating some complexity and potential for simplification.",
+    "gap": "Refactor to leverage existing library primitives for batch processing and context extraction to reduce bespoke code and complexity.",
+    "nextAction": "Identify reusable primitives in the library for code context and advice generation and refactor the chain to use them."
+  },
+  {
+    "chain": "expect",
+    "tier": "standard",
+    "dimension": "generalizability",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The chain uses natural language instructions and LLM calls, works with any text input, and is not locked to a specific runtime or framework. It does have some Node.js dependencies (fs, path) but these are common and could be abstracted.",
+    "gap": "Abstract Node.js specific dependencies to enable broader runtime compatibility (e.g., browser).",
+    "nextAction": "Create abstraction layers for file system and path operations to support multiple runtimes."
+  },
+  {
+    "chain": "expect",
+    "tier": "standard",
+    "dimension": "composition-fit",
+    "phase": "design",
+    "level": 1,
+    "evidence": "The chain does not use other chains internally and does not expose spec/apply or instruction builders. It is a standalone module with its own orchestration and debugging logic, limiting composability.",
+    "gap": "Refactor to expose spec/apply patterns and instruction builders to integrate with library's batch processing chains.",
+    "nextAction": "Decompose the chain into smaller composable units that use existing primitives like map, filter, and score."
+  },
+  {
+    "chain": "expect",
+    "tier": "standard",
+    "dimension": "design-efficiency",
+    "phase": "design",
+    "level": 2,
+    "evidence": "At 415 lines with multiple helper functions and bespoke logic, the implementation shows moderate complexity. Some code comments indicate fallback mechanisms and error handling that add to complexity.",
+    "gap": "Simplify implementation by reducing helper functions and consolidating logic where possible.",
+    "nextAction": "Review helper functions for consolidation opportunities and remove redundant code paths."
+  },
+  {
+    "chain": "extract-blocks",
+    "tier": "standard",
+    "dimension": "strategic-value",
+    "phase": "design",
+    "level": 3,
+    "evidence": "extract-blocks is a core capability frequently needed in AI pipelines for processing unstructured text into structured blocks, enabling workflows like log analysis and event extraction that are common in AI feature development.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "extract-blocks",
+    "tier": "standard",
+    "dimension": "architectural-fitness",
+    "phase": "design",
+    "level": 2,
+    "evidence": "At 251 LOC across 2 files, the design is adequate but somewhat complex; it does not build on existing batch processing primitives and implements bespoke windowing and retry logic, indicating room for simplification.",
+    "gap": "Refactor to leverage existing library primitives for batch processing and reduce bespoke coordination logic.",
+    "nextAction": "Decompose window processing into compositions of map and retry chains to simplify architecture."
+  },
+  {
+    "chain": "extract-blocks",
+    "tier": "standard",
+    "dimension": "generalizability",
+    "phase": "design",
+    "level": 4,
+    "evidence": "The chain accepts natural language instructions and processes any text input without hard dependencies on specific runtimes or data formats, making it fully general and context-agnostic.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "extract-blocks",
+    "tier": "standard",
+    "dimension": "composition-fit",
+    "phase": "design",
+    "level": 1,
+    "evidence": "The chain does not use other chains internally and reimplements batch processing and retry logic rather than composing existing primitives, limiting its composability.",
+    "gap": "Refactor to build on the library's batch processing and spec/apply primitives to improve composition fit.",
+    "nextAction": "Integrate map, filter, and retry chains internally to replace bespoke batch and retry implementations."
+  },
+  {
+    "chain": "extract-blocks",
+    "tier": "standard",
+    "dimension": "design-efficiency",
+    "phase": "design",
+    "level": 2,
+    "evidence": "The 251 LOC and multiple imports from internal libs suggest moderate complexity; some helper functions and bespoke logic indicate the design mostly works but could be more efficient.",
+    "gap": "Simplify code by reducing helper functions and leveraging existing abstractions to lower LOC and complexity.",
+    "nextAction": "Refactor to minimize helper functions and reuse existing library utilities for progress and retry management."
+  },
+  {
+    "chain": "extract-features",
+    "tier": "standard",
+    "dimension": "strategic-value",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The chain is a core capability frequently needed in AI pipelines for feature extraction, enabling workflows that combine multiple feature operations using existing chains like map and score. It is used in standard tier and complements many other chains in the portfolio.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "extract-features",
+    "tier": "standard",
+    "dimension": "architectural-fitness",
+    "phase": "design",
+    "level": 4,
+    "evidence": "The chain is 71 LOC, single file, with a clean design that composes existing chains (map, score) rather than reimplementing batch processing. The processing steps are clear and proportional to the problem complexity.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "extract-features",
+    "tier": "standard",
+    "dimension": "generalizability",
+    "phase": "design",
+    "level": 4,
+    "evidence": "The chain accepts arbitrary items and feature definitions with operations, uses natural language instructions, and has no hard dependencies on specific runtimes or data formats, making it fully general and context-agnostic.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "extract-features",
+    "tier": "standard",
+    "dimension": "composition-fit",
+    "phase": "design",
+    "level": 4,
+    "evidence": "The chain builds on the library's own primitives (map, score) and exposes a clean interface for composing multiple feature extraction operations, enabling novel workflows by combining with other chains.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "extract-features",
+    "tier": "standard",
+    "dimension": "design-efficiency",
+    "phase": "design",
+    "level": 4,
+    "evidence": "At 71 LOC with a single export and minimal helper functions, the implementation is minimal and the design makes the implementation obvious without unnecessary complexity.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "filter",
+    "tier": "core",
+    "dimension": "strategic-value",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The filter chain is a core capability frequently needed in AI pipelines, enabling semantic filtering of arrays using natural language instructions. It is part of the core batch processing chains (map, filter, reduce, group, sort) which are high-value by definition.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "filter",
+    "tier": "core",
+    "dimension": "architectural-fitness",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The chain has 239 lines of code, which is proportional to the complexity of semantic filtering with batch processing, retry logic, and progress callbacks. It builds on existing primitives like listBatch and does not reimplement batch processing. The design is clean with clear phases.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "filter",
+    "tier": "core",
+    "dimension": "generalizability",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The filter chain accepts natural language instructions and works with any text input. It has no hard dependencies on specific frameworks or data formats, making it general purpose across domains.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "filter",
+    "tier": "core",
+    "dimension": "composition-fit",
+    "phase": "design",
+    "level": 2,
+    "evidence": "The chain exposes a clean function interface accepting items and instructions and returning filtered items, suitable as a pipeline step. However, it does not internally compose other library chains like map or score, but uses listBatch as an orchestrator.",
+    "gap": "Increase internal use of library primitives (e.g., map, score) to improve composability.",
+    "nextAction": "Refactor to leverage existing collection chains internally for filtering logic to enhance composition fit."
+  },
+  {
+    "chain": "filter",
+    "tier": "core",
+    "dimension": "design-efficiency",
+    "phase": "design",
+    "level": 3,
+    "evidence": "At 239 LOC with a single main export and moderate helper functions, the implementation is clean and proportional to the problem complexity. It uses retry and progress callbacks effectively without excessive complexity.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "filter-ambiguous",
+    "tier": "standard",
+    "dimension": "strategic-value",
+    "phase": "design",
+    "level": 2,
+    "evidence": "Provides a useful tool to identify ambiguous terms in text, enabling moderate frequency use in AI workflows; complements other chains like score and list.",
+    "gap": "Increase integration to unlock more novel workflows beyond current moderate utility.",
+    "nextAction": "Explore combining with other chains to enable new feedback loops or automation patterns."
+  },
+  {
+    "chain": "filter-ambiguous",
+    "tier": "standard",
+    "dimension": "architectural-fitness",
+    "phase": "design",
+    "level": 3,
+    "evidence": "At 50 LOC, the chain is concise and builds on existing primitives like score and list without reimplementing batch processing; clear processing phases.",
+    "gap": "Minor simplifications possible but overall design is proportional and clean.",
+    "nextAction": "Review for any redundant steps or abstractions to streamline further."
+  },
+  {
+    "chain": "filter-ambiguous",
+    "tier": "standard",
+    "dimension": "generalizability",
+    "phase": "design",
+    "level": 4,
+    "evidence": "Accepts natural language instructions and works with any text input; no hard dependencies on specific runtimes or data formats.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "filter-ambiguous",
+    "tier": "standard",
+    "dimension": "composition-fit",
+    "phase": "design",
+    "level": 3,
+    "evidence": "Builds on core library chains (score, list) and exposes a clean async function interface; enables pipeline integration.",
+    "gap": "Could expose spec/apply pattern or instruction builders to reach full composition citizenship.",
+    "nextAction": "Refactor to implement spec/apply pattern and provide instruction builders for better composability."
+  },
+  {
+    "chain": "filter-ambiguous",
+    "tier": "standard",
+    "dimension": "design-efficiency",
+    "phase": "design",
+    "level": 4,
+    "evidence": "Minimal code (50 LOC) with no helper functions; implementation is straightforward and proportional to problem complexity.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "find",
+    "tier": "standard",
+    "dimension": "strategic-value",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The 'find' chain is a core capability frequently needed in AI pipelines for searching arrays with AI-powered reasoning. It enables natural language search over lists, a common developer need.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "find",
+    "tier": "standard",
+    "dimension": "architectural-fitness",
+    "phase": "design",
+    "level": 3,
+    "evidence": "At 195 LOC and 2 files, the chain is concise and focused. It builds on existing primitives like listBatch and parallelBatch without reimplementing batch processing, showing proportional design.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "find",
+    "tier": "standard",
+    "dimension": "generalizability",
+    "phase": "design",
+    "level": 4,
+    "evidence": "The chain accepts natural language instructions and works with any text array input. It has no hard dependencies on specific runtimes or data formats, making it fully general and context-agnostic.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "find",
+    "tier": "standard",
+    "dimension": "composition-fit",
+    "phase": "design",
+    "level": 2,
+    "evidence": "The chain exposes a clean function interface (findOnce) and uses library primitives internally but does not export spec/apply or instruction builders for further composition.",
+    "gap": "Expose spec/apply pattern and instruction builders to integrate with other collection chains for full composition fit.",
+    "nextAction": "Refactor to implement spec/apply exports and instruction builders to enable composability with map, filter, reduce chains."
+  },
+  {
+    "chain": "find",
+    "tier": "standard",
+    "dimension": "design-efficiency",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The implementation is clean and proportional to the problem complexity with 195 LOC, minimal helper functions, and no evident workarounds or duplicated logic.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "glossary",
+    "tier": "standard",
+    "dimension": "strategic-value",
+    "phase": "design",
+    "level": 2,
+    "evidence": "The glossary chain is a useful tool that extracts technical terms from text, enabling glossary sidebars for dense articles. It is moderately sized (112 LOC) and used in standard tier, indicating moderate frequency and real problem solving.",
+    "gap": "Increase integration with other chains to enable more novel workflows beyond term extraction.",
+    "nextAction": "Develop spec/apply patterns or instruction builders to allow composition with other chains like entities or score."
+  },
+  {
+    "chain": "glossary",
+    "tier": "standard",
+    "dimension": "architectural-fitness",
+    "phase": "design",
+    "level": 3,
+    "evidence": "At 112 LOC, the chain cleanly breaks down the problem into sentence batching, mapping, deduplication, and sorting. It builds on existing primitives (map, sort) without reimplementing batch processing.",
+    "gap": "No significant architectural issues; design is proportional to problem complexity.",
+    "nextAction": "Maintain current modular design and ensure clear separation of concerns."
+  },
+  {
+    "chain": "glossary",
+    "tier": "standard",
+    "dimension": "generalizability",
+    "phase": "design",
+    "level": 4,
+    "evidence": "The chain accepts any text input, uses natural language instructions, and depends only on general-purpose libraries (compromise, map, sort). It is runtime agnostic and context-agnostic.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "glossary",
+    "tier": "standard",
+    "dimension": "composition-fit",
+    "phase": "design",
+    "level": 2,
+    "evidence": "The chain uses map and sort internally but does not expose spec/apply or instruction builders for further composition. It acts as a pipeline step but is not a full composition citizen.",
+    "gap": "Expose spec/apply interfaces and instruction builders to enable composition with other chains.",
+    "nextAction": "Refactor to provide spec/apply pattern and instruction builders for integration with core primitives."
+  },
+  {
+    "chain": "glossary",
+    "tier": "standard",
+    "dimension": "design-efficiency",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The implementation is concise (112 LOC) with a single main export and no helper functions, proportional to the problem complexity. It leverages existing chains effectively.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "group",
+    "tier": "core",
+    "dimension": "strategic-value",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The 'group' chain is a core batch processing chain (247 LOC) that developers frequently need in AI pipelines for organizing data. It enables workflows that were previously impractical by discovering and assigning categories using LLMs.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "group",
+    "tier": "core",
+    "dimension": "architectural-fitness",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The design is clean and proportional to the problem complexity (247 LOC). It builds on existing primitives like reduce and parallelBatch without reimplementing batch processing. The two-phase approach (category discovery and assignment) is clear.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "group",
+    "tier": "core",
+    "dimension": "generalizability",
+    "phase": "design",
+    "level": 4,
+    "evidence": "The chain accepts natural language instructions and works with any list of items, making it fully general and context-agnostic. It has no hard dependencies on specific runtimes or data formats.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "group",
+    "tier": "core",
+    "dimension": "composition-fit",
+    "phase": "design",
+    "level": 2,
+    "evidence": "While the chain uses other chains internally (reduce) and library utilities (parallelBatch), it does not export spec/apply patterns or instruction builders for further composition. It acts as a pipeline step but is not a full composition citizen.",
+    "gap": "Expose spec/apply interfaces and instruction builders to enable composition with other chains.",
+    "nextAction": "Refactor to separate category discovery and assignment as composable spec/apply chains with instruction builders."
+  },
+  {
+    "chain": "group",
+    "tier": "core",
+    "dimension": "design-efficiency",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The implementation is efficient and proportional to the problem complexity (247 LOC). It uses a moderate number of helper functions and leverages existing library utilities, avoiding unnecessary complexity.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "intersections",
+    "tier": "standard",
+    "dimension": "strategic-value",
+    "phase": "design",
+    "level": 3,
+    "evidence": "Enables intersection analysis across multiple categories with AI reasoning, a core capability useful in AI pipelines; used frequently for data transformation and insight extraction.",
+    "gap": "Could increase frequency of use by integrating more tightly with other core chains or expanding use cases.",
+    "nextAction": "Develop additional instruction builders to facilitate integration with other chains like map or filter."
+  },
+  {
+    "chain": "intersections",
+    "tier": "standard",
+    "dimension": "architectural-fitness",
+    "phase": "design",
+    "level": 3,
+    "evidence": "239 lines of code proportional to problem complexity; clear phases in processing combinations; builds on primitives like commonalities and combinations without bespoke infrastructure.",
+    "gap": "Minor complexity in batch processing could be simplified.",
+    "nextAction": "Refactor batch processing loop for clearer abstraction and potential reuse."
+  },
+  {
+    "chain": "intersections",
+    "tier": "standard",
+    "dimension": "generalizability",
+    "phase": "design",
+    "level": 4,
+    "evidence": "Accepts natural language instructions; works with any array of items; no hard dependencies on specific runtimes or data formats; isomorphic design.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "intersections",
+    "tier": "standard",
+    "dimension": "composition-fit",
+    "phase": "design",
+    "level": 2,
+    "evidence": "Exposes a clean function interface accepting items and instructions; uses other chains internally (commonalities) but does not fully implement spec/apply or instruction builders for all collection chains.",
+    "gap": "Could be refactored to expose spec/apply pattern and instruction builders to better fit library composition philosophy.",
+    "nextAction": "Extract spec generation and apply phases into separate composable chains and provide instruction builders."
+  },
+  {
+    "chain": "intersections",
+    "tier": "standard",
+    "dimension": "design-efficiency",
+    "phase": "design",
+    "level": 3,
+    "evidence": "239 LOC with a single main export and limited helper functions; implementation is clean and proportional to problem complexity; no excessive workarounds or duplicated logic.",
+    "gap": "Could reduce configuration complexity by consolidating parameters.",
+    "nextAction": "Simplify configuration options to reduce API surface and improve usability."
+  },
+  {
+    "chain": "join",
+    "tier": "standard",
+    "dimension": "strategic-value",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The join chain is a core capability frequently needed in AI pipelines for merging text fragments into coherent narratives, enabling workflows like document synthesis and story merging that are common in AI feature development.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "join",
+    "tier": "standard",
+    "dimension": "architectural-fitness",
+    "phase": "design",
+    "level": 3,
+    "evidence": "At 151 lines, the chain has a clean design proportional to the problem, with clear phases: windowing, per-window merging, and stitching. It uses existing utilities like windowFor and retry, avoiding bespoke infrastructure.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "join",
+    "tier": "standard",
+    "dimension": "generalizability",
+    "phase": "design",
+    "level": 4,
+    "evidence": "The chain accepts arbitrary text fragments and natural language prompts, with no hard dependencies on specific runtimes or data formats, making it fully general and context-agnostic.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "join",
+    "tier": "standard",
+    "dimension": "composition-fit",
+    "phase": "design",
+    "level": 1,
+    "evidence": "The chain does not use other chains internally and implements its own batch processing and stitching logic, rather than composing existing library primitives like map or reduce.",
+    "gap": "Refactor to build on existing batch processing chains (map, reduce) and spec/apply patterns to improve composability.",
+    "nextAction": "Decompose join into smaller chains using map and reduce primitives for window processing and stitching steps."
+  },
+  {
+    "chain": "join",
+    "tier": "standard",
+    "dimension": "design-efficiency",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The implementation is concise (151 LOC) with a straightforward approach and limited helper functions, proportional to the problem complexity.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "list",
+    "tier": "standard",
+    "dimension": "strategic-value",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The 'list' chain is a core capability frequently needed in AI pipelines for generating contextual lists from natural language prompts, enabling workflows like brainstorming and streaming generation. It is used across various projects as indicated by its integration in the portfolio alongside other core chains.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "list",
+    "tier": "standard",
+    "dimension": "architectural-fitness",
+    "phase": "design",
+    "level": 3,
+    "evidence": "At 220 lines of code in a single module, the design is clean and proportional to the problem complexity. It uses existing library primitives like retry and callLlm without reimplementing batch processing, and the processing steps are clear from the top-level functions.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "list",
+    "tier": "standard",
+    "dimension": "generalizability",
+    "phase": "design",
+    "level": 4,
+    "evidence": "The chain accepts natural language prompts and works with any text input, with no hard dependencies on specific runtimes or data formats. It is isomorphic and adaptable to new use cases without modification.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "list",
+    "tier": "standard",
+    "dimension": "composition-fit",
+    "phase": "design",
+    "level": 2,
+    "evidence": "The chain exposes a clean function interface (generateList) that can be used as a pipeline step, but it does not build on the library's own batch processing primitives like map, filter, or reduce internally, nor does it export spec/apply patterns or instruction builders.",
+    "gap": "Refactor to leverage existing batch processing chains and spec/apply patterns to improve composability.",
+    "nextAction": "Decompose the list generation logic to use map or filter chains and export spec/apply interfaces for better integration."
+  },
+  {
+    "chain": "list",
+    "tier": "standard",
+    "dimension": "design-efficiency",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The implementation is about 220 lines with a single main export, uses a few helper functions, and cleanly integrates retry and LLM calls. The LOC is proportional to the complexity of streaming generation, filtering, and schema transformation.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "llm-logger",
+    "tier": "standard",
+    "dimension": "strategic-value",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The llm-logger module provides an advanced logging system with AI enrichment capabilities, enabling developers to enhance logs with LLM-powered processors. It supports parallel processing, non-destructive enhancements, and batch NDJSON processing, which are valuable for AI/LLM applications. It is a core capability frequently needed in AI pipelines for logging and analysis.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "llm-logger",
+    "tier": "standard",
+    "dimension": "architectural-fitness",
+    "phase": "design",
+    "level": 2,
+    "evidence": "The module is large (652 LOC) and implements a bespoke ring buffer and parallel processing system rather than building on existing library primitives like map, filter, or reduce. This bespoke infrastructure adds complexity beyond the core idea of enhanced logging.",
+    "gap": "Refactor to leverage existing batch processing chains and reduce bespoke coordination logic.",
+    "nextAction": "Extract batch processing and filtering logic to use core library chains where possible."
+  },
+  {
+    "chain": "llm-logger",
+    "tier": "standard",
+    "dimension": "generalizability",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The design is general purpose for AI/LLM logging enhancement, using NDJSON and batch processing without hard dependencies on specific frameworks or runtimes. It can be adapted across domains needing enhanced logging.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "llm-logger",
+    "tier": "standard",
+    "dimension": "composition-fit",
+    "phase": "design",
+    "level": 1,
+    "evidence": "The module does not build on the library's core primitives (map, filter, reduce) but implements its own batch processing and coordination. It is a standalone monolith without exposing composable interfaces for integration into larger pipelines.",
+    "gap": "Redesign to expose composable interfaces and build on existing library primitives.",
+    "nextAction": "Refactor to implement processors and lanes as composable chains using spec/apply and instruction builders."
+  },
+  {
+    "chain": "llm-logger",
+    "tier": "standard",
+    "dimension": "design-efficiency",
+    "phase": "design",
+    "level": 1,
+    "evidence": "At 652 LOC with a single main export and multiple internal helpers, the module shows significant complexity and bespoke infrastructure. The many configuration parameters and custom ring buffer suggest the design is fighting the implementation.",
+    "gap": "Simplify design by reducing bespoke coordination and leveraging existing abstractions.",
+    "nextAction": "Modularize the logger to separate concerns and reduce internal complexity."
+  },
+  {
+    "chain": "map",
+    "tier": "core",
+    "dimension": "strategic-value",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The map chain is a core batch processing primitive used frequently in AI pipelines, enabling batch transformations with retry and parallelism, as indicated by its central role and 306 LOC dedicated to robust batch processing.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "map",
+    "tier": "core",
+    "dimension": "architectural-fitness",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The design is clean and proportional to the problem complexity, with clear phases for batching, retry, and parallel processing. The 306 LOC reflect the complexity of batch orchestration and retry logic without unnecessary abstractions.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "map",
+    "tier": "core",
+    "dimension": "generalizability",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The chain accepts natural language instructions and processes generic string lists, with no hard dependencies on specific frameworks or data formats, making it broadly applicable across domains.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "map",
+    "tier": "core",
+    "dimension": "composition-fit",
+    "phase": "design",
+    "level": 2,
+    "evidence": "The chain does not use other chains internally and reimplements batch processing logic rather than composing existing primitives, limiting its composability within the library.",
+    "gap": "Refactor to build on existing library primitives like list-batch or other batch chains to improve composability.",
+    "nextAction": "Extract batch processing logic to leverage existing chains and expose spec/apply pattern for better composition."
+  },
+  {
+    "chain": "map",
+    "tier": "core",
+    "dimension": "design-efficiency",
+    "phase": "design",
+    "level": 3,
+    "evidence": "At 306 LOC with a single main export and moderate helper functions, the implementation is efficient and proportional to the complexity of batch processing, retry, and progress tracking.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "people",
+    "tier": "standard",
+    "dimension": "strategic-value",
+    "phase": "design",
+    "level": 2,
+    "evidence": "The 'people' chain provides a useful tool for generating artificial person profiles with consistent demographics and traits, enabling workflows like persona creation and test data generation. It is moderately sized (76 LOC) and used in standard tier, indicating moderate frequency and utility.",
+    "gap": "Increase the chain's applicability to unlock more transformative workflows, such as integration with other chains for dynamic persona adaptation.",
+    "nextAction": "Explore extending the chain to support spec/apply patterns or integration with batch processing chains to enhance strategic value."
+  },
+  {
+    "chain": "people",
+    "tier": "standard",
+    "dimension": "architectural-fitness",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The chain is concise (76 LOC across 2 files) and focuses on a single responsibility: generating people profiles. It uses existing library functions like callLlm and retry without reimplementing batch processing or scoring, indicating clean design proportional to the problem.",
+    "gap": "No significant architectural improvements needed; maintain simplicity and clarity.",
+    "nextAction": "Continue to monitor for opportunities to simplify or modularize if complexity grows."
+  },
+  {
+    "chain": "people",
+    "tier": "standard",
+    "dimension": "generalizability",
+    "phase": "design",
+    "level": 4,
+    "evidence": "The chain accepts natural language descriptions and returns JSON objects with flexible attributes, making it fully general and context-agnostic. It does not depend on specific runtimes or data formats and uses standard LLM calls.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "people",
+    "tier": "standard",
+    "dimension": "composition-fit",
+    "phase": "design",
+    "level": 1,
+    "evidence": "The chain does not use or expose the library's core batch processing chains (map, filter, reduce) or spec/apply patterns. It acts as a standalone function without composable interfaces, limiting its integration in larger pipelines.",
+    "gap": "Refactor to expose spec/apply interfaces and leverage existing batch processing chains to improve composability.",
+    "nextAction": "Redesign the chain to use spec/apply pattern and integrate with map or filter chains to enable composition."
+  },
+  {
+    "chain": "people",
+    "tier": "standard",
+    "dimension": "design-efficiency",
+    "phase": "design",
+    "level": 4,
+    "evidence": "The implementation is minimal (76 LOC), with a straightforward approach using LLM calls and retry logic. There are no signs of unnecessary complexity or helper function bloat.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "pop-reference",
+    "tier": "standard",
+    "dimension": "strategic-value",
+    "phase": "design",
+    "level": 1,
+    "evidence": "The pop-reference chain is a niche utility with 132 LOC, providing metaphorical pop culture references for sentences. It enables creative AI features but is not a core or frequently used tool compared to primitives like map or filter.",
+    "gap": "Increase applicability across more workflows and demonstrate broader utility beyond niche metaphor generation.",
+    "nextAction": "Explore integration with other chains to support more general AI feature pipelines."
+  },
+  {
+    "chain": "pop-reference",
+    "tier": "standard",
+    "dimension": "architectural-fitness",
+    "phase": "design",
+    "level": 3,
+    "evidence": "At 132 LOC, the chain is under 200 lines and focused on a single responsibility. It uses existing lib/llm and retry modules without reimplementing batch processing, indicating clean and proportional design.",
+    "gap": "",
+    "nextAction": "Maintain current design; consider minor refactors if complexity grows."
+  },
+  {
+    "chain": "pop-reference",
+    "tier": "standard",
+    "dimension": "generalizability",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The chain accepts natural language inputs and instructions, works with any text sentence and description, and has no hard dependencies on specific runtimes or data formats, making it general purpose across domains.",
+    "gap": "",
+    "nextAction": "Ensure continued abstraction from specific contexts to maintain generality."
+  },
+  {
+    "chain": "pop-reference",
+    "tier": "standard",
+    "dimension": "composition-fit",
+    "phase": "design",
+    "level": 1,
+    "evidence": "The chain does not use other chains internally and does not expose spec/apply or instruction builders, acting as a standalone function rather than a composable pipeline step.",
+    "gap": "Refactor to expose spec/apply pattern and instruction builders to integrate with library primitives and enable composition.",
+    "nextAction": "Decompose functionality into spec generation and apply phases; provide instruction builders for use with map, filter, or score chains."
+  },
+  {
+    "chain": "pop-reference",
+    "tier": "standard",
+    "dimension": "design-efficiency",
+    "phase": "design",
+    "level": 3,
+    "evidence": "With 132 LOC and limited helper functions, the implementation is clean and proportional to the problem complexity, without excessive workarounds or duplicated logic.",
+    "gap": "",
+    "nextAction": "Continue to monitor for complexity growth; keep implementation minimal and focused."
+  },
+  {
+    "chain": "questions",
+    "tier": "standard",
+    "dimension": "strategic-value",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The questions chain is a core capability frequently needed in AI pipelines for generating relevant, thought-provoking questions from text. It enables iterative refinement and quality control, supporting workflows that explore data deeply.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "questions",
+    "tier": "standard",
+    "dimension": "architectural-fitness",
+    "phase": "design",
+    "level": 3,
+    "evidence": "At 203 LOC across 2 files, the design is clean and proportional to the problem complexity. It uses retry and LLM call abstractions without reimplementing batch processing or scoring, and the processing phases are clear.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "questions",
+    "tier": "standard",
+    "dimension": "generalizability",
+    "phase": "design",
+    "level": 4,
+    "evidence": "The chain accepts any text input and uses natural language instructions with no hard dependencies on specific runtimes or data formats, making it fully general and context-agnostic.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "questions",
+    "tier": "standard",
+    "dimension": "composition-fit",
+    "phase": "design",
+    "level": 2,
+    "evidence": "The chain exposes a clean function interface and works as a pipeline step, but it does not build on the library's core primitives like map, filter, or reduce internally, nor does it expose spec/apply patterns.",
+    "gap": "Refactor to leverage existing batch processing chains and spec/apply patterns to improve composability.",
+    "nextAction": "Decompose the chain to use map/filter primitives and expose spec/apply interfaces for better integration."
+  },
+  {
+    "chain": "questions",
+    "tier": "standard",
+    "dimension": "design-efficiency",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The implementation is efficient and proportional to the problem complexity with 203 LOC and limited helper functions. The design avoids unnecessary complexity and workarounds.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "reduce",
+    "tier": "core",
+    "dimension": "strategic-value",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The reduce chain is a core batch processing primitive used frequently in AI pipelines, enabling accumulation transformations across collections. It is part of the core set (map, filter, reduce, group, sort, find) and is widely applicable.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "reduce",
+    "tier": "core",
+    "dimension": "architectural-fitness",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The chain is implemented in 173 LOC across 2 files, which is proportional to the accumulator pattern complexity. It builds on existing primitives like listBatch and retry without bespoke infrastructure, showing clean design.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "reduce",
+    "tier": "core",
+    "dimension": "generalizability",
+    "phase": "design",
+    "level": 4,
+    "evidence": "The reduce chain accepts natural language instructions and works with any text input, with no hard dependencies on specific runtimes or data formats, making it fully general and context-agnostic.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "reduce",
+    "tier": "core",
+    "dimension": "composition-fit",
+    "phase": "design",
+    "level": 2,
+    "evidence": "The chain exposes a clean function interface and uses the library's listBatch primitive internally, but does not implement spec/apply or instruction builders itself, limiting its composition fit compared to spec/apply chains.",
+    "gap": "Integrate spec/apply pattern and instruction builders to enhance composability.",
+    "nextAction": "Refactor to expose spec/apply interfaces and instruction builders for use in other chains."
+  },
+  {
+    "chain": "reduce",
+    "tier": "core",
+    "dimension": "design-efficiency",
+    "phase": "design",
+    "level": 4,
+    "evidence": "At 173 LOC with 2 files and minimal helpers, the implementation is concise and proportional to the accumulator pattern complexity, making the design efficient and implementation obvious.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "relations",
+    "tier": "standard",
+    "dimension": "strategic-value",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The relations chain is a core capability frequently needed in AI pipelines for extracting structured relationship tuples from text, enabling workflows that were previously impractical. It integrates with collection chains via spec/apply pattern and instruction builders, indicating high utility.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "relations",
+    "tier": "standard",
+    "dimension": "architectural-fitness",
+    "phase": "design",
+    "level": 2,
+    "evidence": "At 416 lines of code in a single module with no use of other chains, the chain is relatively large and may contain some unnecessary complexity. However, it addresses a complex problem of relation extraction with multiple phases (spec generation, apply, parsing). The design is adequate but could be simplified or decomposed further.",
+    "gap": "Decompose the chain into smaller modules or leverage existing batch processing chains more to reduce complexity.",
+    "nextAction": "Refactor to split relation extraction phases into separate composable chains or utilities to improve modularity and reduce LOC per module."
+  },
+  {
+    "chain": "relations",
+    "tier": "standard",
+    "dimension": "generalizability",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The chain accepts natural language instructions and works with any text input, with optional entity disambiguation and predicate filtering. It has no hard dependencies on specific runtimes or data formats, making it broadly applicable across domains.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "relations",
+    "tier": "standard",
+    "dimension": "composition-fit",
+    "phase": "design",
+    "level": 4,
+    "evidence": "The chain fully embraces the library's composition philosophy by exposing spec/apply functions and instruction builders for all batch processing chains (map, filter, reduce, find, group). It enables novel workflows by combining with other chains and does not reimplement batch processing logic.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "relations",
+    "tier": "standard",
+    "dimension": "design-efficiency",
+    "phase": "design",
+    "level": 2,
+    "evidence": "With 416 lines of code and multiple exports in a single module, the implementation shows moderate complexity. The number of helper functions and imports suggests some friction, but the design mostly works. There is room to improve by reducing LOC and simplifying configuration.",
+    "gap": "Reduce module size and helper function count by better abstraction or decomposition.",
+    "nextAction": "Analyze helper functions and configuration parameters to identify candidates for refactoring or modularization to improve design efficiency."
+  },
+  {
+    "chain": "scale",
+    "tier": "standard",
+    "dimension": "strategic-value",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The scale chain is a core spec/apply pattern module with 309 LOC, widely used for nuanced data transformations in AI pipelines. It enables workflows that go beyond simple mappings, supporting multi-factor and conditional logic, which is valuable for developers building AI features.",
+    "gap": "Could increase transformative impact by enabling more novel feedback loops or automation patterns.",
+    "nextAction": "Explore integration with dynamic feedback systems to unlock new workflows."
+  },
+  {
+    "chain": "scale",
+    "tier": "standard",
+    "dimension": "architectural-fitness",
+    "phase": "design",
+    "level": 3,
+    "evidence": "At 309 LOC across 2 files, the design is proportional to the problem complexity. It cleanly separates spec generation and application phases, uses retry logic appropriately, and does not reimplement batch processing primitives.",
+    "gap": "Minor simplifications could be made to reduce complexity, but overall design is clean.",
+    "nextAction": "Review helper functions for potential consolidation to streamline code."
+  },
+  {
+    "chain": "scale",
+    "tier": "standard",
+    "dimension": "generalizability",
+    "phase": "design",
+    "level": 4,
+    "evidence": "The chain accepts natural language instructions and works with arbitrary input data, with no hard dependencies on specific runtimes or data formats. It is isomorphic and adaptable to new use cases without modification.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "scale",
+    "tier": "standard",
+    "dimension": "composition-fit",
+    "phase": "design",
+    "level": 4,
+    "evidence": "Follows the library's spec/apply pattern and provides instruction builders for all batch processing chains (map, filter, reduce, find, group). It integrates seamlessly with other chains and enables novel compositions.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "scale",
+    "tier": "standard",
+    "dimension": "design-efficiency",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The implementation is about 309 LOC with a balanced number of exports and helper functions. It uses retry and progress reporting efficiently without excessive complexity or workarounds.",
+    "gap": "Could reduce LOC slightly by consolidating helper functions or simplifying configuration.",
+    "nextAction": "Refactor to minimize helper functions and streamline configuration parameters."
+  },
+  {
+    "chain": "scan-js",
+    "tier": "development",
+    "dimension": "strategic-value",
+    "phase": "design",
+    "level": 2,
+    "evidence": "The scan-js chain is a useful internal tool for automated code quality analysis, enabling developers to assess maintainability, complexity, and patterns in JavaScript codebases. It solves a real problem but is primarily for internal use and not a core composition primitive, limiting its frequency of use.",
+    "gap": "Increase general applicability and integration to become a core AI pipeline tool.",
+    "nextAction": "Refactor to expose composable interfaces and broaden use cases beyond internal code analysis."
+  },
+  {
+    "chain": "scan-js",
+    "tier": "development",
+    "dimension": "architectural-fitness",
+    "phase": "design",
+    "level": 3,
+    "evidence": "At 111 lines with a single export and clear phases (search, visit, analyze), the design is clean and proportional to the problem complexity. It leverages existing library chains like sort and search-js-files without reimplementing batch processing.",
+    "gap": "Minor simplifications could improve clarity but overall design is sound.",
+    "nextAction": "Document the architecture more explicitly to aid maintainability and onboarding."
+  },
+  {
+    "chain": "scan-js",
+    "tier": "development",
+    "dimension": "generalizability",
+    "phase": "design",
+    "level": 2,
+    "evidence": "The module is tied to JavaScript codebases and uses specific libraries like search-js-files and sort, limiting its applicability to other languages or data formats.",
+    "gap": "Abstract language-specific dependencies to support multiple languages or generic text analysis.",
+    "nextAction": "Extract language-agnostic analysis core and parameterize language-specific parsing."
+  },
+  {
+    "chain": "scan-js",
+    "tier": "development",
+    "dimension": "composition-fit",
+    "phase": "design",
+    "level": 1,
+    "evidence": "The chain uses other chains internally (sort) but is a black box with a single default export and no spec/apply pattern, limiting its composability within the library.",
+    "gap": "Expose spec/apply interfaces and instruction builders to integrate with batch processing chains.",
+    "nextAction": "Refactor to implement spec/apply pattern and provide instruction builders for composition."
+  },
+  {
+    "chain": "scan-js",
+    "tier": "development",
+    "dimension": "design-efficiency",
+    "phase": "design",
+    "level": 3,
+    "evidence": "With 111 lines and limited helper functions, the implementation is efficient and proportional to the problem complexity. It avoids unnecessary complexity and uses existing libraries effectively.",
+    "gap": "No significant design efficiency issues detected.",
+    "nextAction": "Maintain current design efficiency while expanding features."
+  },
+  {
+    "chain": "score",
+    "tier": "core",
+    "dimension": "strategic-value",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The score chain is a core capability frequently used in AI pipelines, enabling specification-based scoring across items. It integrates with all collection chains and is widely applicable across projects, as indicated by its exports and usage in the portfolio context.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "score",
+    "tier": "core",
+    "dimension": "architectural-fitness",
+    "phase": "design",
+    "level": 4,
+    "evidence": "The chain uses the spec/apply pattern naturally, with a clean design proportional to the problem. Despite 395 LOC, the complexity is justified by the scoring functionality and it builds on primitives without reimplementing batch processing.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "score",
+    "tier": "core",
+    "dimension": "generalizability",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The chain accepts natural language instructions and works with any text data, with no hard dependencies on specific frameworks or data formats, making it general purpose across domains.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "score",
+    "tier": "core",
+    "dimension": "composition-fit",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The chain follows library composition patterns by exposing spec/apply and instruction builders for map, filter, reduce, find, and group chains, enabling it to be both a consumer and provider in compositions.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "score",
+    "tier": "core",
+    "dimension": "design-efficiency",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The implementation is clean and proportional to the complexity of scoring, with 395 LOC and a reasonable number of helper functions. The design makes the implementation straightforward without excessive workarounds.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "set-interval",
+    "tier": "standard",
+    "dimension": "strategic-value",
+    "phase": "design",
+    "level": 3,
+    "evidence": "Enables AI-driven dynamic scheduling workflows previously impractical; useful for developers building self-tuning or creative interval-based features; moderately frequent use as a standard tier chain.",
+    "gap": "Could increase adoption by providing more out-of-the-box use cases or integrations.",
+    "nextAction": "Document additional example workflows demonstrating unique capabilities."
+  },
+  {
+    "chain": "set-interval",
+    "tier": "standard",
+    "dimension": "architectural-fitness",
+    "phase": "design",
+    "level": 3,
+    "evidence": "170 LOC is proportional to the complexity of AI-driven interval scheduling; clear phases in main function; no reimplementation of batch primitives; uses existing retry and template utilities.",
+    "gap": "Minor simplifications possible but overall design is clean and proportional.",
+    "nextAction": "Review for any redundant helper functions to streamline further."
+  },
+  {
+    "chain": "set-interval",
+    "tier": "standard",
+    "dimension": "generalizability",
+    "phase": "design",
+    "level": 4,
+    "evidence": "No hard dependencies on specific frameworks or runtimes; uses natural language prompts and generic data inputs; isomorphic design suitable for various contexts.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "set-interval",
+    "tier": "standard",
+    "dimension": "composition-fit",
+    "phase": "design",
+    "level": 1,
+    "evidence": "Does not use or expose core library batch processing chains (map, filter, reduce) internally; acts as a standalone orchestrator for AI-driven timing; no spec/apply pattern or instruction builders.",
+    "gap": "Refactor to leverage existing batch processing chains and expose spec/apply interfaces to improve composability.",
+    "nextAction": "Decompose timing logic into composable primitives that integrate with map/filter/reduce chains."
+  },
+  {
+    "chain": "set-interval",
+    "tier": "standard",
+    "dimension": "design-efficiency",
+    "phase": "design",
+    "level": 3,
+    "evidence": "170 LOC with a single main export is efficient for the problem complexity; uses a few helper functions; no excessive imports; implementation is straightforward and clear.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "socratic",
+    "tier": "standard",
+    "dimension": "strategic-value",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The socratic chain enables a core capability of generating progressive, thought-provoking questions using the Socratic method, which is a powerful tool for educational and problem-solving workflows. It is a unique AI-powered function not easily replicated by simpler chains, and it is likely to be frequently used by developers building AI features that require critical thinking and dialogue generation.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "socratic",
+    "tier": "standard",
+    "dimension": "architectural-fitness",
+    "phase": "design",
+    "level": 3,
+    "evidence": "At 273 lines across 3 files, the design is proportional to the complexity of generating and managing Socratic dialogues. It cleanly separates question and answer generation phases and uses retry and logging utilities without reimplementing batch processing or scoring. The design is clear and modular.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "socratic",
+    "tier": "standard",
+    "dimension": "generalizability",
+    "phase": "design",
+    "level": 4,
+    "evidence": "The chain accepts natural language topics and instructions, works with any text input, and does not depend on any specific runtime or data format. It is isomorphic and adaptable to new use cases without modification.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "socratic",
+    "tier": "standard",
+    "dimension": "composition-fit",
+    "phase": "design",
+    "level": 1,
+    "evidence": "The socratic chain does not use other chains internally nor expose spec/apply or instruction builder patterns. It is a standalone monolith focused on a specific dialogue generation task, limiting its composability within the library's batch processing primitives.",
+    "gap": "Refactor to expose spec/apply pattern and instruction builders to integrate with existing map/filter/reduce chains.",
+    "nextAction": "Decompose socratic into spec generation and application chains to enable composition with core primitives."
+  },
+  {
+    "chain": "socratic",
+    "tier": "standard",
+    "dimension": "design-efficiency",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The implementation is 273 LOC with a clear separation of concerns and moderate helper functions. It uses existing library utilities for retry, logging, and LLM calls efficiently. The LOC is proportional to the problem complexity of managing multi-turn Socratic dialogues.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "sort",
+    "tier": "core",
+    "dimension": "strategic-value",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The sort chain is a core capability frequently needed in AI pipelines, enabling sorting of massive datasets using AI-powered semantic understanding, which traditional algorithms cannot handle. It is part of the core batch processing chains and supports novel workflows like learning path sequencing.",
+    "gap": "",
+    "nextAction": "Maintain and promote integration with other core chains to maximize usage."
+  },
+  {
+    "chain": "sort",
+    "tier": "core",
+    "dimension": "architectural-fitness",
+    "phase": "design",
+    "level": 3,
+    "evidence": "At 256 lines of code, the design is proportional to the problem complexity. It uses a clear multi-phase tournament-style algorithm with chunked processing and progressive extraction. It does not reimplement existing primitives but builds a custom approach suited to sorting with LLMs.",
+    "gap": "",
+    "nextAction": "Refactor minor complexity if identified, but current design is clean and proportional."
+  },
+  {
+    "chain": "sort",
+    "tier": "core",
+    "dimension": "generalizability",
+    "phase": "design",
+    "level": 4,
+    "evidence": "The chain accepts natural language criteria and works with any text input list, with no hard dependencies on specific runtimes or data formats. It is isomorphic and context-agnostic, fitting the core verblets pattern.",
+    "gap": "",
+    "nextAction": "Ensure continued adherence to natural language instructions and avoid context-specific coupling."
+  },
+  {
+    "chain": "sort",
+    "tier": "core",
+    "dimension": "composition-fit",
+    "phase": "design",
+    "level": 2,
+    "evidence": "The sort chain exposes a clean function interface accepting items and instructions, returning sorted items. However, it does not build on other library primitives like map or filter internally, implementing its own batch processing and tournament logic.",
+    "gap": "Refactor to leverage existing batch processing chains (map, filter) for internal operations to improve composition fit.",
+    "nextAction": "Decompose sorting logic to use library primitives for chunk processing and scoring to enhance composability."
+  },
+  {
+    "chain": "sort",
+    "tier": "core",
+    "dimension": "design-efficiency",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The implementation is 256 lines with a few helper functions, proportional to the complexity of AI-powered sorting. The code includes some workarounds for LLM output inconsistencies but is generally clean and efficient.",
+    "gap": "",
+    "nextAction": "Monitor for opportunities to simplify token budget management or reduce helper functions if complexity grows."
+  },
+  {
+    "chain": "split",
+    "tier": "standard",
+    "dimension": "strategic-value",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The split chain enables developers to insert semantic split points in text using natural language instructions, a core capability useful in many AI pipelines for text processing. It is frequently needed for chunking large texts meaningfully, which is a common task.",
+    "gap": "Could increase strategic value by enabling more complex or multi-modal splitting strategies.",
+    "nextAction": "Explore support for additional input types or richer instruction sets to broaden use cases."
+  },
+  {
+    "chain": "split",
+    "tier": "standard",
+    "dimension": "architectural-fitness",
+    "phase": "design",
+    "level": 3,
+    "evidence": "At 113 LOC, the chain is concise and focused on its core task. It uses existing library utilities (chunkSentences, retry, callLlm) without reimplementing batch processing or scoring. The design clearly separates chunking, prompt building, and LLM calls.",
+    "gap": "Minor complexity in retry and chunk management could be simplified but overall design is proportional.",
+    "nextAction": "Refactor prompt building and chunk processing for clearer separation if complexity grows."
+  },
+  {
+    "chain": "split",
+    "tier": "standard",
+    "dimension": "generalizability",
+    "phase": "design",
+    "level": 4,
+    "evidence": "The chain accepts any text input and natural language instructions, with no hard dependencies on specific frameworks or data formats. It is isomorphic and uses optional LLM config, making it broadly applicable.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "split",
+    "tier": "standard",
+    "dimension": "composition-fit",
+    "phase": "design",
+    "level": 2,
+    "evidence": "The chain exposes a clean async function interface that can be used as a pipeline step. However, it does not build on the library's core batch primitives (map, filter, reduce) or spec/apply patterns, and does not expose instruction builders.",
+    "gap": "Refactor to use or expose spec/apply pattern and integrate with batch processing chains for better composability.",
+    "nextAction": "Design spec generation and apply functions for split instructions to enable composition with other chains."
+  },
+  {
+    "chain": "split",
+    "tier": "standard",
+    "dimension": "design-efficiency",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The implementation is clean and concise at 113 LOC, with a few helper functions. It uses existing library utilities and avoids unnecessary complexity or workarounds.",
+    "gap": "Could reduce helper function count or simplify prompt construction further.",
+    "nextAction": "Review helper functions for consolidation and simplify prompt building logic."
+  },
+  {
+    "chain": "summary-map",
+    "tier": "standard",
+    "dimension": "strategic-value",
+    "phase": "design",
+    "level": 3,
+    "evidence": "SummaryMap is a core utility for managing token budgets in prompt inputs, enabling efficient context management for LLM interactions. It supports weighted data compression and privacy-aware processing, which are frequent needs in AI pipelines.",
+    "gap": "Could increase strategic value by integrating more tightly with other chains to enable novel workflows.",
+    "nextAction": "Develop adapters or instruction builders to compose SummaryMap with other batch processing chains."
+  },
+  {
+    "chain": "summary-map",
+    "tier": "standard",
+    "dimension": "architectural-fitness",
+    "phase": "design",
+    "level": 3,
+    "evidence": "At 227 lines, the code is proportional to the complexity of managing token budgets, privacy, and summarization. It uses clear phases: budget calculation, summarization, caching. It does not reimplement batch primitives but provides a focused utility.",
+    "gap": "Minor simplifications could be made to reduce complexity in budget calculations.",
+    "nextAction": "Refactor budget calculation logic for clarity and maintainability."
+  },
+  {
+    "chain": "summary-map",
+    "tier": "standard",
+    "dimension": "generalizability",
+    "phase": "design",
+    "level": 4,
+    "evidence": "The module works with generic text data, accepts natural language instructions for summarization, and does not depend on specific runtimes or data formats. It is isomorphic and adaptable to various use cases.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "summary-map",
+    "tier": "standard",
+    "dimension": "composition-fit",
+    "phase": "design",
+    "level": 2,
+    "evidence": "SummaryMap is a standalone utility class that does not currently expose or consume the library's batch processing chains (map, filter, reduce) or spec/apply patterns. It acts as a black box rather than a composable pipeline step.",
+    "gap": "Refactor to expose a clean function interface and integrate with existing chain primitives to enable composition.",
+    "nextAction": "Design and implement spec/apply interfaces and instruction builders for SummaryMap to fit into the library's composition model."
+  },
+  {
+    "chain": "summary-map",
+    "tier": "standard",
+    "dimension": "design-efficiency",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The implementation is concise (227 LOC) with a focused API and manageable helper functions. The code complexity matches the problem complexity of token budget management and summarization.",
+    "gap": "Could reduce some internal complexity in cache management and summarization orchestration.",
+    "nextAction": "Simplify cache invalidation and summarization flow to improve maintainability."
+  },
+  {
+    "chain": "tag-vocabulary",
+    "tier": "standard",
+    "dimension": "strategic-value",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The tag-vocabulary chain enables generation and refinement of tag vocabularies for categorization, a core capability frequently needed in AI pipelines for data labeling and analysis. It supports workflows that were previously manual or ad hoc.",
+    "gap": "",
+    "nextAction": "Promote usage examples to highlight integration in AI pipelines."
+  },
+  {
+    "chain": "tag-vocabulary",
+    "tier": "standard",
+    "dimension": "architectural-fitness",
+    "phase": "design",
+    "level": 3,
+    "evidence": "At 285 LOC in a single module with clear separation of core functions (generateInitialVocabulary, computeTagStatistics, refineVocabulary), the design is proportional to the problem complexity and uses library primitives without reimplementing batch processing.",
+    "gap": "",
+    "nextAction": "Maintain modularity and clear function boundaries."
+  },
+  {
+    "chain": "tag-vocabulary",
+    "tier": "standard",
+    "dimension": "generalizability",
+    "phase": "design",
+    "level": 4,
+    "evidence": "The chain accepts natural language specifications and arbitrary sample arrays, with no hard dependencies on specific runtimes or data formats, making it fully general and adaptable across domains.",
+    "gap": "",
+    "nextAction": "Ensure continued adherence to natural language instruction patterns for broad applicability."
+  },
+  {
+    "chain": "tag-vocabulary",
+    "tier": "standard",
+    "dimension": "composition-fit",
+    "phase": "design",
+    "level": 2,
+    "evidence": "The chain exports core functions but does not appear to build on or expose the library's batch processing primitives (map, filter, reduce) as composable steps, limiting its integration as a pipeline component.",
+    "gap": "Refactor to expose spec/apply pattern and instruction builders to align with library composition primitives.",
+    "nextAction": "Design and implement spec/apply interfaces and instruction builders for tag vocabulary generation and refinement."
+  },
+  {
+    "chain": "tag-vocabulary",
+    "tier": "standard",
+    "dimension": "design-efficiency",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The implementation is 285 LOC with a few helper functions, proportional to the complexity of generating and refining tag vocabularies with LLM calls and statistical analysis.",
+    "gap": "",
+    "nextAction": "Continue to monitor for unnecessary complexity as features evolve."
+  },
+  {
+    "chain": "tags",
+    "tier": "standard",
+    "dimension": "strategic-value",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The tags chain is a core capability frequently needed in AI pipelines for categorization and tagging tasks, enabling flexible vocabulary-based tagging workflows that were previously impractical. It is used across many projects as indicated by its exports and integration with other chains.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "tags",
+    "tier": "standard",
+    "dimension": "architectural-fitness",
+    "phase": "design",
+    "level": 2,
+    "evidence": "At 400 lines of code in a single file, the chain is relatively large but builds on existing primitives like the map chain and uses spec/apply pattern. Some complexity is present but generally proportional to the problem.",
+    "gap": "Reduce complexity by splitting into smaller modules or extracting helper utilities.",
+    "nextAction": "Refactor the chain to separate concerns and reduce file size for clearer architecture."
+  },
+  {
+    "chain": "tags",
+    "tier": "standard",
+    "dimension": "generalizability",
+    "phase": "design",
+    "level": 4,
+    "evidence": "The chain accepts natural language instructions and arbitrary vocabularies, works with any item type, and has no hard dependencies on specific runtimes or data formats, making it fully general and context-agnostic.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "tags",
+    "tier": "standard",
+    "dimension": "composition-fit",
+    "phase": "design",
+    "level": 4,
+    "evidence": "The chain uses the spec/apply pattern and instruction builders, composes with the map chain for batch processing, and exposes a rich set of exports enabling novel workflows and integration with other library chains.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "tags",
+    "tier": "standard",
+    "dimension": "design-efficiency",
+    "phase": "design",
+    "level": 2,
+    "evidence": "With 400 lines and multiple exports, the chain is moderately complex. While it leverages existing chains and patterns, the size suggests some design strain and potential for simplification.",
+    "gap": "Simplify the implementation to reduce LOC and helper functions, improving maintainability.",
+    "nextAction": "Audit and streamline code to remove unnecessary complexity and helper functions."
+  },
+  {
+    "chain": "test",
+    "tier": "development",
+    "dimension": "strategic-value",
+    "phase": "design",
+    "level": 3,
+    "evidence": "Enables AI-powered code analysis with actionable feedback, useful for developers and automation; unlocks workflows for code quality checks not easily done manually.",
+    "gap": "Could increase adoption by integrating with more test frameworks or expanding use cases.",
+    "nextAction": "Add support for additional test frameworks and broaden analysis scope."
+  },
+  {
+    "chain": "test",
+    "tier": "development",
+    "dimension": "architectural-fitness",
+    "phase": "design",
+    "level": 3,
+    "evidence": "Compact implementation (75 LOC, 2 files) with clear phases: read file, build prompt, call LLM, parse result; uses retry and LLM libs appropriately.",
+    "gap": "Minor simplifications possible but overall design proportional to problem complexity.",
+    "nextAction": "Review for any redundant abstractions or helper functions to streamline further."
+  },
+  {
+    "chain": "test",
+    "tier": "development",
+    "dimension": "generalizability",
+    "phase": "design",
+    "level": 3,
+    "evidence": "Accepts any file path and natural language instructions; no hard dependency on specific test frameworks or data formats; uses generic LLM calls.",
+    "gap": "Could improve by removing any implicit assumptions about code language or file types.",
+    "nextAction": "Document and test usage with diverse codebases and file types to ensure broad applicability."
+  },
+  {
+    "chain": "test",
+    "tier": "development",
+    "dimension": "composition-fit",
+    "phase": "design",
+    "level": 1,
+    "evidence": "Does not use or expose library's batch processing primitives (map, filter, reduce); acts as a standalone chain without composable spec/apply pattern.",
+    "gap": "Refactor to expose spec/apply interfaces and leverage existing composition primitives.",
+    "nextAction": "Redesign to integrate with library's composition model, enabling chaining with other modules."
+  },
+  {
+    "chain": "test",
+    "tier": "development",
+    "dimension": "design-efficiency",
+    "phase": "design",
+    "level": 4,
+    "evidence": "Minimal code (75 LOC) with focused functionality; no excessive helpers; straightforward implementation matching problem complexity.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "test-analysis",
+    "tier": "internal",
+    "dimension": "strategic-value",
+    "phase": "design",
+    "level": 4,
+    "evidence": "The test-analysis chain is a large internal module (4147 LOC, 31 files) providing test event processing, analysis, and reporting capabilities for Vitest. It enables AI-powered test analysis workflows that were previously impractical, unlocking novel feedback loops for developers.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "test-analysis",
+    "tier": "internal",
+    "dimension": "architectural-fitness",
+    "phase": "design",
+    "level": 1,
+    "evidence": "The module is very large (4147 LOC) and split across 31 files, indicating high complexity. It implements bespoke event processing and coordination logic rather than building on existing library primitives, suggesting strained architecture relative to the core idea.",
+    "gap": "Refactor to decompose the module into smaller, composable chains leveraging existing primitives like map, filter, and reduce to reduce bespoke infrastructure.",
+    "nextAction": "Identify core processing phases and extract reusable chain components to replace custom coordination layers."
+  },
+  {
+    "chain": "test-analysis",
+    "tier": "internal",
+    "dimension": "generalizability",
+    "phase": "design",
+    "level": 1,
+    "evidence": "The chain is tightly coupled to the Vitest test framework and Redis ring buffer infrastructure, limiting reuse outside this specific runtime and data format.",
+    "gap": "Abstract dependencies on Vitest and Redis to enable broader applicability across test frameworks and storage backends.",
+    "nextAction": "Extract core analysis logic from framework-specific event handling to create a general-purpose test event processor."
+  },
+  {
+    "chain": "test-analysis",
+    "tier": "internal",
+    "dimension": "composition-fit",
+    "phase": "design",
+    "level": 1,
+    "evidence": "The chain does not use other library chains internally and does not expose composable interfaces. It acts as a standalone monolith focused on test event processing and reporting.",
+    "gap": "Redesign to build on the library's batch processing primitives (map, filter, reduce) and expose spec/apply patterns to enable composition.",
+    "nextAction": "Refactor processing steps into composable chains and provide instruction builders for integration with other chains."
+  },
+  {
+    "chain": "test-analysis",
+    "tier": "internal",
+    "dimension": "design-efficiency",
+    "phase": "design",
+    "level": 1,
+    "evidence": "The very high LOC count (4147) for a single default export and numerous helper files suggests significant design strain. The module likely contains complex coordination and bespoke logic that could be simplified.",
+    "gap": "Simplify design by reducing helper functions and splitting responsibilities into smaller, focused chains to improve maintainability and clarity.",
+    "nextAction": "Perform a design audit to identify redundant or overly complex components and refactor accordingly."
+  },
+  {
+    "chain": "test-analyzer",
+    "tier": "internal",
+    "dimension": "strategic-value",
+    "phase": "design",
+    "level": 4,
+    "evidence": "Enables AI-driven test failure analysis unlocking new debugging workflows; highly valuable for developers automating test diagnostics.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "test-analyzer",
+    "tier": "internal",
+    "dimension": "architectural-fitness",
+    "phase": "design",
+    "level": 3,
+    "evidence": "157 LOC single file focused on one core function; clear phases for log extraction, code window calculation, prompt construction; no reimplementation of batch primitives.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "test-analyzer",
+    "tier": "internal",
+    "dimension": "generalizability",
+    "phase": "design",
+    "level": 1,
+    "evidence": "Tightly coupled to test logs with specific event types and file extraction; depends on test framework conventions limiting reuse.",
+    "gap": "Decouple from specific test log formats and framework conventions to increase applicability.",
+    "nextAction": "Refactor to accept generic log formats and abstract test event detection."
+  },
+  {
+    "chain": "test-analyzer",
+    "tier": "internal",
+    "dimension": "composition-fit",
+    "phase": "design",
+    "level": 1,
+    "evidence": "Does not use or expose library batch processing chains; standalone function with no spec/apply pattern or instruction builders.",
+    "gap": "Refactor to use spec/apply pattern and integrate with map/filter primitives for composability.",
+    "nextAction": "Extract core analysis as spec generation and apply chains to enable composition."
+  },
+  {
+    "chain": "test-analyzer",
+    "tier": "internal",
+    "dimension": "design-efficiency",
+    "phase": "design",
+    "level": 3,
+    "evidence": "157 LOC with a few helper functions; implementation proportional to problem complexity; no excessive helpers or workarounds.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "themes",
+    "tier": "standard",
+    "dimension": "strategic-value",
+    "phase": "design",
+    "level": 2,
+    "evidence": "The 'themes' chain is a useful tool that extracts key themes from text, enabling thematic analysis workflows. It is moderately sized (30 LOC) and complements other chains in the portfolio, but it is not a core primitive like map or filter.",
+    "gap": "Increase integration with other chains to enable broader workflow use cases.",
+    "nextAction": "Develop spec/apply pattern and instruction builders to enhance composability and reuse."
+  },
+  {
+    "chain": "themes",
+    "tier": "standard",
+    "dimension": "architectural-fitness",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The chain is concise (30 LOC), uses existing 'reduce' and 'shuffle' modules, and has a clear two-phase design (collect and consolidate themes). The design is proportional to the problem with no unnecessary complexity.",
+    "gap": "None; design is clean and proportional.",
+    "nextAction": "Maintain current design; consider minor refactoring if new features added."
+  },
+  {
+    "chain": "themes",
+    "tier": "standard",
+    "dimension": "generalizability",
+    "phase": "design",
+    "level": 4,
+    "evidence": "The chain operates on generic text input, uses natural language prompts, and has no hard dependencies on specific runtimes or data formats, making it fully general and context-agnostic.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "themes",
+    "tier": "standard",
+    "dimension": "composition-fit",
+    "phase": "design",
+    "level": 1,
+    "evidence": "The chain uses the 'reduce' chain internally but does not expose spec/apply patterns or instruction builders itself, limiting its composability within the library.",
+    "gap": "Refactor to expose spec/apply interfaces and instruction builders to align with library composition patterns.",
+    "nextAction": "Implement spec generation and application steps and provide instruction builders for integration with other chains."
+  },
+  {
+    "chain": "themes",
+    "tier": "standard",
+    "dimension": "design-efficiency",
+    "phase": "design",
+    "level": 4,
+    "evidence": "At 30 LOC with minimal helper functions and clear logic, the implementation is minimal and the design makes the implementation obvious.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "timeline",
+    "tier": "standard",
+    "dimension": "strategic-value",
+    "phase": "design",
+    "level": 3,
+    "evidence": "Enables extraction of chronological events from narrative text, supporting multi-format dates and relative timestamps, which is a core capability frequently needed in AI pipelines for timeline reconstruction.",
+    "gap": "Could increase frequency of use by exposing more composable interfaces or integrations.",
+    "nextAction": "Develop additional instruction builders or spec/apply patterns to increase integration with other chains."
+  },
+  {
+    "chain": "timeline",
+    "tier": "standard",
+    "dimension": "architectural-fitness",
+    "phase": "design",
+    "level": 2,
+    "evidence": "355 LOC across 2 files is moderate complexity; uses existing primitives like map and reduce but also includes bespoke chunking, retry, and parallel batch logic, indicating some unnecessary complexity.",
+    "gap": "Simplify architecture by extracting chunking and retry logic into reusable primitives or better leveraging existing library chains.",
+    "nextAction": "Refactor chunk processing and retry mechanisms to use or extend existing batch processing chains."
+  },
+  {
+    "chain": "timeline",
+    "tier": "standard",
+    "dimension": "generalizability",
+    "phase": "design",
+    "level": 4,
+    "evidence": "Accepts arbitrary text input and natural language instructions; no hard dependencies on specific runtimes or data formats; isomorphic design.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "timeline",
+    "tier": "standard",
+    "dimension": "composition-fit",
+    "phase": "design",
+    "level": 2,
+    "evidence": "Uses map and reduce internally but does not expose spec/apply or instruction builders for external composition; functions as a pipeline step but is mostly a black box.",
+    "gap": "Expose spec/apply interfaces and instruction builders to enable composition with other chains.",
+    "nextAction": "Design and export spec/apply functions and instruction builders for timeline extraction to improve composability."
+  },
+  {
+    "chain": "timeline",
+    "tier": "standard",
+    "dimension": "design-efficiency",
+    "phase": "design",
+    "level": 2,
+    "evidence": "355 LOC with multiple helper functions and several internal imports; some complexity due to chunking, retry, and parallel batch processing; code comments indicate workarounds.",
+    "gap": "Reduce helper functions and internal complexity by better abstraction or decomposition.",
+    "nextAction": "Refactor to minimize helper functions and consolidate chunking and retry logic for cleaner implementation."
+  },
+  {
+    "chain": "to-object",
+    "tier": "standard",
+    "dimension": "strategic-value",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The to-object chain addresses a common and critical problem in AI pipelines: repairing and validating JSON output from LLM calls. It enables workflows that require reliable JSON parsing and validation, which developers frequently need. It is not transformative but is a core capability used often.",
+    "gap": "Could increase strategic value by enabling more advanced JSON repair or integration features.",
+    "nextAction": "Explore adding support for more complex schema validations or error recovery strategies."
+  },
+  {
+    "chain": "to-object",
+    "tier": "standard",
+    "dimension": "architectural-fitness",
+    "phase": "design",
+    "level": 3,
+    "evidence": "At 200 lines of code with a single export and no use of other chains, the design is clean and proportional to the problem complexity. It uses clear phases: direct parse, LLM-assisted repair, and retries. No unnecessary abstractions or reimplementation of batch primitives.",
+    "gap": "Minor simplifications possible but overall design is sound.",
+    "nextAction": "Review for any redundant helper functions to streamline further."
+  },
+  {
+    "chain": "to-object",
+    "tier": "standard",
+    "dimension": "generalizability",
+    "phase": "design",
+    "level": 4,
+    "evidence": "The module works with any text input and optional JSON schema, with no hard dependencies on specific runtimes or data formats. It is isomorphic and context-agnostic, suitable for broad use cases.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "to-object",
+    "tier": "standard",
+    "dimension": "composition-fit",
+    "phase": "design",
+    "level": 1,
+    "evidence": "The chain does not use or expose the library's batch processing primitives (map, filter, reduce) and is a standalone monolith focused on JSON repair. It does not compose with other chains and is a black box.",
+    "gap": "Refactor to expose spec/apply pattern or instruction builders to integrate with collection chains.",
+    "nextAction": "Design a spec/apply interface to allow JSON repair to be used as a step in batch processing pipelines."
+  },
+  {
+    "chain": "to-object",
+    "tier": "standard",
+    "dimension": "design-efficiency",
+    "phase": "design",
+    "level": 3,
+    "evidence": "With 200 LOC and a focused single export, the implementation is efficient and proportional to the problem complexity. It uses a few helper functions and imports but no excessive workarounds.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "truncate",
+    "tier": "standard",
+    "dimension": "strategic-value",
+    "phase": "design",
+    "level": 2,
+    "evidence": "The truncate chain solves a real problem of intelligently removing unwanted trailing content from text, useful in many AI workflows. It is moderately sized (117 LOC) and is referenced alongside other standard chains, indicating moderate frequency and utility.",
+    "gap": "Could increase strategic value by enabling more novel workflows or tighter integration with other chains.",
+    "nextAction": "Explore compositional patterns to integrate truncate with other batch processing chains for enhanced pipeline use."
+  },
+  {
+    "chain": "truncate",
+    "tier": "standard",
+    "dimension": "architectural-fitness",
+    "phase": "design",
+    "level": 3,
+    "evidence": "At 117 LOC, the chain is concise and focused on its problem. It uses a clear two-phase approach: chunking text and scoring chunks. It does not reimplement batch primitives but uses the score chain. The design is proportional and clear.",
+    "gap": "Minor improvements could be made to further simplify chunk management or leverage more library primitives.",
+    "nextAction": "Refactor chunk creation to use existing primitives if possible, or document design decisions for clarity."
+  },
+  {
+    "chain": "truncate",
+    "tier": "standard",
+    "dimension": "generalizability",
+    "phase": "design",
+    "level": 4,
+    "evidence": "The chain accepts arbitrary text and natural language instructions for removal criteria, with no hard dependencies on frameworks or data formats. It is isomorphic and broadly applicable across domains.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "truncate",
+    "tier": "standard",
+    "dimension": "composition-fit",
+    "phase": "design",
+    "level": 2,
+    "evidence": "The chain uses the score chain internally but does not expose a spec/apply interface or instruction builders. It works as a standalone pipeline step but is not fully composable with other library primitives.",
+    "gap": "Expose spec/apply pattern and instruction builders to better integrate with library composition philosophy.",
+    "nextAction": "Refactor to split scoring and truncation phases into composable spec/apply chains with instruction builders."
+  },
+  {
+    "chain": "truncate",
+    "tier": "standard",
+    "dimension": "design-efficiency",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The implementation is clean and concise (117 LOC) with a few helper functions. It avoids unnecessary complexity and the LOC is proportional to the problem complexity.",
+    "gap": "Could reduce helper functions or simplify chunking logic further.",
+    "nextAction": "Review helper functions for potential consolidation or reuse to streamline implementation."
+  },
+  {
+    "chain": "veiled-variants",
+    "tier": "standard",
+    "dimension": "strategic-value",
+    "phase": "design",
+    "level": 1,
+    "evidence": "The veiled-variants chain provides niche utility for privacy-preserving text transformations, useful in specific workflows like legal document anonymization and customer support analysis. It is not a core or frequently used tool across all AI pipelines, as indicated by its 108 LOC and single file module, and its usage is specialized rather than general.",
+    "gap": "Increase applicability across more general AI workflows to raise frequency of use.",
+    "nextAction": "Explore integration with core batch processing chains to broaden use cases."
+  },
+  {
+    "chain": "veiled-variants",
+    "tier": "standard",
+    "dimension": "architectural-fitness",
+    "phase": "design",
+    "level": 3,
+    "evidence": "At 108 lines of code with a single file and no use of other chains, the design is clean and proportional to the problem complexity. The chain uses clear phases with three distinct prompt builders and a straightforward orchestration function, avoiding unnecessary abstractions or complexity.",
+    "gap": "No significant architectural improvements needed; design is proportional and clear.",
+    "nextAction": "Maintain current design clarity and modular prompt functions."
+  },
+  {
+    "chain": "veiled-variants",
+    "tier": "standard",
+    "dimension": "generalizability",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The chain accepts natural language prompts and works with any text input, using privacy-preserving LLM models. It does not depend on specific frameworks or data formats, making it general purpose across domains requiring sensitive text transformation.",
+    "gap": "Could improve by decoupling from specific privacy model defaults to increase adaptability.",
+    "nextAction": "Allow configurable model options to support broader LLM usage scenarios."
+  },
+  {
+    "chain": "veiled-variants",
+    "tier": "standard",
+    "dimension": "composition-fit",
+    "phase": "design",
+    "level": 1,
+    "evidence": "The chain does not use other library chains internally and does not expose spec/apply or instruction builder patterns for batch processing. It acts as a standalone module with a black-box interface, limiting its composability within the library's batch processing ecosystem.",
+    "gap": "Refactor to build on existing primitives like map or score and expose spec/apply interfaces.",
+    "nextAction": "Decompose the chain into composable instruction builders and spec/apply functions to integrate with batch chains."
+  },
+  {
+    "chain": "veiled-variants",
+    "tier": "standard",
+    "dimension": "design-efficiency",
+    "phase": "design",
+    "level": 3,
+    "evidence": "With 108 LOC and a small number of helper functions focused on prompt construction and orchestration, the implementation is efficient and proportional to the problem complexity. There are no signs of workarounds or duplicated logic.",
+    "gap": "No major design efficiency improvements needed.",
+    "nextAction": "Continue to keep implementation minimal and focused on core functionality."
+  }
+]

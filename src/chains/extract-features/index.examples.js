@@ -1,30 +1,12 @@
-import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
+import { describe } from 'vitest';
 import extractFeatures from './index.js';
 import map from '../map/index.js';
 import { mapInstructions as scoreMapInstructions, scoreSpec } from '../score/index.js';
-import vitestAiExpect from '../expect/index.js';
-import { longTestTimeout, shouldRunLongExamples } from '../../constants/common.js';
+import { longTestTimeout, isMediumBudget } from '../../constants/common.js'; // standard: 5-6 LLM calls
 import transactions from './dummy-transactions.json';
-import {
-  makeWrappedIt,
-  makeWrappedExpect,
-  makeWrappedAiExpect,
-} from '../test-analysis/test-wrappers.js';
-import { getConfig } from '../test-analysis/config.js';
+import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 
-const config = getConfig();
-const suite = 'Extract Features chain';
-
-const it = makeWrappedIt(vitestIt, suite, config);
-const expect = makeWrappedExpect(vitestExpect, suite, config);
-const aiExpect = makeWrappedAiExpect(vitestAiExpect, suite, config);
-
-// Higher-order function to create test-specific loggers
-const makeTestLogger = (testName) => {
-  return config?.aiMode && globalThis.logger
-    ? globalThis.logger.child({ suite, testName })
-    : undefined;
-};
+const { it, expect, aiExpect, makeLogger } = getTestHelpers('Extract Features chain');
 
 // Tag vocabularies
 const CATEGORY_SECTOR_TAGS = [
@@ -115,13 +97,13 @@ const NECESSITY_TAGS = [
 
 const ACTION_TAGS = ['action/keep', 'action/optimize', 'action/investigate', 'action/cuttable'];
 
-describe.skipIf(!shouldRunLongExamples)('extract-features examples', () => {
+describe.skipIf(!isMediumBudget)('[medium] extract-features examples', () => {
   it(
     'should categorize and score financial transactions',
     { timeout: longTestTimeout },
     async () => {
       // Create logger for the test
-      const logger = makeTestLogger('categorize financial transactions');
+      const logger = makeLogger('categorize financial transactions');
 
       // Build the spending wisdom penalty specification
       const wisdomSpec =

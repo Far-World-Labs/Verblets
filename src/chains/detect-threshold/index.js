@@ -1,10 +1,11 @@
 import reduce from '../reduce/index.js';
-import callLlm from '../../lib/llm/index.js';
+import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { scopeProgress } from '../../lib/progress-callback/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { debug } from '../../lib/debug/index.js';
 import thresholdResultSchema from './threshold-result.json';
+import { initChain } from '../../lib/context/option.js';
 
 export function calculateStatistics(data, targetProperty) {
   const values = data
@@ -52,17 +53,17 @@ export function calculateStatistics(data, targetProperty) {
   };
 }
 
-export default async function detectThreshold({
-  data,
-  targetProperty,
-  goal,
-  batchSize = 50,
-  llm = { good: true },
-  maxAttempts = 3,
-  onProgress,
-  now = new Date(),
-  ...options
-}) {
+export default async function detectThreshold(options = {}) {
+  const { data, targetProperty, goal, onProgress } = options;
+  let config;
+  let batchSize;
+  ({ config, batchSize } = await initChain(
+    'detect-threshold',
+    { llm: { good: true }, ...options },
+    {
+      batchSize: 50,
+    }
+  ));
   if (!data || !Array.isArray(data) || data.length === 0) {
     throw new Error('Data must be a non-empty array');
   }
@@ -159,20 +160,11 @@ Return the updated accumulator as valid JSON.`;
   }
 
   const analysisResult = await reduce(dataStrings, instructions, {
+    ...config,
     initial: JSON.stringify(initialAccumulator),
     batchSize,
-    llm,
-    maxAttempts,
-    responseFormat: {
-      type: 'json_schema',
-      json_schema: {
-        name: 'analysis_accumulator',
-        schema: accumulatorSchema,
-      },
-    },
+    responseFormat: jsonSchema('analysis_accumulator', accumulatorSchema),
     onProgress: scopeProgress(onProgress, 'reduce:analysis'),
-    now,
-    ...options,
   });
 
   const accumulated = analysisResult;
@@ -215,22 +207,18 @@ Generate specific threshold recommendations that:
 
 Return threshold candidates with their rationales.`;
 
-  const modelOptions = {
-    response_format: {
-      type: 'json_schema',
-      json_schema: {
-        name: 'threshold_result',
-        schema: thresholdResultSchema,
-      },
-    },
-  };
-
-  const result = await retry(() => callLlm(finalPrompt, { llm, modelOptions, ...options }), {
-    label: 'detect-threshold-analysis',
-    maxAttempts,
-    onProgress,
-    abortSignal: options.abortSignal,
-  });
+  const result = await retry(
+    () =>
+      callLlm(finalPrompt, {
+        ...config,
+        response_format: jsonSchema('threshold_result', thresholdResultSchema),
+      }),
+    {
+      label: 'detect-threshold-analysis',
+      config,
+      onProgress,
+    }
+  );
 
   // Validate and fix threshold values to be within data range
   if (result.thresholdCandidates) {

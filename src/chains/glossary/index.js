@@ -2,34 +2,41 @@ import nlp from 'compromise';
 import sort from '../sort/index.js';
 import map from '../map/index.js';
 import { glossaryExtractionJsonSchema } from './schemas.js';
+import { initChain } from '../../lib/context/option.js';
+import { jsonSchema } from '../../lib/llm/index.js';
 
 // Response format for map: each chunk produces an array of terms
-const GLOSSARY_RESPONSE_FORMAT = {
-  type: 'json_schema',
-  json_schema: glossaryExtractionJsonSchema,
-};
+const GLOSSARY_RESPONSE_FORMAT = jsonSchema(
+  glossaryExtractionJsonSchema.name,
+  glossaryExtractionJsonSchema.schema
+);
 
 /**
  * Extract uncommon or technical terms from text that would benefit from definition.
  *
  * @param {string} text - source text
- * @param {object} [options]
- * @param {number} [options.maxTerms=10] - maximum terms to return
- * @param {number} [options.sentencesPerBatch=3] - number of sentences per batch
- * @param {number} [options.overlap=1] - number of overlapping sentences between batches
- * @param {number} [options.batchSize=1] - items per LLM batch
- * @param {string} [options.sortBy='importance for understanding the content'] - sorting criteria
+ * @param {object} [config]
+ * @param {number} [config.maxTerms=10] - maximum terms to return
+ * @param {number} [config.sentencesPerBatch=3] - number of sentences per batch
+ * @param {number} [config.overlap=1] - number of overlapping sentences between batches
+ * @param {number} [config.batchSize=1] - items per LLM batch
+ * @param {string} [config.sortBy='importance for understanding the content'] - sorting criteria
  * @returns {Promise<string[]>} list of important terms, sorted by relevance
  */
-export default async function glossary(text, options = {}) {
+export default async function glossary(text, config = {}) {
   const {
-    maxTerms = 10,
-    sentencesPerBatch = 3,
-    overlap = 1,
-    batchSize = 1,
-    sortBy = 'importance for understanding the content',
-    ...restOptions
-  } = options;
+    config: scopedConfig,
+    maxTerms,
+    sortBy,
+    sentencesPerBatch,
+    overlap,
+  } = await initChain('glossary', config, {
+    maxTerms: 10,
+    sortBy: 'importance for understanding the content',
+    sentencesPerBatch: 3,
+    overlap: 1,
+  });
+  config = scopedConfig;
   if (!text || !text.trim()) return [];
 
   // Parse sentences using compromise
@@ -51,15 +58,15 @@ export default async function glossary(text, options = {}) {
 
 Return a "terms" object containing an array of the extracted terms.`;
 
-  const mapped = await map(textChunks, instructions, {
-    batchSize,
+  const mapResults = await map(textChunks, instructions, {
+    ...config,
+    batchSize: config.batchSize ?? 1,
     responseFormat: GLOSSARY_RESPONSE_FORMAT,
-    ...restOptions,
   });
 
   const termSet = new Set();
-  mapped.forEach((result) => {
-    // Each mapped item is an object with a 'terms' array
+  mapResults.forEach((result) => {
+    // Each mapResults item is an object with a 'terms' array
     if (result && result.terms && Array.isArray(result.terms)) {
       result.terms.forEach((term) => {
         if (term && typeof term === 'string') {
@@ -73,7 +80,7 @@ Return a "terms" object containing an array of the extracted terms.`;
   if (terms.length === 0) return [];
 
   // Sort by importance for understanding the content
-  const sorted = await sort(terms, sortBy, restOptions);
+  const sorted = await sort(terms, sortBy, config);
 
   return sorted.slice(0, maxTerms);
 }

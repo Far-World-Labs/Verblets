@@ -1,28 +1,11 @@
-import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
+import { describe } from 'vitest';
 
 import embedSubquestions from './index.js';
 import { longTestTimeout } from '../../constants/common.js';
-import vitestAiExpect from '../../chains/expect/index.js';
 
-import {
-  makeWrappedIt,
-  makeWrappedExpect,
-  makeWrappedAiExpect,
-} from '../../chains/test-analysis/test-wrappers.js';
-import { getConfig } from '../../chains/test-analysis/config.js';
+import { getTestHelpers } from '../../chains/test-analysis/test-wrappers.js';
 
-const config = getConfig();
-const suite = 'embed-subquestions';
-
-const it = makeWrappedIt(vitestIt, suite, config);
-const expect = makeWrappedExpect(vitestExpect, suite, config);
-const aiExpect = makeWrappedAiExpect(vitestAiExpect, suite, config);
-
-const makeTestLogger = (testName) => {
-  return config?.aiMode && globalThis.logger
-    ? globalThis.logger.child({ suite, testName })
-    : undefined;
-};
+const { it, expect, aiExpect, makeLogger } = getTestHelpers('embed-subquestions');
 
 describe('embed-subquestions', () => {
   it(
@@ -31,7 +14,7 @@ describe('embed-subquestions', () => {
       const result = await embedSubquestions(
         'Is Tokyo more affordable than London for the average resident?',
         {
-          logger: makeTestLogger('decomposes a multi-faceted question into atomic sub-questions'),
+          logger: makeLogger('decomposes a multi-faceted question into atomic sub-questions'),
         }
       );
 
@@ -58,7 +41,7 @@ describe('embed-subquestions', () => {
       const result = await embedSubquestions(
         'What are the health benefits and environmental impact of a vegetarian diet compared to a meat-based diet?',
         {
-          logger: makeTestLogger('handles a query with multiple independent aspects'),
+          logger: makeLogger('handles a query with multiple independent aspects'),
         }
       );
 

@@ -2,6 +2,7 @@ import conversationTurnReduce from '../conversation-turn-reduce/index.js';
 import { defaultTurnPolicy } from './turn-policies.js';
 import pLimit from 'p-limit';
 import { debug } from '../../lib/debug/index.js';
+import { initChain, scopeOperation } from '../../lib/context/option.js';
 
 /**
  * @typedef {Object} Speaker
@@ -27,7 +28,7 @@ import { debug } from '../../lib/debug/index.js';
  */
 
 export default class Conversation {
-  constructor(topic, speakers, options = {}) {
+  static async create(topic, speakers, options = {}) {
     if (!speakers || speakers.length === 0) {
       throw new Error('Speakers required');
     }
@@ -40,15 +41,17 @@ export default class Conversation {
       idSet.add(p.id);
     });
 
-    const {
-      rules = {},
-      speakFn,
-      bulkSpeakFn,
-      maxParallel = 3,
-      llm,
-      clock,
-      ...otherOptions
-    } = options;
+    const { depth, maxParallel } = await initChain('conversation', options, {
+      depth: 3,
+      maxParallel: 3,
+    });
+    return new Conversation(topic, speakers, options, { depth, maxParallel });
+  }
+
+  constructor(topic, speakers, options = {}, resolved = {}) {
+    const config = scopeOperation('conversation', options);
+
+    const { rules = {}, speakFn, bulkSpeakFn, llm, clock, ...otherOptions } = config;
 
     if (rules.shouldContinue && typeof rules.shouldContinue !== 'function') {
       throw new Error('shouldContinue must be a function');
@@ -56,16 +59,17 @@ export default class Conversation {
 
     this.topic = topic;
     this.speakers = speakers.slice();
+    const depth = resolved.depth ?? config.depth ?? 3;
     this.rules = Object.assign(
       {
-        shouldContinue: (round) => round < 3, // Default to 3 rounds
+        shouldContinue: (round) => round < depth,
         turnPolicy: rules.turnPolicy || defaultTurnPolicy(this.speakers),
       },
       rules
     );
     this.speakFn = speakFn;
     this.bulkSpeakFn = bulkSpeakFn;
-    this.maxParallel = maxParallel;
+    this.maxParallel = resolved.maxParallel ?? config.maxParallel ?? 3;
 
     // If no functions provided, default to our conversationTurnReduce
     if (!this.speakFn && !this.bulkSpeakFn) {

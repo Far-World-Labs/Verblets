@@ -1,62 +1,33 @@
 # category-samples
 
-Generate representative samples for different categories using AI-powered content creation with intelligent diversity and contextual appropriateness.
+Generate representative sample items for a category using cognitive science principles. Creates diverse, representative examples across the typicality spectrum using prototype theory and family resemblance.
 
 ## Usage
 
 ```javascript
 import categorySamples from './index.js';
 
-const categories = ['beginner', 'intermediate', 'advanced'];
-const samples = await categorySamples(categories, 'programming exercises', { samplesPerCategory: 2 });
+const fruits = await categorySamples('fruit', { count: 5 });
+// Returns: ['apple', 'banana', 'mango', 'dragonfruit', 'fig']
 
-// Returns:
-// {
-//   beginner: [
-//     'Write a function that adds two numbers',
-//     'Create a program that prints "Hello World"'
-//   ],
-//   intermediate: [
-//     'Build a simple calculator with basic operations',
-//     'Implement a function to reverse a string'
-//   ],
-//   advanced: [
-//     'Design a recursive algorithm for tree traversal',
-//     'Implement a custom data structure with optimized operations'
-//   ]
-// }
+const birds = await categorySamples('bird', {
+  context: 'Common backyard birds in North America',
+  count: 4,
+  diversity: 'low',
+});
+// Returns: ['robin', 'sparrow', 'cardinal', 'bluejay']
 ```
 
 ## API
 
-### `categorySamples(categories, context, config)`
+### `categorySamples(categoryName, config)`
 
 **Parameters:**
-- `categories` (Array): List of category names
-- `context` (string): Description of what type of samples to generate
+- `categoryName` (string): Name of the category to generate samples for
 - `config` (Object): Configuration options
-  - `samplesPerCategory` (number): Number of samples per category (default: 3)
-  - `diversity` (boolean): Ensure diverse samples within categories (default: true)
-  - `llm` (Object): LLM model options
+  - `diversity` (`'low'`|`'high'`): Controls sampling strategy. `'low'` focuses on typical, central members with fewer candidates (15). `'high'` spans edge cases and borderline members with more candidates (50). Default: balanced behavior with 30 candidates
+  - `count` (number): Override number of sample items to return
+  - `context` (string): Context description for generation (default: '')
+  - `llm` (string|Object): LLM model configuration (default: `'fastGoodCheap'`)
 
-**Returns:** Promise<Object> - Object with category names as keys and arrays of samples as values
-
-## Use Cases
-
-### Educational Content Creation
-```javascript
-import categorySamples from './index.js';
-
-const levels = ['elementary', 'middle school', 'high school'];
-const questions = await categorySamples(levels, 'science quiz questions', { samplesPerCategory: 3 });
-
-// Returns age-appropriate science questions for each education level
-```
-
-### Marketing Campaign Ideas
-```javascript
-const channels = ['social media', 'email', 'print advertising'];
-const campaigns = await categorySamples(channels, 'summer sale promotion', { samplesPerCategory: 2 });
-
-// Returns channel-specific marketing campaign ideas
-```
+**Returns:** Promise<string[]> - Array of representative category member names

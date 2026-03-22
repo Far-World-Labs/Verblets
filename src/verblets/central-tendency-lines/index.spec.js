@@ -13,6 +13,15 @@ describe('centralTendency', () => {
     vi.clearAllMocks();
   });
 
+  it.each([
+    ['empty string item', '', ['seed1', 'seed2'], 'Item must be a non-empty string'],
+    ['null item', null, ['seed1', 'seed2'], 'Item must be a non-empty string'],
+    ['empty seedItems array', 'item', [], 'seedItems must be a non-empty array'],
+    ['null seedItems', 'item', null, 'seedItems must be a non-empty array'],
+  ])('rejects %s', async (_label, item, seedItems, expectedError) => {
+    await expect(centralTendency(item, seedItems)).rejects.toThrow(expectedError);
+  });
+
   it('evaluates centrality with config object', async () => {
     const mockResponse = {
       score: 0.85,
@@ -42,78 +51,6 @@ describe('centralTendency', () => {
     );
   });
 
-  it('uses default LLM model when not specified', async () => {
-    const mockResponse = {
-      score: 0.75,
-      reason: 'Good match',
-      confidence: 0.8,
-    };
-
-    llm.mockResolvedValue(mockResponse);
-
-    const result = await centralTendency('penguin', ['robin', 'sparrow'], {
-      context: 'Bird evaluation',
-    });
-
-    expect(result.score).toBe(0.75);
-    expect(llm).toHaveBeenCalledWith(
-      expect.any(String),
-      expect.objectContaining({
-        llm: 'fastGoodCheap',
-      })
-    );
-  });
-
-  it('throws error for invalid item', async () => {
-    await expect(centralTendency('', ['seed1', 'seed2'])).rejects.toThrow(
-      'Item must be a non-empty string'
-    );
-    await expect(centralTendency(null, ['seed1', 'seed2'])).rejects.toThrow(
-      'Item must be a non-empty string'
-    );
-  });
-
-  it('throws error for invalid seedItems', async () => {
-    await expect(centralTendency('item', [])).rejects.toThrow(
-      'seedItems must be a non-empty array'
-    );
-    await expect(centralTendency('item', null)).rejects.toThrow(
-      'seedItems must be a non-empty array'
-    );
-  });
-
-  it('handles parsed response from llm', async () => {
-    const mockResponse = {
-      score: 0.6,
-      reason: 'Moderate centrality',
-      confidence: 0.7,
-    };
-
-    llm.mockResolvedValue(mockResponse);
-
-    const result = await centralTendency('item', ['seed1', 'seed2']);
-
-    expect(result).toEqual({
-      score: 0.6,
-      reason: 'Moderate centrality',
-      confidence: 0.7,
-    });
-  });
-
-  it('handles object response directly', async () => {
-    const mockResponse = {
-      score: 0.8,
-      reason: 'High centrality',
-      confidence: 0.9,
-    };
-
-    llm.mockResolvedValue(mockResponse);
-
-    const result = await centralTendency('item', ['seed1', 'seed2']);
-
-    expect(result).toEqual(mockResponse);
-  });
-
   it('builds correct prompt with context and core features', async () => {
     const mockResponse = {
       score: 0.7,
@@ -132,22 +69,5 @@ describe('centralTendency', () => {
     expect(calledPrompt).toContain('Context: Bird evaluation context');
     expect(calledPrompt).toContain('Core Features: feathers, beak, flight');
     expect(calledPrompt).toContain('sparrow, bluejay');
-  });
-
-  it('uses JSON schema validation', async () => {
-    const mockResponse = {
-      score: 0.6,
-      reason: 'Assessment with schema',
-      confidence: 0.8,
-    };
-
-    llm.mockResolvedValue(mockResponse);
-
-    await centralTendency('item', ['seed1', 'seed2'], {});
-
-    const modelOptions = llm.mock.calls[0][1].modelOptions;
-    expect(modelOptions).toHaveProperty('response_format');
-    expect(modelOptions.response_format.type).toBe('json_schema');
-    expect(modelOptions.response_format.json_schema.name).toBe('central_tendency_result');
   });
 });

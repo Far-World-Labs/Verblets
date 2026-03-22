@@ -31,6 +31,7 @@ const urgent = await filter(emails, 'urgent or time-sensitive messages');
   - `maxAttempts` (number): Retry attempts per LLM call (default: 3)
   - `onProgress` (function): Progress callback
   - `abortSignal` (AbortSignal): Signal to cancel the operation
+  - `strictness` (`'low'`|`'high'`|Object): Borderline item handling. `'low'` errs on inclusion with resilient error posture. `'high'` errs on exclusion with strict error posture. Default: no guidance, strict error posture
   - `llm` (string|Object): LLM model configuration
 
 **Returns:** Promise<Array> - Items that match the criteria
@@ -47,20 +48,3 @@ const isUrgent = filter.with('urgent or time-sensitive');
 const results = await pFilter(emails, isUrgent, { concurrency: 5 });
 ```
 
-## Use Cases
-
-### Content Moderation
-```javascript
-import filter from './index.js';
-
-const comments = [
-  'Great article, thanks for sharing!',
-  'This is completely wrong and stupid',
-  'I disagree but respect your opinion',
-  'You are an idiot and should shut up',
-  'Interesting perspective, never thought of it that way'
-];
-
-const appropriate = await filter(comments, 'respectful and constructive comments');
-// Returns comments that maintain civil discourse
-```

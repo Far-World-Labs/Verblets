@@ -1,5 +1,6 @@
 import { parse } from 'acorn';
 import * as walk from 'acorn-walk';
+import { glob } from 'glob';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
@@ -326,7 +327,6 @@ export async function traceCallees(filePath, functionName, maxDepth = 10) {
  */
 export async function traceCaller(rootDir, targetFile, functionName, maxCallers = 3) {
   const callers = [];
-  const glob = (await import('glob')).glob;
 
   // Find all JS files in the codebase
   const files = await glob('**/*.js', {

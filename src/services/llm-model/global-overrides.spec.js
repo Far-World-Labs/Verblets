@@ -173,9 +173,7 @@ describe('Global Override System', () => {
       modelService.setGlobalOverride('modelName', 'customModel');
 
       const result = await llmRun('Test prompt', {
-        modelOptions: {
-          modelName: 'fastGood', // This should be overridden
-        },
+        modelName: 'fastGood', // This should be overridden
       });
 
       expect(result).toBe('Test response');
@@ -191,7 +189,7 @@ describe('Global Override System', () => {
       );
     });
 
-    it('should override even when no modelOptions provided', async () => {
+    it('should override even when no config provided', async () => {
       modelService.setGlobalOverride('modelName', 'expensiveReasoning');
 
       const result = await llmRun('Test prompt');
@@ -215,10 +213,8 @@ describe('Global Override System', () => {
       modelService.setGlobalOverride('negotiate', { reasoning: true });
 
       const result = await llmRun('Test prompt', {
-        modelOptions: {
-          modelName: 'fastGood',
-          negotiate: { fast: true, cheap: true }, // This should be overridden
-        },
+        modelName: 'fastGood',
+        negotiate: { fast: true, cheap: true }, // This should be overridden
       });
 
       expect(result).toBe('Test response');
@@ -235,9 +231,7 @@ describe('Global Override System', () => {
       modelService.setGlobalOverride('negotiate', { fast: true, cheap: true });
 
       const result = await llmRun('Test prompt', {
-        modelOptions: {
-          modelName: 'expensiveReasoning', // Should be overridden by negotiation
-        },
+        modelName: 'expensiveReasoning', // Should be overridden by negotiation
       });
 
       expect(result).toBe('Test response');
@@ -256,10 +250,8 @@ describe('Global Override System', () => {
       modelService.setGlobalOverride('temperature', 0.9);
 
       const result = await llmRun('Test prompt', {
-        modelOptions: {
-          modelName: 'fastGood',
-          temperature: 0.1, // This should be overridden
-        },
+        modelName: 'fastGood',
+        temperature: 0.1, // This should be overridden
       });
 
       expect(result).toBe('Test response');
@@ -277,12 +269,10 @@ describe('Global Override System', () => {
       modelService.setGlobalOverride('topP', 0.95);
 
       const result = await llmRun('Test prompt', {
-        modelOptions: {
-          modelName: 'fastGood',
-          temperature: 0.1,
-          maxTokens: 500,
-          topP: 0.5,
-        },
+        modelName: 'fastGood',
+        temperature: 0.1,
+        maxTokens: 500,
+        topP: 0.5,
       });
 
       expect(result).toBe('Test response');
@@ -297,12 +287,10 @@ describe('Global Override System', () => {
       modelService.setGlobalOverride('temperature', 0.8);
 
       const result = await llmRun('Test prompt', {
-        modelOptions: {
-          modelName: 'fastGood',
-          temperature: 0.1,
-          maxTokens: 2000,
-          topP: 0.7,
-        },
+        modelName: 'fastGood',
+        temperature: 0.1,
+        maxTokens: 2000,
+        topP: 0.7,
       });
 
       expect(result).toBe('Test response');
@@ -320,11 +308,9 @@ describe('Global Override System', () => {
       modelService.setGlobalOverride('temperature', 0.9);
 
       const result = await llmRun('Test prompt', {
-        modelOptions: {
-          modelName: 'fastGood',
-          temperature: 0.1,
-          maxTokens: 1000,
-        },
+        modelName: 'fastGood',
+        temperature: 0.1,
+        maxTokens: 1000,
       });
 
       expect(result).toBe('Test response');
@@ -350,9 +336,7 @@ describe('Global Override System', () => {
       modelService.setGlobalOverride('negotiate', { reasoning: true });
 
       const result = await llmRun('Test prompt', {
-        modelOptions: {
-          modelName: 'fastGood',
-        },
+        modelName: 'fastGood',
       });
 
       expect(result).toBe('Test response');
@@ -365,7 +349,7 @@ describe('Global Override System', () => {
       );
     });
 
-    it('should work with empty modelOptions', async () => {
+    it('should work with empty config', async () => {
       modelService.setGlobalOverride('modelName', 'customModel');
       modelService.setGlobalOverride('temperature', 0.7);
 
@@ -412,12 +396,14 @@ describe('Global Override System', () => {
 
       // First call
       await llmRun('Test prompt 1', {
-        modelOptions: { modelName: 'fastGood', temperature: 0.1 },
+        modelName: 'fastGood',
+        temperature: 0.1,
       });
 
       // Second call
       await llmRun('Test prompt 2', {
-        modelOptions: { modelName: 'customModel', temperature: 0.2 },
+        modelName: 'customModel',
+        temperature: 0.2,
       });
 
       // Both calls should have temperature overridden to 0.8

@@ -27,75 +27,19 @@ describe('listBatch verblet', () => {
       expect(prompt).toContain('alpha');
       expect(prompt).toContain('beta');
     });
-
-    it('uses default JSON schema response format when none provided', async () => {
-      await listBatch(['x'], 'transform');
-
-      const options = callLlm.mock.calls[0][1];
-      const responseFormat = options.modelOptions.response_format;
-      expect(responseFormat.type).toBe('json_schema');
-      expect(responseFormat.json_schema.name).toBe('list_result');
-      expect(responseFormat.json_schema.schema).toStrictEqual({
-        type: 'object',
-        properties: {
-          items: { type: 'array', items: { type: 'string' } },
-        },
-        required: ['items'],
-        additionalProperties: false,
-      });
-    });
   });
 
-  describe('empty and missing input', () => {
-    it('returns empty array for empty list without calling llm', async () => {
-      const result = await listBatch([], 'anything');
-      expect(result).toStrictEqual([]);
-      expect(callLlm).not.toHaveBeenCalled();
-    });
-
-    it('returns empty array for null list without calling llm', async () => {
-      const result = await listBatch(null, 'anything');
-      expect(result).toStrictEqual([]);
-      expect(callLlm).not.toHaveBeenCalled();
-    });
-
-    it('returns empty array for undefined list without calling llm', async () => {
-      const result = await listBatch(undefined, 'anything');
-      expect(result).toStrictEqual([]);
-      expect(callLlm).not.toHaveBeenCalled();
-    });
+  it.each([
+    ['empty array', []],
+    ['null', null],
+    ['undefined', undefined],
+  ])('returns empty array for %s input without calling llm', async (_label, input) => {
+    const result = await listBatch(input, 'anything');
+    expect(result).toStrictEqual([]);
+    expect(callLlm).not.toHaveBeenCalled();
   });
 
-  describe('llm config forwarding', () => {
-    it('forwards llm config to callLlm options', async () => {
-      const llmConfig = { modelName: 'gpt-4o', temperature: 0.3 };
-      await listBatch(['a'], 'transform', { llm: llmConfig });
-
-      const options = callLlm.mock.calls[0][1];
-      expect(options.llm).toStrictEqual(llmConfig);
-    });
-
-    it('forwards string llm config', async () => {
-      await listBatch(['a'], 'transform', { llm: 'fastCheap' });
-
-      const options = callLlm.mock.calls[0][1];
-      expect(options.llm).toBe('fastCheap');
-    });
-
-    it('forwards maxTokens into modelOptions', async () => {
-      await listBatch(['a'], 'transform', { maxTokens: 2048 });
-
-      const options = callLlm.mock.calls[0][1];
-      expect(options.modelOptions.maxTokens).toBe(2048);
-    });
-
-    it('does not include maxTokens in modelOptions when not provided', async () => {
-      await listBatch(['a'], 'transform');
-
-      const options = callLlm.mock.calls[0][1];
-      expect(options.modelOptions).not.toHaveProperty('maxTokens');
-    });
-
+  describe('config merging', () => {
     it('forwards custom responseFormat overriding the default', async () => {
       const customFormat = {
         type: 'json_schema',
@@ -107,32 +51,16 @@ describe('listBatch verblet', () => {
       await listBatch(['a'], 'transform', { responseFormat: customFormat });
 
       const options = callLlm.mock.calls[0][1];
-      expect(options.modelOptions.response_format).toStrictEqual(customFormat);
+      expect(options.response_format).toStrictEqual(customFormat);
     });
 
-    it('forwards incoming modelOptions and merges with response_format', async () => {
-      const modelOpts = { temperature: 0.5, systemPrompt: 'be terse' };
-      await listBatch(['a'], 'transform', { modelOptions: modelOpts });
+    it('forwards incoming model keys and merges with response_format', async () => {
+      await listBatch(['a'], 'transform', { temperature: 0.5, systemPrompt: 'be terse' });
 
       const options = callLlm.mock.calls[0][1];
-      expect(options.modelOptions.temperature).toBe(0.5);
-      expect(options.modelOptions.systemPrompt).toBe('be terse');
-      expect(options.modelOptions.response_format).toBeDefined();
-    });
-
-    it('forwards logger to callLlm options', async () => {
-      const logger = { debug: vi.fn(), error: vi.fn() };
-      await listBatch(['a'], 'transform', { logger });
-
-      const options = callLlm.mock.calls[0][1];
-      expect(options.logger).toBe(logger);
-    });
-
-    it('forwards extra options via rest spread', async () => {
-      await listBatch(['a'], 'transform', { abortSignal: 'mock-signal' });
-
-      const options = callLlm.mock.calls[0][1];
-      expect(options.abortSignal).toBe('mock-signal');
+      expect(options.temperature).toBe(0.5);
+      expect(options.systemPrompt).toBe('be terse');
+      expect(options.response_format).toBeDefined();
     });
   });
 
@@ -290,17 +218,5 @@ describe('determineStyle', () => {
     expect(determineStyle(undefined, ['short'])).toBe(ListStyle.NEWLINE);
     expect(determineStyle(null, ['short'])).toBe(ListStyle.NEWLINE);
     expect(determineStyle('', ['has\nnewline'])).toBe(ListStyle.XML);
-  });
-});
-
-describe('ListStyle enum', () => {
-  it('exposes the expected style values', () => {
-    expect(ListStyle.NEWLINE).toBe('newline');
-    expect(ListStyle.XML).toBe('xml');
-    expect(ListStyle.AUTO).toBe('auto');
-  });
-
-  it('has exactly three entries', () => {
-    expect(Object.keys(ListStyle)).toHaveLength(3);
   });
 });

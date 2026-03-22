@@ -1,0 +1,431 @@
+[
+  {
+    "chain": "anonymize",
+    "tier": "standard",
+    "dimension": "code-quality",
+    "phase": "code",
+    "level": 3,
+    "evidence": "Multi-stage architecture with extracted validators and stage prompts. No dead code, clear naming.",
+    "gap": "Minor: Documented TODO regarding filter limitation.",
+    "nextAction": "Address the documented TODO to enhance code completeness.",
+    "rejectionReasons": [
+      "Evidence lacks concrete references"
+    ]
+  },
+  {
+    "chain": "dismantle",
+    "tier": "standard",
+    "dimension": "code-quality",
+    "phase": "code",
+    "level": 2,
+    "evidence": "Functions are well-named and extracted, no dead code, clear logic.",
+    "gap": "Could improve by separating concerns more explicitly and enhancing composability.",
+    "nextAction": "Refactor to separate concerns and improve composability of functions.",
+    "rejectionReasons": [
+      "Evidence lacks concrete references"
+    ]
+  },
+  {
+    "chain": "expect",
+    "tier": "standard",
+    "dimension": "code-quality",
+    "phase": "code",
+    "level": 3,
+    "evidence": "Well-structured code with clear separation of concerns and no dead code.",
+    "gap": "Could improve by extracting shared utilities and reducing magic numbers.",
+    "nextAction": "Extract shared utilities and replace magic numbers with named constants.",
+    "rejectionReasons": [
+      "Evidence lacks concrete references"
+    ]
+  },
+  {
+    "chain": "filter",
+    "tier": "core",
+    "dimension": "code-quality",
+    "phase": "code",
+    "level": 3,
+    "evidence": "Clean concern separation, response format isolated, minor magic numbers in logging previews.",
+    "gap": "Magic numbers in logging previews should be replaced with named constants.",
+    "nextAction": "Refactor magic numbers into named constants for better readability and maintainability.",
+    "rejectionReasons": [
+      "Evidence lacks concrete references"
+    ]
+  },
+  {
+    "chain": "map",
+    "tier": "core",
+    "dimension": "code-quality",
+    "phase": "code",
+    "level": 3,
+    "evidence": "Well-structured: separated concerns, composable internals, explicit transformations",
+    "gap": "Not yet reference-quality for study",
+    "nextAction": "Refine code to achieve reference-quality standards",
+    "rejectionReasons": [
+      "Evidence lacks concrete references"
+    ]
+  },
+  {
+    "chain": "reduce",
+    "tier": "core",
+    "dimension": "events",
+    "phase": "code",
+    "level": 3,
+    "evidence": "Emits batch-level events using `emitBatchStart`, `emitBatchProcessed`, `emitBatchComplete`",
+    "gap": "",
+    "nextAction": "",
+    "rejectionReasons": [
+      "Gap description too brief"
+    ]
+  },
+  {
+    "chain": "reduce",
+    "tier": "core",
+    "dimension": "code-quality",
+    "phase": "code",
+    "level": 3,
+    "evidence": "Intentionally minimal. Does one thing well. Response format logic cleanly isolated.",
+    "gap": "Could improve by further separating concerns and enhancing composability.",
+    "nextAction": "Refactor to separate concerns more clearly and enhance composability of internal functions.",
+    "rejectionReasons": [
+      "Evidence lacks concrete references"
+    ]
+  },
+  {
+    "chain": "reduce",
+    "tier": "core",
+    "dimension": "token-management",
+    "phase": "code",
+    "level": 2,
+    "evidence": "Uses `createBatches` for token-budget-aware splitting",
+    "gap": "",
+    "nextAction": "",
+    "rejectionReasons": [
+      "Gap description too brief"
+    ]
+  },
+  {
+    "chain": "dismantle",
+    "tier": "standard",
+    "dimension": "composability",
+    "phase": "interface",
+    "level": 1,
+    "evidence": "Exports accept standard types, can be chained manually",
+    "gap": "Does not compose other chains internally",
+    "nextAction": "Introduce internal composition of chains to enhance composability",
+    "rejectionReasons": [
+      "Evidence lacks concrete references"
+    ]
+  },
+  {
+    "chain": "filter",
+    "tier": "core",
+    "dimension": "composability",
+    "phase": "interface",
+    "level": 1,
+    "evidence": "Accepts standard types, can be chained manually",
+    "gap": "Does not compose other chains internally",
+    "nextAction": "Integrate internal composition of other chains",
+    "rejectionReasons": [
+      "Evidence lacks concrete references"
+    ]
+  },
+  {
+    "chain": "group",
+    "tier": "core",
+    "dimension": "composability",
+    "phase": "interface",
+    "level": 1,
+    "evidence": "Accepts standard types, can be chained manually",
+    "gap": "Does not compose other chains internally",
+    "nextAction": "Integrate internal composition of other chains",
+    "rejectionReasons": [
+      "Evidence lacks concrete references"
+    ]
+  },
+  {
+    "chain": "llm-logger",
+    "tier": "standard",
+    "dimension": "composability",
+    "phase": "interface",
+    "level": 1,
+    "evidence": "Accepts standard types and can be chained manually.",
+    "gap": "Does not compose other chains internally.",
+    "nextAction": "Develop internal chain-of-chains composition to enhance composability.",
+    "rejectionReasons": [
+      "Evidence lacks concrete references"
+    ]
+  },
+  {
+    "chain": "map",
+    "tier": "core",
+    "dimension": "composability",
+    "phase": "interface",
+    "level": 1,
+    "evidence": "Accepts standard types, can be chained manually",
+    "gap": "Does not compose other chains internally",
+    "nextAction": "Integrate internal composition of other chains to enhance composability",
+    "rejectionReasons": [
+      "Evidence lacks concrete references"
+    ]
+  },
+  {
+    "chain": "reduce",
+    "tier": "core",
+    "dimension": "composability",
+    "phase": "interface",
+    "level": 1,
+    "evidence": "Accepts/returns standard types, can be chained manually",
+    "gap": "Composes other chains internally (chain-of-chains)",
+    "nextAction": "Integrate with other chains to form a chain-of-chains",
+    "rejectionReasons": [
+      "Evidence lacks concrete references"
+    ]
+  },
+  {
+    "chain": "sort",
+    "tier": "core",
+    "dimension": "composability",
+    "phase": "interface",
+    "level": 1,
+    "evidence": "Accepts/returns standard types, can be chained manually",
+    "gap": "Composes other chains internally (chain-of-chains)",
+    "nextAction": "Integrate with other chains to form a chain-of-chains pattern",
+    "rejectionReasons": [
+      "Evidence lacks concrete references"
+    ]
+  },
+  {
+    "chain": "anonymize",
+    "tier": "standard",
+    "dimension": "strategic-value",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The anonymize chain is a core capability for developers needing to remove personal identifiers from text, a frequent requirement in AI pipelines.",
+    "gap": "",
+    "nextAction": "",
+    "rejectionReasons": [
+      "LLM quality filter"
+    ]
+  },
+  {
+    "chain": "anonymize",
+    "tier": "standard",
+    "dimension": "generalizability",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The chain is mostly general, working with any text data and using natural language instructions, but it has some context-specific configurations.",
+    "gap": "",
+    "nextAction": "",
+    "rejectionReasons": [
+      "LLM quality filter"
+    ]
+  },
+  {
+    "chain": "dismantle",
+    "tier": "standard",
+    "dimension": "composition-fit",
+    "phase": "design",
+    "level": 1,
+    "evidence": "The chain does not use or expose the library's composition patterns effectively, as it lacks integration with other chains and does not follow the spec/apply pattern.",
+    "gap": "Incorporate library primitives and expose a more composable interface.",
+    "nextAction": "Refactor to use existing library primitives and expose a spec/apply interface to enhance composability.",
+    "rejectionReasons": [
+      "LLM quality filter"
+    ]
+  },
+  {
+    "chain": "group",
+    "tier": "core",
+    "dimension": "strategic-value",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The 'group' chain is a core capability in AI pipelines, frequently needed for organizing data into logical categories, which is a common requirement in data processing workflows.",
+    "gap": "",
+    "nextAction": "",
+    "rejectionReasons": [
+      "LLM quality filter"
+    ]
+  },
+  {
+    "chain": "group",
+    "tier": "core",
+    "dimension": "generalizability",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The chain uses natural language instructions and works with any text input, making it broadly applicable across domains.",
+    "gap": "",
+    "nextAction": "",
+    "rejectionReasons": [
+      "LLM quality filter"
+    ]
+  },
+  {
+    "chain": "llm-logger",
+    "tier": "standard",
+    "dimension": "strategic-value",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The llm-logger provides advanced logging capabilities with AI enhancements, which are frequently needed in AI pipelines for monitoring and debugging.",
+    "gap": "",
+    "nextAction": "",
+    "rejectionReasons": [
+      "LLM quality filter"
+    ]
+  },
+  {
+    "chain": "llm-logger",
+    "tier": "standard",
+    "dimension": "generalizability",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The logger is designed to work with any text data and does not have hard dependencies on specific frameworks or runtimes.",
+    "gap": "",
+    "nextAction": "",
+    "rejectionReasons": [
+      "LLM quality filter"
+    ]
+  },
+  {
+    "chain": "map",
+    "tier": "core",
+    "dimension": "strategic-value",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The 'map' chain is a core capability in AI pipelines, frequently needed for batch processing and transformation tasks.",
+    "gap": "",
+    "nextAction": "",
+    "rejectionReasons": [
+      "LLM quality filter"
+    ]
+  },
+  {
+    "chain": "map",
+    "tier": "core",
+    "dimension": "generalizability",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The 'map' chain is general purpose, working with any text data and not locked to specific frameworks or data formats.",
+    "gap": "",
+    "nextAction": "",
+    "rejectionReasons": [
+      "LLM quality filter"
+    ]
+  },
+  {
+    "chain": "reduce",
+    "tier": "core",
+    "dimension": "strategic-value",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The 'reduce' chain is a core capability in AI pipelines, frequently needed for data transformation tasks.",
+    "gap": "",
+    "nextAction": "",
+    "rejectionReasons": [
+      "LLM quality filter"
+    ]
+  },
+  {
+    "chain": "reduce",
+    "tier": "core",
+    "dimension": "generalizability",
+    "phase": "design",
+    "level": 4,
+    "evidence": "The accumulator pattern is universally applicable, making the 'reduce' chain fully general and context-agnostic.",
+    "gap": "",
+    "nextAction": "",
+    "rejectionReasons": [
+      "LLM quality filter"
+    ]
+  },
+  {
+    "chain": "score",
+    "tier": "core",
+    "dimension": "strategic-value",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The 'score' chain is a core capability in AI pipelines, frequently needed for evaluating items on a numeric scale using specification-based scoring.",
+    "gap": "",
+    "nextAction": "",
+    "rejectionReasons": [
+      "LLM quality filter"
+    ]
+  },
+  {
+    "chain": "score",
+    "tier": "core",
+    "dimension": "generalizability",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The module is general purpose with clean abstraction boundaries, working across domains with any text data.",
+    "gap": "",
+    "nextAction": "",
+    "rejectionReasons": [
+      "LLM quality filter"
+    ]
+  },
+  {
+    "chain": "test-analysis",
+    "tier": "internal",
+    "dimension": "strategic-value",
+    "phase": "design",
+    "level": 1,
+    "evidence": "The 'test-analysis' chain is locked to Vitest, limiting its use to specific testing workflows. It doesn't enable new workflows or solve a broad problem.",
+    "gap": "Decouple from Vitest to increase applicability.",
+    "nextAction": "Refactor to support multiple testing frameworks.",
+    "rejectionReasons": [
+      "LLM quality filter"
+    ]
+  },
+  {
+    "chain": "test-analysis",
+    "tier": "internal",
+    "dimension": "architectural-fitness",
+    "phase": "design",
+    "level": 3,
+    "evidence": "The chain is only 8 lines of code, indicating a clean and simple design proportional to its purpose.",
+    "gap": "",
+    "nextAction": "",
+    "rejectionReasons": [
+      "LLM quality filter"
+    ]
+  },
+  {
+    "chain": "test-analysis",
+    "tier": "internal",
+    "dimension": "generalizability",
+    "phase": "design",
+    "level": 1,
+    "evidence": "The chain is tightly coupled to Vitest, making it non-generalizable across different testing environments.",
+    "gap": "Abstract the testing framework dependency.",
+    "nextAction": "Introduce an adapter pattern to support multiple testing frameworks.",
+    "rejectionReasons": [
+      "LLM quality filter"
+    ]
+  },
+  {
+    "chain": "filter",
+    "tier": "core",
+    "dimension": "prompt-engineering",
+    "phase": "prompt",
+    "level": 3,
+    "evidence": "- Uses `asXML` for variable wrapping, indicating level 1 maturity.\n- Utilizes `responseFormat` with JSON schema (`filterResponseFormat`), aligning with level 3.\n- No evidence of system prompts or temperature settings, which are required for level 4.\n- Prompt patterns include structured instructions for filtering decisions, leveraging `asXML` for wrapping instructions.\n- No promptConstants are explicitly mentioned in the source code.",
+    "gap": "To reach level 4, the chain needs to implement multi-stage prompt pipelines and consider frequency/presence penalty tuning. Additionally, incorporating system prompts and temperature settings would enhance the prompt engineering maturity.",
+    "nextAction": "Introduce system prompts and experiment with temperature settings to refine the prompt responses. Consider implementing multi-stage prompt pipelines for more complex filtering logic.",
+    "rejectionReasons": [
+      "LLM quality filter"
+    ]
+  },
+  {
+    "chain": "reduce",
+    "tier": "core",
+    "dimension": "prompt-engineering",
+    "phase": "prompt",
+    "level": 3,
+    "evidence": "- Uses `asXML` for variable wrapping, indicating level 1 maturity.\n- Utilizes `response_format` with JSON schemas, aligning with level 3.\n- No mention of system prompts or temperature settings, which are typical of level 4.\n- Prompt constants are not explicitly mentioned, suggesting they are not used.\n- The chain uses shared utilities like `asXML` and `retry`, showing some level of prompt engineering maturity.",
+    "gap": "To reach level 4, the chain needs to incorporate multi-stage prompt pipelines and frequency/presence penalty tuning. Additionally, the use of system prompts and explicit temperature settings would enhance its maturity.",
+    "nextAction": "Integrate system prompts and experiment with temperature settings to refine the chain's output. Consider implementing multi-stage prompt pipelines for more complex operations.",
+    "rejectionReasons": [
+      "LLM quality filter"
+    ]
+  }
+]

@@ -1,116 +1,47 @@
 # conversation
 
-Generate realistic multi-speaker transcripts with intelligent turn-taking, contextual responses, and natural conversation flow.
+Generate realistic multi-speaker transcripts with contextual turn-taking.
 
-## Usage
+## Example
 
 ```javascript
-import Conversation from './conversation/index.js';
+import Conversation from './index.js';
 
-const speakers = [
-  { id: 'fac', role: 'facilitator', bio: 'organizes community events' },
-  { id: 'max', bio: 'local baker' },
-  { id: 'lily', bio: 'youth soccer coach' }
-];
-
-const chain = new Conversation('neighborhood picnic planning', speakers, {
-  rules: { shouldContinue: (round) => round < 3 }
+// Simulate a focus group with distinct personas
+const focusGroup = new Conversation('mobile app redesign feedback', [
+  { id: 'mod', role: 'facilitator', bio: 'UX research lead, keeps discussion focused' },
+  { id: 'alex', bio: 'power user, age 28, uses app daily for work' },
+  { id: 'sam', bio: 'casual user, age 45, switched from a competitor last month' },
+  { id: 'jordan', bio: 'new user, age 19, found app through TikTok' }
+], {
+  rules: { shouldContinue: (round) => round < 4 }
 });
 
-const transcript = await chain.run();
+const transcript = await focusGroup.run();
 // => [
-//   { id: 'fac', name: 'Facilitator', comment: 'Welcome everyone...', time: '09:00' },
-//   { id: 'max', name: 'Max', comment: 'I can provide baked goods...', time: '09:02' },
+//   { id: 'mod', name: 'Mod', comment: 'Let\'s start with first impressions...', time: '10:00' },
+//   { id: 'alex', name: 'Alex', comment: 'The new nav is faster but...', time: '10:02' },
 //   ...
 // ]
 ```
 
-## Constructor Parameters
+## API
 
-- **`topic`** (string, required): The conversation topic or subject
-- **`speakers`** (array, required): Array of speaker objects with properties:
-  - **`id`** (string, required): Unique identifier for the speaker
-  - **`role`** (string, optional): Speaker's role in the conversation
-  - **`bio`** (string, optional): Background information about the speaker
-  - **`name`** (string, optional): Display name (defaults to capitalized id)
-- **`config`** (object, optional): Configuration options
-  - **`rules`** (object, optional): Conversation flow rules
-    - **`shouldContinue`** (function, default: `(round) => round < 3`): Function to determine if conversation should continue
-  - **`bulkSpeakFn`** (function, optional): Custom function for generating multiple responses (defaults to `conversationTurnReduce`)
-  - **`speakFn`** (function, optional): Custom function for generating individual responses
-  - **`maxParallel`** (number, default: 3): Maximum concurrent speaker function calls when using `speakFn`
-  - **`llm`** (object, optional): LLM configuration for conversation generation
+### `new Conversation(topic, speakers, config?)`
 
-## Methods
+- **topic** (string): Conversation subject
+- **speakers** (array): Speaker objects:
+  - `id` (string, required): Unique identifier
+  - `role` (string): Role in conversation (e.g. `'facilitator'`)
+  - `bio` (string): Background shaping the speaker's perspective
+  - `name` (string): Display name (defaults to capitalized id)
+- **config** (object):
+  - `rules.shouldContinue` (function): `(round, transcript) => boolean` (default: 3 rounds)
+  - `bulkSpeakFn` (function): Custom bulk response generator
+  - `speakFn` (function): Custom individual response generator
+  - `maxParallel` (number, default: 3): Concurrent speaker calls
+  - `llm` (object): LLM configuration
 
 ### `run()`
-Executes the full conversation and returns the complete transcript.
 
-**Returns**: Array of message objects with structure:
-```javascript
-{
-  id: string,        // Speaker ID
-  name: string,      // Speaker display name
-  comment: string,   // The speaker's contribution
-  time: string       // Timestamp in HH:MM format
-}
-```
-
-## Features
-
-- **Intelligent Turn-Taking**: Manages natural conversation flow between multiple speakers
-- **Contextual Responses**: Each speaker responds based on their background and the conversation history
-- **Multiline Responses**: Supports complex, multi-paragraph responses through XML-structured processing
-- **Flexible Speaker Roles**: Supports facilitators, participants, and specialized roles
-- **Customizable Rules**: Define when conversations should continue or conclude
-- **Realistic Timing**: Generates believable timestamps for each contribution
-- **Concurrent Processing**: Parallel execution of speaker functions with configurable concurrency limits
-- **Unified Implementation**: Automatically uses robust reduce-based approach when no custom functions specified
-- **Extensible Functions**: Override default speaking functions for specialized behaviors
-
-## Use Cases
-
-### Community Planning Meeting
-```javascript
-const speakers = [
-  { id: 'mayor', role: 'facilitator', bio: 'city mayor, experienced in public meetings' },
-  { id: 'resident1', bio: 'longtime resident, concerned about traffic' },
-  { id: 'business', bio: 'local business owner' },
-  { id: 'planner', role: 'expert', bio: 'urban planning consultant' }
-];
-
-const meeting = new Conversation('downtown revitalization project', speakers, {
-  rules: { shouldContinue: (round) => round < 4 }
-});
-
-const transcript = await meeting.run();
-```
-
-### Focus Group Discussion
-```javascript
-const participants = [
-  { id: 'moderator', role: 'facilitator', bio: 'market research professional' },
-  { id: 'user1', bio: 'frequent app user, age 25-34' },
-  { id: 'user2', bio: 'occasional user, age 35-44' },
-  { id: 'user3', bio: 'new user, age 18-24' }
-];
-
-const focusGroup = new Conversation('mobile app user experience', participants);
-const feedback = await focusGroup.run();
-```
-
-## Advanced Usage
-
-### Dynamic Conversation Rules
-```javascript
-const dynamicRules = {
-  shouldContinue: (round, transcript) => {
-    // Continue if less than 5 rounds and no consensus reached
-    return round < 5 && !transcript.some(msg => msg.comment.includes('consensus'));
-  }
-};
-
-const conversation = new Conversation(topic, speakers, {
-  rules: dynamicRules
-});
-```
+Returns `Array<{ id, name, comment, time }>`.

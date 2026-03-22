@@ -3,11 +3,13 @@ import { CENTRAL_TENDENCY_PROMPT } from '../../verblets/central-tendency-lines/i
 import { centralTendencyResultsJsonSchema } from './schemas.js';
 import { createLifecycleLogger, extractPromptAnalysis } from '../../lib/lifecycle-logger/index.js';
 import { scopeProgress } from '../../lib/progress-callback/index.js';
+import { jsonSchema } from '../../lib/llm/index.js';
+import { initChain } from '../../lib/context/option.js';
 
-const centralTendencyResponseFormat = {
-  type: 'json_schema',
-  json_schema: centralTendencyResultsJsonSchema,
-};
+const centralTendencyResponseFormat = jsonSchema(
+  centralTendencyResultsJsonSchema.name,
+  centralTendencyResultsJsonSchema.schema
+);
 
 /**
  * Build instructions for central tendency evaluation using the core verblet prompt
@@ -63,46 +65,38 @@ export default async function centralTendency(items, seedItems, config = {}) {
     throw new Error('seedItems must be a non-empty array');
   }
 
-  const {
-    batchSize = 5,
-    maxAttempts = 3,
-    logger,
-    onProgress,
-    now = new Date(),
-    llm,
-    ...otherConfig
-  } = config;
+  const { config: scopedConfig, batchSize } = await initChain('central-tendency', config, {
+    batchSize: 5,
+  });
+  config = scopedConfig;
 
   // Create lifecycle logger for the chain
-  const lifecycleLogger = createLifecycleLogger(logger, 'central-tendency-chain');
+  const lifecycleLogger = createLifecycleLogger(config.logger, 'central-tendency-chain');
 
   // Log the initial input to the chain
   lifecycleLogger.logStart({
     items,
     seedItems,
-    context: otherConfig.context,
-    coreFeatures: otherConfig.coreFeatures,
+    context: config.context,
+    coreFeatures: config.coreFeatures,
     itemCount: items.length,
     seedCount: seedItems.length,
   });
 
   try {
     // Build instructions for the mapper
-    const instructions = buildCentralTendencyInstructions(seedItems, otherConfig);
+    const instructions = buildCentralTendencyInstructions(seedItems, config);
 
     // Log instruction construction
     lifecycleLogger.logConstruction(instructions, extractPromptAnalysis(instructions));
 
     // Use map to handle all the complexity
     const results = await map(items, instructions, {
-      ...otherConfig,
+      ...config,
       batchSize,
-      maxAttempts,
       responseFormat: centralTendencyResponseFormat,
       logger: lifecycleLogger,
-      onProgress: scopeProgress(onProgress, 'map:evaluation'),
-      now,
-      llm,
+      onProgress: scopeProgress(config.onProgress, 'map:evaluation'),
     });
 
     // Log the final output from the chain

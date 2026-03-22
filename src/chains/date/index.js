@@ -1,4 +1,4 @@
-import callLlm from '../../lib/llm/index.js';
+import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import toDate from '../../lib/to-date/index.js';
 import bool from '../../verblets/bool/index.js';
 import retry from '../../lib/retry/index.js';
@@ -10,6 +10,7 @@ import {
   extractPromptAnalysis,
   extractResultValue,
 } from '../../lib/lifecycle-logger/index.js';
+import { initChain, withPolicy } from '../../lib/context/option.js';
 
 const {
   asDate,
@@ -18,6 +19,30 @@ const {
   explainAndSeparate,
   explainAndSeparatePrimitive,
 } = promptConstants;
+
+// ===== Option Mappers =====
+
+const DEFAULT_RIGOR = { validate: true, maxAttempts: 3, returnBestEffort: true };
+
+/**
+ * Map rigor option to a date processing posture.
+ * low: extraction only — no expectation generation, no validation loop. Cheapest (1 LLM call).
+ * high: strict validation — more attempts, returns undefined on exhaustion instead of best-effort.
+ * Default: extract + validate + retry, returning best-effort date on exhaustion.
+ * @param {string|object|undefined} value
+ * @returns {{ validate: boolean, maxAttempts: number, returnBestEffort: boolean }}
+ */
+export const mapRigor = (value) => {
+  if (value === undefined) return DEFAULT_RIGOR;
+  if (typeof value === 'object') return value;
+  return (
+    {
+      low: { validate: false, maxAttempts: 1, returnBestEffort: true },
+      med: DEFAULT_RIGOR,
+      high: { validate: true, maxAttempts: 5, returnBestEffort: false },
+    }[value] ?? DEFAULT_RIGOR
+  );
+};
 
 // Date disambiguation guidelines to add to prompts
 const disambiguationGuideline = `When interpreting dates:
@@ -56,20 +81,10 @@ const toUTCDate = (date) => {
 };
 
 // Extract date with retry support
-async function extractDate(prompt, llm, logger, options) {
+async function extractDate(prompt, config) {
   const response = await callLlm(prompt, {
-    llm,
-    modelOptions: {
-      response_format: {
-        type: 'json_schema',
-        json_schema: {
-          name: 'date_extraction',
-          schema: dateValueSchema,
-        },
-      },
-    },
-    logger,
-    ...options,
+    ...config,
+    response_format: jsonSchema('date_extraction', dateValueSchema),
   });
 
   if (response === 'undefined') return undefined;
@@ -77,12 +92,13 @@ async function extractDate(prompt, llm, logger, options) {
 }
 
 // Validate date against expectations
-async function validateDate(dateValue, expectations, llm, logger, options) {
+async function validateDate(dateValue, expectations, config) {
+  const { logger } = config;
   for (const check of expectations) {
     const validationPrompt = buildValidationPrompt(dateValue, check);
     logger?.logEvent('validation-prompt', extractPromptAnalysis(validationPrompt));
 
-    const passed = await bool(validationPrompt, { llm, logger, ...options });
+    const passed = await bool(validationPrompt, config);
 
     if (!passed) {
       return { passed: false, failedCheck: check };
@@ -92,7 +108,16 @@ async function validateDate(dateValue, expectations, llm, logger, options) {
 }
 
 export default async function date(text, config = {}) {
-  const { maxAttempts = 3, llm, logger, onProgress, abortSignal, ...options } = config;
+  const {
+    config: scopedConfig,
+    maxAttempts,
+    validate,
+    returnBestEffort,
+  } = await initChain('date', config, {
+    rigor: withPolicy(mapRigor, ['validate', 'maxAttempts', 'returnBestEffort']),
+  });
+  config = scopedConfig;
+  const { logger } = config;
 
   // Create lifecycle logger with date chain namespace
   const lifecycleLogger = createLifecycleLogger(logger, 'chain:date');
@@ -101,7 +126,7 @@ export default async function date(text, config = {}) {
   lifecycleLogger.logStart({
     input: text,
     maxAttempts,
-    ...extractLLMConfig(llm),
+    ...extractLLMConfig(config.llm),
   });
 
   // Build all prompts upfront and log them
@@ -113,23 +138,25 @@ export default async function date(text, config = {}) {
     extraction: extractPromptAnalysis(datePrompt),
   });
 
+  // Low rigor: extraction only — skip expectations and validation
+  if (!validate) {
+    const firstDate = await extractDate(datePrompt, { ...config, logger: lifecycleLogger });
+
+    lifecycleLogger.logResult(
+      firstDate,
+      extractResultValue(firstDate?.toISOString() || 'undefined', firstDate)
+    );
+    return firstDate;
+  }
+
   // Parallelize expectations and first date extraction
   const [expectationsResult, firstDate] = await Promise.all([
     callLlm(expectationPrompt, {
-      llm,
-      modelOptions: {
-        response_format: {
-          type: 'json_schema',
-          json_schema: {
-            name: 'date_expectations',
-            schema: dateExpectationsSchema,
-          },
-        },
-      },
+      ...config,
+      response_format: jsonSchema('date_expectations', dateExpectationsSchema),
       logger: lifecycleLogger,
-      ...options,
     }),
-    extractDate(datePrompt, llm, lifecycleLogger, options),
+    extractDate(datePrompt, { ...config, logger: lifecycleLogger }),
   ]);
 
   const expectations =
@@ -158,13 +185,10 @@ export default async function date(text, config = {}) {
       });
 
       // Validate current date
-      const validation = await validateDate(
-        currentDate,
-        expectations,
-        llm,
-        lifecycleLogger,
-        options
-      );
+      const validation = await validateDate(currentDate, expectations, {
+        ...config,
+        logger: lifecycleLogger,
+      });
 
       if (validation.passed) {
         return currentDate;
@@ -183,10 +207,11 @@ export default async function date(text, config = {}) {
       const retryPrompt = buildDatePrompt(currentText);
       lifecycleLogger.logEvent('retry-prompt', extractPromptAnalysis(retryPrompt));
 
-      const newDate = await extractDate(retryPrompt, llm, lifecycleLogger, options);
+      const newDate = await extractDate(retryPrompt, { ...config, logger: lifecycleLogger });
 
       if (!newDate) {
-        // If we can't get a new date, return what we have
+        // High rigor: return undefined on exhaustion instead of best-effort
+        if (!returnBestEffort) return undefined;
         return currentDate;
       }
 
@@ -197,10 +222,9 @@ export default async function date(text, config = {}) {
     },
     {
       label: 'date-chain',
+      config,
       maxAttempts,
       retryOnAll: true,
-      onProgress,
-      abortSignal,
     }
   );
 

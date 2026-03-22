@@ -17,55 +17,30 @@ vi.mock('../../lib/llm/index.js', () => ({
   }),
 }));
 
-const examples = [
-  {
-    name: 'Basic usage',
-    inputs: { text: 'test' },
-    want: { typeOfResult: 'object' },
-  },
-  {
-    name: 'Valid schema',
-    inputs: {
-      text: 'valid-schema',
-      schema: {
-        type: 'object',
-        properties: { key: { type: 'string' } },
-        required: ['key'],
-      },
-    },
-    want: { typeOfResult: 'object' },
-  },
-  {
-    name: 'Invalid schema',
-    inputs: {
-      text: 'invalid-schema',
-      schema: {
-        type: 'object',
-        properties: { key: { type: 'string' } },
-        additionalProperties: false,
-        required: ['key'],
-      },
-    },
-    wantError: true,
-  },
-];
-
 describe('To object verblet', () => {
-  examples.forEach((example) => {
-    it(example.name, async () => {
-      try {
-        const result = await toObject(example.inputs.text, example.inputs.schema);
+  it('parses text into an object', async () => {
+    const result = await toObject('test');
+    expect(result).toStrictEqual({});
+  });
 
-        if (example.want.typeOfResult) {
-          expect(typeof result).toStrictEqual(example.want.typeOfResult);
-        }
-      } catch (error) {
-        if (example.wantError) {
-          expect(error).toBeInstanceOf(Error);
-        } else {
-          throw error;
-        }
-      }
-    });
+  it('returns parsed object matching schema', async () => {
+    const schema = {
+      type: 'object',
+      properties: { key: { type: 'string' } },
+      required: ['key'],
+    };
+    const result = await toObject('valid-schema', schema);
+    expect(result).toStrictEqual({ key: 'value' });
+  });
+
+  it('attempts repair when result has extra properties', async () => {
+    const schema = {
+      type: 'object',
+      properties: { key: { type: 'string' } },
+      additionalProperties: false,
+      required: ['key'],
+    };
+    const result = await toObject('invalid-schema', schema);
+    expect(result).toHaveProperty('key');
   });
 });

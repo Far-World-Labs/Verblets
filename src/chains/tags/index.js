@@ -1,7 +1,8 @@
-import callLlm from '../../lib/llm/index.js';
+import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import map from '../map/index.js';
+import { initChain, scopeOperation } from '../../lib/context/option.js';
 import tagsResultSchema from './tags-result.json';
 
 // Schema for map operation - array of tag arrays
@@ -34,7 +35,7 @@ const tagsMapSchema = {
  * @returns {Promise<string>} Tag specification
  */
 export async function tagSpec(instructions, config = {}) {
-  const { llm, maxAttempts = 3, onProgress, abortSignal, ...rest } = config;
+  config = scopeOperation('tags:spec', config);
 
   const specSystemPrompt = `You are a tag specification generator. Create clear, actionable tagging criteria.`;
 
@@ -53,15 +54,12 @@ Keep it concise and actionable.`;
   const response = await retry(
     () =>
       callLlm(specUserPrompt, {
-        llm,
-        modelOptions: { systemPrompt: specSystemPrompt },
-        ...rest,
+        ...config,
+        systemPrompt: specSystemPrompt,
       }),
     {
       label: 'tags-spec',
-      maxAttempts,
-      onProgress,
-      abortSignal,
+      config,
     }
   );
 
@@ -77,42 +75,40 @@ Keep it concise and actionable.`;
  * @returns {Promise<Array>} Array of tag IDs
  */
 export async function applyTags(item, specification, vocabulary, config = {}) {
-  const { llm, maxAttempts = 3, onProgress, abortSignal, ...options } = config;
+  const { config: scopedConfig, vocabularyMode } = await initChain('tags:apply', config, {
+    vocabularyMode: 'strict',
+  });
+  config = scopedConfig;
+
+  const vocabularyConstraint =
+    vocabularyMode === 'open'
+      ? `Available tags (prefer these, but you MAY suggest new tag IDs for items that don't fit any existing tag):
+${asXML(JSON.stringify(vocabulary.tags), { tag: 'available-tags' })}`
+      : `Available tags (you MUST use only the "id" field from these tags):
+${asXML(JSON.stringify(vocabulary.tags), { tag: 'available-tags' })}`;
 
   const prompt = `You are a tagger. Apply tags to the given item based on the specification.
 
 ${asXML(specification, { tag: 'tag-specification' })}
 
-Available tags (you MUST use only the "id" field from these tags):
-${asXML(JSON.stringify(vocabulary.tags), { tag: 'available-tags' })}
+${vocabularyConstraint}
 
 Item to tag:
 ${asXML(JSON.stringify(item), { tag: 'item-to-tag' })}
 
 Analyze the item and determine which tags apply based on the specification.
-Return a JSON object with an "items" array containing ONLY the tag IDs (the "id" field values from available-tags).
+Return a JSON object with an "items" array containing ONLY the tag IDs (the "id" field values from available-tags${vocabularyMode === 'open' ? ' or new suggested IDs' : ''}).
 Do NOT return tag labels, descriptions, or full tag objects - ONLY the string ID values.`;
 
   const response = await retry(
     () =>
       callLlm(prompt, {
-        llm,
-        modelOptions: {
-          response_format: {
-            type: 'json_schema',
-            json_schema: {
-              name: 'tags_result',
-              schema: tagsResultSchema,
-            },
-          },
-        },
-        ...options,
+        ...config,
+        response_format: jsonSchema('tags_result', tagsResultSchema),
       }),
     {
       label: 'tags-apply',
-      maxAttempts,
-      onProgress,
-      abortSignal,
+      config,
     }
   );
 
@@ -129,9 +125,9 @@ Do NOT return tag labels, descriptions, or full tag objects - ONLY the string ID
  * @returns {Promise<Array>} Array of tag IDs
  */
 export async function tagItem(item, instructions, vocabulary, config = {}) {
-  const { now = new Date(), ...restConfig } = config;
-  const spec = await tagSpec(instructions, { now, ...restConfig });
-  return await applyTags(item, spec, vocabulary, { now, ...restConfig });
+  const { spec: providedSpec } = config;
+  const spec = providedSpec || (await tagSpec(instructions, config));
+  return await applyTags(item, spec, vocabulary, config);
 }
 
 /**
@@ -143,9 +139,10 @@ export async function tagItem(item, instructions, vocabulary, config = {}) {
  * @returns {Promise<Array>} Array of tag arrays
  */
 export async function mapTags(list, instructions, vocabulary, config = {}) {
-  const { now = new Date(), ...restConfig } = config;
-  const spec = await tagSpec(instructions, { now, ...restConfig });
-  const mapInstr = mapInstructions({ specification: spec, vocabulary });
+  const { spec: providedSpec, vocabularyMode: _vocabularyMode } = config;
+  const vocabularyMode = _vocabularyMode || 'strict';
+  const spec = providedSpec || (await tagSpec(instructions, config));
+  const mapInstr = mapInstructions({ specification: spec, vocabulary, vocabularyMode });
 
   // Ensure items are properly serialized for the map chain
   // The map chain converts items to strings, so we need to handle objects specially
@@ -155,15 +152,8 @@ export async function mapTags(list, instructions, vocabulary, config = {}) {
 
   // Configure map to use our structured schema for tag arrays
   const mapConfig = {
-    ...restConfig,
-    now,
-    responseFormat: {
-      type: 'json_schema',
-      json_schema: {
-        name: 'tags_map_result',
-        schema: tagsMapSchema,
-      },
-    },
+    ...config,
+    responseFormat: jsonSchema('tags_map_result', tagsMapSchema),
   };
 
   // Map will return array of tag arrays directly
@@ -181,16 +171,27 @@ export async function mapTags(list, instructions, vocabulary, config = {}) {
  * @param {string} additionalInstructions - Additional instructions for specific operation
  * @returns {string} Complete instruction string
  */
-function buildTaggingInstructions(specification, vocabulary, additionalInstructions = '') {
-  const base = `Apply this tag specification to evaluate each item:
-
-${asXML(specification, { tag: 'tag-specification' })}
-
-Available tags (use ONLY the "id" field values):
+function buildTaggingInstructions(
+  specification,
+  vocabulary,
+  additionalInstructions = '',
+  vocabularyMode = 'strict'
+) {
+  const vocabularyConstraint =
+    vocabularyMode === 'open'
+      ? `Available tags (prefer these, but you MAY suggest new tag IDs for unmatched items):
+${asXML(JSON.stringify(vocabulary.tags), { tag: 'available-tags' })}`
+      : `Available tags (use ONLY the "id" field values):
 ${asXML(JSON.stringify(vocabulary.tags), { tag: 'available-tags' })}
 
 CRITICAL: Return ONLY the string ID values from the tags above.
 Do NOT return labels, descriptions, or tag objects - just the ID strings.`;
+
+  const base = `Apply this tag specification to evaluate each item:
+
+${asXML(specification, { tag: 'tag-specification' })}
+
+${vocabularyConstraint}`;
 
   return additionalInstructions ? `${base}\n\n${additionalInstructions}` : base;
 }
@@ -203,14 +204,19 @@ Do NOT return labels, descriptions, or tag objects - just the ID strings.`;
  * @param {string} params.processing - Additional processing instructions (optional)
  * @returns {string} Instructions string
  */
-export function mapInstructions({ specification, vocabulary, processing }) {
+export function mapInstructions({ specification, vocabulary, processing, vocabularyMode }) {
   const additionalInstructions =
     processing ||
     `For each item, return an array of tag IDs that apply according to the specification.
 Return only IDs from the available tags list.
 Return empty array when no tags apply.`;
 
-  return buildTaggingInstructions(specification, vocabulary, additionalInstructions);
+  return buildTaggingInstructions(
+    specification,
+    vocabulary,
+    additionalInstructions,
+    vocabularyMode
+  );
 }
 
 /**
@@ -221,7 +227,7 @@ Return empty array when no tags apply.`;
  * @param {string} params.processing - Filter criteria (e.g., "items with financial tags")
  * @returns {string} Instructions string
  */
-export function filterInstructions({ specification, vocabulary, processing }) {
+export function filterInstructions({ specification, vocabulary, processing, vocabularyMode }) {
   if (!processing) {
     throw new Error('Filter processing criteria must be provided');
   }
@@ -231,7 +237,8 @@ export function filterInstructions({ specification, vocabulary, processing }) {
     vocabulary,
     `${asXML(processing, { tag: 'filter-criteria' })}
 
-First tag the item, then determine if it matches the filter criteria based on its tags.`
+First tag the item, then determine if it matches the filter criteria based on its tags.`,
+    vocabularyMode
   );
 }
 
@@ -243,7 +250,7 @@ First tag the item, then determine if it matches the filter criteria based on it
  * @param {string} params.processing - How to reduce tagged items
  * @returns {string} Instructions string
  */
-export function reduceInstructions({ specification, vocabulary, processing }) {
+export function reduceInstructions({ specification, vocabulary, processing, vocabularyMode }) {
   const defaultProcessing = `Build a unified tag frequency map across all items`;
 
   return buildTaggingInstructions(
@@ -251,7 +258,8 @@ export function reduceInstructions({ specification, vocabulary, processing }) {
     vocabulary,
     `${asXML(processing || defaultProcessing, { tag: 'reduce-operation' })}
 
-Tag each item and use the tags in the reduction operation.`
+Tag each item and use the tags in the reduction operation.`,
+    vocabularyMode
   );
 }
 
@@ -263,7 +271,7 @@ Tag each item and use the tags in the reduction operation.`
  * @param {string} params.processing - Selection criteria (e.g., "item with most diverse tags")
  * @returns {string} Instructions string
  */
-export function findInstructions({ specification, vocabulary, processing }) {
+export function findInstructions({ specification, vocabulary, processing, vocabularyMode }) {
   if (!processing) {
     throw new Error('Find selection criteria must be provided');
   }
@@ -273,7 +281,8 @@ export function findInstructions({ specification, vocabulary, processing }) {
     vocabulary,
     `${asXML(processing, { tag: 'selection-criteria' })}
 
-Tag each item and use the tags to determine which item to select.`
+Tag each item and use the tags to determine which item to select.`,
+    vocabularyMode
   );
 }
 
@@ -285,7 +294,7 @@ Tag each item and use the tags to determine which item to select.`
  * @param {string} params.processing - Grouping strategy (e.g., "group by primary tag")
  * @returns {string} Instructions string
  */
-export function groupInstructions({ specification, vocabulary, processing }) {
+export function groupInstructions({ specification, vocabulary, processing, vocabularyMode }) {
   const defaultProcessing = `Group items by their primary (first) tag`;
 
   return buildTaggingInstructions(
@@ -293,7 +302,8 @@ export function groupInstructions({ specification, vocabulary, processing }) {
     vocabulary,
     `${asXML(processing || defaultProcessing, { tag: 'grouping-strategy' })}
 
-Tag each item and use the tags to determine grouping.`
+Tag each item and use the tags to determine grouping.`,
+    vocabularyMode
   );
 }
 

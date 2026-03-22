@@ -1,146 +1,43 @@
 # list
 
-Generate contextual lists from natural language prompts using AI-powered content creation. This chain produces relevant, diverse items based on your specifications, with support for streaming generation and custom filtering.
+Generate lists from natural language prompts, with support for streaming and structured output.
 
-## Use Cases
+## Example
 
-### Brainstorming Session
 ```javascript
-import list from './src/chains/list/index.js';
+import list from './index.js';
+import { generateList } from './index.js';
 
-// Generate ideas for a team building event
-const activities = await list('Fun team building activities for a remote software team', {
-  count: 8
-});
-// Result: [
-//   "Virtual escape room challenge",
-//   "Online cooking class together", 
-//   "Digital scavenger hunt",
-//   "Remote book club",
-//   "Virtual game tournament",
-//   "Online art workshop",
-//   "Digital storytelling session",
-//   "Virtual coffee chat rounds"
-// ]
-```
+// Generate edge cases a QA engineer might miss
+const edgeCases = await list(
+  'Edge cases for a date picker that handles international formats, timezones, and leap years',
+  { count: 12 }
+);
+// => ["February 29 in a non-leap year", "Timezone crossing midnight boundary", ...]
 
-## Advanced Usage
-
-### Streaming Generation
-```javascript
-import { generateList } from './src/chains/list/index.js';
-
-// Generate items progressively for real-time display
-const prompt = "Creative gift ideas for a tech-savvy teenager";
-
-for await (const gift of generateList(prompt, { count: 15 })) {
-  console.log(`New idea: ${gift}`);
-  // Display each item as it's generated
-  // "New idea: Programmable LED strip kit"
-  // "New idea: Raspberry Pi starter bundle"
-  // "New idea: Wireless mechanical keyboard"
-  // ...
+// Stream items for real-time display
+for await (const item of generateList('Security vulnerabilities in REST APIs', { count: 15 })) {
+  console.log(`Found: ${item}`);
 }
 ```
 
-### Custom Control Logic
-```javascript
-import { generateList } from './src/chains/list/index.js';
+## API
 
-const options = {
-  shouldSkip: ({ result, resultsAll }) => {
-    // Skip items that are too similar to existing ones
-    return resultsAll.some(existing => 
-      existing.toLowerCase().includes(result.toLowerCase().split(' ')[0])
-    );
-  },
-  shouldStop: ({ queryCount, startTime }) => {
-    // Stop after 3 queries or 30 seconds
-    return queryCount > 3 || (Date.now() - startTime) > 30000;
-  }
-};
+### `list(prompt, config?)`
 
-for await (const item of generateList("Unique startup ideas", options)) {
-  console.log(item);
-}
-```
+- **prompt** (string): What to generate
+- **config**:
+  - `count` (number, default: 10): Target item count
+  - `schema` (object): JSON schema for structured objects instead of strings
+  - `llm` (string|object): LLM configuration
 
-### Structured Output with Schema
-```javascript
-// Transform to structured objects with schema
-const featureObjects = await list(`
-  New features for a project management app
-`, {
-  count: 5,
-  schema: {
-    type: 'object',
-    properties: {
-      name: { type: 'string' },
-      description: { type: 'string' },
-      priority: { type: 'string', enum: ['high', 'medium', 'low'] },
-      effort: { type: 'string', enum: ['small', 'medium', 'large'] }
-    },
-    required: ['name', 'description', 'priority', 'effort']
-  }
-});
-```
+Returns `string[]` (or `object[]` if `schema` is provided).
 
-## API Reference
+### `generateList(prompt, options?)`
 
-### `list(prompt, config)`
+Async generator yielding items progressively.
 
-Generates a complete list of items based on the provided prompt.
-
-**Parameters**
-
-- `prompt` (string): Natural language description of what kind of list to generate
-- `config` (object, optional): Configuration options
-  - `count` (number): Target number of items to generate (default: 10)
-  - `llm` (string|object): Model configuration (default: 'fastGoodCheap')
-  - `schema` (object): JSON schema for transforming items to structured objects
-  - Additional options passed to the underlying LLM service
-
-**Returns**
-
-- `Promise<string[]>`: Array of generated list items
-- If `schema` is provided, returns array of objects matching the schema
-
-### `generateList(prompt, options)`
-
-Generator function that yields items progressively as they're created.
-
-**Parameters**
-
-- `prompt` (string): Natural language description of the list to generate
-- `options` (object, optional): Configuration options
-  - `shouldSkip` (function): Custom logic to skip certain items
-  - `shouldStop` (function): Custom logic to determine when to stop generating
-  - `model` (string|object): Model configuration
-  - Additional options for generation control
-
-**Yields**
-
-- `string`: Individual list items as they're generated
-
-**Example with Custom Control**
-
-```javascript
-import { generateList } from './src/chains/list/index.js';
-
-const options = {
-  shouldSkip: ({ result, resultsAll }) => {
-    // Skip items that are too similar to existing ones
-    return resultsAll.some(existing => 
-      existing.toLowerCase().includes(result.toLowerCase().split(' ')[0])
-    );
-  },
-  shouldStop: ({ queryCount, startTime }) => {
-    // Stop after 3 queries or 30 seconds
-    return queryCount > 3 || (Date.now() - startTime) > 30000;
-  }
-};
-
-for await (const item of generateList("Unique startup ideas", options)) {
-  console.log(item);
-}
-``` 
+- **options**:
+  - `shouldSkip({ result, resultsAll })` — skip duplicate/unwanted items
+  - `shouldStop({ queryCount, startTime })` — custom termination logic
+  - `model` (string|object): LLM configuration

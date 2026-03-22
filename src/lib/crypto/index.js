@@ -1,6 +1,12 @@
 // Browser-compatible crypto utilities
 import { runtime } from '../env/index.js';
 
+let nodeCrypto;
+const getNodeCrypto = async () => {
+  if (!nodeCrypto) nodeCrypto = await import('node:crypto');
+  return nodeCrypto;
+};
+
 // Create SHA-256 hash
 export const createHash = (algorithm) => {
   if (algorithm !== 'sha256') {
@@ -33,9 +39,9 @@ export const createHash = (algorithm) => {
 
         throw new Error(`Unsupported encoding: ${encoding}`);
       } else {
-        // Use Node.js crypto
-        const crypto = await import('node:crypto');
-        const hash = crypto.createHash(algorithm);
+        // Use Node.js crypto (cached import)
+        const nodeCryptoMod = await getNodeCrypto();
+        const hash = nodeCryptoMod.createHash(algorithm);
         hash.update(text);
         return hash.digest(encoding);
       }

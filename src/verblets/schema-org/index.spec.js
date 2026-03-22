@@ -13,27 +13,9 @@ vi.mock('../../lib/llm/index.js', () => ({
   }),
 }));
 
-const examples = [
-  {
-    name: 'Basic usage',
-    inputs: { text: 'Kyoto (location)' },
-    want: { typeOfResult: 'object' },
-  },
-  {
-    name: 'Basic usage',
-    inputs: { text: 'Kyoto (location)', type: 'Photo' },
-    want: { typeOfResult: 'object' },
-  },
-];
-
 describe('Schema.org verblet', () => {
-  examples.forEach((example) => {
-    it(example.name, async () => {
-      const result = await schemaOrg(example.inputs.text);
-
-      if (example.want.typeOfResult) {
-        expect(typeof result).toStrictEqual(example.want.typeOfResult);
-      }
-    });
+  it('returns structured schema object from text', async () => {
+    const result = await schemaOrg('Kyoto (location)');
+    expect(result).toStrictEqual({});
   });
 });

@@ -12,7 +12,7 @@ const { asBool, asUndefinedByDefault, explainAndSeparate, explainAndSeparatePrim
   promptConstants;
 
 export default async (text, config = {}) => {
-  const { llm, logger, ...options } = config;
+  const { logger } = config;
 
   // Create lifecycle logger with bool namespace
   const lifecycleLogger = createLifecycleLogger(logger, 'bool');
@@ -29,25 +29,22 @@ The value should be "true", "false", or "undefined".`;
   // Log prompt construction with extracted analysis
   lifecycleLogger.logConstruction(systemPrompt, {
     ...extractPromptAnalysis(systemPrompt),
-    ...extractLLMConfig(llm),
+    ...extractLLMConfig(config.llm),
   });
 
   try {
     // Make LLM call with logger
     const response = await callLlm(text, {
-      llm,
-      modelOptions: {
-        systemPrompt,
-        response_format: {
-          type: 'json_schema',
-          json_schema: {
-            name: 'boolean_evaluation',
-            schema: booleanSchema,
-          },
+      ...config,
+      systemPrompt,
+      response_format: {
+        type: 'json_schema',
+        json_schema: {
+          name: 'boolean_evaluation',
+          schema: booleanSchema,
         },
       },
       logger: lifecycleLogger,
-      ...options,
     });
 
     // Interpret response

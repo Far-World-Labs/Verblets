@@ -1,11 +1,12 @@
 import fs from 'node:fs/promises';
-import llm from '../../lib/llm/index.js';
+import llm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { testResultJsonSchema } from './schemas.js';
+import { scopeOperation } from '../../lib/context/option.js';
 
-export default async function test(path, instructions, options = {}) {
-  const { maxAttempts = 3, onProgress, abortSignal, ...restOptions } = options;
+export default async function test(path, instructions, config = {}) {
+  config = scopeOperation('test', config);
   try {
     const code = await fs.readFile(path, 'utf-8');
 
@@ -27,16 +28,13 @@ GUIDELINES:
     const result = await retry(
       () =>
         llm(prompt, {
-          ...restOptions,
-          modelOptions: {
-            ...restOptions.modelOptions,
-            response_format: {
-              type: 'json_schema',
-              json_schema: testResultJsonSchema,
-            },
-          },
+          ...config,
+          response_format: jsonSchema(testResultJsonSchema.name, testResultJsonSchema.schema),
         }),
-      { label: 'test chain', maxAttempts, onProgress, abortSignal }
+      {
+        label: 'test chain',
+        config,
+      }
     );
 
     // With structured output, we get a validated object

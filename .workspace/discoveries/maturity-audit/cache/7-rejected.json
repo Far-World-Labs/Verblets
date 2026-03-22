@@ -1,0 +1,367 @@
+[
+  {
+    "chain": "extract-features",
+    "tier": "standard",
+    "dimension": "code-quality",
+    "phase": "code",
+    "level": 3,
+    "evidence": "Clean, well-structured async function with clear parameter destructuring and descriptive variable names",
+    "gap": "Could improve with more explicit separation of concerns or composable internals",
+    "nextAction": "Refactor feature operation execution into separate pure functions for better composability",
+    "rejectionReasons": [
+      "Evidence lacks concrete references"
+    ]
+  },
+  {
+    "chain": "glossary",
+    "tier": "standard",
+    "dimension": "code-quality",
+    "phase": "code",
+    "level": 3,
+    "evidence": "Clean pipeline with extracted defaults, clear function glossary, well-structured batching and mapping logic",
+    "gap": "Further separation of concerns and composability for reference-quality",
+    "nextAction": "Refactor to separate orchestration and core logic into composable functions",
+    "rejectionReasons": [
+      "Evidence lacks concrete references"
+    ]
+  },
+  {
+    "chain": "reduce",
+    "tier": "core",
+    "dimension": "code-quality",
+    "phase": "code",
+    "level": 3,
+    "evidence": "Code is clean, minimal, with clear separation of concerns and isolated response format logic. No dead code or magic numbers.",
+    "gap": "Could improve with more explicit transformations and composable internals.",
+    "nextAction": "Refactor to further separate concerns and enhance composability.",
+    "rejectionReasons": [
+      "Evidence lacks concrete references"
+    ]
+  },
+  {
+    "chain": "socratic",
+    "tier": "standard",
+    "dimension": "code-quality",
+    "phase": "code",
+    "level": 3,
+    "evidence": "Well-structured OOP design with dependency injection, clear separation of concerns, no dead code, consistent naming",
+    "gap": "Could improve to reference-quality by adding more composable internals and explicit transformations",
+    "nextAction": "Refactor to increase modularity and composability for reference-quality code",
+    "rejectionReasons": [
+      "Evidence lacks concrete references"
+    ]
+  },
+  {
+    "chain": "summary-map",
+    "tier": "standard",
+    "dimension": "code-quality",
+    "phase": "code",
+    "level": 4,
+    "evidence": "Clean, well-structured code with clear naming, no dead code, extracted pure functions like summarize, and good separation of concerns",
+    "gap": "",
+    "nextAction": "",
+    "rejectionReasons": [
+      "Evidence lacks concrete references"
+    ]
+  },
+  {
+    "chain": "summary-map",
+    "tier": "standard",
+    "dimension": "token-management",
+    "phase": "code",
+    "level": 1,
+    "evidence": "Uses manual budget calculation and auto-summarization with summarize function; manages token budgets proportionally across values",
+    "gap": "",
+    "nextAction": "",
+    "rejectionReasons": [
+      "Evidence lacks concrete references",
+      "Gap description too brief"
+    ]
+  },
+  {
+    "chain": "test",
+    "tier": "development",
+    "dimension": "code-quality",
+    "phase": "code",
+    "level": 3,
+    "evidence": "Clean, well-structured async function with clear parameter destructuring and error handling; no dead code",
+    "gap": "Further separation of concerns and composable internals for reference-quality",
+    "nextAction": "Extract core logic into smaller pure functions and add comprehensive documentation",
+    "rejectionReasons": [
+      "Evidence lacks concrete references"
+    ]
+  },
+  {
+    "chain": "conversation-turn-reduce",
+    "tier": "internal",
+    "dimension": "composability",
+    "phase": "interface",
+    "level": 2,
+    "evidence": "Uses internal map chain for composition",
+    "gap": "No spec/apply split or instruction builders exported",
+    "nextAction": "Implement and export spec/apply functions and instruction builders",
+    "rejectionReasons": [
+      "Evidence lacks concrete references"
+    ]
+  },
+  {
+    "chain": "filter-ambiguous",
+    "tier": "standard",
+    "dimension": "composability",
+    "phase": "interface",
+    "level": 2,
+    "evidence": "Uses internal chains list and score, composes them internally",
+    "gap": "No spec/apply split or instruction builders",
+    "nextAction": "Refactor to export spec/apply functions and instruction builders",
+    "rejectionReasons": [
+      "Evidence lacks concrete references"
+    ]
+  },
+  {
+    "chain": "glossary",
+    "tier": "standard",
+    "dimension": "composability",
+    "phase": "interface",
+    "level": 2,
+    "evidence": "Composes other chains internally: uses map and sort chains",
+    "gap": "No exported spec/apply split functions or instruction builders",
+    "nextAction": "Export spec/apply split functions and instruction builders to improve composability",
+    "rejectionReasons": [
+      "Evidence lacks concrete references"
+    ]
+  },
+  {
+    "chain": "questions",
+    "tier": "standard",
+    "dimension": "api-surface",
+    "phase": "interface",
+    "level": 1,
+    "evidence": "Exports default only",
+    "gap": "No named exports or instruction builders, no spec/apply split",
+    "nextAction": "Introduce named exports and instruction builders to improve API surface",
+    "rejectionReasons": [
+      "Evidence lacks concrete references"
+    ]
+  },
+  {
+    "chain": "scan-js",
+    "tier": "development",
+    "dimension": "api-surface",
+    "phase": "interface",
+    "level": 1,
+    "evidence": "Exports default only",
+    "gap": "No named exports, no instruction builders or spec/apply split",
+    "nextAction": "Introduce named exports and instruction builders to improve API clarity",
+    "rejectionReasons": [
+      "Evidence lacks concrete references"
+    ]
+  },
+  {
+    "chain": "summary-map",
+    "tier": "standard",
+    "dimension": "api-surface",
+    "phase": "interface",
+    "level": 1,
+    "evidence": "Exports default class SummaryMap only, no named exports",
+    "gap": "No instruction builders or spec/apply split exports",
+    "nextAction": "Introduce instruction builders and spec/apply split exports to improve API composability",
+    "rejectionReasons": [
+      "Evidence lacks concrete references"
+    ]
+  },
+  {
+    "chain": "themes",
+    "tier": "standard",
+    "dimension": "strategic-value",
+    "phase": "design",
+    "level": 2,
+    "evidence": "The 'themes' chain is a useful tool that extracts key themes from text, enabling thematic analysis workflows. It is moderately sized (30 LOC) and complements other chains in the portfolio, but it is not a core primitive like map or filter.",
+    "gap": "Increase integration with other chains to enable broader workflow use cases.",
+    "nextAction": "Develop spec/apply pattern and instruction builders to enhance composability and reuse.",
+    "rejectionReasons": [
+      "LLM quality filter"
+    ]
+  },
+  {
+    "chain": "central-tendency",
+    "tier": "standard",
+    "dimension": "code-quality",
+    "phase": "code",
+    "level": 3,
+    "evidence": "Well-structured code with clear separation of concerns, extracted pure functions like `buildCentralTendencyInstructions`, consistent naming",
+    "gap": "Could improve to reference-quality by adding more composability and explicit transformations",
+    "nextAction": "Refactor to increase composability and add explicit transformation layers",
+    "rejectionReasons": [
+      "LLM quality filter"
+    ]
+  },
+  {
+    "chain": "collect-terms",
+    "tier": "standard",
+    "dimension": "code-quality",
+    "phase": "code",
+    "level": 3,
+    "evidence": "Clean, well-structured code with clear function split (splitIntoChunks, collectTerms), no dead code, semantic naming",
+    "gap": "Could improve with more explicit transformations or composable internals",
+    "nextAction": "Refactor to separate concerns further and extract pure functions where applicable",
+    "rejectionReasons": [
+      "LLM quality filter"
+    ]
+  },
+  {
+    "chain": "conversation",
+    "tier": "standard",
+    "dimension": "code-quality",
+    "phase": "code",
+    "level": 3,
+    "evidence": "Clean code with clear naming, extracted pure functions (e.g., `_push`), no dead code, and well-structured class design",
+    "gap": "Could improve with more explicit transformations and composable internals",
+    "nextAction": "Refactor to separate concerns further and enhance composability",
+    "rejectionReasons": [
+      "LLM quality filter"
+    ]
+  },
+  {
+    "chain": "conversation-turn-reduce",
+    "tier": "internal",
+    "dimension": "code-quality",
+    "phase": "code",
+    "level": 3,
+    "evidence": "Clean, well-structured function with clear parameter destructuring, descriptive variable names, and separation of concerns (e.g., building context, speaker descriptions, instructions).",
+    "gap": "Could improve by extracting more composable internals or explicit transformations.",
+    "nextAction": "Refactor to separate instruction building and response generation into smaller pure functions.",
+    "rejectionReasons": [
+      "LLM quality filter"
+    ]
+  },
+  {
+    "chain": "expect",
+    "tier": "standard",
+    "dimension": "code-quality",
+    "phase": "code",
+    "level": 3,
+    "evidence": "Code is well-structured with clear separation of concerns, extracted pure functions like 'expectCore', and descriptive naming.",
+    "gap": "Refactor to reference-quality by adding comprehensive documentation and example usage.",
+    "nextAction": "Enhance code documentation and provide usage examples to reach reference-quality standard.",
+    "rejectionReasons": [
+      "LLM quality filter"
+    ]
+  },
+  {
+    "chain": "expect",
+    "tier": "standard",
+    "dimension": "errors-retry",
+    "phase": "code",
+    "level": 0,
+    "evidence": "No usage of retry mechanisms or error handling libraries like 'lib/retry' found.",
+    "gap": "Add basic retry logic and structured error handling using 'lib/retry' with default policies.",
+    "nextAction": "Implement retry with 'lib/retry' and add error handling to improve robustness.",
+    "rejectionReasons": [
+      "LLM quality filter"
+    ]
+  },
+  {
+    "chain": "filter-ambiguous",
+    "tier": "standard",
+    "dimension": "code-quality",
+    "phase": "code",
+    "level": 3,
+    "evidence": "Clean, well-structured code with clear naming, no dead code, extracted pure functions like 'score' and 'list'.",
+    "gap": "Could improve to reference-quality by adding comprehensive lifecycle logging and detailed documentation.",
+    "nextAction": "Add detailed lifecycle logging and improve documentation to reach level 4.",
+    "rejectionReasons": [
+      "LLM quality filter"
+    ]
+  },
+  {
+    "chain": "llm-logger",
+    "tier": "standard",
+    "dimension": "code-quality",
+    "phase": "code",
+    "level": 3,
+    "evidence": "Well-structured code with clear separation of concerns; extracted pure functions like setAtPath, getAtPath; consistent naming conventions; no dead code",
+    "gap": "Further modularization and composability to reach reference-quality",
+    "nextAction": "Extract more composable internals and explicit transformations for improved clarity",
+    "rejectionReasons": [
+      "LLM quality filter"
+    ]
+  },
+  {
+    "chain": "people",
+    "tier": "standard",
+    "dimension": "code-quality",
+    "phase": "code",
+    "level": 3,
+    "evidence": "Clean, well-structured code with clear function 'peopleList', no dead code, descriptive variable names",
+    "gap": "Reference-quality documentation and example usage to reach level 4",
+    "nextAction": "Add comprehensive documentation and usage examples to improve code quality",
+    "rejectionReasons": [
+      "LLM quality filter"
+    ]
+  },
+  {
+    "chain": "pop-reference",
+    "tier": "standard",
+    "dimension": "code-quality",
+    "phase": "code",
+    "level": 3,
+    "evidence": "Clean, well-structured code with clear function separation (createModelOptions, main async function), descriptive naming, no dead code",
+    "gap": "Further modularization or composability to reach reference-quality",
+    "nextAction": "Refactor to separate orchestration and core logic into smaller composable functions",
+    "rejectionReasons": [
+      "LLM quality filter"
+    ]
+  },
+  {
+    "chain": "scale",
+    "tier": "standard",
+    "dimension": "code-quality",
+    "phase": "code",
+    "level": 4,
+    "evidence": "Well-structured code with clear separation of concerns, extracted pure functions (scaleSpec, applyScale), consistent naming, and factory pattern with Object.defineProperty for introspection",
+    "gap": "",
+    "nextAction": "",
+    "rejectionReasons": [
+      "LLM quality filter"
+    ]
+  },
+  {
+    "chain": "score",
+    "tier": "core",
+    "dimension": "code-quality",
+    "phase": "code",
+    "level": 3,
+    "evidence": "Well-structured with extracted pure functions like 'buildScoringInstructions', clear separation of concerns, no dead code",
+    "gap": "Not reference-quality; could improve composability and documentation",
+    "nextAction": "Enhance documentation and modularize further for reference-quality code",
+    "rejectionReasons": [
+      "LLM quality filter"
+    ]
+  },
+  {
+    "chain": "conversation",
+    "tier": "standard",
+    "dimension": "composability",
+    "phase": "interface",
+    "level": 2,
+    "evidence": "No spec/apply split exports, no instruction builders, no factory functions; deterministic ceiling is level 2",
+    "gap": "Lacks spec/apply split and instruction builders",
+    "nextAction": "Refactor to export spec/apply functions and instruction builders to reach next composability level",
+    "rejectionReasons": [
+      "LLM quality filter"
+    ]
+  },
+  {
+    "chain": "sort",
+    "tier": "core",
+    "dimension": "composability",
+    "phase": "interface",
+    "level": 2,
+    "evidence": "No spec/apply split or factory functions, composability capped at level 2 per ceiling",
+    "gap": "Missing spec/apply split and instruction builders for higher composability",
+    "nextAction": "Introduce spec/apply split and instruction builders to improve composability",
+    "rejectionReasons": [
+      "LLM quality filter"
+    ]
+  }
+]

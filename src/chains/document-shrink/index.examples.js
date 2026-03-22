@@ -1,23 +1,12 @@
-import { describe, it as vitestIt, expect as vitestExpect } from 'vitest';
+import { describe } from 'vitest';
 import documentShrink from './index.js';
-import vitestAiExpect from '../expect/index.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { debug } from '../../lib/debug/index.js';
-import { shouldRunLongExamples } from '../../constants/common.js';
-import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
-import { getConfig } from '../test-analysis/config.js';
+import { isMediumBudget } from '../../constants/common.js'; // standard: 2-4 LLM calls per test
+import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 
-const config = getConfig();
-const it = config?.aiMode
-  ? wrapIt(vitestIt, { baseProps: { suite: 'Document shrink chain' } })
-  : vitestIt;
-const expect = config?.aiMode
-  ? wrapExpect(vitestExpect, { baseProps: { suite: 'Document shrink chain' } })
-  : vitestExpect;
-const aiExpect = config?.aiMode
-  ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'Document shrink chain' } })
-  : vitestAiExpect;
+const { it, expect, aiExpect } = getTestHelpers('Document shrink chain');
 
 // Helper to show cache message after 5 seconds
 function withCacheMessage(testFn) {
@@ -44,7 +33,7 @@ function withCacheMessage(testFn) {
   };
 }
 
-describe.skipIf(!shouldRunLongExamples)('document-shrink examples', () => {
+describe.skipIf(!isMediumBudget)('[medium] document-shrink examples', () => {
   const samplesDir = path.join(process.cwd(), 'src/samples/txt');
 
   it(
@@ -72,15 +61,13 @@ describe.skipIf(!shouldRunLongExamples)('document-shrink examples', () => {
       debug('[Climate Change Test] First 200 chars:', result.content.substring(0, 200));
 
       // Use AI to verify content relevance
-      const isRelevantToQuery = await aiExpect(result.content).toSatisfy(
+      await aiExpect(result.content).toSatisfy(
         `Contains information about climate change that could be relevant to understanding individual actions, even if it includes context about impacts, solutions, or general climate information`
       );
-      expect(isRelevantToQuery).toBe(true);
 
-      const maintainsCoherence = await aiExpect(result.content).toSatisfy(
+      await aiExpect(result.content).toSatisfy(
         `The text contains recognizable passages about climate change, even if some sentences are truncated at chunk boundaries or separated by dividers`
       );
-      expect(maintainsCoherence).toBe(true);
 
       // Verify metadata
       expect(result.metadata.finalSize).toBeLessThanOrEqual(1000);
@@ -108,20 +95,17 @@ describe.skipIf(!shouldRunLongExamples)('document-shrink examples', () => {
       expect(result.content.length).toBeLessThan(technicalManual.length);
 
       // Use AI to verify troubleshooting content is preserved
-      const includesTroubleshootingSteps = await aiExpect(result.content).toSatisfy(
+      await aiExpect(result.content).toSatisfy(
         `Contains specific troubleshooting steps for fixing a flashing red light error on the Smart Home Hub, including possible causes and solutions`
       );
-      expect(includesTroubleshootingSteps).toBe(true);
 
-      const includesRelevantContext = await aiExpect(result.content).toSatisfy(
+      await aiExpect(result.content).toSatisfy(
         `Includes LED indicator meanings to help understand what different light patterns mean, particularly the red light states`
       );
-      expect(includesRelevantContext).toBe(true);
 
-      const excludesIrrelevantSections = await aiExpect(result.content).toSatisfy(
+      await aiExpect(result.content).toSatisfy(
         `Does not include warranty information, detailed specifications, or safety warnings, focusing instead on troubleshooting`
       );
-      expect(excludesIrrelevantSections).toBe(true);
 
       expect(result.metadata.tokens.used).toBeLessThan(800);
     })
@@ -147,20 +131,17 @@ describe.skipIf(!shouldRunLongExamples)('document-shrink examples', () => {
       debug('[Recipe Test] First 200 chars:', result.content.substring(0, 200));
 
       // Use AI to verify recipe extraction
-      const hasRecipeInfo = await aiExpect(result.content).toSatisfy(
+      await aiExpect(result.content).toSatisfy(
         `Contains information relevant to making chocolate chip cookies - may include ingredients, instructions, or baking tips`
       );
-      expect(hasRecipeInfo).toBe(true);
 
-      const isCoherent = await aiExpect(result.content).toSatisfy(
+      await aiExpect(result.content).toSatisfy(
         `The text contains coherent sections about making cookies, even if separated by dividers`
       );
-      expect(isCoherent).toBe(true);
 
-      const reducedContent = await aiExpect(result.content).toSatisfy(
+      await aiExpect(result.content).toSatisfy(
         `The content is shorter than a full blog post and focuses on recipe-related information, though it may include some tips and context`
       );
-      expect(reducedContent).toBe(true);
 
       expect(parseFloat(result.metadata.reductionRatio)).toBeGreaterThan(0.5);
     })
@@ -186,26 +167,22 @@ describe.skipIf(!shouldRunLongExamples)('document-shrink examples', () => {
       debug('[Legal Contract Test] First 200 chars:', result.content.substring(0, 200));
 
       // Use AI to verify legal content extraction
-      const hasTerminationInfo = await aiExpect(result.content).toSatisfy(
+      await aiExpect(result.content).toSatisfy(
         `Contains information about termination, cancellation, contract ending, or service agreement terms`
       );
-      expect(hasTerminationInfo).toBe(true);
 
-      const containsLegalProvisions = await aiExpect(result.content).toSatisfy(
+      await aiExpect(result.content).toSatisfy(
         `Contains legal provisions, clauses, or agreement terms that would be found in a service contract`
       );
-      expect(containsLegalProvisions).toBe(true);
 
-      const focusedOnQuery = await aiExpect(result.content).toSatisfy(
+      await aiExpect(result.content).toSatisfy(
         `The selected content is more focused on termination/cancellation aspects than unrelated contract sections`
       );
-      expect(focusedOnQuery).toBe(true);
 
       // Check that it at least prioritizes termination content
-      const prioritizesTermination = await aiExpect(result.content).toSatisfy(
+      await aiExpect(result.content).toSatisfy(
         `The content includes termination-related information and doesn't consist entirely of unrelated clauses`
       );
-      expect(prioritizesTermination).toBe(true);
     })
   );
 
@@ -230,25 +207,21 @@ describe.skipIf(!shouldRunLongExamples)('document-shrink examples', () => {
       debug('[Medical Doc Test] Metadata:', result.metadata);
 
       // Use AI to verify medication information extraction
-      const hasDiabetesContent = await aiExpect(result.content).toSatisfy(
+      await aiExpect(result.content).toSatisfy(
         `Contains information about diabetes medications, treatments, or management`
       );
-      expect(hasDiabetesContent).toBe(true);
 
-      const hasMedicalInfo = await aiExpect(result.content).toSatisfy(
+      await aiExpect(result.content).toSatisfy(
         `Contains medical information that could include drug names, dosing, or treatment protocols`
       );
-      expect(hasMedicalInfo).toBe(true);
 
-      const hasClinicalContext = await aiExpect(result.content).toSatisfy(
+      await aiExpect(result.content).toSatisfy(
         `Contains some medical or clinical context related to diabetes treatment, even if the content is partial or truncated`
       );
-      expect(hasClinicalContext).toBe(true);
 
-      const focusedContent = await aiExpect(result.content).toSatisfy(
+      await aiExpect(result.content).toSatisfy(
         `The content is primarily focused on diabetes management and may include context necessary for understanding medications, even if some background information is present`
       );
-      expect(focusedContent).toBe(true);
 
       expect(result.metadata.tokens.used).toBeLessThan(1200);
     })
@@ -279,15 +252,13 @@ describe.skipIf(!shouldRunLongExamples)('document-shrink examples', () => {
       debug('[Edge Case Test] Metadata:', result.metadata);
 
       // Use AI to verify some relevant information is preserved despite aggressive reduction
-      const preservesEssentialInfo = await aiExpect(result.content).toSatisfy(
+      await aiExpect(result.content).toSatisfy(
         `Contains some information about the Smart Home Hub or related technical content`
       );
-      expect(preservesEssentialInfo).toBe(true);
 
-      const maintainsCoherence = await aiExpect(result.content).toSatisfy(
+      await aiExpect(result.content).toSatisfy(
         `The text remains coherent and understandable, not just random fragments`
       );
-      expect(maintainsCoherence).toBe(true);
     })
   );
 });

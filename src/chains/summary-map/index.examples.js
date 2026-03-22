@@ -1,25 +1,11 @@
-import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
+import { describe } from 'vitest';
 
 import SummaryMap from './index.js';
-import vitestAiExpect from '../expect/index.js';
 import { extendedTestTimeout } from '../../constants/common.js';
 import pave from '../../lib/pave/index.js';
-import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
-import { getConfig } from '../test-analysis/config.js';
-import { models } from '../../constants/models.js';
+import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 
-const skipSensitivity = process.env.SENSITIVITY_TEST_SKIP || !models.sensitive;
-
-const config = getConfig();
-const it = config?.aiMode
-  ? wrapIt(vitestIt, { baseProps: { suite: 'Summary-map chain' } })
-  : vitestIt;
-const expect = config?.aiMode
-  ? wrapExpect(vitestExpect, { baseProps: { suite: 'Summary-map chain' } })
-  : vitestExpect;
-const aiExpect = config?.aiMode
-  ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'Summary-map chain' } })
-  : vitestAiExpect;
+const { it, expect, aiExpect } = getTestHelpers('Summary-map chain');
 
 const legalText = `Pursuant to the stipulations delineated herein, the parties hereto, designated as Party A (the "Grantor") and Party B (the "Grantee"), do hereby irrevocably and unconditionally covenant to abide by the complex and intricate provisions associated with the lesser-known subject matter of usufructuary rights in the realm of riparian watercourses, specifically encompassing the doctrine of correlative rights and the principle of reasonable use, in accordance with the heretofore undisclosed specifications set forth in Schedule U-1.
 
@@ -51,7 +37,7 @@ function encodeDecode(input, seed) {
 `;
 
 describe('Summary map', () => {
-  it.skipIf(skipSensitivity)(
+  it(
     'Example',
     async () => {
       const map = new SummaryMap({
@@ -61,7 +47,6 @@ describe('Summary map', () => {
       map.set('a.b.c', {
         value: legalText,
         weight: 0.01,
-        sensitivity: { blacklist: 'names and addresses' },
       });
       map.set('a.d', { value: codeText, type: 'code', weight: 0.7 });
       map.set('e.0', { value: 'abc', weight: 0.01 });
@@ -73,7 +58,19 @@ describe('Summary map', () => {
       const entries = Array.from(await map.entries());
       const result = entries.reduce((acc, [k, v]) => pave(acc, k, v), {});
 
-      expect(result).toBe(result);
+      // Verify structure matches the keys we set
+      expect(result).toHaveProperty('a');
+      expect(result).toHaveProperty('e');
+      expect(result.a).toHaveProperty('d');
+      expect(result.a).toHaveProperty('b');
+
+      // Code summary should preserve function signatures or key identifiers
+      await aiExpect(result.a.d).toSatisfy(
+        'contains references to functions related to key generation, XOR, or encoding/decoding'
+      );
+
+      // Legal text summary should be shorter than original
+      expect(result.a.b.c.length).toBeLessThan(legalText.length);
     },
     extendedTestTimeout
   );
