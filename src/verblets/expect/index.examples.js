@@ -6,17 +6,10 @@ import { longTestTimeout } from '../../constants/common.js';
 import vitestAiExpect from '../../chains/expect/index.js';
 import { getTestHelpers } from '../../chains/test-analysis/test-wrappers.js';
 
-//
-// Setup AI test wrappers
-//
 const { it, expect } = getTestHelpers('LLM Expect Verblet');
 // Use the original aiExpect when testing aiExpect itself to avoid double logging
 // The outer expect wrapper will handle the logging for these tests
 const aiExpect = vitestAiExpect;
-
-//
-// Test suite
-//
 
 const examples = [
   {

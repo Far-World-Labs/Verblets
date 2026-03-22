@@ -4,14 +4,7 @@ import numberWithUnits from './index.js';
 
 import { getTestHelpers } from '../../chains/test-analysis/test-wrappers.js';
 
-//
-// Setup AI test wrappers
-//
 const { it, expect, aiExpect } = getTestHelpers('Number with units verblet');
-
-//
-// Test suite
-//
 
 const examples = [
   {

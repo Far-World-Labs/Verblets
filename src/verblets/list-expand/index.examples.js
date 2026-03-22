@@ -3,14 +3,7 @@ import listExpand from './index.js';
 
 import { getTestHelpers } from '../../chains/test-analysis/test-wrappers.js';
 
-//
-// Setup AI test wrappers
-//
 const { it, expect, aiExpect } = getTestHelpers('list-expand examples');
-
-//
-// Test suite
-//
 
 describe('list-expand examples', () => {
   it('expands a short list of fruits', async () => {

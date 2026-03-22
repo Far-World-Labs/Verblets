@@ -7,14 +7,7 @@ import schemaOrg from './index.js';
 import { debug } from '../../lib/debug/index.js';
 import { getTestHelpers } from '../../chains/test-analysis/test-wrappers.js';
 
-//
-// Setup AI test wrappers
-//
 const { it, expect, aiExpect } = getTestHelpers('Schema.org verblet');
-
-//
-// Test suite
-//
 
 const resultSchemaWith = (type) => () => {
   return schemaOrgSchemas[type.toLowerCase()];

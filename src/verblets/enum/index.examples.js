@@ -4,14 +4,7 @@ import enumValue from './index.js';
 
 import { getTestHelpers } from '../../chains/test-analysis/test-wrappers.js';
 
-//
-// Setup AI test wrappers
-//
 const { it, expect, aiExpect } = getTestHelpers('Enum verblet');
-
-//
-// Test suite
-//
 
 const examples = [
   {

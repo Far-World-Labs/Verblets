@@ -10,15 +10,7 @@ import centralTendencyChain from '../../chains/central-tendency/index.js';
 import { longTestTimeout } from '../../constants/common.js';
 import { getTestHelpers } from '../../chains/test-analysis/test-wrappers.js';
 
-//
-// Setup AI test wrappers
-//
-
 const { it, expect, aiExpect, makeLogger } = getTestHelpers('centralTendency examples');
-
-//
-// Test suite
-//
 
 describe('centralTendency examples', () => {
   it(

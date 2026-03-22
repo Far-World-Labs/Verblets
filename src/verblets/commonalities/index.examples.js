@@ -3,14 +3,7 @@ import commonalities from './index.js';
 import { longTestTimeout } from '../../constants/common.js';
 import { getTestHelpers } from '../../chains/test-analysis/test-wrappers.js';
 
-//
-// Setup AI test wrappers
-//
 const { it, expect, aiExpect } = getTestHelpers('commonalities');
-
-//
-// Test suite
-//
 
 describe('commonalities verblet', () => {
   it(

@@ -4,14 +4,7 @@ import templateReplace from '../../lib/template-replace/index.js';
 
 import { getTestHelpers } from '../../chains/test-analysis/test-wrappers.js';
 
-//
-// Setup AI test wrappers
-//
 const { it, expect, aiExpect } = getTestHelpers('fillMissing example');
-
-//
-// Test suite
-//
 
 describe('fillMissing example', () => {
   it('fills high-confidence values only', async () => {

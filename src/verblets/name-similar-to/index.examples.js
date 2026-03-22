@@ -3,14 +3,7 @@ import nameSimilarTo from './index.js';
 
 import { getTestHelpers } from '../../chains/test-analysis/test-wrappers.js';
 
-//
-// Setup AI test wrappers
-//
 const { it, expect, aiExpect } = getTestHelpers('nameSimilarTo examples');
-
-//
-// Test suite
-//
 
 describe('nameSimilarTo examples', () => {
   it('suggests a matching name', async () => {

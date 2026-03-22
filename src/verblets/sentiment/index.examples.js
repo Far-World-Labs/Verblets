@@ -3,14 +3,7 @@ import sentiment from './index.js';
 
 import { getTestHelpers } from '../../chains/test-analysis/test-wrappers.js';
 
-//
-// Setup AI test wrappers
-//
 const { it, expect, aiExpect } = getTestHelpers('sentiment');
-
-//
-// Test suite
-//
 
 const examples = [
   { text: 'I love sunny days!', want: 'positive' },
