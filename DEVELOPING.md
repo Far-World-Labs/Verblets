@@ -54,7 +54,7 @@ npm run examples
 ### Cache Behavior
 - **Cache Hit**: Returns cached response instantly
 - **Cache Miss**: Makes LLM API call and caches the response
-- **TTL**: Cached responses expire after 365 days (configurable via `CHATGPT_CACHE_TTL`)
+- **TTL**: Cached responses expire after 365 days (configurable via `VERBLETS_CACHE_TTL`)
 - **Fallback**: Gracefully handles Redis connection failures
 
 ## Development Workflow

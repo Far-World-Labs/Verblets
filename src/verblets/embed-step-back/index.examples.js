@@ -1,35 +1,18 @@
-import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
+import { describe } from 'vitest';
 
 import embedStepBack from './index.js';
 import { longTestTimeout } from '../../constants/common.js';
-import vitestAiExpect from '../../chains/expect/index.js';
 
-import {
-  makeWrappedIt,
-  makeWrappedExpect,
-  makeWrappedAiExpect,
-} from '../../chains/test-analysis/test-wrappers.js';
-import { getConfig } from '../../chains/test-analysis/config.js';
+import { getTestHelpers } from '../../chains/test-analysis/test-wrappers.js';
 
-const config = getConfig();
-const suite = 'embed-step-back';
-
-const it = makeWrappedIt(vitestIt, suite, config);
-const expect = makeWrappedExpect(vitestExpect, suite, config);
-const aiExpect = makeWrappedAiExpect(vitestAiExpect, suite, config);
-
-const makeTestLogger = (testName) => {
-  return config?.aiMode && globalThis.logger
-    ? globalThis.logger.child({ suite, testName })
-    : undefined;
-};
+const { it, expect, aiExpect, makeLogger } = getTestHelpers('embed-step-back');
 
 describe('embed-step-back', () => {
   it(
     'generates broader questions from a specific query',
     async () => {
       const result = await embedStepBack('why do lithium batteries swell', {
-        logger: makeTestLogger('generates broader questions from a specific query'),
+        logger: makeLogger('generates broader questions from a specific query'),
       });
 
       expect(Array.isArray(result)).toBe(true);
@@ -55,7 +38,7 @@ describe('embed-step-back', () => {
       const result = await embedStepBack(
         'why does my Python script raise a RecursionError on deep JSON parsing',
         {
-          logger: makeTestLogger('steps back from a narrow technical question'),
+          logger: makeLogger('steps back from a narrow technical question'),
         }
       );
 

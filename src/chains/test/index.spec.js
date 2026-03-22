@@ -7,6 +7,7 @@ import test from './index.js';
 // Mock llm
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(),
+  jsonSchema: (name, schema) => ({ type: 'json_schema', json_schema: { name, schema } }),
 }));
 
 // Mock retry to just call the function
@@ -51,10 +52,8 @@ describe('test chain', () => {
     expect(llm).toHaveBeenCalledWith(
       expect.any(String),
       expect.objectContaining({
-        modelOptions: expect.objectContaining({
-          response_format: expect.objectContaining({
-            type: 'json_schema',
-          }),
+        response_format: expect.objectContaining({
+          type: 'json_schema',
         }),
       })
     );

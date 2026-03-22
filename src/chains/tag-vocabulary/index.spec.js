@@ -8,6 +8,7 @@ import tagVocabulary, {
 // Mock the llm module
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(),
+  jsonSchema: (name, schema) => ({ type: 'json_schema', json_schema: { name, schema } }),
 }));
 
 import llm from '../../lib/llm/index.js';
@@ -107,10 +108,8 @@ describe('tag-vocabulary', () => {
       expect(llm).toHaveBeenCalledWith(
         expect.stringContaining(spec),
         expect.objectContaining({
-          modelOptions: expect.objectContaining({
-            response_format: expect.objectContaining({
-              type: 'json_schema',
-            }),
+          response_format: expect.objectContaining({
+            type: 'json_schema',
           }),
         })
       );

@@ -15,7 +15,7 @@ import list from '../list/index.js';
 import score from '../score/index.js';
 
 beforeEach(() => {
-  vi.resetAllMocks();
+  vi.clearAllMocks();
 });
 
 describe('collectTerms chain', () => {

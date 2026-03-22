@@ -1,115 +1,51 @@
 # score
 
-Evaluate items on a numeric scale using consistent, specification-based scoring.
+Score items on a numeric scale using AI-generated evaluation criteria.
 
-## Usage
-
-```javascript
-import score from './index.js';
-
-const scores = await score(items, 'quality of technical documentation');
-// => [8, 6, 9, 4, 7]
-```
-
-## Core Functions
-
-### Default Export: `score(list, instructions, config)`
-
-Score multiple items using generated specifications.
+## Example
 
 ```javascript
+import score, { scoreSpec } from './index.js';
+
+// Score job applicant cover letters on persuasiveness
 const scores = await score(
-  ['React hooks tutorial', 'CSS basics', 'TypeScript guide'],
-  'technical depth and accuracy'
+  [coverLetter1, coverLetter2, coverLetter3],
+  'persuasiveness: does this make you want to interview the candidate?'
 );
+// => [8, 4, 7]
+
+// Pre-generate spec for reuse across batches
+const spec = await scoreSpec('technical depth and practical applicability');
+const batch1 = await score(articles.slice(0, 20), 'technical depth', { spec });
+const batch2 = await score(articles.slice(20), 'technical depth', { spec });
 ```
 
-### Named Exports
+## API
 
-#### `scoreItem(item, instructions, config)`
-Score a single item.
+### Default: `score(list, instructions, config?)` — score multiple items
 
-#### `scoreSpec(instructions, config)`
-Generate a scoring specification for reuse.
+### Named exports
 
-#### `applyScore(item, specification, config)`
-Apply a pre-generated specification to score an item.
+- `scoreItem(item, instructions, config)` — score a single item
+- `scoreSpec(instructions, config)` — generate reusable scoring specification
+- `applyScore(item, specification, config)` — apply pre-generated spec
+- `score.with(instructions, config)` — async factory returning a single-item scorer (calls `scoreSpec` once)
 
-## Instruction Builders
+### Instruction builders (for collection chains)
 
-Create prompt strings for use with collection chains. Pass a pre-generated specification from `scoreSpec()`:
+- `mapInstructions({ specification, processing })`
+- `filterInstructions({ specification, processing })`
+- `reduceInstructions({ specification, processing })`
+- `findInstructions({ specification, processing })`
+- `groupInstructions({ specification, processing })`
 
-```javascript
-import { scoreSpec, mapInstructions, filterInstructions, reduceInstructions, findInstructions, groupInstructions } from './index.js';
+### Config
 
-const spec = await scoreSpec('code quality');
-
-// Transform items into scores
-const scores = await map(functions, mapInstructions({ specification: spec }));
-
-// Filter by score threshold
-const ready = await filter(
-  components,
-  filterInstructions({
-    specification: spec,
-    processing: 'keep items with scores >= 7'
-  })
-);
-
-// Reduce to aggregate scores
-const totalImpact = await reduce(
-  algorithms,
-  reduceInstructions({
-    specification: spec,
-    processing: 'sum all scores to get total impact'
-  }),
-  { initial: 0 }
-);
-
-// Find best match
-const best = await find(
-  responses,
-  findInstructions({
-    specification: spec,
-    processing: 'return the highest scoring item'
-  })
-);
-
-// Group by score ranges
-const grouped = await group(
-  tasks,
-  groupInstructions({
-    specification: spec,
-    processing: 'group into: simple (0-3), moderate (4-7), complex (8-10)'
-  })
-);
-```
-
-## Per-Item Mode
-
-Use `score.with()` to create a single-item scoring function. The async factory calls `scoreSpec` once up front, amortizing the spec-generation LLM call across all items:
-
-```javascript
-import score from './index.js';
-import pMap from 'p-map';
-
-const scorer = await score.with('technical depth');
-const results = await pMap(items, scorer, { concurrency: 5 });
-```
-
-## Configuration
-
-- `spec`: Pre-built scoring specification (skips the `scoreSpec` LLM call)
-- `llm`: LLM configuration object
-- `maxParallel`: Concurrent batch operations (default: 3)
-- `maxAttempts`: Retry attempts per batch (default: 3)
+- `spec`: Pre-built specification (skips the `scoreSpec` LLM call)
+- `anchoring` (`'low'`|`'high'`): Cross-batch calibration strategy
+- `llm`: LLM configuration
+- `maxParallel` (default: 3): Concurrent batch operations
+- `maxAttempts` (default: 3): Retry attempts per batch
 - `batchSize`: Items per batch (auto-calculated if omitted)
 
-## Architecture
-
-The score chain implements a specification pattern where scoring criteria are generated once and applied many times. For multi-batch lists, the first batch establishes scoring anchors (low/high reference examples) that are embedded in subsequent batch prompts for cross-batch consistency.
-
-- Consistent evaluation across large datasets via anchor-based calibration
-- Composition with any collection operation via instruction builders
-- Reusable scoring logic through pre-built specifications
-- JSON schema response format returns numbers directly (no string conversion)
+Multi-batch scoring uses anchor examples from the first batch to maintain consistency across subsequent batches.

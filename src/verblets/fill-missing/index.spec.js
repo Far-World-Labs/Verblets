@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import fillMissing from './index.js';
+import { testPromptShapingOption } from '../../lib/test-utils/index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn().mockResolvedValue({
@@ -10,6 +11,8 @@ vi.mock('../../lib/llm/index.js', () => ({
     },
   }),
 }));
+
+const mockLlm = (await import('../../lib/llm/index.js')).default;
 
 describe('fillMissing verblet', () => {
   it('returns imputed text structure', async () => {
@@ -23,13 +26,10 @@ describe('fillMissing verblet', () => {
     });
   });
 
-  it('uses JSON schema validation', async () => {
-    const llm = (await import('../../lib/llm/index.js')).default;
-
-    await fillMissing('Missing ??? text');
-    const modelOptions = llm.mock.calls[0][1].modelOptions;
-    expect(modelOptions).toHaveProperty('response_format');
-    expect(modelOptions.response_format.type).toBe('json_schema');
-    expect(modelOptions.response_format.json_schema.name).toBe('fill_missing_result');
+  testPromptShapingOption('creativity', {
+    invoke: (config) => fillMissing('Missing ??? text', config),
+    setupMocks: () => mockLlm.mockClear(),
+    llmMock: mockLlm,
+    markers: { low: 'conservative', high: 'speculative' },
   });
 });

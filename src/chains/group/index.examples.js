@@ -1,18 +1,9 @@
 import group from './index.js';
-import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
-import vitestAiExpect from '../expect/index.js';
+import { describe } from 'vitest';
 import { longTestTimeout } from '../../constants/common.js';
-import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
-import { getConfig } from '../test-analysis/config.js';
+import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 
-const config = getConfig();
-const it = config?.aiMode ? wrapIt(vitestIt, { baseProps: { suite: 'Group chain' } }) : vitestIt;
-const expect = config?.aiMode
-  ? wrapExpect(vitestExpect, { baseProps: { suite: 'Group chain' } })
-  : vitestExpect;
-const aiExpect = config?.aiMode
-  ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'Group chain' } })
-  : vitestAiExpect;
+const { it, expect, aiExpect } = getTestHelpers('Group chain');
 
 describe('group examples', () => {
   it(
@@ -24,6 +15,9 @@ describe('group examples', () => {
       });
       expect(typeof result).toBe('object');
       expect(Object.keys(result).length).toBeGreaterThan(0);
+      await aiExpect(result).toSatisfy(
+        'groups animals into terrestrial and aquatic categories (dog/cat/horse/bird are terrestrial, fish/whale/shark/dolphin are aquatic)'
+      );
     },
     longTestTimeout
   );

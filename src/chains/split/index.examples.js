@@ -1,22 +1,13 @@
-import { describe, it as vitestIt, expect as vitestExpect } from 'vitest';
+import { describe } from 'vitest';
 import split from './index.js';
 import fs from 'node:fs';
 import path from 'node:path';
-import vitestAiExpect from '../expect/index.js';
-import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
-import { getConfig } from '../test-analysis/config.js';
-import { longTestTimeout, shouldRunLongExamples } from '../../constants/common.js';
+import { longTestTimeout, isMediumBudget } from '../../constants/common.js'; // standard: 1-2 LLM calls per chunk
+import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 
-const config = getConfig();
-const it = config?.aiMode ? wrapIt(vitestIt, { baseProps: { suite: 'Split chain' } }) : vitestIt;
-const expect = config?.aiMode
-  ? wrapExpect(vitestExpect, { baseProps: { suite: 'Split chain' } })
-  : vitestExpect;
-const aiExpect = config?.aiMode
-  ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'Split chain' } })
-  : vitestAiExpect;
+const { it, expect, aiExpect } = getTestHelpers('Split chain');
 
-describe.skipIf(!shouldRunLongExamples)('split chain examples', () => {
+describe.skipIf(!isMediumBudget)('[medium] split chain examples', () => {
   const comedySet = fs.readFileSync(
     path.join(process.cwd(), 'src/samples/txt/taylor-tomlinson-10-2024.txt'),
     'utf8'

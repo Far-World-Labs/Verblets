@@ -14,8 +14,8 @@ const generatedQuestions = await questions(inputText);
 
 // Generate questions with custom configuration
 const customQuestions = await questions(inputText, {
-  searchBreadth: 0.3,  // More focused exploration
-  model: 'gpt-4',
+  exploration: 'low',  // More focused exploration (vs 'high' for broad)
+  llm: 'fastGoodCheap',
   shouldSkip: (question, existing) => existing.includes(question),
   shouldStop: (question, all, recent, attempts) => all.length > 20
 });
@@ -24,9 +24,9 @@ const customQuestions = await questions(inputText, {
 ## Parameters
 
 - **text** (string): The input text to generate questions about
-- **options** (object, optional):
-  - **searchBreadth** (number, 0-1): Controls exploration breadth. Lower values (0.1-0.3) focus more narrowly, higher values (0.7-1.0) explore more broadly. Default: 0.5
-  - **model**: LLM model to use for generation. Default: best available public model
+- **config** (object, optional):
+  - **exploration** (`'low'`|`'high'`|number): Controls exploration breadth. `'low'` focuses narrowly (0.3), `'high'` explores broadly (0.7). A raw number (0-1) passes through directly. Default: 0.5
+  - **llm** (string|Object): LLM model configuration
   - **shouldSkip** (function): Custom logic to skip certain questions. Receives `(question, allQuestions)` and returns boolean
   - **shouldStop** (function): Custom logic to stop generation. Receives `(question, allQuestions, recentQuestions, attempts)` and returns boolean
 
@@ -50,8 +50,8 @@ Array of unique questions sorted alphabetically.
 ```javascript
 const researchQuestions = await questions(
   "Climate change effects on polar ice caps",
-  { 
-    searchBreadth: 0.7,  // Broad exploration
+  {
+    exploration: 'high',  // Broad exploration
     shouldStop: (q, all) => all.length > 30
   }
 );
@@ -61,8 +61,8 @@ const researchQuestions = await questions(
 ```javascript
 const focusedQuestions = await questions(
   "Machine learning model interpretability",
-  { 
-    searchBreadth: 0.2,  // Deep, narrow focus
+  {
+    exploration: 'low',  // Deep, narrow focus
     shouldStop: (q, all) => all.length > 15
   }
 );

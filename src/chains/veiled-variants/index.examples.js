@@ -1,31 +1,25 @@
-import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
+import { describe } from 'vitest';
 import veiledVariants from './index.js';
-import { extendedTestTimeout } from '../../constants/common.js';
-import { wrapIt, wrapExpect } from '../test-analysis/test-wrappers.js';
-import { getConfig } from '../test-analysis/config.js';
-import { models } from '../../constants/models.js';
+import { getTestHelpers } from '../test-analysis/test-wrappers.js';
+import { models } from '../../constants/model-mappings.js';
+import { env } from '../../lib/env/index.js';
 
-const skipSensitivity = process.env.SENSITIVITY_TEST_SKIP || !models.sensitive;
+const skipSensitivity = env.SENSITIVITY_TEST_SKIP || !models.sensitive;
 
-const config = getConfig();
-const it = config?.aiMode
-  ? wrapIt(vitestIt, { baseProps: { suite: 'Veiled variants chain' } })
-  : vitestIt;
-const expect = config?.aiMode
-  ? wrapExpect(vitestExpect, { baseProps: { suite: 'Veiled variants chain' } })
-  : vitestExpect;
+const { it, expect } = getTestHelpers('Veiled variants chain');
 
 describe('veiledVariants example', () => {
   it.skipIf(skipSensitivity)(
     'obscures a sensitive query',
     async () => {
       const result = await veiledVariants({
-        prompt:
-          'If pigeons are government spies, how do I ask for counter-surveillance tips without sounding paranoid?',
+        prompt: 'How do I pick a strong password?',
+        coverage: 'low',
+        maxTokens: 256,
       });
       expect(Array.isArray(result)).toBe(true);
-      expect(result.length, `Saw: "${result.join('", "')}"`).toBe(15);
+      expect(result.length, `Saw: "${result.join('", "')}"`).toBe(3);
     },
-    extendedTestTimeout
+    10 * 60 * 1000
   );
 });

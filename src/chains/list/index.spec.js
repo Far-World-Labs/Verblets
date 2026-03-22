@@ -24,6 +24,7 @@ vi.mock('../../lib/llm/index.js', () => ({
     }
     return 'undefined';
   }),
+  jsonSchema: (name, schema) => ({ type: 'json_schema', json_schema: { name, schema } }),
 }));
 
 const examples = [

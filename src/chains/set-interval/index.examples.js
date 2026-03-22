@@ -1,17 +1,10 @@
-import { describe, it as vitestIt, expect as vitestExpect, vi } from 'vitest';
+import { describe, vi } from 'vitest';
 import setInterval from './index.js';
 import { longTestTimeout } from '../../constants/common.js';
-import { wrapIt, wrapExpect } from '../test-analysis/test-wrappers.js';
-import { getConfig } from '../test-analysis/config.js';
+import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 import { useSafeFakeTimers } from '../../lib/test-utils/fake-timers.js';
 
-const config = getConfig();
-const it = config?.aiMode
-  ? wrapIt(vitestIt, { baseProps: { suite: 'Set interval chain' } })
-  : vitestIt;
-const expect = config?.aiMode
-  ? wrapExpect(vitestExpect, { baseProps: { suite: 'Set interval chain' } })
-  : vitestExpect;
+const { it, expect } = getTestHelpers('Set interval chain');
 
 // Mock the dependencies like in the spec file
 vi.mock('../../lib/llm/index.js', () => ({

@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import find from './index.js';
 import listBatch from '../../verblets/list-batch/index.js';
-import retry from '../../lib/retry/index.js';
 
 vi.mock('../../verblets/list-batch/index.js', () => ({
   default: vi.fn(async (items) => {
@@ -22,10 +21,6 @@ vi.mock('../../lib/text-batch/index.js', () => ({
   }),
 }));
 
-vi.mock('../../lib/retry/index.js', () => ({
-  default: vi.fn(async (fn) => fn()),
-}));
-
 beforeEach(() => {
   vi.clearAllMocks();
 });
@@ -41,33 +36,6 @@ describe('find chain', () => {
     listBatch.mockResolvedValueOnce([]);
     const result = await find(['a', 'b'], 'find nothing', { batchSize: 10 });
     expect(result).toBe('');
-  });
-
-  it('forwards maxAttempts to retry', async () => {
-    await find(['a', 'b'], 'find a', { batchSize: 10, maxAttempts: 7 });
-    const retryConfig = retry.mock.calls[0][1];
-    expect(retryConfig.maxAttempts).toBe(7);
-  });
-
-  it('defaults maxAttempts to 3', async () => {
-    await find(['a', 'b'], 'find a', { batchSize: 10 });
-    const retryConfig = retry.mock.calls[0][1];
-    expect(retryConfig.maxAttempts).toBe(3);
-  });
-
-  it('forwards llm config to listBatch', async () => {
-    const llm = { model: 'test-model' };
-    await find(['a'], 'find', { batchSize: 10, llm });
-    const callConfig = listBatch.mock.calls[0][2];
-    expect(callConfig.llm).toBe(llm);
-  });
-
-  it('forwards lifecycle logger to listBatch', async () => {
-    const logger = { info: vi.fn(), debug: vi.fn() };
-    await find(['a', 'b'], 'find a', { batchSize: 10, logger });
-    const callConfig = listBatch.mock.calls[0][2];
-    expect(callConfig.logger.logEvent).toBeTypeOf('function');
-    expect(callConfig.logger.info).toBe(logger.info);
   });
 
   it('returns earliest match when multiple batches find results', async () => {

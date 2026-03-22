@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import date from './index.js';
+import date, { mapRigor } from './index.js';
 import bool from '../../verblets/bool/index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(),
+  jsonSchema: (name, schema) => ({ type: 'json_schema', json_schema: { name, schema } }),
 }));
 
 vi.mock('../../verblets/bool/index.js', () => ({
@@ -11,6 +12,18 @@ vi.mock('../../verblets/bool/index.js', () => ({
 }));
 
 const llm = (await import('../../lib/llm/index.js')).default;
+
+describe('mapRigor', () => {
+  it('low disables validation', () => {
+    const result = mapRigor('low');
+    expect(result.validate).toBe(false);
+  });
+
+  it('high disables returnBestEffort', () => {
+    const result = mapRigor('high');
+    expect(result.returnBestEffort).toBe(false);
+  });
+});
 
 describe('date chain', () => {
   beforeEach(() => {
@@ -46,6 +59,28 @@ describe('date chain', () => {
     const result = await date('Unknown date');
     expect(result).toBeUndefined();
     expect(llm).toHaveBeenCalledTimes(2);
+    expect(bool).not.toHaveBeenCalled();
+  });
+
+  it('skips expectations and validation with rigor low', async () => {
+    llm.mockResolvedValueOnce('2023-05-15');
+
+    const result = await date('May 15 2023', { rigor: 'low' });
+
+    expect(result instanceof Date).toBe(true);
+    expect(result.toISOString().startsWith('2023-05-15')).toBe(true);
+    // Only 1 LLM call (extraction), no expectations call, no bool validation
+    expect(llm).toHaveBeenCalledTimes(1);
+    expect(bool).not.toHaveBeenCalled();
+  });
+
+  it('returns undefined with rigor low when llm says undefined', async () => {
+    llm.mockResolvedValueOnce('undefined');
+
+    const result = await date('No date here', { rigor: 'low' });
+
+    expect(result).toBeUndefined();
+    expect(llm).toHaveBeenCalledTimes(1);
     expect(bool).not.toHaveBeenCalled();
   });
 });

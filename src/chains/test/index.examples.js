@@ -1,24 +1,14 @@
-import { beforeAll, afterAll } from 'vitest';
-import { describe, it as vitestIt, expect as vitestExpect } from 'vitest';
+import { beforeAll, afterAll, describe } from 'vitest';
 import test from './index.js';
-import vitestAiExpect from '../expect/index.js';
 import { longTestTimeout } from '../../constants/common.js';
-import { wrapIt, wrapExpect, wrapAiExpect } from '../test-analysis/test-wrappers.js';
-import { getConfig } from '../test-analysis/config.js';
+import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
 let testDir;
 
-const config = getConfig();
-const it = config?.aiMode ? wrapIt(vitestIt, { baseProps: { suite: 'Test chain' } }) : vitestIt;
-const expect = config?.aiMode
-  ? wrapExpect(vitestExpect, { baseProps: { suite: 'Test chain' } })
-  : vitestExpect;
-const aiExpect = config?.aiMode
-  ? wrapAiExpect(vitestAiExpect, { baseProps: { suite: 'Test chain' } })
-  : vitestAiExpect;
+const { it, expect, aiExpect } = getTestHelpers('Test chain');
 
 describe('test chain', () => {
   beforeAll(async () => {
@@ -68,10 +58,9 @@ describe('test chain', () => {
       expect(issues.length).toBeGreaterThan(0);
 
       // Should identify multiple issues
-      const hasValidIssues = await aiExpect(issues).toSatisfy(
+      await aiExpect(issues).toSatisfy(
         'Should identify issues like missing error handling, missing await, division by zero check, or off-by-one errors'
       );
-      expect(hasValidIssues).toBe(true);
     },
     longTestTimeout
   );
@@ -124,10 +113,9 @@ describe('test chain', () => {
       // Just verify it finds fewer issues than in problematic code
       if (issues.length > 0) {
         // If issues are found, they should be minor suggestions
-        const hasMinorIssues = await aiExpect(issues).toSatisfy(
+        await aiExpect(issues).toSatisfy(
           'Should only contain minor suggestions or best practice improvements, not critical errors'
         );
-        expect(hasMinorIssues).toBe(true);
       }
     },
     longTestTimeout
@@ -166,10 +154,9 @@ describe('test chain', () => {
       expect(issues.length).toBeGreaterThan(0);
 
       // Should identify security issues
-      const hasSecurityIssues = await aiExpect(issues).toSatisfy(
+      await aiExpect(issues).toSatisfy(
         'Should identify security vulnerabilities like SQL injection, XSS, or use of eval'
       );
-      expect(hasSecurityIssues).toBe(true);
     },
     longTestTimeout
   );

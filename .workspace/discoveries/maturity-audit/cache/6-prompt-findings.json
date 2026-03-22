@@ -1,0 +1,412 @@
+[
+  {
+    "chain": "category-samples",
+    "tier": "standard",
+    "dimension": "prompt-engineering",
+    "phase": "prompt",
+    "level": 2,
+    "evidence": "Uses extracted prompt builder function 'buildSeedGenerationPrompt' to construct the prompt from the constant 'SAMPLE_GENERATION_PROMPT' template literal with variable replacements. No use of promptConstants from constants.js detected. No system prompt, temperature setting, or response_format usage observed. The chain uses a retry utility and a list chain for generation but does not incorporate advanced prompt engineering features like system prompts or response_format.",
+    "gap": "Missing system prompts, temperature tuning, and response_format usage to reach level 3.",
+    "nextAction": "Incorporate system prompts to set role and context, explicitly set temperature for model calls, and use response_format with JSON schemas for output structuring."
+  },
+  {
+    "chain": "central-tendency",
+    "tier": "standard",
+    "dimension": "prompt-engineering",
+    "phase": "prompt",
+    "level": 3,
+    "evidence": "Uses CENTRAL_TENDENCY_PROMPT constant from verblets/central-tendency-lines; constructs prompt via template literals replacing {context}, {coreFeatures}, {outputRequirements}; sets response_format with JSON schema centralTendencyResultsJsonSchema; uses map infrastructure for batch processing; includes lifecycle logging; no explicit system prompt or temperature setting found.",
+    "gap": "Missing explicit system prompt and temperature tuning to reach level 4.",
+    "nextAction": "Add a system prompt to set the LLM role and tune temperature and penalties for improved prompt control."
+  },
+  {
+    "chain": "collect-terms",
+    "tier": "standard",
+    "dimension": "prompt-engineering",
+    "phase": "prompt",
+    "level": 0,
+    "evidence": "Inline template literals used directly in calls to the 'list' and 'score' functions without any shared prompt utilities or constants. No use of asXML or other prompt helper modules. No system prompts, temperature settings, or response_format usage detected.",
+    "gap": "Missing use of shared prompt utilities such as asXML for variable wrapping, promptConstants, system prompts, temperature tuning, and response_format usage.",
+    "nextAction": "Refactor prompt strings to use asXML for variable wrapping and incorporate promptConstants to improve prompt modularity and maintainability."
+  },
+  {
+    "chain": "conversation",
+    "tier": "standard",
+    "dimension": "prompt-engineering",
+    "phase": "prompt",
+    "level": 0,
+    "evidence": "No prompt imports or usage of shared prompt utilities; no promptConstants used; no system prompt, temperature setting, or response_format usage; prompts appear to be inline string concatenations or function calls without prompt engineering patterns.",
+    "gap": "Missing use of asXML for variable wrapping and shared prompt utilities.",
+    "nextAction": "Refactor prompt construction to use asXML for variable wrapping and integrate promptConstants from src/prompts/constants.js."
+  },
+  {
+    "chain": "conversation-turn-reduce",
+    "tier": "internal",
+    "dimension": "prompt-engineering",
+    "phase": "prompt",
+    "level": 0,
+    "evidence": "The chain uses inline template literals for prompt construction, e.g., building 'historySnippet' and 'baseContext' via string concatenation. There are no prompt imports or usage of promptConstants. No system prompts, temperature settings, or response_format usage are present. The chain uses a simple map function to generate responses without shared prompt utilities or wrappers like asXML.",
+    "gap": "Missing use of shared prompt utilities such as asXML for variable wrapping, promptConstants for reusable fragments, system prompts, temperature tuning, and response_format usage.",
+    "nextAction": "Refactor prompt construction to use asXML for variable wrapping and incorporate promptConstants to improve reusability and maintainability."
+  },
+  {
+    "chain": "date",
+    "tier": "standard",
+    "dimension": "prompt-engineering",
+    "phase": "prompt",
+    "level": 3,
+    "evidence": "Uses extracted prompt builder functions buildExpectationPrompt, buildDatePrompt, buildValidationPrompt. Uses promptConstants including asDate, asUndefinedByDefault, contentIsQuestion, explainAndSeparate, explainAndSeparatePrimitive, asWrappedArrayJSON, asJSON, asWrappedValueJSON. Uses response_format with JSON schemas dateValueSchema and dateExpectationsSchema in callLlm calls. Uses system prompt patterns via promptConstants fragments. Temperature is not explicitly set, so default is used. Response_format is consistently used for structured output.",
+    "gap": "Temperature tuning and multi-stage prompt pipelines with frequency/presence penalty tuning are missing.",
+    "nextAction": "Introduce temperature settings and multi-stage prompt pipelines with penalty tuning to improve prompt control."
+  },
+  {
+    "chain": "detect-patterns",
+    "tier": "standard",
+    "dimension": "prompt-engineering",
+    "phase": "prompt",
+    "level": 3,
+    "evidence": "Uses a response_format with a JSON schema (PATTERN_RESPONSE_FORMAT) for structured output; employs a system prompt style instruction in 'patternInstructions' template literal; sets temperature implicitly via llm options (not explicitly shown but likely configurable); uses shared reduce function for prompt execution; no use of promptConstants or asXML variable wrapping detected.",
+    "gap": "Does not use promptConstants or extracted prompt builder functions; no multi-stage prompt pipeline or advanced tuning like frequency/presence penalties.",
+    "nextAction": "Refactor prompt instructions into reusable promptConstants and extract prompt builder functions to improve modularity and reuse."
+  },
+  {
+    "chain": "detect-threshold",
+    "tier": "standard",
+    "dimension": "prompt-engineering",
+    "phase": "prompt",
+    "level": 3,
+    "evidence": "Uses asXML for variable wrapping (from ../../prompts/wrap-variable.js), employs response_format with JSON schemas for structured output (json_schema with accumulatorSchema and thresholdResultSchema), uses retry and callLlm with temperature and maxAttempts settings, and includes system prompt style instructions in template literals.",
+    "gap": "Does not implement multi-stage prompt pipelines or frequency/presence penalty tuning.",
+    "nextAction": "Introduce multi-stage prompt pipelines with frequency/presence penalty tuning to improve prompt control and output quality."
+  },
+  {
+    "chain": "disambiguate",
+    "tier": "standard",
+    "dimension": "prompt-engineering",
+    "phase": "prompt",
+    "level": 3,
+    "evidence": "Uses promptConstants.onlyJSONStringArray for prompt framing; constructs prompt with template literals embedding the constant; employs response_format with a JSON schema (disambiguateMeaningsSchema) in createModelOptions; uses system prompt indirectly via promptConstants; temperature not explicitly set (default used); no response_format usage in the prompt string itself but in model options; no use of asXML or other prompt helper modules; multi-stage prompt pipeline implied by separate getMeanings and score calls.",
+    "gap": "Explicit temperature tuning and system prompt usage missing; no multi-stage prompt pipeline with frequency/presence penalty tuning.",
+    "nextAction": "Introduce explicit temperature settings and system prompts; consider adding frequency/presence penalty tuning for improved control."
+  },
+  {
+    "chain": "dismantle",
+    "tier": "standard",
+    "dimension": "prompt-engineering",
+    "phase": "prompt",
+    "level": 4,
+    "evidence": "Uses extracted prompt builder functions subComponentsPrompt and componentOptionsPrompt that utilize promptConstants asWrappedArrayJSON and asJSON. Employs system prompt style instructions within template literals. Sets temperature explicitly (0.7 for decompose, 0.3 for enhance). Uses response_format with JSON schemas (subComponentsSchema, componentOptionsSchema). Implements multi-stage prompt pipeline with decompose and enhance stages, each with tuned frequencyPenalty and temperature settings.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "entities",
+    "tier": "core",
+    "dimension": "prompt-engineering",
+    "phase": "prompt",
+    "level": 3,
+    "evidence": "Uses asXML for variable wrapping in prompts (e.g., asXML(prompt, { tag: 'entity-instructions' })), uses promptConstants.onlyJSON for JSON output enforcement, employs system prompts (e.g., specSystemPrompt), and configures response_format with JSON schema in llmConfig (modelOptions.response_format with json_schema referencing entityResultSchema). Also uses retry wrapper for LLM calls and emits progress callbacks.",
+    "gap": "Missing multi-stage prompt pipelines and advanced tuning like frequency/presence penalties to reach level 4.",
+    "nextAction": "Implement multi-stage prompt pipelines with frequency/presence penalty tuning to improve prompt engineering maturity."
+  },
+  {
+    "chain": "expect",
+    "tier": "standard",
+    "dimension": "prompt-engineering",
+    "phase": "prompt",
+    "level": 3,
+    "evidence": "The chain uses shared prompt utilities such as wrapVariable (wrap-variable.js) and asXML (prompts/wrap-variable.js) for variable wrapping. It constructs prompts using template literals with embedded wrapped variables for code context, imports, and implementation code. The chain sets modelOptions with a specific modelName ('fastGoodCheapCoding') and uses temperature explicitly set to 0 in shared.js expectCore. It also uses response_format with a JSON schema for structured LLM responses in shared.js. System prompts are implied by the detailed instruction format in the prompt literals. The chain imports prompt-related utilities from 'prompts' and uses them consistently across its own and shared modules.",
+    "gap": "No multi-stage prompt pipelines or advanced frequency/presence penalty tuning are present.",
+    "nextAction": "Implement multi-stage prompt pipelines to decompose complex tasks and tune frequency/presence penalties for improved response quality."
+  },
+  {
+    "chain": "extract-blocks",
+    "tier": "standard",
+    "dimension": "prompt-engineering",
+    "phase": "prompt",
+    "level": 3,
+    "evidence": "Uses asXML for variable wrapping in buildBlockExtractionPrompt (e.g., asXML(instructions, { tag: 'instructions' }) and asXML(numberedLines, { tag: 'window' })). Uses a JSON schema response_format via blockExtractionSchema imported from block-schema.js. No explicit system prompt or temperature setting found in the source code. Response_format is used in llmConfig.modelOptions. No promptConstants are used from the shared constants.js library.",
+    "gap": "Missing system prompt usage and explicit temperature tuning to reach level 4.",
+    "nextAction": "Introduce a system prompt to set the LLM's role and add temperature tuning parameters to the LLM call configuration."
+  },
+  {
+    "chain": "extract-features",
+    "tier": "standard",
+    "dimension": "prompt-engineering",
+    "phase": "prompt",
+    "level": 0,
+    "evidence": "No prompt-related imports; no usage of promptConstants; no system prompts; no temperature settings; no response_format usage; prompt is implemented as inline code without shared utilities or prompt builder functions.",
+    "gap": "Missing use of asXML for variable wrapping and shared prompt utilities.",
+    "nextAction": "Refactor prompt to use asXML for variable wrapping to improve prompt engineering maturity to level 1."
+  },
+  {
+    "chain": "filter",
+    "tier": "core",
+    "dimension": "prompt-engineering",
+    "phase": "prompt",
+    "level": 3,
+    "evidence": "Uses asXML for variable wrapping in filterInstructions function (asXML(instructions, { tag: 'filtering-criteria' })), uses responseFormat with JSON schema (filterResponseFormat), uses retry wrapper for robustness, uses listBatch utility for batch processing, includes detailed prompt instructions with template literals, no explicit temperature setting found, no system prompt usage detected.",
+    "gap": "No system prompt usage or temperature tuning to reach level 4.",
+    "nextAction": "Introduce system prompts to set the LLM role and tune temperature or penalties for improved prompt control."
+  },
+  {
+    "chain": "filter-ambiguous",
+    "tier": "standard",
+    "dimension": "prompt-engineering",
+    "phase": "prompt",
+    "level": 0,
+    "evidence": "The chain uses inline template literals for prompts such as 'How ambiguous or easily misinterpreted is this sentence?' and 'Score how ambiguous the term is within the sentence.' There are no imports of promptConstants, no use of asXML or other prompt helper modules, no system prompts, no temperature settings, and no response_format usage.",
+    "gap": "Missing use of prompt helper modules like asXML, promptConstants, system prompts, temperature tuning, and response_format.",
+    "nextAction": "Refactor prompts to use prompt helper modules such as asXML and incorporate promptConstants for reusable fragments."
+  },
+  {
+    "chain": "glossary",
+    "tier": "standard",
+    "dimension": "prompt-engineering",
+    "phase": "prompt",
+    "level": 3,
+    "evidence": "The chain uses a response_format with a JSON schema (GLOSSARY_RESPONSE_FORMAT referencing glossaryExtractionJsonSchema), indicating structured output enforcement. It uses a system prompt style by defining clear instructions in the 'instructions' template literal for the map function. Temperature is not explicitly set, so default is used. No promptConstants or asXML wrapping are used. The chain leverages shared utilities 'map' and 'sort' for processing, showing modular prompt usage.",
+    "gap": "Missing explicit system prompt usage and temperature tuning, and no use of promptConstants or asXML variable wrapping.",
+    "nextAction": "Introduce promptConstants for instruction fragments and set explicit temperature values to improve prompt control."
+  },
+  {
+    "chain": "group",
+    "tier": "core",
+    "dimension": "prompt-engineering",
+    "phase": "prompt",
+    "level": 2,
+    "evidence": "Uses asXML for variable wrapping (imported from '../../prompts/wrap-variable.js'), extracted prompt builder functions like createCategoryDiscoveryPrompt and createAssignmentInstructions, uses promptConstants indirectly via imported prompt utilities, no explicit system prompt or temperature setting, no response_format usage detected.",
+    "gap": "Missing system prompts, temperature tuning, and response_format usage to reach level 3.",
+    "nextAction": "Introduce system prompts with role definitions and set temperature parameters; implement response_format with JSON schemas for output structuring."
+  },
+  {
+    "chain": "intersections",
+    "tier": "standard",
+    "dimension": "prompt-engineering",
+    "phase": "prompt",
+    "level": 3,
+    "evidence": "Uses asXML for variable wrapping (asXML(categories.join(' | '), { tag: 'categories' })), uses promptConstants (asJSON, asWrappedArrayJSON, strictFormat, contentIsQuestion), employs response_format with JSON schemas in llmConfig (type: 'json_schema', json_schema: intersectionElementsSchema), uses retry with callLlm for LLM calls, and includes system prompt style instructions in INTERSECTION_PROMPT.",
+    "gap": "Missing multi-stage prompt pipelines and advanced tuning like frequency/presence penalty.",
+    "nextAction": "Implement multi-stage prompt pipelines and tune frequency/presence penalties to improve prompt engineering maturity."
+  },
+  {
+    "chain": "join",
+    "tier": "standard",
+    "dimension": "prompt-engineering",
+    "phase": "prompt",
+    "level": 0,
+    "evidence": "The join chain uses inline template literals for prompt construction, e.g., the 'instruction' variable is built via string interpolation combining the 'prompt' parameter, optional 'styleHint', and fragment lists. There is no usage of shared prompt utilities such as promptConstants or asXML. No system prompts, temperature settings, or response_format usage are present. The chain directly calls callLlm with constructed prompt strings and uses retry for robustness.",
+    "gap": "Missing use of shared prompt utilities like promptConstants and asXML for variable wrapping, no system prompts or temperature tuning, no response_format usage.",
+    "nextAction": "Refactor prompt construction to use promptConstants and asXML for variable wrapping to improve prompt modularity and maintainability."
+  },
+  {
+    "chain": "list",
+    "tier": "standard",
+    "dimension": "prompt-engineering",
+    "phase": "prompt",
+    "level": 3,
+    "evidence": "Uses promptConstants: onlyJSONArray, contentIsTransformationSource, onlyJSON; uses prompt builder functions: generateListPrompt, asObjectWithSchemaPrompt; uses response_format with JSON schema (listResultSchema) in createModelOptions; uses retry wrapper for callLlm; system prompt usage implied via promptConstants; temperature not explicitly set (default used); response_format consistently applied for structured output.",
+    "gap": "No explicit temperature tuning or multi-stage prompt pipelines with frequency/presence penalty tuning.",
+    "nextAction": "Introduce explicit temperature settings and multi-stage prompt pipelines with penalty tuning to improve prompt control and output quality."
+  },
+  {
+    "chain": "map",
+    "tier": "core",
+    "dimension": "prompt-engineering",
+    "phase": "prompt",
+    "level": 2,
+    "evidence": "Uses asXML for variable wrapping (imported from '../../prompts/wrap-variable.js'), compiles prompts with template literals including XML-wrapped instructions, uses shared utilities like listBatch, retry, parallelBatch, and lifecycle-logger. No explicit system prompt or temperature setting found. No response_format usage detected.",
+    "gap": "Missing system prompts, temperature tuning, and response_format usage to reach level 3.",
+    "nextAction": "Introduce system prompts and configure temperature and response_format with JSON schemas in the prompt construction."
+  },
+  {
+    "chain": "people",
+    "tier": "standard",
+    "dimension": "prompt-engineering",
+    "phase": "prompt",
+    "level": 3,
+    "evidence": "Uses asXML for variable wrapping (asXML(description, { tag: 'description' })), uses response_format with JSON schema (response_format: { type: 'json_schema', json_schema: peopleListJsonSchema }), no explicit system prompt or temperature setting noted, uses shared utility 'asXML' from prompts/wrap-variable.js.",
+    "gap": "Missing explicit system prompt and temperature tuning to reach level 4.",
+    "nextAction": "Introduce a system prompt to set context and tune temperature or penalties for improved control."
+  },
+  {
+    "chain": "pop-reference",
+    "tier": "standard",
+    "dimension": "prompt-engineering",
+    "phase": "prompt",
+    "level": 3,
+    "evidence": "Uses asXML for variable wrapping (asXML imported from '../../prompts/wrap-variable.js'), uses promptConstants.onlyJSON from '../../prompts/index.js', employs response_format with JSON schema (popReferenceSchema) in createModelOptions, no explicit system prompt but structured prompt template literal used, temperature not explicitly set (default used).",
+    "gap": "No system prompt usage or temperature tuning; no multi-stage prompt pipeline or penalty tuning.",
+    "nextAction": "Introduce a system prompt to set context and tune temperature for better control."
+  },
+  {
+    "chain": "questions",
+    "tier": "standard",
+    "dimension": "prompt-engineering",
+    "phase": "prompt",
+    "level": 3,
+    "evidence": "Uses promptConstants such as asXML, asJSON, asWrappedArrayJSON for variable wrapping and JSON formatting. Employs system prompt patterns in pickInterestingQuestion and formatQuestionsPrompt functions. Sets temperature explicitly to 1 in llmConfig. Uses response_format with JSON schemas (questionsListSchema, selectedQuestionSchema) in llmConfig. Utilizes retry wrapper for callLlm with labeled attempts and progress callbacks.",
+    "gap": "Missing multi-stage prompt pipelines and frequency/presence penalty tuning to reach level 4.",
+    "nextAction": "Implement multi-stage prompt pipelines and tune frequency/presence penalties in the LLM configuration."
+  },
+  {
+    "chain": "reduce",
+    "tier": "core",
+    "dimension": "prompt-engineering",
+    "phase": "prompt",
+    "level": 3,
+    "evidence": "Uses asXML for variable wrapping (imported from '../../prompts/wrap-variable.js'). Uses response_format with JSON schema (reduceAccumulatorJsonSchema). Uses retry logic with labeled attempts. Uses system-like prompt construction with detailed instructions in template literals. Temperature setting is not explicitly set, implying default. Response format is conditionally applied with JSON schema. No use of promptConstants from constants.js detected.",
+    "gap": "Explicit temperature tuning and use of system prompts are missing to reach level 4.",
+    "nextAction": "Introduce explicit temperature settings and system prompt usage to enable multi-stage prompt pipelines and tuning."
+  },
+  {
+    "chain": "scale",
+    "tier": "standard",
+    "dimension": "prompt-engineering",
+    "phase": "prompt",
+    "level": 3,
+    "evidence": "Uses asXML for variable wrapping in prompts (e.g., asXML(prompt, { tag: 'scaling-instructions' })), uses promptConstants.onlyJSON for JSON output enforcement, employs system prompts (e.g., specSystemPrompt), and configures response_format with JSON schemas (scaleSpecificationJsonSchema, scaleResultSchema) in llmConfig.",
+    "gap": "Missing multi-stage prompt pipelines and advanced tuning such as frequency/presence penalty.",
+    "nextAction": "Implement multi-stage prompt pipelines and tune frequency/presence penalties to improve prompt control."
+  },
+  {
+    "chain": "scan-js",
+    "tier": "development",
+    "dimension": "prompt-engineering",
+    "phase": "prompt",
+    "level": 3,
+    "evidence": "Uses imported prompt module 'codeFeaturesPrompt' for prompt construction; employs 'makeJSONSchema' for JSON schema generation; uses 'llm' call with 'response_format' specifying JSON schema with name 'code_features_analysis'; model options include modelName 'fastGood'; no explicit system prompt or temperature setting found; no use of promptConstants detected.",
+    "gap": "Missing explicit system prompt and temperature tuning; no multi-stage prompt pipeline or penalty tuning.",
+    "nextAction": "Introduce explicit system prompt and temperature parameter tuning to improve prompt control and move towards level 4."
+  },
+  {
+    "chain": "set-interval",
+    "tier": "standard",
+    "dimension": "prompt-engineering",
+    "phase": "prompt",
+    "level": 3,
+    "evidence": "Uses promptConstants: contentIsInstructions, explainAndSeparate, explainAndSeparatePrimitive; uses asXML for variable wrapping (lastResult, history, count); uses templateReplace for prompt variable substitution; constructs prompt as a template literal combining constants and wrapped variables; uses retry with callLlm for LLM invocation; no explicit temperature setting or response_format usage; system prompt is implicit via contentIsInstructions constant.",
+    "gap": "Explicit system prompt usage, temperature tuning, and response_format with JSON schemas are missing to reach level 4.",
+    "nextAction": "Introduce explicit system prompts, set temperature parameters, and implement response_format with JSON schema for structured output."
+  },
+  {
+    "chain": "socratic",
+    "tier": "standard",
+    "dimension": "prompt-engineering",
+    "phase": "prompt",
+    "level": 3,
+    "evidence": "Uses extracted prompt builder functions buildAskPrompt and buildAnswerPrompt with template literals; uses promptConstants explainAndSeparate and explainAndSeparatePrimitive in socratic-question-schema.js and socratic-answer-schema.js; sets temperature explicitly to 0.7 in llmConfig; uses response_format with JSON schemas socraticQuestionSchema and socraticAnswerSchema; uses system prompt style by including Socratic method guidelines in prompt construction; uses logger for lifecycle events; no use of asXML or promptConstants for variable wrapping.",
+    "gap": "Missing multi-stage prompt pipelines and frequency/presence penalty tuning to reach level 4.",
+    "nextAction": "Implement multi-stage prompt pipelines and tune frequency/presence penalties for improved prompt control."
+  },
+  {
+    "chain": "sort",
+    "tier": "core",
+    "dimension": "prompt-engineering",
+    "phase": "prompt",
+    "level": 3,
+    "evidence": "Uses imported prompt constant 'sortPromptInitial' from prompts/index.js; employs a JSON schema response_format with 'sortSchema' for structured output; sets response_format in createModelOptions function; uses retry wrapper for LLM calls; no explicit system prompt or temperature setting found in source code; response_format usage is consistent and robust.",
+    "gap": "No explicit system prompt or temperature tuning to reach level 4.",
+    "nextAction": "Introduce multi-stage prompt pipelines and tune frequency/presence penalties or temperature settings."
+  },
+  {
+    "chain": "split",
+    "tier": "standard",
+    "dimension": "prompt-engineering",
+    "phase": "prompt",
+    "level": 3,
+    "evidence": "Uses wrapVariable from prompts/wrap-variable.js for variable wrapping, indicating use of shared prompt utilities. The prompt builder function 'buildPrompt' extracts prompt construction logic. Temperature is explicitly set to 0.1 for consistency in llmConfig. No system prompt is explicitly set, but prompt construction is modular. No response_format usage detected.",
+    "gap": "Missing system prompt usage and response_format with JSON schemas to reach level 4.",
+    "nextAction": "Introduce system prompts to set LLM role and add response_format with JSON schema for structured output."
+  },
+  {
+    "chain": "summary-map",
+    "tier": "standard",
+    "dimension": "prompt-engineering",
+    "phase": "prompt",
+    "level": 2,
+    "evidence": "Uses the 'basicSummarize' prompt constant imported from prompts/index.js, applies tokenBudget from prompts, and uses llm() call with modelOptions. The chain uses a summarization helper function and integrates prompt fragments like tokenBudget and basicSummarize. No explicit system prompt or temperature tuning is set in the llm call. No response_format usage is evident.",
+    "gap": "Missing system prompts, temperature tuning, and response_format usage to reach level 3.",
+    "nextAction": "Introduce system prompts to set context, tune temperature settings explicitly, and implement response_format with JSON schemas for output structuring."
+  },
+  {
+    "chain": "tag-vocabulary",
+    "tier": "standard",
+    "dimension": "prompt-engineering",
+    "phase": "prompt",
+    "level": 4,
+    "evidence": "Uses asXML for variable wrapping from '../../prompts/wrap-variable.js'; uses promptConstants.onlyJSON from '../../prompts/index.js'; employs response_format with JSON schema for structured output; uses retry and callLlm utilities for robust LLM calls; multi-stage prompt pipeline with initial vocabulary generation, tagging, and refinement stages; explicit prompt templates with detailed instructions; no explicit temperature setting but advanced prompt engineering patterns evident.",
+    "gap": "",
+    "nextAction": ""
+  },
+  {
+    "chain": "test",
+    "tier": "development",
+    "dimension": "prompt-engineering",
+    "phase": "prompt",
+    "level": 3,
+    "evidence": "Uses asXML for variable wrapping of code input via asXML(code, { tag: 'code-to-analyze' }) and asJSON prompt constant. Uses response_format with JSON schema (testResultJsonSchema) in llm call. No explicit system prompt or temperature setting found in the source code.",
+    "gap": "Missing explicit system prompt and temperature tuning to reach level 4.",
+    "nextAction": "Introduce a system prompt to set the assistant's role and tune temperature settings for improved response control."
+  },
+  {
+    "chain": "test-analysis",
+    "tier": "internal",
+    "dimension": "prompt-engineering",
+    "phase": "prompt",
+    "level": 0,
+    "evidence": "No prompt imports detected; prompts appear to be inline strings or absent; no use of promptConstants; no system prompts; no temperature settings; no response_format usage; chain source code is primarily event processing and reporting logic without prompt engineering patterns.",
+    "gap": "Use of asXML for variable wrapping and shared prompt utilities is missing.",
+    "nextAction": "Refactor prompts to use asXML for variable wrapping and integrate shared prompt utilities from src/prompts/ to improve maintainability and consistency."
+  },
+  {
+    "chain": "test-analyzer",
+    "tier": "internal",
+    "dimension": "prompt-engineering",
+    "phase": "prompt",
+    "level": 0,
+    "evidence": "The chain uses a raw inline template literal for the prompt construction without any shared prompt utilities or constants. There is no usage of asXML for variable wrapping, no system prompt, no temperature setting, and no response_format usage. The prompt is constructed directly in the source code as a string template assigned to the variable 'prompt'.",
+    "gap": "Missing use of shared prompt utilities such as asXML for variable wrapping, promptConstants, system prompts, temperature tuning, and response_format usage.",
+    "nextAction": "Refactor the prompt to use asXML for variable wrapping and incorporate promptConstants to improve modularity and maintainability."
+  },
+  {
+    "chain": "themes",
+    "tier": "standard",
+    "dimension": "prompt-engineering",
+    "phase": "prompt",
+    "level": 0,
+    "evidence": "The chain uses inline template literals for prompts such as 'Update the accumulator with short themes from this text...' and 'Refine the accumulator by merging similar themes...'. There is no use of shared prompt utilities, promptConstants, system prompts, temperature settings, or response_format. The chain imports shuffle and reduce utilities but does not use any prompt helper modules or constants.",
+    "gap": "Missing use of shared prompt utilities like asXML for variable wrapping, promptConstants, system prompts, temperature tuning, and response_format usage.",
+    "nextAction": "Refactor prompts to use shared prompt utilities such as asXML for variable wrapping and incorporate promptConstants to improve prompt engineering maturity."
+  },
+  {
+    "chain": "timeline",
+    "tier": "standard",
+    "dimension": "prompt-engineering",
+    "phase": "prompt",
+    "level": 3,
+    "evidence": "Uses systemPrompt 'extractTimelineInstructions' as a system prompt; uses response_format with JSON schema 'timelineEventJsonSchema'; calls callLlm with modelOptions including systemPrompt and response_format; uses retry and parallelBatch utilities; no promptConstants used; temperature not explicitly set (default used); no asXML or prompt builder functions used.",
+    "gap": "Missing promptConstants usage and extracted prompt builder functions to reach level 4; no temperature tuning or multi-stage prompt pipelines beyond basic multi-chunk processing.",
+    "nextAction": "Refactor prompts to use promptConstants and extracted prompt builder functions; introduce temperature tuning and multi-stage prompt pipelines for improved control."
+  },
+  {
+    "chain": "to-object",
+    "tier": "standard",
+    "dimension": "prompt-engineering",
+    "phase": "prompt",
+    "level": 3,
+    "evidence": "Uses promptConstants: contentIsSchema, contentToJSON, onlyJSON, shapeAsJSON; uses asXML for variable wrapping; constructs prompts via buildJsonPrompt function; uses system prompt patterns via promptConstants; temperature is not explicitly set (default assumed); no explicit response_format usage noted; multi-attempt retry logic with LLM prompt repair attempts; uses shared prompt utilities from prompts module.",
+    "gap": "No explicit temperature tuning or response_format with JSON schemas; no multi-stage prompt pipelines with frequency/presence penalty tuning.",
+    "nextAction": "Introduce explicit temperature settings and response_format with JSON schema to improve output reliability and control."
+  },
+  {
+    "chain": "veiled-variants",
+    "tier": "standard",
+    "dimension": "prompt-engineering",
+    "phase": "prompt",
+    "level": 2,
+    "evidence": "Uses promptConstants.onlyJSONStringArray for JSON array output enforcement; uses asXML for variable wrapping of prompt input; prompt builder functions scientificFramingPrompt, causalFramePrompt, softCoverPrompt are extracted and reused; no system prompt or temperature tuning observed; no response_format usage; imports promptConstants and asXML from shared prompts module.",
+    "gap": "Missing system prompts, temperature tuning, and response_format usage to reach level 3.",
+    "nextAction": "Introduce system prompts and configure temperature and response_format with JSON schemas for output."
+  }
+]

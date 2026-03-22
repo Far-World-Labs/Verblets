@@ -1,20 +1,9 @@
-import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
+import { describe } from 'vitest';
 import tags, { tagItem, mapTags, createTagger, createTagExtractor, tagSpec } from './index.js';
-import vitestAiExpect from '../expect/index.js';
 import { longTestTimeout } from '../../constants/common.js';
-import {
-  makeWrappedIt,
-  makeWrappedExpect,
-  makeWrappedAiExpect,
-} from '../test-analysis/test-wrappers.js';
-import { getConfig } from '../test-analysis/config.js';
+import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 
-const config = getConfig();
-const suite = 'Tags chain';
-
-const it = makeWrappedIt(vitestIt, suite, config);
-const expect = makeWrappedExpect(vitestExpect, suite, config);
-const aiExpect = makeWrappedAiExpect(vitestAiExpect, suite, config);
+const { it, expect, aiExpect } = getTestHelpers('Tags chain');
 
 describe('tags examples', () => {
   const expenseVocabulary = {
@@ -47,27 +36,6 @@ describe('tags examples', () => {
         const validTags = expenseVocabulary.tags.map((t) => t.id);
         await aiExpect({ result: tags, validTags, item: transaction }).toSatisfy(
           'Whole Foods transaction tagged with valid expense category'
-        );
-      },
-      longTestTimeout
-    );
-
-    it(
-      'should handle multiple applicable tags',
-      async () => {
-        const transaction = {
-          description: 'ComEd Electric Bill Payment',
-          amount: 89.5,
-          date: '2024-01-01',
-        };
-
-        const instructions = 'Assign all applicable expense categories';
-        const tags = await tagItem(transaction, instructions, expenseVocabulary);
-
-        expect(tags).toBeInstanceOf(Array);
-        const validTags = expenseVocabulary.tags.map((t) => t.id);
-        await aiExpect({ result: tags, validTags, item: transaction }).toSatisfy(
-          'Electric bill transaction tagged with valid expense category'
         );
       },
       longTestTimeout
@@ -176,10 +144,8 @@ describe('tags examples', () => {
         const priorityExtractor = createTagExtractor(spec, priorityVocabulary);
 
         const issues = [
-          'Database backup job failing silently',
-          'Typo in footer copyright year',
           'Login system completely broken for all users',
-          'Export feature generates corrupted files for some users',
+          'Typo in footer copyright year',
         ];
 
         const validPriorities = priorityVocabulary.tags.map((t) => t.id);

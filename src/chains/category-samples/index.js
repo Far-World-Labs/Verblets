@@ -1,6 +1,31 @@
 import list from '../list/index.js';
 import retry from '../../lib/retry/index.js';
 import { scopeProgress } from '../../lib/progress-callback/index.js';
+import { initChain, withPolicy } from '../../lib/context/option.js';
+
+// ===== Option Mappers =====
+
+const DEFAULT_DIVERSITY = { diversity: undefined, count: 30 };
+
+/**
+ * Map diversity option to sampling strategy + count coordination.
+ * low: focused on typical members, fewer candidates needed.
+ * high: diverse spanning edge cases, more candidates needed.
+ * med: explicit normal mode — balanced, default count.
+ * @param {string|object|undefined} value
+ * @returns {{ diversity: string|undefined, count: number }}
+ */
+export const mapDiversity = (value) => {
+  if (value === undefined) return DEFAULT_DIVERSITY;
+  if (typeof value === 'object') return value;
+  return (
+    {
+      low: { diversity: 'low', count: 15 },
+      med: DEFAULT_DIVERSITY,
+      high: { diversity: 'high', count: 50 },
+    }[value] ?? DEFAULT_DIVERSITY
+  );
+};
 
 /**
  * Core prompt template for sample generation using cognitive science principles
@@ -29,20 +54,17 @@ IMPORTANT: Return only clean item names without numbering, descriptions, or expl
  * @param {Object} config - Configuration options
  * @returns {string} Complete prompt for sample generation
  */
-export function buildSeedGenerationPrompt(
-  categoryName,
-  { context = '', diversityLevel = 'balanced' } = {}
-) {
+export function buildSeedGenerationPrompt(categoryName, { context = '', diversity } = {}) {
   const diversityInstructions = {
     high: 'Include very diverse examples spanning edge cases and borderline members',
-    balanced: 'Include a mix of typical, moderately typical, and some atypical members',
-    focused: 'Focus on highly typical, central members with clear category membership',
+    default: 'Include a mix of typical, moderately typical, and some atypical members',
+    low: 'Focus on highly typical, central members with clear category membership',
   };
 
   const diversityRequirement = {
     high: 'Include many atypical but valid members',
-    balanced: 'Include some moderately atypical members',
-    focused: 'Focus primarily on typical members',
+    default: 'Include some moderately atypical members',
+    low: 'Focus primarily on typical members',
   };
 
   const contextLine = context ? `Context: ${context}` : '';
@@ -51,11 +73,11 @@ export function buildSeedGenerationPrompt(
     .replace('{context}', contextLine)
     .replace(
       '{diversityInstructions}',
-      diversityInstructions[diversityLevel] || diversityInstructions.balanced
+      diversityInstructions[diversity] || diversityInstructions.default
     )
     .replace(
       '{diversityRequirement}',
-      diversityRequirement[diversityLevel] || diversityRequirement.balanced
+      diversityRequirement[diversity] || diversityRequirement.default
     );
 }
 
@@ -64,41 +86,38 @@ export function buildSeedGenerationPrompt(
  * Creates diverse, representative examples across the typicality spectrum.
  *
  * @param {string} categoryName - Name of the category
- * @param {Object} [options={}] - Configuration options
- * @param {string} [options.context=''] - Context for sample generation
- * @param {number} [options.count=30] - Number of sample items to generate
- * @param {string} [options.diversityLevel='balanced'] - 'high', 'balanced', or 'focused'
- * @param {string|Object} [options.llm='fastGoodCheap'] - LLM model to use
- * @param {number} [options.maxAttempts=3] - Maximum retry attempts
- * @param {number} [options.retryDelay=1000] - Delay between retries in milliseconds
+ * @param {Object} [config={}] - Configuration options
+ * @param {string} [config.context=''] - Context for sample generation
+ * @param {number} [config.count=30] - Number of sample items to generate
+ * @param {string} [config.diversity] - 'low' or 'high' (default: balanced behavior)
+ * @param {string|Object} [config.llm='fastGoodCheap'] - LLM model to use
  * @returns {Promise<string[]>}
  */
-export default async function categorySamples(categoryName, options = {}) {
+export default async function categorySamples(categoryName, config = {}) {
   if (!categoryName || typeof categoryName !== 'string') {
     throw new Error('categoryName must be a non-empty string');
   }
 
   const {
-    context = '',
-    count = 30,
-    diversityLevel = 'balanced',
-    llm = 'fastGoodCheap',
-    maxAttempts = 3,
-    retryDelay = 1000,
-    onProgress,
-    abortSignal,
-    now = new Date(),
-  } = options;
-
+    config: scopedConfig,
+    diversity,
+    count,
+  } = await initChain(
+    'category-samples',
+    { llm: 'fastGoodCheap', ...config },
+    {
+      diversity: withPolicy(mapDiversity, ['diversity', 'count']),
+    }
+  );
+  config = scopedConfig;
+  const { context = '' } = config;
   const generateWithRetry = async () => {
-    const prompt = buildSeedGenerationPrompt(categoryName, { context, diversityLevel });
+    const prompt = buildSeedGenerationPrompt(categoryName, { context, diversity });
 
     const results = await list(prompt, {
-      llm,
-      maxAttempts,
+      ...config,
       shouldStop: ({ resultsAll }) => resultsAll.length >= count,
-      onProgress: scopeProgress(onProgress, 'list:sampling'),
-      now,
+      onProgress: scopeProgress(config.onProgress, 'list:sampling'),
     });
 
     if (!results || results.length === 0) {
@@ -111,11 +130,7 @@ export default async function categorySamples(categoryName, options = {}) {
 
   return await retry(generateWithRetry, {
     label: 'category-samples',
-    maxAttempts,
-    retryDelay,
-    retryOnAll: true,
-    onProgress,
-    abortSignal,
+    config,
   });
 }
 

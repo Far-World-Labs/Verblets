@@ -1,29 +1,11 @@
-import { describe, expect as vitestExpect, it as vitestIt } from 'vitest';
+import { describe } from 'vitest';
 
 import bool from './index.js';
 import { longTestTimeout } from '../../constants/common.js';
-import vitestAiExpect from '../../chains/expect/index.js';
 
-import {
-  makeWrappedIt,
-  makeWrappedExpect,
-  makeWrappedAiExpect,
-} from '../../chains/test-analysis/test-wrappers.js';
-import { getConfig } from '../../chains/test-analysis/config.js';
+import { getTestHelpers } from '../../chains/test-analysis/test-wrappers.js';
 
-const config = getConfig();
-const suite = 'Bool verblet';
-
-const it = makeWrappedIt(vitestIt, suite, config);
-const expect = makeWrappedExpect(vitestExpect, suite, config);
-const aiExpect = makeWrappedAiExpect(vitestAiExpect, suite, config);
-
-// Higher-order function to create test-specific loggers
-const makeTestLogger = (testName) => {
-  return config?.aiMode && globalThis.logger
-    ? globalThis.logger.child({ suite, testName })
-    : undefined;
-};
+const { it, expect, aiExpect, makeLogger } = getTestHelpers('Bool verblet');
 
 const examples = [
   {
@@ -46,7 +28,7 @@ describe('Bool verblet', () => {
       `${example.inputs.text}`,
       async () => {
         const result = await bool(example.inputs.text, {
-          logger: makeTestLogger(example.inputs.text),
+          logger: makeLogger(example.inputs.text),
         });
         expect(result).toStrictEqual(example.want.result);
 
@@ -73,7 +55,7 @@ describe('Bool verblet', () => {
     `;
 
       const result = await bool(complexQuestion, {
-        logger: makeTestLogger('should handle complex contextual decisions'),
+        logger: makeLogger('should handle complex contextual decisions'),
       });
 
       // Traditional assertion

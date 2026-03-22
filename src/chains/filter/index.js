@@ -2,50 +2,75 @@ import listBatch, { ListStyle, determineStyle } from '../../verblets/list-batch/
 import { asXML } from '../../prompts/wrap-variable.js';
 import { filterDecisionsJsonSchema } from './schemas.js';
 import { createLifecycleLogger, extractBatchConfig } from '../../lib/lifecycle-logger/index.js';
-import { createBatches, retry, batchTracker } from '../../lib/index.js';
+import { prepareBatches, retry } from '../../lib/index.js';
+import { jsonSchema } from '../../lib/llm/index.js';
+import { initChain, withPolicy } from '../../lib/context/option.js';
 
-const filterResponseFormat = {
-  type: 'json_schema',
-  json_schema: filterDecisionsJsonSchema,
+// ===== Option Mappers =====
+
+const DEFAULT_STRICTNESS = { guidance: undefined, errorPosture: 'strict' };
+
+/**
+ * Map strictness option to borderline handling guidance + error posture coordination.
+ * low: include when uncertain, resilient error handling (fewer false negatives).
+ * high: exclude when uncertain, strict error handling (fewer false positives).
+ * med: explicit normal mode — default behavior.
+ * @param {string|object|undefined} value
+ * @returns {{ guidance: string|undefined, errorPosture: string }}
+ */
+export const mapStrictness = (value) => {
+  if (value === undefined) return DEFAULT_STRICTNESS;
+  if (typeof value === 'object') return value;
+  return (
+    {
+      low: {
+        guidance:
+          'When uncertain whether an item satisfies the criteria, err on the side of inclusion — return "yes". Only exclude items that clearly fail.',
+        errorPosture: 'resilient',
+      },
+      med: DEFAULT_STRICTNESS,
+      high: {
+        guidance:
+          'When uncertain whether an item satisfies the criteria, err on the side of exclusion — return "no". Only include items that clearly pass.',
+        errorPosture: 'strict',
+      },
+    }[value] ?? DEFAULT_STRICTNESS
+  );
 };
+
+const filterResponseFormat = jsonSchema(
+  filterDecisionsJsonSchema.name,
+  filterDecisionsJsonSchema.schema
+);
 
 const filter = async function filter(list, instructions, config = {}) {
   const {
-    listStyle,
-    autoModeThreshold,
-    responseFormat,
-    llm,
-    maxAttempts = 3,
-    logger,
-    onProgress,
-    abortSignal,
-    now = new Date(),
-    ...options
-  } = config;
-
-  const lifecycleLogger = createLifecycleLogger(logger, 'chain:filter');
+    config: scopedConfig,
+    guidance,
+    progressMode,
+    errorPosture,
+  } = await initChain('filter', config, {
+    strictness: withPolicy(mapStrictness, ['guidance', 'errorPosture']),
+    progressMode: 'detailed',
+  });
+  config = scopedConfig;
+  const lifecycleLogger = createLifecycleLogger(config.logger, 'chain:filter');
 
   lifecycleLogger.logStart(
     extractBatchConfig({
       totalItems: list.length,
       batchSize: config.batchSize,
-      maxAttempts,
     })
   );
 
   const results = [];
-  const batches = createBatches(list, config);
-  const activeBatches = batches.filter((b) => !b.skip);
+  const { batches, tracker } = await prepareBatches('filter', list, config, { progressMode });
 
   lifecycleLogger.logEvent('batches-created', {
     totalBatches: batches.length,
-    activeBatches: activeBatches.length,
+    activeBatches: batches.filter((b) => !b.skip).length,
     batchSizes: batches.map((b) => b.items?.length || 0),
   });
-
-  const tracker = batchTracker('filter', list.length, { onProgress, now });
-
-  tracker.start(activeBatches.length);
 
   for (const [batchIndex, { items, skip, startIndex }] of batches.entries()) {
     if (skip) {
@@ -58,12 +83,16 @@ const filter = async function filter(list, instructions, config = {}) {
       itemCount: items.length,
     });
 
-    const batchStyle = determineStyle(listStyle, items, autoModeThreshold);
+    const batchStyle = determineStyle(config.listStyle, items, config.autoModeThreshold);
 
     const filterInstructions = ({ style, count }) => {
+      const strictnessBlock = guidance
+        ? `\n\n${asXML(guidance, { tag: 'borderline-handling' })}`
+        : '';
+
       const baseInstructions = `For each item in the list below, determine if it satisfies the filtering criteria. Return "yes" to include the item or "no" to exclude it. Return exactly one decision per item, in the same order as the input list.
 
-${asXML(instructions, { tag: 'filtering-criteria' })}
+${asXML(instructions, { tag: 'filtering-criteria' })}${strictnessBlock}
 
 IMPORTANT:
 - Evaluate each item independently
@@ -84,25 +113,23 @@ Process exactly ${count} items from the XML list below and return ${count} yes/n
 
     const prompt = filterInstructions({ style: batchStyle, count: items.length });
     const listBatchOptions = {
+      ...config,
       listStyle: batchStyle,
-      autoModeThreshold,
-      responseFormat: responseFormat ?? filterResponseFormat,
-      llm,
+      responseFormat: config.responseFormat ?? filterResponseFormat,
       logger: lifecycleLogger,
-      ...options,
     };
 
     let response;
     try {
       response = await retry(() => listBatch(items, prompt, listBatchOptions), {
         label: 'filter:batch',
-        maxAttempts,
+        config,
         onProgress: tracker.forBatch(startIndex, items.length),
-        abortSignal,
       });
     } catch (error) {
       lifecycleLogger.logError(error, { batchIndex, itemCount: items.length });
-      throw error;
+      if (errorPosture === 'strict') throw error;
+      continue;
     }
 
     // listBatch now returns arrays directly

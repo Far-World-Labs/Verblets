@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import embedMultiQuery from './index.js';
+import { testPromptShapingOption } from '../../lib/test-utils/index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(),
@@ -28,30 +29,7 @@ describe('embedMultiQuery', () => {
 
     const prompt = mockLlm.mock.calls[0][0];
     expect(prompt).toContain('how do plants make food');
-    expect(prompt).toContain('3'); // default count
-    expect(prompt).toContain('diverse search queries');
-  });
-
-  it('uses items schema for auto-unwrapping', async () => {
-    mockLlm.mockResolvedValueOnce([]);
-
-    await embedMultiQuery('test query');
-
-    const callConfig = mockLlm.mock.calls[0][1];
-    const schema = callConfig.modelOptions.response_format.json_schema.schema;
-    expect(schema.properties).toHaveProperty('items');
-    expect(schema.properties.items.type).toBe('array');
-    expect(schema.properties.items.items.type).toBe('string');
-    expect(schema.required).toContain('items');
-  });
-
-  it('uses default count of 3', async () => {
-    mockLlm.mockResolvedValueOnce([]);
-
-    await embedMultiQuery('query');
-
-    const prompt = mockLlm.mock.calls[0][0];
-    expect(prompt).toContain('Generate 3 diverse');
+    expect(prompt).toMatch(/\b3\b/); // default count embedded in prompt
   });
 
   it('passes custom count to prompt', async () => {
@@ -60,25 +38,14 @@ describe('embedMultiQuery', () => {
     await embedMultiQuery('query', { count: 5 });
 
     const prompt = mockLlm.mock.calls[0][0];
-    expect(prompt).toContain('Generate 5 diverse');
+    expect(prompt).toMatch(/\b5\b/);
+    expect(prompt).not.toMatch(/\b3\b/); // default count NOT present
   });
 
-  it('passes llm config through to modelOptions', async () => {
-    mockLlm.mockResolvedValueOnce([]);
-
-    await embedMultiQuery('query', { llm: { modelName: 'test-model' } });
-
-    const callConfig = mockLlm.mock.calls[0][1];
-    expect(callConfig.llm).toEqual({ modelName: 'test-model' });
-  });
-
-  it('passes logger through to LLM call', async () => {
-    const logger = { info: vi.fn() };
-    mockLlm.mockResolvedValueOnce([]);
-
-    await embedMultiQuery('query', { logger });
-
-    const callConfig = mockLlm.mock.calls[0][1];
-    expect(callConfig.logger).toBe(logger);
+  testPromptShapingOption('divergence', {
+    invoke: (config) => embedMultiQuery('query', config),
+    setupMocks: () => mockLlm.mockResolvedValueOnce([]),
+    llmMock: mockLlm,
+    markers: { low: 'Stay close', high: 'Maximize diversity' },
   });
 });
