@@ -112,7 +112,7 @@ export class TextSimilarity {
   getChunk(id) {
     const chunk = this.chunks.get(id);
     if (!chunk) {
-      return null;
+      return undefined;
     }
 
     return {

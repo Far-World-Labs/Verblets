@@ -3,7 +3,7 @@
 Extract key themes from text using a two-pass reduce strategy. The first pass scans shuffled paragraphs to collect candidate themes, the second pass merges similar themes and optionally limits to the top N.
 
 ```javascript
-import themes from './index.js';
+import { themes } from '@far-world-labs/verblets';
 
 const news = `The storm toppled trees and damaged homes across the region.
 

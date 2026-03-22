@@ -63,7 +63,7 @@ export default async function join(
   // Create overlapping windows using the windowFor utility
   const windows = windowFor(list, windowSize, overlapPercent);
 
-  // Process each window
+  //TODO:DOCS_OBSERVATIONS windows are processed sequentially — could use parallelBatch for concurrency since windows are independent after creation
   const windowResults = [];
 
   for (const [windowIndex, window] of windows.entries()) {

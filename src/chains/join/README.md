@@ -1,67 +1,36 @@
 # join
 
-Intelligently merge text fragments using windowed processing with overlapping segments and AI-driven stitching for coherent results.
-
-This sophisticated merge system processes fragments in overlapping windows to ensure equal context exposure and seamless integration, making it ideal for combining large amounts of text while maintaining narrative flow.
-
-## Usage
+Merge text fragments into a single coherent document using windowed processing. Fragments are processed in overlapping windows so each piece gets equal context from its neighbors, then the overlapping outputs are stitched together.
 
 ```javascript
-import join from './index.js';
+import { join } from '@far-world-labs/verblets';
 
-const chapters = [
-  'Chapter 1: The hero begins their journey through the ancient forest.',
-  'Chapter 2: Strange creatures emerge from the shadows.',
-  'Chapter 3: A mysterious guide appears to help.',
-  'Chapter 4: The path leads to a hidden temple.',
-  'Chapter 5: Ancient secrets are revealed within.'
+// Reassemble a research paper from separately-summarized sections
+const sectionSummaries = [
+  'The migration patterns of Arctic terns span 44,000 miles annually...',
+  'Satellite tracking data from 2018-2023 reveals shifting stopover sites...',
+  'Climate models predict a 12% northward shift in breeding grounds...',
+  'Conservation implications center on protecting coastal staging areas...',
+  'Cross-species comparisons show terns are the earliest adapters...'
 ];
 
-const story = await join(chapters, 'Merge these chapters into a flowing narrative');
-
-// Returns: A coherent story that seamlessly blends all chapters with proper transitions
+const paper = await join(
+  sectionSummaries,
+  'Weave these section summaries into a single flowing research overview'
+);
 ```
-
-## Features
-
-- **Windowed Processing**: Processes fragments in overlapping windows to ensure equal context exposure
-- **Intelligent Stitching**: AI-driven overlap resolution preserves terminal sections while seamlessly merging overlapping regions
-- **Configurable Overlap**: Adjustable window size and overlap percentage for different content types
 
 ## API
 
 ### `join(fragments, prompt, config)`
 
-**Parameters:**
-- `fragments` (Array): Text fragments to merge together
-- `prompt` (string): Instructions for how to merge the fragments
-- `config` (Object): Configuration options
-  - `fidelity` (`'low'`|`'high'`|Object): Coordinates window size and overlap. `'low'` uses larger windows with less overlap (10/25%). `'high'` uses smaller windows with more overlap (3/67%). Default: 5 windows, 50% overlap
-  - `styleHint` (string): Optional additional style guidance
-  - `maxAttempts` (number): Maximum retry attempts (default: 3)
-  - `llm` (string|Object): LLM model options
-  - `onProgress` (Function): Progress callback
-  - `abortSignal` (AbortSignal): Signal to cancel the operation
+- **fragments** (Array): Text fragments to merge
+- **prompt** (string): Instructions for how to merge (controls style, format, level of synthesis)
+- **config.fidelity** (`'low'`|`'med'`|`'high'`|Object): Coordinates window size and overlap. `'low'` uses larger windows with less overlap (windowSize 10, 25% overlap) for fewer LLM calls. `'med'` (default) balances both (windowSize 5, 50% overlap). `'high'` uses smaller windows with more overlap (windowSize 3, 67%) for smoother transitions. Pass an object `{ windowSize, overlapPercent }` for fine-grained control.
+- **config.styleHint** (string): Additional style guidance appended to the prompt
+- **config.maxAttempts** (number): Maximum retry attempts (default: 3)
+- **config.llm** (string|Object): LLM model configuration
+- **config.onProgress** (function): Progress callback
+- **config.abortSignal** (AbortSignal): Signal to cancel the operation
 
-**Returns:** Promise<string> - Single merged result
-
-## Use Cases
-
-### Document Synthesis
-```javascript
-import join from './index.js';
-
-const sections = [
-  'Executive Summary: Our Q3 results show strong growth.',
-  'Financial Performance: Revenue increased 15% year-over-year.',
-  'Market Analysis: Competition remains fierce in key segments.',
-  'Strategic Outlook: We plan to expand into new markets.',
-  'Risk Assessment: Economic uncertainty poses challenges.'
-];
-
-const report = await join(sections, 'Create a comprehensive executive report', {
-  windowSize: 3,
-  overlapPercent: 40,
-  styleHint: 'Professional business tone'
-});
-```
+**Returns:** `Promise<string>` — Single merged result

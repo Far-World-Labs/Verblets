@@ -1,4 +1,4 @@
-# Logger Service
+# logger-service
 
 A centralized logging service that provides consistent logging across the entire library.
 

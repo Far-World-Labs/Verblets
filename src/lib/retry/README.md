@@ -5,7 +5,7 @@ Executes functions with automatic retry logic for transient failures (429 rate l
 ## Usage
 
 ```javascript
-import retry from './index.js';
+import { retry } from '@far-world-labs/verblets';
 
 // Basic retry with default settings
 const result = await retry(async () => {

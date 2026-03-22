@@ -15,7 +15,7 @@ Chains are AI-powered workflows that handle complex, multi-step processes. They 
 | **Input** | Individual items or simple data | Arrays, batches, complex datasets |
 | **Processing** | Direct LLM calls | Batch processing, retry logic, progress tracking |
 | **State** | Stateless operations | Stateful workflows with coordination |
-| **Examples** | `sentiment()`, `classify()` | `aiArchExpect()`, `bulkAnalysis()` |
+| **Examples** | `sentiment()`, `classify()` | `aiArchExpect()`, `documentShrink()` |
 
 ## Module Structure
 
@@ -34,7 +34,7 @@ Each chain directory contains:
 
 ## Config System
 
-Every chain participates in the config resolution system via `initChain`:
+Every chain resolves options through `initChain` and passes `config` directly to `callLlm`, `retry`, and sub-chains. See [option resolution](../../docs/option-resolution.md) for the full API (`initChain`, `getOption`, `withPolicy`, mappers, override keys).
 
 ```javascript
 import callLlm from '../../lib/llm/index.js';
@@ -55,29 +55,12 @@ export default async function myChain(items, inputConfig = {}) {
     effort: withPolicy(mapEffort, ['iterations', 'extremeK']),
   });
 
-  // Use resolved values; pass config to callLlm and retry
-  const result = await retry(
+  return retry(
     () => callLlm(prompt, config),
     { label: 'my-chain', config }
   );
-
-  return result;
 }
 ```
-
-### Key principles
-
-- **`initChain(name, config, spec)`** combines `scopeOperation` + `getOptions` in one call. Returns `{ config, ...resolvedOptions }`.
-- **`withPolicy` override keys** flatten sub-properties into the result. `withPolicy(mapEffort, ['iterations', 'extremeK'])` makes each sub-key individually overridable by the consumer.
-- **Config flows through directly** — pass `config` to `callLlm`, `retry`, and sub-chain calls. No need to extract and re-pass `llm`, `onProgress`, `abortSignal`, or retry params.
-- **`callLlm` resolves `llm` from config** — chains with non-standard model defaults set them in `initChain`: `initChain('name', { llm: 'fastGoodCheap', ...inputConfig }, spec)`.
-- **`retry` is config-aware** — resolves `maxAttempts`, `retryDelay`, `retryOnAll` from config via `getOption`. Pass `{ label, config }` instead of explicit retry params.
-
-### Model Configuration
-
-- **Use capability-based selection** — pass `llm` as a string shorthand (`'fastGoodCheap'`), capability object (`{ fast: true, good: 'prefer' }`), or full config (`{ modelName: 'model-key' }`)
-- Set model defaults on `scopeOperation`, not as destructured fallbacks
-- Only specify non-default model keys when specific capabilities are needed (e.g., `{ sensitive: true }`)
 
 ### Prompt Engineering Best Practices
 
@@ -103,89 +86,15 @@ ${onlyJSON}`;
 
 ### Batch Processing with Progress Tracking
 
-Use `prepareBatches` to combine batching, progress tracking, and config resolution:
+The standard pattern uses `prepareBatches` + `parallelBatch` + `batchTracker`. See [batching](../../docs/batching.md) for the full pattern with auto-sizing and code example, and [progress tracking](../../docs/progress-tracking.md) for the event lifecycle, `scopeProgress`, and `filterProgress`.
 
-```javascript
-import { prepareBatches } from '../../lib/progress-callback/index.js';
-import parallel from '../../lib/parallel-batch/index.js';
+### Failure Handling
 
-export default async function myChain(items, inputConfig = {}) {
-  const { config, progressMode } = await initChain('my-chain', inputConfig, {
-    progressMode: 'batch',
-  });
-
-  const { batches, tracker } = await prepareBatches('my-chain', items, config, { progressMode });
-  const results = await parallel(batches, async (batch) => {
-    const result = await retry(
-      () => callLlm(buildPrompt(batch.items), config),
-      { label: 'my-chain:batch', config }
-    );
-    tracker.batchDone(batch.items.length);
-    return result;
-  }, { maxParallel: config.maxParallel ?? 3 });
-
-  tracker.complete();
-  return results.flat();
-}
-```
-
-`prepareBatches` handles `createBatches` + `batchTracker` + `start` in one call. The tracker manages counters and emits progress events to `config.onProgress`.
-
-### Scoping Progress for Nested Chains
-
-When a chain passes `onProgress` to a nested chain call, use `scopeProgress` to tag events with a `phase` field so consumers can distinguish parent events from nested events:
-
-```javascript
-import { scopeProgress } from '../../lib/progress-callback/index.js';
-
-// Phase format: chainName:purpose
-const results = await reduce(items, prompt, {
-  ...config,
-  onProgress: scopeProgress(config.onProgress, 'reduce:category-discovery'),
-});
-```
-
-Phases compose recursively with `/` when scoped chains are themselves wrapped by an outer scope:
-
-```js
-// Consumer sees: { step: 'reduce', phase: 'group:workflow/reduce:category-discovery', ... }
-```
-
-Phase naming convention is `chainName:purpose` — the chain being called plus a short description of its role. This speciates when the same chain is called multiple times (e.g. `reduce:extraction` vs `reduce:refinement`).
-
-### Failure Handling Strategies
-
-Chains need sophisticated error recovery:
-
-```javascript
-async function processWithFailureHandling(items, inputConfig = {}) {
-  const { config, errorPosture } = await initChain('my-chain', inputConfig, {
-    strictness: withPolicy(mapStrictness, ['errorPosture']),
-  });
-
-  const results = [];
-  for (const item of items) {
-    try {
-      const result = await retry(
-        () => callLlm(buildPrompt(item), config),
-        { label: 'my-chain:item', config }
-      );
-      results.push(result);
-    } catch (error) {
-      if (errorPosture === 'strict') throw error;
-      results.push(undefined);
-    }
-  }
-
-  return results;
-}
-```
+Retry is config-aware — see [retry](../../docs/retry.md) for the full API. Chains that need per-item error control resolve an error posture through their option mapper (e.g., `strictness: withPolicy(mapStrictness, ['errorPosture'])`). `'strict'` re-throws on failure; `'resilient'` pushes `undefined` and continues. `parallelBatch` also supports `errorPosture` directly.
 
 ## Chain-Specific Schema Patterns
 
-### Bulk Processing Schemas
-
-Chains often need schemas that handle arrays of results:
+For schema design fundamentals, see [JSON Schema Guidelines](../../guidelines/JSON_SCHEMAS.md). Chains commonly need bulk processing schemas that handle arrays of results:
 
 ```javascript
 const bulkSchema = {
@@ -227,76 +136,25 @@ export default async function chainName(items, config = {}) {
 }
 ```
 
-## Common Chain Types
+## Adding a New Chain
 
-- **Analysis Chains**: Multi-step analysis workflows (`aiArchExpect`, `centralTendency`)
-- **Transformation Chains**: Bulk data transformation with validation
-- **Orchestration Chains**: Coordinate multiple verblets or external services
-- **Aggregation Chains**: Collect and summarize results from multiple sources
+1. Add the export to `src/shared.js`
+2. Add a line to the root `README.md` and `src/chains/README.md`
+3. Follow the module structure above (`index.js`, `index.spec.js`, `index.examples.js`, `README.md`)
 
-## Integration Requirements
+## Testing Patterns
 
-### Adding New Chains
-1. Add entry to `src/index.js` exports
-2. Add entry to main `README.md` under appropriate category
-3. Follow the established export pattern for both named and verblets exports
+**Unit tests** (`index.spec.js`): mock LLM calls; cover option mapper behavior (structural contracts, not exact values), config forwarding to callLlm and retry, failure handling, and progress callbacks.
 
-### Testing Integration
-- Import as: `import expect from '../expect/index.js';`
-- Use pattern: `await expect(actual).toSatisfy(constraint)`
+**Integration tests** (`index.examples.js`): real LLM calls; validate end-to-end workflows with realistic data. See [example test conventions](../../docs/example-test-conventions.md) for budget tiers and skip tagging.
 
-## Chain-Specific Documentation Requirements
+## Documentation
 
-**README Always Required For:**
-- Batch processing strategies and configuration
-- Progress tracking and callback patterns
-- Complex failure handling logic
-- Multi-step workflows with dependencies
-- Performance considerations for large datasets
-- Avoid generic feature lists (bulk processing, retries, etc.)
-
-**README Structure:**
-```markdown
-# Chain Name
-
-Brief description of the multi-step workflow.
-
-## Usage
-
-\`\`\`javascript
-import { chainName } from '@far-world-labs/verblets';
-
-const results = await chainName(items, {
-  effort: 'high',
-  onProgress: (event) => console.log(`${event.step} ${event.event}`),
-});
-\`\`\`
-
-## Options
-- `effort` - `'low'` | `'high'` — controls iterations and precision
-- `onProgress` - Progress callback
-
-## Performance Notes
-[Guidance on batch sizes, concurrency, memory usage]
-```
-
-## Chain-Specific Testing Patterns
-
-**Unit Tests should cover:**
-- Option mapper behavior (structural contracts, not exact values)
-- Config forwarding to callLlm and retry
-- Failure handling and recovery scenarios
-- Progress tracking and callback functionality
-
-**Integration Tests should validate:**
-- End-to-end workflows with real data
-- Performance characteristics with various dataset sizes
+README structure and quality standards are in [DOCUMENTATION.md](../../guidelines/DOCUMENTATION.md). Key chain-specific points: avoid generic feature lists (bulk processing, retries), show the dial options the chain accepts, include realistic examples that demonstrate AI capabilities.
 
 ## Anti-Patterns
 
-- Destructuring config params and re-passing them individually — pass config directly
-- Resolving retry params (`maxAttempts`, `retryDelay`, `retryOnAll`) in chains — retry resolves them from config
-- Extracting `llm` from config to re-pass to callLlm — callLlm resolves it from config
-- Hard-coded processing strategies without configuration options
-- Poor error messages that don't indicate which items failed
+- Destructuring config params and re-passing them individually — pass config directly (see [option resolution](../../docs/option-resolution.md))
+- Resolving retry or llm params in chains — retry and callLlm resolve them from config (see [retry](../../docs/retry.md))
+- Hard-coded processing strategies without dial options
 - Missing progress feedback for long-running operations

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import categorySamples, { buildSeedGenerationPrompt, categorySamplesList } from './index.js';
+import categorySamples, { buildSeedGenerationPrompt } from './index.js';
 import list from '../list/index.js';
 import retry from '../../lib/retry/index.js';
 
@@ -109,17 +109,5 @@ describe('buildSeedGenerationPrompt', () => {
     const unknownPrompt = buildSeedGenerationPrompt('foods', { diversity: 'unknown' });
 
     expect(unknownPrompt).toBe(defaultPrompt);
-  });
-});
-
-describe('categorySamplesList', () => {
-  it('delegates to list chain, ignoring count parameter', async () => {
-    const expected = ['a', 'b', 'c'];
-    list.mockResolvedValueOnce(expected);
-
-    const result = await categorySamplesList('test category', 999, { llm: 'test' });
-
-    expect(list).toHaveBeenCalledWith('test category', { llm: 'test' });
-    expect(result).toStrictEqual(expected);
   });
 });

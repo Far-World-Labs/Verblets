@@ -3,7 +3,7 @@
 Generate additional items that naturally extend a given list by inferring the pattern.
 
 ```javascript
-import listExpand from '@anthropic/verblets/verblets/list-expand';
+import { listExpand } from '@far-world-labs/verblets';
 
 // The AI infers "wellness activities for seniors" from just two examples
 const activities = ['gentle morning yoga', 'water aerobics'];

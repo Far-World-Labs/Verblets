@@ -4,7 +4,7 @@
 // Primitives
 export { default as bool } from './verblets/bool/index.js';
 export { default as date } from './chains/date/index.js';
-export { default as enums } from './verblets/enum/index.js';
+export { default as classify } from './verblets/enum/index.js';
 export { default as number } from './verblets/number/index.js';
 export { default as numberWithUnits } from './verblets/number-with-units/index.js';
 
@@ -104,16 +104,13 @@ export {
   groupInstructions as tagsGroupInstructions,
 } from './chains/tags/index.js';
 
-// Features
-export { default as extractFeatures } from './chains/extract-features/index.js';
-
 export {
   default as categorySamples,
   buildSeedGenerationPrompt,
 } from './chains/category-samples/index.js';
 export { default as collectTerms } from './chains/collect-terms/index.js';
 export { default as commonalities } from './verblets/commonalities/index.js';
-export { default as conversation } from './chains/conversation/index.js';
+export { default as Conversation } from './chains/conversation/index.js';
 export { default as conversationTurnReduce } from './chains/conversation-turn-reduce/index.js';
 export { default as disambiguate, getMeanings } from './chains/disambiguate/index.js';
 export {
@@ -144,9 +141,9 @@ export {
   groupInstructions as relationsGroupInstructions,
 } from './chains/relations/index.js';
 export { default as schemaOrg } from './verblets/schema-org/index.js';
-export { default as socratic } from './chains/socratic/index.js';
+export { default as SocraticMethod, socratic } from './chains/socratic/index.js';
 export { default as split } from './chains/split/index.js';
-export { default as summaryMap } from './chains/summary-map/index.js';
+export { default as SummaryMap } from './chains/summary-map/index.js';
 export { default as tagVocabulary, computeTagStatistics } from './chains/tag-vocabulary/index.js';
 export { default as themes } from './chains/themes/index.js';
 export { default as timeline } from './chains/timeline/index.js';
@@ -163,7 +160,7 @@ export {
 // Utility Operations
 export { default as auto } from './verblets/auto/index.js';
 export { default as expect } from './verblets/expect/index.js';
-export { default as expectChain } from './chains/expect/index.js';
+export { default as aiExpect } from './chains/expect/index.js';
 export { default as intent } from './verblets/intent/index.js';
 export { default as llmLogger } from './chains/llm-logger/index.js';
 export { default as makePrompt } from './verblets/phail-forge/index.js'; // Alias for phailForge

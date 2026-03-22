@@ -1,90 +1,55 @@
 # Verblets
 
-Verblets are simple, focused utilities that perform specific tasks. They are the building blocks of the Verblets library.
+Verblets are single-purpose AI functions. Each makes at most one LLM call, has no retry logic, and returns a constrained output. They are the building blocks that [chains](../chains/) orchestrate into workflows. For implementation patterns, see [DESIGN.md](./DESIGN.md).
 
-## What are Verblets?
+## Configuration
 
-Verblets are small, single-purpose functions that:
-
-- Perform one specific task well. A verblet should invoke the llm module or an AI no more than once.
-- Should be fast to respond. Large-context verblets should be treated as a chain.
-- Should not retry and should have minimal processing logic.
-- Have clear, predictable inputs and outputs
-- Can be easily composed together
-- Are lightweight and fast
-
-## Categories
-
-- **Data Processing**: Transform and manipulate data
-- **Text Analysis**: Analyze and process text content
-- **Validation**: Check and validate data formats
-- **Utilities**: Common helper functions
-
-## Design Principles
-
-- **Single Responsibility**: Each verblet does one thing well
-- **Composability**: Verblets can be combined to create complex workflows
-- **Predictability**: Outputs are constrained to well behaved datatypes and practical value ranges
-
-## Usage
-
-Verblets are typically used as building blocks in chains or as standalone utilities in your applications.
-
-## Model Configuration
-
-All verblets support standard model configuration options:
+All verblets accept a config object with model selection and tuning:
 
 ```javascript
-const result = await verbletName(input, prompt, {
-  llm: 'fastGoodCheap', // Model selection (string shorthand, capability object, or { modelName })
-  temperature: 0.7, // Response randomness (0.0-1.0)
-  maxTokens: 500, // Maximum response length
-  topP: 0.9, // Nucleus sampling parameter
-  frequencyPenalty: 0.0, // Reduce repetition
-  presencePenalty: 0.0, // Encourage topic diversity
+const result = await verbletName(input, {
+  llm: { fast: true, cheap: true },  // capability-based model selection
+  temperature: 0.7,                    // response randomness
+  maxTokens: 500,                      // maximum response length
 });
 ```
 
-### Model Selection Strategies
+Model selection works the same way as chains — string shorthand, capability object, or full config. See [chains/README.md](../chains/README.md#configuration) for the full reference.
 
-```javascript
-// Privacy-first for sensitive data
-{ llm: { sensitive: true } }
+## Primitives
 
-// Optimized for bulk operations
-{ llm: { fast: true, cheap: true } }
+Extract basic data types from natural language with high reliability.
 
-// Quality-critical operations
-{ llm: { good: true } }
+- [bool](./bool) — Interpret yes/no, true/false, and conditional statements
+- [classify](./enum) — Classify free-form input into one of several predefined options
+- [number](./number) — Convert text to a single number
+- [number-with-units](./number-with-units) — Parse measurements and convert between unit systems
+- [sentiment](./sentiment) — Classify text as positive, negative, or neutral
 
-// Default balanced approach (recommended for most verblets)
-{ llm: 'fastGoodCheap' }
-```
+## Content
 
-The `verblets` directory contains individual utilities that wrap specific language-model workflows. Each verblet exports a single function and usually includes its own examples, tests and optional JSON schema.
+- [commonalities](./commonalities) — Identify what items share conceptually
+- [fill-missing](./fill-missing) — Predict content for redacted or corrupted sections
+- [list-batch](./list-batch) — Batched list operations with XML/newline auto-detection
+- [list-expand](./list-expand) — Expand lists with similar items
+- [name](./name) — Parse names handling titles, suffixes, and cultural variations
+- [name-similar-to](./name-similar-to) — Generate names following example patterns
+- [central-tendency-lines](./central-tendency-lines) — Evaluate how central an item is to a category
+- [schema-org](./schema-org) — Convert unstructured data to schema.org JSON-LD format
 
-Available verblets:
+## Retrieval (RAG Query Rewriting)
 
-- [auto](./auto) - automatic structured output from prompts
-- [bool](./bool) - extract boolean answers
-- [central-tendency-lines](./central-tendency-lines) - evaluate item centrality in a category
-- [commonalities](./commonalities) - find shared traits across items
-- [enum](./enum) - classify into predefined categories
-- [expect](./expect) - LLM-powered assertions for testing
-- [fill-missing](./fill-missing) - infer missing values in structured data
-- [intent](./intent) - detect user intent from text
-- [list-batch](./list-batch) - generic batched list operations with XML/newline auto-detection
-- [list-expand](./list-expand) - expand lists with similar items
-- [name](./name) - generate names from descriptions
-- [name-similar-to](./name-similar-to) - suggest names matching a style
-- [number](./number) - extract numeric values
-- [number-with-units](./number-with-units) - extract numbers with units
-- [phail-forge](./phail-forge) - enhance prompts to expert level
-- [schema-org](./schema-org) - classify with Schema.org types
-- [sentiment](./sentiment) - classify text sentiment
-- [embed-multi-query](./embed-multi-query) - generate diverse query variants
-- [embed-rewrite-query](./embed-rewrite-query) - rewrite search queries for clarity
-- [embed-step-back](./embed-step-back) - broaden queries to underlying concepts
-- [embed-subquestions](./embed-subquestions) - split complex queries into sub-questions
+Transform queries for search and retrieval-augmented generation. All accept a `divergence` option controlling variant diversity.
 
-Use these modules directly or compose them inside [chains](../chains/README.md).
+- [embed-rewrite-query](./embed-rewrite-query) — Rewrite queries for clarity and specificity
+- [embed-multi-query](./embed-multi-query) — Generate diverse query variants
+- [embed-step-back](./embed-step-back) — Broaden queries to underlying concepts
+- [embed-subquestions](./embed-subquestions) — Split complex queries into atomic sub-questions
+- [embed-rewrite-to-output-doc](./embed-rewrite-to-output-doc) — Rewrite a query as if it were the answer document
+
+## Utilities
+
+- [auto](./auto) — Match task descriptions to available tools using function calling
+- [expect](./expect) — Jest-style AI assertions: `expect(actual).toEqual(expected)`
+- [intent](./intent) — Extract action and parameters from natural language commands
+- [phail-forge](./phail-forge) — Transform simple prompts into expert-level prompts

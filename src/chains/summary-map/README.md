@@ -6,7 +6,7 @@ SummaryMap is a hash table with auto-resizing values that resize upon serializat
 
 ### Basic Token Management
 ```javascript
-import SummaryMap from './src/chains/summary-map/index.js';
+import { SummaryMap } from '@far-world-labs/verblets';
 
 // Create a summary map with token budget
 const summaryMap = new SummaryMap({ targetTokens: 100 });

@@ -3,7 +3,7 @@
 Split a complex query into atomic sub-questions. Each sub-question targets a single piece of information needed to fully answer the original query.
 
 ```javascript
-import embedSubquestions from '@verblets/verblets/embed-subquestions';
+import { embedSubquestions } from '@far-world-labs/verblets';
 
 const parts = await embedSubquestions(
   'Is Tokyo more affordable than London for the average resident?'

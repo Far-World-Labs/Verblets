@@ -5,7 +5,7 @@ Resolve ambiguous terms by finding all possible meanings and scoring them agains
 ## Usage
 
 ```javascript
-import disambiguate from './index.js';
+import { disambiguate } from '@far-world-labs/verblets';
 
 const result = await disambiguate({
   term: 'bank',

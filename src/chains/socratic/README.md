@@ -1,72 +1,41 @@
 # socratic
 
-Generate thought-provoking questions using the Socratic method to encourage deeper thinking and self-discovery through intelligent questioning.
-
-## Usage
+Generate a dialogue that explores a topic through the Socratic method — alternating questions and answers that progressively move from surface-level inquiry toward underlying assumptions.
 
 ```javascript
-import socratic from './index.js';
+import { socratic } from '@far-world-labs/verblets';
 
-const topic = "Should social media platforms be regulated?";
-const method = await socratic(topic, { challenge: 'high' });
-const questions = await method.run(3);
-
-// Returns: [
-//   "What fundamental rights might be at stake when regulating social media?",
-//   "How do we balance free speech with preventing harm?",
-//   "Who should have the authority to determine what content is acceptable?",
-//   "What are the potential consequences of both regulation and non-regulation?",
-//   "How might different stakeholders be affected by these decisions?"
+const method = await socratic('Should social media platforms be regulated?', {
+  challenge: 'high',
+});
+const dialogue = await method.run(3);
+// [
+//   { question: 'What fundamental rights conflict when platforms moderate content?',
+//     answer: 'Freedom of expression and protection from harm...' },
+//   { question: 'Who decides what constitutes "harm" — and by whose standard?',
+//     answer: 'Currently platforms themselves, which raises questions about...' },
+//   { question: 'If we distrust both platforms and governments to moderate fairly, what alternative remains?',
+//     answer: 'Some propose community-based moderation or transparency requirements...' },
 // ]
 ```
 
+Each round builds on the previous dialogue. At `challenge: 'high'`, the questions confront the weakest point in the reasoning; at `'low'`, they gently guide toward insight.
+
 ## API
 
-### `socratic(statement, config)` / `SocraticMethod.create(statement, config)`
+### `socratic(statement, config?)` / `SocraticMethod.create(statement, config?)`
 
-**Parameters:**
-- `statement` (string): Subject or statement to explore
-- `config` (Object): Configuration options
-  - `challenge` (`'low'`|`'high'`): Controls dialogue intensity. `'low'` uses gentle hints with lower temperature (0.3). `'high'` uses provocative confrontation with higher temperature (0.9). Default: moderate challenge
-  - `llm` (string|Object): LLM model configuration
+Both return `Promise<SocraticMethod>`. The `socratic` function is a convenience wrapper around `SocraticMethod.create`.
 
-**Returns:** Promise<SocraticMethod> - Socratic dialogue instance. Call `.run(depth)` to generate questions (default depth: 3)
+- **statement** (string): Topic or claim to explore
+- **config.challenge** (`'low'`|`'med'`|`'high'`): Dialogue intensity. `'low'` uses gentle hints with temperature 0.3. `'high'` uses provocative confrontation with temperature 0.9. Default: exploratory, temperature 0.7.
+- **config.ask** (function): Custom question generator — receives `{ topic, history, llm, temperature, challenge, config }`
+- **config.answer** (function): Custom answer generator — receives `{ question, history, topic, llm, temperature, config }`
+- **config.llm** (string|Object): LLM configuration
+- **config.onProgress** (function): Progress callback (emits step events for each turn)
 
-## Features
+### Instance methods
 
-- **Progressive Questioning**: Builds from basic to complex inquiries
-- **Multiple Perspectives**: Explores different viewpoints and assumptions
-- **Critical Thinking**: Encourages examination of beliefs and reasoning
-- **Flexible Focus**: Targets specific aspects or themes
-- **Adaptive Depth**: Configurable levels of inquiry
-
-## Use Cases
-
-### Educational Discussion
-```javascript
-import socratic from './index.js';
-
-const concept = "Democracy is the best form of government";
-const method = await socratic(concept, { challenge: 'high' });
-const questions = await method.run(2);
-
-// Returns questions that challenge students to think critically about democracy
-```
-
-### Problem-Solving Sessions
-```javascript
-const problem = "Our team productivity has decreased";
-const method = await socratic(problem, { challenge: 'low' });
-const questions = await method.run(5);
-
-// Returns questions to help teams discover underlying issues
-```
-
-### Self-Reflection Prompts
-```javascript
-const statement = "I want to change careers";
-const method = await socratic(statement);
-const questions = await method.run(4);
-
-// Returns questions for personal reflection and decision-making
-```
+- **`run(depth?)`** — Run `depth` rounds (default: 3). Returns the full dialogue history as `Array<{ question, answer }>`.
+- **`step()`** — Run a single question-answer round. Returns the turn `{ question, answer }`.
+- **`getDialogue()`** — Return the accumulated dialogue history so far.

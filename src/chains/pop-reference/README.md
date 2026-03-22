@@ -5,7 +5,7 @@ Find pop culture references that metaphorically capture the meaning of a sentenc
 ## Example
 
 ```javascript
-import popReference from './index.js';
+import { popReference } from '@far-world-labs/verblets';
 
 const refs = await popReference(
   "Everything was falling apart but they kept pretending it was fine",

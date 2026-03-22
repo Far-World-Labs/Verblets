@@ -5,7 +5,7 @@ Extract and normalize numeric values with their units from text using AI-powered
 ## Usage
 
 ```javascript
-import numberWithUnits from './index.js';
+import { numberWithUnits } from '@far-world-labs/verblets';
 
 const measurements = await numberWithUnits('The package weighs 2.5 kg and measures 30cm x 15cm');
 // Returns: [
@@ -35,16 +35,12 @@ const measurements = await numberWithUnits('The package weighs 2.5 kg and measur
 }
 ```
 
-## Use Cases
+Handles mixed formats and informal notation:
 
-### Recipe Parsing
 ```javascript
-const ingredients = await numberWithUnits('Add 2 cups flour, 250ml milk, and 1 tsp vanilla');
-// Returns normalized measurements for recipe scaling
-```
+await numberWithUnits('Add 2 cups flour, 250ml milk, and 1 tsp vanilla');
+// => [{ value: 2, unit: 'cups', original: '2 cups' }, { value: 250, unit: 'ml', original: '250ml' }, ...]
 
-### Technical Specifications
-```javascript
-const specs = await numberWithUnits('CPU: 3.2 GHz, RAM: 16 GB, Storage: 1 TB SSD');
-// Returns structured hardware specifications
+await numberWithUnits('CPU: 3.2 GHz, RAM: 16 GB, Storage: 1 TB SSD');
+// => [{ value: 3.2, unit: 'GHz', original: '3.2 GHz' }, { value: 16, unit: 'GB', original: '16 GB' }, ...]
 ```

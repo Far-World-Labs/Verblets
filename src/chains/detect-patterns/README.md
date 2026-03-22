@@ -5,7 +5,7 @@ Find recurring patterns in object collections. Automatically identifies common s
 ## Usage
 
 ```javascript
-import detectPatterns from './detect-patterns/index.js';
+import { detectPatterns } from '@far-world-labs/verblets';
 
 const patterns = await detectPatterns(objects, {
   topN: 3,           // Return top 3 patterns

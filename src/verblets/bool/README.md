@@ -5,7 +5,7 @@ The verblet uses an LLM to reason about the provided text and responds with
 `true` or `false`.
 
 ```javascript
-import bool from './index.js';
+import { bool } from '@far-world-labs/verblets';
 
 const result = await bool('Does Mace Windu have a purple lightsaber?');
 // result === true

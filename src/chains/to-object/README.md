@@ -3,7 +3,7 @@
 Repair malformed JSON from LLM responses and optionally validate against a JSON Schema.
 
 ```javascript
-import toObject from '@anthropic/verblets/chains/to-object';
+import { toObject } from '@far-world-labs/verblets';
 
 // LLM returned broken JSON with trailing comma and unquoted key
 const broken = '{ name: "Alice", scores: [95, 87, 92,], }';

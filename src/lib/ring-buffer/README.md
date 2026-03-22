@@ -1,121 +1,50 @@
 # ring-buffer
 
-Efficient circular buffer implementation for managing fixed-size collections with automatic overflow handling and memory optimization.
-
-## Usage
+Single-writer, multiple-reader async ring buffer with backpressure. Uses a double-buffer technique to eliminate wraparound logic — readers get contiguous slices without copying.
 
 ```javascript
-import RingBuffer from './index.js';
+import { ringBuffer as RingBuffer } from '@far-world-labs/verblets';
 
-const buffer = new RingBuffer(3);
+const buf = new RingBuffer(1000);
+const reader = buf.reader();
 
-buffer.push('first');
-buffer.push('second');
-buffer.push('third');
-buffer.push('fourth');  // Overwrites 'first'
+await buf.write('hello');
+await buf.write('world');
 
-console.log(buffer.toArray());  // ['second', 'third', 'fourth']
-console.log(buffer.size);       // 3
-console.log(buffer.length);     // 3
+const messages = await reader.take(2);   // => ['hello', 'world']
+console.log(reader.lag());               // => 0
 ```
 
 ## API
 
-### Constructor
+### `new RingBuffer(maxSize = 1000)`
 
-#### `new RingBuffer(capacity)`
+Creates a buffer that holds up to `maxSize` items. Writes block (or throw in sync mode) when any reader is `maxSize` messages behind.
 
-**Parameters:**
-- `capacity` (number): Maximum number of items the buffer can hold
+### Writer
 
-### Methods
+- **`write(data, options?)`** — async write; blocks if a reader would overflow. Pass `{ force: true }` to skip the overflow check.
+- **`writeSync(data, options?)`** — synchronous write; throws on overflow instead of blocking.
 
-#### `push(item)`
-Add an item to the buffer. If at capacity, overwrites the oldest item.
+### `buf.reader(startOffset?)`
 
-#### `pop()`
-Remove and return the most recently added item.
+Creates a `Reader` positioned at `startOffset` (defaults to the next unread message).
 
-#### `peek()`
-Return the most recently added item without removing it.
+**Reader methods:**
 
-#### `get(index)`
-Get item at specific index (0 = oldest, capacity-1 = newest).
+- **`take(count)`** — non-blocking; returns up to `count` available messages immediately.
+- **`takeOrWait(count, timeout)`** — blocks until `count` messages are available or `timeout` ms elapse, returning a partial batch on timeout.
+- **`read(count, options?)`** — like `take` but returns `{ data, startOffset, lastOffset }` for offset tracking.
+- **`lag()`** — how many unread messages this reader is behind.
+- **`ack(newOffset)`** — advance position without consuming (manual offset management).
+- **`lookback(n, fromOffset?)`** — peek at `n` recent messages without consuming.
+- **`fork(offset?)`** — create a new reader starting from this reader's position (or a specific offset).
+- **`pause()` / `unpause()`** — pausing a reader blocks the writer when that reader would overflow; unpause releases blocked writes.
+- **`close()`** — remove this reader from the buffer.
 
-#### `toArray()`
-Return all items as an array in insertion order.
+### Buffer utilities
 
-#### `clear()`
-Remove all items from the buffer.
-
-#### `isFull()`
-Check if buffer is at maximum capacity.
-
-#### `isEmpty()`
-Check if buffer contains no items.
-
-### Properties
-
-#### `size`
-Current number of items in the buffer.
-
-#### `length`
-Alias for `size` property.
-
-#### `capacity`
-Maximum number of items the buffer can hold.
-
-## Features
-
-- **Memory Efficient**: Fixed memory allocation regardless of usage patterns
-- **Automatic Overflow**: Seamlessly handles capacity overflow by overwriting oldest items
-- **Array-like Interface**: Familiar methods and properties for easy adoption
-- **Performance Optimized**: O(1) operations for push, pop, and peek
-- **Flexible Access**: Support for both LIFO and indexed access patterns
-
-## Use Cases
-
-### Recent Items Tracking
-```javascript
-import RingBuffer from './index.js';
-
-const recentFiles = new RingBuffer(10);
-
-function openFile(filename) {
-  recentFiles.push(filename);
-  updateRecentFilesMenu(recentFiles.toArray());
-}
-```
-
-### Performance Monitoring
-```javascript
-const responseTimeBuffer = new RingBuffer(100);
-
-function recordResponseTime(time) {
-  responseTimeBuffer.push(time);
-  
-  if (responseTimeBuffer.isFull()) {
-    const average = responseTimeBuffer.toArray()
-      .reduce((sum, time) => sum + time, 0) / responseTimeBuffer.size;
-    console.log(`Average response time: ${average}ms`);
-  }
-}
-```
-
-### Log Management
-```javascript
-const logBuffer = new RingBuffer(1000);
-
-function log(message) {
-  logBuffer.push({
-    timestamp: Date.now(),
-    message: message
-  });
-}
-
-function getRecentLogs(count = 50) {
-  const logs = logBuffer.toArray();
-  return logs.slice(-count);
-}
-```
-
+- **`lookback(n, fromOffset?)`** — buffer-level lookback (not tied to a reader).
+- **`stats()`** — returns `{ maxSize, writeIndex, sequence, readers, waitingReads, waitingWriters }`.
+- **`latest()`** — sequence number of the most recent write.
+- **`clear()`** — resets all state, resolves waiting reads with empty results, rejects waiting writes.

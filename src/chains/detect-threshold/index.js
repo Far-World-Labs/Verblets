@@ -10,6 +10,7 @@ import { initChain } from '../../lib/context/option.js';
 export function calculateStatistics(data, targetProperty) {
   const values = data
     .map((item) => item[targetProperty])
+    //TODO:DOCS_OBSERVATIONS null check here violates project null-ban — should be undefined-only
     .filter((v) => v !== null && v !== undefined && !isNaN(v))
     .sort((a, b) => a - b);
 

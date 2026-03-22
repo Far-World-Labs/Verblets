@@ -48,7 +48,7 @@ describe('commonalities', () => {
   });
 
   it('handles unexpected response gracefully', async () => {
-    mockLlm.mockResolvedValueOnce(null);
+    mockLlm.mockResolvedValueOnce(undefined);
 
     const result = await commonalities(['item1', 'item2']);
     expect(result).toEqual([]);

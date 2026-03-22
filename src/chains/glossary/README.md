@@ -6,7 +6,7 @@ utility to collect candidate terms from each chunk. Any failed paragraphs are
 automatically retried. Finally the terms are ranked by importance using `sort`.
 
 ```javascript
-import glossary from './index.js';
+import { glossary } from '@far-world-labs/verblets';
 
 const blog = `The chef explained how umami develops through the Maillard reaction alongside sous-vide techniques.`;
 

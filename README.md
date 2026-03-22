@@ -24,19 +24,21 @@ Primitive verblets extract basic data types from natural language with high reli
 
 - [bool](./src/verblets/bool) - Interpret yes/no, true/false, and conditional statements
 - [date](./src/chains/date) - Parse dates from relative expressions, natural language, standard formats, and longer descriptions
-- [enum](./src/verblets/enum) - Convert free-form input to exactly one of several predefined options
+- [classify](./src/verblets/enum) - Classify free-form input into exactly one of several predefined options
 - [number](./src/verblets/number) - Convert a block of text to a single number
 - [number-with-units](./src/verblets/number-with-units) - Parse measurements and convert between unit systems
 
 ### Math
 
-Math chains transform values using conceptual reasoning and subjective judgments beyond simple calculations.
+Math chains transform values using conceptual reasoning and subjective judgment beyond simple calculations.
 
-- [scale](./src/chains/scale) - Convert qualitative descriptions to numeric values. Uses a specification generator to maintain consistency across invocations.
+- [scale](./src/chains/scale) - Convert qualitative descriptions to numeric values using a specification generator for consistency across invocations
+- [calibrate](./src/chains/calibrate) - Build and apply specification-based classifiers with adjustable sensitivity
+- [probe-scan](./src/chains/probe-scan) - Scan items for relevance using embedding similarity with configurable detection thresholds
 
 ### Lists
 
-List operations transform, filter, and organize collections. They handle both individual items and batch processing for datasets larger than a context window. Many list operations support bulk operation with built-in retry. Many have alternative single invocation versions in the verblets directory. Many utilities have list support via specification-generators that maintain continuity, or prompt fragments that adapt single-invcation behavior to list processing.
+List operations transform, filter, and organize collections. They handle both individual items and batch processing for datasets larger than a context window. Many support bulk operation with built-in retry. Some have single-invocation alternatives in the verblets directory. Several use specification-generators that maintain continuity across batches, or prompt fragments that adapt single-invocation behavior to list processing.
 
 - [central-tendency](./src/chains/central-tendency) - Find the most representative examples from a collection
 - [detect-patterns](./src/chains/detect-patterns) - Identify repeating structures, sequences, or relationships in data
@@ -57,16 +59,16 @@ List operations transform, filter, and organize collections. They handle both in
 
 ### Content
 
-Content utilities generate, transform, and analyze text while maintaining structure and meaning. They handle creative tasks, system analysis, and privacy-aware text processing.
+Content utilities generate, transform, and analyze text while maintaining structure and meaning.
 
-- [anonymize](./src/chains/anonymize) - Replace names, dates, and identifying details with placeholders
-- [category-samples](./src/chains/category-samples) - Create examples ranging from typical to edge cases
+- [category-samples](./src/chains/category-samples) - Generate examples ranging from prototypical to edge cases using cognitive science sampling
 - [collect-terms](./src/chains/collect-terms) - Find domain-specific or complex vocabulary
 - [commonalities](./src/verblets/commonalities) - Identify what items share conceptually, not just literally
-- [conversation](./src/chains/conversation) - Manage multi-turn dialogues with memory and context tracking
+- [Conversation](./src/chains/conversation) - Generate multi-speaker transcripts with contextual turn-taking and distinct personas
 - [disambiguate](./src/chains/disambiguate) - Determine which meaning of ambiguous terms fits the context
 - [dismantle](./src/chains/dismantle) - Break down systems into parts, subparts, and their connections
-- [document-shrink](./src/chains/document-shrink) - Remove less relevant sections while keeping query-related content
+- [document-shrink](./src/chains/document-shrink) - Compress documents using adaptive TF-IDF scoring while preserving query-relevant content
+- [extract-blocks](./src/chains/extract-blocks) - Extract structured blocks from text with windowed parallel processing
 - [fill-missing](./src/verblets/fill-missing) - Predict likely content for redacted or corrupted sections
 - [filter-ambiguous](./src/chains/filter-ambiguous) - Flag items that need human clarification
 - [join](./src/chains/join) - Connect text fragments by adding transitions and maintaining flow
@@ -77,39 +79,42 @@ Content utilities generate, transform, and analyze text while maintaining struct
 - [questions](./src/chains/questions) - Generate follow-up questions that branch from initial inquiry
 - [relations](./src/chains/relations) - Extract relationship tuples from text
 - [schema-org](./src/verblets/schema-org) - Convert unstructured data to schema.org JSON-LD format
-- [socratic](./src/chains/socratic) - Ask questions that reveal hidden assumptions and logic gaps
+- [SocraticMethod](./src/chains/socratic) - Progressive questioning dialogue with configurable challenge intensity
 - [split](./src/chains/split) - Find topic boundaries in continuous text
-- [summary-map](./src/chains/summary-map) - Build layered summaries for navigating large documents
+- [SummaryMap](./src/chains/summary-map) - Token-budget hash table that compresses values to fit a target size
 - [tag-vocabulary](./src/chains/tag-vocabulary) - Generate and refine tag vocabularies through iterative analysis
 - [themes](./src/chains/themes) - Surface recurring ideas through multi-pass extraction and merging
 - [timeline](./src/chains/timeline) - Order events chronologically from scattered mentions
 - [to-object](./src/chains/to-object) - Extract key-value pairs from natural language descriptions
 - [truncate](./src/chains/truncate) - Remove trailing content after a semantic boundary
-- [veiled-variants](./src/chains/veiled-variants) - Reword queries to avoid triggering content filters
+- [veiled-variants](./src/chains/veiled-variants) - Reframe queries through scientific, causal, and soft-cover strategies
 
 
 ### Retrieval
 
-Retrieval utilities transform queries and prepare text for search and RAG workflows.
+Retrieval utilities transform queries and prepare text for search and RAG (retrieval-augmented generation) workflows. All query-rewriting verblets accept a `divergence` option controlling how far variants stray from the original.
 
 - [embed-rewrite-query](./src/verblets/embed-rewrite-query) - Rewrite search queries for clarity and specificity
 - [embed-multi-query](./src/verblets/embed-multi-query) - Generate diverse query variants for broader retrieval
 - [embed-step-back](./src/verblets/embed-step-back) - Broaden queries to underlying concepts and principles
 - [embed-subquestions](./src/verblets/embed-subquestions) - Split complex queries into atomic sub-questions
+- [embed-rewrite-to-output-doc](./src/verblets/embed-rewrite-to-output-doc) - Rewrite a query as if it were the answer document
+- [embed-score](./src/lib/embed-score) - Score and rank items against a query using embedding similarity
 
 
 ### Utility Operations
 
-Utility operations are uncategorized functionality like automatic tool selection, intent parsing, and context compression.
+Utility operations handle automatic tool selection, intent parsing, prompt enhancement, and scheduling.
 
-- [ai-arch-expect](./src/chains/ai-arch-expect) - Validate AI architecture constraints and patterns
 - [auto](./src/verblets/auto) - Match task descriptions to available tools using function calling
-- [expect](./src/verblets/expect) - Check if conditions are met and explain why if not
-- [expect chain](./src/chains/expect) - Validate complex data relationships with detailed failure analysis
+- [expect](./src/verblets/expect) - Jest-style AI assertions: `expect(actual).toEqual(expected)`
+- [aiExpect](./src/chains/expect) - AI-powered test expectations with source introspection and debugging advice
 - [intent](./src/verblets/intent) - Extract action and parameters from natural language commands
-- [llm-logger](./src/chains/llm-logger) - Summarize log patterns and detect anomalies across time windows
-- [sentiment](./src/verblets/sentiment) - Classify as positive, negative, or neutral with nuance detection
+- [phail-forge / makePrompt](./src/verblets/phail-forge) - Transform simple prompts into expert-level prompts with precise terminology
+- [sentiment](./src/verblets/sentiment) - Classify text as positive, negative, or neutral
 - [set-interval](./src/chains/set-interval) - Schedule tasks using natural language time descriptions
+- [llm-logger](./src/chains/llm-logger) - Summarize log patterns and detect anomalies across time windows
+- [ai-arch-expect](./src/chains/ai-arch-expect) - Validate architecture constraints using AI analysis
 
 ### Codebase
 
@@ -121,14 +126,17 @@ Codebase utilities analyze, test, and improve code quality using AI reasoning.
 
 ## Library Helpers
 
-Helpers support higher-level operations. They make no LLM calls and are often synchronous.
+Low-level utilities that support chains and verblets. Most are synchronous and make no LLM calls.
 
-- [llm](./src/lib/llm) - LLM wrapper
-- [prompt-cache](./src/lib/prompt-cache) - Cache prompts and responses
-- [retry](./src/lib/retry) - Retry asynchronous calls
-- [ring-buffer](./src/lib/ring-buffer) - Circular buffer implementation for running LLMs on streams of data
-- [embed-normalize-text](./src/lib/embed-normalize-text) - Normalize text (NFC, whitespace, line endings) for consistent processing
+- [llm](./src/lib/llm) - Core LLM wrapper with capability-based model selection and structured output
+- [context](./src/lib/context) - Config resolution: `getOption`, `getOptions`, `withPolicy`, `scopeOperation`
+- [prompt-cache](./src/lib/prompt-cache) - Cache LLM prompts and responses
+- [retry](./src/lib/retry) - Config-aware async retry
+- [parallel-batch](./src/lib/parallel-batch) - Parallel execution with concurrency limits
+- [ring-buffer](./src/lib/ring-buffer) - Circular buffer for running LLMs on streams of data
+- [embed-normalize-text](./src/lib/embed-normalize-text) - Normalize text (NFC, whitespace, line endings) for consistent embedding
 - [embed-neighbor-chunks](./src/lib/embed-neighbor-chunks) - Expand retrieved chunks with neighboring context
+- [progress-callback](./src/lib/progress-callback) - Progress event helpers for batch operations
 
 ## Contributing
 

@@ -5,8 +5,7 @@ Generate lists from natural language prompts, with support for streaming and str
 ## Example
 
 ```javascript
-import list from './index.js';
-import { generateList } from './index.js';
+import { list, generateList } from '@far-world-labs/verblets';
 
 // Generate edge cases a QA engineer might miss
 const edgeCases = await list(
@@ -40,4 +39,4 @@ Async generator yielding items progressively.
 - **options**:
   - `shouldSkip({ result, resultsAll })` — skip duplicate/unwanted items
   - `shouldStop({ queryCount, startTime })` — custom termination logic
-  - `model` (string|object): LLM configuration
+  - `llm` (string|object): LLM configuration

@@ -7,7 +7,10 @@ Non-destructive logging with parallel AI processors. Logs flow through a ring bu
 An AI processor that auto-categorizes and triages every log line, suppressing low-severity noise from output:
 
 ```javascript
-import { createLLMLogger, createConsoleWriter } from './index.js';
+// Note: The package exports `llmLogger`. Sub-exports `createLLMLogger` and
+// `createConsoleWriter` may not be available from the package root — import
+// them from the chain module directly if needed.
+import { llmLogger } from '@far-world-labs/verblets';
 
 const logger = createLLMLogger({
   processors: [

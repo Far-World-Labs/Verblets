@@ -12,7 +12,7 @@ const getFileLines = (filePath) => {
   try {
     return readFileSync(filePath, 'utf8').split('\n');
   } catch {
-    return null;
+    return undefined;
   }
 };
 

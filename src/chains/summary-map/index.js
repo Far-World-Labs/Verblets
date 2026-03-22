@@ -182,7 +182,7 @@ export default class SummaryMap extends Map {
 
   get(key) {
     if (!this.data.has(key)) {
-      return null;
+      return undefined;
     }
 
     if (!this.isCacheValid) {

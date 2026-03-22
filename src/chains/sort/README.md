@@ -5,7 +5,7 @@ Sort massive datasets using AI-powered semantic understanding to rank items by n
 ## Usage
 
 ```javascript
-import sort from './index.js';
+import { sort } from '@far-world-labs/verblets';
 
 // Building a learning path from thousands of YouTube transcripts
 const videoTranscripts = [

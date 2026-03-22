@@ -1,69 +1,29 @@
 # to-number
 
-A utility for converting LLM response strings to numeric values with intelligent parsing and validation.
-
-## Basic Usage
+Parse a string value into a number. Designed for post-processing LLM responses that contain numeric values.
 
 ```javascript
-import toNumber from './index.js';
+import { toNumber } from '@far-world-labs/verblets';
 
-// Convert strings to numbers
-const result1 = toNumber('42');        // => 42
-const result2 = toNumber('3.14');      // => 3.14
-const result3 = toNumber('invalid');   // => null
+toNumber('42');          // => 42
+toNumber('3.14');        // => 3.14
+toNumber('$1,299.99');   // => 1299.99  (stripped by stripNumeric)
+toNumber('undefined');   // => undefined
+toNumber('abc');         // throws Error('LLM output [error]')
 ```
 
-## Parameters
+## API
 
-- **input** (any): The value to convert to a number
-  - Strings: Parsed as numbers if valid
-  - Numbers: Returned as-is
-  - Null/undefined: Returns null
-  - Other types: Attempts conversion, returns null if invalid
+### `toNumber(value)`
 
-## Return Value
+- **value** (any): Lowercased and stripped of markdown formatting via `stripResponse`, then cleaned of non-numeric characters via `stripNumeric` before conversion with the unary `+` operator.
 
-Returns a number if conversion is successful, or `null` if the input cannot be converted to a valid number.
+**Returns:** A number if conversion succeeds, `undefined` if the cleaned string is `"undefined"`. Throws if the result is `NaN`.
 
-## Examples
+Like `toDate`, the function is strict — callers handle the error rather than receiving a silent sentinel value.
 
-```javascript
-// String conversions
-toNumber('123');      // => 123
-toNumber('45.67');    // => 45.67
-toNumber('-89');      // => -89
-toNumber('0');        // => 0
+## Related
 
-// Number inputs (pass-through)
-toNumber(42);         // => 42
-toNumber(3.14159);    // => 3.14159
-
-// Invalid inputs
-toNumber('abc');      // => null
-toNumber('');         // => null
-toNumber('12abc');    // => null
-toNumber(null);       // => null
-toNumber(undefined);  // => null
-
-// Edge cases
-toNumber('0.0');      // => 0
-toNumber('  42  ');   // => 42 (whitespace trimmed)
-toNumber('Infinity'); // => Infinity
-toNumber('-Infinity'); // => -Infinity
-```
-
-## Use Cases
-
-- Configuration value normalization
-- User input validation and conversion
-- Data processing and transformation
-- API parameter parsing
-- Form data handling
-
-## Features
-
-- **Flexible Parsing**: Handles various string representations of numbers
-- **Validation**: Ensures output is a valid number or null
-- **Type Safety**: Consistent numeric output for valid inputs
-- **Whitespace Handling**: Automatically trims whitespace from strings
-- **Edge Case Support**: Properly handles Infinity, -Infinity, and NaN
+- [to-date](../to-date/README.md) — date coercion with the same strip-and-parse pattern
+- [to-bool](../to-bool/README.md) — boolean coercion
+- [to-enum](../to-enum/README.md) — constrained string matching

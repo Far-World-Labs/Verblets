@@ -24,6 +24,7 @@ The value should be your selection.`;
     },
   });
 
+  //TODO:DOCS_OBSERVATIONS string 'undefined' check is fragile — if the schema constrains to the enum values plus a sentinel, this becomes unnecessary
   // With auto-unwrapping, result should be the value directly
   return result === 'undefined' ? undefined : result;
 };

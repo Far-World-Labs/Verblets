@@ -7,7 +7,7 @@ For single-item evaluation, use the [central-tendency-lines](../../verblets/cent
 ## Example
 
 ```javascript
-import centralTendency from './index.js';
+import { centralTendency } from '@far-world-labs/verblets';
 
 // Which of these are "typical" mammals? Bats and whales challenge the boundary.
 const results = await centralTendency(

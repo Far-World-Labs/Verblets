@@ -251,9 +251,7 @@ function scoreChunksWithTfIdf(chunks, expansions) {
         ? matches.reduce((sum, match) => sum + match.score, 0) / matches.length
         : 0;
 
-    // if (chunk.index < 3 || tfIdfScore > 0.1) {
-    //   console.log(`[scoreChunksWithTfIdf] Chunk ${chunk.index} score: ${tfIdfScore.toFixed(3)}, text: "${chunk.text.slice(0, 50)}..."`);
-    // }
+    //TODO:DOCS_OBSERVATIONS dead debug logging — remove commented-out console.logs
 
     return { ...chunk, tfIdfScore };
   });
@@ -284,9 +282,7 @@ function selectChunksByTfIdf(scoredChunks, tfIdfBudget) {
   const selectedIndices = new Set(selected.map((c) => c.index));
   const candidates = scoredChunks.filter((c) => !selectedIndices.has(c.index));
 
-  // if (selected.length > 0) {
-  //   console.log(`[selectChunksByTfIdf] Selected chunk indices:`, selected.map(c => c.index));
-  // }
+  //TODO:DOCS_OBSERVATIONS dead debug logging — remove commented-out console.logs
 
   return { selected, candidates, sizeUsed };
 }

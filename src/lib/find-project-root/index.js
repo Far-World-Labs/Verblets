@@ -23,5 +23,5 @@ export async function findProjectRoot(startDir) {
     }
   }
 
-  return null;
+  return undefined;
 }

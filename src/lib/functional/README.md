@@ -1,4 +1,4 @@
-# Functional Programming Utilities
+# functional
 
 A set of helper functions for composing callbacks and escaping XML. These utilities make it easy to build small event systems or safely handle HTML snippets without mutating your data.
 

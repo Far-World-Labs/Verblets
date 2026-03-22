@@ -1,64 +1,29 @@
-# LLM Expect
+# expect
 
-Make intelligent assertions using natural language. A single LLM call that validates content based on meaning, intent, and context.
-
-## Quick Start
+Make semantic assertions using natural language. A single LLM call checks whether content matches an expectation based on meaning, not string equality.
 
 ```javascript
-import expect, { llmAssert } from './index.js';
+import { expect } from '@far-world-labs/verblets';
 
-// Simple equality check (throws on failure)
-await expect("hello").toEqual("hello");
-// ✅ Passes silently
+// Semantic equality (throws on failure)
+await expect('hello').toEqual('hello');
 
 // Constraint-based validation
-await expect("Hello world!").toSatisfy("Is this a greeting?");
-// ✅ Passes silently
+await expect('Hello world!').toSatisfy('Is this a greeting?');
 
-// Failed assertion throws
-try {
-  await expect("goodbye").toEqual("hello");
-} catch (error) {
-  console.log(error.message);
-  // "LLM assertion failed: Does the actual value strictly equal the expected value?"
-}
-
-// Direct helper with custom options
-const passed = await llmAssert({
-  actual: "hello",
-  equals: "hello",
-  llm: { temperature: 0 },
-  throws: false,
-});
-
-// Custom message when the assertion fails
-await expect("bad").toEqual("good", {
-  message: ({ actual, equals }) => `Expected ${equals} but got ${actual}`,
-});
+// Failed assertion throws with descriptive message
+await expect('goodbye').toEqual('hello');
+// throws: "LLM assertion failed: Does the actual value strictly equal the expected value?"
 ```
 
-Use `throws: false` to return a boolean instead of throwing when the assertion fails.
+The underlying `llmAssert` function (not a public export) accepts `{ throws: false }` to return a boolean instead of throwing.
 
-## Enhanced Chain Implementation
-
-For advanced debugging, detailed error analysis, and enhanced features, use the **[expect chain](../../chains/expect/)**:
-
-### Environment Modes
+For test suites, the [aiExpect chain](../../chains/expect/) adds debugging advice and environment-controlled verbosity:
 
 ```bash
-# Silent operation (default)
-export VERBLETS_LLM_EXPECT_MODE=none
-
-# Log debugging advice on failures
-export VERBLETS_LLM_EXPECT_MODE=info
-
-# Throw with detailed debugging advice
-export VERBLETS_LLM_EXPECT_MODE=error
+VERBLETS_LLM_EXPECT_MODE=none   # Silent (default)
+VERBLETS_LLM_EXPECT_MODE=info   # Log debugging advice on failures
+VERBLETS_LLM_EXPECT_MODE=error  # Throw with detailed debugging advice
 ```
 
-## Best Practices
-
-- **Be specific**: Use clear, detailed constraints
-- **Test qualitatively**: Verify qualitative details with a clear yes/no answer
-- **Use robust constraints**: Write criteria to pass under a wide range of input hallucinations. Assert cases that classical software can't. Tune the level of rigorousness to the model performing the eval.
-- **Performance**: Remember this makes an LLM call - use judiciously
+Write assertions that test meaning rather than exact phrasing. Be specific enough that the LLM can give a clear yes/no answer, and remember each assertion costs one LLM call.

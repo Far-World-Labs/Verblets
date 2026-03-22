@@ -29,6 +29,7 @@ const schema = {
     },
   },
   required: ['items'],
+  additionalProperties: false,
 };
 
 // Use schema in LLM call — flat config pattern
@@ -76,75 +77,31 @@ mockLlm.mockResolvedValueOnce({
 
 ## Migration from toObject
 
-### Identify Usage
+The codebase has been migrated from `toObject` to JSON schemas. The `toObject` chain still exists as a heavyweight JSON repair tool for consumer-level use, but internal chains should always use `response_format` with a schema. If you find a chain still using `toObject` for parsing, replace it with a schema.
 
-```bash
-# Find all toObject imports
-grep -r "toObject" src/
+## Structured Output Behavior
 
-# Find all toObject calls
-grep -r "toObject(" src/
-```
+The structured output API (used by both OpenAI and Anthropic providers) requires object-type root schemas — you cannot use a bare array at the top level. For collections, wrap in `{ items: [...] }`.
 
-### Replace Pattern
+The llm module handles the mechanics automatically:
+- Parses JSON responses when `response_format` is set
+- Auto-unwraps simple collection schemas (single `items` property containing an array)
+- Auto-unwraps single-value schemas (single `value` property)
 
-```javascript
-// OLD: Using toObject chain
-import toObject from '../to-object/index.js';
-const result = await llm(prompt, options);
-const parsed = await toObject(result);
+Pass `skipResponseParse: true` in the options object when you need the raw unparsed string.
 
-// NEW: Using JSON schema — flat config pattern
-const schema = {
-  /* define schema */
-};
-const result = await llm(prompt, {
-  ...options,
-  response_format: {
-    type: 'json_schema',
-    json_schema: { name: 'result', schema },
-  },
-});
-// result is already parsed and validated
-```
+### Collection conventions
 
-## OpenAI API Behavior & Response Handling
-
-### Key API Behaviors
-
-- OpenAI returns JSON **strings** when using `response_format`, not parsed objects
-- Root schema must be object type, cannot be array
-- The `.items` wrapper is an API requirement for collections
-
-### LLM Module Auto-Handling
-
-- The llm module automatically parses JSON when `response_format` is provided
-- Simple collection schemas (single `items` property containing array) are auto-unwrapped
-- Use `skipResponseParse: true` in options for edge cases needing raw strings
-- Import `isSimpleCollectionSchema` from llm module to detect collection patterns
-
-### Collection Operations Guidelines
-
-- **Core principle**: Keep `.items` wrapper internal, chains work with arrays
-- Map/Filter/Find return arrays directly to consumers
-- Reduce is special - it's not a collection operation, it builds accumulators
-- Use default `{accumulator: string}` format for simple reduce operations
+Map, filter, and find chains return arrays directly to consumers — the `.items` wrapper stays internal. Reduce is different: it builds accumulators, so its default schema is `{ accumulator: string }`.
 
 ## Response Format Design Guidelines
 
 ### Best Practices
 
-- Include descriptions in schemas to guide LLM behavior
+- Include `description` fields in schema properties to guide LLM behavior
 - Avoid unnecessary nesting (no array of arrays)
-- Design formats based on what chains actually need
-- Keep structured output close to desired data shape
-- Use `responseFormat` naming consistently (not `structuredOutput`)
-
-### API Consistency
-
-- Always name the parameter `responseFormat` in chain/verblet APIs
-- Break and repair when making API changes - no legacy support
-- Chains should work with clean data structures, not wrapped formats
+- Design schemas based on what the chain actually needs, close to the desired data shape
+- The parameter is `response_format` everywhere — in callLlm options, in config, and when building schemas with `jsonSchema()`
 
 ## Common Schema Patterns
 
@@ -160,7 +117,8 @@ const result = await llm(prompt, {
       items: { type: 'string' }
     }
   },
-  required: ['items']
+  required: ['items'],
+  additionalProperties: false,
 }
 // Note: This will be auto-unwrapped by llm module
 ```
@@ -179,35 +137,14 @@ const result = await llm(prompt, {
           item: { type: 'string' },
           score: { type: 'number' }
         },
-        required: ['item', 'score']
+        required: ['item', 'score'],
+        additionalProperties: false,
       }
     }
   },
-  required: ['results']
+  required: ['results'],
+  additionalProperties: false,
 }
 ```
 
-### Error Handling
-
-```javascript
-{
-  type: 'object',
-  properties: {
-    success: { type: 'boolean' },
-    data: { type: 'array', items: { type: 'string' } },
-    error: { type: 'string' }
-  },
-  required: ['success'],
-  oneOf: [
-    { properties: { success: { const: true } }, required: ['data'] },
-    { properties: { success: { const: false } }, required: ['error'] }
-  ]
-}
-```
-
-## Enforcement
-
-- Architecture tests will validate no `toObject` usage in new code
-- All PR reviews must check for proper schema usage
-- Unit tests must mock schema-compliant responses
-- Example tests should demonstrate schema patterns
+Architecture tests validate that new code uses `response_format` instead of `toObject`. Unit test mocks must return parsed objects matching the schema structure.

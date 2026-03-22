@@ -165,6 +165,6 @@ describe('Summary map', () => {
 
     const result = map.get('nonexistent');
 
-    expect(result).toBeNull();
+    expect(result).toBeUndefined();
   });
 });

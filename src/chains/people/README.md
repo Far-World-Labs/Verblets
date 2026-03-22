@@ -7,7 +7,7 @@ Generate artificial person profiles with consistent demographics and traits from
 Create an expert panel where each person has a coherent background, perspective, and personality — not just random attributes:
 
 ```javascript
-import people from './index.js';
+import { people } from '@far-world-labs/verblets';
 
 const panelists = await people(`
   Expert panel for discussing AI regulation:

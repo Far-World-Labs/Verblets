@@ -5,6 +5,8 @@ Extract chronological events from narrative text using AI-powered temporal analy
 ## Usage
 
 ```javascript
+import { timeline } from '@far-world-labs/verblets';
+
 const newsFragments = `
 [March 15, 2024] Breaking: Tech giant announces surprise acquisition talks.
 [March 15, 2024] Update: Board meeting ended after 6 hours of deliberation.
@@ -49,14 +51,7 @@ const events = await timeline(newsFragments);
 }
 ```
 
-## Features
-
-- **Multi-format dates**: ISO dates, relative times, contextual markers
-- **Non-linear reconstruction**: Builds chronology from scattered temporal references
-- **Large document support**: Processes documents of any size through chunking
-- **Deduplication**: Merges duplicate events from overlapping chunks
-- **Chronological sorting**: Orders parseable dates; preserves sequence for relative timestamps
-- **Knowledge enrichment**: Optional LLM knowledge to correct dates and add context
+The chain handles mixed date formats — ISO dates, relative times ("three months ago"), contextual markers ("earlier today") — and reconstructs chronological order from scattered references. Large documents are chunked and deduplicated.
 
 ## Knowledge Enrichment
 

@@ -72,7 +72,7 @@ describe('TextSimilarity', () => {
 
       const result = textSim.deleteChunk(id);
       expect(result).toBe(true);
-      expect(textSim.getChunk(id)).toBeNull();
+      expect(textSim.getChunk(id)).toBeUndefined();
       expect(textSim.getStats().totalChunks).toBe(0);
     });
 
@@ -93,7 +93,7 @@ describe('TextSimilarity', () => {
 
       expect(textSim.getStats().totalChunks).toBe(2);
       expect(textSim.getChunk(id1)).toBeDefined();
-      expect(textSim.getChunk(id2)).toBeNull();
+      expect(textSim.getChunk(id2)).toBeUndefined();
       expect(textSim.getChunk(id3)).toBeDefined();
     });
   });
@@ -263,7 +263,7 @@ describe('TextSimilarity', () => {
     it('should return null for non-existent chunk', () => {
       const chunk = textSim.getChunk('non-existent-id');
 
-      expect(chunk).toBeNull();
+      expect(chunk).toBeUndefined();
     });
   });
 

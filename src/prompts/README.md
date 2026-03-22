@@ -1,40 +1,34 @@
 # prompts
 
-Functions that generate structured LLM prompts with parameterization for specific use cases.
-
-## Overview
-
-Prompt functions create structured representations (targeting HTML) that can be validated and transformed before sending to language models. This approach enables testing, handles markup complexity, and provides tooling benefits over raw text generation.
-
-## Basic Usage
+Reusable prompt templates and fragments used by chains and verblets. Each module exports a function that builds a formatted prompt string from parameters.
 
 ```javascript
-import { generatePrompt } from './some-prompt-function.js';
+import { prompts } from '@far-world-labs/verblets';
 
-const prompt = generatePrompt({
-  context: 'User feedback analysis',
-  examples: ['Great product!', 'Could be better'],
-  instructions: 'Classify sentiment as positive, negative, or neutral'
-});
+// Prompt constants — shared instruction fragments
+const { onlyJSON, onlyJSONArray, contentIsQuestion } = prompts.constants;
 
-// Returns structured HTML that can be validated and transformed
+// Wrap variable content in XML tags for clear delineation
+prompts.asXML(userInput, { tag: 'context' });
+// → '<context>...</context>'
+
+// Build structured prompts for specific tasks
+prompts.asEnum('classify this text', ['positive', 'negative', 'neutral']);
+prompts.intent('send an email to john about the meeting');
+prompts.summarize('long article text...', { budget: 100 });
 ```
 
-## Architecture
+## Key Exports
 
-- **Prompt Functions**: Generate structured HTML representations
-- **Constants**: Reusable text fragments in [`constants.js`](./constants.js)
-- **Validation**: HTML structure enables testing and validation
-- **Transformation**: Convert to text format before LLM submission
+- `constants` — Shared instruction fragments (`onlyJSON`, `onlyJSONArray`, `contentIsQuestion`, etc.)
+- `asXML(text, { tag })` / `wrapVariable` — Wrap content in XML tags
+- `asEnum` — Build enum classification prompts
+- `asJSONSchema` — Format JSON schemas as prompt instructions
+- `intent` — Build intent extraction prompts
+- `summarize` — Build summarization prompts with token budgets
+- `generateList`, `generateCollection`, `generateQuestions` — Generation prompt builders
+- `sort`, `style`, `tokenBudget` — Utility prompt builders
+- `promptPiece` — Composable prompt fragments (see [SPEC.md](../lib/prompt-piece/SPEC.md))
+- RAG prompt fragments: `embedRewriteQuery`, `embedMultiQuery`, `embedStepBack`, `embedSubquestions`
 
-## Development Status
-
-Current prompt functions are in transition to structured output. Future functions will:
-- Output validated HTML structures
-- Include comprehensive test coverage
-- Support parameterized content generation
-- Enable markup complexity handling
-
-## Integration
-
-Prompt functions integrate with chains and verblets by providing the structured prompts needed for LLM operations. The HTML-based approach allows for consistent formatting and validation across the system.
+See [guidelines/PROMPTS.md](../../guidelines/PROMPTS.md) for prompt engineering guidelines.

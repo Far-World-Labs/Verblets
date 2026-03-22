@@ -3,11 +3,11 @@
 Intelligent assertions with debugging context and environment-aware behavior. Extends the basic [expect verblet](../../verblets/expect/) with code introspection and structured failure advice.
 
 ```javascript
-import { expect } from './index.js';
+import { aiExpect } from '@far-world-labs/verblets';
 
 process.env.VERBLETS_LLM_EXPECT_MODE = 'info'; // 'none' (default) | 'info' | 'error'
 
-const [passed, details] = await expect(
+const [passed, details] = await aiExpect(
   generatedCopy,
   "Is this marketing copy professional, engaging, and free of grammatical errors?"
 );
@@ -23,7 +23,7 @@ if (!passed) {
 
 ## API
 
-### `expect(actual, expected?, constraint?, config?)`
+### `aiExpect(actual, expected?, constraint?, config?)`
 
 **Returns:** `[passed, details]` — tuple with boolean and structured debug info
 
@@ -43,10 +43,10 @@ if (!passed) {
 
 ```javascript
 // ❌ Vague
-await expect(text, "Is this good?");
+await aiExpect(text, "Is this good?");
 
 // ✅ Specific
-await expect(text, "Is this text grammatically correct, under 100 words, and written in a professional tone?");
+await aiExpect(text, "Is this text grammatically correct, under 100 words, and written in a professional tone?");
 ```
 
 Write constraints that a human could answer yes/no. Tune rigor to the model performing the eval.

@@ -1,77 +1,46 @@
 # setInterval
 
-AI alternative to `setInterval`.
-Feed it your own "next date" prompt; it will keep time, remember history, and supply your callback with rich context so you can build self-tuning workflows, creative generators, or living UIs.
-
-## Example: Photography Alarm
+AI alternative to `setInterval`. The AI decides *when* to fire next based on a prompt, context data, and timing history. Use it for self-tuning workflows, adaptive polling, or creative generators.
 
 ```javascript
-import setInterval from './index.js';
-import { getWeather, getCelestialEvents } from './apis.js';
-import llm from '../../lib/llm/index.js';
+import { setInterval } from '@far-world-labs/verblets';
 
 const stop = setInterval({
   prompt: `
-    Based on upcoming celestial events and weather, decide when to check next 
-    for photography opportunities. 
-    
+    Based on upcoming celestial events and weather, decide when to check next
+    for photography opportunities.
     Current conditions: {cloudCover}% clouds
-    
-    Upcoming celestial events: 
-    <options>
-    {events}
-    <options>
+    Upcoming events: {events}
   `,
-  
-  // Called every time to get data for AI scheduling decisions
+
   async getData() {
     const weather = await getWeather({ days: 1 });
     const events = await getCelestialEvents({ days: 7 });
-    
     return {
       cloudCover: weather.current.cloudCover,
       events: events.map(e => `${e.name} - ${e.description}`).join('\n')
     };
   },
-  
-  // Called when the tick happens - handle the scheduled event
+
   async onTick({ timingString, data, nextDate }) {
-    // Get current conditions for photography
-    const currentWeather = await getWeather({ hours: 1 });
-    const currentEvents = await getCelestialEvents({ 
-      hours: 1, 
-      types: ['solar', 'lunar', 'meteor', 'planetary', 'aurora', 'eclipse'] 
-    });
-    
-    const description = await llm(`
-      Describe what celestial event should be photographed right now based on current conditions.
-      Current Weather: ${JSON.stringify(currentWeather)}
-      Current Events: ${JSON.stringify(currentEvents)}
-      
-      Provide a clear description of the photography opportunity.
-    `);
-    
-    console.log(description);
-    console.log(`Next check in: ${timingString} (${nextDate.toLocaleString()})`);
+    console.log(`Photography window! Next check: ${timingString}`);
   }
 });
 
-## API Reference
+// Call stop() to cancel
+```
+
+The AI sees the cloud cover and event schedule and might decide to check back in 20 minutes (meteor shower approaching with clear skies) or 6 hours (overcast, nothing upcoming).
+
+## API
 
 ### `setInterval(options)`
 
-Creates an AI-guided interval timer that uses natural language to determine timing.
+- **prompt** (string, required): Instructions for timing decisions. Supports `{variable}` interpolation from `getData` results
+- **getData** (function, required): Called each tick to supply fresh data. Return value properties become prompt variables
+- **onTick** (function): Called when the timer fires, receives `{ timingString, data, nextDate }`
+- **historySize** (number, default 5): How many past timing decisions the AI can see
+- **initial** (any): Initial data before the first `getData` call
+- **llm** (string|Object): LLM model configuration
 
-#### Parameters
-
-- **`prompt`** (string, required): Instructions for AI timing decisions. Supports `{variable}` interpolation from `getData` results
-- **`getData`** (function, required): Called to get data for AI decisions. Should return an object whose properties can be used as `{variable}` in the prompt
-- **`historySize`** (number, default: 5): How many timing decisions to remember
-- **`initial`** (any, default: null): Initial data to start with
-- **`model`** (string, optional): AI model to use
-- **`llm`** (object, optional): Model configuration
-- **`onTick`** (function, optional): Called when the tick happens
-
-#### Returns
-
-Function to stop the interval timer.
+**Returns:** Function to stop the timer.

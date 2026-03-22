@@ -1,28 +1,21 @@
-# Sentiment Analysis Verblet
+# sentiment
 
-Analyze the emotional tone and sentiment of text using AI-powered natural language understanding. This verblet classifies text as positive, negative, or neutral, enabling applications to respond appropriately to user emotions and feedback.
+Classify text as positive, negative, or neutral.
 
-## Usage
 ```javascript
-await sentiment("I love this!");           // 'positive'
-await sentiment("This is terrible");       // 'negative'  
-await sentiment("The weather is cloudy");  // 'neutral'
-await sentiment("Mixed feelings about this - good quality but expensive"); // 'neutral'
+import { sentiment } from '@far-world-labs/verblets';
+
+await sentiment('I love this!');           // => 'positive'
+await sentiment('This is terrible');       // => 'negative'
+await sentiment('The weather is cloudy');  // => 'neutral'
+await sentiment('Mixed feelings — good quality but expensive'); // => 'neutral'
 ```
 
-## API Reference
+## API
 
-### `sentiment(text)`
+### `sentiment(text, config?)`
 
-Analyzes the emotional tone of the provided text and returns a sentiment classification.
+- **text** (string): Text to analyze
+- **config.llm** (string|Object): LLM model configuration
 
-**Parameters**
-
-- `text` (string): The text content to analyze for sentiment
-
-**Returns**
-
-- `Promise<string>`: A promise that resolves to one of three sentiment labels:
-  - `'positive'`: Text expresses positive emotions, satisfaction, or enthusiasm
-  - `'negative'`: Text expresses negative emotions, dissatisfaction, or criticism
-  - `'neutral'`: Text is emotionally balanced, factual, or lacks clear emotional indicators
+**Returns:** `Promise<string>` — `'positive'`, `'negative'`, or `'neutral'`

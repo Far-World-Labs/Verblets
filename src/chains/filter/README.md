@@ -1,50 +1,52 @@
 # filter
 
-Filter arrays using AI to identify items that match specific criteria with intelligent reasoning and context awareness.
-
-## Usage
+Keep items from a list that match natural language criteria. The AI evaluates each item against your description and returns only the matches.
 
 ```javascript
-import filter from './index.js';
+import { filter } from '@far-world-labs/verblets';
 
-const emails = [
-  'Meeting tomorrow at 2pm',
-  'Urgent: Server maintenance tonight',
-  'Lunch invitation for Friday',
-  'Critical: Security breach detected',
-  'Weekly newsletter update'
+const ingredients = [
+  '2 cups all-purpose flour',
+  '1 cup almond milk',
+  '3 large eggs',
+  '½ cup honey',
+  '1 tbsp vanilla extract',
+  '¼ cup melted butter',
+  '1 cup Greek yogurt',
+  'pinch of salt'
 ];
 
-const urgent = await filter(emails, 'urgent or time-sensitive messages');
-// Returns: ['Urgent: Server maintenance tonight', 'Critical: Security breach detected']
+const vegan = await filter(ingredients, 'ingredients that are vegan-friendly');
+// => ['2 cups all-purpose flour', '1 cup almond milk', '½ cup honey',
+//     '1 tbsp vanilla extract', 'pinch of salt']
 ```
+
+The AI knows that eggs, butter, and Greek yogurt are animal products even though the words "animal" or "dairy" never appear.
 
 ## API
 
-### `filter(array, criteria, config)`
+### `filter(array, criteria, config?)`
 
-**Parameters:**
-- `array` (Array): Items to filter
-- `criteria` (string): Natural language description of what to keep
-- `config` (Object): Configuration options
-  - `batchSize` (number): Items per batch (auto-calculated from model context window)
-  - `maxAttempts` (number): Retry attempts per LLM call (default: 3)
-  - `onProgress` (function): Progress callback
-  - `abortSignal` (AbortSignal): Signal to cancel the operation
-  - `strictness` (`'low'`|`'high'`|Object): Borderline item handling. `'low'` errs on inclusion with resilient error posture. `'high'` errs on exclusion with strict error posture. Default: no guidance, strict error posture
-  - `llm` (string|Object): LLM model configuration
+- **array** (Array): Items to filter
+- **criteria** (string): Natural language description of what to keep
+- **config.strictness** (`'low'`|`'high'`): Borderline item handling. `'low'` errs on inclusion (keep uncertain items). `'high'` errs on exclusion (drop uncertain items). Default: no guidance
+- **config.batchSize** (number): Items per batch (auto-calculated from model context window)
+- **config.maxAttempts** (number): Retry attempts per batch (default: 3)
+- **config.onProgress** (function): Progress callback
+- **config.abortSignal** (AbortSignal): Signal to cancel the operation
+- **config.llm** (string|Object): LLM model configuration
 
-**Returns:** Promise<Array> - Items that match the criteria
+**Returns:** `Promise<Array>` — Items that match the criteria
 
 ## Per-Item Mode
 
-Use `filter.with()` to create a single-item predicate compatible with `p-filter` and similar async utilities:
+`filter.with()` creates a single-item predicate for use with `p-filter` or similar async utilities:
 
 ```javascript
-import filter from './index.js';
+import { filter } from '@far-world-labs/verblets';
 import pFilter from 'p-filter';
 
-const isUrgent = filter.with('urgent or time-sensitive');
-const results = await pFilter(emails, isUrgent, { concurrency: 5 });
+const isVegan = filter.with('vegan-friendly ingredients');
+const results = await pFilter(ingredients, isVegan, { concurrency: 5 });
 ```
 

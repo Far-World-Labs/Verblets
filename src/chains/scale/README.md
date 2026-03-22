@@ -7,7 +7,7 @@ Create AI-powered scaling functions that map inputs using conceptual reasoning â
 Turn fuzzy human language into consistent numeric scores:
 
 ```javascript
-import scale from './index.js';
+import { scale } from '@far-world-labs/verblets';
 
 const threatLevel = scale(`
   Assess cybersecurity threat descriptions on a 0-10 scale:
