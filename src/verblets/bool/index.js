@@ -6,12 +6,16 @@ import {
   extractPromptAnalysis,
   extractResultValue,
 } from '../../lib/lifecycle-logger/index.js';
+import { emitChainResult, emitChainError } from '../../lib/progress-callback/index.js';
 import { booleanSchema } from './schema.js';
+
+const name = 'bool';
 
 const { asBool, asUndefinedByDefault, explainAndSeparate, explainAndSeparatePrimitive } =
   promptConstants;
 
 export default async (text, config = {}) => {
+  const startTime = Date.now();
   const { logger } = config;
 
   // Create lifecycle logger with bool namespace
@@ -53,10 +57,15 @@ The value should be "true", "false", or "undefined".`;
     // Log final result with raw and interpreted values
     lifecycleLogger.logResult(interpreted, extractResultValue(response, interpreted));
 
+    emitChainResult(config, name, { duration: Date.now() - startTime });
+
     return interpreted;
   } catch (error) {
     // Log error
     lifecycleLogger.logError(error);
+
+    emitChainError(config, name, error, { duration: Date.now() - startTime });
+
     throw error;
   }
 };

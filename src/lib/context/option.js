@@ -1,22 +1,18 @@
+import { emitProgress } from '../progress-callback/index.js';
+
 /**
- * Scope config to an operation, enriching evalContext so policy
- * functions can target behavior by operation name.
+ * Compose a step name onto the operation path.
+ * Used inside chains to label sub-steps (e.g. 'tags:spec', 'scale:apply')
+ * so policy functions can distinguish them.
  *
- * Composes hierarchically: when a chain delegates to another chain,
- * operations compose with `/` (e.g. 'document-shrink/score').
- *
- * @param {string} operation - Operation name (chain directory name, or name:purpose for sub-functions)
- * @param {object} options - The config object to scope
- * @returns {object} New config with enriched evalContext
+ * @param {string} step - Step name to append
+ * @param {object} config - Config object with operation path
+ * @returns {object} New config with composed operation path
  */
-export function scopeOperation(operation, options) {
-  const parent = options.evalContext?.operation;
-  const composed = parent ? `${parent}/${operation}` : operation;
-  return {
-    now: new Date(),
-    ...options,
-    evalContext: { ...options.evalContext, operation: composed },
-  };
+export function nameStep(step, config) {
+  const parent = config.operation;
+  const composed = parent ? `${parent}/${step}` : step;
+  return { ...config, operation: composed };
 }
 
 /**
@@ -25,8 +21,13 @@ export function scopeOperation(operation, options) {
  *
  * Lookup order: policy[name] → config[name] → fallback
  *
+ * Policy functions receive (context, { logger }) where context contains
+ * ambient chain data like `operation` (the hierarchical operation path).
+ * Targeting attributes (domain, tenant, plan) are curried into the policy
+ * function at definition time — they never appear on config.
+ *
  * @param {string} name - Option name
- * @param {object} config - Config object (from scopeOperation)
+ * @param {object} config - Config object
  * @param {*} fallback - Default value if nothing resolves
  * @returns {Promise<*>} Resolved value
  */
@@ -34,13 +35,70 @@ export async function getOption(name, config, fallback) {
   const fn = config.policy?.[name];
   if (typeof fn === 'function') {
     try {
-      return (await fn(config.evalContext, { logger: config.logger })) ?? fallback;
+      const context = { operation: config.operation };
+      return (await fn(context, { logger: config.logger })) ?? fallback;
     } catch {
       return fallback;
     }
   }
 
   return config[name] ?? fallback;
+}
+
+/**
+ * Get a config option with a decision trace detailing how the value was resolved.
+ * Same lookup order as getOption: policy[name] → config[name] → fallback.
+ *
+ * The decision trace is emitted as an `option:resolve` telemetry event
+ * so consumers like the option history analyzer can observe it through
+ * the normal onProgress stream.
+ *
+ * @param {string} name - Option name
+ * @param {object} config - Config object
+ * @param {*} fallback - Default value if nothing resolves
+ * @returns {Promise<{ value: *, detail: object }>}
+ */
+export async function getOptionDetail(name, config, fallback) {
+  const detail = {
+    option: name,
+    operation: config.operation,
+  };
+
+  const fn = config.policy?.[name];
+  if (typeof fn === 'function') {
+    try {
+      const context = { operation: config.operation };
+      const raw = await fn(context, { logger: config.logger });
+      const value = raw ?? fallback;
+      detail.source = 'policy';
+      detail.value = value;
+      detail.policyReturned = raw;
+    } catch (err) {
+      detail.source = 'fallback';
+      detail.value = fallback;
+      detail.error = err?.message;
+    }
+  } else if (config[name] !== undefined) {
+    detail.source = 'config';
+    detail.value = config[name];
+  } else {
+    detail.source = 'fallback';
+    detail.value = fallback;
+  }
+
+  emitProgress({
+    callback: config.onProgress,
+    kind: 'telemetry',
+    step: name,
+    event: 'option:resolve',
+    operation: detail.operation,
+    source: detail.source,
+    value: detail.value,
+    policyReturned: detail.policyReturned,
+    ...(detail.error ? { error: { message: detail.error } } : {}),
+  });
+
+  return { value: detail.value, detail };
 }
 
 /**
@@ -72,7 +130,7 @@ const isPolicy = (v) => typeof v === 'object' && v !== null && v.__policy === tr
  * individually resolvable — the consumer can override any sub-key on config directly.
  * Only the flattened sub-keys appear in the result; the parent key is not included.
  *
- * @param {object} config - Config object (from scopeOperation)
+ * @param {object} config - Config object
  * @param {object} spec - { name: fallback | withPolicy(mapperFn, overrides?), ... }
  * @returns {Promise<object>} Resolved values keyed by name (+ flattened override keys)
  */
@@ -99,17 +157,30 @@ export async function getOptions(config, spec) {
 }
 
 /**
- * Combined scopeOperation + getOptions in one call.
- * Scopes the config to the named operation, resolves all options from the spec,
- * and returns both the scoped config and resolved values.
+ * Initialize a chain: name the operation, stamp the time, and resolve options.
  *
- * @param {string} operation - Operation name
- * @param {object} inputConfig - The config object to scope
+ * This is the standard entry point for chains. It composes the operation name
+ * onto the operation path, adds a timestamp, and batch-resolves options from the spec.
+ *
+ * @param {string} operation - Operation name (chain directory name)
+ * @param {object} inputConfig - Config object from the caller
  * @param {object} [spec] - Option spec (same as getOptions spec). Omit if no options needed.
  * @returns {Promise<{ config: object, ...resolvedOptions }>}
  */
 export async function initChain(operation, inputConfig, spec) {
-  const config = scopeOperation(operation, inputConfig);
+  const config = {
+    now: new Date(),
+    ...nameStep(operation, inputConfig),
+  };
+
+  emitProgress({
+    callback: config.onProgress,
+    kind: 'telemetry',
+    step: operation,
+    event: 'chain:start',
+    operation: config.operation,
+  });
+
   const options = spec ? await getOptions(config, spec) : {};
   return { config, ...options };
 }

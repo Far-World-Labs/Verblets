@@ -43,11 +43,15 @@ export {
   createContextBuilder,
   observeApplication,
   observeProviders,
-  scopeOperation,
+  nameStep,
   getOption,
+  getOptionDetail,
   getOptions,
   withPolicy,
+  descriptorToSchema,
 } from './lib/context/index.js';
+export { default as valueArbitrate } from './chains/value-arbitrate/index.js';
+export { default as createOptionHistoryAnalyzer } from './chains/option-history-analyzer/index.js';
 
 // Lists
 export { default as centralTendency } from './chains/central-tendency/index.js';

@@ -1,7 +1,10 @@
 import callLlm from '../../lib/llm/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { debug } from '../../lib/debug/index.js';
+import { emitChainResult, emitChainError } from '../../lib/progress-callback/index.js';
 import listExpandSchema from './list-expand-result.json';
+
+const name = 'list-expand';
 
 const responseFormat = {
   type: 'json_schema',
@@ -35,17 +38,25 @@ const buildPrompt = function (list, count) {
  * @returns {Promise<string[]>} Expanded list
  */
 export default async function listExpand(list, count = list.length * 2, config = {}) {
-  const output = await callLlm(buildPrompt(list, count), {
-    ...config,
-    response_format: responseFormat,
-  });
+  const startTime = Date.now();
+  try {
+    const output = await callLlm(buildPrompt(list, count), {
+      ...config,
+      response_format: responseFormat,
+    });
 
-  const items = output?.items || output;
+    const items = output?.items || output;
 
-  if (!Array.isArray(items)) {
-    debug(`Expected items array, got: ${typeof items}`);
-    return [];
+    if (!Array.isArray(items)) {
+      debug(`Expected items array, got: ${typeof items}`);
+      emitChainResult(config, name, { duration: Date.now() - startTime });
+      return [];
+    }
+
+    emitChainResult(config, name, { duration: Date.now() - startTime });
+    return items;
+  } catch (err) {
+    emitChainError(config, name, err, { duration: Date.now() - startTime });
+    throw err;
   }
-
-  return items;
 }

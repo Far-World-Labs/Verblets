@@ -7,7 +7,10 @@ import retry from '../../lib/retry/index.js';
 import search from '../../lib/search-js-files/index.js';
 import codeFeaturesPrompt from '../../prompts/code-features.js';
 import makeJSONSchema from '../../prompts/features-json-schema.js';
-import { scopeOperation } from '../../lib/context/option.js';
+import { initChain } from '../../lib/context/option.js';
+import { emitChainResult, emitChainError } from '../../lib/progress-callback/index.js';
+
+const name = 'scan-js';
 
 const codeFeatureDefinitions = JSON.parse(
   await fs.readFile(
@@ -77,24 +80,33 @@ const visit = async ({
 
 // node: { filename: './src/index.js' },
 export default async (moduleOptions) => {
-  const config = scopeOperation('scan-js', moduleOptions);
-  const state = await search({
-    ...config,
-  });
+  const { config } = await initChain(name, moduleOptions);
+  try {
+    const state = await search({
+      ...config,
+    });
 
-  const preState = {
-    visited: new Set(),
-    pathAliases: pathAliases([...state.visited]),
-  };
+    const preState = {
+      visited: new Set(),
+      pathAliases: pathAliases([...state.visited]),
+    };
 
-  return search({
-    ...config,
-    state: preState,
-    visit: (options) =>
-      visit({
-        ...options,
-        features: config.features,
-        config,
-      }),
-  });
+    const result = await search({
+      ...config,
+      state: preState,
+      visit: (options) =>
+        visit({
+          ...options,
+          features: config.features,
+          config,
+        }),
+    });
+
+    emitChainResult(config, name);
+
+    return result;
+  } catch (err) {
+    emitChainError(config, name, err);
+    throw err;
+  }
 };

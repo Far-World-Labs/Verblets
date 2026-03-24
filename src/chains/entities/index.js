@@ -3,8 +3,14 @@ import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import buildInstructions from '../../lib/build-instructions/index.js';
 import entityResultSchema from './entity-result.json';
-import { emitStepProgress } from '../../lib/progress-callback/index.js';
-import { scopeOperation } from '../../lib/context/option.js';
+import {
+  emitStepProgress,
+  emitChainResult,
+  emitChainError,
+} from '../../lib/progress-callback/index.js';
+import { initChain, nameStep } from '../../lib/context/option.js';
+
+const name = 'entities';
 
 // ===== Instruction Builders =====
 
@@ -41,7 +47,7 @@ export const {
  * @returns {Promise<string>} Entity specification as descriptive text
  */
 export async function entitySpec(prompt, config = {}) {
-  config = scopeOperation('entities:spec', config);
+  config = nameStep('entities:spec', config);
 
   const specSystemPrompt = `You are an entity specification generator. Create a clear, concise specification for entity extraction.`;
 
@@ -79,7 +85,7 @@ Keep it simple and actionable.`;
  * @returns {Promise<Object>} Object with entities array
  */
 export async function applyEntities(text, specification, config = {}) {
-  config = scopeOperation('entities:apply', config);
+  config = nameStep('entities:apply', config);
 
   const prompt = `Apply the entity specification to extract entities from this text.
 
@@ -116,23 +122,32 @@ Each entity should include:
  * @returns {Promise<Object>} Object with entities array
  */
 export async function extractEntities(text, instructions, config = {}) {
-  config = scopeOperation('entities', config);
+  ({ config } = await initChain(name, config));
 
-  emitStepProgress(config.onProgress, 'entities', 'generating-specification', {
-    instructions,
-    now: config.now,
-    chainStartTime: config.now,
-  });
+  try {
+    emitStepProgress(config.onProgress, name, 'generating-specification', {
+      instructions,
+      now: config.now,
+      chainStartTime: config.now,
+    });
 
-  const spec = config.spec || (await entitySpec(instructions, config));
+    const spec = config.spec || (await entitySpec(instructions, config));
 
-  emitStepProgress(config.onProgress, 'entities', 'extracting-entities', {
-    specification: spec,
-    now: config.now,
-    chainStartTime: config.now,
-  });
+    emitStepProgress(config.onProgress, name, 'extracting-entities', {
+      specification: spec,
+      now: config.now,
+      chainStartTime: config.now,
+    });
 
-  return await applyEntities(text, spec, config);
+    const result = await applyEntities(text, spec, config);
+
+    emitChainResult(config, name);
+
+    return result;
+  } catch (err) {
+    emitChainError(config, name, err);
+    throw err;
+  }
 }
 
 // ===== Advanced Entity Functions =====

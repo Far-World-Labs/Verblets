@@ -4,7 +4,10 @@ import { asXML } from '../../prompts/wrap-variable.js';
 import buildInstructions from '../../lib/build-instructions/index.js';
 import { scaleSpecificationJsonSchema } from './schemas.js';
 import scaleResultSchema from './scale-result.json';
-import { scopeOperation } from '../../lib/context/option.js';
+import { emitChainResult, emitChainError } from '../../lib/progress-callback/index.js';
+import { initChain } from '../../lib/context/option.js';
+
+const name = 'scale';
 
 // ===== Instruction Builders =====
 
@@ -41,11 +44,12 @@ export const {
  * @returns {Promise<Object>} Scale specification with domain, range, and mapping
  */
 export async function scaleSpec(prompt, config = {}) {
-  config = scopeOperation('scale:spec', config);
+  ({ config } = await initChain('scale:spec', config));
 
-  const specSystemPrompt = `You are a scale specification generator. Analyze the scaling instructions and produce a clear, comprehensive specification.`;
+  try {
+    const specSystemPrompt = `You are a scale specification generator. Analyze the scaling instructions and produce a clear, comprehensive specification.`;
 
-  const specUserPrompt = `Analyze these scaling instructions and generate a scale specification.
+    const specUserPrompt = `Analyze these scaling instructions and generate a scale specification.
 
 ${asXML(prompt, { tag: 'scaling-instructions' })}
 
@@ -56,23 +60,29 @@ Provide a JSON object with exactly three string properties:
 
 IMPORTANT: Each property must be a simple string value, not a nested object or array.`;
 
-  const response = await retry(
-    () =>
-      callLlm(specUserPrompt, {
-        ...config,
-        systemPrompt: specSystemPrompt,
-        response_format: jsonSchema(
-          scaleSpecificationJsonSchema.name,
-          scaleSpecificationJsonSchema.schema
-        ),
-      }),
-    {
-      label: 'scale spec',
-      config,
-    }
-  );
+    const response = await retry(
+      () =>
+        callLlm(specUserPrompt, {
+          ...config,
+          systemPrompt: specSystemPrompt,
+          response_format: jsonSchema(
+            scaleSpecificationJsonSchema.name,
+            scaleSpecificationJsonSchema.schema
+          ),
+        }),
+      {
+        label: 'scale spec',
+        config,
+      }
+    );
 
-  return response;
+    emitChainResult(config, name);
+
+    return response;
+  } catch (err) {
+    emitChainError(config, name, err);
+    throw err;
+  }
 }
 
 /**
@@ -84,7 +94,7 @@ IMPORTANT: Each property must be a simple string value, not a nested object or a
  * @returns {Promise<*>} Scaled value (type depends on specification range)
  */
 export async function applyScale(item, specification, config = {}) {
-  config = scopeOperation('scale:apply', config);
+  ({ config } = await initChain('scale:apply', config));
 
   const prompt = `Apply the scale specification to transform this item.
 

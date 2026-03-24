@@ -2,7 +2,10 @@ import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import tagVocabularyResultSchema from './tag-vocabulary-result.json';
-import { scopeOperation } from '../../lib/context/option.js';
+import { emitChainResult, emitChainError } from '../../lib/progress-callback/index.js';
+import { initChain, nameStep } from '../../lib/context/option.js';
+
+const name = 'tag-vocabulary';
 
 // ===== Pure Helper Functions =====
 
@@ -120,7 +123,7 @@ export function computeTagStatistics(vocabulary, taggedItems, options = {}) {
  * @returns {Promise<Object>} Initial tag vocabulary
  */
 async function generateInitialVocabulary(tagSystemSpec, sampleItems, config = {}) {
-  config = scopeOperation('tag-vocabulary:generate', config);
+  config = nameStep('tag-vocabulary:generate', config);
 
   const prompt = `Generate a comprehensive tag vocabulary for categorizing items.
 
@@ -163,7 +166,7 @@ The vocabulary should be complete enough to categorize diverse items along the i
  * @returns {Promise<Object>} Refined tag vocabulary
  */
 async function refineVocabulary(vocabulary, taggedItems, tagSystemSpec, config = {}) {
-  config = scopeOperation('tag-vocabulary:refine', config);
+  config = nameStep('tag-vocabulary:refine', config);
   const { topN = 3, bottomN = 3 } = config;
 
   // Compute statistics using pure function
@@ -217,27 +220,34 @@ Return an improved vocabulary that provides better coverage and clearer distinct
  * @returns {Promise<Object>} Final refined tag vocabulary
  */
 export default async function tagVocabulary(tagSystemSpec, items, config = {}) {
-  config = scopeOperation('tag-vocabulary', config);
+  ({ config } = await initChain(name, config));
   const { tagger, sampleSize = 50 } = config;
 
   if (!tagger) {
     throw new Error('A tagger function must be provided in config');
   }
 
-  // Sample items for vocabulary generation
-  const sampleItems = items.slice(0, Math.min(sampleSize, items.length));
+  try {
+    // Sample items for vocabulary generation
+    const sampleItems = items.slice(0, Math.min(sampleSize, items.length));
 
-  // Generate initial vocabulary
-  const initialVocab = await generateInitialVocabulary(tagSystemSpec, sampleItems, config);
+    // Generate initial vocabulary
+    const initialVocab = await generateInitialVocabulary(tagSystemSpec, sampleItems, config);
 
-  // Apply tags to all items using the provided tagger
-  // The tagger should be a configured tags chain function
-  const taggedItems = await tagger(items, initialVocab);
+    // Apply tags to all items using the provided tagger
+    // The tagger should be a configured tags chain function
+    const taggedItems = await tagger(items, initialVocab);
 
-  // Refine vocabulary based on usage
-  const finalVocab = await refineVocabulary(initialVocab, taggedItems, tagSystemSpec, config);
+    // Refine vocabulary based on usage
+    const finalVocab = await refineVocabulary(initialVocab, taggedItems, tagSystemSpec, config);
 
-  return finalVocab;
+    emitChainResult(config, name);
+
+    return finalVocab;
+  } catch (err) {
+    emitChainError(config, name, err);
+    throw err;
+  }
 }
 
 // Export individual functions for testing and composition

@@ -7,7 +7,10 @@ import { constants as promptConstants } from '../../prompts/index.js';
 import { intersectionElementsSchema } from './schemas.js';
 import intersectionResultSchema from './intersection-result.json';
 import { debug } from '../../lib/debug/index.js';
+import { emitChainResult, emitChainError } from '../../lib/progress-callback/index.js';
 import { initChain } from '../../lib/context/option.js';
+
+const name = 'intersections';
 
 const { strictFormat, contentIsQuestion } = promptConstants;
 
@@ -96,7 +99,7 @@ export default async function intersections(items, config = {}) {
   }
 
   const { config: scopedConfig, useSchemaValidation } = await initChain(
-    'intersections',
+    name,
     { llm: 'fastGoodCheap', ...config },
     {
       useSchemaValidation: false,
@@ -112,28 +115,37 @@ export default async function intersections(items, config = {}) {
     return {};
   }
 
-  // Process all combinations in batches
-  const results = {};
+  try {
+    // Process all combinations in batches
+    const results = {};
 
-  for (let i = 0; i < allCombinations.length; i += batchSize) {
-    const batch = allCombinations.slice(i, i + batchSize);
-    const batchResults = await Promise.all(
-      batch.map((combo) => processCombo(combo, instructions, config))
-    );
+    for (let i = 0; i < allCombinations.length; i += batchSize) {
+      const batch = allCombinations.slice(i, i + batchSize);
+      const batchResults = await Promise.all(
+        batch.map((combo) => processCombo(combo, instructions, config))
+      );
 
-    // Add batch results to final results
-    for (const result of batchResults) {
-      results[result.key] = result.intersection;
+      // Add batch results to final results
+      for (const result of batchResults) {
+        results[result.key] = result.intersection;
+      }
     }
-  }
 
-  // Validate results with JSON schema if enabled
-  if (useSchemaValidation && Object.keys(results).length > 0) {
-    const validated = await validateIntersectionResults(results, config);
-    return validated.intersections || results;
-  }
+    // Validate results with JSON schema if enabled
+    if (useSchemaValidation && Object.keys(results).length > 0) {
+      const validated = await validateIntersectionResults(results, config);
+      const validatedResults = validated.intersections || results;
+      emitChainResult(config, name);
+      return validatedResults;
+    }
 
-  return results;
+    emitChainResult(config, name);
+
+    return results;
+  } catch (err) {
+    emitChainError(config, name, err);
+    throw err;
+  }
 }
 
 /**

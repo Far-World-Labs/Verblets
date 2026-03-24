@@ -4,26 +4,26 @@ import { describe, expect, it } from 'vitest';
 // Centralized Config Infrastructure Tests
 // ==========================================
 //
-// Tests for shared config infrastructure (initChain, jsonSchema, withPolicy,
-// scopeOperation). Per-chain spec files test chain-SPECIFIC behavior only.
+// Tests for shared config infrastructure (initChain, nameStep, jsonSchema,
+// withPolicy). Per-chain spec files test chain-SPECIFIC behavior only.
 // ==========================================
 
-import { getOption, initChain, scopeOperation, withPolicy } from '../context/option.js';
+import { getOption, initChain, nameStep, withPolicy } from '../context/option.js';
 import { jsonSchema, MODEL_KEYS } from '../llm/index.js';
 import { CAPABILITY_KEYS } from '../../constants/common.js';
 
 describe('initChain', () => {
-  it('combines scopeOperation and getOptions', async () => {
+  it('combines nameStep and getOptions', async () => {
     const { config, batchSize } = await initChain('test-chain', {}, { batchSize: 10 });
-    expect(config.evalContext.operation).toBe('test-chain');
+    expect(config.operation).toBe('test-chain');
     expect(config.now).toBeInstanceOf(Date);
     expect(batchSize).toBe(10);
   });
 
   it('composes operation names hierarchically', async () => {
-    const parent = scopeOperation('parent', {});
+    const parent = nameStep('parent', {});
     const { config } = await initChain('child', parent, {});
-    expect(config.evalContext.operation).toBe('parent/child');
+    expect(config.operation).toBe('parent/child');
   });
 
   it('resolves withPolicy options', async () => {
@@ -36,7 +36,7 @@ describe('initChain', () => {
       }
     );
     expect(a).toBe('default-mapped');
-    expect(config.evalContext.operation).toBe('test');
+    expect(config.operation).toBe('test');
   });
 
   it('resolves policy functions from config.policy', async () => {
@@ -47,7 +47,7 @@ describe('initChain', () => {
 
   it('returns config without spec when spec is omitted', async () => {
     const { config } = await initChain('test', { foo: 'bar' });
-    expect(config.evalContext.operation).toBe('test');
+    expect(config.operation).toBe('test');
     expect(config.foo).toBe('bar');
   });
 });
@@ -58,7 +58,7 @@ describe('MODEL_KEYS and CAPABILITY_KEYS resolution via getOption', () => {
   // per-operation, which is the foundation for behavioral policy.
 
   it('resolves temperature from policy per operation', async () => {
-    const config = scopeOperation('hot-chain', {
+    const config = nameStep('hot-chain', {
       policy: {
         temperature: (ctx) => (ctx.operation === 'hot-chain' ? 0.9 : 0.1),
       },
@@ -82,7 +82,7 @@ describe('MODEL_KEYS and CAPABILITY_KEYS resolution via getOption', () => {
   });
 
   it('resolves capability keys from policy', async () => {
-    const config = scopeOperation('cheap-path', {
+    const config = nameStep('cheap-path', {
       policy: {
         fast: (ctx) => ctx.operation === 'cheap-path',
         cheap: () => true,
@@ -95,13 +95,13 @@ describe('MODEL_KEYS and CAPABILITY_KEYS resolution via getOption', () => {
   });
 
   it('nested operation scoping affects MODEL_KEY resolution', async () => {
-    const parent = scopeOperation('parent', {
+    const parent = nameStep('parent', {
       policy: {
         temperature: (ctx) =>
           ctx.operation === 'parent/score' ? 0.0 : ctx.operation === 'parent' ? 0.7 : undefined,
       },
     });
-    const child = scopeOperation('score', parent);
+    const child = nameStep('score', parent);
 
     const parentTemp = await getOption('temperature', parent, undefined);
     const childTemp = await getOption('temperature', child, undefined);

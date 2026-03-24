@@ -42,7 +42,7 @@ const result = await retry(() => callLlm(prompt, config), {
   - `retryOnAll` (boolean): Retry on all errors, not just 429/5xx (default: `false`)
   - `onProgress` (function): Progress callback for start/retry/complete/error events
   - `abortSignal` (AbortSignal): Signal to cancel the operation mid-retry
-  - `config` (object): Config object from `scopeOperation` — when provided, `maxAttempts`, `retryDelay`, `retryOnAll`, `onProgress`, and `abortSignal` are resolved from config via `getOption` (policy-aware). Explicit opts always take precedence over config values.
+  - `config` (object): Config object — when provided, `maxAttempts`, `retryDelay`, `retryOnAll`, `onProgress`, and `abortSignal` are resolved from config via `getOption` (policy-aware). Explicit opts always take precedence over config values.
 
 **Returns:** Promise that resolves with the function result or rejects with the final error.
 
@@ -61,7 +61,7 @@ const config = {
 };
 
 // retry reads maxAttempts=5 from policy because operation is 'score'
-await retry(fn, { label: 'score', config: scopeOperation('score', config) });
+await retry(fn, { label: 'score', config: nameStep('score', config) });
 ```
 
 Explicit opts always win over config:

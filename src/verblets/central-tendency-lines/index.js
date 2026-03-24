@@ -5,7 +5,10 @@ import {
   extractPromptAnalysis,
   extractLLMConfig,
 } from '../../lib/lifecycle-logger/index.js';
+import { emitChainResult, emitChainError } from '../../lib/progress-callback/index.js';
 import centralTendencySchema from './central-tendency-result.json';
+
+const name = 'central-tendency-lines';
 
 /**
  * Core prompt template for central tendency evaluation using cognitive science principles.
@@ -116,6 +119,7 @@ function createResponseFormat(schemaName = 'central_tendency_result', customSche
  * @returns {Promise<{score: number, reason: string, confidence: number}>}
  */
 export default async function centralTendency(item, seedItems, config = {}) {
+  const startTime = Date.now();
   if (!item || typeof item !== 'string') {
     throw new Error('Item must be a non-empty string');
   }
@@ -159,9 +163,11 @@ export default async function centralTendency(item, seedItems, config = {}) {
       hasReason: !!response.reason,
     });
 
+    emitChainResult(config, name, { duration: Date.now() - startTime });
     return response;
   } catch (error) {
     lifecycleLogger.logError(error);
+    emitChainError(config, name, error, { duration: Date.now() - startTime });
     throw error;
   }
 }

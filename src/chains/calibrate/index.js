@@ -1,9 +1,12 @@
 import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
-import { initChain, withPolicy, scopeOperation } from '../../lib/context/option.js';
+import { emitChainResult, emitChainError } from '../../lib/progress-callback/index.js';
+import { initChain, withPolicy, nameStep } from '../../lib/context/option.js';
 import { calibrateSpecificationJsonSchema } from './schemas.js';
 import calibrateResultSchema from './calibrate-result.json';
+
+const name = 'calibrate';
 
 // ===== Option Mappers =====
 
@@ -90,34 +93,35 @@ export async function calibrateSpec(scans, config = {}) {
   config = scopedConfig;
   const { instructions } = config;
 
-  const statistics = computeScanStatistics(scans);
+  try {
+    const statistics = computeScanStatistics(scans);
 
-  const specSystemPrompt = `You are a calibration specification generator. Analyze the corpus scan statistics and produce a calibrated classification specification. The specification should enable consistent severity and salience classification of individual items relative to this corpus.`;
+    const specSystemPrompt = `You are a calibration specification generator. Analyze the corpus scan statistics and produce a calibrated classification specification. The specification should enable consistent severity and salience classification of individual items relative to this corpus.`;
 
-  const instructionsBlock = instructions
-    ? `\n\n${asXML(instructions, { tag: 'classification-instructions' })}`
-    : '';
-
-  const thresholdGuidance = {
-    percentile:
-      '\n- Use percentile-based boundaries (e.g., top 10% = critical, top 25% = high)\n- Calibrate severity thresholds relative to the score distribution\n- Salience should reflect how unusual an item is within its percentile band',
-    fixed:
-      '\n- Use fixed severity boundaries independent of corpus distribution\n- Apply consistent thresholds regardless of how common or rare detections are\n- Salience should reflect absolute significance, not relative standing',
-  };
-
-  const thresholdBlock =
-    thresholdStrategy !== 'statistical'
-      ? `\n\nThreshold derivation strategy: ${thresholdStrategy}${thresholdGuidance[thresholdStrategy] || thresholdGuidance.fixed}`
+    const instructionsBlock = instructions
+      ? `\n\n${asXML(instructions, { tag: 'classification-instructions' })}`
       : '';
 
-  const sensitivityPosture = {
-    low: '\n\nClassification posture: conservative. Prefer false negatives over false positives. Only flag items with strong, unambiguous signals. Set severity and salience thresholds high — routine items should classify as none/routine unless clearly elevated.',
-    high: '\n\nClassification posture: sensitive. Prefer false positives over false negatives. Flag items with even weak or ambiguous signals. Set severity and salience thresholds low to catch edge cases — when in doubt, classify higher.',
-  };
+    const thresholdGuidance = {
+      percentile:
+        '\n- Use percentile-based boundaries (e.g., top 10% = critical, top 25% = high)\n- Calibrate severity thresholds relative to the score distribution\n- Salience should reflect how unusual an item is within its percentile band',
+      fixed:
+        '\n- Use fixed severity boundaries independent of corpus distribution\n- Apply consistent thresholds regardless of how common or rare detections are\n- Salience should reflect absolute significance, not relative standing',
+    };
 
-  const sensitivityBlock = sensitivityPosture[sensitivity] || '';
+    const thresholdBlock =
+      thresholdStrategy !== 'statistical'
+        ? `\n\nThreshold derivation strategy: ${thresholdStrategy}${thresholdGuidance[thresholdStrategy] || thresholdGuidance.fixed}`
+        : '';
 
-  const specUserPrompt = `Analyze these corpus scan statistics and generate a calibration specification.
+    const sensitivityPosture = {
+      low: '\n\nClassification posture: conservative. Prefer false negatives over false positives. Only flag items with strong, unambiguous signals. Set severity and salience thresholds high — routine items should classify as none/routine unless clearly elevated.',
+      high: '\n\nClassification posture: sensitive. Prefer false positives over false negatives. Flag items with even weak or ambiguous signals. Set severity and salience thresholds low to catch edge cases — when in doubt, classify higher.',
+    };
+
+    const sensitivityBlock = sensitivityPosture[sensitivity] || '';
+
+    const specUserPrompt = `Analyze these corpus scan statistics and generate a calibration specification.
 
 ${asXML(statistics, { tag: 'scan-statistics' })}${instructionsBlock}${thresholdBlock}${sensitivityBlock}
 
@@ -129,23 +133,29 @@ Provide a JSON object with exactly four string properties:
 
 IMPORTANT: Each property must be a simple string value, not a nested object or array.`;
 
-  const response = await retry(
-    () =>
-      callLlm(specUserPrompt, {
-        ...config,
-        systemPrompt: specSystemPrompt,
-        response_format: jsonSchema(
-          calibrateSpecificationJsonSchema.name,
-          calibrateSpecificationJsonSchema.schema
-        ),
-      }),
-    {
-      label: 'calibrate spec',
-      config,
-    }
-  );
+    const response = await retry(
+      () =>
+        callLlm(specUserPrompt, {
+          ...config,
+          systemPrompt: specSystemPrompt,
+          response_format: jsonSchema(
+            calibrateSpecificationJsonSchema.name,
+            calibrateSpecificationJsonSchema.schema
+          ),
+        }),
+      {
+        label: 'calibrate spec',
+        config,
+      }
+    );
 
-  return response;
+    emitChainResult(config, name);
+
+    return response;
+  } catch (err) {
+    emitChainError(config, name, err);
+    throw err;
+  }
 }
 
 /**
@@ -157,7 +167,7 @@ IMPORTANT: Each property must be a simple string value, not a nested object or a
  * @returns {Promise<{ severity: string, salience: string, categories: object, summary: string }>}
  */
 export async function applyCalibrate(scan, specification, config = {}) {
-  config = scopeOperation('calibrate:apply', config);
+  config = nameStep('calibrate:apply', config);
 
   const prompt = `Classify this scan result against the calibration specification.
 

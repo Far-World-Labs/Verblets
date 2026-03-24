@@ -5,6 +5,9 @@ import { createLifecycleLogger, extractBatchConfig } from '../../lib/lifecycle-l
 import { prepareBatches, retry } from '../../lib/index.js';
 import { jsonSchema } from '../../lib/llm/index.js';
 import { initChain, withPolicy } from '../../lib/context/option.js';
+import { emitChainResult, emitChainError } from '../../lib/progress-callback/index.js';
+
+const name = 'filter';
 
 // ===== Option Mappers =====
 
@@ -49,48 +52,49 @@ const filter = async function filter(list, instructions, config = {}) {
     guidance,
     progressMode,
     errorPosture,
-  } = await initChain('filter', config, {
+  } = await initChain(name, config, {
     strictness: withPolicy(mapStrictness, ['guidance', 'errorPosture']),
     progressMode: 'detailed',
   });
   config = scopedConfig;
-  const lifecycleLogger = createLifecycleLogger(config.logger, 'chain:filter');
+  try {
+    const lifecycleLogger = createLifecycleLogger(config.logger, 'chain:filter');
 
-  lifecycleLogger.logStart(
-    extractBatchConfig({
-      totalItems: list.length,
-      batchSize: config.batchSize,
-    })
-  );
+    lifecycleLogger.logStart(
+      extractBatchConfig({
+        totalItems: list.length,
+        batchSize: config.batchSize,
+      })
+    );
 
-  const results = [];
-  const { batches, tracker } = await prepareBatches('filter', list, config, { progressMode });
+    const results = [];
+    const { batches, tracker } = await prepareBatches('filter', list, config, { progressMode });
 
-  lifecycleLogger.logEvent('batches-created', {
-    totalBatches: batches.length,
-    activeBatches: batches.filter((b) => !b.skip).length,
-    batchSizes: batches.map((b) => b.items?.length || 0),
-  });
-
-  for (const [batchIndex, { items, skip, startIndex }] of batches.entries()) {
-    if (skip) {
-      lifecycleLogger.logEvent('batch-skip', { batchIndex });
-      continue;
-    }
-
-    lifecycleLogger.logEvent('batch-start', {
-      batchIndex,
-      itemCount: items.length,
+    lifecycleLogger.logEvent('batches-created', {
+      totalBatches: batches.length,
+      activeBatches: batches.filter((b) => !b.skip).length,
+      batchSizes: batches.map((b) => b.items?.length || 0),
     });
 
-    const batchStyle = determineStyle(config.listStyle, items, config.autoModeThreshold);
+    for (const [batchIndex, { items, skip, startIndex }] of batches.entries()) {
+      if (skip) {
+        lifecycleLogger.logEvent('batch-skip', { batchIndex });
+        continue;
+      }
 
-    const filterInstructions = ({ style, count }) => {
-      const strictnessBlock = guidance
-        ? `\n\n${asXML(guidance, { tag: 'borderline-handling' })}`
-        : '';
+      lifecycleLogger.logEvent('batch-start', {
+        batchIndex,
+        itemCount: items.length,
+      });
 
-      const baseInstructions = `For each item in the list below, determine if it satisfies the filtering criteria. Return "yes" to include the item or "no" to exclude it. Return exactly one decision per item, in the same order as the input list.
+      const batchStyle = determineStyle(config.listStyle, items, config.autoModeThreshold);
+
+      const filterInstructions = ({ style, count }) => {
+        const strictnessBlock = guidance
+          ? `\n\n${asXML(guidance, { tag: 'borderline-handling' })}`
+          : '';
+
+        const baseInstructions = `For each item in the list below, determine if it satisfies the filtering criteria. Return "yes" to include the item or "no" to exclude it. Return exactly one decision per item, in the same order as the input list.
 
 ${asXML(instructions, { tag: 'filtering-criteria' })}${strictnessBlock}
 
@@ -100,67 +104,70 @@ IMPORTANT:
 - Return only "yes" or "no" for each item
 - Maintain the exact order of the input list`;
 
-      if (style === ListStyle.NEWLINE) {
-        return `${baseInstructions}
+        if (style === ListStyle.NEWLINE) {
+          return `${baseInstructions}
 
 Process exactly ${count} items from the list below and return ${count} yes/no decisions.`;
-      }
+        }
 
-      return `${baseInstructions}
+        return `${baseInstructions}
 
 Process exactly ${count} items from the XML list below and return ${count} yes/no decisions.`;
-    };
+      };
 
-    const prompt = filterInstructions({ style: batchStyle, count: items.length });
-    const listBatchOptions = {
-      ...config,
-      listStyle: batchStyle,
-      responseFormat: config.responseFormat ?? filterResponseFormat,
-      logger: lifecycleLogger,
-    };
+      const prompt = filterInstructions({ style: batchStyle, count: items.length });
+      const listBatchOptions = {
+        ...config,
+        listStyle: batchStyle,
+        responseFormat: config.responseFormat ?? filterResponseFormat,
+        logger: lifecycleLogger,
+      };
 
-    let response;
-    try {
-      response = await retry(() => listBatch(items, prompt, listBatchOptions), {
-        label: 'filter:batch',
-        config,
-        onProgress: tracker.forBatch(startIndex, items.length),
+      let response;
+      try {
+        response = await retry(() => listBatch(items, prompt, listBatchOptions), {
+          label: 'filter:batch',
+          config,
+          onProgress: tracker.forBatch(startIndex, items.length),
+        });
+      } catch (error) {
+        lifecycleLogger.logError(error, { batchIndex, itemCount: items.length });
+        if (errorPosture === 'strict') throw error;
+        continue;
+      }
+
+      // listBatch now returns arrays directly
+      const decisions = response;
+
+      let included = 0;
+      items.forEach((item, i) => {
+        const decision = decisions[i]?.toLowerCase().trim();
+        if (decision === 'yes') {
+          results.push(item);
+          included++;
+        }
       });
-    } catch (error) {
-      lifecycleLogger.logError(error, { batchIndex, itemCount: items.length });
-      if (errorPosture === 'strict') throw error;
-      continue;
+
+      tracker.batchDone(startIndex, items.length);
+
+      lifecycleLogger.logEvent('batch-done', {
+        batchIndex,
+        included,
+        itemCount: items.length,
+      });
     }
 
-    // listBatch now returns arrays directly
-    const decisions = response;
+    tracker.complete();
 
-    let included = 0;
-    items.forEach((item, i) => {
-      const decision = decisions[i]?.toLowerCase().trim();
-      if (decision === 'yes') {
-        results.push(item);
-        included++;
-      }
-    });
+    const resultMeta = { inputCount: list.length, outputCount: results.length };
+    lifecycleLogger.logResult(results, resultMeta);
+    emitChainResult(config, name, resultMeta);
 
-    tracker.batchDone(startIndex, items.length);
-
-    lifecycleLogger.logEvent('batch-done', {
-      batchIndex,
-      included,
-      itemCount: items.length,
-    });
+    return results;
+  } catch (err) {
+    emitChainError(config, name, err);
+    throw err;
   }
-
-  tracker.complete();
-
-  lifecycleLogger.logResult(results, {
-    inputCount: list.length,
-    outputCount: results.length,
-  });
-
-  return results;
 };
 
 filter.with = function (criteria, config = {}) {

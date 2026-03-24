@@ -3,10 +3,13 @@ import llm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { testResultJsonSchema } from './schemas.js';
-import { scopeOperation } from '../../lib/context/option.js';
+import { initChain } from '../../lib/context/option.js';
+import { emitChainResult, emitChainError } from '../../lib/progress-callback/index.js';
+
+const name = 'test';
 
 export default async function test(path, instructions, config = {}) {
-  config = scopeOperation('test', config);
+  ({ config } = await initChain(name, config));
   try {
     const code = await fs.readFile(path, 'utf-8');
 
@@ -38,8 +41,13 @@ GUIDELINES:
     );
 
     // With structured output, we get a validated object
-    return result.hasIssues ? result.issues : [];
+    const issues = result.hasIssues ? result.issues : [];
+
+    emitChainResult(config, name);
+
+    return issues;
   } catch (error) {
+    emitChainError(config, name, error);
     return [`Error analyzing ${path}: ${error.message}`];
   }
 }

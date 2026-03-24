@@ -1,10 +1,16 @@
 import listBatch, { ListStyle, determineStyle } from '../../verblets/list-batch/index.js';
 import reduce from '../reduce/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
-import { emitPhaseProgress } from '../../lib/progress-callback/index.js';
+import {
+  emitPhaseProgress,
+  emitChainResult,
+  emitChainError,
+} from '../../lib/progress-callback/index.js';
 import { parallel, retry, prepareBatches, scopeProgress } from '../../lib/index.js';
 import { debug } from '../../lib/debug/index.js';
 import { initChain, withPolicy } from '../../lib/context/option.js';
+
+const name = 'group';
 
 // ===== Option Mappers =====
 
@@ -121,7 +127,7 @@ export default async function group(list, instructions, config = {}) {
     errorPosture,
     progressMode,
     topN,
-  } = await initChain('group', config, {
+  } = await initChain(name, config, {
     granularity: withPolicy(mapGranularity, ['guidance', 'topN']),
     maxParallel: 3,
     errorPosture: 'resilient',
@@ -129,104 +135,114 @@ export default async function group(list, instructions, config = {}) {
   });
   config = scopedConfig;
   const { categoryPrompt, listStyle, autoModeThreshold, onProgress, now } = config;
+  try {
+    // Phase 1: Category Discovery - reduce pass to build taxonomy
+    if (onProgress) {
+      emitPhaseProgress(onProgress, 'group', 'category-discovery', {
+        description: 'Discovering categories from items',
+        now: new Date(),
+        chainStartTime: now,
+      });
+    }
 
-  // Phase 1: Category Discovery - reduce pass to build taxonomy
-  if (onProgress) {
-    emitPhaseProgress(onProgress, 'group', 'category-discovery', {
-      description: 'Discovering categories from items',
-      now: new Date(),
-      chainStartTime: now,
+    const categoryDiscoveryPrompt = createCategoryDiscoveryPrompt(
+      instructions,
+      categoryPrompt,
+      granularityGuidance
+    );
+    const categoriesString = await reduce(list, categoryDiscoveryPrompt, {
+      ...config,
+      initial: '',
+      now,
+      onProgress: scopeProgress(onProgress, 'reduce:category-discovery'),
     });
-  }
 
-  const categoryDiscoveryPrompt = createCategoryDiscoveryPrompt(
-    instructions,
-    categoryPrompt,
-    granularityGuidance
-  );
-  const categoriesString = await reduce(list, categoryDiscoveryPrompt, {
-    ...config,
-    initial: '',
-    now,
-    onProgress: scopeProgress(onProgress, 'reduce:category-discovery'),
-  });
+    const categories = parseCategories(categoriesString);
+    if (categories.length === 0) {
+      categories.push('other');
+    }
 
-  const categories = parseCategories(categoriesString);
-  if (categories.length === 0) {
-    categories.push('other');
-  }
+    // Phase 2: Assignment - map items to established categories
+    if (onProgress) {
+      emitPhaseProgress(onProgress, 'group', 'assignment', {
+        description: 'Assigning items to categories',
+        categoryCount: categories.length,
+        now: new Date(),
+        chainStartTime: now,
+      });
+    }
 
-  // Phase 2: Assignment - map items to established categories
-  if (onProgress) {
-    emitPhaseProgress(onProgress, 'group', 'assignment', {
-      description: 'Assigning items to categories',
-      categoryCount: categories.length,
-      now: new Date(),
-      chainStartTime: now,
+    const batchResults = [];
+    const assignmentInstructions = createAssignmentInstructions(categories);
+
+    const { batches: allBatches, tracker } = await prepareBatches('group', list, config, {
+      progressMode,
     });
-  }
+    const batchesToProcess = allBatches.filter((batch) => !batch.skip);
 
-  const batchResults = [];
-  const assignmentInstructions = createAssignmentInstructions(categories);
+    // Process batches in parallel using parallelBatch
+    await parallel(
+      batchesToProcess,
+      async ({ items, startIndex }) => {
+        const batchStyle = determineStyle(listStyle, items, autoModeThreshold);
 
-  const { batches: allBatches, tracker } = await prepareBatches('group', list, config, {
-    progressMode,
-  });
-  const batchesToProcess = allBatches.filter((batch) => !batch.skip);
+        try {
+          const listBatchOptions = {
+            ...config,
+            listStyle: batchStyle,
+          };
 
-  // Process batches in parallel using parallelBatch
-  await parallel(
-    batchesToProcess,
-    async ({ items, startIndex }) => {
-      const batchStyle = determineStyle(listStyle, items, autoModeThreshold);
+          const labels = await retry(
+            () =>
+              listBatch(
+                items,
+                assignmentInstructions({ style: batchStyle, count: items.length }),
+                listBatchOptions
+              ),
+            {
+              label: 'group:batch',
+              config,
+              onProgress: tracker.forBatch(startIndex, items.length),
+            }
+          );
 
-      try {
-        const listBatchOptions = {
-          ...config,
-          listStyle: batchStyle,
-        };
-
-        const labels = await retry(
-          () =>
-            listBatch(
-              items,
-              assignmentInstructions({ style: batchStyle, count: items.length }),
-              listBatchOptions
-            ),
-          {
-            label: 'group:batch',
-            config,
-            onProgress: tracker.forBatch(startIndex, items.length),
+          if (!Array.isArray(labels) || labels.length !== items.length) {
+            const fallbackLabels = new Array(items.length).fill('other');
+            batchResults.push({ items, labels: fallbackLabels, startIndex });
+          } else {
+            batchResults.push({ items, labels, startIndex });
           }
-        );
 
-        if (!Array.isArray(labels) || labels.length !== items.length) {
+          tracker.batchDone(startIndex, items.length);
+        } catch (error) {
+          if (errorPosture === 'strict') throw error;
+          debug(
+            `group batch at index ${startIndex} failed, using fallback labels: ${error.message}`
+          );
           const fallbackLabels = new Array(items.length).fill('other');
           batchResults.push({ items, labels: fallbackLabels, startIndex });
-        } else {
-          batchResults.push({ items, labels, startIndex });
         }
-
-        tracker.batchDone(startIndex, items.length);
-      } catch (error) {
-        if (errorPosture === 'strict') throw error;
-        debug(`group batch at index ${startIndex} failed, using fallback labels: ${error.message}`);
-        const fallbackLabels = new Array(items.length).fill('other');
-        batchResults.push({ items, labels: fallbackLabels, startIndex });
+      },
+      {
+        maxParallel,
+        errorPosture,
+        label: 'group assignment batches',
       }
-    },
-    {
-      maxParallel,
-      errorPosture,
-      label: 'group assignment batches',
-    }
-  );
+    );
 
-  // Final grouping
-  batchResults.sort((a, b) => a.startIndex - b.startIndex);
-  const groups = assignItemsToGroups(batchResults);
+    // Final grouping
+    batchResults.sort((a, b) => a.startIndex - b.startIndex);
+    const groups = assignItemsToGroups(batchResults);
 
-  tracker.complete({ categoryCount: categories.length });
+    tracker.complete({ categoryCount: categories.length });
 
-  return topN ? applyTopNFilter(groups, topN) : groups;
+    const result = topN ? applyTopNFilter(groups, topN) : groups;
+
+    emitChainResult(config, name);
+
+    return result;
+  } catch (err) {
+    emitChainError(config, name, err);
+    throw err;
+  }
 }

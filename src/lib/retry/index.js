@@ -48,10 +48,23 @@ async function retry(fn, opts = {}) {
     });
   }
 
+  const operation = config?.operation;
+  const stepName = label || 'retry';
+
   while (attempt < maxAttempts) {
     if (abortSignal?.aborted) {
       throw abortError(abortSignal);
     }
+
+    emitProgress({
+      callback: onProgress,
+      kind: 'telemetry',
+      step: stepName,
+      event: 'retry:attempt',
+      operation,
+      attemptNumber: attempt + 1,
+      maxAttempts,
+    });
 
     try {
       // eslint-disable-next-line no-await-in-loop
@@ -60,7 +73,7 @@ async function retry(fn, opts = {}) {
       if (onProgress) {
         emitProgress({
           callback: onProgress,
-          step: label || 'retry',
+          step: stepName,
           event: 'complete',
           attemptNumber: attempt + 1,
           maxAttempts,
@@ -79,14 +92,16 @@ async function retry(fn, opts = {}) {
       const isLastAttempt = !isRetry || attempt >= maxAttempts - 1;
 
       if (isRetry && attempt < maxAttempts - 1) {
+        const delay = retryDelay * attempt;
+
         if (onProgress) {
           const progressData = {
             callback: onProgress,
-            step: label || 'retry',
+            step: stepName,
             event: 'retry',
             attemptNumber: attempt + 1,
             maxAttempts,
-            delay: retryDelay * attempt,
+            delay,
             error: error.message,
           };
 
@@ -97,8 +112,20 @@ async function retry(fn, opts = {}) {
           emitProgress(progressData);
         }
 
+        emitProgress({
+          callback: onProgress,
+          kind: 'telemetry',
+          step: stepName,
+          event: 'retry:error',
+          operation,
+          attemptNumber: attempt + 1,
+          maxAttempts,
+          delay,
+          error: { message: error.message, httpStatus: error.httpStatus, type: error.errorType },
+        });
+
         // eslint-disable-next-line no-await-in-loop
-        await sleep(retryDelay * attempt);
+        await sleep(delay);
         attempt += 1;
       } else {
         attempt = maxAttempts;
@@ -106,7 +133,7 @@ async function retry(fn, opts = {}) {
         if (onProgress && isLastAttempt) {
           emitProgress({
             callback: onProgress,
-            step: label || 'retry',
+            step: stepName,
             event: 'error',
             attemptNumber: attempt + 1,
             maxAttempts,
@@ -115,6 +142,17 @@ async function retry(fn, opts = {}) {
             final: true,
           });
         }
+
+        emitProgress({
+          callback: onProgress,
+          kind: 'telemetry',
+          step: stepName,
+          event: 'retry:exhaust',
+          operation,
+          attemptNumber: attempt,
+          maxAttempts,
+          error: { message: error.message, httpStatus: error.httpStatus, type: error.errorType },
+        });
       }
     }
   }

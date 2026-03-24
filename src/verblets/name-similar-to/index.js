@@ -1,6 +1,9 @@
 import callLlm from '../../lib/llm/index.js';
+import { emitChainResult, emitChainError } from '../../lib/progress-callback/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { nameSimilarSchema } from './schema.js';
+
+const name = 'name-similar-to';
 
 const buildPrompt = (description, exampleNames) => {
   const descriptionBlock = asXML(description, { tag: 'description' });
@@ -16,16 +19,27 @@ The value should be the generated name.`;
 };
 
 export default async function nameSimilarTo(description, exampleNames = [], config = {}) {
-  const prompt = buildPrompt(description, exampleNames);
-  const response = await callLlm(prompt, {
-    ...config,
-    response_format: {
-      type: 'json_schema',
-      json_schema: {
-        name: 'similar_name',
-        schema: nameSimilarSchema,
+  const startTime = Date.now();
+
+  try {
+    const prompt = buildPrompt(description, exampleNames);
+    const response = await callLlm(prompt, {
+      ...config,
+      response_format: {
+        type: 'json_schema',
+        json_schema: {
+          name: 'similar_name',
+          schema: nameSimilarSchema,
+        },
       },
-    },
-  });
-  return response;
+    });
+
+    emitChainResult(config, name, { duration: Date.now() - startTime });
+
+    return response;
+  } catch (err) {
+    emitChainError(config, name, err, { duration: Date.now() - startTime });
+
+    throw err;
+  }
 }

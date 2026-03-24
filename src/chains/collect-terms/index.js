@@ -1,6 +1,9 @@
 import list from '../list/index.js';
 import score from '../score/index.js';
+import { emitChainResult, emitChainError } from '../../lib/progress-callback/index.js';
 import { initChain } from '../../lib/context/option.js';
+
+const name = 'collect-terms';
 
 const splitIntoChunks = (text, maxLen) => {
   const words = text.split(/\s+/);
@@ -23,38 +26,49 @@ export default async function collectTerms(text, config = {}) {
     config: scopedConfig,
     topN,
     chunkLen,
-  } = await initChain('collect-terms', config, {
+  } = await initChain(name, config, {
     topN: 20,
     chunkLen: 1000,
   });
   config = scopedConfig;
-  const chunks = splitIntoChunks(text, chunkLen);
 
-  // Collect terms from each chunk
-  const allTerms = [];
-  for (const chunk of chunks) {
-    const terms = await list(
-      `key words and phrases that would help find documents about: ${chunk}`,
+  try {
+    const chunks = splitIntoChunks(text, chunkLen);
+
+    // Collect terms from each chunk
+    const allTerms = [];
+    for (const chunk of chunks) {
+      const terms = await list(
+        `key words and phrases that would help find documents about: ${chunk}`,
+        config
+      );
+      allTerms.push(...terms);
+    }
+
+    const uniqueTerms = Array.from(new Set(allTerms.map((t) => t.trim()))).filter(Boolean);
+
+    // If we already have fewer terms than requested, return them all
+    if (uniqueTerms.length <= topN) {
+      emitChainResult(config, name);
+      return uniqueTerms;
+    }
+
+    // Score each term by relevance to the full text context
+    const scores = await score(
+      uniqueTerms,
+      `relevance as a search term for finding information (1-10, higher is more important)`,
       config
     );
-    allTerms.push(...terms);
+
+    // Sort by score and take top N
+    const termsWithScores = uniqueTerms.map((term, i) => ({ term, score: scores[i] }));
+    termsWithScores.sort((a, b) => b.score - a.score);
+
+    emitChainResult(config, name);
+
+    return termsWithScores.slice(0, topN).map((item) => item.term);
+  } catch (err) {
+    emitChainError(config, name, err);
+    throw err;
   }
-
-  const uniqueTerms = Array.from(new Set(allTerms.map((t) => t.trim()))).filter(Boolean);
-
-  // If we already have fewer terms than requested, return them all
-  if (uniqueTerms.length <= topN) return uniqueTerms;
-
-  // Score each term by relevance to the full text context
-  const scores = await score(
-    uniqueTerms,
-    `relevance as a search term for finding information (1-10, higher is more important)`,
-    config
-  );
-
-  // Sort by score and take top N
-  const termsWithScores = uniqueTerms.map((term, i) => ({ term, score: scores[i] }));
-  termsWithScores.sort((a, b) => b.score - a.score);
-
-  return termsWithScores.slice(0, topN).map((item) => item.term);
 }

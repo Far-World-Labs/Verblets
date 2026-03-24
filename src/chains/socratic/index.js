@@ -7,8 +7,14 @@ import {
   extractPromptAnalysis,
   extractResultValue,
 } from '../../lib/lifecycle-logger/index.js';
-import { emitStepProgress } from '../../lib/progress-callback/index.js';
+import {
+  emitChainResult,
+  emitChainError,
+  emitStepProgress,
+} from '../../lib/progress-callback/index.js';
 import { initChain, withPolicy } from '../../lib/context/option.js';
+
+const name = 'socratic';
 
 // ===== Option Mappers =====
 
@@ -115,7 +121,7 @@ const defaultAnswer = async ({
 
 class SocraticMethod {
   static async create(statement, options = {}) {
-    const { config, challenge, temperature } = await initChain('socratic', options, {
+    const { config, challenge, temperature } = await initChain(name, options, {
       challenge: withPolicy(mapChallenge, ['challenge', 'temperature']),
     });
     return new SocraticMethod(statement, config, {
@@ -236,13 +242,28 @@ class SocraticMethod {
   async run(depth = 3) {
     this.logger.logEvent('run-start', { depth });
 
-    for (let i = 0; i < depth; i += 1) {
-      // eslint-disable-next-line no-await-in-loop
-      await this.step();
-    }
+    try {
+      for (let i = 0; i < depth; i += 1) {
+        // eslint-disable-next-line no-await-in-loop
+        await this.step();
+      }
 
-    this.logger.logResult(this.history, extractResultValue(this.history, this.history));
-    return this.history;
+      this.logger.logResult(this.history, extractResultValue(this.history, this.history));
+
+      emitChainResult(
+        { onProgress: this.onProgress, operation: this.config.operation, now: this.now },
+        name
+      );
+
+      return this.history;
+    } catch (err) {
+      emitChainError(
+        { onProgress: this.onProgress, operation: this.config.operation, now: this.now },
+        name,
+        err
+      );
+      throw err;
+    }
   }
 }
 

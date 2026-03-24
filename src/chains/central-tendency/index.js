@@ -2,9 +2,15 @@ import map from '../map/index.js';
 import { CENTRAL_TENDENCY_PROMPT } from '../../verblets/central-tendency-lines/index.js';
 import { centralTendencyResultsJsonSchema } from './schemas.js';
 import { createLifecycleLogger, extractPromptAnalysis } from '../../lib/lifecycle-logger/index.js';
-import { scopeProgress } from '../../lib/progress-callback/index.js';
+import {
+  emitChainResult,
+  emitChainError,
+  scopeProgress,
+} from '../../lib/progress-callback/index.js';
 import { jsonSchema } from '../../lib/llm/index.js';
 import { initChain } from '../../lib/context/option.js';
+
+const name = 'central-tendency';
 
 const centralTendencyResponseFormat = jsonSchema(
   centralTendencyResultsJsonSchema.name,
@@ -65,7 +71,7 @@ export default async function centralTendency(items, seedItems, config = {}) {
     throw new Error('seedItems must be a non-empty array');
   }
 
-  const { config: scopedConfig, batchSize } = await initChain('central-tendency', config, {
+  const { config: scopedConfig, batchSize } = await initChain(name, config, {
     batchSize: 5,
   });
   config = scopedConfig;
@@ -100,15 +106,18 @@ export default async function centralTendency(items, seedItems, config = {}) {
     });
 
     // Log the final output from the chain
-    lifecycleLogger.logResult(results, {
+    const resultMeta = {
       totalItems: results.length,
       successCount: results.filter((r) => r !== undefined).length,
       failureCount: results.filter((r) => r === undefined).length,
-    });
+    };
+    lifecycleLogger.logResult(results, resultMeta);
+    emitChainResult(config, name, resultMeta);
 
     return results;
   } catch (error) {
     lifecycleLogger.logError(error);
+    emitChainError(config, name, error);
     throw error;
   }
 }

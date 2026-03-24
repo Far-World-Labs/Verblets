@@ -7,6 +7,9 @@ import {
 } from '../../lib/lifecycle-logger/index.js';
 import { createBatches, parallel, retry, batchTracker } from '../../lib/index.js';
 import { initChain } from '../../lib/context/option.js';
+import { emitChainResult, emitChainError } from '../../lib/progress-callback/index.js';
+
+const name = 'map';
 
 /**
  * Map over a list of items by calling `listBatch` on XML-enriched batches.
@@ -189,7 +192,7 @@ const map = async function (list, instructions, config = {}) {
     maxParallel,
     errorPosture,
     progressMode,
-  } = await initChain('map', config, {
+  } = await initChain(name, config, {
     maxAttempts: 3,
     maxParallel: 3,
     errorPosture: 'resilient',
@@ -197,89 +200,95 @@ const map = async function (list, instructions, config = {}) {
   });
   config = scopedConfig;
   const { logger, now } = config;
+  try {
+    // Create logger for map chain
+    const lifecycleLogger = createLifecycleLogger(logger, 'chain:map');
 
-  // Create logger for map chain
-  const lifecycleLogger = createLifecycleLogger(logger, 'chain:map');
+    // Log detailed config for debugging
+    if (logger?.info) {
+      logger.info('Map chain starting', {
+        itemCount: list.length,
+        instructionsLength: instructions?.length,
+        llm: config.llm,
+        batchSize: config.batchSize,
+        maxParallel: config.maxParallel,
+        maxAttempts,
+        hasOnProgress: !!config.onProgress,
+      });
+    }
 
-  // Log detailed config for debugging
-  if (logger?.info) {
-    logger.info('Map chain starting', {
-      itemCount: list.length,
-      instructionsLength: instructions?.length,
-      llm: config.llm,
-      batchSize: config.batchSize,
-      maxParallel: config.maxParallel,
-      maxAttempts,
-      hasOnProgress: !!config.onProgress,
-    });
-  }
-
-  // Log map chain start with batch configuration
-  lifecycleLogger.logStart(
-    extractBatchConfig({
-      totalItems: list.length,
-      batchSize: config.batchSize,
-      maxAttempts,
-      maxParallel: config.maxParallel,
-    })
-  );
-
-  const results = await mapOnce(list, instructions, {
-    ...config,
-    maxAttempts,
-    maxParallel,
-    errorPosture,
-    progressMode,
-    logger: lifecycleLogger,
-    now,
-    chainStartTime: now,
-  });
-
-  for (let attempt = 1; attempt < maxAttempts; attempt += 1) {
-    const missingIdx = [];
-    const missingItems = [];
-
-    results.forEach((val, idx) => {
-      if (val === undefined) {
-        missingIdx.push(idx);
-        missingItems.push(list[idx]);
-      }
-    });
-
-    if (missingItems.length === 0) break;
-
-    // Log retry attempt
-    lifecycleLogger.logEvent(
-      'retry',
+    // Log map chain start with batch configuration
+    lifecycleLogger.logStart(
       extractBatchConfig({
-        retryCount: attempt,
-        failedItems: missingItems.length,
+        totalItems: list.length,
+        batchSize: config.batchSize,
+        maxAttempts,
+        maxParallel: config.maxParallel,
       })
     );
 
-    const retryResults = await mapOnce(missingItems, instructions, {
+    const results = await mapOnce(list, instructions, {
       ...config,
       maxAttempts,
       maxParallel,
+      errorPosture,
+      progressMode,
       logger: lifecycleLogger,
-      now: new Date(),
+      now,
       chainStartTime: now,
     });
 
-    retryResults.forEach((val, i) => {
-      results[missingIdx[i]] = val;
-    });
+    for (let attempt = 1; attempt < maxAttempts; attempt += 1) {
+      const missingIdx = [];
+      const missingItems = [];
+
+      results.forEach((val, idx) => {
+        if (val === undefined) {
+          missingIdx.push(idx);
+          missingItems.push(list[idx]);
+        }
+      });
+
+      if (missingItems.length === 0) break;
+
+      // Log retry attempt
+      lifecycleLogger.logEvent(
+        'retry',
+        extractBatchConfig({
+          retryCount: attempt,
+          failedItems: missingItems.length,
+        })
+      );
+
+      const retryResults = await mapOnce(missingItems, instructions, {
+        ...config,
+        maxAttempts,
+        maxParallel,
+        logger: lifecycleLogger,
+        now: new Date(),
+        chainStartTime: now,
+      });
+
+      retryResults.forEach((val, i) => {
+        results[missingIdx[i]] = val;
+      });
+    }
+
+    // Log final results
+    const successCount = results.filter((r) => r !== undefined).length;
+    const resultMeta = {
+      totalItems: results.length,
+      successCount,
+      failedItems: results.length - successCount,
+    };
+    lifecycleLogger.logResult(results, resultMeta);
+    emitChainResult(config, name, resultMeta);
+
+    return results;
+  } catch (err) {
+    emitChainError(config, name, err);
+    throw err;
   }
-
-  // Log final results
-  const successCount = results.filter((r) => r !== undefined).length;
-  lifecycleLogger.logResult(results, {
-    totalItems: results.length,
-    successCount,
-    failedItems: results.length - successCount,
-  });
-
-  return results;
 };
 
 map.with = function (instructions, config = {}) {

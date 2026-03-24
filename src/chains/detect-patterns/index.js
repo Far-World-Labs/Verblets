@@ -1,7 +1,10 @@
 import reduce from '../reduce/index.js';
 import { patternCandidatesJsonSchema } from './schemas.js';
 import { jsonSchema } from '../../lib/llm/index.js';
+import { emitChainResult, emitChainError } from '../../lib/progress-callback/index.js';
 import { initChain, withPolicy } from '../../lib/context/option.js';
+
+const name = 'detect-patterns';
 
 // ===== Option Mappers =====
 
@@ -67,62 +70,72 @@ export default async function detectPatterns(objects, config = {}) {
     maxArrayLength,
     topN,
     capacity,
-  } = await initChain('detect-patterns', config, {
+  } = await initChain(name, config, {
     thoroughness: withPolicy(mapThoroughness, ['topN', 'capacity']),
     maxStringLength: 50,
     maxArrayLength: 10,
   });
   config = scopedConfig;
 
-  const filteredObjects = objects.map((obj) => filterObject(obj, maxStringLength, maxArrayLength));
-  const stringifiedObjects = filteredObjects.map((obj) => JSON.stringify(obj, null, 0));
+  try {
+    const filteredObjects = objects.map((obj) =>
+      filterObject(obj, maxStringLength, maxArrayLength)
+    );
+    const stringifiedObjects = filteredObjects.map((obj) => JSON.stringify(obj, null, 0));
 
-  const patternInstructions = `
+    const patternInstructions = `
     Maintain an array of pattern candidates and individual instances. Maximum ${capacity} total items.
-    
+
     Each item format: {"type": "pattern"|"instance", "template": {...}, "count": N}
     - "pattern": merged from 2+ objects, count >= 2
     - "instance": single object not yet merged, count = 1
-    
+
     GREEDY ACCUMULATION STRATEGY:
     - For each new object, try to merge with most similar existing item
     - If merge possible: update template constraints, increment count, change type to "pattern" if count >= 2
     - If no merge: add as new "instance" if space allows
-    
+
     VALUE CONSTRAINT EVOLUTION:
     - Instances: use literal values from the single object
     - Patterns: promote to constraints when merging objects with different values:
       * { range: [min, max] } for varying numbers
       * { values: [val1, val2, ...] } for varying discrete values
     - Keep literal values when all merged objects have identical value
-    
+
     CAPACITY MANAGEMENT (when at ${capacity} items):
     - Try merging new object with best match first
     - If no merge possible, evict lowest count instance
     - Prioritize keeping patterns over instances
-    
+
     Sort array by count descending (patterns first, then instances).
-    
+
     Return all candidates. If the input list is empty, return an empty array.
   `;
 
-  const candidateArray = await reduce(stringifiedObjects, patternInstructions, {
-    ...config,
-    initial: [],
-    responseFormat: PATTERN_RESPONSE_FORMAT,
-  });
+    const candidateArray = await reduce(stringifiedObjects, patternInstructions, {
+      ...config,
+      initial: [],
+      responseFormat: PATTERN_RESPONSE_FORMAT,
+    });
 
-  // Since PATTERN_RESPONSE_FORMAT is a simple collection schema,
-  // and reduce should handle it properly
-  if (!Array.isArray(candidateArray)) {
-    return [];
+    // Since PATTERN_RESPONSE_FORMAT is a simple collection schema,
+    // and reduce should handle it properly
+    if (!Array.isArray(candidateArray)) {
+      emitChainResult(config, name);
+      return [];
+    }
+
+    const patterns = candidateArray
+      .filter((item) => item.type === 'pattern' && item.count >= 2)
+      .sort((a, b) => b.count - a.count)
+      .map((item) => item.template)
+      .slice(0, topN);
+
+    emitChainResult(config, name);
+
+    return patterns;
+  } catch (err) {
+    emitChainError(config, name, err);
+    throw err;
   }
-
-  const patterns = candidateArray
-    .filter((item) => item.type === 'pattern' && item.count >= 2)
-    .sort((a, b) => b.count - a.count)
-    .map((item) => item.template)
-    .slice(0, topN);
-
-  return patterns;
 }

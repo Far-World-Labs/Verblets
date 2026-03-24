@@ -1,6 +1,9 @@
 import callLlm from '../../lib/llm/index.js';
 import { hydeOutputDoc } from '../../prompts/embed-query-transforms.js';
 import { schema } from './schema.js';
+import { emitChainResult, emitChainError } from '../../lib/progress-callback/index.js';
+
+const name = 'embed-rewrite-to-output-doc';
 
 /**
  * Generate a hypothetical document that answers the query (HyDE technique).
@@ -13,11 +16,21 @@ import { schema } from './schema.js';
  * @returns {Promise<string>}
  */
 export default async function embedRewriteToOutputDoc(query, config = {}) {
-  return await callLlm(hydeOutputDoc(query), {
-    ...config,
-    response_format: {
-      type: 'json_schema',
-      json_schema: { name: 'hyde_output_doc', schema },
-    },
-  });
+  const startTime = Date.now();
+  try {
+    const result = await callLlm(hydeOutputDoc(query), {
+      ...config,
+      response_format: {
+        type: 'json_schema',
+        json_schema: { name: 'hyde_output_doc', schema },
+      },
+    });
+    emitChainResult(config, name, { duration: Date.now() - startTime });
+    return result;
+  } catch (err) {
+    emitChainError(config, name, err, {
+      duration: Date.now() - startTime,
+    });
+    throw err;
+  }
 }

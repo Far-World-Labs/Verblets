@@ -21,6 +21,7 @@ import stripResponse from '../strip-response/index.js';
 import { onlyJSON, contentIsSchema } from '../../prompts/constants.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { getOption } from '../context/option.js';
+import { emitProgress } from '../progress-callback/index.js';
 
 /**
  * Configure the appropriate abort signal for fetch requests.
@@ -246,6 +247,26 @@ export const run = async (prompt, config = {}) => {
 
   const modelFound = modelService.getModel(modelNameNegotiated);
 
+  // Telemetry: model selection
+  const operation = options.operation;
+  const modelSource = shouldNegotiate
+    ? 'negotiated'
+    : modelOptionsWithOverrides.modelName
+      ? 'config'
+      : 'default';
+
+  emitProgress({
+    callback: options.onProgress,
+    kind: 'telemetry',
+    step: 'llm',
+    event: 'llm:model',
+    operation,
+    model: modelNameNegotiated,
+    source: modelSource,
+    negotiation: shouldNegotiate ? negotiation : undefined,
+    preferred: negotiationFromGlobalOverride ? undefined : modelOptionsWithOverrides.modelName,
+  });
+
   // Log start event with model information
   if (logger?.info) {
     logger.info({
@@ -313,109 +334,151 @@ export const run = async (prompt, config = {}) => {
     requestConfig,
   });
 
-  let result = cacheResult;
-  if (!cacheResult || forceQuery) {
-    // Use custom requestTimeout from modelOptions if provided, otherwise use model default
-    const requestTimeout =
-      modelOptionsWithOverrides.requestTimeout ||
-      modelService.getModel(modelNameNegotiated).requestTimeout;
+  try {
+    let result = cacheResult;
+    if (!cacheResult || forceQuery) {
+      // Use custom requestTimeout from modelOptions if provided, otherwise use model default
+      const requestTimeout =
+        modelOptionsWithOverrides.requestTimeout ||
+        modelService.getModel(modelNameNegotiated).requestTimeout;
 
-    const timeoutController = new TimedAbortController(requestTimeout);
+      const timeoutController = new TimedAbortController(requestTimeout);
 
-    // Delegate request building to the provider adapter
-    const providerName = modelFound.provider || 'openai';
-    const provider = getProvider(providerName);
-    const { url: fetchUrl, fetchOptions } = provider.buildRequest(
-      apiUrl,
-      apiKey,
-      modelFound.endpoint,
-      fetchConfig
-    );
-
-    // Configure abort signal (see function documentation for browser compatibility notes)
-    configureAbortSignal(fetchOptions, abortSignal, timeoutController);
-
-    const response = await fetch(fetchUrl, fetchOptions);
-
-    // Timer's only purpose is to abort the fetch — clear it as soon as we have a response
-    timeoutController.clearTimeout();
-
-    const contentType = response.headers.get('content-type') || '';
-    if (!contentType.includes('application/json') && !contentType.includes('text/json')) {
-      const bodyPreview = await response.text().then((t) => t.slice(0, 200));
-      throw new Error(
-        `Completions request [error]: expected JSON response but got ${contentType || 'unknown content-type'} (status: ${response.status}, body: ${bodyPreview})`
+      // Delegate request building to the provider adapter
+      const providerName = modelFound.provider || 'openai';
+      const provider = getProvider(providerName);
+      const { url: fetchUrl, fetchOptions } = provider.buildRequest(
+        apiUrl,
+        apiKey,
+        modelFound.endpoint,
+        fetchConfig
       );
+
+      // Configure abort signal (see function documentation for browser compatibility notes)
+      configureAbortSignal(fetchOptions, abortSignal, timeoutController);
+
+      const response = await fetch(fetchUrl, fetchOptions);
+
+      // Timer's only purpose is to abort the fetch — clear it as soon as we have a response
+      timeoutController.clearTimeout();
+
+      const contentType = response.headers.get('content-type') || '';
+      if (!contentType.includes('application/json') && !contentType.includes('text/json')) {
+        const bodyPreview = await response.text().then((t) => t.slice(0, 200));
+        const err = new Error(
+          `Completions request [error]: expected JSON response but got ${contentType || 'unknown content-type'} (status: ${response.status}, body: ${bodyPreview})`
+        );
+        err.httpStatus = response.status;
+        throw err;
+      }
+
+      const rawJson = await response.json();
+
+      if (!response.ok) {
+        // Anthropic uses error.message, OpenAI uses error.message — both work
+        const errorMessage = rawJson?.error?.message || rawJson?.error?.type || 'Unknown error';
+        const vars = [`status: ${response?.status}`, `type: ${rawJson?.error?.type}`].join(', ');
+        const err = new Error(`Completions request [error]: ${errorMessage} (${vars})`);
+        err.httpStatus = response.status;
+        err.errorType = rawJson?.error?.type;
+        throw err;
+      }
+
+      // Normalize response to canonical (OpenAI) shape
+      result = provider.parseResponse(rawJson);
+
+      // Only cache the result if caching is not disabled
+      if (!cachingDisabled && cache) {
+        await setPromptResult(
+          cache,
+          requestConfig,
+          result,
+          ...(cacheTTL !== undefined ? [cacheTTL] : [])
+        );
+      }
     }
 
-    const rawJson = await response.json();
-
-    if (!response.ok) {
-      // Anthropic uses error.message, OpenAI uses error.message — both work
-      const errorMessage = rawJson?.error?.message || rawJson?.error?.type || 'Unknown error';
-      const vars = [`status: ${response?.status}`, `type: ${rawJson?.error?.type}`].join(', ');
-      throw new Error(`Completions request [error]: ${errorMessage} (${vars})`);
+    // Extract JSON from freeform text for models without structured output support
+    if (needsJsonExtraction && typeof result.choices?.[0]?.message?.content === 'string') {
+      const cleaned = stripResponse(result.choices[0].message.content);
+      try {
+        const extracted = extractJson(cleaned);
+        result = {
+          ...result,
+          choices: [
+            {
+              ...result.choices[0],
+              message: { ...result.choices[0].message, content: JSON.stringify(extracted) },
+            },
+          ],
+        };
+      } catch {
+        // extractJson failed — shapeOutput will throw, letting retry re-attempt
+      }
     }
 
-    // Normalize response to canonical (OpenAI) shape
-    result = provider.parseResponse(rawJson);
+    const resultShaped = shapeOutput(result, requestConfig, {
+      skipResponseParse,
+      unwrapValues,
+      unwrapCollections,
+    });
 
-    // Only cache the result if caching is not disabled
-    if (!cachingDisabled && cache) {
-      await setPromptResult(
-        cache,
-        requestConfig,
-        result,
-        ...(cacheTTL !== undefined ? [cacheTTL] : [])
-      );
+    onAfterRequest({
+      debugResult,
+      isCached: !!cacheResult,
+      prompt,
+      requestConfig,
+      result,
+      resultShaped,
+    });
+
+    // Log end of llm execution
+    if (logger?.info) {
+      logger.info({
+        event: 'llm:end',
+        duration: Date.now() - startTime,
+        cached: !!cacheResult,
+        model: modelNameNegotiated,
+      });
     }
-  }
 
-  // Extract JSON from freeform text for models without structured output support
-  if (needsJsonExtraction && typeof result.choices?.[0]?.message?.content === 'string') {
-    const cleaned = stripResponse(result.choices[0].message.content);
-    try {
-      const extracted = extractJson(cleaned);
-      result = {
-        ...result,
-        choices: [
-          {
-            ...result.choices[0],
-            message: { ...result.choices[0].message, content: JSON.stringify(extracted) },
-          },
-        ],
-      };
-    } catch {
-      // extractJson failed — shapeOutput will throw, letting retry re-attempt
-    }
-  }
-
-  const resultShaped = shapeOutput(result, requestConfig, {
-    skipResponseParse,
-    unwrapValues,
-    unwrapCollections,
-  });
-
-  onAfterRequest({
-    debugResult,
-    isCached: !!cacheResult,
-    prompt,
-    requestConfig,
-    result,
-    resultShaped,
-  });
-
-  // Log end of llm execution
-  if (logger?.info) {
-    logger.info({
-      event: 'llm:end',
+    // Telemetry: successful LLM call
+    const usage = result?.usage;
+    emitProgress({
+      callback: options.onProgress,
+      kind: 'telemetry',
+      step: 'llm',
+      event: 'llm:call',
+      operation,
+      status: 'success',
+      model: modelNameNegotiated,
       duration: Date.now() - startTime,
       cached: !!cacheResult,
-      model: modelNameNegotiated,
+      tokens: usage
+        ? { input: usage.prompt_tokens, output: usage.completion_tokens, total: usage.total_tokens }
+        : { input: 0, output: 0, total: 0 },
     });
-  }
 
-  return resultShaped;
+    return resultShaped;
+  } catch (err) {
+    // Telemetry: failed LLM call
+    emitProgress({
+      callback: options.onProgress,
+      kind: 'telemetry',
+      step: 'llm',
+      event: 'llm:call',
+      operation,
+      status: 'error',
+      model: modelNameNegotiated,
+      duration: Date.now() - startTime,
+      error: {
+        message: err.message,
+        httpStatus: err.httpStatus,
+        type: err.errorType,
+      },
+    });
+    throw err;
+  }
 };
 
 export default run;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { scopeProgress, batchTracker } from './index.js';
+import { scopeProgress, batchTracker, emitChainResult, emitChainError } from './index.js';
 
 describe('scopeProgress', () => {
   it('adds phase to events passed through', () => {
@@ -192,5 +192,131 @@ describe('batchTracker event sequence', () => {
       totalItems: 6,
       processedItems: 6,
     });
+  });
+});
+
+describe('emitChainResult', () => {
+  it('emits chain:complete with duration from config.now', () => {
+    const events = [];
+    const now = new Date(Date.now() - 150);
+    const config = {
+      onProgress: (e) => events.push(e),
+      operation: 'parent/filter',
+      now,
+    };
+
+    emitChainResult(config, 'filter', { totalItems: 10, successCount: 8 });
+
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({
+      kind: 'telemetry',
+      step: 'filter',
+      event: 'chain:complete',
+      operation: 'parent/filter',
+      totalItems: 10,
+      successCount: 8,
+    });
+    expect(events[0].duration).toBeGreaterThanOrEqual(150);
+  });
+
+  it('uses explicit duration override', () => {
+    const events = [];
+    const config = {
+      onProgress: (e) => events.push(e),
+      operation: 'bool',
+    };
+
+    emitChainResult(config, 'bool', { duration: 42 });
+
+    expect(events[0].duration).toBe(42);
+  });
+
+  it('omits duration when config.now absent and no explicit duration', () => {
+    const events = [];
+    const config = {
+      onProgress: (e) => events.push(e),
+    };
+
+    emitChainResult(config, 'test');
+
+    expect(events[0]).not.toHaveProperty('duration');
+  });
+
+  it('does not throw when onProgress absent', () => {
+    expect(() => emitChainResult({}, 'test', { items: 5 })).not.toThrow();
+  });
+
+  it('spreads metadata into the event', () => {
+    const events = [];
+    const config = {
+      onProgress: (e) => events.push(e),
+      now: new Date(),
+    };
+    const metadata = { inputSize: 3, outputSize: 3, found: true };
+
+    emitChainResult(config, 'find', metadata);
+
+    expect(events[0].inputSize).toBe(3);
+    expect(events[0].outputSize).toBe(3);
+    expect(events[0].found).toBe(true);
+  });
+});
+
+describe('emitChainError', () => {
+  it('emits chain:error with error message and duration', () => {
+    const events = [];
+    const now = new Date(Date.now() - 200);
+    const config = {
+      onProgress: (e) => events.push(e),
+      operation: 'parent/map',
+      now,
+    };
+    const error = new Error('batch failed');
+
+    emitChainError(config, 'map', error, { totalItems: 20 });
+
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({
+      kind: 'telemetry',
+      step: 'map',
+      event: 'chain:error',
+      operation: 'parent/map',
+      error: { message: 'batch failed' },
+      totalItems: 20,
+    });
+    expect(events[0].duration).toBeGreaterThanOrEqual(200);
+  });
+
+  it('uses explicit duration override', () => {
+    const events = [];
+    const config = {
+      onProgress: (e) => events.push(e),
+    };
+
+    emitChainError(config, 'bool', new Error('oops'), { duration: 99 });
+
+    expect(events[0].duration).toBe(99);
+    expect(events[0].error.message).toBe('oops');
+  });
+
+  it('does not throw when onProgress absent', () => {
+    expect(() => emitChainError({}, 'test', new Error('fail'))).not.toThrow();
+  });
+
+  it('spreads metadata into the event alongside error', () => {
+    const events = [];
+    const config = {
+      onProgress: (e) => events.push(e),
+      now: new Date(),
+    };
+
+    emitChainError(config, 'reduce', new Error('timeout'), {
+      inputSize: 100,
+      phase: 'merge',
+    });
+
+    expect(events[0].inputSize).toBe(100);
+    expect(events[0].phase).toBe('merge');
+    expect(events[0].error.message).toBe('timeout');
   });
 });

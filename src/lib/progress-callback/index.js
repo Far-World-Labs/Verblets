@@ -27,6 +27,7 @@ export function emitProgress(params) {
   }
 
   const progressData = {
+    kind: eventData.kind || 'operation',
     step,
     timestamp: new Date().toISOString(),
     ...eventData,
@@ -199,7 +200,7 @@ export const emitPhaseProgress = (callback, step, phase, metadata = {}) => {
  *
  * @param {string} chainName - Name of the chain (e.g. 'filter', 'map')
  * @param {Array} list - Items to batch
- * @param {object} config - Config object (from scopeOperation/initChain)
+ * @param {object} config - Config object (from initChain/nameStep)
  * @param {object} [resolved] - Resolved options from getOptions/initChain
  * @param {string} [resolved.progressMode] - Progress granularity mode
  * @returns {Promise<{ batches: Array, tracker: object }>}
@@ -342,6 +343,54 @@ export function filterProgress(onProgress, mode = 'detailed') {
       onProgress(event);
     }
   };
+}
+
+/**
+ * Emit a chain:complete telemetry event.
+ * Chains and verblets call this instead of inlining emitProgress.
+ * Metadata is spread into the event so the same object can feed logResult.
+ *
+ * @param {Object} config - Chain config (from initChain/nameStep)
+ * @param {string} step - Chain/verblet name
+ * @param {Object} [metadata] - Extra fields (inputSize, outputSize, etc.)
+ * @param {number} [metadata.duration] - Explicit duration override (ms)
+ */
+export function emitChainResult(config, step, metadata = {}) {
+  const { duration: explicitDuration, ...rest } = metadata;
+  const duration = explicitDuration ?? (config.now ? Date.now() - config.now.getTime() : undefined);
+  emitProgress({
+    callback: config.onProgress,
+    kind: 'telemetry',
+    step,
+    event: 'chain:complete',
+    operation: config.operation,
+    ...(duration !== undefined && { duration }),
+    ...rest,
+  });
+}
+
+/**
+ * Emit a chain:error telemetry event.
+ *
+ * @param {Object} config - Chain config (from initChain/nameStep)
+ * @param {string} step - Chain/verblet name
+ * @param {Error} error - The error that occurred
+ * @param {Object} [metadata] - Extra fields
+ * @param {number} [metadata.duration] - Explicit duration override (ms)
+ */
+export function emitChainError(config, step, error, metadata = {}) {
+  const { duration: explicitDuration, ...rest } = metadata;
+  const duration = explicitDuration ?? (config.now ? Date.now() - config.now.getTime() : undefined);
+  emitProgress({
+    callback: config.onProgress,
+    kind: 'telemetry',
+    step,
+    event: 'chain:error',
+    operation: config.operation,
+    ...(duration !== undefined && { duration }),
+    error: { message: error.message },
+    ...rest,
+  });
 }
 
 export default emitProgress;

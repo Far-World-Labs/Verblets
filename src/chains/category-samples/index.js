@@ -1,7 +1,13 @@
 import list from '../list/index.js';
 import retry from '../../lib/retry/index.js';
-import { scopeProgress } from '../../lib/progress-callback/index.js';
+import {
+  emitChainResult,
+  emitChainError,
+  scopeProgress,
+} from '../../lib/progress-callback/index.js';
 import { initChain, withPolicy } from '../../lib/context/option.js';
+
+const name = 'category-samples';
 
 // ===== Option Mappers =====
 
@@ -103,7 +109,7 @@ export default async function categorySamples(categoryName, config = {}) {
     diversity,
     count,
   } = await initChain(
-    'category-samples',
+    name,
     { llm: 'fastGoodCheap', ...config },
     {
       diversity: withPolicy(mapDiversity, ['diversity', 'count']),
@@ -111,25 +117,35 @@ export default async function categorySamples(categoryName, config = {}) {
   );
   config = scopedConfig;
   const { context = '' } = config;
-  const generateWithRetry = async () => {
-    const prompt = buildSeedGenerationPrompt(categoryName, { context, diversity });
 
-    const results = await list(prompt, {
-      ...config,
-      shouldStop: ({ resultsAll }) => resultsAll.length >= count,
-      onProgress: scopeProgress(config.onProgress, 'list:sampling'),
+  try {
+    const generateWithRetry = async () => {
+      const prompt = buildSeedGenerationPrompt(categoryName, { context, diversity });
+
+      const results = await list(prompt, {
+        ...config,
+        shouldStop: ({ resultsAll }) => resultsAll.length >= count,
+        onProgress: scopeProgress(config.onProgress, 'list:sampling'),
+      });
+
+      if (!results || results.length === 0) {
+        throw new Error(`No sample items generated for category: ${categoryName}`);
+      }
+
+      // Return only the requested count
+      return results.slice(0, count);
+    };
+
+    const result = await retry(generateWithRetry, {
+      label: 'category-samples',
+      config,
     });
 
-    if (!results || results.length === 0) {
-      throw new Error(`No sample items generated for category: ${categoryName}`);
-    }
+    emitChainResult(config, name);
 
-    // Return only the requested count
-    return results.slice(0, count);
-  };
-
-  return await retry(generateWithRetry, {
-    label: 'category-samples',
-    config,
-  });
+    return result;
+  } catch (err) {
+    emitChainError(config, name, err);
+    throw err;
+  }
 }

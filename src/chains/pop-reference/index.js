@@ -2,7 +2,10 @@ import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import popReferenceSchema from './pop-reference-result.json';
+import { emitChainResult, emitChainError } from '../../lib/progress-callback/index.js';
 import { initChain } from '../../lib/context/option.js';
+
+const name = 'pop-reference';
 
 const popReferenceResponseFormat = jsonSchema('pop_reference_result', popReferenceSchema);
 
@@ -18,36 +21,37 @@ export default async function popReference(sentence, description, config = {}) {
     config: scopedConfig,
     referenceContext,
     referencesPerSource,
-  } = await initChain('pop-reference', config, {
+  } = await initChain(name, config, {
     referenceContext: false,
     referencesPerSource: 2,
   });
   config = scopedConfig;
   const { include = [] } = config;
 
-  // Build the include list description
-  let includeDescription = '';
-  if (include.length > 0) {
-    const sources = include.map((item) => {
-      if (typeof item === 'string') {
-        return item;
-      } else if (item.reference && item.percent) {
-        return `${item.reference} (focus ${item.percent}%)`;
-      }
-      return item.reference || item;
-    });
-    includeDescription = asXML(sources.join('\n'), { tag: 'sources' });
-  }
+  try {
+    // Build the include list description
+    let includeDescription = '';
+    if (include.length > 0) {
+      const sources = include.map((item) => {
+        if (typeof item === 'string') {
+          return item;
+        } else if (item.reference && item.percent) {
+          return `${item.reference} (focus ${item.percent}%)`;
+        }
+        return item.reference || item;
+      });
+      includeDescription = asXML(sources.join('\n'), { tag: 'sources' });
+    }
 
-  // Wrap the sentence and description in XML
-  const sentenceXml = asXML(sentence, { tag: 'sentence' });
-  const descriptionXml = asXML(description, { tag: 'description' });
+    // Wrap the sentence and description in XML
+    const sentenceXml = asXML(sentence, { tag: 'sentence' });
+    const descriptionXml = asXML(description, { tag: 'description' });
 
-  const contextInstruction = referenceContext
-    ? 'Include a brief context description for each reference explaining the scene or idea being referenced.'
-    : 'Do not include context descriptions.';
+    const contextInstruction = referenceContext
+      ? 'Include a brief context description for each reference explaining the scene or idea being referenced.'
+      : 'Do not include context descriptions.';
 
-  const prompt = `Find pop culture references that metaphorically capture the sentence based on its description.
+    const prompt = `Find pop culture references that metaphorically capture the sentence based on its description.
 
 ${descriptionXml}
 
@@ -73,23 +77,29 @@ Requirements:
 - Provide exact character positions for matched text
 - Higher scores mean stronger metaphorical fit`;
 
-  const response = await retry(
-    () =>
-      callLlm(prompt, {
-        ...config,
-        response_format: popReferenceResponseFormat,
-      }),
-    {
-      label: 'pop-reference',
-      config,
+    const response = await retry(
+      () =>
+        callLlm(prompt, {
+          ...config,
+          response_format: popReferenceResponseFormat,
+        }),
+      {
+        label: 'pop-reference',
+        config,
+      }
+    );
+
+    const references = response?.references || response;
+
+    if (!Array.isArray(references)) {
+      throw new Error('Expected array of references in response');
     }
-  );
 
-  const references = response?.references || response;
+    emitChainResult(config, name);
 
-  if (!Array.isArray(references)) {
-    throw new Error('Expected array of references in response');
+    return references;
+  } catch (err) {
+    emitChainError(config, name, err);
+    throw err;
   }
-
-  return references;
 }

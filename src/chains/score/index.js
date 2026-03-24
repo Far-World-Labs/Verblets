@@ -7,11 +7,15 @@ import {
   emitBatchComplete,
   emitBatchProcessed,
   emitPhaseProgress,
+  emitChainResult,
+  emitChainError,
   filterProgress,
 } from '../../lib/progress-callback/index.js';
 import { createBatches, parallel, retry } from '../../lib/index.js';
-import { initChain, withPolicy, scopeOperation } from '../../lib/context/option.js';
+import { initChain, withPolicy, nameStep } from '../../lib/context/option.js';
 import scoreSingleResultSchema from './score-single-result.json';
+
+const name = 'score';
 
 // ===== Option Mappers =====
 
@@ -97,7 +101,7 @@ export const scoreSpec = scaleSpec;
  * @returns {Promise<*>} Score value (type depends on specification range)
  */
 export async function applyScore(item, specification, config = {}) {
-  config = scopeOperation('score:item', config);
+  config = nameStep('score:item', config);
 
   const prompt = `Apply the score specification to evaluate this item.
 
@@ -261,7 +265,7 @@ export async function mapScore(list, instructions, config = {}) {
     errorPosture,
     progressMode,
     anchoring,
-  } = await initChain('score', config, {
+  } = await initChain(name, config, {
     maxParallel: 3,
     maxAttempts: 3,
     temperature: 0,
@@ -271,57 +275,63 @@ export async function mapScore(list, instructions, config = {}) {
   });
   config = scopedConfig;
   const onProgress = filterProgress(_onProgress, progressMode);
+  try {
+    emitPhaseProgress(onProgress, 'score', 'generating-specification');
+    const spec = providedSpec || (await scoreSpec(instructions, config));
+    emitPhaseProgress(onProgress, 'score', 'scoring-items', { specification: spec });
 
-  emitPhaseProgress(onProgress, 'score', 'generating-specification');
-  const spec = providedSpec || (await scoreSpec(instructions, config));
-  emitPhaseProgress(onProgress, 'score', 'scoring-items', { specification: spec });
+    const scoringPrompt = buildScoringInstructions(
+      spec,
+      'Return ONLY the numeric score for each item according to the specification range.'
+    );
+    const batchConfig = {
+      ...config,
+      responseFormat: scoreBatchResponseFormat,
+      temperature,
+    };
+    const passOptions = {
+      ...config,
+      maxParallel,
+      maxAttempts,
+      errorPosture,
+      onProgress,
+      now,
+      anchoring,
+    };
 
-  const scoringPrompt = buildScoringInstructions(
-    spec,
-    'Return ONLY the numeric score for each item according to the specification range.'
-  );
-  const batchConfig = {
-    ...config,
-    responseFormat: scoreBatchResponseFormat,
-    temperature,
-  };
-  const passOptions = {
-    ...config,
-    maxParallel,
-    maxAttempts,
-    errorPosture,
-    onProgress,
-    now,
-    anchoring,
-  };
+    const results = await scoreOnce(list, scoringPrompt, batchConfig, passOptions);
 
-  const results = await scoreOnce(list, scoringPrompt, batchConfig, passOptions);
+    // Retry undefined items (follows map chain's retry pattern)
+    for (let attempt = 1; attempt < maxAttempts; attempt += 1) {
+      const missingIdx = [];
+      const missingItems = [];
 
-  // Retry undefined items (follows map chain's retry pattern)
-  for (let attempt = 1; attempt < maxAttempts; attempt += 1) {
-    const missingIdx = [];
-    const missingItems = [];
+      results.forEach((val, idx) => {
+        if (val === undefined) {
+          missingIdx.push(idx);
+          missingItems.push(list[idx]);
+        }
+      });
 
-    results.forEach((val, idx) => {
-      if (val === undefined) {
-        missingIdx.push(idx);
-        missingItems.push(list[idx]);
-      }
-    });
+      if (missingItems.length === 0) break;
 
-    if (missingItems.length === 0) break;
+      const retryResults = await scoreOnce(missingItems, scoringPrompt, batchConfig, {
+        ...passOptions,
+        now: new Date(),
+      });
 
-    const retryResults = await scoreOnce(missingItems, scoringPrompt, batchConfig, {
-      ...passOptions,
-      now: new Date(),
-    });
+      retryResults.forEach((val, i) => {
+        if (val !== undefined) results[missingIdx[i]] = val;
+      });
+    }
 
-    retryResults.forEach((val, i) => {
-      if (val !== undefined) results[missingIdx[i]] = val;
-    });
+    emitChainResult(config, name);
+
+    return results;
+  } catch (err) {
+    emitChainError(config, name, err);
+    throw err;
   }
-
-  return results;
 }
 
 // ===== Instruction Builders =====

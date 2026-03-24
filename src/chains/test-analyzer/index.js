@@ -3,6 +3,9 @@ import llm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { extractCodeWindow } from '../../lib/code-extractor/index.js';
 import { getOption, initChain, withPolicy } from '../../lib/context/option.js';
+import { emitChainResult, emitChainError } from '../../lib/progress-callback/index.js';
+
+const name = 'test-analyzer';
 
 // File-level constants
 const DEFAULT_MAX_TOKENS = 300;
@@ -82,69 +85,68 @@ const calculateCodeWindow = (
  * @param {Object} config - Options including maxAttempts
  */
 export default async function analyzeTestError(logs, config = {}) {
-  const { config: scopedConfig, analysisDepth: depthConfig } = await initChain(
-    'test-analyzer',
-    config,
-    {
-      analysisDepth: withPolicy(mapAnalysisDepth),
-    }
-  );
-  config = scopedConfig;
-  const contextSize = await getOption('contextSize', config, depthConfig.context);
-  const maxWindow = await getOption('maxWindow', config, depthConfig.maxWindow);
-  const maxTokens = await getOption('maxTokens', config, depthConfig.maxTokens);
-  if (!logs || logs.length === 0) {
-    debug('analyzeTestError: No logs provided');
-    return '';
-  }
-
-  const testStart = getTestStart(logs);
-  const testComplete = getTestComplete(logs);
-  const failedAssertion = getFailedAssertion(logs);
-
-  if (!testStart || !testComplete) {
-    debug('analyzeTestError: Missing test-start or test-complete logs');
-    return '';
-  }
-
-  // Build test info
-  const testInfo = {
-    name: testStart.testName,
-    file: testStart.file,
-    line: testStart.line,
-    lineCount: testStart.testLineCount || 0,
-  };
-
-  // Use the file from the test info
-  const actualTestFile = testInfo.file;
-
-  // Extract test code showing the failed assertion
-  const assertionLine = failedAssertion?.line || testInfo.line;
-
-  const windowSize = calculateCodeWindow(testInfo.line, testInfo.lineCount, assertionLine, {
-    context: contextSize,
-    maxWindow,
+  const { config: scopedConfig, analysisDepth: depthConfig } = await initChain(name, config, {
+    analysisDepth: withPolicy(mapAnalysisDepth),
   });
+  config = scopedConfig;
+  try {
+    const contextSize = await getOption('contextSize', config, depthConfig.context);
+    const maxWindow = await getOption('maxWindow', config, depthConfig.maxWindow);
+    const maxTokens = await getOption('maxTokens', config, depthConfig.maxTokens);
+    if (!logs || logs.length === 0) {
+      debug('analyzeTestError: No logs provided');
+      emitChainResult(config, name);
+      return '';
+    }
 
-  const testSnippet =
-    actualTestFile && assertionLine
-      ? extractCodeWindow(actualTestFile, assertionLine, windowSize)
-      : '';
+    const testStart = getTestStart(logs);
+    const testComplete = getTestComplete(logs);
+    const failedAssertion = getFailedAssertion(logs);
 
-  // Build assertion data
-  const assertion = failedAssertion
-    ? {
-        expected: failedAssertion.expected,
-        actual: failedAssertion.actual,
-        passed: !!failedAssertion.passed,
-        description: failedAssertion.description,
-      }
-    : {};
+    if (!testStart || !testComplete) {
+      debug('analyzeTestError: Missing test-start or test-complete logs');
+      emitChainResult(config, name);
+      return '';
+    }
 
-  // Include all logs for the test as NDJSON
-  const executionLogs = logs;
+    // Build test info
+    const testInfo = {
+      name: testStart.testName,
+      file: testStart.file,
+      line: testStart.line,
+      lineCount: testStart.testLineCount || 0,
+    };
 
-  const prompt = `Failure: ${testInfo.name}
+    // Use the file from the test info
+    const actualTestFile = testInfo.file;
+
+    // Extract test code showing the failed assertion
+    const assertionLine = failedAssertion?.line || testInfo.line;
+
+    const windowSize = calculateCodeWindow(testInfo.line, testInfo.lineCount, assertionLine, {
+      context: contextSize,
+      maxWindow,
+    });
+
+    const testSnippet =
+      actualTestFile && assertionLine
+        ? extractCodeWindow(actualTestFile, assertionLine, windowSize)
+        : '';
+
+    // Build assertion data
+    const assertion = failedAssertion
+      ? {
+          expected: failedAssertion.expected,
+          actual: failedAssertion.actual,
+          passed: !!failedAssertion.passed,
+          description: failedAssertion.description,
+        }
+      : {};
+
+    // Include all logs for the test as NDJSON
+    const executionLogs = logs;
+
+    const prompt = `Failure: ${testInfo.name}
 
 Expected: ${assertion.expected ?? 'undefined'}
 Actual: ${assertion.actual ?? 'undefined'}
@@ -187,13 +189,16 @@ Discussion:
 - State exactly what's needed if critical information is missing
 </analysis-guidelines>`;
 
-  try {
     const response = await retry(() => llm(prompt, { ...config, maxTokens }), {
       label: 'test-analyzer',
       config,
     });
+
+    emitChainResult(config, name);
+
     return response.trim();
   } catch (error) {
+    emitChainError(config, name, error);
     debug(`AI analysis failed: ${error.message}`);
     return '';
   }

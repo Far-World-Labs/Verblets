@@ -4,7 +4,10 @@ import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { outputSuccinctNames } from '../../prompts/index.js';
 import { subComponentsSchema, componentOptionsSchema } from './schemas.js';
+import { emitChainResult, emitChainError } from '../../lib/progress-callback/index.js';
 import { initChain, withPolicy } from '../../lib/context/option.js';
+
+const _name = 'dismantle'; // eslint: unused — ChainTree.create receives name as parameter
 
 // ===== Option Mappers =====
 
@@ -283,11 +286,21 @@ export const simplifyTree = (node) => {
 
 class ChainTree {
   static async create(name, options = {}) {
-    const { config, temperature, variety } = await initChain('dismantle', options, {
+    const { config, temperature, variety } = await initChain(name, options, {
       temperature: undefined,
       variety: withPolicy(mapVariety),
     });
-    return new ChainTree(name, options, config, { temperature, variety });
+
+    try {
+      const tree = new ChainTree(name, options, config, { temperature, variety });
+
+      emitChainResult(config, name);
+
+      return tree;
+    } catch (err) {
+      emitChainError(config, name, err);
+      throw err;
+    }
   }
 
   constructor(name, options = {}, config = {}, resolved = {}) {

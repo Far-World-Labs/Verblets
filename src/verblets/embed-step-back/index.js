@@ -1,6 +1,9 @@
 import callLlm from '../../lib/llm/index.js';
 import { stepBack as stepBackPrompt } from '../../prompts/embed-query-transforms.js';
 import { embedStepBackSchema } from './schema.js';
+import { emitChainResult, emitChainError } from '../../lib/progress-callback/index.js';
+
+const name = 'embed-step-back';
 
 // ===== Option Mappers =====
 
@@ -37,17 +40,25 @@ export const mapAbstraction = (value) => {
  * @returns {Promise<string[]>}
  */
 export default async function embedStepBack(query, config = {}) {
+  const startTime = Date.now();
   const { count = 3 } = config;
   const abstractionGuidance = mapAbstraction(config.abstraction);
 
-  return await callLlm(stepBackPrompt(query, count, { abstractionGuidance }), {
-    ...config,
-    response_format: {
-      type: 'json_schema',
-      json_schema: {
-        name: 'step_back',
-        schema: embedStepBackSchema,
+  try {
+    const result = await callLlm(stepBackPrompt(query, count, { abstractionGuidance }), {
+      ...config,
+      response_format: {
+        type: 'json_schema',
+        json_schema: {
+          name: 'step_back',
+          schema: embedStepBackSchema,
+        },
       },
-    },
-  });
+    });
+    emitChainResult(config, name, { duration: Date.now() - startTime });
+    return result;
+  } catch (err) {
+    emitChainError(config, name, err, { duration: Date.now() - startTime });
+    throw err;
+  }
 }

@@ -1,6 +1,9 @@
 import { embedChunked } from '../../lib/embed/index.js';
 import { cosineSimilarity } from '../../lib/pure/index.js';
+import { emitChainResult, emitChainError } from '../../lib/progress-callback/index.js';
 import { initChain, withPolicy } from '../../lib/context/option.js';
+
+const name = 'probe-scan';
 
 // ===== Option Mappers =====
 
@@ -39,36 +42,45 @@ export default async function probeScan(textOrChunks, probes, config = {}) {
     config: scopedConfig,
     detection: threshold,
     maxTokens,
-  } = await initChain('probe-scan', config, {
+  } = await initChain(name, config, {
     detection: withPolicy(mapDetection),
     maxTokens: 256,
   });
   config = scopedConfig;
   const { categories } = config;
 
-  const chunks =
-    typeof textOrChunks === 'string'
-      ? await embedChunked(textOrChunks, { maxTokens })
-      : textOrChunks;
+  try {
+    const chunks =
+      typeof textOrChunks === 'string'
+        ? await embedChunked(textOrChunks, { maxTokens })
+        : textOrChunks;
 
-  const activeProbes = categories ? probes.filter((p) => categories.includes(p.category)) : probes;
+    const activeProbes = categories
+      ? probes.filter((p) => categories.includes(p.category))
+      : probes;
 
-  const hits = [];
-  for (const chunk of chunks) {
-    for (const probe of activeProbes) {
-      const score = cosineSimilarity(chunk.vector, probe.vector);
-      if (score >= threshold) {
-        hits.push({
-          category: probe.category,
-          label: probe.label,
-          score,
-          chunk: { text: chunk.text, start: chunk.start, end: chunk.end },
-        });
+    const hits = [];
+    for (const chunk of chunks) {
+      for (const probe of activeProbes) {
+        const score = cosineSimilarity(chunk.vector, probe.vector);
+        if (score >= threshold) {
+          hits.push({
+            category: probe.category,
+            label: probe.label,
+            score,
+            chunk: { text: chunk.text, start: chunk.start, end: chunk.end },
+          });
+        }
       }
     }
+
+    hits.sort((a, b) => b.score - a.score);
+
+    emitChainResult(config, name);
+
+    return { flagged: hits.length > 0, hits };
+  } catch (err) {
+    emitChainError(config, name, err);
+    throw err;
   }
-
-  hits.sort((a, b) => b.score - a.score);
-
-  return { flagged: hits.length > 0, hits };
 }

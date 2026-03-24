@@ -1,10 +1,13 @@
 import callLlm from '../../lib/llm/index.js';
+import { emitChainResult, emitChainError } from '../../lib/progress-callback/index.js';
 import toNumberWithUnits from '../../lib/to-number-with-units/index.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 import numberWithUnitsSchema from './number-with-units-result.json';
 
 const { asNumberWithUnits, contentIsQuestion, explainAndSeparate, explainAndSeparateJSON } =
   promptConstants;
+
+const name = 'number-with-units';
 
 const responseFormat = {
   type: 'json_schema',
@@ -22,17 +25,29 @@ const responseFormat = {
  * @returns {Promise<Object>} Object with value and unit properties
  */
 export default async function numberWithUnits(text, config = {}) {
-  const numberText = `${contentIsQuestion} ${text} \n\n${explainAndSeparate} ${explainAndSeparateJSON}
+  const startTime = Date.now();
+
+  try {
+    const numberText = `${contentIsQuestion} ${text} \n\n${explainAndSeparate} ${explainAndSeparateJSON}
 
 Answer the question and provide the numeric value and unit. If the question is unanswerable or the specific numeric value cannot be determined, set "value" to null but still identify the unit being asked for.
 
 ${asNumberWithUnits}`;
 
-  const response = await callLlm(numberText, {
-    ...config,
-    response_format: responseFormat,
-  });
+    const response = await callLlm(numberText, {
+      ...config,
+      response_format: responseFormat,
+    });
 
-  // With structured output, response is already parsed
-  return toNumberWithUnits(JSON.stringify(response));
+    // With structured output, response is already parsed
+    const result = toNumberWithUnits(JSON.stringify(response));
+
+    emitChainResult(config, name, { duration: Date.now() - startTime });
+
+    return result;
+  } catch (err) {
+    emitChainError(config, name, err, { duration: Date.now() - startTime });
+
+    throw err;
+  }
 }

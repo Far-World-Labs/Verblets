@@ -3,7 +3,10 @@ import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import buildInstructions from '../../lib/build-instructions/index.js';
 import { initChain, withPolicy } from '../../lib/context/option.js';
+import { emitChainResult, emitChainError } from '../../lib/progress-callback/index.js';
 import relationResultSchema from './relation-result.json';
+
+const name = 'relations';
 
 // ===== Option Mappers =====
 
@@ -278,10 +281,21 @@ Example: {"object": "42^^xsd:integer"} NOT {"object": '"42"^^xsd:integer'}`;
  * @returns {Promise<Array>} Array of relation objects
  */
 export async function extractRelations(text, instructions, config = {}) {
-  const spec = config.spec || (await relationSpec(instructions, config));
-  const entities = typeof instructions === 'object' ? instructions.entities : config.entities;
-  const result = await applyRelations(text, spec, { ...config, entities });
-  return result.items || [];
+  ({ config } = await initChain(name, config));
+
+  try {
+    const spec = config.spec || (await relationSpec(instructions, config));
+    const entities = typeof instructions === 'object' ? instructions.entities : config.entities;
+    const result = await applyRelations(text, spec, { ...config, entities });
+    const items = result.items || [];
+
+    emitChainResult(config, name);
+
+    return items;
+  } catch (err) {
+    emitChainError(config, name, err);
+    throw err;
+  }
 }
 
 // ===== Advanced Relation Functions =====
