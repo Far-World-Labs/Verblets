@@ -4,7 +4,7 @@ import { reduceAccumulatorJsonSchema } from './schemas.js';
 import { createLifecycleLogger, extractBatchConfig } from '../../lib/lifecycle-logger/index.js';
 import { retry, prepareBatches } from '../../lib/index.js';
 import { initChain } from '../../lib/context/option.js';
-import { emitChainResult, emitChainError } from '../../lib/progress-callback/index.js';
+import { emitChainResult } from '../../lib/progress-callback/index.js';
 
 import { jsonSchema } from '../../lib/llm/index.js';
 
@@ -26,42 +26,41 @@ const reduce = async function reduce(list, instructions, config = {}) {
     accumulatorMode: 'auto',
   });
   config = scopedConfig;
-  try {
-    const lifecycleLogger = createLifecycleLogger(config.logger, 'chain:reduce');
+  const lifecycleLogger = createLifecycleLogger(config.logger, 'chain:reduce');
 
-    let acc = config.initial;
+  let acc = config.initial;
 
-    // If initial is an array and we're using default format, wrap it
-    const needsItemsWrapper =
-      accumulatorMode === 'collection' ||
-      (accumulatorMode === 'auto' && Array.isArray(config.initial) && !config.responseFormat);
-    if (needsItemsWrapper) {
-      acc = { items: config.initial };
+  // If initial is an array and we're using default format, wrap it
+  const needsItemsWrapper =
+    accumulatorMode === 'collection' ||
+    (accumulatorMode === 'auto' && Array.isArray(config.initial) && !config.responseFormat);
+  if (needsItemsWrapper) {
+    acc = { items: config.initial };
+  }
+
+  const { batches, tracker } = await prepareBatches('reduce', list, config, { progressMode });
+  const activeBatches = batches.filter((b) => !b.skip);
+
+  lifecycleLogger.logStart(
+    extractBatchConfig({
+      totalItems: list.length,
+      totalBatches: activeBatches.length,
+      batchSize: config.batchSize,
+    })
+  );
+
+  for (const [batchIndex, { items, skip, startIndex }] of batches.entries()) {
+    if (skip) {
+      lifecycleLogger.logEvent('batch-skip', { batchIndex });
+      continue;
     }
 
-    const { batches, tracker } = await prepareBatches('reduce', list, config, { progressMode });
-    const activeBatches = batches.filter((b) => !b.skip);
+    const batchStyle = determineStyle(config.listStyle, items, config.autoModeThreshold);
 
-    lifecycleLogger.logStart(
-      extractBatchConfig({
-        totalItems: list.length,
-        totalBatches: activeBatches.length,
-        batchSize: config.batchSize,
-      })
-    );
+    const reduceInstructions = ({ style, count }) => {
+      const itemFormat = style === ListStyle.XML ? 'XML' : '';
 
-    for (const [batchIndex, { items, skip, startIndex }] of batches.entries()) {
-      if (skip) {
-        lifecycleLogger.logEvent('batch-skip', { batchIndex });
-        continue;
-      }
-
-      const batchStyle = determineStyle(config.listStyle, items, config.autoModeThreshold);
-
-      const reduceInstructions = ({ style, count }) => {
-        const itemFormat = style === ListStyle.XML ? 'XML' : '';
-
-        return `Start with the given accumulator. Apply the transformation instructions to each item in the list sequentially, using the result as the new accumulator each time. Return only the final accumulator.
+      return `Start with the given accumulator. Apply the transformation instructions to each item in the list sequentially, using the result as the new accumulator each time. Return only the final accumulator.
 
 Example: If reducing ["one", "two", "three"] with "sum the numeric values" and initial value 0:
 - Start: 0
@@ -78,49 +77,45 @@ ${asXML(
 )}
 
 Process exactly ${count} items from the ${itemFormat} list below and return the final accumulator value.`;
-      };
+    };
 
-      const effectiveResponseFormat = config.responseFormat || DEFAULT_REDUCE_RESPONSE_FORMAT;
+    const effectiveResponseFormat = config.responseFormat || DEFAULT_REDUCE_RESPONSE_FORMAT;
 
-      const prompt = reduceInstructions({ style: batchStyle, count: items.length });
-      const listBatchOptions = {
-        ...config,
-        listStyle: batchStyle,
-        responseFormat: effectiveResponseFormat,
-        logger: lifecycleLogger,
-      };
+    const prompt = reduceInstructions({ style: batchStyle, count: items.length });
+    const listBatchOptions = {
+      ...config,
+      listStyle: batchStyle,
+      responseFormat: effectiveResponseFormat,
+      logger: lifecycleLogger,
+    };
 
-      const result = await retry(() => listBatch(items, prompt, listBatchOptions), {
-        label: 'reduce:batch',
-        config,
-        onProgress: tracker.forBatch(startIndex, items.length),
-      });
+    const result = await retry(() => listBatch(items, prompt, listBatchOptions), {
+      label: 'reduce:batch',
+      config,
+      onProgress: tracker.forBatch(startIndex, items.length),
+    });
 
-      if (!config.responseFormat && result?.accumulator !== undefined) {
-        acc = result.accumulator;
-      } else {
-        acc = result;
-      }
-
-      tracker.batchDone(startIndex, items.length);
-
-      lifecycleLogger.logEvent('batch-done', {
-        batchIndex,
-        accType: typeof acc,
-      });
+    if (!config.responseFormat && result?.accumulator !== undefined) {
+      acc = result.accumulator;
+    } else {
+      acc = result;
     }
 
-    tracker.complete();
+    tracker.batchDone(startIndex, items.length);
 
-    const resultMeta = { totalItems: list.length, totalBatches: activeBatches.length };
-    lifecycleLogger.logResult(acc, resultMeta);
-    emitChainResult(config, name, resultMeta);
-
-    return acc;
-  } catch (err) {
-    emitChainError(config, name, err);
-    throw err;
+    lifecycleLogger.logEvent('batch-done', {
+      batchIndex,
+      accType: typeof acc,
+    });
   }
+
+  tracker.complete();
+
+  const resultMeta = { totalItems: list.length, totalBatches: activeBatches.length };
+  lifecycleLogger.logResult(acc, resultMeta);
+  emitChainResult(config, name, resultMeta);
+
+  return acc;
 };
 
 reduce.with = function (instructions, config = {}) {

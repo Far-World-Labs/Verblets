@@ -8,7 +8,7 @@ import search from '../../lib/search-js-files/index.js';
 import codeFeaturesPrompt from '../../prompts/code-features.js';
 import makeJSONSchema from '../../prompts/features-json-schema.js';
 import { initChain } from '../../lib/context/option.js';
-import { emitChainResult, emitChainError } from '../../lib/progress-callback/index.js';
+import { emitChainResult } from '../../lib/progress-callback/index.js';
 
 const name = 'scan-js';
 
@@ -81,32 +81,27 @@ const visit = async ({
 // node: { filename: './src/index.js' },
 export default async (moduleOptions) => {
   const { config } = await initChain(name, moduleOptions);
-  try {
-    const state = await search({
-      ...config,
-    });
+  const state = await search({
+    ...config,
+  });
 
-    const preState = {
-      visited: new Set(),
-      pathAliases: pathAliases([...state.visited]),
-    };
+  const preState = {
+    visited: new Set(),
+    pathAliases: pathAliases([...state.visited]),
+  };
 
-    const result = await search({
-      ...config,
-      state: preState,
-      visit: (options) =>
-        visit({
-          ...options,
-          features: config.features,
-          config,
-        }),
-    });
+  const result = await search({
+    ...config,
+    state: preState,
+    visit: (options) =>
+      visit({
+        ...options,
+        features: config.features,
+        config,
+      }),
+  });
 
-    emitChainResult(config, name);
+  emitChainResult(config, name);
 
-    return result;
-  } catch (err) {
-    emitChainError(config, name, err);
-    throw err;
-  }
+  return result;
 };

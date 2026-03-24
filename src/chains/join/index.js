@@ -2,7 +2,7 @@ import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import windowFor from '../../lib/window-for/index.js';
 import { initChain, withPolicy } from '../../lib/context/option.js';
-import { emitChainResult, emitChainError } from '../../lib/progress-callback/index.js';
+import { emitChainResult } from '../../lib/progress-callback/index.js';
 
 const name = 'join';
 
@@ -62,60 +62,60 @@ export default async function join(
     styleHint: '',
   });
   config = scopedConfig;
-  try {
-    // Create overlapping windows using the windowFor utility
-    const windows = windowFor(list, windowSize, overlapPercent);
 
-    // Process each window
-    const windowResults = [];
+  // Create overlapping windows using the windowFor utility
+  const windows = windowFor(list, windowSize, overlapPercent);
 
-    //TODO:DOCS_OBSERVATIONS windows are processed sequentially — could use parallelBatch for concurrency since windows are independent after creation
-    for (const [windowIndex, window] of windows.entries()) {
-      const fragmentList = window.fragments.map((f, idx) => `${idx + 1}. ${f}`).join('\n');
+  // Process each window
+  const windowResults = [];
 
-      const instruction = `${prompt}${styleHint ? `\n\nStyle guidance: ${styleHint}` : ''}
+  //TODO:DOCS_OBSERVATIONS windows are processed sequentially — could use parallelBatch for concurrency since windows are independent after creation
+  for (const [windowIndex, window] of windows.entries()) {
+    const fragmentList = window.fragments.map((f, idx) => `${idx + 1}. ${f}`).join('\n');
+
+    const instruction = `${prompt}${styleHint ? `\n\nStyle guidance: ${styleHint}` : ''}
 
 Window ${windowIndex + 1} of ${windows.length} - Join these fragments:
 ${fragmentList}
 
 Important: This is part of a larger sequence. Join these fragments while being mindful that this result will be combined with other processed windows. Add necessary connecting words, prepositions, conjunctions, or other filler text to create a coherent, grammatically correct, and semantically meaningful result. Output only the joined result for this window.`;
 
-      const result = await retry(() => callLlm(instruction, config), {
-        label: `join-window-${windowIndex + 1}`,
-        config,
-      });
+    const result = await retry(() => callLlm(instruction, config), {
+      label: `join-window-${windowIndex + 1}`,
+      config,
+    });
 
-      windowResults.push({
-        content: result || window.fragments.join(' '),
-        window,
-      });
-    }
+    windowResults.push({
+      content: result || window.fragments.join(' '),
+      window,
+    });
+  }
 
-    // Filter valid results
-    const validResults = windowResults.filter((r) => r.content && r.content.trim());
+  // Filter valid results
+  const validResults = windowResults.filter((r) => r.content && r.content.trim());
 
-    if (validResults.length === 1) {
-      emitChainResult(config, name);
-      return validResults[0].content;
-    }
+  if (validResults.length === 1) {
+    emitChainResult(config, name);
+    return validResults[0].content;
+  }
 
-    // Stitch operation: preserve terminals, only process overlapping sections
-    let stitchedResult = validResults[0].content;
+  // Stitch operation: preserve terminals, only process overlapping sections
+  let stitchedResult = validResults[0].content;
 
-    for (let i = 1; i < validResults.length; i++) {
-      const currentResult = validResults[i];
-      const previousWindow = validResults[i - 1].window;
-      const currentWindow = currentResult.window;
+  for (let i = 1; i < validResults.length; i++) {
+    const currentResult = validResults[i];
+    const previousWindow = validResults[i - 1].window;
+    const currentWindow = currentResult.window;
 
-      // Find the overlapping region based on original fragment indices
-      const overlapStart = Math.max(previousWindow.startIndex, currentWindow.startIndex);
-      const overlapEnd = Math.min(previousWindow.endIndex, currentWindow.endIndex);
+    // Find the overlapping region based on original fragment indices
+    const overlapStart = Math.max(previousWindow.startIndex, currentWindow.startIndex);
+    const overlapEnd = Math.min(previousWindow.endIndex, currentWindow.endIndex);
 
-      if (overlapStart <= overlapEnd) {
-        // There's an overlap - process only the overlapping section
-        const overlapFragments = list.slice(overlapStart, overlapEnd + 1);
+    if (overlapStart <= overlapEnd) {
+      // There's an overlap - process only the overlapping section
+      const overlapFragments = list.slice(overlapStart, overlapEnd + 1);
 
-        const stitchInstruction = `${prompt}${styleHint ? `\n\nStyle guidance: ${styleHint}` : ''}
+      const stitchInstruction = `${prompt}${styleHint ? `\n\nStyle guidance: ${styleHint}` : ''}
 
 Stitch these two sections by resolving their overlapping region:
 
@@ -126,20 +126,20 @@ SECTION B (preserve terminals): ${currentResult.content}
 OVERLAPPING FRAGMENTS (original): ${overlapFragments.join(' | ')}
 
 The terminal ends of both sections should be preserved. Only resolve the overlapping middle region where these fragments appear: ${overlapFragments.join(
-          ', '
-        )}
+        ', '
+      )}
 
 Add necessary connecting words, prepositions, conjunctions, or other filler text to create a coherent, grammatically correct, and semantically meaningful result. Output only the final stitched result with terminals preserved.`;
 
-        const stitchResult = await retry(() => callLlm(stitchInstruction, config), {
-          label: `join-stitch-${i}`,
-          config,
-        });
+      const stitchResult = await retry(() => callLlm(stitchInstruction, config), {
+        label: `join-stitch-${i}`,
+        config,
+      });
 
-        stitchedResult = stitchResult || stitchedResult;
-      } else {
-        // No overlap - simple join
-        const joinInstruction = `${prompt}${styleHint ? `\n\nStyle guidance: ${styleHint}` : ''}
+      stitchedResult = stitchResult || stitchedResult;
+    } else {
+      // No overlap - simple join
+      const joinInstruction = `${prompt}${styleHint ? `\n\nStyle guidance: ${styleHint}` : ''}
 
 Join these two non-overlapping sections:
 1. ${stitchedResult}
@@ -147,20 +147,16 @@ Join these two non-overlapping sections:
 
 Add necessary connecting words, prepositions, conjunctions, or other filler text to create a coherent, grammatically correct, and semantically meaningful result. Output only the joined result.`;
 
-        const joinResult = await retry(() => callLlm(joinInstruction, config), {
-          label: `join-nonoverlap-${i}`,
-          config,
-        });
+      const joinResult = await retry(() => callLlm(joinInstruction, config), {
+        label: `join-nonoverlap-${i}`,
+        config,
+      });
 
-        stitchedResult = joinResult || stitchedResult;
-      }
+      stitchedResult = joinResult || stitchedResult;
     }
-
-    emitChainResult(config, name);
-
-    return stitchedResult;
-  } catch (err) {
-    emitChainError(config, name, err);
-    throw err;
   }
+
+  emitChainResult(config, name);
+
+  return stitchedResult;
 }

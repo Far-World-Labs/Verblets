@@ -3,7 +3,7 @@ import retry from '../../lib/retry/index.js';
 import { constants as promptConstants, asXML } from '../../prompts/index.js';
 import { questionsListSchema, selectedQuestionSchema } from './schemas.js';
 import { getOption, initChain, withPolicy } from '../../lib/context/option.js';
-import { emitChainResult, emitChainError } from '../../lib/progress-callback/index.js';
+import { emitChainResult } from '../../lib/progress-callback/index.js';
 
 const name = 'questions';
 
@@ -147,23 +147,18 @@ const generateQuestions = async function* generateQuestionsGenerator(text, confi
 export default async (text, config = {}) => {
   const startTime = Date.now();
 
-  try {
-    const generator = generateQuestions(text, config);
+  const generator = generateQuestions(text, config);
 
-    const results = [];
-    for await (const result of generator) {
-      if (!results.includes(result)) {
-        results.push(result);
-      }
+  const results = [];
+  for await (const result of generator) {
+    if (!results.includes(result)) {
+      results.push(result);
     }
-
-    const resultsSorted = results.toSorted((a, b) => a.localeCompare(b));
-
-    emitChainResult(config, name, { duration: Date.now() - startTime });
-
-    return resultsSorted;
-  } catch (err) {
-    emitChainError(config, name, err, { duration: Date.now() - startTime });
-    throw err;
   }
+
+  const resultsSorted = results.toSorted((a, b) => a.localeCompare(b));
+
+  emitChainResult(config, name, { duration: Date.now() - startTime });
+
+  return resultsSorted;
 };

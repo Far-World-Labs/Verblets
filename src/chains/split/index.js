@@ -3,7 +3,7 @@ import retry from '../../lib/retry/index.js';
 import chunkSentences from '../../lib/chunk-sentences/index.js';
 import wrapVariable from '../../prompts/wrap-variable.js';
 import { getOption, initChain, withPolicy } from '../../lib/context/option.js';
-import { emitChainResult, emitChainError } from '../../lib/progress-callback/index.js';
+import { emitChainResult } from '../../lib/progress-callback/index.js';
 
 const name = 'split';
 
@@ -81,67 +81,62 @@ export default async function split(text, instructions, config = {}) {
   const preservationShort = await getOption('preservationShort', config, preservationConfig.short);
   const preservationLong = await getOption('preservationLong', config, preservationConfig.long);
 
-  try {
-    const chunks = chunkSentences(text, chunkLen);
+  const chunks = chunkSentences(text, chunkLen);
 
-    // Process chunks in parallel for better performance
-    const promises = chunks.map(async (chunk, index) => {
-      const context = {
-        targetSplitCount: targetSplitsPerChunk,
-      };
+  // Process chunks in parallel for better performance
+  const promises = chunks.map(async (chunk, index) => {
+    const context = {
+      targetSplitCount: targetSplitsPerChunk,
+    };
 
-      const prompt = buildPrompt(chunk, instructions, delimiter, context);
-      const llmConfig = {
-        ...config,
-        temperature,
-      };
+    const prompt = buildPrompt(chunk, instructions, delimiter, context);
+    const llmConfig = {
+      ...config,
+      temperature,
+    };
 
-      try {
-        const output = await retry(() => callLlm(prompt, llmConfig), {
-          label: 'split',
-          config,
-        });
+    try {
+      const output = await retry(() => callLlm(prompt, llmConfig), {
+        label: 'split',
+        config,
+      });
 
-        const outputWithoutDelimiters = output.replace(
-          new RegExp(delimiter.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'),
-          ''
-        );
-        const originalChunk = chunk.trim();
+      const outputWithoutDelimiters = output.replace(
+        new RegExp(delimiter.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'),
+        ''
+      );
+      const originalChunk = chunk.trim();
 
-        // If the output is significantly different, fall back to original
-        // Be more lenient for shorter texts (common in tests)
-        const maxDifference = originalChunk.length < 100 ? preservationShort : preservationLong;
-        if (
-          Math.abs(outputWithoutDelimiters.length - originalChunk.length) >
-          originalChunk.length * maxDifference
-        ) {
-          if (config.logger?.warn) {
-            config.logger.warn(
-              `Split output differs significantly from input for chunk ${
-                index + 1
-              }, using original chunk`
-            );
-          }
-          return chunk;
-        }
-
-        return output;
-      } catch (error) {
+      // If the output is significantly different, fall back to original
+      // Be more lenient for shorter texts (common in tests)
+      const maxDifference = originalChunk.length < 100 ? preservationShort : preservationLong;
+      if (
+        Math.abs(outputWithoutDelimiters.length - originalChunk.length) >
+        originalChunk.length * maxDifference
+      ) {
         if (config.logger?.warn) {
-          config.logger.warn(`Split failed for chunk ${index + 1}:`, error.message);
+          config.logger.warn(
+            `Split output differs significantly from input for chunk ${
+              index + 1
+            }, using original chunk`
+          );
         }
         return chunk;
       }
-    });
 
-    const results = await Promise.all(promises);
-    const result = results.join('');
+      return output;
+    } catch (error) {
+      if (config.logger?.warn) {
+        config.logger.warn(`Split failed for chunk ${index + 1}:`, error.message);
+      }
+      return chunk;
+    }
+  });
 
-    emitChainResult(config, name);
+  const results = await Promise.all(promises);
+  const result = results.join('');
 
-    return result;
-  } catch (err) {
-    emitChainError(config, name, err);
-    throw err;
-  }
+  emitChainResult(config, name);
+
+  return result;
 }

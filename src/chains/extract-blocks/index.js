@@ -10,7 +10,6 @@ import {
   emitBatchProcessed,
   createBatchProgressCallback,
   emitChainResult,
-  emitChainError,
 } from '../../lib/progress-callback/index.js';
 import { initChain, withPolicy } from '../../lib/context/option.js';
 
@@ -92,158 +91,151 @@ export async function extractBlocks(text, instructions, config = {}) {
 
   const lifecycleLogger = createLifecycleLogger(logger, 'chain:extract-blocks');
 
-  try {
-    // Handle empty text
-    if (!text || text.trim() === '') {
-      const emptyMeta = { blocksExtracted: 0 };
-      lifecycleLogger.logResult([], emptyMeta);
-      emitChainResult(config, name, emptyMeta);
+  // Handle empty text
+  if (!text || text.trim() === '') {
+    const emptyMeta = { blocksExtracted: 0 };
+    lifecycleLogger.logResult([], emptyMeta);
+    emitChainResult(config, name, emptyMeta);
 
-      return [];
-    }
+    return [];
+  }
 
-    const lines = text.split('\n');
-    const totalLines = lines.length;
+  const lines = text.split('\n');
+  const totalLines = lines.length;
 
-    lifecycleLogger.logStart({
-      totalLines,
-      windowSize,
-      overlapSize,
-      maxParallel,
-    });
+  lifecycleLogger.logStart({
+    totalLines,
+    windowSize,
+    overlapSize,
+    maxParallel,
+  });
 
-    // Log input
-    lifecycleLogger.info({
-      event: 'chain:extract-blocks:input',
-      value: {
-        textLength: text.length,
-        lineCount: totalLines,
-      },
-    });
+  // Log input
+  lifecycleLogger.info({
+    event: 'chain:extract-blocks:input',
+    value: {
+      textLength: text.length,
+      lineCount: totalLines,
+    },
+  });
 
-    // Generate window start positions
-    const windowStarts = [];
-    for (let start = 0; start < totalLines; start += windowSize - overlapSize) {
-      windowStarts.push(start);
-    }
+  // Generate window start positions
+  const windowStarts = [];
+  for (let start = 0; start < totalLines; start += windowSize - overlapSize) {
+    windowStarts.push(start);
+  }
 
-    emitBatchStart(onProgress, 'extract-blocks', lines.length, {
-      totalWindows: windowStarts.length,
-      maxParallel,
-      now,
-      chainStartTime: now,
-    });
+  emitBatchStart(onProgress, 'extract-blocks', lines.length, {
+    totalWindows: windowStarts.length,
+    maxParallel,
+    now,
+    chainStartTime: now,
+  });
 
-    let processedWindows = 0;
+  let processedWindows = 0;
 
-    // Process windows with controlled parallelism
-    const allBlockBoundaries = await parallelBatch(
-      windowStarts,
-      async (windowStart) => {
-        const windowEnd = Math.min(windowStart + windowSize, totalLines);
-        const windowLines = lines.slice(windowStart, windowEnd);
+  // Process windows with controlled parallelism
+  const allBlockBoundaries = await parallelBatch(
+    windowStarts,
+    async (windowStart) => {
+      const windowEnd = Math.min(windowStart + windowSize, totalLines);
+      const windowLines = lines.slice(windowStart, windowEnd);
 
-        const prompt = buildBlockExtractionPrompt(windowLines, windowStart, instructions);
+      const prompt = buildBlockExtractionPrompt(windowLines, windowStart, instructions);
 
-        const result = await retry(
-          () =>
-            callLlm(prompt, {
-              ...config,
-              response_format: blockExtractionSchema,
-              logger: lifecycleLogger,
-            }),
-          {
-            label: `extract-blocks:window`,
-            config,
-            onProgress: createBatchProgressCallback(onProgress, {
-              totalItems: lines.length,
-              processedItems: Math.min(windowStart + windowSize, lines.length),
-              windowNumber: processedWindows + 1,
-              windowSize: windowLines.length,
-              windowStart,
-              totalWindows: windowStarts.length,
-            }),
-          }
-        );
-
-        processedWindows++;
-
-        emitBatchProcessed(
-          onProgress,
-          'extract-blocks',
-          {
+      const result = await retry(
+        () =>
+          callLlm(prompt, {
+            ...config,
+            response_format: blockExtractionSchema,
+            logger: lifecycleLogger,
+          }),
+        {
+          label: `extract-blocks:window`,
+          config,
+          onProgress: createBatchProgressCallback(onProgress, {
             totalItems: lines.length,
             processedItems: Math.min(windowStart + windowSize, lines.length),
-            batchNumber: processedWindows,
-            batchSize: windowLines.length,
-          },
-          {
+            windowNumber: processedWindows + 1,
+            windowSize: windowLines.length,
             windowStart,
             totalWindows: windowStarts.length,
-            blocksFound: (result.blocks || []).length,
-            now,
-            chainStartTime: now,
-          }
-        );
+          }),
+        }
+      );
 
-        // Results should already have global line numbers
-        return result.blocks || [];
-      },
-      {
-        maxParallel,
-        label: 'extract-blocks windows',
-      }
-    );
+      processedWindows++;
 
-    // Flatten all blocks and sort by start line, then by end line (descending)
-    const allBlocks = allBlockBoundaries
-      .flat()
-      .filter((b) => b && b.startLine !== undefined && b.endLine !== undefined)
-      .sort((a, b) => a.startLine - b.startLine || b.endLine - a.endLine);
+      emitBatchProcessed(
+        onProgress,
+        'extract-blocks',
+        {
+          totalItems: lines.length,
+          processedItems: Math.min(windowStart + windowSize, lines.length),
+          batchNumber: processedWindows,
+          batchSize: windowLines.length,
+        },
+        {
+          windowStart,
+          totalWindows: windowStarts.length,
+          blocksFound: (result.blocks || []).length,
+          now,
+          chainStartTime: now,
+        }
+      );
 
-    // Merge overlapping blocks
-    const mergedBlocks = [];
-    for (const block of allBlocks) {
-      const last = mergedBlocks[mergedBlocks.length - 1];
-
-      if (!last || block.startLine > last.endLine) {
-        // No overlap - add new block
-        mergedBlocks.push({ ...block });
-      } else if (block.endLine > last.endLine) {
-        // Overlaps and extends - update end
-        last.endLine = block.endLine;
-      }
+      // Results should already have global line numbers
+      return result.blocks || [];
+    },
+    {
+      maxParallel,
+      label: 'extract-blocks windows',
     }
+  );
 
-    // Extract text blocks as arrays of lines (without line numbers)
-    const blocks = mergedBlocks.map(({ startLine, endLine }) =>
-      lines.slice(startLine, endLine + 1)
-    );
+  // Flatten all blocks and sort by start line, then by end line (descending)
+  const allBlocks = allBlockBoundaries
+    .flat()
+    .filter((b) => b && b.startLine !== undefined && b.endLine !== undefined)
+    .sort((a, b) => a.startLine - b.startLine || b.endLine - a.endLine);
 
-    emitBatchComplete(onProgress, 'extract-blocks', lines.length, {
-      totalWindows: windowStarts.length,
-      blocksExtracted: blocks.length,
-      now,
-      chainStartTime: now,
-    });
+  // Merge overlapping blocks
+  const mergedBlocks = [];
+  for (const block of allBlocks) {
+    const last = mergedBlocks[mergedBlocks.length - 1];
 
-    // Log output
-    lifecycleLogger.info({
-      event: 'chain:extract-blocks:output',
-      value: {
-        totalBlocks: blocks.length,
-      },
-    });
-
-    const resultMeta = { blocksExtracted: blocks.length };
-    lifecycleLogger.logResult(blocks, resultMeta);
-    emitChainResult(config, name, resultMeta);
-
-    return blocks;
-  } catch (err) {
-    emitChainError(config, name, err);
-    throw err;
+    if (!last || block.startLine > last.endLine) {
+      // No overlap - add new block
+      mergedBlocks.push({ ...block });
+    } else if (block.endLine > last.endLine) {
+      // Overlaps and extends - update end
+      last.endLine = block.endLine;
+    }
   }
+
+  // Extract text blocks as arrays of lines (without line numbers)
+  const blocks = mergedBlocks.map(({ startLine, endLine }) => lines.slice(startLine, endLine + 1));
+
+  emitBatchComplete(onProgress, 'extract-blocks', lines.length, {
+    totalWindows: windowStarts.length,
+    blocksExtracted: blocks.length,
+    now,
+    chainStartTime: now,
+  });
+
+  // Log output
+  lifecycleLogger.info({
+    event: 'chain:extract-blocks:output',
+    value: {
+      totalBlocks: blocks.length,
+    },
+  });
+
+  const resultMeta = { blocksExtracted: blocks.length };
+  lifecycleLogger.logResult(blocks, resultMeta);
+  emitChainResult(config, name, resultMeta);
+
+  return blocks;
 }
 
 export default extractBlocks;

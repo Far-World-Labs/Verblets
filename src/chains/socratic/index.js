@@ -7,11 +7,7 @@ import {
   extractPromptAnalysis,
   extractResultValue,
 } from '../../lib/lifecycle-logger/index.js';
-import {
-  emitChainResult,
-  emitChainError,
-  emitStepProgress,
-} from '../../lib/progress-callback/index.js';
+import { emitChainResult, emitStepProgress } from '../../lib/progress-callback/index.js';
 import { initChain, withPolicy } from '../../lib/context/option.js';
 
 const name = 'socratic';
@@ -242,28 +238,19 @@ class SocraticMethod {
   async run(depth = 3) {
     this.logger.logEvent('run-start', { depth });
 
-    try {
-      for (let i = 0; i < depth; i += 1) {
-        // eslint-disable-next-line no-await-in-loop
-        await this.step();
-      }
-
-      this.logger.logResult(this.history, extractResultValue(this.history, this.history));
-
-      emitChainResult(
-        { onProgress: this.onProgress, operation: this.config.operation, now: this.now },
-        name
-      );
-
-      return this.history;
-    } catch (err) {
-      emitChainError(
-        { onProgress: this.onProgress, operation: this.config.operation, now: this.now },
-        name,
-        err
-      );
-      throw err;
+    for (let i = 0; i < depth; i += 1) {
+      // eslint-disable-next-line no-await-in-loop
+      await this.step();
     }
+
+    this.logger.logResult(this.history, extractResultValue(this.history, this.history));
+
+    emitChainResult(
+      { onProgress: this.onProgress, operation: this.config.operation, now: this.now },
+      name
+    );
+
+    return this.history;
   }
 }
 

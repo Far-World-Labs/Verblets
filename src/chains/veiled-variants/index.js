@@ -1,7 +1,7 @@
 import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/index.js';
-import { emitChainResult, emitChainError } from '../../lib/progress-callback/index.js';
+import { emitChainResult } from '../../lib/progress-callback/index.js';
 import { initChain, withPolicy } from '../../lib/context/option.js';
 
 const name = 'veiled-variants';
@@ -104,23 +104,18 @@ const veiledVariants = async (inputConfig = {}) => {
   );
   const prompts = strategies.map((name) => STRATEGY_FNS[name](prompt, variantCount));
 
-  try {
-    const results = await Promise.all(
-      prompts.map((p) =>
-        retry(() => callLlm(p, { ...config, response_format: responseFormat }), {
-          label: 'veiled-variants',
-          config,
-        })
-      )
-    );
+  const results = await Promise.all(
+    prompts.map((p) =>
+      retry(() => callLlm(p, { ...config, response_format: responseFormat }), {
+        label: 'veiled-variants',
+        config,
+      })
+    )
+  );
 
-    emitChainResult(config, name);
+  emitChainResult(config, name);
 
-    return results.flat();
-  } catch (err) {
-    emitChainError(config, name, err);
-    throw err;
-  }
+  return results.flat();
 };
 
 export default veiledVariants;

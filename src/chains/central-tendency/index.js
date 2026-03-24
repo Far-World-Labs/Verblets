@@ -2,11 +2,7 @@ import map from '../map/index.js';
 import { CENTRAL_TENDENCY_PROMPT } from '../../verblets/central-tendency-lines/index.js';
 import { centralTendencyResultsJsonSchema } from './schemas.js';
 import { createLifecycleLogger, extractPromptAnalysis } from '../../lib/lifecycle-logger/index.js';
-import {
-  emitChainResult,
-  emitChainError,
-  scopeProgress,
-} from '../../lib/progress-callback/index.js';
+import { emitChainResult, scopeProgress } from '../../lib/progress-callback/index.js';
 import { jsonSchema } from '../../lib/llm/index.js';
 import { initChain } from '../../lib/context/option.js';
 
@@ -89,35 +85,29 @@ export default async function centralTendency(items, seedItems, config = {}) {
     seedCount: seedItems.length,
   });
 
-  try {
-    // Build instructions for the mapper
-    const instructions = buildCentralTendencyInstructions(seedItems, config);
+  // Build instructions for the mapper
+  const instructions = buildCentralTendencyInstructions(seedItems, config);
 
-    // Log instruction construction
-    lifecycleLogger.logConstruction(instructions, extractPromptAnalysis(instructions));
+  // Log instruction construction
+  lifecycleLogger.logConstruction(instructions, extractPromptAnalysis(instructions));
 
-    // Use map to handle all the complexity
-    const results = await map(items, instructions, {
-      ...config,
-      batchSize,
-      responseFormat: centralTendencyResponseFormat,
-      logger: lifecycleLogger,
-      onProgress: scopeProgress(config.onProgress, 'map:evaluation'),
-    });
+  // Use map to handle all the complexity
+  const results = await map(items, instructions, {
+    ...config,
+    batchSize,
+    responseFormat: centralTendencyResponseFormat,
+    logger: lifecycleLogger,
+    onProgress: scopeProgress(config.onProgress, 'map:evaluation'),
+  });
 
-    // Log the final output from the chain
-    const resultMeta = {
-      totalItems: results.length,
-      successCount: results.filter((r) => r !== undefined).length,
-      failureCount: results.filter((r) => r === undefined).length,
-    };
-    lifecycleLogger.logResult(results, resultMeta);
-    emitChainResult(config, name, resultMeta);
+  // Log the final output from the chain
+  const resultMeta = {
+    totalItems: results.length,
+    successCount: results.filter((r) => r !== undefined).length,
+    failureCount: results.filter((r) => r === undefined).length,
+  };
+  lifecycleLogger.logResult(results, resultMeta);
+  emitChainResult(config, name, resultMeta);
 
-    return results;
-  } catch (error) {
-    lifecycleLogger.logError(error);
-    emitChainError(config, name, error);
-    throw error;
-  }
+  return results;
 }

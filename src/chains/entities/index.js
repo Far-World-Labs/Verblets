@@ -3,11 +3,7 @@ import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import buildInstructions from '../../lib/build-instructions/index.js';
 import entityResultSchema from './entity-result.json';
-import {
-  emitStepProgress,
-  emitChainResult,
-  emitChainError,
-} from '../../lib/progress-callback/index.js';
+import { emitStepProgress, emitChainResult } from '../../lib/progress-callback/index.js';
 import { initChain, nameStep } from '../../lib/context/option.js';
 
 const name = 'entities';
@@ -124,30 +120,25 @@ Each entity should include:
 export async function extractEntities(text, instructions, config = {}) {
   ({ config } = await initChain(name, config));
 
-  try {
-    emitStepProgress(config.onProgress, name, 'generating-specification', {
-      instructions,
-      now: config.now,
-      chainStartTime: config.now,
-    });
+  emitStepProgress(config.onProgress, name, 'generating-specification', {
+    instructions,
+    now: config.now,
+    chainStartTime: config.now,
+  });
 
-    const spec = config.spec || (await entitySpec(instructions, config));
+  const spec = config.spec || (await entitySpec(instructions, config));
 
-    emitStepProgress(config.onProgress, name, 'extracting-entities', {
-      specification: spec,
-      now: config.now,
-      chainStartTime: config.now,
-    });
+  emitStepProgress(config.onProgress, name, 'extracting-entities', {
+    specification: spec,
+    now: config.now,
+    chainStartTime: config.now,
+  });
 
-    const result = await applyEntities(text, spec, config);
+  const result = await applyEntities(text, spec, config);
 
-    emitChainResult(config, name);
+  emitChainResult(config, name);
 
-    return result;
-  } catch (err) {
-    emitChainError(config, name, err);
-    throw err;
-  }
+  return result;
 }
 
 // ===== Advanced Entity Functions =====

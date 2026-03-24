@@ -4,7 +4,6 @@ import score from '../score/index.js';
 import disambiguateMeaningsSchema from './disambiguate-meanings-result.json';
 import {
   emitChainResult,
-  emitChainError,
   emitStepProgress,
   scopeProgress,
 } from '../../lib/progress-callback/index.js';
@@ -44,43 +43,38 @@ export const getMeanings = async (term, config = {}) => {
 export default async function disambiguate({ term, context, ...config } = {}) {
   ({ config } = await initChain(name, config));
 
-  try {
-    emitStepProgress(config.onProgress, name, 'extracting-meanings', {
-      term,
-      now: config.now,
-      chainStartTime: config.now,
-    });
+  emitStepProgress(config.onProgress, name, 'extracting-meanings', {
+    term,
+    now: config.now,
+    chainStartTime: config.now,
+  });
 
-    const meanings = await getMeanings(term, config);
+  const meanings = await getMeanings(term, config);
 
-    emitStepProgress(config.onProgress, name, 'scoring-meanings', {
-      term,
-      meaningCount: meanings.length,
-      now: config.now,
-      chainStartTime: config.now,
-    });
+  emitStepProgress(config.onProgress, name, 'scoring-meanings', {
+    term,
+    meaningCount: meanings.length,
+    now: config.now,
+    chainStartTime: config.now,
+  });
 
-    const scores = await score(
-      meanings,
-      `how well this meaning of "${term}" matches the context: ${context}`,
-      { ...config, onProgress: scopeProgress(config.onProgress, 'score:relevance') }
-    );
+  const scores = await score(
+    meanings,
+    `how well this meaning of "${term}" matches the context: ${context}`,
+    { ...config, onProgress: scopeProgress(config.onProgress, 'score:relevance') }
+  );
 
-    let bestIndex = 0;
-    let bestScore = scores[0];
+  let bestIndex = 0;
+  let bestScore = scores[0];
 
-    for (let i = 1; i < scores.length; i++) {
-      if (scores[i] > bestScore) {
-        bestScore = scores[i];
-        bestIndex = i;
-      }
+  for (let i = 1; i < scores.length; i++) {
+    if (scores[i] > bestScore) {
+      bestScore = scores[i];
+      bestIndex = i;
     }
-
-    emitChainResult(config, name);
-
-    return { meaning: meanings[bestIndex], meanings };
-  } catch (err) {
-    emitChainError(config, name, err);
-    throw err;
   }
+
+  emitChainResult(config, name);
+
+  return { meaning: meanings[bestIndex], meanings };
 }

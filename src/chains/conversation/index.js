@@ -2,7 +2,7 @@ import conversationTurnReduce from '../conversation-turn-reduce/index.js';
 import { defaultTurnPolicy } from './turn-policies.js';
 import pLimit from 'p-limit';
 import { debug } from '../../lib/debug/index.js';
-import { emitChainResult, emitChainError } from '../../lib/progress-callback/index.js';
+import { emitChainResult } from '../../lib/progress-callback/index.js';
 import { initChain, nameStep } from '../../lib/context/option.js';
 
 const name = 'conversation';
@@ -109,85 +109,75 @@ export default class Conversation {
   }
 
   async run() {
-    try {
-      let round = 0;
-      while (this.rules.shouldContinue(round, this.messages.slice())) {
-        let order = this.rules.turnPolicy(round, this.messages.slice()) || [];
-        order = order.filter((id) => this.speakers.some((p) => p.id === id));
+    let round = 0;
+    while (this.rules.shouldContinue(round, this.messages.slice())) {
+      let order = this.rules.turnPolicy(round, this.messages.slice()) || [];
+      order = order.filter((id) => this.speakers.some((p) => p.id === id));
 
-        // If order is empty, use default policy
-        if (order.length === 0) {
-          order = defaultTurnPolicy(this.speakers)(round, this.messages.slice());
-        }
-
-        const speakers = order.map((id) => this.speakers.find((p) => p.id === id)).filter(Boolean);
-
-        if (this.bulkSpeakFn) {
-          // Use bulkSpeakFn (either provided or default conversationTurnReduce)
-          const comments = await this.bulkSpeakFn({
-            speakers,
-            topic: this.topic,
-            history: this.messages.slice(),
-            rules: this.rules,
-            llm: this.llm,
-            ...this.otherOptions,
-          });
-          comments.forEach((comment, idx) => {
-            this._push(speakers[idx].id, comment);
-          });
-        } else if (this.speakFn) {
-          // Use provided speakFn with controlled concurrency
-          const limit = pLimit(this.maxParallel);
-
-          const speakerPromises = speakers.map((speaker, index) =>
-            limit(() =>
-              this.speakFn({
-                speaker,
-                topic: this.topic,
-                history: this.messages.slice(),
-                rules: this.rules,
-                llm: this.llm,
-                ...this.otherOptions,
-              })
-                .then((comment) => ({ speaker, comment, index }))
-                .catch((error) => {
-                  debug(`Speaker ${speaker.id} failed: ${error.message}`);
-                  return { speaker, comment: '', index };
-                })
-            )
-          );
-
-          const results = await Promise.all(speakerPromises);
-
-          // Push comments in original speaker order
-          results
-            .sort((a, b) => a.index - b.index)
-            .forEach(({ speaker, comment }) => {
-              if (comment) {
-                this._push(speaker.id, comment);
-              }
-            });
-        }
-
-        round += 1;
+      // If order is empty, use default policy
+      if (order.length === 0) {
+        order = defaultTurnPolicy(this.speakers)(round, this.messages.slice());
       }
 
-      const telemetryConfig = {
-        onProgress: this.onProgress,
-        now: this.now,
-        operation: this.operation,
-      };
-      emitChainResult(telemetryConfig, name);
+      const speakers = order.map((id) => this.speakers.find((p) => p.id === id)).filter(Boolean);
 
-      return this.messages;
-    } catch (err) {
-      const telemetryConfig = {
-        onProgress: this.onProgress,
-        now: this.now,
-        operation: this.operation,
-      };
-      emitChainError(telemetryConfig, name, err);
-      throw err;
+      if (this.bulkSpeakFn) {
+        // Use bulkSpeakFn (either provided or default conversationTurnReduce)
+        const comments = await this.bulkSpeakFn({
+          speakers,
+          topic: this.topic,
+          history: this.messages.slice(),
+          rules: this.rules,
+          llm: this.llm,
+          ...this.otherOptions,
+        });
+        comments.forEach((comment, idx) => {
+          this._push(speakers[idx].id, comment);
+        });
+      } else if (this.speakFn) {
+        // Use provided speakFn with controlled concurrency
+        const limit = pLimit(this.maxParallel);
+
+        const speakerPromises = speakers.map((speaker, index) =>
+          limit(() =>
+            this.speakFn({
+              speaker,
+              topic: this.topic,
+              history: this.messages.slice(),
+              rules: this.rules,
+              llm: this.llm,
+              ...this.otherOptions,
+            })
+              .then((comment) => ({ speaker, comment, index }))
+              .catch((error) => {
+                debug(`Speaker ${speaker.id} failed: ${error.message}`);
+                return { speaker, comment: '', index };
+              })
+          )
+        );
+
+        const results = await Promise.all(speakerPromises);
+
+        // Push comments in original speaker order
+        results
+          .sort((a, b) => a.index - b.index)
+          .forEach(({ speaker, comment }) => {
+            if (comment) {
+              this._push(speaker.id, comment);
+            }
+          });
+      }
+
+      round += 1;
     }
+
+    const telemetryConfig = {
+      onProgress: this.onProgress,
+      now: this.now,
+      operation: this.operation,
+    };
+    emitChainResult(telemetryConfig, name);
+
+    return this.messages;
   }
 }

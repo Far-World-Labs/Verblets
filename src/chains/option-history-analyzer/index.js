@@ -18,7 +18,7 @@ import RingBuffer from '../../lib/ring-buffer/index.js';
 import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { initChain } from '../../lib/context/option.js';
-import { emitChainResult, emitChainError } from '../../lib/progress-callback/index.js';
+import { emitChainResult } from '../../lib/progress-callback/index.js';
 
 const name = 'option-history-analyzer';
 
@@ -202,34 +202,29 @@ export default function createOptionHistoryAnalyzer(config = {}) {
     const mergedConfig = { ...chainConfig, ...analyzeConfig };
     const { config: scopedConfig } = await initChain(name, mergedConfig, {});
 
-    try {
-      const prompt = buildAnalysisPrompt(traces, instruction);
+    const prompt = buildAnalysisPrompt(traces, instruction);
 
-      const result = await retry(
-        () =>
-          callLlm(prompt, {
-            ...scopedConfig,
-            response_format: {
-              type: 'json_schema',
-              json_schema: { name: 'rule_suggestions', schema: RULE_SCHEMA },
-            },
-          }),
-        { label: 'option-history-analyzer', config: scopedConfig }
-      );
+    const result = await retry(
+      () =>
+        callLlm(prompt, {
+          ...scopedConfig,
+          response_format: {
+            type: 'json_schema',
+            json_schema: { name: 'rule_suggestions', schema: RULE_SCHEMA },
+          },
+        }),
+      { label: 'option-history-analyzer', config: scopedConfig }
+    );
 
-      const rules = result?.rules ?? result ?? [];
+    const rules = result?.rules ?? result ?? [];
 
-      if (onRules && rules.length > 0) {
-        onRules(rules);
-      }
-
-      emitChainResult(scopedConfig, name);
-
-      return rules;
-    } catch (err) {
-      emitChainError(scopedConfig, name, err);
-      throw err;
+    if (onRules && rules.length > 0) {
+      onRules(rules);
     }
+
+    emitChainResult(scopedConfig, name);
+
+    return rules;
   };
 
   /**

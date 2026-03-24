@@ -4,7 +4,7 @@ import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { outputSuccinctNames } from '../../prompts/index.js';
 import { subComponentsSchema, componentOptionsSchema } from './schemas.js';
-import { emitChainResult, emitChainError } from '../../lib/progress-callback/index.js';
+import { emitChainResult } from '../../lib/progress-callback/index.js';
 import { initChain, withPolicy } from '../../lib/context/option.js';
 
 const _name = 'dismantle'; // eslint: unused — ChainTree.create receives name as parameter
@@ -291,16 +291,11 @@ class ChainTree {
       variety: withPolicy(mapVariety),
     });
 
-    try {
-      const tree = new ChainTree(name, options, config, { temperature, variety });
+    const tree = new ChainTree(name, options, config, { temperature, variety });
 
-      emitChainResult(config, name);
+    emitChainResult(config, name);
 
-      return tree;
-    } catch (err) {
-      emitChainError(config, name, err);
-      throw err;
-    }
+    return tree;
   }
 
   constructor(name, options = {}, config = {}, resolved = {}) {

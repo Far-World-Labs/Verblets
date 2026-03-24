@@ -1,7 +1,7 @@
 import score from '../score/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { initChain, withPolicy } from '../../lib/context/option.js';
-import { emitChainResult, emitChainError } from '../../lib/progress-callback/index.js';
+import { emitChainResult } from '../../lib/progress-callback/index.js';
 
 const name = 'truncate';
 
@@ -104,51 +104,46 @@ export default async function truncate(text, instructions, config = {}) {
   });
   config = scopedConfig;
 
-  try {
-    // Create chunks with tracked end positions
-    const chunks = createChunks(text, chunkSize);
+  // Create chunks with tracked end positions
+  const chunks = createChunks(text, chunkSize);
 
-    // Reverse chunks to process from end to beginning
-    const reversedChunks = [...chunks].reverse();
-    const textsToScore = reversedChunks.map((chunk) => chunk.text);
+  // Reverse chunks to process from end to beginning
+  const reversedChunks = [...chunks].reverse();
+  const textsToScore = reversedChunks.map((chunk) => chunk.text);
 
-    // Score chunks in reverse order - score how much content should be KEPT
-    const scoringInstructions = `${asXML(instructions, { tag: 'removal_criteria' })}
+  // Score chunks in reverse order - score how much content should be KEPT
+  const scoringInstructions = `${asXML(instructions, { tag: 'removal_criteria' })}
 
 NOTE: These text blocks are in REVERSE order (from end to beginning of document).
 Score how important THE ENTIRE TEXT BLOCK is to KEEP in the document (0 = should be removed, 10 = must keep).
 Each item in the list is ONE complete text block - evaluate it as a whole unit.
 Consider the removal criteria above when scoring.`;
 
-    const scores = await score(textsToScore, scoringInstructions, {
-      ...config,
-      // Don't use stopOnThreshold - we need all scores to find high ones
-    });
+  const scores = await score(textsToScore, scoringInstructions, {
+    ...config,
+    // Don't use stopOnThreshold - we need all scores to find high ones
+  });
 
-    // Find the first chunk (from the end) that should be removed (score < threshold)
-    const removeChunkIndex = scores.findIndex((score) => score < threshold);
+  // Find the first chunk (from the end) that should be removed (score < threshold)
+  const removeChunkIndex = scores.findIndex((score) => score < threshold);
 
-    let result;
-    if (removeChunkIndex >= 0) {
-      const originalIndex = chunks.length - 1 - removeChunkIndex;
+  let result;
+  if (removeChunkIndex >= 0) {
+    const originalIndex = chunks.length - 1 - removeChunkIndex;
 
-      // Truncate at the start of the chunk that should be removed
-      if (originalIndex > 0) {
-        result = chunks[originalIndex - 1].endIndex;
-      } else {
-        // If the very first chunk should be removed, truncate at beginning
-        result = 0;
-      }
+    // Truncate at the start of the chunk that should be removed
+    if (originalIndex > 0) {
+      result = chunks[originalIndex - 1].endIndex;
     } else {
-      // If no content should be removed, don't truncate
-      result = text.length;
+      // If the very first chunk should be removed, truncate at beginning
+      result = 0;
     }
-
-    emitChainResult(config, name);
-
-    return result;
-  } catch (err) {
-    emitChainError(config, name, err);
-    throw err;
+  } else {
+    // If no content should be removed, don't truncate
+    result = text.length;
   }
+
+  emitChainResult(config, name);
+
+  return result;
 }

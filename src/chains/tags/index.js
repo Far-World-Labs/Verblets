@@ -3,7 +3,7 @@ import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import map from '../map/index.js';
 import { initChain, nameStep } from '../../lib/context/option.js';
-import { emitChainResult, emitChainError } from '../../lib/progress-callback/index.js';
+import { emitChainResult } from '../../lib/progress-callback/index.js';
 import tagsResultSchema from './tags-result.json';
 
 const name = 'tags';
@@ -83,15 +83,14 @@ export async function applyTags(item, specification, vocabulary, config = {}) {
   });
   config = scopedConfig;
 
-  try {
-    const vocabularyConstraint =
-      vocabularyMode === 'open'
-        ? `Available tags (prefer these, but you MAY suggest new tag IDs for items that don't fit any existing tag):
+  const vocabularyConstraint =
+    vocabularyMode === 'open'
+      ? `Available tags (prefer these, but you MAY suggest new tag IDs for items that don't fit any existing tag):
 ${asXML(JSON.stringify(vocabulary.tags), { tag: 'available-tags' })}`
-        : `Available tags (you MUST use only the "id" field from these tags):
+      : `Available tags (you MUST use only the "id" field from these tags):
 ${asXML(JSON.stringify(vocabulary.tags), { tag: 'available-tags' })}`;
 
-    const prompt = `You are a tagger. Apply tags to the given item based on the specification.
+  const prompt = `You are a tagger. Apply tags to the given item based on the specification.
 
 ${asXML(specification, { tag: 'tag-specification' })}
 
@@ -104,28 +103,24 @@ Analyze the item and determine which tags apply based on the specification.
 Return a JSON object with an "items" array containing ONLY the tag IDs (the "id" field values from available-tags${vocabularyMode === 'open' ? ' or new suggested IDs' : ''}).
 Do NOT return tag labels, descriptions, or full tag objects - ONLY the string ID values.`;
 
-    const response = await retry(
-      () =>
-        callLlm(prompt, {
-          ...config,
-          response_format: jsonSchema('tags_result', tagsResultSchema),
-        }),
-      {
-        label: 'tags-apply',
-        config,
-      }
-    );
+  const response = await retry(
+    () =>
+      callLlm(prompt, {
+        ...config,
+        response_format: jsonSchema('tags_result', tagsResultSchema),
+      }),
+    {
+      label: 'tags-apply',
+      config,
+    }
+  );
 
-    // llm auto-unwraps {items: [...]} to just the array
-    const result = Array.isArray(response) ? response : [];
+  // llm auto-unwraps {items: [...]} to just the array
+  const result = Array.isArray(response) ? response : [];
 
-    emitChainResult(config, name);
+  emitChainResult(config, name);
 
-    return result;
-  } catch (err) {
-    emitChainError(config, name, err);
-    throw err;
-  }
+  return result;
 }
 
 /**

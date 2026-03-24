@@ -4,7 +4,7 @@ import { asXML } from '../../prompts/wrap-variable.js';
 import buildInstructions from '../../lib/build-instructions/index.js';
 import { scaleSpecificationJsonSchema } from './schemas.js';
 import scaleResultSchema from './scale-result.json';
-import { emitChainResult, emitChainError } from '../../lib/progress-callback/index.js';
+import { emitChainResult } from '../../lib/progress-callback/index.js';
 import { initChain } from '../../lib/context/option.js';
 
 const name = 'scale';
@@ -46,10 +46,9 @@ export const {
 export async function scaleSpec(prompt, config = {}) {
   ({ config } = await initChain('scale:spec', config));
 
-  try {
-    const specSystemPrompt = `You are a scale specification generator. Analyze the scaling instructions and produce a clear, comprehensive specification.`;
+  const specSystemPrompt = `You are a scale specification generator. Analyze the scaling instructions and produce a clear, comprehensive specification.`;
 
-    const specUserPrompt = `Analyze these scaling instructions and generate a scale specification.
+  const specUserPrompt = `Analyze these scaling instructions and generate a scale specification.
 
 ${asXML(prompt, { tag: 'scaling-instructions' })}
 
@@ -60,29 +59,25 @@ Provide a JSON object with exactly three string properties:
 
 IMPORTANT: Each property must be a simple string value, not a nested object or array.`;
 
-    const response = await retry(
-      () =>
-        callLlm(specUserPrompt, {
-          ...config,
-          systemPrompt: specSystemPrompt,
-          response_format: jsonSchema(
-            scaleSpecificationJsonSchema.name,
-            scaleSpecificationJsonSchema.schema
-          ),
-        }),
-      {
-        label: 'scale spec',
-        config,
-      }
-    );
+  const response = await retry(
+    () =>
+      callLlm(specUserPrompt, {
+        ...config,
+        systemPrompt: specSystemPrompt,
+        response_format: jsonSchema(
+          scaleSpecificationJsonSchema.name,
+          scaleSpecificationJsonSchema.schema
+        ),
+      }),
+    {
+      label: 'scale spec',
+      config,
+    }
+  );
 
-    emitChainResult(config, name);
+  emitChainResult(config, name);
 
-    return response;
-  } catch (err) {
-    emitChainError(config, name, err);
-    throw err;
-  }
+  return response;
 }
 
 /**

@@ -1,7 +1,7 @@
 import reduce from '../reduce/index.js';
 import { patternCandidatesJsonSchema } from './schemas.js';
 import { jsonSchema } from '../../lib/llm/index.js';
-import { emitChainResult, emitChainError } from '../../lib/progress-callback/index.js';
+import { emitChainResult } from '../../lib/progress-callback/index.js';
 import { initChain, withPolicy } from '../../lib/context/option.js';
 
 const name = 'detect-patterns';
@@ -77,13 +77,10 @@ export default async function detectPatterns(objects, config = {}) {
   });
   config = scopedConfig;
 
-  try {
-    const filteredObjects = objects.map((obj) =>
-      filterObject(obj, maxStringLength, maxArrayLength)
-    );
-    const stringifiedObjects = filteredObjects.map((obj) => JSON.stringify(obj, null, 0));
+  const filteredObjects = objects.map((obj) => filterObject(obj, maxStringLength, maxArrayLength));
+  const stringifiedObjects = filteredObjects.map((obj) => JSON.stringify(obj, null, 0));
 
-    const patternInstructions = `
+  const patternInstructions = `
     Maintain an array of pattern candidates and individual instances. Maximum ${capacity} total items.
 
     Each item format: {"type": "pattern"|"instance", "template": {...}, "count": N}
@@ -112,30 +109,26 @@ export default async function detectPatterns(objects, config = {}) {
     Return all candidates. If the input list is empty, return an empty array.
   `;
 
-    const candidateArray = await reduce(stringifiedObjects, patternInstructions, {
-      ...config,
-      initial: [],
-      responseFormat: PATTERN_RESPONSE_FORMAT,
-    });
+  const candidateArray = await reduce(stringifiedObjects, patternInstructions, {
+    ...config,
+    initial: [],
+    responseFormat: PATTERN_RESPONSE_FORMAT,
+  });
 
-    // Since PATTERN_RESPONSE_FORMAT is a simple collection schema,
-    // and reduce should handle it properly
-    if (!Array.isArray(candidateArray)) {
-      emitChainResult(config, name);
-      return [];
-    }
-
-    const patterns = candidateArray
-      .filter((item) => item.type === 'pattern' && item.count >= 2)
-      .sort((a, b) => b.count - a.count)
-      .map((item) => item.template)
-      .slice(0, topN);
-
+  // Since PATTERN_RESPONSE_FORMAT is a simple collection schema,
+  // and reduce should handle it properly
+  if (!Array.isArray(candidateArray)) {
     emitChainResult(config, name);
-
-    return patterns;
-  } catch (err) {
-    emitChainError(config, name, err);
-    throw err;
+    return [];
   }
+
+  const patterns = candidateArray
+    .filter((item) => item.type === 'pattern' && item.count >= 2)
+    .sort((a, b) => b.count - a.count)
+    .map((item) => item.template)
+    .slice(0, topN);
+
+  emitChainResult(config, name);
+
+  return patterns;
 }

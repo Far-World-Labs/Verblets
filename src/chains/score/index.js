@@ -8,7 +8,6 @@ import {
   emitBatchProcessed,
   emitPhaseProgress,
   emitChainResult,
-  emitChainError,
   filterProgress,
 } from '../../lib/progress-callback/index.js';
 import { createBatches, parallel, retry } from '../../lib/index.js';
@@ -275,63 +274,58 @@ export async function mapScore(list, instructions, config = {}) {
   });
   config = scopedConfig;
   const onProgress = filterProgress(_onProgress, progressMode);
-  try {
-    emitPhaseProgress(onProgress, 'score', 'generating-specification');
-    const spec = providedSpec || (await scoreSpec(instructions, config));
-    emitPhaseProgress(onProgress, 'score', 'scoring-items', { specification: spec });
+  emitPhaseProgress(onProgress, 'score', 'generating-specification');
+  const spec = providedSpec || (await scoreSpec(instructions, config));
+  emitPhaseProgress(onProgress, 'score', 'scoring-items', { specification: spec });
 
-    const scoringPrompt = buildScoringInstructions(
-      spec,
-      'Return ONLY the numeric score for each item according to the specification range.'
-    );
-    const batchConfig = {
-      ...config,
-      responseFormat: scoreBatchResponseFormat,
-      temperature,
-    };
-    const passOptions = {
-      ...config,
-      maxParallel,
-      maxAttempts,
-      errorPosture,
-      onProgress,
-      now,
-      anchoring,
-    };
+  const scoringPrompt = buildScoringInstructions(
+    spec,
+    'Return ONLY the numeric score for each item according to the specification range.'
+  );
+  const batchConfig = {
+    ...config,
+    responseFormat: scoreBatchResponseFormat,
+    temperature,
+  };
+  const passOptions = {
+    ...config,
+    maxParallel,
+    maxAttempts,
+    errorPosture,
+    onProgress,
+    now,
+    anchoring,
+  };
 
-    const results = await scoreOnce(list, scoringPrompt, batchConfig, passOptions);
+  const results = await scoreOnce(list, scoringPrompt, batchConfig, passOptions);
 
-    // Retry undefined items (follows map chain's retry pattern)
-    for (let attempt = 1; attempt < maxAttempts; attempt += 1) {
-      const missingIdx = [];
-      const missingItems = [];
+  // Retry undefined items (follows map chain's retry pattern)
+  for (let attempt = 1; attempt < maxAttempts; attempt += 1) {
+    const missingIdx = [];
+    const missingItems = [];
 
-      results.forEach((val, idx) => {
-        if (val === undefined) {
-          missingIdx.push(idx);
-          missingItems.push(list[idx]);
-        }
-      });
+    results.forEach((val, idx) => {
+      if (val === undefined) {
+        missingIdx.push(idx);
+        missingItems.push(list[idx]);
+      }
+    });
 
-      if (missingItems.length === 0) break;
+    if (missingItems.length === 0) break;
 
-      const retryResults = await scoreOnce(missingItems, scoringPrompt, batchConfig, {
-        ...passOptions,
-        now: new Date(),
-      });
+    const retryResults = await scoreOnce(missingItems, scoringPrompt, batchConfig, {
+      ...passOptions,
+      now: new Date(),
+    });
 
-      retryResults.forEach((val, i) => {
-        if (val !== undefined) results[missingIdx[i]] = val;
-      });
-    }
-
-    emitChainResult(config, name);
-
-    return results;
-  } catch (err) {
-    emitChainError(config, name, err);
-    throw err;
+    retryResults.forEach((val, i) => {
+      if (val !== undefined) results[missingIdx[i]] = val;
+    });
   }
+
+  emitChainResult(config, name);
+
+  return results;
 }
 
 // ===== Instruction Builders =====

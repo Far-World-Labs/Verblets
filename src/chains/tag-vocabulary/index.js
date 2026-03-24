@@ -2,7 +2,7 @@ import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import tagVocabularyResultSchema from './tag-vocabulary-result.json';
-import { emitChainResult, emitChainError } from '../../lib/progress-callback/index.js';
+import { emitChainResult } from '../../lib/progress-callback/index.js';
 import { initChain, nameStep } from '../../lib/context/option.js';
 
 const name = 'tag-vocabulary';
@@ -227,27 +227,22 @@ export default async function tagVocabulary(tagSystemSpec, items, config = {}) {
     throw new Error('A tagger function must be provided in config');
   }
 
-  try {
-    // Sample items for vocabulary generation
-    const sampleItems = items.slice(0, Math.min(sampleSize, items.length));
+  // Sample items for vocabulary generation
+  const sampleItems = items.slice(0, Math.min(sampleSize, items.length));
 
-    // Generate initial vocabulary
-    const initialVocab = await generateInitialVocabulary(tagSystemSpec, sampleItems, config);
+  // Generate initial vocabulary
+  const initialVocab = await generateInitialVocabulary(tagSystemSpec, sampleItems, config);
 
-    // Apply tags to all items using the provided tagger
-    // The tagger should be a configured tags chain function
-    const taggedItems = await tagger(items, initialVocab);
+  // Apply tags to all items using the provided tagger
+  // The tagger should be a configured tags chain function
+  const taggedItems = await tagger(items, initialVocab);
 
-    // Refine vocabulary based on usage
-    const finalVocab = await refineVocabulary(initialVocab, taggedItems, tagSystemSpec, config);
+  // Refine vocabulary based on usage
+  const finalVocab = await refineVocabulary(initialVocab, taggedItems, tagSystemSpec, config);
 
-    emitChainResult(config, name);
+  emitChainResult(config, name);
 
-    return finalVocab;
-  } catch (err) {
-    emitChainError(config, name, err);
-    throw err;
-  }
+  return finalVocab;
 }
 
 // Export individual functions for testing and composition

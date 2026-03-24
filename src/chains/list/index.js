@@ -8,7 +8,7 @@ import {
 } from '../../prompts/index.js';
 import listResultSchema from './list-result.json';
 import { initChain } from '../../lib/context/option.js';
-import { emitChainResult, emitChainError } from '../../lib/progress-callback/index.js';
+import { emitChainResult } from '../../lib/progress-callback/index.js';
 
 const name = 'list';
 
@@ -137,44 +137,36 @@ export default async function list(prompt, config = {}) {
   ({ config } = await initChain(name, config));
   const { schema } = config;
   const fullPrompt = prompt;
-  try {
-    const response = await retry(
-      () => callLlm(fullPrompt, { ...config, ...createModelOptions() }),
-      {
-        label: 'list-main',
+  const response = await retry(() => callLlm(fullPrompt, { ...config, ...createModelOptions() }), {
+    label: 'list-main',
+    config,
+  });
+
+  // Extract items from the object structure
+  const resultArray = response?.items || response;
+  const items = Array.isArray(resultArray) ? resultArray : [];
+
+  // If schema is provided, transform each item to match the schema
+  if (schema && items.length > 0) {
+    const transformedItems = [];
+    for (const item of items) {
+      const transformPrompt = outputTransformPrompt(item, schema);
+      const transformResponse = await retry(() => callLlm(transformPrompt, config), {
+        label: 'list-transform',
         config,
+      });
+      try {
+        const transformedItem = JSON.parse(transformResponse);
+        transformedItems.push(transformedItem);
+      } catch (error) {
+        debug(`list-transform JSON.parse failed, keeping original item: ${error.message}`);
+        transformedItems.push(item);
       }
-    );
-
-    // Extract items from the object structure
-    const resultArray = response?.items || response;
-    const items = Array.isArray(resultArray) ? resultArray : [];
-
-    // If schema is provided, transform each item to match the schema
-    if (schema && items.length > 0) {
-      const transformedItems = [];
-      for (const item of items) {
-        const transformPrompt = outputTransformPrompt(item, schema);
-        const transformResponse = await retry(() => callLlm(transformPrompt, config), {
-          label: 'list-transform',
-          config,
-        });
-        try {
-          const transformedItem = JSON.parse(transformResponse);
-          transformedItems.push(transformedItem);
-        } catch (error) {
-          debug(`list-transform JSON.parse failed, keeping original item: ${error.message}`);
-          transformedItems.push(item);
-        }
-      }
-      emitChainResult(config, name);
-      return transformedItems;
     }
-
     emitChainResult(config, name);
-    return items;
-  } catch (err) {
-    emitChainError(config, name, err);
-    throw err;
+    return transformedItems;
   }
+
+  emitChainResult(config, name);
+  return items;
 }

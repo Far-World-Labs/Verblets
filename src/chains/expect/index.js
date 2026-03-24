@@ -7,7 +7,7 @@ import { env } from '../../lib/env/index.js';
 import { expectCore, handleAssertionResult, generateAdvice } from './shared.js';
 import { extractFileContext } from '../../lib/logger/index.js';
 import { initChain, withPolicy } from '../../lib/context/option.js';
-import { emitChainResult, emitChainError } from '../../lib/progress-callback/index.js';
+import { emitChainResult } from '../../lib/progress-callback/index.js';
 
 const name = 'expect';
 
@@ -176,89 +176,77 @@ export async function expect(actual, expected, constraint, config = {}) {
   });
   config = scopedConfig;
 
-  try {
-    const callerInfo = extractFileContext(5);
+  const callerInfo = extractFileContext(5);
 
-    // Get code context if mode requires it
-    let codeContext = null;
-    if (mode === 'warn' || mode === 'info' || mode === 'error') {
-      codeContext = getCodeContext(callerInfo.file, callerInfo.line);
-    }
-
-    // Add display path to caller info
-    if (callerInfo.file) {
-      callerInfo.displayPath = getDisplayPath(callerInfo.file);
-    }
-
-    // Try to find module under test if codeContext is available and introspection is enabled
-    if (codeContext && introspection) {
-      try {
-        const moduleUnderTest = await findModuleUnderTest(callerInfo.file, callerInfo.line, config);
-        if (moduleUnderTest !== 'unknown') {
-          callerInfo.module = moduleUnderTest;
-        }
-      } catch {
-        // Ignore errors in finding module
-      }
-    }
-
-    // Validate inputs
-    if (expected === undefined && !constraint) {
-      throw new Error('Either expected value or constraint must be provided');
-    }
-
-    // Run core expect with context
-    const passes = await expectCore(
-      actual,
-      expected,
-      constraint,
-      { callerInfo, codeContext },
-      config
-    );
-
-    // Generate advice if needed
-    let advice = null;
-    if (!passes && (mode === 'warn' || mode === 'info' || mode === 'error')) {
-      if (introspection) {
-        advice = await generateAdviceWithIntrospection(
-          actual,
-          expected,
-          constraint,
-          codeContext,
-          callerInfo,
-          config
-        );
-      } else {
-        advice = await generateAdvice(
-          actual,
-          expected,
-          constraint,
-          codeContext,
-          callerInfo,
-          config
-        );
-      }
-    }
-
-    // Handle result based on mode - this may throw an error in 'error' mode
-    const result = handleAssertionResult(
-      passes,
-      mode,
-      actual,
-      expected,
-      constraint,
-      advice,
-      callerInfo
-    );
-
-    // For backward compatibility with existing tests
-    emitChainResult(config, name);
-
-    return [result, { passed: result, advice, file: callerInfo.file, line: callerInfo.line }];
-  } catch (err) {
-    emitChainError(config, name, err);
-    throw err;
+  // Get code context if mode requires it
+  let codeContext = null;
+  if (mode === 'warn' || mode === 'info' || mode === 'error') {
+    codeContext = getCodeContext(callerInfo.file, callerInfo.line);
   }
+
+  // Add display path to caller info
+  if (callerInfo.file) {
+    callerInfo.displayPath = getDisplayPath(callerInfo.file);
+  }
+
+  // Try to find module under test if codeContext is available and introspection is enabled
+  if (codeContext && introspection) {
+    try {
+      const moduleUnderTest = await findModuleUnderTest(callerInfo.file, callerInfo.line, config);
+      if (moduleUnderTest !== 'unknown') {
+        callerInfo.module = moduleUnderTest;
+      }
+    } catch {
+      // Ignore errors in finding module
+    }
+  }
+
+  // Validate inputs
+  if (expected === undefined && !constraint) {
+    throw new Error('Either expected value or constraint must be provided');
+  }
+
+  // Run core expect with context
+  const passes = await expectCore(
+    actual,
+    expected,
+    constraint,
+    { callerInfo, codeContext },
+    config
+  );
+
+  // Generate advice if needed
+  let advice = null;
+  if (!passes && (mode === 'warn' || mode === 'info' || mode === 'error')) {
+    if (introspection) {
+      advice = await generateAdviceWithIntrospection(
+        actual,
+        expected,
+        constraint,
+        codeContext,
+        callerInfo,
+        config
+      );
+    } else {
+      advice = await generateAdvice(actual, expected, constraint, codeContext, callerInfo, config);
+    }
+  }
+
+  // Emit before handleAssertionResult — it intentionally throws in 'error' mode
+  emitChainResult(config, name);
+
+  // Handle result based on mode - this may throw an error in 'error' mode
+  const result = handleAssertionResult(
+    passes,
+    mode,
+    actual,
+    expected,
+    constraint,
+    advice,
+    callerInfo
+  );
+
+  return [result, { passed: result, advice, file: callerInfo.file, line: callerInfo.line }];
 }
 
 /**

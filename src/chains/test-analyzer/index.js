@@ -3,7 +3,7 @@ import llm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { extractCodeWindow } from '../../lib/code-extractor/index.js';
 import { getOption, initChain, withPolicy } from '../../lib/context/option.js';
-import { emitChainResult, emitChainError } from '../../lib/progress-callback/index.js';
+import { emitChainResult } from '../../lib/progress-callback/index.js';
 
 const name = 'test-analyzer';
 
@@ -89,64 +89,64 @@ export default async function analyzeTestError(logs, config = {}) {
     analysisDepth: withPolicy(mapAnalysisDepth),
   });
   config = scopedConfig;
-  try {
-    const contextSize = await getOption('contextSize', config, depthConfig.context);
-    const maxWindow = await getOption('maxWindow', config, depthConfig.maxWindow);
-    const maxTokens = await getOption('maxTokens', config, depthConfig.maxTokens);
-    if (!logs || logs.length === 0) {
-      debug('analyzeTestError: No logs provided');
-      emitChainResult(config, name);
-      return '';
-    }
 
-    const testStart = getTestStart(logs);
-    const testComplete = getTestComplete(logs);
-    const failedAssertion = getFailedAssertion(logs);
+  const contextSize = await getOption('contextSize', config, depthConfig.context);
+  const maxWindow = await getOption('maxWindow', config, depthConfig.maxWindow);
+  const maxTokens = await getOption('maxTokens', config, depthConfig.maxTokens);
+  if (!logs || logs.length === 0) {
+    debug('analyzeTestError: No logs provided');
+    emitChainResult(config, name);
+    return '';
+  }
 
-    if (!testStart || !testComplete) {
-      debug('analyzeTestError: Missing test-start or test-complete logs');
-      emitChainResult(config, name);
-      return '';
-    }
+  const testStart = getTestStart(logs);
+  const testComplete = getTestComplete(logs);
+  const failedAssertion = getFailedAssertion(logs);
 
-    // Build test info
-    const testInfo = {
-      name: testStart.testName,
-      file: testStart.file,
-      line: testStart.line,
-      lineCount: testStart.testLineCount || 0,
-    };
+  if (!testStart || !testComplete) {
+    debug('analyzeTestError: Missing test-start or test-complete logs');
+    emitChainResult(config, name);
+    return '';
+  }
 
-    // Use the file from the test info
-    const actualTestFile = testInfo.file;
+  // Build test info
+  const testInfo = {
+    name: testStart.testName,
+    file: testStart.file,
+    line: testStart.line,
+    lineCount: testStart.testLineCount || 0,
+  };
 
-    // Extract test code showing the failed assertion
-    const assertionLine = failedAssertion?.line || testInfo.line;
+  // Use the file from the test info
+  const actualTestFile = testInfo.file;
 
-    const windowSize = calculateCodeWindow(testInfo.line, testInfo.lineCount, assertionLine, {
-      context: contextSize,
-      maxWindow,
-    });
+  // Extract test code showing the failed assertion
+  const assertionLine = failedAssertion?.line || testInfo.line;
 
-    const testSnippet =
-      actualTestFile && assertionLine
-        ? extractCodeWindow(actualTestFile, assertionLine, windowSize)
-        : '';
+  const windowSize = calculateCodeWindow(testInfo.line, testInfo.lineCount, assertionLine, {
+    context: contextSize,
+    maxWindow,
+  });
 
-    // Build assertion data
-    const assertion = failedAssertion
-      ? {
-          expected: failedAssertion.expected,
-          actual: failedAssertion.actual,
-          passed: !!failedAssertion.passed,
-          description: failedAssertion.description,
-        }
-      : {};
+  const testSnippet =
+    actualTestFile && assertionLine
+      ? extractCodeWindow(actualTestFile, assertionLine, windowSize)
+      : '';
 
-    // Include all logs for the test as NDJSON
-    const executionLogs = logs;
+  // Build assertion data
+  const assertion = failedAssertion
+    ? {
+        expected: failedAssertion.expected,
+        actual: failedAssertion.actual,
+        passed: !!failedAssertion.passed,
+        description: failedAssertion.description,
+      }
+    : {};
 
-    const prompt = `Failure: ${testInfo.name}
+  // Include all logs for the test as NDJSON
+  const executionLogs = logs;
+
+  const prompt = `Failure: ${testInfo.name}
 
 Expected: ${assertion.expected ?? 'undefined'}
 Actual: ${assertion.actual ?? 'undefined'}
@@ -189,17 +189,12 @@ Discussion:
 - State exactly what's needed if critical information is missing
 </analysis-guidelines>`;
 
-    const response = await retry(() => llm(prompt, { ...config, maxTokens }), {
-      label: 'test-analyzer',
-      config,
-    });
+  const response = await retry(() => llm(prompt, { ...config, maxTokens }), {
+    label: 'test-analyzer',
+    config,
+  });
 
-    emitChainResult(config, name);
+  emitChainResult(config, name);
 
-    return response.trim();
-  } catch (error) {
-    emitChainError(config, name, error);
-    debug(`AI analysis failed: ${error.message}`);
-    return '';
-  }
+  return response.trim();
 }
