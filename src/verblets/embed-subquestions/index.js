@@ -1,7 +1,7 @@
 import callLlm from '../../lib/llm/index.js';
 import { decomposeQuery as decomposeQueryPrompt } from '../../prompts/embed-query-transforms.js';
 import { embedSubquestionsSchema } from './schema.js';
-import { emitChainResult, emitChainError } from '../../lib/progress-callback/index.js';
+import { emitChainResult } from '../../lib/progress-callback/index.js';
 
 const name = 'embed-subquestions';
 
@@ -42,21 +42,16 @@ export default async function embedSubquestions(query, config = {}) {
   const startTime = Date.now();
   const granularityGuidance = mapGranularity(config.granularity);
 
-  try {
-    const result = await callLlm(decomposeQueryPrompt(query, { granularityGuidance }), {
-      ...config,
-      response_format: {
-        type: 'json_schema',
-        json_schema: {
-          name: 'decompose_query',
-          schema: embedSubquestionsSchema,
-        },
+  const result = await callLlm(decomposeQueryPrompt(query, { granularityGuidance }), {
+    ...config,
+    response_format: {
+      type: 'json_schema',
+      json_schema: {
+        name: 'decompose_query',
+        schema: embedSubquestionsSchema,
       },
-    });
-    emitChainResult(config, name, { duration: Date.now() - startTime });
-    return result;
-  } catch (err) {
-    emitChainError(config, name, err, { duration: Date.now() - startTime });
-    throw err;
-  }
+    },
+  });
+  emitChainResult(config, name, { duration: Date.now() - startTime });
+  return result;
 }

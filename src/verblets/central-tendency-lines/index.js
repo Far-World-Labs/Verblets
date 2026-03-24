@@ -5,7 +5,7 @@ import {
   extractPromptAnalysis,
   extractLLMConfig,
 } from '../../lib/lifecycle-logger/index.js';
-import { emitChainResult, emitChainError } from '../../lib/progress-callback/index.js';
+import { emitChainResult } from '../../lib/progress-callback/index.js';
 import centralTendencySchema from './central-tendency-result.json';
 
 const name = 'central-tendency-lines';
@@ -148,26 +148,20 @@ export default async function centralTendency(item, seedItems, config = {}) {
     hasCoreFeatures: coreFeatures.length > 0,
   });
 
-  try {
-    const response = await callLlm(prompt, {
-      llm,
-      response_format: responseFormat,
-      logger: lifecycleLogger,
-      ...options,
-    });
+  const response = await callLlm(prompt, {
+    llm,
+    response_format: responseFormat,
+    logger: lifecycleLogger,
+    ...options,
+  });
 
-    // Log result
-    lifecycleLogger.logResult(response, {
-      score: response.score,
-      confidence: response.confidence,
-      hasReason: !!response.reason,
-    });
+  // Log result
+  lifecycleLogger.logResult(response, {
+    score: response.score,
+    confidence: response.confidence,
+    hasReason: !!response.reason,
+  });
 
-    emitChainResult(config, name, { duration: Date.now() - startTime });
-    return response;
-  } catch (error) {
-    lifecycleLogger.logError(error);
-    emitChainError(config, name, error, { duration: Date.now() - startTime });
-    throw error;
-  }
+  emitChainResult(config, name, { duration: Date.now() - startTime });
+  return response;
 }

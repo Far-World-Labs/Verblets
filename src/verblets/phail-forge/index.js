@@ -18,7 +18,7 @@
 
 import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import { initChain } from '../../lib/context/option.js';
-import { emitChainResult, emitChainError } from '../../lib/progress-callback/index.js';
+import { emitChainResult } from '../../lib/progress-callback/index.js';
 
 const name = 'phail-forge';
 
@@ -162,47 +162,42 @@ export default async function phailForge(prompt, config = {}) {
     context = '', // Additional context about the domain
   } = config;
 
-  try {
-    // Build the enhancement request
-    const fullPrompt = [
-      ENHANCEMENT_PROMPT,
-      prompt,
-      context && `\nDomain context: ${context}`,
-      style && `\nEnhancement style: ${style}`,
-    ]
-      .filter(Boolean)
-      .join('\n');
+  // Build the enhancement request
+  const fullPrompt = [
+    ENHANCEMENT_PROMPT,
+    prompt,
+    context && `\nDomain context: ${context}`,
+    style && `\nEnhancement style: ${style}`,
+  ]
+    .filter(Boolean)
+    .join('\n');
 
-    // Get the enhanced prompt
-    const enhancedResponse = await callLlm(fullPrompt, {
+  // Get the enhanced prompt
+  const enhancedResponse = await callLlm(fullPrompt, {
+    ...config,
+    response_format: jsonSchema('phail_enhancement', enhancementSchema),
+  });
+
+  // Calculate expansion ratio
+  enhancedResponse.metadata = {
+    ...enhancedResponse.metadata,
+    expansionRatio: enhancedResponse.enhanced.length / prompt.length,
+  };
+
+  // Optionally analyze the enhancement
+  if (analyze) {
+    const analysisPrompt = `${ANALYSIS_PROMPT}\n\nPrompt to analyze:\n${enhancedResponse.enhanced}`;
+
+    const analysis = await callLlm(analysisPrompt, {
       ...config,
-      response_format: jsonSchema('phail_enhancement', enhancementSchema),
+      response_format: jsonSchema('prompt_analysis', analysisSchema),
     });
 
-    // Calculate expansion ratio
-    enhancedResponse.metadata = {
-      ...enhancedResponse.metadata,
-      expansionRatio: enhancedResponse.enhanced.length / prompt.length,
-    };
-
-    // Optionally analyze the enhancement
-    if (analyze) {
-      const analysisPrompt = `${ANALYSIS_PROMPT}\n\nPrompt to analyze:\n${enhancedResponse.enhanced}`;
-
-      const analysis = await callLlm(analysisPrompt, {
-        ...config,
-        response_format: jsonSchema('prompt_analysis', analysisSchema),
-      });
-
-      enhancedResponse.analysis = analysis;
-    }
-
-    emitChainResult(config, name);
-    return enhancedResponse;
-  } catch (err) {
-    emitChainError(config, name, err);
-    throw err;
+    enhancedResponse.analysis = analysis;
   }
+
+  emitChainResult(config, name);
+  return enhancedResponse;
 }
 
 // Export for use in chains

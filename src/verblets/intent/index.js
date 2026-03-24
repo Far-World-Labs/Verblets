@@ -1,5 +1,5 @@
 import callLlm from '../../lib/llm/index.js';
-import { emitChainResult, emitChainError } from '../../lib/progress-callback/index.js';
+import { emitChainResult } from '../../lib/progress-callback/index.js';
 import { asXML } from '../../prompts/index.js';
 import { intent as intentSchema } from '../../json-schemas/index.js';
 
@@ -56,20 +56,19 @@ export default async function intent(text, operations, config = {}) {
     }
   }
 
-  try {
-    const toleranceGuidance = mapTolerance(config.tolerance);
+  const toleranceGuidance = mapTolerance(config.tolerance);
 
-    const operationsText = operations
-      .map((op) => {
-        let opText = `${op.name}: ${op.description}`;
-        if (op.parameters) {
-          opText += `\nParameters: ${JSON.stringify(op.parameters)}`;
-        }
-        return opText;
-      })
-      .join('\n\n');
+  const operationsText = operations
+    .map((op) => {
+      let opText = `${op.name}: ${op.description}`;
+      if (op.parameters) {
+        opText += `\nParameters: ${JSON.stringify(op.parameters)}`;
+      }
+      return opText;
+    })
+    .join('\n\n');
 
-    const prompt = `Analyze the user input and determine the most appropriate intent and extract relevant parameters.
+  const prompt = `Analyze the user input and determine the most appropriate intent and extract relevant parameters.
 
 ${asXML(operationsText, { tag: 'available-operations' })}
 
@@ -82,17 +81,12 @@ Determine:
 
 Return the result as a structured JSON object with the operation name, extracted parameters, and any optional parameters that might be useful.${toleranceGuidance ? `\n\n${toleranceGuidance}` : ''}`;
 
-    const response = await callLlm(prompt, {
-      ...config,
-      response_format: responseFormat,
-    });
+  const response = await callLlm(prompt, {
+    ...config,
+    response_format: responseFormat,
+  });
 
-    emitChainResult(config, name, { duration: Date.now() - startTime });
+  emitChainResult(config, name, { duration: Date.now() - startTime });
 
-    return response;
-  } catch (err) {
-    emitChainError(config, name, err, { duration: Date.now() - startTime });
-
-    throw err;
-  }
+  return response;
 }

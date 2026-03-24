@@ -1,7 +1,7 @@
 import callLlm from '../../lib/llm/index.js';
 import { asSchemaOrgText } from '../../prompts/index.js';
 import { schemaOrgSchemas } from '../../json-schemas/index.js';
-import { emitChainResult, emitChainError } from '../../lib/progress-callback/index.js';
+import { emitChainResult } from '../../lib/progress-callback/index.js';
 
 const name = 'schema-org';
 
@@ -27,15 +27,10 @@ export default async (text, type, config = {}) => {
       }
     : { type: 'json_object' };
 
-  try {
-    const response = await callLlm(asSchemaOrgText(text, type, schema), {
-      ...config,
-      response_format,
-    });
-    emitChainResult(config, name, { duration: Date.now() - startTime });
-    return response;
-  } catch (err) {
-    emitChainError(config, name, err, { duration: Date.now() - startTime });
-    throw err;
-  }
+  const response = await callLlm(asSchemaOrgText(text, type, schema), {
+    ...config,
+    response_format,
+  });
+  emitChainResult(config, name, { duration: Date.now() - startTime });
+  return response;
 };

@@ -6,7 +6,7 @@ import {
   extractPromptAnalysis,
   extractResultValue,
 } from '../../lib/lifecycle-logger/index.js';
-import { emitChainResult, emitChainError } from '../../lib/progress-callback/index.js';
+import { emitChainResult } from '../../lib/progress-callback/index.js';
 import { booleanSchema } from './schema.js';
 
 const name = 'bool';
@@ -36,36 +36,27 @@ The value should be "true", "false", or "undefined".`;
     ...extractLLMConfig(config.llm),
   });
 
-  try {
-    // Make LLM call with logger
-    const response = await callLlm(text, {
-      ...config,
-      systemPrompt,
-      response_format: {
-        type: 'json_schema',
-        json_schema: {
-          name: 'boolean_evaluation',
-          schema: booleanSchema,
-        },
+  // Make LLM call with logger
+  const response = await callLlm(text, {
+    ...config,
+    systemPrompt,
+    response_format: {
+      type: 'json_schema',
+      json_schema: {
+        name: 'boolean_evaluation',
+        schema: booleanSchema,
       },
-      logger: lifecycleLogger,
-    });
+    },
+    logger: lifecycleLogger,
+  });
 
-    // Interpret response
-    const interpreted = response === 'true' ? true : response === 'false' ? false : undefined;
+  // Interpret response
+  const interpreted = response === 'true' ? true : response === 'false' ? false : undefined;
 
-    // Log final result with raw and interpreted values
-    lifecycleLogger.logResult(interpreted, extractResultValue(response, interpreted));
+  // Log final result with raw and interpreted values
+  lifecycleLogger.logResult(interpreted, extractResultValue(response, interpreted));
 
-    emitChainResult(config, name, { duration: Date.now() - startTime });
+  emitChainResult(config, name, { duration: Date.now() - startTime });
 
-    return interpreted;
-  } catch (error) {
-    // Log error
-    lifecycleLogger.logError(error);
-
-    emitChainError(config, name, error, { duration: Date.now() - startTime });
-
-    throw error;
-  }
+  return interpreted;
 };

@@ -1,7 +1,7 @@
 import callLlm from '../../lib/llm/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { constants as promptConstants } from '../../prompts/index.js';
-import { emitChainResult, emitChainError } from '../../lib/progress-callback/index.js';
+import { emitChainResult } from '../../lib/progress-callback/index.js';
 import commonalitiesSchema from './commonalities-result.json';
 
 const { contentIsQuestion, tryCompleteData } = promptConstants;
@@ -67,18 +67,13 @@ export default async function commonalities(items, config = {}) {
     return [];
   }
 
-  try {
-    const depthGuidance = mapDepth(config.depth);
-    const output = await callLlm(buildPrompt(items, { ...config, depthGuidance }), {
-      ...config,
-      response_format: responseFormat,
-    });
+  const depthGuidance = mapDepth(config.depth);
+  const output = await callLlm(buildPrompt(items, { ...config, depthGuidance }), {
+    ...config,
+    response_format: responseFormat,
+  });
 
-    const resultArray = output?.items || output;
-    emitChainResult(config, name, { duration: Date.now() - startTime });
-    return Array.isArray(resultArray) ? resultArray.filter(Boolean) : [];
-  } catch (err) {
-    emitChainError(config, name, err, { duration: Date.now() - startTime });
-    throw err;
-  }
+  const resultArray = output?.items || output;
+  emitChainResult(config, name, { duration: Date.now() - startTime });
+  return Array.isArray(resultArray) ? resultArray.filter(Boolean) : [];
 }

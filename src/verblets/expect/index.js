@@ -1,5 +1,5 @@
 import callLlm from '../../lib/llm/index.js';
-import { emitChainResult, emitChainError } from '../../lib/progress-callback/index.js';
+import { emitChainResult } from '../../lib/progress-callback/index.js';
 
 const name = 'expect';
 
@@ -39,44 +39,36 @@ export async function llmAssert({
   if (equals === undefined && !constraint)
     throw new TypeError('Provide either "equals" or "constraint".');
 
-  try {
-    const prompt =
-      equals !== undefined
-        ? buildEqualityPrompt({ actual, expected: equals, context })
-        : buildConstraintPrompt({ actual, constraint, context });
+  const prompt =
+    equals !== undefined
+      ? buildEqualityPrompt({ actual, expected: equals, context })
+      : buildConstraintPrompt({ actual, constraint, context });
 
-    const answer = await callLlm(prompt, { llm });
-    const text = typeof answer === 'string' ? answer : answer.content;
-    const passed = /^true$/i.test(text.trim());
+  const answer = await callLlm(prompt, { llm });
+  const text = typeof answer === 'string' ? answer : answer.content;
+  const passed = /^true$/i.test(text.trim());
 
-    if (!passed && throws) {
-      let msg;
-      if (typeof message === 'function') {
-        msg = message({ actual, equals, constraint });
-      } else {
-        msg = message;
-      }
+  emitChainResult({ onProgress, operation }, name, { duration: Date.now() - startTime });
 
-      if (!msg) {
-        msg =
-          equals !== undefined
-            ? 'LLM assertion failed: Does the actual value strictly equal the expected value?'
-            : `LLM assertion failed: ${constraint}`;
-      }
-
-      throw new Error(msg);
+  if (!passed && throws) {
+    let msg;
+    if (typeof message === 'function') {
+      msg = message({ actual, equals, constraint });
+    } else {
+      msg = message;
     }
 
-    emitChainResult({ onProgress, operation }, name, { duration: Date.now() - startTime });
+    if (!msg) {
+      msg =
+        equals !== undefined
+          ? 'LLM assertion failed: Does the actual value strictly equal the expected value?'
+          : `LLM assertion failed: ${constraint}`;
+    }
 
-    return passed;
-  } catch (err) {
-    emitChainError({ onProgress, operation }, name, err, {
-      duration: Date.now() - startTime,
-    });
-
-    throw err;
+    throw new Error(msg);
   }
+
+  return passed;
 }
 
 export default function expect(actual, shared = {}) {
