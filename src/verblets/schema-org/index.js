@@ -1,7 +1,8 @@
 import callLlm from '../../lib/llm/index.js';
 import { asSchemaOrgText } from '../../prompts/index.js';
 import { schemaOrgSchemas } from '../../json-schemas/index.js';
-import { nameStep, track } from '../../lib/context/option.js';
+import { nameStep } from '../../lib/context/option.js';
+import { track } from '../../lib/progress-callback/index.js';
 
 const name = 'schema-org';
 

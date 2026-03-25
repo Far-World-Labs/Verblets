@@ -2,7 +2,8 @@ import conversationTurnReduce from '../conversation-turn-reduce/index.js';
 import { defaultTurnPolicy } from './turn-policies.js';
 import pLimit from 'p-limit';
 import { debug } from '../../lib/debug/index.js';
-import { nameStep, track, getOptions } from '../../lib/context/option.js';
+import { nameStep, getOptions } from '../../lib/context/option.js';
+import { track } from '../../lib/progress-callback/index.js';
 
 const name = 'conversation';
 

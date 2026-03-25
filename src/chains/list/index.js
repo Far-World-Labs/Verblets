@@ -7,7 +7,8 @@ import {
   constants as promptConstants,
 } from '../../prompts/index.js';
 import listResultSchema from './list-result.json';
-import { nameStep, track } from '../../lib/context/option.js';
+import { nameStep } from '../../lib/context/option.js';
+import { track } from '../../lib/progress-callback/index.js';
 
 const name = 'list';
 

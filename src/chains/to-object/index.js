@@ -7,7 +7,8 @@ import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import stripResponse from '../../lib/strip-response/index.js';
 import { constants as promptConstants, asXML } from '../../prompts/index.js';
-import { nameStep, track } from '../../lib/context/option.js';
+import { track } from '../../lib/progress-callback/index.js';
+import { nameStep } from '../../lib/context/option.js';
 
 const name = 'to-object';
 

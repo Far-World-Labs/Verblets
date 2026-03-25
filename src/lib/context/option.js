@@ -155,5 +155,3 @@ export async function getOptions(config, spec) {
   }
   return result;
 }
-
-export { track } from '../progress-callback/index.js';

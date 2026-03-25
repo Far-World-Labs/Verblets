@@ -1,7 +1,8 @@
 import callLlm from '../../lib/llm/index.js';
 import { rewriteQuery as rewriteQueryPrompt } from '../../prompts/embed-query-transforms.js';
 import { embedRewriteQuerySchema } from './schema.js';
-import { nameStep, track } from '../../lib/context/option.js';
+import { nameStep } from '../../lib/context/option.js';
+import { track } from '../../lib/progress-callback/index.js';
 
 const name = 'embed-rewrite-query';
 

@@ -5,7 +5,8 @@ import { createLifecycleLogger, extractBatchConfig } from '../../lib/lifecycle-l
 import { prepareBatches, parallel, retry } from '../../lib/index.js';
 import { jsonSchema } from '../../lib/llm/index.js';
 import { debug } from '../../lib/debug/index.js';
-import { nameStep, track, getOptions } from '../../lib/context/option.js';
+import { nameStep, getOptions } from '../../lib/context/option.js';
+import { track } from '../../lib/progress-callback/index.js';
 
 const name = 'find';
 

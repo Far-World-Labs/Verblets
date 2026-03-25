@@ -1,10 +1,10 @@
 import collectTerms from '../collect-terms/index.js';
 import score from '../score/index.js';
 import map from '../map/index.js';
-import { scopeProgress } from '../../lib/progress-callback/index.js';
+import { scopeProgress, track } from '../../lib/progress-callback/index.js';
 import TextSimilarity from '../../lib/text-similarity/index.js';
 import { debug } from '../../lib/debug/index.js';
-import { nameStep, track, getOptions, withPolicy } from '../../lib/context/option.js';
+import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 
 const name = 'document-shrink';
 

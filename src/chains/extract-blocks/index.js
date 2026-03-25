@@ -9,8 +9,9 @@ import {
   emitBatchComplete,
   emitBatchProcessed,
   createBatchProgressCallback,
+  track,
 } from '../../lib/progress-callback/index.js';
-import { nameStep, track, getOptions, withPolicy } from '../../lib/context/option.js';
+import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 
 const name = 'extract-blocks';
 

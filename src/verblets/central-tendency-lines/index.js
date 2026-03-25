@@ -5,7 +5,8 @@ import {
   extractPromptAnalysis,
   extractLLMConfig,
 } from '../../lib/lifecycle-logger/index.js';
-import { nameStep, track } from '../../lib/context/option.js';
+import { nameStep } from '../../lib/context/option.js';
+import { track } from '../../lib/progress-callback/index.js';
 import centralTendencySchema from './central-tendency-result.json';
 
 const name = 'central-tendency-lines';

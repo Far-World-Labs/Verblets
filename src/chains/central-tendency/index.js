@@ -2,9 +2,9 @@ import map from '../map/index.js';
 import { CENTRAL_TENDENCY_PROMPT } from '../../verblets/central-tendency-lines/index.js';
 import { centralTendencyResultsJsonSchema } from './schemas.js';
 import { createLifecycleLogger, extractPromptAnalysis } from '../../lib/lifecycle-logger/index.js';
-import { scopeProgress } from '../../lib/progress-callback/index.js';
+import { scopeProgress, track } from '../../lib/progress-callback/index.js';
 import { jsonSchema } from '../../lib/llm/index.js';
-import { nameStep, track, getOptions } from '../../lib/context/option.js';
+import { nameStep, getOptions } from '../../lib/context/option.js';
 
 const name = 'central-tendency';
 

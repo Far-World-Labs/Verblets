@@ -3,8 +3,8 @@ import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import buildInstructions from '../../lib/build-instructions/index.js';
 import entityResultSchema from './entity-result.json';
-import { emitStepProgress } from '../../lib/progress-callback/index.js';
-import { nameStep, track } from '../../lib/context/option.js';
+import { emitStepProgress, track } from '../../lib/progress-callback/index.js';
+import { nameStep } from '../../lib/context/option.js';
 
 const name = 'entities';
 

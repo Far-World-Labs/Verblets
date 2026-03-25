@@ -1,6 +1,7 @@
 import score from '../score/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
-import { nameStep, track, getOptions, withPolicy } from '../../lib/context/option.js';
+import { track } from '../../lib/progress-callback/index.js';
+import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 
 const name = 'truncate';
 

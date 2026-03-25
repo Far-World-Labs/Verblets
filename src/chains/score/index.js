@@ -8,9 +8,10 @@ import {
   emitBatchProcessed,
   emitPhaseProgress,
   filterProgress,
+  track,
 } from '../../lib/progress-callback/index.js';
 import { createBatches, parallel, retry } from '../../lib/index.js';
-import { nameStep, track, getOptions, withPolicy } from '../../lib/context/option.js';
+import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 import scoreSingleResultSchema from './score-single-result.json';
 
 const name = 'score';

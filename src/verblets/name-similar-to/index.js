@@ -1,5 +1,6 @@
 import callLlm from '../../lib/llm/index.js';
-import { nameStep, track } from '../../lib/context/option.js';
+import { nameStep } from '../../lib/context/option.js';
+import { track } from '../../lib/progress-callback/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { nameSimilarSchema } from './schema.js';
 

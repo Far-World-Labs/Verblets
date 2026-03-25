@@ -7,8 +7,8 @@ import {
   extractPromptAnalysis,
   extractResultValue,
 } from '../../lib/lifecycle-logger/index.js';
-import { emitStepProgress } from '../../lib/progress-callback/index.js';
-import { nameStep, track, getOptions, withPolicy } from '../../lib/context/option.js';
+import { emitStepProgress, track } from '../../lib/progress-callback/index.js';
+import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 
 const name = 'socratic';
 

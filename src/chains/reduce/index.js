@@ -3,7 +3,8 @@ import { asXML } from '../../prompts/wrap-variable.js';
 import { reduceAccumulatorJsonSchema } from './schemas.js';
 import { createLifecycleLogger, extractBatchConfig } from '../../lib/lifecycle-logger/index.js';
 import { retry, prepareBatches } from '../../lib/index.js';
-import { nameStep, track, getOptions } from '../../lib/context/option.js';
+import { track } from '../../lib/progress-callback/index.js';
+import { nameStep, getOptions } from '../../lib/context/option.js';
 
 import { jsonSchema } from '../../lib/llm/index.js';
 

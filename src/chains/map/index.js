@@ -6,7 +6,8 @@ import {
   extractPromptAnalysis,
 } from '../../lib/lifecycle-logger/index.js';
 import { createBatches, parallel, retry, batchTracker } from '../../lib/index.js';
-import { nameStep, track, getOptions } from '../../lib/context/option.js';
+import { track } from '../../lib/progress-callback/index.js';
+import { nameStep, getOptions } from '../../lib/context/option.js';
 
 const name = 'map';
 

@@ -2,12 +2,12 @@ import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import chunkSentences from '../../lib/chunk-sentences/index.js';
 import retry from '../../lib/retry/index.js';
 import parallelBatch from '../../lib/parallel-batch/index.js';
-import { scopeProgress } from '../../lib/progress-callback/index.js';
+import { scopeProgress, track } from '../../lib/progress-callback/index.js';
 import map from '../map/index.js';
 import reduce from '../reduce/index.js';
 import { timelineEventJsonSchema } from './schemas.js';
 import { debug } from '../../lib/debug/index.js';
-import { nameStep, track, getOptions, withPolicy } from '../../lib/context/option.js';
+import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 
 const name = 'timeline';
 

@@ -2,7 +2,8 @@ import nlp from 'compromise';
 import sort from '../sort/index.js';
 import map from '../map/index.js';
 import { glossaryExtractionJsonSchema } from './schemas.js';
-import { nameStep, track, getOptions } from '../../lib/context/option.js';
+import { nameStep, getOptions } from '../../lib/context/option.js';
+import { track } from '../../lib/progress-callback/index.js';
 import { jsonSchema } from '../../lib/llm/index.js';
 
 const name = 'glossary';

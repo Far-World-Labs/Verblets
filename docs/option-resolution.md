@@ -7,7 +7,8 @@ The option resolution system lets chains declare their tuning parameters and res
 Most chains start with `nameStep`, which sets the operation name on config for policy targeting, then `track` to emit the `chain:start` event and obtain a lifecycle handle, followed by `getOptions` to batch-resolve all declared options:
 
 ```javascript
-import { nameStep, track, getOptions, withPolicy } from '../../lib/context/option.js';
+import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
+import { track } from '../../lib/progress-callback/index.js';
 
 const runConfig = nameStep('document-shrink', inputConfig);
 const span = track('document-shrink', runConfig);
@@ -86,4 +87,4 @@ const divergence = await getOption('divergence', config, undefined);
 
 ## Source
 
-The full API — `getOption`, `getOptions`, `withPolicy`, `nameStep`, `track` — is exported from `src/lib/context/option.js`.
+The option API — `getOption`, `getOptions`, `withPolicy`, `nameStep` — is exported from `src/lib/context/option.js`. The lifecycle handle `track` is exported from `src/lib/progress-callback/index.js`.

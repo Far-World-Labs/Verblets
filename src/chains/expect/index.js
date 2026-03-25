@@ -6,7 +6,8 @@ import wrapVariable from '../../prompts/wrap-variable.js';
 import { env } from '../../lib/env/index.js';
 import { expectCore, handleAssertionResult, generateAdvice } from './shared.js';
 import { extractFileContext } from '../../lib/logger/index.js';
-import { nameStep, track, getOptions, withPolicy } from '../../lib/context/option.js';
+import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
+import { track } from '../../lib/progress-callback/index.js';
 
 const name = 'expect';
 

@@ -20,7 +20,8 @@ import fetch from 'node-fetch';
 import { get as getPromptResult, set as setPromptResult } from '../prompt-cache/index.js';
 import callLlm from './index.js';
 import retry from '../retry/index.js';
-import { nameStep, track } from '../context/option.js';
+import { nameStep } from '../context/option.js';
+import { track } from '../progress-callback/index.js';
 
 const mockFetch = fetch;
 

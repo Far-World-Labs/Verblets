@@ -1,6 +1,7 @@
 import list from '../list/index.js';
 import score from '../score/index.js';
-import { nameStep, track, getOptions } from '../../lib/context/option.js';
+import { nameStep, getOptions } from '../../lib/context/option.js';
+import { track } from '../../lib/progress-callback/index.js';
 
 const name = 'filter-ambiguous';
 

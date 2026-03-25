@@ -1,7 +1,7 @@
 import list from '../list/index.js';
 import retry from '../../lib/retry/index.js';
-import { scopeProgress } from '../../lib/progress-callback/index.js';
-import { nameStep, track, getOptions, withPolicy } from '../../lib/context/option.js';
+import { scopeProgress, track } from '../../lib/progress-callback/index.js';
+import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 
 const name = 'category-samples';
 

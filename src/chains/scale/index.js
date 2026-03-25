@@ -4,7 +4,8 @@ import { asXML } from '../../prompts/wrap-variable.js';
 import buildInstructions from '../../lib/build-instructions/index.js';
 import { scaleSpecificationJsonSchema } from './schemas.js';
 import scaleResultSchema from './scale-result.json';
-import { nameStep, track } from '../../lib/context/option.js';
+import { track } from '../../lib/progress-callback/index.js';
+import { nameStep } from '../../lib/context/option.js';
 
 // ===== Instruction Builders =====
 

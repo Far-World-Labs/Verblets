@@ -1,10 +1,10 @@
 import listBatch, { ListStyle, determineStyle } from '../../verblets/list-batch/index.js';
 import reduce from '../reduce/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
-import { emitPhaseProgress } from '../../lib/progress-callback/index.js';
+import { emitPhaseProgress, track } from '../../lib/progress-callback/index.js';
 import { parallel, retry, prepareBatches, scopeProgress } from '../../lib/index.js';
 import { debug } from '../../lib/debug/index.js';
-import { nameStep, track, getOptions, withPolicy } from '../../lib/context/option.js';
+import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 
 const name = 'group';
 

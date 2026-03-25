@@ -1,7 +1,8 @@
 import callLlm from '../../lib/llm/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { constants as promptConstants } from '../../prompts/index.js';
-import { nameStep, track } from '../../lib/context/option.js';
+import { nameStep } from '../../lib/context/option.js';
+import { track } from '../../lib/progress-callback/index.js';
 import commonalitiesSchema from './commonalities-result.json';
 
 const { contentIsQuestion, tryCompleteData } = promptConstants;

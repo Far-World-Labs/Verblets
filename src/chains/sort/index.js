@@ -8,9 +8,10 @@ import {
   emitComplete,
   emitStepProgress,
   filterProgress,
+  track,
 } from '../../lib/progress-callback/index.js';
 import { debug } from '../../lib/debug/index.js';
-import { nameStep, track, getOptions, withPolicy } from '../../lib/context/option.js';
+import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 
 const name = 'sort';
 

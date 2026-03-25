@@ -1,6 +1,7 @@
 import reduce from '../reduce/index.js';
 import shuffle from '../../lib/shuffle/index.js';
-import { nameStep, track, getOptions } from '../../lib/context/option.js';
+import { track } from '../../lib/progress-callback/index.js';
+import { nameStep, getOptions } from '../../lib/context/option.js';
 
 const name = 'themes';
 

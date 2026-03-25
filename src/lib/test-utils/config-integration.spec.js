@@ -8,7 +8,8 @@ import { describe, expect, it } from 'vitest';
 // withPolicy). Per-chain spec files test chain-SPECIFIC behavior only.
 // ==========================================
 
-import { getOption, getOptions, nameStep, track, withPolicy } from '../context/option.js';
+import { getOption, getOptions, nameStep, withPolicy } from '../context/option.js';
+import { track } from '../progress-callback/index.js';
 import { jsonSchema, MODEL_KEYS } from '../llm/index.js';
 import { CAPABILITY_KEYS } from '../../constants/common.js';
 

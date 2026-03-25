@@ -4,7 +4,8 @@ import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { outputSuccinctNames } from '../../prompts/index.js';
 import { subComponentsSchema, componentOptionsSchema } from './schemas.js';
-import { nameStep, track, getOptions, withPolicy } from '../../lib/context/option.js';
+import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
+import { track } from '../../lib/progress-callback/index.js';
 
 const _name = 'dismantle'; // eslint: unused — ChainTree.create receives name as parameter
 

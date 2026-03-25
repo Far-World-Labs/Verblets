@@ -2,7 +2,8 @@ import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import chunkSentences from '../../lib/chunk-sentences/index.js';
 import wrapVariable from '../../prompts/wrap-variable.js';
-import { getOption, nameStep, track, getOptions, withPolicy } from '../../lib/context/option.js';
+import { track } from '../../lib/progress-callback/index.js';
+import { getOption, nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 
 const name = 'split';
 

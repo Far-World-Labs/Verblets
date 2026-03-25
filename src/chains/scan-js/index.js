@@ -7,7 +7,8 @@ import retry from '../../lib/retry/index.js';
 import search from '../../lib/search-js-files/index.js';
 import codeFeaturesPrompt from '../../prompts/code-features.js';
 import makeJSONSchema from '../../prompts/features-json-schema.js';
-import { nameStep, track } from '../../lib/context/option.js';
+import { track } from '../../lib/progress-callback/index.js';
+import { nameStep } from '../../lib/context/option.js';
 
 const name = 'scan-js';
 

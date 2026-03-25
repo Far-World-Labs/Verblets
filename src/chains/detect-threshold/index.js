@@ -1,11 +1,11 @@
 import reduce from '../reduce/index.js';
 import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
-import { scopeProgress } from '../../lib/progress-callback/index.js';
+import { scopeProgress, track } from '../../lib/progress-callback/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { debug } from '../../lib/debug/index.js';
 import thresholdResultSchema from './threshold-result.json';
-import { nameStep, track, getOptions } from '../../lib/context/option.js';
+import { nameStep, getOptions } from '../../lib/context/option.js';
 
 const name = 'detect-threshold';
 

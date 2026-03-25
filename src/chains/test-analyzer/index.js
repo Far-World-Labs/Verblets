@@ -2,7 +2,8 @@ import { debug } from '../../lib/debug/index.js';
 import llm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { extractCodeWindow } from '../../lib/code-extractor/index.js';
-import { getOption, nameStep, track, getOptions, withPolicy } from '../../lib/context/option.js';
+import { track } from '../../lib/progress-callback/index.js';
+import { getOption, nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 
 const name = 'test-analyzer';
 

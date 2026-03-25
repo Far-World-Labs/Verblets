@@ -4,7 +4,8 @@ import { filterDecisionsJsonSchema } from './schemas.js';
 import { createLifecycleLogger, extractBatchConfig } from '../../lib/lifecycle-logger/index.js';
 import { prepareBatches, retry } from '../../lib/index.js';
 import { jsonSchema } from '../../lib/llm/index.js';
-import { nameStep, track, getOptions, withPolicy } from '../../lib/context/option.js';
+import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
+import { track } from '../../lib/progress-callback/index.js';
 
 const name = 'filter';
 

@@ -2,8 +2,8 @@ import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import score from '../score/index.js';
 import disambiguateMeaningsSchema from './disambiguate-meanings-result.json';
-import { emitStepProgress, scopeProgress } from '../../lib/progress-callback/index.js';
-import { nameStep, track } from '../../lib/context/option.js';
+import { emitStepProgress, scopeProgress, track } from '../../lib/progress-callback/index.js';
+import { nameStep } from '../../lib/context/option.js';
 
 const name = 'disambiguate';
 

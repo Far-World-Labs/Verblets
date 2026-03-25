@@ -17,7 +17,8 @@
  */
 
 import callLlm, { jsonSchema } from '../../lib/llm/index.js';
-import { nameStep, track } from '../../lib/context/option.js';
+import { nameStep } from '../../lib/context/option.js';
+import { track } from '../../lib/progress-callback/index.js';
 
 const name = 'phail-forge';
 

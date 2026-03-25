@@ -2,7 +2,8 @@ import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { constants as promptConstants, asXML } from '../../prompts/index.js';
 import { questionsListSchema, selectedQuestionSchema } from './schemas.js';
-import { getOption, nameStep, track, getOptions, withPolicy } from '../../lib/context/option.js';
+import { track } from '../../lib/progress-callback/index.js';
+import { getOption, nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 
 const name = 'questions';
 
