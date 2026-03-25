@@ -118,6 +118,7 @@ Process exactly ${count} items from the XML list below and return the single bes
   emitter.emit({
     event: 'complete',
     totalItems: list.length,
+    processedItems: batchDone.count,
     found: results.length > 0,
   });
 

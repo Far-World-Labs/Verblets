@@ -156,7 +156,7 @@ Process exactly ${count} items from the XML list below and return ${count} yes/n
     });
   }
 
-  emitter.emit({ event: 'complete', totalItems: list.length, processedItems: list.length });
+  emitter.emit({ event: 'complete', totalItems: list.length, processedItems: batchDone.count });
 
   const resultMeta = { inputCount: list.length, outputCount: results.length };
   lifecycleLogger.logResult(results, resultMeta);

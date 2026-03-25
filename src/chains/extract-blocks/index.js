@@ -184,7 +184,7 @@ export async function extractBlocks(text, instructions, config = {}) {
   emitter.emit({
     event: 'complete',
     totalItems: lines.length,
-    processedItems: lines.length,
+    processedItems: batchDone.count,
     blocksExtracted: blocks.length,
   });
 

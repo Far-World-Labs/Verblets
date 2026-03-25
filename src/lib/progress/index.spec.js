@@ -226,11 +226,26 @@ describe('createProgressEmitter', () => {
       expect(done(25)).toBe(60);
     });
 
+    it('done.count exposes current processedItems without emitting', () => {
+      const events = [];
+      const emitter = createProgressEmitter('map', (e) => events.push(e));
+      const done = emitter.batch(100);
+
+      expect(done.count).toBe(0);
+      done(30);
+      expect(done.count).toBe(30);
+      expect(events).toHaveLength(1);
+      done(20);
+      expect(done.count).toBe(50);
+      expect(events).toHaveLength(2);
+    });
+
     it('works with absent callback', () => {
       const emitter = createProgressEmitter('test');
       const done = emitter.batch(10);
       expect(() => done(5)).not.toThrow();
       expect(done(5)).toBe(10);
+      expect(done.count).toBe(10);
     });
   });
 });

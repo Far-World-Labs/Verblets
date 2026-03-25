@@ -109,7 +109,7 @@ Process exactly ${count} items from the ${itemFormat} list below and return the 
     });
   }
 
-  emitter.emit({ event: 'complete', totalItems: list.length, processedItems: list.length });
+  emitter.emit({ event: 'complete', totalItems: list.length, processedItems: batchDone.count });
 
   const resultMeta = { totalItems: list.length, totalBatches: activeBatches.length };
   lifecycleLogger.logResult(acc, resultMeta);

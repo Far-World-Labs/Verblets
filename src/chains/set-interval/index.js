@@ -148,11 +148,8 @@ Next wait:`;
     } catch (error) {
       debug(`Error in setInterval step: ${error.message}`);
 
-      emitter.metrics({
-        event: 'chain:error',
-        operation: config.operation,
+      emitter.error(error, {
         duration: Date.now() - startTime.getTime(),
-        error: { message: error.message },
       });
 
       // Call onTick with the data we have, even if LLM failed

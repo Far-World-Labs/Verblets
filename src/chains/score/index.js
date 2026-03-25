@@ -213,7 +213,7 @@ async function scoreOnce(list, prompt, batchConfig, config) {
   emitter.emit({
     event: 'complete',
     totalItems: list.length,
-    processedItems: list.length,
+    processedItems: batchDone.count,
   });
 
   return results;

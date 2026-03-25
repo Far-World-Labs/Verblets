@@ -168,7 +168,7 @@ Preserve all formatting and newlines within each <item> element.`;
   emitter.emit({
     event: 'complete',
     totalItems: list.length,
-    processedItems: list.length,
+    processedItems: batchDone.count,
   });
 
   return results;
