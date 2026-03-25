@@ -1,18 +1,18 @@
 import { emitProgress } from '../progress-callback/index.js';
 
 /**
- * Compose a step name onto the operation path.
- * Used inside chains to label sub-steps (e.g. 'tags:spec', 'scale:apply')
- * so policy functions can distinguish them.
+ * Compose a step name onto the operation path and stamp the run time.
+ * Pure config enrichment — no side effects. Used both for chain entry
+ * points and sub-steps within chains.
  *
  * @param {string} step - Step name to append
  * @param {object} config - Config object with operation path
- * @returns {object} New config with composed operation path
+ * @returns {object} New config with composed operation path and now timestamp
  */
 export function nameStep(step, config) {
   const parent = config.operation;
   const composed = parent ? `${parent}/${step}` : step;
-  return { ...config, operation: composed };
+  return { ...config, operation: composed, now: config.now ?? new Date() };
 }
 
 /**
@@ -156,31 +156,4 @@ export async function getOptions(config, spec) {
   return result;
 }
 
-/**
- * Initialize a chain: name the operation, stamp the time, and resolve options.
- *
- * This is the standard entry point for chains. It composes the operation name
- * onto the operation path, adds a timestamp, and batch-resolves options from the spec.
- *
- * @param {string} operation - Operation name (chain directory name)
- * @param {object} inputConfig - Config object from the caller
- * @param {object} [spec] - Option spec (same as getOptions spec). Omit if no options needed.
- * @returns {Promise<{ config: object, ...resolvedOptions }>}
- */
-export async function initChain(operation, inputConfig, spec) {
-  const config = {
-    now: new Date(),
-    ...nameStep(operation, inputConfig),
-  };
-
-  emitProgress({
-    callback: config.onProgress,
-    kind: 'telemetry',
-    step: operation,
-    event: 'chain:start',
-    operation: config.operation,
-  });
-
-  const options = spec ? await getOptions(config, spec) : {};
-  return { config, ...options };
-}
+export { track } from '../progress-callback/index.js';

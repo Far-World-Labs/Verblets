@@ -1,7 +1,7 @@
 import callLlm from '../../lib/llm/index.js';
 import { multiQuery as multiQueryPrompt } from '../../prompts/embed-query-transforms.js';
 import { embedMultiQuerySchema } from './schema.js';
-import { emitChainResult } from '../../lib/progress-callback/index.js';
+import { nameStep, track } from '../../lib/context/option.js';
 
 const name = 'embed-multi-query';
 
@@ -37,12 +37,13 @@ export const mapDivergence = (value) => {
  * @returns {Promise<string[]>}
  */
 export default async function embedMultiQuery(query, config = {}) {
-  const startTime = Date.now();
-  const { count = 3 } = config;
-  const divergenceGuidance = mapDivergence(config.divergence);
+  const runConfig = nameStep(name, config);
+  const span = track(name, runConfig);
+  const { count = 3 } = runConfig;
+  const divergenceGuidance = mapDivergence(runConfig.divergence);
 
   const result = await callLlm(multiQueryPrompt(query, count, { divergenceGuidance }), {
-    ...config,
+    ...runConfig,
     response_format: {
       type: 'json_schema',
       json_schema: {
@@ -51,6 +52,6 @@ export default async function embedMultiQuery(query, config = {}) {
       },
     },
   });
-  emitChainResult(config, name, { duration: Date.now() - startTime });
+  span.result();
   return result;
 }

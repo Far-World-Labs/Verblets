@@ -5,7 +5,7 @@ import {
   extractPromptAnalysis,
   extractLLMConfig,
 } from '../../lib/lifecycle-logger/index.js';
-import { emitChainResult } from '../../lib/progress-callback/index.js';
+import { nameStep, track } from '../../lib/context/option.js';
 import centralTendencySchema from './central-tendency-result.json';
 
 const name = 'central-tendency-lines';
@@ -119,7 +119,8 @@ function createResponseFormat(schemaName = 'central_tendency_result', customSche
  * @returns {Promise<{score: number, reason: string, confidence: number}>}
  */
 export default async function centralTendency(item, seedItems, config = {}) {
-  const startTime = Date.now();
+  const runConfig = nameStep(name, config);
+  const span = track(name, runConfig);
   if (!item || typeof item !== 'string') {
     throw new Error('Item must be a non-empty string');
   }
@@ -128,7 +129,7 @@ export default async function centralTendency(item, seedItems, config = {}) {
     throw new Error('seedItems must be a non-empty array');
   }
 
-  const { context = '', coreFeatures = [], llm = 'fastGoodCheap', logger, ...options } = config;
+  const { context = '', coreFeatures = [], llm = 'fastGoodCheap', logger, ...options } = runConfig;
 
   // Create lifecycle logger with central-tendency namespace
   const lifecycleLogger = createLifecycleLogger(logger, 'central-tendency');
@@ -162,6 +163,6 @@ export default async function centralTendency(item, seedItems, config = {}) {
     hasReason: !!response.reason,
   });
 
-  emitChainResult(config, name, { duration: Date.now() - startTime });
+  span.result();
   return response;
 }

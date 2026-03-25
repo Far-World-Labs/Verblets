@@ -129,7 +129,7 @@ Config flows through without extraction — pass `config` directly to `callLlm`,
 Detailed documentation by audience:
 
 - [Configuration](./docs/configuration.md) — consumer-facing: model selection, capabilities, parameters, policy
-- [Option Resolution](./docs/option-resolution.md) — chain author internals: `initChain`, `getOption`, `withPolicy`, mappers
+- [Option Resolution](./docs/option-resolution.md) — chain author internals: `nameStep`, `track`, `getOptions`, `getOption`, `withPolicy`, mappers
 - [Batching](./docs/batching.md) — auto-sizing, `parallelBatch`, `prepareBatches`
 - [Progress Tracking](./docs/progress-tracking.md) — `onProgress`, `scopeProgress`, event lifecycle
 - [Retry](./docs/retry.md) — config-aware retries, retryable errors, abort signal

@@ -9,9 +9,8 @@ import {
   emitBatchComplete,
   emitBatchProcessed,
   createBatchProgressCallback,
-  emitChainResult,
 } from '../../lib/progress-callback/index.js';
-import { initChain, withPolicy } from '../../lib/context/option.js';
+import { nameStep, track, getOptions, withPolicy } from '../../lib/context/option.js';
 
 const name = 'extract-blocks';
 
@@ -77,17 +76,13 @@ ${asXML(numberedLines, { tag: 'window' })}`;
  * @returns {Promise<Array<Array<string>>>} Array of blocks, each block is array of lines
  */
 export async function extractBlocks(text, instructions, config = {}) {
-  const {
-    config: scopedConfig,
-    maxParallel,
-    windowSize,
-    overlapSize,
-  } = await initChain(name, config, {
+  const runConfig = nameStep(name, config);
+  const span = track(name, runConfig);
+  const { maxParallel, windowSize, overlapSize } = await getOptions(runConfig, {
     precision: withPolicy(mapPrecision, ['windowSize', 'overlapSize']),
     maxParallel: 3,
   });
-  config = scopedConfig;
-  const { logger, onProgress, now } = config;
+  const { logger, onProgress, now } = runConfig;
 
   const lifecycleLogger = createLifecycleLogger(logger, 'chain:extract-blocks');
 
@@ -95,7 +90,7 @@ export async function extractBlocks(text, instructions, config = {}) {
   if (!text || text.trim() === '') {
     const emptyMeta = { blocksExtracted: 0 };
     lifecycleLogger.logResult([], emptyMeta);
-    emitChainResult(config, name, emptyMeta);
+    span.result(emptyMeta);
 
     return [];
   }
@@ -146,13 +141,13 @@ export async function extractBlocks(text, instructions, config = {}) {
       const result = await retry(
         () =>
           callLlm(prompt, {
-            ...config,
+            ...runConfig,
             response_format: blockExtractionSchema,
             logger: lifecycleLogger,
           }),
         {
           label: `extract-blocks:window`,
-          config,
+          config: runConfig,
           onProgress: createBatchProgressCallback(onProgress, {
             totalItems: lines.length,
             processedItems: Math.min(windowStart + windowSize, lines.length),
@@ -233,7 +228,7 @@ export async function extractBlocks(text, instructions, config = {}) {
 
   const resultMeta = { blocksExtracted: blocks.length };
   lifecycleLogger.logResult(blocks, resultMeta);
-  emitChainResult(config, name, resultMeta);
+  span.result(resultMeta);
 
   return blocks;
 }

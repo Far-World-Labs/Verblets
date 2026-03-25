@@ -1,7 +1,7 @@
 import callLlm from '../../lib/llm/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { constants as promptConstants } from '../../prompts/index.js';
-import { emitChainResult } from '../../lib/progress-callback/index.js';
+import { nameStep, track } from '../../lib/context/option.js';
 import commonalitiesSchema from './commonalities-result.json';
 
 const { contentIsQuestion, tryCompleteData } = promptConstants;
@@ -55,25 +55,26 @@ ${tryCompleteData}`;
 };
 
 export default async function commonalities(items, config = {}) {
-  const startTime = Date.now();
+  const runConfig = nameStep(name, config);
+  const span = track(name, runConfig);
   if (!Array.isArray(items) || items.length === 0) {
-    emitChainResult(config, name, { duration: Date.now() - startTime });
+    span.result();
     return [];
   }
 
   // Finding commonalities requires at least 2 items
   if (items.length < 2) {
-    emitChainResult(config, name, { duration: Date.now() - startTime });
+    span.result();
     return [];
   }
 
-  const depthGuidance = mapDepth(config.depth);
-  const output = await callLlm(buildPrompt(items, { ...config, depthGuidance }), {
-    ...config,
+  const depthGuidance = mapDepth(runConfig.depth);
+  const output = await callLlm(buildPrompt(items, { ...runConfig, depthGuidance }), {
+    ...runConfig,
     response_format: responseFormat,
   });
 
   const resultArray = output?.items || output;
-  emitChainResult(config, name, { duration: Date.now() - startTime });
+  span.result();
   return Array.isArray(resultArray) ? resultArray.filter(Boolean) : [];
 }

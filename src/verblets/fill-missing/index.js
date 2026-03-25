@@ -1,5 +1,5 @@
 import callLlm from '../../lib/llm/index.js';
-import { emitChainResult } from '../../lib/progress-callback/index.js';
+import { nameStep, track } from '../../lib/context/option.js';
 import { constants as promptConstants, asXML } from '../../prompts/index.js';
 import fillMissingSchema from './fill-missing-result.json';
 
@@ -43,16 +43,17 @@ export const buildPrompt = (text, { creativityGuidance } = {}) =>
   `"candidate", and "confidence".${creativityGuidance ? `\n\n${creativityGuidance}` : ''}`;
 
 export default async function fillMissing(text, config = {}) {
-  const startTime = Date.now();
+  const runConfig = nameStep(name, config);
+  const span = track(name, runConfig);
 
-  const creativityGuidance = mapCreativity(config.creativity);
+  const creativityGuidance = mapCreativity(runConfig.creativity);
   const prompt = buildPrompt(text, { creativityGuidance });
   const response = await callLlm(prompt, {
-    ...config,
+    ...runConfig,
     response_format: responseFormat,
   });
 
-  emitChainResult(config, name, { duration: Date.now() - startTime });
+  span.result();
 
   return response;
 }

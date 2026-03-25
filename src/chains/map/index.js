@@ -6,8 +6,7 @@ import {
   extractPromptAnalysis,
 } from '../../lib/lifecycle-logger/index.js';
 import { createBatches, parallel, retry, batchTracker } from '../../lib/index.js';
-import { initChain } from '../../lib/context/option.js';
-import { emitChainResult } from '../../lib/progress-callback/index.js';
+import { nameStep, track, getOptions } from '../../lib/context/option.js';
 
 const name = 'map';
 
@@ -186,20 +185,15 @@ Preserve all formatting and newlines within each <item> element.`;
  * @returns { Promise<(string|undefined)[]> }
  */
 const map = async function (list, instructions, config = {}) {
-  const {
-    config: scopedConfig,
-    maxAttempts,
-    maxParallel,
-    errorPosture,
-    progressMode,
-  } = await initChain(name, config, {
+  const runConfig = nameStep(name, config);
+  const span = track(name, runConfig);
+  const { maxAttempts, maxParallel, errorPosture, progressMode } = await getOptions(runConfig, {
     maxAttempts: 3,
     maxParallel: 3,
     errorPosture: 'resilient',
     progressMode: 'detailed',
   });
-  config = scopedConfig;
-  const { logger, now } = config;
+  const { logger, now } = runConfig;
   // Create logger for map chain
   const lifecycleLogger = createLifecycleLogger(logger, 'chain:map');
 
@@ -208,11 +202,11 @@ const map = async function (list, instructions, config = {}) {
     logger.info('Map chain starting', {
       itemCount: list.length,
       instructionsLength: instructions?.length,
-      llm: config.llm,
-      batchSize: config.batchSize,
-      maxParallel: config.maxParallel,
+      llm: runConfig.llm,
+      batchSize: runConfig.batchSize,
+      maxParallel: runConfig.maxParallel,
       maxAttempts,
-      hasOnProgress: !!config.onProgress,
+      hasOnProgress: !!runConfig.onProgress,
     });
   }
 
@@ -220,14 +214,14 @@ const map = async function (list, instructions, config = {}) {
   lifecycleLogger.logStart(
     extractBatchConfig({
       totalItems: list.length,
-      batchSize: config.batchSize,
+      batchSize: runConfig.batchSize,
       maxAttempts,
-      maxParallel: config.maxParallel,
+      maxParallel: runConfig.maxParallel,
     })
   );
 
   const results = await mapOnce(list, instructions, {
-    ...config,
+    ...runConfig,
     maxAttempts,
     maxParallel,
     errorPosture,
@@ -260,7 +254,7 @@ const map = async function (list, instructions, config = {}) {
     );
 
     const retryResults = await mapOnce(missingItems, instructions, {
-      ...config,
+      ...runConfig,
       maxAttempts,
       maxParallel,
       logger: lifecycleLogger,
@@ -281,7 +275,7 @@ const map = async function (list, instructions, config = {}) {
     failedItems: results.length - successCount,
   };
   lifecycleLogger.logResult(results, resultMeta);
-  emitChainResult(config, name, resultMeta);
+  span.result(resultMeta);
 
   return results;
 };

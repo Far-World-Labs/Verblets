@@ -51,7 +51,19 @@ export {
   descriptorToSchema,
 } from './lib/context/index.js';
 export { default as valueArbitrate } from './chains/value-arbitrate/index.js';
-export { default as createOptionHistoryAnalyzer } from './chains/option-history-analyzer/index.js';
+export { default as createTraceCollector, eventToTrace } from './lib/trace-collector/index.js';
+export {
+  OPS as targetingRuleOps,
+  clause as targetingClause,
+  rule as targetingRule,
+  validate as validateTargetingRules,
+  schema as targetingRuleSchema,
+  evaluateClause as evaluateTargetingClause,
+  evaluateRule as evaluateTargetingRule,
+  applyFirst as applyFirstTargetingRule,
+  applyAll as applyAllTargetingRules,
+} from './lib/targeting-rule/index.js';
+export { default as suggestTargetingRules } from './verblets/suggest-targeting-rules/index.js';
 
 // Lists
 export { default as centralTendency } from './chains/central-tendency/index.js';
@@ -222,7 +234,6 @@ export {
   emitBatchProcessed,
   emitPhaseProgress,
   createBatchProgressCallback,
-  createBatchContext,
   batchTracker,
   scopeProgress,
   filterProgress,

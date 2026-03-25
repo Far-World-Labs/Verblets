@@ -17,21 +17,22 @@ import { prepareBatches } from '../../lib/progress-callback/index.js';
 import parallel from '../../lib/parallel-batch/index.js';
 
 export default async function myChain(items, inputConfig = {}) {
-  const { config } = await initChain('my-chain', inputConfig, { /* spec */ });
+  const runConfig = nameStep('my-chain', inputConfig);
+  const span = track('my-chain', runConfig);
 
-  const { batches, tracker } = await prepareBatches('my-chain', items, config);
+  const { batches, tracker } = await prepareBatches('my-chain', items, runConfig);
 
   const results = await parallel(
     batches.filter(b => !b.skip),
     async (batch) => {
       const result = await retry(
-        () => callLlm(buildPrompt(batch.items), config),
-        { label: 'my-chain:batch', config }
+        () => callLlm(buildPrompt(batch.items), runConfig),
+        { label: 'my-chain:batch', config: runConfig }
       );
       tracker.batchDone(batch.startIndex, batch.items.length);
       return result;
     },
-    { maxParallel: config.maxParallel ?? 3 }
+    { maxParallel: runConfig.maxParallel ?? 3 }
   );
 
   tracker.complete();

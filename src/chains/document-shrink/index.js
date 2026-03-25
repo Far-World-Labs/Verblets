@@ -1,10 +1,10 @@
 import collectTerms from '../collect-terms/index.js';
 import score from '../score/index.js';
 import map from '../map/index.js';
-import { scopeProgress, emitChainResult } from '../../lib/progress-callback/index.js';
+import { scopeProgress } from '../../lib/progress-callback/index.js';
 import TextSimilarity from '../../lib/text-similarity/index.js';
 import { debug } from '../../lib/debug/index.js';
-import { initChain, withPolicy } from '../../lib/context/option.js';
+import { nameStep, track, getOptions, withPolicy } from '../../lib/context/option.js';
 
 const name = 'document-shrink';
 
@@ -533,8 +533,9 @@ function selectGapFillers(allChunks, selectedChunks, gapFillerBudget) {
 
 // Main function with proper budget planning
 export default async function documentShrink(document, query, config = {}) {
+  const runConfig = nameStep(name, config);
+  const span = track(name, runConfig);
   const {
-    config: scopedConfig,
     targetSize,
     tokenBudget: tokenBudgetInit,
     gapFillerBudgetRatio,
@@ -544,7 +545,7 @@ export default async function documentShrink(document, query, config = {}) {
     llmScoring,
     llmCompression,
     scoringTokenRatio,
-  } = await initChain(name, config, {
+  } = await getOptions(runConfig, {
     targetSize: DEFAULT_OPTIONS.targetSize,
     tokenBudget: DEFAULT_OPTIONS.tokenBudget,
     gapFillerBudgetRatio: DEFAULT_OPTIONS.gapFillerBudgetRatio,
@@ -557,10 +558,9 @@ export default async function documentShrink(document, query, config = {}) {
       'scoringTokenRatio',
     ]),
   });
-  config = scopedConfig;
   const merged = {
     ...DEFAULT_OPTIONS,
-    ...config,
+    ...runConfig,
     targetSize,
     tokenBudget: tokenBudgetInit,
     gapFillerBudgetRatio,
@@ -580,7 +580,7 @@ export default async function documentShrink(document, query, config = {}) {
       },
     };
 
-    emitChainResult(config, name);
+    span.result();
 
     return emptyResult;
   }
@@ -610,7 +610,7 @@ export default async function documentShrink(document, query, config = {}) {
   }
 
   // Step 3: Expand query (gated by thoroughness)
-  const subOptions = config;
+  const subOptions = runConfig;
   const { expansions, tokensUsed: expansionTokens } = queryExpansion
     ? await expandQuery(query, tokenBudget, subOptions)
     : { expansions: [query], tokensUsed: 0 };
@@ -722,7 +722,7 @@ export default async function documentShrink(document, query, config = {}) {
     },
   };
 
-  emitChainResult(config, name);
+  span.result();
 
   return finalResult;
 }

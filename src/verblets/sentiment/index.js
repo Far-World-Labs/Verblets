@@ -1,5 +1,5 @@
 import callLlm from '../../lib/llm/index.js';
-import { emitChainResult } from '../../lib/progress-callback/index.js';
+import { nameStep, track } from '../../lib/context/option.js';
 import { sentimentSchema } from './schema.js';
 
 const name = 'sentiment';
@@ -12,12 +12,13 @@ const name = 'sentiment';
  * @returns {Promise<string>} Sentiment classification (positive, negative, or neutral)
  */
 export default async function sentiment(text, config = {}) {
-  const startTime = Date.now();
+  const runConfig = nameStep(name, config);
+  const span = track(name, runConfig);
 
   const prompt = `Identify the overall sentiment of the following text as "positive", "negative", or "neutral".\n\nText: ${text}\n\nThe value should be the sentiment classification.`;
 
   const response = await callLlm(prompt, {
-    ...config,
+    ...runConfig,
     response_format: {
       type: 'json_schema',
       json_schema: {
@@ -27,7 +28,7 @@ export default async function sentiment(text, config = {}) {
     },
   });
 
-  emitChainResult(config, name, { duration: Date.now() - startTime });
+  span.result();
 
   return response;
 }

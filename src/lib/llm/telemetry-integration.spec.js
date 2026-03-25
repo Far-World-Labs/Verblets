@@ -20,7 +20,7 @@ import fetch from 'node-fetch';
 import { get as getPromptResult, set as setPromptResult } from '../prompt-cache/index.js';
 import callLlm from './index.js';
 import retry from '../retry/index.js';
-import { initChain } from '../context/option.js';
+import { nameStep, track } from '../context/option.js';
 
 const mockFetch = fetch;
 
@@ -48,9 +48,10 @@ describe('Telemetry integration', () => {
 
       mockFetch.mockResolvedValueOnce(makeApiResponse('chain result'));
 
-      // Simulate a chain: initChain scopes the operation, then callLlm runs inside it
-      const { config } = await initChain('mychain', { onProgress }, {});
-      await callLlm('do something useful', config);
+      // Simulate a chain: nameStep scopes the operation, track emits chain:start, then callLlm runs inside it
+      const runConfig = nameStep('mychain', { onProgress });
+      track('mychain', runConfig);
+      await callLlm('do something useful', runConfig);
 
       // All events should have timestamp and kind
       for (const event of events) {
@@ -84,10 +85,12 @@ describe('Telemetry integration', () => {
       mockFetch.mockResolvedValueOnce(makeApiResponse('nested result'));
 
       // Parent chain
-      const parent = await initChain('parent', { onProgress }, {});
+      const parent = nameStep('parent', { onProgress });
+      track('parent', parent);
 
-      // Child chain receives parent's scoped config
-      const child = await initChain('child', parent.config, {});
+      // Child chain receives parent's enriched config
+      const child = nameStep('child', parent);
+      track('child', child);
 
       // Verify chain:start events have correct operation paths
       const chainStarts = events.filter((e) => e.event === 'chain:start');
@@ -96,7 +99,7 @@ describe('Telemetry integration', () => {
       expect(chainStarts[1].operation).toBe('parent/child');
 
       // LLM call inside child chain inherits the nested operation path
-      await callLlm('test', child.config);
+      await callLlm('test', child);
 
       const modelEvent = events.find((e) => e.event === 'llm:model');
       expect(modelEvent.operation).toBe('parent/child');
@@ -119,7 +122,8 @@ describe('Telemetry integration', () => {
       const events = [];
       const onProgress = (e) => events.push(e);
 
-      const { config } = await initChain('retrychain', { onProgress }, {});
+      const runConfig = nameStep('retrychain', { onProgress });
+      track('retrychain', runConfig);
 
       let callCount = 0;
       const fn = async () => {
@@ -136,7 +140,7 @@ describe('Telemetry integration', () => {
 
       const promise = retry(fn, {
         label: 'llm-call',
-        config,
+        config: runConfig,
         retryDelay: 100,
         maxAttempts: 3,
       });
@@ -170,7 +174,8 @@ describe('Telemetry integration', () => {
       const events = [];
       const onProgress = (e) => events.push(e);
 
-      const { config } = await initChain('failchain', { onProgress }, {});
+      const runConfig = nameStep('failchain', { onProgress });
+      track('failchain', runConfig);
 
       const fn = async () => {
         const err = new Error('Server down');
@@ -181,7 +186,7 @@ describe('Telemetry integration', () => {
 
       const promise = retry(fn, {
         label: 'doomed',
-        config,
+        config: runConfig,
         retryDelay: 50,
         maxAttempts: 2,
       });
@@ -219,10 +224,11 @@ describe('Telemetry integration', () => {
           makeApiResponse('second', { prompt_tokens: 50, completion_tokens: 25, total_tokens: 75 })
         );
 
-      const { config } = await initChain('aggregate', { onProgress }, {});
+      const runConfig = nameStep('aggregate', { onProgress });
+      track('aggregate', runConfig);
 
-      await callLlm('prompt one', config);
-      await callLlm('prompt two', config);
+      await callLlm('prompt one', runConfig);
+      await callLlm('prompt two', runConfig);
 
       const callEvents = events.filter((e) => e.event === 'llm:call' && e.status === 'success');
       expect(callEvents).toHaveLength(2);

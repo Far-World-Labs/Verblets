@@ -2,8 +2,7 @@ import nlp from 'compromise';
 import sort from '../sort/index.js';
 import map from '../map/index.js';
 import { glossaryExtractionJsonSchema } from './schemas.js';
-import { initChain } from '../../lib/context/option.js';
-import { emitChainResult } from '../../lib/progress-callback/index.js';
+import { nameStep, track, getOptions } from '../../lib/context/option.js';
 import { jsonSchema } from '../../lib/llm/index.js';
 
 const name = 'glossary';
@@ -27,19 +26,14 @@ const GLOSSARY_RESPONSE_FORMAT = jsonSchema(
  * @returns {Promise<string[]>} list of important terms, sorted by relevance
  */
 export default async function glossary(text, config = {}) {
-  const {
-    config: scopedConfig,
-    maxTerms,
-    sortBy,
-    sentencesPerBatch,
-    overlap,
-  } = await initChain(name, config, {
+  const runConfig = nameStep(name, config);
+  const span = track(name, runConfig);
+  const { maxTerms, sortBy, sentencesPerBatch, overlap } = await getOptions(runConfig, {
     maxTerms: 10,
     sortBy: 'importance for understanding the content',
     sentencesPerBatch: 3,
     overlap: 1,
   });
-  config = scopedConfig;
   if (!text || !text.trim()) return [];
 
   // Parse sentences using compromise
@@ -62,8 +56,8 @@ export default async function glossary(text, config = {}) {
 Return a "terms" object containing an array of the extracted terms.`;
 
   const mapResults = await map(textChunks, instructions, {
-    ...config,
-    batchSize: config.batchSize ?? 1,
+    ...runConfig,
+    batchSize: runConfig.batchSize ?? 1,
     responseFormat: GLOSSARY_RESPONSE_FORMAT,
   });
 
@@ -83,11 +77,11 @@ Return a "terms" object containing an array of the extracted terms.`;
   if (terms.length === 0) return [];
 
   // Sort by importance for understanding the content
-  const sorted = await sort(terms, sortBy, config);
+  const sorted = await sort(terms, sortBy, runConfig);
 
   const result = sorted.slice(0, maxTerms);
 
-  emitChainResult(config, name);
+  span.result();
 
   return result;
 }

@@ -17,8 +17,7 @@
 import RingBuffer from '../../lib/ring-buffer/index.js';
 import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
-import { initChain } from '../../lib/context/option.js';
-import { emitChainResult } from '../../lib/progress-callback/index.js';
+import { nameStep, track } from '../../lib/context/option.js';
 
 const name = 'option-history-analyzer';
 
@@ -199,21 +198,21 @@ export default function createOptionHistoryAnalyzer(config = {}) {
       return [];
     }
 
-    const mergedConfig = { ...chainConfig, ...analyzeConfig };
-    const { config: scopedConfig } = await initChain(name, mergedConfig, {});
+    const runConfig = nameStep(name, { ...chainConfig, ...analyzeConfig });
+    const span = track(name, runConfig);
 
     const prompt = buildAnalysisPrompt(traces, instruction);
 
     const result = await retry(
       () =>
         callLlm(prompt, {
-          ...scopedConfig,
+          ...runConfig,
           response_format: {
             type: 'json_schema',
             json_schema: { name: 'rule_suggestions', schema: RULE_SCHEMA },
           },
         }),
-      { label: 'option-history-analyzer', config: scopedConfig }
+      { label: 'option-history-analyzer', config: runConfig }
     );
 
     const rules = result?.rules ?? result ?? [];
@@ -222,7 +221,7 @@ export default function createOptionHistoryAnalyzer(config = {}) {
       onRules(rules);
     }
 
-    emitChainResult(scopedConfig, name);
+    span.result();
 
     return rules;
   };

@@ -1,18 +1,18 @@
 import list from '../list/index.js';
 import score from '../score/index.js';
-import { emitChainResult } from '../../lib/progress-callback/index.js';
-import { initChain } from '../../lib/context/option.js';
+import { nameStep, track, getOptions } from '../../lib/context/option.js';
 
 const name = 'filter-ambiguous';
 
 export default async function filterAmbiguous(text, config = {}) {
-  const { config: scopedConfig, topN } = await initChain(name, config, {
+  const runConfig = nameStep(name, config);
+  const span = track(name, runConfig);
+  const { topN } = await getOptions(runConfig, {
     topN: 10,
   });
-  config = scopedConfig;
 
   const complete = (result) => {
-    emitChainResult(config, name);
+    span.result();
     return result;
   };
 
@@ -26,7 +26,7 @@ export default async function filterAmbiguous(text, config = {}) {
   const sentenceScores = await score(
     sentences,
     'How ambiguous or easily misinterpreted is this sentence?',
-    config
+    runConfig
   );
 
   const rankedSentences = sentences
@@ -38,7 +38,7 @@ export default async function filterAmbiguous(text, config = {}) {
   for (const { sentence } of rankedSentences) {
     // eslint-disable-next-line no-await-in-loop
     const terms = await list('Ambiguous words or short phrases', {
-      ...config,
+      ...runConfig,
       attachments: { text: sentence },
       targetNewItemsCount: 5,
     });
@@ -52,7 +52,7 @@ export default async function filterAmbiguous(text, config = {}) {
   const scores = await score(
     termPairs.map((p) => `${p.term} | ${p.sentence}`),
     'Score how ambiguous the term is within the sentence.',
-    config
+    runConfig
   );
 
   const scored = termPairs.map((p, i) => ({ ...p, score: scores[i] }));

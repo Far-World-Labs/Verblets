@@ -1,5 +1,5 @@
 import callLlm from '../../lib/llm/index.js';
-import { emitChainResult } from '../../lib/progress-callback/index.js';
+import { nameStep, track } from '../../lib/context/option.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { nameSimilarSchema } from './schema.js';
 
@@ -19,11 +19,12 @@ The value should be the generated name.`;
 };
 
 export default async function nameSimilarTo(description, exampleNames = [], config = {}) {
-  const startTime = Date.now();
+  const runConfig = nameStep(name, config);
+  const span = track(name, runConfig);
 
   const prompt = buildPrompt(description, exampleNames);
   const response = await callLlm(prompt, {
-    ...config,
+    ...runConfig,
     response_format: {
       type: 'json_schema',
       json_schema: {
@@ -33,7 +34,7 @@ export default async function nameSimilarTo(description, exampleNames = [], conf
     },
   });
 
-  emitChainResult(config, name, { duration: Date.now() - startTime });
+  span.result();
 
   return response;
 }

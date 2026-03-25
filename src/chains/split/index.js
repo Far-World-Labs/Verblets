@@ -2,8 +2,7 @@ import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import chunkSentences from '../../lib/chunk-sentences/index.js';
 import wrapVariable from '../../prompts/wrap-variable.js';
-import { getOption, initChain, withPolicy } from '../../lib/context/option.js';
-import { emitChainResult } from '../../lib/progress-callback/index.js';
+import { getOption, nameStep, track, getOptions, withPolicy } from '../../lib/context/option.js';
 
 const name = 'split';
 
@@ -60,26 +59,26 @@ IMPORTANT RULES:
 };
 
 export default async function split(text, instructions, config = {}) {
+  const runConfig = nameStep(name, { llm: 'fastGoodCheapCoding', ...config });
+  const span = track(name, runConfig);
   const {
-    config: scopedConfig,
     chunkLen,
     targetSplitsPerChunk,
     temperature,
     preservation: preservationConfig,
-  } = await initChain(
-    name,
-    { llm: 'fastGoodCheapCoding', ...config },
-    {
-      chunkLen: 4000,
-      targetSplitsPerChunk: null,
-      temperature: 0.1,
-      preservation: withPolicy(mapPreservation),
-    }
+  } = await getOptions(runConfig, {
+    chunkLen: 4000,
+    targetSplitsPerChunk: null,
+    temperature: 0.1,
+    preservation: withPolicy(mapPreservation),
+  });
+  const { delimiter = defaultDelimiter } = runConfig;
+  const preservationShort = await getOption(
+    'preservationShort',
+    runConfig,
+    preservationConfig.short
   );
-  config = scopedConfig;
-  const { delimiter = defaultDelimiter } = config;
-  const preservationShort = await getOption('preservationShort', config, preservationConfig.short);
-  const preservationLong = await getOption('preservationLong', config, preservationConfig.long);
+  const preservationLong = await getOption('preservationLong', runConfig, preservationConfig.long);
 
   const chunks = chunkSentences(text, chunkLen);
 
@@ -91,14 +90,14 @@ export default async function split(text, instructions, config = {}) {
 
     const prompt = buildPrompt(chunk, instructions, delimiter, context);
     const llmConfig = {
-      ...config,
+      ...runConfig,
       temperature,
     };
 
     try {
       const output = await retry(() => callLlm(prompt, llmConfig), {
         label: 'split',
-        config,
+        config: runConfig,
       });
 
       const outputWithoutDelimiters = output.replace(
@@ -114,8 +113,8 @@ export default async function split(text, instructions, config = {}) {
         Math.abs(outputWithoutDelimiters.length - originalChunk.length) >
         originalChunk.length * maxDifference
       ) {
-        if (config.logger?.warn) {
-          config.logger.warn(
+        if (runConfig.logger?.warn) {
+          runConfig.logger.warn(
             `Split output differs significantly from input for chunk ${
               index + 1
             }, using original chunk`
@@ -126,8 +125,8 @@ export default async function split(text, instructions, config = {}) {
 
       return output;
     } catch (error) {
-      if (config.logger?.warn) {
-        config.logger.warn(`Split failed for chunk ${index + 1}:`, error.message);
+      if (runConfig.logger?.warn) {
+        runConfig.logger.warn(`Split failed for chunk ${index + 1}:`, error.message);
       }
       return chunk;
     }
@@ -136,7 +135,7 @@ export default async function split(text, instructions, config = {}) {
   const results = await Promise.all(promises);
   const result = results.join('');
 
-  emitChainResult(config, name);
+  span.result();
 
   return result;
 }

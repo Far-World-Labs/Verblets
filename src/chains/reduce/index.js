@@ -3,8 +3,7 @@ import { asXML } from '../../prompts/wrap-variable.js';
 import { reduceAccumulatorJsonSchema } from './schemas.js';
 import { createLifecycleLogger, extractBatchConfig } from '../../lib/lifecycle-logger/index.js';
 import { retry, prepareBatches } from '../../lib/index.js';
-import { initChain } from '../../lib/context/option.js';
-import { emitChainResult } from '../../lib/progress-callback/index.js';
+import { nameStep, track, getOptions } from '../../lib/context/option.js';
 
 import { jsonSchema } from '../../lib/llm/index.js';
 
@@ -17,35 +16,32 @@ const DEFAULT_REDUCE_RESPONSE_FORMAT = jsonSchema(
 );
 
 const reduce = async function reduce(list, instructions, config = {}) {
-  const {
-    config: scopedConfig,
-    progressMode,
-    accumulatorMode,
-  } = await initChain(name, config, {
+  const runConfig = nameStep(name, config);
+  const span = track(name, runConfig);
+  const { progressMode, accumulatorMode } = await getOptions(runConfig, {
     progressMode: 'detailed',
     accumulatorMode: 'auto',
   });
-  config = scopedConfig;
-  const lifecycleLogger = createLifecycleLogger(config.logger, 'chain:reduce');
+  const lifecycleLogger = createLifecycleLogger(runConfig.logger, 'chain:reduce');
 
-  let acc = config.initial;
+  let acc = runConfig.initial;
 
   // If initial is an array and we're using default format, wrap it
   const needsItemsWrapper =
     accumulatorMode === 'collection' ||
-    (accumulatorMode === 'auto' && Array.isArray(config.initial) && !config.responseFormat);
+    (accumulatorMode === 'auto' && Array.isArray(runConfig.initial) && !runConfig.responseFormat);
   if (needsItemsWrapper) {
-    acc = { items: config.initial };
+    acc = { items: runConfig.initial };
   }
 
-  const { batches, tracker } = await prepareBatches('reduce', list, config, { progressMode });
+  const { batches, tracker } = await prepareBatches('reduce', list, runConfig, { progressMode });
   const activeBatches = batches.filter((b) => !b.skip);
 
   lifecycleLogger.logStart(
     extractBatchConfig({
       totalItems: list.length,
       totalBatches: activeBatches.length,
-      batchSize: config.batchSize,
+      batchSize: runConfig.batchSize,
     })
   );
 
@@ -55,7 +51,7 @@ const reduce = async function reduce(list, instructions, config = {}) {
       continue;
     }
 
-    const batchStyle = determineStyle(config.listStyle, items, config.autoModeThreshold);
+    const batchStyle = determineStyle(runConfig.listStyle, items, runConfig.autoModeThreshold);
 
     const reduceInstructions = ({ style, count }) => {
       const itemFormat = style === ListStyle.XML ? 'XML' : '';
@@ -79,11 +75,11 @@ ${asXML(
 Process exactly ${count} items from the ${itemFormat} list below and return the final accumulator value.`;
     };
 
-    const effectiveResponseFormat = config.responseFormat || DEFAULT_REDUCE_RESPONSE_FORMAT;
+    const effectiveResponseFormat = runConfig.responseFormat || DEFAULT_REDUCE_RESPONSE_FORMAT;
 
     const prompt = reduceInstructions({ style: batchStyle, count: items.length });
     const listBatchOptions = {
-      ...config,
+      ...runConfig,
       listStyle: batchStyle,
       responseFormat: effectiveResponseFormat,
       logger: lifecycleLogger,
@@ -91,11 +87,11 @@ Process exactly ${count} items from the ${itemFormat} list below and return the 
 
     const result = await retry(() => listBatch(items, prompt, listBatchOptions), {
       label: 'reduce:batch',
-      config,
+      config: runConfig,
       onProgress: tracker.forBatch(startIndex, items.length),
     });
 
-    if (!config.responseFormat && result?.accumulator !== undefined) {
+    if (!runConfig.responseFormat && result?.accumulator !== undefined) {
       acc = result.accumulator;
     } else {
       acc = result;
@@ -113,7 +109,7 @@ Process exactly ${count} items from the ${itemFormat} list below and return the 
 
   const resultMeta = { totalItems: list.length, totalBatches: activeBatches.length };
   lifecycleLogger.logResult(acc, resultMeta);
-  emitChainResult(config, name, resultMeta);
+  span.result(resultMeta);
 
   return acc;
 };

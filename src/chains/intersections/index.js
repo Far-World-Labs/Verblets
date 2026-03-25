@@ -7,8 +7,7 @@ import { constants as promptConstants } from '../../prompts/index.js';
 import { intersectionElementsSchema } from './schemas.js';
 import intersectionResultSchema from './intersection-result.json';
 import { debug } from '../../lib/debug/index.js';
-import { emitChainResult } from '../../lib/progress-callback/index.js';
-import { initChain } from '../../lib/context/option.js';
+import { nameStep, track, getOptions } from '../../lib/context/option.js';
 
 const name = 'intersections';
 
@@ -98,15 +97,12 @@ export default async function intersections(items, config = {}) {
     return {};
   }
 
-  const { config: scopedConfig, useSchemaValidation } = await initChain(
-    name,
-    { llm: 'fastGoodCheap', ...config },
-    {
-      useSchemaValidation: false,
-    }
-  );
-  config = scopedConfig;
-  const { instructions, minSize = 2, maxSize = items.length, batchSize = 10 } = config;
+  const runConfig = nameStep(name, { llm: 'fastGoodCheap', ...config });
+  const span = track(name, runConfig);
+  const { useSchemaValidation } = await getOptions(runConfig, {
+    useSchemaValidation: false,
+  });
+  const { instructions, minSize = 2, maxSize = items.length, batchSize = 10 } = runConfig;
 
   // Generate all combinations
   const allCombinations = rangeCombinations(items, minSize, maxSize);
@@ -121,7 +117,7 @@ export default async function intersections(items, config = {}) {
   for (let i = 0; i < allCombinations.length; i += batchSize) {
     const batch = allCombinations.slice(i, i + batchSize);
     const batchResults = await Promise.all(
-      batch.map((combo) => processCombo(combo, instructions, config))
+      batch.map((combo) => processCombo(combo, instructions, runConfig))
     );
 
     // Add batch results to final results
@@ -132,13 +128,13 @@ export default async function intersections(items, config = {}) {
 
   // Validate results with JSON schema if enabled
   if (useSchemaValidation && Object.keys(results).length > 0) {
-    const validated = await validateIntersectionResults(results, config);
+    const validated = await validateIntersectionResults(results, runConfig);
     const validatedResults = validated.intersections || results;
-    emitChainResult(config, name);
+    span.result();
     return validatedResults;
   }
 
-  emitChainResult(config, name);
+  span.result();
 
   return results;
 }

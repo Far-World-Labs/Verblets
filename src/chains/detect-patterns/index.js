@@ -1,8 +1,7 @@
 import reduce from '../reduce/index.js';
 import { patternCandidatesJsonSchema } from './schemas.js';
 import { jsonSchema } from '../../lib/llm/index.js';
-import { emitChainResult } from '../../lib/progress-callback/index.js';
-import { initChain, withPolicy } from '../../lib/context/option.js';
+import { nameStep, track, getOptions, withPolicy } from '../../lib/context/option.js';
 
 const name = 'detect-patterns';
 
@@ -64,18 +63,13 @@ function filterObject(obj, maxStringLength = 50, maxArrayLength = 10) {
 }
 
 export default async function detectPatterns(objects, config = {}) {
-  const {
-    config: scopedConfig,
-    maxStringLength,
-    maxArrayLength,
-    topN,
-    capacity,
-  } = await initChain(name, config, {
+  const runConfig = nameStep(name, config);
+  const span = track(name, runConfig);
+  const { maxStringLength, maxArrayLength, topN, capacity } = await getOptions(runConfig, {
     thoroughness: withPolicy(mapThoroughness, ['topN', 'capacity']),
     maxStringLength: 50,
     maxArrayLength: 10,
   });
-  config = scopedConfig;
 
   const filteredObjects = objects.map((obj) => filterObject(obj, maxStringLength, maxArrayLength));
   const stringifiedObjects = filteredObjects.map((obj) => JSON.stringify(obj, null, 0));
@@ -110,7 +104,7 @@ export default async function detectPatterns(objects, config = {}) {
   `;
 
   const candidateArray = await reduce(stringifiedObjects, patternInstructions, {
-    ...config,
+    ...runConfig,
     initial: [],
     responseFormat: PATTERN_RESPONSE_FORMAT,
   });
@@ -118,7 +112,7 @@ export default async function detectPatterns(objects, config = {}) {
   // Since PATTERN_RESPONSE_FORMAT is a simple collection schema,
   // and reduce should handle it properly
   if (!Array.isArray(candidateArray)) {
-    emitChainResult(config, name);
+    span.result();
     return [];
   }
 
@@ -128,7 +122,7 @@ export default async function detectPatterns(objects, config = {}) {
     .map((item) => item.template)
     .slice(0, topN);
 
-  emitChainResult(config, name);
+  span.result();
 
   return patterns;
 }

@@ -1,5 +1,5 @@
 import callLlm from '../../lib/llm/index.js';
-import { emitChainResult } from '../../lib/progress-callback/index.js';
+import { nameStep, track } from '../../lib/context/option.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 import { nameSchema } from './schema.js';
@@ -9,7 +9,8 @@ const { asUndefinedByDefault, contentIsQuestion } = promptConstants;
 const verbletName = 'name';
 
 export default async function name(subject, config = {}) {
-  const startTime = Date.now();
+  const runConfig = nameStep(verbletName, config);
+  const span = track(verbletName, runConfig);
 
   const prompt = `${contentIsQuestion} Suggest a concise, memorable name for the <subject>.\n\n${asXML(
     subject,
@@ -19,7 +20,7 @@ export default async function name(subject, config = {}) {
   )} ${asUndefinedByDefault}\n\nThe value should be the suggested name.`;
 
   const response = await callLlm(prompt, {
-    ...config,
+    ...runConfig,
     response_format: {
       type: 'json_schema',
       json_schema: {
@@ -31,7 +32,7 @@ export default async function name(subject, config = {}) {
 
   const result = response === 'undefined' ? undefined : response;
 
-  emitChainResult(config, verbletName, { duration: Date.now() - startTime });
+  span.result();
 
   return result;
 }

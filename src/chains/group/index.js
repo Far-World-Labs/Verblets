@@ -1,10 +1,10 @@
 import listBatch, { ListStyle, determineStyle } from '../../verblets/list-batch/index.js';
 import reduce from '../reduce/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
-import { emitPhaseProgress, emitChainResult } from '../../lib/progress-callback/index.js';
+import { emitPhaseProgress } from '../../lib/progress-callback/index.js';
 import { parallel, retry, prepareBatches, scopeProgress } from '../../lib/index.js';
 import { debug } from '../../lib/debug/index.js';
-import { initChain, withPolicy } from '../../lib/context/option.js';
+import { nameStep, track, getOptions, withPolicy } from '../../lib/context/option.js';
 
 const name = 'group';
 
@@ -116,21 +116,21 @@ const applyTopNFilter = (groups, topN) => {
 };
 
 export default async function group(list, instructions, config = {}) {
+  const runConfig = nameStep(name, config);
+  const span = track(name, runConfig);
   const {
-    config: scopedConfig,
     guidance: granularityGuidance,
     maxParallel,
     errorPosture,
     progressMode,
     topN,
-  } = await initChain(name, config, {
+  } = await getOptions(runConfig, {
     granularity: withPolicy(mapGranularity, ['guidance', 'topN']),
     maxParallel: 3,
     errorPosture: 'resilient',
     progressMode: 'detailed',
   });
-  config = scopedConfig;
-  const { categoryPrompt, listStyle, autoModeThreshold, onProgress, now } = config;
+  const { categoryPrompt, listStyle, autoModeThreshold, onProgress, now } = runConfig;
   // Phase 1: Category Discovery - reduce pass to build taxonomy
   if (onProgress) {
     emitPhaseProgress(onProgress, 'group', 'category-discovery', {
@@ -146,7 +146,7 @@ export default async function group(list, instructions, config = {}) {
     granularityGuidance
   );
   const categoriesString = await reduce(list, categoryDiscoveryPrompt, {
-    ...config,
+    ...runConfig,
     initial: '',
     now,
     onProgress: scopeProgress(onProgress, 'reduce:category-discovery'),
@@ -170,7 +170,7 @@ export default async function group(list, instructions, config = {}) {
   const batchResults = [];
   const assignmentInstructions = createAssignmentInstructions(categories);
 
-  const { batches: allBatches, tracker } = await prepareBatches('group', list, config, {
+  const { batches: allBatches, tracker } = await prepareBatches('group', list, runConfig, {
     progressMode,
   });
   const batchesToProcess = allBatches.filter((batch) => !batch.skip);
@@ -183,7 +183,7 @@ export default async function group(list, instructions, config = {}) {
 
       try {
         const listBatchOptions = {
-          ...config,
+          ...runConfig,
           listStyle: batchStyle,
         };
 
@@ -196,7 +196,7 @@ export default async function group(list, instructions, config = {}) {
             ),
           {
             label: 'group:batch',
-            config,
+            config: runConfig,
             onProgress: tracker.forBatch(startIndex, items.length),
           }
         );
@@ -231,7 +231,7 @@ export default async function group(list, instructions, config = {}) {
 
   const result = topN ? applyTopNFilter(groups, topN) : groups;
 
-  emitChainResult(config, name);
+  span.result();
 
   return result;
 }

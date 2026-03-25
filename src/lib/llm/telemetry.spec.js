@@ -20,7 +20,7 @@ import fetch from 'node-fetch';
 import { get as getPromptResult, set as setPromptResult } from '../prompt-cache/index.js';
 import callLlm from './index.js';
 import retry from '../retry/index.js';
-import { initChain, getOptionDetail } from '../context/option.js';
+import { nameStep, track, getOptionDetail } from '../context/option.js';
 
 const mockFetch = fetch;
 
@@ -206,15 +206,16 @@ describe('Telemetry events', () => {
     });
   });
 
-  describe('initChain telemetry', () => {
-    it('emits chain:start telemetry event', async () => {
+  describe('track telemetry', () => {
+    it('emits chain:start telemetry event', () => {
       const events = [];
       const config = {
         onProgress: (e) => events.push(e),
         operation: 'parent',
       };
 
-      await initChain('filter', config, {});
+      const runConfig = nameStep('filter', config);
+      track('filter', runConfig);
 
       expect(events).toHaveLength(1);
       expect(events[0]).toMatchObject({
@@ -225,9 +226,10 @@ describe('Telemetry events', () => {
       });
     });
 
-    it('emits chain:start with top-level operation when no parent', async () => {
+    it('emits chain:start with top-level operation when no parent', () => {
       const events = [];
-      await initChain('score', { onProgress: (e) => events.push(e) }, {});
+      const runConfig = nameStep('score', { onProgress: (e) => events.push(e) });
+      track('score', runConfig);
 
       expect(events[0]).toMatchObject({
         kind: 'telemetry',
@@ -237,9 +239,10 @@ describe('Telemetry events', () => {
       });
     });
 
-    it('does not emit when onProgress absent', async () => {
+    it('does not emit when onProgress absent', () => {
       // Should not throw
-      await initChain('filter', {}, {});
+      const runConfig = nameStep('filter', {});
+      track('filter', runConfig);
     });
   });
 

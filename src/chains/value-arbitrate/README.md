@@ -8,32 +8,34 @@ Must-signals are binding constraints — the most restrictive must determines a 
 import { valueArbitrate } from '@far-world-labs/verblets';
 import { OpenFeature } from '@openfeature/server-sdk';
 
-const client = OpenFeature.getClient();
+const flags = OpenFeature.getClient();
 
-const level = await valueArbitrate(
+// Three teams each own a flag for document verification level.
+// Compliance sets a regulatory floor. Product and SRE express preferences.
+const verification = await valueArbitrate(
   [
     {
-      name: 'legal-floor',
-      value: (ctx) => client.getStringValue('legal-floor', 'standard', ctx),
+      name: 'compliance-floor',
+      value: (ctx) => flags.getStringValue('compliance-verification-floor', 'standard', ctx),
       strictness: 'must',
     },
     {
-      name: 'product-preference',
-      value: (ctx) => client.getStringValue('product-pref', 'minimal', ctx),
+      name: 'product-strategy',
+      value: (ctx) => flags.getStringValue('product-verification-pref', 'light', ctx),
       strictness: 'may',
-      weight: 0.3,
-      prompt: 'lighter touch for engaged users',
+      weight: 0.4,
+      prompt: 'trial users processing their first batch — minimize friction to show value quickly',
     },
     {
-      name: 'trust-safety',
-      value: (ctx) => client.getStringValue('trust-safety', 'standard', ctx),
+      name: 'provider-health',
+      value: (ctx) => flags.getStringValue('sre-verification-level', 'standard', ctx),
       strictness: 'may',
-      weight: 0.6,
-      prompt: 'elevated risk for flagged segments',
+      weight: 0.7,
+      prompt: 'primary extraction model returning elevated error rates — compensate with more verification',
     },
   ],
-  { kind: 'tenant', key: tenantId, plan: 'enterprise' },
-  ['minimal', 'standard', 'strict', 'maximum']
+  { targetingKey: tenantId, compliance: 'hipaa', plan: 'trial', providerStatus: 'degraded' },
+  ['light', 'standard', 'thorough', 'maximum']
 );
 ```
 

@@ -1,7 +1,7 @@
 import callLlm from '../../lib/llm/index.js';
 import { decomposeQuery as decomposeQueryPrompt } from '../../prompts/embed-query-transforms.js';
 import { embedSubquestionsSchema } from './schema.js';
-import { emitChainResult } from '../../lib/progress-callback/index.js';
+import { nameStep, track } from '../../lib/context/option.js';
 
 const name = 'embed-subquestions';
 
@@ -39,11 +39,12 @@ export const mapGranularity = (value) => {
  * @returns {Promise<string[]>}
  */
 export default async function embedSubquestions(query, config = {}) {
-  const startTime = Date.now();
-  const granularityGuidance = mapGranularity(config.granularity);
+  const runConfig = nameStep(name, config);
+  const span = track(name, runConfig);
+  const granularityGuidance = mapGranularity(runConfig.granularity);
 
   const result = await callLlm(decomposeQueryPrompt(query, { granularityGuidance }), {
-    ...config,
+    ...runConfig,
     response_format: {
       type: 'json_schema',
       json_schema: {
@@ -52,6 +53,6 @@ export default async function embedSubquestions(query, config = {}) {
       },
     },
   });
-  emitChainResult(config, name, { duration: Date.now() - startTime });
+  span.result();
   return result;
 }

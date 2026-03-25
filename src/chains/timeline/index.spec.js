@@ -180,7 +180,7 @@ describe('timeline', () => {
     });
 
     expect(progressCallback).toHaveBeenCalledTimes(5);
-    // First call is the chain:start telemetry event from initChain
+    // First call is the chain:start telemetry event from track
     expect(progressCallback).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({

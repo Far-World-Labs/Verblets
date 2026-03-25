@@ -35,7 +35,7 @@ const result = await callLlm(prompt, {
 });
 ```
 
-Inside chains, callLlm receives the scoped config object directly — see [option resolution](../../../docs/option-resolution.md) for how `initChain` and `scopeOperation` prepare config.
+Inside chains, callLlm receives the enriched config object directly — see [option resolution](../../../docs/option-resolution.md) for how `nameStep` + `track` prepare config.
 
 ## API
 
@@ -74,13 +74,14 @@ const config = {
 };
 ```
 
-The `llm` parameter itself is also resolved from config — chains with non-standard model defaults set them via `initChain`:
+The `llm` parameter itself is also resolved from config — chains with non-standard model defaults set them via `nameStep`:
 
 ```javascript
-// initChain names the operation and resolves options from config
-const { config } = await initChain('my-chain', { llm: 'fastGoodCheap', ...inputConfig });
+// nameStep returns the enriched config, track returns a lifecycle handle
+const runConfig = nameStep('my-chain', { llm: 'fastGoodCheap', ...inputConfig });
+const span = track('my-chain', runConfig);
 // callLlm resolves llm from config automatically
-await callLlm(prompt, config);
+await callLlm(prompt, runConfig);
 ```
 
 See [configuration](../../../docs/configuration.md) for model selection, capabilities, and policy. See [option resolution](../../../docs/option-resolution.md) for how `getOption` works.

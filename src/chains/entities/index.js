@@ -3,8 +3,8 @@ import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import buildInstructions from '../../lib/build-instructions/index.js';
 import entityResultSchema from './entity-result.json';
-import { emitStepProgress, emitChainResult } from '../../lib/progress-callback/index.js';
-import { initChain, nameStep } from '../../lib/context/option.js';
+import { emitStepProgress } from '../../lib/progress-callback/index.js';
+import { nameStep, track } from '../../lib/context/option.js';
 
 const name = 'entities';
 
@@ -118,25 +118,26 @@ Each entity should include:
  * @returns {Promise<Object>} Object with entities array
  */
 export async function extractEntities(text, instructions, config = {}) {
-  ({ config } = await initChain(name, config));
+  const runConfig = nameStep(name, config);
+  const span = track(name, runConfig);
 
-  emitStepProgress(config.onProgress, name, 'generating-specification', {
+  emitStepProgress(runConfig.onProgress, name, 'generating-specification', {
     instructions,
-    now: config.now,
-    chainStartTime: config.now,
+    now: runConfig.now,
+    chainStartTime: runConfig.now,
   });
 
-  const spec = config.spec || (await entitySpec(instructions, config));
+  const spec = runConfig.spec || (await entitySpec(instructions, runConfig));
 
-  emitStepProgress(config.onProgress, name, 'extracting-entities', {
+  emitStepProgress(runConfig.onProgress, name, 'extracting-entities', {
     specification: spec,
-    now: config.now,
-    chainStartTime: config.now,
+    now: runConfig.now,
+    chainStartTime: runConfig.now,
   });
 
-  const result = await applyEntities(text, spec, config);
+  const result = await applyEntities(text, spec, runConfig);
 
-  emitChainResult(config, name);
+  span.result();
 
   return result;
 }

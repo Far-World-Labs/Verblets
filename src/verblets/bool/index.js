@@ -6,7 +6,7 @@ import {
   extractPromptAnalysis,
   extractResultValue,
 } from '../../lib/lifecycle-logger/index.js';
-import { emitChainResult } from '../../lib/progress-callback/index.js';
+import { nameStep, track } from '../../lib/context/option.js';
 import { booleanSchema } from './schema.js';
 
 const name = 'bool';
@@ -15,8 +15,9 @@ const { asBool, asUndefinedByDefault, explainAndSeparate, explainAndSeparatePrim
   promptConstants;
 
 export default async (text, config = {}) => {
-  const startTime = Date.now();
   const { logger } = config;
+  const runConfig = nameStep(name, config);
+  const span = track(name, runConfig);
 
   // Create lifecycle logger with bool namespace
   const lifecycleLogger = createLifecycleLogger(logger, 'bool');
@@ -33,12 +34,12 @@ The value should be "true", "false", or "undefined".`;
   // Log prompt construction with extracted analysis
   lifecycleLogger.logConstruction(systemPrompt, {
     ...extractPromptAnalysis(systemPrompt),
-    ...extractLLMConfig(config.llm),
+    ...extractLLMConfig(runConfig.llm),
   });
 
   // Make LLM call with logger
   const response = await callLlm(text, {
-    ...config,
+    ...runConfig,
     systemPrompt,
     response_format: {
       type: 'json_schema',
@@ -56,7 +57,7 @@ The value should be "true", "false", or "undefined".`;
   // Log final result with raw and interpreted values
   lifecycleLogger.logResult(interpreted, extractResultValue(response, interpreted));
 
-  emitChainResult(config, name, { duration: Date.now() - startTime });
+  span.result();
 
   return interpreted;
 };

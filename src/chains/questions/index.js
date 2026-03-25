@@ -2,8 +2,7 @@ import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { constants as promptConstants, asXML } from '../../prompts/index.js';
 import { questionsListSchema, selectedQuestionSchema } from './schemas.js';
-import { getOption, initChain, withPolicy } from '../../lib/context/option.js';
-import { emitChainResult } from '../../lib/progress-callback/index.js';
+import { getOption, nameStep, track, getOptions, withPolicy } from '../../lib/context/option.js';
 
 const name = 'questions';
 
@@ -67,18 +66,19 @@ One question per string.`;
 };
 
 const generateQuestions = async function* generateQuestionsGenerator(text, config = {}) {
-  const { config: scopedConfig, exploration: searchBreadth } = await initChain(name, config, {
+  const runConfig = nameStep(name, config);
+  const span = track(name, runConfig);
+  const { exploration: searchBreadth } = await getOptions(runConfig, {
     exploration: withPolicy(mapExploration),
   });
-  config = scopedConfig;
   const resultsAll = [];
   const resultsAllMap = {};
   const drilldownResults = [];
   let isDone = false;
   let textSelected = text;
 
-  const { shouldSkip = shouldSkipNull, shouldStop = shouldStopNull } = config;
-  const temperature = await getOption('temperature', config, 1);
+  const { shouldSkip = shouldSkipNull, shouldStop = shouldStopNull } = runConfig;
+  const temperature = await getOption('temperature', runConfig, 1);
 
   let attempts = 0;
   while (!isDone) {
@@ -93,12 +93,12 @@ const generateQuestions = async function* generateQuestionsGenerator(text, confi
       const selectedResult = await retry(
         () =>
           callLlm(pickInterestingQuestionPrompt, {
-            ...config,
+            ...runConfig,
             response_format: jsonSchema('selected_question', selectedQuestionSchema),
           }),
         {
           label: 'questions-pick-interesting',
-          config,
+          config: runConfig,
         }
       );
       textSelected = selectedResult.question;
@@ -109,7 +109,7 @@ const generateQuestions = async function* generateQuestionsGenerator(text, confi
       existing: resultsAll,
     });
     const llmConfig = {
-      ...config,
+      ...runConfig,
       temperature,
       response_format: jsonSchema('questions_list', questionsListSchema),
     };
@@ -117,7 +117,7 @@ const generateQuestions = async function* generateQuestionsGenerator(text, confi
     // eslint-disable-next-line no-await-in-loop
     const results = await retry(() => callLlm(promptCreated, llmConfig), {
       label: 'questions-generate',
-      config,
+      config: runConfig,
     });
     const resultsNew = getRandomSubset(results, searchBreadth);
     if (searchBreadth < 0.5) {
@@ -142,11 +142,11 @@ const generateQuestions = async function* generateQuestionsGenerator(text, confi
       }
     }
   }
+
+  span.result();
 };
 
 export default async (text, config = {}) => {
-  const startTime = Date.now();
-
   const generator = generateQuestions(text, config);
 
   const results = [];
@@ -157,8 +157,6 @@ export default async (text, config = {}) => {
   }
 
   const resultsSorted = results.toSorted((a, b) => a.localeCompare(b));
-
-  emitChainResult(config, name, { duration: Date.now() - startTime });
 
   return resultsSorted;
 };

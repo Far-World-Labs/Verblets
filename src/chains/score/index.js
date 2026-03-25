@@ -7,11 +7,10 @@ import {
   emitBatchComplete,
   emitBatchProcessed,
   emitPhaseProgress,
-  emitChainResult,
   filterProgress,
 } from '../../lib/progress-callback/index.js';
 import { createBatches, parallel, retry } from '../../lib/index.js';
-import { initChain, withPolicy, nameStep } from '../../lib/context/option.js';
+import { nameStep, track, getOptions, withPolicy } from '../../lib/context/option.js';
 import scoreSingleResultSchema from './score-single-result.json';
 
 const name = 'score';
@@ -256,26 +255,20 @@ async function scoreOnce(list, prompt, batchConfig, config) {
  */
 export async function mapScore(list, instructions, config = {}) {
   const { spec: providedSpec, onProgress: _onProgress, now } = config;
-  const {
-    config: scopedConfig,
-    maxParallel,
-    maxAttempts,
-    temperature,
-    errorPosture,
-    progressMode,
-    anchoring,
-  } = await initChain(name, config, {
-    maxParallel: 3,
-    maxAttempts: 3,
-    temperature: 0,
-    errorPosture: 'resilient',
-    progressMode: 'detailed',
-    anchoring: withPolicy(mapAnchoring),
-  });
-  config = scopedConfig;
+  const runConfig = nameStep(name, config);
+  const span = track(name, runConfig);
+  const { maxParallel, maxAttempts, temperature, errorPosture, progressMode, anchoring } =
+    await getOptions(runConfig, {
+      maxParallel: 3,
+      maxAttempts: 3,
+      temperature: 0,
+      errorPosture: 'resilient',
+      progressMode: 'detailed',
+      anchoring: withPolicy(mapAnchoring),
+    });
   const onProgress = filterProgress(_onProgress, progressMode);
   emitPhaseProgress(onProgress, 'score', 'generating-specification');
-  const spec = providedSpec || (await scoreSpec(instructions, config));
+  const spec = providedSpec || (await scoreSpec(instructions, runConfig));
   emitPhaseProgress(onProgress, 'score', 'scoring-items', { specification: spec });
 
   const scoringPrompt = buildScoringInstructions(
@@ -283,12 +276,12 @@ export async function mapScore(list, instructions, config = {}) {
     'Return ONLY the numeric score for each item according to the specification range.'
   );
   const batchConfig = {
-    ...config,
+    ...runConfig,
     responseFormat: scoreBatchResponseFormat,
     temperature,
   };
   const passOptions = {
-    ...config,
+    ...runConfig,
     maxParallel,
     maxAttempts,
     errorPosture,
@@ -323,7 +316,7 @@ export async function mapScore(list, instructions, config = {}) {
     });
   }
 
-  emitChainResult(config, name);
+  span.result();
 
   return results;
 }

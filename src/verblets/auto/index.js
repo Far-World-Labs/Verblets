@@ -1,14 +1,15 @@
 import callLlm from '../../lib/llm/index.js';
-import { emitChainResult } from '../../lib/progress-callback/index.js';
+import { nameStep, track } from '../../lib/context/option.js';
 import { schemas as defaultSchemas } from '../../json-schemas/index.js';
 
 const name = 'auto';
 
 export default async (text, config = {}) => {
-  const startTime = Date.now();
+  const runConfig = nameStep(name, config);
+  const span = track(name, runConfig);
 
   // Use provided schemas or fall back to default schemas
-  const schemasToUse = config.schemas || defaultSchemas;
+  const schemasToUse = runConfig.schemas || defaultSchemas;
 
   // Convert JSON schemas to OpenAI function tools format
   const tools = Object.entries(schemasToUse).map(([schemaName, schema]) => ({
@@ -25,7 +26,7 @@ export default async (text, config = {}) => {
   }));
 
   const response = await callLlm(text, {
-    ...config,
+    ...runConfig,
     // toolChoice: 'auto' // by default
     tools,
   });
@@ -36,11 +37,11 @@ export default async (text, config = {}) => {
   if (typeof response === 'string') {
     // No function was selected, return a no-match indicator
     result = {
-      name: config.defaultFunction || null,
-      arguments: config.defaultArguments || {},
+      name: runConfig.defaultFunction || null,
+      arguments: runConfig.defaultArguments || {},
       noMatch: true,
       reason: response,
-      functionArgsAsArray: [config.defaultArguments || {}],
+      functionArgsAsArray: [runConfig.defaultArguments || {}],
     };
   } else {
     // Function was called successfully
@@ -54,7 +55,7 @@ export default async (text, config = {}) => {
     };
   }
 
-  emitChainResult(config, name, { duration: Date.now() - startTime });
+  span.result();
 
   return result;
 };

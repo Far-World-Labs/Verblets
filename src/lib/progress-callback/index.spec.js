@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { scopeProgress, batchTracker, emitChainResult, emitChainError } from './index.js';
+import { scopeProgress, batchTracker, track } from './index.js';
+import { nameStep } from '../context/option.js';
 
 describe('scopeProgress', () => {
   it('adds phase to events passed through', () => {
@@ -195,88 +196,91 @@ describe('batchTracker event sequence', () => {
   });
 });
 
-describe('emitChainResult', () => {
-  it('emits chain:complete with duration from config.now', () => {
+describe('track', () => {
+  it('emits chain:start on creation', () => {
     const events = [];
-    const now = new Date(Date.now() - 150);
-    const config = {
-      onProgress: (e) => events.push(e),
-      operation: 'parent/filter',
-      now,
-    };
-
-    emitChainResult(config, 'filter', { totalItems: 10, successCount: 8 });
-
+    const config = { onProgress: (e) => events.push(e) };
+    const runConfig = nameStep('filter', config);
+    track('filter', runConfig);
     expect(events).toHaveLength(1);
     expect(events[0]).toMatchObject({
       kind: 'telemetry',
       step: 'filter',
+      event: 'chain:start',
+      operation: 'filter',
+    });
+  });
+
+  it('returns lifecycle handle with result and error', () => {
+    const runConfig = nameStep('filter', {});
+    const span = track('filter', runConfig);
+    expect(typeof span.result).toBe('function');
+    expect(typeof span.error).toBe('function');
+  });
+
+  it('result emits chain:complete with duration from config.now', () => {
+    const events = [];
+    const now = new Date(Date.now() - 150);
+    const runConfig = nameStep('filter', {
+      onProgress: (e) => events.push(e),
+      now,
+    });
+    const span = track('filter', runConfig);
+    span.result({ totalItems: 10, successCount: 8 });
+
+    const complete = events.find((e) => e.event === 'chain:complete');
+    expect(complete).toMatchObject({
+      kind: 'telemetry',
+      step: 'filter',
       event: 'chain:complete',
-      operation: 'parent/filter',
+      operation: 'filter',
       totalItems: 10,
       successCount: 8,
     });
-    expect(events[0].duration).toBeGreaterThanOrEqual(150);
+    expect(complete.duration).toBeGreaterThanOrEqual(150);
   });
 
-  it('uses explicit duration override', () => {
+  it('result uses explicit duration override', () => {
     const events = [];
-    const config = {
-      onProgress: (e) => events.push(e),
-      operation: 'bool',
-    };
+    const runConfig = nameStep('bool', { onProgress: (e) => events.push(e) });
+    const span = track('bool', runConfig);
+    span.result({ duration: 42 });
 
-    emitChainResult(config, 'bool', { duration: 42 });
-
-    expect(events[0].duration).toBe(42);
+    const complete = events.find((e) => e.event === 'chain:complete');
+    expect(complete.duration).toBe(42);
   });
 
-  it('omits duration when config.now absent and no explicit duration', () => {
+  it('result spreads metadata into the event', () => {
     const events = [];
-    const config = {
-      onProgress: (e) => events.push(e),
-    };
+    const runConfig = nameStep('find', { onProgress: (e) => events.push(e) });
+    const span = track('find', runConfig);
+    span.result({ inputSize: 3, outputSize: 3, found: true });
 
-    emitChainResult(config, 'test');
-
-    expect(events[0]).not.toHaveProperty('duration');
+    const complete = events.find((e) => e.event === 'chain:complete');
+    expect(complete.inputSize).toBe(3);
+    expect(complete.outputSize).toBe(3);
+    expect(complete.found).toBe(true);
   });
 
-  it('does not throw when onProgress absent', () => {
-    expect(() => emitChainResult({}, 'test', { items: 5 })).not.toThrow();
+  it('result does not throw when onProgress absent', () => {
+    const runConfig = nameStep('test', {});
+    const span = track('test', runConfig);
+    expect(() => span.result({ items: 5 })).not.toThrow();
   });
 
-  it('spreads metadata into the event', () => {
-    const events = [];
-    const config = {
-      onProgress: (e) => events.push(e),
-      now: new Date(),
-    };
-    const metadata = { inputSize: 3, outputSize: 3, found: true };
-
-    emitChainResult(config, 'find', metadata);
-
-    expect(events[0].inputSize).toBe(3);
-    expect(events[0].outputSize).toBe(3);
-    expect(events[0].found).toBe(true);
-  });
-});
-
-describe('emitChainError', () => {
-  it('emits chain:error with error message and duration', () => {
+  it('error emits chain:error with error message and duration', () => {
     const events = [];
     const now = new Date(Date.now() - 200);
-    const config = {
+    const runConfig = nameStep('map', {
       onProgress: (e) => events.push(e),
-      operation: 'parent/map',
+      operation: 'parent',
       now,
-    };
-    const error = new Error('batch failed');
+    });
+    const span = track('map', runConfig);
+    span.error(new Error('batch failed'), { totalItems: 20 });
 
-    emitChainError(config, 'map', error, { totalItems: 20 });
-
-    expect(events).toHaveLength(1);
-    expect(events[0]).toMatchObject({
+    const errorEvent = events.find((e) => e.event === 'chain:error');
+    expect(errorEvent).toMatchObject({
       kind: 'telemetry',
       step: 'map',
       event: 'chain:error',
@@ -284,39 +288,35 @@ describe('emitChainError', () => {
       error: { message: 'batch failed' },
       totalItems: 20,
     });
-    expect(events[0].duration).toBeGreaterThanOrEqual(200);
+    expect(errorEvent.duration).toBeGreaterThanOrEqual(200);
   });
 
-  it('uses explicit duration override', () => {
+  it('error uses explicit duration override', () => {
     const events = [];
-    const config = {
-      onProgress: (e) => events.push(e),
-    };
+    const runConfig = nameStep('bool', { onProgress: (e) => events.push(e) });
+    const span = track('bool', runConfig);
+    span.error(new Error('oops'), { duration: 99 });
 
-    emitChainError(config, 'bool', new Error('oops'), { duration: 99 });
-
-    expect(events[0].duration).toBe(99);
-    expect(events[0].error.message).toBe('oops');
+    const errorEvent = events.find((e) => e.event === 'chain:error');
+    expect(errorEvent.duration).toBe(99);
+    expect(errorEvent.error.message).toBe('oops');
   });
 
-  it('does not throw when onProgress absent', () => {
-    expect(() => emitChainError({}, 'test', new Error('fail'))).not.toThrow();
+  it('error does not throw when onProgress absent', () => {
+    const runConfig = nameStep('test', {});
+    const span = track('test', runConfig);
+    expect(() => span.error(new Error('fail'))).not.toThrow();
   });
 
-  it('spreads metadata into the event alongside error', () => {
+  it('error spreads metadata into the event alongside error', () => {
     const events = [];
-    const config = {
-      onProgress: (e) => events.push(e),
-      now: new Date(),
-    };
+    const runConfig = nameStep('reduce', { onProgress: (e) => events.push(e) });
+    const span = track('reduce', runConfig);
+    span.error(new Error('timeout'), { inputSize: 100, phase: 'merge' });
 
-    emitChainError(config, 'reduce', new Error('timeout'), {
-      inputSize: 100,
-      phase: 'merge',
-    });
-
-    expect(events[0].inputSize).toBe(100);
-    expect(events[0].phase).toBe('merge');
-    expect(events[0].error.message).toBe('timeout');
+    const errorEvent = events.find((e) => e.event === 'chain:error');
+    expect(errorEvent.inputSize).toBe(100);
+    expect(errorEvent.phase).toBe('merge');
+    expect(errorEvent.error.message).toBe('timeout');
   });
 });

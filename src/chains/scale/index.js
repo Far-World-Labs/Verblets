@@ -4,10 +4,7 @@ import { asXML } from '../../prompts/wrap-variable.js';
 import buildInstructions from '../../lib/build-instructions/index.js';
 import { scaleSpecificationJsonSchema } from './schemas.js';
 import scaleResultSchema from './scale-result.json';
-import { emitChainResult } from '../../lib/progress-callback/index.js';
-import { initChain } from '../../lib/context/option.js';
-
-const name = 'scale';
+import { nameStep, track } from '../../lib/context/option.js';
 
 // ===== Instruction Builders =====
 
@@ -44,7 +41,8 @@ export const {
  * @returns {Promise<Object>} Scale specification with domain, range, and mapping
  */
 export async function scaleSpec(prompt, config = {}) {
-  ({ config } = await initChain('scale:spec', config));
+  const runConfig = nameStep('scale:spec', config);
+  const span = track('scale:spec', runConfig);
 
   const specSystemPrompt = `You are a scale specification generator. Analyze the scaling instructions and produce a clear, comprehensive specification.`;
 
@@ -62,7 +60,7 @@ IMPORTANT: Each property must be a simple string value, not a nested object or a
   const response = await retry(
     () =>
       callLlm(specUserPrompt, {
-        ...config,
+        ...runConfig,
         systemPrompt: specSystemPrompt,
         response_format: jsonSchema(
           scaleSpecificationJsonSchema.name,
@@ -71,11 +69,11 @@ IMPORTANT: Each property must be a simple string value, not a nested object or a
       }),
     {
       label: 'scale spec',
-      config,
+      config: runConfig,
     }
   );
 
-  emitChainResult(config, name);
+  span.result();
 
   return response;
 }
@@ -89,7 +87,7 @@ IMPORTANT: Each property must be a simple string value, not a nested object or a
  * @returns {Promise<*>} Scaled value (type depends on specification range)
  */
 export async function applyScale(item, specification, config = {}) {
-  ({ config } = await initChain('scale:apply', config));
+  const runConfig = nameStep('scale:apply', config);
 
   const prompt = `Apply the scale specification to transform this item.
 
@@ -103,12 +101,12 @@ Return a JSON object with a "value" property containing the scaled result.`;
   const response = await retry(
     () =>
       callLlm(prompt, {
-        ...config,
+        ...runConfig,
         response_format: jsonSchema('scale_result', scaleResultSchema),
       }),
     {
       label: 'scale item',
-      config,
+      config: runConfig,
     }
   );
 

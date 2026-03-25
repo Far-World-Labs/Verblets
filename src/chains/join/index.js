@@ -1,8 +1,7 @@
 import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import windowFor from '../../lib/window-for/index.js';
-import { initChain, withPolicy } from '../../lib/context/option.js';
-import { emitChainResult } from '../../lib/progress-callback/index.js';
+import { nameStep, track, getOptions, withPolicy } from '../../lib/context/option.js';
 
 const name = 'join';
 
@@ -52,16 +51,12 @@ export default async function join(
   if (list.length === 0) return '';
   if (list.length === 1) return list[0];
 
-  const {
-    config: scopedConfig,
-    styleHint,
-    windowSize,
-    overlapPercent,
-  } = await initChain(name, config, {
+  const runConfig = nameStep(name, config);
+  const span = track(name, runConfig);
+  const { styleHint, windowSize, overlapPercent } = await getOptions(runConfig, {
     fidelity: withPolicy(mapFidelity, ['windowSize', 'overlapPercent']),
     styleHint: '',
   });
-  config = scopedConfig;
 
   // Create overlapping windows using the windowFor utility
   const windows = windowFor(list, windowSize, overlapPercent);
@@ -80,9 +75,9 @@ ${fragmentList}
 
 Important: This is part of a larger sequence. Join these fragments while being mindful that this result will be combined with other processed windows. Add necessary connecting words, prepositions, conjunctions, or other filler text to create a coherent, grammatically correct, and semantically meaningful result. Output only the joined result for this window.`;
 
-    const result = await retry(() => callLlm(instruction, config), {
+    const result = await retry(() => callLlm(instruction, runConfig), {
       label: `join-window-${windowIndex + 1}`,
-      config,
+      config: runConfig,
     });
 
     windowResults.push({
@@ -95,7 +90,7 @@ Important: This is part of a larger sequence. Join these fragments while being m
   const validResults = windowResults.filter((r) => r.content && r.content.trim());
 
   if (validResults.length === 1) {
-    emitChainResult(config, name);
+    span.result();
     return validResults[0].content;
   }
 
@@ -131,9 +126,9 @@ The terminal ends of both sections should be preserved. Only resolve the overlap
 
 Add necessary connecting words, prepositions, conjunctions, or other filler text to create a coherent, grammatically correct, and semantically meaningful result. Output only the final stitched result with terminals preserved.`;
 
-      const stitchResult = await retry(() => callLlm(stitchInstruction, config), {
+      const stitchResult = await retry(() => callLlm(stitchInstruction, runConfig), {
         label: `join-stitch-${i}`,
-        config,
+        config: runConfig,
       });
 
       stitchedResult = stitchResult || stitchedResult;
@@ -147,16 +142,16 @@ Join these two non-overlapping sections:
 
 Add necessary connecting words, prepositions, conjunctions, or other filler text to create a coherent, grammatically correct, and semantically meaningful result. Output only the joined result.`;
 
-      const joinResult = await retry(() => callLlm(joinInstruction, config), {
+      const joinResult = await retry(() => callLlm(joinInstruction, runConfig), {
         label: `join-nonoverlap-${i}`,
-        config,
+        config: runConfig,
       });
 
       stitchedResult = joinResult || stitchedResult;
     }
   }
 
-  emitChainResult(config, name);
+  span.result();
 
   return stitchedResult;
 }

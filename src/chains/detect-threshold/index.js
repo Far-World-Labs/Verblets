@@ -1,11 +1,11 @@
 import reduce from '../reduce/index.js';
 import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
-import { emitChainResult, scopeProgress } from '../../lib/progress-callback/index.js';
+import { scopeProgress } from '../../lib/progress-callback/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { debug } from '../../lib/debug/index.js';
 import thresholdResultSchema from './threshold-result.json';
-import { initChain } from '../../lib/context/option.js';
+import { nameStep, track, getOptions } from '../../lib/context/option.js';
 
 const name = 'detect-threshold';
 
@@ -58,15 +58,11 @@ export function calculateStatistics(data, targetProperty) {
 
 export default async function detectThreshold(options = {}) {
   const { data, targetProperty, goal, onProgress } = options;
-  let config;
-  let batchSize;
-  ({ config, batchSize } = await initChain(
-    name,
-    { llm: { good: true }, ...options },
-    {
-      batchSize: 50,
-    }
-  ));
+  const runConfig = nameStep(name, { llm: { good: true }, ...options });
+  const span = track(name, runConfig);
+  const { batchSize } = await getOptions(runConfig, {
+    batchSize: 50,
+  });
   if (!data || !Array.isArray(data) || data.length === 0) {
     throw new Error('Data must be a non-empty array');
   }
@@ -163,7 +159,7 @@ Return the updated accumulator as valid JSON.`;
   }
 
   const analysisResult = await reduce(dataStrings, instructions, {
-    ...config,
+    ...runConfig,
     initial: JSON.stringify(initialAccumulator),
     batchSize,
     responseFormat: jsonSchema('analysis_accumulator', accumulatorSchema),
@@ -213,12 +209,12 @@ Return threshold candidates with their rationales.`;
   const result = await retry(
     () =>
       callLlm(finalPrompt, {
-        ...config,
+        ...runConfig,
         response_format: jsonSchema('threshold_result', thresholdResultSchema),
       }),
     {
       label: 'detect-threshold-analysis',
-      config,
+      config: runConfig,
       onProgress,
     }
   );
@@ -248,7 +244,7 @@ Return threshold candidates with their rationales.`;
     dataPoints: stats.count,
   };
 
-  emitChainResult(config, name);
+  span.result();
 
   return result;
 }

@@ -2,8 +2,7 @@ import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import map from '../map/index.js';
-import { initChain, nameStep } from '../../lib/context/option.js';
-import { emitChainResult } from '../../lib/progress-callback/index.js';
+import { nameStep, track, getOptions } from '../../lib/context/option.js';
 import tagsResultSchema from './tags-result.json';
 
 const name = 'tags';
@@ -78,10 +77,11 @@ Keep it concise and actionable.`;
  * @returns {Promise<Array>} Array of tag IDs
  */
 export async function applyTags(item, specification, vocabulary, config = {}) {
-  const { config: scopedConfig, vocabularyMode } = await initChain(`${name}:apply`, config, {
+  const runConfig = nameStep(`${name}:apply`, config);
+  const span = track(`${name}:apply`, runConfig);
+  const { vocabularyMode } = await getOptions(runConfig, {
     vocabularyMode: 'strict',
   });
-  config = scopedConfig;
 
   const vocabularyConstraint =
     vocabularyMode === 'open'
@@ -106,19 +106,19 @@ Do NOT return tag labels, descriptions, or full tag objects - ONLY the string ID
   const response = await retry(
     () =>
       callLlm(prompt, {
-        ...config,
+        ...runConfig,
         response_format: jsonSchema('tags_result', tagsResultSchema),
       }),
     {
       label: 'tags-apply',
-      config,
+      config: runConfig,
     }
   );
 
   // llm auto-unwraps {items: [...]} to just the array
   const result = Array.isArray(response) ? response : [];
 
-  emitChainResult(config, name);
+  span.result();
 
   return result;
 }

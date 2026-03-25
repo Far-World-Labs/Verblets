@@ -1,5 +1,5 @@
 import callLlm from '../../lib/llm/index.js';
-import { emitChainResult } from '../../lib/progress-callback/index.js';
+import { nameStep, track } from '../../lib/context/option.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 import { numberSchema } from './schema.js';
 
@@ -14,7 +14,8 @@ const {
 const name = 'number';
 
 export default async (text, config = {}) => {
-  const startTime = Date.now();
+  const runConfig = nameStep(name, config);
+  const span = track(name, runConfig);
 
   const numberText = `${contentIsQuestion} ${text}
 
@@ -25,7 +26,7 @@ ${asNumber} ${asUndefinedByDefault}
 The value should be the number or "undefined".`;
 
   const result = await callLlm(numberText, {
-    ...config,
+    ...runConfig,
     response_format: {
       type: 'json_schema',
       json_schema: {
@@ -37,7 +38,7 @@ The value should be the number or "undefined".`;
 
   const interpreted = result === 'undefined' ? undefined : result;
 
-  emitChainResult(config, name, { duration: Date.now() - startTime });
+  span.result();
 
   return interpreted;
 };

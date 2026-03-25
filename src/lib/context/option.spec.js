@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { nameStep, getOption, getOptions, withPolicy, initChain } from './option.js';
+import { nameStep, getOption, getOptions, withPolicy } from './option.js';
 
 describe('nameStep', () => {
   it('sets operation on config', () => {
@@ -42,9 +42,15 @@ describe('nameStep', () => {
     expect(config.operation).toBeUndefined();
   });
 
-  it('does not add a now timestamp', () => {
+  it('sets now timestamp when not present', () => {
     const result = nameStep('filter', {});
-    expect(result.now).toBeUndefined();
+    expect(result.now).toBeInstanceOf(Date);
+  });
+
+  it('preserves caller-provided now', () => {
+    const custom = new Date('2020-01-01');
+    const result = nameStep('filter', { now: custom });
+    expect(result.now).toBe(custom);
   });
 
   it('operation is visible to policy functions via getOption', async () => {
@@ -72,36 +78,6 @@ describe('nameStep', () => {
     );
     const result = await getOption('maxAttempts', config, 3);
     expect(result).toBe(2);
-  });
-});
-
-describe('initChain', () => {
-  it('adds now timestamp', async () => {
-    const { config } = await initChain('filter', {});
-    expect(config.now).toBeInstanceOf(Date);
-  });
-
-  it('preserves caller-provided now', async () => {
-    const custom = new Date('2020-01-01');
-    const { config } = await initChain('filter', { now: custom });
-    expect(config.now).toBe(custom);
-  });
-
-  it('sets operation on config', async () => {
-    const { config } = await initChain('filter', {});
-    expect(config.operation).toBe('filter');
-  });
-
-  it('resolves options from spec', async () => {
-    const { config, strictness } = await initChain(
-      'filter',
-      { strictness: 'high' },
-      {
-        strictness: 'med',
-      }
-    );
-    expect(strictness).toBe('high');
-    expect(config.operation).toBe('filter');
   });
 });
 

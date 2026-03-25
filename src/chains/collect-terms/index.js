@@ -1,7 +1,6 @@
 import list from '../list/index.js';
 import score from '../score/index.js';
-import { emitChainResult } from '../../lib/progress-callback/index.js';
-import { initChain } from '../../lib/context/option.js';
+import { nameStep, track, getOptions } from '../../lib/context/option.js';
 
 const name = 'collect-terms';
 
@@ -22,15 +21,12 @@ const splitIntoChunks = (text, maxLen) => {
 };
 
 export default async function collectTerms(text, config = {}) {
-  const {
-    config: scopedConfig,
-    topN,
-    chunkLen,
-  } = await initChain(name, config, {
+  const runConfig = nameStep(name, config);
+  const span = track(name, runConfig);
+  const { topN, chunkLen } = await getOptions(runConfig, {
     topN: 20,
     chunkLen: 1000,
   });
-  config = scopedConfig;
 
   const chunks = splitIntoChunks(text, chunkLen);
 
@@ -39,7 +35,7 @@ export default async function collectTerms(text, config = {}) {
   for (const chunk of chunks) {
     const terms = await list(
       `key words and phrases that would help find documents about: ${chunk}`,
-      config
+      runConfig
     );
     allTerms.push(...terms);
   }
@@ -48,7 +44,7 @@ export default async function collectTerms(text, config = {}) {
 
   // If we already have fewer terms than requested, return them all
   if (uniqueTerms.length <= topN) {
-    emitChainResult(config, name);
+    span.result();
     return uniqueTerms;
   }
 
@@ -56,14 +52,14 @@ export default async function collectTerms(text, config = {}) {
   const scores = await score(
     uniqueTerms,
     `relevance as a search term for finding information (1-10, higher is more important)`,
-    config
+    runConfig
   );
 
   // Sort by score and take top N
   const termsWithScores = uniqueTerms.map((term, i) => ({ term, score: scores[i] }));
   termsWithScores.sort((a, b) => b.score - a.score);
 
-  emitChainResult(config, name);
+  span.result();
 
   return termsWithScores.slice(0, topN).map((item) => item.term);
 }

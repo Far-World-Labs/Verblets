@@ -1,5 +1,5 @@
 import callLlm from '../../lib/llm/index.js';
-import { emitChainResult } from '../../lib/progress-callback/index.js';
+import { nameStep, track } from '../../lib/context/option.js';
 import toNumberWithUnits from '../../lib/to-number-with-units/index.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 import numberWithUnitsSchema from './number-with-units-result.json';
@@ -25,7 +25,8 @@ const responseFormat = {
  * @returns {Promise<Object>} Object with value and unit properties
  */
 export default async function numberWithUnits(text, config = {}) {
-  const startTime = Date.now();
+  const runConfig = nameStep(name, config);
+  const span = track(name, runConfig);
 
   const numberText = `${contentIsQuestion} ${text} \n\n${explainAndSeparate} ${explainAndSeparateJSON}
 
@@ -34,14 +35,14 @@ Answer the question and provide the numeric value and unit. If the question is u
 ${asNumberWithUnits}`;
 
   const response = await callLlm(numberText, {
-    ...config,
+    ...runConfig,
     response_format: responseFormat,
   });
 
   // With structured output, response is already parsed
   const result = toNumberWithUnits(JSON.stringify(response));
 
-  emitChainResult(config, name, { duration: Date.now() - startTime });
+  span.result();
 
   return result;
 }

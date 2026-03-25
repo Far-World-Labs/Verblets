@@ -17,8 +17,7 @@
  */
 
 import callLlm, { jsonSchema } from '../../lib/llm/index.js';
-import { initChain } from '../../lib/context/option.js';
-import { emitChainResult } from '../../lib/progress-callback/index.js';
+import { nameStep, track } from '../../lib/context/option.js';
 
 const name = 'phail-forge';
 
@@ -149,18 +148,13 @@ const analysisSchema = {
  * @returns {Promise<Object>} Enhanced prompt with metadata
  */
 export default async function phailForge(prompt, config = {}) {
+  const runConfig = nameStep(name, config);
+  const span = track(name, runConfig);
   const {
-    config: scopedConfig,
-    analyze,
-    style,
-  } = await initChain(name, config, {
-    analyze: false,
-    style: 'technical',
-  });
-  config = scopedConfig;
-  const {
+    analyze = false,
+    style = 'technical',
     context = '', // Additional context about the domain
-  } = config;
+  } = runConfig;
 
   // Build the enhancement request
   const fullPrompt = [
@@ -174,7 +168,7 @@ export default async function phailForge(prompt, config = {}) {
 
   // Get the enhanced prompt
   const enhancedResponse = await callLlm(fullPrompt, {
-    ...config,
+    ...runConfig,
     response_format: jsonSchema('phail_enhancement', enhancementSchema),
   });
 
@@ -189,14 +183,14 @@ export default async function phailForge(prompt, config = {}) {
     const analysisPrompt = `${ANALYSIS_PROMPT}\n\nPrompt to analyze:\n${enhancedResponse.enhanced}`;
 
     const analysis = await callLlm(analysisPrompt, {
-      ...config,
+      ...runConfig,
       response_format: jsonSchema('prompt_analysis', analysisSchema),
     });
 
     enhancedResponse.analysis = analysis;
   }
 
-  emitChainResult(config, name);
+  span.result();
   return enhancedResponse;
 }
 

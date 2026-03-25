@@ -6,12 +6,11 @@ import sortSchema from './sort-result.json';
 import {
   emitStart,
   emitComplete,
-  emitChainResult,
   emitStepProgress,
   filterProgress,
 } from '../../lib/progress-callback/index.js';
 import { debug } from '../../lib/debug/index.js';
-import { initChain, withPolicy } from '../../lib/context/option.js';
+import { nameStep, track, getOptions, withPolicy } from '../../lib/context/option.js';
 
 const name = 'sort';
 
@@ -58,20 +57,17 @@ const sanitizeList = (list) => {
 };
 
 const sort = async (list, criteria, config = {}) => {
-  const {
-    config: scopedConfig,
-    batchSize,
-    progressMode,
-    extremeK,
-    iterations,
-    selectBottom,
-  } = await initChain(name, config, {
-    effort: withPolicy(mapEffort, ['extremeK', 'iterations', 'selectBottom']),
-    batchSize: defaultSortBatchSize,
-    progressMode: 'detailed',
-  });
-  config = scopedConfig;
-  const { onProgress: _onProgress = undefined, now } = config;
+  const runConfig = nameStep(name, config);
+  const span = track(name, runConfig);
+  const { batchSize, progressMode, extremeK, iterations, selectBottom } = await getOptions(
+    runConfig,
+    {
+      effort: withPolicy(mapEffort, ['extremeK', 'iterations', 'selectBottom']),
+      batchSize: defaultSortBatchSize,
+      progressMode: 'detailed',
+    }
+  );
+  const { onProgress: _onProgress = undefined, now } = runConfig;
   const onProgress = filterProgress(_onProgress, progressMode);
   const items = sanitizeList(list);
 
@@ -95,10 +91,10 @@ const sort = async (list, criteria, config = {}) => {
     }
 
     const result = await retry(
-      () => callLlm(prompt, { ...config, response_format: sortResponseFormat }),
+      () => callLlm(prompt, { ...runConfig, response_format: sortResponseFormat }),
       {
         label: 'sort-batch',
-        config,
+        config: runConfig,
         onProgress,
       }
     );
@@ -250,7 +246,7 @@ const sort = async (list, criteria, config = {}) => {
     chainStartTime: now,
   });
 
-  emitChainResult(config, name);
+  span.result();
 
   return result;
 };

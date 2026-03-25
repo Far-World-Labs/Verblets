@@ -5,26 +5,21 @@ import { createLifecycleLogger, extractBatchConfig } from '../../lib/lifecycle-l
 import { prepareBatches, parallel, retry } from '../../lib/index.js';
 import { jsonSchema } from '../../lib/llm/index.js';
 import { debug } from '../../lib/debug/index.js';
-import { initChain } from '../../lib/context/option.js';
-import { emitChainResult } from '../../lib/progress-callback/index.js';
+import { nameStep, track, getOptions } from '../../lib/context/option.js';
 
 const name = 'find';
 
 const findResponseFormat = jsonSchema(findResultJsonSchema.name, findResultJsonSchema.schema);
 
 const find = async function find(list, instructions, config = {}) {
-  const {
-    config: scopedConfig,
-    maxParallel,
-    errorPosture,
-    progressMode,
-  } = await initChain(name, config, {
+  const runConfig = nameStep(name, config);
+  const span = track(name, runConfig);
+  const { maxParallel, errorPosture, progressMode } = await getOptions(runConfig, {
     maxParallel: 3,
     errorPosture: 'resilient',
     progressMode: 'detailed',
   });
-  config = scopedConfig;
-  const lifecycleLogger = createLifecycleLogger(config.logger, 'chain:find');
+  const lifecycleLogger = createLifecycleLogger(runConfig.logger, 'chain:find');
   const findInstructions = ({ style, count }) => {
     const baseInstructions = `From the list below, identify and return the SINGLE item that BEST matches the search criteria.
 
@@ -51,7 +46,7 @@ Process exactly ${count} items from the XML list below and return the single bes
   const results = [];
   let foundEarly = false;
 
-  const { batches, tracker } = await prepareBatches('find', list, config, { progressMode });
+  const { batches, tracker } = await prepareBatches('find', list, runConfig, { progressMode });
   const batchesToProcess = batches.filter((batch) => !batch.skip);
 
   lifecycleLogger.logStart(
@@ -69,20 +64,20 @@ Process exactly ${count} items from the XML list below and return the single bes
     await parallel(
       chunk,
       async ({ items, startIndex }) => {
-        const batchStyle = determineStyle(config.listStyle, items, config.autoModeThreshold);
+        const batchStyle = determineStyle(runConfig.listStyle, items, runConfig.autoModeThreshold);
 
         try {
           const result = await retry(
             () =>
               listBatch(items, findInstructions({ style: batchStyle, count: items.length }), {
-                ...config,
+                ...runConfig,
                 listStyle: batchStyle,
-                responseFormat: config.responseFormat || findResponseFormat,
+                responseFormat: runConfig.responseFormat || findResponseFormat,
                 logger: lifecycleLogger,
               }),
             {
               label: 'find:batch',
-              config,
+              config: runConfig,
               onProgress: tracker.forBatch(startIndex, items.length),
             }
           );
@@ -124,13 +119,13 @@ Process exactly ${count} items from the XML list below and return the single bes
     );
     const foundMeta = { found: true, totalItems: list.length };
     lifecycleLogger.logResult(earliest.result, foundMeta);
-    emitChainResult(config, name, foundMeta);
+    span.result(foundMeta);
     return earliest.result;
   }
 
   const notFoundMeta = { found: false, totalItems: list.length };
   lifecycleLogger.logResult('', notFoundMeta);
-  emitChainResult(config, name, notFoundMeta);
+  span.result(notFoundMeta);
   return '';
 };
 

@@ -4,8 +4,7 @@ import { filterDecisionsJsonSchema } from './schemas.js';
 import { createLifecycleLogger, extractBatchConfig } from '../../lib/lifecycle-logger/index.js';
 import { prepareBatches, retry } from '../../lib/index.js';
 import { jsonSchema } from '../../lib/llm/index.js';
-import { initChain, withPolicy } from '../../lib/context/option.js';
-import { emitChainResult } from '../../lib/progress-callback/index.js';
+import { nameStep, track, getOptions, withPolicy } from '../../lib/context/option.js';
 
 const name = 'filter';
 
@@ -47,27 +46,23 @@ const filterResponseFormat = jsonSchema(
 );
 
 const filter = async function filter(list, instructions, config = {}) {
-  const {
-    config: scopedConfig,
-    guidance,
-    progressMode,
-    errorPosture,
-  } = await initChain(name, config, {
+  const runConfig = nameStep(name, config);
+  const span = track(name, runConfig);
+  const { guidance, progressMode, errorPosture } = await getOptions(runConfig, {
     strictness: withPolicy(mapStrictness, ['guidance', 'errorPosture']),
     progressMode: 'detailed',
   });
-  config = scopedConfig;
-  const lifecycleLogger = createLifecycleLogger(config.logger, 'chain:filter');
+  const lifecycleLogger = createLifecycleLogger(runConfig.logger, 'chain:filter');
 
   lifecycleLogger.logStart(
     extractBatchConfig({
       totalItems: list.length,
-      batchSize: config.batchSize,
+      batchSize: runConfig.batchSize,
     })
   );
 
   const results = [];
-  const { batches, tracker } = await prepareBatches('filter', list, config, { progressMode });
+  const { batches, tracker } = await prepareBatches('filter', list, runConfig, { progressMode });
 
   lifecycleLogger.logEvent('batches-created', {
     totalBatches: batches.length,
@@ -86,7 +81,7 @@ const filter = async function filter(list, instructions, config = {}) {
       itemCount: items.length,
     });
 
-    const batchStyle = determineStyle(config.listStyle, items, config.autoModeThreshold);
+    const batchStyle = determineStyle(runConfig.listStyle, items, runConfig.autoModeThreshold);
 
     const filterInstructions = ({ style, count }) => {
       const strictnessBlock = guidance
@@ -116,9 +111,9 @@ Process exactly ${count} items from the XML list below and return ${count} yes/n
 
     const prompt = filterInstructions({ style: batchStyle, count: items.length });
     const listBatchOptions = {
-      ...config,
+      ...runConfig,
       listStyle: batchStyle,
-      responseFormat: config.responseFormat ?? filterResponseFormat,
+      responseFormat: runConfig.responseFormat ?? filterResponseFormat,
       logger: lifecycleLogger,
     };
 
@@ -126,7 +121,7 @@ Process exactly ${count} items from the XML list below and return ${count} yes/n
     try {
       response = await retry(() => listBatch(items, prompt, listBatchOptions), {
         label: 'filter:batch',
-        config,
+        config: runConfig,
         onProgress: tracker.forBatch(startIndex, items.length),
       });
     } catch (error) {
@@ -160,7 +155,7 @@ Process exactly ${count} items from the XML list below and return ${count} yes/n
 
   const resultMeta = { inputCount: list.length, outputCount: results.length };
   lifecycleLogger.logResult(results, resultMeta);
-  emitChainResult(config, name, resultMeta);
+  span.result(resultMeta);
 
   return results;
 };

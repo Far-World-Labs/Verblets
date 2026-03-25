@@ -1,7 +1,6 @@
 import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
-import { emitChainResult } from '../../lib/progress-callback/index.js';
-import { initChain } from '../../lib/context/option.js';
+import { nameStep, track, getOptions } from '../../lib/context/option.js';
 
 const name = 'value-arbitrate';
 
@@ -72,12 +71,13 @@ export default async function valueArbitrate(signals, ctx, values, config = {}) 
   if (!signals?.length) throw new Error('valueArbitrate requires at least one signal');
   if (!values?.length) throw new Error('valueArbitrate requires at least one value');
 
-  const { config: scopedConfig, instruction } = await initChain(name, config, {
+  const runConfig = nameStep(name, config);
+  const span = track(name, runConfig);
+  const { instruction } = await getOptions(runConfig, {
     instruction: undefined,
   });
-  config = scopedConfig;
 
-  const emitComplete = () => emitChainResult(config, name);
+  const emitComplete = () => span.result();
 
   // Step 1: Evaluate all signals concurrently
   const evaluated = await Promise.all(
@@ -147,13 +147,13 @@ export default async function valueArbitrate(signals, ctx, values, config = {}) 
   const result = await retry(
     () =>
       callLlm(prompt, {
-        ...scopedConfig,
+        ...runConfig,
         response_format: {
           type: 'json_schema',
           json_schema: { name: 'value_arbitrate', schema },
         },
       }),
-    { label: 'value-arbitrate', config: scopedConfig }
+    { label: 'value-arbitrate', config: runConfig }
   );
 
   // callLlm auto-unwraps the value from the JSON response

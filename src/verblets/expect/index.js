@@ -1,5 +1,5 @@
 import callLlm from '../../lib/llm/index.js';
-import { emitChainResult } from '../../lib/progress-callback/index.js';
+import { nameStep, track } from '../../lib/context/option.js';
 
 const name = 'expect';
 
@@ -34,7 +34,8 @@ export async function llmAssert({
   onProgress,
   operation,
 }) {
-  const startTime = Date.now();
+  const runConfig = nameStep(name, { onProgress, operation });
+  const span = track(name, runConfig);
 
   if (equals === undefined && !constraint)
     throw new TypeError('Provide either "equals" or "constraint".');
@@ -48,7 +49,7 @@ export async function llmAssert({
   const text = typeof answer === 'string' ? answer : answer.content;
   const passed = /^true$/i.test(text.trim());
 
-  emitChainResult({ onProgress, operation }, name, { duration: Date.now() - startTime });
+  span.result();
 
   if (!passed && throws) {
     let msg;

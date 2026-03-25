@@ -1,7 +1,7 @@
 import callLlm from '../../lib/llm/index.js';
 import { rewriteQuery as rewriteQueryPrompt } from '../../prompts/embed-query-transforms.js';
 import { embedRewriteQuerySchema } from './schema.js';
-import { emitChainResult } from '../../lib/progress-callback/index.js';
+import { nameStep, track } from '../../lib/context/option.js';
 
 const name = 'embed-rewrite-query';
 
@@ -13,9 +13,10 @@ const name = 'embed-rewrite-query';
  * @returns {Promise<string>}
  */
 export default async function embedRewriteQuery(query, config = {}) {
-  const startTime = Date.now();
+  const runConfig = nameStep(name, config);
+  const span = track(name, runConfig);
   const result = await callLlm(rewriteQueryPrompt(query), {
-    ...config,
+    ...runConfig,
     response_format: {
       type: 'json_schema',
       json_schema: {
@@ -24,6 +25,6 @@ export default async function embedRewriteQuery(query, config = {}) {
       },
     },
   });
-  emitChainResult(config, name, { duration: Date.now() - startTime });
+  span.result();
   return result;
 }

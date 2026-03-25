@@ -1,7 +1,7 @@
 import callLlm from '../../lib/llm/index.js';
 import { hydeOutputDoc } from '../../prompts/embed-query-transforms.js';
 import { schema } from './schema.js';
-import { emitChainResult } from '../../lib/progress-callback/index.js';
+import { nameStep, track } from '../../lib/context/option.js';
 
 const name = 'embed-rewrite-to-output-doc';
 
@@ -16,14 +16,15 @@ const name = 'embed-rewrite-to-output-doc';
  * @returns {Promise<string>}
  */
 export default async function embedRewriteToOutputDoc(query, config = {}) {
-  const startTime = Date.now();
+  const runConfig = nameStep(name, config);
+  const span = track(name, runConfig);
   const result = await callLlm(hydeOutputDoc(query), {
-    ...config,
+    ...runConfig,
     response_format: {
       type: 'json_schema',
       json_schema: { name: 'hyde_output_doc', schema },
     },
   });
-  emitChainResult(config, name, { duration: Date.now() - startTime });
+  span.result();
   return result;
 }

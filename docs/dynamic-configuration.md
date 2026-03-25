@@ -57,13 +57,13 @@ const strictness = await getOption('strictness', config, 'low');
 
 There are two new things here, and they work together.
 
-The `operation` string on config identifies what the system is currently doing. It's set by `initChain` or `nameStep` when a chain starts, and it composes hierarchically with `/` — so `'moderation/healthcare'` tells you you're in the healthcare branch of the moderation pipeline. It travels with the config through the pipeline so that every decision point can see where it is in the call graph.
+The `operation` string on config identifies what the system is currently doing. It's set by `nameStep` when a chain starts, and it composes hierarchically with `/` — so `'moderation/healthcare'` tells you you're in the healthcare branch of the moderation pipeline. It travels with the config through the pipeline so that every decision point can see where it is in the call graph.
 
 The function on `config.policy.strictness` is a policy function. When `getOption` looks up `'strictness'`, it finds this function and calls it, passing the `operation` string. The function checks the operation prefix, sees `'moderation/healthcare'`, and returns `'high'`. That's the value the caller gets.
 
 Here's the flow in full:
 
-1. A chain sets `operation` via `initChain('moderation/healthcare', config)`
+1. A chain sets `operation` via `nameStep('moderation/healthcare', config)`
 2. `getOption('strictness', config, 'low')` finds `config.policy.strictness` and calls it with the operation string
 3. The policy function returns `'high'`
 4. The caller receives `'high'`
@@ -226,9 +226,15 @@ This record is useful on its own for debugging. It becomes more useful when you 
 
 In the flag service example above, legal owns one flag and product owns another. That works when the flags govern separate options. It gets harder when multiple roles have opinions about the *same* option.
 
-Consider content moderation strictness. Legal requires a minimum floor — nothing below `'standard'` for regulated clients. Product prefers a lighter experience for engaged users. Trust and safety wants elevated scrutiny for flagged accounts. Each role manages their own flag, but all three flags feed into one decision.
+Suppose you run an AI document-processing service. Enterprise customers can submit contracts, medical records, financial statements. Your verification friction — how much the system double-checks its extractions before returning results — is a real trade-off. More verification catches more errors but costs more time, more compute, and more money per document.
 
-`valueArbitrate` takes these competing signals and produces a single answer:
+Three teams manage their own flag for this:
+
+- **Compliance** requires that HIPAA-regulated documents always get at least `'thorough'` verification. This isn't a preference — it's a regulatory floor. They manage a flag that returns the minimum acceptable level per compliance regime.
+- **Product** wants fast turnaround for trial users running their first batch. They manage a flag that reflects the current product strategy: lighter verification for onboarding, heavier for retained customers processing high-value documents.
+- **SRE** watches provider health. When the primary extraction model is degraded, they bump verification up to catch the increased error rate. They manage a flag tied to their monitoring stack.
+
+Each team manages their flag independently. But all three feed into one decision: how much verification does *this* document get?
 
 ```javascript
 import { valueArbitrate } from '@far-world-labs/verblets';
@@ -236,44 +242,44 @@ import { OpenFeature } from '@openfeature/server-sdk';
 
 const flags = OpenFeature.getClient();
 
-const level = await valueArbitrate(
+const verification = await valueArbitrate(
   [
     {
-      name: 'legal-floor',
-      value: (ctx) => flags.getStringValue('legal-strictness-floor', 'standard', ctx),
+      name: 'compliance-floor',
+      value: (ctx) => flags.getStringValue('compliance-verification-floor', 'standard', ctx),
       strictness: 'must',
     },
     {
-      name: 'product-preference',
-      value: (ctx) => flags.getStringValue('product-strictness-pref', 'minimal', ctx),
+      name: 'product-strategy',
+      value: (ctx) => flags.getStringValue('product-verification-pref', 'light', ctx),
       strictness: 'may',
-      weight: 0.3,
-      prompt: 'lighter touch for engaged users who rarely trigger violations',
+      weight: 0.4,
+      prompt: 'trial users processing their first batch — minimize friction to show value quickly',
     },
     {
-      name: 'trust-safety',
-      value: (ctx) => flags.getStringValue('trust-safety-level', 'standard', ctx),
+      name: 'provider-health',
+      value: (ctx) => flags.getStringValue('sre-verification-level', 'standard', ctx),
       strictness: 'may',
-      weight: 0.6,
-      prompt: 'this account segment has elevated risk indicators',
+      weight: 0.7,
+      prompt: 'primary extraction model is returning elevated error rates — compensate with more verification',
     },
   ],
-  { targetingKey: tenantId, plan: 'enterprise', riskScore: 0.7 },
-  ['minimal', 'standard', 'strict', 'maximum']
+  { targetingKey: tenantId, compliance: 'hipaa', plan: 'trial', providerStatus: 'degraded' },
+  ['light', 'standard', 'thorough', 'maximum']
 );
 ```
 
-Each signal has a `value` function that calls its own flag. The second argument is context shared across all signals. The third argument is the set of possible values, ordered from least restrictive to most restrictive.
+The values array is ordered from least to most restrictive. Each signal's `value` function calls its own flag — the caller owns how the value is sourced. Context is shared across all signals so each flag service can target on the same attributes.
 
 There are two kinds of signals:
 
-A **must** signal is a hard constraint. Legal's floor of `'standard'` means nothing below `'standard'` is acceptable, regardless of what anyone else recommends. If multiple must-signals exist, the most restrictive one wins. This resolution is purely deterministic — no AI involved.
+A **must** signal is a hard constraint. Compliance's floor of `'thorough'` for HIPAA documents eliminates `'light'` and `'standard'` from consideration, regardless of what anyone else recommends. If multiple must-signals exist, the most restrictive one wins. This is purely deterministic — no AI involved.
 
-A **may** signal is a preference. Product wants `'minimal'`, trust-and-safety wants `'strict'`. They carry different weights and explanations. When the must-floor has been enforced and multiple may-signals still disagree about which remaining option to pick, an LLM reads the signal names, weights, and explanations to mediate.
+A **may** signal is a preference. Product wants `'light'` (but that's below the compliance floor, so it's out). SRE wants `'thorough'`. If multiple may-signals disagree about which remaining option to pick, an LLM reads their names, weights, and explanations to mediate.
 
-Many situations resolve without an AI call at all: when the must-floor leaves only one option, when all may-signals agree, or when no may-signals fall within the allowed range. AI mediation happens only when there's a genuine judgment call — competing preferences that all have legitimate standing.
+Most situations resolve without an AI call: the compliance floor leaves only one option, the may-signals agree, or no may-signals have opinions in the remaining range. AI mediation happens only when there's a genuine judgment call — competing preferences that each have legitimate standing within the constrained space.
 
-Each role still manages their own flag in the flag service. The arbitration happens at evaluation time, combining those independently managed values into a coherent decision. Legal doesn't need to know what product's preference is. Product doesn't need to know about trust-and-safety's risk indicators. They each control their piece, and the arbitration combines them.
+Compliance doesn't need to know about SRE's provider health monitoring. Product doesn't need to know about compliance regimes. SRE doesn't need to know about the onboarding strategy. Each team controls their piece. The arbitration combines them at evaluation time.
 
 ---
 
@@ -358,49 +364,60 @@ When both classifiers agree, the answer is returned without an AI call. When the
 
 With flag services, AI-powered policy functions, and `valueArbitrate` all contributing to configuration decisions, the system's behavior becomes harder to predict by reading code or flag rules alone. An option's effective value for a given request depends on which policy function ran, what the flag service returned, what operation was active, and whether anything fell back to a default. Understanding what's actually happening across your user base requires looking at the decisions themselves.
 
-The option history analyzer collects decision traces and generates targeting rules from the patterns it finds:
+Three pieces compose to close this loop: a trace collector, a targeting rule AST, and a verblet that suggests rules from traces.
+
+### Collecting traces
+
+`createTraceCollector` is a pure data structure backed by a ring buffer. Wire its `observe` method into `onProgress`, and it captures every `option:resolve` and `llm:model` event as a trace:
 
 ```javascript
-import { createOptionHistoryAnalyzer } from '@far-world-labs/verblets';
+import { createTraceCollector } from '@far-world-labs/verblets';
 
-const analyzer = createOptionHistoryAnalyzer({
-  bufferSize: 1000,
-  lookback: 200,
-});
-```
+const collector = createTraceCollector({ bufferSize: 1000 });
 
-Wire its `observe` method into `onProgress`, and it automatically captures decision traces from the telemetry event stream — every `option:resolve` and `llm:model` event becomes a trace in the ring buffer:
-
-```javascript
 const config = {
   policy,
-  onProgress: analyzer.observe,
+  onProgress: collector.observe,
 };
-
-const { value } = await getOptionDetail('strictness', config, 'low');
-// The option:resolve telemetry event was observed and traced
 ```
 
-If you have other `onProgress` consumers, compose them:
+Compose with other consumers if needed:
 
 ```javascript
 const config = {
   onProgress: (event) => {
-    analyzer.observe(event);
+    collector.observe(event);
     myMetricsConsumer(event);
   },
 };
 ```
 
-Each trace captures which option was resolved, where the value came from (policy, config, or fallback), and the operation that was active at the time. Traces accumulate across requests. When you want suggestions, ask:
+Each trace records which option was resolved, where the value came from (policy, config, or fallback), and the active operation. Write traces manually for decisions outside the option system:
 
 ```javascript
-const rules = await analyzer.analyze(
+collector.write({
+  option: 'provider',
+  operation: 'route',
+  source: 'policy',
+  value: 'fallback-provider',
+});
+```
+
+### Suggesting rules
+
+When you want suggestions, pull traces from the collector and pass them to `suggestTargetingRules`:
+
+```javascript
+import { suggestTargetingRules } from '@far-world-labs/verblets';
+
+const traces = collector.lookback(200);
+const rules = await suggestTargetingRules(
+  traces,
   'Which options are falling back to defaults most often?'
 );
 ```
 
-The analyzer sends accumulated traces to an LLM and gets back targeting rules in clause format — the same structure flag services use:
+The traces can come from anywhere — a collector, a database query, a log file. The verblet makes a single LLM call and returns targeting rule AST nodes:
 
 ```javascript
 [
@@ -410,38 +427,45 @@ The analyzer sends accumulated traces to an LLM and gets back targeting rules in
     ],
     option: 'thoroughness',
     value: 'high',
-    reasoning: 'Healthcare-domain requests consistently fell back to the default — no policy covers thoroughness for this domain',
+    reasoning: 'Healthcare-domain requests consistently fell back to the default',
   },
 ]
 ```
 
-Each rule says: when these conditions match, set this option to this value. The `clauses` array uses operators like `in`, `startsWith`, `contains`, `lessThan`, and `greaterThan`. All clauses in a rule must match for the rule to apply. This is the same shape you'd configure in a flag service — the suggestion is directly actionable.
+### Targeting rule AST
 
-A rule like the one above could become a new targeting rule in OpenFeature: when `domain` is `healthcare`, serve `'high'` for `analysis-thoroughness`. Or it could become a new policy function, or a static config value. The analyzer surfaces the pattern; a person (or an automation) decides what to do with it.
+The rule shape is system-agnostic. Each rule is a conjunction of clauses — all must match for the rule to apply. Operators: `in`, `startsWith`, `endsWith`, `contains`, `lessThan`, `greaterThan`.
 
-Traces are stored in a fixed-size circular buffer — new traces overwrite the oldest ones, so memory stays bounded. Analysis only happens when you call it. You control the cadence: on a schedule, after a batch of requests, or during an investigation.
-
-You can also write traces manually for decisions that happen outside the option system:
+The same AST projects into whatever targeting system you use. Evaluate rules directly against a context object:
 
 ```javascript
-analyzer.write({
-  option: 'provider',
-  operation: 'route',
-  source: 'policy',
-  value: 'fallback-provider',
-});
+import { evaluateTargetingRule, applyFirstTargetingRule } from '@far-world-labs/verblets';
+
+const context = { domain: 'healthcare', plan: 'enterprise' };
+
+// Single rule
+evaluateTargetingRule(rules[0], context); // true
+
+// First matching rule across a set
+applyFirstTargetingRule(rules, context);
+// → { option: 'thoroughness', value: 'high' }
 ```
 
-A callback receives rules as they're generated:
+Or project the rules into an external system — a flag service targeting rule, a policy function, a SQL WHERE clause. The AST carries the structure; you choose the projection.
+
+Constructors and validation are available for building rules programmatically:
 
 ```javascript
-const analyzer = createOptionHistoryAnalyzer({
-  onRules: (rules) => {
-    for (const r of rules) {
-      console.log(`[${r.option}] ${r.clauses.length} clauses → ${r.value}`);
-    }
-  },
-});
+import { targetingClause, targetingRule, validateTargetingRules } from '@far-world-labs/verblets';
+
+const r = targetingRule(
+  [targetingClause('domain', 'in', ['healthcare'])],
+  'thoroughness',
+  'high',
+  'Regulated domain needs deeper analysis'
+);
+
+const errors = validateTargetingRules([r]); // undefined if valid
 ```
 
 ---
@@ -464,4 +488,4 @@ These utilities form a progression. Each layer is independent — you can stop a
 
 **`getOptionDetail`** returns the value plus a record of how it was decided — which source provided it, what the policy returned, whether anything went wrong.
 
-**`createOptionHistoryAnalyzer`** collects decision traces over time and generates targeting rules from the patterns — missing coverage, surprising defaults, opportunities to add rules in your flag service or policy functions. Rules come back in clause format, directly actionable in a flag service.
+**`createTraceCollector`** + **`suggestTargetingRules`** close the feedback loop. The collector captures decision traces over time; the verblet analyzes them and suggests targeting rules as AST nodes — missing coverage, surprising defaults, opportunities to add rules. The AST projects into whatever system you use: flag services, policy functions, or static config.

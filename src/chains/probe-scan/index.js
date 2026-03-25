@@ -1,7 +1,6 @@
 import { embedChunked } from '../../lib/embed/index.js';
 import { cosineSimilarity } from '../../lib/pure/index.js';
-import { emitChainResult } from '../../lib/progress-callback/index.js';
-import { initChain, withPolicy } from '../../lib/context/option.js';
+import { nameStep, track, getOptions, withPolicy } from '../../lib/context/option.js';
 
 const name = 'probe-scan';
 
@@ -38,16 +37,13 @@ export const mapDetection = (value) => {
  * @returns {Promise<{ flagged: boolean, hits: Array<{ category: string, label: string, score: number, chunk: { text: string, start: number, end: number } }> }>}
  */
 export default async function probeScan(textOrChunks, probes, config = {}) {
-  const {
-    config: scopedConfig,
-    detection: threshold,
-    maxTokens,
-  } = await initChain(name, config, {
+  const runConfig = nameStep(name, config);
+  const span = track(name, runConfig);
+  const { detection: threshold, maxTokens } = await getOptions(runConfig, {
     detection: withPolicy(mapDetection),
     maxTokens: 256,
   });
-  config = scopedConfig;
-  const { categories } = config;
+  const { categories } = runConfig;
 
   const chunks =
     typeof textOrChunks === 'string'
@@ -73,7 +69,7 @@ export default async function probeScan(textOrChunks, probes, config = {}) {
 
   hits.sort((a, b) => b.score - a.score);
 
-  emitChainResult(config, name);
+  span.result();
 
   return { flagged: hits.length > 0, hits };
 }

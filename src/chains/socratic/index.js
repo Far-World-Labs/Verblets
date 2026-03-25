@@ -7,8 +7,8 @@ import {
   extractPromptAnalysis,
   extractResultValue,
 } from '../../lib/lifecycle-logger/index.js';
-import { emitChainResult, emitStepProgress } from '../../lib/progress-callback/index.js';
-import { initChain, withPolicy } from '../../lib/context/option.js';
+import { emitStepProgress } from '../../lib/progress-callback/index.js';
+import { nameStep, track, getOptions, withPolicy } from '../../lib/context/option.js';
 
 const name = 'socratic';
 
@@ -117,16 +117,27 @@ const defaultAnswer = async ({
 
 class SocraticMethod {
   static async create(statement, options = {}) {
-    const { config, challenge, temperature } = await initChain(name, options, {
+    const runConfig = nameStep(name, options);
+    const span = track(name, runConfig);
+    const { challenge, temperature } = await getOptions(runConfig, {
       challenge: withPolicy(mapChallenge, ['challenge', 'temperature']),
     });
-    return new SocraticMethod(statement, config, {
-      challenge,
-      temperature,
-    });
+    return new SocraticMethod(
+      statement,
+      { config: runConfig, span },
+      {
+        challenge,
+        temperature,
+      }
+    );
   }
 
   constructor(statement, options = {}, resolved = {}) {
+    // options may be { config, span } from create() or plain config (direct construction)
+    const fromCreate = options.span && options.config;
+    this.span = fromCreate ? options.span : undefined;
+    const opts = fromCreate ? options.config : options;
+
     const {
       ask = defaultAsk,
       answer = defaultAnswer,
@@ -135,17 +146,23 @@ class SocraticMethod {
       onProgress,
       abortSignal,
       now,
-    } = options;
+    } = opts;
     this.statement = statement;
     this.ask = ask;
     this.answer = answer;
     this.llm = llm;
-    this.config = options;
+    this.config = opts;
     this.history = [];
     this.challenge =
       resolved.challenge ??
-      (options.challenge !== undefined ? mapChallenge(options.challenge).challenge : undefined);
-    this.temperature = resolved.temperature ?? options.temperature ?? 0.7;
+      (opts.challenge !== undefined ? mapChallenge(opts.challenge).challenge : undefined);
+    this.temperature = resolved.temperature ?? opts.temperature ?? 0.7;
+    if (!this.span) {
+      // Direct construction path — create a span for result() emission
+      const runConfig = nameStep(name, opts);
+      this.config = runConfig;
+      this.span = track(name, runConfig);
+    }
     this.onProgress = onProgress;
     this.abortSignal = abortSignal;
     this.now = now;
@@ -245,10 +262,7 @@ class SocraticMethod {
 
     this.logger.logResult(this.history, extractResultValue(this.history, this.history));
 
-    emitChainResult(
-      { onProgress: this.onProgress, operation: this.config.operation, now: this.now },
-      name
-    );
+    this.span.result();
 
     return this.history;
   }

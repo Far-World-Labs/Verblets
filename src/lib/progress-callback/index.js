@@ -148,7 +148,7 @@ export const createBatchProgressCallback = (onProgress, batchContext) => {
 /**
  * Create batch context for progress tracking
  */
-export const createBatchContext = ({
+const createBatchContext = ({
   batchIndex,
   batchSize,
   startIndex,
@@ -200,8 +200,8 @@ export const emitPhaseProgress = (callback, step, phase, metadata = {}) => {
  *
  * @param {string} chainName - Name of the chain (e.g. 'filter', 'map')
  * @param {Array} list - Items to batch
- * @param {object} config - Config object (from initChain/nameStep)
- * @param {object} [resolved] - Resolved options from getOptions/initChain
+ * @param {object} config - Config object (from nameStep)
+ * @param {object} [resolved] - Resolved options from getOptions
  * @param {string} [resolved.progressMode] - Progress granularity mode
  * @returns {Promise<{ batches: Array, tracker: object }>}
  */
@@ -350,12 +350,12 @@ export function filterProgress(onProgress, mode = 'detailed') {
  * Chains and verblets call this instead of inlining emitProgress.
  * Metadata is spread into the event so the same object can feed logResult.
  *
- * @param {Object} config - Chain config (from initChain/nameStep)
+ * @param {Object} config - Chain config (from nameStep)
  * @param {string} step - Chain/verblet name
  * @param {Object} [metadata] - Extra fields (inputSize, outputSize, etc.)
  * @param {number} [metadata.duration] - Explicit duration override (ms)
  */
-export function emitChainResult(config, step, metadata = {}) {
+function emitChainResult(config, step, metadata = {}) {
   const { duration: explicitDuration, ...rest } = metadata;
   const duration = explicitDuration ?? (config.now ? Date.now() - config.now.getTime() : undefined);
   emitProgress({
@@ -372,13 +372,13 @@ export function emitChainResult(config, step, metadata = {}) {
 /**
  * Emit a chain:error telemetry event.
  *
- * @param {Object} config - Chain config (from initChain/nameStep)
+ * @param {Object} config - Chain config (from nameStep)
  * @param {string} step - Chain/verblet name
  * @param {Error} error - The error that occurred
  * @param {Object} [metadata] - Extra fields
  * @param {number} [metadata.duration] - Explicit duration override (ms)
  */
-export function emitChainError(config, step, error, metadata = {}) {
+function emitChainError(config, step, error, metadata = {}) {
   const { duration: explicitDuration, ...rest } = metadata;
   const duration = explicitDuration ?? (config.now ? Date.now() - config.now.getTime() : undefined);
   emitProgress({
@@ -391,6 +391,29 @@ export function emitChainError(config, step, error, metadata = {}) {
     error: { message: error.message },
     ...rest,
   });
+}
+
+/**
+ * Track the lifecycle of a named operation. Emits a chain:start event
+ * and returns a handle with result() and error() to close the span.
+ *
+ * @param {string} name - Operation name (used in telemetry events)
+ * @param {object} config - Enriched config (from nameStep) with operation, onProgress
+ * @returns {{ result: function, error: function }} Lifecycle handle
+ */
+export function track(name, config) {
+  emitProgress({
+    callback: config.onProgress,
+    kind: 'telemetry',
+    step: name,
+    event: 'chain:start',
+    operation: config.operation,
+  });
+
+  return {
+    result: (metadata = {}) => emitChainResult(config, name, metadata),
+    error: (err, metadata = {}) => emitChainError(config, name, err, metadata),
+  };
 }
 
 export default emitProgress;

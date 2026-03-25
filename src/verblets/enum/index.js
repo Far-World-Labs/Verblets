@@ -1,5 +1,5 @@
 import callLlm from '../../lib/llm/index.js';
-import { emitChainResult } from '../../lib/progress-callback/index.js';
+import { nameStep, track } from '../../lib/context/option.js';
 import { asEnum, constants } from '../../prompts/index.js';
 import { createEnumSchema } from './schema.js';
 
@@ -8,7 +8,8 @@ const { asUndefinedByDefault, contentIsQuestion, explainAndSeparate } = constant
 const name = 'enum';
 
 export default async (text, enumVal, config = {}) => {
-  const startTime = Date.now();
+  const runConfig = nameStep(name, config);
+  const span = track(name, runConfig);
 
   const enumText = `${contentIsQuestion} ${text}\n\n${explainAndSeparate}
 
@@ -19,7 +20,7 @@ The value should be your selection.`;
   const schema = createEnumSchema(enumVal);
 
   const result = await callLlm(enumText, {
-    ...config,
+    ...runConfig,
     response_format: {
       type: 'json_schema',
       json_schema: {
@@ -33,7 +34,7 @@ The value should be your selection.`;
   // With auto-unwrapping, result should be the value directly
   const interpreted = result === 'undefined' ? undefined : result;
 
-  emitChainResult(config, name, { duration: Date.now() - startTime });
+  span.result();
 
   return interpreted;
 };

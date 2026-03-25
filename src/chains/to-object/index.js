@@ -7,8 +7,7 @@ import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import stripResponse from '../../lib/strip-response/index.js';
 import { constants as promptConstants, asXML } from '../../prompts/index.js';
-import { emitChainResult, emitChainError } from '../../lib/progress-callback/index.js';
-import { initChain } from '../../lib/context/option.js';
+import { nameStep, track } from '../../lib/context/option.js';
 
 const name = 'to-object';
 
@@ -95,7 +94,8 @@ function logDebugInfo(attempt, prompt, response, error) {
  * Converts text to structured JSON object using LLM assistance
  */
 export default async function toObject(text, schema, config = {}) {
-  ({ config } = await initChain(name, { llm: 'fastGood', ...config }));
+  const runConfig = nameStep(name, { llm: 'fastGood', ...config });
+  const span = track(name, runConfig);
   let errorDetails;
 
   try {
@@ -103,7 +103,7 @@ export default async function toObject(text, schema, config = {}) {
     try {
       const directResult = parseAndValidate(text, schema);
 
-      emitChainResult(config, name);
+      span.result();
 
       return directResult;
     } catch (error) {
@@ -114,14 +114,14 @@ export default async function toObject(text, schema, config = {}) {
     // Second attempt: use LLM to fix JSON
     try {
       const prompt = buildJsonPrompt(text, schema, errorDetails);
-      const response = await retry(() => callLlm(prompt, config), {
+      const response = await retry(() => callLlm(prompt, runConfig), {
         label: 'to-object json fix',
-        config,
+        config: runConfig,
       });
 
       const result = parseAndValidate(response, schema);
 
-      emitChainResult(config, name);
+      span.result();
 
       return result;
     } catch (error) {
@@ -131,21 +131,21 @@ export default async function toObject(text, schema, config = {}) {
 
     // Third attempt: final retry with updated errors
     const prompt = buildJsonPrompt(text, schema, errorDetails);
-    const response = await retry(() => callLlm(prompt, config), {
+    const response = await retry(() => callLlm(prompt, runConfig), {
       label: 'to-object final retry',
-      config,
+      config: runConfig,
     });
 
     const result = parseAndValidate(response, schema);
     logDebugInfo(3, prompt, response, null); // Log successful attempt
 
-    emitChainResult(config, name);
+    span.result();
 
     return result;
   } catch (err) {
     logDebugInfo(3, buildJsonPrompt(text, schema, errorDetails), text, err);
 
-    emitChainError(config, name, err);
+    span.error(err);
 
     throw new Error(`Failed to convert to valid JSON after 3 attempts: ${err.message}`);
   }

@@ -5,7 +5,7 @@ Low-level utilities that support [chains](../chains/) and [verblets](../verblets
 ## Core
 
 - [llm](./llm) — LLM API wrapper with capability-based model selection, structured output, and automatic JSON parsing
-- [context](./context) — Config resolution: `getOption`, `getOptions`, `withPolicy`, `scopeOperation`, `initChain`
+- [context](./context) — Config resolution: `getOption`, `getOptions`, `withPolicy`, `nameStep`, `track`
 - [retry](./retry) — Config-aware async retry with configurable attempts and delay
 - [parallel-batch](./parallel-batch) — Parallel execution with concurrency limits
 

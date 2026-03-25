@@ -3,13 +3,13 @@ import llm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { testResultJsonSchema } from './schemas.js';
-import { initChain } from '../../lib/context/option.js';
-import { emitChainResult } from '../../lib/progress-callback/index.js';
+import { nameStep, track } from '../../lib/context/option.js';
 
 const name = 'test';
 
 export default async function test(path, instructions, config = {}) {
-  ({ config } = await initChain(name, config));
+  const runConfig = nameStep(name, config);
+  const span = track(name, runConfig);
 
   try {
     const code = await fs.readFile(path, 'utf-8');
@@ -32,19 +32,19 @@ GUIDELINES:
     const result = await retry(
       () =>
         llm(prompt, {
-          ...config,
+          ...runConfig,
           response_format: jsonSchema(testResultJsonSchema.name, testResultJsonSchema.schema),
         }),
       {
         label: 'test chain',
-        config,
+        config: runConfig,
       }
     );
 
     // With structured output, we get a validated object
     const issues = result.hasIssues ? result.issues : [];
 
-    emitChainResult(config, name);
+    span.result();
 
     return issues;
   } catch (error) {

@@ -1,7 +1,6 @@
 import score from '../score/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
-import { initChain, withPolicy } from '../../lib/context/option.js';
-import { emitChainResult } from '../../lib/progress-callback/index.js';
+import { nameStep, track, getOptions, withPolicy } from '../../lib/context/option.js';
 
 const name = 'truncate';
 
@@ -94,15 +93,12 @@ function createChunks(text, chunkSize) {
  * @returns {number} Character index where to truncate
  */
 export default async function truncate(text, instructions, config = {}) {
-  const {
-    config: scopedConfig,
-    chunkSize,
-    strictness: threshold,
-  } = await initChain(name, config, {
+  const runConfig = nameStep(name, config);
+  const span = track(name, runConfig);
+  const { chunkSize, strictness: threshold } = await getOptions(runConfig, {
     chunkSize: 1000,
     strictness: withPolicy(mapStrictness),
   });
-  config = scopedConfig;
 
   // Create chunks with tracked end positions
   const chunks = createChunks(text, chunkSize);
@@ -120,7 +116,7 @@ Each item in the list is ONE complete text block - evaluate it as a whole unit.
 Consider the removal criteria above when scoring.`;
 
   const scores = await score(textsToScore, scoringInstructions, {
-    ...config,
+    ...runConfig,
     // Don't use stopOnThreshold - we need all scores to find high ones
   });
 
@@ -143,7 +139,7 @@ Consider the removal criteria above when scoring.`;
     result = text.length;
   }
 
-  emitChainResult(config, name);
+  span.result();
 
   return result;
 }

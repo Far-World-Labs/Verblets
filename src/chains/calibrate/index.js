@@ -1,12 +1,9 @@
 import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
-import { emitChainResult } from '../../lib/progress-callback/index.js';
-import { initChain, withPolicy, nameStep } from '../../lib/context/option.js';
+import { nameStep, track, getOptions, withPolicy } from '../../lib/context/option.js';
 import { calibrateSpecificationJsonSchema } from './schemas.js';
 import calibrateResultSchema from './calibrate-result.json';
-
-const name = 'calibrate';
 
 // ===== Option Mappers =====
 
@@ -82,16 +79,13 @@ function computeScanStatistics(scans) {
  * @returns {Promise<{ corpusProfile: string, classificationCriteria: string, salienceCriteria: string, categoryNotes: string }>}
  */
 export async function calibrateSpec(scans, config = {}) {
-  const {
-    config: scopedConfig,
-    thresholdStrategy,
-    sensitivity,
-  } = await initChain('calibrate:spec', config, {
+  const runConfig = nameStep('calibrate:spec', config);
+  const span = track('calibrate:spec', runConfig);
+  const { thresholdStrategy, sensitivity } = await getOptions(runConfig, {
     thresholdStrategy: 'statistical',
     sensitivity: withPolicy(mapSensitivity),
   });
-  config = scopedConfig;
-  const { instructions } = config;
+  const { instructions } = runConfig;
 
   const statistics = computeScanStatistics(scans);
 
@@ -135,7 +129,7 @@ IMPORTANT: Each property must be a simple string value, not a nested object or a
   const response = await retry(
     () =>
       callLlm(specUserPrompt, {
-        ...config,
+        ...runConfig,
         systemPrompt: specSystemPrompt,
         response_format: jsonSchema(
           calibrateSpecificationJsonSchema.name,
@@ -144,11 +138,11 @@ IMPORTANT: Each property must be a simple string value, not a nested object or a
       }),
     {
       label: 'calibrate spec',
-      config,
+      config: runConfig,
     }
   );
 
-  emitChainResult(config, name);
+  span.result();
 
   return response;
 }

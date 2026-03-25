@@ -2,8 +2,7 @@ import conversationTurnReduce from '../conversation-turn-reduce/index.js';
 import { defaultTurnPolicy } from './turn-policies.js';
 import pLimit from 'p-limit';
 import { debug } from '../../lib/debug/index.js';
-import { emitChainResult } from '../../lib/progress-callback/index.js';
-import { initChain, nameStep } from '../../lib/context/option.js';
+import { nameStep, track, getOptions } from '../../lib/context/option.js';
 
 const name = 'conversation';
 
@@ -44,16 +43,21 @@ export default class Conversation {
       idSet.add(p.id);
     });
 
-    const { config, depth, maxParallel } = await initChain(name, options, {
+    const runConfig = nameStep(name, options);
+    const span = track(name, runConfig);
+    const { depth, maxParallel } = await getOptions(runConfig, {
       depth: 3,
       maxParallel: 3,
     });
-    return new Conversation(topic, speakers, config, { depth, maxParallel });
+    return new Conversation(topic, speakers, { config: runConfig, span }, { depth, maxParallel });
   }
 
   //TODO:DOCS_OBSERVATIONS constructor is public but callers should use static create() — consider making constructor private or documenting the resolved parameter contract
   constructor(topic, speakers, options = {}, resolved = {}) {
-    const config = nameStep(name, options);
+    // options may be { config, span } from create() or plain config (direct construction)
+    const fromCreate = options.span && options.config;
+    this.span = fromCreate ? options.span : undefined;
+    const config = fromCreate ? options.config : nameStep(name, options);
 
     const {
       rules = {},
@@ -61,9 +65,9 @@ export default class Conversation {
       bulkSpeakFn,
       llm,
       clock,
-      onProgress,
-      now,
-      operation,
+      onProgress: _onProgress,
+      now: _now,
+      operation: _operation,
       ...otherOptions
     } = config;
 
@@ -91,9 +95,10 @@ export default class Conversation {
     }
     this.llm = llm;
     this.clock = clock || (() => new Date());
-    this.onProgress = onProgress;
-    this.now = now ?? new Date();
-    this.operation = operation;
+    if (!this.span) {
+      // Direct construction path — create a span for result() emission
+      this.span = track(name, config);
+    }
     this.otherOptions = otherOptions;
     this.messages = [];
   }
@@ -171,12 +176,7 @@ export default class Conversation {
       round += 1;
     }
 
-    const telemetryConfig = {
-      onProgress: this.onProgress,
-      now: this.now,
-      operation: this.operation,
-    };
-    emitChainResult(telemetryConfig, name);
+    this.span.result();
 
     return this.messages;
   }

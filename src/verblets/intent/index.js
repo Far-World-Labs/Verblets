@@ -1,5 +1,5 @@
 import callLlm from '../../lib/llm/index.js';
-import { emitChainResult } from '../../lib/progress-callback/index.js';
+import { nameStep, track } from '../../lib/context/option.js';
 import { asXML } from '../../prompts/index.js';
 import { intent as intentSchema } from '../../json-schemas/index.js';
 
@@ -43,7 +43,8 @@ const responseFormat = {
  * @returns {Promise<Object>} Intent result with operation, parameters, and optional parameters
  */
 export default async function intent(text, operations, config = {}) {
-  const startTime = Date.now();
+  const runConfig = nameStep(name, config);
+  const span = track(name, runConfig);
 
   if (!Array.isArray(operations) || operations.length === 0) {
     throw new Error('Operations must be a non-empty array');
@@ -56,7 +57,7 @@ export default async function intent(text, operations, config = {}) {
     }
   }
 
-  const toleranceGuidance = mapTolerance(config.tolerance);
+  const toleranceGuidance = mapTolerance(runConfig.tolerance);
 
   const operationsText = operations
     .map((op) => {
@@ -82,11 +83,11 @@ Determine:
 Return the result as a structured JSON object with the operation name, extracted parameters, and any optional parameters that might be useful.${toleranceGuidance ? `\n\n${toleranceGuidance}` : ''}`;
 
   const response = await callLlm(prompt, {
-    ...config,
+    ...runConfig,
     response_format: responseFormat,
   });
 
-  emitChainResult(config, name, { duration: Date.now() - startTime });
+  span.result();
 
   return response;
 }

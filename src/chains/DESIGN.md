@@ -34,12 +34,12 @@ Each chain directory contains:
 
 ## Config System
 
-Every chain resolves options through `initChain` and passes `config` directly to `callLlm`, `retry`, and sub-chains. See [option resolution](../../docs/option-resolution.md) for the full API (`initChain`, `getOption`, `withPolicy`, mappers, override keys).
+Every chain resolves options through `nameStep` + `track` + `getOptions` and passes `runConfig` to `callLlm`, `retry`, and sub-chains. `nameStep` returns a plain config object with the composed operation path and timestamp. `track` emits a `chain:start` event and returns a lifecycle handle with `result()` and `error()` methods. See [option resolution](../../docs/option-resolution.md) for the full API (`nameStep`, `track`, `getOptions`, `getOption`, `withPolicy`, mappers, override keys).
 
 ```javascript
 import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
-import { initChain, withPolicy } from '../../lib/context/option.js';
+import { nameStep, track, getOptions, withPolicy } from '../../lib/context/option.js';
 
 export const mapEffort = (value) => {
   if (value === undefined) return { iterations: 1, extremeK: 10 };
@@ -50,15 +50,19 @@ export const mapEffort = (value) => {
   }[value] ?? { iterations: 1, extremeK: 10 };
 };
 
-export default async function myChain(items, inputConfig = {}) {
-  const { config, iterations, extremeK } = await initChain('my-chain', inputConfig, {
+export default async function myChain(items, config = {}) {
+  const runConfig = nameStep('my-chain', config);
+  const span = track('my-chain', runConfig);
+  const { iterations, extremeK } = await getOptions(runConfig, {
     effort: withPolicy(mapEffort, ['iterations', 'extremeK']),
   });
 
-  return retry(
-    () => callLlm(prompt, config),
-    { label: 'my-chain', config }
+  const result = await retry(
+    () => callLlm(prompt, runConfig),
+    { label: 'my-chain', config: runConfig }
   );
+  span.result();
+  return result;
 }
 ```
 
@@ -128,7 +132,7 @@ export const mapEffort = (value) => { /* ... */ };
 /**
  * Process items using AI-powered workflow
  * @param {Array} items - Items to process
- * @param {Object} [config] - Configuration (passed to initChain)
+ * @param {Object} [config] - Configuration (passed to nameStep)
  * @returns {Promise<Array>} Processed results
  */
 export default async function chainName(items, config = {}) {
@@ -156,5 +160,6 @@ README structure and quality standards are in [DOCUMENTATION.md](../../guideline
 
 - Destructuring config params and re-passing them individually — pass config directly (see [option resolution](../../docs/option-resolution.md))
 - Resolving retry or llm params in chains — retry and callLlm resolve them from config (see [retry](../../docs/retry.md))
+- Using `initChain` or `startChain` — replaced by `nameStep` + `track` + `getOptions` (called separately)
 - Hard-coded processing strategies without dial options
 - Missing progress feedback for long-running operations

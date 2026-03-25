@@ -2,20 +2,22 @@
 
 The option resolution system lets chains declare their tuning parameters and resolve them from consumer config, policy functions, or defaults — all in one call. This is the internal API used by chain and verblet authors. For the consumer-facing view, see [configuration.md](./configuration.md).
 
-## initChain
+## nameStep + track
 
-Most chains start with `initChain`, which combines `scopeOperation` (setting the operation name for policy targeting) with `getOptions` (batch-resolving all declared options):
+Most chains start with `nameStep`, which sets the operation name on config for policy targeting, then `track` to emit the `chain:start` event and obtain a lifecycle handle, followed by `getOptions` to batch-resolve all declared options:
 
 ```javascript
-import { initChain, withPolicy } from '../../lib/context/option.js';
+import { nameStep, track, getOptions, withPolicy } from '../../lib/context/option.js';
 
-const { config, batchSize, compression } = await initChain('document-shrink', inputConfig, {
+const runConfig = nameStep('document-shrink', inputConfig);
+const span = track('document-shrink', runConfig);
+const { batchSize, compression } = await getOptions(runConfig, {
   batchSize: 50,                              // plain fallback
   compression: withPolicy(mapCompression),    // resolved through mapper
 });
 ```
 
-`initChain` returns `{ config, ...resolvedOptions }`. The `config` object is scoped to this operation and should be passed through to `callLlm`, `retry`, and any sub-chain calls.
+`nameStep` is synchronous and returns a plain config object with the composed operation path and timestamp. `track` emits a `chain:start` telemetry event and returns a lifecycle handle with `result()` and `error()` methods. The config object from `nameStep` (conventionally named `runConfig`) is passed directly to `callLlm`, `retry`, and any sub-chain calls. `getOptions` is called separately to resolve options asynchronously.
 
 ## Resolution order
 
@@ -54,7 +56,9 @@ Every mapper follows the same shape: handle `undefined` (return default), handle
 When a single consumer dial maps to multiple internal values, use `withPolicy` with override keys. The sub-properties are flattened into the result and the parent key is excluded:
 
 ```javascript
-const { config, iterations, extremeK } = await initChain('score', inputConfig, {
+const runConfig = nameStep('score', inputConfig);
+const span = track('score', runConfig);
+const { iterations, extremeK } = await getOptions(runConfig, {
   effort: withPolicy(mapEffort, ['iterations', 'extremeK']),
 });
 
@@ -63,13 +67,13 @@ const { config, iterations, extremeK } = await initChain('score', inputConfig, {
 // Destructured as:    iterations = 2, extremeK = 15
 ```
 
-## scopeOperation
+## Operation composition
 
-`scopeOperation` enriches `config.evalContext.operation` so policy functions can target behavior by chain name. Operations compose hierarchically when chains delegate to sub-chains:
+`nameStep` composes the operation path hierarchically when chains delegate to sub-chains:
 
 ```javascript
-// Top-level: evalContext.operation = 'document-shrink'
-// Sub-chain: evalContext.operation = 'document-shrink/score'
+// Top-level: operation = 'document-shrink'
+// Sub-chain: operation = 'document-shrink/score'
 ```
 
 ## getOption (single value)
@@ -82,4 +86,4 @@ const divergence = await getOption('divergence', config, undefined);
 
 ## Source
 
-The full API — `getOption`, `getOptions`, `withPolicy`, `scopeOperation`, `initChain` — is exported from `src/lib/context/option.js`.
+The full API — `getOption`, `getOptions`, `withPolicy`, `nameStep`, `track` — is exported from `src/lib/context/option.js`.
