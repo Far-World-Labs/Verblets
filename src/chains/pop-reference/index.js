@@ -19,6 +19,7 @@ const popReferenceResponseFormat = jsonSchema('pop_reference_result', popReferen
 export default async function popReference(sentence, description, config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
   const { referenceContext, referencesPerSource } = await getOptions(runConfig, {
     referenceContext: false,
     referencesPerSource: 2,
@@ -91,7 +92,7 @@ Requirements:
     throw new Error('Expected array of references in response');
   }
 
-  emitter.result();
+  emitter.complete();
 
   return references;
 }

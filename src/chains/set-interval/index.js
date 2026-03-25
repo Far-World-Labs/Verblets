@@ -72,6 +72,7 @@ export default function setInterval({
 } = {}) {
   const config = nameStep(name, { llm, ...options });
   const emitter = createProgressEmitter(name, config.onProgress, config);
+  emitter.start();
   const startTime = config.now ?? new Date();
   let timer;
   let count = 0;
@@ -131,8 +132,7 @@ Next wait:`;
         });
       }
 
-      emitter.emit({
-        kind: 'telemetry',
+      emitter.metrics({
         event: 'chain:tick',
         operation: config.operation,
         duration: Date.now() - startTime.getTime(),
@@ -148,8 +148,7 @@ Next wait:`;
     } catch (error) {
       debug(`Error in setInterval step: ${error.message}`);
 
-      emitter.emit({
-        kind: 'telemetry',
+      emitter.metrics({
         event: 'chain:error',
         operation: config.operation,
         duration: Date.now() - startTime.getTime(),

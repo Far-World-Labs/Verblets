@@ -29,6 +29,7 @@ const GLOSSARY_RESPONSE_FORMAT = jsonSchema(
 export default async function glossary(text, config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
   const { maxTerms, sortBy, sentencesPerBatch, overlap } = await getOptions(runConfig, {
     maxTerms: 10,
     sortBy: 'importance for understanding the content',
@@ -82,7 +83,7 @@ Return a "terms" object containing an array of the extracted terms.`;
 
   const result = sorted.slice(0, maxTerms);
 
-  emitter.result();
+  emitter.complete();
 
   return result;
 }

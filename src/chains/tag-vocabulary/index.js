@@ -222,6 +222,7 @@ Return an improved vocabulary that provides better coverage and clearer distinct
 export default async function tagVocabulary(tagSystemSpec, items, config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
   const { tagger, sampleSize = 50 } = runConfig;
 
   if (!tagger) {
@@ -241,7 +242,7 @@ export default async function tagVocabulary(tagSystemSpec, items, config = {}) {
   // Refine vocabulary based on usage
   const finalVocab = await refineVocabulary(initialVocab, taggedItems, tagSystemSpec, runConfig);
 
-  emitter.result();
+  emitter.complete();
 
   return finalVocab;
 }

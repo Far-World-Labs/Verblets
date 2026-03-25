@@ -69,6 +69,7 @@ One question per string.`;
 const generateQuestions = async function* generateQuestionsGenerator(text, config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
   const { exploration: searchBreadth } = await getOptions(runConfig, {
     exploration: withPolicy(mapExploration),
   });
@@ -144,7 +145,7 @@ const generateQuestions = async function* generateQuestionsGenerator(text, confi
     }
   }
 
-  emitter.result();
+  emitter.complete();
 };
 
 export default async (text, config = {}) => {

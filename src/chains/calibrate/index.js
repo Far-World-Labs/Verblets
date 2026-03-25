@@ -82,6 +82,7 @@ function computeScanStatistics(scans) {
 export async function calibrateSpec(scans, config = {}) {
   const runConfig = nameStep('calibrate:spec', config);
   const specEmitter = createProgressEmitter('calibrate:spec', runConfig.onProgress, runConfig);
+  specEmitter.start();
   const { thresholdStrategy, sensitivity } = await getOptions(runConfig, {
     thresholdStrategy: 'statistical',
     sensitivity: withPolicy(mapSensitivity),
@@ -143,7 +144,7 @@ IMPORTANT: Each property must be a simple string value, not a nested object or a
     }
   );
 
-  specEmitter.result();
+  specEmitter.complete();
 
   return response;
 }

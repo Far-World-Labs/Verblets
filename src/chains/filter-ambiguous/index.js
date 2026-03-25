@@ -8,12 +8,13 @@ const name = 'filter-ambiguous';
 export default async function filterAmbiguous(text, config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
   const { topN } = await getOptions(runConfig, {
     topN: 10,
   });
 
   const complete = (result) => {
-    emitter.result();
+    emitter.complete();
     return result;
   };
 

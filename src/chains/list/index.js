@@ -136,6 +136,7 @@ export const generateList = async function* generateListGenerator(text, config =
 export default async function list(prompt, config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
   const { schema } = runConfig;
   const fullPrompt = prompt;
   const response = await retry(
@@ -167,10 +168,10 @@ export default async function list(prompt, config = {}) {
         transformedItems.push(item);
       }
     }
-    emitter.result();
+    emitter.complete();
     return transformedItems;
   }
 
-  emitter.result();
+  emitter.complete();
   return items;
 }

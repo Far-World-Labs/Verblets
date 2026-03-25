@@ -2,7 +2,7 @@ import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import score from '../score/index.js';
 import disambiguateMeaningsSchema from './disambiguate-meanings-result.json';
-import createProgressEmitter from '../../lib/progress/index.js';
+import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
 import { nameStep } from '../../lib/context/option.js';
 
 const name = 'disambiguate';
@@ -39,6 +39,7 @@ export const getMeanings = async (term, config = {}) => {
 export default async function disambiguate({ term, context, ...config } = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
 
   emitter.emit({ event: 'step', stepName: 'extracting-meanings', term });
 
@@ -56,13 +57,7 @@ export default async function disambiguate({ term, context, ...config } = {}) {
     `how well this meaning of "${term}" matches the context: ${context}`,
     {
       ...runConfig,
-      onProgress:
-        runConfig.onProgress &&
-        ((e) =>
-          runConfig.onProgress({
-            ...e,
-            phase: e.phase ? `score:relevance/${e.phase}` : 'score:relevance',
-          })),
+      onProgress: scopePhase(runConfig.onProgress, 'score:relevance'),
     }
   );
 
@@ -76,7 +71,7 @@ export default async function disambiguate({ term, context, ...config } = {}) {
     }
   }
 
-  emitter.result();
+  emitter.complete();
 
   return { meaning: meanings[bestIndex], meanings };
 }

@@ -11,6 +11,7 @@ const name = 'test';
 export default async function test(path, instructions, config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
 
   try {
     const code = await fs.readFile(path, 'utf-8');
@@ -45,7 +46,7 @@ GUIDELINES:
     // With structured output, we get a validated object
     const issues = result.hasIssues ? result.issues : [];
 
-    emitter.result();
+    emitter.complete();
 
     return issues;
   } catch (error) {

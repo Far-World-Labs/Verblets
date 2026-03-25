@@ -146,8 +146,8 @@ async function scoreOnce(list, prompt, batchConfig, config) {
     if (b.skip) results[b.startIndex] = undefined;
   });
 
-  let processedItems = 0;
   const emitter = createProgressEmitter('score', onProgress);
+  const batchDone = emitter.batch(list.length);
   emitter.emit({
     event: 'start',
     totalItems: list.length,
@@ -177,13 +177,7 @@ async function scoreOnce(list, prompt, batchConfig, config) {
         });
     }
 
-    processedItems += first.items.length;
-    emitter.emit({
-      event: 'batch:complete',
-      totalItems: list.length,
-      processedItems,
-      batchSize: first.items.length,
-    });
+    batchDone(first.items.length);
   }
 
   // Remaining batches run in parallel with anchors
@@ -210,13 +204,7 @@ async function scoreOnce(list, prompt, batchConfig, config) {
             });
         }
 
-        processedItems += items.length;
-        emitter.emit({
-          event: 'batch:complete',
-          totalItems: list.length,
-          processedItems,
-          batchSize: items.length,
-        });
+        batchDone(items.length);
       },
       { maxParallel, errorPosture, label: 'score batches' }
     );
@@ -243,6 +231,7 @@ export async function mapScore(list, instructions, config = {}) {
   const { spec: providedSpec, now } = config;
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
   const { maxParallel, maxAttempts, temperature, errorPosture, anchoring } = await getOptions(
     runConfig,
     {
@@ -301,7 +290,7 @@ export async function mapScore(list, instructions, config = {}) {
     });
   }
 
-  emitter.result();
+  emitter.complete();
 
   return results;
 }

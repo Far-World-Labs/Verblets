@@ -74,11 +74,12 @@ export default async function valueArbitrate(signals, ctx, values, config = {}) 
 
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
   const { instruction } = await getOptions(runConfig, {
     instruction: undefined,
   });
 
-  const emitComplete = () => emitter.result();
+  const emitComplete = () => emitter.complete();
 
   // Step 1: Evaluate all signals concurrently
   const evaluated = await Promise.all(

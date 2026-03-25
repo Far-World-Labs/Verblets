@@ -40,6 +40,7 @@ export const mapDetection = (value) => {
 export default async function probeScan(textOrChunks, probes, config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
   const { detection: threshold, maxTokens } = await getOptions(runConfig, {
     detection: withPolicy(mapDetection),
     maxTokens: 256,
@@ -70,7 +71,7 @@ export default async function probeScan(textOrChunks, probes, config = {}) {
 
   hits.sort((a, b) => b.score - a.score);
 
-  emitter.result();
+  emitter.complete();
 
   return { flagged: hits.length > 0, hits };
 }

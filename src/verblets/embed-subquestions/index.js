@@ -42,6 +42,7 @@ export const mapGranularity = (value) => {
 export default async function embedSubquestions(query, config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
   const granularityGuidance = mapGranularity(runConfig.granularity);
 
   const result = await callLlm(decomposeQueryPrompt(query, { granularityGuidance }), {
@@ -54,6 +55,6 @@ export default async function embedSubquestions(query, config = {}) {
       },
     },
   });
-  emitter.result();
+  emitter.complete();
   return result;
 }

@@ -34,13 +34,13 @@ Each chain directory contains:
 
 ## Config System
 
-Every chain resolves options through `nameStep` + `track` + `getOptions` and passes `runConfig` to `callLlm`, `retry`, and sub-chains. `nameStep` returns a plain config object with the composed operation path and timestamp. `track` emits a `chain:start` event and returns a lifecycle handle with `result()` and `error()` methods. See [option resolution](../../docs/option-resolution.md) for the full API (`nameStep`, `track`, `getOptions`, `getOption`, `withPolicy`, mappers, override keys).
+Every chain resolves options through `nameStep` + `createProgressEmitter` + `getOptions` and passes `runConfig` to `callLlm`, `retry`, and sub-chains. `nameStep` returns a plain config object with the composed operation path and timestamp. `createProgressEmitter` returns a lifecycle handle with `start()`, `emit()`, `metrics()`, `complete()`, `error()`, and `batch()` methods. Call `start()` to emit `chain:start`. See [option resolution](../../docs/option-resolution.md) for the full API (`nameStep`, `createProgressEmitter`, `getOptions`, `getOption`, `withPolicy`, mappers, override keys).
 
 ```javascript
 import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
-import { track } from '../../lib/progress/index.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 
 export const mapEffort = (value) => {
   if (value === undefined) return { iterations: 1, extremeK: 10 };
@@ -53,7 +53,8 @@ export const mapEffort = (value) => {
 
 export default async function myChain(items, config = {}) {
   const runConfig = nameStep('my-chain', config);
-  const span = track('my-chain', runConfig);
+  const emitter = createProgressEmitter('my-chain', runConfig.onProgress, runConfig);
+  emitter.start();
   const { iterations, extremeK } = await getOptions(runConfig, {
     effort: withPolicy(mapEffort, ['iterations', 'extremeK']),
   });
@@ -62,7 +63,7 @@ export default async function myChain(items, config = {}) {
     () => callLlm(prompt, runConfig),
     { label: 'my-chain', config: runConfig }
   );
-  span.result();
+  emitter.complete();
   return result;
 }
 ```

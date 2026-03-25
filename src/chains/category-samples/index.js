@@ -1,6 +1,6 @@
 import list from '../list/index.js';
 import retry from '../../lib/retry/index.js';
-import createProgressEmitter from '../../lib/progress/index.js';
+import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 
 const name = 'category-samples';
@@ -102,6 +102,7 @@ export default async function categorySamples(categoryName, config = {}) {
 
   const runConfig = nameStep(name, { llm: 'fastGoodCheap', ...config });
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
   const { diversity, count } = await getOptions(runConfig, {
     diversity: withPolicy(mapDiversity, ['diversity', 'count']),
   });
@@ -113,13 +114,7 @@ export default async function categorySamples(categoryName, config = {}) {
     const results = await list(prompt, {
       ...runConfig,
       shouldStop: ({ resultsAll }) => resultsAll.length >= count,
-      onProgress:
-        runConfig.onProgress &&
-        ((e) =>
-          runConfig.onProgress({
-            ...e,
-            phase: e.phase ? `list:sampling/${e.phase}` : 'list:sampling',
-          })),
+      onProgress: scopePhase(runConfig.onProgress, 'list:sampling'),
     });
 
     if (!results || results.length === 0) {
@@ -135,7 +130,7 @@ export default async function categorySamples(categoryName, config = {}) {
     config: runConfig,
   });
 
-  emitter.result();
+  emitter.complete();
 
   return result;
 }

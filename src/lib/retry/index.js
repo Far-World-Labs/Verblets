@@ -55,8 +55,7 @@ async function retry(fn, opts = {}) {
       throw abortError(abortSignal);
     }
 
-    emitter.emit({
-      kind: 'telemetry',
+    emitter.metrics({
       event: 'retry:attempt',
       operation,
       attemptNumber: attempt + 1,
@@ -105,8 +104,7 @@ async function retry(fn, opts = {}) {
           emitter.emit(progressData);
         }
 
-        emitter.emit({
-          kind: 'telemetry',
+        emitter.metrics({
           event: 'retry:error',
           operation,
           attemptNumber: attempt + 1,
@@ -132,8 +130,7 @@ async function retry(fn, opts = {}) {
           });
         }
 
-        emitter.emit({
-          kind: 'telemetry',
+        emitter.metrics({
           event: 'retry:exhaust',
           operation,
           attemptNumber: attempt,

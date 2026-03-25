@@ -37,6 +37,7 @@ export async function llmAssert({
 }) {
   const runConfig = nameStep(name, { onProgress, operation });
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
 
   if (equals === undefined && !constraint)
     throw new TypeError('Provide either "equals" or "constraint".');
@@ -50,7 +51,7 @@ export async function llmAssert({
   const text = typeof answer === 'string' ? answer : answer.content;
   const passed = /^true$/i.test(text.trim());
 
-  emitter.result();
+  emitter.complete();
 
   if (!passed && throws) {
     let msg;

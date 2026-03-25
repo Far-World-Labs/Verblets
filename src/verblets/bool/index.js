@@ -19,6 +19,7 @@ export default async (text, config = {}) => {
   const { logger } = config;
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
 
   // Create lifecycle logger with bool namespace
   const lifecycleLogger = createLifecycleLogger(logger, 'bool');
@@ -58,7 +59,7 @@ The value should be "true", "false", or "undefined".`;
   // Log final result with raw and interpreted values
   lifecycleLogger.logResult(interpreted, extractResultValue(response, interpreted));
 
-  emitter.result();
+  emitter.complete();
 
   return interpreted;
 };

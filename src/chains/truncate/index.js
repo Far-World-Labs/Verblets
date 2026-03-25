@@ -96,6 +96,7 @@ function createChunks(text, chunkSize) {
 export default async function truncate(text, instructions, config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
   const { chunkSize, strictness: threshold } = await getOptions(runConfig, {
     chunkSize: 1000,
     strictness: withPolicy(mapStrictness),
@@ -140,7 +141,7 @@ Consider the removal criteria above when scoring.`;
     result = text.length;
   }
 
-  emitter.result();
+  emitter.complete();
 
   return result;
 }

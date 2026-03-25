@@ -1,7 +1,7 @@
 import collectTerms from '../collect-terms/index.js';
 import score from '../score/index.js';
 import map from '../map/index.js';
-import createProgressEmitter from '../../lib/progress/index.js';
+import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
 import TextSimilarity from '../../lib/text-similarity/index.js';
 import { debug } from '../../lib/debug/index.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
@@ -326,13 +326,7 @@ async function scoreEdgeChunks(candidates, query, maxChunks, options = {}) {
     {
       ...options,
       batchSize: LLM_CHUNK_BATCH_SIZE,
-      onProgress:
-        options.onProgress &&
-        ((e) =>
-          options.onProgress({
-            ...e,
-            phase: e.phase ? `score:edge-ranking/${e.phase}` : 'score:edge-ranking',
-          })),
+      onProgress: scopePhase(options.onProgress, 'score:edge-ranking'),
     }
   );
 
@@ -391,13 +385,7 @@ async function compressHighValueChunks(
     {
       ...options,
       batchSize: 10,
-      onProgress:
-        options.onProgress &&
-        ((e) =>
-          options.onProgress({
-            ...e,
-            phase: e.phase ? `map:compression/${e.phase}` : 'map:compression',
-          })),
+      onProgress: scopePhase(options.onProgress, 'map:compression'),
     }
   );
 
@@ -559,6 +547,7 @@ function selectGapFillers(allChunks, selectedChunks, gapFillerBudget) {
 export default async function documentShrink(document, query, config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
   const {
     targetSize,
     tokenBudget: tokenBudgetInit,
@@ -604,7 +593,7 @@ export default async function documentShrink(document, query, config = {}) {
       },
     };
 
-    emitter.result();
+    emitter.complete();
 
     return emptyResult;
   }
@@ -746,7 +735,7 @@ export default async function documentShrink(document, query, config = {}) {
     },
   };
 
-  emitter.result();
+  emitter.complete();
 
   return finalResult;
 }

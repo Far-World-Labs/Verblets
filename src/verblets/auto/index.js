@@ -8,6 +8,7 @@ const name = 'auto';
 export default async (text, config = {}) => {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
 
   // Use provided schemas or fall back to default schemas
   const schemasToUse = runConfig.schemas || defaultSchemas;
@@ -56,7 +57,7 @@ export default async (text, config = {}) => {
     };
   }
 
-  emitter.result();
+  emitter.complete();
 
   return result;
 };

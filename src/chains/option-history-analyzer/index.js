@@ -201,6 +201,7 @@ export default function createOptionHistoryAnalyzer(config = {}) {
 
     const runConfig = nameStep(name, { ...chainConfig, ...analyzeConfig });
     const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+    emitter.start();
 
     const prompt = buildAnalysisPrompt(traces, instruction);
 
@@ -222,7 +223,7 @@ export default function createOptionHistoryAnalyzer(config = {}) {
       onRules(rules);
     }
 
-    emitter.result();
+    emitter.complete();
 
     return rules;
   };

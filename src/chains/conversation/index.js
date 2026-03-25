@@ -46,6 +46,7 @@ export default class Conversation {
 
     const runConfig = nameStep(name, options);
     const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+    emitter.start();
     const { depth, maxParallel } = await getOptions(runConfig, {
       depth: 3,
       maxParallel: 3,
@@ -182,7 +183,7 @@ export default class Conversation {
       round += 1;
     }
 
-    this.emitter.result();
+    this.emitter.complete();
 
     return this.messages;
   }

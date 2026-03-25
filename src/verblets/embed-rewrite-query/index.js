@@ -16,6 +16,7 @@ const name = 'embed-rewrite-query';
 export default async function embedRewriteQuery(query, config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
   const result = await callLlm(rewriteQueryPrompt(query), {
     ...runConfig,
     response_format: {
@@ -26,6 +27,6 @@ export default async function embedRewriteQuery(query, config = {}) {
       },
     },
   });
-  emitter.result();
+  emitter.complete();
   return result;
 }

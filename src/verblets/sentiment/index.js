@@ -15,6 +15,7 @@ const name = 'sentiment';
 export default async function sentiment(text, config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
 
   const prompt = `Identify the overall sentiment of the following text as "positive", "negative", or "neutral".\n\nText: ${text}\n\nThe value should be the sentiment classification.`;
 
@@ -29,7 +30,7 @@ export default async function sentiment(text, config = {}) {
     },
   });
 
-  emitter.result();
+  emitter.complete();
 
   return response;
 }

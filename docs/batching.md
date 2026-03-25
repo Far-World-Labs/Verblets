@@ -10,32 +10,36 @@ When `batchSize` is set on config, it overrides the auto-calculation. Otherwise 
 
 ## The standard chain pattern
 
-Most batch-processing chains use `prepareBatches` (which calls `createBatches` and sets up a `trackBatch`) followed by `parallelBatch`:
+Most batch-processing chains use `createBatches` for splitting and `createProgressEmitter` for lifecycle tracking, followed by `parallel`:
 
 ```javascript
-import { prepareBatches } from '../../lib/progress/index.js';
+import createProgressEmitter from '../../lib/progress/index.js';
+import createBatches from '../../lib/text-batch/index.js';
 import parallel from '../../lib/parallel-batch/index.js';
 
 export default async function myChain(items, inputConfig = {}) {
   const runConfig = nameStep('my-chain', inputConfig);
-  const span = track('my-chain', runConfig);
+  const emitter = createProgressEmitter('my-chain', runConfig.onProgress, runConfig);
+  emitter.start();
 
-  const { batches, tracker } = await prepareBatches('my-chain', items, runConfig);
+  const batches = await createBatches(items, runConfig);
+  const activeBatches = batches.filter(b => !b.skip);
+  const batchDone = emitter.batch(items.length);
 
   const results = await parallel(
-    batches.filter(b => !b.skip),
+    activeBatches,
     async (batch) => {
       const result = await retry(
         () => callLlm(buildPrompt(batch.items), runConfig),
         { label: 'my-chain:batch', config: runConfig }
       );
-      tracker.batchDone(batch.startIndex, batch.items.length);
+      batchDone(batch.items.length);
       return result;
     },
     { maxParallel: runConfig.maxParallel ?? 3 }
   );
 
-  tracker.complete();
+  emitter.complete({ totalItems: items.length });
   return results.flat();
 }
 ```

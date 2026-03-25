@@ -1,7 +1,7 @@
 import listBatch, { ListStyle, determineStyle } from '../../verblets/list-batch/index.js';
 import reduce from '../reduce/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
-import createProgressEmitter from '../../lib/progress/index.js';
+import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
 import { parallel, retry, createBatches } from '../../lib/index.js';
 import { debug } from '../../lib/debug/index.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
@@ -118,6 +118,7 @@ const applyTopNFilter = (groups, topN) => {
 export default async function group(list, instructions, config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
   const {
     guidance: granularityGuidance,
     maxParallel,
@@ -145,13 +146,7 @@ export default async function group(list, instructions, config = {}) {
     ...runConfig,
     initial: '',
     now,
-    onProgress:
-      runConfig.onProgress &&
-      ((e) =>
-        runConfig.onProgress({
-          ...e,
-          phase: e.phase ? `reduce:category-discovery/${e.phase}` : 'reduce:category-discovery',
-        })),
+    onProgress: scopePhase(runConfig.onProgress, 'reduce:category-discovery'),
   });
 
   const categories = parseCategories(categoriesString);
@@ -242,7 +237,7 @@ export default async function group(list, instructions, config = {}) {
 
   const result = topN ? applyTopNFilter(groups, topN) : groups;
 
-  emitter.result();
+  emitter.complete();
 
   return result;
 }

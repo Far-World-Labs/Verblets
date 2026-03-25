@@ -28,6 +28,7 @@ const responseFormat = {
 export default async function numberWithUnits(text, config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
 
   const numberText = `${contentIsQuestion} ${text} \n\n${explainAndSeparate} ${explainAndSeparateJSON}
 
@@ -43,7 +44,7 @@ ${asNumberWithUnits}`;
   // With structured output, response is already parsed
   const result = toNumberWithUnits(JSON.stringify(response));
 
-  emitter.result();
+  emitter.complete();
 
   return result;
 }

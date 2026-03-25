@@ -10,6 +10,7 @@ const name = 'people';
 export default async function peopleList(description, count = 3, config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
 
   const instructions = asXML(description, { tag: 'description' });
   const prompt = `Create a list of ${count} people based on the following description:
@@ -28,7 +29,7 @@ ${instructions}`;
     }
   );
 
-  emitter.result();
+  emitter.complete();
 
   return response.people;
 }

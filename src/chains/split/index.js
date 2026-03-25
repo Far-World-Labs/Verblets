@@ -62,6 +62,7 @@ IMPORTANT RULES:
 export default async function split(text, instructions, config = {}) {
   const runConfig = nameStep(name, { llm: 'fastGoodCheapCoding', ...config });
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
   const {
     chunkLen,
     targetSplitsPerChunk,
@@ -136,7 +137,7 @@ export default async function split(text, instructions, config = {}) {
   const results = await Promise.all(promises);
   const result = results.join('');
 
-  emitter.result();
+  emitter.complete();
 
   return result;
 }

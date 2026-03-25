@@ -49,6 +49,7 @@ const filterResponseFormat = jsonSchema(
 const filter = async function filter(list, instructions, config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
   const { guidance, errorPosture } = await getOptions(runConfig, {
     strictness: withPolicy(mapStrictness, ['guidance', 'errorPosture']),
   });
@@ -63,7 +64,7 @@ const filter = async function filter(list, instructions, config = {}) {
 
   const results = [];
   const batches = await createBatches(list, runConfig);
-  let processedItems = 0;
+  const batchDone = emitter.batch(list.length);
 
   const activeBatchCount = batches.filter((b) => !b.skip).length;
   emitter.emit({ event: 'start', totalItems: list.length, totalBatches: activeBatchCount });
@@ -146,13 +147,7 @@ Process exactly ${count} items from the XML list below and return ${count} yes/n
       }
     });
 
-    processedItems += items.length;
-    emitter.emit({
-      event: 'batch:complete',
-      totalItems: list.length,
-      processedItems,
-      batchSize: items.length,
-    });
+    batchDone(items.length);
 
     lifecycleLogger.logEvent('batch-done', {
       batchIndex,
@@ -161,11 +156,11 @@ Process exactly ${count} items from the XML list below and return ${count} yes/n
     });
   }
 
-  emitter.emit({ event: 'complete', totalItems: list.length, processedItems });
+  emitter.emit({ event: 'complete', totalItems: list.length, processedItems: list.length });
 
   const resultMeta = { inputCount: list.length, outputCount: results.length };
   lifecycleLogger.logResult(results, resultMeta);
-  emitter.result(resultMeta);
+  emitter.complete(resultMeta);
 
   return results;
 };

@@ -73,6 +73,7 @@ ${asXML(numberedLines, { tag: 'window' })}`;
 export async function extractBlocks(text, instructions, config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
   const { maxParallel, windowSize, overlapSize } = await getOptions(runConfig, {
     precision: withPolicy(mapPrecision, ['windowSize', 'overlapSize']),
     maxParallel: 3,
@@ -85,7 +86,7 @@ export async function extractBlocks(text, instructions, config = {}) {
   if (!text || text.trim() === '') {
     const emptyMeta = { blocksExtracted: 0 };
     lifecycleLogger.logResult([], emptyMeta);
-    emitter.result(emptyMeta);
+    emitter.complete(emptyMeta);
 
     return [];
   }
@@ -115,7 +116,7 @@ export async function extractBlocks(text, instructions, config = {}) {
     windowStarts.push(start);
   }
 
-  let processedItems = 0;
+  const batchDone = emitter.batch(lines.length);
   emitter.emit({
     event: 'start',
     totalItems: lines.length,
@@ -146,13 +147,7 @@ export async function extractBlocks(text, instructions, config = {}) {
         }
       );
 
-      processedItems += windowLines.length;
-      emitter.emit({
-        event: 'batch:complete',
-        totalItems: lines.length,
-        processedItems,
-        batchSize: windowLines.length,
-      });
+      batchDone(windowLines.length);
 
       // Results should already have global line numbers
       return result.blocks || [];
@@ -189,7 +184,7 @@ export async function extractBlocks(text, instructions, config = {}) {
   emitter.emit({
     event: 'complete',
     totalItems: lines.length,
-    processedItems,
+    processedItems: lines.length,
     blocksExtracted: blocks.length,
   });
 
@@ -203,7 +198,7 @@ export async function extractBlocks(text, instructions, config = {}) {
 
   const resultMeta = { blocksExtracted: blocks.length };
   lifecycleLogger.logResult(blocks, resultMeta);
-  emitter.result(resultMeta);
+  emitter.complete(resultMeta);
 
   return blocks;
 }

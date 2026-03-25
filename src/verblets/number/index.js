@@ -17,6 +17,7 @@ const name = 'number';
 export default async (text, config = {}) => {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
 
   const numberText = `${contentIsQuestion} ${text}
 
@@ -39,7 +40,7 @@ The value should be the number or "undefined".`;
 
   const interpreted = result === 'undefined' ? undefined : result;
 
-  emitter.result();
+  emitter.complete();
 
   return interpreted;
 };

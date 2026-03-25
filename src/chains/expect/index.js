@@ -168,6 +168,7 @@ Keep your response concise but actionable. Focus on practical solutions.`;
 export async function expect(actual, expected, constraint, config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
   const { mode, introspection } = await getOptions(runConfig, {
     mode: env.VERBLETS_LLM_EXPECT_MODE || 'none',
     advice: withPolicy(mapAdvice, ['introspection']),
@@ -241,7 +242,7 @@ export async function expect(actual, expected, constraint, config = {}) {
   }
 
   // Emit before handleAssertionResult — it intentionally throws in 'error' mode
-  emitter.result();
+  emitter.complete();
 
   // Handle result based on mode - this may throw an error in 'error' mode
   const result = handleAssertionResult(

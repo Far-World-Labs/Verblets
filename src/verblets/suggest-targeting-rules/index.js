@@ -53,6 +53,7 @@ Based on these patterns, suggest concrete targeting rules.${instruction ? `\n\nA
 export default async function suggestTargetingRules(traces, instruction, config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
 
   if (!traces || traces.length === 0) return [];
 
@@ -68,7 +69,7 @@ export default async function suggestTargetingRules(traces, instruction, config 
 
   const rules = result?.rules ?? result ?? [];
 
-  emitter.result();
+  emitter.complete();
 
   return rules;
 }

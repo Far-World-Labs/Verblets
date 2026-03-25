@@ -41,6 +41,7 @@ const buildPrompt = function (list, count) {
 export default async function listExpand(list, count = list.length * 2, config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
   const output = await callLlm(buildPrompt(list, count), {
     ...runConfig,
     response_format: responseFormat,
@@ -50,10 +51,10 @@ export default async function listExpand(list, count = list.length * 2, config =
 
   if (!Array.isArray(items)) {
     debug(`Expected items array, got: ${typeof items}`);
-    emitter.result();
+    emitter.complete();
     return [];
   }
 
-  emitter.result();
+  emitter.complete();
   return items;
 }

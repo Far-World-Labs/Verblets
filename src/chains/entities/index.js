@@ -120,6 +120,7 @@ Each entity should include:
 export async function extractEntities(text, instructions, config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
 
   emitter.emit({ event: 'step', stepName: 'generating-specification', instructions });
 
@@ -129,7 +130,7 @@ export async function extractEntities(text, instructions, config = {}) {
 
   const result = await applyEntities(text, spec, runConfig);
 
-  emitter.result();
+  emitter.complete();
 
   return result;
 }

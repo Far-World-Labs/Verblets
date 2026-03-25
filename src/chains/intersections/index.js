@@ -100,6 +100,7 @@ export default async function intersections(items, config = {}) {
 
   const runConfig = nameStep(name, { llm: 'fastGoodCheap', ...config });
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
   const { useSchemaValidation } = await getOptions(runConfig, {
     useSchemaValidation: false,
   });
@@ -131,11 +132,11 @@ export default async function intersections(items, config = {}) {
   if (useSchemaValidation && Object.keys(results).length > 0) {
     const validated = await validateIntersectionResults(results, runConfig);
     const validatedResults = validated.intersections || results;
-    emitter.result();
+    emitter.complete();
     return validatedResults;
   }
 
-  emitter.result();
+  emitter.complete();
 
   return results;
 }

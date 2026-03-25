@@ -17,6 +17,7 @@ const getSchema = (type) => {
 export default async (text, type, config = {}) => {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
   const schema = type ? getSchema(type) : undefined;
 
   const response_format = schema
@@ -33,6 +34,6 @@ export default async (text, type, config = {}) => {
     ...runConfig,
     response_format,
   });
-  emitter.result();
+  emitter.complete();
   return response;
 };

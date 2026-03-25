@@ -82,6 +82,7 @@ const visit = async ({
 export default async (moduleOptions) => {
   const runConfig = nameStep(name, moduleOptions);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
   const state = await search({
     ...runConfig,
   });
@@ -102,7 +103,7 @@ export default async (moduleOptions) => {
       }),
   });
 
-  emitter.result();
+  emitter.complete();
 
   return result;
 };

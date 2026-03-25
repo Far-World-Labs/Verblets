@@ -1,7 +1,7 @@
 import reduce from '../reduce/index.js';
 import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
-import createProgressEmitter from '../../lib/progress/index.js';
+import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { debug } from '../../lib/debug/index.js';
 import thresholdResultSchema from './threshold-result.json';
@@ -60,6 +60,7 @@ export default async function detectThreshold(options = {}) {
   const { data, targetProperty, goal, onProgress } = options;
   const runConfig = nameStep(name, { llm: { good: true }, ...options });
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
   const { batchSize } = await getOptions(runConfig, {
     batchSize: 50,
   });
@@ -163,13 +164,7 @@ Return the updated accumulator as valid JSON.`;
     initial: JSON.stringify(initialAccumulator),
     batchSize,
     responseFormat: jsonSchema('analysis_accumulator', accumulatorSchema),
-    onProgress:
-      runConfig.onProgress &&
-      ((e) =>
-        runConfig.onProgress({
-          ...e,
-          phase: e.phase ? `reduce:analysis/${e.phase}` : 'reduce:analysis',
-        })),
+    onProgress: scopePhase(runConfig.onProgress, 'reduce:analysis'),
   });
 
   const accumulated = analysisResult;
@@ -250,7 +245,7 @@ Return threshold candidates with their rationales.`;
     dataPoints: stats.count,
   };
 
-  emitter.result();
+  emitter.complete();
 
   return result;
 }

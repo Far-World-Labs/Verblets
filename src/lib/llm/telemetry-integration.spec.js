@@ -51,7 +51,7 @@ describe('Telemetry integration', () => {
 
       // Simulate a chain: nameStep scopes the operation, createProgressEmitter emits chain:start, then callLlm runs inside it
       const runConfig = nameStep('mychain', { onProgress });
-      createProgressEmitter('mychain', runConfig.onProgress, runConfig);
+      createProgressEmitter('mychain', runConfig.onProgress, runConfig).start();
       await callLlm('do something useful', runConfig);
 
       // All events should have timestamp and kind
@@ -87,11 +87,11 @@ describe('Telemetry integration', () => {
 
       // Parent chain
       const parent = nameStep('parent', { onProgress });
-      createProgressEmitter('parent', parent.onProgress, parent);
+      createProgressEmitter('parent', parent.onProgress, parent).start();
 
       // Child chain receives parent's enriched config
       const child = nameStep('child', parent);
-      createProgressEmitter('child', child.onProgress, child);
+      createProgressEmitter('child', child.onProgress, child).start();
 
       // Verify chain:start events have correct operation paths
       const chainStarts = events.filter((e) => e.event === 'chain:start');
@@ -124,7 +124,7 @@ describe('Telemetry integration', () => {
       const onProgress = (e) => events.push(e);
 
       const runConfig = nameStep('retrychain', { onProgress });
-      createProgressEmitter('retrychain', runConfig.onProgress, runConfig);
+      createProgressEmitter('retrychain', runConfig.onProgress, runConfig).start();
 
       let callCount = 0;
       const fn = async () => {
@@ -176,7 +176,7 @@ describe('Telemetry integration', () => {
       const onProgress = (e) => events.push(e);
 
       const runConfig = nameStep('failchain', { onProgress });
-      createProgressEmitter('failchain', runConfig.onProgress, runConfig);
+      createProgressEmitter('failchain', runConfig.onProgress, runConfig).start();
 
       const fn = async () => {
         const err = new Error('Server down');
@@ -226,7 +226,7 @@ describe('Telemetry integration', () => {
         );
 
       const runConfig = nameStep('aggregate', { onProgress });
-      createProgressEmitter('aggregate', runConfig.onProgress, runConfig);
+      createProgressEmitter('aggregate', runConfig.onProgress, runConfig).start();
 
       await callLlm('prompt one', runConfig);
       await callLlm('prompt two', runConfig);

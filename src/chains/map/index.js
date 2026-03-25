@@ -50,8 +50,8 @@ const mapOnce = async function (list, instructions, config = {}) {
     });
   }
 
-  let processedItems = 0;
   const emitter = createProgressEmitter('map', onProgress);
+  const batchDone = emitter.batch(list.length);
   emitter.emit({
     event: 'start',
     totalItems: list.length,
@@ -133,13 +133,7 @@ Preserve all formatting and newlines within each <item> element.`;
           results[startIndex + j] = item;
         });
 
-        processedItems += items.length;
-        emitter.emit({
-          event: 'batch:complete',
-          totalItems: list.length,
-          processedItems,
-          batchSize: items.length,
-        });
+        batchDone(items.length);
 
         if (config.logger?.info) {
           config.logger.info(`Map batch completed`, {
@@ -174,7 +168,7 @@ Preserve all formatting and newlines within each <item> element.`;
   emitter.emit({
     event: 'complete',
     totalItems: list.length,
-    processedItems,
+    processedItems: list.length,
   });
 
   return results;
@@ -198,6 +192,7 @@ Preserve all formatting and newlines within each <item> element.`;
 const map = async function (list, instructions, config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
   const { maxAttempts, maxParallel, errorPosture } = await getOptions(runConfig, {
     maxAttempts: 3,
     maxParallel: 3,
@@ -280,7 +275,7 @@ const map = async function (list, instructions, config = {}) {
     failedItems: results.length - successCount,
   };
   lifecycleLogger.logResult(results, resultMeta);
-  emitter.result(resultMeta);
+  emitter.complete(resultMeta);
 
   return results;
 };

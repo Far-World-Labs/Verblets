@@ -22,6 +22,7 @@ The value should be the generated name.`;
 export default async function nameSimilarTo(description, exampleNames = [], config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
 
   const prompt = buildPrompt(description, exampleNames);
   const response = await callLlm(prompt, {
@@ -35,7 +36,7 @@ export default async function nameSimilarTo(description, exampleNames = [], conf
     },
   });
 
-  emitter.result();
+  emitter.complete();
 
   return response;
 }

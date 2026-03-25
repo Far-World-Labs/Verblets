@@ -87,6 +87,7 @@ const calculateCodeWindow = (
 export default async function analyzeTestError(logs, config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
   const { analysisDepth: depthConfig } = await getOptions(runConfig, {
     analysisDepth: withPolicy(mapAnalysisDepth),
   });
@@ -96,7 +97,7 @@ export default async function analyzeTestError(logs, config = {}) {
   const maxTokens = await getOption('maxTokens', runConfig, depthConfig.maxTokens);
   if (!logs || logs.length === 0) {
     debug('analyzeTestError: No logs provided');
-    emitter.result();
+    emitter.complete();
     return '';
   }
 
@@ -106,7 +107,7 @@ export default async function analyzeTestError(logs, config = {}) {
 
   if (!testStart || !testComplete) {
     debug('analyzeTestError: Missing test-start or test-complete logs');
-    emitter.result();
+    emitter.complete();
     return '';
   }
 
@@ -195,7 +196,7 @@ Discussion:
     config: runConfig,
   });
 
-  emitter.result();
+  emitter.complete();
 
   return response.trim();
 }

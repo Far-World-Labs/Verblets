@@ -97,6 +97,7 @@ const veiledVariants = async (inputConfig = {}) => {
   const { prompt } = inputConfig;
   const runConfig = nameStep(name, { llm: { sensitive: true }, ...inputConfig });
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
   const { strategies, variantCount } = await getOptions(runConfig, {
     coverage: withPolicy(mapCoverage, ['strategies', 'variantCount']),
   });
@@ -111,7 +112,7 @@ const veiledVariants = async (inputConfig = {}) => {
     )
   );
 
-  emitter.result();
+  emitter.complete();
 
   return results.flat();
 };

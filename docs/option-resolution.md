@@ -2,23 +2,24 @@
 
 The option resolution system lets chains declare their tuning parameters and resolve them from consumer config, policy functions, or defaults — all in one call. This is the internal API used by chain and verblet authors. For the consumer-facing view, see [configuration.md](./configuration.md).
 
-## nameStep + track
+## nameStep + createProgressEmitter
 
-Most chains start with `nameStep`, which sets the operation name on config for policy targeting, then `track` to emit the `chain:start` event and obtain a lifecycle handle, followed by `getOptions` to batch-resolve all declared options:
+Most chains start with `nameStep`, which sets the operation name on config for policy targeting, then `createProgressEmitter` to emit the `chain:start` event and obtain a lifecycle handle, followed by `getOptions` to batch-resolve all declared options:
 
 ```javascript
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
-import { track } from '../../lib/progress/index.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 
 const runConfig = nameStep('document-shrink', inputConfig);
-const span = track('document-shrink', runConfig);
+const emitter = createProgressEmitter('document-shrink', runConfig.onProgress, runConfig);
+emitter.start();
 const { batchSize, compression } = await getOptions(runConfig, {
   batchSize: 50,                              // plain fallback
   compression: withPolicy(mapCompression),    // resolved through mapper
 });
 ```
 
-`nameStep` is synchronous and returns a plain config object with the composed operation path and timestamp. `track` emits a `chain:start` telemetry event and returns a lifecycle handle with `result()` and `error()` methods. The config object from `nameStep` (conventionally named `runConfig`) is passed directly to `callLlm`, `retry`, and any sub-chain calls. `getOptions` is called separately to resolve options asynchronously.
+`nameStep` is synchronous and returns a plain config object with the composed operation path and timestamp. `createProgressEmitter` returns a lifecycle handle with `start()`, `emit()`, `metrics()`, `complete()`, `error()`, and `batch()` methods. Call `start()` explicitly to emit the `chain:start` telemetry event. The callback is an explicit positional argument, not read from config. The config object from `nameStep` (conventionally named `runConfig`) is passed directly to `callLlm`, `retry`, and any sub-chain calls. `getOptions` is called separately to resolve options asynchronously.
 
 ## Resolution order
 

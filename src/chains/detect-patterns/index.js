@@ -66,6 +66,7 @@ function filterObject(obj, maxStringLength = 50, maxArrayLength = 10) {
 export default async function detectPatterns(objects, config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
   const { maxStringLength, maxArrayLength, topN, capacity } = await getOptions(runConfig, {
     thoroughness: withPolicy(mapThoroughness, ['topN', 'capacity']),
     maxStringLength: 50,
@@ -113,7 +114,7 @@ export default async function detectPatterns(objects, config = {}) {
   // Since PATTERN_RESPONSE_FORMAT is a simple collection schema,
   // and reduce should handle it properly
   if (!Array.isArray(candidateArray)) {
-    emitter.result();
+    emitter.complete();
     return [];
   }
 
@@ -123,7 +124,7 @@ export default async function detectPatterns(objects, config = {}) {
     .map((item) => item.template)
     .slice(0, topN);
 
-  emitter.result();
+  emitter.complete();
 
   return patterns;
 }

@@ -24,6 +24,7 @@ const splitIntoChunks = (text, maxLen) => {
 export default async function collectTerms(text, config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
   const { topN, chunkLen } = await getOptions(runConfig, {
     topN: 20,
     chunkLen: 1000,
@@ -45,7 +46,7 @@ export default async function collectTerms(text, config = {}) {
 
   // If we already have fewer terms than requested, return them all
   if (uniqueTerms.length <= topN) {
-    emitter.result();
+    emitter.complete();
     return uniqueTerms;
   }
 
@@ -60,7 +61,7 @@ export default async function collectTerms(text, config = {}) {
   const termsWithScores = uniqueTerms.map((term, i) => ({ term, score: scores[i] }));
   termsWithScores.sort((a, b) => b.score - a.score);
 
-  emitter.result();
+  emitter.complete();
 
   return termsWithScores.slice(0, topN).map((item) => item.term);
 }

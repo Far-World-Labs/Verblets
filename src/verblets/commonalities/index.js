@@ -58,14 +58,15 @@ ${tryCompleteData}`;
 export default async function commonalities(items, config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
   if (!Array.isArray(items) || items.length === 0) {
-    emitter.result();
+    emitter.complete();
     return [];
   }
 
   // Finding commonalities requires at least 2 items
   if (items.length < 2) {
-    emitter.result();
+    emitter.complete();
     return [];
   }
 
@@ -76,6 +77,6 @@ export default async function commonalities(items, config = {}) {
   });
 
   const resultArray = output?.items || output;
-  emitter.result();
+  emitter.complete();
   return Array.isArray(resultArray) ? resultArray.filter(Boolean) : [];
 }

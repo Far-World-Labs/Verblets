@@ -86,8 +86,7 @@ export async function getOptionDetail(name, config, fallback) {
     detail.value = fallback;
   }
 
-  createProgressEmitter(name, config.onProgress).emit({
-    kind: 'telemetry',
+  createProgressEmitter(name, config.onProgress).metrics({
     event: 'option:resolve',
     operation: detail.operation,
     source: detail.source,

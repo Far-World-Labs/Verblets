@@ -2,7 +2,7 @@ import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import chunkSentences from '../../lib/chunk-sentences/index.js';
 import retry from '../../lib/retry/index.js';
 import parallelBatch from '../../lib/parallel-batch/index.js';
-import createProgressEmitter from '../../lib/progress/index.js';
+import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
 import map from '../map/index.js';
 import reduce from '../reduce/index.js';
 import { timelineEventJsonSchema } from './schemas.js';
@@ -116,6 +116,7 @@ async function extractFromChunk(chunk, options = {}) {
 export default async function timeline(text, config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
   const {
     chunkSize,
     overlap,
@@ -218,13 +219,7 @@ Return as JSON with the same event format, maintaining chronological order.`;
       initial: JSON.stringify({ events: [] }),
       responseFormat: jsonSchema(timelineEventJsonSchema.name, timelineEventJsonSchema.schema),
       ...(batchSize !== undefined && { batchSize }),
-      onProgress:
-        runConfig.onProgress &&
-        ((e) =>
-          runConfig.onProgress({
-            ...e,
-            phase: e.phase ? `reduce:knowledge-base/${e.phase}` : 'reduce:knowledge-base',
-          })),
+      onProgress: scopePhase(runConfig.onProgress, 'reduce:knowledge-base'),
     });
 
     let knownEvents = [];
@@ -259,13 +254,7 @@ Return the enriched event as: "YYYY-MM-DD: Event name" or with the appropriate t
         ...runConfig,
         ...(batchSize !== undefined && { batchSize }),
         maxParallel,
-        onProgress:
-          runConfig.onProgress &&
-          ((e) =>
-            runConfig.onProgress({
-              ...e,
-              phase: e.phase ? `map:enrichment/${e.phase}` : 'map:enrichment',
-            })),
+        onProgress: scopePhase(runConfig.onProgress, 'map:enrichment'),
       }
     );
 
@@ -306,7 +295,7 @@ Return the enriched event as: "YYYY-MM-DD: Event name" or with the appropriate t
     mergedEvents = sortTimelineEvents([...enrichedExtractedEvents, ...additionalEvents]);
   }
 
-  emitter.result();
+  emitter.complete();
 
   return mergedEvents;
 }

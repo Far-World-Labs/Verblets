@@ -256,8 +256,7 @@ export const run = async (prompt, config = {}) => {
       ? 'config'
       : 'default';
 
-  emitter.emit({
-    kind: 'telemetry',
+  emitter.metrics({
     event: 'llm:model',
     operation,
     model: modelNameNegotiated,
@@ -443,8 +442,7 @@ export const run = async (prompt, config = {}) => {
 
     // Telemetry: successful LLM call
     const usage = result?.usage;
-    emitter.emit({
-      kind: 'telemetry',
+    emitter.metrics({
       event: 'llm:call',
       operation,
       status: 'success',
@@ -459,8 +457,7 @@ export const run = async (prompt, config = {}) => {
     return resultShaped;
   } catch (err) {
     // Telemetry: failed LLM call
-    emitter.emit({
-      kind: 'telemetry',
+    emitter.metrics({
       event: 'llm:call',
       operation,
       status: 'error',

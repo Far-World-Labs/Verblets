@@ -216,7 +216,8 @@ describe('Telemetry events', () => {
       };
 
       const runConfig = nameStep('filter', config);
-      createProgressEmitter('filter', runConfig.onProgress, runConfig);
+      const emitter = createProgressEmitter('filter', runConfig.onProgress, runConfig);
+      emitter.start();
 
       expect(events).toHaveLength(1);
       expect(events[0]).toMatchObject({
@@ -230,7 +231,8 @@ describe('Telemetry events', () => {
     it('emits chain:start with top-level operation when no parent', () => {
       const events = [];
       const runConfig = nameStep('score', { onProgress: (e) => events.push(e) });
-      createProgressEmitter('score', runConfig.onProgress, runConfig);
+      const emitter = createProgressEmitter('score', runConfig.onProgress, runConfig);
+      emitter.start();
 
       expect(events[0]).toMatchObject({
         kind: 'telemetry',
@@ -243,7 +245,8 @@ describe('Telemetry events', () => {
     it('does not emit when onProgress absent', () => {
       // Should not throw
       const runConfig = nameStep('filter', {});
-      createProgressEmitter('filter', runConfig.onProgress, runConfig);
+      const emitter = createProgressEmitter('filter', runConfig.onProgress, runConfig);
+      emitter.start();
     });
   });
 

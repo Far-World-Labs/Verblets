@@ -19,6 +19,7 @@ const name = 'embed-rewrite-to-output-doc';
 export default async function embedRewriteToOutputDoc(query, config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
   const result = await callLlm(hydeOutputDoc(query), {
     ...runConfig,
     response_format: {
@@ -26,6 +27,6 @@ export default async function embedRewriteToOutputDoc(query, config = {}) {
       json_schema: { name: 'hyde_output_doc', schema },
     },
   });
-  emitter.result();
+  emitter.complete();
   return result;
 }

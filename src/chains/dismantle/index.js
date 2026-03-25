@@ -288,6 +288,7 @@ class ChainTree {
   static async create(name, options = {}) {
     const runConfig = nameStep(name, options);
     const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+    emitter.start();
     const { temperature, variety } = await getOptions(runConfig, {
       temperature: undefined,
       variety: withPolicy(mapVariety),
@@ -295,7 +296,7 @@ class ChainTree {
 
     const tree = new ChainTree(name, options, runConfig, { temperature, variety });
 
-    emitter.result();
+    emitter.complete();
 
     return tree;
   }

@@ -54,6 +54,7 @@ const sanitizeList = (list) => {
 const sort = async (list, criteria, config = {}) => {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
   const { batchSize, extremeK, iterations, selectBottom } = await getOptions(runConfig, {
     effort: withPolicy(mapEffort, ['extremeK', 'iterations', 'selectBottom']),
     batchSize: defaultSortBatchSize,
@@ -234,7 +235,7 @@ const sort = async (list, criteria, config = {}) => {
     remainingItems: remaining.length,
   });
 
-  emitter.result();
+  emitter.complete();
 
   return result;
 };

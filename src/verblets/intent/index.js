@@ -46,6 +46,7 @@ const responseFormat = {
 export default async function intent(text, operations, config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
 
   if (!Array.isArray(operations) || operations.length === 0) {
     throw new Error('Operations must be a non-empty array');
@@ -88,7 +89,7 @@ Return the result as a structured JSON object with the operation name, extracted
     response_format: responseFormat,
   });
 
-  emitter.result();
+  emitter.complete();
 
   return response;
 }

@@ -46,6 +46,7 @@ export const buildPrompt = (text, { creativityGuidance } = {}) =>
 export default async function fillMissing(text, config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
 
   const creativityGuidance = mapCreativity(runConfig.creativity);
   const prompt = buildPrompt(text, { creativityGuidance });
@@ -54,7 +55,7 @@ export default async function fillMissing(text, config = {}) {
     response_format: responseFormat,
   });
 
-  emitter.result();
+  emitter.complete();
 
   return response;
 }

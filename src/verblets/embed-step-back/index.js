@@ -43,6 +43,7 @@ export const mapAbstraction = (value) => {
 export default async function embedStepBack(query, config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
   const { count = 3 } = runConfig;
   const abstractionGuidance = mapAbstraction(runConfig.abstraction);
 
@@ -56,6 +57,6 @@ export default async function embedStepBack(query, config = {}) {
       },
     },
   });
-  emitter.result();
+  emitter.complete();
   return result;
 }

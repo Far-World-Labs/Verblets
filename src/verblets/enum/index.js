@@ -11,6 +11,7 @@ const name = 'enum';
 export default async (text, enumVal, config = {}) => {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
 
   const enumText = `${contentIsQuestion} ${text}\n\n${explainAndSeparate}
 
@@ -35,7 +36,7 @@ The value should be your selection.`;
   // With auto-unwrapping, result should be the value directly
   const interpreted = result === 'undefined' ? undefined : result;
 
-  emitter.result();
+  emitter.complete();
 
   return interpreted;
 };

@@ -113,6 +113,7 @@ async function validateDate(dateValue, expectations, config) {
 export default async function date(text, config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
   const { maxAttempts, validate, returnBestEffort } = await getOptions(runConfig, {
     rigor: withPolicy(mapRigor, ['validate', 'maxAttempts', 'returnBestEffort']),
   });
@@ -145,7 +146,7 @@ export default async function date(text, config = {}) {
       firstDate,
       extractResultValue(firstDate?.toISOString() || 'undefined', firstDate)
     );
-    emitter.result();
+    emitter.complete();
     return firstDate;
   }
 
@@ -170,7 +171,7 @@ export default async function date(text, config = {}) {
   // Handle undefined response
   if (!firstDate) {
     lifecycleLogger.logResult(undefined, extractResultValue('undefined', undefined));
-    emitter.result();
+    emitter.complete();
     return undefined;
   }
 
@@ -233,6 +234,6 @@ export default async function date(text, config = {}) {
     result,
     extractResultValue(result?.toISOString() || 'undefined', result)
   );
-  emitter.result();
+  emitter.complete();
   return result;
 }

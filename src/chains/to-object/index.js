@@ -97,6 +97,7 @@ function logDebugInfo(attempt, prompt, response, error) {
 export default async function toObject(text, schema, config = {}) {
   const runConfig = nameStep(name, { llm: 'fastGood', ...config });
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
   let errorDetails;
 
   try {
@@ -104,7 +105,7 @@ export default async function toObject(text, schema, config = {}) {
     try {
       const directResult = parseAndValidate(text, schema);
 
-      emitter.result();
+      emitter.complete();
 
       return directResult;
     } catch (error) {
@@ -122,7 +123,7 @@ export default async function toObject(text, schema, config = {}) {
 
       const result = parseAndValidate(response, schema);
 
-      emitter.result();
+      emitter.complete();
 
       return result;
     } catch (error) {
@@ -140,7 +141,7 @@ export default async function toObject(text, schema, config = {}) {
     const result = parseAndValidate(response, schema);
     logDebugInfo(3, prompt, response, null); // Log successful attempt
 
-    emitter.result();
+    emitter.complete();
 
     return result;
   } catch (err) {

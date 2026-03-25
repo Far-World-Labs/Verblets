@@ -40,6 +40,7 @@ export const mapDivergence = (value) => {
 export default async function embedMultiQuery(query, config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
   const { count = 3 } = runConfig;
   const divergenceGuidance = mapDivergence(runConfig.divergence);
 
@@ -53,6 +54,6 @@ export default async function embedMultiQuery(query, config = {}) {
       },
     },
   });
-  emitter.result();
+  emitter.complete();
   return result;
 }

@@ -20,12 +20,15 @@ describe('nameStep + createProgressEmitter', () => {
     expect(runConfig.now).toBeInstanceOf(Date);
   });
 
-  it('createProgressEmitter returns lifecycle handle with emit, result, error', () => {
+  it('createProgressEmitter returns lifecycle handle with start, emit, metrics, complete, error, batch', () => {
     const runConfig = nameStep('test-chain', {});
     const emitter = createProgressEmitter('test-chain', runConfig.onProgress, runConfig);
+    expect(typeof emitter.start).toBe('function');
     expect(typeof emitter.emit).toBe('function');
-    expect(typeof emitter.result).toBe('function');
+    expect(typeof emitter.metrics).toBe('function');
+    expect(typeof emitter.complete).toBe('function');
     expect(typeof emitter.error).toBe('function');
+    expect(typeof emitter.batch).toBe('function');
   });
 
   it('composes operation names hierarchically', () => {

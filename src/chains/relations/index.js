@@ -283,13 +283,14 @@ Example: {"object": "42^^xsd:integer"} NOT {"object": '"42"^^xsd:integer'}`;
 export async function extractRelations(text, instructions, config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
 
   const spec = runConfig.spec || (await relationSpec(instructions, runConfig));
   const entities = typeof instructions === 'object' ? instructions.entities : runConfig.entities;
   const result = await applyRelations(text, spec, { ...runConfig, entities });
   const items = result.items || [];
 
-  emitter.result();
+  emitter.complete();
 
   return items;
 }

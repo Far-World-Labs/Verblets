@@ -54,6 +54,7 @@ export default async function join(
 
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
   const { styleHint, windowSize, overlapPercent } = await getOptions(runConfig, {
     fidelity: withPolicy(mapFidelity, ['windowSize', 'overlapPercent']),
     styleHint: '',
@@ -91,7 +92,7 @@ Important: This is part of a larger sequence. Join these fragments while being m
   const validResults = windowResults.filter((r) => r.content && r.content.trim());
 
   if (validResults.length === 1) {
-    emitter.result();
+    emitter.complete();
     return validResults[0].content;
   }
 
@@ -152,7 +153,7 @@ Add necessary connecting words, prepositions, conjunctions, or other filler text
     }
   }
 
-  emitter.result();
+  emitter.complete();
 
   return stitchedResult;
 }

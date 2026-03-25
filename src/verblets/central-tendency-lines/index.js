@@ -122,6 +122,7 @@ function createResponseFormat(schemaName = 'central_tendency_result', customSche
 export default async function centralTendency(item, seedItems, config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
   if (!item || typeof item !== 'string') {
     throw new Error('Item must be a non-empty string');
   }
@@ -164,6 +165,6 @@ export default async function centralTendency(item, seedItems, config = {}) {
     hasReason: !!response.reason,
   });
 
-  emitter.result();
+  emitter.complete();
   return response;
 }

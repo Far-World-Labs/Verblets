@@ -119,6 +119,7 @@ class SocraticMethod {
   static async create(statement, options = {}) {
     const runConfig = nameStep(name, options);
     const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+    emitter.start();
     const { challenge, temperature } = await getOptions(runConfig, {
       challenge: withPolicy(mapChallenge, ['challenge', 'temperature']),
     });
@@ -247,7 +248,7 @@ class SocraticMethod {
 
     this.logger.logResult(this.history, extractResultValue(this.history, this.history));
 
-    this.emitter.result();
+    this.emitter.complete();
 
     return this.history;
   }

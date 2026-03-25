@@ -15,6 +15,7 @@ const findResponseFormat = jsonSchema(findResultJsonSchema.name, findResultJsonS
 const find = async function find(list, instructions, config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
   const { maxParallel, errorPosture } = await getOptions(runConfig, {
     maxParallel: 3,
     errorPosture: 'resilient',
@@ -47,7 +48,7 @@ Process exactly ${count} items from the XML list below and return the single bes
   let foundEarly = false;
 
   const batches = await createBatches(list, runConfig);
-  let processedItems = 0;
+  const batchDone = emitter.batch(list.length);
   const batchesToProcess = batches.filter((batch) => !batch.skip);
 
   emitter.emit({ event: 'start', totalItems: list.length, totalBatches: batchesToProcess.length });
@@ -95,13 +96,7 @@ Process exactly ${count} items from the XML list below and return the single bes
             lifecycleLogger.logEvent('match-found', { result: foundItem, index: matchIndex });
           }
 
-          processedItems += items.length;
-          emitter.emit({
-            event: 'batch:complete',
-            totalItems: list.length,
-            processedItems,
-            batchSize: items.length,
-          });
+          batchDone(items.length);
         } catch (error) {
           if (errorPosture === 'strict') throw error;
           debug(`find batch at index ${startIndex} failed: ${error.message}`);
@@ -123,7 +118,6 @@ Process exactly ${count} items from the XML list below and return the single bes
   emitter.emit({
     event: 'complete',
     totalItems: list.length,
-    processedItems,
     found: results.length > 0,
   });
 
@@ -133,13 +127,13 @@ Process exactly ${count} items from the XML list below and return the single bes
     );
     const foundMeta = { found: true, totalItems: list.length };
     lifecycleLogger.logResult(earliest.result, foundMeta);
-    emitter.result(foundMeta);
+    emitter.complete(foundMeta);
     return earliest.result;
   }
 
   const notFoundMeta = { found: false, totalItems: list.length };
   lifecycleLogger.logResult('', notFoundMeta);
-  emitter.result(notFoundMeta);
+  emitter.complete(notFoundMeta);
   return '';
 };
 

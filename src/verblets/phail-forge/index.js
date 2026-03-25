@@ -151,6 +151,7 @@ const analysisSchema = {
 export default async function phailForge(prompt, config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
   const {
     analyze = false,
     style = 'technical',
@@ -191,7 +192,7 @@ export default async function phailForge(prompt, config = {}) {
     enhancedResponse.analysis = analysis;
   }
 
-  emitter.result();
+  emitter.complete();
   return enhancedResponse;
 }
 

@@ -12,6 +12,7 @@ const verbletName = 'name';
 export default async function name(subject, config = {}) {
   const runConfig = nameStep(verbletName, config);
   const emitter = createProgressEmitter(verbletName, runConfig.onProgress, runConfig);
+  emitter.start();
 
   const prompt = `${contentIsQuestion} Suggest a concise, memorable name for the <subject>.\n\n${asXML(
     subject,
@@ -33,7 +34,7 @@ export default async function name(subject, config = {}) {
 
   const result = response === 'undefined' ? undefined : response;
 
-  emitter.result();
+  emitter.complete();
 
   return result;
 }

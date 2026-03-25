@@ -80,6 +80,7 @@ Keep it concise and actionable.`;
 export async function applyTags(item, specification, vocabulary, config = {}) {
   const runConfig = nameStep(`${name}:apply`, config);
   const applyEmitter = createProgressEmitter(`${name}:apply`, runConfig.onProgress, runConfig);
+  applyEmitter.start();
   const { vocabularyMode } = await getOptions(runConfig, {
     vocabularyMode: 'strict',
   });
@@ -119,7 +120,7 @@ Do NOT return tag labels, descriptions, or full tag objects - ONLY the string ID
   // llm auto-unwraps {items: [...]} to just the array
   const result = Array.isArray(response) ? response : [];
 
-  applyEmitter.result();
+  applyEmitter.complete();
 
   return result;
 }

@@ -14,6 +14,7 @@ const splitText = (text) =>
 export default async function themes(text, config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
   const { topN } = await getOptions(runConfig, {
     topN: undefined,
   });
@@ -36,7 +37,7 @@ export default async function themes(text, config = {}) {
     .map((t) => t.trim())
     .filter(Boolean);
 
-  emitter.result();
+  emitter.complete();
 
   return result;
 }

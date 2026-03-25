@@ -19,6 +19,7 @@ const DEFAULT_REDUCE_RESPONSE_FORMAT = jsonSchema(
 const reduce = async function reduce(list, instructions, config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
   const { accumulatorMode } = await getOptions(runConfig, {
     accumulatorMode: 'auto',
   });
@@ -35,7 +36,7 @@ const reduce = async function reduce(list, instructions, config = {}) {
   }
 
   const batches = await createBatches(list, runConfig);
-  let processedItems = 0;
+  const batchDone = emitter.batch(list.length);
   const activeBatches = batches.filter((b) => !b.skip);
 
   emitter.emit({ event: 'start', totalItems: list.length, totalBatches: activeBatches.length });
@@ -100,13 +101,7 @@ Process exactly ${count} items from the ${itemFormat} list below and return the 
       acc = result;
     }
 
-    processedItems += items.length;
-    emitter.emit({
-      event: 'batch:complete',
-      totalItems: list.length,
-      processedItems,
-      batchSize: items.length,
-    });
+    batchDone(items.length);
 
     lifecycleLogger.logEvent('batch-done', {
       batchIndex,
@@ -114,11 +109,11 @@ Process exactly ${count} items from the ${itemFormat} list below and return the 
     });
   }
 
-  emitter.emit({ event: 'complete', totalItems: list.length, processedItems });
+  emitter.emit({ event: 'complete', totalItems: list.length, processedItems: list.length });
 
   const resultMeta = { totalItems: list.length, totalBatches: activeBatches.length };
   lifecycleLogger.logResult(acc, resultMeta);
-  emitter.result(resultMeta);
+  emitter.complete(resultMeta);
 
   return acc;
 };
