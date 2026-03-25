@@ -1,14 +1,14 @@
 // Browser version of expect chain - no file introspection
 import { env } from '../../lib/env/index.js';
 import { expectCore, generateAdvice, handleAssertionResult } from './shared.js';
-import { getOptions, scopeOperation } from '../../lib/context/option.js';
+import { nameStep, getOptions } from '../../lib/context/option.js';
 
 /**
  * Browser-compatible expect function
  * Code introspection features are not available
  */
 export async function expect(actual, expected, constraint, config = {}) {
-  config = scopeOperation('expect', config);
+  config = nameStep('expect', config);
   const { mode } = await getOptions(config, {
     mode: env.VERBLETS_LLM_EXPECT_MODE || 'none',
   });
