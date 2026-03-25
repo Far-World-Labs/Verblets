@@ -97,10 +97,11 @@ export default function createProgressEmitter(name, callback, { operation, now }
       let processedItems = 0;
       function done(count) {
         processedItems += count;
+        done.count = processedItems;
         emitter.emit({ event: 'batch:complete', totalItems, processedItems, batchSize: count });
         return processedItems;
       }
-      Object.defineProperty(done, 'count', { get: () => processedItems });
+      done.count = 0;
       return done;
     },
   };
