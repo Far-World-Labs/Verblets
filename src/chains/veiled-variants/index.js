@@ -1,7 +1,10 @@
 import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/index.js';
-import { initChain, withPolicy } from '../../lib/context/option.js';
+import createProgressEmitter from '../../lib/progress/index.js';
+import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
+
+const name = 'veiled-variants';
 
 const veiledVariantsSchema = {
   type: 'object',
@@ -92,23 +95,24 @@ export const mapCoverage = (value) => {
 
 const veiledVariants = async (inputConfig = {}) => {
   const { prompt } = inputConfig;
-  const { config, strategies, variantCount } = await initChain(
-    'veiled-variants',
-    { llm: { sensitive: true }, ...inputConfig },
-    {
-      coverage: withPolicy(mapCoverage, ['strategies', 'variantCount']),
-    }
-  );
+  const runConfig = nameStep(name, { llm: { sensitive: true }, ...inputConfig });
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
+  const { strategies, variantCount } = await getOptions(runConfig, {
+    coverage: withPolicy(mapCoverage, ['strategies', 'variantCount']),
+  });
   const prompts = strategies.map((name) => STRATEGY_FNS[name](prompt, variantCount));
 
   const results = await Promise.all(
     prompts.map((p) =>
-      retry(() => callLlm(p, { ...config, response_format: responseFormat }), {
+      retry(() => callLlm(p, { ...runConfig, response_format: responseFormat }), {
         label: 'veiled-variants',
-        config,
+        config: runConfig,
       })
     )
   );
+
+  emitter.complete();
 
   return results.flat();
 };

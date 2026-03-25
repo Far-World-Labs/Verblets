@@ -3,10 +3,16 @@ import llm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { testResultJsonSchema } from './schemas.js';
-import { scopeOperation } from '../../lib/context/option.js';
+import createProgressEmitter from '../../lib/progress/index.js';
+import { nameStep } from '../../lib/context/option.js';
+
+const name = 'test';
 
 export default async function test(path, instructions, config = {}) {
-  config = scopeOperation('test', config);
+  const runConfig = nameStep(name, config);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
+
   try {
     const code = await fs.readFile(path, 'utf-8');
 
@@ -28,17 +34,21 @@ GUIDELINES:
     const result = await retry(
       () =>
         llm(prompt, {
-          ...config,
+          ...runConfig,
           response_format: jsonSchema(testResultJsonSchema.name, testResultJsonSchema.schema),
         }),
       {
         label: 'test chain',
-        config,
+        config: runConfig,
       }
     );
 
     // With structured output, we get a validated object
-    return result.hasIssues ? result.issues : [];
+    const issues = result.hasIssues ? result.issues : [];
+
+    emitter.complete();
+
+    return issues;
   } catch (error) {
     return [`Error analyzing ${path}: ${error.message}`];
   }

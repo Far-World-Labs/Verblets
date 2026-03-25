@@ -2,16 +2,12 @@ import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { scaleSpec } from '../scale/index.js';
 import listBatch from '../../verblets/list-batch/index.js';
-import {
-  emitBatchStart,
-  emitBatchComplete,
-  emitBatchProcessed,
-  emitPhaseProgress,
-  filterProgress,
-} from '../../lib/progress-callback/index.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 import { createBatches, parallel, retry } from '../../lib/index.js';
-import { initChain, withPolicy, scopeOperation } from '../../lib/context/option.js';
+import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 import scoreSingleResultSchema from './score-single-result.json';
+
+const name = 'score';
 
 // ===== Option Mappers =====
 
@@ -97,7 +93,7 @@ export const scoreSpec = scaleSpec;
  * @returns {Promise<*>} Score value (type depends on specification range)
  */
 export async function applyScore(item, specification, config = {}) {
-  config = scopeOperation('score:item', config);
+  config = nameStep('score:item', config);
 
   const prompt = `Apply the score specification to evaluate this item.
 
@@ -141,7 +137,7 @@ export async function scoreItem(item, instructions, config = {}) {
  * Failed batches leave items as undefined (never throws).
  */
 async function scoreOnce(list, prompt, batchConfig, config) {
-  const { maxParallel, errorPosture, onProgress, now, logger, anchoring } = config;
+  const { maxParallel, errorPosture, onProgress, logger, anchoring } = config;
 
   const batches = await createBatches(list, batchConfig);
   const batchesToProcess = batches.filter((b) => !b.skip);
@@ -150,11 +146,13 @@ async function scoreOnce(list, prompt, batchConfig, config) {
     if (b.skip) results[b.startIndex] = undefined;
   });
 
-  emitBatchStart(onProgress, 'score', list.length, {
+  const emitter = createProgressEmitter('score', onProgress);
+  const batchDone = emitter.batch(list.length);
+  emitter.emit({
+    event: 'start',
+    totalItems: list.length,
     totalBatches: batchesToProcess.length,
     maxParallel,
-    now,
-    chainStartTime: now,
   });
 
   // First batch establishes scoring anchors
@@ -179,27 +177,16 @@ async function scoreOnce(list, prompt, batchConfig, config) {
         });
     }
 
-    emitBatchProcessed(
-      onProgress,
-      'score',
-      {
-        totalItems: list.length,
-        processedItems: first.items.length,
-        batchNumber: 1,
-        batchSize: first.items.length,
-      },
-      { totalBatches: batchesToProcess.length, now: new Date(), chainStartTime: now }
-    );
+    batchDone(first.items.length);
   }
 
   // Remaining batches run in parallel with anchors
   if (batchesToProcess.length > 1) {
     const anchoredPrompt = anchorBlock ? `${prompt}\n${anchorBlock}` : prompt;
-    let processedItems = batchesToProcess[0].items.length;
 
     await parallel(
       batchesToProcess.slice(1),
-      async ({ items, startIndex }, batchIndex) => {
+      async ({ items, startIndex }) => {
         try {
           const scores = await retry(() => listBatch(items, anchoredPrompt, batchConfig), {
             label: 'score:batch',
@@ -211,33 +198,22 @@ async function scoreOnce(list, prompt, batchConfig, config) {
         } catch (error) {
           if (errorPosture === 'strict') throw error;
           if (logger?.error)
-            logger.error(`Score batch ${batchIndex + 1} failed`, {
+            logger.error(`Score batch failed`, {
               error: error.message,
               itemCount: items.length,
             });
         }
-        processedItems += items.length;
 
-        emitBatchProcessed(
-          onProgress,
-          'score',
-          {
-            totalItems: list.length,
-            processedItems,
-            batchNumber: batchIndex + 2,
-            batchSize: items.length,
-          },
-          { totalBatches: batchesToProcess.length, now: new Date(), chainStartTime: now }
-        );
+        batchDone(items.length);
       },
       { maxParallel, errorPosture, label: 'score batches' }
     );
   }
 
-  emitBatchComplete(onProgress, 'score', list.length, {
-    totalBatches: batchesToProcess.length,
-    now: new Date(),
-    chainStartTime: now,
+  emitter.emit({
+    event: 'complete',
+    totalItems: list.length,
+    processedItems: batchDone.count,
   });
 
   return results;
@@ -252,45 +228,38 @@ async function scoreOnce(list, prompt, batchConfig, config) {
  * @returns {Promise<Array>} Array of scores
  */
 export async function mapScore(list, instructions, config = {}) {
-  const { spec: providedSpec, onProgress: _onProgress, now } = config;
-  const {
-    config: scopedConfig,
-    maxParallel,
-    maxAttempts,
-    temperature,
-    errorPosture,
-    progressMode,
-    anchoring,
-  } = await initChain('score', config, {
-    maxParallel: 3,
-    maxAttempts: 3,
-    temperature: 0,
-    errorPosture: 'resilient',
-    progressMode: 'detailed',
-    anchoring: withPolicy(mapAnchoring),
-  });
-  config = scopedConfig;
-  const onProgress = filterProgress(_onProgress, progressMode);
-
-  emitPhaseProgress(onProgress, 'score', 'generating-specification');
-  const spec = providedSpec || (await scoreSpec(instructions, config));
-  emitPhaseProgress(onProgress, 'score', 'scoring-items', { specification: spec });
+  const { spec: providedSpec, now } = config;
+  const runConfig = nameStep(name, config);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
+  const { maxParallel, maxAttempts, temperature, errorPosture, anchoring } = await getOptions(
+    runConfig,
+    {
+      maxParallel: 3,
+      maxAttempts: 3,
+      temperature: 0,
+      errorPosture: 'resilient',
+      anchoring: withPolicy(mapAnchoring),
+    }
+  );
+  emitter.emit({ event: 'phase', phase: 'generating-specification' });
+  const spec = providedSpec || (await scoreSpec(instructions, runConfig));
+  emitter.emit({ event: 'phase', phase: 'scoring-items', specification: spec });
 
   const scoringPrompt = buildScoringInstructions(
     spec,
     'Return ONLY the numeric score for each item according to the specification range.'
   );
   const batchConfig = {
-    ...config,
+    ...runConfig,
     responseFormat: scoreBatchResponseFormat,
     temperature,
   };
   const passOptions = {
-    ...config,
+    ...runConfig,
     maxParallel,
     maxAttempts,
     errorPosture,
-    onProgress,
     now,
     anchoring,
   };
@@ -320,6 +289,8 @@ export async function mapScore(list, instructions, config = {}) {
       if (val !== undefined) results[missingIdx[i]] = val;
     });
   }
+
+  emitter.complete();
 
   return results;
 }

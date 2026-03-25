@@ -1,6 +1,10 @@
 import callLlm from '../../lib/llm/index.js';
 import { multiQuery as multiQueryPrompt } from '../../prompts/embed-query-transforms.js';
 import { embedMultiQuerySchema } from './schema.js';
+import { nameStep } from '../../lib/context/option.js';
+import createProgressEmitter from '../../lib/progress/index.js';
+
+const name = 'embed-multi-query';
 
 // ===== Option Mappers =====
 
@@ -34,11 +38,14 @@ export const mapDivergence = (value) => {
  * @returns {Promise<string[]>}
  */
 export default async function embedMultiQuery(query, config = {}) {
-  const { count = 3 } = config;
-  const divergenceGuidance = mapDivergence(config.divergence);
+  const runConfig = nameStep(name, config);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
+  const { count = 3 } = runConfig;
+  const divergenceGuidance = mapDivergence(runConfig.divergence);
 
-  return await callLlm(multiQueryPrompt(query, count, { divergenceGuidance }), {
-    ...config,
+  const result = await callLlm(multiQueryPrompt(query, count, { divergenceGuidance }), {
+    ...runConfig,
     response_format: {
       type: 'json_schema',
       json_schema: {
@@ -47,4 +54,6 @@ export default async function embedMultiQuery(query, config = {}) {
       },
     },
   });
+  emitter.complete();
+  return result;
 }

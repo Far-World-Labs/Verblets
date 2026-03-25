@@ -2,8 +2,11 @@ import nlp from 'compromise';
 import sort from '../sort/index.js';
 import map from '../map/index.js';
 import { glossaryExtractionJsonSchema } from './schemas.js';
-import { initChain } from '../../lib/context/option.js';
+import { nameStep, getOptions } from '../../lib/context/option.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 import { jsonSchema } from '../../lib/llm/index.js';
+
+const name = 'glossary';
 
 // Response format for map: each chunk produces an array of terms
 const GLOSSARY_RESPONSE_FORMAT = jsonSchema(
@@ -24,19 +27,15 @@ const GLOSSARY_RESPONSE_FORMAT = jsonSchema(
  * @returns {Promise<string[]>} list of important terms, sorted by relevance
  */
 export default async function glossary(text, config = {}) {
-  const {
-    config: scopedConfig,
-    maxTerms,
-    sortBy,
-    sentencesPerBatch,
-    overlap,
-  } = await initChain('glossary', config, {
+  const runConfig = nameStep(name, config);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
+  const { maxTerms, sortBy, sentencesPerBatch, overlap } = await getOptions(runConfig, {
     maxTerms: 10,
     sortBy: 'importance for understanding the content',
     sentencesPerBatch: 3,
     overlap: 1,
   });
-  config = scopedConfig;
   if (!text || !text.trim()) return [];
 
   // Parse sentences using compromise
@@ -59,8 +58,8 @@ export default async function glossary(text, config = {}) {
 Return a "terms" object containing an array of the extracted terms.`;
 
   const mapResults = await map(textChunks, instructions, {
-    ...config,
-    batchSize: config.batchSize ?? 1,
+    ...runConfig,
+    batchSize: runConfig.batchSize ?? 1,
     responseFormat: GLOSSARY_RESPONSE_FORMAT,
   });
 
@@ -80,7 +79,11 @@ Return a "terms" object containing an array of the extracted terms.`;
   if (terms.length === 0) return [];
 
   // Sort by importance for understanding the content
-  const sorted = await sort(terms, sortBy, config);
+  const sorted = await sort(terms, sortBy, runConfig);
 
-  return sorted.slice(0, maxTerms);
+  const result = sorted.slice(0, maxTerms);
+
+  emitter.complete();
+
+  return result;
 }

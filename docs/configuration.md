@@ -79,7 +79,7 @@ await filter(items, 'urgent', config);
 await score(items, 'quality', config);
 ```
 
-See [option resolution](./option-resolution.md) for the full internal API (`initChain`, `getOption`, `withPolicy`, mappers).
+See [option resolution](./option-resolution.md) for the full internal API (`nameStep`, `track`, `getOptions`, `getOption`, `withPolicy`, mappers).
 
 ## Structured Output
 

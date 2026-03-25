@@ -5,7 +5,11 @@ import {
   extractPromptAnalysis,
   extractLLMConfig,
 } from '../../lib/lifecycle-logger/index.js';
+import { nameStep } from '../../lib/context/option.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 import centralTendencySchema from './central-tendency-result.json';
+
+const name = 'central-tendency-lines';
 
 /**
  * Core prompt template for central tendency evaluation using cognitive science principles.
@@ -116,6 +120,9 @@ function createResponseFormat(schemaName = 'central_tendency_result', customSche
  * @returns {Promise<{score: number, reason: string, confidence: number}>}
  */
 export default async function centralTendency(item, seedItems, config = {}) {
+  const runConfig = nameStep(name, config);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
   if (!item || typeof item !== 'string') {
     throw new Error('Item must be a non-empty string');
   }
@@ -124,7 +131,7 @@ export default async function centralTendency(item, seedItems, config = {}) {
     throw new Error('seedItems must be a non-empty array');
   }
 
-  const { context = '', coreFeatures = [], llm = 'fastGoodCheap', logger, ...options } = config;
+  const { context = '', coreFeatures = [], llm = 'fastGoodCheap', logger, ...options } = runConfig;
 
   // Create lifecycle logger with central-tendency namespace
   const lifecycleLogger = createLifecycleLogger(logger, 'central-tendency');
@@ -144,24 +151,20 @@ export default async function centralTendency(item, seedItems, config = {}) {
     hasCoreFeatures: coreFeatures.length > 0,
   });
 
-  try {
-    const response = await callLlm(prompt, {
-      llm,
-      response_format: responseFormat,
-      logger: lifecycleLogger,
-      ...options,
-    });
+  const response = await callLlm(prompt, {
+    llm,
+    response_format: responseFormat,
+    logger: lifecycleLogger,
+    ...options,
+  });
 
-    // Log result
-    lifecycleLogger.logResult(response, {
-      score: response.score,
-      confidence: response.confidence,
-      hasReason: !!response.reason,
-    });
+  // Log result
+  lifecycleLogger.logResult(response, {
+    score: response.score,
+    confidence: response.confidence,
+    hasReason: !!response.reason,
+  });
 
-    return response;
-  } catch (error) {
-    lifecycleLogger.logError(error);
-    throw error;
-  }
+  emitter.complete();
+  return response;
 }

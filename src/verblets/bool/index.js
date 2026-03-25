@@ -6,13 +6,20 @@ import {
   extractPromptAnalysis,
   extractResultValue,
 } from '../../lib/lifecycle-logger/index.js';
+import { nameStep } from '../../lib/context/option.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 import { booleanSchema } from './schema.js';
+
+const name = 'bool';
 
 const { asBool, asUndefinedByDefault, explainAndSeparate, explainAndSeparatePrimitive } =
   promptConstants;
 
 export default async (text, config = {}) => {
   const { logger } = config;
+  const runConfig = nameStep(name, config);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
 
   // Create lifecycle logger with bool namespace
   const lifecycleLogger = createLifecycleLogger(logger, 'bool');
@@ -29,34 +36,30 @@ The value should be "true", "false", or "undefined".`;
   // Log prompt construction with extracted analysis
   lifecycleLogger.logConstruction(systemPrompt, {
     ...extractPromptAnalysis(systemPrompt),
-    ...extractLLMConfig(config.llm),
+    ...extractLLMConfig(runConfig.llm),
   });
 
-  try {
-    // Make LLM call with logger
-    const response = await callLlm(text, {
-      ...config,
-      systemPrompt,
-      response_format: {
-        type: 'json_schema',
-        json_schema: {
-          name: 'boolean_evaluation',
-          schema: booleanSchema,
-        },
+  // Make LLM call with logger
+  const response = await callLlm(text, {
+    ...runConfig,
+    systemPrompt,
+    response_format: {
+      type: 'json_schema',
+      json_schema: {
+        name: 'boolean_evaluation',
+        schema: booleanSchema,
       },
-      logger: lifecycleLogger,
-    });
+    },
+    logger: lifecycleLogger,
+  });
 
-    // Interpret response
-    const interpreted = response === 'true' ? true : response === 'false' ? false : undefined;
+  // Interpret response
+  const interpreted = response === 'true' ? true : response === 'false' ? false : undefined;
 
-    // Log final result with raw and interpreted values
-    lifecycleLogger.logResult(interpreted, extractResultValue(response, interpreted));
+  // Log final result with raw and interpreted values
+  lifecycleLogger.logResult(interpreted, extractResultValue(response, interpreted));
 
-    return interpreted;
-  } catch (error) {
-    // Log error
-    lifecycleLogger.logError(error);
-    throw error;
-  }
+  emitter.complete();
+
+  return interpreted;
 };

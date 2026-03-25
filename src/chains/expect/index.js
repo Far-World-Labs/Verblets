@@ -6,7 +6,10 @@ import wrapVariable from '../../prompts/wrap-variable.js';
 import { env } from '../../lib/env/index.js';
 import { expectCore, handleAssertionResult, generateAdvice } from './shared.js';
 import { extractFileContext } from '../../lib/logger/index.js';
-import { initChain, withPolicy } from '../../lib/context/option.js';
+import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
+import createProgressEmitter from '../../lib/progress/index.js';
+
+const name = 'expect';
 
 // ===== Option Mappers =====
 
@@ -163,15 +166,13 @@ Keep your response concise but actionable. Focus on practical solutions.`;
  * Enhanced LLM expectation with debugging features
  */
 export async function expect(actual, expected, constraint, config = {}) {
-  const {
-    config: scopedConfig,
-    mode,
-    introspection,
-  } = await initChain('expect', config, {
+  const runConfig = nameStep(name, config);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
+  const { mode, introspection } = await getOptions(runConfig, {
     mode: env.VERBLETS_LLM_EXPECT_MODE || 'none',
     advice: withPolicy(mapAdvice, ['introspection']),
   });
-  config = scopedConfig;
 
   const callerInfo = extractFileContext(5);
 
@@ -189,7 +190,11 @@ export async function expect(actual, expected, constraint, config = {}) {
   // Try to find module under test if codeContext is available and introspection is enabled
   if (codeContext && introspection) {
     try {
-      const moduleUnderTest = await findModuleUnderTest(callerInfo.file, callerInfo.line, config);
+      const moduleUnderTest = await findModuleUnderTest(
+        callerInfo.file,
+        callerInfo.line,
+        runConfig
+      );
       if (moduleUnderTest !== 'unknown') {
         callerInfo.module = moduleUnderTest;
       }
@@ -209,7 +214,7 @@ export async function expect(actual, expected, constraint, config = {}) {
     expected,
     constraint,
     { callerInfo, codeContext },
-    config
+    runConfig
   );
 
   // Generate advice if needed
@@ -222,12 +227,22 @@ export async function expect(actual, expected, constraint, config = {}) {
         constraint,
         codeContext,
         callerInfo,
-        config
+        runConfig
       );
     } else {
-      advice = await generateAdvice(actual, expected, constraint, codeContext, callerInfo, config);
+      advice = await generateAdvice(
+        actual,
+        expected,
+        constraint,
+        codeContext,
+        callerInfo,
+        runConfig
+      );
     }
   }
+
+  // Emit before handleAssertionResult — it intentionally throws in 'error' mode
+  emitter.complete();
 
   // Handle result based on mode - this may throw an error in 'error' mode
   const result = handleAssertionResult(
@@ -240,7 +255,6 @@ export async function expect(actual, expected, constraint, config = {}) {
     callerInfo
   );
 
-  // For backward compatibility with existing tests
   return [result, { passed: result, advice, file: callerInfo.file, line: callerInfo.line }];
 }
 

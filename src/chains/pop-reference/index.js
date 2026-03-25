@@ -2,7 +2,10 @@ import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import popReferenceSchema from './pop-reference-result.json';
-import { initChain } from '../../lib/context/option.js';
+import createProgressEmitter from '../../lib/progress/index.js';
+import { nameStep, getOptions } from '../../lib/context/option.js';
+
+const name = 'pop-reference';
 
 const popReferenceResponseFormat = jsonSchema('pop_reference_result', popReferenceSchema);
 
@@ -14,16 +17,14 @@ const popReferenceResponseFormat = jsonSchema('pop_reference_result', popReferen
  * @returns {Promise<Array>} Array of PopCultureReference objects
  */
 export default async function popReference(sentence, description, config = {}) {
-  const {
-    config: scopedConfig,
-    referenceContext,
-    referencesPerSource,
-  } = await initChain('pop-reference', config, {
+  const runConfig = nameStep(name, config);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
+  const { referenceContext, referencesPerSource } = await getOptions(runConfig, {
     referenceContext: false,
     referencesPerSource: 2,
   });
-  config = scopedConfig;
-  const { include = [] } = config;
+  const { include = [] } = runConfig;
 
   // Build the include list description
   let includeDescription = '';
@@ -76,12 +77,12 @@ Requirements:
   const response = await retry(
     () =>
       callLlm(prompt, {
-        ...config,
+        ...runConfig,
         response_format: popReferenceResponseFormat,
       }),
     {
       label: 'pop-reference',
-      config,
+      config: runConfig,
     }
   );
 
@@ -90,6 +91,8 @@ Requirements:
   if (!Array.isArray(references)) {
     throw new Error('Expected array of references in response');
   }
+
+  emitter.complete();
 
   return references;
 }

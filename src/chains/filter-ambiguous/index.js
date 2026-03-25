@@ -1,23 +1,34 @@
 import list from '../list/index.js';
 import score from '../score/index.js';
-import { initChain } from '../../lib/context/option.js';
+import { nameStep, getOptions } from '../../lib/context/option.js';
+import createProgressEmitter from '../../lib/progress/index.js';
+
+const name = 'filter-ambiguous';
 
 export default async function filterAmbiguous(text, config = {}) {
-  const { config: scopedConfig, topN } = await initChain('filter-ambiguous', config, {
+  const runConfig = nameStep(name, config);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
+  const { topN } = await getOptions(runConfig, {
     topN: 10,
   });
-  config = scopedConfig;
-  if (!text) return [];
+
+  const complete = (result) => {
+    emitter.complete();
+    return result;
+  };
+
+  if (!text) return complete([]);
   const sentences = text
     .split('\n')
     .map((s) => s.trim())
     .filter(Boolean);
-  if (sentences.length === 0) return [];
+  if (sentences.length === 0) return complete([]);
 
   const sentenceScores = await score(
     sentences,
     'How ambiguous or easily misinterpreted is this sentence?',
-    config
+    runConfig
   );
 
   const rankedSentences = sentences
@@ -29,7 +40,7 @@ export default async function filterAmbiguous(text, config = {}) {
   for (const { sentence } of rankedSentences) {
     // eslint-disable-next-line no-await-in-loop
     const terms = await list('Ambiguous words or short phrases', {
-      ...config,
+      ...runConfig,
       attachments: { text: sentence },
       targetNewItemsCount: 5,
     });
@@ -38,15 +49,15 @@ export default async function filterAmbiguous(text, config = {}) {
     });
   }
 
-  if (termPairs.length === 0) return [];
+  if (termPairs.length === 0) return complete([]);
 
   const scores = await score(
     termPairs.map((p) => `${p.term} | ${p.sentence}`),
     'Score how ambiguous the term is within the sentence.',
-    config
+    runConfig
   );
 
   const scored = termPairs.map((p, i) => ({ ...p, score: scores[i] }));
   scored.sort((a, b) => (b.score || 0) - (a.score || 0));
-  return scored.slice(0, topN);
+  return complete(scored.slice(0, topN));
 }

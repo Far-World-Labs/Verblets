@@ -1,6 +1,9 @@
 import list from '../list/index.js';
 import score from '../score/index.js';
-import { initChain } from '../../lib/context/option.js';
+import { nameStep, getOptions } from '../../lib/context/option.js';
+import createProgressEmitter from '../../lib/progress/index.js';
+
+const name = 'collect-terms';
 
 const splitIntoChunks = (text, maxLen) => {
   const words = text.split(/\s+/);
@@ -19,15 +22,14 @@ const splitIntoChunks = (text, maxLen) => {
 };
 
 export default async function collectTerms(text, config = {}) {
-  const {
-    config: scopedConfig,
-    topN,
-    chunkLen,
-  } = await initChain('collect-terms', config, {
+  const runConfig = nameStep(name, config);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
+  const { topN, chunkLen } = await getOptions(runConfig, {
     topN: 20,
     chunkLen: 1000,
   });
-  config = scopedConfig;
+
   const chunks = splitIntoChunks(text, chunkLen);
 
   // Collect terms from each chunk
@@ -35,7 +37,7 @@ export default async function collectTerms(text, config = {}) {
   for (const chunk of chunks) {
     const terms = await list(
       `key words and phrases that would help find documents about: ${chunk}`,
-      config
+      runConfig
     );
     allTerms.push(...terms);
   }
@@ -43,18 +45,23 @@ export default async function collectTerms(text, config = {}) {
   const uniqueTerms = Array.from(new Set(allTerms.map((t) => t.trim()))).filter(Boolean);
 
   // If we already have fewer terms than requested, return them all
-  if (uniqueTerms.length <= topN) return uniqueTerms;
+  if (uniqueTerms.length <= topN) {
+    emitter.complete();
+    return uniqueTerms;
+  }
 
   // Score each term by relevance to the full text context
   const scores = await score(
     uniqueTerms,
     `relevance as a search term for finding information (1-10, higher is more important)`,
-    config
+    runConfig
   );
 
   // Sort by score and take top N
   const termsWithScores = uniqueTerms.map((term, i) => ({ term, score: scores[i] }));
   termsWithScores.sort((a, b) => b.score - a.score);
+
+  emitter.complete();
 
   return termsWithScores.slice(0, topN).map((item) => item.term);
 }

@@ -2,9 +2,11 @@ import map from '../map/index.js';
 import { CENTRAL_TENDENCY_PROMPT } from '../../verblets/central-tendency-lines/index.js';
 import { centralTendencyResultsJsonSchema } from './schemas.js';
 import { createLifecycleLogger, extractPromptAnalysis } from '../../lib/lifecycle-logger/index.js';
-import { scopeProgress } from '../../lib/progress-callback/index.js';
+import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
 import { jsonSchema } from '../../lib/llm/index.js';
-import { initChain } from '../../lib/context/option.js';
+import { nameStep, getOptions } from '../../lib/context/option.js';
+
+const name = 'central-tendency';
 
 const centralTendencyResponseFormat = jsonSchema(
   centralTendencyResultsJsonSchema.name,
@@ -65,50 +67,49 @@ export default async function centralTendency(items, seedItems, config = {}) {
     throw new Error('seedItems must be a non-empty array');
   }
 
-  const { config: scopedConfig, batchSize } = await initChain('central-tendency', config, {
+  const runConfig = nameStep(name, config);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
+  const { batchSize } = await getOptions(runConfig, {
     batchSize: 5,
   });
-  config = scopedConfig;
 
   // Create lifecycle logger for the chain
-  const lifecycleLogger = createLifecycleLogger(config.logger, 'central-tendency-chain');
+  const lifecycleLogger = createLifecycleLogger(runConfig.logger, 'central-tendency-chain');
 
   // Log the initial input to the chain
   lifecycleLogger.logStart({
     items,
     seedItems,
-    context: config.context,
-    coreFeatures: config.coreFeatures,
+    context: runConfig.context,
+    coreFeatures: runConfig.coreFeatures,
     itemCount: items.length,
     seedCount: seedItems.length,
   });
 
-  try {
-    // Build instructions for the mapper
-    const instructions = buildCentralTendencyInstructions(seedItems, config);
+  // Build instructions for the mapper
+  const instructions = buildCentralTendencyInstructions(seedItems, runConfig);
 
-    // Log instruction construction
-    lifecycleLogger.logConstruction(instructions, extractPromptAnalysis(instructions));
+  // Log instruction construction
+  lifecycleLogger.logConstruction(instructions, extractPromptAnalysis(instructions));
 
-    // Use map to handle all the complexity
-    const results = await map(items, instructions, {
-      ...config,
-      batchSize,
-      responseFormat: centralTendencyResponseFormat,
-      logger: lifecycleLogger,
-      onProgress: scopeProgress(config.onProgress, 'map:evaluation'),
-    });
+  // Use map to handle all the complexity
+  const results = await map(items, instructions, {
+    ...runConfig,
+    batchSize,
+    responseFormat: centralTendencyResponseFormat,
+    logger: lifecycleLogger,
+    onProgress: scopePhase(runConfig.onProgress, 'map:evaluation'),
+  });
 
-    // Log the final output from the chain
-    lifecycleLogger.logResult(results, {
-      totalItems: results.length,
-      successCount: results.filter((r) => r !== undefined).length,
-      failureCount: results.filter((r) => r === undefined).length,
-    });
+  // Log the final output from the chain
+  const resultMeta = {
+    totalItems: results.length,
+    successCount: results.filter((r) => r !== undefined).length,
+    failureCount: results.filter((r) => r === undefined).length,
+  };
+  lifecycleLogger.logResult(results, resultMeta);
+  emitter.complete(resultMeta);
 
-    return results;
-  } catch (error) {
-    lifecycleLogger.logError(error);
-    throw error;
-  }
+  return results;
 }

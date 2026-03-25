@@ -33,9 +33,9 @@ Four exports from `src/lib/context/option.js`:
 - **`getOption(name, config, fallback)`** — async, checks `config.policy[name]` (function) → `config[name]` → `fallback`
 - **`getOptions(config, spec)`** — batch-get; spec values are plain fallbacks or `withPolicy(mapperFn, overrides?)`
 - **`withPolicy(fn, overrides?)`** — tags mapper for `getOptions`; when overrides present, only the flattened sub-keys appear in the result
-- **`scopeOperation(name, config)`** — scopes config with hierarchical operation name in `evalContext.operation`, defaults `now` to `new Date()`
+- **`scopeOperation(name, config)`** — scopes config with hierarchical operation name in `config.operation`, defaults `now` to `new Date()`
 
-Policy functions receive `(evalContext, { logger })`. The `evalContext.operation` field composes hierarchically with `/` (e.g. `'document-shrink/score'`).
+Policy functions receive `(operation, { logger })`. The `operation` string composes hierarchically with `/` (e.g. `'document-shrink/score'`).
 
 ## Consequences
 
@@ -44,4 +44,8 @@ Policy functions receive `(evalContext, { logger })`. The `evalContext.operation
 - `retry()` is config-aware — resolves `maxAttempts`, `retryDelay`, `retryOnAll` from config via `getOption`, eliminating the need for chains to resolve and forward retry params
 - `callLlm` resolves `llm` and all model keys from config via `getOption` — chains pass config directly without extracting `llm`
 - New chain authors use `getOptions` + `withPolicy` as the default pattern; `getOption` is only needed for dependent resolutions
-- `evalContext` is the canonical name for the dynamic config evaluation context going forward
+- `evalContext` was the canonical name for the dynamic config evaluation context at time of writing
+
+**Note (Phase 2 refactor):** `evalContext` was subsequently split into two concerns. The `operation` field — a hierarchical string like `'document-shrink/score'` — moved to `config.operation` directly. Targeting context (domain, tenant, plan, and other attributes that flag services and classifiers need) is no longer threaded through config at all; it is curried into policy functions at the definition site. Policy functions now receive `(operation, { logger })` instead of `(evalContext, { logger })`. `nameStep` sets `config.operation`.
+
+**Note (Phase 3 refactor):** Config enrichment and lifecycle tracking were separated into two functions. `nameStep(name, config)` is pure config enrichment — adds `operation` path and `now` timestamp. `track(name, config)` emits `chain:start` and returns a lifecycle handle with `result()` and `error()`. Convention: `const run = nameStep(name, config); const span = track(name, run);`.

@@ -1,6 +1,9 @@
 import { embedChunked } from '../../lib/embed/index.js';
 import { cosineSimilarity } from '../../lib/pure/index.js';
-import { initChain, withPolicy } from '../../lib/context/option.js';
+import createProgressEmitter from '../../lib/progress/index.js';
+import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
+
+const name = 'probe-scan';
 
 // ===== Option Mappers =====
 
@@ -35,16 +38,14 @@ export const mapDetection = (value) => {
  * @returns {Promise<{ flagged: boolean, hits: Array<{ category: string, label: string, score: number, chunk: { text: string, start: number, end: number } }> }>}
  */
 export default async function probeScan(textOrChunks, probes, config = {}) {
-  const {
-    config: scopedConfig,
-    detection: threshold,
-    maxTokens,
-  } = await initChain('probe-scan', config, {
+  const runConfig = nameStep(name, config);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
+  const { detection: threshold, maxTokens } = await getOptions(runConfig, {
     detection: withPolicy(mapDetection),
     maxTokens: 256,
   });
-  config = scopedConfig;
-  const { categories } = config;
+  const { categories } = runConfig;
 
   const chunks =
     typeof textOrChunks === 'string'
@@ -69,6 +70,8 @@ export default async function probeScan(textOrChunks, probes, config = {}) {
   }
 
   hits.sort((a, b) => b.score - a.score);
+
+  emitter.complete();
 
   return { flagged: hits.length > 0, hits };
 }

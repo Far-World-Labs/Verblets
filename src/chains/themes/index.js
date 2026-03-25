@@ -1,6 +1,9 @@
 import reduce from '../reduce/index.js';
 import shuffle from '../../lib/shuffle/index.js';
-import { initChain } from '../../lib/context/option.js';
+import createProgressEmitter from '../../lib/progress/index.js';
+import { nameStep, getOptions } from '../../lib/context/option.js';
+
+const name = 'themes';
 
 const splitText = (text) =>
   text
@@ -9,15 +12,18 @@ const splitText = (text) =>
     .filter(Boolean);
 
 export default async function themes(text, config = {}) {
-  const { config: scopedConfig, topN } = await initChain('themes', config, {
+  const runConfig = nameStep(name, config);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
+  const { topN } = await getOptions(runConfig, {
     topN: undefined,
   });
-  config = scopedConfig;
+
   const pieces = splitText(text);
   const reducePrompt =
     'Update the accumulator with short themes from this text. Avoid duplicates. Return ONLY a comma-separated list of themes with no explanation or additional text.';
   const shuffledPieces = shuffle(pieces);
-  const firstPass = await reduce(shuffledPieces, reducePrompt, config);
+  const firstPass = await reduce(shuffledPieces, reducePrompt, runConfig);
   const rawThemes = firstPass
     .split(',')
     .map((t) => t.trim())
@@ -25,9 +31,13 @@ export default async function themes(text, config = {}) {
 
   const limitText = topN ? `Limit to the top ${topN} themes.` : 'Return all meaningful themes.';
   const refinePrompt = `Refine the accumulator by merging similar themes. ${limitText} Return ONLY a comma-separated list with no explanation or additional text.`;
-  const final = await reduce(rawThemes, refinePrompt, config);
-  return final
+  const final = await reduce(rawThemes, refinePrompt, runConfig);
+  const result = final
     .split(',')
     .map((t) => t.trim())
     .filter(Boolean);
+
+  emitter.complete();
+
+  return result;
 }

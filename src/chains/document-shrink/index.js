@@ -1,10 +1,12 @@
 import collectTerms from '../collect-terms/index.js';
 import score from '../score/index.js';
 import map from '../map/index.js';
-import { scopeProgress } from '../../lib/progress-callback/index.js';
+import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
 import TextSimilarity from '../../lib/text-similarity/index.js';
 import { debug } from '../../lib/debug/index.js';
-import { initChain, withPolicy } from '../../lib/context/option.js';
+import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
+
+const name = 'document-shrink';
 
 // Token cost estimates
 const TOKENS_PER_EXPANSION = 200;
@@ -216,7 +218,15 @@ async function expandQuery(query, tokenBudget, options = {}) {
       ...options,
       topN: 5,
       chunkLen: 500,
-      onProgress: scopeProgress(options.onProgress, 'collect-terms:query-expansion'),
+      onProgress:
+        options.onProgress &&
+        ((e) =>
+          options.onProgress({
+            ...e,
+            phase: e.phase
+              ? `collect-terms:query-expansion/${e.phase}`
+              : 'collect-terms:query-expansion',
+          })),
     });
 
     // Include original query and the extracted terms
@@ -316,7 +326,7 @@ async function scoreEdgeChunks(candidates, query, maxChunks, options = {}) {
     {
       ...options,
       batchSize: LLM_CHUNK_BATCH_SIZE,
-      onProgress: scopeProgress(options.onProgress, 'score:edge-ranking'),
+      onProgress: scopePhase(options.onProgress, 'score:edge-ranking'),
     }
   );
 
@@ -372,7 +382,11 @@ async function compressHighValueChunks(
   const texts = await map(
     cleanedTexts,
     `Extract key parts answering: "${query}". Preserve important details. Target ${compressionTarget}% of original.`,
-    { ...options, batchSize: 10, onProgress: scopeProgress(options.onProgress, 'map:compression') }
+    {
+      ...options,
+      batchSize: 10,
+      onProgress: scopePhase(options.onProgress, 'map:compression'),
+    }
   );
 
   const compressed = [];
@@ -531,8 +545,10 @@ function selectGapFillers(allChunks, selectedChunks, gapFillerBudget) {
 
 // Main function with proper budget planning
 export default async function documentShrink(document, query, config = {}) {
+  const runConfig = nameStep(name, config);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
   const {
-    config: scopedConfig,
     targetSize,
     tokenBudget: tokenBudgetInit,
     gapFillerBudgetRatio,
@@ -542,7 +558,7 @@ export default async function documentShrink(document, query, config = {}) {
     llmScoring,
     llmCompression,
     scoringTokenRatio,
-  } = await initChain('document-shrink', config, {
+  } = await getOptions(runConfig, {
     targetSize: DEFAULT_OPTIONS.targetSize,
     tokenBudget: DEFAULT_OPTIONS.tokenBudget,
     gapFillerBudgetRatio: DEFAULT_OPTIONS.gapFillerBudgetRatio,
@@ -555,17 +571,17 @@ export default async function documentShrink(document, query, config = {}) {
       'scoringTokenRatio',
     ]),
   });
-  config = scopedConfig;
   const merged = {
     ...DEFAULT_OPTIONS,
-    ...config,
+    ...runConfig,
     targetSize,
     tokenBudget: tokenBudgetInit,
     gapFillerBudgetRatio,
   };
+
   // Handle edge cases early
   if (!document || document.length === 0) {
-    return {
+    const emptyResult = {
       content: '',
       metadata: {
         originalSize: 0,
@@ -576,6 +592,10 @@ export default async function documentShrink(document, query, config = {}) {
         tokens: { budget: 0, used: 0, breakdown: {} },
       },
     };
+
+    emitter.complete();
+
+    return emptyResult;
   }
 
   // Validate and fix merged values
@@ -603,7 +623,7 @@ export default async function documentShrink(document, query, config = {}) {
   }
 
   // Step 3: Expand query (gated by thoroughness)
-  const subOptions = config;
+  const subOptions = runConfig;
   const { expansions, tokensUsed: expansionTokens } = queryExpansion
     ? await expandQuery(query, tokenBudget, subOptions)
     : { expansions: [query], tokensUsed: 0 };
@@ -685,7 +705,7 @@ export default async function documentShrink(document, query, config = {}) {
     content = trimToLastSentence(content.slice(0, merged.targetSize * 2));
   }
 
-  return {
+  const finalResult = {
     content,
     metadata: {
       originalSize: document.length,
@@ -714,4 +734,8 @@ export default async function documentShrink(document, query, config = {}) {
       },
     },
   };
+
+  emitter.complete();
+
+  return finalResult;
 }

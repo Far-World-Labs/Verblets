@@ -1,60 +1,60 @@
 import { describe, it, expect, vi } from 'vitest';
-import { scopeOperation, getOption, getOptions, withPolicy } from './option.js';
+import { nameStep, getOption, getOptions, withPolicy } from './option.js';
 
-describe('scopeOperation', () => {
-  it('sets operation on evalContext', () => {
-    const result = scopeOperation('filter', {});
-    expect(result.evalContext).toEqual({ operation: 'filter' });
+describe('nameStep', () => {
+  it('sets operation on config', () => {
+    const result = nameStep('filter', {});
+    expect(result.operation).toBe('filter');
   });
 
-  it('preserves existing evalContext attributes', () => {
-    const result = scopeOperation('filter', {
-      evalContext: { request: { domain: 'medical' } },
+  it('preserves existing config attributes', () => {
+    const result = nameStep('filter', {
+      request: { domain: 'medical' },
     });
-    expect(result.evalContext.operation).toBe('filter');
-    expect(result.evalContext.request).toEqual({ domain: 'medical' });
+    expect(result.operation).toBe('filter');
+    expect(result.request).toEqual({ domain: 'medical' });
   });
 
   it('composes hierarchically with parent operation', () => {
-    const parent = scopeOperation('document-shrink', {});
-    const child = scopeOperation('score', parent);
-    expect(child.evalContext.operation).toBe('document-shrink/score');
+    const parent = nameStep('document-shrink', {});
+    const child = nameStep('score', parent);
+    expect(child.operation).toBe('document-shrink/score');
   });
 
   it('composes three levels deep', () => {
-    const a = scopeOperation('group', {});
-    const b = scopeOperation('reduce', a);
-    const c = scopeOperation('list', b);
-    expect(c.evalContext.operation).toBe('group/reduce/list');
+    const a = nameStep('group', {});
+    const b = nameStep('reduce', a);
+    const c = nameStep('list', b);
+    expect(c.operation).toBe('group/reduce/list');
   });
 
   it('preserves all other config keys', () => {
     const config = { llm: { fast: true }, maxAttempts: 5, logger: 'log' };
-    const result = scopeOperation('filter', config);
+    const result = nameStep('filter', config);
     expect(result.llm).toEqual({ fast: true });
     expect(result.maxAttempts).toBe(5);
     expect(result.logger).toBe('log');
   });
 
   it('does not mutate the original config', () => {
-    const config = { evalContext: { request: { domain: 'legal' } } };
-    scopeOperation('filter', config);
-    expect(config.evalContext.operation).toBeUndefined();
+    const config = { request: { domain: 'legal' } };
+    nameStep('filter', config);
+    expect(config.operation).toBeUndefined();
   });
 
-  it('defaults now to a Date when not provided', () => {
-    const result = scopeOperation('filter', {});
+  it('sets now timestamp when not present', () => {
+    const result = nameStep('filter', {});
     expect(result.now).toBeInstanceOf(Date);
   });
 
   it('preserves caller-provided now', () => {
     const custom = new Date('2020-01-01');
-    const result = scopeOperation('filter', { now: custom });
+    const result = nameStep('filter', { now: custom });
     expect(result.now).toBe(custom);
   });
 
   it('operation is visible to policy functions via getOption', async () => {
-    const config = scopeOperation('filter', {
+    const config = nameStep('filter', {
       policy: {
         maxAttempts: (ctx) => (ctx.operation === 'filter' ? 5 : 3),
       },
@@ -64,9 +64,9 @@ describe('scopeOperation', () => {
   });
 
   it('composed operation is visible to nested policy functions', async () => {
-    const config = scopeOperation(
+    const config = nameStep(
       'score',
-      scopeOperation('document-shrink', {
+      nameStep('document-shrink', {
         policy: {
           maxAttempts: (ctx) => {
             if (ctx.operation === 'document-shrink/score') return 2;
@@ -158,15 +158,14 @@ describe('getOption', () => {
     expect(result).toBe(0.5);
   });
 
-  it('passes evalContext and { logger } to async function', async () => {
-    const ctx = { user: 'alice' };
+  it('passes context object and { logger } to async function', async () => {
     const logger = { info: vi.fn() };
     const options = {
-      evalContext: ctx,
+      operation: 'filter',
       logger,
       policy: {
-        protection: async (receivedCtx, { logger: receivedLogger }) => {
-          expect(receivedCtx).toBe(ctx);
+        protection: async (ctx, { logger: receivedLogger }) => {
+          expect(ctx).toEqual({ operation: 'filter' });
           expect(receivedLogger).toBe(logger);
           return 'redact';
         },
@@ -176,15 +175,14 @@ describe('getOption', () => {
     expect(result).toBe('redact');
   });
 
-  it('passes evalContext and { logger } to sync function', async () => {
-    const ctx = { user: 'alice' };
+  it('passes context object and { logger } to sync function', async () => {
     const logger = { info: vi.fn() };
     const options = {
-      evalContext: ctx,
+      operation: 'filter',
       logger,
       policy: {
-        protection: (receivedCtx, { logger: receivedLogger }) => {
-          expect(receivedCtx).toBe(ctx);
+        protection: (ctx, { logger: receivedLogger }) => {
+          expect(ctx).toEqual({ operation: 'filter' });
           expect(receivedLogger).toBe(logger);
           return 'redact';
         },
@@ -270,7 +268,7 @@ describe('getOptions', () => {
   });
 
   it('respects policy for plain entries', async () => {
-    const config = scopeOperation('filter', {
+    const config = nameStep('filter', {
       policy: {
         maxAttempts: (ctx) => (ctx.operation === 'filter' ? 5 : 3),
       },
@@ -289,7 +287,7 @@ describe('getOptions', () => {
 
   it('respects policy for withPolicy entries', async () => {
     const mapper = (v) => (v ?? 'default').toUpperCase();
-    const config = scopeOperation('test', {
+    const config = nameStep('test', {
       policy: {
         mode: (ctx) => (ctx.operation === 'test' ? 'fast' : undefined),
       },
@@ -341,7 +339,7 @@ describe('getOptions', () => {
 
   it('override sub-keys respect policy functions', async () => {
     const mapEffort = (_v) => ({ iterations: 1, extremeK: 10 });
-    const config = scopeOperation('sort', {
+    const config = nameStep('sort', {
       effort: 'low',
       policy: {
         extremeK: (ctx) => (ctx.operation === 'sort' ? 42 : 10),
@@ -395,7 +393,7 @@ describe('config pipeline integration', () => {
   });
 
   it('policy sync function resolves per operation', async () => {
-    const config = scopeOperation('filter', {
+    const config = nameStep('filter', {
       policy: {
         temperature: (ctx) => (ctx.operation === 'filter' ? 0.2 : 0.8),
       },
@@ -405,7 +403,7 @@ describe('config pipeline integration', () => {
   });
 
   it('policy async function resolves per operation', async () => {
-    const config = scopeOperation('score', {
+    const config = nameStep('score', {
       policy: {
         temperature: async (ctx) => (ctx.operation === 'score' ? 0.1 : 0.9),
       },
@@ -424,16 +422,16 @@ describe('config pipeline integration', () => {
         }
       );
     };
-    const config = scopeOperation('sort', { effort: 'low', extremeK: 99 });
+    const config = nameStep('sort', { effort: 'low', extremeK: 99 });
     const { effort } = await getOptions(config, { effort: withPolicy(mapEffort) });
     const extremeK = await getOption('extremeK', config, effort.extremeK);
     expect(extremeK).toBe(99); // explicit override wins over mapper output
   });
 
-  it('nested operation scoping reaches correct evalContext', async () => {
-    const config = scopeOperation(
+  it('nested operation scoping reaches correct context', async () => {
+    const config = nameStep(
       'score',
-      scopeOperation('document-shrink', {
+      nameStep('document-shrink', {
         policy: {
           maxAttempts: (ctx) => {
             if (ctx.operation === 'document-shrink/score') return 7;

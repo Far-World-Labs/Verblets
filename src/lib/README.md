@@ -5,7 +5,7 @@ Low-level utilities that support [chains](../chains/) and [verblets](../verblets
 ## Core
 
 - [llm](./llm) — LLM API wrapper with capability-based model selection, structured output, and automatic JSON parsing
-- [context](./context) — Config resolution: `getOption`, `getOptions`, `withPolicy`, `scopeOperation`, `initChain`
+- [context](./context) — Config resolution: `getOption`, `getOptions`, `withPolicy`, `nameStep`, `track`
 - [retry](./retry) — Config-aware async retry with configurable attempts and delay
 - [parallel-batch](./parallel-batch) — Parallel execution with concurrency limits
 
@@ -46,7 +46,7 @@ Convert raw LLM text responses into typed values. These are the internal impleme
 ## Infrastructure
 
 - [prompt-cache](./prompt-cache) — Cache prompts and responses (Redis with in-memory fallback)
-- [progress-callback](./progress-callback) — Progress event helpers: `batchTracker`, `scopeProgress`, emit utilities
+- [progress](./progress) — Progress event system: `track`, `trackBatch`, `scopeProgress`, emit utilities
 - [debug](./debug) — Debug logging
 - [any-signal](./any-signal) — Combine multiple AbortSignals
 - [timed-abort-controller](./timed-abort-controller) — AbortController with timeout

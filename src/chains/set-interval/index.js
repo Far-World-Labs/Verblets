@@ -7,7 +7,10 @@ import date from '../date/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import templateReplace from '../../lib/template-replace/index.js';
 import { constants as promptConstants } from '../../prompts/index.js';
-import { scopeOperation } from '../../lib/context/option.js';
+import createProgressEmitter from '../../lib/progress/index.js';
+import { nameStep } from '../../lib/context/option.js';
+
+const name = 'set-interval';
 
 const { contentIsInstructions, explainAndSeparate, explainAndSeparatePrimitive } = promptConstants;
 
@@ -67,7 +70,10 @@ export default function setInterval({
   llm,
   ...options
 } = {}) {
-  const config = scopeOperation('set-interval', { llm, ...options });
+  const config = nameStep(name, { llm, ...options });
+  const emitter = createProgressEmitter(name, config.onProgress, config);
+  emitter.start();
+  const startTime = config.now ?? new Date();
   let timer;
   let count = 0;
   let lastResult = initial;
@@ -126,6 +132,13 @@ Next wait:`;
         });
       }
 
+      emitter.metrics({
+        event: 'chain:tick',
+        operation: config.operation,
+        duration: Date.now() - startTime.getTime(),
+        tickNumber: count + 1,
+      });
+
       count += 1;
 
       // Schedule the next iteration only if still active
@@ -134,6 +147,10 @@ Next wait:`;
       }
     } catch (error) {
       debug(`Error in setInterval step: ${error.message}`);
+
+      emitter.error(error, {
+        duration: Date.now() - startTime.getTime(),
+      });
 
       // Call onTick with the data we have, even if LLM failed
       if (onTick && lastResult) {

@@ -2,8 +2,11 @@ import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import map from '../map/index.js';
-import { initChain, scopeOperation } from '../../lib/context/option.js';
+import createProgressEmitter from '../../lib/progress/index.js';
+import { nameStep, getOptions } from '../../lib/context/option.js';
 import tagsResultSchema from './tags-result.json';
+
+const name = 'tags';
 
 // Schema for map operation - array of tag arrays
 const tagsMapSchema = {
@@ -35,7 +38,7 @@ const tagsMapSchema = {
  * @returns {Promise<string>} Tag specification
  */
 export async function tagSpec(instructions, config = {}) {
-  config = scopeOperation('tags:spec', config);
+  config = nameStep('tags:spec', config);
 
   const specSystemPrompt = `You are a tag specification generator. Create clear, actionable tagging criteria.`;
 
@@ -75,10 +78,12 @@ Keep it concise and actionable.`;
  * @returns {Promise<Array>} Array of tag IDs
  */
 export async function applyTags(item, specification, vocabulary, config = {}) {
-  const { config: scopedConfig, vocabularyMode } = await initChain('tags:apply', config, {
+  const runConfig = nameStep(`${name}:apply`, config);
+  const applyEmitter = createProgressEmitter(`${name}:apply`, runConfig.onProgress, runConfig);
+  applyEmitter.start();
+  const { vocabularyMode } = await getOptions(runConfig, {
     vocabularyMode: 'strict',
   });
-  config = scopedConfig;
 
   const vocabularyConstraint =
     vocabularyMode === 'open'
@@ -103,17 +108,21 @@ Do NOT return tag labels, descriptions, or full tag objects - ONLY the string ID
   const response = await retry(
     () =>
       callLlm(prompt, {
-        ...config,
+        ...runConfig,
         response_format: jsonSchema('tags_result', tagsResultSchema),
       }),
     {
       label: 'tags-apply',
-      config,
+      config: runConfig,
     }
   );
 
   // llm auto-unwraps {items: [...]} to just the array
-  return Array.isArray(response) ? response : [];
+  const result = Array.isArray(response) ? response : [];
+
+  applyEmitter.complete();
+
+  return result;
 }
 
 /**

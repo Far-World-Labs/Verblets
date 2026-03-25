@@ -12,67 +12,60 @@ await filter(items, 'relevant', {
 });
 ```
 
-Events follow a lifecycle: `start` → repeated `batch:complete` → `complete` (or `error`). Each event includes a computed `progress` field (0 to 1) when `totalItems` and `processedItems` are present.
+Events follow a lifecycle: `chain:start` → repeated `batch:complete` → `chain:complete` (or `chain:error`). Each event includes a computed `progress` field (0 to 1) when `totalItems` and `processedItems` are present.
 
 ## Chain author usage
 
-### prepareBatches + batchTracker
+### createProgressEmitter
 
-The most common pattern for batch-processing chains. `prepareBatches` creates batches and a tracker in one call. The tracker manages counters and emits events automatically:
+The single export from `src/lib/progress/index.js`. Creates a lifecycle emitter bound to a named operation:
 
 ```javascript
-import { prepareBatches } from '../../lib/progress-callback/index.js';
-import parallel from '../../lib/parallel-batch/index.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 
-const { batches, tracker } = await prepareBatches('filter', items, config);
+const emitter = createProgressEmitter('filter', runConfig.onProgress, runConfig);
+```
 
-const results = await parallel(batches, async (batch) => {
-  const result = await processOneBatch(batch.items, config);
-  tracker.batchDone(batch.startIndex, batch.items.length);
+The constructor emits `chain:start` immediately. The returned handle exposes:
+- `emit(data)` — dispatch an operation event (default kind: `'operation'`)
+- `result(meta?)` — emit `chain:complete` telemetry with auto-calculated duration
+- `error(err, meta?)` — emit `chain:error` telemetry with error message and duration
+
+The callback is an explicit positional argument — not read from config. The third argument (`options`) provides `operation` (composed path from `nameStep`) and `now` (timestamp for duration calculation).
+
+### Batch progress
+
+Chains that process lists track batch progress inline:
+
+```javascript
+let processedItems = 0;
+const results = await parallel(activeBatches, async (batch) => {
+  const result = await processOneBatch(batch.items, runConfig);
+  processedItems += batch.items.length;
+  emitter.emit({
+    event: 'batch:complete',
+    totalItems: items.length,
+    processedItems,
+  });
   return result;
 }, { maxParallel: 3 });
 
-tracker.complete();
+emitter.result({ totalItems: items.length });
 ```
 
-The tracker exposes:
-- `start(batchCount, maxParallel?)` — emits start event (called by `prepareBatches`)
-- `forBatch(startIndex, batchSize)` — returns a scoped progress callback for retry events within a batch
-- `batchDone(startIndex, batchSize)` — increments counters and emits `batch:complete`
-- `complete(metadata?)` — emits final complete event
-- `scopedProgress(phase)` — returns a `scopeProgress`-wrapped callback for nested chains
+### Phase scoping
 
-### scopeProgress
-
-When a chain passes `onProgress` to a nested chain call, wrap it with `scopeProgress` to tag events with a `phase` field. This lets consumers distinguish events from different stages of a multi-phase pipeline:
+When a chain passes `onProgress` to a nested chain call, wrap the callback inline to tag events with a `phase` field. This lets consumers distinguish events from different stages of a multi-phase pipeline:
 
 ```javascript
-import { scopeProgress } from '../../lib/progress-callback/index.js';
-
 await reduce(items, prompt, {
-  ...config,
-  onProgress: scopeProgress(config.onProgress, 'reduce:category-discovery'),
+  ...runConfig,
+  onProgress: runConfig.onProgress && ((e) =>
+    runConfig.onProgress({ ...e, phase: e.phase ? `group:extraction/${e.phase}` : 'group:extraction' })),
 });
 ```
 
 Phases compose when nested. If the outer scope is `'group:workflow'` and the inner scope is `'reduce:extraction'`, the consumer sees `phase: 'group:workflow/reduce:extraction'`. The naming convention is `chainName:purpose`.
-
-### filterProgress
-
-Controls event granularity. Chains can resolve a `progressMode` option and apply it:
-
-| Mode | Events emitted |
-|------|---------------|
-| `'detailed'` | All events (default) |
-| `'batch'` | `start`, `complete`, `batch:complete` |
-| `'coarse'` | `start`, `complete` only |
-| `'none'` | No events |
-
-`prepareBatches` applies `filterProgress` automatically based on the `progressMode` passed in.
-
-### Direct emit functions
-
-For non-batch operations, use the individual emit helpers: `emitStart`, `emitComplete`, `emitBatchStart`, `emitBatchComplete`, `emitBatchProcessed`, `emitStepProgress`, `emitPhaseProgress`. All are no-ops when the callback is absent.
 
 ## Event shape
 
@@ -80,21 +73,19 @@ Every event includes at minimum:
 
 ```javascript
 {
+  kind: 'operation',        // 'operation' or 'telemetry'
   step: 'filter',           // chain name
   event: 'batch:complete',  // lifecycle event
   timestamp: '...',         // ISO string
   // batch events also include:
   totalItems: 100,
   processedItems: 30,
-  progress: 0.3,            // computed
-  batchNumber: 3,
-  batchSize: 10,
-  totalBatches: 10,
+  progress: 0.3,            // auto-computed when totalItems and processedItems present
 }
 ```
 
-Retry events add `attemptNumber`, `maxAttempts`, and `delay`. Error events add `error` (message string) and `final: true`.
+Telemetry events (`kind: 'telemetry'`) include `chain:start`, `chain:complete`, `chain:error`, `llm:model`, `llm:call`, `retry:attempt`, `retry:error`, `retry:exhaust`, and `option:resolve`.
 
 ## Source
 
-All exports are from `src/lib/progress-callback/index.js`.
+Single default export from `src/lib/progress/index.js`.

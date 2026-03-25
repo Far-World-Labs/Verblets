@@ -7,7 +7,10 @@ import {
   constants as promptConstants,
 } from '../../prompts/index.js';
 import listResultSchema from './list-result.json';
-import { scopeOperation } from '../../lib/context/option.js';
+import { nameStep } from '../../lib/context/option.js';
+import createProgressEmitter from '../../lib/progress/index.js';
+
+const name = 'list';
 
 const DEFAULT_LIST_TIMEOUT_MS = 90_000;
 
@@ -41,19 +44,19 @@ const shouldStopDefault = ({ queryCount, startTime, queryLimit, timeoutMs } = {}
 };
 
 export const generateList = async function* generateListGenerator(text, config = {}) {
-  config = scopeOperation('list:generate', { llm: 'fastGoodCheap', ...config });
+  const runConfig = nameStep('list:generate', { llm: 'fastGoodCheap', ...config });
   const resultsAll = [];
   const resultsAllMap = {};
   let isDone = false;
-  const { shouldSkip = shouldSkipDefault, shouldStop = shouldStopDefault } = config;
-  const { queryLimit = 5, timeoutMs = DEFAULT_LIST_TIMEOUT_MS } = config;
+  const { shouldSkip = shouldSkipDefault, shouldStop = shouldStopDefault } = runConfig;
+  const { queryLimit = 5, timeoutMs = DEFAULT_LIST_TIMEOUT_MS } = runConfig;
 
   const startTime = new Date();
   let queryCount = 0;
 
   while (!isDone) {
     const listPrompt = generateListPrompt(text, {
-      ...config,
+      ...runConfig,
       existing: resultsAll,
     });
 
@@ -61,10 +64,10 @@ export const generateList = async function* generateListGenerator(text, config =
     try {
       // eslint-disable-next-line no-await-in-loop
       const results = await retry(
-        () => callLlm(listPrompt, { ...config, ...createModelOptions() }),
+        () => callLlm(listPrompt, { ...runConfig, ...createModelOptions() }),
         {
           label: 'list-generate',
-          config,
+          config: runConfig,
         }
       );
 
@@ -131,14 +134,18 @@ export const generateList = async function* generateListGenerator(text, config =
 };
 
 export default async function list(prompt, config = {}) {
-  config = scopeOperation('list', config);
-  const { schema } = config;
+  const runConfig = nameStep(name, config);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
+  const { schema } = runConfig;
   const fullPrompt = prompt;
-
-  const response = await retry(() => callLlm(fullPrompt, { ...config, ...createModelOptions() }), {
-    label: 'list-main',
-    config,
-  });
+  const response = await retry(
+    () => callLlm(fullPrompt, { ...runConfig, ...createModelOptions() }),
+    {
+      label: 'list-main',
+      config: runConfig,
+    }
+  );
 
   // Extract items from the object structure
   const resultArray = response?.items || response;
@@ -149,9 +156,9 @@ export default async function list(prompt, config = {}) {
     const transformedItems = [];
     for (const item of items) {
       const transformPrompt = outputTransformPrompt(item, schema);
-      const transformResponse = await retry(() => callLlm(transformPrompt, config), {
+      const transformResponse = await retry(() => callLlm(transformPrompt, runConfig), {
         label: 'list-transform',
-        config,
+        config: runConfig,
       });
       try {
         const transformedItem = JSON.parse(transformResponse);
@@ -161,8 +168,10 @@ export default async function list(prompt, config = {}) {
         transformedItems.push(item);
       }
     }
+    emitter.complete();
     return transformedItems;
   }
 
+  emitter.complete();
   return items;
 }

@@ -2,8 +2,10 @@ import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import score from '../score/index.js';
 import disambiguateMeaningsSchema from './disambiguate-meanings-result.json';
-import { emitStepProgress, scopeProgress } from '../../lib/progress-callback/index.js';
-import { scopeOperation } from '../../lib/context/option.js';
+import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
+import { nameStep } from '../../lib/context/option.js';
+
+const name = 'disambiguate';
 
 const disambiguateResponseFormat = jsonSchema(
   'disambiguate_meanings_result',
@@ -16,7 +18,7 @@ Return a JSON object with a "meanings" array containing the distinct meanings.`;
 };
 
 export const getMeanings = async (term, config = {}) => {
-  config = scopeOperation('disambiguate:meanings', { llm: 'fastGoodCheap', ...config });
+  config = nameStep('disambiguate:meanings', { llm: 'fastGoodCheap', ...config });
   const prompt = meaningsPrompt(term);
   const response = await retry(
     () =>
@@ -35,27 +37,28 @@ export const getMeanings = async (term, config = {}) => {
 };
 
 export default async function disambiguate({ term, context, ...config } = {}) {
-  config = scopeOperation('disambiguate', config);
+  const runConfig = nameStep(name, config);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
 
-  emitStepProgress(config.onProgress, 'disambiguate', 'extracting-meanings', {
-    term,
-    now: config.now,
-    chainStartTime: config.now,
-  });
+  emitter.emit({ event: 'step', stepName: 'extracting-meanings', term });
 
-  const meanings = await getMeanings(term, config);
+  const meanings = await getMeanings(term, runConfig);
 
-  emitStepProgress(config.onProgress, 'disambiguate', 'scoring-meanings', {
+  emitter.emit({
+    event: 'step',
+    stepName: 'scoring-meanings',
     term,
     meaningCount: meanings.length,
-    now: config.now,
-    chainStartTime: config.now,
   });
 
   const scores = await score(
     meanings,
     `how well this meaning of "${term}" matches the context: ${context}`,
-    { ...config, onProgress: scopeProgress(config.onProgress, 'score:relevance') }
+    {
+      ...runConfig,
+      onProgress: scopePhase(runConfig.onProgress, 'score:relevance'),
+    }
   );
 
   let bestIndex = 0;
@@ -67,6 +70,8 @@ export default async function disambiguate({ term, context, ...config } = {}) {
       bestIndex = i;
     }
   }
+
+  emitter.complete();
 
   return { meaning: meanings[bestIndex], meanings };
 }

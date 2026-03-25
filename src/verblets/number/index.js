@@ -1,4 +1,6 @@
 import callLlm from '../../lib/llm/index.js';
+import { nameStep } from '../../lib/context/option.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 import { numberSchema } from './schema.js';
 
@@ -10,7 +12,13 @@ const {
   explainAndSeparatePrimitive,
 } = promptConstants;
 
+const name = 'number';
+
 export default async (text, config = {}) => {
+  const runConfig = nameStep(name, config);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
+
   const numberText = `${contentIsQuestion} ${text}
 
 ${explainAndSeparate} ${explainAndSeparatePrimitive}
@@ -20,7 +28,7 @@ ${asNumber} ${asUndefinedByDefault}
 The value should be the number or "undefined".`;
 
   const result = await callLlm(numberText, {
-    ...config,
+    ...runConfig,
     response_format: {
       type: 'json_schema',
       json_schema: {
@@ -30,5 +38,9 @@ The value should be the number or "undefined".`;
     },
   });
 
-  return result === 'undefined' ? undefined : result;
+  const interpreted = result === 'undefined' ? undefined : result;
+
+  emitter.complete();
+
+  return interpreted;
 };

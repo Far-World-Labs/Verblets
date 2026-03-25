@@ -1,6 +1,10 @@
 import callLlm from '../../lib/llm/index.js';
+import { nameStep } from '../../lib/context/option.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { nameSimilarSchema } from './schema.js';
+
+const name = 'name-similar-to';
 
 const buildPrompt = (description, exampleNames) => {
   const descriptionBlock = asXML(description, { tag: 'description' });
@@ -16,9 +20,13 @@ The value should be the generated name.`;
 };
 
 export default async function nameSimilarTo(description, exampleNames = [], config = {}) {
+  const runConfig = nameStep(name, config);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
+
   const prompt = buildPrompt(description, exampleNames);
   const response = await callLlm(prompt, {
-    ...config,
+    ...runConfig,
     response_format: {
       type: 'json_schema',
       json_schema: {
@@ -27,5 +35,8 @@ export default async function nameSimilarTo(description, exampleNames = [], conf
       },
     },
   });
+
+  emitter.complete();
+
   return response;
 }

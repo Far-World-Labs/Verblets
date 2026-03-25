@@ -1,6 +1,10 @@
 import callLlm from '../../lib/llm/index.js';
 import { stepBack as stepBackPrompt } from '../../prompts/embed-query-transforms.js';
 import { embedStepBackSchema } from './schema.js';
+import { nameStep } from '../../lib/context/option.js';
+import createProgressEmitter from '../../lib/progress/index.js';
+
+const name = 'embed-step-back';
 
 // ===== Option Mappers =====
 
@@ -37,11 +41,14 @@ export const mapAbstraction = (value) => {
  * @returns {Promise<string[]>}
  */
 export default async function embedStepBack(query, config = {}) {
-  const { count = 3 } = config;
-  const abstractionGuidance = mapAbstraction(config.abstraction);
+  const runConfig = nameStep(name, config);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
+  const { count = 3 } = runConfig;
+  const abstractionGuidance = mapAbstraction(runConfig.abstraction);
 
-  return await callLlm(stepBackPrompt(query, count, { abstractionGuidance }), {
-    ...config,
+  const result = await callLlm(stepBackPrompt(query, count, { abstractionGuidance }), {
+    ...runConfig,
     response_format: {
       type: 'json_schema',
       json_schema: {
@@ -50,4 +57,6 @@ export default async function embedStepBack(query, config = {}) {
       },
     },
   });
+  emitter.complete();
+  return result;
 }

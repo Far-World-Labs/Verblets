@@ -1,6 +1,10 @@
 import callLlm from '../../lib/llm/index.js';
 import { rewriteQuery as rewriteQueryPrompt } from '../../prompts/embed-query-transforms.js';
 import { embedRewriteQuerySchema } from './schema.js';
+import { nameStep } from '../../lib/context/option.js';
+import createProgressEmitter from '../../lib/progress/index.js';
+
+const name = 'embed-rewrite-query';
 
 /**
  * Rewrite a search query to be clearer and more specific.
@@ -10,8 +14,11 @@ import { embedRewriteQuerySchema } from './schema.js';
  * @returns {Promise<string>}
  */
 export default async function embedRewriteQuery(query, config = {}) {
-  return await callLlm(rewriteQueryPrompt(query), {
-    ...config,
+  const runConfig = nameStep(name, config);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
+  const result = await callLlm(rewriteQueryPrompt(query), {
+    ...runConfig,
     response_format: {
       type: 'json_schema',
       json_schema: {
@@ -20,4 +27,6 @@ export default async function embedRewriteQuery(query, config = {}) {
       },
     },
   });
+  emitter.complete();
+  return result;
 }

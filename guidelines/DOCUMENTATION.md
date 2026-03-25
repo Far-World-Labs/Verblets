@@ -23,9 +23,9 @@ Generic model configuration (temperature, maxTokens, llm selection) belongs in [
 Cross-cutting subsystems have their own centralized documentation in `docs/`. Module READMEs should reference these rather than re-explaining common behaviors:
 
 - [Configuration](../docs/configuration.md) — model selection, capabilities, model parameters
-- [Option Resolution](../docs/option-resolution.md) — `initChain`, `getOption`, `withPolicy`, mappers, policy
+- [Option Resolution](../docs/option-resolution.md) — `nameStep`, `track`, `getOptions`, `getOption`, `withPolicy`, mappers, policy
 - [Batching](../docs/batching.md) — auto-sizing, `parallelBatch`, `prepareBatches`, `batchSize`/`maxParallel`
-- [Progress Tracking](../docs/progress-tracking.md) — `onProgress`, `scopeProgress`, `batchTracker`, event lifecycle
+- [Progress Tracking](../docs/progress-tracking.md) — `onProgress`, `scopeProgress`, `trackBatch`, event lifecycle
 - [Retry](../docs/retry.md) — config-aware retries, retryable errors, abort signal
 - [JSON Schemas](../guidelines/JSON_SCHEMAS.md) — `response_format`, schema design, auto-unwrapping
 

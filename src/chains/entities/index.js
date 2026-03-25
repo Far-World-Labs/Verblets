@@ -3,8 +3,10 @@ import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import buildInstructions from '../../lib/build-instructions/index.js';
 import entityResultSchema from './entity-result.json';
-import { emitStepProgress } from '../../lib/progress-callback/index.js';
-import { scopeOperation } from '../../lib/context/option.js';
+import createProgressEmitter from '../../lib/progress/index.js';
+import { nameStep } from '../../lib/context/option.js';
+
+const name = 'entities';
 
 // ===== Instruction Builders =====
 
@@ -41,7 +43,7 @@ export const {
  * @returns {Promise<string>} Entity specification as descriptive text
  */
 export async function entitySpec(prompt, config = {}) {
-  config = scopeOperation('entities:spec', config);
+  config = nameStep('entities:spec', config);
 
   const specSystemPrompt = `You are an entity specification generator. Create a clear, concise specification for entity extraction.`;
 
@@ -79,7 +81,7 @@ Keep it simple and actionable.`;
  * @returns {Promise<Object>} Object with entities array
  */
 export async function applyEntities(text, specification, config = {}) {
-  config = scopeOperation('entities:apply', config);
+  config = nameStep('entities:apply', config);
 
   const prompt = `Apply the entity specification to extract entities from this text.
 
@@ -116,23 +118,21 @@ Each entity should include:
  * @returns {Promise<Object>} Object with entities array
  */
 export async function extractEntities(text, instructions, config = {}) {
-  config = scopeOperation('entities', config);
+  const runConfig = nameStep(name, config);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
 
-  emitStepProgress(config.onProgress, 'entities', 'generating-specification', {
-    instructions,
-    now: config.now,
-    chainStartTime: config.now,
-  });
+  emitter.emit({ event: 'step', stepName: 'generating-specification', instructions });
 
-  const spec = config.spec || (await entitySpec(instructions, config));
+  const spec = runConfig.spec || (await entitySpec(instructions, runConfig));
 
-  emitStepProgress(config.onProgress, 'entities', 'extracting-entities', {
-    specification: spec,
-    now: config.now,
-    chainStartTime: config.now,
-  });
+  emitter.emit({ event: 'step', stepName: 'extracting-entities', specification: spec });
 
-  return await applyEntities(text, spec, config);
+  const result = await applyEntities(text, spec, runConfig);
+
+  emitter.complete();
+
+  return result;
 }
 
 // ===== Advanced Entity Functions =====

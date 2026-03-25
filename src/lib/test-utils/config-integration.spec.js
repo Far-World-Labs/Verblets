@@ -4,51 +4,69 @@ import { describe, expect, it } from 'vitest';
 // Centralized Config Infrastructure Tests
 // ==========================================
 //
-// Tests for shared config infrastructure (initChain, jsonSchema, withPolicy,
-// scopeOperation). Per-chain spec files test chain-SPECIFIC behavior only.
+// Tests for shared config infrastructure (nameStep, createProgressEmitter, jsonSchema,
+// withPolicy). Per-chain spec files test chain-SPECIFIC behavior only.
 // ==========================================
 
-import { getOption, initChain, scopeOperation, withPolicy } from '../context/option.js';
+import { getOption, getOptions, nameStep, withPolicy } from '../context/option.js';
+import createProgressEmitter from '../progress/index.js';
 import { jsonSchema, MODEL_KEYS } from '../llm/index.js';
 import { CAPABILITY_KEYS } from '../../constants/common.js';
 
-describe('initChain', () => {
-  it('combines scopeOperation and getOptions', async () => {
-    const { config, batchSize } = await initChain('test-chain', {}, { batchSize: 10 });
-    expect(config.evalContext.operation).toBe('test-chain');
-    expect(config.now).toBeInstanceOf(Date);
+describe('nameStep + createProgressEmitter', () => {
+  it('nameStep returns config with operation and now', () => {
+    const runConfig = nameStep('test-chain', {});
+    expect(runConfig.operation).toBe('test-chain');
+    expect(runConfig.now).toBeInstanceOf(Date);
+  });
+
+  it('createProgressEmitter returns lifecycle handle with start, emit, metrics, complete, error, batch', () => {
+    const runConfig = nameStep('test-chain', {});
+    const emitter = createProgressEmitter('test-chain', runConfig.onProgress, runConfig);
+    expect(typeof emitter.start).toBe('function');
+    expect(typeof emitter.emit).toBe('function');
+    expect(typeof emitter.metrics).toBe('function');
+    expect(typeof emitter.complete).toBe('function');
+    expect(typeof emitter.error).toBe('function');
+    expect(typeof emitter.batch).toBe('function');
+  });
+
+  it('composes operation names hierarchically', () => {
+    const parent = nameStep('parent', {});
+    const child = nameStep('child', parent);
+    expect(child.operation).toBe('parent/child');
+  });
+
+  it('works with getOptions for option resolution', async () => {
+    const runConfig = nameStep('test', {});
+    const { batchSize } = await getOptions(runConfig, { batchSize: 10 });
     expect(batchSize).toBe(10);
+    expect(runConfig.operation).toBe('test');
   });
 
-  it('composes operation names hierarchically', async () => {
-    const parent = scopeOperation('parent', {});
-    const { config } = await initChain('child', parent, {});
-    expect(config.evalContext.operation).toBe('parent/child');
-  });
-
-  it('resolves withPolicy options', async () => {
+  it('resolves withPolicy options via getOptions', async () => {
     const mapper = (v) => ({ a: `${v ?? 'default'}-mapped` });
-    const { config, a } = await initChain(
-      'test',
-      {},
-      {
-        myOption: withPolicy(mapper, ['a']),
-      }
-    );
+    const runConfig = nameStep('test', {});
+    const { a } = await getOptions(runConfig, {
+      myOption: withPolicy(mapper, ['a']),
+    });
     expect(a).toBe('default-mapped');
-    expect(config.evalContext.operation).toBe('test');
+    expect(runConfig.operation).toBe('test');
   });
 
-  it('resolves policy functions from config.policy', async () => {
+  it('resolves policy functions from config.policy via getOptions', async () => {
     const policy = { batchSize: () => 42 };
-    const { batchSize } = await initChain('test', { policy }, { batchSize: 10 });
+    const runConfig = nameStep('test', { policy });
+    const { batchSize } = await getOptions(runConfig, { batchSize: 10 });
     expect(batchSize).toBe(42);
   });
 
-  it('returns config without spec when spec is omitted', async () => {
-    const { config } = await initChain('test', { foo: 'bar' });
-    expect(config.evalContext.operation).toBe('test');
-    expect(config.foo).toBe('bar');
+  it('does not mutate the input config', () => {
+    const input = { foo: 'bar' };
+    const runConfig = nameStep('test', input);
+    expect(runConfig.operation).toBe('test');
+    expect(runConfig.foo).toBe('bar');
+    expect(input.operation).toBeUndefined();
   });
 });
 
@@ -58,7 +76,7 @@ describe('MODEL_KEYS and CAPABILITY_KEYS resolution via getOption', () => {
   // per-operation, which is the foundation for behavioral policy.
 
   it('resolves temperature from policy per operation', async () => {
-    const config = scopeOperation('hot-chain', {
+    const config = nameStep('hot-chain', {
       policy: {
         temperature: (ctx) => (ctx.operation === 'hot-chain' ? 0.9 : 0.1),
       },
@@ -82,7 +100,7 @@ describe('MODEL_KEYS and CAPABILITY_KEYS resolution via getOption', () => {
   });
 
   it('resolves capability keys from policy', async () => {
-    const config = scopeOperation('cheap-path', {
+    const config = nameStep('cheap-path', {
       policy: {
         fast: (ctx) => ctx.operation === 'cheap-path',
         cheap: () => true,
@@ -95,13 +113,13 @@ describe('MODEL_KEYS and CAPABILITY_KEYS resolution via getOption', () => {
   });
 
   it('nested operation scoping affects MODEL_KEY resolution', async () => {
-    const parent = scopeOperation('parent', {
+    const parent = nameStep('parent', {
       policy: {
         temperature: (ctx) =>
           ctx.operation === 'parent/score' ? 0.0 : ctx.operation === 'parent' ? 0.7 : undefined,
       },
     });
-    const child = scopeOperation('score', parent);
+    const child = nameStep('score', parent);
 
     const parentTemp = await getOption('temperature', parent, undefined);
     const childTemp = await getOption('temperature', child, undefined);

@@ -10,7 +10,7 @@ The project has three tiers of modules, each with clear responsibilities:
 
 **Chains** (`src/chains/`) orchestrate multiple operations into workflows. They handle batching, retries, progress tracking, and multi-step reasoning. Chains can use verblets, other chains, and library utilities. Examples: `filter`, `map`, `score`, `document-shrink`, `SocraticMethod`.
 
-**Library utilities** (`src/lib/`) provide infrastructure with no direct LLM usage. The `llm` module is the exception — it's the LLM wrapper itself. Everything else is pure functions, data structures, and helpers: `retry`, `parallel-batch`, `ring-buffer`, `progress-callback`.
+**Library utilities** (`src/lib/`) provide infrastructure with no direct LLM usage. The `llm` module is the exception — it's the LLM wrapper itself. Everything else is pure functions, data structures, and helpers: `retry`, `parallel-batch`, `ring-buffer`, `progress`.
 
 Dependency rules: verblets cannot import chains. Chains can import anything. Library utilities should minimize dependencies.
 
@@ -129,7 +129,7 @@ Config flows through without extraction — pass `config` directly to `callLlm`,
 Detailed documentation by audience:
 
 - [Configuration](./docs/configuration.md) — consumer-facing: model selection, capabilities, parameters, policy
-- [Option Resolution](./docs/option-resolution.md) — chain author internals: `initChain`, `getOption`, `withPolicy`, mappers
+- [Option Resolution](./docs/option-resolution.md) — chain author internals: `nameStep`, `track`, `getOptions`, `getOption`, `withPolicy`, mappers
 - [Batching](./docs/batching.md) — auto-sizing, `parallelBatch`, `prepareBatches`
 - [Progress Tracking](./docs/progress-tracking.md) — `onProgress`, `scopeProgress`, event lifecycle
 - [Retry](./docs/retry.md) — config-aware retries, retryable errors, abort signal

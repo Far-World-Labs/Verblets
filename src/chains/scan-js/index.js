@@ -7,7 +7,10 @@ import retry from '../../lib/retry/index.js';
 import search from '../../lib/search-js-files/index.js';
 import codeFeaturesPrompt from '../../prompts/code-features.js';
 import makeJSONSchema from '../../prompts/features-json-schema.js';
-import { scopeOperation } from '../../lib/context/option.js';
+import createProgressEmitter from '../../lib/progress/index.js';
+import { nameStep } from '../../lib/context/option.js';
+
+const name = 'scan-js';
 
 const codeFeatureDefinitions = JSON.parse(
   await fs.readFile(
@@ -77,9 +80,11 @@ const visit = async ({
 
 // node: { filename: './src/index.js' },
 export default async (moduleOptions) => {
-  const config = scopeOperation('scan-js', moduleOptions);
+  const runConfig = nameStep(name, moduleOptions);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
   const state = await search({
-    ...config,
+    ...runConfig,
   });
 
   const preState = {
@@ -87,14 +92,18 @@ export default async (moduleOptions) => {
     pathAliases: pathAliases([...state.visited]),
   };
 
-  return search({
-    ...config,
+  const result = await search({
+    ...runConfig,
     state: preState,
     visit: (options) =>
       visit({
         ...options,
-        features: config.features,
-        config,
+        features: runConfig.features,
+        config: runConfig,
       }),
   });
+
+  emitter.complete();
+
+  return result;
 };

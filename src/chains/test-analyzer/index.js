@@ -2,7 +2,10 @@ import { debug } from '../../lib/debug/index.js';
 import llm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { extractCodeWindow } from '../../lib/code-extractor/index.js';
-import { getOption, initChain, withPolicy } from '../../lib/context/option.js';
+import createProgressEmitter from '../../lib/progress/index.js';
+import { getOption, nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
+
+const name = 'test-analyzer';
 
 // File-level constants
 const DEFAULT_MAX_TOKENS = 300;
@@ -82,19 +85,19 @@ const calculateCodeWindow = (
  * @param {Object} config - Options including maxAttempts
  */
 export default async function analyzeTestError(logs, config = {}) {
-  const { config: scopedConfig, analysisDepth: depthConfig } = await initChain(
-    'test-analyzer',
-    config,
-    {
-      analysisDepth: withPolicy(mapAnalysisDepth),
-    }
-  );
-  config = scopedConfig;
-  const contextSize = await getOption('contextSize', config, depthConfig.context);
-  const maxWindow = await getOption('maxWindow', config, depthConfig.maxWindow);
-  const maxTokens = await getOption('maxTokens', config, depthConfig.maxTokens);
+  const runConfig = nameStep(name, config);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
+  const { analysisDepth: depthConfig } = await getOptions(runConfig, {
+    analysisDepth: withPolicy(mapAnalysisDepth),
+  });
+
+  const contextSize = await getOption('contextSize', runConfig, depthConfig.context);
+  const maxWindow = await getOption('maxWindow', runConfig, depthConfig.maxWindow);
+  const maxTokens = await getOption('maxTokens', runConfig, depthConfig.maxTokens);
   if (!logs || logs.length === 0) {
     debug('analyzeTestError: No logs provided');
+    emitter.complete();
     return '';
   }
 
@@ -104,6 +107,7 @@ export default async function analyzeTestError(logs, config = {}) {
 
   if (!testStart || !testComplete) {
     debug('analyzeTestError: Missing test-start or test-complete logs');
+    emitter.complete();
     return '';
   }
 
@@ -187,14 +191,12 @@ Discussion:
 - State exactly what's needed if critical information is missing
 </analysis-guidelines>`;
 
-  try {
-    const response = await retry(() => llm(prompt, { ...config, maxTokens }), {
-      label: 'test-analyzer',
-      config,
-    });
-    return response.trim();
-  } catch (error) {
-    debug(`AI analysis failed: ${error.message}`);
-    return '';
-  }
+  const response = await retry(() => llm(prompt, { ...runConfig, maxTokens }), {
+    label: 'test-analyzer',
+    config: runConfig,
+  });
+
+  emitter.complete();
+
+  return response.trim();
 }

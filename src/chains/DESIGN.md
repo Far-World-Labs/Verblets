@@ -34,12 +34,13 @@ Each chain directory contains:
 
 ## Config System
 
-Every chain resolves options through `initChain` and passes `config` directly to `callLlm`, `retry`, and sub-chains. See [option resolution](../../docs/option-resolution.md) for the full API (`initChain`, `getOption`, `withPolicy`, mappers, override keys).
+Every chain resolves options through `nameStep` + `createProgressEmitter` + `getOptions` and passes `runConfig` to `callLlm`, `retry`, and sub-chains. `nameStep` returns a plain config object with the composed operation path and timestamp. `createProgressEmitter` returns a lifecycle handle with `start()`, `emit()`, `metrics()`, `complete()`, `error()`, and `batch()` methods. Call `start()` to emit `chain:start`. See [option resolution](../../docs/option-resolution.md) for the full API (`nameStep`, `createProgressEmitter`, `getOptions`, `getOption`, `withPolicy`, mappers, override keys).
 
 ```javascript
 import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
-import { initChain, withPolicy } from '../../lib/context/option.js';
+import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 
 export const mapEffort = (value) => {
   if (value === undefined) return { iterations: 1, extremeK: 10 };
@@ -50,15 +51,20 @@ export const mapEffort = (value) => {
   }[value] ?? { iterations: 1, extremeK: 10 };
 };
 
-export default async function myChain(items, inputConfig = {}) {
-  const { config, iterations, extremeK } = await initChain('my-chain', inputConfig, {
+export default async function myChain(items, config = {}) {
+  const runConfig = nameStep('my-chain', config);
+  const emitter = createProgressEmitter('my-chain', runConfig.onProgress, runConfig);
+  emitter.start();
+  const { iterations, extremeK } = await getOptions(runConfig, {
     effort: withPolicy(mapEffort, ['iterations', 'extremeK']),
   });
 
-  return retry(
-    () => callLlm(prompt, config),
-    { label: 'my-chain', config }
+  const result = await retry(
+    () => callLlm(prompt, runConfig),
+    { label: 'my-chain', config: runConfig }
   );
+  emitter.complete();
+  return result;
 }
 ```
 
@@ -86,7 +92,7 @@ ${onlyJSON}`;
 
 ### Batch Processing with Progress Tracking
 
-The standard pattern uses `prepareBatches` + `parallelBatch` + `batchTracker`. See [batching](../../docs/batching.md) for the full pattern with auto-sizing and code example, and [progress tracking](../../docs/progress-tracking.md) for the event lifecycle, `scopeProgress`, and `filterProgress`.
+The standard pattern uses `prepareBatches` + `parallelBatch` + `trackBatch`. See [batching](../../docs/batching.md) for the full pattern with auto-sizing and code example, and [progress tracking](../../docs/progress-tracking.md) for the event lifecycle, `scopeProgress`, and `filterProgress`.
 
 ### Failure Handling
 
@@ -128,7 +134,7 @@ export const mapEffort = (value) => { /* ... */ };
 /**
  * Process items using AI-powered workflow
  * @param {Array} items - Items to process
- * @param {Object} [config] - Configuration (passed to initChain)
+ * @param {Object} [config] - Configuration (passed to nameStep)
  * @returns {Promise<Array>} Processed results
  */
 export default async function chainName(items, config = {}) {
@@ -156,5 +162,6 @@ README structure and quality standards are in [DOCUMENTATION.md](../../guideline
 
 - Destructuring config params and re-passing them individually — pass config directly (see [option resolution](../../docs/option-resolution.md))
 - Resolving retry or llm params in chains — retry and callLlm resolve them from config (see [retry](../../docs/retry.md))
+- Using `initChain` or `startChain` — replaced by `nameStep` + `track` + `getOptions` (called separately)
 - Hard-coded processing strategies without dial options
 - Missing progress feedback for long-running operations

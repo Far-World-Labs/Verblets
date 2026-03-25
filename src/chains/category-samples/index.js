@@ -1,7 +1,9 @@
 import list from '../list/index.js';
 import retry from '../../lib/retry/index.js';
-import { scopeProgress } from '../../lib/progress-callback/index.js';
-import { initChain, withPolicy } from '../../lib/context/option.js';
+import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
+import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
+
+const name = 'category-samples';
 
 // ===== Option Mappers =====
 
@@ -98,26 +100,21 @@ export default async function categorySamples(categoryName, config = {}) {
     throw new Error('categoryName must be a non-empty string');
   }
 
-  const {
-    config: scopedConfig,
-    diversity,
-    count,
-  } = await initChain(
-    'category-samples',
-    { llm: 'fastGoodCheap', ...config },
-    {
-      diversity: withPolicy(mapDiversity, ['diversity', 'count']),
-    }
-  );
-  config = scopedConfig;
-  const { context = '' } = config;
+  const runConfig = nameStep(name, { llm: 'fastGoodCheap', ...config });
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
+  const { diversity, count } = await getOptions(runConfig, {
+    diversity: withPolicy(mapDiversity, ['diversity', 'count']),
+  });
+  const { context = '' } = runConfig;
+
   const generateWithRetry = async () => {
     const prompt = buildSeedGenerationPrompt(categoryName, { context, diversity });
 
     const results = await list(prompt, {
-      ...config,
+      ...runConfig,
       shouldStop: ({ resultsAll }) => resultsAll.length >= count,
-      onProgress: scopeProgress(config.onProgress, 'list:sampling'),
+      onProgress: scopePhase(runConfig.onProgress, 'list:sampling'),
     });
 
     if (!results || results.length === 0) {
@@ -128,8 +125,12 @@ export default async function categorySamples(categoryName, config = {}) {
     return results.slice(0, count);
   };
 
-  return await retry(generateWithRetry, {
+  const result = await retry(generateWithRetry, {
     label: 'category-samples',
-    config,
+    config: runConfig,
   });
+
+  emitter.complete();
+
+  return result;
 }

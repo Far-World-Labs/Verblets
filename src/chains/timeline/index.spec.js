@@ -179,10 +179,26 @@ describe('timeline', () => {
       onProgress: progressCallback,
     });
 
-    expect(progressCallback).toHaveBeenCalledTimes(3);
-    expect(progressCallback).toHaveBeenNthCalledWith(1, 1, 3);
-    expect(progressCallback).toHaveBeenNthCalledWith(2, 2, 3);
-    expect(progressCallback).toHaveBeenNthCalledWith(3, 3, 3);
+    expect(progressCallback).toHaveBeenCalledTimes(5);
+    // First call is the chain:start telemetry event from track
+    expect(progressCallback).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        kind: 'telemetry',
+        event: 'chain:start',
+      })
+    );
+    expect(progressCallback).toHaveBeenNthCalledWith(2, 1, 3);
+    expect(progressCallback).toHaveBeenNthCalledWith(3, 2, 3);
+    expect(progressCallback).toHaveBeenNthCalledWith(4, 3, 3);
+    // Last call is the chain:complete telemetry event
+    expect(progressCallback).toHaveBeenNthCalledWith(
+      5,
+      expect.objectContaining({
+        kind: 'telemetry',
+        event: 'chain:complete',
+      })
+    );
   });
 
   it('returns empty array when no events found', async () => {

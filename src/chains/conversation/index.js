@@ -2,7 +2,10 @@ import conversationTurnReduce from '../conversation-turn-reduce/index.js';
 import { defaultTurnPolicy } from './turn-policies.js';
 import pLimit from 'p-limit';
 import { debug } from '../../lib/debug/index.js';
-import { initChain, scopeOperation } from '../../lib/context/option.js';
+import { nameStep, getOptions } from '../../lib/context/option.js';
+import createProgressEmitter from '../../lib/progress/index.js';
+
+const name = 'conversation';
 
 /**
  * @typedef {Object} Speaker
@@ -41,18 +44,39 @@ export default class Conversation {
       idSet.add(p.id);
     });
 
-    const { depth, maxParallel } = await initChain('conversation', options, {
+    const runConfig = nameStep(name, options);
+    const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+    emitter.start();
+    const { depth, maxParallel } = await getOptions(runConfig, {
       depth: 3,
       maxParallel: 3,
     });
-    return new Conversation(topic, speakers, options, { depth, maxParallel });
+    return new Conversation(
+      topic,
+      speakers,
+      { config: runConfig, emitter },
+      { depth, maxParallel }
+    );
   }
 
   //TODO:DOCS_OBSERVATIONS constructor is public but callers should use static create() — consider making constructor private or documenting the resolved parameter contract
   constructor(topic, speakers, options = {}, resolved = {}) {
-    const config = scopeOperation('conversation', options);
+    // options may be { config, emitter } from create() or plain config (direct construction)
+    const fromCreate = options.emitter && options.config;
+    this.emitter = fromCreate ? options.emitter : undefined;
+    const config = fromCreate ? options.config : nameStep(name, options);
 
-    const { rules = {}, speakFn, bulkSpeakFn, llm, clock, ...otherOptions } = config;
+    const {
+      rules = {},
+      speakFn,
+      bulkSpeakFn,
+      llm,
+      clock,
+      onProgress: _onProgress,
+      now: _now,
+      operation: _operation,
+      ...otherOptions
+    } = config;
 
     if (rules.shouldContinue && typeof rules.shouldContinue !== 'function') {
       throw new Error('shouldContinue must be a function');
@@ -78,6 +102,10 @@ export default class Conversation {
     }
     this.llm = llm;
     this.clock = clock || (() => new Date());
+    if (!this.emitter) {
+      // Direct construction path — create an emitter for lifecycle emission
+      this.emitter = createProgressEmitter(name, config.onProgress, config);
+    }
     this.otherOptions = otherOptions;
     this.messages = [];
   }
@@ -154,6 +182,8 @@ export default class Conversation {
 
       round += 1;
     }
+
+    this.emitter.complete();
 
     return this.messages;
   }

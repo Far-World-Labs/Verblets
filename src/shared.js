@@ -43,11 +43,27 @@ export {
   createContextBuilder,
   observeApplication,
   observeProviders,
-  scopeOperation,
+  nameStep,
   getOption,
+  getOptionDetail,
   getOptions,
   withPolicy,
+  descriptorToSchema,
 } from './lib/context/index.js';
+export { default as valueArbitrate } from './chains/value-arbitrate/index.js';
+export { default as createTraceCollector, eventToTrace } from './lib/trace-collector/index.js';
+export {
+  OPS as targetingRuleOps,
+  clause as targetingClause,
+  rule as targetingRule,
+  validate as validateTargetingRules,
+  schema as targetingRuleSchema,
+  evaluateClause as evaluateTargetingClause,
+  evaluateRule as evaluateTargetingRule,
+  applyFirst as applyFirstTargetingRule,
+  applyAll as applyAllTargetingRules,
+} from './lib/targeting-rule/index.js';
+export { default as suggestTargetingRules } from './verblets/suggest-targeting-rules/index.js';
 
 // Lists
 export { default as centralTendency } from './chains/central-tendency/index.js';
@@ -208,21 +224,7 @@ export { default as anySignal } from './lib/any-signal/index.js';
 export { default as TimedAbortController } from './lib/timed-abort-controller/index.js';
 export { default as templateReplace } from './lib/template-replace/index.js';
 export { default as ringBuffer } from './lib/ring-buffer/index.js';
-export {
-  emitProgress,
-  emitStart,
-  emitComplete,
-  emitStepProgress,
-  emitBatchStart,
-  emitBatchComplete,
-  emitBatchProcessed,
-  emitPhaseProgress,
-  createBatchProgressCallback,
-  createBatchContext,
-  batchTracker,
-  scopeProgress,
-  filterProgress,
-} from './lib/progress-callback/index.js';
+export { default as createProgressEmitter, scopePhase } from './lib/progress/index.js';
 export { default as version } from './lib/version/index.js';
 export { default as windowFor } from './lib/window-for/index.js';
 export { default as withInactivityTimeout } from './lib/with-inactivity-timeout/index.js';

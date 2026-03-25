@@ -1,7 +1,8 @@
 import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
-import { initChain, withPolicy, scopeOperation } from '../../lib/context/option.js';
+import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 import { calibrateSpecificationJsonSchema } from './schemas.js';
 import calibrateResultSchema from './calibrate-result.json';
 
@@ -79,16 +80,14 @@ function computeScanStatistics(scans) {
  * @returns {Promise<{ corpusProfile: string, classificationCriteria: string, salienceCriteria: string, categoryNotes: string }>}
  */
 export async function calibrateSpec(scans, config = {}) {
-  const {
-    config: scopedConfig,
-    thresholdStrategy,
-    sensitivity,
-  } = await initChain('calibrate:spec', config, {
+  const runConfig = nameStep('calibrate:spec', config);
+  const specEmitter = createProgressEmitter('calibrate:spec', runConfig.onProgress, runConfig);
+  specEmitter.start();
+  const { thresholdStrategy, sensitivity } = await getOptions(runConfig, {
     thresholdStrategy: 'statistical',
     sensitivity: withPolicy(mapSensitivity),
   });
-  config = scopedConfig;
-  const { instructions } = config;
+  const { instructions } = runConfig;
 
   const statistics = computeScanStatistics(scans);
 
@@ -132,7 +131,7 @@ IMPORTANT: Each property must be a simple string value, not a nested object or a
   const response = await retry(
     () =>
       callLlm(specUserPrompt, {
-        ...config,
+        ...runConfig,
         systemPrompt: specSystemPrompt,
         response_format: jsonSchema(
           calibrateSpecificationJsonSchema.name,
@@ -141,9 +140,11 @@ IMPORTANT: Each property must be a simple string value, not a nested object or a
       }),
     {
       label: 'calibrate spec',
-      config,
+      config: runConfig,
     }
   );
+
+  specEmitter.complete();
 
   return response;
 }
@@ -157,7 +158,7 @@ IMPORTANT: Each property must be a simple string value, not a nested object or a
  * @returns {Promise<{ severity: string, salience: string, categories: object, summary: string }>}
  */
 export async function applyCalibrate(scan, specification, config = {}) {
-  config = scopeOperation('calibrate:apply', config);
+  config = nameStep('calibrate:apply', config);
 
   const prompt = `Classify this scan result against the calibration specification.
 

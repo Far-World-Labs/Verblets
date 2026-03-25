@@ -1,6 +1,10 @@
 import callLlm from '../../lib/llm/index.js';
 import { decomposeQuery as decomposeQueryPrompt } from '../../prompts/embed-query-transforms.js';
 import { embedSubquestionsSchema } from './schema.js';
+import { nameStep } from '../../lib/context/option.js';
+import createProgressEmitter from '../../lib/progress/index.js';
+
+const name = 'embed-subquestions';
 
 // ===== Option Mappers =====
 
@@ -36,10 +40,13 @@ export const mapGranularity = (value) => {
  * @returns {Promise<string[]>}
  */
 export default async function embedSubquestions(query, config = {}) {
-  const granularityGuidance = mapGranularity(config.granularity);
+  const runConfig = nameStep(name, config);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
+  const granularityGuidance = mapGranularity(runConfig.granularity);
 
-  return await callLlm(decomposeQueryPrompt(query, { granularityGuidance }), {
-    ...config,
+  const result = await callLlm(decomposeQueryPrompt(query, { granularityGuidance }), {
+    ...runConfig,
     response_format: {
       type: 'json_schema',
       json_schema: {
@@ -48,4 +55,6 @@ export default async function embedSubquestions(query, config = {}) {
       },
     },
   });
+  emitter.complete();
+  return result;
 }

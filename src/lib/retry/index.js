@@ -1,6 +1,6 @@
 import { defaultMaxAttempts, retryDelay as retryDelayDefault } from '../../constants/common.js';
 import { getOption } from '../context/option.js';
-import emitProgress from '../progress-callback/index.js';
+import createProgressEmitter from '../progress/index.js';
 
 const abortError = (signal) => signal?.reason ?? new Error('The operation was aborted.');
 
@@ -37,10 +37,12 @@ async function retry(fn, opts = {}) {
       );
     });
 
+  const operation = config?.operation;
+  const stepName = label || 'retry';
+  const emitter = createProgressEmitter(stepName, onProgress);
+
   if (onProgress) {
-    emitProgress({
-      callback: onProgress,
-      step: label || 'retry',
+    emitter.emit({
       event: 'start',
       attemptNumber: 1,
       maxAttempts,
@@ -53,14 +55,19 @@ async function retry(fn, opts = {}) {
       throw abortError(abortSignal);
     }
 
+    emitter.metrics({
+      event: 'retry:attempt',
+      operation,
+      attemptNumber: attempt + 1,
+      maxAttempts,
+    });
+
     try {
       // eslint-disable-next-line no-await-in-loop
       const result = await fn();
 
       if (onProgress) {
-        emitProgress({
-          callback: onProgress,
-          step: label || 'retry',
+        emitter.emit({
           event: 'complete',
           attemptNumber: attempt + 1,
           maxAttempts,
@@ -79,14 +86,14 @@ async function retry(fn, opts = {}) {
       const isLastAttempt = !isRetry || attempt >= maxAttempts - 1;
 
       if (isRetry && attempt < maxAttempts - 1) {
+        const delay = retryDelay * attempt;
+
         if (onProgress) {
           const progressData = {
-            callback: onProgress,
-            step: label || 'retry',
             event: 'retry',
             attemptNumber: attempt + 1,
             maxAttempts,
-            delay: retryDelay * attempt,
+            delay,
             error: error.message,
           };
 
@@ -94,19 +101,26 @@ async function retry(fn, opts = {}) {
             progressData.nextAttempt = attempt + 2;
           }
 
-          emitProgress(progressData);
+          emitter.emit(progressData);
         }
 
+        emitter.metrics({
+          event: 'retry:error',
+          operation,
+          attemptNumber: attempt + 1,
+          maxAttempts,
+          delay,
+          error: { message: error.message, httpStatus: error.httpStatus, type: error.errorType },
+        });
+
         // eslint-disable-next-line no-await-in-loop
-        await sleep(retryDelay * attempt);
+        await sleep(delay);
         attempt += 1;
       } else {
         attempt = maxAttempts;
 
         if (onProgress && isLastAttempt) {
-          emitProgress({
-            callback: onProgress,
-            step: label || 'retry',
+          emitter.emit({
             event: 'error',
             attemptNumber: attempt + 1,
             maxAttempts,
@@ -115,6 +129,14 @@ async function retry(fn, opts = {}) {
             final: true,
           });
         }
+
+        emitter.metrics({
+          event: 'retry:exhaust',
+          operation,
+          attemptNumber: attempt,
+          maxAttempts,
+          error: { message: error.message, httpStatus: error.httpStatus, type: error.errorType },
+        });
       }
     }
   }

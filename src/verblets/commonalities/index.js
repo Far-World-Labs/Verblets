@@ -1,9 +1,13 @@
 import callLlm from '../../lib/llm/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { constants as promptConstants } from '../../prompts/index.js';
+import { nameStep } from '../../lib/context/option.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 import commonalitiesSchema from './commonalities-result.json';
 
 const { contentIsQuestion, tryCompleteData } = promptConstants;
+
+const name = 'commonalities';
 
 const responseFormat = {
   type: 'json_schema',
@@ -52,21 +56,27 @@ ${tryCompleteData}`;
 };
 
 export default async function commonalities(items, config = {}) {
+  const runConfig = nameStep(name, config);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
   if (!Array.isArray(items) || items.length === 0) {
+    emitter.complete();
     return [];
   }
 
   // Finding commonalities requires at least 2 items
   if (items.length < 2) {
+    emitter.complete();
     return [];
   }
 
-  const depthGuidance = mapDepth(config.depth);
-  const output = await callLlm(buildPrompt(items, { ...config, depthGuidance }), {
-    ...config,
+  const depthGuidance = mapDepth(runConfig.depth);
+  const output = await callLlm(buildPrompt(items, { ...runConfig, depthGuidance }), {
+    ...runConfig,
     response_format: responseFormat,
   });
 
   const resultArray = output?.items || output;
+  emitter.complete();
   return Array.isArray(resultArray) ? resultArray.filter(Boolean) : [];
 }
