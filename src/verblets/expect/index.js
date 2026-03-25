@@ -1,6 +1,6 @@
 import callLlm from '../../lib/llm/index.js';
 import { nameStep } from '../../lib/context/option.js';
-import { track } from '../../lib/progress-callback/index.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 
 const name = 'expect';
 
@@ -36,7 +36,7 @@ export async function llmAssert({
   operation,
 }) {
   const runConfig = nameStep(name, { onProgress, operation });
-  const span = track(name, runConfig);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
 
   if (equals === undefined && !constraint)
     throw new TypeError('Provide either "equals" or "constraint".');
@@ -50,7 +50,7 @@ export async function llmAssert({
   const text = typeof answer === 'string' ? answer : answer.content;
   const passed = /^true$/i.test(text.trim());
 
-  span.result();
+  emitter.result();
 
   if (!passed && throws) {
     let msg;

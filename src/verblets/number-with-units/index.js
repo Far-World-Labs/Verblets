@@ -1,6 +1,6 @@
 import callLlm from '../../lib/llm/index.js';
 import { nameStep } from '../../lib/context/option.js';
-import { track } from '../../lib/progress-callback/index.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 import toNumberWithUnits from '../../lib/to-number-with-units/index.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 import numberWithUnitsSchema from './number-with-units-result.json';
@@ -27,7 +27,7 @@ const responseFormat = {
  */
 export default async function numberWithUnits(text, config = {}) {
   const runConfig = nameStep(name, config);
-  const span = track(name, runConfig);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
 
   const numberText = `${contentIsQuestion} ${text} \n\n${explainAndSeparate} ${explainAndSeparateJSON}
 
@@ -43,7 +43,7 @@ ${asNumberWithUnits}`;
   // With structured output, response is already parsed
   const result = toNumberWithUnits(JSON.stringify(response));
 
-  span.result();
+  emitter.result();
 
   return result;
 }

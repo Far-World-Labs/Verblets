@@ -2,7 +2,7 @@ import callLlm from '../../lib/llm/index.js';
 import { multiQuery as multiQueryPrompt } from '../../prompts/embed-query-transforms.js';
 import { embedMultiQuerySchema } from './schema.js';
 import { nameStep } from '../../lib/context/option.js';
-import { track } from '../../lib/progress-callback/index.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 
 const name = 'embed-multi-query';
 
@@ -39,7 +39,7 @@ export const mapDivergence = (value) => {
  */
 export default async function embedMultiQuery(query, config = {}) {
   const runConfig = nameStep(name, config);
-  const span = track(name, runConfig);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   const { count = 3 } = runConfig;
   const divergenceGuidance = mapDivergence(runConfig.divergence);
 
@@ -53,6 +53,6 @@ export default async function embedMultiQuery(query, config = {}) {
       },
     },
   });
-  span.result();
+  emitter.result();
   return result;
 }

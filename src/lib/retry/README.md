@@ -100,4 +100,4 @@ await retry(fn, {
 
 - [`context/option`](../context/option.js) - `getOption` used for config-aware resolution
 - [`llm`](../llm/README.md) - Primary consumer of retry
-- [`progress-callback`](../progress-callback/index.js) - Progress event emission
+- [`progress`](../progress/index.js) - Progress event emission

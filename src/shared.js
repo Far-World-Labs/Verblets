@@ -224,20 +224,7 @@ export { default as anySignal } from './lib/any-signal/index.js';
 export { default as TimedAbortController } from './lib/timed-abort-controller/index.js';
 export { default as templateReplace } from './lib/template-replace/index.js';
 export { default as ringBuffer } from './lib/ring-buffer/index.js';
-export {
-  emitProgress,
-  emitStart,
-  emitComplete,
-  emitStepProgress,
-  emitBatchStart,
-  emitBatchComplete,
-  emitBatchProcessed,
-  emitPhaseProgress,
-  createBatchProgressCallback,
-  batchTracker,
-  scopeProgress,
-  filterProgress,
-} from './lib/progress-callback/index.js';
+export { default as createProgressEmitter } from './lib/progress/index.js';
 export { default as version } from './lib/version/index.js';
 export { default as windowFor } from './lib/window-for/index.js';
 export { default as withInactivityTimeout } from './lib/with-inactivity-timeout/index.js';

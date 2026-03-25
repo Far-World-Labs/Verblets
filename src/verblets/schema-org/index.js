@@ -2,7 +2,7 @@ import callLlm from '../../lib/llm/index.js';
 import { asSchemaOrgText } from '../../prompts/index.js';
 import { schemaOrgSchemas } from '../../json-schemas/index.js';
 import { nameStep } from '../../lib/context/option.js';
-import { track } from '../../lib/progress-callback/index.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 
 const name = 'schema-org';
 
@@ -16,7 +16,7 @@ const getSchema = (type) => {
 
 export default async (text, type, config = {}) => {
   const runConfig = nameStep(name, config);
-  const span = track(name, runConfig);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   const schema = type ? getSchema(type) : undefined;
 
   const response_format = schema
@@ -33,6 +33,6 @@ export default async (text, type, config = {}) => {
     ...runConfig,
     response_format,
   });
-  span.result();
+  emitter.result();
   return response;
 };

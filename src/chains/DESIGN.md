@@ -40,7 +40,7 @@ Every chain resolves options through `nameStep` + `track` + `getOptions` and pas
 import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
-import { track } from '../../lib/progress-callback/index.js';
+import { track } from '../../lib/progress/index.js';
 
 export const mapEffort = (value) => {
   if (value === undefined) return { iterations: 1, extremeK: 10 };
@@ -91,7 +91,7 @@ ${onlyJSON}`;
 
 ### Batch Processing with Progress Tracking
 
-The standard pattern uses `prepareBatches` + `parallelBatch` + `batchTracker`. See [batching](../../docs/batching.md) for the full pattern with auto-sizing and code example, and [progress tracking](../../docs/progress-tracking.md) for the event lifecycle, `scopeProgress`, and `filterProgress`.
+The standard pattern uses `prepareBatches` + `parallelBatch` + `trackBatch`. See [batching](../../docs/batching.md) for the full pattern with auto-sizing and code example, and [progress tracking](../../docs/progress-tracking.md) for the event lifecycle, `scopeProgress`, and `filterProgress`.
 
 ### Failure Handling
 

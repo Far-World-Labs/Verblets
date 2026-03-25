@@ -8,7 +8,7 @@ import { intersectionElementsSchema } from './schemas.js';
 import intersectionResultSchema from './intersection-result.json';
 import { debug } from '../../lib/debug/index.js';
 import { nameStep, getOptions } from '../../lib/context/option.js';
-import { track } from '../../lib/progress-callback/index.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 
 const name = 'intersections';
 
@@ -99,7 +99,7 @@ export default async function intersections(items, config = {}) {
   }
 
   const runConfig = nameStep(name, { llm: 'fastGoodCheap', ...config });
-  const span = track(name, runConfig);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   const { useSchemaValidation } = await getOptions(runConfig, {
     useSchemaValidation: false,
   });
@@ -131,11 +131,11 @@ export default async function intersections(items, config = {}) {
   if (useSchemaValidation && Object.keys(results).length > 0) {
     const validated = await validateIntersectionResults(results, runConfig);
     const validatedResults = validated.intersections || results;
-    span.result();
+    emitter.result();
     return validatedResults;
   }
 
-  span.result();
+  emitter.result();
 
   return results;
 }

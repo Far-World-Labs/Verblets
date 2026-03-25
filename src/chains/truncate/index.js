@@ -1,6 +1,6 @@
 import score from '../score/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
-import { track } from '../../lib/progress-callback/index.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 
 const name = 'truncate';
@@ -95,7 +95,7 @@ function createChunks(text, chunkSize) {
  */
 export default async function truncate(text, instructions, config = {}) {
   const runConfig = nameStep(name, config);
-  const span = track(name, runConfig);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   const { chunkSize, strictness: threshold } = await getOptions(runConfig, {
     chunkSize: 1000,
     strictness: withPolicy(mapStrictness),
@@ -140,7 +140,7 @@ Consider the removal criteria above when scoring.`;
     result = text.length;
   }
 
-  span.result();
+  emitter.result();
 
   return result;
 }

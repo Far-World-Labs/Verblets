@@ -1,6 +1,6 @@
 import list from '../list/index.js';
 import retry from '../../lib/retry/index.js';
-import { scopeProgress, track } from '../../lib/progress-callback/index.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 
 const name = 'category-samples';
@@ -101,7 +101,7 @@ export default async function categorySamples(categoryName, config = {}) {
   }
 
   const runConfig = nameStep(name, { llm: 'fastGoodCheap', ...config });
-  const span = track(name, runConfig);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   const { diversity, count } = await getOptions(runConfig, {
     diversity: withPolicy(mapDiversity, ['diversity', 'count']),
   });
@@ -113,7 +113,13 @@ export default async function categorySamples(categoryName, config = {}) {
     const results = await list(prompt, {
       ...runConfig,
       shouldStop: ({ resultsAll }) => resultsAll.length >= count,
-      onProgress: scopeProgress(runConfig.onProgress, 'list:sampling'),
+      onProgress:
+        runConfig.onProgress &&
+        ((e) =>
+          runConfig.onProgress({
+            ...e,
+            phase: e.phase ? `list:sampling/${e.phase}` : 'list:sampling',
+          })),
     });
 
     if (!results || results.length === 0) {
@@ -129,7 +135,7 @@ export default async function categorySamples(categoryName, config = {}) {
     config: runConfig,
   });
 
-  span.result();
+  emitter.result();
 
   return result;
 }

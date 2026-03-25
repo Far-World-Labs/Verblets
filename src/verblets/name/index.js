@@ -1,6 +1,6 @@
 import callLlm from '../../lib/llm/index.js';
 import { nameStep } from '../../lib/context/option.js';
-import { track } from '../../lib/progress-callback/index.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 import { nameSchema } from './schema.js';
@@ -11,7 +11,7 @@ const verbletName = 'name';
 
 export default async function name(subject, config = {}) {
   const runConfig = nameStep(verbletName, config);
-  const span = track(verbletName, runConfig);
+  const emitter = createProgressEmitter(verbletName, runConfig.onProgress, runConfig);
 
   const prompt = `${contentIsQuestion} Suggest a concise, memorable name for the <subject>.\n\n${asXML(
     subject,
@@ -33,7 +33,7 @@ export default async function name(subject, config = {}) {
 
   const result = response === 'undefined' ? undefined : response;
 
-  span.result();
+  emitter.result();
 
   return result;
 }

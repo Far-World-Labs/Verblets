@@ -16,12 +16,12 @@ Events follow a lifecycle: `start` → repeated `batch:complete` → `complete` 
 
 ## Chain author usage
 
-### prepareBatches + batchTracker
+### prepareBatches + trackBatch
 
 The most common pattern for batch-processing chains. `prepareBatches` creates batches and a tracker in one call. The tracker manages counters and emits events automatically:
 
 ```javascript
-import { prepareBatches } from '../../lib/progress-callback/index.js';
+import { prepareBatches } from '../../lib/progress/index.js';
 import parallel from '../../lib/parallel-batch/index.js';
 
 const { batches, tracker } = await prepareBatches('filter', items, config);
@@ -47,7 +47,7 @@ The tracker exposes:
 When a chain passes `onProgress` to a nested chain call, wrap it with `scopeProgress` to tag events with a `phase` field. This lets consumers distinguish events from different stages of a multi-phase pipeline:
 
 ```javascript
-import { scopeProgress } from '../../lib/progress-callback/index.js';
+import { scopeProgress } from '../../lib/progress/index.js';
 
 await reduce(items, prompt, {
   ...config,
@@ -72,7 +72,7 @@ Controls event granularity. Chains can resolve a `progressMode` option and apply
 
 ### Direct emit functions
 
-For non-batch operations, use the individual emit helpers: `emitStart`, `emitComplete`, `emitBatchStart`, `emitBatchComplete`, `emitBatchProcessed`, `emitStepProgress`, `emitPhaseProgress`. All are no-ops when the callback is absent.
+For non-batch operations, use the individual emit helpers: `emitStep`, `emitPhase`, or call `emit()` directly for start/complete events. All are no-ops when the callback is absent.
 
 ## Event shape
 
@@ -97,4 +97,4 @@ Retry events add `attemptNumber`, `maxAttempts`, and `delay`. Error events add `
 
 ## Source
 
-All exports are from `src/lib/progress-callback/index.js`.
+All exports are from `src/lib/progress/index.js`.

@@ -3,13 +3,7 @@ import { chunk } from '../../lib/pure/index.js';
 import retry from '../../lib/retry/index.js';
 import { sort as sortPromptInitial } from '../../prompts/index.js';
 import sortSchema from './sort-result.json';
-import {
-  emitStart,
-  emitComplete,
-  emitStepProgress,
-  filterProgress,
-  track,
-} from '../../lib/progress-callback/index.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 import { debug } from '../../lib/debug/index.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 
@@ -59,27 +53,21 @@ const sanitizeList = (list) => {
 
 const sort = async (list, criteria, config = {}) => {
   const runConfig = nameStep(name, config);
-  const span = track(name, runConfig);
-  const { batchSize, progressMode, extremeK, iterations, selectBottom } = await getOptions(
-    runConfig,
-    {
-      effort: withPolicy(mapEffort, ['extremeK', 'iterations', 'selectBottom']),
-      batchSize: defaultSortBatchSize,
-      progressMode: 'detailed',
-    }
-  );
-  const { onProgress: _onProgress = undefined, now } = runConfig;
-  const onProgress = filterProgress(_onProgress, progressMode);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  const { batchSize, extremeK, iterations, selectBottom } = await getOptions(runConfig, {
+    effort: withPolicy(mapEffort, ['extremeK', 'iterations', 'selectBottom']),
+    batchSize: defaultSortBatchSize,
+  });
+  const { onProgress } = runConfig;
   const items = sanitizeList(list);
 
-  emitStart(onProgress, 'sort', {
+  emitter.emit({
+    event: 'start',
     totalItems: items.length,
     batchSize,
     extremeK,
     iterations,
     criteria,
-    now,
-    chainStartTime: now,
   });
 
   // Sort a batch of items with LLM
@@ -115,13 +103,13 @@ const sort = async (list, criteria, config = {}) => {
     let processedChunks = 0;
 
     for (const chunk of chunks) {
-      emitStepProgress(onProgress, 'sort', 'sorting-chunk', {
+      emitter.emit({
+        event: 'step',
+        stepName: 'sorting-chunk',
         iteration: iterationNumber,
         chunkNumber: processedChunks + 1,
         totalChunks: chunks.length,
         batchSize: chunk.length,
-        now: new Date(),
-        chainStartTime: now,
       });
       // Current chunk competes with the global extremes
       const itemsToSort = [...chunk, ...globalTop, ...(selectBottom ? globalBottom : [])];
@@ -179,12 +167,12 @@ const sort = async (list, criteria, config = {}) => {
   let remaining = items;
 
   for (let iter = 0; iter < iterations && remaining.length > 0; iter++) {
-    emitStepProgress(onProgress, 'sort', 'extracting-extremes', {
+    emitter.emit({
+      event: 'step',
+      stepName: 'extracting-extremes',
       iteration: iter + 1,
       totalIterations: iterations,
       remainingItems: remaining.length,
-      now: new Date(),
-      chainStartTime: now,
     });
 
     // eslint-disable-next-line no-await-in-loop
@@ -237,17 +225,16 @@ const sort = async (list, criteria, config = {}) => {
     }
   }
 
-  emitComplete(onProgress, 'sort', {
+  emitter.emit({
+    event: 'complete',
     totalItems: items.length,
     iterations,
     topItems: finalTop.length,
     bottomItems: finalBottom.length,
     remainingItems: remaining.length,
-    now: new Date(),
-    chainStartTime: now,
   });
 
-  span.result();
+  emitter.result();
 
   return result;
 };

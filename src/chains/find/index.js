@@ -2,11 +2,11 @@ import listBatch, { ListStyle, determineStyle } from '../../verblets/list-batch/
 import { asXML } from '../../prompts/wrap-variable.js';
 import { findResultJsonSchema } from './schemas.js';
 import { createLifecycleLogger, extractBatchConfig } from '../../lib/lifecycle-logger/index.js';
-import { prepareBatches, parallel, retry } from '../../lib/index.js';
+import { createBatches, parallel, retry } from '../../lib/index.js';
 import { jsonSchema } from '../../lib/llm/index.js';
 import { debug } from '../../lib/debug/index.js';
 import { nameStep, getOptions } from '../../lib/context/option.js';
-import { track } from '../../lib/progress-callback/index.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 
 const name = 'find';
 
@@ -14,11 +14,10 @@ const findResponseFormat = jsonSchema(findResultJsonSchema.name, findResultJsonS
 
 const find = async function find(list, instructions, config = {}) {
   const runConfig = nameStep(name, config);
-  const span = track(name, runConfig);
-  const { maxParallel, errorPosture, progressMode } = await getOptions(runConfig, {
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  const { maxParallel, errorPosture } = await getOptions(runConfig, {
     maxParallel: 3,
     errorPosture: 'resilient',
-    progressMode: 'detailed',
   });
   const lifecycleLogger = createLifecycleLogger(runConfig.logger, 'chain:find');
   const findInstructions = ({ style, count }) => {
@@ -47,8 +46,11 @@ Process exactly ${count} items from the XML list below and return the single bes
   const results = [];
   let foundEarly = false;
 
-  const { batches, tracker } = await prepareBatches('find', list, runConfig, { progressMode });
+  const batches = await createBatches(list, runConfig);
+  let processedItems = 0;
   const batchesToProcess = batches.filter((batch) => !batch.skip);
+
+  emitter.emit({ event: 'start', totalItems: list.length, totalBatches: batchesToProcess.length });
 
   lifecycleLogger.logStart(
     extractBatchConfig({
@@ -79,7 +81,7 @@ Process exactly ${count} items from the XML list below and return the single bes
             {
               label: 'find:batch',
               config: runConfig,
-              onProgress: tracker.forBatch(startIndex, items.length),
+              onProgress: runConfig.onProgress,
             }
           );
 
@@ -93,7 +95,13 @@ Process exactly ${count} items from the XML list below and return the single bes
             lifecycleLogger.logEvent('match-found', { result: foundItem, index: matchIndex });
           }
 
-          tracker.batchDone(startIndex, items.length);
+          processedItems += items.length;
+          emitter.emit({
+            event: 'batch:complete',
+            totalItems: list.length,
+            processedItems,
+            batchSize: items.length,
+          });
         } catch (error) {
           if (errorPosture === 'strict') throw error;
           debug(`find batch at index ${startIndex} failed: ${error.message}`);
@@ -112,7 +120,12 @@ Process exactly ${count} items from the XML list below and return the single bes
     }
   }
 
-  tracker.complete({ found: results.length > 0 });
+  emitter.emit({
+    event: 'complete',
+    totalItems: list.length,
+    processedItems,
+    found: results.length > 0,
+  });
 
   if (results.length > 0) {
     const earliest = results.reduce((best, current) =>
@@ -120,13 +133,13 @@ Process exactly ${count} items from the XML list below and return the single bes
     );
     const foundMeta = { found: true, totalItems: list.length };
     lifecycleLogger.logResult(earliest.result, foundMeta);
-    span.result(foundMeta);
+    emitter.result(foundMeta);
     return earliest.result;
   }
 
   const notFoundMeta = { found: false, totalItems: list.length };
   lifecycleLogger.logResult('', notFoundMeta);
-  span.result(notFoundMeta);
+  emitter.result(notFoundMeta);
   return '';
 };
 

@@ -3,7 +3,7 @@ import { defaultTurnPolicy } from './turn-policies.js';
 import pLimit from 'p-limit';
 import { debug } from '../../lib/debug/index.js';
 import { nameStep, getOptions } from '../../lib/context/option.js';
-import { track } from '../../lib/progress-callback/index.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 
 const name = 'conversation';
 
@@ -45,19 +45,24 @@ export default class Conversation {
     });
 
     const runConfig = nameStep(name, options);
-    const span = track(name, runConfig);
+    const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
     const { depth, maxParallel } = await getOptions(runConfig, {
       depth: 3,
       maxParallel: 3,
     });
-    return new Conversation(topic, speakers, { config: runConfig, span }, { depth, maxParallel });
+    return new Conversation(
+      topic,
+      speakers,
+      { config: runConfig, emitter },
+      { depth, maxParallel }
+    );
   }
 
   //TODO:DOCS_OBSERVATIONS constructor is public but callers should use static create() — consider making constructor private or documenting the resolved parameter contract
   constructor(topic, speakers, options = {}, resolved = {}) {
-    // options may be { config, span } from create() or plain config (direct construction)
-    const fromCreate = options.span && options.config;
-    this.span = fromCreate ? options.span : undefined;
+    // options may be { config, emitter } from create() or plain config (direct construction)
+    const fromCreate = options.emitter && options.config;
+    this.emitter = fromCreate ? options.emitter : undefined;
     const config = fromCreate ? options.config : nameStep(name, options);
 
     const {
@@ -96,9 +101,9 @@ export default class Conversation {
     }
     this.llm = llm;
     this.clock = clock || (() => new Date());
-    if (!this.span) {
-      // Direct construction path — create a span for result() emission
-      this.span = track(name, config);
+    if (!this.emitter) {
+      // Direct construction path — create an emitter for lifecycle emission
+      this.emitter = createProgressEmitter(name, config.onProgress, config);
     }
     this.otherOptions = otherOptions;
     this.messages = [];
@@ -177,7 +182,7 @@ export default class Conversation {
       round += 1;
     }
 
-    this.span.result();
+    this.emitter.result();
 
     return this.messages;
   }

@@ -7,7 +7,7 @@ import date from '../date/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import templateReplace from '../../lib/template-replace/index.js';
 import { constants as promptConstants } from '../../prompts/index.js';
-import { emitProgress } from '../../lib/progress-callback/index.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 import { nameStep } from '../../lib/context/option.js';
 
 const name = 'set-interval';
@@ -71,6 +71,7 @@ export default function setInterval({
   ...options
 } = {}) {
   const config = nameStep(name, { llm, ...options });
+  const emitter = createProgressEmitter(name, config.onProgress, config);
   const startTime = config.now ?? new Date();
   let timer;
   let count = 0;
@@ -130,10 +131,8 @@ Next wait:`;
         });
       }
 
-      emitProgress({
-        callback: config.onProgress,
+      emitter.emit({
         kind: 'telemetry',
-        step: 'set-interval',
         event: 'chain:tick',
         operation: config.operation,
         duration: Date.now() - startTime.getTime(),
@@ -149,10 +148,8 @@ Next wait:`;
     } catch (error) {
       debug(`Error in setInterval step: ${error.message}`);
 
-      emitProgress({
-        callback: config.onProgress,
+      emitter.emit({
         kind: 'telemetry',
-        step: 'set-interval',
         event: 'chain:error',
         operation: config.operation,
         duration: Date.now() - startTime.getTime(),

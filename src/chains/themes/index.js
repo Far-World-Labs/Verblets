@@ -1,6 +1,6 @@
 import reduce from '../reduce/index.js';
 import shuffle from '../../lib/shuffle/index.js';
-import { track } from '../../lib/progress-callback/index.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 import { nameStep, getOptions } from '../../lib/context/option.js';
 
 const name = 'themes';
@@ -13,7 +13,7 @@ const splitText = (text) =>
 
 export default async function themes(text, config = {}) {
   const runConfig = nameStep(name, config);
-  const span = track(name, runConfig);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   const { topN } = await getOptions(runConfig, {
     topN: undefined,
   });
@@ -36,7 +36,7 @@ export default async function themes(text, config = {}) {
     .map((t) => t.trim())
     .filter(Boolean);
 
-  span.result();
+  emitter.result();
 
   return result;
 }

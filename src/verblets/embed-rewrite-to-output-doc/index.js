@@ -2,7 +2,7 @@ import callLlm from '../../lib/llm/index.js';
 import { hydeOutputDoc } from '../../prompts/embed-query-transforms.js';
 import { schema } from './schema.js';
 import { nameStep } from '../../lib/context/option.js';
-import { track } from '../../lib/progress-callback/index.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 
 const name = 'embed-rewrite-to-output-doc';
 
@@ -18,7 +18,7 @@ const name = 'embed-rewrite-to-output-doc';
  */
 export default async function embedRewriteToOutputDoc(query, config = {}) {
   const runConfig = nameStep(name, config);
-  const span = track(name, runConfig);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   const result = await callLlm(hydeOutputDoc(query), {
     ...runConfig,
     response_format: {
@@ -26,6 +26,6 @@ export default async function embedRewriteToOutputDoc(query, config = {}) {
       json_schema: { name: 'hyde_output_doc', schema },
     },
   });
-  span.result();
+  emitter.result();
   return result;
 }

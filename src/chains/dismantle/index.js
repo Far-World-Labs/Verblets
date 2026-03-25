@@ -5,7 +5,7 @@ import retry from '../../lib/retry/index.js';
 import { outputSuccinctNames } from '../../prompts/index.js';
 import { subComponentsSchema, componentOptionsSchema } from './schemas.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
-import { track } from '../../lib/progress-callback/index.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 
 const _name = 'dismantle'; // eslint: unused — ChainTree.create receives name as parameter
 
@@ -287,7 +287,7 @@ export const simplifyTree = (node) => {
 class ChainTree {
   static async create(name, options = {}) {
     const runConfig = nameStep(name, options);
-    const span = track(name, runConfig);
+    const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
     const { temperature, variety } = await getOptions(runConfig, {
       temperature: undefined,
       variety: withPolicy(mapVariety),
@@ -295,7 +295,7 @@ class ChainTree {
 
     const tree = new ChainTree(name, options, runConfig, { temperature, variety });
 
-    span.result();
+    emitter.result();
 
     return tree;
   }

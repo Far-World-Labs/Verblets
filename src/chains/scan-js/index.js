@@ -7,7 +7,7 @@ import retry from '../../lib/retry/index.js';
 import search from '../../lib/search-js-files/index.js';
 import codeFeaturesPrompt from '../../prompts/code-features.js';
 import makeJSONSchema from '../../prompts/features-json-schema.js';
-import { track } from '../../lib/progress-callback/index.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 import { nameStep } from '../../lib/context/option.js';
 
 const name = 'scan-js';
@@ -81,7 +81,7 @@ const visit = async ({
 // node: { filename: './src/index.js' },
 export default async (moduleOptions) => {
   const runConfig = nameStep(name, moduleOptions);
-  const span = track(name, runConfig);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   const state = await search({
     ...runConfig,
   });
@@ -102,7 +102,7 @@ export default async (moduleOptions) => {
       }),
   });
 
-  span.result();
+  emitter.result();
 
   return result;
 };

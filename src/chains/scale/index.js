@@ -4,7 +4,7 @@ import { asXML } from '../../prompts/wrap-variable.js';
 import buildInstructions from '../../lib/build-instructions/index.js';
 import { scaleSpecificationJsonSchema } from './schemas.js';
 import scaleResultSchema from './scale-result.json';
-import { track } from '../../lib/progress-callback/index.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 import { nameStep } from '../../lib/context/option.js';
 
 // ===== Instruction Builders =====
@@ -43,7 +43,7 @@ export const {
  */
 export async function scaleSpec(prompt, config = {}) {
   const runConfig = nameStep('scale:spec', config);
-  const span = track('scale:spec', runConfig);
+  const specEmitter = createProgressEmitter('scale:spec', runConfig.onProgress, runConfig);
 
   const specSystemPrompt = `You are a scale specification generator. Analyze the scaling instructions and produce a clear, comprehensive specification.`;
 
@@ -74,7 +74,7 @@ IMPORTANT: Each property must be a simple string value, not a nested object or a
     }
   );
 
-  span.result();
+  specEmitter.result();
 
   return response;
 }

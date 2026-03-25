@@ -1,6 +1,6 @@
 import callLlm from '../../lib/llm/index.js';
 import { nameStep } from '../../lib/context/option.js';
-import { track } from '../../lib/progress-callback/index.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 import { asXML } from '../../prompts/index.js';
 import { intent as intentSchema } from '../../json-schemas/index.js';
 
@@ -45,7 +45,7 @@ const responseFormat = {
  */
 export default async function intent(text, operations, config = {}) {
   const runConfig = nameStep(name, config);
-  const span = track(name, runConfig);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
 
   if (!Array.isArray(operations) || operations.length === 0) {
     throw new Error('Operations must be a non-empty array');
@@ -88,7 +88,7 @@ Return the result as a structured JSON object with the operation name, extracted
     response_format: responseFormat,
   });
 
-  span.result();
+  emitter.result();
 
   return response;
 }

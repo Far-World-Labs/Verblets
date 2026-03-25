@@ -1,7 +1,7 @@
 import collectTerms from '../collect-terms/index.js';
 import score from '../score/index.js';
 import map from '../map/index.js';
-import { scopeProgress, track } from '../../lib/progress-callback/index.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 import TextSimilarity from '../../lib/text-similarity/index.js';
 import { debug } from '../../lib/debug/index.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
@@ -218,7 +218,15 @@ async function expandQuery(query, tokenBudget, options = {}) {
       ...options,
       topN: 5,
       chunkLen: 500,
-      onProgress: scopeProgress(options.onProgress, 'collect-terms:query-expansion'),
+      onProgress:
+        options.onProgress &&
+        ((e) =>
+          options.onProgress({
+            ...e,
+            phase: e.phase
+              ? `collect-terms:query-expansion/${e.phase}`
+              : 'collect-terms:query-expansion',
+          })),
     });
 
     // Include original query and the extracted terms
@@ -318,7 +326,13 @@ async function scoreEdgeChunks(candidates, query, maxChunks, options = {}) {
     {
       ...options,
       batchSize: LLM_CHUNK_BATCH_SIZE,
-      onProgress: scopeProgress(options.onProgress, 'score:edge-ranking'),
+      onProgress:
+        options.onProgress &&
+        ((e) =>
+          options.onProgress({
+            ...e,
+            phase: e.phase ? `score:edge-ranking/${e.phase}` : 'score:edge-ranking',
+          })),
     }
   );
 
@@ -374,7 +388,17 @@ async function compressHighValueChunks(
   const texts = await map(
     cleanedTexts,
     `Extract key parts answering: "${query}". Preserve important details. Target ${compressionTarget}% of original.`,
-    { ...options, batchSize: 10, onProgress: scopeProgress(options.onProgress, 'map:compression') }
+    {
+      ...options,
+      batchSize: 10,
+      onProgress:
+        options.onProgress &&
+        ((e) =>
+          options.onProgress({
+            ...e,
+            phase: e.phase ? `map:compression/${e.phase}` : 'map:compression',
+          })),
+    }
   );
 
   const compressed = [];
@@ -534,7 +558,7 @@ function selectGapFillers(allChunks, selectedChunks, gapFillerBudget) {
 // Main function with proper budget planning
 export default async function documentShrink(document, query, config = {}) {
   const runConfig = nameStep(name, config);
-  const span = track(name, runConfig);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   const {
     targetSize,
     tokenBudget: tokenBudgetInit,
@@ -580,7 +604,7 @@ export default async function documentShrink(document, query, config = {}) {
       },
     };
 
-    span.result();
+    emitter.result();
 
     return emptyResult;
   }
@@ -722,7 +746,7 @@ export default async function documentShrink(document, query, config = {}) {
     },
   };
 
-  span.result();
+  emitter.result();
 
   return finalResult;
 }

@@ -8,7 +8,7 @@ Most chains start with `nameStep`, which sets the operation name on config for p
 
 ```javascript
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
-import { track } from '../../lib/progress-callback/index.js';
+import { track } from '../../lib/progress/index.js';
 
 const runConfig = nameStep('document-shrink', inputConfig);
 const span = track('document-shrink', runConfig);
@@ -87,4 +87,4 @@ const divergence = await getOption('divergence', config, undefined);
 
 ## Source
 
-The option API — `getOption`, `getOptions`, `withPolicy`, `nameStep` — is exported from `src/lib/context/option.js`. The lifecycle handle `track` is exported from `src/lib/progress-callback/index.js`.
+The option API — `getOption`, `getOptions`, `withPolicy`, `nameStep` — is exported from `src/lib/context/option.js`. The lifecycle handle `track` is exported from `src/lib/progress/index.js`.

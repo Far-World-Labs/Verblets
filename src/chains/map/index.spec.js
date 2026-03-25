@@ -131,7 +131,6 @@ describe('map', () => {
       const startEvent = progressEvents.find((e) => e.step === 'map' && e.event === 'start');
       expect(startEvent).toBeDefined();
       expect(startEvent.totalItems).toBe(4);
-      expect(startEvent.processedItems).toBe(0);
 
       // Check batch complete events
       const batchEvents = progressEvents.filter((e) => e.event === 'batch:complete');
@@ -209,10 +208,9 @@ describe('map', () => {
       expect(batchEvents.length).toBeGreaterThan(0);
       const batchEvent = batchEvents[0];
       expect(batchEvent).toBeDefined();
-      expect(batchEvent.batchNumber).toBeDefined();
       expect(batchEvent.batchSize).toBeDefined();
-      expect(batchEvent.batchIndex).toBeDefined();
-      expect(batchEvent.totalBatches).toBeDefined();
+      expect(batchEvent.processedItems).toBeDefined();
+      expect(batchEvent.totalItems).toBeDefined();
     });
   });
 });

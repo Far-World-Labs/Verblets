@@ -9,7 +9,7 @@
 import callLlm from '../../lib/llm/index.js';
 import { schema } from '../../lib/targeting-rule/index.js';
 import { nameStep } from '../../lib/context/option.js';
-import { track } from '../../lib/progress-callback/index.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 
 const name = 'suggest-targeting-rules';
 
@@ -52,7 +52,7 @@ Based on these patterns, suggest concrete targeting rules.${instruction ? `\n\nA
  */
 export default async function suggestTargetingRules(traces, instruction, config = {}) {
   const runConfig = nameStep(name, config);
-  const span = track(name, runConfig);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
 
   if (!traces || traces.length === 0) return [];
 
@@ -68,7 +68,7 @@ export default async function suggestTargetingRules(traces, instruction, config 
 
   const rules = result?.rules ?? result ?? [];
 
-  span.result();
+  emitter.result();
 
   return rules;
 }

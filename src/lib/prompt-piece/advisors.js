@@ -5,7 +5,7 @@
 import callLlm from '../llm/index.js';
 import retry from '../retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
-import { emitStepProgress, emitComplete } from '../progress-callback/index.js';
+import createProgressEmitter from '../progress/index.js';
 import { debug } from '../debug/index.js';
 import { untrustedSystemSuffix, untrustedBoundary } from '../../prompts/prompt-piece.js';
 import { reshapeEditsSchema, reshapeDiagnosticSchema } from './schemas.js';
@@ -42,21 +42,14 @@ const formatRegistry = (registry) =>
 
 const createAdvisor = (label, systemPrompt, schema, buildParts) => {
   const fn = async (input, config = {}) => {
-    const {
-      llm,
-      maxAttempts = 3,
-      onProgress,
-      abortSignal,
-      now = new Date(),
-      untrusted = false,
-      ...rest
-    } = config;
+    const { llm, maxAttempts = 3, onProgress, abortSignal, untrusted = false, ...rest } = config;
 
     const resolvedSchema = typeof schema === 'function' ? schema(input, config) : schema;
     const resolvedSystemPrompt =
       typeof systemPrompt === 'function' ? systemPrompt(input, config) : systemPrompt;
 
-    emitStepProgress(onProgress, label, 'analyzing', { now: new Date(), chainStartTime: now });
+    const emitter = createProgressEmitter(label, onProgress);
+    emitter.emit({ event: 'step', stepName: 'analyzing' });
 
     const parts = buildParts(input, config);
     const effectiveSystemPrompt = untrusted
@@ -78,7 +71,9 @@ const createAdvisor = (label, systemPrompt, schema, buildParts) => {
     );
 
     debug(`${label}: complete`);
-    emitComplete(onProgress, label, { now: new Date(), chainStartTime: now });
+    emitter.emit({
+      event: 'complete',
+    });
 
     return response;
   };

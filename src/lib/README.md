@@ -46,7 +46,7 @@ Convert raw LLM text responses into typed values. These are the internal impleme
 ## Infrastructure
 
 - [prompt-cache](./prompt-cache) — Cache prompts and responses (Redis with in-memory fallback)
-- [progress-callback](./progress-callback) — Progress event helpers: `batchTracker`, `scopeProgress`, emit utilities
+- [progress](./progress) — Progress event system: `track`, `trackBatch`, `scopeProgress`, emit utilities
 - [debug](./debug) — Debug logging
 - [any-signal](./any-signal) — Combine multiple AbortSignals
 - [timed-abort-controller](./timed-abort-controller) — AbortController with timeout

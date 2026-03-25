@@ -10,7 +10,7 @@ The project has three tiers of modules, each with clear responsibilities:
 
 **Chains** (`src/chains/`) orchestrate multiple operations into workflows. They handle batching, retries, progress tracking, and multi-step reasoning. Chains can use verblets, other chains, and library utilities. Examples: `filter`, `map`, `score`, `document-shrink`, `SocraticMethod`.
 
-**Library utilities** (`src/lib/`) provide infrastructure with no direct LLM usage. The `llm` module is the exception — it's the LLM wrapper itself. Everything else is pure functions, data structures, and helpers: `retry`, `parallel-batch`, `ring-buffer`, `progress-callback`.
+**Library utilities** (`src/lib/`) provide infrastructure with no direct LLM usage. The `llm` module is the exception — it's the LLM wrapper itself. Everything else is pure functions, data structures, and helpers: `retry`, `parallel-batch`, `ring-buffer`, `progress`.
 
 Dependency rules: verblets cannot import chains. Chains can import anything. Library utilities should minimize dependencies.
 

@@ -17,7 +17,7 @@
 import RingBuffer from '../../lib/ring-buffer/index.js';
 import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
-import { track } from '../../lib/progress-callback/index.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 import { nameStep } from '../../lib/context/option.js';
 
 const name = 'option-history-analyzer';
@@ -200,7 +200,7 @@ export default function createOptionHistoryAnalyzer(config = {}) {
     }
 
     const runConfig = nameStep(name, { ...chainConfig, ...analyzeConfig });
-    const span = track(name, runConfig);
+    const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
 
     const prompt = buildAnalysisPrompt(traces, instruction);
 
@@ -222,7 +222,7 @@ export default function createOptionHistoryAnalyzer(config = {}) {
       onRules(rules);
     }
 
-    span.result();
+    emitter.result();
 
     return rules;
   };

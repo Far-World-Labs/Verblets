@@ -1,6 +1,6 @@
 import callLlm from '../../lib/llm/index.js';
 import { nameStep } from '../../lib/context/option.js';
-import { track } from '../../lib/progress-callback/index.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 import { numberSchema } from './schema.js';
 
@@ -16,7 +16,7 @@ const name = 'number';
 
 export default async (text, config = {}) => {
   const runConfig = nameStep(name, config);
-  const span = track(name, runConfig);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
 
   const numberText = `${contentIsQuestion} ${text}
 
@@ -39,7 +39,7 @@ The value should be the number or "undefined".`;
 
   const interpreted = result === 'undefined' ? undefined : result;
 
-  span.result();
+  emitter.result();
 
   return interpreted;
 };

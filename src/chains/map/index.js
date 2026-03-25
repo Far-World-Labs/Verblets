@@ -5,8 +5,8 @@ import {
   extractBatchConfig,
   extractPromptAnalysis,
 } from '../../lib/lifecycle-logger/index.js';
-import { createBatches, parallel, retry, batchTracker } from '../../lib/index.js';
-import { track } from '../../lib/progress-callback/index.js';
+import { createBatches, parallel, retry } from '../../lib/index.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 import { nameStep, getOptions } from '../../lib/context/option.js';
 
 const name = 'map';
@@ -27,7 +27,7 @@ const name = 'map';
  * @returns { Promise<(string|undefined)[]> } results aligned with input order
  */
 const mapOnce = async function (list, instructions, config = {}) {
-  const { maxParallel = 3, errorPosture, progressMode, onProgress, now, chainStartTime } = config;
+  const { maxParallel = 3, errorPosture, onProgress } = config;
 
   const results = new Array(list.length);
   const batches = await createBatches(list, config);
@@ -50,14 +50,14 @@ const mapOnce = async function (list, instructions, config = {}) {
     });
   }
 
-  const effectiveStartTime = chainStartTime || now;
-  const tracker = batchTracker('map', list.length, {
-    onProgress,
-    progressMode,
-    now: effectiveStartTime,
+  let processedItems = 0;
+  const emitter = createProgressEmitter('map', onProgress);
+  emitter.emit({
+    event: 'start',
+    totalItems: list.length,
+    totalBatches: batchesToProcess.length,
+    maxParallel,
   });
-
-  tracker.start(batchesToProcess.length, maxParallel);
 
   // Process batches in parallel using parallelBatch
   await parallel(
@@ -121,7 +121,7 @@ Preserve all formatting and newlines within each <item> element.`;
         const output = await retry(() => listBatch(items, compiledPrompt, listBatchOptions), {
           label: 'map:batch',
           config,
-          onProgress: tracker.forBatch(startIndex, items.length),
+          onProgress,
         });
 
         // listBatch now returns arrays directly
@@ -133,7 +133,13 @@ Preserve all formatting and newlines within each <item> element.`;
           results[startIndex + j] = item;
         });
 
-        tracker.batchDone(startIndex, items.length);
+        processedItems += items.length;
+        emitter.emit({
+          event: 'batch:complete',
+          totalItems: list.length,
+          processedItems,
+          batchSize: items.length,
+        });
 
         if (config.logger?.info) {
           config.logger.info(`Map batch completed`, {
@@ -165,7 +171,11 @@ Preserve all formatting and newlines within each <item> element.`;
     }
   );
 
-  tracker.complete();
+  emitter.emit({
+    event: 'complete',
+    totalItems: list.length,
+    processedItems,
+  });
 
   return results;
 };
@@ -187,14 +197,13 @@ Preserve all formatting and newlines within each <item> element.`;
  */
 const map = async function (list, instructions, config = {}) {
   const runConfig = nameStep(name, config);
-  const span = track(name, runConfig);
-  const { maxAttempts, maxParallel, errorPosture, progressMode } = await getOptions(runConfig, {
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  const { maxAttempts, maxParallel, errorPosture } = await getOptions(runConfig, {
     maxAttempts: 3,
     maxParallel: 3,
     errorPosture: 'resilient',
-    progressMode: 'detailed',
   });
-  const { logger, now } = runConfig;
+  const { logger } = runConfig;
   // Create logger for map chain
   const lifecycleLogger = createLifecycleLogger(logger, 'chain:map');
 
@@ -226,10 +235,7 @@ const map = async function (list, instructions, config = {}) {
     maxAttempts,
     maxParallel,
     errorPosture,
-    progressMode,
     logger: lifecycleLogger,
-    now,
-    chainStartTime: now,
   });
 
   for (let attempt = 1; attempt < maxAttempts; attempt += 1) {
@@ -259,8 +265,6 @@ const map = async function (list, instructions, config = {}) {
       maxAttempts,
       maxParallel,
       logger: lifecycleLogger,
-      now: new Date(),
-      chainStartTime: now,
     });
 
     retryResults.forEach((val, i) => {
@@ -276,7 +280,7 @@ const map = async function (list, instructions, config = {}) {
     failedItems: results.length - successCount,
   };
   lifecycleLogger.logResult(results, resultMeta);
-  span.result(resultMeta);
+  emitter.result(resultMeta);
 
   return results;
 };

@@ -1,4 +1,4 @@
-import { emitProgress } from '../progress-callback/index.js';
+import createProgressEmitter from '../progress/index.js';
 
 /**
  * Compose a step name onto the operation path and stamp the run time.
@@ -86,10 +86,8 @@ export async function getOptionDetail(name, config, fallback) {
     detail.value = fallback;
   }
 
-  emitProgress({
-    callback: config.onProgress,
+  createProgressEmitter(name, config.onProgress).emit({
     kind: 'telemetry',
-    step: name,
     event: 'option:resolve',
     operation: detail.operation,
     source: detail.source,

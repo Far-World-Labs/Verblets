@@ -7,7 +7,7 @@ import {
   extractPromptAnalysis,
   extractResultValue,
 } from '../../lib/lifecycle-logger/index.js';
-import { emitStepProgress, track } from '../../lib/progress-callback/index.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 
 const name = 'socratic';
@@ -118,13 +118,13 @@ const defaultAnswer = async ({
 class SocraticMethod {
   static async create(statement, options = {}) {
     const runConfig = nameStep(name, options);
-    const span = track(name, runConfig);
+    const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
     const { challenge, temperature } = await getOptions(runConfig, {
       challenge: withPolicy(mapChallenge, ['challenge', 'temperature']),
     });
     return new SocraticMethod(
       statement,
-      { config: runConfig, span },
+      { config: runConfig, emitter },
       {
         challenge,
         temperature,
@@ -133,20 +133,12 @@ class SocraticMethod {
   }
 
   constructor(statement, options = {}, resolved = {}) {
-    // options may be { config, span } from create() or plain config (direct construction)
-    const fromCreate = options.span && options.config;
-    this.span = fromCreate ? options.span : undefined;
+    // options may be { config, emitter } from create() or plain config (direct construction)
+    const fromCreate = options.emitter && options.config;
+    this.emitter = fromCreate ? options.emitter : undefined;
     const opts = fromCreate ? options.config : options;
 
-    const {
-      ask = defaultAsk,
-      answer = defaultAnswer,
-      llm,
-      logger,
-      onProgress,
-      abortSignal,
-      now,
-    } = opts;
+    const { ask = defaultAsk, answer = defaultAnswer, llm, logger, abortSignal } = opts;
     this.statement = statement;
     this.ask = ask;
     this.answer = answer;
@@ -157,15 +149,13 @@ class SocraticMethod {
       resolved.challenge ??
       (opts.challenge !== undefined ? mapChallenge(opts.challenge).challenge : undefined);
     this.temperature = resolved.temperature ?? opts.temperature ?? 0.7;
-    if (!this.span) {
-      // Direct construction path — create a span for result() emission
+    if (!this.emitter) {
+      // Direct construction path — create an emitter for result() emission
       const runConfig = nameStep(name, opts);
       this.config = runConfig;
-      this.span = track(name, runConfig);
+      this.emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
     }
-    this.onProgress = onProgress;
     this.abortSignal = abortSignal;
-    this.now = now;
     this.logger = createLifecycleLogger(logger, 'chain:socratic');
 
     // Log construction
@@ -185,11 +175,11 @@ class SocraticMethod {
 
     this.logger.logEvent('step-start', { turnNumber });
 
-    emitStepProgress(this.onProgress, 'socratic', 'asking-question', {
+    this.emitter.emit({
+      event: 'step',
+      stepName: 'asking-question',
       turnNumber,
       topic: this.statement,
-      now: new Date(),
-      chainStartTime: this.now,
     });
 
     // Log input (topic and history)
@@ -217,12 +207,7 @@ class SocraticMethod {
       value: question,
     });
 
-    emitStepProgress(this.onProgress, 'socratic', 'answering-question', {
-      turnNumber,
-      question,
-      now: new Date(),
-      chainStartTime: this.now,
-    });
+    this.emitter.emit({ event: 'step', stepName: 'answering-question', turnNumber, question });
 
     const answer = await this.answer({
       question,
@@ -262,7 +247,7 @@ class SocraticMethod {
 
     this.logger.logResult(this.history, extractResultValue(this.history, this.history));
 
-    this.span.result();
+    this.emitter.result();
 
     return this.history;
   }

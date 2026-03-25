@@ -2,7 +2,7 @@ import callLlm from '../../lib/llm/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { debug } from '../../lib/debug/index.js';
 import { nameStep } from '../../lib/context/option.js';
-import { track } from '../../lib/progress-callback/index.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 import listExpandSchema from './list-expand-result.json';
 
 const name = 'list-expand';
@@ -40,7 +40,7 @@ const buildPrompt = function (list, count) {
  */
 export default async function listExpand(list, count = list.length * 2, config = {}) {
   const runConfig = nameStep(name, config);
-  const span = track(name, runConfig);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   const output = await callLlm(buildPrompt(list, count), {
     ...runConfig,
     response_format: responseFormat,
@@ -50,10 +50,10 @@ export default async function listExpand(list, count = list.length * 2, config =
 
   if (!Array.isArray(items)) {
     debug(`Expected items array, got: ${typeof items}`);
-    span.result();
+    emitter.result();
     return [];
   }
 
-  span.result();
+  emitter.result();
   return items;
 }

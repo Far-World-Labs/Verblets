@@ -8,7 +8,7 @@ import {
 } from '../../prompts/index.js';
 import listResultSchema from './list-result.json';
 import { nameStep } from '../../lib/context/option.js';
-import { track } from '../../lib/progress-callback/index.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 
 const name = 'list';
 
@@ -135,7 +135,7 @@ export const generateList = async function* generateListGenerator(text, config =
 
 export default async function list(prompt, config = {}) {
   const runConfig = nameStep(name, config);
-  const span = track(name, runConfig);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   const { schema } = runConfig;
   const fullPrompt = prompt;
   const response = await retry(
@@ -167,10 +167,10 @@ export default async function list(prompt, config = {}) {
         transformedItems.push(item);
       }
     }
-    span.result();
+    emitter.result();
     return transformedItems;
   }
 
-  span.result();
+  emitter.result();
   return items;
 }

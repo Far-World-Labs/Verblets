@@ -2,7 +2,7 @@ import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { constants as promptConstants, asXML } from '../../prompts/index.js';
 import { questionsListSchema, selectedQuestionSchema } from './schemas.js';
-import { track } from '../../lib/progress-callback/index.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 import { getOption, nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 
 const name = 'questions';
@@ -68,7 +68,7 @@ One question per string.`;
 
 const generateQuestions = async function* generateQuestionsGenerator(text, config = {}) {
   const runConfig = nameStep(name, config);
-  const span = track(name, runConfig);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   const { exploration: searchBreadth } = await getOptions(runConfig, {
     exploration: withPolicy(mapExploration),
   });
@@ -144,7 +144,7 @@ const generateQuestions = async function* generateQuestionsGenerator(text, confi
     }
   }
 
-  span.result();
+  emitter.result();
 };
 
 export default async (text, config = {}) => {

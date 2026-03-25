@@ -2,8 +2,8 @@ import listBatch, { ListStyle, determineStyle } from '../../verblets/list-batch/
 import { asXML } from '../../prompts/wrap-variable.js';
 import { reduceAccumulatorJsonSchema } from './schemas.js';
 import { createLifecycleLogger, extractBatchConfig } from '../../lib/lifecycle-logger/index.js';
-import { retry, prepareBatches } from '../../lib/index.js';
-import { track } from '../../lib/progress-callback/index.js';
+import { retry, createBatches } from '../../lib/index.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 import { nameStep, getOptions } from '../../lib/context/option.js';
 
 import { jsonSchema } from '../../lib/llm/index.js';
@@ -18,9 +18,8 @@ const DEFAULT_REDUCE_RESPONSE_FORMAT = jsonSchema(
 
 const reduce = async function reduce(list, instructions, config = {}) {
   const runConfig = nameStep(name, config);
-  const span = track(name, runConfig);
-  const { progressMode, accumulatorMode } = await getOptions(runConfig, {
-    progressMode: 'detailed',
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  const { accumulatorMode } = await getOptions(runConfig, {
     accumulatorMode: 'auto',
   });
   const lifecycleLogger = createLifecycleLogger(runConfig.logger, 'chain:reduce');
@@ -35,8 +34,11 @@ const reduce = async function reduce(list, instructions, config = {}) {
     acc = { items: runConfig.initial };
   }
 
-  const { batches, tracker } = await prepareBatches('reduce', list, runConfig, { progressMode });
+  const batches = await createBatches(list, runConfig);
+  let processedItems = 0;
   const activeBatches = batches.filter((b) => !b.skip);
+
+  emitter.emit({ event: 'start', totalItems: list.length, totalBatches: activeBatches.length });
 
   lifecycleLogger.logStart(
     extractBatchConfig({
@@ -46,7 +48,7 @@ const reduce = async function reduce(list, instructions, config = {}) {
     })
   );
 
-  for (const [batchIndex, { items, skip, startIndex }] of batches.entries()) {
+  for (const [batchIndex, { items, skip }] of batches.entries()) {
     if (skip) {
       lifecycleLogger.logEvent('batch-skip', { batchIndex });
       continue;
@@ -89,7 +91,7 @@ Process exactly ${count} items from the ${itemFormat} list below and return the 
     const result = await retry(() => listBatch(items, prompt, listBatchOptions), {
       label: 'reduce:batch',
       config: runConfig,
-      onProgress: tracker.forBatch(startIndex, items.length),
+      onProgress: runConfig.onProgress,
     });
 
     if (!runConfig.responseFormat && result?.accumulator !== undefined) {
@@ -98,7 +100,13 @@ Process exactly ${count} items from the ${itemFormat} list below and return the 
       acc = result;
     }
 
-    tracker.batchDone(startIndex, items.length);
+    processedItems += items.length;
+    emitter.emit({
+      event: 'batch:complete',
+      totalItems: list.length,
+      processedItems,
+      batchSize: items.length,
+    });
 
     lifecycleLogger.logEvent('batch-done', {
       batchIndex,
@@ -106,11 +114,11 @@ Process exactly ${count} items from the ${itemFormat} list below and return the 
     });
   }
 
-  tracker.complete();
+  emitter.emit({ event: 'complete', totalItems: list.length, processedItems });
 
   const resultMeta = { totalItems: list.length, totalBatches: activeBatches.length };
   lifecycleLogger.logResult(acc, resultMeta);
-  span.result(resultMeta);
+  emitter.result(resultMeta);
 
   return acc;
 };

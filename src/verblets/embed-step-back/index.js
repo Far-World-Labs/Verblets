@@ -2,7 +2,7 @@ import callLlm from '../../lib/llm/index.js';
 import { stepBack as stepBackPrompt } from '../../prompts/embed-query-transforms.js';
 import { embedStepBackSchema } from './schema.js';
 import { nameStep } from '../../lib/context/option.js';
-import { track } from '../../lib/progress-callback/index.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 
 const name = 'embed-step-back';
 
@@ -42,7 +42,7 @@ export const mapAbstraction = (value) => {
  */
 export default async function embedStepBack(query, config = {}) {
   const runConfig = nameStep(name, config);
-  const span = track(name, runConfig);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   const { count = 3 } = runConfig;
   const abstractionGuidance = mapAbstraction(runConfig.abstraction);
 
@@ -56,6 +56,6 @@ export default async function embedStepBack(query, config = {}) {
       },
     },
   });
-  span.result();
+  emitter.result();
   return result;
 }

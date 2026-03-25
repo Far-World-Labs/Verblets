@@ -1,7 +1,7 @@
 import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/index.js';
-import { track } from '../../lib/progress-callback/index.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 
 const name = 'veiled-variants';
@@ -96,7 +96,7 @@ export const mapCoverage = (value) => {
 const veiledVariants = async (inputConfig = {}) => {
   const { prompt } = inputConfig;
   const runConfig = nameStep(name, { llm: { sensitive: true }, ...inputConfig });
-  const span = track(name, runConfig);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   const { strategies, variantCount } = await getOptions(runConfig, {
     coverage: withPolicy(mapCoverage, ['strategies', 'variantCount']),
   });
@@ -111,7 +111,7 @@ const veiledVariants = async (inputConfig = {}) => {
     )
   );
 
-  span.result();
+  emitter.result();
 
   return results.flat();
 };

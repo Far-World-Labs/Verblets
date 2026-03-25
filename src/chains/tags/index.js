@@ -2,7 +2,7 @@ import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import map from '../map/index.js';
-import { track } from '../../lib/progress-callback/index.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 import { nameStep, getOptions } from '../../lib/context/option.js';
 import tagsResultSchema from './tags-result.json';
 
@@ -79,7 +79,7 @@ Keep it concise and actionable.`;
  */
 export async function applyTags(item, specification, vocabulary, config = {}) {
   const runConfig = nameStep(`${name}:apply`, config);
-  const span = track(`${name}:apply`, runConfig);
+  const applyEmitter = createProgressEmitter(`${name}:apply`, runConfig.onProgress, runConfig);
   const { vocabularyMode } = await getOptions(runConfig, {
     vocabularyMode: 'strict',
   });
@@ -119,7 +119,7 @@ Do NOT return tag labels, descriptions, or full tag objects - ONLY the string ID
   // llm auto-unwraps {items: [...]} to just the array
   const result = Array.isArray(response) ? response : [];
 
-  span.result();
+  applyEmitter.result();
 
   return result;
 }

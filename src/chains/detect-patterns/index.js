@@ -2,7 +2,7 @@ import reduce from '../reduce/index.js';
 import { patternCandidatesJsonSchema } from './schemas.js';
 import { jsonSchema } from '../../lib/llm/index.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
-import { track } from '../../lib/progress-callback/index.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 
 const name = 'detect-patterns';
 
@@ -65,7 +65,7 @@ function filterObject(obj, maxStringLength = 50, maxArrayLength = 10) {
 
 export default async function detectPatterns(objects, config = {}) {
   const runConfig = nameStep(name, config);
-  const span = track(name, runConfig);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   const { maxStringLength, maxArrayLength, topN, capacity } = await getOptions(runConfig, {
     thoroughness: withPolicy(mapThoroughness, ['topN', 'capacity']),
     maxStringLength: 50,
@@ -113,7 +113,7 @@ export default async function detectPatterns(objects, config = {}) {
   // Since PATTERN_RESPONSE_FORMAT is a simple collection schema,
   // and reduce should handle it properly
   if (!Array.isArray(candidateArray)) {
-    span.result();
+    emitter.result();
     return [];
   }
 
@@ -123,7 +123,7 @@ export default async function detectPatterns(objects, config = {}) {
     .map((item) => item.template)
     .slice(0, topN);
 
-  span.result();
+  emitter.result();
 
   return patterns;
 }

@@ -7,7 +7,7 @@ import { env } from '../../lib/env/index.js';
 import { expectCore, handleAssertionResult, generateAdvice } from './shared.js';
 import { extractFileContext } from '../../lib/logger/index.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
-import { track } from '../../lib/progress-callback/index.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 
 const name = 'expect';
 
@@ -167,7 +167,7 @@ Keep your response concise but actionable. Focus on practical solutions.`;
  */
 export async function expect(actual, expected, constraint, config = {}) {
   const runConfig = nameStep(name, config);
-  const span = track(name, runConfig);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   const { mode, introspection } = await getOptions(runConfig, {
     mode: env.VERBLETS_LLM_EXPECT_MODE || 'none',
     advice: withPolicy(mapAdvice, ['introspection']),
@@ -241,7 +241,7 @@ export async function expect(actual, expected, constraint, config = {}) {
   }
 
   // Emit before handleAssertionResult — it intentionally throws in 'error' mode
-  span.result();
+  emitter.result();
 
   // Handle result based on mode - this may throw an error in 'error' mode
   const result = handleAssertionResult(

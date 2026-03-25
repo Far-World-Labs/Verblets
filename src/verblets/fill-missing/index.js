@@ -1,6 +1,6 @@
 import callLlm from '../../lib/llm/index.js';
 import { nameStep } from '../../lib/context/option.js';
-import { track } from '../../lib/progress-callback/index.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 import { constants as promptConstants, asXML } from '../../prompts/index.js';
 import fillMissingSchema from './fill-missing-result.json';
 
@@ -45,7 +45,7 @@ export const buildPrompt = (text, { creativityGuidance } = {}) =>
 
 export default async function fillMissing(text, config = {}) {
   const runConfig = nameStep(name, config);
-  const span = track(name, runConfig);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
 
   const creativityGuidance = mapCreativity(runConfig.creativity);
   const prompt = buildPrompt(text, { creativityGuidance });
@@ -54,7 +54,7 @@ export default async function fillMissing(text, config = {}) {
     response_format: responseFormat,
   });
 
-  span.result();
+  emitter.result();
 
   return response;
 }

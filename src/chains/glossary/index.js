@@ -3,7 +3,7 @@ import sort from '../sort/index.js';
 import map from '../map/index.js';
 import { glossaryExtractionJsonSchema } from './schemas.js';
 import { nameStep, getOptions } from '../../lib/context/option.js';
-import { track } from '../../lib/progress-callback/index.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 import { jsonSchema } from '../../lib/llm/index.js';
 
 const name = 'glossary';
@@ -28,7 +28,7 @@ const GLOSSARY_RESPONSE_FORMAT = jsonSchema(
  */
 export default async function glossary(text, config = {}) {
   const runConfig = nameStep(name, config);
-  const span = track(name, runConfig);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   const { maxTerms, sortBy, sentencesPerBatch, overlap } = await getOptions(runConfig, {
     maxTerms: 10,
     sortBy: 'importance for understanding the content',
@@ -82,7 +82,7 @@ Return a "terms" object containing an array of the extracted terms.`;
 
   const result = sorted.slice(0, maxTerms);
 
-  span.result();
+  emitter.result();
 
   return result;
 }

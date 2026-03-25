@@ -21,7 +21,7 @@ import stripResponse from '../strip-response/index.js';
 import { onlyJSON, contentIsSchema } from '../../prompts/constants.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { getOption } from '../context/option.js';
-import { emitProgress } from '../progress-callback/index.js';
+import createProgressEmitter from '../progress/index.js';
 
 /**
  * Configure the appropriate abort signal for fetch requests.
@@ -249,16 +249,15 @@ export const run = async (prompt, config = {}) => {
 
   // Telemetry: model selection
   const operation = options.operation;
+  const emitter = createProgressEmitter('llm', options.onProgress);
   const modelSource = shouldNegotiate
     ? 'negotiated'
     : modelOptionsWithOverrides.modelName
       ? 'config'
       : 'default';
 
-  emitProgress({
-    callback: options.onProgress,
+  emitter.emit({
     kind: 'telemetry',
-    step: 'llm',
     event: 'llm:model',
     operation,
     model: modelNameNegotiated,
@@ -444,10 +443,8 @@ export const run = async (prompt, config = {}) => {
 
     // Telemetry: successful LLM call
     const usage = result?.usage;
-    emitProgress({
-      callback: options.onProgress,
+    emitter.emit({
       kind: 'telemetry',
-      step: 'llm',
       event: 'llm:call',
       operation,
       status: 'success',
@@ -462,10 +459,8 @@ export const run = async (prompt, config = {}) => {
     return resultShaped;
   } catch (err) {
     // Telemetry: failed LLM call
-    emitProgress({
-      callback: options.onProgress,
+    emitter.emit({
       kind: 'telemetry',
-      step: 'llm',
       event: 'llm:call',
       operation,
       status: 'error',

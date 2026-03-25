@@ -3,14 +3,14 @@ import llm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { testResultJsonSchema } from './schemas.js';
-import { track } from '../../lib/progress-callback/index.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 import { nameStep } from '../../lib/context/option.js';
 
 const name = 'test';
 
 export default async function test(path, instructions, config = {}) {
   const runConfig = nameStep(name, config);
-  const span = track(name, runConfig);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
 
   try {
     const code = await fs.readFile(path, 'utf-8');
@@ -45,7 +45,7 @@ GUIDELINES:
     // With structured output, we get a validated object
     const issues = result.hasIssues ? result.issues : [];
 
-    span.result();
+    emitter.result();
 
     return issues;
   } catch (error) {

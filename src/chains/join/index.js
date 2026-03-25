@@ -2,7 +2,7 @@ import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import windowFor from '../../lib/window-for/index.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
-import { track } from '../../lib/progress-callback/index.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 
 const name = 'join';
 
@@ -53,7 +53,7 @@ export default async function join(
   if (list.length === 1) return list[0];
 
   const runConfig = nameStep(name, config);
-  const span = track(name, runConfig);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   const { styleHint, windowSize, overlapPercent } = await getOptions(runConfig, {
     fidelity: withPolicy(mapFidelity, ['windowSize', 'overlapPercent']),
     styleHint: '',
@@ -91,7 +91,7 @@ Important: This is part of a larger sequence. Join these fragments while being m
   const validResults = windowResults.filter((r) => r.content && r.content.trim());
 
   if (validResults.length === 1) {
-    span.result();
+    emitter.result();
     return validResults[0].content;
   }
 
@@ -152,7 +152,7 @@ Add necessary connecting words, prepositions, conjunctions, or other filler text
     }
   }
 
-  span.result();
+  emitter.result();
 
   return stitchedResult;
 }

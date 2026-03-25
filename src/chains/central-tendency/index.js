@@ -2,7 +2,7 @@ import map from '../map/index.js';
 import { CENTRAL_TENDENCY_PROMPT } from '../../verblets/central-tendency-lines/index.js';
 import { centralTendencyResultsJsonSchema } from './schemas.js';
 import { createLifecycleLogger, extractPromptAnalysis } from '../../lib/lifecycle-logger/index.js';
-import { scopeProgress, track } from '../../lib/progress-callback/index.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 import { jsonSchema } from '../../lib/llm/index.js';
 import { nameStep, getOptions } from '../../lib/context/option.js';
 
@@ -68,7 +68,7 @@ export default async function centralTendency(items, seedItems, config = {}) {
   }
 
   const runConfig = nameStep(name, config);
-  const span = track(name, runConfig);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   const { batchSize } = await getOptions(runConfig, {
     batchSize: 5,
   });
@@ -98,7 +98,13 @@ export default async function centralTendency(items, seedItems, config = {}) {
     batchSize,
     responseFormat: centralTendencyResponseFormat,
     logger: lifecycleLogger,
-    onProgress: scopeProgress(runConfig.onProgress, 'map:evaluation'),
+    onProgress:
+      runConfig.onProgress &&
+      ((e) =>
+        runConfig.onProgress({
+          ...e,
+          phase: e.phase ? `map:evaluation/${e.phase}` : 'map:evaluation',
+        })),
   });
 
   // Log the final output from the chain
@@ -108,7 +114,7 @@ export default async function centralTendency(items, seedItems, config = {}) {
     failureCount: results.filter((r) => r === undefined).length,
   };
   lifecycleLogger.logResult(results, resultMeta);
-  span.result(resultMeta);
+  emitter.result(resultMeta);
 
   return results;
 }

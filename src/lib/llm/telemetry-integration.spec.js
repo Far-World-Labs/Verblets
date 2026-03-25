@@ -21,7 +21,7 @@ import { get as getPromptResult, set as setPromptResult } from '../prompt-cache/
 import callLlm from './index.js';
 import retry from '../retry/index.js';
 import { nameStep } from '../context/option.js';
-import { track } from '../progress-callback/index.js';
+import createProgressEmitter from '../progress/index.js';
 
 const mockFetch = fetch;
 
@@ -49,9 +49,9 @@ describe('Telemetry integration', () => {
 
       mockFetch.mockResolvedValueOnce(makeApiResponse('chain result'));
 
-      // Simulate a chain: nameStep scopes the operation, track emits chain:start, then callLlm runs inside it
+      // Simulate a chain: nameStep scopes the operation, createProgressEmitter emits chain:start, then callLlm runs inside it
       const runConfig = nameStep('mychain', { onProgress });
-      track('mychain', runConfig);
+      createProgressEmitter('mychain', runConfig.onProgress, runConfig);
       await callLlm('do something useful', runConfig);
 
       // All events should have timestamp and kind
@@ -87,11 +87,11 @@ describe('Telemetry integration', () => {
 
       // Parent chain
       const parent = nameStep('parent', { onProgress });
-      track('parent', parent);
+      createProgressEmitter('parent', parent.onProgress, parent);
 
       // Child chain receives parent's enriched config
       const child = nameStep('child', parent);
-      track('child', child);
+      createProgressEmitter('child', child.onProgress, child);
 
       // Verify chain:start events have correct operation paths
       const chainStarts = events.filter((e) => e.event === 'chain:start');
@@ -124,7 +124,7 @@ describe('Telemetry integration', () => {
       const onProgress = (e) => events.push(e);
 
       const runConfig = nameStep('retrychain', { onProgress });
-      track('retrychain', runConfig);
+      createProgressEmitter('retrychain', runConfig.onProgress, runConfig);
 
       let callCount = 0;
       const fn = async () => {
@@ -176,7 +176,7 @@ describe('Telemetry integration', () => {
       const onProgress = (e) => events.push(e);
 
       const runConfig = nameStep('failchain', { onProgress });
-      track('failchain', runConfig);
+      createProgressEmitter('failchain', runConfig.onProgress, runConfig);
 
       const fn = async () => {
         const err = new Error('Server down');
@@ -226,7 +226,7 @@ describe('Telemetry integration', () => {
         );
 
       const runConfig = nameStep('aggregate', { onProgress });
-      track('aggregate', runConfig);
+      createProgressEmitter('aggregate', runConfig.onProgress, runConfig);
 
       await callLlm('prompt one', runConfig);
       await callLlm('prompt two', runConfig);

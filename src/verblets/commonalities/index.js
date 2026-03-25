@@ -2,7 +2,7 @@ import callLlm from '../../lib/llm/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 import { nameStep } from '../../lib/context/option.js';
-import { track } from '../../lib/progress-callback/index.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 import commonalitiesSchema from './commonalities-result.json';
 
 const { contentIsQuestion, tryCompleteData } = promptConstants;
@@ -57,15 +57,15 @@ ${tryCompleteData}`;
 
 export default async function commonalities(items, config = {}) {
   const runConfig = nameStep(name, config);
-  const span = track(name, runConfig);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   if (!Array.isArray(items) || items.length === 0) {
-    span.result();
+    emitter.result();
     return [];
   }
 
   // Finding commonalities requires at least 2 items
   if (items.length < 2) {
-    span.result();
+    emitter.result();
     return [];
   }
 
@@ -76,6 +76,6 @@ export default async function commonalities(items, config = {}) {
   });
 
   const resultArray = output?.items || output;
-  span.result();
+  emitter.result();
   return Array.isArray(resultArray) ? resultArray.filter(Boolean) : [];
 }

@@ -1,6 +1,6 @@
 import callLlm from '../../lib/llm/index.js';
 import { nameStep } from '../../lib/context/option.js';
-import { track } from '../../lib/progress-callback/index.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 import { asEnum, constants } from '../../prompts/index.js';
 import { createEnumSchema } from './schema.js';
 
@@ -10,7 +10,7 @@ const name = 'enum';
 
 export default async (text, enumVal, config = {}) => {
   const runConfig = nameStep(name, config);
-  const span = track(name, runConfig);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
 
   const enumText = `${contentIsQuestion} ${text}\n\n${explainAndSeparate}
 
@@ -35,7 +35,7 @@ The value should be your selection.`;
   // With auto-unwrapping, result should be the value directly
   const interpreted = result === 'undefined' ? undefined : result;
 
-  span.result();
+  emitter.result();
 
   return interpreted;
 };

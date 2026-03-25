@@ -21,7 +21,7 @@ import { get as getPromptResult, set as setPromptResult } from '../prompt-cache/
 import callLlm from './index.js';
 import retry from '../retry/index.js';
 import { nameStep, getOptionDetail } from '../context/option.js';
-import { track } from '../progress-callback/index.js';
+import createProgressEmitter from '../progress/index.js';
 
 const mockFetch = fetch;
 
@@ -207,7 +207,7 @@ describe('Telemetry events', () => {
     });
   });
 
-  describe('track telemetry', () => {
+  describe('createProgressEmitter telemetry', () => {
     it('emits chain:start telemetry event', () => {
       const events = [];
       const config = {
@@ -216,7 +216,7 @@ describe('Telemetry events', () => {
       };
 
       const runConfig = nameStep('filter', config);
-      track('filter', runConfig);
+      createProgressEmitter('filter', runConfig.onProgress, runConfig);
 
       expect(events).toHaveLength(1);
       expect(events[0]).toMatchObject({
@@ -230,7 +230,7 @@ describe('Telemetry events', () => {
     it('emits chain:start with top-level operation when no parent', () => {
       const events = [];
       const runConfig = nameStep('score', { onProgress: (e) => events.push(e) });
-      track('score', runConfig);
+      createProgressEmitter('score', runConfig.onProgress, runConfig);
 
       expect(events[0]).toMatchObject({
         kind: 'telemetry',
@@ -243,7 +243,7 @@ describe('Telemetry events', () => {
     it('does not emit when onProgress absent', () => {
       // Should not throw
       const runConfig = nameStep('filter', {});
-      track('filter', runConfig);
+      createProgressEmitter('filter', runConfig.onProgress, runConfig);
     });
   });
 

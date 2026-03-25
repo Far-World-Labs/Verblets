@@ -2,7 +2,7 @@ import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import popReferenceSchema from './pop-reference-result.json';
-import { track } from '../../lib/progress-callback/index.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 import { nameStep, getOptions } from '../../lib/context/option.js';
 
 const name = 'pop-reference';
@@ -18,7 +18,7 @@ const popReferenceResponseFormat = jsonSchema('pop_reference_result', popReferen
  */
 export default async function popReference(sentence, description, config = {}) {
   const runConfig = nameStep(name, config);
-  const span = track(name, runConfig);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   const { referenceContext, referencesPerSource } = await getOptions(runConfig, {
     referenceContext: false,
     referencesPerSource: 2,
@@ -91,7 +91,7 @@ Requirements:
     throw new Error('Expected array of references in response');
   }
 
-  span.result();
+  emitter.result();
 
   return references;
 }

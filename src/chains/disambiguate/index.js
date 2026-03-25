@@ -2,7 +2,7 @@ import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import score from '../score/index.js';
 import disambiguateMeaningsSchema from './disambiguate-meanings-result.json';
-import { emitStepProgress, scopeProgress, track } from '../../lib/progress-callback/index.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 import { nameStep } from '../../lib/context/option.js';
 
 const name = 'disambiguate';
@@ -38,27 +38,32 @@ export const getMeanings = async (term, config = {}) => {
 
 export default async function disambiguate({ term, context, ...config } = {}) {
   const runConfig = nameStep(name, config);
-  const span = track(name, runConfig);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
 
-  emitStepProgress(runConfig.onProgress, name, 'extracting-meanings', {
-    term,
-    now: runConfig.now,
-    chainStartTime: runConfig.now,
-  });
+  emitter.emit({ event: 'step', stepName: 'extracting-meanings', term });
 
   const meanings = await getMeanings(term, runConfig);
 
-  emitStepProgress(runConfig.onProgress, name, 'scoring-meanings', {
+  emitter.emit({
+    event: 'step',
+    stepName: 'scoring-meanings',
     term,
     meaningCount: meanings.length,
-    now: runConfig.now,
-    chainStartTime: runConfig.now,
   });
 
   const scores = await score(
     meanings,
     `how well this meaning of "${term}" matches the context: ${context}`,
-    { ...runConfig, onProgress: scopeProgress(runConfig.onProgress, 'score:relevance') }
+    {
+      ...runConfig,
+      onProgress:
+        runConfig.onProgress &&
+        ((e) =>
+          runConfig.onProgress({
+            ...e,
+            phase: e.phase ? `score:relevance/${e.phase}` : 'score:relevance',
+          })),
+    }
   );
 
   let bestIndex = 0;
@@ -71,7 +76,7 @@ export default async function disambiguate({ term, context, ...config } = {}) {
     }
   }
 
-  span.result();
+  emitter.result();
 
   return { meaning: meanings[bestIndex], meanings };
 }

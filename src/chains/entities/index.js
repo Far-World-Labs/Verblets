@@ -3,7 +3,7 @@ import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import buildInstructions from '../../lib/build-instructions/index.js';
 import entityResultSchema from './entity-result.json';
-import { emitStepProgress, track } from '../../lib/progress-callback/index.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 import { nameStep } from '../../lib/context/option.js';
 
 const name = 'entities';
@@ -119,25 +119,17 @@ Each entity should include:
  */
 export async function extractEntities(text, instructions, config = {}) {
   const runConfig = nameStep(name, config);
-  const span = track(name, runConfig);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
 
-  emitStepProgress(runConfig.onProgress, name, 'generating-specification', {
-    instructions,
-    now: runConfig.now,
-    chainStartTime: runConfig.now,
-  });
+  emitter.emit({ event: 'step', stepName: 'generating-specification', instructions });
 
   const spec = runConfig.spec || (await entitySpec(instructions, runConfig));
 
-  emitStepProgress(runConfig.onProgress, name, 'extracting-entities', {
-    specification: spec,
-    now: runConfig.now,
-    chainStartTime: runConfig.now,
-  });
+  emitter.emit({ event: 'step', stepName: 'extracting-entities', specification: spec });
 
   const result = await applyEntities(text, spec, runConfig);
 
-  span.result();
+  emitter.result();
 
   return result;
 }

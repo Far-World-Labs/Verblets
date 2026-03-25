@@ -4,27 +4,28 @@ import { describe, expect, it } from 'vitest';
 // Centralized Config Infrastructure Tests
 // ==========================================
 //
-// Tests for shared config infrastructure (nameStep, track, jsonSchema,
+// Tests for shared config infrastructure (nameStep, createProgressEmitter, jsonSchema,
 // withPolicy). Per-chain spec files test chain-SPECIFIC behavior only.
 // ==========================================
 
 import { getOption, getOptions, nameStep, withPolicy } from '../context/option.js';
-import { track } from '../progress-callback/index.js';
+import createProgressEmitter from '../progress/index.js';
 import { jsonSchema, MODEL_KEYS } from '../llm/index.js';
 import { CAPABILITY_KEYS } from '../../constants/common.js';
 
-describe('nameStep + track', () => {
+describe('nameStep + createProgressEmitter', () => {
   it('nameStep returns config with operation and now', () => {
     const runConfig = nameStep('test-chain', {});
     expect(runConfig.operation).toBe('test-chain');
     expect(runConfig.now).toBeInstanceOf(Date);
   });
 
-  it('track returns lifecycle handle with result and error', () => {
+  it('createProgressEmitter returns lifecycle handle with emit, result, error', () => {
     const runConfig = nameStep('test-chain', {});
-    const span = track('test-chain', runConfig);
-    expect(typeof span.result).toBe('function');
-    expect(typeof span.error).toBe('function');
+    const emitter = createProgressEmitter('test-chain', runConfig.onProgress, runConfig);
+    expect(typeof emitter.emit).toBe('function');
+    expect(typeof emitter.result).toBe('function');
+    expect(typeof emitter.error).toBe('function');
   });
 
   it('composes operation names hierarchically', () => {

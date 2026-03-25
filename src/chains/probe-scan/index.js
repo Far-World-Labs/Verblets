@@ -1,6 +1,6 @@
 import { embedChunked } from '../../lib/embed/index.js';
 import { cosineSimilarity } from '../../lib/pure/index.js';
-import { track } from '../../lib/progress-callback/index.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 
 const name = 'probe-scan';
@@ -39,7 +39,7 @@ export const mapDetection = (value) => {
  */
 export default async function probeScan(textOrChunks, probes, config = {}) {
   const runConfig = nameStep(name, config);
-  const span = track(name, runConfig);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   const { detection: threshold, maxTokens } = await getOptions(runConfig, {
     detection: withPolicy(mapDetection),
     maxTokens: 256,
@@ -70,7 +70,7 @@ export default async function probeScan(textOrChunks, probes, config = {}) {
 
   hits.sort((a, b) => b.score - a.score);
 
-  span.result();
+  emitter.result();
 
   return { flagged: hits.length > 0, hits };
 }

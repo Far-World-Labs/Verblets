@@ -6,7 +6,7 @@ import {
   extractLLMConfig,
 } from '../../lib/lifecycle-logger/index.js';
 import { nameStep } from '../../lib/context/option.js';
-import { track } from '../../lib/progress-callback/index.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 import centralTendencySchema from './central-tendency-result.json';
 
 const name = 'central-tendency-lines';
@@ -121,7 +121,7 @@ function createResponseFormat(schemaName = 'central_tendency_result', customSche
  */
 export default async function centralTendency(item, seedItems, config = {}) {
   const runConfig = nameStep(name, config);
-  const span = track(name, runConfig);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   if (!item || typeof item !== 'string') {
     throw new Error('Item must be a non-empty string');
   }
@@ -164,6 +164,6 @@ export default async function centralTendency(item, seedItems, config = {}) {
     hasReason: !!response.reason,
   });
 
-  span.result();
+  emitter.result();
   return response;
 }

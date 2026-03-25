@@ -7,7 +7,7 @@ import {
   extractResultValue,
 } from '../../lib/lifecycle-logger/index.js';
 import { nameStep } from '../../lib/context/option.js';
-import { track } from '../../lib/progress-callback/index.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 import { booleanSchema } from './schema.js';
 
 const name = 'bool';
@@ -18,7 +18,7 @@ const { asBool, asUndefinedByDefault, explainAndSeparate, explainAndSeparatePrim
 export default async (text, config = {}) => {
   const { logger } = config;
   const runConfig = nameStep(name, config);
-  const span = track(name, runConfig);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
 
   // Create lifecycle logger with bool namespace
   const lifecycleLogger = createLifecycleLogger(logger, 'bool');
@@ -58,7 +58,7 @@ The value should be "true", "false", or "undefined".`;
   // Log final result with raw and interpreted values
   lifecycleLogger.logResult(interpreted, extractResultValue(response, interpreted));
 
-  span.result();
+  emitter.result();
 
   return interpreted;
 };

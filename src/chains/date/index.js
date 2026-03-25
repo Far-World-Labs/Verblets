@@ -11,7 +11,7 @@ import {
   extractResultValue,
 } from '../../lib/lifecycle-logger/index.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
-import { track } from '../../lib/progress-callback/index.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 
 const name = 'date';
 
@@ -112,7 +112,7 @@ async function validateDate(dateValue, expectations, config) {
 
 export default async function date(text, config = {}) {
   const runConfig = nameStep(name, config);
-  const span = track(name, runConfig);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   const { maxAttempts, validate, returnBestEffort } = await getOptions(runConfig, {
     rigor: withPolicy(mapRigor, ['validate', 'maxAttempts', 'returnBestEffort']),
   });
@@ -145,7 +145,7 @@ export default async function date(text, config = {}) {
       firstDate,
       extractResultValue(firstDate?.toISOString() || 'undefined', firstDate)
     );
-    span.result();
+    emitter.result();
     return firstDate;
   }
 
@@ -170,7 +170,7 @@ export default async function date(text, config = {}) {
   // Handle undefined response
   if (!firstDate) {
     lifecycleLogger.logResult(undefined, extractResultValue('undefined', undefined));
-    span.result();
+    emitter.result();
     return undefined;
   }
 
@@ -233,6 +233,6 @@ export default async function date(text, config = {}) {
     result,
     extractResultValue(result?.toISOString() || 'undefined', result)
   );
-  span.result();
+  emitter.result();
   return result;
 }

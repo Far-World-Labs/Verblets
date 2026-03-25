@@ -1,7 +1,7 @@
 import list from '../list/index.js';
 import score from '../score/index.js';
 import { nameStep, getOptions } from '../../lib/context/option.js';
-import { track } from '../../lib/progress-callback/index.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 
 const name = 'collect-terms';
 
@@ -23,7 +23,7 @@ const splitIntoChunks = (text, maxLen) => {
 
 export default async function collectTerms(text, config = {}) {
   const runConfig = nameStep(name, config);
-  const span = track(name, runConfig);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   const { topN, chunkLen } = await getOptions(runConfig, {
     topN: 20,
     chunkLen: 1000,
@@ -45,7 +45,7 @@ export default async function collectTerms(text, config = {}) {
 
   // If we already have fewer terms than requested, return them all
   if (uniqueTerms.length <= topN) {
-    span.result();
+    emitter.result();
     return uniqueTerms;
   }
 
@@ -60,7 +60,7 @@ export default async function collectTerms(text, config = {}) {
   const termsWithScores = uniqueTerms.map((term, i) => ({ term, score: scores[i] }));
   termsWithScores.sort((a, b) => b.score - a.score);
 
-  span.result();
+  emitter.result();
 
   return termsWithScores.slice(0, topN).map((item) => item.term);
 }

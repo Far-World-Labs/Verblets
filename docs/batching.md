@@ -10,10 +10,10 @@ When `batchSize` is set on config, it overrides the auto-calculation. Otherwise 
 
 ## The standard chain pattern
 
-Most batch-processing chains use `prepareBatches` (which calls `createBatches` and sets up a `batchTracker`) followed by `parallelBatch`:
+Most batch-processing chains use `prepareBatches` (which calls `createBatches` and sets up a `trackBatch`) followed by `parallelBatch`:
 
 ```javascript
-import { prepareBatches } from '../../lib/progress-callback/index.js';
+import { prepareBatches } from '../../lib/progress/index.js';
 import parallel from '../../lib/parallel-batch/index.js';
 
 export default async function myChain(items, inputConfig = {}) {
@@ -86,4 +86,4 @@ Each batch from `createBatches` includes:
 
 - `src/lib/text-batch/index.js` — `createBatches`, token-aware batch sizing
 - `src/lib/parallel-batch/index.js` — `parallelBatch`, concurrency control
-- `src/lib/progress-callback/index.js` — `prepareBatches`, combines batching with progress tracking
+- `src/lib/progress/index.js` — `prepareBatches`, combines batching with progress tracking

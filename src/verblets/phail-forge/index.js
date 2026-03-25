@@ -18,7 +18,7 @@
 
 import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import { nameStep } from '../../lib/context/option.js';
-import { track } from '../../lib/progress-callback/index.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 
 const name = 'phail-forge';
 
@@ -150,7 +150,7 @@ const analysisSchema = {
  */
 export default async function phailForge(prompt, config = {}) {
   const runConfig = nameStep(name, config);
-  const span = track(name, runConfig);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   const {
     analyze = false,
     style = 'technical',
@@ -191,7 +191,7 @@ export default async function phailForge(prompt, config = {}) {
     enhancedResponse.analysis = analysis;
   }
 
-  span.result();
+  emitter.result();
   return enhancedResponse;
 }
 

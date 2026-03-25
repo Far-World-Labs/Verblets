@@ -1,13 +1,13 @@
 import callLlm from '../../lib/llm/index.js';
 import { nameStep } from '../../lib/context/option.js';
-import { track } from '../../lib/progress-callback/index.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 import { schemas as defaultSchemas } from '../../json-schemas/index.js';
 
 const name = 'auto';
 
 export default async (text, config = {}) => {
   const runConfig = nameStep(name, config);
-  const span = track(name, runConfig);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
 
   // Use provided schemas or fall back to default schemas
   const schemasToUse = runConfig.schemas || defaultSchemas;
@@ -56,7 +56,7 @@ export default async (text, config = {}) => {
     };
   }
 
-  span.result();
+  emitter.result();
 
   return result;
 };

@@ -2,7 +2,7 @@ import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import buildInstructions from '../../lib/build-instructions/index.js';
-import { track } from '../../lib/progress-callback/index.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 import relationResultSchema from './relation-result.json';
 
@@ -282,14 +282,14 @@ Example: {"object": "42^^xsd:integer"} NOT {"object": '"42"^^xsd:integer'}`;
  */
 export async function extractRelations(text, instructions, config = {}) {
   const runConfig = nameStep(name, config);
-  const span = track(name, runConfig);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
 
   const spec = runConfig.spec || (await relationSpec(instructions, runConfig));
   const entities = typeof instructions === 'object' ? instructions.entities : runConfig.entities;
   const result = await applyRelations(text, spec, { ...runConfig, entities });
   const items = result.items || [];
 
-  span.result();
+  emitter.result();
 
   return items;
 }

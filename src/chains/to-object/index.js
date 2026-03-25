@@ -7,7 +7,7 @@ import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import stripResponse from '../../lib/strip-response/index.js';
 import { constants as promptConstants, asXML } from '../../prompts/index.js';
-import { track } from '../../lib/progress-callback/index.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 import { nameStep } from '../../lib/context/option.js';
 
 const name = 'to-object';
@@ -96,7 +96,7 @@ function logDebugInfo(attempt, prompt, response, error) {
  */
 export default async function toObject(text, schema, config = {}) {
   const runConfig = nameStep(name, { llm: 'fastGood', ...config });
-  const span = track(name, runConfig);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   let errorDetails;
 
   try {
@@ -104,7 +104,7 @@ export default async function toObject(text, schema, config = {}) {
     try {
       const directResult = parseAndValidate(text, schema);
 
-      span.result();
+      emitter.result();
 
       return directResult;
     } catch (error) {
@@ -122,7 +122,7 @@ export default async function toObject(text, schema, config = {}) {
 
       const result = parseAndValidate(response, schema);
 
-      span.result();
+      emitter.result();
 
       return result;
     } catch (error) {
@@ -140,13 +140,13 @@ export default async function toObject(text, schema, config = {}) {
     const result = parseAndValidate(response, schema);
     logDebugInfo(3, prompt, response, null); // Log successful attempt
 
-    span.result();
+    emitter.result();
 
     return result;
   } catch (err) {
     logDebugInfo(3, buildJsonPrompt(text, schema, errorDetails), text, err);
 
-    span.error(err);
+    emitter.error(err);
 
     throw new Error(`Failed to convert to valid JSON after 3 attempts: ${err.message}`);
   }

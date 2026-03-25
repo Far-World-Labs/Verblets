@@ -2,7 +2,7 @@ import callLlm from '../../lib/llm/index.js';
 import { rewriteQuery as rewriteQueryPrompt } from '../../prompts/embed-query-transforms.js';
 import { embedRewriteQuerySchema } from './schema.js';
 import { nameStep } from '../../lib/context/option.js';
-import { track } from '../../lib/progress-callback/index.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 
 const name = 'embed-rewrite-query';
 
@@ -15,7 +15,7 @@ const name = 'embed-rewrite-query';
  */
 export default async function embedRewriteQuery(query, config = {}) {
   const runConfig = nameStep(name, config);
-  const span = track(name, runConfig);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   const result = await callLlm(rewriteQueryPrompt(query), {
     ...runConfig,
     response_format: {
@@ -26,6 +26,6 @@ export default async function embedRewriteQuery(query, config = {}) {
       },
     },
   });
-  span.result();
+  emitter.result();
   return result;
 }

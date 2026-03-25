@@ -1,19 +1,19 @@
 import list from '../list/index.js';
 import score from '../score/index.js';
 import { nameStep, getOptions } from '../../lib/context/option.js';
-import { track } from '../../lib/progress-callback/index.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 
 const name = 'filter-ambiguous';
 
 export default async function filterAmbiguous(text, config = {}) {
   const runConfig = nameStep(name, config);
-  const span = track(name, runConfig);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   const { topN } = await getOptions(runConfig, {
     topN: 10,
   });
 
   const complete = (result) => {
-    span.result();
+    emitter.result();
     return result;
   };
 

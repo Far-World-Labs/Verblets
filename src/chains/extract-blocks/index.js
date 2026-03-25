@@ -4,13 +4,7 @@ import parallelBatch from '../../lib/parallel-batch/index.js';
 import { createLifecycleLogger } from '../../lib/lifecycle-logger/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { blockExtractionSchema } from './block-schema.js';
-import {
-  emitBatchStart,
-  emitBatchComplete,
-  emitBatchProcessed,
-  createBatchProgressCallback,
-  track,
-} from '../../lib/progress-callback/index.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 
 const name = 'extract-blocks';
@@ -78,12 +72,12 @@ ${asXML(numberedLines, { tag: 'window' })}`;
  */
 export async function extractBlocks(text, instructions, config = {}) {
   const runConfig = nameStep(name, config);
-  const span = track(name, runConfig);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   const { maxParallel, windowSize, overlapSize } = await getOptions(runConfig, {
     precision: withPolicy(mapPrecision, ['windowSize', 'overlapSize']),
     maxParallel: 3,
   });
-  const { logger, onProgress, now } = runConfig;
+  const { logger, onProgress } = runConfig;
 
   const lifecycleLogger = createLifecycleLogger(logger, 'chain:extract-blocks');
 
@@ -91,7 +85,7 @@ export async function extractBlocks(text, instructions, config = {}) {
   if (!text || text.trim() === '') {
     const emptyMeta = { blocksExtracted: 0 };
     lifecycleLogger.logResult([], emptyMeta);
-    span.result(emptyMeta);
+    emitter.result(emptyMeta);
 
     return [];
   }
@@ -121,14 +115,13 @@ export async function extractBlocks(text, instructions, config = {}) {
     windowStarts.push(start);
   }
 
-  emitBatchStart(onProgress, 'extract-blocks', lines.length, {
-    totalWindows: windowStarts.length,
+  let processedItems = 0;
+  emitter.emit({
+    event: 'start',
+    totalItems: lines.length,
+    totalBatches: windowStarts.length,
     maxParallel,
-    now,
-    chainStartTime: now,
   });
-
-  let processedWindows = 0;
 
   // Process windows with controlled parallelism
   const allBlockBoundaries = await parallelBatch(
@@ -149,36 +142,17 @@ export async function extractBlocks(text, instructions, config = {}) {
         {
           label: `extract-blocks:window`,
           config: runConfig,
-          onProgress: createBatchProgressCallback(onProgress, {
-            totalItems: lines.length,
-            processedItems: Math.min(windowStart + windowSize, lines.length),
-            windowNumber: processedWindows + 1,
-            windowSize: windowLines.length,
-            windowStart,
-            totalWindows: windowStarts.length,
-          }),
+          onProgress,
         }
       );
 
-      processedWindows++;
-
-      emitBatchProcessed(
-        onProgress,
-        'extract-blocks',
-        {
-          totalItems: lines.length,
-          processedItems: Math.min(windowStart + windowSize, lines.length),
-          batchNumber: processedWindows,
-          batchSize: windowLines.length,
-        },
-        {
-          windowStart,
-          totalWindows: windowStarts.length,
-          blocksFound: (result.blocks || []).length,
-          now,
-          chainStartTime: now,
-        }
-      );
+      processedItems += windowLines.length;
+      emitter.emit({
+        event: 'batch:complete',
+        totalItems: lines.length,
+        processedItems,
+        batchSize: windowLines.length,
+      });
 
       // Results should already have global line numbers
       return result.blocks || [];
@@ -212,11 +186,11 @@ export async function extractBlocks(text, instructions, config = {}) {
   // Extract text blocks as arrays of lines (without line numbers)
   const blocks = mergedBlocks.map(({ startLine, endLine }) => lines.slice(startLine, endLine + 1));
 
-  emitBatchComplete(onProgress, 'extract-blocks', lines.length, {
-    totalWindows: windowStarts.length,
+  emitter.emit({
+    event: 'complete',
+    totalItems: lines.length,
+    processedItems,
     blocksExtracted: blocks.length,
-    now,
-    chainStartTime: now,
   });
 
   // Log output
@@ -229,7 +203,7 @@ export async function extractBlocks(text, instructions, config = {}) {
 
   const resultMeta = { blocksExtracted: blocks.length };
   lifecycleLogger.logResult(blocks, resultMeta);
-  span.result(resultMeta);
+  emitter.result(resultMeta);
 
   return blocks;
 }

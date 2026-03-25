@@ -2,7 +2,7 @@ import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import chunkSentences from '../../lib/chunk-sentences/index.js';
 import wrapVariable from '../../prompts/wrap-variable.js';
-import { track } from '../../lib/progress-callback/index.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 import { getOption, nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 
 const name = 'split';
@@ -61,7 +61,7 @@ IMPORTANT RULES:
 
 export default async function split(text, instructions, config = {}) {
   const runConfig = nameStep(name, { llm: 'fastGoodCheapCoding', ...config });
-  const span = track(name, runConfig);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   const {
     chunkLen,
     targetSplitsPerChunk,
@@ -136,7 +136,7 @@ export default async function split(text, instructions, config = {}) {
   const results = await Promise.all(promises);
   const result = results.join('');
 
-  span.result();
+  emitter.result();
 
   return result;
 }

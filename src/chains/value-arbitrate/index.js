@@ -1,6 +1,6 @@
 import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
-import { track } from '../../lib/progress-callback/index.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 import { nameStep, getOptions } from '../../lib/context/option.js';
 
 const name = 'value-arbitrate';
@@ -73,12 +73,12 @@ export default async function valueArbitrate(signals, ctx, values, config = {}) 
   if (!values?.length) throw new Error('valueArbitrate requires at least one value');
 
   const runConfig = nameStep(name, config);
-  const span = track(name, runConfig);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   const { instruction } = await getOptions(runConfig, {
     instruction: undefined,
   });
 
-  const emitComplete = () => span.result();
+  const emitComplete = () => emitter.result();
 
   // Step 1: Evaluate all signals concurrently
   const evaluated = await Promise.all(

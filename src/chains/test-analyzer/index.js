@@ -2,7 +2,7 @@ import { debug } from '../../lib/debug/index.js';
 import llm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { extractCodeWindow } from '../../lib/code-extractor/index.js';
-import { track } from '../../lib/progress-callback/index.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 import { getOption, nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 
 const name = 'test-analyzer';
@@ -86,7 +86,7 @@ const calculateCodeWindow = (
  */
 export default async function analyzeTestError(logs, config = {}) {
   const runConfig = nameStep(name, config);
-  const span = track(name, runConfig);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   const { analysisDepth: depthConfig } = await getOptions(runConfig, {
     analysisDepth: withPolicy(mapAnalysisDepth),
   });
@@ -96,7 +96,7 @@ export default async function analyzeTestError(logs, config = {}) {
   const maxTokens = await getOption('maxTokens', runConfig, depthConfig.maxTokens);
   if (!logs || logs.length === 0) {
     debug('analyzeTestError: No logs provided');
-    span.result();
+    emitter.result();
     return '';
   }
 
@@ -106,7 +106,7 @@ export default async function analyzeTestError(logs, config = {}) {
 
   if (!testStart || !testComplete) {
     debug('analyzeTestError: Missing test-start or test-complete logs');
-    span.result();
+    emitter.result();
     return '';
   }
 
@@ -195,7 +195,7 @@ Discussion:
     config: runConfig,
   });
 
-  span.result();
+  emitter.result();
 
   return response.trim();
 }

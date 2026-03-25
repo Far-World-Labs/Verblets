@@ -2,7 +2,7 @@ import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
-import { track } from '../../lib/progress-callback/index.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 import { calibrateSpecificationJsonSchema } from './schemas.js';
 import calibrateResultSchema from './calibrate-result.json';
 
@@ -81,7 +81,7 @@ function computeScanStatistics(scans) {
  */
 export async function calibrateSpec(scans, config = {}) {
   const runConfig = nameStep('calibrate:spec', config);
-  const span = track('calibrate:spec', runConfig);
+  const specEmitter = createProgressEmitter('calibrate:spec', runConfig.onProgress, runConfig);
   const { thresholdStrategy, sensitivity } = await getOptions(runConfig, {
     thresholdStrategy: 'statistical',
     sensitivity: withPolicy(mapSensitivity),
@@ -143,7 +143,7 @@ IMPORTANT: Each property must be a simple string value, not a nested object or a
     }
   );
 
-  span.result();
+  specEmitter.result();
 
   return response;
 }
