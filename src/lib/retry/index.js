@@ -1,7 +1,7 @@
 import { defaultMaxAttempts, retryDelay as retryDelayDefault } from '../../constants/common.js';
 import { getOption } from '../context/option.js';
 import createProgressEmitter from '../progress/index.js';
-import { TelemetryEvent, OpEvent } from '../progress/constants.js';
+import { TelemetryEvent, OpEvent, Metric, RetryOutcome } from '../progress/constants.js';
 
 const abortError = (signal) => signal?.reason ?? new Error('The operation was aborted.');
 
@@ -59,6 +59,7 @@ async function retry(fn, opts = {}) {
       event: TelemetryEvent.retryAttempt,
       attemptNumber: attempt + 1,
       maxAttempts,
+      outcome: RetryOutcome.attempt,
     });
 
     try {
@@ -107,8 +108,15 @@ async function retry(fn, opts = {}) {
           event: TelemetryEvent.retryError,
           attemptNumber: attempt + 1,
           maxAttempts,
-          delay,
+          outcome: RetryOutcome.error,
           error: { message: error.message, httpStatus: error.httpStatus, type: error.errorType },
+        });
+
+        emitter.measure({
+          metric: Metric.retryDelay,
+          value: delay,
+          attemptNumber: attempt + 1,
+          maxAttempts,
         });
 
         // eslint-disable-next-line no-await-in-loop
@@ -132,6 +140,7 @@ async function retry(fn, opts = {}) {
           event: TelemetryEvent.retryExhaust,
           attemptNumber: attempt,
           maxAttempts,
+          outcome: RetryOutcome.exhaust,
           error: { message: error.message, httpStatus: error.httpStatus, type: error.errorType },
         });
       }

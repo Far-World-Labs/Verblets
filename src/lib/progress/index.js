@@ -26,7 +26,10 @@
  *
  * Infrastructure usage:
  *   const emitter = createProgressEmitter('llm', onProgress);
- *   emitter.metrics({ event: 'llm:call', status: 'success', usage: { inputTokens: 100, outputTokens: 50 } });
+ *   emitter.metrics({ event: 'llm:call', status: 'success' });
+ *   emitter.measure({ metric: Metric.tokenUsage, tokenType: 'input', value: 100 });
+ *   emitter.measure({ metric: Metric.tokenUsage, tokenType: 'output', value: 50 });
+ *   emitter.measure({ metric: Metric.llmDuration, value: 1200 });
  */
 
 import libraryVersion from '../version/index.js';
@@ -120,6 +123,17 @@ export default function createProgressEmitter(
     },
 
     metrics(data = {}) {
+      send(callback, { kind: Kind.telemetry, ...base, ...data });
+    },
+
+    /**
+     * Emit a flat dimensional metric (OTel-style).
+     * Each call produces one measurement with a metric name, value,
+     * and attributes that dashboards can group-by.
+     *
+     * @param {{ metric: string, value: number, [key: string]: * }} data
+     */
+    measure(data = {}) {
       send(callback, { kind: Kind.telemetry, ...base, ...data });
     },
 

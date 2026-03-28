@@ -9,6 +9,8 @@ import {
   DomainEvent,
   TelemetryEvent,
   ModelSource,
+  Metric,
+  TokenType,
 } from './constants.js';
 import { nameStep } from '../context/option.js';
 
@@ -161,6 +163,50 @@ describe('createProgressEmitter', () => {
     it('does not throw when callback absent', () => {
       const emitter = createProgressEmitter('test');
       expect(() => emitter.metrics({ event: TelemetryEvent.optionResolve })).not.toThrow();
+    });
+  });
+
+  describe('measure', () => {
+    it('emits flat dimensional metric with kind telemetry', () => {
+      const events = [];
+      const emitter = createProgressEmitter('llm', (e) => events.push(e));
+
+      emitter.measure({
+        metric: Metric.tokenUsage,
+        tokenType: TokenType.input,
+        value: 100,
+      });
+
+      expect(events).toHaveLength(1);
+      expect(events[0]).toMatchObject({
+        kind: Kind.telemetry,
+        step: 'llm',
+        metric: Metric.tokenUsage,
+        tokenType: TokenType.input,
+        value: 100,
+      });
+    });
+
+    it('includes base fields (operation, trace context)', () => {
+      const events = [];
+      const emitter = createProgressEmitter('llm', (e) => events.push(e), {
+        operation: 'score',
+        traceId: 'abc123',
+        spanId: 'def456',
+      });
+
+      emitter.measure({ metric: Metric.llmDuration, value: 42 });
+
+      expect(events[0]).toMatchObject({
+        operation: 'score',
+        traceId: 'abc123',
+        spanId: 'def456',
+      });
+    });
+
+    it('does not throw when callback absent', () => {
+      const emitter = createProgressEmitter('test');
+      expect(() => emitter.measure({ metric: Metric.tokenUsage, value: 0 })).not.toThrow();
     });
   });
 

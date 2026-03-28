@@ -22,7 +22,14 @@ import callLlm from './index.js';
 import retry from '../retry/index.js';
 import { nameStep } from '../context/option.js';
 import createProgressEmitter from '../progress/index.js';
-import { Kind, ChainEvent, TelemetryEvent, LlmStatus } from '../progress/constants.js';
+import {
+  Kind,
+  ChainEvent,
+  TelemetryEvent,
+  LlmStatus,
+  Metric,
+  TokenType,
+} from '../progress/constants.js';
 
 const mockFetch = fetch;
 
@@ -264,11 +271,16 @@ describe('Telemetry integration', () => {
       );
       expect(callEvents).toHaveLength(2);
 
-      // Consumer aggregation pattern: sum tokens across calls
-      const totalInput = callEvents.reduce((sum, e) => sum + e.usage.inputTokens, 0);
+      // Consumer aggregation pattern: sum tokens from flat dimensional metrics
+      const tokenEvents = events.filter((e) => e.metric === Metric.tokenUsage);
+      const totalInput = tokenEvents
+        .filter((e) => e.tokenType === TokenType.input)
+        .reduce((sum, e) => sum + e.value, 0);
       expect(totalInput).toBe(70);
 
-      const totalOutput = callEvents.reduce((sum, e) => sum + e.usage.outputTokens, 0);
+      const totalOutput = tokenEvents
+        .filter((e) => e.tokenType === TokenType.output)
+        .reduce((sum, e) => sum + e.value, 0);
       expect(totalOutput).toBe(35);
     });
   });
