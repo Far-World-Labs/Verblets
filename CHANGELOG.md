@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.1 (2026-03-28)
+
+### Added
+
+- Flat dimensional metrics via `emitter.measure()` for chartable quantities (tokens, durations, retry delays) using OTel-style measurements with distinguishing attributes.
+- New constants: `Metric`, `TokenType`, `RetryOutcome` in `lib/progress/constants.js`.
+
 ## 0.6.0 (2026-03-28)
 
 ### Breaking Changes
