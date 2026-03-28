@@ -1,10 +1,17 @@
 import { describe, it, expect } from 'vitest';
 import createTraceCollector, { eventToTrace } from './index.js';
+import {
+  Kind,
+  TelemetryEvent,
+  ChainEvent,
+  ModelSource,
+  OptionSource,
+} from '../progress/constants.js';
 
 const makeTrace = (overrides = {}) => ({
   option: 'strictness',
   operation: 'filter',
-  source: 'policy',
+  source: OptionSource.policy,
   value: 'high',
   policyReturned: 'high',
   ...overrides,
@@ -14,17 +21,17 @@ describe('trace-collector', () => {
   describe('eventToTrace', () => {
     it('converts option:resolve event', () => {
       const trace = eventToTrace({
-        event: 'option:resolve',
+        event: TelemetryEvent.optionResolve,
         step: 'strictness',
         operation: 'filter',
-        source: 'policy',
+        source: OptionSource.policy,
         value: 'high',
         policyReturned: 'high',
       });
       expect(trace).toEqual({
         option: 'strictness',
         operation: 'filter',
-        source: 'policy',
+        source: OptionSource.policy,
         value: 'high',
         policyReturned: 'high',
         error: undefined,
@@ -33,16 +40,16 @@ describe('trace-collector', () => {
 
     it('converts llm:model event with source normalization', () => {
       const trace = eventToTrace({
-        event: 'llm:model',
+        event: TelemetryEvent.llmModel,
         operation: 'filter',
         model: 'gpt-4o-mini',
-        source: 'default',
+        source: ModelSource.default,
         negotiation: { fast: true },
       });
       expect(trace).toEqual({
         option: 'llm',
         operation: 'filter',
-        source: 'fallback',
+        source: OptionSource.fallback,
         value: 'gpt-4o-mini',
         policyReturned: { fast: true },
       });
@@ -50,20 +57,20 @@ describe('trace-collector', () => {
 
     it('preserves non-default source on llm:model', () => {
       const trace = eventToTrace({
-        event: 'llm:model',
+        event: TelemetryEvent.llmModel,
         operation: 'filter',
         model: 'gpt-4o',
-        source: 'negotiated',
+        source: ModelSource.negotiated,
       });
       expect(trace.source).toBe('negotiated');
     });
 
     it('captures error message from option:resolve', () => {
       const trace = eventToTrace({
-        event: 'option:resolve',
+        event: TelemetryEvent.optionResolve,
         step: 'strictness',
         operation: 'filter',
-        source: 'fallback',
+        source: OptionSource.fallback,
         value: 'med',
         error: { message: 'provider down' },
       });
@@ -71,8 +78,8 @@ describe('trace-collector', () => {
     });
 
     it('returns undefined for non-trace events', () => {
-      expect(eventToTrace({ event: 'chain:complete' })).toBeUndefined();
-      expect(eventToTrace({ event: 'llm:call' })).toBeUndefined();
+      expect(eventToTrace({ event: ChainEvent.complete })).toBeUndefined();
+      expect(eventToTrace({ event: TelemetryEvent.llmCall })).toBeUndefined();
     });
   });
 
@@ -97,11 +104,11 @@ describe('trace-collector', () => {
     it('observe captures option:resolve events', () => {
       const collector = createTraceCollector();
       collector.observe({
-        kind: 'telemetry',
-        event: 'option:resolve',
+        kind: Kind.telemetry,
+        event: TelemetryEvent.optionResolve,
         step: 'strictness',
         operation: 'filter',
-        source: 'policy',
+        source: OptionSource.policy,
         value: 'high',
         policyReturned: 'high',
       });
@@ -111,19 +118,19 @@ describe('trace-collector', () => {
     it('observe captures llm:model events', () => {
       const collector = createTraceCollector();
       collector.observe({
-        kind: 'telemetry',
-        event: 'llm:model',
+        kind: Kind.telemetry,
+        event: TelemetryEvent.llmModel,
         operation: 'filter',
         model: 'gpt-4o',
-        source: 'negotiated',
+        source: ModelSource.negotiated,
       });
       expect(collector.stats().traceCount).toBe(1);
     });
 
     it('observe ignores non-trace events', () => {
       const collector = createTraceCollector();
-      collector.observe({ event: 'chain:complete' });
-      collector.observe({ event: 'llm:call' });
+      collector.observe({ event: ChainEvent.complete });
+      collector.observe({ event: TelemetryEvent.llmCall });
       expect(collector.stats().traceCount).toBe(0);
     });
 

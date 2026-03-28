@@ -4,6 +4,7 @@ import { reduceAccumulatorJsonSchema } from './schemas.js';
 import { createLifecycleLogger, extractBatchConfig } from '../../lib/lifecycle-logger/index.js';
 import { retry, createBatches } from '../../lib/index.js';
 import createProgressEmitter from '../../lib/progress/index.js';
+import { OpEvent } from '../../lib/progress/constants.js';
 import { nameStep, getOptions } from '../../lib/context/option.js';
 
 import { jsonSchema } from '../../lib/llm/index.js';
@@ -39,7 +40,11 @@ const reduce = async function reduce(list, instructions, config = {}) {
   const batchDone = emitter.batch(list.length);
   const activeBatches = batches.filter((b) => !b.skip);
 
-  emitter.emit({ event: 'start', totalItems: list.length, totalBatches: activeBatches.length });
+  emitter.progress({
+    event: OpEvent.start,
+    totalItems: list.length,
+    totalBatches: activeBatches.length,
+  });
 
   lifecycleLogger.logStart(
     extractBatchConfig({
@@ -109,7 +114,11 @@ Process exactly ${count} items from the ${itemFormat} list below and return the 
     });
   }
 
-  emitter.emit({ event: 'complete', totalItems: list.length, processedItems: batchDone.count });
+  emitter.progress({
+    event: OpEvent.complete,
+    totalItems: list.length,
+    processedItems: batchDone.count,
+  });
 
   const resultMeta = { totalItems: list.length, totalBatches: activeBatches.length };
   lifecycleLogger.logResult(acc, resultMeta);

@@ -5,6 +5,7 @@ import { createLifecycleLogger } from '../../lib/lifecycle-logger/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { blockExtractionSchema } from './block-schema.js';
 import createProgressEmitter from '../../lib/progress/index.js';
+import { OpEvent } from '../../lib/progress/constants.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 
 const name = 'extract-blocks';
@@ -117,8 +118,8 @@ export async function extractBlocks(text, instructions, config = {}) {
   }
 
   const batchDone = emitter.batch(lines.length);
-  emitter.emit({
-    event: 'start',
+  emitter.progress({
+    event: OpEvent.start,
     totalItems: lines.length,
     totalBatches: windowStarts.length,
     maxParallel,
@@ -181,8 +182,8 @@ export async function extractBlocks(text, instructions, config = {}) {
   // Extract text blocks as arrays of lines (without line numbers)
   const blocks = mergedBlocks.map(({ startLine, endLine }) => lines.slice(startLine, endLine + 1));
 
-  emitter.emit({
-    event: 'complete',
+  emitter.progress({
+    event: OpEvent.complete,
     totalItems: lines.length,
     processedItems: batchDone.count,
     blocksExtracted: blocks.length,

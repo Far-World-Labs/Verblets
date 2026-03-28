@@ -1,6 +1,7 @@
 import { defaultMaxAttempts, retryDelay as retryDelayDefault } from '../../constants/common.js';
 import { getOption } from '../context/option.js';
 import createProgressEmitter from '../progress/index.js';
+import { TelemetryEvent, OpEvent } from '../progress/constants.js';
 
 const abortError = (signal) => signal?.reason ?? new Error('The operation was aborted.');
 
@@ -37,13 +38,12 @@ async function retry(fn, opts = {}) {
       );
     });
 
-  const operation = config?.operation;
   const stepName = label || 'retry';
-  const emitter = createProgressEmitter(stepName, onProgress);
+  const emitter = createProgressEmitter(stepName, onProgress, config);
 
   if (onProgress) {
-    emitter.emit({
-      event: 'start',
+    emitter.progress({
+      event: OpEvent.start,
       attemptNumber: 1,
       maxAttempts,
       retryOnAll,
@@ -56,8 +56,7 @@ async function retry(fn, opts = {}) {
     }
 
     emitter.metrics({
-      event: 'retry:attempt',
-      operation,
+      event: TelemetryEvent.retryAttempt,
       attemptNumber: attempt + 1,
       maxAttempts,
     });
@@ -67,8 +66,8 @@ async function retry(fn, opts = {}) {
       const result = await fn();
 
       if (onProgress) {
-        emitter.emit({
-          event: 'complete',
+        emitter.progress({
+          event: OpEvent.complete,
           attemptNumber: attempt + 1,
           maxAttempts,
           success: true,
@@ -90,7 +89,7 @@ async function retry(fn, opts = {}) {
 
         if (onProgress) {
           const progressData = {
-            event: 'retry',
+            event: OpEvent.retry,
             attemptNumber: attempt + 1,
             maxAttempts,
             delay,
@@ -101,12 +100,11 @@ async function retry(fn, opts = {}) {
             progressData.nextAttempt = attempt + 2;
           }
 
-          emitter.emit(progressData);
+          emitter.progress(progressData);
         }
 
         emitter.metrics({
-          event: 'retry:error',
-          operation,
+          event: TelemetryEvent.retryError,
           attemptNumber: attempt + 1,
           maxAttempts,
           delay,
@@ -120,8 +118,8 @@ async function retry(fn, opts = {}) {
         attempt = maxAttempts;
 
         if (onProgress && isLastAttempt) {
-          emitter.emit({
-            event: 'error',
+          emitter.progress({
+            event: OpEvent.error,
             attemptNumber: attempt + 1,
             maxAttempts,
             error: error.message,
@@ -131,8 +129,7 @@ async function retry(fn, opts = {}) {
         }
 
         emitter.metrics({
-          event: 'retry:exhaust',
-          operation,
+          event: TelemetryEvent.retryExhaust,
           attemptNumber: attempt,
           maxAttempts,
           error: { message: error.message, httpStatus: error.httpStatus, type: error.errorType },

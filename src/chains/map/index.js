@@ -7,6 +7,7 @@ import {
 } from '../../lib/lifecycle-logger/index.js';
 import { createBatches, parallel, retry } from '../../lib/index.js';
 import createProgressEmitter from '../../lib/progress/index.js';
+import { OpEvent } from '../../lib/progress/constants.js';
 import { nameStep, getOptions } from '../../lib/context/option.js';
 
 const name = 'map';
@@ -52,8 +53,8 @@ const mapOnce = async function (list, instructions, config = {}) {
 
   const emitter = createProgressEmitter('map', onProgress);
   const batchDone = emitter.batch(list.length);
-  emitter.emit({
-    event: 'start',
+  emitter.progress({
+    event: OpEvent.start,
     totalItems: list.length,
     totalBatches: batchesToProcess.length,
     maxParallel,
@@ -165,8 +166,8 @@ Preserve all formatting and newlines within each <item> element.`;
     }
   );
 
-  emitter.emit({
-    event: 'complete',
+  emitter.progress({
+    event: OpEvent.complete,
     totalItems: list.length,
     processedItems: batchDone.count,
   });

@@ -1,18 +1,31 @@
-import createProgressEmitter from '../progress/index.js';
+import createProgressEmitter, { traceId, spanId } from '../progress/index.js';
+import { TelemetryEvent, OptionSource } from '../progress/constants.js';
 
 /**
  * Compose a step name onto the operation path and stamp the run time.
  * Pure config enrichment — no side effects. Used both for chain entry
  * points and sub-steps within chains.
  *
+ * Generates trace context (OTel-aligned):
+ *   traceId      — created on the first nameStep call, propagated to all descendants
+ *   spanId       — unique per step, identifies this step's lifecycle
+ *   parentSpanId — the spanId of the calling step
+ *
  * @param {string} step - Step name to append
  * @param {object} config - Config object with operation path
- * @returns {object} New config with composed operation path and now timestamp
+ * @returns {object} New config with composed operation path, timestamp, and trace context
  */
 export function nameStep(step, config) {
   const parent = config.operation;
   const composed = parent ? `${parent}/${step}` : step;
-  return { ...config, operation: composed, now: config.now ?? new Date() };
+  return {
+    ...config,
+    operation: composed,
+    now: config.now ?? new Date(),
+    traceId: config.traceId ?? traceId(),
+    parentSpanId: config.spanId,
+    spanId: spanId(),
+  };
 }
 
 /**
@@ -70,25 +83,24 @@ export async function getOptionDetail(name, config, fallback) {
       const context = { operation: config.operation };
       const raw = await fn(context, { logger: config.logger });
       const value = raw ?? fallback;
-      detail.source = 'policy';
+      detail.source = OptionSource.policy;
       detail.value = value;
       detail.policyReturned = raw;
     } catch (err) {
-      detail.source = 'fallback';
+      detail.source = OptionSource.fallback;
       detail.value = fallback;
       detail.error = err?.message;
     }
   } else if (config[name] !== undefined) {
-    detail.source = 'config';
+    detail.source = OptionSource.config;
     detail.value = config[name];
   } else {
-    detail.source = 'fallback';
+    detail.source = OptionSource.fallback;
     detail.value = fallback;
   }
 
-  createProgressEmitter(name, config.onProgress).metrics({
-    event: 'option:resolve',
-    operation: detail.operation,
+  createProgressEmitter(name, config.onProgress, config).metrics({
+    event: TelemetryEvent.optionResolve,
     source: detail.source,
     value: detail.value,
     policyReturned: detail.policyReturned,

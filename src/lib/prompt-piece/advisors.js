@@ -6,6 +6,7 @@ import callLlm from '../llm/index.js';
 import retry from '../retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import createProgressEmitter from '../progress/index.js';
+import { DomainEvent, OpEvent } from '../progress/constants.js';
 import { debug } from '../debug/index.js';
 import { untrustedSystemSuffix, untrustedBoundary } from '../../prompts/prompt-piece.js';
 import { reshapeEditsSchema, reshapeDiagnosticSchema } from './schemas.js';
@@ -49,7 +50,7 @@ const createAdvisor = (label, systemPrompt, schema, buildParts) => {
       typeof systemPrompt === 'function' ? systemPrompt(input, config) : systemPrompt;
 
     const emitter = createProgressEmitter(label, onProgress);
-    emitter.emit({ event: 'step', stepName: 'analyzing' });
+    emitter.emit({ event: DomainEvent.step, stepName: 'analyzing' });
 
     const parts = buildParts(input, config);
     const effectiveSystemPrompt = untrusted
@@ -71,8 +72,8 @@ const createAdvisor = (label, systemPrompt, schema, buildParts) => {
     );
 
     debug(`${label}: complete`);
-    emitter.emit({
-      event: 'complete',
+    emitter.progress({
+      event: OpEvent.complete,
     });
 
     return response;

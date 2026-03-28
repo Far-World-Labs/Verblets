@@ -8,6 +8,7 @@ import {
   extractResultValue,
 } from '../../lib/lifecycle-logger/index.js';
 import createProgressEmitter from '../../lib/progress/index.js';
+import { DomainEvent } from '../../lib/progress/constants.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 
 const name = 'socratic';
@@ -177,7 +178,7 @@ class SocraticMethod {
     this.logger.logEvent('step-start', { turnNumber });
 
     this.emitter.emit({
-      event: 'step',
+      event: DomainEvent.step,
       stepName: 'asking-question',
       turnNumber,
       topic: this.statement,
@@ -208,7 +209,12 @@ class SocraticMethod {
       value: question,
     });
 
-    this.emitter.emit({ event: 'step', stepName: 'answering-question', turnNumber, question });
+    this.emitter.emit({
+      event: DomainEvent.step,
+      stepName: 'answering-question',
+      turnNumber,
+      question,
+    });
 
     const answer = await this.answer({
       question,
