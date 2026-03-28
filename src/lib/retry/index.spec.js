@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 
 import retry from './index.js';
+import { OpEvent } from '../progress/constants.js';
 
 const retryDelayGlobal = 10;
 
@@ -159,10 +160,10 @@ describe('Retry', () => {
     await promise;
 
     expect(onProgress).toHaveBeenCalledWith(
-      expect.objectContaining({ step: 'test', event: 'start' })
+      expect.objectContaining({ step: 'test', event: OpEvent.start })
     );
     expect(onProgress).toHaveBeenCalledWith(
-      expect.objectContaining({ step: 'test', event: 'complete', success: true })
+      expect.objectContaining({ step: 'test', event: OpEvent.complete, success: true })
     );
   });
 
@@ -279,7 +280,7 @@ describe('Retry', () => {
       await promise;
 
       expect(onProgress).toHaveBeenCalledWith(
-        expect.objectContaining({ step: 'test-config', event: 'start' })
+        expect.objectContaining({ step: 'test-config', event: OpEvent.start })
       );
     });
 

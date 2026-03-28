@@ -22,6 +22,13 @@ import callLlm from './index.js';
 import retry from '../retry/index.js';
 import { nameStep, getOptionDetail } from '../context/option.js';
 import createProgressEmitter from '../progress/index.js';
+import {
+  Kind,
+  ChainEvent,
+  TelemetryEvent,
+  LlmStatus,
+  OptionSource,
+} from '../progress/constants.js';
 
 const mockFetch = fetch;
 
@@ -62,12 +69,12 @@ describe('Telemetry events', () => {
         operation: 'test-chain',
       });
 
-      const modelEvents = events.filter((e) => e.event === 'llm:model');
+      const modelEvents = events.filter((e) => e.event === TelemetryEvent.llmModel);
       expect(modelEvents).toHaveLength(1);
       expect(modelEvents[0]).toMatchObject({
-        kind: 'telemetry',
+        kind: Kind.telemetry,
         step: 'llm',
-        event: 'llm:model',
+        event: TelemetryEvent.llmModel,
         operation: 'test-chain',
         source: expect.stringMatching(/^(negotiated|config|default)$/),
       });
@@ -88,19 +95,19 @@ describe('Telemetry events', () => {
         operation: 'filter',
       });
 
-      const callEvents = events.filter((e) => e.event === 'llm:call');
+      const callEvents = events.filter((e) => e.event === TelemetryEvent.llmCall);
       expect(callEvents).toHaveLength(1);
       expect(callEvents[0]).toMatchObject({
-        kind: 'telemetry',
+        kind: Kind.telemetry,
         step: 'llm',
-        event: 'llm:call',
+        event: TelemetryEvent.llmCall,
         operation: 'filter',
-        status: 'success',
+        status: LlmStatus.success,
         cached: false,
-        tokens: { input: 20, output: 10, total: 30 },
+        usage: { inputTokens: 20, outputTokens: 10 },
       });
-      expect(typeof callEvents[0].duration).toBe('number');
-      expect(callEvents[0].duration).toBeGreaterThanOrEqual(0);
+      expect(typeof callEvents[0].durationMs).toBe('number');
+      expect(callEvents[0].durationMs).toBeGreaterThanOrEqual(0);
     });
 
     it('emits llm:call error telemetry with httpStatus on rate limit', async () => {
@@ -116,20 +123,20 @@ describe('Telemetry events', () => {
         })
       ).rejects.toThrow();
 
-      const callEvents = events.filter((e) => e.event === 'llm:call');
+      const callEvents = events.filter((e) => e.event === TelemetryEvent.llmCall);
       expect(callEvents).toHaveLength(1);
       expect(callEvents[0]).toMatchObject({
-        kind: 'telemetry',
+        kind: Kind.telemetry,
         step: 'llm',
-        event: 'llm:call',
+        event: TelemetryEvent.llmCall,
         operation: 'score',
-        status: 'error',
+        status: LlmStatus.error,
         error: {
-          httpStatus: 429,
+          httpStatusCode: 429,
           type: 'rate_limit_error',
         },
       });
-      expect(typeof callEvents[0].duration).toBe('number');
+      expect(typeof callEvents[0].durationMs).toBe('number');
       expect(callEvents[0].error.message).toContain('Rate limit exceeded');
     });
 
@@ -149,12 +156,12 @@ describe('Telemetry events', () => {
         })
       ).rejects.toThrow('expected JSON');
 
-      const callEvents = events.filter((e) => e.event === 'llm:call');
+      const callEvents = events.filter((e) => e.event === TelemetryEvent.llmCall);
       expect(callEvents).toHaveLength(1);
       expect(callEvents[0]).toMatchObject({
-        kind: 'telemetry',
-        status: 'error',
-        error: { httpStatus: 200 },
+        kind: Kind.telemetry,
+        status: LlmStatus.error,
+        error: { httpStatusCode: 200 },
       });
     });
 
@@ -186,7 +193,7 @@ describe('Telemetry events', () => {
         operation: 'test',
       });
 
-      const modelEvent = events.find((e) => e.event === 'llm:model');
+      const modelEvent = events.find((e) => e.event === TelemetryEvent.llmModel);
       expect(modelEvent.operation).toBe('test');
     });
 
@@ -200,7 +207,7 @@ describe('Telemetry events', () => {
         good: true,
       });
 
-      const modelEvent = events.find((e) => e.event === 'llm:model');
+      const modelEvent = events.find((e) => e.event === TelemetryEvent.llmModel);
       expect(modelEvent.source).toBe('negotiated');
       expect(modelEvent.negotiation).toBeDefined();
       expect(modelEvent.negotiation.fast).toBe(true);
@@ -221,9 +228,9 @@ describe('Telemetry events', () => {
 
       expect(events).toHaveLength(1);
       expect(events[0]).toMatchObject({
-        kind: 'telemetry',
+        kind: Kind.telemetry,
         step: 'filter',
-        event: 'chain:start',
+        event: ChainEvent.start,
         operation: 'parent/filter',
       });
     });
@@ -235,9 +242,9 @@ describe('Telemetry events', () => {
       emitter.start();
 
       expect(events[0]).toMatchObject({
-        kind: 'telemetry',
+        kind: Kind.telemetry,
         step: 'score',
-        event: 'chain:start',
+        event: ChainEvent.start,
         operation: 'score',
       });
     });
@@ -274,12 +281,12 @@ describe('Telemetry events', () => {
       await vi.runAllTimersAsync();
       await promise;
 
-      const attemptEvents = events.filter((e) => e.event === 'retry:attempt');
+      const attemptEvents = events.filter((e) => e.event === TelemetryEvent.retryAttempt);
       expect(attemptEvents).toHaveLength(1);
       expect(attemptEvents[0]).toMatchObject({
-        kind: 'telemetry',
+        kind: Kind.telemetry,
         step: 'test-retry',
-        event: 'retry:attempt',
+        event: TelemetryEvent.retryAttempt,
         operation: 'filter',
         attemptNumber: 1,
       });
@@ -311,12 +318,12 @@ describe('Telemetry events', () => {
       await vi.runAllTimersAsync();
       await promise;
 
-      const errorEvents = events.filter((e) => e.event === 'retry:error');
+      const errorEvents = events.filter((e) => e.event === TelemetryEvent.retryError);
       expect(errorEvents).toHaveLength(1);
       expect(errorEvents[0]).toMatchObject({
-        kind: 'telemetry',
+        kind: Kind.telemetry,
         step: 'llm-call',
-        event: 'retry:error',
+        event: TelemetryEvent.retryError,
         operation: 'score',
         attemptNumber: 1,
         error: {
@@ -352,12 +359,12 @@ describe('Telemetry events', () => {
       await settled;
       await expect(promise).rejects.toThrow('Server error');
 
-      const exhaustEvents = events.filter((e) => e.event === 'retry:exhaust');
+      const exhaustEvents = events.filter((e) => e.event === TelemetryEvent.retryExhaust);
       expect(exhaustEvents).toHaveLength(1);
       expect(exhaustEvents[0]).toMatchObject({
-        kind: 'telemetry',
+        kind: Kind.telemetry,
         step: 'failing',
-        event: 'retry:exhaust',
+        event: TelemetryEvent.retryExhaust,
         operation: 'reduce',
         error: { message: 'Server error', httpStatus: 500 },
       });
@@ -385,7 +392,7 @@ describe('Telemetry events', () => {
       await vi.runAllTimersAsync();
       await promise;
 
-      const attemptEvents = events.filter((e) => e.event === 'retry:attempt');
+      const attemptEvents = events.filter((e) => e.event === TelemetryEvent.retryAttempt);
       expect(attemptEvents).toHaveLength(3);
       expect(attemptEvents[0].attemptNumber).toBe(1);
       expect(attemptEvents[1].attemptNumber).toBe(2);
@@ -405,14 +412,14 @@ describe('Telemetry events', () => {
       const { value } = await getOptionDetail('temperature', config, 0.5);
 
       expect(value).toBe(0.7);
-      const resolveEvents = events.filter((e) => e.event === 'option:resolve');
+      const resolveEvents = events.filter((e) => e.event === TelemetryEvent.optionResolve);
       expect(resolveEvents).toHaveLength(1);
       expect(resolveEvents[0]).toMatchObject({
-        kind: 'telemetry',
+        kind: Kind.telemetry,
         step: 'temperature',
-        event: 'option:resolve',
+        event: TelemetryEvent.optionResolve,
         operation: 'filter',
-        source: 'config',
+        source: OptionSource.config,
         value: 0.7,
       });
     });
@@ -427,9 +434,9 @@ describe('Telemetry events', () => {
       const { value } = await getOptionDetail('temperature', config, 0.5);
 
       expect(value).toBe(0.5);
-      const resolveEvents = events.filter((e) => e.event === 'option:resolve');
+      const resolveEvents = events.filter((e) => e.event === TelemetryEvent.optionResolve);
       expect(resolveEvents[0]).toMatchObject({
-        source: 'fallback',
+        source: OptionSource.fallback,
         value: 0.5,
       });
     });
@@ -445,9 +452,9 @@ describe('Telemetry events', () => {
       const { value } = await getOptionDetail('temperature', config, 0.5);
 
       expect(value).toBe(0.9);
-      const resolveEvents = events.filter((e) => e.event === 'option:resolve');
+      const resolveEvents = events.filter((e) => e.event === TelemetryEvent.optionResolve);
       expect(resolveEvents[0]).toMatchObject({
-        source: 'policy',
+        source: OptionSource.policy,
         value: 0.9,
         policyReturned: 0.9,
       });

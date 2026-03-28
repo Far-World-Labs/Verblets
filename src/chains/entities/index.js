@@ -4,6 +4,7 @@ import { asXML } from '../../prompts/wrap-variable.js';
 import buildInstructions from '../../lib/build-instructions/index.js';
 import entityResultSchema from './entity-result.json';
 import createProgressEmitter from '../../lib/progress/index.js';
+import { DomainEvent } from '../../lib/progress/constants.js';
 import { nameStep } from '../../lib/context/option.js';
 
 const name = 'entities';
@@ -122,11 +123,11 @@ export async function extractEntities(text, instructions, config = {}) {
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
 
-  emitter.emit({ event: 'step', stepName: 'generating-specification', instructions });
+  emitter.emit({ event: DomainEvent.step, stepName: 'generating-specification', instructions });
 
   const spec = runConfig.spec || (await entitySpec(instructions, runConfig));
 
-  emitter.emit({ event: 'step', stepName: 'extracting-entities', specification: spec });
+  emitter.emit({ event: DomainEvent.step, stepName: 'extracting-entities', specification: spec });
 
   const result = await applyEntities(text, spec, runConfig);
 

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import map from './index.js';
 import listBatch from '../../verblets/list-batch/index.js';
+import { OpEvent } from '../../lib/progress/constants.js';
 
 vi.mock('../../lib/text-batch/index.js', () => ({
   default: vi.fn((list) => {
@@ -17,13 +18,13 @@ vi.mock('../../lib/text-batch/index.js', () => ({
 vi.mock('../../lib/retry/index.js', () => ({
   default: vi.fn(async (fn, opts = {}) => {
     if (opts.onProgress) {
-      opts.onProgress({ step: opts.label || 'retry', event: 'start', attemptNumber: 1 });
+      opts.onProgress({ step: opts.label || 'retry', event: OpEvent.start, attemptNumber: 1 });
     }
     const result = await fn();
     if (opts.onProgress) {
       opts.onProgress({
         step: opts.label || 'retry',
-        event: 'complete',
+        event: OpEvent.complete,
         attemptNumber: 1,
         success: true,
       });

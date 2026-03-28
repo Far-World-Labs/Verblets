@@ -6,6 +6,7 @@ import { createBatches, retry } from '../../lib/index.js';
 import { jsonSchema } from '../../lib/llm/index.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
+import { OpEvent } from '../../lib/progress/constants.js';
 
 const name = 'filter';
 
@@ -67,7 +68,11 @@ const filter = async function filter(list, instructions, config = {}) {
   const batchDone = emitter.batch(list.length);
 
   const activeBatchCount = batches.filter((b) => !b.skip).length;
-  emitter.emit({ event: 'start', totalItems: list.length, totalBatches: activeBatchCount });
+  emitter.progress({
+    event: OpEvent.start,
+    totalItems: list.length,
+    totalBatches: activeBatchCount,
+  });
 
   lifecycleLogger.logEvent('batches-created', {
     totalBatches: batches.length,
@@ -156,7 +161,11 @@ Process exactly ${count} items from the XML list below and return ${count} yes/n
     });
   }
 
-  emitter.emit({ event: 'complete', totalItems: list.length, processedItems: batchDone.count });
+  emitter.progress({
+    event: OpEvent.complete,
+    totalItems: list.length,
+    processedItems: batchDone.count,
+  });
 
   const resultMeta = { inputCount: list.length, outputCount: results.length };
   lifecycleLogger.logResult(results, resultMeta);

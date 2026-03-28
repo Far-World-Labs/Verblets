@@ -22,6 +22,7 @@ import { onlyJSON, contentIsSchema } from '../../prompts/constants.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { getOption } from '../context/option.js';
 import createProgressEmitter from '../progress/index.js';
+import { TelemetryEvent, LlmStatus, ModelSource } from '../progress/constants.js';
 
 /**
  * Configure the appropriate abort signal for fetch requests.
@@ -248,18 +249,17 @@ export const run = async (prompt, config = {}) => {
   const modelFound = modelService.getModel(modelNameNegotiated);
 
   // Telemetry: model selection
-  const operation = options.operation;
-  const emitter = createProgressEmitter('llm', options.onProgress);
+  const emitter = createProgressEmitter('llm', options.onProgress, options);
   const modelSource = shouldNegotiate
-    ? 'negotiated'
+    ? ModelSource.negotiated
     : modelOptionsWithOverrides.modelName
-      ? 'config'
-      : 'default';
+      ? ModelSource.config
+      : ModelSource.default;
 
   emitter.metrics({
-    event: 'llm:model',
-    operation,
+    event: TelemetryEvent.llmModel,
     model: modelNameNegotiated,
+    provider: modelFound.provider || 'openai',
     source: modelSource,
     negotiation: shouldNegotiate ? negotiation : undefined,
     preferred: negotiationFromGlobalOverride ? undefined : modelOptionsWithOverrides.modelName,
@@ -443,29 +443,29 @@ export const run = async (prompt, config = {}) => {
     // Telemetry: successful LLM call
     const usage = result?.usage;
     emitter.metrics({
-      event: 'llm:call',
-      operation,
-      status: 'success',
+      event: TelemetryEvent.llmCall,
+      status: LlmStatus.success,
       model: modelNameNegotiated,
-      duration: Date.now() - startTime,
+      provider: modelFound.provider || 'openai',
+      durationMs: Date.now() - startTime,
       cached: !!cacheResult,
-      tokens: usage
-        ? { input: usage.prompt_tokens, output: usage.completion_tokens, total: usage.total_tokens }
-        : { input: 0, output: 0, total: 0 },
+      usage: usage
+        ? { inputTokens: usage.prompt_tokens, outputTokens: usage.completion_tokens }
+        : { inputTokens: 0, outputTokens: 0 },
     });
 
     return resultShaped;
   } catch (err) {
     // Telemetry: failed LLM call
     emitter.metrics({
-      event: 'llm:call',
-      operation,
-      status: 'error',
+      event: TelemetryEvent.llmCall,
+      status: LlmStatus.error,
       model: modelNameNegotiated,
-      duration: Date.now() - startTime,
+      provider: modelFound.provider || 'openai',
+      durationMs: Date.now() - startTime,
       error: {
         message: err.message,
-        httpStatus: err.httpStatus,
+        httpStatusCode: err.httpStatus,
         type: err.errorType,
       },
     });

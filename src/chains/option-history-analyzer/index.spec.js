@@ -2,6 +2,14 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import createOptionHistoryAnalyzer from './index.js';
 import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
+import {
+  Kind,
+  ChainEvent,
+  OpEvent,
+  TelemetryEvent,
+  OptionSource,
+  ModelSource,
+} from '../../lib/progress/constants.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(),
@@ -14,7 +22,7 @@ vi.mock('../../lib/retry/index.js', () => ({
 const makeTrace = (overrides = {}) => ({
   option: 'strictness',
   operation: 'filter',
-  source: 'policy',
+  source: OptionSource.policy,
   value: 'high',
   policyReturned: 'high',
   ...overrides,
@@ -60,11 +68,11 @@ describe('createOptionHistoryAnalyzer', () => {
     const suggester = createOptionHistoryAnalyzer();
 
     suggester.observe({
-      kind: 'telemetry',
-      event: 'option:resolve',
+      kind: Kind.telemetry,
+      event: TelemetryEvent.optionResolve,
       step: 'strictness',
       operation: 'filter',
-      source: 'policy',
+      source: OptionSource.policy,
       value: 'high',
       policyReturned: 'high',
     });
@@ -76,12 +84,12 @@ describe('createOptionHistoryAnalyzer', () => {
     const suggester = createOptionHistoryAnalyzer();
 
     suggester.observe({
-      kind: 'telemetry',
-      event: 'llm:model',
+      kind: Kind.telemetry,
+      event: TelemetryEvent.llmModel,
       step: 'llm',
       operation: 'filter',
       model: 'gpt-4o',
-      source: 'negotiated',
+      source: ModelSource.negotiated,
       negotiation: { fast: true, good: true },
     });
 
@@ -91,9 +99,9 @@ describe('createOptionHistoryAnalyzer', () => {
   it('observe ignores non-trace events', () => {
     const suggester = createOptionHistoryAnalyzer();
 
-    suggester.observe({ kind: 'telemetry', event: 'chain:complete', step: 'filter' });
-    suggester.observe({ kind: 'telemetry', event: 'llm:call', step: 'llm' });
-    suggester.observe({ kind: 'operation', event: 'start', step: 'filter' });
+    suggester.observe({ kind: Kind.telemetry, event: ChainEvent.complete, step: 'filter' });
+    suggester.observe({ kind: Kind.telemetry, event: TelemetryEvent.llmCall, step: 'llm' });
+    suggester.observe({ kind: Kind.operation, event: OpEvent.start, step: 'filter' });
 
     expect(suggester.stats().traceCount).toBe(0);
   });
@@ -112,11 +120,11 @@ describe('createOptionHistoryAnalyzer', () => {
 
     const suggester = createOptionHistoryAnalyzer();
     suggester.observe({
-      kind: 'telemetry',
-      event: 'option:resolve',
+      kind: Kind.telemetry,
+      event: TelemetryEvent.optionResolve,
       step: 'thoroughness',
       operation: 'score',
-      source: 'fallback',
+      source: OptionSource.fallback,
       value: 'med',
     });
 
@@ -133,12 +141,12 @@ describe('createOptionHistoryAnalyzer', () => {
 
     const suggester = createOptionHistoryAnalyzer();
     suggester.observe({
-      kind: 'telemetry',
-      event: 'llm:model',
+      kind: Kind.telemetry,
+      event: TelemetryEvent.llmModel,
       step: 'llm',
       operation: 'filter',
       model: 'gpt-4o-mini',
-      source: 'default',
+      source: ModelSource.default,
     });
 
     await suggester.analyze();
@@ -154,11 +162,11 @@ describe('createOptionHistoryAnalyzer', () => {
 
     const suggester = createOptionHistoryAnalyzer();
     suggester.observe({
-      kind: 'telemetry',
-      event: 'option:resolve',
+      kind: Kind.telemetry,
+      event: TelemetryEvent.optionResolve,
       step: 'strictness',
       operation: 'filter',
-      source: 'fallback',
+      source: OptionSource.fallback,
       value: 'med',
       error: { message: 'provider down' },
     });
@@ -206,7 +214,7 @@ describe('createOptionHistoryAnalyzer', () => {
         policyReturned: 'med',
       })
     );
-    suggester.write(makeTrace({ source: 'fallback', policyReturned: undefined }));
+    suggester.write(makeTrace({ source: OptionSource.fallback, policyReturned: undefined }));
 
     const rules = await suggester.analyze();
 
@@ -324,20 +332,20 @@ describe('createOptionHistoryAnalyzer', () => {
 
     // Simulates what getOptionDetail emits through onProgress
     suggester.observe({
-      kind: 'telemetry',
-      event: 'option:resolve',
+      kind: Kind.telemetry,
+      event: TelemetryEvent.optionResolve,
       step: 'strictness',
       operation: 'filter',
-      source: 'policy',
+      source: OptionSource.policy,
       value: 'high',
       policyReturned: 'high',
     });
     suggester.observe({
-      kind: 'telemetry',
-      event: 'option:resolve',
+      kind: Kind.telemetry,
+      event: TelemetryEvent.optionResolve,
       step: 'thoroughness',
       operation: 'score',
-      source: 'fallback',
+      source: OptionSource.fallback,
       value: 'med',
     });
 
@@ -383,7 +391,11 @@ describe('createOptionHistoryAnalyzer', () => {
 
     const suggester = createOptionHistoryAnalyzer();
     suggester.write(
-      makeTrace({ source: 'fallback', error: 'provider down', policyReturned: undefined })
+      makeTrace({
+        source: OptionSource.fallback,
+        error: 'provider down',
+        policyReturned: undefined,
+      })
     );
 
     await suggester.analyze();
