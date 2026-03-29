@@ -166,7 +166,10 @@ const visitPage = async (page, url, networkCapture, screenshotDir, opts, _emitte
     screenshotDir.track(rawPath);
 
     if (opts.imageShrink) {
-      const result = await resizeImage(rawPath, opts.imageShrink);
+      const result = await resizeImage(rawPath, {
+        ...opts.imageShrink,
+        outputDir: screenshotDir.dir,
+      });
       screenshotDir.track(result.path);
       pageData.screenshot = result.path;
     } else {
@@ -273,7 +276,7 @@ const siteCrawl = async (startUrl, config = {}) => {
     maxDepth: opts.maxDepth,
   });
 
-  const screenshotDir = await createTempDir('verblets-crawl-');
+  const screenshotDir = await createTempDir('verblets-crawl-', runConfig.outputDir);
   const engine = runConfig.browserEngine
     ? playwrightCore[runConfig.browserEngine]
     : playwrightCore.chromium;

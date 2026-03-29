@@ -81,6 +81,7 @@ import webScrape from './index.js';
 import { setBrowserEnabled } from './state.js';
 import { chromium, __mockPages } from 'playwright-core';
 import { resizeImage, tileImages } from '../../lib/image-utils/index.js';
+import { createTempDir } from '../../lib/temp-files/index.js';
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -267,7 +268,15 @@ describe('web-scrape', () => {
       width: 300,
       quality: 60,
       format: 'jpeg',
+      outputDir: '/tmp/verblets-scrape-mock',
     });
+  });
+
+  it('passes outputDir to createTempDir when configured', async () => {
+    const step = async () => ({ action: 'done' });
+    await webScrape('https://example.com', step, { outputDir: '/custom/output' });
+
+    expect(createTempDir).toHaveBeenCalledWith('verblets-scrape-', '/custom/output');
   });
 
   it('does not resize when imageShrink is not set', async () => {
@@ -446,7 +455,10 @@ describe('web-scrape', () => {
     await webScrape('https://example.com', step, { tile: true });
 
     expect(tileImages).toHaveBeenCalledTimes(1);
-    expect(tileImages).toHaveBeenCalledWith(expect.any(Array), { labels: ['0.0', '0.1', '0.2'] });
+    expect(tileImages).toHaveBeenCalledWith(expect.any(Array), {
+      labels: ['0.0', '0.1', '0.2'],
+      outputDir: '/tmp/verblets-scrape-mock',
+    });
   });
 
   it('provides captureNetwork as a function on context', async () => {

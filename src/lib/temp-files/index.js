@@ -15,8 +15,8 @@ export async function cleanupPaths(paths) {
   return removed;
 }
 
-export async function createTempDir(prefix = 'verblets-scrape-') {
-  const dir = await mkdtemp(join(tmpdir(), prefix));
+export async function createTempDir(prefix = 'verblets-scrape-', parentDir) {
+  const dir = await mkdtemp(join(parentDir || tmpdir(), prefix));
   const tracked = [];
 
   return {

@@ -26,14 +26,17 @@ function assertEnabled() {
   }
 }
 
-function tempPath(format) {
-  return join(tmpdir(), `verblets-img-${randomUUID()}.${format}`);
+function tempPath(format, outputDir) {
+  return join(outputDir || tmpdir(), `verblets-img-${randomUUID()}.${format}`);
 }
 
-export async function resizeImage(inputPath, { width, height, quality = 80, format = 'jpeg' }) {
+export async function resizeImage(
+  inputPath,
+  { width, height, quality = 80, format = 'jpeg', outputDir }
+) {
   assertEnabled();
 
-  const outputPath = tempPath(format);
+  const outputPath = tempPath(format, outputDir);
   const dimensions = { ...(width ? { width } : {}), ...(height ? { height } : {}) };
   const resized = sharp(inputPath).resize(dimensions).toFormat(format, { quality });
   await resized.toFile(outputPath);
@@ -51,7 +54,7 @@ export async function resizeImage(inputPath, { width, height, quality = 80, form
 
 export async function tileImages(
   inputPaths,
-  { columns = 2, tileHeight = 300, gutter = 4, quality = 80, labels } = {}
+  { columns = 2, tileHeight = 300, gutter = 4, quality = 80, labels, outputDir } = {}
 ) {
   assertEnabled();
 
@@ -113,7 +116,7 @@ export async function tileImages(
     }
   }
 
-  const outputPath = tempPath('jpeg');
+  const outputPath = tempPath('jpeg', outputDir);
   await sharp({
     create: {
       width: totalWidth,

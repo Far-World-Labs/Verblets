@@ -30,7 +30,7 @@ const normalizeUrls = (urls) => {
  */
 const maybeShrink = async (rawPath, shrinkOpts, screenshotDir, emitter, url) => {
   if (!shrinkOpts) return rawPath;
-  const result = await resizeImage(rawPath, shrinkOpts);
+  const result = await resizeImage(rawPath, { ...shrinkOpts, outputDir: screenshotDir.dir });
   screenshotDir.track(result.path);
   emitter.emit({
     event: 'resize',
@@ -166,7 +166,7 @@ const webScrape = async (urls, step, config = {}) => {
     imageShrink: withPolicy(mapImageShrink),
   });
 
-  const screenshotDir = await createTempDir('verblets-scrape-');
+  const screenshotDir = await createTempDir('verblets-scrape-', runConfig.outputDir);
   const engine = runConfig.browserEngine
     ? playwrightCore[runConfig.browserEngine]
     : playwrightCore.chromium;
@@ -203,6 +203,7 @@ const webScrape = async (urls, step, config = {}) => {
           if (opts.tile && result.screenshots.length > 1) {
             const tileResult = await tileImages(result.screenshots, {
               labels: result.labels,
+              outputDir: screenshotDir.dir,
             });
             screenshotDir.track(tileResult.path);
             emitter.emit({

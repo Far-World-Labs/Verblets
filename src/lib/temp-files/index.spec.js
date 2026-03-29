@@ -1,6 +1,7 @@
 import { writeFile } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
+import { existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { afterAll, describe, expect, it } from 'vitest';
 
 import { createTempDir, cleanupPaths } from './index.js';
@@ -32,6 +33,19 @@ describe('createTempDir', () => {
     dirsToClean.push(ctx.dir);
 
     expect(ctx.dir).toContain('custom-prefix-');
+    expect(existsSync(ctx.dir)).toBe(true);
+  });
+
+  it('creates a temp directory under a custom parent directory', async () => {
+    const parent = join(tmpdir(), `verblets-parent-test-${Date.now()}`);
+    mkdirSync(parent, { recursive: true });
+    dirsToClean.push(parent);
+
+    const ctx = await createTempDir('child-', parent);
+    dirsToClean.push(ctx.dir);
+
+    expect(ctx.dir).toContain('child-');
+    expect(ctx.dir.startsWith(parent)).toBe(true);
     expect(existsSync(ctx.dir)).toBe(true);
   });
 
