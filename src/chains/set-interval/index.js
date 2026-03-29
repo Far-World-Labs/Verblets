@@ -8,7 +8,7 @@ import { asXML } from '../../prompts/wrap-variable.js';
 import templateReplace from '../../lib/template-replace/index.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 import createProgressEmitter from '../../lib/progress/index.js';
-import { ChainEvent, Metric } from '../../lib/progress/constants.js';
+import { DomainEvent, Level, Metric } from '../../lib/progress/constants.js';
 import { nameStep } from '../../lib/context/option.js';
 
 const name = 'set-interval';
@@ -133,8 +133,10 @@ Next wait:`;
         });
       }
 
-      emitter.metrics({
-        event: ChainEvent.tick,
+      emitter.emit({
+        event: DomainEvent.tick,
+        level: Level.info,
+        message: `Tick ${count + 1}`,
         operation: config.operation,
         tickNumber: count + 1,
       });

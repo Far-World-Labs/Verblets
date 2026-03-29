@@ -1,11 +1,7 @@
 import callLlm from '../../lib/llm/index.js';
 import { constants as promptConstants } from '../../prompts/index.js';
-import {
-  createLifecycleLogger,
-  extractLLMConfig,
-  extractPromptAnalysis,
-  extractResultValue,
-} from '../../lib/lifecycle-logger/index.js';
+import { extractLLMConfig, extractPromptAnalysis, extractResultValue } from '../../lib/progress/extract.js';
+import { DomainEvent, Level } from '../../lib/progress/constants.js';
 import { nameStep } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
 import { booleanSchema } from './schema.js';
@@ -16,16 +12,9 @@ const { asBool, asUndefinedByDefault, explainAndSeparate, explainAndSeparatePrim
   promptConstants;
 
 export default async (text, config = {}) => {
-  const { logger } = config;
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
-  emitter.start();
-
-  // Create lifecycle logger with bool namespace
-  const lifecycleLogger = createLifecycleLogger(logger, 'bool');
-
-  // Log start with full input
-  lifecycleLogger.logStart(text);
+  emitter.start({ message: 'Bool verblet starting' });
 
   const systemPrompt = `${explainAndSeparate} ${explainAndSeparatePrimitive}
 
@@ -34,12 +23,15 @@ ${asBool} ${asUndefinedByDefault}
 The value should be "true", "false", or "undefined".`;
 
   // Log prompt construction with extracted analysis
-  lifecycleLogger.logConstruction(systemPrompt, {
+  emitter.emit({
+    event: DomainEvent.step,
+    stepName: 'construction',
+    level: Level.debug,
     ...extractPromptAnalysis(systemPrompt),
     ...extractLLMConfig(runConfig.llm),
   });
 
-  // Make LLM call with logger
+  // Make LLM call
   const response = await callLlm(text, {
     ...runConfig,
     systemPrompt,
@@ -50,16 +42,15 @@ The value should be "true", "false", or "undefined".`;
         schema: booleanSchema,
       },
     },
-    logger: lifecycleLogger,
   });
 
   // Interpret response
   const interpreted = response === 'true' ? true : response === 'false' ? false : undefined;
 
-  // Log final result with raw and interpreted values
-  lifecycleLogger.logResult(interpreted, extractResultValue(response, interpreted));
-
-  emitter.complete();
+  emitter.complete({
+    message: 'Bool verblet complete',
+    ...extractResultValue(response, interpreted),
+  });
 
   return interpreted;
 };

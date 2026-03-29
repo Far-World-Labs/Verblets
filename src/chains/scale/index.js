@@ -44,7 +44,7 @@ export const {
 export async function scaleSpec(prompt, config = {}) {
   const runConfig = nameStep('scale:spec', config);
   const specEmitter = createProgressEmitter('scale:spec', runConfig.onProgress, runConfig);
-  specEmitter.start();
+  specEmitter.start({ message: 'Scale spec generation starting' });
 
   const specSystemPrompt = `You are a scale specification generator. Analyze the scaling instructions and produce a clear, comprehensive specification.`;
 
@@ -75,7 +75,7 @@ IMPORTANT: Each property must be a simple string value, not a nested object or a
     }
   );
 
-  specEmitter.complete();
+  specEmitter.complete({ message: 'Scale spec generation complete' });
 
   return response;
 }

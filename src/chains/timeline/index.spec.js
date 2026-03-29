@@ -185,7 +185,7 @@ describe('timeline', () => {
     expect(progressCallback).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({
-        kind: Kind.telemetry,
+        kind: Kind.event,
         event: ChainEvent.start,
       })
     );
@@ -196,7 +196,7 @@ describe('timeline', () => {
     expect(progressCallback).toHaveBeenNthCalledWith(
       5,
       expect.objectContaining({
-        kind: Kind.telemetry,
+        kind: Kind.event,
         event: ChainEvent.complete,
       })
     );

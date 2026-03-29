@@ -55,11 +55,11 @@ const sanitizeList = (list) => {
 const sort = async (list, criteria, config = {}) => {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
-  emitter.start();
   const { batchSize, extremeK, iterations, selectBottom } = await getOptions(runConfig, {
     effort: withPolicy(mapEffort, ['extremeK', 'iterations', 'selectBottom']),
     batchSize: defaultSortBatchSize,
   });
+  emitter.start({ message: 'Sort chain starting', totalItems: list.length, batchSize, extremeK, iterations });
   const { onProgress } = runConfig;
   const items = sanitizeList(list);
 
@@ -236,7 +236,7 @@ const sort = async (list, criteria, config = {}) => {
     remainingItems: remaining.length,
   });
 
-  emitter.complete();
+  emitter.complete({ message: 'Sort chain complete', totalItems: items.length, iterations, topItems: finalTop.length });
 
   return result;
 };

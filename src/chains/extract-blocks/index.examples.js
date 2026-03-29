@@ -5,13 +5,12 @@ import { longTestTimeout } from '../../constants/common.js';
 import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 import { logBatchSchema } from './log-batch-schema.js';
 
-const { it, expect, makeLogger } = getTestHelpers('Extract Blocks chain');
+const { it, expect } = getTestHelpers('Extract Blocks chain');
 
 describe('extract-blocks examples', () => {
   it(
     'should extract log entries from a system log file',
     async () => {
-      const logger = makeLogger('extract log entries');
 
       // Simulate a system log with various entries
       const systemLog = `2024-01-15 08:23:45 [INFO] Application started
@@ -49,7 +48,6 @@ describe('extract-blocks examples', () => {
         windowSize: 50,
         overlapSize: 10,
         maxParallel: 2,
-        logger,
       });
 
       // Should extract 5 log entries
@@ -70,7 +68,6 @@ describe('extract-blocks examples', () => {
         `Extract the timestamp, log level, message (first line after level), and any additional details`,
         {
           responseFormat: logBatchSchema,
-          logger,
         }
       );
 
@@ -92,7 +89,6 @@ describe('extract-blocks examples', () => {
   it(
     'should extract transaction records from a financial statement',
     async () => {
-      const logger = makeLogger('extract transaction records');
 
       // Simulate a bank statement with transactions
       const statement = `CHECKING ACCOUNT STATEMENT
@@ -151,7 +147,6 @@ END OF STATEMENT`;
       const blocks = await extractBlocks(statement, instructions, {
         windowSize: 60,
         overlapSize: 15,
-        logger,
       });
 
       // Should extract 5 transactions
@@ -177,7 +172,6 @@ END OF STATEMENT`;
   it(
     'should extract code blocks from markdown documentation',
     async () => {
-      const logger = makeLogger('extract code blocks');
 
       const markdown = `# API Documentation
 
@@ -240,7 +234,6 @@ Always handle errors appropriately in your code.`;
       const blocks = await extractBlocks(markdown, instructions, {
         windowSize: 30,
         overlapSize: 15,
-        logger,
       });
 
       // Should extract at least 2 code blocks (LLM may occasionally merge adjacent blocks)

@@ -18,7 +18,7 @@ import RingBuffer from '../../lib/ring-buffer/index.js';
 import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import createProgressEmitter from '../../lib/progress/index.js';
-import { TelemetryEvent, ModelSource } from '../../lib/progress/constants.js';
+import { DomainEvent, ModelSource } from '../../lib/progress/constants.js';
 import { nameStep } from '../../lib/context/option.js';
 
 const name = 'option-history-analyzer';
@@ -26,14 +26,14 @@ const name = 'option-history-analyzer';
 const DEFAULT_BUFFER_SIZE = 1000;
 const DEFAULT_LOOKBACK = 200;
 
-const TRACE_EVENTS = new Set([TelemetryEvent.optionResolve, TelemetryEvent.llmModel]);
+const TRACE_EVENTS = new Set([DomainEvent.optionResolve, DomainEvent.llmModel]);
 
 /**
  * Convert a telemetry event into the trace shape the analyzer stores.
  * Returns undefined for events that aren't trace-worthy.
  */
 const eventToTrace = (event) => {
-  if (event.event === TelemetryEvent.optionResolve) {
+  if (event.event === DomainEvent.optionResolve) {
     return {
       option: event.step,
       operation: event.operation,
@@ -44,7 +44,7 @@ const eventToTrace = (event) => {
     };
   }
 
-  if (event.event === TelemetryEvent.llmModel) {
+  if (event.event === DomainEvent.llmModel) {
     return {
       option: 'llm',
       operation: event.operation,

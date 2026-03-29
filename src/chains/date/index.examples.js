@@ -3,14 +3,13 @@ import date from './index.js';
 import { longTestTimeout } from '../../constants/common.js';
 import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 
-const { it, expect, aiExpect, makeLogger } = getTestHelpers('Date chain');
+const { it, expect, aiExpect } = getTestHelpers('Date chain');
 
 describe('date examples', () => {
   it(
     'gets Star Wars release date',
     async () => {
       const result = await date('When was the original Star Wars released?', {
-        logger: makeLogger('gets Star Wars release date'),
       });
       expect(result instanceof Date).toBe(true);
       await aiExpect(`Star Wars release date: ${result.toISOString()}`).toSatisfy(
@@ -24,7 +23,6 @@ describe('date examples', () => {
     'finds Christmas 2025',
     async () => {
       const result = await date('What date is Christmas Day 2025?', {
-        logger: makeLogger('finds Christmas 2025'),
       });
       expect(result instanceof Date).toBe(true);
       expect(result.getUTCFullYear()).toBe(2025);

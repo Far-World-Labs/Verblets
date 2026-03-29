@@ -10,7 +10,7 @@ import centralTendencyChain from '../../chains/central-tendency/index.js';
 import { longTestTimeout } from '../../constants/common.js';
 import { getTestHelpers } from '../../chains/test-analysis/test-wrappers.js';
 
-const { it, expect, aiExpect, makeLogger } = getTestHelpers('centralTendency examples');
+const { it, expect, aiExpect } = getTestHelpers('centralTendency examples');
 
 describe('centralTendency examples', () => {
   it(
@@ -21,7 +21,6 @@ describe('centralTendency examples', () => {
       const config = {
         context: 'Evaluate based on typical bird characteristics and behavior',
         coreFeatures: ['feathers', 'beak', 'lays eggs', 'flight'],
-        logger: makeLogger('evaluates bird centrality'),
       };
 
       // Test prototypical bird
@@ -107,7 +106,6 @@ describe('centralTendency examples', () => {
         coreFeatures: ['warm-blooded', 'hair/fur', 'mammary glands', 'live birth'],
         chunkSize: 3,
         maxAttempts: 2,
-        logger: makeLogger('processes bulk items'),
       };
 
       const results = await centralTendencyChain(testAnimals, mammalSeeds, config);

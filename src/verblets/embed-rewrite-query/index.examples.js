@@ -5,14 +5,13 @@ import { longTestTimeout } from '../../constants/common.js';
 
 import { getTestHelpers } from '../../chains/test-analysis/test-wrappers.js';
 
-const { it, expect, aiExpect, makeLogger } = getTestHelpers('embed-rewrite-query');
+const { it, expect, aiExpect } = getTestHelpers('embed-rewrite-query');
 
 describe('embed-rewrite-query', () => {
   it(
     'rewrites an ambiguous query into a clearer version',
     async () => {
       const result = await embedRewriteQuery('plants food', {
-        logger: makeLogger('rewrites an ambiguous query into a clearer version'),
       });
 
       expect(typeof result).toBe('string');
@@ -33,7 +32,6 @@ describe('embed-rewrite-query', () => {
     'expands abbreviations and jargon',
     async () => {
       const result = await embedRewriteQuery('JS async perf tips', {
-        logger: makeLogger('expands abbreviations and jargon'),
       });
 
       expect(typeof result).toBe('string');

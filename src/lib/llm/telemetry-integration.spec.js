@@ -26,6 +26,8 @@ import {
   Kind,
   ChainEvent,
   TelemetryEvent,
+  DomainEvent,
+  OpEvent,
   LlmStatus,
   Metric,
   TokenType,
@@ -69,15 +71,18 @@ describe('Telemetry integration', () => {
         expect(event.kind).toBeDefined();
       }
 
-      // Separate telemetry from operation events
+      // Separate event, telemetry, and operation kinds
+      const eventKindEvents = events.filter((e) => e.kind === Kind.event);
       const telemetryEvents = events.filter((e) => e.kind === Kind.telemetry);
       const operationEvents = events.filter((e) => e.kind === Kind.operation);
 
-      // chain:start, llm:model, llm:call are all telemetry kind
-      expect(telemetryEvents.length).toBeGreaterThanOrEqual(3);
+      // chain:start and llm:model are event kind (meaningful moments)
+      const eventNames = eventKindEvents.map((e) => e.event);
+      expect(eventNames).toContain(ChainEvent.start);
+      expect(eventNames).toContain(DomainEvent.llmModel);
+
+      // llm:call is telemetry kind (dimensional metrics)
       const telemetryEventNames = telemetryEvents.map((e) => e.event);
-      expect(telemetryEventNames).toContain(ChainEvent.start);
-      expect(telemetryEventNames).toContain(TelemetryEvent.llmModel);
       expect(telemetryEventNames).toContain(TelemetryEvent.llmCall);
 
       // Operation events are a separate stream (none expected from this simple flow,
@@ -110,7 +115,7 @@ describe('Telemetry integration', () => {
       // LLM call inside child chain inherits the nested operation path
       await callLlm('test', child);
 
-      const modelEvent = events.find((e) => e.event === TelemetryEvent.llmModel);
+      const modelEvent = events.find((e) => e.event === DomainEvent.llmModel);
       expect(modelEvent.operation).toBe('parent/child');
 
       const callEvent = events.find((e) => e.event === TelemetryEvent.llmCall);
@@ -158,35 +163,35 @@ describe('Telemetry integration', () => {
 
       expect(result).toBe('recovered');
 
-      // Extract only retry telemetry events (kind === 'telemetry')
-      const retryTelemetry = events.filter(
+      // Extract only retry operation events (kind === 'operation')
+      const retryOps = events.filter(
         (e) =>
-          e.kind === Kind.telemetry &&
+          e.kind === Kind.operation &&
           [
-            TelemetryEvent.retryAttempt,
-            TelemetryEvent.retryError,
-            TelemetryEvent.retryExhaust,
+            OpEvent.retryAttempt,
+            OpEvent.retryError,
+            OpEvent.retryExhaust,
           ].includes(e.event)
       );
 
       // Expected sequence: attempt(1) → error(1) → attempt(2)
-      expect(retryTelemetry).toHaveLength(3);
-      expect(retryTelemetry[0]).toMatchObject({
-        event: TelemetryEvent.retryAttempt,
+      expect(retryOps).toHaveLength(3);
+      expect(retryOps[0]).toMatchObject({
+        event: OpEvent.retryAttempt,
         attemptNumber: 1,
       });
-      expect(retryTelemetry[1]).toMatchObject({
-        event: TelemetryEvent.retryError,
+      expect(retryOps[1]).toMatchObject({
+        event: OpEvent.retryError,
         attemptNumber: 1,
         error: { message: 'Rate limited', httpStatus: 429, type: 'rate_limit_error' },
       });
-      expect(retryTelemetry[2]).toMatchObject({
-        event: TelemetryEvent.retryAttempt,
+      expect(retryOps[2]).toMatchObject({
+        event: OpEvent.retryAttempt,
         attemptNumber: 2,
       });
 
-      // All retry telemetry events carry the chain operation
-      for (const e of retryTelemetry) {
+      // All retry operation events carry the chain operation
+      for (const e of retryOps) {
         expect(e.operation).toBe('retrychain');
       }
     });
@@ -216,32 +221,32 @@ describe('Telemetry integration', () => {
       await settled;
       await expect(promise).rejects.toThrow('Server down');
 
-      const retryTelemetry = events.filter(
+      const retryOps = events.filter(
         (e) =>
-          e.kind === Kind.telemetry &&
+          e.kind === Kind.operation &&
           [
-            TelemetryEvent.retryAttempt,
-            TelemetryEvent.retryError,
-            TelemetryEvent.retryExhaust,
+            OpEvent.retryAttempt,
+            OpEvent.retryError,
+            OpEvent.retryExhaust,
           ].includes(e.event)
       );
 
       // attempt(1) → error(1) → attempt(2) → exhaust
-      expect(retryTelemetry).toHaveLength(4);
-      expect(retryTelemetry[0]).toMatchObject({
-        event: TelemetryEvent.retryAttempt,
+      expect(retryOps).toHaveLength(4);
+      expect(retryOps[0]).toMatchObject({
+        event: OpEvent.retryAttempt,
         attemptNumber: 1,
       });
-      expect(retryTelemetry[1]).toMatchObject({
-        event: TelemetryEvent.retryError,
+      expect(retryOps[1]).toMatchObject({
+        event: OpEvent.retryError,
         attemptNumber: 1,
       });
-      expect(retryTelemetry[2]).toMatchObject({
-        event: TelemetryEvent.retryAttempt,
+      expect(retryOps[2]).toMatchObject({
+        event: OpEvent.retryAttempt,
         attemptNumber: 2,
       });
-      expect(retryTelemetry[3]).toMatchObject({
-        event: TelemetryEvent.retryExhaust,
+      expect(retryOps[3]).toMatchObject({
+        event: OpEvent.retryExhaust,
         error: { message: 'Server down', httpStatus: 500 },
       });
     });

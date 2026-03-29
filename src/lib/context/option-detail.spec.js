@@ -70,10 +70,7 @@ describe('getOptionDetail', () => {
 
     await getOptionDetail('strictness', config, 'low');
 
-    expect(policyFn).toHaveBeenCalledWith(
-      { operation: 'filter' },
-      expect.objectContaining({ logger: undefined })
-    );
+    expect(policyFn).toHaveBeenCalledWith({ operation: 'filter' });
   });
 
   it('includes operation in detail', async () => {

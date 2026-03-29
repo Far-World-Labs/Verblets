@@ -1,11 +1,5 @@
 import fetch from 'node-fetch';
 
-import {
-  debugPromptGlobally,
-  debugPromptGloballyIfChanged,
-  debugResultGlobally,
-  debugResultGloballyIfChanged,
-} from '../../constants/llm-config.js';
 import { models } from '../../constants/model-mappings.js';
 import { getProvider } from './providers/index.js';
 import normalizeLlm from '../normalize-llm/index.js';
@@ -21,9 +15,11 @@ import stripResponse from '../strip-response/index.js';
 import { onlyJSON, contentIsSchema } from '../../prompts/constants.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { getOption } from '../context/option.js';
-import createProgressEmitter from '../progress/index.js';
+import createProgressEmitter, { storeContent } from '../progress/index.js';
 import {
+  DomainEvent,
   TelemetryEvent,
+  Level,
   LlmStatus,
   ModelSource,
   Metric,
@@ -35,35 +31,25 @@ import {
  *
  * Browser environments (specifically jsdom in tests) have compatibility issues with AbortSignal
  * where the signal object gets serialized to "AbortSignal {}" causing fetch to reject it.
- * This is a known issue with jsdom's fetch implementation not properly handling AbortController instances.
- *
- * In production browsers, AbortSignal works correctly, but we disable it in test environments
- * to avoid false failures. This means browser tests won't have timeout protection, but the
- * trade-off is acceptable since timeouts are primarily important in production Node.js environments.
  *
  * @param {Object} fetchOptions - The fetch options object to modify
  * @param {AbortSignal} [abortSignal] - Optional user-provided abort signal
  * @param {TimedAbortController} timeoutController - The timeout controller for the request
  */
 function configureAbortSignal(fetchOptions, abortSignal, timeoutController) {
-  // Only configure signals in Node.js environments
   if (typeof window === 'undefined') {
     if (abortSignal) {
-      // Combine user-provided signal with timeout signal
       fetchOptions.signal = anySignal([abortSignal, timeoutController.signal]);
     } else {
-      // Just use timeout signal
       fetchOptions.signal = timeoutController.signal;
     }
   }
-  // In browser/jsdom environments, we skip the signal to avoid compatibility issues
 }
 
 /**
  * Build a response_format object for structured JSON output.
- * Wraps a JSON schema in the standard { type, json_schema: { name, schema } } envelope.
  *
- * @param {string} name - Schema name (e.g. 'sort_result', 'filter_decisions')
+ * @param {string} name - Schema name
  * @param {object} schema - JSON Schema object
  * @returns {{ type: 'json_schema', json_schema: { name: string, schema: object } }}
  */
@@ -72,7 +58,6 @@ export const jsonSchema = (name, schema) => ({
   json_schema: { name, schema },
 });
 
-// Helper to detect if a response format schema is a simple collection wrapper
 export const isSimpleCollectionSchema = (responseFormat) => {
   const schema = responseFormat?.json_schema?.schema;
   if (!schema || schema.type !== 'object') return false;
@@ -80,11 +65,9 @@ export const isSimpleCollectionSchema = (responseFormat) => {
   const props = schema.properties;
   const propKeys = Object.keys(props || {});
 
-  // Single 'items' property that's an array
   return propKeys.length === 1 && propKeys[0] === 'items' && props.items?.type === 'array';
 };
 
-// Helper to detect if a response format schema is a simple value wrapper
 export const isSimpleValueSchema = (responseFormat) => {
   const schema = responseFormat?.json_schema?.schema;
   if (!schema || schema.type !== 'object') return false;
@@ -92,12 +75,10 @@ export const isSimpleValueSchema = (responseFormat) => {
   const props = schema.properties;
   const propKeys = Object.keys(props || {});
 
-  // Single 'value' property
   return propKeys.length === 1 && propKeys[0] === 'value';
 };
 
 const shapeOutputDefault = (result, requestConfig, options = {}) => {
-  // GPT-4
   if (result.choices[0].message.tool_calls?.length) {
     const toolCall = result.choices[0].message.tool_calls[0];
     return {
@@ -108,11 +89,9 @@ const shapeOutputDefault = (result, requestConfig, options = {}) => {
   }
   if (result.choices[0].message) {
     const content = result.choices[0].message.content;
-    // If content is already an object (structured output), return it directly
     if (typeof content === 'object' && content !== null) {
       return content;
     }
-    // If using response_format and content is a string, parse it as JSON unless disabled
     if (
       typeof content === 'string' &&
       requestConfig?.response_format &&
@@ -122,7 +101,6 @@ const shapeOutputDefault = (result, requestConfig, options = {}) => {
       try {
         const parsed = JSON.parse(trimmed);
 
-        // Auto-unwrap simple collection wrappers (default enabled)
         const unwrapCollections = options.unwrapCollections !== false;
         if (unwrapCollections && isSimpleCollectionSchema(requestConfig.response_format)) {
           if (parsed?.items && Array.isArray(parsed.items)) {
@@ -130,7 +108,6 @@ const shapeOutputDefault = (result, requestConfig, options = {}) => {
           }
         }
 
-        // Auto-unwrap simple value wrappers (default enabled)
         const unwrapValues = options.unwrapValues !== false;
         if (unwrapValues && isSimpleValueSchema(requestConfig.response_format)) {
           if ('value' in parsed) {
@@ -140,38 +117,17 @@ const shapeOutputDefault = (result, requestConfig, options = {}) => {
 
         return parsed;
       } catch {
-        // Models without structured output may return unparseable text despite
-        // response_format being set. Throwing lets the caller's retry wrapper
-        // re-attempt the LLM call rather than silently returning a string.
         throw new Error(
           `Structured output parse failed — model returned non-JSON: ${trimmed.slice(0, 200)}`
         );
       }
     }
-    // Otherwise, it's a string, so trim it
     return content.trim();
   }
   return result.choices[0].text.trim();
 };
 
-const onBeforeRequestDefault = ({ debugPrompt, isCached, prompt }) => {
-  if (debugPrompt || debugPromptGlobally || (debugPromptGloballyIfChanged && !isCached)) {
-    console.error('+++ DEBUG PROMPT +++');
-    console.error(prompt);
-    console.error('+++ DEBUG PROMPT END +++');
-  }
-};
-
-const onAfterRequestDefault = ({ debugResult, isCached, resultShaped }) => {
-  if (debugResult || debugResultGlobally || (debugResultGloballyIfChanged && !isCached)) {
-    console.error('+++ DEBUG RESULT +++');
-    console.error(resultShaped);
-    console.error('+++ DEBUG RESULT END +++');
-  }
-};
-
 // Keys that belong to the model/request layer (as opposed to callLlm control keys).
-// Exported so consumers can discover which keys are policy-resolvable at the LLM level.
 export const MODEL_KEYS = [
   'response_format',
   'temperature',
@@ -186,7 +142,6 @@ export const MODEL_KEYS = [
 ];
 
 export const run = async (prompt, config = {}) => {
-  // Handle config parameter - can be string (model name) or object (full options)
   let options;
   if (typeof config === 'string') {
     options = { modelName: config };
@@ -196,22 +151,20 @@ export const run = async (prompt, config = {}) => {
 
   const {
     abortSignal,
-    debugPrompt,
-    debugResult,
     forceQuery: _forceQuery,
     llm,
-    logger,
-    onAfterRequest = onAfterRequestDefault,
-    onBeforeRequest = onBeforeRequestDefault,
+    onBeforeRequest,
+    onAfterRequest,
     shapeOutput = shapeOutputDefault,
     skipResponseParse,
     unwrapValues,
     unwrapCollections,
+    promptTrace,
+    contentStore,
   } = options;
   const forceQuery = await getOption('forceQuery', options, false);
 
   // Build modelOptions from flat config, resolving through context system.
-  // This allows per-operation behavioral policy via the policy channel.
   const modelOptions = { ...normalizeLlm(llm) };
   for (const key of MODEL_KEYS) {
     const resolved = await getOption(key, options, undefined);
@@ -222,14 +175,10 @@ export const run = async (prompt, config = {}) => {
     if (resolved !== undefined) modelOptions[key] = resolved;
   }
 
-  // Log start of llm execution
   const startTime = Date.now();
 
-  // Apply global overrides to model options
   const modelOptionsWithOverrides = modelService.applyGlobalOverrides(modelOptions);
 
-  // Extract capability flags for model negotiation
-  // Supports both flat keys ({ fast: true }) and legacy negotiate wrapper ({ negotiate: { fast: true } })
   const negotiation = {};
   let shouldNegotiate = false;
 
@@ -254,7 +203,7 @@ export const run = async (prompt, config = {}) => {
 
   const modelFound = modelService.getModel(modelNameNegotiated);
 
-  // Telemetry: model selection
+  // Model selection — domain event
   const emitter = createProgressEmitter('llm', options.onProgress, options);
   const modelSource = shouldNegotiate
     ? ModelSource.negotiated
@@ -262,25 +211,18 @@ export const run = async (prompt, config = {}) => {
       ? ModelSource.config
       : ModelSource.default;
 
-  emitter.metrics({
-    event: TelemetryEvent.llmModel,
+  emitter.emit({
+    event: DomainEvent.llmModel,
+    level: Level.info,
+    message: `Model selected: ${modelNameNegotiated} (${modelSource})`,
     model: modelNameNegotiated,
     provider: modelFound.provider || 'openai',
     source: modelSource,
     negotiation: shouldNegotiate ? negotiation : undefined,
     preferred: negotiationFromGlobalOverride ? undefined : modelOptionsWithOverrides.modelName,
+    promptLength: typeof prompt === 'string' ? prompt.length : undefined,
   });
 
-  // Log start event with model information
-  if (logger?.info) {
-    logger.info({
-      event: 'llm:start',
-      promptLength: prompt.length,
-      model: modelNameNegotiated,
-    });
-  }
-
-  // Use model-specific API URL and key if defined, otherwise fall back to defaults
   const apiUrl = modelFound?.apiUrl || models.fastGood.apiUrl;
   const apiKey = modelFound?.apiKey || models.fastGood.apiKey;
 
@@ -290,7 +232,6 @@ export const run = async (prompt, config = {}) => {
     modelName: modelNameNegotiated,
   });
 
-  // Structured output fallback for models that can't do response_format (e.g. local sensitive models)
   const needsJsonExtraction =
     modelFound.structuredOutput === false && !!requestConfig.response_format;
   let fetchConfig = requestConfig;
@@ -301,7 +242,6 @@ export const run = async (prompt, config = {}) => {
       ? `${onlyJSON} ${contentIsSchema} ${asXML(JSON.stringify(schema), { tag: 'json-schema--do-not-output' })}`
       : onlyJSON;
 
-    // Augment the last user message with JSON format instructions
     const messages =
       requestConfig.messages?.map((msg, i, arr) =>
         i === arr.length - 1 && msg.role === 'user'
@@ -309,13 +249,11 @@ export const run = async (prompt, config = {}) => {
           : msg
       ) ?? requestConfig.messages;
 
-    // Build fetch config without response_format
     // eslint-disable-next-line no-unused-vars
     const { response_format: _rf, ...rest } = requestConfig;
     fetchConfig = { ...rest, messages };
   }
 
-  // Check if caching is disabled — per-call option takes precedence over environment variable
   const cacheEnabled = await getOption('cacheEnabled', options, undefined);
   const cachingDisabled =
     cacheEnabled === false ||
@@ -331,24 +269,23 @@ export const run = async (prompt, config = {}) => {
     cacheResult = result;
   }
 
-  onBeforeRequest({
-    isCached: !!cacheResult,
-    debugPrompt,
-    prompt,
-    requestConfig,
-  });
+  if (onBeforeRequest) {
+    onBeforeRequest({
+      isCached: !!cacheResult,
+      prompt,
+      requestConfig,
+    });
+  }
 
   try {
     let result = cacheResult;
     if (!cacheResult || forceQuery) {
-      // Use custom requestTimeout from modelOptions if provided, otherwise use model default
       const requestTimeout =
         modelOptionsWithOverrides.requestTimeout ||
         modelService.getModel(modelNameNegotiated).requestTimeout;
 
       const timeoutController = new TimedAbortController(requestTimeout);
 
-      // Delegate request building to the provider adapter
       const providerName = modelFound.provider || 'openai';
       const provider = getProvider(providerName);
       const { url: fetchUrl, fetchOptions } = provider.buildRequest(
@@ -358,12 +295,10 @@ export const run = async (prompt, config = {}) => {
         fetchConfig
       );
 
-      // Configure abort signal (see function documentation for browser compatibility notes)
       configureAbortSignal(fetchOptions, abortSignal, timeoutController);
 
       const response = await fetch(fetchUrl, fetchOptions);
 
-      // Timer's only purpose is to abort the fetch — clear it as soon as we have a response
       timeoutController.clearTimeout();
 
       const contentType = response.headers.get('content-type') || '';
@@ -379,7 +314,6 @@ export const run = async (prompt, config = {}) => {
       const rawJson = await response.json();
 
       if (!response.ok) {
-        // Anthropic uses error.message, OpenAI uses error.message — both work
         const errorMessage = rawJson?.error?.message || rawJson?.error?.type || 'Unknown error';
         const vars = [`status: ${response?.status}`, `type: ${rawJson?.error?.type}`].join(', ');
         const err = new Error(`Completions request [error]: ${errorMessage} (${vars})`);
@@ -388,10 +322,8 @@ export const run = async (prompt, config = {}) => {
         throw err;
       }
 
-      // Normalize response to canonical (OpenAI) shape
       result = provider.parseResponse(rawJson);
 
-      // Only cache the result if caching is not disabled
       if (!cachingDisabled && cache) {
         await setPromptResult(
           cache,
@@ -402,7 +334,6 @@ export const run = async (prompt, config = {}) => {
       }
     }
 
-    // Extract JSON from freeform text for models without structured output support
     if (needsJsonExtraction && typeof result.choices?.[0]?.message?.content === 'string') {
       const cleaned = stripResponse(result.choices[0].message.content);
       try {
@@ -427,22 +358,13 @@ export const run = async (prompt, config = {}) => {
       unwrapCollections,
     });
 
-    onAfterRequest({
-      debugResult,
-      isCached: !!cacheResult,
-      prompt,
-      requestConfig,
-      result,
-      resultShaped,
-    });
-
-    // Log end of llm execution
-    if (logger?.info) {
-      logger.info({
-        event: 'llm:end',
-        duration: Date.now() - startTime,
-        cached: !!cacheResult,
-        model: modelNameNegotiated,
+    if (onAfterRequest) {
+      onAfterRequest({
+        isCached: !!cacheResult,
+        prompt,
+        requestConfig,
+        result,
+        resultShaped,
       });
     }
 
@@ -481,6 +403,27 @@ export const run = async (prompt, config = {}) => {
       ...callAttrs,
     });
 
+    // Prompt trace — conditional, uses content store for large payloads
+    if (promptTrace) {
+      const sid = options.spanId || 'unknown';
+      const traceKey = `prompt:${sid}:${Date.now()}`;
+      const promptData =
+        typeof prompt === 'string' ? prompt : JSON.stringify(requestConfig.messages);
+      const responseData =
+        typeof resultShaped === 'string' ? resultShaped : JSON.stringify(resultShaped);
+
+      emitter.emit({
+        event: DomainEvent.promptTrace,
+        level: Level.debug,
+        message: `LLM ${cacheResult ? 'cache hit' : 'call'}: ${modelNameNegotiated}`,
+        model: modelNameNegotiated,
+        provider: modelFound.provider || 'openai',
+        cached: !!cacheResult,
+        prompt: await storeContent(contentStore, `${traceKey}:input`, promptData),
+        response: await storeContent(contentStore, `${traceKey}:output`, responseData),
+      });
+    }
+
     return resultShaped;
   } catch (err) {
     // Telemetry: failed LLM call
@@ -505,6 +448,31 @@ export const run = async (prompt, config = {}) => {
       value: Date.now() - startTime,
       ...errAttrs,
     });
+
+    // Prompt trace on error — capture prompt without response
+    // Wrapped in try/catch so a content store failure never masks the real LLM error
+    if (promptTrace) {
+      try {
+        const sid = options.spanId || 'unknown';
+        const traceKey = `prompt:${sid}:${Date.now()}`;
+        const promptData =
+          typeof prompt === 'string' ? prompt : JSON.stringify(requestConfig.messages);
+
+        emitter.emit({
+          event: DomainEvent.promptTrace,
+          level: Level.debug,
+          message: `LLM error: ${modelNameNegotiated}: ${err.message}`,
+          model: modelNameNegotiated,
+          provider: modelFound.provider || 'openai',
+          cached: false,
+          prompt: await storeContent(contentStore, `${traceKey}:input`, promptData),
+          error: { message: err.message, httpStatus: err.httpStatus, type: err.errorType },
+        });
+      } catch {
+        // Tracing must not mask the original error.
+      }
+    }
+
     throw err;
   }
 };

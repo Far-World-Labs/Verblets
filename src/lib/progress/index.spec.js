@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import createProgressEmitter, { scopePhase, traceId, spanId } from './index.js';
+import createProgressEmitter, { scopePhase, storeContent, traceId, spanId } from './index.js';
 import {
   Kind,
+  Level,
   StatusCode,
   ChainEvent,
   OpEvent,
@@ -35,10 +36,13 @@ describe('createProgressEmitter', () => {
       emitter.start();
       expect(events).toHaveLength(1);
       expect(events[0]).toMatchObject({
-        kind: Kind.telemetry,
+        kind: Kind.event,
         step: 'filter',
         event: ChainEvent.start,
         operation: 'filter',
+        id: runConfig.spanId,
+        level: Level.info,
+        at: { file: expect.any(String), line: expect.any(Number) },
       });
       expect(events[0].timestamp).toBeDefined();
     });
@@ -64,6 +68,7 @@ describe('createProgressEmitter', () => {
         stepName: 'sorting-chunk',
         iteration: 1,
         operation: 'sort',
+        at: { file: expect.any(String), line: expect.any(Number) },
       });
     });
 
@@ -137,16 +142,16 @@ describe('createProgressEmitter', () => {
       const runConfig = nameStep('llm', { operation: 'filter' });
       const emitter = createProgressEmitter('llm', (e) => events.push(e), runConfig);
 
-      emitter.metrics({
-        event: TelemetryEvent.llmModel,
+      emitter.emit({
+        event: DomainEvent.llmModel,
         model: 'gpt-4o',
         source: ModelSource.negotiated,
       });
 
       expect(events[0]).toMatchObject({
-        kind: Kind.telemetry,
+        kind: Kind.event,
         step: 'llm',
-        event: TelemetryEvent.llmModel,
+        event: DomainEvent.llmModel,
         operation: 'filter/llm',
         model: 'gpt-4o',
         source: ModelSource.negotiated,
@@ -156,13 +161,13 @@ describe('createProgressEmitter', () => {
     it('always sets kind to telemetry', () => {
       const events = [];
       const emitter = createProgressEmitter('test', (e) => events.push(e));
-      emitter.metrics({ event: TelemetryEvent.retryAttempt });
+      emitter.metrics({ event: TelemetryEvent.llmCall });
       expect(events[0].kind).toBe(Kind.telemetry);
     });
 
     it('does not throw when callback absent', () => {
       const emitter = createProgressEmitter('test');
-      expect(() => emitter.metrics({ event: TelemetryEvent.optionResolve })).not.toThrow();
+      expect(() => emitter.metrics({ event: TelemetryEvent.llmCall })).not.toThrow();
     });
   });
 
@@ -220,13 +225,16 @@ describe('createProgressEmitter', () => {
 
       const complete = events[0];
       expect(complete).toMatchObject({
-        kind: Kind.telemetry,
+        kind: Kind.event,
         step: 'filter',
         event: ChainEvent.complete,
         operation: 'filter',
         statusCode: StatusCode.ok,
         totalItems: 10,
         successCount: 8,
+        id: runConfig.spanId,
+        level: Level.info,
+        at: { file: expect.any(String), line: expect.any(Number) },
       });
       expect(complete.durationMs).toBeGreaterThanOrEqual(150);
     });
@@ -263,15 +271,29 @@ describe('createProgressEmitter', () => {
 
       const errorEvent = events[0];
       expect(errorEvent).toMatchObject({
-        kind: Kind.telemetry,
+        kind: Kind.event,
         step: 'map',
         event: ChainEvent.error,
         operation: 'parent/map',
         statusCode: StatusCode.error,
         error: { message: 'batch failed', type: 'Error' },
         totalItems: 20,
+        id: runConfig.spanId,
+        level: Level.error,
+        at: { file: expect.any(String), line: expect.any(Number) },
       });
       expect(errorEvent.durationMs).toBeGreaterThanOrEqual(200);
+    });
+
+    it('includes stack trace in error shape', () => {
+      const events = [];
+      const emitter = createProgressEmitter('test', (e) => events.push(e));
+      const err = new Error('with stack');
+      emitter.error(err);
+
+      expect(events[0].error.stack).toBeDefined();
+      expect(events[0].error.stack).toContain('with stack');
+      expect(events[0].error.stack).toContain('index.spec.js');
     });
 
     it('uses explicit durationMs override', () => {
@@ -285,6 +307,48 @@ describe('createProgressEmitter', () => {
     it('does not throw when callback absent', () => {
       const emitter = createProgressEmitter('test');
       expect(() => emitter.error(new Error('fail'))).not.toThrow();
+    });
+  });
+
+  describe('at field', () => {
+    it('points to the caller, not emitter internals', () => {
+      const events = [];
+      const emitter = createProgressEmitter('test', (e) => events.push(e));
+      emitter.emit({ event: DomainEvent.step, stepName: 'check-at' });
+
+      const at = events[0].at;
+      expect(at).toBeDefined();
+      expect(at.file).not.toContain('progress/index.js');
+      expect(at.file).not.toContain('lib/logger/');
+      expect(at.file).toContain('index.spec');
+      expect(at.line).toBeGreaterThan(0);
+    });
+
+    it('is present on lifecycle events (start, complete, error)', () => {
+      const events = [];
+      const runConfig = nameStep('test', {});
+      const emitter = createProgressEmitter('test', (e) => events.push(e), runConfig);
+      emitter.start();
+      emitter.complete();
+      emitter.error(new Error('test'));
+
+      for (const event of events) {
+        expect(event.at).toBeDefined();
+        expect(event.at.file).toBeDefined();
+        expect(event.at.line).toBeGreaterThan(0);
+      }
+    });
+
+    it('is absent on operation and telemetry events', () => {
+      const events = [];
+      const emitter = createProgressEmitter('test', (e) => events.push(e));
+      emitter.progress({ event: OpEvent.start });
+      emitter.metrics({ event: TelemetryEvent.llmCall });
+      emitter.measure({ metric: Metric.llmDuration, value: 1 });
+
+      for (const event of events) {
+        expect(event.at).toBeUndefined();
+      }
     });
   });
 
@@ -457,5 +521,75 @@ describe('scopePhase', () => {
   it('returns undefined when callback is absent', () => {
     expect(scopePhase(undefined, 'test')).toBeUndefined();
     expect(scopePhase(null, 'test')).toBeUndefined();
+  });
+});
+
+describe('storeContent', () => {
+  it('stores value and returns $ref when content store is provided', async () => {
+    const store = new Map();
+    const contentStore = {
+      async set(key, value) { store.set(key, value); },
+      async get(key) { return store.get(key); },
+    };
+
+    const result = await storeContent(contentStore, 'my-key', 'any value');
+
+    expect(result).toEqual({ $ref: 'my-key' });
+    expect(store.get('my-key')).toBe('any value');
+  });
+
+  it('stores short strings via content store when present', async () => {
+    const store = new Map();
+    const contentStore = {
+      async set(key, value) { store.set(key, value); },
+    };
+
+    const result = await storeContent(contentStore, 'k', 'short');
+
+    expect(result).toEqual({ $ref: 'k' });
+  });
+
+  it('truncates large strings when no content store', async () => {
+    const longString = 'x'.repeat(600);
+    const result = await storeContent(undefined, 'key', longString);
+
+    expect(result).toEqual({
+      truncated: true,
+      preview: 'x'.repeat(500),
+      length: 600,
+    });
+  });
+
+  it('passes through short strings when no content store', async () => {
+    const result = await storeContent(undefined, 'key', 'hello');
+
+    expect(result).toBe('hello');
+  });
+
+  it('passes through non-string values when no content store', async () => {
+    const obj = { foo: 'bar' };
+    const result = await storeContent(undefined, 'key', obj);
+
+    expect(result).toBe(obj);
+  });
+
+  it('passes through null content store', async () => {
+    const result = await storeContent(null, 'key', 'value');
+
+    expect(result).toBe('value');
+  });
+
+  it('handles content store without set method', async () => {
+    const result = await storeContent({ get: () => {} }, 'key', 'value');
+
+    expect(result).toBe('value');
+  });
+
+  it('propagates error when content store set() throws', async () => {
+    const contentStore = {
+      async set() { throw new Error('storage full'); },
+    };
+
+    await expect(storeContent(contentStore, 'key', 'value')).rejects.toThrow('storage full');
   });
 });

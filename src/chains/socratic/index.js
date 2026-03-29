@@ -2,13 +2,9 @@ import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import socraticQuestionSchema from './socratic-question-schema.js';
 import socraticAnswerSchema from './socratic-answer-schema.js';
-import {
-  createLifecycleLogger,
-  extractPromptAnalysis,
-  extractResultValue,
-} from '../../lib/lifecycle-logger/index.js';
+import { extractPromptAnalysis, extractResultValue } from '../../lib/progress/extract.js';
 import createProgressEmitter from '../../lib/progress/index.js';
-import { DomainEvent } from '../../lib/progress/constants.js';
+import { DomainEvent, Level } from '../../lib/progress/constants.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 
 const name = 'socratic';
@@ -58,7 +54,7 @@ const defaultAsk = async ({
   topic,
   history = [],
   llm,
-  logger,
+  emitter,
   temperature = 0.7,
   challenge,
   config,
@@ -66,7 +62,12 @@ const defaultAsk = async ({
   const historyText = history.map((turn) => `Q: ${turn.question}\nA: ${turn.answer}`).join('\n');
   const prompt = buildAskPrompt(topic, historyText, challenge);
 
-  logger?.logEvent('ask-prompt', extractPromptAnalysis(prompt));
+  emitter?.emit({
+    event: DomainEvent.step,
+    stepName: 'ask-prompt',
+    level: Level.debug,
+    ...extractPromptAnalysis(prompt),
+  });
 
   const response = await retry(
     () =>
@@ -74,7 +75,6 @@ const defaultAsk = async ({
         llm,
         temperature,
         response_format: jsonSchema('socratic_question', socraticQuestionSchema),
-        logger,
       }),
     {
       label: 'socratic-ask',
@@ -90,14 +90,19 @@ const defaultAnswer = async ({
   history = [],
   _topic,
   llm,
-  logger,
+  emitter,
   temperature = 0.7,
   config,
 } = {}) => {
   const historyText = history.map((turn) => `Q: ${turn.question}\nA: ${turn.answer}`).join('\n');
   const prompt = buildAnswerPrompt(question, historyText);
 
-  logger?.logEvent('answer-prompt', extractPromptAnalysis(prompt));
+  emitter?.emit({
+    event: DomainEvent.step,
+    stepName: 'answer-prompt',
+    level: Level.debug,
+    ...extractPromptAnalysis(prompt),
+  });
 
   const response = await retry(
     () =>
@@ -105,7 +110,6 @@ const defaultAnswer = async ({
         llm,
         temperature,
         response_format: jsonSchema('socratic_answer', socraticAnswerSchema),
-        logger,
       }),
     {
       label: 'socratic-answer',
@@ -120,10 +124,10 @@ class SocraticMethod {
   static async create(statement, options = {}) {
     const runConfig = nameStep(name, options);
     const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
-    emitter.start();
     const { challenge, temperature } = await getOptions(runConfig, {
       challenge: withPolicy(mapChallenge, ['challenge', 'temperature']),
     });
+    emitter.start({ message: 'Socratic chain starting', challenge, temperature });
     return new SocraticMethod(
       statement,
       { config: runConfig, emitter },
@@ -140,7 +144,7 @@ class SocraticMethod {
     this.emitter = fromCreate ? options.emitter : undefined;
     const opts = fromCreate ? options.config : options;
 
-    const { ask = defaultAsk, answer = defaultAnswer, llm, logger, abortSignal } = opts;
+    const { ask = defaultAsk, answer = defaultAnswer, llm, abortSignal } = opts;
     this.statement = statement;
     this.ask = ask;
     this.answer = answer;
@@ -158,10 +162,12 @@ class SocraticMethod {
       this.emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
     }
     this.abortSignal = abortSignal;
-    this.logger = createLifecycleLogger(logger, 'chain:socratic');
 
     // Log construction
-    this.logger.logStart({
+    this.emitter.emit({
+      event: DomainEvent.step,
+      stepName: 'construction',
+      level: Level.debug,
       statement,
       hasCustomAsk: ask !== defaultAsk,
       hasCustomAnswer: answer !== defaultAnswer,
@@ -175,43 +181,29 @@ class SocraticMethod {
   async step() {
     const turnNumber = this.history.length + 1;
 
-    this.logger.logEvent('step-start', { turnNumber });
-
     this.emitter.emit({
       event: DomainEvent.step,
       stepName: 'asking-question',
+      level: Level.debug,
       turnNumber,
       topic: this.statement,
-    });
-
-    // Log input (topic and history)
-    this.logger.info({
-      event: 'chain:socratic:input',
-      value: {
-        topic: this.statement,
-        historyLength: this.history.length,
-        history: this.history,
-      },
+      historyLength: this.history.length,
     });
 
     const question = await this.ask({
       topic: this.statement,
       history: this.history,
       llm: this.llm,
-      logger: this.logger,
+      emitter: this.emitter,
       temperature: this.temperature,
       challenge: this.challenge,
       config: this.config,
     });
 
-    // Log question as intermediate event
-    this.logger.logEvent('question-generated', {
-      value: question,
-    });
-
     this.emitter.emit({
       event: DomainEvent.step,
       stepName: 'answering-question',
+      level: Level.debug,
       turnNumber,
       question,
     });
@@ -221,7 +213,7 @@ class SocraticMethod {
       history: this.history,
       topic: this.statement,
       llm: this.llm,
-      logger: this.logger,
+      emitter: this.emitter,
       temperature: this.temperature,
       config: this.config,
     });
@@ -229,13 +221,10 @@ class SocraticMethod {
     const turn = { question, answer };
     this.history.push(turn);
 
-    // Log output (the complete turn)
-    this.logger.info({
-      event: 'chain:socratic:output',
-      value: turn,
-    });
-
-    this.logger.logEvent('step-complete', {
+    this.emitter.emit({
+      event: DomainEvent.step,
+      stepName: 'step-complete',
+      level: Level.debug,
       turnNumber: this.history.length,
       question,
       answer,
@@ -245,16 +234,21 @@ class SocraticMethod {
   }
 
   async run(depth = 3) {
-    this.logger.logEvent('run-start', { depth });
+    this.emitter.emit({
+      event: DomainEvent.step,
+      stepName: 'run-start',
+      level: Level.debug,
+      depth,
+    });
 
     for (let i = 0; i < depth; i += 1) {
       // eslint-disable-next-line no-await-in-loop
       await this.step();
     }
 
-    this.logger.logResult(this.history, extractResultValue(this.history, this.history));
-
-    this.emitter.complete();
+    this.emitter.complete({
+      ...extractResultValue(this.history, this.history),
+    });
 
     return this.history;
   }

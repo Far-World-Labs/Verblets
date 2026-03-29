@@ -14,7 +14,7 @@ import RingBuffer from '../ring-buffer/index.js';
 
 const DEFAULT_BUFFER_SIZE = 1000;
 
-const TRACE_EVENTS = new Set(['option:resolve', 'llm:model']);
+const TRACE_EVENTS = new Set(['option:resolve', 'llm:model', 'prompt:trace']);
 
 /**
  * Convert a telemetry event into the trace shape the collector stores.
@@ -39,6 +39,16 @@ export const eventToTrace = (event) => {
       source: event.source === 'default' ? 'fallback' : event.source,
       value: event.model,
       policyReturned: event.negotiation,
+    };
+  }
+
+  if (event.event === 'prompt:trace') {
+    return {
+      option: 'prompt',
+      operation: event.operation,
+      model: event.model,
+      prompt: event.prompt,
+      response: event.response,
     };
   }
 

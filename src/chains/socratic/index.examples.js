@@ -3,7 +3,7 @@ import SocraticMethod from './index.js';
 import { longTestTimeout } from '../../constants/common.js';
 import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 
-const { it, expect, aiExpect, makeLogger } = getTestHelpers('Socratic chain');
+const { it, expect, aiExpect } = getTestHelpers('Socratic chain');
 
 describe('Socratic method chain', () => {
   it(
@@ -11,7 +11,6 @@ describe('Socratic method chain', () => {
     async () => {
       const statement = 'Knowledge is power';
       const socratic = new SocraticMethod(statement, {
-        logger: makeLogger('explores a simple concept through questioning'),
       });
 
       // Take a single step
@@ -36,7 +35,6 @@ describe('Socratic method chain', () => {
     async () => {
       const statement = 'Success is measured by wealth';
       const socratic = new SocraticMethod(statement, {
-        logger: makeLogger('maintains dialogue history across multiple steps'),
       });
 
       // Take multiple steps
@@ -80,7 +78,6 @@ describe('Socratic method chain', () => {
       const socratic = new SocraticMethod('Custom topic', {
         ask: customAsk,
         answer: customAnswer,
-        logger: makeLogger('allows custom ask and answer functions'),
       });
 
       const turn = await socratic.step();

@@ -5,7 +5,7 @@ import { longTestTimeout } from '../../constants/common.js';
 
 import { getTestHelpers } from '../../chains/test-analysis/test-wrappers.js';
 
-const { it, expect, aiExpect, makeLogger } = getTestHelpers('embed-subquestions');
+const { it, expect, aiExpect } = getTestHelpers('embed-subquestions');
 
 describe('embed-subquestions', () => {
   it(
@@ -14,7 +14,6 @@ describe('embed-subquestions', () => {
       const result = await embedSubquestions(
         'Is Tokyo more affordable than London for the average resident?',
         {
-          logger: makeLogger('decomposes a multi-faceted question into atomic sub-questions'),
         }
       );
 
@@ -41,7 +40,6 @@ describe('embed-subquestions', () => {
       const result = await embedSubquestions(
         'What are the health benefits and environmental impact of a vegetarian diet compared to a meat-based diet?',
         {
-          logger: makeLogger('handles a query with multiple independent aspects'),
         }
       );
 

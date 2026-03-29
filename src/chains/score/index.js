@@ -3,7 +3,7 @@ import { asXML } from '../../prompts/wrap-variable.js';
 import { scaleSpec } from '../scale/index.js';
 import listBatch from '../../verblets/list-batch/index.js';
 import createProgressEmitter from '../../lib/progress/index.js';
-import { OpEvent, DomainEvent } from '../../lib/progress/constants.js';
+import { OpEvent, DomainEvent, Level } from '../../lib/progress/constants.js';
 import { createBatches, parallel, retry } from '../../lib/index.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 import scoreSingleResultSchema from './score-single-result.json';
@@ -138,7 +138,7 @@ export async function scoreItem(item, instructions, config = {}) {
  * Failed batches leave items as undefined (never throws).
  */
 async function scoreOnce(list, prompt, batchConfig, config) {
-  const { maxParallel, errorPosture, onProgress, logger, anchoring } = config;
+  const { maxParallel, errorPosture, onProgress, anchoring } = config;
 
   const batches = await createBatches(list, batchConfig);
   const batchesToProcess = batches.filter((b) => !b.skip);
@@ -171,11 +171,13 @@ async function scoreOnce(list, prompt, batchConfig, config) {
       anchorBlock = buildScoringAnchors(first.items, scores, anchoring);
     } catch (error) {
       if (errorPosture === 'strict') throw error;
-      if (logger?.error)
-        logger.error('Score batch 0 failed', {
-          error: error.message,
-          itemCount: first.items.length,
-        });
+      emitter.emit({
+        event: DomainEvent.step,
+        stepName: 'batch-error',
+        level: Level.warn,
+        message: `Score batch 0 failed: ${error.message}`,
+        itemCount: first.items.length,
+      });
     }
 
     batchDone(first.items.length);
@@ -198,11 +200,13 @@ async function scoreOnce(list, prompt, batchConfig, config) {
           });
         } catch (error) {
           if (errorPosture === 'strict') throw error;
-          if (logger?.error)
-            logger.error(`Score batch failed`, {
-              error: error.message,
-              itemCount: items.length,
-            });
+          emitter.emit({
+            event: DomainEvent.step,
+            stepName: 'batch-error',
+            level: Level.warn,
+            message: `Score batch failed: ${error.message}`,
+            itemCount: items.length,
+          });
         }
 
         batchDone(items.length);
@@ -232,7 +236,6 @@ export async function mapScore(list, instructions, config = {}) {
   const { spec: providedSpec, now } = config;
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
-  emitter.start();
   const { maxParallel, maxAttempts, temperature, errorPosture, anchoring } = await getOptions(
     runConfig,
     {
@@ -243,6 +246,7 @@ export async function mapScore(list, instructions, config = {}) {
       anchoring: withPolicy(mapAnchoring),
     }
   );
+  emitter.start({ message: 'Score chain starting', totalItems: list.length, maxParallel, maxAttempts, anchoring });
   emitter.emit({ event: DomainEvent.phase, phase: 'generating-specification' });
   const spec = providedSpec || (await scoreSpec(instructions, runConfig));
   emitter.emit({ event: DomainEvent.phase, phase: 'scoring-items', specification: spec });
@@ -291,7 +295,8 @@ export async function mapScore(list, instructions, config = {}) {
     });
   }
 
-  emitter.complete();
+  const successCount = results.filter((r) => r !== undefined).length;
+  emitter.complete({ message: 'Score chain complete', totalItems: results.length, successCount, failedItems: results.length - successCount });
 
   return results;
 }

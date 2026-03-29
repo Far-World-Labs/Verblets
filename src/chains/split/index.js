@@ -3,6 +3,7 @@ import retry from '../../lib/retry/index.js';
 import chunkSentences from '../../lib/chunk-sentences/index.js';
 import wrapVariable from '../../prompts/wrap-variable.js';
 import createProgressEmitter from '../../lib/progress/index.js';
+import { DomainEvent, Level } from '../../lib/progress/constants.js';
 import { getOption, nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 
 const name = 'split';
@@ -62,7 +63,6 @@ IMPORTANT RULES:
 export default async function split(text, instructions, config = {}) {
   const runConfig = nameStep(name, { llm: 'fastGoodCheapCoding', ...config });
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
-  emitter.start();
   const {
     chunkLen,
     targetSplitsPerChunk,
@@ -81,6 +81,7 @@ export default async function split(text, instructions, config = {}) {
     preservationConfig.short
   );
   const preservationLong = await getOption('preservationLong', runConfig, preservationConfig.long);
+  emitter.start({ message: 'Split chain starting', chunkLen, temperature });
 
   const chunks = chunkSentences(text, chunkLen);
 
@@ -115,21 +116,25 @@ export default async function split(text, instructions, config = {}) {
         Math.abs(outputWithoutDelimiters.length - originalChunk.length) >
         originalChunk.length * maxDifference
       ) {
-        if (runConfig.logger?.warn) {
-          runConfig.logger.warn(
-            `Split output differs significantly from input for chunk ${
-              index + 1
-            }, using original chunk`
-          );
-        }
+        emitter.emit({
+          event: DomainEvent.step,
+          stepName: 'chunk-preservation-fallback',
+          level: Level.warn,
+          message: `Split output differs significantly from input for chunk ${index + 1}, using original chunk`,
+          chunkIndex: index,
+        });
         return chunk;
       }
 
       return output;
     } catch (error) {
-      if (runConfig.logger?.warn) {
-        runConfig.logger.warn(`Split failed for chunk ${index + 1}:`, error.message);
-      }
+      emitter.emit({
+        event: DomainEvent.step,
+        stepName: 'chunk-error',
+        level: Level.warn,
+        message: `Split failed for chunk ${index + 1}: ${error.message}`,
+        chunkIndex: index,
+      });
       return chunk;
     }
   });
@@ -137,7 +142,7 @@ export default async function split(text, instructions, config = {}) {
   const results = await Promise.all(promises);
   const result = results.join('');
 
-  emitter.complete();
+  emitter.complete({ message: 'Split chain complete' });
 
   return result;
 }

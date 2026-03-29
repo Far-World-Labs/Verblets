@@ -97,58 +97,6 @@ describe('models.js config exports', () => {
     });
   });
 
-  describe('debugPromptGlobally', () => {
-    it('defaults to false', async () => {
-      const { debugPromptGlobally } = await importModels();
-      expect(debugPromptGlobally).toBe(false);
-    });
-
-    it('reads VERBLETS_DEBUG_PROMPT from env', async () => {
-      vi.stubEnv('VERBLETS_DEBUG_PROMPT', 'true');
-      const { debugPromptGlobally } = await importModels();
-      expect(debugPromptGlobally).toBe(true);
-    });
-  });
-
-  describe('debugPromptGloballyIfChanged', () => {
-    it('defaults to false', async () => {
-      const { debugPromptGloballyIfChanged } = await importModels();
-      expect(debugPromptGloballyIfChanged).toBe(false);
-    });
-
-    it('reads VERBLETS_DEBUG_REQUEST_IF_CHANGED', async () => {
-      vi.stubEnv('VERBLETS_DEBUG_REQUEST_IF_CHANGED', 'true');
-      const { debugPromptGloballyIfChanged } = await importModels();
-      expect(debugPromptGloballyIfChanged).toBe(true);
-    });
-  });
-
-  describe('debugResultGlobally', () => {
-    it('defaults to false', async () => {
-      const { debugResultGlobally } = await importModels();
-      expect(debugResultGlobally).toBe(false);
-    });
-
-    it('reads VERBLETS_DEBUG_RESPONSE', async () => {
-      vi.stubEnv('VERBLETS_DEBUG_RESPONSE', 'true');
-      const { debugResultGlobally } = await importModels();
-      expect(debugResultGlobally).toBe(true);
-    });
-  });
-
-  describe('debugResultGloballyIfChanged', () => {
-    it('defaults to false', async () => {
-      const { debugResultGloballyIfChanged } = await importModels();
-      expect(debugResultGloballyIfChanged).toBe(false);
-    });
-
-    it('reads VERBLETS_DEBUG_RESPONSE_IF_CHANGED', async () => {
-      vi.stubEnv('VERBLETS_DEBUG_RESPONSE_IF_CHANGED', 'true');
-      const { debugResultGloballyIfChanged } = await importModels();
-      expect(debugResultGloballyIfChanged).toBe(true);
-    });
-  });
-
   describe('selectMapping (via defaultMapping)', () => {
     it('includes sensitive mapping when OPENWEBUI_API_KEY is set', async () => {
       vi.stubEnv('OPENAI_API_KEY', 'test-key');

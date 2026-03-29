@@ -1,11 +1,10 @@
 import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import parallelBatch from '../../lib/parallel-batch/index.js';
-import { createLifecycleLogger } from '../../lib/lifecycle-logger/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { blockExtractionSchema } from './block-schema.js';
 import createProgressEmitter from '../../lib/progress/index.js';
-import { OpEvent } from '../../lib/progress/constants.js';
+import { OpEvent, DomainEvent, Level } from '../../lib/progress/constants.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 
 const name = 'extract-blocks';
@@ -68,25 +67,22 @@ ${asXML(numberedLines, { tag: 'window' })}`;
  * @param {number} config.windowSize - Lines per window (default: 100)
  * @param {number} config.overlapSize - Lines of overlap between windows (default: 20)
  * @param {number} config.maxParallel - Max parallel window processing (default: 3)
- * @param {Object} config.logger - Logger instance
+ * @param {Function} config.onProgress - Progress callback
  * @returns {Promise<Array<Array<string>>>} Array of blocks, each block is array of lines
  */
 export async function extractBlocks(text, instructions, config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
-  emitter.start();
   const { maxParallel, windowSize, overlapSize } = await getOptions(runConfig, {
     precision: withPolicy(mapPrecision, ['windowSize', 'overlapSize']),
     maxParallel: 3,
   });
-  const { logger, onProgress } = runConfig;
-
-  const lifecycleLogger = createLifecycleLogger(logger, 'chain:extract-blocks');
+  emitter.start({ message: 'Extract-blocks chain starting', windowSize, overlapSize, maxParallel });
+  const { onProgress } = runConfig;
 
   // Handle empty text
   if (!text || text.trim() === '') {
     const emptyMeta = { blocksExtracted: 0 };
-    lifecycleLogger.logResult([], emptyMeta);
     emitter.complete(emptyMeta);
 
     return [];
@@ -95,20 +91,15 @@ export async function extractBlocks(text, instructions, config = {}) {
   const lines = text.split('\n');
   const totalLines = lines.length;
 
-  lifecycleLogger.logStart({
+  emitter.emit({
+    event: DomainEvent.step,
+    stepName: 'input',
+    level: Level.debug,
     totalLines,
     windowSize,
     overlapSize,
     maxParallel,
-  });
-
-  // Log input
-  lifecycleLogger.info({
-    event: 'chain:extract-blocks:input',
-    value: {
-      textLength: text.length,
-      lineCount: totalLines,
-    },
+    textLength: text.length,
   });
 
   // Generate window start positions
@@ -139,7 +130,6 @@ export async function extractBlocks(text, instructions, config = {}) {
           callLlm(prompt, {
             ...runConfig,
             response_format: blockExtractionSchema,
-            logger: lifecycleLogger,
           }),
         {
           label: `extract-blocks:window`,
@@ -189,16 +179,14 @@ export async function extractBlocks(text, instructions, config = {}) {
     blocksExtracted: blocks.length,
   });
 
-  // Log output
-  lifecycleLogger.info({
-    event: 'chain:extract-blocks:output',
-    value: {
-      totalBlocks: blocks.length,
-    },
+  emitter.emit({
+    event: DomainEvent.step,
+    stepName: 'output',
+    level: Level.debug,
+    totalBlocks: blocks.length,
   });
 
   const resultMeta = { blocksExtracted: blocks.length };
-  lifecycleLogger.logResult(blocks, resultMeta);
   emitter.complete(resultMeta);
 
   return blocks;

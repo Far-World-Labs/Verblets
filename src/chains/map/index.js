@@ -1,13 +1,9 @@
 import listBatch, { ListStyle, determineStyle } from '../../verblets/list-batch/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
-import {
-  createLifecycleLogger,
-  extractBatchConfig,
-  extractPromptAnalysis,
-} from '../../lib/lifecycle-logger/index.js';
+import { extractBatchConfig } from '../../lib/progress/extract.js';
+import { DomainEvent, OpEvent, Level } from '../../lib/progress/constants.js';
 import { createBatches, parallel, retry } from '../../lib/index.js';
 import createProgressEmitter from '../../lib/progress/index.js';
-import { OpEvent } from '../../lib/progress/constants.js';
 import { nameStep, getOptions } from '../../lib/context/option.js';
 
 const name = 'map';
@@ -41,15 +37,6 @@ const mapOnce = async function (list, instructions, config = {}) {
     }
     return true;
   });
-
-  // Log batch processing start
-  if (config.logger?.info) {
-    config.logger.info('Map chain processing batches', {
-      totalBatches: batchesToProcess.length,
-      maxParallel,
-      batchSizes: batchesToProcess.map((b) => b.items.length),
-    });
-  }
 
   const emitter = createProgressEmitter('map', onProgress);
   const batchDone = emitter.batch(list.length);
@@ -108,11 +95,6 @@ Return the transformed items as an XML list with exactly ${items.length} items:
 Preserve all formatting and newlines within each <item> element.`;
       }
 
-      // Log the compiled prompt for this batch
-      if (config.logger) {
-        config.logger.logEvent('batch-prompt', extractPromptAnalysis(compiledPrompt));
-      }
-
       try {
         const listBatchOptions = {
           ...config,
@@ -135,24 +117,8 @@ Preserve all formatting and newlines within each <item> element.`;
         });
 
         batchDone(items.length);
-
-        if (config.logger?.info) {
-          config.logger.info(`Map batch completed`, {
-            startIndex,
-            itemCount: items.length,
-            successCount: output.length,
-          });
-        }
       } catch (error) {
         if (errorPosture === 'strict') throw error;
-        // Log the error before marking items as undefined
-        if (config.logger?.error) {
-          config.logger.error(`Map batch ${startIndex}-${startIndex + items.length - 1} failed`, {
-            error: error.message,
-            itemCount: items.length,
-          });
-        }
-
         // On error, mark all items in batch as undefined
         for (let j = 0; j < items.length; j += 1) {
           results[startIndex + j] = undefined;
@@ -193,45 +159,18 @@ Preserve all formatting and newlines within each <item> element.`;
 const map = async function (list, instructions, config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
-  emitter.start();
   const { maxAttempts, maxParallel, errorPosture } = await getOptions(runConfig, {
     maxAttempts: 3,
     maxParallel: 3,
     errorPosture: 'resilient',
   });
-  const { logger } = runConfig;
-  // Create logger for map chain
-  const lifecycleLogger = createLifecycleLogger(logger, 'chain:map');
-
-  // Log detailed config for debugging
-  if (logger?.info) {
-    logger.info('Map chain starting', {
-      itemCount: list.length,
-      instructionsLength: instructions?.length,
-      llm: runConfig.llm,
-      batchSize: runConfig.batchSize,
-      maxParallel: runConfig.maxParallel,
-      maxAttempts,
-      hasOnProgress: !!runConfig.onProgress,
-    });
-  }
-
-  // Log map chain start with batch configuration
-  lifecycleLogger.logStart(
-    extractBatchConfig({
-      totalItems: list.length,
-      batchSize: runConfig.batchSize,
-      maxAttempts,
-      maxParallel: runConfig.maxParallel,
-    })
-  );
+  emitter.start({ message: 'Map chain starting', ...extractBatchConfig({ totalItems: list.length, batchSize: runConfig.batchSize, maxAttempts, maxParallel: runConfig.maxParallel }) });
 
   const results = await mapOnce(list, instructions, {
     ...runConfig,
     maxAttempts,
     maxParallel,
     errorPosture,
-    logger: lifecycleLogger,
   });
 
   for (let attempt = 1; attempt < maxAttempts; attempt += 1) {
@@ -247,20 +186,12 @@ const map = async function (list, instructions, config = {}) {
 
     if (missingItems.length === 0) break;
 
-    // Log retry attempt
-    lifecycleLogger.logEvent(
-      'retry',
-      extractBatchConfig({
-        retryCount: attempt,
-        failedItems: missingItems.length,
-      })
-    );
+    emitter.emit({ event: DomainEvent.step, stepName: 'retry-pass', level: Level.warn, message: 'Retrying failed items', ...extractBatchConfig({ retryCount: attempt, failedItems: missingItems.length }) });
 
     const retryResults = await mapOnce(missingItems, instructions, {
       ...runConfig,
       maxAttempts,
       maxParallel,
-      logger: lifecycleLogger,
     });
 
     retryResults.forEach((val, i) => {
@@ -275,8 +206,7 @@ const map = async function (list, instructions, config = {}) {
     successCount,
     failedItems: results.length - successCount,
   };
-  lifecycleLogger.logResult(results, resultMeta);
-  emitter.complete(resultMeta);
+  emitter.complete({ message: 'Map chain complete', ...resultMeta });
 
   return results;
 };

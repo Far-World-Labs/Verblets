@@ -3,7 +3,7 @@ import { longTestTimeout } from '../../constants/common.js';
 import centralTendency from './index.js';
 import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 
-const { it, expect, aiExpect, makeLogger } = getTestHelpers('Central-tendency chain');
+const { it, expect, aiExpect } = getTestHelpers('Central-tendency chain');
 
 describe('Bulk Central Tendency Chain', () => {
   it(
@@ -12,10 +12,8 @@ describe('Bulk Central Tendency Chain', () => {
       const items = ['apple', 'orange', 'durian', 'jackfruit', 'banana'];
       const seedItems = ['apple', 'orange', 'banana', 'grape', 'strawberry'];
 
-      const logger = makeLogger('scores items by centrality');
       const results = await centralTendency(items, seedItems, {
         context: 'Common fruits found in grocery stores',
-        logger,
       });
 
       expect(results).toHaveLength(5);
@@ -36,10 +34,8 @@ describe('Bulk Central Tendency Chain', () => {
       const items = ['robin', 'eagle', 'penguin', 'ostrich'];
       const seedItems = ['robin', 'sparrow', 'cardinal', 'blue jay'];
 
-      const logger = makeLogger('context effects');
       const results = await centralTendency(items, seedItems, {
         context: 'Small songbirds commonly seen in backyards',
-        logger,
       });
 
       expect(results).toHaveLength(4);

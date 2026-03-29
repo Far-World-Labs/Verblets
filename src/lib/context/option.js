@@ -1,5 +1,5 @@
 import createProgressEmitter, { traceId, spanId } from '../progress/index.js';
-import { TelemetryEvent, OptionSource } from '../progress/constants.js';
+import { DomainEvent, OptionSource } from '../progress/constants.js';
 
 /**
  * Compose a step name onto the operation path and stamp the run time.
@@ -34,7 +34,7 @@ export function nameStep(step, config) {
  *
  * Lookup order: policy[name] → config[name] → fallback
  *
- * Policy functions receive (context, { logger }) where context contains
+ * Policy functions receive (context) where context contains
  * ambient chain data like `operation` (the hierarchical operation path).
  * Targeting attributes (domain, tenant, plan) are curried into the policy
  * function at definition time — they never appear on config.
@@ -49,7 +49,7 @@ export async function getOption(name, config, fallback) {
   if (typeof fn === 'function') {
     try {
       const context = { operation: config.operation };
-      return (await fn(context, { logger: config.logger })) ?? fallback;
+      return (await fn(context)) ?? fallback;
     } catch {
       return fallback;
     }
@@ -81,7 +81,7 @@ export async function getOptionDetail(name, config, fallback) {
   if (typeof fn === 'function') {
     try {
       const context = { operation: config.operation };
-      const raw = await fn(context, { logger: config.logger });
+      const raw = await fn(context);
       const value = raw ?? fallback;
       detail.source = OptionSource.policy;
       detail.value = value;
@@ -99,8 +99,8 @@ export async function getOptionDetail(name, config, fallback) {
     detail.value = fallback;
   }
 
-  createProgressEmitter(name, config.onProgress, config).metrics({
-    event: TelemetryEvent.optionResolve,
+  createProgressEmitter(name, config.onProgress, config).emit({
+    event: DomainEvent.optionResolve,
     source: detail.source,
     value: detail.value,
     policyReturned: detail.policyReturned,

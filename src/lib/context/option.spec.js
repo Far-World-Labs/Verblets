@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { nameStep, getOption, getOptions, withPolicy } from './option.js';
 
 describe('nameStep', () => {
@@ -29,11 +29,11 @@ describe('nameStep', () => {
   });
 
   it('preserves all other config keys', () => {
-    const config = { llm: { fast: true }, maxAttempts: 5, logger: 'log' };
+    const config = { llm: { fast: true }, maxAttempts: 5, temperature: 0.7 };
     const result = nameStep('filter', config);
     expect(result.llm).toEqual({ fast: true });
     expect(result.maxAttempts).toBe(5);
-    expect(result.logger).toBe('log');
+    expect(result.temperature).toBe(0.7);
   });
 
   it('does not mutate the original config', () => {
@@ -158,15 +158,12 @@ describe('getOption', () => {
     expect(result).toBe(0.5);
   });
 
-  it('passes context object and { logger } to async function', async () => {
-    const logger = { info: vi.fn() };
+  it('passes context object to async policy function', async () => {
     const options = {
       operation: 'filter',
-      logger,
       policy: {
-        protection: async (ctx, { logger: receivedLogger }) => {
+        protection: async (ctx) => {
           expect(ctx).toEqual({ operation: 'filter' });
-          expect(receivedLogger).toBe(logger);
           return 'redact';
         },
       },
@@ -175,15 +172,12 @@ describe('getOption', () => {
     expect(result).toBe('redact');
   });
 
-  it('passes context object and { logger } to sync function', async () => {
-    const logger = { info: vi.fn() };
+  it('passes context object to sync policy function', async () => {
     const options = {
       operation: 'filter',
-      logger,
       policy: {
-        protection: (ctx, { logger: receivedLogger }) => {
+        protection: (ctx) => {
           expect(ctx).toEqual({ operation: 'filter' });
-          expect(receivedLogger).toBe(logger);
           return 'redact';
         },
       },

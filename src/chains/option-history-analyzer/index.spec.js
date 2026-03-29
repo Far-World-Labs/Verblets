@@ -6,6 +6,7 @@ import {
   Kind,
   ChainEvent,
   OpEvent,
+  DomainEvent,
   TelemetryEvent,
   OptionSource,
   ModelSource,
@@ -68,8 +69,8 @@ describe('createOptionHistoryAnalyzer', () => {
     const suggester = createOptionHistoryAnalyzer();
 
     suggester.observe({
-      kind: Kind.telemetry,
-      event: TelemetryEvent.optionResolve,
+      kind: Kind.event,
+      event: DomainEvent.optionResolve,
       step: 'strictness',
       operation: 'filter',
       source: OptionSource.policy,
@@ -84,8 +85,8 @@ describe('createOptionHistoryAnalyzer', () => {
     const suggester = createOptionHistoryAnalyzer();
 
     suggester.observe({
-      kind: Kind.telemetry,
-      event: TelemetryEvent.llmModel,
+      kind: Kind.event,
+      event: DomainEvent.llmModel,
       step: 'llm',
       operation: 'filter',
       model: 'gpt-4o',
@@ -99,7 +100,7 @@ describe('createOptionHistoryAnalyzer', () => {
   it('observe ignores non-trace events', () => {
     const suggester = createOptionHistoryAnalyzer();
 
-    suggester.observe({ kind: Kind.telemetry, event: ChainEvent.complete, step: 'filter' });
+    suggester.observe({ kind: Kind.event, event: ChainEvent.complete, step: 'filter' });
     suggester.observe({ kind: Kind.telemetry, event: TelemetryEvent.llmCall, step: 'llm' });
     suggester.observe({ kind: Kind.operation, event: OpEvent.start, step: 'filter' });
 
@@ -120,8 +121,8 @@ describe('createOptionHistoryAnalyzer', () => {
 
     const suggester = createOptionHistoryAnalyzer();
     suggester.observe({
-      kind: Kind.telemetry,
-      event: TelemetryEvent.optionResolve,
+      kind: Kind.event,
+      event: DomainEvent.optionResolve,
       step: 'thoroughness',
       operation: 'score',
       source: OptionSource.fallback,
@@ -141,8 +142,8 @@ describe('createOptionHistoryAnalyzer', () => {
 
     const suggester = createOptionHistoryAnalyzer();
     suggester.observe({
-      kind: Kind.telemetry,
-      event: TelemetryEvent.llmModel,
+      kind: Kind.event,
+      event: DomainEvent.llmModel,
       step: 'llm',
       operation: 'filter',
       model: 'gpt-4o-mini',
@@ -162,8 +163,8 @@ describe('createOptionHistoryAnalyzer', () => {
 
     const suggester = createOptionHistoryAnalyzer();
     suggester.observe({
-      kind: Kind.telemetry,
-      event: TelemetryEvent.optionResolve,
+      kind: Kind.event,
+      event: DomainEvent.optionResolve,
       step: 'strictness',
       operation: 'filter',
       source: OptionSource.fallback,
@@ -332,8 +333,8 @@ describe('createOptionHistoryAnalyzer', () => {
 
     // Simulates what getOptionDetail emits through onProgress
     suggester.observe({
-      kind: Kind.telemetry,
-      event: TelemetryEvent.optionResolve,
+      kind: Kind.event,
+      event: DomainEvent.optionResolve,
       step: 'strictness',
       operation: 'filter',
       source: OptionSource.policy,
@@ -341,8 +342,8 @@ describe('createOptionHistoryAnalyzer', () => {
       policyReturned: 'high',
     });
     suggester.observe({
-      kind: Kind.telemetry,
-      event: TelemetryEvent.optionResolve,
+      kind: Kind.event,
+      event: DomainEvent.optionResolve,
       step: 'thoroughness',
       operation: 'score',
       source: OptionSource.fallback,

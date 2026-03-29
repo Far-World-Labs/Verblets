@@ -1,8 +1,9 @@
 import map from '../map/index.js';
 import { CENTRAL_TENDENCY_PROMPT } from '../../verblets/central-tendency-lines/index.js';
 import { centralTendencyResultsJsonSchema } from './schemas.js';
-import { createLifecycleLogger, extractPromptAnalysis } from '../../lib/lifecycle-logger/index.js';
+import { extractPromptAnalysis } from '../../lib/progress/extract.js';
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
+import { DomainEvent, Level } from '../../lib/progress/constants.js';
 import { jsonSchema } from '../../lib/llm/index.js';
 import { nameStep, getOptions } from '../../lib/context/option.js';
 
@@ -69,36 +70,29 @@ export default async function centralTendency(items, seedItems, config = {}) {
 
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
-  emitter.start();
   const { batchSize } = await getOptions(runConfig, {
     batchSize: 5,
   });
-
-  // Create lifecycle logger for the chain
-  const lifecycleLogger = createLifecycleLogger(runConfig.logger, 'central-tendency-chain');
-
-  // Log the initial input to the chain
-  lifecycleLogger.logStart({
-    items,
-    seedItems,
-    context: runConfig.context,
-    coreFeatures: runConfig.coreFeatures,
-    itemCount: items.length,
-    seedCount: seedItems.length,
-  });
+  emitter.start({ message: 'Central-tendency chain starting', totalItems: items.length, seedCount: seedItems.length, batchSize });
 
   // Build instructions for the mapper
   const instructions = buildCentralTendencyInstructions(seedItems, runConfig);
 
   // Log instruction construction
-  lifecycleLogger.logConstruction(instructions, extractPromptAnalysis(instructions));
+  emitter.emit({
+    event: DomainEvent.step,
+    stepName: 'construction',
+    level: Level.debug,
+    ...extractPromptAnalysis(instructions),
+    itemCount: items.length,
+    seedCount: seedItems.length,
+  });
 
   // Use map to handle all the complexity
   const results = await map(items, instructions, {
     ...runConfig,
     batchSize,
     responseFormat: centralTendencyResponseFormat,
-    logger: lifecycleLogger,
     onProgress: scopePhase(runConfig.onProgress, 'map:evaluation'),
   });
 
@@ -108,8 +102,7 @@ export default async function centralTendency(items, seedItems, config = {}) {
     successCount: results.filter((r) => r !== undefined).length,
     failureCount: results.filter((r) => r === undefined).length,
   };
-  lifecycleLogger.logResult(results, resultMeta);
-  emitter.complete(resultMeta);
+  emitter.complete({ message: 'Central-tendency chain complete', ...resultMeta });
 
   return results;
 }

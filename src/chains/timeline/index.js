@@ -7,6 +7,7 @@ import map from '../map/index.js';
 import reduce from '../reduce/index.js';
 import { timelineEventJsonSchema } from './schemas.js';
 import { debug } from '../../lib/debug/index.js';
+import { DomainEvent, Level } from '../../lib/progress/constants.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 
 const name = 'timeline';
@@ -152,12 +153,7 @@ export default async function timeline(text, config = {}) {
         onProgress?.(chunkIndex + 1, chunks.length);
       } catch (error) {
         if (errorPosture === 'strict') throw error;
-        if (runConfig.logger?.warn) {
-          runConfig.logger.warn(
-            `Timeline extraction failed for chunk ${chunkIndex + 1}:`,
-            error.message
-          );
-        }
+        emitter.emit({ event: DomainEvent.step, stepName: 'chunk-error', level: Level.warn, chunkIndex: chunkIndex + 1, message: error.message });
         onProgress?.(chunkIndex + 1, chunks.length);
       }
     },

@@ -1,10 +1,7 @@
 import callLlm from '../../lib/llm/index.js';
 import { strictFormat } from '../../prompts/constants.js';
-import {
-  createLifecycleLogger,
-  extractPromptAnalysis,
-  extractLLMConfig,
-} from '../../lib/lifecycle-logger/index.js';
+import { extractPromptAnalysis, extractLLMConfig } from '../../lib/progress/extract.js';
+import { DomainEvent, Level } from '../../lib/progress/constants.js';
 import { nameStep } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
 import centralTendencySchema from './central-tendency-result.json';
@@ -122,7 +119,7 @@ function createResponseFormat(schemaName = 'central_tendency_result', customSche
 export default async function centralTendency(item, seedItems, config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
-  emitter.start();
+  emitter.start({ message: 'Central-tendency-lines verblet starting' });
   if (!item || typeof item !== 'string') {
     throw new Error('Item must be a non-empty string');
   }
@@ -131,19 +128,16 @@ export default async function centralTendency(item, seedItems, config = {}) {
     throw new Error('seedItems must be a non-empty array');
   }
 
-  const { context = '', coreFeatures = [], llm = 'fastGoodCheap', logger, ...options } = runConfig;
-
-  // Create lifecycle logger with central-tendency namespace
-  const lifecycleLogger = createLifecycleLogger(logger, 'central-tendency');
-
-  // Log start with input
-  lifecycleLogger.logStart({ item, seedItems, context, coreFeatures });
+  const { context = '', coreFeatures = [], llm = 'fastGoodCheap', ...options } = runConfig;
 
   const prompt = buildCentralTendencyPrompt(item, seedItems, { context, coreFeatures });
   const responseFormat = createResponseFormat('central_tendency_result');
 
   // Log prompt construction
-  lifecycleLogger.logConstruction(prompt, {
+  emitter.emit({
+    event: DomainEvent.step,
+    stepName: 'construction',
+    level: Level.debug,
     ...extractPromptAnalysis(prompt),
     ...extractLLMConfig({ response_format: responseFormat }),
     itemLength: item.length,
@@ -154,17 +148,14 @@ export default async function centralTendency(item, seedItems, config = {}) {
   const response = await callLlm(prompt, {
     llm,
     response_format: responseFormat,
-    logger: lifecycleLogger,
     ...options,
   });
 
-  // Log result
-  lifecycleLogger.logResult(response, {
+  emitter.complete({
+    message: 'Central-tendency-lines verblet complete',
     score: response.score,
     confidence: response.confidence,
     hasReason: !!response.reason,
   });
-
-  emitter.complete();
   return response;
 }

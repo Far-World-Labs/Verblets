@@ -1,11 +1,19 @@
 /** Event kind — discriminates the three progress event categories. */
 export const Kind = Object.freeze({
-  /** Domain moments: decisions, phase transitions, meaningful outcomes. */
+  /** Meaningful moments: lifecycle, decisions, phases, traces. */
   event: 'event',
-  /** Execution progress: start, complete, batch bookkeeping. */
+  /** Mechanical execution progress: batch tracking, retry mechanics. */
   operation: 'operation',
-  /** Infrastructure metrics: LLM calls, retries, model selection. */
+  /** Dimensional metrics: token counts, durations, delays. */
   telemetry: 'telemetry',
+});
+
+/** Log level — severity hint for log-like events. */
+export const Level = Object.freeze({
+  debug: 'debug',
+  info: 'info',
+  warn: 'warn',
+  error: 'error',
 });
 
 /** Status code — normalized outcome on lifecycle events. */
@@ -19,7 +27,6 @@ export const ChainEvent = Object.freeze({
   start: 'chain:start',
   complete: 'chain:complete',
   error: 'chain:error',
-  tick: 'chain:tick',
 });
 
 /** Operation event names — emitted by progress() and batch(). */
@@ -27,24 +34,24 @@ export const OpEvent = Object.freeze({
   start: 'start',
   complete: 'complete',
   batchComplete: 'batch:complete',
-  retry: 'retry',
-  error: 'error',
+  retryAttempt: 'retry:attempt',
+  retryError: 'retry:error',
+  retryExhaust: 'retry:exhaust',
 });
 
 /** Domain event names — emitted by emit(). */
 export const DomainEvent = Object.freeze({
   phase: 'phase',
   step: 'step',
+  tick: 'tick',
+  llmModel: 'llm:model',
+  optionResolve: 'option:resolve',
+  promptTrace: 'prompt:trace',
 });
 
 /** Telemetry event names — emitted by metrics(). */
 export const TelemetryEvent = Object.freeze({
-  llmModel: 'llm:model',
   llmCall: 'llm:call',
-  retryAttempt: 'retry:attempt',
-  retryError: 'retry:error',
-  retryExhaust: 'retry:exhaust',
-  optionResolve: 'option:resolve',
 });
 
 /** LLM call status values. */

@@ -5,7 +5,7 @@ import { longTestTimeout } from '../../constants/common.js';
 
 import { getTestHelpers } from '../../chains/test-analysis/test-wrappers.js';
 
-const { it, expect, aiExpect, makeLogger } = getTestHelpers('Bool verblet');
+const { it, expect, aiExpect } = getTestHelpers('Bool verblet');
 
 const examples = [
   {
@@ -28,7 +28,6 @@ describe('Bool verblet', () => {
       `${example.inputs.text}`,
       async () => {
         const result = await bool(example.inputs.text, {
-          logger: makeLogger(example.inputs.text),
         });
         expect(result).toStrictEqual(example.want.result);
 
@@ -55,7 +54,6 @@ describe('Bool verblet', () => {
     `;
 
       const result = await bool(complexQuestion, {
-        logger: makeLogger('should handle complex contextual decisions'),
       });
 
       // Traditional assertion

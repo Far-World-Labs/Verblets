@@ -11,14 +11,6 @@ export const cacheTTL = configGet('VERBLETS_CACHE_TTL');
 
 export const cachingEnabled = configGet('VERBLETS_DISABLE_CACHE') !== true;
 
-export const debugPromptGlobally = configGet('VERBLETS_DEBUG_PROMPT');
-
-export const debugPromptGloballyIfChanged = configGet('VERBLETS_DEBUG_REQUEST_IF_CHANGED');
-
-export const debugResultGlobally = configGet('VERBLETS_DEBUG_RESPONSE');
-
-export const debugResultGloballyIfChanged = configGet('VERBLETS_DEBUG_RESPONSE_IF_CHANGED');
-
 export const frequencyPenalty = configGet('VERBLETS_FREQUENCY_PENALTY');
 
 export const presencePenalty = configGet('VERBLETS_PRESENCE_PENALTY');

@@ -1,7 +1,7 @@
 import { defaultMaxAttempts, retryDelay as retryDelayDefault } from '../../constants/common.js';
 import { getOption } from '../context/option.js';
 import createProgressEmitter from '../progress/index.js';
-import { TelemetryEvent, OpEvent, Metric, RetryOutcome } from '../progress/constants.js';
+import { OpEvent, Level, Metric, RetryOutcome } from '../progress/constants.js';
 
 const abortError = (signal) => signal?.reason ?? new Error('The operation was aborted.');
 
@@ -55,8 +55,8 @@ async function retry(fn, opts = {}) {
       throw abortError(abortSignal);
     }
 
-    emitter.metrics({
-      event: TelemetryEvent.retryAttempt,
+    emitter.progress({
+      event: OpEvent.retryAttempt,
       attemptNumber: attempt + 1,
       maxAttempts,
       outcome: RetryOutcome.attempt,
@@ -83,33 +83,23 @@ async function retry(fn, opts = {}) {
       const status = error.response?.status;
       const isRetry = retryOnAll || status === 429 || (status >= 500 && status < 600);
 
-      const isLastAttempt = !isRetry || attempt >= maxAttempts - 1;
-
       if (isRetry && attempt < maxAttempts - 1) {
         const delay = retryDelay * attempt;
 
-        if (onProgress) {
-          const progressData = {
-            event: OpEvent.retry,
-            attemptNumber: attempt + 1,
-            maxAttempts,
-            delay,
-            error: error.message,
-          };
-
-          if (attempt + 1 < maxAttempts - 1) {
-            progressData.nextAttempt = attempt + 2;
-          }
-
-          emitter.progress(progressData);
-        }
-
-        emitter.metrics({
-          event: TelemetryEvent.retryError,
+        // Unified retry error event — log-like with narrative value
+        emitter.progress({
+          event: OpEvent.retryError,
+          level: Level.warn,
+          message: `Retry ${attempt + 1}/${maxAttempts}: ${error.message}`,
           attemptNumber: attempt + 1,
           maxAttempts,
+          delay,
           outcome: RetryOutcome.error,
-          error: { message: error.message, httpStatus: error.httpStatus, type: error.errorType },
+          error: {
+            message: error.message,
+            ...(error.httpStatus !== undefined && { httpStatus: error.httpStatus }),
+            ...(error.errorType !== undefined && { type: error.errorType }),
+          },
         });
 
         emitter.measure({
@@ -125,23 +115,21 @@ async function retry(fn, opts = {}) {
       } else {
         attempt = maxAttempts;
 
-        if (onProgress && isLastAttempt) {
-          emitter.progress({
-            event: OpEvent.error,
-            attemptNumber: attempt + 1,
-            maxAttempts,
-            error: error.message,
-            totalAttempts: attempt + 1,
-            final: true,
-          });
-        }
-
-        emitter.metrics({
-          event: TelemetryEvent.retryExhaust,
+        // Unified exhaustion event — log-like with narrative value
+        emitter.progress({
+          event: OpEvent.retryExhaust,
+          level: Level.error,
+          message: `Exhausted ${maxAttempts} attempts: ${error.message}`,
           attemptNumber: attempt,
           maxAttempts,
           outcome: RetryOutcome.exhaust,
-          error: { message: error.message, httpStatus: error.httpStatus, type: error.errorType },
+          error: {
+            message: error.message,
+            ...(error.httpStatus !== undefined && { httpStatus: error.httpStatus }),
+            ...(error.errorType !== undefined && { type: error.errorType }),
+          },
+          final: true,
+          totalAttempts: attempt,
         });
       }
     }

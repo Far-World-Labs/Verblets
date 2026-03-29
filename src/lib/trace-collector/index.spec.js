@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import createTraceCollector, { eventToTrace } from './index.js';
 import {
   Kind,
+  DomainEvent,
   TelemetryEvent,
   ChainEvent,
   ModelSource,
@@ -21,7 +22,7 @@ describe('trace-collector', () => {
   describe('eventToTrace', () => {
     it('converts option:resolve event', () => {
       const trace = eventToTrace({
-        event: TelemetryEvent.optionResolve,
+        event: DomainEvent.optionResolve,
         step: 'strictness',
         operation: 'filter',
         source: OptionSource.policy,
@@ -40,7 +41,7 @@ describe('trace-collector', () => {
 
     it('converts llm:model event with source normalization', () => {
       const trace = eventToTrace({
-        event: TelemetryEvent.llmModel,
+        event: DomainEvent.llmModel,
         operation: 'filter',
         model: 'gpt-4o-mini',
         source: ModelSource.default,
@@ -57,7 +58,7 @@ describe('trace-collector', () => {
 
     it('preserves non-default source on llm:model', () => {
       const trace = eventToTrace({
-        event: TelemetryEvent.llmModel,
+        event: DomainEvent.llmModel,
         operation: 'filter',
         model: 'gpt-4o',
         source: ModelSource.negotiated,
@@ -67,7 +68,7 @@ describe('trace-collector', () => {
 
     it('captures error message from option:resolve', () => {
       const trace = eventToTrace({
-        event: TelemetryEvent.optionResolve,
+        event: DomainEvent.optionResolve,
         step: 'strictness',
         operation: 'filter',
         source: OptionSource.fallback,
@@ -104,8 +105,8 @@ describe('trace-collector', () => {
     it('observe captures option:resolve events', () => {
       const collector = createTraceCollector();
       collector.observe({
-        kind: Kind.telemetry,
-        event: TelemetryEvent.optionResolve,
+        kind: Kind.event,
+        event: DomainEvent.optionResolve,
         step: 'strictness',
         operation: 'filter',
         source: OptionSource.policy,
@@ -118,8 +119,8 @@ describe('trace-collector', () => {
     it('observe captures llm:model events', () => {
       const collector = createTraceCollector();
       collector.observe({
-        kind: Kind.telemetry,
-        event: TelemetryEvent.llmModel,
+        kind: Kind.event,
+        event: DomainEvent.llmModel,
         operation: 'filter',
         model: 'gpt-4o',
         source: ModelSource.negotiated,

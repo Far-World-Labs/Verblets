@@ -5,14 +5,13 @@ import { longTestTimeout } from '../../constants/common.js';
 
 import { getTestHelpers } from '../../chains/test-analysis/test-wrappers.js';
 
-const { it, expect, aiExpect, makeLogger } = getTestHelpers('embed-multi-query');
+const { it, expect, aiExpect } = getTestHelpers('embed-multi-query');
 
 describe('embed-multi-query', () => {
   it(
     'generates diverse query variants',
     async () => {
       const result = await embedMultiQuery('how do plants make food', {
-        logger: makeLogger('generates diverse query variants'),
       });
 
       expect(Array.isArray(result)).toBe(true);
@@ -37,7 +36,6 @@ describe('embed-multi-query', () => {
     async () => {
       const result = await embedMultiQuery('machine learning basics', {
         count: 4,
-        logger: makeLogger('respects the count parameter'),
       });
 
       expect(Array.isArray(result)).toBe(true);
