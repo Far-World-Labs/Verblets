@@ -28,6 +28,8 @@ import {
   TelemetryEvent,
   LlmStatus,
   OptionSource,
+  Metric,
+  TokenType,
 } from '../progress/constants.js';
 
 const mockFetch = fetch;
@@ -104,10 +106,30 @@ describe('Telemetry events', () => {
         operation: 'filter',
         status: LlmStatus.success,
         cached: false,
-        usage: { inputTokens: 20, outputTokens: 10 },
       });
-      expect(typeof callEvents[0].durationMs).toBe('number');
-      expect(callEvents[0].durationMs).toBeGreaterThanOrEqual(0);
+
+      // Token usage emitted as flat dimensional metrics
+      const tokenEvents = events.filter((e) => e.metric === Metric.tokenUsage);
+      expect(tokenEvents).toHaveLength(2);
+      expect(tokenEvents).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            metric: Metric.tokenUsage,
+            tokenType: TokenType.input,
+            value: 20,
+          }),
+          expect.objectContaining({
+            metric: Metric.tokenUsage,
+            tokenType: TokenType.output,
+            value: 10,
+          }),
+        ])
+      );
+
+      // Duration emitted as flat dimensional metric
+      const durationEvents = events.filter((e) => e.metric === Metric.llmDuration);
+      expect(durationEvents).toHaveLength(1);
+      expect(durationEvents[0].value).toBeGreaterThanOrEqual(0);
     });
 
     it('emits llm:call error telemetry with httpStatus on rate limit', async () => {
@@ -136,8 +158,12 @@ describe('Telemetry events', () => {
           type: 'rate_limit_error',
         },
       });
-      expect(typeof callEvents[0].durationMs).toBe('number');
       expect(callEvents[0].error.message).toContain('Rate limit exceeded');
+
+      // Duration emitted as flat metric even on error
+      const durationEvents = events.filter((e) => e.metric === Metric.llmDuration);
+      expect(durationEvents).toHaveLength(1);
+      expect(typeof durationEvents[0].value).toBe('number');
     });
 
     it('emits llm:call error telemetry on non-JSON response', async () => {
@@ -332,7 +358,10 @@ describe('Telemetry events', () => {
           type: 'rate_limit_error',
         },
       });
-      expect(typeof errorEvents[0].delay).toBe('number');
+      // Delay emitted as flat dimensional metric
+      const delayEvents = events.filter((e) => e.metric === Metric.retryDelay);
+      expect(delayEvents).toHaveLength(1);
+      expect(typeof delayEvents[0].value).toBe('number');
     });
 
     it('emits retry:exhaust on final failure', async () => {

@@ -6,6 +6,49 @@ Instead of mimicking humans in order to automate tasks, an AI standard library *
 
 Why the name? Verblets are *verbally* based: they're LLM-powered; and you can think of functions as verbs.
 
+## Install
+
+```sh
+npm install @far-world-labs/verblets
+```
+
+Set an API key as an environment variable — either works:
+
+```sh
+export OPENAI_API_KEY=sk-...
+# or
+export ANTHROPIC_API_KEY=sk-ant-...
+```
+
+Or use a `.env` file in your project root (loaded automatically via dotenv).
+
+Then initialize and call a function:
+
+```js
+import { init, score } from '@far-world-labs/verblets';
+
+init();
+
+const results = await score(
+  ['reliability', 'performance', 'ease of use'],
+  'Rate each quality for a bicycle',
+);
+```
+
+`init()` validates that an API key is present and sets up internal services. Call it once at startup. It accepts optional configuration:
+
+```js
+init({
+  embed: true,            // enable local embedding model
+  redis: redisClient,     // pre-configured Redis client for caching
+  modelOverrides: {       // override default model selection
+    modelName: 'claude-sonnet-4-20250514',
+  },
+});
+```
+
+Without Redis, caching is disabled and the library operates statelessly.
+
 ## Repository Guide
 
 ### Quick Links

@@ -22,7 +22,13 @@ import { onlyJSON, contentIsSchema } from '../../prompts/constants.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { getOption } from '../context/option.js';
 import createProgressEmitter from '../progress/index.js';
-import { TelemetryEvent, LlmStatus, ModelSource } from '../progress/constants.js';
+import {
+  TelemetryEvent,
+  LlmStatus,
+  ModelSource,
+  Metric,
+  TokenType,
+} from '../progress/constants.js';
 
 /**
  * Configure the appropriate abort signal for fetch requests.
@@ -441,33 +447,63 @@ export const run = async (prompt, config = {}) => {
     }
 
     // Telemetry: successful LLM call
-    const usage = result?.usage;
+    const callAttrs = {
+      model: modelNameNegotiated,
+      provider: modelFound.provider || 'openai',
+      cached: !!cacheResult,
+    };
+
     emitter.metrics({
       event: TelemetryEvent.llmCall,
       status: LlmStatus.success,
-      model: modelNameNegotiated,
-      provider: modelFound.provider || 'openai',
-      durationMs: Date.now() - startTime,
-      cached: !!cacheResult,
-      usage: usage
-        ? { inputTokens: usage.prompt_tokens, outputTokens: usage.completion_tokens }
-        : { inputTokens: 0, outputTokens: 0 },
+      ...callAttrs,
+    });
+
+    const usage = result?.usage;
+    const inputTokens = usage?.prompt_tokens ?? 0;
+    const outputTokens = usage?.completion_tokens ?? 0;
+
+    emitter.measure({
+      metric: Metric.tokenUsage,
+      tokenType: TokenType.input,
+      value: inputTokens,
+      ...callAttrs,
+    });
+    emitter.measure({
+      metric: Metric.tokenUsage,
+      tokenType: TokenType.output,
+      value: outputTokens,
+      ...callAttrs,
+    });
+    emitter.measure({
+      metric: Metric.llmDuration,
+      value: Date.now() - startTime,
+      ...callAttrs,
     });
 
     return resultShaped;
   } catch (err) {
     // Telemetry: failed LLM call
+    const errAttrs = {
+      model: modelNameNegotiated,
+      provider: modelFound.provider || 'openai',
+    };
+
     emitter.metrics({
       event: TelemetryEvent.llmCall,
       status: LlmStatus.error,
-      model: modelNameNegotiated,
-      provider: modelFound.provider || 'openai',
-      durationMs: Date.now() - startTime,
+      ...errAttrs,
       error: {
         message: err.message,
         httpStatusCode: err.httpStatus,
         type: err.errorType,
       },
+    });
+
+    emitter.measure({
+      metric: Metric.llmDuration,
+      value: Date.now() - startTime,
+      ...errAttrs,
     });
     throw err;
   }
