@@ -3,22 +3,19 @@ import { encode } from 'gpt-tokenizer';
 
 import { get as configGet } from '../config/index.js';
 import embedNormalizeText from '../embed-normalize-text/index.js';
+import {
+  isEmbedEnabled,
+  setEmbedEnabled,
+  getExtractorPromise,
+  setExtractorPromise,
+} from './state.js';
 
-let enabled = false;
-let extractorPromise;
-
-/**
- * Enable or disable local embeddings.
- * Called by init({ embed: true }) — disabled by default.
- */
-export function setEmbedEnabled(value) {
-  enabled = value;
-  if (!value) extractorPromise = undefined;
-}
+export { setEmbedEnabled };
 
 function getExtractor() {
+  let extractorPromise = getExtractorPromise();
   if (!extractorPromise) {
-    if (!enabled) {
+    if (!isEmbedEnabled()) {
       throw new Error('Local embeddings are disabled. Call init({ embed: true }) to enable.');
     }
     const model = configGet('VERBLETS_EMBED_MODEL');
@@ -30,6 +27,7 @@ function getExtractor() {
       console.error(`[verblets:embed] Model "${model}" ready (${Date.now() - startTime}ms)`);
       return extractor;
     });
+    setExtractorPromise(extractorPromise);
   }
   return extractorPromise;
 }

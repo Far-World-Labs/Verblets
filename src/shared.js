@@ -173,6 +173,13 @@ export {
   softCoverPrompt,
 } from './chains/veiled-variants/index.js';
 
+// Vision
+export {
+  default as analyzeImage,
+  mapDetail as analyzeImageMapDetail,
+} from './chains/analyze-image/index.js';
+export { buildVisionPrompt } from './lib/llm/index.js';
+
 // Utility Operations
 export { default as auto } from './verblets/auto/index.js';
 export { default as expect } from './verblets/expect/index.js';

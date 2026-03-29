@@ -50,7 +50,7 @@ const mapOnce = async function (list, instructions, config = {}) {
     });
   }
 
-  const emitter = createProgressEmitter('map', onProgress);
+  const emitter = createProgressEmitter('map', onProgress, config);
   const batchDone = emitter.batch(list.length);
   emitter.emit({
     event: 'start',

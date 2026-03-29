@@ -103,10 +103,10 @@ describe('Telemetry integration', () => {
       await callLlm('test', child);
 
       const modelEvent = events.find((e) => e.event === 'llm:model');
-      expect(modelEvent.operation).toBe('parent/child');
+      expect(modelEvent.operation).toBe('parent/child/llm');
 
       const callEvent = events.find((e) => e.event === 'llm:call');
-      expect(callEvent.operation).toBe('parent/child');
+      expect(callEvent.operation).toBe('parent/child/llm');
     });
   });
 
@@ -165,9 +165,9 @@ describe('Telemetry integration', () => {
       });
       expect(retryTelemetry[2]).toMatchObject({ event: 'retry:attempt', attemptNumber: 2 });
 
-      // All retry telemetry events carry the chain operation
+      // All retry telemetry events carry the composed operation
       for (const e of retryTelemetry) {
-        expect(e.operation).toBe('retrychain');
+        expect(e.operation).toBe('retrychain/llm-call');
       }
     });
 

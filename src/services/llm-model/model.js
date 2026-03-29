@@ -4,6 +4,18 @@ export default class Model {
   }
 
   toTokens(text) {
+    // Content array: extract text parts, estimate ~300 tokens per image
+    if (Array.isArray(text)) {
+      const textContent = text
+        .filter((block) => block.type === 'text')
+        .map((block) => block.text)
+        .join('\n');
+      const imageCount = text.filter((block) => block.type === 'image').length;
+      const textTokens = this.tokenizer(textContent);
+      const IMAGE_TOKEN_ESTIMATE = 300;
+      const padding = Array.from({ length: imageCount * IMAGE_TOKEN_ESTIMATE }, () => 0);
+      return [...textTokens, ...padding];
+    }
     // Ensure text is a string
     const textStr = typeof text === 'string' ? text : String(text || '');
     return this.tokenizer(textStr);

@@ -20,7 +20,7 @@ import extractJson from '../extract-json/index.js';
 import stripResponse from '../strip-response/index.js';
 import { onlyJSON, contentIsSchema } from '../../prompts/constants.js';
 import { asXML } from '../../prompts/wrap-variable.js';
-import { getOption } from '../context/option.js';
+import { nameStep, getOption } from '../context/option.js';
 import createProgressEmitter from '../progress/index.js';
 
 /**
@@ -248,8 +248,8 @@ export const run = async (prompt, config = {}) => {
   const modelFound = modelService.getModel(modelNameNegotiated);
 
   // Telemetry: model selection
-  const operation = options.operation;
-  const emitter = createProgressEmitter('llm', options.onProgress);
+  const llmConfig = nameStep('llm', options);
+  const emitter = createProgressEmitter('llm', llmConfig.onProgress, llmConfig);
   const modelSource = shouldNegotiate
     ? 'negotiated'
     : modelOptionsWithOverrides.modelName
@@ -258,7 +258,6 @@ export const run = async (prompt, config = {}) => {
 
   emitter.metrics({
     event: 'llm:model',
-    operation,
     model: modelNameNegotiated,
     source: modelSource,
     negotiation: shouldNegotiate ? negotiation : undefined,
@@ -266,10 +265,13 @@ export const run = async (prompt, config = {}) => {
   });
 
   // Log start event with model information
+  const promptLength = Array.isArray(prompt)
+    ? prompt.reduce((sum, block) => sum + (block.type === 'text' ? block.text.length : 0), 0)
+    : prompt.length;
   if (logger?.info) {
     logger.info({
       event: 'llm:start',
-      promptLength: prompt.length,
+      promptLength,
       model: modelNameNegotiated,
     });
   }
@@ -296,10 +298,16 @@ export const run = async (prompt, config = {}) => {
       : onlyJSON;
 
     // Augment the last user message with JSON format instructions
+    const appendInstruction = (content) => {
+      if (Array.isArray(content)) {
+        return [...content, { type: 'text', text: schemaInstruction }];
+      }
+      return `${content}\n\n${schemaInstruction}`;
+    };
     const messages =
       requestConfig.messages?.map((msg, i, arr) =>
         i === arr.length - 1 && msg.role === 'user'
-          ? { ...msg, content: `${msg.content}\n\n${schemaInstruction}` }
+          ? { ...msg, content: appendInstruction(msg.content) }
           : msg
       ) ?? requestConfig.messages;
 
@@ -444,7 +452,6 @@ export const run = async (prompt, config = {}) => {
     const usage = result?.usage;
     emitter.metrics({
       event: 'llm:call',
-      operation,
       status: 'success',
       model: modelNameNegotiated,
       duration: Date.now() - startTime,
@@ -459,7 +466,6 @@ export const run = async (prompt, config = {}) => {
     // Telemetry: failed LLM call
     emitter.metrics({
       event: 'llm:call',
-      operation,
       status: 'error',
       model: modelNameNegotiated,
       duration: Date.now() - startTime,
@@ -472,5 +478,12 @@ export const run = async (prompt, config = {}) => {
     throw err;
   }
 };
+
+export function buildVisionPrompt(text, images) {
+  return [
+    { type: 'text', text },
+    ...images.map((img) => ({ type: 'image', data: img.data, mediaType: img.mediaType })),
+  ];
+}
 
 export default run;

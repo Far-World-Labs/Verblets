@@ -68,7 +68,7 @@ describe('Telemetry events', () => {
         kind: 'telemetry',
         step: 'llm',
         event: 'llm:model',
-        operation: 'test-chain',
+        operation: 'test-chain/llm',
         source: expect.stringMatching(/^(negotiated|config|default)$/),
       });
     });
@@ -94,7 +94,7 @@ describe('Telemetry events', () => {
         kind: 'telemetry',
         step: 'llm',
         event: 'llm:call',
-        operation: 'filter',
+        operation: 'filter/llm',
         status: 'success',
         cached: false,
         tokens: { input: 20, output: 10, total: 30 },
@@ -122,7 +122,7 @@ describe('Telemetry events', () => {
         kind: 'telemetry',
         step: 'llm',
         event: 'llm:call',
-        operation: 'score',
+        operation: 'score/llm',
         status: 'error',
         error: {
           httpStatus: 429,
@@ -187,7 +187,7 @@ describe('Telemetry events', () => {
       });
 
       const modelEvent = events.find((e) => e.event === 'llm:model');
-      expect(modelEvent.operation).toBe('test');
+      expect(modelEvent.operation).toBe('test/llm');
     });
 
     it('includes negotiation in model event when capabilities used', async () => {
@@ -280,7 +280,7 @@ describe('Telemetry events', () => {
         kind: 'telemetry',
         step: 'test-retry',
         event: 'retry:attempt',
-        operation: 'filter',
+        operation: 'filter/test-retry',
         attemptNumber: 1,
       });
     });
@@ -317,7 +317,7 @@ describe('Telemetry events', () => {
         kind: 'telemetry',
         step: 'llm-call',
         event: 'retry:error',
-        operation: 'score',
+        operation: 'score/llm-call',
         attemptNumber: 1,
         error: {
           message: 'Too many requests',
@@ -358,7 +358,7 @@ describe('Telemetry events', () => {
         kind: 'telemetry',
         step: 'failing',
         event: 'retry:exhaust',
-        operation: 'reduce',
+        operation: 'reduce/failing',
         error: { message: 'Server error', httpStatus: 500 },
       });
     });

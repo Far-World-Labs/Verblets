@@ -191,14 +191,14 @@ const sort = async (list, criteria, config = {}) => {
     remaining = remaining.filter((item) => !selected.has(item));
 
     // Progress callback after each complete iteration
-    if (onProgress) {
-      onProgress({
-        top: finalTop,
-        bottom: finalBottom,
-        iteration: iter + 1,
-        remaining: remaining.length,
-      });
-    }
+    emitter.emit({
+      event: 'iteration:complete',
+      iteration: iter + 1,
+      totalIterations: iterations,
+      topCount: finalTop.length,
+      bottomCount: finalBottom.length,
+      remainingItems: remaining.length,
+    });
   }
 
   // Assemble final result, ensuring we return exactly the original items

@@ -1,5 +1,5 @@
 import { defaultMaxAttempts, retryDelay as retryDelayDefault } from '../../constants/common.js';
-import { getOption } from '../context/option.js';
+import { nameStep, getOption } from '../context/option.js';
 import createProgressEmitter from '../progress/index.js';
 
 const abortError = (signal) => signal?.reason ?? new Error('The operation was aborted.');
@@ -37,9 +37,9 @@ async function retry(fn, opts = {}) {
       );
     });
 
-  const operation = config?.operation;
   const stepName = label || 'retry';
-  const emitter = createProgressEmitter(stepName, onProgress);
+  const retryConfig = config ? nameStep(stepName, config) : { operation: stepName };
+  const emitter = createProgressEmitter(stepName, onProgress, retryConfig);
 
   if (onProgress) {
     emitter.emit({
@@ -57,7 +57,6 @@ async function retry(fn, opts = {}) {
 
     emitter.metrics({
       event: 'retry:attempt',
-      operation,
       attemptNumber: attempt + 1,
       maxAttempts,
     });
@@ -106,7 +105,6 @@ async function retry(fn, opts = {}) {
 
         emitter.metrics({
           event: 'retry:error',
-          operation,
           attemptNumber: attempt + 1,
           maxAttempts,
           delay,
@@ -132,7 +130,6 @@ async function retry(fn, opts = {}) {
 
         emitter.metrics({
           event: 'retry:exhaust',
-          operation,
           attemptNumber: attempt,
           maxAttempts,
           error: { message: error.message, httpStatus: error.httpStatus, type: error.errorType },

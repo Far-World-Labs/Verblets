@@ -146,7 +146,7 @@ async function scoreOnce(list, prompt, batchConfig, config) {
     if (b.skip) results[b.startIndex] = undefined;
   });
 
-  const emitter = createProgressEmitter('score', onProgress);
+  const emitter = createProgressEmitter('score', onProgress, config);
   const batchDone = emitter.batch(list.length);
   emitter.emit({
     event: 'start',

@@ -10,6 +10,21 @@
 
 const isReasoningModel = (model) => /^(gpt-5|o[34])/i.test(model);
 
+export const translateContentBlocks = (content) => {
+  if (!Array.isArray(content)) return content;
+  return content.map((block) => {
+    if (block.type === 'image') {
+      return {
+        type: 'image_url',
+        image_url: {
+          url: `data:${block.mediaType};base64,${block.data}`,
+        },
+      };
+    }
+    return block;
+  });
+};
+
 export const buildRequest = (apiUrl, apiKey, endpoint, requestConfig) => {
   const url = `${apiUrl}${endpoint}`;
 
@@ -17,6 +32,14 @@ export const buildRequest = (apiUrl, apiKey, endpoint, requestConfig) => {
     requestConfig;
 
   const body = { ...rest };
+
+  // Translate internal image content blocks to OpenAI format
+  if (body.messages) {
+    body.messages = body.messages.map((m) => ({
+      ...m,
+      content: translateContentBlocks(m.content),
+    }));
+  }
 
   // Rename max_tokens → max_completion_tokens
   if (max_tokens !== undefined) {
