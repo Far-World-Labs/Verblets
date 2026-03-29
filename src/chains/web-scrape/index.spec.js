@@ -276,7 +276,14 @@ describe('web-scrape', () => {
     const step = async () => ({ action: 'done' });
     await webScrape('https://example.com', step, { outputDir: '/custom/output' });
 
-    expect(createTempDir).toHaveBeenCalledWith('verblets-scrape-', '/custom/output');
+    expect(createTempDir).toHaveBeenCalledWith('web-scrape', '/custom/output');
+  });
+
+  it('passes chain name without outputDir by default', async () => {
+    const step = async () => ({ action: 'done' });
+    await webScrape('https://example.com', step);
+
+    expect(createTempDir).toHaveBeenCalledWith('web-scrape', undefined);
   });
 
   it('does not resize when imageShrink is not set', async () => {

@@ -18,7 +18,11 @@ try {
 export * from './shared.js';
 
 // Node-only exports (image/screenshot utilities)
-export { default as createTempDir, cleanupPaths } from './lib/temp-files/index.js';
+export {
+  default as createTempDir,
+  cleanupPaths,
+  resolveOutputDir,
+} from './lib/temp-files/index.js';
 export {
   resizeImage,
   tileImages,

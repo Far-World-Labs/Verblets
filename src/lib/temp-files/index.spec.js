@@ -1,10 +1,10 @@
 import { writeFile } from 'node:fs/promises';
-import { existsSync, mkdirSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, describe, expect, it } from 'vitest';
 
-import { createTempDir, cleanupPaths } from './index.js';
+import { createTempDir, cleanupPaths, resolveOutputDir } from './index.js';
 
 const dirsToClean = [];
 
@@ -19,34 +19,107 @@ afterAll(async () => {
   }
 });
 
+describe('resolveOutputDir', () => {
+  const originalEnv = process.env.VERBLETS_OUTPUT_DIR;
+
+  afterEach(() => {
+    if (originalEnv === undefined) {
+      delete process.env.VERBLETS_OUTPUT_DIR;
+    } else {
+      process.env.VERBLETS_OUTPUT_DIR = originalEnv;
+    }
+  });
+
+  it('returns explicit outputDir when provided', () => {
+    process.env.VERBLETS_OUTPUT_DIR = '/from-env';
+    expect(resolveOutputDir('/explicit')).toBe('/explicit');
+  });
+
+  it('falls back to VERBLETS_OUTPUT_DIR env var', () => {
+    process.env.VERBLETS_OUTPUT_DIR = '/from-env';
+    expect(resolveOutputDir()).toBe('/from-env');
+  });
+
+  it('returns undefined when neither is set', () => {
+    delete process.env.VERBLETS_OUTPUT_DIR;
+    expect(resolveOutputDir()).toBeUndefined();
+  });
+});
+
 describe('createTempDir', () => {
-  it('creates a real temp directory with the default prefix', async () => {
+  it('creates an ephemeral directory in tmpdir with default name', async () => {
     const ctx = await createTempDir();
     dirsToClean.push(ctx.dir);
 
-    expect(ctx.dir).toContain('verblets-scrape-');
+    expect(ctx.dir).toContain('verblets-scratch-');
+    expect(ctx.dir.startsWith(tmpdir())).toBe(true);
     expect(existsSync(ctx.dir)).toBe(true);
   });
 
-  it('creates a temp directory with a custom prefix', async () => {
-    const ctx = await createTempDir('custom-prefix-');
+  it('creates an ephemeral directory with a custom name', async () => {
+    const ctx = await createTempDir('my-chain');
     dirsToClean.push(ctx.dir);
 
-    expect(ctx.dir).toContain('custom-prefix-');
+    expect(ctx.dir).toContain('verblets-my-chain-');
     expect(existsSync(ctx.dir)).toBe(true);
   });
 
-  it('creates a temp directory under a custom parent directory', async () => {
-    const parent = join(tmpdir(), `verblets-parent-test-${Date.now()}`);
-    mkdirSync(parent, { recursive: true });
-    dirsToClean.push(parent);
+  it('creates a structured directory under outputDir with chain-name partition', async () => {
+    const base = join(tmpdir(), `verblets-structured-test-${Date.now()}`);
+    dirsToClean.push(base);
 
-    const ctx = await createTempDir('child-', parent);
+    const ctx = await createTempDir('web-scrape', base);
     dirsToClean.push(ctx.dir);
 
-    expect(ctx.dir).toContain('child-');
-    expect(ctx.dir.startsWith(parent)).toBe(true);
+    expect(ctx.dir.startsWith(join(base, 'web-scrape'))).toBe(true);
     expect(existsSync(ctx.dir)).toBe(true);
+  });
+
+  it('structured directory name includes a timestamp prefix', async () => {
+    const base = join(tmpdir(), `verblets-ts-test-${Date.now()}`);
+    dirsToClean.push(base);
+
+    const ctx = await createTempDir('test-chain', base);
+    dirsToClean.push(ctx.dir);
+
+    const leaf = ctx.dir.split('/').pop();
+    expect(leaf).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-/);
+  });
+
+  it('falls back to VERBLETS_OUTPUT_DIR env var when no outputDir given', async () => {
+    const base = join(tmpdir(), `verblets-env-test-${Date.now()}`);
+    dirsToClean.push(base);
+
+    const saved = process.env.VERBLETS_OUTPUT_DIR;
+    process.env.VERBLETS_OUTPUT_DIR = base;
+    try {
+      const ctx = await createTempDir('from-env');
+      dirsToClean.push(ctx.dir);
+
+      expect(ctx.dir.startsWith(join(base, 'from-env'))).toBe(true);
+      expect(existsSync(ctx.dir)).toBe(true);
+    } finally {
+      if (saved === undefined) delete process.env.VERBLETS_OUTPUT_DIR;
+      else process.env.VERBLETS_OUTPUT_DIR = saved;
+    }
+  });
+
+  it('explicit outputDir takes precedence over env var', async () => {
+    const envBase = join(tmpdir(), `verblets-env-${Date.now()}`);
+    const explicitBase = join(tmpdir(), `verblets-explicit-${Date.now()}`);
+    dirsToClean.push(envBase, explicitBase);
+
+    const saved = process.env.VERBLETS_OUTPUT_DIR;
+    process.env.VERBLETS_OUTPUT_DIR = envBase;
+    try {
+      const ctx = await createTempDir('precedence', explicitBase);
+      dirsToClean.push(ctx.dir);
+
+      expect(ctx.dir.startsWith(join(explicitBase, 'precedence'))).toBe(true);
+    } finally {
+      if (saved === undefined) delete process.env.VERBLETS_OUTPUT_DIR;
+      else process.env.VERBLETS_OUTPUT_DIR = saved;
+    }
   });
 
   it('track registers paths and paths() returns them', async () => {

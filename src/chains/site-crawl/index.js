@@ -276,7 +276,7 @@ const siteCrawl = async (startUrl, config = {}) => {
     maxDepth: opts.maxDepth,
   });
 
-  const screenshotDir = await createTempDir('verblets-crawl-', runConfig.outputDir);
+  const screenshotDir = await createTempDir('site-crawl', runConfig.outputDir);
   const engine = runConfig.browserEngine
     ? playwrightCore[runConfig.browserEngine]
     : playwrightCore.chromium;

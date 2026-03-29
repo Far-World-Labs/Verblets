@@ -166,7 +166,7 @@ const webScrape = async (urls, step, config = {}) => {
     imageShrink: withPolicy(mapImageShrink),
   });
 
-  const screenshotDir = await createTempDir('verblets-scrape-', runConfig.outputDir);
+  const screenshotDir = await createTempDir(name, runConfig.outputDir);
   const engine = runConfig.browserEngine
     ? playwrightCore[runConfig.browserEngine]
     : playwrightCore.chromium;

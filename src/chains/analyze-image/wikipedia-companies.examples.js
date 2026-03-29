@@ -26,7 +26,7 @@ const captureProgress = (e) => allEvents.push(e);
 // ─── Browser setup ───────────────────────────────────────────────────────────
 
 beforeAll(async () => {
-  screenshotHandle = await createTempDir('verblets-wiki-');
+  screenshotHandle = await createTempDir('analyze-image');
   browser = await chromium.launch({ headless: true });
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
 
