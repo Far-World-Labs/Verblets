@@ -3,7 +3,7 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 
-import { createScreenshotDir, cleanupPaths } from './index.js';
+import { createTempDir, cleanupPaths } from './index.js';
 
 const dirsToClean = [];
 
@@ -18,9 +18,9 @@ afterAll(async () => {
   }
 });
 
-describe('createScreenshotDir', () => {
+describe('createTempDir', () => {
   it('creates a real temp directory with the default prefix', async () => {
-    const ctx = await createScreenshotDir();
+    const ctx = await createTempDir();
     dirsToClean.push(ctx.dir);
 
     expect(ctx.dir).toContain('verblets-scrape-');
@@ -28,7 +28,7 @@ describe('createScreenshotDir', () => {
   });
 
   it('creates a temp directory with a custom prefix', async () => {
-    const ctx = await createScreenshotDir('custom-prefix-');
+    const ctx = await createTempDir('custom-prefix-');
     dirsToClean.push(ctx.dir);
 
     expect(ctx.dir).toContain('custom-prefix-');
@@ -36,7 +36,7 @@ describe('createScreenshotDir', () => {
   });
 
   it('track registers paths and paths() returns them', async () => {
-    const ctx = await createScreenshotDir();
+    const ctx = await createTempDir();
     dirsToClean.push(ctx.dir);
 
     expect(ctx.paths()).toEqual([]);
@@ -50,7 +50,7 @@ describe('createScreenshotDir', () => {
   });
 
   it('paths() returns a copy, not a reference to the internal array', async () => {
-    const ctx = await createScreenshotDir();
+    const ctx = await createTempDir();
     dirsToClean.push(ctx.dir);
 
     ctx.track('/fake/path');
@@ -62,7 +62,7 @@ describe('createScreenshotDir', () => {
   });
 
   it('cleanup removes tracked files and the directory', async () => {
-    const ctx = await createScreenshotDir();
+    const ctx = await createTempDir();
     const fileA = join(ctx.dir, 'shot1.png');
     const fileB = join(ctx.dir, 'shot2.png');
 
@@ -79,7 +79,7 @@ describe('createScreenshotDir', () => {
   });
 
   it('cleanup does not throw when directory is already removed', async () => {
-    const ctx = await createScreenshotDir();
+    const ctx = await createTempDir();
     const { rm } = await import('node:fs/promises');
     await rm(ctx.dir, { recursive: true, force: true });
 
@@ -89,7 +89,7 @@ describe('createScreenshotDir', () => {
 
 describe('cleanupPaths', () => {
   it('removes files and returns the count of removed files', async () => {
-    const ctx = await createScreenshotDir();
+    const ctx = await createTempDir();
     dirsToClean.push(ctx.dir);
 
     const fileA = join(ctx.dir, 'a.tmp');
@@ -108,7 +108,7 @@ describe('cleanupPaths', () => {
   });
 
   it('ignores missing files (ENOENT) and counts only actual removals', async () => {
-    const ctx = await createScreenshotDir();
+    const ctx = await createTempDir();
     dirsToClean.push(ctx.dir);
 
     const existing = join(ctx.dir, 'exists.tmp');

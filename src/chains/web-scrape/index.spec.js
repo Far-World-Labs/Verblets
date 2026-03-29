@@ -46,8 +46,8 @@ vi.mock('playwright-core', () => {
   };
 });
 
-vi.mock('../../lib/screenshot-cleanup/index.js', () => ({
-  createScreenshotDir: vi.fn(async () => ({
+vi.mock('../../lib/temp-files/index.js', () => ({
+  createTempDir: vi.fn(async () => ({
     dir: '/tmp/verblets-scrape-mock',
     track: vi.fn(),
     paths: vi.fn(() => []),

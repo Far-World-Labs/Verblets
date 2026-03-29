@@ -17,7 +17,7 @@ import * as config from './lib/config/index.js';
 import { validate } from './lib/config/index.js';
 import modelService from './services/llm-model/index.js';
 import { setClient } from './services/redis/index.js';
-import { setEmbedEnabled } from './lib/embed/state.js';
+import { setEmbedEnabled } from './lib/embed-local/state.js';
 import { setImageProcessingEnabled } from './lib/image-utils/state.js';
 import { setBrowserEnabled } from './chains/web-scrape/state.js';
 import { createContextBuilder, observeApplication, observeProviders } from './lib/context/index.js';

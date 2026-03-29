@@ -2,7 +2,7 @@ import * as playwrightCore from 'playwright-core';
 import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
-import { createScreenshotDir } from '../../lib/screenshot-cleanup/index.js';
+import { createTempDir } from '../../lib/temp-files/index.js';
 import { resizeImage, mapImageShrink } from '../../lib/image-utils/index.js';
 import { isBrowserEnabled } from '../web-scrape/state.js';
 import extractPage from './extractor.js';
@@ -273,7 +273,7 @@ const siteCrawl = async (startUrl, config = {}) => {
     maxDepth: opts.maxDepth,
   });
 
-  const screenshotDir = await createScreenshotDir('verblets-crawl-');
+  const screenshotDir = await createTempDir('verblets-crawl-');
   const engine = runConfig.browserEngine
     ? playwrightCore[runConfig.browserEngine]
     : playwrightCore.chromium;

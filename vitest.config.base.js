@@ -30,7 +30,7 @@ export const browserExclusions = [
   'src/chains/test/**',
   'src/chains/test-advice/**',
   'src/chains/test-analysis/config.spec.js',
-  'src/lib/embed/**',
+  'src/lib/embed-local/**',
   'src/constants/arch.spec.js',
   'src/constants/arch-debug.spec.js',
   'src/constants/models-config.spec.js',

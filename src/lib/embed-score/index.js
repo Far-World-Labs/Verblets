@@ -1,4 +1,4 @@
-import { embedBatch } from '../embed/index.js';
+import { embedBatch } from '../embed-local/index.js';
 import { cosineSimilarity } from '../pure/index.js';
 
 /**

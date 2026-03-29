@@ -18,7 +18,7 @@ try {
 export * from './shared.js';
 
 // Node-only exports (image/screenshot utilities)
-export { default as createScreenshotDir, cleanupPaths } from './lib/screenshot-cleanup/index.js';
+export { default as createTempDir, cleanupPaths } from './lib/temp-files/index.js';
 export {
   resizeImage,
   tileImages,

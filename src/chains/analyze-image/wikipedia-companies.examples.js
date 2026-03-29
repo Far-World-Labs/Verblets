@@ -4,7 +4,7 @@ import path from 'node:path';
 
 import { existsSync } from 'node:fs';
 import init from '../../init.js';
-import { createScreenshotDir } from '../../lib/screenshot-cleanup/index.js';
+import { createTempDir } from '../../lib/temp-files/index.js';
 import analyzeImage from './index.js';
 import callLlm, { buildVisionPrompt, jsonSchema } from '../../lib/llm/index.js';
 import { imageToBase64 } from '../../lib/image-utils/index.js';
@@ -26,7 +26,7 @@ const captureProgress = (e) => allEvents.push(e);
 // ─── Browser setup ───────────────────────────────────────────────────────────
 
 beforeAll(async () => {
-  screenshotHandle = await createScreenshotDir('verblets-wiki-');
+  screenshotHandle = await createTempDir('verblets-wiki-');
   browser = await chromium.launch({ headless: true });
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
 

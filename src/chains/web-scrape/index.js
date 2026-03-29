@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
-import { createScreenshotDir } from '../../lib/screenshot-cleanup/index.js';
+import { createTempDir } from '../../lib/temp-files/index.js';
 import { resizeImage, tileImages, mapImageShrink } from '../../lib/image-utils/index.js';
 import { parallelBatch } from '../../lib/parallel-batch/index.js';
 import { isBrowserEnabled } from './state.js';
@@ -166,7 +166,7 @@ const webScrape = async (urls, step, config = {}) => {
     imageShrink: withPolicy(mapImageShrink),
   });
 
-  const screenshotDir = await createScreenshotDir('verblets-scrape-');
+  const screenshotDir = await createTempDir('verblets-scrape-');
   const engine = runConfig.browserEngine
     ? playwrightCore[runConfig.browserEngine]
     : playwrightCore.chromium;

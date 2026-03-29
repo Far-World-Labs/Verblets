@@ -15,7 +15,7 @@ export async function cleanupPaths(paths) {
   return removed;
 }
 
-export async function createScreenshotDir(prefix = 'verblets-scrape-') {
+export async function createTempDir(prefix = 'verblets-scrape-') {
   const dir = await mkdtemp(join(tmpdir(), prefix));
   const tracked = [];
 
@@ -42,4 +42,4 @@ export async function createScreenshotDir(prefix = 'verblets-scrape-') {
   };
 }
 
-export default createScreenshotDir;
+export default createTempDir;

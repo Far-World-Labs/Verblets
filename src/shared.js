@@ -198,7 +198,7 @@ export {
   embedChunked,
   embedWarmup,
   setEmbedEnabled,
-} from './lib/embed/index.js';
+} from './lib/embed-local/index.js';
 
 // Embedding Collection
 export { default as embedScore } from './lib/embed-score/index.js';

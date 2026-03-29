@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { sortBy } from '../pure/index.js';
 
-vi.mock('../embed/index.js', () => ({
+vi.mock('../embed-local/index.js', () => ({
   embedBatch: vi.fn(),
 }));
 
-const { embedBatch } = await import('../embed/index.js');
+const { embedBatch } = await import('../embed-local/index.js');
 const { default: embedScore } = await import('./index.js');
 
 beforeEach(() => {
