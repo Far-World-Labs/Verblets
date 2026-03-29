@@ -2,6 +2,7 @@ import listBatch, { ListStyle, determineStyle } from '../../verblets/list-batch/
 import reduce from '../reduce/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
+import { OpEvent, DomainEvent } from '../../lib/progress/constants.js';
 import { parallel, retry, createBatches } from '../../lib/index.js';
 import { debug } from '../../lib/debug/index.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
@@ -132,7 +133,7 @@ export default async function group(list, instructions, config = {}) {
   const { categoryPrompt, listStyle, autoModeThreshold, now } = runConfig;
   // Phase 1: Category Discovery - reduce pass to build taxonomy
   emitter.emit({
-    event: 'phase',
+    event: DomainEvent.phase,
     phase: 'category-discovery',
     description: 'Discovering categories from items',
   });
@@ -156,7 +157,7 @@ export default async function group(list, instructions, config = {}) {
 
   // Phase 2: Assignment - map items to established categories
   emitter.emit({
-    event: 'phase',
+    event: DomainEvent.phase,
     phase: 'assignment',
     description: 'Assigning items to categories',
     categoryCount: categories.length,
@@ -168,7 +169,11 @@ export default async function group(list, instructions, config = {}) {
   const allBatches = await createBatches(list, runConfig);
   const batchesToProcess = allBatches.filter((batch) => !batch.skip);
   let processedItems = 0;
-  emitter.emit({ event: 'start', totalItems: list.length, totalBatches: batchesToProcess.length });
+  emitter.progress({
+    event: OpEvent.start,
+    totalItems: list.length,
+    totalBatches: batchesToProcess.length,
+  });
 
   // Process batches in parallel using parallelBatch
   await parallel(
@@ -204,8 +209,8 @@ export default async function group(list, instructions, config = {}) {
         }
 
         processedItems += items.length;
-        emitter.emit({
-          event: 'batch:complete',
+        emitter.progress({
+          event: OpEvent.batchComplete,
           totalItems: list.length,
           processedItems,
           batchSize: items.length,
@@ -228,8 +233,8 @@ export default async function group(list, instructions, config = {}) {
   batchResults.sort((a, b) => a.startIndex - b.startIndex);
   const groups = assignItemsToGroups(batchResults);
 
-  emitter.emit({
-    event: 'complete',
+  emitter.progress({
+    event: OpEvent.complete,
     totalItems: list.length,
     processedItems,
     categoryCount: categories.length,

@@ -4,6 +4,7 @@ import retry from '../../lib/retry/index.js';
 import { sort as sortPromptInitial } from '../../prompts/index.js';
 import sortSchema from './sort-result.json';
 import createProgressEmitter from '../../lib/progress/index.js';
+import { OpEvent, DomainEvent } from '../../lib/progress/constants.js';
 import { debug } from '../../lib/debug/index.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 
@@ -62,8 +63,8 @@ const sort = async (list, criteria, config = {}) => {
   const { onProgress } = runConfig;
   const items = sanitizeList(list);
 
-  emitter.emit({
-    event: 'start',
+  emitter.progress({
+    event: OpEvent.start,
     totalItems: items.length,
     batchSize,
     extremeK,
@@ -105,7 +106,7 @@ const sort = async (list, criteria, config = {}) => {
 
     for (const chunk of chunks) {
       emitter.emit({
-        event: 'step',
+        event: DomainEvent.step,
         stepName: 'sorting-chunk',
         iteration: iterationNumber,
         chunkNumber: processedChunks + 1,
@@ -169,7 +170,7 @@ const sort = async (list, criteria, config = {}) => {
 
   for (let iter = 0; iter < iterations && remaining.length > 0; iter++) {
     emitter.emit({
-      event: 'step',
+      event: DomainEvent.step,
       stepName: 'extracting-extremes',
       iteration: iter + 1,
       totalIterations: iterations,
@@ -226,8 +227,8 @@ const sort = async (list, criteria, config = {}) => {
     }
   }
 
-  emitter.emit({
-    event: 'complete',
+  emitter.progress({
+    event: OpEvent.complete,
     totalItems: items.length,
     iterations,
     topItems: finalTop.length,

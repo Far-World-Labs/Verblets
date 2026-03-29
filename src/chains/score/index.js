@@ -3,6 +3,7 @@ import { asXML } from '../../prompts/wrap-variable.js';
 import { scaleSpec } from '../scale/index.js';
 import listBatch from '../../verblets/list-batch/index.js';
 import createProgressEmitter from '../../lib/progress/index.js';
+import { OpEvent, DomainEvent } from '../../lib/progress/constants.js';
 import { createBatches, parallel, retry } from '../../lib/index.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 import scoreSingleResultSchema from './score-single-result.json';
@@ -148,8 +149,8 @@ async function scoreOnce(list, prompt, batchConfig, config) {
 
   const emitter = createProgressEmitter('score', onProgress, config);
   const batchDone = emitter.batch(list.length);
-  emitter.emit({
-    event: 'start',
+  emitter.progress({
+    event: OpEvent.start,
     totalItems: list.length,
     totalBatches: batchesToProcess.length,
     maxParallel,
@@ -210,8 +211,8 @@ async function scoreOnce(list, prompt, batchConfig, config) {
     );
   }
 
-  emitter.emit({
-    event: 'complete',
+  emitter.progress({
+    event: OpEvent.complete,
     totalItems: list.length,
     processedItems: batchDone.count,
   });
@@ -242,9 +243,9 @@ export async function mapScore(list, instructions, config = {}) {
       anchoring: withPolicy(mapAnchoring),
     }
   );
-  emitter.emit({ event: 'phase', phase: 'generating-specification' });
+  emitter.emit({ event: DomainEvent.phase, phase: 'generating-specification' });
   const spec = providedSpec || (await scoreSpec(instructions, runConfig));
-  emitter.emit({ event: 'phase', phase: 'scoring-items', specification: spec });
+  emitter.emit({ event: DomainEvent.phase, phase: 'scoring-items', specification: spec });
 
   const scoringPrompt = buildScoringInstructions(
     spec,

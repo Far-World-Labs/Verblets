@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import timeline, { mapEnrichment } from './index.js';
+import { Kind, ChainEvent } from '../../lib/progress/constants.js';
 
 // Mock all dependencies
 vi.mock('../../lib/llm/index.js', async (importOriginal) => ({
@@ -184,8 +185,8 @@ describe('timeline', () => {
     expect(progressCallback).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({
-        kind: 'telemetry',
-        event: 'chain:start',
+        kind: Kind.telemetry,
+        event: ChainEvent.start,
       })
     );
     expect(progressCallback).toHaveBeenNthCalledWith(2, 1, 3);
@@ -195,8 +196,8 @@ describe('timeline', () => {
     expect(progressCallback).toHaveBeenNthCalledWith(
       5,
       expect.objectContaining({
-        kind: 'telemetry',
-        event: 'chain:complete',
+        kind: Kind.telemetry,
+        event: ChainEvent.complete,
       })
     );
   });

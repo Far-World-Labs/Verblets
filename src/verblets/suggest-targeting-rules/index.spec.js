@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import suggestTargetingRules, { buildPrompt } from './index.js';
 import callLlm from '../../lib/llm/index.js';
+import { OptionSource } from '../../lib/progress/constants.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(),
@@ -9,7 +10,7 @@ vi.mock('../../lib/llm/index.js', () => ({
 const makeTrace = (overrides = {}) => ({
   option: 'strictness',
   operation: 'filter',
-  source: 'policy',
+  source: OptionSource.policy,
   value: 'high',
   policyReturned: 'high',
   ...overrides,
@@ -30,7 +31,10 @@ describe('suggest-targeting-rules', () => {
 
   describe('buildPrompt', () => {
     it('includes trace count and trace details', () => {
-      const prompt = buildPrompt([makeTrace(), makeTrace({ value: 'low', source: 'fallback' })]);
+      const prompt = buildPrompt([
+        makeTrace(),
+        makeTrace({ value: 'low', source: OptionSource.fallback }),
+      ]);
       expect(prompt).toContain('2 total');
       expect(prompt).toContain('option="strictness"');
       expect(prompt).toContain('source="fallback"');
@@ -79,7 +83,7 @@ describe('suggest-targeting-rules', () => {
       callLlm.mockResolvedValueOnce({ rules: mockRules });
 
       const rules = await suggestTargetingRules(
-        [makeTrace(), makeTrace({ source: 'fallback', policyReturned: undefined })],
+        [makeTrace(), makeTrace({ source: OptionSource.fallback, policyReturned: undefined })],
         'Focus on defaults'
       );
 

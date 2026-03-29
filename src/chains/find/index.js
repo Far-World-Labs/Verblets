@@ -7,6 +7,7 @@ import { jsonSchema } from '../../lib/llm/index.js';
 import { debug } from '../../lib/debug/index.js';
 import { nameStep, getOptions } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
+import { OpEvent } from '../../lib/progress/constants.js';
 
 const name = 'find';
 
@@ -51,7 +52,11 @@ Process exactly ${count} items from the XML list below and return the single bes
   const batchDone = emitter.batch(list.length);
   const batchesToProcess = batches.filter((batch) => !batch.skip);
 
-  emitter.emit({ event: 'start', totalItems: list.length, totalBatches: batchesToProcess.length });
+  emitter.progress({
+    event: OpEvent.start,
+    totalItems: list.length,
+    totalBatches: batchesToProcess.length,
+  });
 
   lifecycleLogger.logStart(
     extractBatchConfig({
@@ -115,8 +120,8 @@ Process exactly ${count} items from the XML list below and return the single bes
     }
   }
 
-  emitter.emit({
-    event: 'complete',
+  emitter.progress({
+    event: OpEvent.complete,
     totalItems: list.length,
     processedItems: batchDone.count,
     found: results.length > 0,

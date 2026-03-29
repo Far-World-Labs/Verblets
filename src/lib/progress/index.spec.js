@@ -1,6 +1,17 @@
 import { describe, expect, it } from 'vitest';
 
-import createProgressEmitter, { scopePhase } from './index.js';
+import createProgressEmitter, { scopePhase, traceId, spanId } from './index.js';
+import {
+  Kind,
+  StatusCode,
+  ChainEvent,
+  OpEvent,
+  DomainEvent,
+  TelemetryEvent,
+  ModelSource,
+  Metric,
+  TokenType,
+} from './constants.js';
 import { nameStep } from '../context/option.js';
 
 describe('createProgressEmitter', () => {
@@ -24,9 +35,9 @@ describe('createProgressEmitter', () => {
       emitter.start();
       expect(events).toHaveLength(1);
       expect(events[0]).toMatchObject({
-        kind: 'telemetry',
+        kind: Kind.telemetry,
         step: 'filter',
-        event: 'chain:start',
+        event: ChainEvent.start,
         operation: 'filter',
       });
       expect(events[0].timestamp).toBeDefined();
@@ -39,49 +50,84 @@ describe('createProgressEmitter', () => {
   });
 
   describe('emit', () => {
-    it('emits operation events with step and operation pre-filled', () => {
+    it('emits domain events with step and operation pre-filled', () => {
       const events = [];
       const runConfig = nameStep('sort', {});
       const emitter = createProgressEmitter('sort', (e) => events.push(e), runConfig);
 
-      emitter.emit({ event: 'step', stepName: 'sorting-chunk', iteration: 1 });
+      emitter.emit({ event: DomainEvent.step, stepName: 'sorting-chunk', iteration: 1 });
 
       expect(events[0]).toMatchObject({
-        kind: 'operation',
+        kind: Kind.event,
         step: 'sort',
-        event: 'step',
+        event: DomainEvent.step,
         stepName: 'sorting-chunk',
         iteration: 1,
         operation: 'sort',
       });
     });
 
-    it('always sets kind to operation', () => {
+    it('always sets kind to event', () => {
       const events = [];
       const emitter = createProgressEmitter('test', (e) => events.push(e));
-      emitter.emit({ event: 'start' });
-      expect(events[0].kind).toBe('operation');
-    });
-
-    it('computes progress ratio from totalItems and processedItems', () => {
-      const events = [];
-      const emitter = createProgressEmitter('map', (e) => events.push(e));
-
-      emitter.emit({ event: 'batch:complete', totalItems: 20, processedItems: 10, batchSize: 10 });
-
-      expect(events[0].progress).toBe(0.5);
+      emitter.emit({ event: DomainEvent.phase, phase: 'discovery' });
+      expect(events[0].kind).toBe(Kind.event);
     });
 
     it('does not throw when callback absent', () => {
       const emitter = createProgressEmitter('test');
-      expect(() => emitter.emit({ event: 'phase', phase: 'discovery' })).not.toThrow();
+      expect(() => emitter.emit({ event: DomainEvent.phase, phase: 'discovery' })).not.toThrow();
     });
 
     it('swallows callback errors', () => {
       const emitter = createProgressEmitter('test', () => {
         throw new Error('boom');
       });
-      expect(() => emitter.emit({ event: 'start' })).not.toThrow();
+      expect(() => emitter.emit({ event: DomainEvent.phase, phase: 'test' })).not.toThrow();
+    });
+  });
+
+  describe('progress', () => {
+    it('emits operation events with step and operation pre-filled', () => {
+      const events = [];
+      const runConfig = nameStep('map', {});
+      const emitter = createProgressEmitter('map', (e) => events.push(e), runConfig);
+
+      emitter.progress({ event: OpEvent.start, totalItems: 50 });
+
+      expect(events[0]).toMatchObject({
+        kind: Kind.operation,
+        step: 'map',
+        event: OpEvent.start,
+        totalItems: 50,
+        operation: 'map',
+      });
+    });
+
+    it('always sets kind to operation', () => {
+      const events = [];
+      const emitter = createProgressEmitter('test', (e) => events.push(e));
+      emitter.progress({ event: OpEvent.start });
+      expect(events[0].kind).toBe(Kind.operation);
+    });
+
+    it('computes progress ratio from totalItems and processedItems', () => {
+      const events = [];
+      const emitter = createProgressEmitter('map', (e) => events.push(e));
+
+      emitter.progress({
+        event: OpEvent.batchComplete,
+        totalItems: 20,
+        processedItems: 10,
+        batchSize: 10,
+      });
+
+      expect(events[0].progress).toBe(0.5);
+    });
+
+    it('does not throw when callback absent', () => {
+      const emitter = createProgressEmitter('test');
+      expect(() => emitter.progress({ event: OpEvent.start })).not.toThrow();
     });
   });
 
@@ -91,33 +137,81 @@ describe('createProgressEmitter', () => {
       const runConfig = nameStep('llm', { operation: 'filter' });
       const emitter = createProgressEmitter('llm', (e) => events.push(e), runConfig);
 
-      emitter.metrics({ event: 'llm:model', model: 'gpt-4o', source: 'negotiated' });
+      emitter.metrics({
+        event: TelemetryEvent.llmModel,
+        model: 'gpt-4o',
+        source: ModelSource.negotiated,
+      });
 
       expect(events[0]).toMatchObject({
-        kind: 'telemetry',
+        kind: Kind.telemetry,
         step: 'llm',
-        event: 'llm:model',
+        event: TelemetryEvent.llmModel,
         operation: 'filter/llm',
         model: 'gpt-4o',
-        source: 'negotiated',
+        source: ModelSource.negotiated,
       });
     });
 
     it('always sets kind to telemetry', () => {
       const events = [];
       const emitter = createProgressEmitter('test', (e) => events.push(e));
-      emitter.metrics({ event: 'retry:attempt' });
-      expect(events[0].kind).toBe('telemetry');
+      emitter.metrics({ event: TelemetryEvent.retryAttempt });
+      expect(events[0].kind).toBe(Kind.telemetry);
     });
 
     it('does not throw when callback absent', () => {
       const emitter = createProgressEmitter('test');
-      expect(() => emitter.metrics({ event: 'option:resolve' })).not.toThrow();
+      expect(() => emitter.metrics({ event: TelemetryEvent.optionResolve })).not.toThrow();
+    });
+  });
+
+  describe('measure', () => {
+    it('emits flat dimensional metric with kind telemetry', () => {
+      const events = [];
+      const emitter = createProgressEmitter('llm', (e) => events.push(e));
+
+      emitter.measure({
+        metric: Metric.tokenUsage,
+        tokenType: TokenType.input,
+        value: 100,
+      });
+
+      expect(events).toHaveLength(1);
+      expect(events[0]).toMatchObject({
+        kind: Kind.telemetry,
+        step: 'llm',
+        metric: Metric.tokenUsage,
+        tokenType: TokenType.input,
+        value: 100,
+      });
+    });
+
+    it('includes base fields (operation, trace context)', () => {
+      const events = [];
+      const emitter = createProgressEmitter('llm', (e) => events.push(e), {
+        operation: 'score',
+        traceId: 'abc123',
+        spanId: 'def456',
+      });
+
+      emitter.measure({ metric: Metric.llmDuration, value: 42 });
+
+      expect(events[0]).toMatchObject({
+        operation: 'score',
+        traceId: 'abc123',
+        spanId: 'def456',
+      });
+    });
+
+    it('does not throw when callback absent', () => {
+      const emitter = createProgressEmitter('test');
+      expect(() => emitter.measure({ metric: Metric.tokenUsage, value: 0 })).not.toThrow();
     });
   });
 
   describe('complete', () => {
-    it('emits chain:complete with duration from options.now', () => {
+    it('emits chain:complete with durationMs from options.now', () => {
       const events = [];
       const now = new Date(Date.now() - 150);
       const runConfig = nameStep('filter', { now });
@@ -126,30 +220,31 @@ describe('createProgressEmitter', () => {
 
       const complete = events[0];
       expect(complete).toMatchObject({
-        kind: 'telemetry',
+        kind: Kind.telemetry,
         step: 'filter',
-        event: 'chain:complete',
+        event: ChainEvent.complete,
         operation: 'filter',
+        statusCode: StatusCode.ok,
         totalItems: 10,
         successCount: 8,
       });
-      expect(complete.duration).toBeGreaterThanOrEqual(150);
+      expect(complete.durationMs).toBeGreaterThanOrEqual(150);
     });
 
-    it('uses explicit duration override', () => {
+    it('uses explicit durationMs override', () => {
       const events = [];
       const emitter = createProgressEmitter('bool', (e) => events.push(e));
-      emitter.complete({ duration: 42 });
+      emitter.complete({ durationMs: 42 });
 
-      expect(events[0].duration).toBe(42);
+      expect(events[0].durationMs).toBe(42);
     });
 
-    it('omits duration when no now and no explicit', () => {
+    it('omits durationMs when no now and no explicit', () => {
       const events = [];
       const emitter = createProgressEmitter('bool', (e) => events.push(e));
       emitter.complete({ totalItems: 5 });
 
-      expect(events[0].duration).toBeUndefined();
+      expect(events[0].durationMs).toBeUndefined();
     });
 
     it('does not throw when callback absent', () => {
@@ -168,22 +263,23 @@ describe('createProgressEmitter', () => {
 
       const errorEvent = events[0];
       expect(errorEvent).toMatchObject({
-        kind: 'telemetry',
+        kind: Kind.telemetry,
         step: 'map',
-        event: 'chain:error',
+        event: ChainEvent.error,
         operation: 'parent/map',
-        error: { message: 'batch failed' },
+        statusCode: StatusCode.error,
+        error: { message: 'batch failed', type: 'Error' },
         totalItems: 20,
       });
-      expect(errorEvent.duration).toBeGreaterThanOrEqual(200);
+      expect(errorEvent.durationMs).toBeGreaterThanOrEqual(200);
     });
 
-    it('uses explicit duration override', () => {
+    it('uses explicit durationMs override', () => {
       const events = [];
       const emitter = createProgressEmitter('bool', (e) => events.push(e));
-      emitter.error(new Error('oops'), { duration: 99 });
+      emitter.error(new Error('oops'), { durationMs: 99 });
 
-      expect(events[0].duration).toBe(99);
+      expect(events[0].durationMs).toBe(99);
     });
 
     it('does not throw when callback absent', () => {
@@ -203,9 +299,9 @@ describe('createProgressEmitter', () => {
 
       expect(events).toHaveLength(2);
       expect(events[0]).toMatchObject({
-        kind: 'operation',
+        kind: Kind.operation,
         step: 'map',
-        event: 'batch:complete',
+        event: OpEvent.batchComplete,
         totalItems: 100,
         processedItems: 25,
         batchSize: 25,
@@ -248,6 +344,81 @@ describe('createProgressEmitter', () => {
       expect(done.count).toBe(10);
     });
   });
+  describe('trace context', () => {
+    it('propagates traceId, spanId, parentSpanId from nameStep', () => {
+      const events = [];
+      const root = nameStep('score', {});
+      const child = nameStep('filter', root);
+      const emitter = createProgressEmitter('filter', (e) => events.push(e), child);
+
+      emitter.start();
+
+      expect(events[0].traceId).toBe(child.traceId);
+      expect(events[0].spanId).toBe(child.spanId);
+      expect(events[0].parentSpanId).toBe(root.spanId);
+      expect(events[0].traceId).toBe(root.traceId); // same trace
+      expect(events[0].spanId).not.toBe(root.spanId); // different span
+    });
+
+    it('generates unique traceId and spanId per nameStep chain', () => {
+      const a = nameStep('score', {});
+      const b = nameStep('filter', {});
+      expect(a.traceId).not.toBe(b.traceId);
+      expect(a.spanId).not.toBe(b.spanId);
+    });
+
+    it('omits trace fields when created without nameStep', () => {
+      const events = [];
+      const emitter = createProgressEmitter('test', (e) => events.push(e));
+      emitter.emit({ event: DomainEvent.step });
+      expect(events[0].traceId).toBeUndefined();
+      expect(events[0].spanId).toBeUndefined();
+      expect(events[0].parentSpanId).toBeUndefined();
+    });
+
+    it('includes trace context on all event kinds', () => {
+      const events = [];
+      const config = nameStep('chain', {});
+      const emitter = createProgressEmitter('chain', (e) => events.push(e), config);
+
+      emitter.emit({ event: DomainEvent.phase });
+      emitter.progress({ event: OpEvent.start });
+      emitter.metrics({ event: TelemetryEvent.llmCall });
+
+      for (const e of events) {
+        expect(e.traceId).toBe(config.traceId);
+        expect(e.spanId).toBe(config.spanId);
+      }
+    });
+  });
+
+  describe('resource identity', () => {
+    it('includes libraryName and libraryVersion on all events', () => {
+      const events = [];
+      const emitter = createProgressEmitter('test', (e) => events.push(e));
+
+      emitter.emit({ event: DomainEvent.step });
+      emitter.progress({ event: OpEvent.start });
+      emitter.metrics({ event: TelemetryEvent.llmCall });
+
+      for (const e of events) {
+        expect(e.libraryName).toBe('verblets');
+        expect(e.libraryVersion).toMatch(/^\d+\.\d+\.\d+/);
+      }
+    });
+  });
+
+  describe('id generators', () => {
+    it('traceId returns 32 hex chars', () => {
+      const id = traceId();
+      expect(id).toMatch(/^[0-9a-f]{32}$/);
+    });
+
+    it('spanId returns 16 hex chars', () => {
+      const id = spanId();
+      expect(id).toMatch(/^[0-9a-f]{16}$/);
+    });
+  });
 });
 
 describe('scopePhase', () => {
@@ -255,11 +426,11 @@ describe('scopePhase', () => {
     const events = [];
     const scoped = scopePhase((e) => events.push(e), 'group:extraction');
 
-    scoped({ step: 'reduce', event: 'start' });
+    scoped({ step: 'reduce', event: OpEvent.start });
 
     expect(events[0]).toMatchObject({
       step: 'reduce',
-      event: 'start',
+      event: OpEvent.start,
       phase: 'group:extraction',
     });
   });
@@ -269,7 +440,7 @@ describe('scopePhase', () => {
     const outer = scopePhase((e) => events.push(e), 'group:workflow');
     const inner = scopePhase(outer, 'reduce:extraction');
 
-    inner({ step: 'reduce', event: 'batch:complete' });
+    inner({ step: 'reduce', event: OpEvent.batchComplete });
 
     expect(events[0].phase).toBe('group:workflow/reduce:extraction');
   });
@@ -278,7 +449,7 @@ describe('scopePhase', () => {
     const events = [];
     const scoped = scopePhase((e) => events.push(e), 'timeline:reduce');
 
-    scoped({ step: 'reduce', event: 'start', phase: 'inner:work' });
+    scoped({ step: 'reduce', event: OpEvent.start, phase: 'inner:work' });
 
     expect(events[0].phase).toBe('timeline:reduce/inner:work');
   });

@@ -20,8 +20,15 @@ import extractJson from '../extract-json/index.js';
 import stripResponse from '../strip-response/index.js';
 import { onlyJSON, contentIsSchema } from '../../prompts/constants.js';
 import { asXML } from '../../prompts/wrap-variable.js';
-import { nameStep, getOption } from '../context/option.js';
+import { getOption } from '../context/option.js';
 import createProgressEmitter from '../progress/index.js';
+import {
+  TelemetryEvent,
+  LlmStatus,
+  ModelSource,
+  Metric,
+  TokenType,
+} from '../progress/constants.js';
 
 /**
  * Configure the appropriate abort signal for fetch requests.
@@ -248,17 +255,17 @@ export const run = async (prompt, config = {}) => {
   const modelFound = modelService.getModel(modelNameNegotiated);
 
   // Telemetry: model selection
-  const llmConfig = nameStep('llm', options);
-  const emitter = createProgressEmitter('llm', llmConfig.onProgress, llmConfig);
+  const emitter = createProgressEmitter('llm', options.onProgress, options);
   const modelSource = shouldNegotiate
-    ? 'negotiated'
+    ? ModelSource.negotiated
     : modelOptionsWithOverrides.modelName
-      ? 'config'
-      : 'default';
+      ? ModelSource.config
+      : ModelSource.default;
 
   emitter.metrics({
-    event: 'llm:model',
+    event: TelemetryEvent.llmModel,
     model: modelNameNegotiated,
+    provider: modelFound.provider || 'openai',
     source: modelSource,
     negotiation: shouldNegotiate ? negotiation : undefined,
     preferred: negotiationFromGlobalOverride ? undefined : modelOptionsWithOverrides.modelName,
@@ -449,31 +456,63 @@ export const run = async (prompt, config = {}) => {
     }
 
     // Telemetry: successful LLM call
-    const usage = result?.usage;
-    emitter.metrics({
-      event: 'llm:call',
-      status: 'success',
+    const callAttrs = {
       model: modelNameNegotiated,
-      duration: Date.now() - startTime,
+      provider: modelFound.provider || 'openai',
       cached: !!cacheResult,
-      tokens: usage
-        ? { input: usage.prompt_tokens, output: usage.completion_tokens, total: usage.total_tokens }
-        : { input: 0, output: 0, total: 0 },
+    };
+
+    emitter.metrics({
+      event: TelemetryEvent.llmCall,
+      status: LlmStatus.success,
+      ...callAttrs,
+    });
+
+    const usage = result?.usage;
+    const inputTokens = usage?.prompt_tokens ?? 0;
+    const outputTokens = usage?.completion_tokens ?? 0;
+
+    emitter.measure({
+      metric: Metric.tokenUsage,
+      tokenType: TokenType.input,
+      value: inputTokens,
+      ...callAttrs,
+    });
+    emitter.measure({
+      metric: Metric.tokenUsage,
+      tokenType: TokenType.output,
+      value: outputTokens,
+      ...callAttrs,
+    });
+    emitter.measure({
+      metric: Metric.llmDuration,
+      value: Date.now() - startTime,
+      ...callAttrs,
     });
 
     return resultShaped;
   } catch (err) {
     // Telemetry: failed LLM call
-    emitter.metrics({
-      event: 'llm:call',
-      status: 'error',
+    const errAttrs = {
       model: modelNameNegotiated,
-      duration: Date.now() - startTime,
+      provider: modelFound.provider || 'openai',
+    };
+
+    emitter.metrics({
+      event: TelemetryEvent.llmCall,
+      status: LlmStatus.error,
+      ...errAttrs,
       error: {
         message: err.message,
-        httpStatus: err.httpStatus,
+        httpStatusCode: err.httpStatus,
         type: err.errorType,
       },
+    });
+
+    emitter.measure({
+      metric: Metric.llmDuration,
+      value: Date.now() - startTime,
+      ...errAttrs,
     });
     throw err;
   }

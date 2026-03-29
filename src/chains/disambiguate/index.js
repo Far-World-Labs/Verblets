@@ -3,6 +3,7 @@ import retry from '../../lib/retry/index.js';
 import score from '../score/index.js';
 import disambiguateMeaningsSchema from './disambiguate-meanings-result.json';
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
+import { DomainEvent } from '../../lib/progress/constants.js';
 import { nameStep } from '../../lib/context/option.js';
 
 const name = 'disambiguate';
@@ -41,12 +42,12 @@ export default async function disambiguate({ term, context, ...config } = {}) {
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
 
-  emitter.emit({ event: 'step', stepName: 'extracting-meanings', term });
+  emitter.emit({ event: DomainEvent.step, stepName: 'extracting-meanings', term });
 
   const meanings = await getMeanings(term, runConfig);
 
   emitter.emit({
-    event: 'step',
+    event: DomainEvent.step,
     stepName: 'scoring-meanings',
     term,
     meaningCount: meanings.length,

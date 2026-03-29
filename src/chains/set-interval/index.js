@@ -8,6 +8,7 @@ import { asXML } from '../../prompts/wrap-variable.js';
 import templateReplace from '../../lib/template-replace/index.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 import createProgressEmitter from '../../lib/progress/index.js';
+import { ChainEvent, Metric } from '../../lib/progress/constants.js';
 import { nameStep } from '../../lib/context/option.js';
 
 const name = 'set-interval';
@@ -133,9 +134,14 @@ Next wait:`;
       }
 
       emitter.metrics({
-        event: 'chain:tick',
+        event: ChainEvent.tick,
         operation: config.operation,
-        duration: Date.now() - startTime.getTime(),
+        tickNumber: count + 1,
+      });
+
+      emitter.measure({
+        metric: Metric.tickDuration,
+        value: Date.now() - startTime.getTime(),
         tickNumber: count + 1,
       });
 

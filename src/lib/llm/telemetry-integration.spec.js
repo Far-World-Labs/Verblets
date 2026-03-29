@@ -22,6 +22,14 @@ import callLlm from './index.js';
 import retry from '../retry/index.js';
 import { nameStep } from '../context/option.js';
 import createProgressEmitter from '../progress/index.js';
+import {
+  Kind,
+  ChainEvent,
+  TelemetryEvent,
+  LlmStatus,
+  Metric,
+  TokenType,
+} from '../progress/constants.js';
 
 const mockFetch = fetch;
 
@@ -62,19 +70,19 @@ describe('Telemetry integration', () => {
       }
 
       // Separate telemetry from operation events
-      const telemetryEvents = events.filter((e) => e.kind === 'telemetry');
-      const operationEvents = events.filter((e) => e.kind === 'operation');
+      const telemetryEvents = events.filter((e) => e.kind === Kind.telemetry);
+      const operationEvents = events.filter((e) => e.kind === Kind.operation);
 
       // chain:start, llm:model, llm:call are all telemetry kind
       expect(telemetryEvents.length).toBeGreaterThanOrEqual(3);
       const telemetryEventNames = telemetryEvents.map((e) => e.event);
-      expect(telemetryEventNames).toContain('chain:start');
-      expect(telemetryEventNames).toContain('llm:model');
-      expect(telemetryEventNames).toContain('llm:call');
+      expect(telemetryEventNames).toContain(ChainEvent.start);
+      expect(telemetryEventNames).toContain(TelemetryEvent.llmModel);
+      expect(telemetryEventNames).toContain(TelemetryEvent.llmCall);
 
       // Operation events are a separate stream (none expected from this simple flow,
       // but the separation mechanism works)
-      expect(operationEvents.every((e) => e.kind === 'operation')).toBe(true);
+      expect(operationEvents.every((e) => e.kind === Kind.operation)).toBe(true);
     });
   });
 
@@ -94,7 +102,7 @@ describe('Telemetry integration', () => {
       createProgressEmitter('child', child.onProgress, child).start();
 
       // Verify chain:start events have correct operation paths
-      const chainStarts = events.filter((e) => e.event === 'chain:start');
+      const chainStarts = events.filter((e) => e.event === ChainEvent.start);
       expect(chainStarts).toHaveLength(2);
       expect(chainStarts[0].operation).toBe('parent');
       expect(chainStarts[1].operation).toBe('parent/child');
@@ -102,11 +110,11 @@ describe('Telemetry integration', () => {
       // LLM call inside child chain inherits the nested operation path
       await callLlm('test', child);
 
-      const modelEvent = events.find((e) => e.event === 'llm:model');
-      expect(modelEvent.operation).toBe('parent/child/llm');
+      const modelEvent = events.find((e) => e.event === TelemetryEvent.llmModel);
+      expect(modelEvent.operation).toBe('parent/child');
 
-      const callEvent = events.find((e) => e.event === 'llm:call');
-      expect(callEvent.operation).toBe('parent/child/llm');
+      const callEvent = events.find((e) => e.event === TelemetryEvent.llmCall);
+      expect(callEvent.operation).toBe('parent/child');
     });
   });
 
@@ -152,22 +160,34 @@ describe('Telemetry integration', () => {
 
       // Extract only retry telemetry events (kind === 'telemetry')
       const retryTelemetry = events.filter(
-        (e) => e.kind === 'telemetry' && e.event?.startsWith('retry:')
+        (e) =>
+          e.kind === Kind.telemetry &&
+          [
+            TelemetryEvent.retryAttempt,
+            TelemetryEvent.retryError,
+            TelemetryEvent.retryExhaust,
+          ].includes(e.event)
       );
 
       // Expected sequence: attempt(1) → error(1) → attempt(2)
       expect(retryTelemetry).toHaveLength(3);
-      expect(retryTelemetry[0]).toMatchObject({ event: 'retry:attempt', attemptNumber: 1 });
+      expect(retryTelemetry[0]).toMatchObject({
+        event: TelemetryEvent.retryAttempt,
+        attemptNumber: 1,
+      });
       expect(retryTelemetry[1]).toMatchObject({
-        event: 'retry:error',
+        event: TelemetryEvent.retryError,
         attemptNumber: 1,
         error: { message: 'Rate limited', httpStatus: 429, type: 'rate_limit_error' },
       });
-      expect(retryTelemetry[2]).toMatchObject({ event: 'retry:attempt', attemptNumber: 2 });
+      expect(retryTelemetry[2]).toMatchObject({
+        event: TelemetryEvent.retryAttempt,
+        attemptNumber: 2,
+      });
 
       // All retry telemetry events carry the composed operation
       for (const e of retryTelemetry) {
-        expect(e.operation).toBe('retrychain/llm-call');
+        expect(e.operation).toBe('retrychain');
       }
     });
 
@@ -197,16 +217,31 @@ describe('Telemetry integration', () => {
       await expect(promise).rejects.toThrow('Server down');
 
       const retryTelemetry = events.filter(
-        (e) => e.kind === 'telemetry' && e.event?.startsWith('retry:')
+        (e) =>
+          e.kind === Kind.telemetry &&
+          [
+            TelemetryEvent.retryAttempt,
+            TelemetryEvent.retryError,
+            TelemetryEvent.retryExhaust,
+          ].includes(e.event)
       );
 
       // attempt(1) → error(1) → attempt(2) → exhaust
       expect(retryTelemetry).toHaveLength(4);
-      expect(retryTelemetry[0]).toMatchObject({ event: 'retry:attempt', attemptNumber: 1 });
-      expect(retryTelemetry[1]).toMatchObject({ event: 'retry:error', attemptNumber: 1 });
-      expect(retryTelemetry[2]).toMatchObject({ event: 'retry:attempt', attemptNumber: 2 });
+      expect(retryTelemetry[0]).toMatchObject({
+        event: TelemetryEvent.retryAttempt,
+        attemptNumber: 1,
+      });
+      expect(retryTelemetry[1]).toMatchObject({
+        event: TelemetryEvent.retryError,
+        attemptNumber: 1,
+      });
+      expect(retryTelemetry[2]).toMatchObject({
+        event: TelemetryEvent.retryAttempt,
+        attemptNumber: 2,
+      });
       expect(retryTelemetry[3]).toMatchObject({
-        event: 'retry:exhaust',
+        event: TelemetryEvent.retryExhaust,
         error: { message: 'Server down', httpStatus: 500 },
       });
     });
@@ -231,17 +266,21 @@ describe('Telemetry integration', () => {
       await callLlm('prompt one', runConfig);
       await callLlm('prompt two', runConfig);
 
-      const callEvents = events.filter((e) => e.event === 'llm:call' && e.status === 'success');
+      const callEvents = events.filter(
+        (e) => e.event === TelemetryEvent.llmCall && e.status === LlmStatus.success
+      );
       expect(callEvents).toHaveLength(2);
 
-      // Consumer aggregation pattern: sum tokens across calls
-      const totalTokens = callEvents.reduce((sum, e) => sum + e.tokens.total, 0);
-      expect(totalTokens).toBe(105);
-
-      const totalInput = callEvents.reduce((sum, e) => sum + e.tokens.input, 0);
+      // Consumer aggregation pattern: sum tokens from flat dimensional metrics
+      const tokenEvents = events.filter((e) => e.metric === Metric.tokenUsage);
+      const totalInput = tokenEvents
+        .filter((e) => e.tokenType === TokenType.input)
+        .reduce((sum, e) => sum + e.value, 0);
       expect(totalInput).toBe(70);
 
-      const totalOutput = callEvents.reduce((sum, e) => sum + e.tokens.output, 0);
+      const totalOutput = tokenEvents
+        .filter((e) => e.tokenType === TokenType.output)
+        .reduce((sum, e) => sum + e.value, 0);
       expect(totalOutput).toBe(35);
     });
   });
