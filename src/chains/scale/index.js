@@ -70,7 +70,7 @@ IMPORTANT: Each property must be a simple string value, not a nested object or a
         ),
       }),
     {
-      label: 'scale spec',
+      label: 'spec',
       config: runConfig,
     }
   );

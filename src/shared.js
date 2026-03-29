@@ -173,6 +173,13 @@ export {
   softCoverPrompt,
 } from './chains/veiled-variants/index.js';
 
+// Vision
+export {
+  default as analyzeImage,
+  mapDetail as analyzeImageMapDetail,
+} from './chains/analyze-image/index.js';
+export { buildVisionPrompt } from './lib/llm/index.js';
+
 // Utility Operations
 export { default as auto } from './verblets/auto/index.js';
 export { default as expect } from './verblets/expect/index.js';
@@ -191,7 +198,7 @@ export {
   embedChunked,
   embedWarmup,
   setEmbedEnabled,
-} from './lib/embed/index.js';
+} from './lib/embed-local/index.js';
 
 // Embedding Collection
 export { default as embedScore } from './lib/embed-score/index.js';

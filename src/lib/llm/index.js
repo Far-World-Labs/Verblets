@@ -272,10 +272,13 @@ export const run = async (prompt, config = {}) => {
   });
 
   // Log start event with model information
+  const promptLength = Array.isArray(prompt)
+    ? prompt.reduce((sum, block) => sum + (block.type === 'text' ? block.text.length : 0), 0)
+    : prompt.length;
   if (logger?.info) {
     logger.info({
       event: 'llm:start',
-      promptLength: prompt.length,
+      promptLength,
       model: modelNameNegotiated,
     });
   }
@@ -302,10 +305,16 @@ export const run = async (prompt, config = {}) => {
       : onlyJSON;
 
     // Augment the last user message with JSON format instructions
+    const appendInstruction = (content) => {
+      if (Array.isArray(content)) {
+        return [...content, { type: 'text', text: schemaInstruction }];
+      }
+      return `${content}\n\n${schemaInstruction}`;
+    };
     const messages =
       requestConfig.messages?.map((msg, i, arr) =>
         i === arr.length - 1 && msg.role === 'user'
-          ? { ...msg, content: `${msg.content}\n\n${schemaInstruction}` }
+          ? { ...msg, content: appendInstruction(msg.content) }
           : msg
       ) ?? requestConfig.messages;
 
@@ -508,5 +517,12 @@ export const run = async (prompt, config = {}) => {
     throw err;
   }
 };
+
+export function buildVisionPrompt(text, images) {
+  return [
+    { type: 'text', text },
+    ...images.map((img) => ({ type: 'image', data: img.data, mediaType: img.mediaType })),
+  ];
+}
 
 export default run;

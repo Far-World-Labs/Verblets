@@ -205,6 +205,23 @@ const translateTools = (tools) => {
   });
 };
 
+export const translateContentBlocks = (content) => {
+  if (!Array.isArray(content)) return content;
+  return content.map((block) => {
+    if (block.type === 'image') {
+      return {
+        type: 'image',
+        source: {
+          type: 'base64',
+          media_type: block.mediaType,
+          data: block.data,
+        },
+      };
+    }
+    return block;
+  });
+};
+
 export const buildRequest = (apiUrl, apiKey, endpoint, requestConfig) => {
   const url = `${apiUrl}${endpoint}`;
 
@@ -224,10 +241,14 @@ export const buildRequest = (apiUrl, apiKey, endpoint, requestConfig) => {
   } = requestConfig;
 
   const { systemText, messages: userMessages } = extractSystemMessages(messages);
+  const translatedMessages = userMessages.map((m) => ({
+    ...m,
+    content: translateContentBlocks(m.content),
+  }));
 
   const body = {
     model,
-    messages: userMessages,
+    messages: translatedMessages,
     max_tokens: max_tokens || 4096,
     ...rest,
   };

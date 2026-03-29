@@ -20,3 +20,8 @@ coverage/
 # Local reference docs and agent working files (not part of this repo)
 .claude/design-reference.md
 .claude/projections/
+.claude/skills/
+.login
+
+# Long-running automation scripts and their output
+automations/

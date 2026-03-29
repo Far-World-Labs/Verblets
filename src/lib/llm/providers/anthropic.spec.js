@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { sanitizeSchemaForAnthropic, buildRequest, parseResponse } from './anthropic.js';
+import {
+  sanitizeSchemaForAnthropic,
+  buildRequest,
+  parseResponse,
+  translateContentBlocks,
+} from './anthropic.js';
 
 describe('sanitizeSchemaForAnthropic', () => {
   it('should not mutate the original schema', () => {
@@ -579,5 +584,101 @@ describe('buildRequest tools format translation', () => {
     });
 
     expect(body.tools).toBeUndefined();
+  });
+});
+
+describe('translateContentBlocks (Anthropic)', () => {
+  it('should pass through a plain string', () => {
+    const result = translateContentBlocks('just text');
+    expect(result).toBe('just text');
+  });
+
+  it('should pass through text-only content blocks unchanged', () => {
+    const blocks = [{ type: 'text', text: 'Hello world' }];
+    const result = translateContentBlocks(blocks);
+
+    expect(result).toEqual([{ type: 'text', text: 'Hello world' }]);
+  });
+
+  it('should translate image blocks to Anthropic base64 source format', () => {
+    const blocks = [
+      { type: 'text', text: 'Analyze this' },
+      { type: 'image', data: 'abc123', mediaType: 'image/jpeg' },
+    ];
+    const result = translateContentBlocks(blocks);
+
+    expect(result).toEqual([
+      { type: 'text', text: 'Analyze this' },
+      {
+        type: 'image',
+        source: {
+          type: 'base64',
+          media_type: 'image/jpeg',
+          data: 'abc123',
+        },
+      },
+    ]);
+  });
+
+  it('should translate multiple image blocks', () => {
+    const blocks = [
+      { type: 'text', text: 'Compare' },
+      { type: 'image', data: 'img1', mediaType: 'image/png' },
+      { type: 'image', data: 'img2', mediaType: 'image/webp' },
+    ];
+    const result = translateContentBlocks(blocks);
+
+    expect(result[1].source.media_type).toBe('image/png');
+    expect(result[2].source.media_type).toBe('image/webp');
+    expect(result[1].source.data).toBe('img1');
+    expect(result[2].source.data).toBe('img2');
+  });
+});
+
+describe('buildRequest vision content translation', () => {
+  const getBody = (config) => {
+    const { fetchOptions } = buildRequest(
+      'https://api.anthropic.com',
+      'key',
+      '/v1/messages',
+      config
+    );
+    return JSON.parse(fetchOptions.body);
+  };
+
+  it('should translate image content blocks in user messages', () => {
+    const body = getBody({
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: 'What is in this image?' },
+            { type: 'image', data: 'base64data', mediaType: 'image/jpeg' },
+          ],
+        },
+      ],
+      model: 'claude-3',
+    });
+
+    expect(body.messages[0].content).toEqual([
+      { type: 'text', text: 'What is in this image?' },
+      {
+        type: 'image',
+        source: {
+          type: 'base64',
+          media_type: 'image/jpeg',
+          data: 'base64data',
+        },
+      },
+    ]);
+  });
+
+  it('should leave string content in messages unchanged', () => {
+    const body = getBody({
+      messages: [{ role: 'user', content: 'plain text' }],
+      model: 'claude-3',
+    });
+
+    expect(body.messages[0].content).toBe('plain text');
   });
 });

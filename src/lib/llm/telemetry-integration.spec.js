@@ -185,7 +185,7 @@ describe('Telemetry integration', () => {
         attemptNumber: 2,
       });
 
-      // All retry telemetry events carry the chain operation
+      // All retry telemetry events carry the composed operation
       for (const e of retryTelemetry) {
         expect(e.operation).toBe('retrychain');
       }

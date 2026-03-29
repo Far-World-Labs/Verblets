@@ -22,6 +22,7 @@ export const catalog = {
     maxContextWindow: 1_047_576,
     maxOutputTokens: 32_768,
     requestTimeout: 45_000,
+    vision: true,
     get apiKey() {
       return configGet('OPENAI_API_KEY');
     },
@@ -36,6 +37,7 @@ export const catalog = {
     maxContextWindow: 1_047_576,
     maxOutputTokens: 32_768,
     requestTimeout: 45_000,
+    vision: true,
     get apiKey() {
       return configGet('OPENAI_API_KEY');
     },
@@ -50,6 +52,7 @@ export const catalog = {
     maxContextWindow: 1_047_576,
     maxOutputTokens: 32_768,
     requestTimeout: 30_000,
+    vision: true,
     get apiKey() {
       return configGet('OPENAI_API_KEY');
     },
@@ -65,6 +68,7 @@ export const catalog = {
     maxContextWindow: 400_000,
     maxOutputTokens: 128_000,
     requestTimeout: 120_000,
+    vision: true,
     get apiKey() {
       return configGet('OPENAI_API_KEY');
     },
@@ -80,6 +84,7 @@ export const catalog = {
     maxContextWindow: 200_000,
     maxOutputTokens: 64_000,
     requestTimeout: 90_000,
+    vision: true,
     get apiKey() {
       return configGet('ANTHROPIC_API_KEY');
     },
@@ -94,6 +99,7 @@ export const catalog = {
     maxContextWindow: 200_000,
     maxOutputTokens: 64_000,
     requestTimeout: 45_000,
+    vision: true,
     get apiKey() {
       return configGet('ANTHROPIC_API_KEY');
     },
@@ -108,6 +114,7 @@ export const catalog = {
     maxContextWindow: 200_000,
     maxOutputTokens: 128_000,
     requestTimeout: 120_000,
+    vision: true,
     get apiKey() {
       return configGet('ANTHROPIC_API_KEY');
     },
@@ -124,6 +131,7 @@ export const catalog = {
     maxOutputTokens: 8_192,
     requestTimeout: 240_000,
     structuredOutput: false,
+    vision: false,
     get apiUrl() {
       const url = configGet('OPENWEBUI_API_URL') || '';
       return url.endsWith('/') ? url : `${url}/`;
@@ -140,6 +148,7 @@ export const catalog = {
     maxOutputTokens: 8_192,
     requestTimeout: 240_000,
     structuredOutput: false,
+    vision: false,
     get apiUrl() {
       const url = configGet('OPENWEBUI_API_URL') || '';
       return url.endsWith('/') ? url : `${url}/`;
@@ -156,6 +165,7 @@ export const catalog = {
     maxOutputTokens: 8_192,
     requestTimeout: 240_000,
     structuredOutput: false,
+    vision: false,
     get apiUrl() {
       const url = configGet('OPENWEBUI_API_URL') || '';
       return url.endsWith('/') ? url : `${url}/`;
@@ -172,6 +182,7 @@ export const catalog = {
     maxOutputTokens: 8_192,
     requestTimeout: 480_000,
     structuredOutput: false,
+    vision: false,
     get apiUrl() {
       const url = configGet('OPENWEBUI_API_URL') || '';
       return url.endsWith('/') ? url : `${url}/`;
@@ -188,6 +199,7 @@ export const catalog = {
     maxOutputTokens: 8_192,
     requestTimeout: 480_000,
     structuredOutput: false,
+    vision: false,
     get apiUrl() {
       const url = configGet('OPENWEBUI_API_URL') || '';
       return url.endsWith('/') ? url : `${url}/`;

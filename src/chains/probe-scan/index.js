@@ -1,4 +1,4 @@
-import { embedChunked } from '../../lib/embed/index.js';
+import { embedChunked } from '../../lib/embed-local/index.js';
 import { cosineSimilarity } from '../../lib/pure/index.js';
 import createProgressEmitter from '../../lib/progress/index.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
