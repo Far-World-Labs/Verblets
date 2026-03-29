@@ -30,6 +30,9 @@ export const ENV_VARS = {
   VERBLETS_PRESENCE_PENALTY: { type: 'number', default: 0, scope: 'deploy' },
   VERBLETS_TOPP: { type: 'number', default: 0.5, scope: 'deploy' },
 
+  // ── Output & Storage ─────────────────────────────────────────────────
+  VERBLETS_OUTPUT_DIR: { type: 'string', scope: 'deploy' },
+
   // ── Cache ────────────────────────────────────────────────────────────
   VERBLETS_CACHE_TTL: { type: 'number', default: 31_536_000, scope: 'deploy' },
   VERBLETS_DISABLE_CACHE: { type: 'boolean', default: false, scope: 'deploy' },

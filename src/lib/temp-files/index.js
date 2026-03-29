@@ -4,7 +4,12 @@ import { tmpdir } from 'node:os';
 
 const ENV_KEY = 'VERBLETS_OUTPUT_DIR';
 
-const timestamp = () => new Date().toISOString().slice(0, 19).replace(/[:.]/g, '-');
+const timestamp = () => {
+  const now = new Date();
+  const iso = now.toISOString().slice(0, 19).replace(/[:.]/g, '-');
+  const ms = String(now.getMilliseconds()).padStart(3, '0');
+  return `${iso}-${ms}`;
+};
 
 /**
  * Resolve the output base directory.
@@ -33,30 +38,36 @@ export async function cleanupPaths(paths) {
  *
  * Structured mode (outputDir or env set):
  *   {base}/{name}/{timestamp}-{random}/
+ *   persistent = true — cleanup() removes tracked files but preserves the directory.
  *
  * Ephemeral mode (neither set):
  *   {tmpdir}/verblets-{name}-{random}/
+ *   persistent = false — cleanup() removes everything.
  *
  * @param {string} name - Logical name (chain name, automation name)
  * @param {string} [outputDir] - Explicit base directory
- * @returns {Promise<{dir, track, paths, cleanup}>}
+ * @returns {Promise<{dir, persistent, track, paths, cleanup}>}
  */
 export async function createTempDir(name = 'scratch', outputDir) {
   const base = resolveOutputDir(outputDir);
   let dir;
+  let persistent;
 
   if (base) {
     const chainDir = join(base, name);
     await mkdir(chainDir, { recursive: true });
     dir = await mkdtemp(join(chainDir, `${timestamp()}-`));
+    persistent = true;
   } else {
     dir = await mkdtemp(join(tmpdir(), `verblets-${name}-`));
+    persistent = false;
   }
 
   const tracked = [];
 
   return {
     dir,
+    persistent,
     track(filePath) {
       tracked.push(filePath);
     },
@@ -69,10 +80,12 @@ export async function createTempDir(name = 'scratch', outputDir) {
       } catch {
         /* swallow */
       }
-      try {
-        await rm(dir, { recursive: true, force: true });
-      } catch {
-        /* swallow */
+      if (!persistent) {
+        try {
+          await rm(dir, { recursive: true, force: true });
+        } catch {
+          /* swallow */
+        }
       }
     },
   };

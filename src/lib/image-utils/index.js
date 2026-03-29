@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { randomUUID } from 'node:crypto';
 import { isImageProcessingEnabled } from './state.js';
+import { resolveOutputDir } from '../temp-files/index.js';
 
 export { setImageProcessingEnabled } from './state.js';
 
@@ -27,7 +28,7 @@ function assertEnabled() {
 }
 
 function tempPath(format, outputDir) {
-  return join(outputDir || tmpdir(), `verblets-img-${randomUUID()}.${format}`);
+  return join(resolveOutputDir(outputDir) || tmpdir(), `verblets-img-${randomUUID()}.${format}`);
 }
 
 export async function resizeImage(

@@ -61,6 +61,7 @@ describe('createTempDir', () => {
     dirsToClean.push(ctx.dir);
 
     expect(ctx.dir).toContain('verblets-my-chain-');
+    expect(ctx.persistent).toBe(false);
     expect(existsSync(ctx.dir)).toBe(true);
   });
 
@@ -72,10 +73,11 @@ describe('createTempDir', () => {
     dirsToClean.push(ctx.dir);
 
     expect(ctx.dir.startsWith(join(base, 'web-scrape'))).toBe(true);
+    expect(ctx.persistent).toBe(true);
     expect(existsSync(ctx.dir)).toBe(true);
   });
 
-  it('structured directory name includes a timestamp prefix', async () => {
+  it('structured directory name includes a timestamp with millisecond precision', async () => {
     const base = join(tmpdir(), `verblets-ts-test-${Date.now()}`);
     dirsToClean.push(base);
 
@@ -83,7 +85,8 @@ describe('createTempDir', () => {
     dirsToClean.push(ctx.dir);
 
     const leaf = ctx.dir.split('/').pop();
-    expect(leaf).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-/);
+    // e.g. 2026-03-29T18-20-00-123-a1b2c3
+    expect(leaf).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}-/);
   });
 
   it('falls back to VERBLETS_OUTPUT_DIR env var when no outputDir given', async () => {
@@ -148,7 +151,7 @@ describe('createTempDir', () => {
     expect(ctx.paths()).toEqual(['/fake/path', '/another/path']);
   });
 
-  it('cleanup removes tracked files and the directory', async () => {
+  it('ephemeral cleanup removes tracked files and the directory', async () => {
     const ctx = await createTempDir();
     const fileA = join(ctx.dir, 'shot1.png');
     const fileB = join(ctx.dir, 'shot2.png');
@@ -163,6 +166,23 @@ describe('createTempDir', () => {
     expect(existsSync(fileA)).toBe(false);
     expect(existsSync(fileB)).toBe(false);
     expect(existsSync(ctx.dir)).toBe(false);
+  });
+
+  it('structured cleanup removes tracked files but preserves the directory', async () => {
+    const base = join(tmpdir(), `verblets-persist-test-${Date.now()}`);
+    dirsToClean.push(base);
+
+    const ctx = await createTempDir('persist-chain', base);
+    dirsToClean.push(ctx.dir);
+
+    const fileA = join(ctx.dir, 'shot1.png');
+    await writeFile(fileA, 'image-data');
+    ctx.track(fileA);
+
+    await ctx.cleanup();
+
+    expect(existsSync(fileA)).toBe(false);
+    expect(existsSync(ctx.dir)).toBe(true);
   });
 
   it('cleanup does not throw when directory is already removed', async () => {
