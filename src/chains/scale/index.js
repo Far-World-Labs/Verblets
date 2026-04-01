@@ -4,8 +4,11 @@ import { asXML } from '../../prompts/wrap-variable.js';
 import buildInstructions from '../../lib/build-instructions/index.js';
 import { scaleSpecificationJsonSchema } from './schemas.js';
 import scaleResultSchema from './scale-result.json';
-import createProgressEmitter from '../../lib/progress/index.js';
+import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
+import { DomainEvent } from '../../lib/progress/constants.js';
 import { nameStep } from '../../lib/context/option.js';
+
+const name = 'scale';
 
 // ===== Instruction Builders =====
 
@@ -46,9 +49,10 @@ export async function scaleSpec(prompt, config = {}) {
   const specEmitter = createProgressEmitter('scale:spec', runConfig.onProgress, runConfig);
   specEmitter.start();
 
-  const specSystemPrompt = `You are a scale specification generator. Analyze the scaling instructions and produce a clear, comprehensive specification.`;
+  try {
+    const specSystemPrompt = `You are a scale specification generator. Analyze the scaling instructions and produce a clear, comprehensive specification.`;
 
-  const specUserPrompt = `Analyze these scaling instructions and generate a scale specification.
+    const specUserPrompt = `Analyze these scaling instructions and generate a scale specification.
 
 ${asXML(prompt, { tag: 'scaling-instructions' })}
 
@@ -59,25 +63,29 @@ Provide a JSON object with exactly three string properties:
 
 IMPORTANT: Each property must be a simple string value, not a nested object or array.`;
 
-  const response = await retry(
-    () =>
-      callLlm(specUserPrompt, {
-        ...runConfig,
-        systemPrompt: specSystemPrompt,
-        response_format: jsonSchema(
-          scaleSpecificationJsonSchema.name,
-          scaleSpecificationJsonSchema.schema
-        ),
-      }),
-    {
-      label: 'spec',
-      config: runConfig,
-    }
-  );
+    const response = await retry(
+      () =>
+        callLlm(specUserPrompt, {
+          ...runConfig,
+          systemPrompt: specSystemPrompt,
+          response_format: jsonSchema(
+            scaleSpecificationJsonSchema.name,
+            scaleSpecificationJsonSchema.schema
+          ),
+        }),
+      {
+        label: 'spec',
+        config: runConfig,
+      }
+    );
 
-  specEmitter.complete();
+    specEmitter.complete({ outcome: 'success' });
 
-  return response;
+    return response;
+  } catch (err) {
+    specEmitter.error(err);
+    throw err;
+  }
 }
 
 /**
@@ -123,8 +131,29 @@ Return a JSON object with a "value" property containing the scaled result.`;
  * @returns {Promise<*>} Scaled value
  */
 export async function scaleItem(item, instructions, config = {}) {
-  const spec = await scaleSpec(instructions, config);
-  return await applyScale(item, spec, config);
+  const runConfig = nameStep(name, config);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
+
+  try {
+    emitter.emit({ event: DomainEvent.step, stepName: 'generating-specification' });
+    const spec = await scaleSpec(instructions, {
+      ...runConfig,
+      onProgress: scopePhase(runConfig.onProgress, 'scale:spec'),
+    });
+
+    emitter.emit({ event: DomainEvent.step, stepName: 'applying-scale' });
+    const result = await applyScale(item, spec, {
+      ...runConfig,
+      onProgress: scopePhase(runConfig.onProgress, 'scale:apply'),
+    });
+
+    emitter.complete({ outcome: 'success' });
+    return result;
+  } catch (err) {
+    emitter.error(err);
+    throw err;
+  }
 }
 
 // ===== Advanced Scale Functions =====

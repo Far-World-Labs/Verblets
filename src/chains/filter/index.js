@@ -64,6 +64,7 @@ const filter = async function filter(list, instructions, config = {}) {
   );
 
   const results = [];
+  let batchErrors = 0;
   const batches = await createBatches(list, runConfig);
   const batchDone = emitter.batch(list.length);
 
@@ -135,8 +136,10 @@ Process exactly ${count} items from the XML list below and return ${count} yes/n
         onProgress: runConfig.onProgress,
       });
     } catch (error) {
+      emitter.error(error, { batchIndex, itemCount: items.length });
       lifecycleLogger.logError(error, { batchIndex, itemCount: items.length });
       if (errorPosture === 'strict') throw error;
+      batchErrors++;
       continue;
     }
 
@@ -167,7 +170,8 @@ Process exactly ${count} items from the XML list below and return ${count} yes/n
     processedItems: batchDone.count,
   });
 
-  const resultMeta = { inputCount: list.length, outputCount: results.length };
+  const outcome = batchErrors > 0 ? 'partial' : 'success';
+  const resultMeta = { inputCount: list.length, outputCount: results.length, outcome };
   lifecycleLogger.logResult(results, resultMeta);
   emitter.complete(resultMeta);
 

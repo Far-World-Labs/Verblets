@@ -170,6 +170,7 @@ async function scoreOnce(list, prompt, batchConfig, config) {
       });
       anchorBlock = buildScoringAnchors(first.items, scores, anchoring);
     } catch (error) {
+      emitter.error(error, { batchIndex: 0, itemCount: first.items.length });
       if (errorPosture === 'strict') throw error;
       if (logger?.error)
         logger.error('Score batch 0 failed', {
@@ -197,6 +198,7 @@ async function scoreOnce(list, prompt, batchConfig, config) {
             results[startIndex + j] = s;
           });
         } catch (error) {
+          emitter.error(error, { itemCount: items.length });
           if (errorPosture === 'strict') throw error;
           if (logger?.error)
             logger.error(`Score batch failed`, {
@@ -291,7 +293,10 @@ export async function mapScore(list, instructions, config = {}) {
     });
   }
 
-  emitter.complete();
+  const successCount = results.filter((r) => r !== undefined).length;
+  const failedItems = results.length - successCount;
+  const outcome = failedItems > 0 ? 'partial' : 'success';
+  emitter.complete({ totalItems: results.length, successCount, failedItems, outcome });
 
   return results;
 }

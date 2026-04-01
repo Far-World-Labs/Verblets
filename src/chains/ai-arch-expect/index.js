@@ -2,6 +2,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import llm from '../../lib/llm/index.js';
 import reduce from '../reduce/index.js';
+import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
+import { OpEvent } from '../../lib/progress/constants.js';
+import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 
 // Configuration constants
 // These control the behavior of the architecture testing system
@@ -19,11 +22,26 @@ const PROCESSING_MODES = {
   BULK: 'bulk',
 };
 
-// Progress status constants
-const PROGRESS_STATUS = {
-  PROCESSING: 'processing',
-  COMPLETED: 'completed',
-  ERROR: 'error',
+/**
+ * Map bulkSize option. Accepts a number or 'small'|'large'.
+ * @param {string|number|undefined} value
+ * @returns {number}
+ */
+export const mapBulkSize = (value) => {
+  if (value === undefined) return DEFAULT_BULK_SIZE;
+  if (typeof value === 'number') return value;
+  return { small: 10, med: DEFAULT_BULK_SIZE, large: 40 }[value] ?? DEFAULT_BULK_SIZE;
+};
+
+/**
+ * Map maxConcurrency option. Accepts a number or 'low'|'high'.
+ * @param {string|number|undefined} value
+ * @returns {number}
+ */
+export const mapMaxConcurrency = (value) => {
+  if (value === undefined) return DEFAULT_MAX_CONCURRENCY;
+  if (typeof value === 'number') return value;
+  return { low: 2, med: DEFAULT_MAX_CONCURRENCY, high: 10 }[value] ?? DEFAULT_MAX_CONCURRENCY;
 };
 
 // Re-export utilities for backwards compatibility
@@ -90,7 +108,14 @@ function createProgressMetadata(batch, totalBatches, totalItems, status, config,
 }
 
 // Process individual item with error handling
-async function processIndividualItem(item, contextText, itemContextFns, description, targetType) {
+async function processIndividualItem(
+  item,
+  contextText,
+  itemContextFns,
+  description,
+  targetType,
+  runConfig = {}
+) {
   try {
     const itemContextText = itemContextFns
       .map((fn) => resolveContext(fn(item)))
@@ -100,6 +125,7 @@ async function processIndividualItem(item, contextText, itemContextFns, descript
     const prompt = buildPrompt(fullContext, item, description, targetType === 'files');
 
     const response = await llm(prompt, {
+      ...runConfig,
       response_format: {
         type: 'json_schema',
         json_schema: {
@@ -151,17 +177,25 @@ function executeProgressCallback(callback, items, error, metadata) {
 }
 
 // Process bulk chunk with error handling
-async function processBulkChunk(chunk, contextText, description, onProgress, metadata) {
+async function processBulkChunk(
+  chunk,
+  contextText,
+  description,
+  onProgress,
+  metadata,
+  config = {}
+) {
   // Execute progress callback for start of processing
   executeProgressCallback(onProgress, chunk, undefined, {
     ...metadata,
-    status: PROGRESS_STATUS.PROCESSING,
+    status: OpEvent.start,
   });
 
   try {
     // Use reduce for bulk processing
     const prompt = buildBulkPrompt(contextText, chunk, description);
-    const response = await reduce(chunk, prompt, {
+    const reduceConfig = {
+      ...config,
       responseFormat: {
         type: 'json_schema',
         json_schema: {
@@ -169,7 +203,9 @@ async function processBulkChunk(chunk, contextText, description, onProgress, met
           schema: bulkResultSchema,
         },
       },
-    });
+      onProgress: scopePhase(config.onProgress, 'reduce'),
+    };
+    const response = await reduce(chunk, prompt, reduceConfig);
 
     const resultArray = response.results || response;
 
@@ -194,7 +230,7 @@ async function processBulkChunk(chunk, contextText, description, onProgress, met
       failed > 0 ? new Error(`${failed} items failed`) : undefined,
       {
         ...metadata,
-        status: PROGRESS_STATUS.COMPLETED,
+        status: OpEvent.complete,
         passed,
         failed,
       }
@@ -213,7 +249,7 @@ async function processBulkChunk(chunk, contextText, description, onProgress, met
     // Execute progress callback for error
     executeProgressCallback(onProgress, chunk, error, {
       ...metadata,
-      status: PROGRESS_STATUS.ERROR,
+      status: OpEvent.error,
     });
 
     // Return the failure results instead of throwing, so processing can continue
@@ -301,7 +337,8 @@ async function processIndividualBatch(batch, contextText, config) {
       contextText,
       config.itemContextFns,
       config.description,
-      config.targetType
+      config.targetType,
+      config.runConfig
     )
   );
   return await Promise.all(batchPromises);
@@ -365,7 +402,7 @@ async function processWithStrategy(items, contextText, strategy, config) {
       batch,
       batches.length,
       items.length,
-      PROGRESS_STATUS.PROCESSING,
+      OpEvent.start,
       config,
       strategy.mode
     );
@@ -387,7 +424,8 @@ async function processWithStrategy(items, contextText, strategy, config) {
         contextText,
         config.description,
         config.onChunkProcessed,
-        metadata
+        metadata,
+        config.runConfig
       );
     }
 
@@ -410,7 +448,7 @@ async function processWithStrategy(items, contextText, strategy, config) {
           batch,
           batches.length,
           items.length,
-          PROGRESS_STATUS.COMPLETED,
+          OpEvent.complete,
           config,
           strategy.mode
         ),
@@ -515,6 +553,7 @@ Return JSON with "results" array containing objects with "path", "passed" (boole
 class ArchExpectation {
   constructor(target, options = {}) {
     this.target = target;
+    this.options = options;
     this.contexts = [];
     this.itemContextFns = [];
     this.maxFailures = options.maxFailures || DEFAULT_MAX_FAILURES;
@@ -552,52 +591,74 @@ class ArchExpectation {
 
   // Start processing - this is the fluent terminator
   async start() {
-    if (!this.description) {
-      throw new Error('Must call satisfies() before start()');
-    }
+    const runConfig = nameStep('ai-arch-expect', this.options);
+    const emitter = createProgressEmitter('ai-arch-expect', runConfig.onProgress, runConfig);
+    emitter.start();
 
-    const items = await this.target.resolve();
-    const contextText = this.contexts.map(resolveContext).filter(Boolean).join('\n\n');
-
-    // Determine processing strategy
-    const strategy = createProcessingStrategy(
-      this,
-      this.onChunkProcessed,
-      this.itemContextFns,
-      items.length
-    );
-    const config = {
-      bulkSize: this.bulkSize,
-      maxConcurrency: this.maxConcurrency,
-      description: this.description,
-      onChunkProcessed: this.onChunkProcessed,
-      itemContextFns: this.itemContextFns,
-      targetType: this.target.type,
-      maxFailures: this.maxFailures,
-      isCoverageTest: this.isCoverageTest,
-    };
-
-    // Process items using the determined strategy
-    const allResults = await processWithStrategy(items, contextText, strategy, config);
-
-    // Handle coverage test results
-    if (this.isCoverageTest) {
-      const passed = allResults.filter((r) => r.passed).length;
-      const coverage = items.length > 0 ? passed / items.length : 0;
-      const coveragePassed = coverage >= this.threshold;
-
-      const message = `Coverage: ${passed}/${items.length} (${(coverage * 100).toFixed(1)}%) - ${
-        coveragePassed ? 'meets' : 'below'
-      } ${(this.threshold * 100).toFixed(1)}% threshold`;
-
-      if (!coveragePassed) {
-        throw new Error(message);
+    try {
+      if (!this.description) {
+        throw new Error('Must call satisfies() before start()');
       }
 
-      return { passed: coveragePassed, coverage, message };
-    }
+      const items = await this.target.resolve();
+      const contextText = this.contexts.map(resolveContext).filter(Boolean).join('\n\n');
 
-    return this.summarize(items, allResults);
+      // Determine processing strategy
+      const strategy = createProcessingStrategy(
+        this,
+        this.onChunkProcessed,
+        this.itemContextFns,
+        items.length
+      );
+      const { bulkSize, maxConcurrency, maxFailures } = await getOptions(runConfig, {
+        bulkSize: withPolicy(mapBulkSize),
+        maxConcurrency: withPolicy(mapMaxConcurrency),
+        maxFailures: this.maxFailures,
+      });
+
+      const config = {
+        bulkSize,
+        maxConcurrency,
+        description: this.description,
+        onChunkProcessed: this.onChunkProcessed,
+        itemContextFns: this.itemContextFns,
+        targetType: this.target.type,
+        maxFailures,
+        isCoverageTest: this.isCoverageTest,
+        runConfig,
+      };
+
+      const batchDone = emitter.batch(items.length);
+
+      // Process items using the determined strategy
+      const allResults = await processWithStrategy(items, contextText, strategy, config);
+      batchDone(allResults.length);
+
+      // Handle coverage test results
+      if (this.isCoverageTest) {
+        const passed = allResults.filter((r) => r.passed).length;
+        const coverage = items.length > 0 ? passed / items.length : 0;
+        const coveragePassed = coverage >= this.threshold;
+
+        const message = `Coverage: ${passed}/${items.length} (${(coverage * 100).toFixed(1)}%) - ${
+          coveragePassed ? 'meets' : 'below'
+        } ${(this.threshold * 100).toFixed(1)}% threshold`;
+
+        if (!coveragePassed) {
+          throw new Error(message);
+        }
+
+        emitter.complete({ outcome: 'success', coverage, total: items.length });
+        return { passed: coveragePassed, coverage, message };
+      }
+
+      const result = this.summarize(items, allResults);
+      emitter.complete({ outcome: 'success', total: items.length, passed: result.details.passed });
+      return result;
+    } catch (err) {
+      emitter.error(err);
+      throw err;
+    }
   }
 
   summarize(allItems, results) {

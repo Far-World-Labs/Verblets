@@ -21,22 +21,27 @@ The value should be your selection.`;
 
   const schema = createEnumSchema(enumVal);
 
-  const result = await callLlm(enumText, {
-    ...runConfig,
-    response_format: {
-      type: 'json_schema',
-      json_schema: {
-        name: 'enum_selection',
-        schema,
+  try {
+    const result = await callLlm(enumText, {
+      ...runConfig,
+      response_format: {
+        type: 'json_schema',
+        json_schema: {
+          name: 'enum_selection',
+          schema,
+        },
       },
-    },
-  });
+    });
 
-  //TODO:DOCS_OBSERVATIONS string 'undefined' check is fragile — if the schema constrains to the enum values plus a sentinel, this becomes unnecessary
-  // With auto-unwrapping, result should be the value directly
-  const interpreted = result === 'undefined' ? undefined : result;
+    //TODO:DOCS_OBSERVATIONS string 'undefined' check is fragile — if the schema constrains to the enum values plus a sentinel, this becomes unnecessary
+    // With auto-unwrapping, result should be the value directly
+    const interpreted = result === 'undefined' ? undefined : result;
 
-  emitter.complete();
+    emitter.complete({ outcome: 'success' });
 
-  return interpreted;
+    return interpreted;
+  } catch (err) {
+    emitter.error(err);
+    throw err;
+  }
 };

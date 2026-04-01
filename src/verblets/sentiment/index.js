@@ -19,18 +19,23 @@ export default async function sentiment(text, config = {}) {
 
   const prompt = `Identify the overall sentiment of the following text as "positive", "negative", or "neutral".\n\nText: ${text}\n\nThe value should be the sentiment classification.`;
 
-  const response = await callLlm(prompt, {
-    ...runConfig,
-    response_format: {
-      type: 'json_schema',
-      json_schema: {
-        name: 'sentiment_analysis',
-        schema: sentimentSchema,
+  try {
+    const response = await callLlm(prompt, {
+      ...runConfig,
+      response_format: {
+        type: 'json_schema',
+        json_schema: {
+          name: 'sentiment_analysis',
+          schema: sentimentSchema,
+        },
       },
-    },
-  });
+    });
 
-  emitter.complete();
+    emitter.complete({ outcome: 'success' });
 
-  return response;
+    return response;
+  } catch (err) {
+    emitter.error(err);
+    throw err;
+  }
 }

@@ -27,37 +27,42 @@ export default async (text, config = {}) => {
     },
   }));
 
-  const response = await callLlm(text, {
-    ...runConfig,
-    // toolChoice: 'auto' // by default
-    tools,
-  });
+  try {
+    const response = await callLlm(text, {
+      ...runConfig,
+      // toolChoice: 'auto' // by default
+      tools,
+    });
 
-  let result;
+    let result;
 
-  // Check if a function was called or if we got a text response
-  if (typeof response === 'string') {
-    // No function was selected, return a no-match indicator
-    result = {
-      name: runConfig.defaultFunction || null,
-      arguments: runConfig.defaultArguments || {},
-      noMatch: true,
-      reason: response,
-      functionArgsAsArray: [runConfig.defaultArguments || {}],
-    };
-  } else {
-    // Function was called successfully
-    const functionArgs = response.arguments;
-    const functionArgsAsArray = Array.isArray(functionArgs) ? functionArgs : [functionArgs];
+    // Check if a function was called or if we got a text response
+    if (typeof response === 'string') {
+      // No function was selected, return a no-match indicator
+      result = {
+        name: runConfig.defaultFunction || null,
+        arguments: runConfig.defaultArguments || {},
+        noMatch: true,
+        reason: response,
+        functionArgsAsArray: [runConfig.defaultArguments || {}],
+      };
+    } else {
+      // Function was called successfully
+      const functionArgs = response.arguments;
+      const functionArgsAsArray = Array.isArray(functionArgs) ? functionArgs : [functionArgs];
 
-    result = {
-      ...response,
-      functionArgsAsArray,
-      noMatch: false,
-    };
+      result = {
+        ...response,
+        functionArgsAsArray,
+        noMatch: false,
+      };
+    }
+
+    emitter.complete({ outcome: 'success' });
+
+    return result;
+  } catch (err) {
+    emitter.error(err);
+    throw err;
   }
-
-  emitter.complete();
-
-  return result;
 };

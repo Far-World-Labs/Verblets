@@ -3,6 +3,7 @@ import retry from '../../lib/retry/index.js';
 import { constants as promptConstants, asXML } from '../../prompts/index.js';
 import { questionsListSchema, selectedQuestionSchema } from './schemas.js';
 import createProgressEmitter from '../../lib/progress/index.js';
+import { DomainEvent } from '../../lib/progress/constants.js';
 import { getOption, nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 
 const name = 'questions';
@@ -83,69 +84,81 @@ const generateQuestions = async function* generateQuestionsGenerator(text, confi
   const temperature = await getOption('temperature', runConfig, 1);
 
   let attempts = 0;
-  while (!isDone) {
-    if (resultsAll.length) {
-      const choices = resultsAll.filter((item) => {
-        return !drilldownResults.includes(item);
+  try {
+    while (!isDone) {
+      emitter.emit({
+        event: DomainEvent.step,
+        stepName: 'generating-round',
+        attempt: attempts + 1,
+        questionsFound: resultsAll.length,
       });
-      const pickInterestingQuestionPrompt = pickInterestingQuestion(textSelected, {
-        existing: choices,
+
+      if (resultsAll.length) {
+        const choices = resultsAll.filter((item) => {
+          return !drilldownResults.includes(item);
+        });
+        const pickInterestingQuestionPrompt = pickInterestingQuestion(textSelected, {
+          existing: choices,
+        });
+        // eslint-disable-next-line no-await-in-loop
+        const selectedResult = await retry(
+          () =>
+            callLlm(pickInterestingQuestionPrompt, {
+              ...runConfig,
+              response_format: jsonSchema('selected_question', selectedQuestionSchema),
+            }),
+          {
+            label: 'questions-pick-interesting',
+            config: runConfig,
+          }
+        );
+        textSelected = selectedResult.question;
+        drilldownResults.push(textSelected);
+      }
+
+      const promptCreated = formatQuestionsPrompt(textSelected, {
+        existing: resultsAll,
       });
+      const llmConfig = {
+        ...runConfig,
+        temperature,
+        response_format: jsonSchema('questions_list', questionsListSchema),
+      };
+
       // eslint-disable-next-line no-await-in-loop
-      const selectedResult = await retry(
-        () =>
-          callLlm(pickInterestingQuestionPrompt, {
-            ...runConfig,
-            response_format: jsonSchema('selected_question', selectedQuestionSchema),
-          }),
-        {
-          label: 'questions-pick-interesting',
-          config: runConfig,
+      const results = await retry(() => callLlm(promptCreated, llmConfig), {
+        label: 'questions-generate',
+        config: runConfig,
+      });
+      const resultsNew = getRandomSubset(results, searchBreadth);
+      if (searchBreadth < 0.5) {
+        const randomIndex = Math.floor(Math.random() * resultsNew.length);
+        textSelected = resultsNew[randomIndex];
+      }
+      const resultsNewUnique = resultsNew.filter((item) => !(item in resultsAllMap));
+
+      attempts += 1;
+
+      for (const result of resultsNewUnique) {
+        // eslint-disable-next-line no-await-in-loop
+        if (await shouldStop(result, resultsAll, resultsNew, attempts)) {
+          isDone = true;
+          break;
         }
-      );
-      textSelected = selectedResult.question;
-      drilldownResults.push(textSelected);
-    }
-
-    const promptCreated = formatQuestionsPrompt(textSelected, {
-      existing: resultsAll,
-    });
-    const llmConfig = {
-      ...runConfig,
-      temperature,
-      response_format: jsonSchema('questions_list', questionsListSchema),
-    };
-
-    // eslint-disable-next-line no-await-in-loop
-    const results = await retry(() => callLlm(promptCreated, llmConfig), {
-      label: 'questions-generate',
-      config: runConfig,
-    });
-    const resultsNew = getRandomSubset(results, searchBreadth);
-    if (searchBreadth < 0.5) {
-      const randomIndex = Math.floor(Math.random() * resultsNew.length);
-      textSelected = resultsNew[randomIndex];
-    }
-    const resultsNewUnique = resultsNew.filter((item) => !(item in resultsAllMap));
-
-    attempts += 1;
-
-    for (const result of resultsNewUnique) {
-      // eslint-disable-next-line no-await-in-loop
-      if (await shouldStop(result, resultsAll, resultsNew, attempts)) {
-        isDone = true;
-        break;
-      }
-      // eslint-disable-next-line no-await-in-loop
-      if (!(await shouldSkip(result, resultsAll))) {
-        resultsAllMap[result] = true;
-        resultsAll.push(result);
-        yield result;
+        // eslint-disable-next-line no-await-in-loop
+        if (!(await shouldSkip(result, resultsAll))) {
+          resultsAllMap[result] = true;
+          resultsAll.push(result);
+          yield result;
+        }
       }
     }
+
+    emitter.complete({ outcome: 'success', questions: resultsAll.length, attempts });
+  } catch (err) {
+    emitter.error(err);
+    throw err;
   }
-
-  emitter.complete();
 };
 
 export default async (text, config = {}) => {

@@ -285,14 +285,19 @@ export async function extractRelations(text, instructions, config = {}) {
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
 
-  const spec = runConfig.spec || (await relationSpec(instructions, runConfig));
-  const entities = typeof instructions === 'object' ? instructions.entities : runConfig.entities;
-  const result = await applyRelations(text, spec, { ...runConfig, entities });
-  const items = result.items || [];
+  try {
+    const spec = runConfig.spec || (await relationSpec(instructions, runConfig));
+    const entities = typeof instructions === 'object' ? instructions.entities : runConfig.entities;
+    const result = await applyRelations(text, spec, { ...runConfig, entities });
+    const items = result.items || [];
 
-  emitter.complete();
+    emitter.complete({ outcome: 'success' });
 
-  return items;
+    return items;
+  } catch (err) {
+    emitter.error(err);
+    throw err;
+  }
 }
 
 // ===== Advanced Relation Functions =====

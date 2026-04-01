@@ -119,121 +119,126 @@ export default async function date(text, config = {}) {
   });
   const { logger } = runConfig;
 
-  // Create lifecycle logger with date chain namespace
-  const lifecycleLogger = createLifecycleLogger(logger, 'chain:date');
+  try {
+    // Create lifecycle logger with date chain namespace
+    const lifecycleLogger = createLifecycleLogger(logger, 'chain:date');
 
-  // Log start with input
-  lifecycleLogger.logStart({
-    input: text,
-    maxAttempts,
-    ...extractLLMConfig(runConfig.llm),
-  });
+    // Log start with input
+    lifecycleLogger.logStart({
+      input: text,
+      maxAttempts,
+      ...extractLLMConfig(runConfig.llm),
+    });
 
-  // Build all prompts upfront and log them
-  const expectationPrompt = buildExpectationPrompt(text);
-  const datePrompt = buildDatePrompt(text);
+    // Build all prompts upfront and log them
+    const expectationPrompt = buildExpectationPrompt(text);
+    const datePrompt = buildDatePrompt(text);
 
-  lifecycleLogger.logEvent('prompts-built', {
-    expectations: extractPromptAnalysis(expectationPrompt),
-    extraction: extractPromptAnalysis(datePrompt),
-  });
+    lifecycleLogger.logEvent('prompts-built', {
+      expectations: extractPromptAnalysis(expectationPrompt),
+      extraction: extractPromptAnalysis(datePrompt),
+    });
 
-  // Low rigor: extraction only — skip expectations and validation
-  if (!validate) {
-    const firstDate = await extractDate(datePrompt, { ...runConfig, logger: lifecycleLogger });
+    // Low rigor: extraction only — skip expectations and validation
+    if (!validate) {
+      const firstDate = await extractDate(datePrompt, { ...runConfig, logger: lifecycleLogger });
+
+      lifecycleLogger.logResult(
+        firstDate,
+        extractResultValue(firstDate?.toISOString() || 'undefined', firstDate)
+      );
+      emitter.complete({ outcome: 'success' });
+      return firstDate;
+    }
+
+    // Parallelize expectations and first date extraction
+    const [expectationsResult, firstDate] = await Promise.all([
+      callLlm(expectationPrompt, {
+        ...runConfig,
+        response_format: jsonSchema('date_expectations', dateExpectationsSchema),
+        logger: lifecycleLogger,
+      }),
+      extractDate(datePrompt, { ...runConfig, logger: lifecycleLogger }),
+    ]);
+
+    const expectations =
+      expectationsResult.length > 0 ? expectationsResult : ['The result is a valid date'];
+
+    lifecycleLogger.logEvent('parallel-complete', {
+      expectations,
+      firstDate: firstDate?.toISOString(),
+    });
+
+    // Handle undefined response
+    if (!firstDate) {
+      lifecycleLogger.logResult(undefined, extractResultValue('undefined', undefined));
+      emitter.complete({ outcome: 'success' });
+      return undefined;
+    }
+
+    // State for retry loop
+    let currentDate = firstDate;
+    let currentText = text;
+
+    // Use retry for the entire chain
+    const result = await retry(
+      async () => {
+        lifecycleLogger.logEvent('attempt', {
+          date: currentDate.toISOString(),
+        });
+
+        // Validate current date
+        const validation = await validateDate(currentDate, expectations, {
+          ...runConfig,
+          logger: lifecycleLogger,
+        });
+
+        if (validation.passed) {
+          return currentDate;
+        }
+
+        // Validation failed, prepare for retry
+        lifecycleLogger.logEvent('validation-failed', {
+          failedCheck: validation.failedCheck,
+          dateValue: currentDate.toISOString(),
+        });
+
+        // Build retry prompt and get new date
+        currentText = `${text} The previous answer (${currentDate.toISOString()}) failed to satisfy: "${
+          validation.failedCheck
+        }". Try again.`;
+        const retryPrompt = buildDatePrompt(currentText);
+        lifecycleLogger.logEvent('retry-prompt', extractPromptAnalysis(retryPrompt));
+
+        const newDate = await extractDate(retryPrompt, { ...runConfig, logger: lifecycleLogger });
+
+        if (!newDate) {
+          // High rigor: return undefined on exhaustion instead of best-effort
+          if (!returnBestEffort) return undefined;
+          return currentDate;
+        }
+
+        currentDate = newDate;
+
+        // Throw to trigger retry
+        throw new Error(`Retrying after validation failure`);
+      },
+      {
+        label: 'date-chain',
+        config: runConfig,
+        maxAttempts,
+        retryOnAll: true,
+      }
+    );
 
     lifecycleLogger.logResult(
-      firstDate,
-      extractResultValue(firstDate?.toISOString() || 'undefined', firstDate)
+      result,
+      extractResultValue(result?.toISOString() || 'undefined', result)
     );
-    emitter.complete();
-    return firstDate;
+    emitter.complete({ outcome: 'success' });
+    return result;
+  } catch (err) {
+    emitter.error(err);
+    throw err;
   }
-
-  // Parallelize expectations and first date extraction
-  const [expectationsResult, firstDate] = await Promise.all([
-    callLlm(expectationPrompt, {
-      ...runConfig,
-      response_format: jsonSchema('date_expectations', dateExpectationsSchema),
-      logger: lifecycleLogger,
-    }),
-    extractDate(datePrompt, { ...runConfig, logger: lifecycleLogger }),
-  ]);
-
-  const expectations =
-    expectationsResult.length > 0 ? expectationsResult : ['The result is a valid date'];
-
-  lifecycleLogger.logEvent('parallel-complete', {
-    expectations,
-    firstDate: firstDate?.toISOString(),
-  });
-
-  // Handle undefined response
-  if (!firstDate) {
-    lifecycleLogger.logResult(undefined, extractResultValue('undefined', undefined));
-    emitter.complete();
-    return undefined;
-  }
-
-  // State for retry loop
-  let currentDate = firstDate;
-  let currentText = text;
-
-  // Use retry for the entire chain
-  const result = await retry(
-    async () => {
-      lifecycleLogger.logEvent('attempt', {
-        date: currentDate.toISOString(),
-      });
-
-      // Validate current date
-      const validation = await validateDate(currentDate, expectations, {
-        ...runConfig,
-        logger: lifecycleLogger,
-      });
-
-      if (validation.passed) {
-        return currentDate;
-      }
-
-      // Validation failed, prepare for retry
-      lifecycleLogger.logEvent('validation-failed', {
-        failedCheck: validation.failedCheck,
-        dateValue: currentDate.toISOString(),
-      });
-
-      // Build retry prompt and get new date
-      currentText = `${text} The previous answer (${currentDate.toISOString()}) failed to satisfy: "${
-        validation.failedCheck
-      }". Try again.`;
-      const retryPrompt = buildDatePrompt(currentText);
-      lifecycleLogger.logEvent('retry-prompt', extractPromptAnalysis(retryPrompt));
-
-      const newDate = await extractDate(retryPrompt, { ...runConfig, logger: lifecycleLogger });
-
-      if (!newDate) {
-        // High rigor: return undefined on exhaustion instead of best-effort
-        if (!returnBestEffort) return undefined;
-        return currentDate;
-      }
-
-      currentDate = newDate;
-
-      // Throw to trigger retry
-      throw new Error(`Retrying after validation failure`);
-    },
-    {
-      label: 'date-chain',
-      config: runConfig,
-      maxAttempts,
-      retryOnAll: true,
-    }
-  );
-
-  lifecycleLogger.logResult(
-    result,
-    extractResultValue(result?.toISOString() || 'undefined', result)
-  );
-  emitter.complete();
-  return result;
 }

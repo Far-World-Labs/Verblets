@@ -7,7 +7,8 @@ import retry from '../../lib/retry/index.js';
 import search from '../../lib/search-js-files/index.js';
 import codeFeaturesPrompt from '../../prompts/code-features.js';
 import makeJSONSchema from '../../prompts/features-json-schema.js';
-import createProgressEmitter from '../../lib/progress/index.js';
+import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
+import { DomainEvent } from '../../lib/progress/constants.js';
 import { nameStep } from '../../lib/context/option.js';
 
 const name = 'scan-js';
@@ -83,27 +84,45 @@ export default async (moduleOptions) => {
   const runConfig = nameStep(name, moduleOptions);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
-  const state = await search({
-    ...runConfig,
-  });
 
-  const preState = {
-    visited: new Set(),
-    pathAliases: pathAliases([...state.visited]),
-  };
+  try {
+    emitter.emit({
+      event: DomainEvent.phase,
+      phase: 'discovery',
+    });
 
-  const result = await search({
-    ...runConfig,
-    state: preState,
-    visit: (options) =>
-      visit({
-        ...options,
-        features: runConfig.features,
-        config: runConfig,
-      }),
-  });
+    const state = await search({
+      ...runConfig,
+      onProgress: scopePhase(runConfig.onProgress, 'scan-js:discovery'),
+    });
 
-  emitter.complete();
+    const preState = {
+      visited: new Set(),
+      pathAliases: pathAliases([...state.visited]),
+    };
 
-  return result;
+    emitter.emit({
+      event: DomainEvent.phase,
+      phase: 'analysis',
+    });
+
+    const result = await search({
+      ...runConfig,
+      onProgress: scopePhase(runConfig.onProgress, 'scan-js:analysis'),
+      state: preState,
+      visit: (options) =>
+        visit({
+          ...options,
+          features: runConfig.features,
+          config: runConfig,
+        }),
+    });
+
+    emitter.complete({ outcome: 'success', nodesFound: result.nodesFound ?? 0 });
+
+    return result;
+  } catch (err) {
+    emitter.error(err);
+    throw err;
+  }
 };

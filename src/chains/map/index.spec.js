@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import map from './index.js';
 import listBatch from '../../verblets/list-batch/index.js';
-import { OpEvent } from '../../lib/progress/constants.js';
+import { OpEvent, ChainEvent } from '../../lib/progress/constants.js';
 
 vi.mock('../../lib/text-batch/index.js', () => ({
   default: vi.fn((list) => {
@@ -128,20 +128,19 @@ describe('map', () => {
         onProgress,
       });
 
-      // Check start event
-      const startEvent = progressEvents.find((e) => e.step === 'map' && e.event === 'start');
+      // Check start event from parent emitter
+      const startEvent = progressEvents.find(
+        (e) => e.step === 'map' && e.event === ChainEvent.start
+      );
       expect(startEvent).toBeDefined();
-      expect(startEvent.totalItems).toBe(4);
 
-      // Check batch complete events
-      const batchEvents = progressEvents.filter((e) => e.event === 'batch:complete');
-      expect(batchEvents.length).toBeGreaterThan(0);
-
-      // Check complete event
-      const completeEvent = progressEvents.find((e) => e.step === 'map' && e.event === 'complete');
+      // Check complete event includes result metadata
+      const completeEvent = progressEvents.find(
+        (e) => e.step === 'map' && e.event === ChainEvent.complete
+      );
       expect(completeEvent).toBeDefined();
       expect(completeEvent.totalItems).toBe(4);
-      expect(completeEvent.processedItems).toBe(4);
+      expect(completeEvent.successCount).toBe(4);
     });
 
     it('includes retry events in progress', async () => {
@@ -178,22 +177,16 @@ describe('map', () => {
         onProgress,
       });
 
-      // Get batch complete events in order
-      const batchEvents = progressEvents.filter((e) => e.event === 'batch:complete');
-
-      // Check that processedItems increases correctly
-      let lastProcessed = 0;
-      batchEvents.forEach((event) => {
-        expect(event.processedItems).toBeGreaterThan(lastProcessed);
-        lastProcessed = event.processedItems;
-      });
-
-      // Final processedItems should equal totalItems
-      const lastBatch = batchEvents[batchEvents.length - 1];
-      expect(lastBatch.processedItems).toBeLessThanOrEqual(5);
+      // Complete event should report total and successful items
+      const completeEvent = progressEvents.find(
+        (e) => e.step === 'map' && e.event === ChainEvent.complete
+      );
+      expect(completeEvent).toBeDefined();
+      expect(completeEvent.totalItems).toBe(5);
+      expect(completeEvent.successCount).toBeLessThanOrEqual(5);
     });
 
-    it('includes batch metadata in events', async () => {
+    it('includes result metadata in complete event', async () => {
       const progressEvents = [];
       const onProgress = vi.fn((event) => {
         progressEvents.push(event);
@@ -204,14 +197,15 @@ describe('map', () => {
         onProgress,
       });
 
-      // Check batch events have proper metadata
-      const batchEvents = progressEvents.filter((e) => e.event === 'batch:complete');
-      expect(batchEvents.length).toBeGreaterThan(0);
-      const batchEvent = batchEvents[0];
-      expect(batchEvent).toBeDefined();
-      expect(batchEvent.batchSize).toBeDefined();
-      expect(batchEvent.processedItems).toBeDefined();
-      expect(batchEvent.totalItems).toBeDefined();
+      // Complete event carries outcome and item counts
+      const completeEvent = progressEvents.find(
+        (e) => e.step === 'map' && e.event === ChainEvent.complete
+      );
+      expect(completeEvent).toBeDefined();
+      expect(completeEvent.totalItems).toBe(3);
+      expect(completeEvent.outcome).toBeDefined();
+      expect(completeEvent.successCount).toBeDefined();
+      expect(completeEvent.failedItems).toBeDefined();
     });
   });
 });

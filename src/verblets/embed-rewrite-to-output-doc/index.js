@@ -20,13 +20,18 @@ export default async function embedRewriteToOutputDoc(query, config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
-  const result = await callLlm(hydeOutputDoc(query), {
-    ...runConfig,
-    response_format: {
-      type: 'json_schema',
-      json_schema: { name: 'hyde_output_doc', schema },
-    },
-  });
-  emitter.complete();
-  return result;
+  try {
+    const result = await callLlm(hydeOutputDoc(query), {
+      ...runConfig,
+      response_format: {
+        type: 'json_schema',
+        json_schema: { name: 'hyde_output_doc', schema },
+      },
+    });
+    emitter.complete({ outcome: 'success' });
+    return result;
+  } catch (err) {
+    emitter.error(err);
+    throw err;
+  }
 }

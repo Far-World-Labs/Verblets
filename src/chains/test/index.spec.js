@@ -77,7 +77,6 @@ describe('test chain', () => {
     llm.mockRejectedValueOnce(new Error('Analysis failed'));
     await writeFile(tempFile, 'bad code');
 
-    const result = await test(tempFile, 'provide feedback');
-    expect(result).toEqual([`Error analyzing ${tempFile}: Analysis failed`]);
+    await expect(test(tempFile, 'provide feedback')).rejects.toThrow('Analysis failed');
   });
 });

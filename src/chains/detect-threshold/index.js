@@ -57,7 +57,7 @@ export function calculateStatistics(data, targetProperty) {
 }
 
 export default async function detectThreshold(options = {}) {
-  const { data, targetProperty, goal, onProgress } = options;
+  const { data, targetProperty, goal } = options;
   const runConfig = nameStep(name, { llm: { good: true }, ...options });
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
@@ -76,47 +76,48 @@ export default async function detectThreshold(options = {}) {
     throw new Error('Goal must be specified to determine appropriate thresholds');
   }
 
-  // Calculate statistics for context
-  const stats = calculateStatistics(data, targetProperty);
+  try {
+    // Calculate statistics for context
+    const stats = calculateStatistics(data, targetProperty);
 
-  // Enrich data with statistical context
-  const enrichedData = data.map((record) => ({
-    value: record[targetProperty],
-    percentileRank: Math.round(
-      (stats.values.filter((v) => v <= record[targetProperty]).length / stats.count) * 100
-    ),
-    context: record,
-  }));
+    // Enrich data with statistical context
+    const enrichedData = data.map((record) => ({
+      value: record[targetProperty],
+      percentileRank: Math.round(
+        (stats.values.filter((v) => v <= record[targetProperty]).length / stats.count) * 100
+      ),
+      context: record,
+    }));
 
-  // Schema for the accumulator
-  const accumulatorSchema = {
-    type: 'object',
-    properties: {
-      observedPatterns: { type: 'array', items: { type: 'string' } },
-      potentialThresholds: {
-        type: 'array',
-        items: {
-          type: 'object',
-          properties: {
-            value: { type: 'number' },
-            rationale: { type: 'string' },
+    // Schema for the accumulator
+    const accumulatorSchema = {
+      type: 'object',
+      properties: {
+        observedPatterns: { type: 'array', items: { type: 'string' } },
+        potentialThresholds: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              value: { type: 'number' },
+              rationale: { type: 'string' },
+            },
+            required: ['value', 'rationale'],
           },
-          required: ['value', 'rationale'],
         },
+        distributionInsights: { type: 'array', items: { type: 'string' } },
       },
-      distributionInsights: { type: 'array', items: { type: 'string' } },
-    },
-    required: ['observedPatterns', 'potentialThresholds', 'distributionInsights'],
-  };
+      required: ['observedPatterns', 'potentialThresholds', 'distributionInsights'],
+    };
 
-  // Initial accumulator with schema structure
-  const initialAccumulator = {
-    observedPatterns: [],
-    potentialThresholds: [],
-    distributionInsights: [],
-  };
+    // Initial accumulator with schema structure
+    const initialAccumulator = {
+      observedPatterns: [],
+      potentialThresholds: [],
+      distributionInsights: [],
+    };
 
-  const instructions = `You are analyzing data to identify threshold candidates for the property "${targetProperty}".
+    const instructions = `You are analyzing data to identify threshold candidates for the property "${targetProperty}".
 
 ${asXML(goal, { tag: 'goal' })}
 
@@ -150,29 +151,29 @@ Accumulator should track:
 
 Return the updated accumulator as valid JSON.`;
 
-  // Convert enrichedData to strings for reduce - batch multiple items per line
-  const ITEMS_PER_LINE = 20;
-  const dataStrings = [];
+    // Convert enrichedData to strings for reduce - batch multiple items per line
+    const ITEMS_PER_LINE = 20;
+    const dataStrings = [];
 
-  for (let i = 0; i < enrichedData.length; i += ITEMS_PER_LINE) {
-    const batch = enrichedData.slice(i, i + ITEMS_PER_LINE);
-    dataStrings.push(JSON.stringify(batch));
-  }
+    for (let i = 0; i < enrichedData.length; i += ITEMS_PER_LINE) {
+      const batch = enrichedData.slice(i, i + ITEMS_PER_LINE);
+      dataStrings.push(JSON.stringify(batch));
+    }
 
-  const analysisResult = await reduce(dataStrings, instructions, {
-    ...runConfig,
-    initial: JSON.stringify(initialAccumulator),
-    batchSize,
-    responseFormat: jsonSchema('analysis_accumulator', accumulatorSchema),
-    onProgress: scopePhase(runConfig.onProgress, 'reduce:analysis'),
-  });
+    const analysisResult = await reduce(dataStrings, instructions, {
+      ...runConfig,
+      initial: JSON.stringify(initialAccumulator),
+      batchSize,
+      responseFormat: jsonSchema('analysis_accumulator', accumulatorSchema),
+      onProgress: scopePhase(runConfig.onProgress, 'reduce:analysis'),
+    });
 
-  const accumulated = analysisResult;
+    const accumulated = analysisResult;
 
-  // Now use llm directly with structured output for final recommendations
-  const finalPrompt = `Based on the following analysis of ${
-    stats.count
-  } data points for property "${targetProperty}", generate threshold recommendations.
+    // Now use llm directly with structured output for final recommendations
+    const finalPrompt = `Based on the following analysis of ${
+      stats.count
+    } data points for property "${targetProperty}", generate threshold recommendations.
 
 ${asXML(goal, { tag: 'goal' })}
 
@@ -195,8 +196,8 @@ ${asXML(
 )}
 
 CRITICAL: The threshold VALUE must be the actual ${targetProperty} value (between ${
-    stats.min
-  } and ${stats.max}), NOT a percentile position.
+      stats.min
+    } and ${stats.max}), NOT a percentile position.
 For example, if suggesting a threshold at the 75th percentile where the value is 0.55, the threshold value should be 0.55, not 75.
 
 Generate specific threshold recommendations that:
@@ -207,45 +208,48 @@ Generate specific threshold recommendations that:
 
 Return threshold candidates with their rationales.`;
 
-  const result = await retry(
-    () =>
-      callLlm(finalPrompt, {
-        ...runConfig,
-        response_format: jsonSchema('threshold_result', thresholdResultSchema),
-      }),
-    {
-      label: 'detect-threshold-analysis',
-      config: runConfig,
-      onProgress,
-    }
-  );
-
-  // Validate and fix threshold values to be within data range
-  if (result.thresholdCandidates) {
-    result.thresholdCandidates = result.thresholdCandidates.filter((candidate) => {
-      // Ensure threshold value is within the data range
-      if (candidate.value < stats.min || candidate.value > stats.max) {
-        debug(
-          `Threshold value ${candidate.value} is outside data range [${stats.min}, ${stats.max}]`
-        );
-        return false;
+    const result = await retry(
+      () =>
+        callLlm(finalPrompt, {
+          ...runConfig,
+          response_format: jsonSchema('threshold_result', thresholdResultSchema),
+        }),
+      {
+        label: 'detect-threshold-analysis',
+        config: runConfig,
       }
-      return true;
-    });
+    );
+
+    // Validate and fix threshold values to be within data range
+    if (result.thresholdCandidates) {
+      result.thresholdCandidates = result.thresholdCandidates.filter((candidate) => {
+        // Ensure threshold value is within the data range
+        if (candidate.value < stats.min || candidate.value > stats.max) {
+          debug(
+            `Threshold value ${candidate.value} is outside data range [${stats.min}, ${stats.max}]`
+          );
+          return false;
+        }
+        return true;
+      });
+    }
+
+    // Add distribution analysis
+    result.distributionAnalysis = {
+      mean: stats.mean,
+      median: stats.median,
+      standardDeviation: stats.stdDev,
+      min: stats.min,
+      max: stats.max,
+      percentiles: stats.percentiles,
+      dataPoints: stats.count,
+    };
+
+    emitter.complete({ outcome: 'success' });
+
+    return result;
+  } catch (err) {
+    emitter.error(err);
+    throw err;
   }
-
-  // Add distribution analysis
-  result.distributionAnalysis = {
-    mean: stats.mean,
-    median: stats.median,
-    standardDeviation: stats.stdDev,
-    min: stats.min,
-    max: stats.max,
-    percentiles: stats.percentiles,
-    dataPoints: stats.count,
-  };
-
-  emitter.complete();
-
-  return result;
 }

@@ -74,25 +74,30 @@ Requirements:
 - Provide exact character positions for matched text
 - Higher scores mean stronger metaphorical fit`;
 
-  const response = await retry(
-    () =>
-      callLlm(prompt, {
-        ...runConfig,
-        response_format: popReferenceResponseFormat,
-      }),
-    {
-      label: 'pop-reference',
-      config: runConfig,
+  try {
+    const response = await retry(
+      () =>
+        callLlm(prompt, {
+          ...runConfig,
+          response_format: popReferenceResponseFormat,
+        }),
+      {
+        label: 'pop-reference',
+        config: runConfig,
+      }
+    );
+
+    const references = response?.references || response;
+
+    if (!Array.isArray(references)) {
+      throw new Error('Expected array of references in response');
     }
-  );
 
-  const references = response?.references || response;
+    emitter.complete({ outcome: 'success', references: references.length });
 
-  if (!Array.isArray(references)) {
-    throw new Error('Expected array of references in response');
+    return references;
+  } catch (err) {
+    emitter.error(err);
+    throw err;
   }
-
-  emitter.complete();
-
-  return references;
 }

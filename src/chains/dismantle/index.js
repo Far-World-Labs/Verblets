@@ -5,7 +5,8 @@ import retry from '../../lib/retry/index.js';
 import { outputSuccinctNames } from '../../prompts/index.js';
 import { subComponentsSchema, componentOptionsSchema } from './schemas.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
-import createProgressEmitter from '../../lib/progress/index.js';
+import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
+import { DomainEvent } from '../../lib/progress/constants.js';
 
 const _name = 'dismantle'; // eslint: unused — ChainTree.create receives name as parameter
 
@@ -95,6 +96,7 @@ const defaultDecompose = async ({
   const result = await retry(
     () =>
       callLlm(promptCreated, {
+        ...config,
         llm,
         frequencyPenalty: variety ?? DEFAULT_DECOMPOSE_PENALTY,
         temperature: temperature ?? 0.7,
@@ -122,6 +124,7 @@ const defaultEnhance = async ({
   const result = await retry(
     () =>
       callLlm(promptCreated, {
+        ...config,
         llm,
         frequencyPenalty: enhanceVariety,
         temperature: temperature ?? 0.3,
@@ -155,48 +158,54 @@ const makeNode = async ({
   variety,
   now,
 } = {}) => {
-  const name = nameInitial ?? rootName;
+  try {
+    const name = nameInitial ?? rootName;
 
-  let nodeNew = node;
+    let nodeNew = node;
 
-  if (!node.isEnhanced) {
-    nodeNew = await enhance({
-      name,
-      rootName,
-      fixes: enhanceFixes,
-      llm,
-      config,
-      variety,
-      now,
-    });
-    nodeNew.isEnhanced = true;
+    if (!node.isEnhanced) {
+      nodeNew = await enhance({
+        name,
+        rootName,
+        fixes: enhanceFixes,
+        llm,
+        config,
+        variety,
+        now,
+      });
+      nodeNew.isEnhanced = true;
 
-    const focus = node.options?.[0];
+      const focus = node.options?.[0];
 
-    const childNames = await decompose({
-      name,
-      focus,
-      rootName,
-      fixes: decomposeFixes,
-      llm,
-      config,
-      variety,
-      now,
-    });
-    nodeNew.children = childNames.map((childName) => ({
-      id: makeId(),
-      name: childName,
-    }));
+      const childNames = await decompose({
+        name,
+        focus,
+        rootName,
+        fixes: decomposeFixes,
+        llm,
+        config,
+        variety,
+        now,
+      });
+      nodeNew.children = childNames.map((childName) => ({
+        id: makeId(),
+        name: childName,
+      }));
+    }
+
+    if (!node.id) {
+      nodeNew.id = makeId();
+    }
+
+    return {
+      ...node,
+      ...nodeNew,
+    };
+  } catch (err) {
+    const nodeName = nameInitial ?? rootName;
+    err.message = `makeNode(${nodeName}): ${err.message}`;
+    throw err;
   }
-
-  if (!node.id) {
-    nodeNew.id = makeId();
-  }
-
-  return {
-    ...node,
-    ...nodeNew,
-  };
 };
 
 const makeSubtree = async ({
@@ -214,42 +223,16 @@ const makeSubtree = async ({
   variety,
   now,
 } = {}) => {
-  let tree = { ...(treeInitial ?? {}) };
+  try {
+    let tree = { ...(treeInitial ?? {}) };
 
-  const nodeNew = await makeNode({
-    node: tree,
-    name: name ?? tree.name,
-    rootName,
-    enhance,
-    decompose,
-    llm,
-    makeId,
-    enhanceFixes,
-    decomposeFixes,
-    config,
-    variety,
-    now,
-  });
-
-  tree = {
-    ...tree,
-    ...nodeNew,
-  };
-
-  if (depth <= 0) {
-    return tree;
-  }
-
-  const children = [];
-  for (const child of tree.children) {
-    // eslint-disable-next-line no-await-in-loop
-    const subtree = await makeSubtree({
-      tree: child,
+    const nodeNew = await makeNode({
+      node: tree,
+      name: name ?? tree.name,
       rootName,
-      decompose,
       enhance,
+      decompose,
       llm,
-      depth: depth - 1,
       makeId,
       enhanceFixes,
       decomposeFixes,
@@ -258,12 +241,44 @@ const makeSubtree = async ({
       now,
     });
 
-    children.push(subtree);
+    tree = {
+      ...tree,
+      ...nodeNew,
+    };
+
+    if (depth <= 0) {
+      return tree;
+    }
+
+    const children = [];
+    for (const child of tree.children) {
+      // eslint-disable-next-line no-await-in-loop
+      const subtree = await makeSubtree({
+        tree: child,
+        rootName,
+        decompose,
+        enhance,
+        llm,
+        depth: depth - 1,
+        makeId,
+        enhanceFixes,
+        decomposeFixes,
+        config,
+        variety,
+        now,
+      });
+
+      children.push(subtree);
+    }
+
+    tree.children = children;
+
+    return tree;
+  } catch (err) {
+    const subtreeName = name ?? treeInitial?.name ?? rootName;
+    err.message = `makeSubtree(${subtreeName}, depth=${depth}): ${err.message}`;
+    throw err;
   }
-
-  tree.children = children;
-
-  return tree;
 };
 
 export const simplifyTree = (node) => {
@@ -289,16 +304,22 @@ class ChainTree {
     const runConfig = nameStep(name, options);
     const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
     emitter.start();
-    const { temperature, variety } = await getOptions(runConfig, {
-      temperature: undefined,
-      variety: withPolicy(mapVariety),
-    });
 
-    const tree = new ChainTree(name, options, runConfig, { temperature, variety });
+    try {
+      const { temperature, variety } = await getOptions(runConfig, {
+        temperature: undefined,
+        variety: withPolicy(mapVariety),
+      });
 
-    emitter.complete();
+      const tree = new ChainTree(name, options, runConfig, { temperature, variety });
 
-    return tree;
+      emitter.complete({ outcome: 'success' });
+
+      return tree;
+    } catch (err) {
+      emitter.error(err);
+      throw err;
+    }
   }
 
   constructor(name, options = {}, config = {}, resolved = {}) {
@@ -366,8 +387,23 @@ class ChainTree {
   }
 }
 
-export const dismantle = async (text, options) => {
-  return await ChainTree.create(text, options);
+export const dismantle = async (text, options = {}) => {
+  const runConfig = nameStep(_name, options);
+  const emitter = createProgressEmitter(_name, runConfig.onProgress, runConfig);
+  emitter.start();
+
+  try {
+    emitter.emit({ event: DomainEvent.phase, phase: 'tree-construction' });
+    const tree = await ChainTree.create(text, {
+      ...runConfig,
+      onProgress: scopePhase(runConfig.onProgress, 'tree-construction'),
+    });
+    emitter.complete({ outcome: 'success' });
+    return tree;
+  } catch (err) {
+    emitter.error(err);
+    throw err;
+  }
 };
 
 export default ChainTree;

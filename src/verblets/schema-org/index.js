@@ -18,22 +18,27 @@ export default async (text, type, config = {}) => {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
-  const schema = type ? getSchema(type) : undefined;
+  try {
+    const schema = type ? getSchema(type) : undefined;
 
-  const response_format = schema
-    ? {
-        type: 'json_schema',
-        json_schema: {
-          name: `schema_org_${type.toLowerCase()}`,
-          schema,
-        },
-      }
-    : { type: 'json_object' };
+    const response_format = schema
+      ? {
+          type: 'json_schema',
+          json_schema: {
+            name: `schema_org_${type.toLowerCase()}`,
+            schema,
+          },
+        }
+      : { type: 'json_object' };
 
-  const response = await callLlm(asSchemaOrgText(text, type, schema), {
-    ...runConfig,
-    response_format,
-  });
-  emitter.complete();
-  return response;
+    const response = await callLlm(asSchemaOrgText(text, type, schema), {
+      ...runConfig,
+      response_format,
+    });
+    emitter.complete({ outcome: 'success' });
+    return response;
+  } catch (err) {
+    emitter.error(err);
+    throw err;
+  }
 };

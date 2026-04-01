@@ -40,26 +40,31 @@ The value should be "true", "false", or "undefined".`;
   });
 
   // Make LLM call with logger
-  const response = await callLlm(text, {
-    ...runConfig,
-    systemPrompt,
-    response_format: {
-      type: 'json_schema',
-      json_schema: {
-        name: 'boolean_evaluation',
-        schema: booleanSchema,
+  try {
+    const response = await callLlm(text, {
+      ...runConfig,
+      systemPrompt,
+      response_format: {
+        type: 'json_schema',
+        json_schema: {
+          name: 'boolean_evaluation',
+          schema: booleanSchema,
+        },
       },
-    },
-    logger: lifecycleLogger,
-  });
+      logger: lifecycleLogger,
+    });
 
-  // Interpret response
-  const interpreted = response === 'true' ? true : response === 'false' ? false : undefined;
+    // Interpret response
+    const interpreted = response === 'true' ? true : response === 'false' ? false : undefined;
 
-  // Log final result with raw and interpreted values
-  lifecycleLogger.logResult(interpreted, extractResultValue(response, interpreted));
+    // Log final result with raw and interpreted values
+    lifecycleLogger.logResult(interpreted, extractResultValue(response, interpreted));
 
-  emitter.complete();
+    emitter.complete({ outcome: 'success' });
 
-  return interpreted;
+    return interpreted;
+  } catch (err) {
+    emitter.error(err);
+    throw err;
+  }
 };

@@ -24,19 +24,24 @@ export default async function nameSimilarTo(description, exampleNames = [], conf
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
 
-  const prompt = buildPrompt(description, exampleNames);
-  const response = await callLlm(prompt, {
-    ...runConfig,
-    response_format: {
-      type: 'json_schema',
-      json_schema: {
-        name: 'similar_name',
-        schema: nameSimilarSchema,
+  try {
+    const prompt = buildPrompt(description, exampleNames);
+    const response = await callLlm(prompt, {
+      ...runConfig,
+      response_format: {
+        type: 'json_schema',
+        json_schema: {
+          name: 'similar_name',
+          schema: nameSimilarSchema,
+        },
       },
-    },
-  });
+    });
 
-  emitter.complete();
+    emitter.complete({ outcome: 'success' });
 
-  return response;
+    return response;
+  } catch (err) {
+    emitter.error(err);
+    throw err;
+  }
 }

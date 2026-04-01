@@ -8,8 +8,8 @@ import { asXML } from '../../prompts/wrap-variable.js';
 import templateReplace from '../../lib/template-replace/index.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 import createProgressEmitter from '../../lib/progress/index.js';
-import { ChainEvent, Metric } from '../../lib/progress/constants.js';
-import { nameStep } from '../../lib/context/option.js';
+import { Metric, DomainEvent } from '../../lib/progress/constants.js';
+import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 
 const name = 'set-interval';
 
@@ -62,6 +62,22 @@ async function toMs(text, config = {}) {
   return 0;
 }
 
+const DEFAULT_MAX_CONSECUTIVE_ERRORS = 5;
+
+/**
+ * Map tolerance option to maxConsecutiveErrors. Higher tolerance = more retries before termination.
+ * @param {string|number|undefined} value
+ * @returns {number}
+ */
+export const mapTolerance = (value) => {
+  if (value === undefined) return DEFAULT_MAX_CONSECUTIVE_ERRORS;
+  if (typeof value === 'number') return value;
+  return (
+    { low: 2, med: DEFAULT_MAX_CONSECUTIVE_ERRORS, high: 15 }[value] ??
+    DEFAULT_MAX_CONSECUTIVE_ERRORS
+  );
+};
+
 export default function setInterval({
   prompt,
   getData,
@@ -74,17 +90,34 @@ export default function setInterval({
   const config = nameStep(name, { llm, ...options });
   const emitter = createProgressEmitter(name, config.onProgress, config);
   emitter.start();
+
   const startTime = config.now ?? new Date();
+  const batchDone = emitter.batch();
   let timer;
   let count = 0;
+  let consecutiveErrors = 0;
   let lastResult = initial;
   const history = [];
   let active = true;
+  let resolvedOptions;
 
   const step = async () => {
     if (!active) return;
 
+    if (!resolvedOptions) {
+      resolvedOptions = await getOptions(config, {
+        tolerance: withPolicy(mapTolerance),
+      });
+    }
+    const { tolerance: maxConsecutiveErrors } = resolvedOptions;
+
     try {
+      emitter.emit({
+        event: DomainEvent.step,
+        stepName: 'tick',
+        tickNumber: count + 1,
+      });
+
       // Get data for AI decision making
       lastResult = await getData({
         count,
@@ -106,22 +139,15 @@ ${asXML(history, { tag: 'history', title: 'History:' })}
 ${asXML(count, { tag: 'count', title: 'Count:' })}
 Next wait:`;
 
-      const intervalText = await retry(
-        () =>
-          callLlm(intervalPrompt, {
-            llm,
-            ...options,
-          }),
-        {
-          label: 'set-interval',
-          config,
-        }
-      );
+      const intervalText = await retry(() => callLlm(intervalPrompt, config), {
+        label: 'set-interval',
+        config,
+      });
 
       history.push(intervalText);
       if (history.length > historySize) history.shift();
 
-      const delay = await toMs(intervalText, { llm, ...options });
+      const delay = await toMs(intervalText, config);
 
       // Call onTick callback if provided - this is when the tick happens
       if (onTick) {
@@ -133,19 +159,15 @@ Next wait:`;
         });
       }
 
-      emitter.metrics({
-        event: ChainEvent.tick,
-        operation: config.operation,
-        tickNumber: count + 1,
-      });
-
       emitter.measure({
         metric: Metric.tickDuration,
         value: Date.now() - startTime.getTime(),
         tickNumber: count + 1,
       });
 
+      consecutiveErrors = 0;
       count += 1;
+      batchDone(1);
 
       // Schedule the next iteration only if still active
       if (active) {
@@ -153,9 +175,15 @@ Next wait:`;
       }
     } catch (error) {
       debug(`Error in setInterval step: ${error.message}`);
+      consecutiveErrors += 1;
 
-      emitter.error(error, {
-        duration: Date.now() - startTime.getTime(),
+      // Emit step-level error as domain event for recoverable per-tick failures
+      emitter.emit({
+        event: DomainEvent.step,
+        stepName: 'tick-error',
+        tickNumber: count + 1,
+        error: error.message,
+        consecutiveErrors,
       });
 
       // Call onTick with the data we have, even if LLM failed
@@ -169,6 +197,15 @@ Next wait:`;
       }
 
       count += 1;
+      batchDone(1);
+
+      // Terminate on persistent consecutive errors
+      if (consecutiveErrors >= maxConsecutiveErrors) {
+        active = false;
+        clearTimeout(timer);
+        emitter.error(error);
+        return;
+      }
 
       // Continue with a fallback delay of 1 second only if still active
       if (active) {
@@ -183,6 +220,7 @@ Next wait:`;
   const stop = () => {
     active = false;
     clearTimeout(timer);
+    emitter.complete({ outcome: 'success', ticks: count });
   };
 
   return stop;

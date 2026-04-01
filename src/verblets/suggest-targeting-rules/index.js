@@ -55,21 +55,29 @@ export default async function suggestTargetingRules(traces, instruction, config 
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
 
-  if (!traces || traces.length === 0) return [];
+  if (!traces || traces.length === 0) {
+    emitter.complete({ outcome: 'success' });
+    return [];
+  }
 
-  const prompt = buildPrompt(traces, instruction);
+  try {
+    const prompt = buildPrompt(traces, instruction);
 
-  const result = await callLlm(prompt, {
-    ...runConfig,
-    response_format: {
-      type: 'json_schema',
-      json_schema: { name: 'targeting_rules', schema },
-    },
-  });
+    const result = await callLlm(prompt, {
+      ...runConfig,
+      response_format: {
+        type: 'json_schema',
+        json_schema: { name: 'targeting_rules', schema },
+      },
+    });
 
-  const rules = result?.rules ?? result ?? [];
+    const rules = result?.rules ?? result ?? [];
 
-  emitter.complete();
+    emitter.complete({ outcome: 'success' });
 
-  return rules;
+    return rules;
+  } catch (err) {
+    emitter.error(err);
+    throw err;
+  }
 }

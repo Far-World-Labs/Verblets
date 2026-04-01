@@ -54,24 +54,29 @@ export default async function probeScan(textOrChunks, probes, config = {}) {
 
   const activeProbes = categories ? probes.filter((p) => categories.includes(p.category)) : probes;
 
-  const hits = [];
-  for (const chunk of chunks) {
-    for (const probe of activeProbes) {
-      const score = cosineSimilarity(chunk.vector, probe.vector);
-      if (score >= threshold) {
-        hits.push({
-          category: probe.category,
-          label: probe.label,
-          score,
-          chunk: { text: chunk.text, start: chunk.start, end: chunk.end },
-        });
+  try {
+    const hits = [];
+    for (const chunk of chunks) {
+      for (const probe of activeProbes) {
+        const sim = cosineSimilarity(chunk.vector, probe.vector);
+        if (sim >= threshold) {
+          hits.push({
+            category: probe.category,
+            label: probe.label,
+            score: sim,
+            chunk: { text: chunk.text, start: chunk.start, end: chunk.end },
+          });
+        }
       }
     }
+
+    hits.sort((a, b) => b.score - a.score);
+
+    emitter.complete({ outcome: 'success' });
+
+    return { flagged: hits.length > 0, hits };
+  } catch (err) {
+    emitter.error(err);
+    throw err;
   }
-
-  hits.sort((a, b) => b.score - a.score);
-
-  emitter.complete();
-
-  return { flagged: hits.length > 0, hits };
 }

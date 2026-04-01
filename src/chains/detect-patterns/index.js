@@ -2,7 +2,7 @@ import reduce from '../reduce/index.js';
 import { patternCandidatesJsonSchema } from './schemas.js';
 import { jsonSchema } from '../../lib/llm/index.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
-import createProgressEmitter from '../../lib/progress/index.js';
+import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
 
 const name = 'detect-patterns';
 
@@ -105,26 +105,32 @@ export default async function detectPatterns(objects, config = {}) {
     Return all candidates. If the input list is empty, return an empty array.
   `;
 
-  const candidateArray = await reduce(stringifiedObjects, patternInstructions, {
-    ...runConfig,
-    initial: [],
-    responseFormat: PATTERN_RESPONSE_FORMAT,
-  });
+  try {
+    const candidateArray = await reduce(stringifiedObjects, patternInstructions, {
+      ...runConfig,
+      initial: [],
+      responseFormat: PATTERN_RESPONSE_FORMAT,
+      onProgress: scopePhase(runConfig.onProgress, 'reduce:accumulate'),
+    });
 
-  // Since PATTERN_RESPONSE_FORMAT is a simple collection schema,
-  // and reduce should handle it properly
-  if (!Array.isArray(candidateArray)) {
-    emitter.complete();
-    return [];
+    // Since PATTERN_RESPONSE_FORMAT is a simple collection schema,
+    // and reduce should handle it properly
+    if (!Array.isArray(candidateArray)) {
+      emitter.complete({ outcome: 'success' });
+      return [];
+    }
+
+    const patterns = candidateArray
+      .filter((item) => item.type === 'pattern' && item.count >= 2)
+      .sort((a, b) => b.count - a.count)
+      .map((item) => item.template)
+      .slice(0, topN);
+
+    emitter.complete({ outcome: 'success' });
+
+    return patterns;
+  } catch (err) {
+    emitter.error(err);
+    throw err;
   }
-
-  const patterns = candidateArray
-    .filter((item) => item.type === 'pattern' && item.count >= 2)
-    .sort((a, b) => b.count - a.count)
-    .map((item) => item.template)
-    .slice(0, topN);
-
-  emitter.complete();
-
-  return patterns;
 }

@@ -71,7 +71,7 @@ const analyzeImage = async (images, instructions, config = {}) => {
     const contentArray = buildVisionPrompt(instructions, imageDataArray);
     const result = await retry(() => callLlm(contentArray, runConfig));
 
-    emitter.complete({ imageCount, tiled: shouldTile });
+    emitter.complete({ outcome: 'success', imageCount, tiled: shouldTile });
 
     return result;
   } catch (err) {

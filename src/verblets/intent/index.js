@@ -48,30 +48,31 @@ export default async function intent(text, operations, config = {}) {
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
 
-  if (!Array.isArray(operations) || operations.length === 0) {
-    throw new Error('Operations must be a non-empty array');
-  }
-
-  // Validate operations structure
-  for (const op of operations) {
-    if (!op.name || !op.description) {
-      throw new Error('Each operation must have name and description properties');
+  try {
+    if (!Array.isArray(operations) || operations.length === 0) {
+      throw new Error('Operations must be a non-empty array');
     }
-  }
 
-  const toleranceGuidance = mapTolerance(runConfig.tolerance);
-
-  const operationsText = operations
-    .map((op) => {
-      let opText = `${op.name}: ${op.description}`;
-      if (op.parameters) {
-        opText += `\nParameters: ${JSON.stringify(op.parameters)}`;
+    // Validate operations structure
+    for (const op of operations) {
+      if (!op.name || !op.description) {
+        throw new Error('Each operation must have name and description properties');
       }
-      return opText;
-    })
-    .join('\n\n');
+    }
 
-  const prompt = `Analyze the user input and determine the most appropriate intent and extract relevant parameters.
+    const toleranceGuidance = mapTolerance(runConfig.tolerance);
+
+    const operationsText = operations
+      .map((op) => {
+        let opText = `${op.name}: ${op.description}`;
+        if (op.parameters) {
+          opText += `\nParameters: ${JSON.stringify(op.parameters)}`;
+        }
+        return opText;
+      })
+      .join('\n\n');
+
+    const prompt = `Analyze the user input and determine the most appropriate intent and extract relevant parameters.
 
 ${asXML(operationsText, { tag: 'available-operations' })}
 
@@ -84,12 +85,16 @@ Determine:
 
 Return the result as a structured JSON object with the operation name, extracted parameters, and any optional parameters that might be useful.${toleranceGuidance ? `\n\n${toleranceGuidance}` : ''}`;
 
-  const response = await callLlm(prompt, {
-    ...runConfig,
-    response_format: responseFormat,
-  });
+    const response = await callLlm(prompt, {
+      ...runConfig,
+      response_format: responseFormat,
+    });
 
-  emitter.complete();
+    emitter.complete({ outcome: 'success' });
 
-  return response;
+    return response;
+  } catch (err) {
+    emitter.error(err);
+    throw err;
+  }
 }

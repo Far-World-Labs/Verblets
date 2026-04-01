@@ -97,7 +97,7 @@ export default async function analyzeTestError(logs, config = {}) {
   const maxTokens = await getOption('maxTokens', runConfig, depthConfig.maxTokens);
   if (!logs || logs.length === 0) {
     debug('analyzeTestError: No logs provided');
-    emitter.complete();
+    emitter.complete({ outcome: 'success' });
     return '';
   }
 
@@ -107,48 +107,49 @@ export default async function analyzeTestError(logs, config = {}) {
 
   if (!testStart || !testComplete) {
     debug('analyzeTestError: Missing test-start or test-complete logs');
-    emitter.complete();
+    emitter.complete({ outcome: 'success' });
     return '';
   }
 
-  // Build test info
-  const testInfo = {
-    name: testStart.testName,
-    file: testStart.file,
-    line: testStart.line,
-    lineCount: testStart.testLineCount || 0,
-  };
+  try {
+    // Build test info
+    const testInfo = {
+      name: testStart.testName,
+      file: testStart.file,
+      line: testStart.line,
+      lineCount: testStart.testLineCount || 0,
+    };
 
-  // Use the file from the test info
-  const actualTestFile = testInfo.file;
+    // Use the file from the test info
+    const actualTestFile = testInfo.file;
 
-  // Extract test code showing the failed assertion
-  const assertionLine = failedAssertion?.line || testInfo.line;
+    // Extract test code showing the failed assertion
+    const assertionLine = failedAssertion?.line || testInfo.line;
 
-  const windowSize = calculateCodeWindow(testInfo.line, testInfo.lineCount, assertionLine, {
-    context: contextSize,
-    maxWindow,
-  });
+    const windowSize = calculateCodeWindow(testInfo.line, testInfo.lineCount, assertionLine, {
+      context: contextSize,
+      maxWindow,
+    });
 
-  const testSnippet =
-    actualTestFile && assertionLine
-      ? extractCodeWindow(actualTestFile, assertionLine, windowSize)
-      : '';
+    const testSnippet =
+      actualTestFile && assertionLine
+        ? extractCodeWindow(actualTestFile, assertionLine, windowSize)
+        : '';
 
-  // Build assertion data
-  const assertion = failedAssertion
-    ? {
-        expected: failedAssertion.expected,
-        actual: failedAssertion.actual,
-        passed: !!failedAssertion.passed,
-        description: failedAssertion.description,
-      }
-    : {};
+    // Build assertion data
+    const assertion = failedAssertion
+      ? {
+          expected: failedAssertion.expected,
+          actual: failedAssertion.actual,
+          passed: !!failedAssertion.passed,
+          description: failedAssertion.description,
+        }
+      : {};
 
-  // Include all logs for the test as NDJSON
-  const executionLogs = logs;
+    // Include all logs for the test as NDJSON
+    const executionLogs = logs;
 
-  const prompt = `Failure: ${testInfo.name}
+    const prompt = `Failure: ${testInfo.name}
 
 Expected: ${assertion.expected ?? 'undefined'}
 Actual: ${assertion.actual ?? 'undefined'}
@@ -191,12 +192,16 @@ Discussion:
 - State exactly what's needed if critical information is missing
 </analysis-guidelines>`;
 
-  const response = await retry(() => llm(prompt, { ...runConfig, maxTokens }), {
-    label: 'test-analyzer',
-    config: runConfig,
-  });
+    const response = await retry(() => llm(prompt, { ...runConfig, maxTokens }), {
+      label: 'test-analyzer',
+      config: runConfig,
+    });
 
-  emitter.complete();
+    emitter.complete({ outcome: 'success' });
 
-  return response.trim();
+    return response.trim();
+  } catch (err) {
+    emitter.error(err);
+    throw err;
+  }
 }
