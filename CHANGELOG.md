@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.6.3 (2026-04-01)
+
+### Fixed
+
+- All 78 modules now score Excellent (2.5+) on eventing quality assessment (up from 73).
+- Full emitter lifecycle (start, complete with outcome, error) across all chains and verblets.
+- Trace context propagation: `runConfig` passed to `callLlm`, `retry`, and sub-chains consistently.
+- Event vocabulary compliance: replaced ad-hoc string literals with `DomainEvent.step`/`DomainEvent.phase` constants.
+- Batch progress tracking via `emitter.batch()` for all list-processing chains.
+- `scopePhase` delegation for all multi-stage chains.
+- `withPolicy` option mappers added to conversation (depth, maxParallel), ai-arch-expect (bulkSize, maxConcurrency), set-interval (tolerance).
+- set-interval: graceful self-termination after consecutive errors instead of infinite fallback loop.
+- dismantle: trace context now flows through `callLlm` in decompose/enhance operations.
+
 ## 0.6.0 (2026-03-28)
 
 ### Breaking Changes
