@@ -48,14 +48,19 @@ export default async function fillMissing(text, config = {}) {
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
 
-  const creativityGuidance = mapCreativity(runConfig.creativity);
-  const prompt = buildPrompt(text, { creativityGuidance });
-  const response = await callLlm(prompt, {
-    ...runConfig,
-    response_format: responseFormat,
-  });
+  try {
+    const creativityGuidance = mapCreativity(runConfig.creativity);
+    const prompt = buildPrompt(text, { creativityGuidance });
+    const response = await callLlm(prompt, {
+      ...runConfig,
+      response_format: responseFormat,
+    });
 
-  emitter.complete();
+    emitter.complete({ outcome: 'success' });
 
-  return response;
+    return response;
+  } catch (err) {
+    emitter.error(err);
+    throw err;
+  }
 }

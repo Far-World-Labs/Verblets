@@ -42,19 +42,24 @@ export default async function listExpand(list, count = list.length * 2, config =
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
-  const output = await callLlm(buildPrompt(list, count), {
-    ...runConfig,
-    response_format: responseFormat,
-  });
+  try {
+    const output = await callLlm(buildPrompt(list, count), {
+      ...runConfig,
+      response_format: responseFormat,
+    });
 
-  const items = output?.items || output;
+    const items = output?.items || output;
 
-  if (!Array.isArray(items)) {
-    debug(`Expected items array, got: ${typeof items}`);
-    emitter.complete();
-    return [];
+    if (!Array.isArray(items)) {
+      debug(`Expected items array, got: ${typeof items}`);
+      emitter.complete({ outcome: 'success' });
+      return [];
+    }
+
+    emitter.complete({ outcome: 'success' });
+    return items;
+  } catch (err) {
+    emitter.error(err);
+    throw err;
   }
-
-  emitter.complete();
-  return items;
 }

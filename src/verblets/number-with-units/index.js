@@ -36,15 +36,20 @@ Answer the question and provide the numeric value and unit. If the question is u
 
 ${asNumberWithUnits}`;
 
-  const response = await callLlm(numberText, {
-    ...runConfig,
-    response_format: responseFormat,
-  });
+  try {
+    const response = await callLlm(numberText, {
+      ...runConfig,
+      response_format: responseFormat,
+    });
 
-  // With structured output, response is already parsed
-  const result = toNumberWithUnits(JSON.stringify(response));
+    // With structured output, response is already parsed
+    const result = toNumberWithUnits(JSON.stringify(response));
 
-  emitter.complete();
+    emitter.complete({ outcome: 'success' });
 
-  return result;
+    return result;
+  } catch (err) {
+    emitter.error(err);
+    throw err;
+  }
 }

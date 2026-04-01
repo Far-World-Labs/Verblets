@@ -13,6 +13,8 @@
 import RingBuffer from '../../lib/ring-buffer/index.js';
 import assert from '../../lib/assert/index.js';
 import { extractFileContext as extractFileContextMain } from '../../lib/logger/index.js';
+import createProgressEmitter from '../../lib/progress/index.js';
+import { nameStep } from '../../lib/context/option.js';
 
 /**
  * @typedef {Object} LogEntry
@@ -165,7 +167,13 @@ export function createHostLoggerIntegration(hostLogger) {
  * @param {Object} [config.hostLogger] - Host logger for library internals
  * @returns {Object} Enhanced logger instance
  */
+const name = 'llm-logger';
+
 export function createLLMLogger(config = {}) {
+  const runConfig = nameStep(name, config);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
+
   const {
     ringBufferSize = 5000,
     lanes = [],
@@ -436,6 +444,8 @@ export function createLLMLogger(config = {}) {
       }
     }
   }
+
+  emitter.complete({ outcome: 'success', lanes: lanes.length, processors: processors.length });
 
   // Return enhanced logger instance
   return {

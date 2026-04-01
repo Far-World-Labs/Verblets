@@ -1,6 +1,7 @@
 import reduce from '../reduce/index.js';
 import shuffle from '../../lib/shuffle/index.js';
-import createProgressEmitter from '../../lib/progress/index.js';
+import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
+import { DomainEvent } from '../../lib/progress/constants.js';
 import { nameStep, getOptions } from '../../lib/context/option.js';
 
 const name = 'themes';
@@ -19,25 +20,47 @@ export default async function themes(text, config = {}) {
     topN: undefined,
   });
 
-  const pieces = splitText(text);
-  const reducePrompt =
-    'Update the accumulator with short themes from this text. Avoid duplicates. Return ONLY a comma-separated list of themes with no explanation or additional text.';
-  const shuffledPieces = shuffle(pieces);
-  const firstPass = await reduce(shuffledPieces, reducePrompt, runConfig);
-  const rawThemes = firstPass
-    .split(',')
-    .map((t) => t.trim())
-    .filter(Boolean);
+  try {
+    const pieces = splitText(text);
 
-  const limitText = topN ? `Limit to the top ${topN} themes.` : 'Return all meaningful themes.';
-  const refinePrompt = `Refine the accumulator by merging similar themes. ${limitText} Return ONLY a comma-separated list with no explanation or additional text.`;
-  const final = await reduce(rawThemes, refinePrompt, runConfig);
-  const result = final
-    .split(',')
-    .map((t) => t.trim())
-    .filter(Boolean);
+    emitter.emit({
+      event: DomainEvent.phase,
+      phase: 'extraction',
+    });
 
-  emitter.complete();
+    const reducePrompt =
+      'Update the accumulator with short themes from this text. Avoid duplicates. Return ONLY a comma-separated list of themes with no explanation or additional text.';
+    const shuffledPieces = shuffle(pieces);
+    const firstPass = await reduce(shuffledPieces, reducePrompt, {
+      ...runConfig,
+      onProgress: scopePhase(runConfig.onProgress, 'themes:extract'),
+    });
+    const rawThemes = firstPass
+      .split(',')
+      .map((t) => t.trim())
+      .filter(Boolean);
 
-  return result;
+    emitter.emit({
+      event: DomainEvent.phase,
+      phase: 'refinement',
+    });
+
+    const limitText = topN ? `Limit to the top ${topN} themes.` : 'Return all meaningful themes.';
+    const refinePrompt = `Refine the accumulator by merging similar themes. ${limitText} Return ONLY a comma-separated list with no explanation or additional text.`;
+    const final = await reduce(rawThemes, refinePrompt, {
+      ...runConfig,
+      onProgress: scopePhase(runConfig.onProgress, 'themes:refine'),
+    });
+    const result = final
+      .split(',')
+      .map((t) => t.trim())
+      .filter(Boolean);
+
+    emitter.complete({ outcome: 'success', themes: result.length });
+
+    return result;
+  } catch (err) {
+    emitter.error(err);
+    throw err;
+  }
 }

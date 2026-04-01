@@ -60,23 +60,28 @@ export default async function commonalities(items, config = {}) {
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
   if (!Array.isArray(items) || items.length === 0) {
-    emitter.complete();
+    emitter.complete({ outcome: 'success' });
     return [];
   }
 
   // Finding commonalities requires at least 2 items
   if (items.length < 2) {
-    emitter.complete();
+    emitter.complete({ outcome: 'success' });
     return [];
   }
 
-  const depthGuidance = mapDepth(runConfig.depth);
-  const output = await callLlm(buildPrompt(items, { ...runConfig, depthGuidance }), {
-    ...runConfig,
-    response_format: responseFormat,
-  });
+  try {
+    const depthGuidance = mapDepth(runConfig.depth);
+    const output = await callLlm(buildPrompt(items, { ...runConfig, depthGuidance }), {
+      ...runConfig,
+      response_format: responseFormat,
+    });
 
-  const resultArray = output?.items || output;
-  emitter.complete();
-  return Array.isArray(resultArray) ? resultArray.filter(Boolean) : [];
+    const resultArray = output?.items || output;
+    emitter.complete({ outcome: 'success' });
+    return Array.isArray(resultArray) ? resultArray.filter(Boolean) : [];
+  } catch (err) {
+    emitter.error(err);
+    throw err;
+  }
 }

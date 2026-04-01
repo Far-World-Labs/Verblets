@@ -325,17 +325,18 @@ describe('web-scrape', () => {
     });
 
     const eventNames = events.map((e) => e.event);
+    const stepNames = events.filter((e) => e.stepName).map((e) => e.stepName);
     expect(eventNames).toContain('chain:start');
-    expect(eventNames).toContain('browser');
-    expect(eventNames).toContain('url:start');
     expect(eventNames).toContain('step');
-    expect(eventNames).toContain('url:complete');
     expect(eventNames).toContain('chain:complete');
+    expect(stepNames).toContain('browser');
+    expect(stepNames).toContain('url:start');
+    expect(stepNames).toContain('url:complete');
 
-    const stepEvents = events.filter((e) => e.event === 'step');
-    expect(stepEvents).toHaveLength(2);
-    expect(stepEvents[0].action).toBe('click');
-    expect(stepEvents[1].action).toBe('done');
+    const actionSteps = events.filter((e) => e.event === 'step' && e.action);
+    expect(actionSteps).toHaveLength(2);
+    expect(actionSteps[0].action).toBe('click');
+    expect(actionSteps[1].action).toBe('done');
   });
 
   it('handles URL errors in resilient mode', async () => {

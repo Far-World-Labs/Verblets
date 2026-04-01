@@ -43,18 +43,23 @@ export default async function embedSubquestions(query, config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
-  const granularityGuidance = mapGranularity(runConfig.granularity);
+  try {
+    const granularityGuidance = mapGranularity(runConfig.granularity);
 
-  const result = await callLlm(decomposeQueryPrompt(query, { granularityGuidance }), {
-    ...runConfig,
-    response_format: {
-      type: 'json_schema',
-      json_schema: {
-        name: 'decompose_query',
-        schema: embedSubquestionsSchema,
+    const result = await callLlm(decomposeQueryPrompt(query, { granularityGuidance }), {
+      ...runConfig,
+      response_format: {
+        type: 'json_schema',
+        json_schema: {
+          name: 'decompose_query',
+          schema: embedSubquestionsSchema,
+        },
       },
-    },
-  });
-  emitter.complete();
-  return result;
+    });
+    emitter.complete({ outcome: 'success' });
+    return result;
+  } catch (err) {
+    emitter.error(err);
+    throw err;
+  }
 }

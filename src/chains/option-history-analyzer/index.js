@@ -204,29 +204,34 @@ export default function createOptionHistoryAnalyzer(config = {}) {
     const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
     emitter.start();
 
-    const prompt = buildAnalysisPrompt(traces, instruction);
+    try {
+      const prompt = buildAnalysisPrompt(traces, instruction);
 
-    const result = await retry(
-      () =>
-        callLlm(prompt, {
-          ...runConfig,
-          response_format: {
-            type: 'json_schema',
-            json_schema: { name: 'rule_suggestions', schema: RULE_SCHEMA },
-          },
-        }),
-      { label: 'option-history-analyzer', config: runConfig }
-    );
+      const result = await retry(
+        () =>
+          callLlm(prompt, {
+            ...runConfig,
+            response_format: {
+              type: 'json_schema',
+              json_schema: { name: 'rule_suggestions', schema: RULE_SCHEMA },
+            },
+          }),
+        { label: 'option-history-analyzer', config: runConfig }
+      );
 
-    const rules = result?.rules ?? result ?? [];
+      const rules = result?.rules ?? result ?? [];
 
-    if (onRules && rules.length > 0) {
-      onRules(rules);
+      if (onRules && rules.length > 0) {
+        onRules(rules);
+      }
+
+      emitter.complete({ outcome: 'success' });
+
+      return rules;
+    } catch (err) {
+      emitter.error(err);
+      throw err;
     }
-
-    emitter.complete();
-
-    return rules;
   };
 
   /**

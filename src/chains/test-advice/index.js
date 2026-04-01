@@ -1,4 +1,8 @@
 import test from '../test/index.js';
+import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
+import { nameStep } from '../../lib/context/option.js';
+
+const name = 'test-advice';
 
 const boundaryIssues = 'Run the code with 5 boundary value test cases and report any that fail';
 
@@ -21,15 +25,39 @@ const qualityIssues =
 const refactorIssues =
   'Suggest 5 refactors that would most improve the composibility of this code.';
 
-export default async (path) => {
-  return [
-    ...(await test(path, boundaryIssues)),
-    ...(await test(path, successIssues)),
-    ...(await test(path, failureIssues)),
-    ...(await test(path, defectIssues)),
-    ...(await test(path, bestPracticesIssues)),
-    ...(await test(path, cleanCodeIssues)),
-    ...(await test(path, qualityIssues)),
-    ...(await test(path, refactorIssues)),
-  ];
-};
+const ALL_INSTRUCTIONS = [
+  boundaryIssues,
+  successIssues,
+  failureIssues,
+  defectIssues,
+  bestPracticesIssues,
+  cleanCodeIssues,
+  qualityIssues,
+  refactorIssues,
+];
+
+export default async function testAdvice(path, config = {}) {
+  const runConfig = nameStep(name, config);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
+
+  try {
+    const batchDone = emitter.batch(ALL_INSTRUCTIONS.length);
+    const results = [];
+
+    for (const instructions of ALL_INSTRUCTIONS) {
+      const issues = await test(path, instructions, {
+        ...runConfig,
+        onProgress: scopePhase(runConfig.onProgress, 'test-advice:test'),
+      });
+      results.push(...issues);
+      batchDone(1);
+    }
+
+    emitter.complete({ outcome: 'success', totalIssues: results.length });
+    return results;
+  } catch (err) {
+    emitter.error(err);
+    throw err;
+  }
+}

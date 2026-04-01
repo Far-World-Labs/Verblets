@@ -103,6 +103,7 @@ Process exactly ${count} items from the XML list below and return the single bes
 
           batchDone(items.length);
         } catch (error) {
+          emitter.error(error, { startIndex, itemCount: items.length });
           if (errorPosture === 'strict') throw error;
           debug(`find batch at index ${startIndex} failed: ${error.message}`);
         }
@@ -131,13 +132,13 @@ Process exactly ${count} items from the XML list below and return the single bes
     const earliest = results.reduce((best, current) =>
       current.index < best.index ? current : best
     );
-    const foundMeta = { found: true, totalItems: list.length };
+    const foundMeta = { found: true, totalItems: list.length, outcome: 'success' };
     lifecycleLogger.logResult(earliest.result, foundMeta);
     emitter.complete(foundMeta);
     return earliest.result;
   }
 
-  const notFoundMeta = { found: false, totalItems: list.length };
+  const notFoundMeta = { found: false, totalItems: list.length, outcome: 'success' };
   lifecycleLogger.logResult('', notFoundMeta);
   emitter.complete(notFoundMeta);
   return '';

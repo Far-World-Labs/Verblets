@@ -434,6 +434,7 @@ const siteCrawl = async (startUrl, config = {}) => {
     };
 
     emitter.complete({
+      outcome: 'success',
       pagesVisited: pages.length,
       apisFound: apis.length,
       gateCallCount,

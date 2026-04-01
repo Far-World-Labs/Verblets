@@ -123,17 +123,22 @@ export async function extractEntities(text, instructions, config = {}) {
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
 
-  emitter.emit({ event: DomainEvent.step, stepName: 'generating-specification', instructions });
+  try {
+    emitter.emit({ event: DomainEvent.step, stepName: 'generating-specification', instructions });
 
-  const spec = runConfig.spec || (await entitySpec(instructions, runConfig));
+    const spec = runConfig.spec || (await entitySpec(instructions, runConfig));
 
-  emitter.emit({ event: DomainEvent.step, stepName: 'extracting-entities', specification: spec });
+    emitter.emit({ event: DomainEvent.step, stepName: 'extracting-entities', specification: spec });
 
-  const result = await applyEntities(text, spec, runConfig);
+    const result = await applyEntities(text, spec, runConfig);
 
-  emitter.complete();
+    emitter.complete({ outcome: 'success' });
 
-  return result;
+    return result;
+  } catch (err) {
+    emitter.error(err);
+    throw err;
+  }
 }
 
 // ===== Advanced Entity Functions =====

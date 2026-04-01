@@ -67,8 +67,8 @@ What if we do a minimal viable UX first, then iterate?`,
     expect(responses[0]).toBe('This is my response to the topic.');
   });
 
-  it('throws error when no speakers provided', () => {
-    expect(() =>
+  it('throws error when no speakers provided', async () => {
+    await expect(
       conversationTurnReduce({
         speakers: [],
         topic: 'test topic',
@@ -76,11 +76,11 @@ What if we do a minimal viable UX first, then iterate?`,
         rules: {},
         llm: 'test',
       })
-    ).toThrow('At least one speaker is required');
+    ).rejects.toThrow('At least one speaker is required');
   });
 
-  it('throws error when no topic provided', () => {
-    expect(() =>
+  it('throws error when no topic provided', async () => {
+    await expect(
       conversationTurnReduce({
         speakers: [{ id: 'alice', name: 'Alice' }],
         topic: '',
@@ -88,6 +88,6 @@ What if we do a minimal viable UX first, then iterate?`,
         rules: {},
         llm: 'test',
       })
-    ).toThrow('Topic is required');
+    ).rejects.toThrow('Topic is required');
   });
 });

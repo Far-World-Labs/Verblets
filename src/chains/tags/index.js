@@ -2,8 +2,8 @@ import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import map from '../map/index.js';
-import createProgressEmitter from '../../lib/progress/index.js';
-import { nameStep, getOptions } from '../../lib/context/option.js';
+import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
+import { nameStep, getOptions, getOption } from '../../lib/context/option.js';
 import tagsResultSchema from './tags-result.json';
 
 const name = 'tags';
@@ -29,6 +29,15 @@ const tagsMapSchema = {
   additionalProperties: false,
 };
 
+// ===== Option Mappers =====
+
+/**
+ * Map vocabularyMode option value. Accepts 'strict' or 'open'.
+ * @param {string|undefined} value
+ * @returns {string} Resolved vocabulary mode
+ */
+export const mapVocabularyMode = (value) => value ?? 'strict';
+
 // ===== Core Functions =====
 
 /**
@@ -38,11 +47,14 @@ const tagsMapSchema = {
  * @returns {Promise<string>} Tag specification
  */
 export async function tagSpec(instructions, config = {}) {
-  config = nameStep('tags:spec', config);
+  const runConfig = nameStep('tags:spec', config);
+  const emitter = createProgressEmitter('tags:spec', runConfig.onProgress, runConfig);
+  emitter.start();
 
-  const specSystemPrompt = `You are a tag specification generator. Create clear, actionable tagging criteria.`;
+  try {
+    const specSystemPrompt = `You are a tag specification generator. Create clear, actionable tagging criteria.`;
 
-  const specUserPrompt = `Analyze these tagging instructions and generate a specification.
+    const specUserPrompt = `Analyze these tagging instructions and generate a specification.
 
 ${asXML(instructions, { tag: 'tagging-instructions' })}
 
@@ -54,19 +66,24 @@ Provide a clear specification describing:
 
 Keep it concise and actionable.`;
 
-  const response = await retry(
-    () =>
-      callLlm(specUserPrompt, {
-        ...config,
-        systemPrompt: specSystemPrompt,
-      }),
-    {
-      label: 'tags-spec',
-      config,
-    }
-  );
+    const response = await retry(
+      () =>
+        callLlm(specUserPrompt, {
+          ...runConfig,
+          systemPrompt: specSystemPrompt,
+        }),
+      {
+        label: 'tags-spec',
+        config: runConfig,
+      }
+    );
 
-  return response;
+    emitter.complete({ outcome: 'success' });
+    return response;
+  } catch (err) {
+    emitter.error(err);
+    throw err;
+  }
 }
 
 /**
@@ -81,18 +98,20 @@ export async function applyTags(item, specification, vocabulary, config = {}) {
   const runConfig = nameStep(`${name}:apply`, config);
   const applyEmitter = createProgressEmitter(`${name}:apply`, runConfig.onProgress, runConfig);
   applyEmitter.start();
-  const { vocabularyMode } = await getOptions(runConfig, {
-    vocabularyMode: 'strict',
-  });
 
-  const vocabularyConstraint =
-    vocabularyMode === 'open'
-      ? `Available tags (prefer these, but you MAY suggest new tag IDs for items that don't fit any existing tag):
+  try {
+    const { vocabularyMode } = await getOptions(runConfig, {
+      vocabularyMode: 'strict',
+    });
+
+    const vocabularyConstraint =
+      vocabularyMode === 'open'
+        ? `Available tags (prefer these, but you MAY suggest new tag IDs for items that don't fit any existing tag):
 ${asXML(JSON.stringify(vocabulary.tags), { tag: 'available-tags' })}`
-      : `Available tags (you MUST use only the "id" field from these tags):
+        : `Available tags (you MUST use only the "id" field from these tags):
 ${asXML(JSON.stringify(vocabulary.tags), { tag: 'available-tags' })}`;
 
-  const prompt = `You are a tagger. Apply tags to the given item based on the specification.
+    const prompt = `You are a tagger. Apply tags to the given item based on the specification.
 
 ${asXML(specification, { tag: 'tag-specification' })}
 
@@ -105,24 +124,28 @@ Analyze the item and determine which tags apply based on the specification.
 Return a JSON object with an "items" array containing ONLY the tag IDs (the "id" field values from available-tags${vocabularyMode === 'open' ? ' or new suggested IDs' : ''}).
 Do NOT return tag labels, descriptions, or full tag objects - ONLY the string ID values.`;
 
-  const response = await retry(
-    () =>
-      callLlm(prompt, {
-        ...runConfig,
-        response_format: jsonSchema('tags_result', tagsResultSchema),
-      }),
-    {
-      label: 'tags-apply',
-      config: runConfig,
-    }
-  );
+    const response = await retry(
+      () =>
+        callLlm(prompt, {
+          ...runConfig,
+          response_format: jsonSchema('tags_result', tagsResultSchema),
+        }),
+      {
+        label: 'tags-apply',
+        config: runConfig,
+      }
+    );
 
-  // llm auto-unwraps {items: [...]} to just the array
-  const result = Array.isArray(response) ? response : [];
+    // llm auto-unwraps {items: [...]} to just the array
+    const result = Array.isArray(response) ? response : [];
 
-  applyEmitter.complete();
+    applyEmitter.complete({ outcome: 'success' });
 
-  return result;
+    return result;
+  } catch (err) {
+    applyEmitter.error(err);
+    throw err;
+  }
 }
 
 /**
@@ -134,7 +157,7 @@ Do NOT return tag labels, descriptions, or full tag objects - ONLY the string ID
  * @returns {Promise<Array>} Array of tag IDs
  */
 export async function tagItem(item, instructions, vocabulary, config = {}) {
-  const { spec: providedSpec } = config;
+  const providedSpec = await getOption('spec', config);
   const spec = providedSpec || (await tagSpec(instructions, config));
   return await applyTags(item, spec, vocabulary, config);
 }
@@ -148,27 +171,40 @@ export async function tagItem(item, instructions, vocabulary, config = {}) {
  * @returns {Promise<Array>} Array of tag arrays
  */
 export async function mapTags(list, instructions, vocabulary, config = {}) {
-  const { spec: providedSpec, vocabularyMode: _vocabularyMode } = config;
-  const vocabularyMode = _vocabularyMode || 'strict';
-  const spec = providedSpec || (await tagSpec(instructions, config));
-  const mapInstr = mapInstructions({ specification: spec, vocabulary, vocabularyMode });
+  const runConfig = nameStep('tags:map', config);
+  const emitter = createProgressEmitter('tags:map', runConfig.onProgress, runConfig);
+  emitter.start();
 
-  // Ensure items are properly serialized for the map chain
-  // The map chain converts items to strings, so we need to handle objects specially
-  const serializedList = list.map((item) =>
-    typeof item === 'object' && item !== null ? JSON.stringify(item) : item
-  );
+  try {
+    const { vocabularyMode } = await getOptions(runConfig, {
+      vocabularyMode: 'strict',
+    });
+    const providedSpec = await getOption('spec', runConfig);
+    const spec = providedSpec || (await tagSpec(instructions, runConfig));
+    const mapInstr = mapInstructions({ specification: spec, vocabulary, vocabularyMode });
 
-  // Configure map to use our structured schema for tag arrays
-  const mapConfig = {
-    ...config,
-    responseFormat: jsonSchema('tags_map_result', tagsMapSchema),
-  };
+    // Ensure items are properly serialized for the map chain
+    // The map chain converts items to strings, so we need to handle objects specially
+    const serializedList = list.map((item) =>
+      typeof item === 'object' && item !== null ? JSON.stringify(item) : item
+    );
 
-  // Map will return array of tag arrays directly
-  const results = await map(serializedList, mapInstr, mapConfig);
+    // Configure map to use our structured schema for tag arrays
+    const mapConfig = {
+      ...runConfig,
+      responseFormat: jsonSchema('tags_map_result', tagsMapSchema),
+      onProgress: scopePhase(runConfig.onProgress, 'tags:map'),
+    };
 
-  return results;
+    // Map will return array of tag arrays directly
+    const results = await map(serializedList, mapInstr, mapConfig);
+
+    emitter.complete({ outcome: 'success' });
+    return results;
+  } catch (err) {
+    emitter.error(err);
+    throw err;
+  }
 }
 
 // ===== Instruction Builders =====

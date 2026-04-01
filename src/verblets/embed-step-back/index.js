@@ -44,19 +44,24 @@ export default async function embedStepBack(query, config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
-  const { count = 3 } = runConfig;
-  const abstractionGuidance = mapAbstraction(runConfig.abstraction);
+  try {
+    const { count = 3 } = runConfig;
+    const abstractionGuidance = mapAbstraction(runConfig.abstraction);
 
-  const result = await callLlm(stepBackPrompt(query, count, { abstractionGuidance }), {
-    ...runConfig,
-    response_format: {
-      type: 'json_schema',
-      json_schema: {
-        name: 'step_back',
-        schema: embedStepBackSchema,
+    const result = await callLlm(stepBackPrompt(query, count, { abstractionGuidance }), {
+      ...runConfig,
+      response_format: {
+        type: 'json_schema',
+        json_schema: {
+          name: 'step_back',
+          schema: embedStepBackSchema,
+        },
       },
-    },
-  });
-  emitter.complete();
-  return result;
+    });
+    emitter.complete({ outcome: 'success' });
+    return result;
+  } catch (err) {
+    emitter.error(err);
+    throw err;
+  }
 }

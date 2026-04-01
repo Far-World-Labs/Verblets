@@ -46,10 +46,11 @@ GUIDELINES:
     // With structured output, we get a validated object
     const issues = result.hasIssues ? result.issues : [];
 
-    emitter.complete();
+    emitter.complete({ outcome: 'success' });
 
     return issues;
   } catch (error) {
-    return [`Error analyzing ${path}: ${error.message}`];
+    emitter.error(error);
+    throw error;
   }
 }

@@ -3,6 +3,8 @@ import pave from '../../lib/pave/index.js';
 import shortenText from '../../lib/shorten-text/index.js';
 import { summarize as basicSummarize, tokenBudget } from '../../prompts/index.js';
 import modelService from '../../services/llm-model/index.js';
+import createProgressEmitter from '../../lib/progress/index.js';
+import { nameStep } from '../../lib/context/option.js';
 
 const summarize = ({ budget, type, value, fixes = [], llmOptions, sensitivity }) => {
   if (budget) {
@@ -52,6 +54,8 @@ export const mapSummaryDetail = (value) => {
   return { low: 0.4, med: DEFAULT_SUMMARY_RATIO, high: 0.2 }[value] ?? DEFAULT_SUMMARY_RATIO;
 };
 
+const chainName = 'summary-map';
+
 export default class SummaryMap extends Map {
   constructor({
     maxTokensPerValue,
@@ -62,6 +66,7 @@ export default class SummaryMap extends Map {
     summaryDetail,
     // used with promptText, when targetTokens isn't supplied
     targetTokensTotalRatio = mapSummaryDetail(summaryDetail),
+    ...config
   }) {
     super();
     this.cache = new Map();
@@ -69,6 +74,7 @@ export default class SummaryMap extends Map {
     this.isCacheValid = false;
     this.maxTokensPerValue = maxTokensPerValue ?? model.maxTokens;
     this.llmOptions = { modelName: model.name, ...modelOptions };
+    this.runConfig = nameStep(chainName, config);
 
     if (targetTokens) {
       this.targetTokens = targetTokens;
@@ -106,52 +112,63 @@ export default class SummaryMap extends Map {
   }
 
   async myFillCache() {
-    const { budgets } = this.calculateBudgets();
+    const emitter = createProgressEmitter(chainName, this.runConfig.onProgress, this.runConfig);
+    emitter.start();
 
-    for (const { key, budget } of budgets) {
-      const valueObject = this.data.get(key);
+    try {
+      const { budgets } = this.calculateBudgets();
+      const batchDone = emitter.batch(budgets.length);
 
-      const entryLlmOptions = {
-        ...this.llmOptions,
-        ...valueObject.modelOptions,
-      };
+      for (const { key, budget } of budgets) {
+        const valueObject = this.data.get(key);
 
-      if (valueObject.sensitivity?.whitelist || valueObject.sensitivity?.blacklist) {
-        entryLlmOptions.sensitive = true;
-      }
-
-      const value = shortenText(valueObject.value, {
-        targetTokenCount: this.maxTokensPerValue,
-        model: modelService.getModel(entryLlmOptions.modelName),
-      });
-
-      // omit weight to skip summarization
-      let summarizedValue = value;
-      if (budget) {
-        const summarizeLlmOptions = {
+        const entryLlmOptions = {
           ...this.llmOptions,
           ...valueObject.modelOptions,
         };
 
         if (valueObject.sensitivity?.whitelist || valueObject.sensitivity?.blacklist) {
-          summarizeLlmOptions.sensitive = true;
+          entryLlmOptions.sensitive = true;
         }
 
-        // eslint-disable-next-line no-await-in-loop
-        summarizedValue = await summarize({
-          budget,
-          fixes: valueObject.fixes,
-          llmOptions: summarizeLlmOptions,
-          sensitivity: valueObject.sensitivity,
-          type: valueObject.type,
-          value,
+        const value = shortenText(valueObject.value, {
+          targetTokenCount: this.maxTokensPerValue,
+          model: modelService.getModel(entryLlmOptions.modelName),
         });
+
+        // omit weight to skip summarization
+        let summarizedValue = value;
+        if (budget) {
+          const summarizeLlmOptions = {
+            ...this.llmOptions,
+            ...valueObject.modelOptions,
+          };
+
+          if (valueObject.sensitivity?.whitelist || valueObject.sensitivity?.blacklist) {
+            summarizeLlmOptions.sensitive = true;
+          }
+
+          // eslint-disable-next-line no-await-in-loop
+          summarizedValue = await summarize({
+            budget,
+            fixes: valueObject.fixes,
+            llmOptions: summarizeLlmOptions,
+            sensitivity: valueObject.sensitivity,
+            type: valueObject.type,
+            value,
+          });
+        }
+
+        this.cache.set(key, summarizedValue);
+        batchDone(1);
       }
 
-      this.cache.set(key, summarizedValue);
+      this.isCacheValid = true;
+      emitter.complete({ outcome: 'success', entries: budgets.length });
+    } catch (err) {
+      emitter.error(err);
+      throw err;
     }
-
-    this.isCacheValid = true;
   }
 
   getCache() {

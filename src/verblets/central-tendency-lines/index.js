@@ -123,48 +123,54 @@ export default async function centralTendency(item, seedItems, config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
-  if (!item || typeof item !== 'string') {
-    throw new Error('Item must be a non-empty string');
+
+  try {
+    if (!item || typeof item !== 'string') {
+      throw new Error('Item must be a non-empty string');
+    }
+
+    if (!Array.isArray(seedItems) || seedItems.length === 0) {
+      throw new Error('seedItems must be a non-empty array');
+    }
+
+    const context = runConfig.context || '';
+    const coreFeatures = runConfig.coreFeatures || [];
+
+    // Create lifecycle logger with central-tendency namespace
+    const lifecycleLogger = createLifecycleLogger(runConfig.logger, 'central-tendency');
+
+    // Log start with input
+    lifecycleLogger.logStart({ item, seedItems, context, coreFeatures });
+
+    const prompt = buildCentralTendencyPrompt(item, seedItems, { context, coreFeatures });
+    const responseFormat = createResponseFormat('central_tendency_result');
+
+    // Log prompt construction
+    lifecycleLogger.logConstruction(prompt, {
+      ...extractPromptAnalysis(prompt),
+      ...extractLLMConfig({ response_format: responseFormat }),
+      itemLength: item.length,
+      seedCount: seedItems.length,
+      hasCoreFeatures: coreFeatures.length > 0,
+    });
+
+    const response = await callLlm(prompt, {
+      ...runConfig,
+      response_format: responseFormat,
+      logger: lifecycleLogger,
+    });
+
+    // Log result
+    lifecycleLogger.logResult(response, {
+      score: response.score,
+      confidence: response.confidence,
+      hasReason: !!response.reason,
+    });
+
+    emitter.complete({ outcome: 'success' });
+    return response;
+  } catch (err) {
+    emitter.error(err);
+    throw err;
   }
-
-  if (!Array.isArray(seedItems) || seedItems.length === 0) {
-    throw new Error('seedItems must be a non-empty array');
-  }
-
-  const { context = '', coreFeatures = [], llm = 'fastGoodCheap', logger, ...options } = runConfig;
-
-  // Create lifecycle logger with central-tendency namespace
-  const lifecycleLogger = createLifecycleLogger(logger, 'central-tendency');
-
-  // Log start with input
-  lifecycleLogger.logStart({ item, seedItems, context, coreFeatures });
-
-  const prompt = buildCentralTendencyPrompt(item, seedItems, { context, coreFeatures });
-  const responseFormat = createResponseFormat('central_tendency_result');
-
-  // Log prompt construction
-  lifecycleLogger.logConstruction(prompt, {
-    ...extractPromptAnalysis(prompt),
-    ...extractLLMConfig({ response_format: responseFormat }),
-    itemLength: item.length,
-    seedCount: seedItems.length,
-    hasCoreFeatures: coreFeatures.length > 0,
-  });
-
-  const response = await callLlm(prompt, {
-    llm,
-    response_format: responseFormat,
-    logger: lifecycleLogger,
-    ...options,
-  });
-
-  // Log result
-  lifecycleLogger.logResult(response, {
-    score: response.score,
-    confidence: response.confidence,
-    hasReason: !!response.reason,
-  });
-
-  emitter.complete();
-  return response;
 }

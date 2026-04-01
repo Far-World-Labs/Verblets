@@ -17,16 +17,21 @@ export default async function embedRewriteQuery(query, config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
-  const result = await callLlm(rewriteQueryPrompt(query), {
-    ...runConfig,
-    response_format: {
-      type: 'json_schema',
-      json_schema: {
-        name: 'rewrite_query',
-        schema: embedRewriteQuerySchema,
+  try {
+    const result = await callLlm(rewriteQueryPrompt(query), {
+      ...runConfig,
+      response_format: {
+        type: 'json_schema',
+        json_schema: {
+          name: 'rewrite_query',
+          schema: embedRewriteQuerySchema,
+        },
       },
-    },
-  });
-  emitter.complete();
-  return result;
+    });
+    emitter.complete({ outcome: 'success' });
+    return result;
+  } catch (err) {
+    emitter.error(err);
+    throw err;
+  }
 }

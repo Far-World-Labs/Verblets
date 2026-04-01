@@ -39,36 +39,41 @@ export async function llmAssert({
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
 
-  if (equals === undefined && !constraint)
-    throw new TypeError('Provide either "equals" or "constraint".');
+  let passed;
+  try {
+    if (equals === undefined && !constraint)
+      throw new TypeError('Provide either "equals" or "constraint".');
+    const prompt =
+      equals !== undefined
+        ? buildEqualityPrompt({ actual, expected: equals, context })
+        : buildConstraintPrompt({ actual, constraint, context });
 
-  const prompt =
-    equals !== undefined
-      ? buildEqualityPrompt({ actual, expected: equals, context })
-      : buildConstraintPrompt({ actual, constraint, context });
+    const answer = await callLlm(prompt, { ...runConfig, llm });
+    const text = typeof answer === 'string' ? answer : answer.content;
+    passed = /^true$/i.test(text.trim());
 
-  const answer = await callLlm(prompt, { llm });
-  const text = typeof answer === 'string' ? answer : answer.content;
-  const passed = /^true$/i.test(text.trim());
+    if (!passed && throws) {
+      let msg;
+      if (typeof message === 'function') {
+        msg = message({ actual, equals, constraint });
+      } else {
+        msg = message;
+      }
 
-  emitter.complete();
+      if (!msg) {
+        msg =
+          equals !== undefined
+            ? 'LLM assertion failed: Does the actual value strictly equal the expected value?'
+            : `LLM assertion failed: ${constraint}`;
+      }
 
-  if (!passed && throws) {
-    let msg;
-    if (typeof message === 'function') {
-      msg = message({ actual, equals, constraint });
-    } else {
-      msg = message;
+      throw new Error(msg);
     }
 
-    if (!msg) {
-      msg =
-        equals !== undefined
-          ? 'LLM assertion failed: Does the actual value strictly equal the expected value?'
-          : `LLM assertion failed: ${constraint}`;
-    }
-
-    throw new Error(msg);
+    emitter.complete({ outcome: 'success' });
+  } catch (err) {
+    emitter.error(err);
+    throw err;
   }
 
   return passed;

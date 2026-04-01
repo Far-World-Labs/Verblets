@@ -105,7 +105,7 @@ export default async function toObject(text, schema, config = {}) {
     try {
       const directResult = parseAndValidate(text, schema);
 
-      emitter.complete();
+      emitter.complete({ outcome: 'success' });
 
       return directResult;
     } catch (error) {
@@ -123,7 +123,7 @@ export default async function toObject(text, schema, config = {}) {
 
       const result = parseAndValidate(response, schema);
 
-      emitter.complete();
+      emitter.complete({ outcome: 'degraded' });
 
       return result;
     } catch (error) {
@@ -141,7 +141,7 @@ export default async function toObject(text, schema, config = {}) {
     const result = parseAndValidate(response, schema);
     logDebugInfo(3, prompt, response, null); // Log successful attempt
 
-    emitter.complete();
+    emitter.complete({ outcome: 'degraded' });
 
     return result;
   } catch (err) {

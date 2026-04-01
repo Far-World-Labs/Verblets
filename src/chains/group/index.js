@@ -216,6 +216,7 @@ export default async function group(list, instructions, config = {}) {
           batchSize: items.length,
         });
       } catch (error) {
+        emitter.error(error, { startIndex, itemCount: items.length });
         if (errorPosture === 'strict') throw error;
         debug(`group batch at index ${startIndex} failed, using fallback labels: ${error.message}`);
         const fallbackLabels = new Array(items.length).fill('other');
@@ -242,7 +243,8 @@ export default async function group(list, instructions, config = {}) {
 
   const result = topN ? applyTopNFilter(groups, topN) : groups;
 
-  emitter.complete();
+  const groupCount = Object.keys(result).length;
+  emitter.complete({ groupCount, outcome: 'success' });
 
   return result;
 }

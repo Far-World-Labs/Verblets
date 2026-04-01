@@ -79,87 +79,90 @@ export default async function valueArbitrate(signals, ctx, values, config = {}) 
     instruction: undefined,
   });
 
-  const emitComplete = () => emitter.complete();
+  try {
+    // Step 1: Evaluate all signals concurrently
+    const evaluated = await Promise.all(
+      signals.map(async (signal) => ({
+        name: signal.name,
+        strictness: signal.strictness,
+        weight: signal.weight,
+        prompt: signal.prompt,
+        resolved: await signal.value(ctx),
+      }))
+    );
 
-  // Step 1: Evaluate all signals concurrently
-  const evaluated = await Promise.all(
-    signals.map(async (signal) => ({
-      name: signal.name,
-      strictness: signal.strictness,
-      weight: signal.weight,
-      prompt: signal.prompt,
-      resolved: await signal.value(ctx),
-    }))
-  );
+    // Step 2: Separate must and may results
+    const mustResults = evaluated.filter((s) => s.strictness === 'must');
+    const mayResults = evaluated.filter((s) => s.strictness === 'may');
 
-  // Step 2: Separate must and may results
-  const mustResults = evaluated.filter((s) => s.strictness === 'must');
-  const mayResults = evaluated.filter((s) => s.strictness === 'may');
+    // Step 3: Determine must-floor
+    const floorIdx = mustResults.length > 0 ? mustFloorIndex(mustResults, values) : -1;
 
-  // Step 3: Determine must-floor
-  const floorIdx = mustResults.length > 0 ? mustFloorIndex(mustResults, values) : -1;
+    // Values at or above the floor are candidates
+    const candidates = floorIdx >= 0 ? values.slice(floorIdx) : [...values];
 
-  // Values at or above the floor are candidates
-  const candidates = floorIdx >= 0 ? values.slice(floorIdx) : [...values];
+    if (candidates.length === 0) {
+      // Must-floor is at or beyond the most restrictive value — return it
+      emitter.complete({ outcome: 'success' });
+      return values[values.length - 1];
+    }
 
-  if (candidates.length === 0) {
-    // Must-floor is at or beyond the most restrictive value — return it
-    emitComplete();
-    return values[values.length - 1];
-  }
+    if (candidates.length === 1) {
+      emitter.complete({ outcome: 'success' });
+      return candidates[0];
+    }
 
-  if (candidates.length === 1) {
-    emitComplete();
-    return candidates[0];
-  }
+    // Step 4: Filter may-results to those recommending valid candidates
+    const viableMays = mayResults.filter((s) => candidates.includes(s.resolved));
 
-  // Step 4: Filter may-results to those recommending valid candidates
-  const viableMays = mayResults.filter((s) => candidates.includes(s.resolved));
+    // If all mays agree, no AI needed
+    const uniqueMayValues = [...new Set(viableMays.map((s) => s.resolved))];
+    if (uniqueMayValues.length === 1) {
+      emitter.complete({ outcome: 'success' });
+      return uniqueMayValues[0];
+    }
 
-  // If all mays agree, no AI needed
-  const uniqueMayValues = [...new Set(viableMays.map((s) => s.resolved))];
-  if (uniqueMayValues.length === 1) {
-    emitComplete();
-    return uniqueMayValues[0];
-  }
+    // If no mays have opinions within the candidate space, return the floor
+    if (viableMays.length === 0) {
+      emitter.complete({ outcome: 'success' });
+      return candidates[0];
+    }
 
-  // If no mays have opinions within the candidate space, return the floor
-  if (viableMays.length === 0) {
-    emitComplete();
-    return candidates[0];
-  }
+    // Step 5: AI mediation via classify
+    const prompt = buildMediationPrompt(viableMays, candidates, instruction);
 
-  // Step 5: AI mediation via classify
-  const prompt = buildMediationPrompt(viableMays, candidates, instruction);
-
-  const enumValues = Object.fromEntries(candidates.map((v) => [String(v), v]));
-  const schema = {
-    type: 'object',
-    properties: {
-      value: {
-        type: 'string',
-        enum: candidates.map(String),
-        description: 'The selected value',
-      },
-    },
-    required: ['value'],
-    additionalProperties: false,
-  };
-
-  const result = await retry(
-    () =>
-      callLlm(prompt, {
-        ...runConfig,
-        response_format: {
-          type: 'json_schema',
-          json_schema: { name: 'value_arbitrate', schema },
+    const enumValues = Object.fromEntries(candidates.map((v) => [String(v), v]));
+    const schema = {
+      type: 'object',
+      properties: {
+        value: {
+          type: 'string',
+          enum: candidates.map(String),
+          description: 'The selected value',
         },
-      }),
-    { label: 'value-arbitrate', config: runConfig }
-  );
+      },
+      required: ['value'],
+      additionalProperties: false,
+    };
 
-  // callLlm auto-unwraps the value from the JSON response
-  const selected = enumValues[result];
-  emitComplete();
-  return selected !== undefined ? selected : candidates[0];
+    const result = await retry(
+      () =>
+        callLlm(prompt, {
+          ...runConfig,
+          response_format: {
+            type: 'json_schema',
+            json_schema: { name: 'value_arbitrate', schema },
+          },
+        }),
+      { label: 'value-arbitrate', config: runConfig }
+    );
+
+    // callLlm auto-unwraps the value from the JSON response
+    const selected = enumValues[result];
+    emitter.complete({ outcome: 'success' });
+    return selected !== undefined ? selected : candidates[0];
+  } catch (err) {
+    emitter.error(err);
+    throw err;
+  }
 }

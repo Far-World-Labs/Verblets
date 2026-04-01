@@ -21,51 +21,52 @@ const reduce = async function reduce(list, instructions, config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
-  const { accumulatorMode } = await getOptions(runConfig, {
-    accumulatorMode: 'auto',
-  });
-  const lifecycleLogger = createLifecycleLogger(runConfig.logger, 'chain:reduce');
+  try {
+    const { accumulatorMode } = await getOptions(runConfig, {
+      accumulatorMode: 'auto',
+    });
+    const lifecycleLogger = createLifecycleLogger(runConfig.logger, 'chain:reduce');
 
-  let acc = runConfig.initial;
+    let acc = runConfig.initial;
 
-  // If initial is an array and we're using default format, wrap it
-  const needsItemsWrapper =
-    accumulatorMode === 'collection' ||
-    (accumulatorMode === 'auto' && Array.isArray(runConfig.initial) && !runConfig.responseFormat);
-  if (needsItemsWrapper) {
-    acc = { items: runConfig.initial };
-  }
-
-  const batches = await createBatches(list, runConfig);
-  const batchDone = emitter.batch(list.length);
-  const activeBatches = batches.filter((b) => !b.skip);
-
-  emitter.progress({
-    event: OpEvent.start,
-    totalItems: list.length,
-    totalBatches: activeBatches.length,
-  });
-
-  lifecycleLogger.logStart(
-    extractBatchConfig({
-      totalItems: list.length,
-      totalBatches: activeBatches.length,
-      batchSize: runConfig.batchSize,
-    })
-  );
-
-  for (const [batchIndex, { items, skip }] of batches.entries()) {
-    if (skip) {
-      lifecycleLogger.logEvent('batch-skip', { batchIndex });
-      continue;
+    // If initial is an array and we're using default format, wrap it
+    const needsItemsWrapper =
+      accumulatorMode === 'collection' ||
+      (accumulatorMode === 'auto' && Array.isArray(runConfig.initial) && !runConfig.responseFormat);
+    if (needsItemsWrapper) {
+      acc = { items: runConfig.initial };
     }
 
-    const batchStyle = determineStyle(runConfig.listStyle, items, runConfig.autoModeThreshold);
+    const batches = await createBatches(list, runConfig);
+    const batchDone = emitter.batch(list.length);
+    const activeBatches = batches.filter((b) => !b.skip);
 
-    const reduceInstructions = ({ style, count }) => {
-      const itemFormat = style === ListStyle.XML ? 'XML' : '';
+    emitter.progress({
+      event: OpEvent.start,
+      totalItems: list.length,
+      totalBatches: activeBatches.length,
+    });
 
-      return `Start with the given accumulator. Apply the transformation instructions to each item in the list sequentially, using the result as the new accumulator each time. Return only the final accumulator.
+    lifecycleLogger.logStart(
+      extractBatchConfig({
+        totalItems: list.length,
+        totalBatches: activeBatches.length,
+        batchSize: runConfig.batchSize,
+      })
+    );
+
+    for (const [batchIndex, { items, skip }] of batches.entries()) {
+      if (skip) {
+        lifecycleLogger.logEvent('batch-skip', { batchIndex });
+        continue;
+      }
+
+      const batchStyle = determineStyle(runConfig.listStyle, items, runConfig.autoModeThreshold);
+
+      const reduceInstructions = ({ style, count }) => {
+        const itemFormat = style === ListStyle.XML ? 'XML' : '';
+
+        return `Start with the given accumulator. Apply the transformation instructions to each item in the list sequentially, using the result as the new accumulator each time. Return only the final accumulator.
 
 Example: If reducing ["one", "two", "three"] with "sum the numeric values" and initial value 0:
 - Start: 0
@@ -82,49 +83,57 @@ ${asXML(
 )}
 
 Process exactly ${count} items from the ${itemFormat} list below and return the final accumulator value.`;
-    };
+      };
 
-    const effectiveResponseFormat = runConfig.responseFormat || DEFAULT_REDUCE_RESPONSE_FORMAT;
+      const effectiveResponseFormat = runConfig.responseFormat || DEFAULT_REDUCE_RESPONSE_FORMAT;
 
-    const prompt = reduceInstructions({ style: batchStyle, count: items.length });
-    const listBatchOptions = {
-      ...runConfig,
-      listStyle: batchStyle,
-      responseFormat: effectiveResponseFormat,
-      logger: lifecycleLogger,
-    };
+      const prompt = reduceInstructions({ style: batchStyle, count: items.length });
+      const listBatchOptions = {
+        ...runConfig,
+        listStyle: batchStyle,
+        responseFormat: effectiveResponseFormat,
+        logger: lifecycleLogger,
+      };
 
-    const result = await retry(() => listBatch(items, prompt, listBatchOptions), {
-      label: 'reduce:batch',
-      config: runConfig,
-      onProgress: runConfig.onProgress,
-    });
+      const result = await retry(() => listBatch(items, prompt, listBatchOptions), {
+        label: 'reduce:batch',
+        config: runConfig,
+        onProgress: runConfig.onProgress,
+      });
 
-    if (!runConfig.responseFormat && result?.accumulator !== undefined) {
-      acc = result.accumulator;
-    } else {
-      acc = result;
+      if (!runConfig.responseFormat && result?.accumulator !== undefined) {
+        acc = result.accumulator;
+      } else {
+        acc = result;
+      }
+
+      batchDone(items.length);
+
+      lifecycleLogger.logEvent('batch-done', {
+        batchIndex,
+        accType: typeof acc,
+      });
     }
 
-    batchDone(items.length);
-
-    lifecycleLogger.logEvent('batch-done', {
-      batchIndex,
-      accType: typeof acc,
+    emitter.progress({
+      event: OpEvent.complete,
+      totalItems: list.length,
+      processedItems: batchDone.count,
     });
+
+    const resultMeta = {
+      totalItems: list.length,
+      totalBatches: activeBatches.length,
+      outcome: 'success',
+    };
+    lifecycleLogger.logResult(acc, resultMeta);
+    emitter.complete(resultMeta);
+
+    return acc;
+  } catch (err) {
+    emitter.error(err);
+    throw err;
   }
-
-  emitter.progress({
-    event: OpEvent.complete,
-    totalItems: list.length,
-    processedItems: batchDone.count,
-  });
-
-  const resultMeta = { totalItems: list.length, totalBatches: activeBatches.length };
-  lifecycleLogger.logResult(acc, resultMeta);
-  emitter.complete(resultMeta);
-
-  return acc;
 };
 
 reduce.with = function (instructions, config = {}) {

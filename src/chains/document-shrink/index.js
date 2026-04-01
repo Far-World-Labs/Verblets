@@ -2,6 +2,7 @@ import collectTerms from '../collect-terms/index.js';
 import score from '../score/index.js';
 import map from '../map/index.js';
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
+import { DomainEvent } from '../../lib/progress/constants.js';
 import TextSimilarity from '../../lib/text-similarity/index.js';
 import { debug } from '../../lib/debug/index.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
@@ -593,149 +594,160 @@ export default async function documentShrink(document, query, config = {}) {
       },
     };
 
-    emitter.complete();
+    emitter.complete({ outcome: 'success' });
 
     return emptyResult;
   }
 
-  // Validate and fix merged values
-  if (merged.targetSize <= 0) merged.targetSize = DEFAULT_OPTIONS.targetSize;
-  if (merged.chunkSize <= 0) merged.chunkSize = DEFAULT_OPTIONS.chunkSize;
-  if (merged.tokenBudget <= 0) merged.tokenBudget = DEFAULT_OPTIONS.tokenBudget;
+  try {
+    // Validate and fix merged values
+    if (merged.targetSize <= 0) merged.targetSize = DEFAULT_OPTIONS.targetSize;
+    if (merged.chunkSize <= 0) merged.chunkSize = DEFAULT_OPTIONS.chunkSize;
+    if (merged.tokenBudget <= 0) merged.tokenBudget = DEFAULT_OPTIONS.tokenBudget;
 
-  let tokenBudget = merged.tokenBudget;
+    let tokenBudget = merged.tokenBudget;
 
-  // Step 1: Create chunks
-  const chunks = createChunks(document, merged.chunkSize, merged.targetSize);
+    // Step 1: Create chunks
+    emitter.emit({ event: DomainEvent.phase, phase: 'chunking' });
+    const chunks = createChunks(document, merged.chunkSize, merged.targetSize);
 
-  // Step 2: Calculate space allocation
-  const allocation = calculateSpaceAllocation(
-    chunks,
-    merged.targetSize,
-    tokenBudget,
-    document.length,
-    scoringTokenRatio
-  );
-  // When LLM phases are off, give all space to TF-IDF selection
-  if (!llmScoring && !llmCompression) {
-    allocation.tfIdfBudget = merged.targetSize;
-    allocation.reservedSpace = 0;
-  }
-
-  // Step 3: Expand query (gated by thoroughness)
-  const subOptions = runConfig;
-  const { expansions, tokensUsed: expansionTokens } = queryExpansion
-    ? await expandQuery(query, tokenBudget, subOptions)
-    : { expansions: [query], tokensUsed: 0 };
-  tokenBudget -= expansionTokens;
-
-  // Step 4: Score with TF-IDF
-  const scoredChunks = scoreChunksWithTfIdf(chunks, expansions);
-
-  // Step 5: Select chunks for TF-IDF budget (leaving room for LLM chunks)
-  const { selected, candidates, sizeUsed } = selectChunksByTfIdf(
-    scoredChunks,
-    allocation.tfIdfBudget
-  );
-
-  // Step 6: Use LLM to find high-value edge chunks (gated by thoroughness)
-  const { scored, tokensUsed: scoreTokens } = llmScoring
-    ? await scoreEdgeChunks(candidates, query, allocation.chunksWeCanScore, {
-        ...subOptions,
-        llmWeight,
-      })
-    : { scored: [], tokensUsed: 0 };
-  tokenBudget -= scoreTokens;
-
-  // Step 7: Add scored chunks that fit
-  let result = addChunksThatFit(selected, sizeUsed, scored, merged.targetSize);
-
-  // Step 8: Use remaining tokens to compress chunks for even more content
-  const remainingSpace = merged.targetSize - result.size;
-  let compressTokens = 0;
-  const minSpaceForCompression = Math.min(allocation.avgChunkSize * 0.5, 200);
-
-  if (
-    llmCompression &&
-    remainingSpace > minSpaceForCompression &&
-    allocation.chunksWeCanCompress > 0
-  ) {
-    const compressionCandidates = getUnselectedChunks(scoredChunks, result.chunks);
-
-    const { compressed, tokensUsed } = await compressHighValueChunks(
-      compressionCandidates,
-      query,
-      allocation.chunksWeCanCompress,
-      remainingSpace,
-      allocation,
-      { ...subOptions, compressionRatio }
+    // Step 2: Calculate space allocation
+    const allocation = calculateSpaceAllocation(
+      chunks,
+      merged.targetSize,
+      tokenBudget,
+      document.length,
+      scoringTokenRatio
     );
-    compressTokens = tokensUsed;
-    tokenBudget -= tokensUsed;
+    // When LLM phases are off, give all space to TF-IDF selection
+    if (!llmScoring && !llmCompression) {
+      allocation.tfIdfBudget = merged.targetSize;
+      allocation.reservedSpace = 0;
+    }
 
-    result = addChunksThatFit(result.chunks, result.size, compressed, merged.targetSize);
-  }
+    // Step 3: Expand query (gated by thoroughness)
+    emitter.emit({ event: DomainEvent.phase, phase: 'query-expansion' });
+    const subOptions = runConfig;
+    const { expansions, tokensUsed: expansionTokens } = queryExpansion
+      ? await expandQuery(query, tokenBudget, subOptions)
+      : { expansions: [query], tokensUsed: 0 };
+    tokenBudget -= expansionTokens;
 
-  // Step 9: Apply gap filling if configured
-  let finalChunks = result.chunks;
-  let gapFillerCount = 0;
+    // Step 4: Score with TF-IDF
+    emitter.emit({ event: DomainEvent.phase, phase: 'tfidf-scoring' });
+    const scoredChunks = scoreChunksWithTfIdf(chunks, expansions);
 
-  if (merged.gapFillerBudgetRatio > 0) {
-    const gapFillerBudget = Math.floor(merged.targetSize * merged.gapFillerBudgetRatio);
+    // Step 5: Select chunks for TF-IDF budget (leaving room for LLM chunks)
+    const { selected, candidates, sizeUsed } = selectChunksByTfIdf(
+      scoredChunks,
+      allocation.tfIdfBudget
+    );
+
+    // Step 6: Use LLM to find high-value edge chunks (gated by thoroughness)
+    emitter.emit({ event: DomainEvent.phase, phase: 'edge-scoring' });
+    const { scored, tokensUsed: scoreTokens } = llmScoring
+      ? await scoreEdgeChunks(candidates, query, allocation.chunksWeCanScore, {
+          ...subOptions,
+          llmWeight,
+        })
+      : { scored: [], tokensUsed: 0 };
+    tokenBudget -= scoreTokens;
+
+    // Step 7: Add scored chunks that fit
+    let result = addChunksThatFit(selected, sizeUsed, scored, merged.targetSize);
+
+    // Step 8: Use remaining tokens to compress chunks for even more content
+    emitter.emit({ event: DomainEvent.phase, phase: 'compression' });
     const remainingSpace = merged.targetSize - result.size;
-    const actualGapBudget = Math.min(gapFillerBudget, remainingSpace);
+    let compressTokens = 0;
+    const minSpaceForCompression = Math.min(allocation.avgChunkSize * 0.5, 200);
 
-    if (actualGapBudget > 0) {
-      const gapFillers = selectGapFillers(scoredChunks, finalChunks, actualGapBudget);
-      if (gapFillers.length > 0) {
-        finalChunks = [...finalChunks, ...gapFillers];
-        gapFillerCount = gapFillers.length;
+    if (
+      llmCompression &&
+      remainingSpace > minSpaceForCompression &&
+      allocation.chunksWeCanCompress > 0
+    ) {
+      const compressionCandidates = getUnselectedChunks(scoredChunks, result.chunks);
+
+      const { compressed, tokensUsed } = await compressHighValueChunks(
+        compressionCandidates,
+        query,
+        allocation.chunksWeCanCompress,
+        remainingSpace,
+        allocation,
+        { ...subOptions, compressionRatio }
+      );
+      compressTokens = tokensUsed;
+      tokenBudget -= tokensUsed;
+
+      result = addChunksThatFit(result.chunks, result.size, compressed, merged.targetSize);
+    }
+
+    // Step 9: Apply gap filling if configured
+    emitter.emit({ event: DomainEvent.phase, phase: 'assembly' });
+    let finalChunks = result.chunks;
+    let gapFillerCount = 0;
+
+    if (merged.gapFillerBudgetRatio > 0) {
+      const gapFillerBudget = Math.floor(merged.targetSize * merged.gapFillerBudgetRatio);
+      const remainingSpace = merged.targetSize - result.size;
+      const actualGapBudget = Math.min(gapFillerBudget, remainingSpace);
+
+      if (actualGapBudget > 0) {
+        const gapFillers = selectGapFillers(scoredChunks, finalChunks, actualGapBudget);
+        if (gapFillers.length > 0) {
+          finalChunks = [...finalChunks, ...gapFillers];
+          gapFillerCount = gapFillers.length;
+        }
       }
     }
-  }
 
-  // Final assembly - group consecutive chunks and join appropriately
-  const chunkGroups = groupConsecutiveChunks(finalChunks);
-  let content = assembleContent(chunkGroups);
+    // Final assembly - group consecutive chunks and join appropriately
+    const chunkGroups = groupConsecutiveChunks(finalChunks);
+    let content = assembleContent(chunkGroups);
 
-  // When content vastly exceeds the target (e.g. forced minimum chunk is
-  // larger than the budget), trim to the last complete sentence.
-  // Only applies when output is >3x target — normal slight overflows are fine.
-  if (content.length > merged.targetSize * 3) {
-    content = trimToLastSentence(content.slice(0, merged.targetSize * 2));
-  }
+    // When content vastly exceeds the target (e.g. forced minimum chunk is
+    // larger than the budget), trim to the last complete sentence.
+    // Only applies when output is >3x target — normal slight overflows are fine.
+    if (content.length > merged.targetSize * 3) {
+      content = trimToLastSentence(content.slice(0, merged.targetSize * 2));
+    }
 
-  const finalResult = {
-    content,
-    metadata: {
-      originalSize: document.length,
-      finalSize: content.length,
-      reductionRatio: (1 - content.length / document.length).toFixed(2),
-      allocation: {
-        tfIdfBudget: allocation.tfIdfBudget,
-        reservedForLLM: allocation.reservedSpace,
-        actualLLMSpace: finalChunks.filter((c) => c.llmScore).reduce((sum, c) => sum + c.size, 0),
-      },
-      chunks: {
-        total: chunks.length,
-        tfIdfSelected: selected.length,
-        llmSelected: finalChunks.filter((c) => c.llmScore && !c.compressed).length,
-        compressed: finalChunks.filter((c) => c.compressed).length,
-        gapFillers: gapFillerCount,
-      },
-      tokens: {
-        budget: merged.tokenBudget,
-        used: merged.tokenBudget - tokenBudget,
-        breakdown: {
-          expansion: expansionTokens,
-          scoring: scoreTokens || 0,
-          compression: compressTokens || 0,
+    const finalResult = {
+      content,
+      metadata: {
+        originalSize: document.length,
+        finalSize: content.length,
+        reductionRatio: (1 - content.length / document.length).toFixed(2),
+        allocation: {
+          tfIdfBudget: allocation.tfIdfBudget,
+          reservedForLLM: allocation.reservedSpace,
+          actualLLMSpace: finalChunks.filter((c) => c.llmScore).reduce((sum, c) => sum + c.size, 0),
+        },
+        chunks: {
+          total: chunks.length,
+          tfIdfSelected: selected.length,
+          llmSelected: finalChunks.filter((c) => c.llmScore && !c.compressed).length,
+          compressed: finalChunks.filter((c) => c.compressed).length,
+          gapFillers: gapFillerCount,
+        },
+        tokens: {
+          budget: merged.tokenBudget,
+          used: merged.tokenBudget - tokenBudget,
+          breakdown: {
+            expansion: expansionTokens,
+            scoring: scoreTokens || 0,
+            compression: compressTokens || 0,
+          },
         },
       },
-    },
-  };
+    };
 
-  emitter.complete();
+    emitter.complete({ outcome: 'success' });
 
-  return finalResult;
+    return finalResult;
+  } catch (err) {
+    emitter.error(err);
+    throw err;
+  }
 }

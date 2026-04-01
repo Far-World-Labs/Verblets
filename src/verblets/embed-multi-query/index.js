@@ -41,19 +41,24 @@ export default async function embedMultiQuery(query, config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
-  const { count = 3 } = runConfig;
-  const divergenceGuidance = mapDivergence(runConfig.divergence);
+  try {
+    const { count = 3 } = runConfig;
+    const divergenceGuidance = mapDivergence(runConfig.divergence);
 
-  const result = await callLlm(multiQueryPrompt(query, count, { divergenceGuidance }), {
-    ...runConfig,
-    response_format: {
-      type: 'json_schema',
-      json_schema: {
-        name: 'multi_query',
-        schema: embedMultiQuerySchema,
+    const result = await callLlm(multiQueryPrompt(query, count, { divergenceGuidance }), {
+      ...runConfig,
+      response_format: {
+        type: 'json_schema',
+        json_schema: {
+          name: 'multi_query',
+          schema: embedMultiQuerySchema,
+        },
       },
-    },
-  });
-  emitter.complete();
-  return result;
+    });
+    emitter.complete({ outcome: 'success' });
+    return result;
+  } catch (err) {
+    emitter.error(err);
+    throw err;
+  }
 }

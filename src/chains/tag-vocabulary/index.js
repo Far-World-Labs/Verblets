@@ -3,6 +3,7 @@ import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import tagVocabularyResultSchema from './tag-vocabulary-result.json';
 import createProgressEmitter from '../../lib/progress/index.js';
+import { DomainEvent } from '../../lib/progress/constants.js';
 import { nameStep } from '../../lib/context/option.js';
 
 const name = 'tag-vocabulary';
@@ -223,28 +224,37 @@ export default async function tagVocabulary(tagSystemSpec, items, config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
-  const { tagger, sampleSize = 50 } = runConfig;
 
-  if (!tagger) {
-    throw new Error('A tagger function must be provided in config');
+  try {
+    const { tagger, sampleSize = 50 } = runConfig;
+
+    if (!tagger) {
+      throw new Error('A tagger function must be provided in config');
+    }
+
+    // Sample items for vocabulary generation
+    const sampleItems = items.slice(0, Math.min(sampleSize, items.length));
+
+    emitter.emit({
+      event: DomainEvent.step,
+      stepName: 'generate-initial-vocabulary',
+      sampleCount: sampleItems.length,
+    });
+    const initialVocab = await generateInitialVocabulary(tagSystemSpec, sampleItems, runConfig);
+
+    emitter.emit({ event: DomainEvent.step, stepName: 'apply-tags', itemCount: items.length });
+    const taggedItems = await tagger(items, initialVocab);
+
+    emitter.emit({ event: DomainEvent.step, stepName: 'refine-vocabulary' });
+    const finalVocab = await refineVocabulary(initialVocab, taggedItems, tagSystemSpec, runConfig);
+
+    emitter.complete({ outcome: 'success' });
+
+    return finalVocab;
+  } catch (err) {
+    emitter.error(err);
+    throw err;
   }
-
-  // Sample items for vocabulary generation
-  const sampleItems = items.slice(0, Math.min(sampleSize, items.length));
-
-  // Generate initial vocabulary
-  const initialVocab = await generateInitialVocabulary(tagSystemSpec, sampleItems, runConfig);
-
-  // Apply tags to all items using the provided tagger
-  // The tagger should be a configured tags chain function
-  const taggedItems = await tagger(items, initialVocab);
-
-  // Refine vocabulary based on usage
-  const finalVocab = await refineVocabulary(initialVocab, taggedItems, tagSystemSpec, runConfig);
-
-  emitter.complete();
-
-  return finalVocab;
 }
 
 // Export individual functions for testing and composition

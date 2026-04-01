@@ -42,37 +42,42 @@ export default async function disambiguate({ term, context, ...config } = {}) {
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
 
-  emitter.emit({ event: DomainEvent.step, stepName: 'extracting-meanings', term });
+  try {
+    emitter.emit({ event: DomainEvent.step, stepName: 'extracting-meanings', term });
 
-  const meanings = await getMeanings(term, runConfig);
+    const meanings = await getMeanings(term, runConfig);
 
-  emitter.emit({
-    event: DomainEvent.step,
-    stepName: 'scoring-meanings',
-    term,
-    meaningCount: meanings.length,
-  });
+    emitter.emit({
+      event: DomainEvent.step,
+      stepName: 'scoring-meanings',
+      term,
+      meaningCount: meanings.length,
+    });
 
-  const scores = await score(
-    meanings,
-    `how well this meaning of "${term}" matches the context: ${context}`,
-    {
-      ...runConfig,
-      onProgress: scopePhase(runConfig.onProgress, 'score:relevance'),
+    const scores = await score(
+      meanings,
+      `how well this meaning of "${term}" matches the context: ${context}`,
+      {
+        ...runConfig,
+        onProgress: scopePhase(runConfig.onProgress, 'score:relevance'),
+      }
+    );
+
+    let bestIndex = 0;
+    let bestScore = scores[0];
+
+    for (let i = 1; i < scores.length; i++) {
+      if (scores[i] > bestScore) {
+        bestScore = scores[i];
+        bestIndex = i;
+      }
     }
-  );
 
-  let bestIndex = 0;
-  let bestScore = scores[0];
+    emitter.complete({ outcome: 'success' });
 
-  for (let i = 1; i < scores.length; i++) {
-    if (scores[i] > bestScore) {
-      bestScore = scores[i];
-      bestIndex = i;
-    }
+    return { meaning: meanings[bestIndex], meanings };
+  } catch (err) {
+    emitter.error(err);
+    throw err;
   }
-
-  emitter.complete();
-
-  return { meaning: meanings[bestIndex], meanings };
 }

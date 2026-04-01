@@ -247,16 +247,28 @@ class SocraticMethod {
   async run(depth = 3) {
     this.logger.logEvent('run-start', { depth });
 
-    for (let i = 0; i < depth; i += 1) {
-      // eslint-disable-next-line no-await-in-loop
-      await this.step();
+    try {
+      for (let i = 0; i < depth; i += 1) {
+        this.emitter.emit({
+          event: DomainEvent.phase,
+          phase: `round-${i + 1}`,
+          round: i + 1,
+          totalRounds: depth,
+        });
+
+        // eslint-disable-next-line no-await-in-loop
+        await this.step();
+      }
+
+      this.logger.logResult(this.history, extractResultValue(this.history, this.history));
+
+      this.emitter.complete({ outcome: 'success', turns: this.history.length });
+
+      return this.history;
+    } catch (err) {
+      this.emitter.error(err);
+      throw err;
     }
-
-    this.logger.logResult(this.history, extractResultValue(this.history, this.history));
-
-    this.emitter.complete();
-
-    return this.history;
   }
 }
 

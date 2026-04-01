@@ -1,4 +1,6 @@
 import callLlm from '../../lib/llm/index.js';
+import { nameStep } from '../../lib/context/option.js';
+import createProgressEmitter from '../../lib/progress/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { xmlEscape } from '../../lib/functional/index.js';
 
@@ -62,7 +64,13 @@ const defaultListSchema = {
   additionalProperties: false,
 };
 
+const verbletName = 'list-batch';
+
 export default async function listBatch(list, instructions, config = {}) {
+  const runConfig = nameStep(verbletName, config);
+  const emitter = createProgressEmitter(verbletName, runConfig.onProgress, runConfig);
+  emitter.start();
+
   const {
     listStyle = ListStyle.AUTO,
     autoModeThreshold = 1000,
@@ -71,7 +79,7 @@ export default async function listBatch(list, instructions, config = {}) {
     llm,
     logger,
     ...options
-  } = config;
+  } = runConfig;
 
   if (logger?.debug) {
     logger.debug('listBatch called', {
@@ -84,41 +92,40 @@ export default async function listBatch(list, instructions, config = {}) {
   }
 
   if (!list || list.length === 0) {
-    // Return empty array directly - llm unwrapping will handle this consistently
+    emitter.complete({ outcome: 'success' });
     return [];
   }
 
-  const effectiveStyle = determineStyle(listStyle, list, autoModeThreshold);
-
-  const prompt = buildPrompt(list, instructions, effectiveStyle);
-
-  const foundResponseFormat = responseFormat ?? {
-    type: 'json_schema',
-    json_schema: {
-      name: 'list_result',
-      schema: defaultListSchema,
-    },
-  };
-
-  const llmModelKeys = {
-    ...(maxTokens && { maxTokens }),
-    response_format: foundResponseFormat,
-  };
-
-  if (logger?.debug) {
-    logger.debug('Calling llm', {
-      promptLength: prompt.length,
-      llmConfig: {
-        hasLLM: !!llm,
-        llmKeys: llm && typeof llm === 'object' ? Object.keys(llm) : [],
-        hasResponseFormat: !!llmModelKeys.response_format,
-      },
-      optionKeys: Object.keys(options),
-    });
-  }
-
-  let output;
   try {
+    const effectiveStyle = determineStyle(listStyle, list, autoModeThreshold);
+
+    const prompt = buildPrompt(list, instructions, effectiveStyle);
+
+    const foundResponseFormat = responseFormat ?? {
+      type: 'json_schema',
+      json_schema: {
+        name: 'list_result',
+        schema: defaultListSchema,
+      },
+    };
+
+    const llmModelKeys = {
+      ...(maxTokens && { maxTokens }),
+      response_format: foundResponseFormat,
+    };
+
+    if (logger?.debug) {
+      logger.debug('Calling llm', {
+        promptLength: prompt.length,
+        llmConfig: {
+          hasLLM: !!llm,
+          llmKeys: llm && typeof llm === 'object' ? Object.keys(llm) : [],
+          hasResponseFormat: !!llmModelKeys.response_format,
+        },
+        optionKeys: Object.keys(options),
+      });
+    }
+
     const llmOptions = {
       llm,
       ...llmModelKeys,
@@ -133,7 +140,7 @@ export default async function listBatch(list, instructions, config = {}) {
       });
     }
 
-    output = await callLlm(prompt, llmOptions);
+    const output = await callLlm(prompt, llmOptions);
 
     if (logger?.debug) {
       logger.debug('LLM response received', {
@@ -141,19 +148,21 @@ export default async function listBatch(list, instructions, config = {}) {
         outputLength: Array.isArray(output) ? output.length : undefined,
       });
     }
+
+    emitter.complete({ outcome: 'success' });
+
+    // llm will auto-unwrap simple collections, so output is already an array
+    return output;
   } catch (error) {
     if (logger?.error) {
       logger.error('LLM request failed in listBatch', {
         error: error.message,
         llmConfig: llm,
-        promptLength: prompt?.length,
+        promptLength: list?.length,
         itemCount: list?.length,
       });
     }
-    // Re-throw the original error to preserve stack trace and details
+    emitter.error(error);
     throw error;
   }
-
-  // llm will auto-unwrap simple collections, so output is already an array
-  return output;
 }

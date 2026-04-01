@@ -134,73 +134,76 @@ export default async function timeline(text, config = {}) {
   });
   const { onProgress, batchSize, now } = runConfig;
 
-  // Create overlapping chunks to avoid missing events at boundaries
-  const chunks = chunkSentences(text, chunkSize, { overlap });
+  try {
+    // Create overlapping chunks to avoid missing events at boundaries
+    const chunks = chunkSentences(text, chunkSize, { overlap });
 
-  // Process chunks in parallel batches
-  const allEvents = [];
+    // Process chunks in parallel batches
+    const allEvents = [];
+    let failedChunks = 0;
 
-  await parallelBatch(
-    chunks,
-    async (chunk, chunkIndex) => {
-      try {
-        const events = await retry(() => extractFromChunk(chunk, { ...runConfig, now }), {
-          label: `timeline chunk ${chunkIndex + 1}`,
-          config: runConfig,
-        });
-        allEvents.push(...events);
-        onProgress?.(chunkIndex + 1, chunks.length);
-      } catch (error) {
-        if (errorPosture === 'strict') throw error;
-        if (runConfig.logger?.warn) {
-          runConfig.logger.warn(
-            `Timeline extraction failed for chunk ${chunkIndex + 1}:`,
-            error.message
-          );
+    await parallelBatch(
+      chunks,
+      async (chunk, chunkIndex) => {
+        try {
+          const events = await retry(() => extractFromChunk(chunk, { ...runConfig, now }), {
+            label: `timeline chunk ${chunkIndex + 1}`,
+            config: runConfig,
+          });
+          allEvents.push(...events);
+          onProgress?.(chunkIndex + 1, chunks.length);
+        } catch (error) {
+          failedChunks++;
+          if (errorPosture === 'strict') throw error;
+          if (runConfig.logger?.warn) {
+            runConfig.logger.warn(
+              `Timeline extraction failed for chunk ${chunkIndex + 1}:`,
+              error.message
+            );
+          }
+          onProgress?.(chunkIndex + 1, chunks.length);
         }
-        onProgress?.(chunkIndex + 1, chunks.length);
+      },
+      {
+        maxParallel,
+        errorPosture,
+        label: 'timeline chunks',
       }
-    },
-    {
-      maxParallel,
-      errorPosture,
-      label: 'timeline chunks',
-    }
-  );
+    );
 
-  // Merge and deduplicate events from all chunks
-  debug(`Timeline: processed ${chunks.length} chunks, found ${allEvents.length} total events`);
+    // Merge and deduplicate events from all chunks
+    debug(`Timeline: processed ${chunks.length} chunks, found ${allEvents.length} total events`);
 
-  let mergedEvents = mergeTimelineEvents([allEvents]);
+    let mergedEvents = mergeTimelineEvents([allEvents]);
 
-  // Deduplicate using a single structured LLM call rather than reduce's string
-  // accumulator, which is fragile for structured data (events get lost during
-  // string serialization round-trips).
-  if (llmDedup && mergedEvents.length > 0) {
-    const eventList = mergedEvents.map((e) => `- ${e.timestamp}: ${e.name}`).join('\n');
+    // Deduplicate using a single structured LLM call rather than reduce's string
+    // accumulator, which is fragile for structured data (events get lost during
+    // string serialization round-trips).
+    if (llmDedup && mergedEvents.length > 0) {
+      const eventList = mergedEvents.map((e) => `- ${e.timestamp}: ${e.name}`).join('\n');
 
-    const deduplicationPrompt = `Consolidate these timeline events by merging duplicates that refer to the same occurrence. Keep the most descriptive version of each event and preserve ALL unique events.
+      const deduplicationPrompt = `Consolidate these timeline events by merging duplicates that refer to the same occurrence. Keep the most descriptive version of each event and preserve ALL unique events.
 
 Events:
 ${eventList}`;
 
-    const deduplicatedResult = await callLlm(deduplicationPrompt, {
-      ...runConfig,
-      systemPrompt:
-        'You are a timeline deduplication engine. Return all unique events, merging only true duplicates.',
-      response_format: jsonSchema(timelineEventJsonSchema.name, timelineEventJsonSchema.schema),
-    });
+      const deduplicatedResult = await callLlm(deduplicationPrompt, {
+        ...runConfig,
+        systemPrompt:
+          'You are a timeline deduplication engine. Return all unique events, merging only true duplicates.',
+        response_format: jsonSchema(timelineEventJsonSchema.name, timelineEventJsonSchema.schema),
+      });
 
-    const deduplicatedEvents = deduplicatedResult?.events || deduplicatedResult;
-    if (Array.isArray(deduplicatedEvents) && deduplicatedEvents.length > 0) {
-      mergedEvents = sortTimelineEvents(deduplicatedEvents);
+      const deduplicatedEvents = deduplicatedResult?.events || deduplicatedResult;
+      if (Array.isArray(deduplicatedEvents) && deduplicatedEvents.length > 0) {
+        mergedEvents = sortTimelineEvents(deduplicatedEvents);
+      }
     }
-  }
 
-  // Enrich with knowledge if requested
-  if (knowledgeBase && mergedEvents.length > 0) {
-    // First, use reduce to build a knowledge base of known dates
-    const knowledgeBaseInstructions = `You are building a historical knowledge base.
+    // Enrich with knowledge if requested
+    if (knowledgeBase && mergedEvents.length > 0) {
+      // First, use reduce to build a knowledge base of known dates
+      const knowledgeBaseInstructions = `You are building a historical knowledge base.
 Given the current knowledge base and a new event, return an updated knowledge base that:
 1. Adds accurate dates for any events you recognize
 2. Corrects any wrong dates based on your knowledge
@@ -210,29 +213,29 @@ Given the current knowledge base and a new event, return an updated knowledge ba
 
 Return as JSON with the same event format, maintaining chronological order.`;
 
-    // Convert events to strings for reduce
-    const eventStrings = mergedEvents.map((e) => `${e.timestamp}: ${e.name}`);
+      // Convert events to strings for reduce
+      const eventStrings = mergedEvents.map((e) => `${e.timestamp}: ${e.name}`);
 
-    // Reduce to build knowledge base
-    const knowledgeBase = await reduce(eventStrings, knowledgeBaseInstructions, {
-      ...runConfig,
-      initial: JSON.stringify({ events: [] }),
-      responseFormat: jsonSchema(timelineEventJsonSchema.name, timelineEventJsonSchema.schema),
-      ...(batchSize !== undefined && { batchSize }),
-      onProgress: scopePhase(runConfig.onProgress, 'reduce:knowledge-base'),
-    });
+      // Reduce to build knowledge base
+      const knowledgeBase = await reduce(eventStrings, knowledgeBaseInstructions, {
+        ...runConfig,
+        initial: JSON.stringify({ events: [] }),
+        responseFormat: jsonSchema(timelineEventJsonSchema.name, timelineEventJsonSchema.schema),
+        ...(batchSize !== undefined && { batchSize }),
+        onProgress: scopePhase(runConfig.onProgress, 'reduce:knowledge-base'),
+      });
 
-    let knownEvents = [];
-    try {
-      const parsed = knowledgeBase;
-      knownEvents = sortTimelineEvents(parsed.events || []);
-    } catch (e) {
-      debug('Failed to parse knowledge base:', e.message);
-    }
+      let knownEvents = [];
+      try {
+        const parsed = knowledgeBase;
+        knownEvents = sortTimelineEvents(parsed.events || []);
+      } catch (e) {
+        debug('Failed to parse knowledge base:', e.message);
+      }
 
-    // Create the enrichment instructions with knowledge base embedded
-    const knowledgeBaseStr = knownEvents.map((e) => `- ${e.timestamp}: ${e.name}`).join('\n');
-    const enrichmentInstructions = `Given an extracted event, enrich it using this knowledge base:
+      // Create the enrichment instructions with knowledge base embedded
+      const knowledgeBaseStr = knownEvents.map((e) => `- ${e.timestamp}: ${e.name}`).join('\n');
+      const enrichmentInstructions = `Given an extracted event, enrich it using this knowledge base:
 
 <knowledge_base>
 ${knowledgeBaseStr}
@@ -246,56 +249,61 @@ Rules:
 
 Return the enriched event as: "YYYY-MM-DD: Event name" or with the appropriate timestamp format.`;
 
-    // Map over extracted events to enrich them
-    const enrichedResults = await map(
-      mergedEvents.map((event) => `${event.timestamp}: ${event.name}`),
-      enrichmentInstructions,
-      {
-        ...runConfig,
-        ...(batchSize !== undefined && { batchSize }),
-        maxParallel,
-        onProgress: scopePhase(runConfig.onProgress, 'map:enrichment'),
-      }
-    );
+      // Map over extracted events to enrich them
+      const enrichedResults = await map(
+        mergedEvents.map((event) => `${event.timestamp}: ${event.name}`),
+        enrichmentInstructions,
+        {
+          ...runConfig,
+          ...(batchSize !== undefined && { batchSize }),
+          maxParallel,
+          onProgress: scopePhase(runConfig.onProgress, 'map:enrichment'),
+        }
+      );
 
-    // Parse enriched events
-    const enrichedExtractedEvents = enrichedResults.map((enrichedStr, i) => {
-      if (!enrichedStr) return mergedEvents[i];
+      // Parse enriched events
+      const enrichedExtractedEvents = enrichedResults.map((enrichedStr, i) => {
+        if (!enrichedStr) return mergedEvents[i];
 
-      // Parse the enriched format "timestamp: name"
-      const colonIndex = enrichedStr.indexOf(':');
-      if (colonIndex > 0) {
-        const newTimestamp = enrichedStr.substring(0, colonIndex).trim();
-        const newName = enrichedStr.substring(colonIndex + 1).trim();
+        // Parse the enriched format "timestamp: name"
+        const colonIndex = enrichedStr.indexOf(':');
+        if (colonIndex > 0) {
+          const newTimestamp = enrichedStr.substring(0, colonIndex).trim();
+          const newName = enrichedStr.substring(colonIndex + 1).trim();
 
-        // Only mark as enriched if the timestamp actually changed
-        const timestampChanged = newTimestamp !== mergedEvents[i].timestamp;
+          // Only mark as enriched if the timestamp actually changed
+          const timestampChanged = newTimestamp !== mergedEvents[i].timestamp;
 
-        return {
-          timestamp: newTimestamp,
-          name: newName,
-          ...(timestampChanged && { enriched: true }),
-        };
-      }
+          return {
+            timestamp: newTimestamp,
+            name: newName,
+            ...(timestampChanged && { enriched: true }),
+          };
+        }
 
-      return mergedEvents[i];
-    });
+        return mergedEvents[i];
+      });
 
-    // Now merge the enriched extracted events with additional events from knowledge base
-    // that weren't in the original text but are important for the timeline
-    const extractedEventNames = new Set(enrichedExtractedEvents.map((e) => e.name.toLowerCase()));
+      // Now merge the enriched extracted events with additional events from knowledge base
+      // that weren't in the original text but are important for the timeline
+      const extractedEventNames = new Set(enrichedExtractedEvents.map((e) => e.name.toLowerCase()));
 
-    // Add knowledge base events that aren't already in extracted events
-    const additionalEvents = knownEvents.filter((knownEvent) => {
-      // Check if this event is not already in our extracted events
-      return !extractedEventNames.has(knownEvent.name.toLowerCase());
-    });
+      // Add knowledge base events that aren't already in extracted events
+      const additionalEvents = knownEvents.filter((knownEvent) => {
+        // Check if this event is not already in our extracted events
+        return !extractedEventNames.has(knownEvent.name.toLowerCase());
+      });
 
-    // Combine and sort all events
-    mergedEvents = sortTimelineEvents([...enrichedExtractedEvents, ...additionalEvents]);
+      // Combine and sort all events
+      mergedEvents = sortTimelineEvents([...enrichedExtractedEvents, ...additionalEvents]);
+    }
+
+    const outcome = failedChunks > 0 ? 'partial' : 'success';
+    emitter.complete({ outcome });
+
+    return mergedEvents;
+  } catch (err) {
+    emitter.error(err);
+    throw err;
   }
-
-  emitter.complete();
-
-  return mergedEvents;
 }

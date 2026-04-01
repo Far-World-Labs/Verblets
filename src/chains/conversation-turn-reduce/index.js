@@ -1,4 +1,8 @@
 import map from '../map/index.js';
+import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
+import { nameStep } from '../../lib/context/option.js';
+
+const name = 'conversation-turn-reduce';
 
 /**
  * Generate conversation responses for multiple speakers.
@@ -12,7 +16,7 @@ import map from '../map/index.js';
  * @param {string|Object} options.llm - LLM configuration (resolved by callLlm)
  * @returns {Promise<Array<string>>} Array of responses, one per speaker
  */
-export default function conversationTurnReduce({
+export default async function conversationTurnReduce({
   speakers,
   topic,
   history = [],
@@ -27,37 +31,52 @@ export default function conversationTurnReduce({
     throw new Error('Topic is required');
   }
 
-  // Build initial context
-  const historySnippet =
-    history.length > 0
-      ? history.map((m) => `${m.time} ${m.name} (${m.id}): ${m.comment}`).join('\n')
-      : '';
+  const runConfig = nameStep(name, options);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
 
-  const customPrompt = rules.customPrompt || '';
-  const baseContext = [
-    customPrompt,
-    historySnippet ? `Previous conversation:\n${historySnippet}` : '',
-    `Topic: "${topic}"`,
-  ]
-    .filter(Boolean)
-    .join('\n\n');
+  try {
+    // Build initial context
+    const historySnippet =
+      history.length > 0
+        ? history.map((m) => `${m.time} ${m.name} (${m.id}): ${m.comment}`).join('\n')
+        : '';
 
-  // Create speaker descriptions as strings for map
-  const speakerDescriptions = speakers.map((speaker, index) => {
-    const name = speaker.name || `Speaker ${index + 1}`;
-    const parts = [name];
-    if (speaker.bio) parts.push(`Bio: ${speaker.bio}`);
-    if (speaker.agenda) parts.push(`Agenda: ${speaker.agenda}`);
-    return parts.join('\n');
-  });
+    const customPrompt = rules.customPrompt || '';
+    const baseContext = [
+      customPrompt,
+      historySnippet ? `Previous conversation:\n${historySnippet}` : '',
+      `Topic: "${topic}"`,
+    ]
+      .filter(Boolean)
+      .join('\n\n');
 
-  // Instructions for transforming speaker descriptions into responses
-  const instructions = `Given a speaker description, generate their response to the conversation.
+    // Create speaker descriptions as strings for map
+    const speakerDescriptions = speakers.map((speaker, index) => {
+      const speakerName = speaker.name || `Speaker ${index + 1}`;
+      const parts = [speakerName];
+      if (speaker.bio) parts.push(`Bio: ${speaker.bio}`);
+      if (speaker.agenda) parts.push(`Agenda: ${speaker.agenda}`);
+      return parts.join('\n');
+    });
+
+    // Instructions for transforming speaker descriptions into responses
+    const instructions = `Given a speaker description, generate their response to the conversation.
 
 ${baseContext}
 
 For the speaker described in the input, provide their response to the topic. The response should reflect their role, bio, and agenda if provided.`;
 
-  // Generate all responses using map
-  return map(speakerDescriptions, instructions, options);
+    // Generate all responses using map
+    const result = await map(speakerDescriptions, instructions, {
+      ...runConfig,
+      onProgress: scopePhase(runConfig.onProgress, 'conversation-turn-reduce:map'),
+    });
+
+    emitter.complete({ outcome: 'success', speakers: speakers.length });
+    return result;
+  } catch (err) {
+    emitter.error(err);
+    throw err;
+  }
 }

@@ -27,20 +27,25 @@ ${asNumber} ${asUndefinedByDefault}
 
 The value should be the number or "undefined".`;
 
-  const result = await callLlm(numberText, {
-    ...runConfig,
-    response_format: {
-      type: 'json_schema',
-      json_schema: {
-        name: 'number_extraction',
-        schema: numberSchema,
+  try {
+    const result = await callLlm(numberText, {
+      ...runConfig,
+      response_format: {
+        type: 'json_schema',
+        json_schema: {
+          name: 'number_extraction',
+          schema: numberSchema,
+        },
       },
-    },
-  });
+    });
 
-  const interpreted = result === 'undefined' ? undefined : result;
+    const interpreted = result === 'undefined' ? undefined : result;
 
-  emitter.complete();
+    emitter.complete({ outcome: 'success' });
 
-  return interpreted;
+    return interpreted;
+  } catch (err) {
+    emitter.error(err);
+    throw err;
+  }
 };

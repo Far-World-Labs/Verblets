@@ -21,20 +21,25 @@ export default async function name(subject, config = {}) {
     }
   )} ${asUndefinedByDefault}\n\nThe value should be the suggested name.`;
 
-  const response = await callLlm(prompt, {
-    ...runConfig,
-    response_format: {
-      type: 'json_schema',
-      json_schema: {
-        name: 'name_suggestion',
-        schema: nameSchema,
+  try {
+    const response = await callLlm(prompt, {
+      ...runConfig,
+      response_format: {
+        type: 'json_schema',
+        json_schema: {
+          name: 'name_suggestion',
+          schema: nameSchema,
+        },
       },
-    },
-  });
+    });
 
-  const result = response === 'undefined' ? undefined : response;
+    const result = response === 'undefined' ? undefined : response;
 
-  emitter.complete();
+    emitter.complete({ outcome: 'success' });
 
-  return result;
+    return result;
+  } catch (err) {
+    emitter.error(err);
+    throw err;
+  }
 }

@@ -128,25 +128,30 @@ Provide a JSON object with exactly four string properties:
 
 IMPORTANT: Each property must be a simple string value, not a nested object or array.`;
 
-  const response = await retry(
-    () =>
-      callLlm(specUserPrompt, {
-        ...runConfig,
-        systemPrompt: specSystemPrompt,
-        response_format: jsonSchema(
-          calibrateSpecificationJsonSchema.name,
-          calibrateSpecificationJsonSchema.schema
-        ),
-      }),
-    {
-      label: 'calibrate spec',
-      config: runConfig,
-    }
-  );
+  try {
+    const response = await retry(
+      () =>
+        callLlm(specUserPrompt, {
+          ...runConfig,
+          systemPrompt: specSystemPrompt,
+          response_format: jsonSchema(
+            calibrateSpecificationJsonSchema.name,
+            calibrateSpecificationJsonSchema.schema
+          ),
+        }),
+      {
+        label: 'calibrate spec',
+        config: runConfig,
+      }
+    );
 
-  specEmitter.complete();
+    specEmitter.complete({ outcome: 'success' });
 
-  return response;
+    return response;
+  } catch (err) {
+    specEmitter.error(err);
+    throw err;
+  }
 }
 
 /**
@@ -158,7 +163,9 @@ IMPORTANT: Each property must be a simple string value, not a nested object or a
  * @returns {Promise<{ severity: string, salience: string, categories: object, summary: string }>}
  */
 export async function applyCalibrate(scan, specification, config = {}) {
-  config = nameStep('calibrate:apply', config);
+  const runConfig = nameStep('calibrate:apply', config);
+  const applyEmitter = createProgressEmitter('calibrate:apply', runConfig.onProgress, runConfig);
+  applyEmitter.start();
 
   const prompt = `Classify this scan result against the calibration specification.
 
@@ -173,19 +180,25 @@ Return a JSON object with:
 - categories: object mapping each detected category to { severity, salience }
 - summary: brief explanation of the classification`;
 
-  const response = await retry(
-    () =>
-      callLlm(prompt, {
-        ...config,
-        response_format: jsonSchema('calibrate_result', calibrateResultSchema),
-      }),
-    {
-      label: 'calibrate classify',
-      config,
-    }
-  );
+  try {
+    const response = await retry(
+      () =>
+        callLlm(prompt, {
+          ...runConfig,
+          response_format: jsonSchema('calibrate_result', calibrateResultSchema),
+        }),
+      {
+        label: 'calibrate classify',
+        config: runConfig,
+      }
+    );
 
-  return response;
+    applyEmitter.complete({ outcome: 'success' });
+    return response;
+  } catch (err) {
+    applyEmitter.error(err);
+    throw err;
+  }
 }
 
 /**

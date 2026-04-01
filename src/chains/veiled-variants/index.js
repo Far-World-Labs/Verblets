@@ -103,18 +103,27 @@ const veiledVariants = async (inputConfig = {}) => {
   });
   const prompts = strategies.map((name) => STRATEGY_FNS[name](prompt, variantCount));
 
-  const results = await Promise.all(
-    prompts.map((p) =>
-      retry(() => callLlm(p, { ...runConfig, response_format: responseFormat }), {
-        label: 'veiled-variants',
-        config: runConfig,
-      })
-    )
-  );
+  try {
+    const batchDone = emitter.batch(prompts.length);
+    const results = await Promise.all(
+      prompts.map((p) =>
+        retry(() => callLlm(p, { ...runConfig, response_format: responseFormat }), {
+          label: 'veiled-variants',
+          config: runConfig,
+        }).then((r) => {
+          batchDone(1);
+          return r;
+        })
+      )
+    );
 
-  emitter.complete();
+    emitter.complete({ outcome: 'success' });
 
-  return results.flat();
+    return results.flat();
+  } catch (err) {
+    emitter.error(err);
+    throw err;
+  }
 };
 
 export default veiledVariants;

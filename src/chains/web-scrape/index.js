@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
+import { DomainEvent } from '../../lib/progress/constants.js';
 import { createTempDir } from '../../lib/temp-files/index.js';
 import { resizeImage, tileImages, mapImageShrink } from '../../lib/image-utils/index.js';
 import { parallelBatch } from '../../lib/parallel-batch/index.js';
@@ -33,7 +34,8 @@ const maybeShrink = async (rawPath, shrinkOpts, screenshotDir, emitter, url) => 
   const result = await resizeImage(rawPath, { ...shrinkOpts, outputDir: screenshotDir.dir });
   screenshotDir.track(result.path);
   emitter.emit({
-    event: 'resize',
+    event: DomainEvent.step,
+    stepName: 'resize',
     url,
     path: result.path,
     width: result.width,
@@ -112,7 +114,13 @@ const processUrl = async (entry, defaultStep, page, opts, screenshotDir, emitter
       labels.push(`${urlIndex}.${stepNumber}`);
     }
 
-    emitter.emit({ event: 'step', url, stepNumber, action: action.action });
+    emitter.emit({
+      event: DomainEvent.step,
+      stepName: 'step',
+      url,
+      stepNumber,
+      action: action.action,
+    });
 
     if (action.action === 'done') {
       return { url, data: action.data, screenshots, labels, steps: stepNumber + 1 };
@@ -174,7 +182,7 @@ const webScrape = async (urls, step, config = {}) => {
     headless: opts.headless,
     ...runConfig.launchOptions,
   });
-  emitter.emit({ event: 'browser', headless: opts.headless });
+  emitter.emit({ event: DomainEvent.step, stepName: 'browser', headless: opts.headless });
 
   try {
     const context = await browser.newContext(runConfig.contextOptions);
@@ -184,7 +192,7 @@ const webScrape = async (urls, step, config = {}) => {
       const setupPage = await context.newPage();
       await runConfig.setup(setupPage);
       await setupPage.close();
-      emitter.emit({ event: 'setup' });
+      emitter.emit({ event: DomainEvent.step, stepName: 'setup' });
     }
 
     // Thread screenshotFilter from config (same pattern as setup/teardown)
@@ -195,7 +203,7 @@ const webScrape = async (urls, step, config = {}) => {
     const results = await parallelBatch(
       urlList,
       async (entry, index) => {
-        emitter.emit({ event: 'url:start', url: entry.url, index });
+        emitter.emit({ event: DomainEvent.step, stepName: 'url:start', url: entry.url, index });
         const page = await context.newPage();
         try {
           const result = await processUrl(entry, step, page, opts, screenshotDir, emitter, index);
@@ -207,7 +215,8 @@ const webScrape = async (urls, step, config = {}) => {
             });
             screenshotDir.track(tileResult.path);
             emitter.emit({
-              event: 'tile',
+              event: DomainEvent.step,
+              stepName: 'tile',
               url: entry.url,
               path: tileResult.path,
               width: tileResult.width,
@@ -217,7 +226,8 @@ const webScrape = async (urls, step, config = {}) => {
           }
 
           emitter.emit({
-            event: 'url:complete',
+            event: DomainEvent.step,
+            stepName: 'url:complete',
             url: entry.url,
             steps: result.steps,
             screenshotCount: result.screenshots.length,
@@ -225,7 +235,13 @@ const webScrape = async (urls, step, config = {}) => {
           batchDone(1);
           return result;
         } catch (err) {
-          emitter.emit({ event: 'url:error', url: entry.url, error: err.message });
+          emitter.error(err, { url: entry.url, index });
+          emitter.emit({
+            event: DomainEvent.step,
+            stepName: 'url:error',
+            url: entry.url,
+            error: err.message,
+          });
           if (opts.errorPosture === 'strict') throw err;
           batchDone(1);
           return { url: entry.url, data: undefined, screenshots: [], steps: 0, error: err.message };
@@ -245,14 +261,15 @@ const webScrape = async (urls, step, config = {}) => {
       } catch {
         /* best-effort */
       }
-      emitter.emit({ event: 'teardown' });
+      emitter.emit({ event: DomainEvent.step, stepName: 'teardown' });
     }
 
     await context.close();
 
     const successCount = results.filter((r) => !r.error).length;
     const totalSteps = results.reduce((sum, r) => sum + r.steps, 0);
-    emitter.complete({ totalUrls: urlList.length, successCount, totalSteps });
+    const outcome = successCount < urlList.length ? 'partial' : 'success';
+    emitter.complete({ totalUrls: urlList.length, successCount, totalSteps, outcome });
 
     const output = single ? results[0] : results;
     output.cleanup = () => screenshotDir.cleanup();

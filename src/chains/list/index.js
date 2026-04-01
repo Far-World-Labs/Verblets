@@ -9,6 +9,7 @@ import {
 import listResultSchema from './list-result.json';
 import { nameStep } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
+import { DomainEvent } from '../../lib/progress/constants.js';
 
 const name = 'list';
 
@@ -137,41 +138,50 @@ export default async function list(prompt, config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
-  const { schema } = runConfig;
-  const fullPrompt = prompt;
-  const response = await retry(
-    () => callLlm(fullPrompt, { ...runConfig, ...createModelOptions() }),
-    {
-      label: 'list-main',
-      config: runConfig,
-    }
-  );
 
-  // Extract items from the object structure
-  const resultArray = response?.items || response;
-  const items = Array.isArray(resultArray) ? resultArray : [];
-
-  // If schema is provided, transform each item to match the schema
-  if (schema && items.length > 0) {
-    const transformedItems = [];
-    for (const item of items) {
-      const transformPrompt = outputTransformPrompt(item, schema);
-      const transformResponse = await retry(() => callLlm(transformPrompt, runConfig), {
-        label: 'list-transform',
+  try {
+    const { schema } = runConfig;
+    const fullPrompt = prompt;
+    const response = await retry(
+      () => callLlm(fullPrompt, { ...runConfig, ...createModelOptions() }),
+      {
+        label: 'list-main',
         config: runConfig,
-      });
-      try {
-        const transformedItem = JSON.parse(transformResponse);
-        transformedItems.push(transformedItem);
-      } catch (error) {
-        debug(`list-transform JSON.parse failed, keeping original item: ${error.message}`);
-        transformedItems.push(item);
       }
-    }
-    emitter.complete();
-    return transformedItems;
-  }
+    );
 
-  emitter.complete();
-  return items;
+    // Extract items from the object structure
+    const resultArray = response?.items || response;
+    const items = Array.isArray(resultArray) ? resultArray : [];
+
+    // If schema is provided, transform each item to match the schema
+    if (schema && items.length > 0) {
+      emitter.emit({ event: DomainEvent.step, stepName: 'transform', itemCount: items.length });
+      const batchDone = emitter.batch(items.length);
+      const transformedItems = [];
+      for (const item of items) {
+        const transformPrompt = outputTransformPrompt(item, schema);
+        const transformResponse = await retry(() => callLlm(transformPrompt, runConfig), {
+          label: 'list-transform',
+          config: runConfig,
+        });
+        try {
+          const transformedItem = JSON.parse(transformResponse);
+          transformedItems.push(transformedItem);
+        } catch (error) {
+          debug(`list-transform JSON.parse failed, keeping original item: ${error.message}`);
+          transformedItems.push(item);
+        }
+        batchDone(1);
+      }
+      emitter.complete({ outcome: 'success' });
+      return transformedItems;
+    }
+
+    emitter.complete({ outcome: 'success' });
+    return items;
+  } catch (err) {
+    emitter.error(err);
+    throw err;
+  }
 }

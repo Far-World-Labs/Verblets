@@ -74,42 +74,47 @@ export default async function centralTendency(items, seedItems, config = {}) {
     batchSize: 5,
   });
 
-  // Create lifecycle logger for the chain
-  const lifecycleLogger = createLifecycleLogger(runConfig.logger, 'central-tendency-chain');
+  try {
+    // Create lifecycle logger for the chain
+    const lifecycleLogger = createLifecycleLogger(runConfig.logger, 'central-tendency-chain');
 
-  // Log the initial input to the chain
-  lifecycleLogger.logStart({
-    items,
-    seedItems,
-    context: runConfig.context,
-    coreFeatures: runConfig.coreFeatures,
-    itemCount: items.length,
-    seedCount: seedItems.length,
-  });
+    // Log the initial input to the chain
+    lifecycleLogger.logStart({
+      items,
+      seedItems,
+      context: runConfig.context,
+      coreFeatures: runConfig.coreFeatures,
+      itemCount: items.length,
+      seedCount: seedItems.length,
+    });
 
-  // Build instructions for the mapper
-  const instructions = buildCentralTendencyInstructions(seedItems, runConfig);
+    // Build instructions for the mapper
+    const instructions = buildCentralTendencyInstructions(seedItems, runConfig);
 
-  // Log instruction construction
-  lifecycleLogger.logConstruction(instructions, extractPromptAnalysis(instructions));
+    // Log instruction construction
+    lifecycleLogger.logConstruction(instructions, extractPromptAnalysis(instructions));
 
-  // Use map to handle all the complexity
-  const results = await map(items, instructions, {
-    ...runConfig,
-    batchSize,
-    responseFormat: centralTendencyResponseFormat,
-    logger: lifecycleLogger,
-    onProgress: scopePhase(runConfig.onProgress, 'map:evaluation'),
-  });
+    // Use map to handle all the complexity
+    const results = await map(items, instructions, {
+      ...runConfig,
+      batchSize,
+      responseFormat: centralTendencyResponseFormat,
+      logger: lifecycleLogger,
+      onProgress: scopePhase(runConfig.onProgress, 'map:evaluation'),
+    });
 
-  // Log the final output from the chain
-  const resultMeta = {
-    totalItems: results.length,
-    successCount: results.filter((r) => r !== undefined).length,
-    failureCount: results.filter((r) => r === undefined).length,
-  };
-  lifecycleLogger.logResult(results, resultMeta);
-  emitter.complete(resultMeta);
+    // Log the final output from the chain
+    const resultMeta = {
+      totalItems: results.length,
+      successCount: results.filter((r) => r !== undefined).length,
+      failureCount: results.filter((r) => r === undefined).length,
+    };
+    lifecycleLogger.logResult(results, resultMeta);
+    emitter.complete({ outcome: 'success', ...resultMeta });
 
-  return results;
+    return results;
+  } catch (err) {
+    emitter.error(err);
+    throw err;
+  }
 }

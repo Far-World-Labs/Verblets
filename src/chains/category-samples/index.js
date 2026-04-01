@@ -125,12 +125,17 @@ export default async function categorySamples(categoryName, config = {}) {
     return results.slice(0, count);
   };
 
-  const result = await retry(generateWithRetry, {
-    label: 'category-samples',
-    config: runConfig,
-  });
+  try {
+    const result = await retry(generateWithRetry, {
+      label: 'category-samples',
+      config: runConfig,
+    });
 
-  emitter.complete();
+    emitter.complete({ outcome: 'success' });
 
-  return result;
+    return result;
+  } catch (err) {
+    emitter.error(err);
+    throw err;
+  }
 }
