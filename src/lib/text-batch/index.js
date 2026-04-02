@@ -97,9 +97,9 @@ export default async function createBatches(list, config = {}) {
     maxTokenBudget: DEFAULT_MAX_TOKEN_BUDGET,
   });
 
-  const ms = config.modelService || globalModelService;
-  const modelName = resolveModel(llm) || ms.bestPublicModelKey;
-  const model = ms.getModel(modelName);
+  const modelSvc = config.modelService || globalModelService;
+  const modelName = resolveModel(llm) || modelSvc.bestPublicModelKey;
+  const model = modelSvc.getModel(modelName);
   const budget = calculateBudget({
     model,
     outputRatio,

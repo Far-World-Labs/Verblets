@@ -2,6 +2,7 @@ import map from '../map/index.js';
 import { CENTRAL_TENDENCY_PROMPT } from '../../verblets/central-tendency-lines/index.js';
 import { centralTendencyResultsJsonSchema } from './schemas.js';
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
+import { DomainEvent } from '../../lib/progress/constants.js';
 import { jsonSchema } from '../../lib/llm/index.js';
 import { nameStep, getOptions } from '../../lib/context/option.js';
 
@@ -69,6 +70,7 @@ export default async function centralTendency(items, seedItems, config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
+  emitter.emit({ event: DomainEvent.input, value: items });
   const { batchSize } = await getOptions(runConfig, {
     batchSize: 5,
   });
@@ -90,6 +92,7 @@ export default async function centralTendency(items, seedItems, config = {}) {
       successCount: results.filter((r) => r !== undefined).length,
       failureCount: results.filter((r) => r === undefined).length,
     };
+    emitter.emit({ event: DomainEvent.output, value: results });
     emitter.complete({ outcome: 'success', ...resultMeta });
 
     return results;

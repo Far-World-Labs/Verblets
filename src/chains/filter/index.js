@@ -5,7 +5,7 @@ import { createBatches, retry } from '../../lib/index.js';
 import { jsonSchema } from '../../lib/llm/index.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
-import { OpEvent } from '../../lib/progress/constants.js';
+import { OpEvent, DomainEvent } from '../../lib/progress/constants.js';
 
 const name = 'filter';
 
@@ -50,6 +50,7 @@ const filter = async function filter(list, instructions, config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
+  emitter.emit({ event: DomainEvent.input, value: list });
   const { guidance, errorPosture } = await getOptions(runConfig, {
     strictness: withPolicy(mapStrictness, ['guidance', 'errorPosture']),
   });
@@ -138,6 +139,7 @@ Process exactly ${count} items from the XML list below and return ${count} yes/n
 
   const outcome = batchErrors > 0 ? 'partial' : 'success';
   const resultMeta = { inputCount: list.length, outputCount: results.length, outcome };
+  emitter.emit({ event: DomainEvent.output, value: results });
   emitter.complete(resultMeta);
 
   return results;

@@ -6,7 +6,7 @@ import { jsonSchema } from '../../lib/llm/index.js';
 import { debug } from '../../lib/debug/index.js';
 import { nameStep, getOptions } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
-import { OpEvent } from '../../lib/progress/constants.js';
+import { OpEvent, DomainEvent } from '../../lib/progress/constants.js';
 
 const name = 'find';
 
@@ -16,6 +16,7 @@ const find = async function find(list, instructions, config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
+  emitter.emit({ event: DomainEvent.input, value: list });
   const { maxParallel, errorPosture } = await getOptions(runConfig, {
     maxParallel: 3,
     errorPosture: 'resilient',
@@ -121,11 +122,13 @@ Process exactly ${count} items from the XML list below and return the single bes
       current.index < best.index ? current : best
     );
     const foundMeta = { found: true, totalItems: list.length, outcome: 'success' };
+    emitter.emit({ event: DomainEvent.output, value: earliest.result });
     emitter.complete(foundMeta);
     return earliest.result;
   }
 
   const notFoundMeta = { found: false, totalItems: list.length, outcome: 'success' };
+  emitter.emit({ event: DomainEvent.output, value: '' });
   emitter.complete(notFoundMeta);
   return '';
 };

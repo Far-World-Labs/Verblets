@@ -2,6 +2,7 @@ import callLlm from '../../lib/llm/index.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 import { nameStep } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
+import { DomainEvent } from '../../lib/progress/constants.js';
 import { booleanSchema } from './schema.js';
 
 const name = 'bool';
@@ -13,6 +14,7 @@ export default async (text, config = {}) => {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
+  emitter.emit({ event: DomainEvent.input, value: text });
 
   const systemPrompt = `${explainAndSeparate} ${explainAndSeparatePrimitive}
 
@@ -36,6 +38,7 @@ The value should be "true", "false", or "undefined".`;
     // Interpret response
     const interpreted = response === 'true' ? true : response === 'false' ? false : undefined;
 
+    emitter.emit({ event: DomainEvent.output, value: interpreted });
     emitter.complete({ outcome: 'success' });
 
     return interpreted;

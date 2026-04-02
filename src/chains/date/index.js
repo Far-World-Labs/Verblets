@@ -6,6 +6,7 @@ import { constants as promptConstants } from '../../prompts/index.js';
 import { dateExpectationsSchema, dateValueSchema } from './schemas.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
+import { DomainEvent } from '../../lib/progress/constants.js';
 
 const name = 'date';
 
@@ -105,6 +106,7 @@ export default async function date(text, config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
+  emitter.emit({ event: DomainEvent.input, value: text });
   const { maxAttempts, validate, returnBestEffort } = await getOptions(runConfig, {
     rigor: withPolicy(mapRigor, ['validate', 'maxAttempts', 'returnBestEffort']),
   });
@@ -116,6 +118,7 @@ export default async function date(text, config = {}) {
     // Low rigor: extraction only — skip expectations and validation
     if (!validate) {
       const firstDate = await extractDate(datePrompt, runConfig);
+      emitter.emit({ event: DomainEvent.output, value: firstDate });
       emitter.complete({ outcome: 'success' });
       return firstDate;
     }
@@ -134,6 +137,7 @@ export default async function date(text, config = {}) {
 
     // Handle undefined response
     if (!firstDate) {
+      emitter.emit({ event: DomainEvent.output, value: undefined });
       emitter.complete({ outcome: 'success' });
       return undefined;
     }
@@ -179,6 +183,7 @@ export default async function date(text, config = {}) {
       }
     );
 
+    emitter.emit({ event: DomainEvent.output, value: result });
     emitter.complete({ outcome: 'success' });
     return result;
   } catch (err) {

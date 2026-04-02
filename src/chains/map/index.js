@@ -2,6 +2,7 @@ import listBatch, { ListStyle, determineStyle } from '../../verblets/list-batch/
 import { asXML } from '../../prompts/wrap-variable.js';
 import { createBatches, parallel, retry } from '../../lib/index.js';
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
+import { DomainEvent } from '../../lib/progress/constants.js';
 import { nameStep, getOptions } from '../../lib/context/option.js';
 
 const name = 'map';
@@ -150,6 +151,7 @@ const map = async function (list, instructions, config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
+  emitter.emit({ event: DomainEvent.input, value: list });
   try {
     const { maxAttempts, maxParallel, errorPosture } = await getOptions(runConfig, {
       maxAttempts: 3,
@@ -197,6 +199,7 @@ const map = async function (list, instructions, config = {}) {
       failedItems,
       outcome,
     };
+    emitter.emit({ event: DomainEvent.output, value: results });
     emitter.complete(resultMeta);
 
     return results;

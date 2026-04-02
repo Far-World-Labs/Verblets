@@ -2,6 +2,7 @@ import callLlm from '../../lib/llm/index.js';
 import { strictFormat } from '../../prompts/constants.js';
 import { nameStep } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
+import { DomainEvent } from '../../lib/progress/constants.js';
 import centralTendencySchema from './central-tendency-result.json';
 
 const name = 'central-tendency-lines';
@@ -118,6 +119,7 @@ export default async function centralTendency(item, seedItems, config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
+  emitter.emit({ event: DomainEvent.input, value: item });
 
   try {
     if (!item || typeof item !== 'string') {
@@ -139,6 +141,7 @@ export default async function centralTendency(item, seedItems, config = {}) {
       response_format: responseFormat,
     });
 
+    emitter.emit({ event: DomainEvent.output, value: response });
     emitter.complete({ outcome: 'success' });
     return response;
   } catch (err) {

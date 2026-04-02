@@ -3,7 +3,7 @@ import { asXML } from '../../prompts/wrap-variable.js';
 import { reduceAccumulatorJsonSchema } from './schemas.js';
 import { retry, createBatches } from '../../lib/index.js';
 import createProgressEmitter from '../../lib/progress/index.js';
-import { OpEvent } from '../../lib/progress/constants.js';
+import { OpEvent, DomainEvent } from '../../lib/progress/constants.js';
 import { nameStep, getOptions } from '../../lib/context/option.js';
 
 import { jsonSchema } from '../../lib/llm/index.js';
@@ -20,6 +20,7 @@ const reduce = async function reduce(list, instructions, config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
+  emitter.emit({ event: DomainEvent.input, value: list });
   try {
     const { accumulatorMode } = await getOptions(runConfig, {
       accumulatorMode: 'auto',
@@ -106,6 +107,7 @@ Process exactly ${count} items from the ${itemFormat} list below and return the 
       totalBatches: activeBatches.length,
       outcome: 'success',
     };
+    emitter.emit({ event: DomainEvent.output, value: acc });
     emitter.complete(resultMeta);
 
     return acc;

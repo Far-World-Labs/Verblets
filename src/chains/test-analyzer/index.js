@@ -3,6 +3,7 @@ import llm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { extractCodeWindow } from '../../lib/code-extractor/index.js';
 import createProgressEmitter from '../../lib/progress/index.js';
+import { DomainEvent } from '../../lib/progress/constants.js';
 import { getOption, nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 
 const name = 'test-analyzer';
@@ -88,6 +89,7 @@ export default async function analyzeTestError(logs, config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
+  emitter.emit({ event: DomainEvent.input, value: logs });
   const { analysisDepth: depthConfig } = await getOptions(runConfig, {
     analysisDepth: withPolicy(mapAnalysisDepth),
   });
@@ -197,9 +199,11 @@ Discussion:
       config: runConfig,
     });
 
+    const result = response.trim();
+    emitter.emit({ event: DomainEvent.output, value: result });
     emitter.complete({ outcome: 'success' });
 
-    return response.trim();
+    return result;
   } catch (err) {
     emitter.error(err);
     throw err;

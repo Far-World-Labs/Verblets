@@ -1,7 +1,7 @@
 import globalModelService from '../../services/llm-model/index.js';
 
-export default (text, { minCharsToRemove = 10, model, modelService: ms, targetTokenCount }) => {
-  const resolvedModel = model || (ms || globalModelService).getBestPublicModel();
+export default (text, { minCharsToRemove = 10, model, modelService, targetTokenCount }) => {
+  const resolvedModel = model || (modelService || globalModelService).getBestPublicModel();
   const ellipsis = '...';
   const textToTokenRatio = text.length / resolvedModel.toTokens(text).length;
   let trimmedText = text;

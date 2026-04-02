@@ -108,6 +108,7 @@ class SocraticMethod {
     const runConfig = nameStep(name, options);
     const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
     emitter.start();
+    emitter.emit({ event: DomainEvent.input, value: statement });
     const { challenge, temperature } = await getOptions(runConfig, {
       challenge: withPolicy(mapChallenge, ['challenge', 'temperature']),
     });
@@ -206,6 +207,7 @@ class SocraticMethod {
         await this.step();
       }
 
+      this.emitter.emit({ event: DomainEvent.output, value: this.history });
       this.emitter.complete({ outcome: 'success', turns: this.history.length });
 
       return this.history;

@@ -50,6 +50,8 @@ export const DomainEvent = Object.freeze({
   phase: 'phase',
   step: 'step',
   tick: 'chain:tick',
+  input: 'input',
+  output: 'output',
 });
 
 /** Telemetry event names — emitted by metrics(). */

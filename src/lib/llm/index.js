@@ -186,7 +186,7 @@ export const MODEL_KEYS = [
 ];
 
 export const run = async (prompt, options = {}) => {
-  const ms = options.modelService || globalModelService;
+  const modelSvc = options.modelService || globalModelService;
   const redisGet = options.getRedis || getRedisGlobal;
 
   const {
@@ -221,7 +221,7 @@ export const run = async (prompt, options = {}) => {
   const startTime = Date.now();
 
   // Apply global overrides to model options
-  const modelOptionsWithOverrides = ms.applyGlobalOverrides(modelOptions);
+  const modelOptionsWithOverrides = modelSvc.applyGlobalOverrides(modelOptions);
 
   // Extract capability flags for model negotiation
   // Supports both flat keys ({ fast: true }) and legacy negotiate wrapper ({ negotiate: { fast: true } })
@@ -240,14 +240,14 @@ export const run = async (prompt, options = {}) => {
     }
   }
 
-  const negotiationFromGlobalOverride = ms.getGlobalOverride('negotiate');
+  const negotiationFromGlobalOverride = modelSvc.getGlobalOverride('negotiate');
   const preferred = negotiationFromGlobalOverride ? null : modelOptionsWithOverrides.modelName;
 
   const modelNameNegotiated = shouldNegotiate
-    ? ms.negotiateModel(preferred, negotiation)
+    ? modelSvc.negotiateModel(preferred, negotiation)
     : modelOptionsWithOverrides.modelName;
 
-  const modelFound = ms.getModel(modelNameNegotiated);
+  const modelFound = modelSvc.getModel(modelNameNegotiated);
 
   // Telemetry: model selection
   const emitter = createProgressEmitter('llm', options.onProgress, options);
@@ -282,7 +282,7 @@ export const run = async (prompt, options = {}) => {
   const apiUrl = modelFound?.apiUrl || models.fastGood.apiUrl;
   const apiKey = modelFound?.apiKey || models.fastGood.apiKey;
 
-  const requestConfig = ms.getRequestConfig({
+  const requestConfig = modelSvc.getRequestConfig({
     prompt,
     ...modelOptionsWithOverrides,
     modelName: modelNameNegotiated,
@@ -347,7 +347,8 @@ export const run = async (prompt, options = {}) => {
     if (!cacheResult || forceQuery) {
       // Use custom requestTimeout from modelOptions if provided, otherwise use model default
       const requestTimeout =
-        modelOptionsWithOverrides.requestTimeout || ms.getModel(modelNameNegotiated).requestTimeout;
+        modelOptionsWithOverrides.requestTimeout ||
+        modelSvc.getModel(modelNameNegotiated).requestTimeout;
 
       const timeoutController = new TimedAbortController(requestTimeout);
 
