@@ -24,11 +24,13 @@ The single export from `src/lib/progress/index.js`. Creates a lifecycle emitter 
 import createProgressEmitter from '../../lib/progress/index.js';
 
 const emitter = createProgressEmitter('filter', runConfig.onProgress, runConfig);
+emitter.start();
 ```
 
-The constructor emits `chain:start` immediately. The returned handle exposes:
+The emitter does not emit on construction — call `start()` explicitly to emit the `chain:start` event. The returned handle exposes:
+- `start()` — emit `chain:start` event
 - `emit(data)` — dispatch an operation event (default kind: `'operation'`)
-- `result(meta?)` — emit `chain:complete` telemetry with auto-calculated duration
+- `complete(meta?)` — emit `chain:complete` telemetry with auto-calculated duration
 - `error(err, meta?)` — emit `chain:error` telemetry with error message and duration
 
 The callback is an explicit positional argument — not read from config. The third argument (`options`) provides `operation` (composed path from `nameStep`) and `now` (timestamp for duration calculation).
@@ -50,7 +52,7 @@ const results = await parallel(activeBatches, async (batch) => {
   return result;
 }, { maxParallel: 3 });
 
-emitter.result({ totalItems: items.length });
+emitter.complete({ totalItems: items.length });
 ```
 
 ### Phase scoping
@@ -88,4 +90,4 @@ Telemetry events (`kind: 'telemetry'`) include `chain:start`, `chain:complete`, 
 
 ## Source
 
-Single default export from `src/lib/progress/index.js`.
+`src/lib/progress/index.js` — `createProgressEmitter` (default), `scopePhase` (named).

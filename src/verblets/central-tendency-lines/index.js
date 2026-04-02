@@ -1,10 +1,5 @@
 import callLlm from '../../lib/llm/index.js';
 import { strictFormat } from '../../prompts/constants.js';
-import {
-  createLifecycleLogger,
-  extractPromptAnalysis,
-  extractLLMConfig,
-} from '../../lib/lifecycle-logger/index.js';
 import { nameStep } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
 import centralTendencySchema from './central-tendency-result.json';
@@ -136,35 +131,12 @@ export default async function centralTendency(item, seedItems, config = {}) {
     const context = runConfig.context || '';
     const coreFeatures = runConfig.coreFeatures || [];
 
-    // Create lifecycle logger with central-tendency namespace
-    const lifecycleLogger = createLifecycleLogger(runConfig.logger, 'central-tendency');
-
-    // Log start with input
-    lifecycleLogger.logStart({ item, seedItems, context, coreFeatures });
-
     const prompt = buildCentralTendencyPrompt(item, seedItems, { context, coreFeatures });
     const responseFormat = createResponseFormat('central_tendency_result');
-
-    // Log prompt construction
-    lifecycleLogger.logConstruction(prompt, {
-      ...extractPromptAnalysis(prompt),
-      ...extractLLMConfig({ response_format: responseFormat }),
-      itemLength: item.length,
-      seedCount: seedItems.length,
-      hasCoreFeatures: coreFeatures.length > 0,
-    });
 
     const response = await callLlm(prompt, {
       ...runConfig,
       response_format: responseFormat,
-      logger: lifecycleLogger,
-    });
-
-    // Log result
-    lifecycleLogger.logResult(response, {
-      score: response.score,
-      confidence: response.confidence,
-      hasReason: !!response.reason,
     });
 
     emitter.complete({ outcome: 'success' });

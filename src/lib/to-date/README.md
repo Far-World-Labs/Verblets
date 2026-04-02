@@ -3,7 +3,9 @@
 Parse a string value into a JavaScript Date object. Designed for post-processing LLM responses that contain dates.
 
 ```javascript
-import { toDate } from '@far-world-labs/verblets';
+import { init } from '@far-world-labs/verblets';
+
+const { toDate } = init();
 
 toDate('2023-12-25');              // => Mon Dec 25 2023 00:00:00 ...
 toDate('December 25, 2023');       // => Mon Dec 25 2023 00:00:00 ...

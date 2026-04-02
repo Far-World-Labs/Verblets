@@ -156,7 +156,7 @@ describe('createProgressEmitter', () => {
     it('always sets kind to telemetry', () => {
       const events = [];
       const emitter = createProgressEmitter('test', (e) => events.push(e));
-      emitter.metrics({ event: TelemetryEvent.retryAttempt });
+      emitter.metrics({ event: OpEvent.retryAttempt });
       expect(events[0].kind).toBe(Kind.telemetry);
     });
 

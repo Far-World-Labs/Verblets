@@ -1,7 +1,6 @@
 import listBatch, { ListStyle, determineStyle } from '../../verblets/list-batch/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { reduceAccumulatorJsonSchema } from './schemas.js';
-import { createLifecycleLogger, extractBatchConfig } from '../../lib/lifecycle-logger/index.js';
 import { retry, createBatches } from '../../lib/index.js';
 import createProgressEmitter from '../../lib/progress/index.js';
 import { OpEvent } from '../../lib/progress/constants.js';
@@ -25,8 +24,6 @@ const reduce = async function reduce(list, instructions, config = {}) {
     const { accumulatorMode } = await getOptions(runConfig, {
       accumulatorMode: 'auto',
     });
-    const lifecycleLogger = createLifecycleLogger(runConfig.logger, 'chain:reduce');
-
     let acc = runConfig.initial;
 
     // If initial is an array and we're using default format, wrap it
@@ -47,19 +44,8 @@ const reduce = async function reduce(list, instructions, config = {}) {
       totalBatches: activeBatches.length,
     });
 
-    lifecycleLogger.logStart(
-      extractBatchConfig({
-        totalItems: list.length,
-        totalBatches: activeBatches.length,
-        batchSize: runConfig.batchSize,
-      })
-    );
-
-    for (const [batchIndex, { items, skip }] of batches.entries()) {
-      if (skip) {
-        lifecycleLogger.logEvent('batch-skip', { batchIndex });
-        continue;
-      }
+    for (const { items, skip } of batches) {
+      if (skip) continue;
 
       const batchStyle = determineStyle(runConfig.listStyle, items, runConfig.autoModeThreshold);
 
@@ -92,7 +78,6 @@ Process exactly ${count} items from the ${itemFormat} list below and return the 
         ...runConfig,
         listStyle: batchStyle,
         responseFormat: effectiveResponseFormat,
-        logger: lifecycleLogger,
       };
 
       const result = await retry(() => listBatch(items, prompt, listBatchOptions), {
@@ -108,11 +93,6 @@ Process exactly ${count} items from the ${itemFormat} list below and return the 
       }
 
       batchDone(items.length);
-
-      lifecycleLogger.logEvent('batch-done', {
-        batchIndex,
-        accType: typeof acc,
-      });
     }
 
     emitter.progress({
@@ -126,7 +106,6 @@ Process exactly ${count} items from the ${itemFormat} list below and return the 
       totalBatches: activeBatches.length,
       outcome: 'success',
     };
-    lifecycleLogger.logResult(acc, resultMeta);
     emitter.complete(resultMeta);
 
     return acc;

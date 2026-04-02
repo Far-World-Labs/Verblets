@@ -10,14 +10,6 @@ vi.mock('node-fetch', () => ({
   default: vi.fn(),
 }));
 
-// Mock Redis
-vi.mock('../../services/redis/index.js', () => ({
-  getClient: vi.fn().mockResolvedValue({
-    get: vi.fn().mockResolvedValue(null),
-    setex: vi.fn().mockResolvedValue('OK'),
-  }),
-}));
-
 // Mock the prompt cache to avoid Redis dependencies
 vi.mock('../../lib/prompt-cache/index.js', () => ({
   get: vi.fn().mockResolvedValue({ result: null }),
@@ -173,6 +165,7 @@ describe('Global Override System', () => {
       modelService.setGlobalOverride('modelName', 'customModel');
 
       const result = await llmRun('Test prompt', {
+        modelService,
         modelName: 'fastGood', // This should be overridden
       });
 
@@ -192,7 +185,7 @@ describe('Global Override System', () => {
     it('should override even when no config provided', async () => {
       modelService.setGlobalOverride('modelName', 'expensiveReasoning');
 
-      const result = await llmRun('Test prompt');
+      const result = await llmRun('Test prompt', { modelService });
 
       expect(result).toBe('Test response');
       expect(fetch).toHaveBeenCalledWith(
@@ -213,6 +206,7 @@ describe('Global Override System', () => {
       modelService.setGlobalOverride('negotiate', { reasoning: true });
 
       const result = await llmRun('Test prompt', {
+        modelService,
         modelName: 'fastGood',
         negotiate: { fast: true, cheap: true }, // This should be overridden
       });
@@ -231,6 +225,7 @@ describe('Global Override System', () => {
       modelService.setGlobalOverride('negotiate', { fast: true, cheap: true });
 
       const result = await llmRun('Test prompt', {
+        modelService,
         modelName: 'expensiveReasoning', // Should be overridden by negotiation
       });
 
@@ -250,6 +245,7 @@ describe('Global Override System', () => {
       modelService.setGlobalOverride('temperature', 0.9);
 
       const result = await llmRun('Test prompt', {
+        modelService,
         modelName: 'fastGood',
         temperature: 0.1, // This should be overridden
       });
@@ -269,6 +265,7 @@ describe('Global Override System', () => {
       modelService.setGlobalOverride('topP', 0.95);
 
       const result = await llmRun('Test prompt', {
+        modelService,
         modelName: 'fastGood',
         temperature: 0.1,
         maxTokens: 500,
@@ -287,6 +284,7 @@ describe('Global Override System', () => {
       modelService.setGlobalOverride('temperature', 0.8);
 
       const result = await llmRun('Test prompt', {
+        modelService,
         modelName: 'fastGood',
         temperature: 0.1,
         maxTokens: 2000,
@@ -308,6 +306,7 @@ describe('Global Override System', () => {
       modelService.setGlobalOverride('temperature', 0.9);
 
       const result = await llmRun('Test prompt', {
+        modelService,
         modelName: 'fastGood',
         temperature: 0.1,
         maxTokens: 1000,
@@ -336,6 +335,7 @@ describe('Global Override System', () => {
       modelService.setGlobalOverride('negotiate', { reasoning: true });
 
       const result = await llmRun('Test prompt', {
+        modelService,
         modelName: 'fastGood',
       });
 
@@ -353,7 +353,7 @@ describe('Global Override System', () => {
       modelService.setGlobalOverride('modelName', 'customModel');
       modelService.setGlobalOverride('temperature', 0.7);
 
-      const result = await llmRun('Test prompt');
+      const result = await llmRun('Test prompt', { modelService });
 
       expect(result).toBe('Test response');
       expect(fetch).toHaveBeenCalledWith(
@@ -374,7 +374,7 @@ describe('Global Override System', () => {
       // Set override and make a call
       modelService.setGlobalOverride('modelName', 'customModel');
 
-      await llmRun('Test prompt 1');
+      await llmRun('Test prompt 1', { modelService });
       expect(fetch).toHaveBeenCalledWith(
         'https://custom.api.com/v1/completions',
         expect.anything()
@@ -384,7 +384,7 @@ describe('Global Override System', () => {
       modelService.clearGlobalOverride('modelName');
       fetch.mockClear();
 
-      await llmRun('Test prompt 2');
+      await llmRun('Test prompt 2', { modelService });
       expect(fetch).toHaveBeenCalledWith(
         'https://api.openai.com/v1/chat/completions',
         expect.anything()
@@ -396,12 +396,14 @@ describe('Global Override System', () => {
 
       // First call
       await llmRun('Test prompt 1', {
+        modelService,
         modelName: 'fastGood',
         temperature: 0.1,
       });
 
       // Second call
       await llmRun('Test prompt 2', {
+        modelService,
         modelName: 'customModel',
         temperature: 0.2,
       });

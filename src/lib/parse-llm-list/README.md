@@ -5,7 +5,9 @@ A utility function for parsing lists from LLM responses that may be in JSON arra
 ## Usage
 
 ```javascript
-import { parseLLMList } from '@far-world-labs/verblets';
+import { init } from '@far-world-labs/verblets';
+
+const { parseLLMList } = init();
 
 // Parse JSON array response
 const jsonResponse = '["term1", "term2", "term3"]';

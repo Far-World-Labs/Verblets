@@ -7,14 +7,14 @@ import {
   debugResultGloballyIfChanged,
 } from '../../constants/llm-config.js';
 import { models } from '../../constants/model-mappings.js';
+import globalModelService from '../../services/llm-model/index.js';
+import { getClient as getRedisGlobal } from '../../services/redis/index.js';
 import { getProvider } from './providers/index.js';
 import normalizeLlm from '../normalize-llm/index.js';
 import { CAPABILITY_KEYS } from '../../constants/common.js';
 import anySignal from '../any-signal/index.js';
 import { get as getPromptResult, set as setPromptResult } from '../prompt-cache/index.js';
 import TimedAbortController from '../timed-abort-controller/index.js';
-import modelService from '../../services/llm-model/index.js';
-import { getClient as getRedis } from '../../services/redis/index.js';
 import { get as configGet } from '../config/index.js';
 import extractJson from '../extract-json/index.js';
 import stripResponse from '../strip-response/index.js';
@@ -185,14 +185,9 @@ export const MODEL_KEYS = [
   'topP',
 ];
 
-export const run = async (prompt, config = {}) => {
-  // Handle config parameter - can be string (model name) or object (full options)
-  let options;
-  if (typeof config === 'string') {
-    options = { modelName: config };
-  } else {
-    options = config;
-  }
+export const run = async (prompt, options = {}) => {
+  const ms = options.modelService || globalModelService;
+  const redisGet = options.getRedis || getRedisGlobal;
 
   const {
     abortSignal,
@@ -226,7 +221,7 @@ export const run = async (prompt, config = {}) => {
   const startTime = Date.now();
 
   // Apply global overrides to model options
-  const modelOptionsWithOverrides = modelService.applyGlobalOverrides(modelOptions);
+  const modelOptionsWithOverrides = ms.applyGlobalOverrides(modelOptions);
 
   // Extract capability flags for model negotiation
   // Supports both flat keys ({ fast: true }) and legacy negotiate wrapper ({ negotiate: { fast: true } })
@@ -245,14 +240,14 @@ export const run = async (prompt, config = {}) => {
     }
   }
 
-  const negotiationFromGlobalOverride = modelService.getGlobalOverride('negotiate');
+  const negotiationFromGlobalOverride = ms.getGlobalOverride('negotiate');
   const preferred = negotiationFromGlobalOverride ? null : modelOptionsWithOverrides.modelName;
 
   const modelNameNegotiated = shouldNegotiate
-    ? modelService.negotiateModel(preferred, negotiation)
+    ? ms.negotiateModel(preferred, negotiation)
     : modelOptionsWithOverrides.modelName;
 
-  const modelFound = modelService.getModel(modelNameNegotiated);
+  const modelFound = ms.getModel(modelNameNegotiated);
 
   // Telemetry: model selection
   const emitter = createProgressEmitter('llm', options.onProgress, options);
@@ -287,7 +282,7 @@ export const run = async (prompt, config = {}) => {
   const apiUrl = modelFound?.apiUrl || models.fastGood.apiUrl;
   const apiKey = modelFound?.apiKey || models.fastGood.apiKey;
 
-  const requestConfig = modelService.getRequestConfig({
+  const requestConfig = ms.getRequestConfig({
     prompt,
     ...modelOptionsWithOverrides,
     modelName: modelNameNegotiated,
@@ -334,8 +329,8 @@ export const run = async (prompt, config = {}) => {
   let cacheResult = null;
   let cache = null;
 
-  if (!cachingDisabled) {
-    cache = await getRedis();
+  if (!cachingDisabled && redisGet) {
+    cache = await redisGet();
     const { result } = await getPromptResult(cache, requestConfig);
     cacheResult = result;
   }
@@ -352,8 +347,7 @@ export const run = async (prompt, config = {}) => {
     if (!cacheResult || forceQuery) {
       // Use custom requestTimeout from modelOptions if provided, otherwise use model default
       const requestTimeout =
-        modelOptionsWithOverrides.requestTimeout ||
-        modelService.getModel(modelNameNegotiated).requestTimeout;
+        modelOptionsWithOverrides.requestTimeout || ms.getModel(modelNameNegotiated).requestTimeout;
 
       const timeoutController = new TimedAbortController(requestTimeout);
 

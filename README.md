@@ -25,9 +25,9 @@ Or use a `.env` file in your project root (loaded automatically via dotenv).
 Then initialize and call a function:
 
 ```js
-import { init, score } from '@far-world-labs/verblets';
+import { init } from '@far-world-labs/verblets';
 
-init();
+const { score } = init();
 
 const results = await score(
   ['reliability', 'performance', 'ease of use'],
@@ -35,16 +35,25 @@ const results = await score(
 );
 ```
 
-`init()` validates that an API key is present and sets up internal services. Call it once at startup. It accepts optional configuration:
+`init()` validates that an API key is present, creates a fresh model service, and returns an object of wrapped functions with services pre-injected. Destructure the functions you need:
 
 ```js
-init({
-  embed: true,            // enable local embedding model
-  redis: redisClient,     // pre-configured Redis client for caching
-  modelOverrides: {       // override default model selection
+const { filter, map, bool, llm } = init({
+  embed: true,            // enable local embedding model (global, shared across instances)
+  redis: redisClient,     // pre-configured Redis client for caching (per-instance)
+  modelOverrides: {       // override default model selection (per-instance)
     modelName: 'claude-sonnet-4-20250514',
   },
 });
+```
+
+Each `init()` call creates an isolated instance. Two instances do not share model configuration or caches:
+
+```js
+const a = init({ modelOverrides: { modelName: 'gpt-4.1' } });
+const b = init({ modelOverrides: { modelName: 'claude-sonnet-4-20250514' } });
+await a.filter(items, 'urgent');   // uses gpt-4.1
+await b.filter(items, 'urgent');   // uses claude-sonnet-4-20250514
 ```
 
 Without Redis, caching is disabled and the library operates statelessly.
@@ -172,7 +181,7 @@ Codebase utilities analyze, test, and improve code quality using AI reasoning.
 Low-level utilities that support chains and verblets. Most are synchronous and make no LLM calls.
 
 - [llm](./src/lib/llm) - Core LLM wrapper with capability-based model selection and structured output
-- [context](./src/lib/context) - Config resolution: `getOption`, `getOptions`, `withPolicy`, `scopeOperation`
+- [context](./src/lib/context) - Config resolution: `nameStep`, `getOption`, `getOptions`, `withPolicy`
 - [prompt-cache](./src/lib/prompt-cache) - Cache LLM prompts and responses
 - [retry](./src/lib/retry) - Config-aware async retry
 - [parallel-batch](./src/lib/parallel-batch) - Parallel execution with concurrency limits

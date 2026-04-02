@@ -1,7 +1,6 @@
 import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import parallelBatch from '../../lib/parallel-batch/index.js';
-import { createLifecycleLogger } from '../../lib/lifecycle-logger/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { blockExtractionSchema } from './block-schema.js';
 import createProgressEmitter from '../../lib/progress/index.js';
@@ -79,38 +78,17 @@ export async function extractBlocks(text, instructions, config = {}) {
     precision: withPolicy(mapPrecision, ['windowSize', 'overlapSize']),
     maxParallel: 3,
   });
-  const { logger, onProgress } = runConfig;
-
-  const lifecycleLogger = createLifecycleLogger(logger, 'chain:extract-blocks');
+  const { onProgress } = runConfig;
 
   // Handle empty text
   if (!text || text.trim() === '') {
-    const emptyMeta = { blocksExtracted: 0 };
-    lifecycleLogger.logResult([], emptyMeta);
-    emitter.complete({ ...emptyMeta, outcome: 'success' });
-
+    emitter.complete({ blocksExtracted: 0, outcome: 'success' });
     return [];
   }
 
   try {
     const lines = text.split('\n');
     const totalLines = lines.length;
-
-    lifecycleLogger.logStart({
-      totalLines,
-      windowSize,
-      overlapSize,
-      maxParallel,
-    });
-
-    // Log input
-    lifecycleLogger.info({
-      event: 'chain:extract-blocks:input',
-      value: {
-        textLength: text.length,
-        lineCount: totalLines,
-      },
-    });
 
     // Generate window start positions
     const windowStarts = [];
@@ -140,7 +118,6 @@ export async function extractBlocks(text, instructions, config = {}) {
             callLlm(prompt, {
               ...runConfig,
               response_format: blockExtractionSchema,
-              logger: lifecycleLogger,
             }),
           {
             label: `extract-blocks:window`,
@@ -192,16 +169,7 @@ export async function extractBlocks(text, instructions, config = {}) {
       blocksExtracted: blocks.length,
     });
 
-    // Log output
-    lifecycleLogger.info({
-      event: 'chain:extract-blocks:output',
-      value: {
-        totalBlocks: blocks.length,
-      },
-    });
-
     const resultMeta = { blocksExtracted: blocks.length, outcome: 'success' };
-    lifecycleLogger.logResult(blocks, resultMeta);
     emitter.complete(resultMeta);
 
     return blocks;

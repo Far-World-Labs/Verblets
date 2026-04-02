@@ -3,7 +3,9 @@
 Expand retrieved hits with neighboring chunks for richer context. Given search hits and the full chunk array, this module widens each hit to include surrounding chunks, merges overlapping windows, and returns continuous passages.
 
 ```javascript
-import { embedNeighborChunks } from '@far-world-labs/verblets';
+import { init } from '@far-world-labs/verblets';
+
+const { embedNeighborChunks } = init();
 
 const allChunks = [
   { text: 'Introduction to RAG', start: 0, end: 19 },

@@ -3,7 +3,9 @@
 Reusable prompt templates and fragments used by chains and verblets. Each module exports a function that builds a formatted prompt string from parameters.
 
 ```javascript
-import { prompts } from '@far-world-labs/verblets';
+import { init } from '@far-world-labs/verblets';
+
+const { prompts } = init();
 
 // Prompt constants — shared instruction fragments
 const { onlyJSON, onlyJSONArray, contentIsQuestion } = prompts.constants;

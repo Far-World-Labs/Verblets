@@ -1,49 +1,85 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import init from './init.js';
 import * as config from './lib/config/index.js';
-import modelService from './services/llm-model/index.js';
-import { getClient } from './services/redis/index.js';
-
 describe('init()', () => {
   beforeEach(() => {
     config.setRuntimeProvider(undefined);
   });
 
-  it('returns config and modelService', () => {
+  it('returns config with modelService and getRedis', () => {
     const result = init();
     expect(result.config).toBeDefined();
-    expect(result.config.get).toBe(config.get);
-    expect(result.modelService).toBe(modelService);
+    expect(result.config.modelService).toBeDefined();
+    expect(typeof result.config.modelService.getModel).toBe('function');
+    expect(typeof result.config.modelService.negotiateModel).toBe('function');
+    expect(result.config.getRedis).toBeUndefined();
   });
 
-  it('wires runtimeProvider into config', () => {
+  it('returns a fresh ModelService instance', () => {
+    const result = init();
+    expect(result.modelService).toBeDefined();
+    expect(typeof result.modelService.getModel).toBe('function');
+  });
+
+  it('returns wrapped functions from shared exports', () => {
+    const result = init();
+    expect(typeof result.filter).toBe('function');
+    expect(typeof result.map).toBe('function');
+    expect(typeof result.bool).toBe('function');
+    expect(typeof result.llm).toBe('function');
+    expect(typeof result.score).toBe('function');
+  });
+
+  it('two init calls return independent ModelService instances', () => {
+    const a = init();
+    const b = init();
+    expect(a.modelService).not.toBe(b.modelService);
+  });
+
+  it('model overrides on one instance do not affect another', () => {
+    const a = init({ modelOverrides: { temperature: 0.1 } });
+    const b = init({ modelOverrides: { temperature: 0.9 } });
+    expect(a.modelService.getGlobalOverride('temperature')).toBe(0.1);
+    expect(b.modelService.getGlobalOverride('temperature')).toBe(0.9);
+  });
+
+  it('wires runtimeProvider into global config', () => {
     const provider = { get: vi.fn() };
     init({ runtimeProvider: provider });
     expect(config.getRuntimeProvider()).toBe(provider);
   });
 
-  it('wires redis client via setClient', async () => {
+  it('provides getRedis when redis client is supplied', () => {
     const mockRedis = { get: vi.fn(), set: vi.fn() };
-    init({ redis: mockRedis });
-    const client = await getClient();
+    const result = init({ redis: mockRedis });
+    expect(result.config.getRedis).toBeDefined();
+    expect(typeof result.config.getRedis).toBe('function');
+  });
+
+  it('getRedis resolves to the supplied redis client', async () => {
+    const mockRedis = { get: vi.fn(), set: vi.fn() };
+    const result = init({ redis: mockRedis });
+    const client = await result.config.getRedis();
     expect(client).toBe(mockRedis);
   });
 
-  it('applies model overrides', () => {
-    const spy = vi.spyOn(modelService, 'setGlobalOverride');
-    init({ modelOverrides: { temperature: 0.5, modelName: 'gpt-4.1' } });
-    expect(spy).toHaveBeenCalledWith('temperature', 0.5);
-    expect(spy).toHaveBeenCalledWith('modelName', 'gpt-4.1');
-    spy.mockRestore();
+  it('applies model overrides to the instance ModelService', () => {
+    const result = init({ modelOverrides: { temperature: 0.5, modelName: 'gpt-4.1' } });
+    expect(result.modelService.getGlobalOverride('temperature')).toBe(0.5);
+    expect(result.modelService.getGlobalOverride('modelName')).toBe('gpt-4.1');
   });
 
-  it('is idempotent — can be called multiple times', () => {
-    const p1 = { get: vi.fn() };
-    const p2 = { get: vi.fn() };
-    init({ runtimeProvider: p1 });
-    expect(config.getRuntimeProvider()).toBe(p1);
-    init({ runtimeProvider: p2 });
-    expect(config.getRuntimeProvider()).toBe(p2);
+  it('returns a context builder', () => {
+    const result = init();
+    expect(result.context).toBeDefined();
+    expect(typeof result.context.setApplication).toBe('function');
+  });
+
+  it('passes through non-function exports unchanged', () => {
+    const result = init();
+    // constants is a plain object — should pass through
+    expect(result.constants).toBeDefined();
+    expect(typeof result.constants).toBe('object');
   });
 
   it('skips undefined options gracefully', () => {

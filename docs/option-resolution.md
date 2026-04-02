@@ -59,7 +59,8 @@ When a single consumer dial maps to multiple internal values, use `withPolicy` w
 
 ```javascript
 const runConfig = nameStep('score', inputConfig);
-const span = track('score', runConfig);
+const emitter = createProgressEmitter('score', runConfig.onProgress, runConfig);
+emitter.start();
 const { iterations, extremeK } = await getOptions(runConfig, {
   effort: withPolicy(mapEffort, ['iterations', 'extremeK']),
 });
@@ -68,6 +69,8 @@ const { iterations, extremeK } = await getOptions(runConfig, {
 // Mapper returns:     { iterations: 2, extremeK: 15 }
 // Destructured as:    iterations = 2, extremeK = 15
 ```
+
+Override keys are flattened into the result and the parent key (`effort`) is excluded.
 
 ## Operation composition
 
@@ -88,4 +91,4 @@ const divergence = await getOption('divergence', config, undefined);
 
 ## Source
 
-The option API — `getOption`, `getOptions`, `withPolicy`, `nameStep` — is exported from `src/lib/context/option.js`. The lifecycle handle `track` is exported from `src/lib/progress/index.js`.
+The option API — `nameStep`, `getOption`, `getOptions`, `withPolicy` — is exported from `src/lib/context/option.js`. The lifecycle emitter `createProgressEmitter` is the default export from `src/lib/progress/index.js`.

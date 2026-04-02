@@ -3,7 +3,9 @@
 Lightweight fluent assertion with clear error messages. Used internally for contract checks on inputs.
 
 ```javascript
-import { assert } from '@far-world-labs/verblets';
+import { init } from '@far-world-labs/verblets';
+
+const { assert } = init();
 
 assert(2 + 2).toBe(4);                          // passes
 assert('hello').toBe('world');                   // throws: Expected "hello" to be "world"

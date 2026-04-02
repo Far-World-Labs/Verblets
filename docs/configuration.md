@@ -1,5 +1,25 @@
 # Configuration
 
+## Setup
+
+`init()` creates an isolated instance with its own model service and returns wrapped functions that inject services automatically:
+
+```javascript
+import { init } from '@far-world-labs/verblets';
+
+const { filter, map, score } = init();
+await filter(items, 'urgent');  // modelService injected behind the scenes
+```
+
+You can also spread the instance config into a raw import when you need per-call overrides:
+
+```javascript
+import { init, filter as rawFilter } from '@far-world-labs/verblets';
+
+const v = init();
+await rawFilter(items, 'urgent', { ...v.config, batchSize: 5 });
+```
+
 Every verblet and chain accepts a config object as its last parameter. Config flows through the entire call tree — pass it once and everything resolves from it.
 
 ## Model Selection
@@ -79,7 +99,7 @@ await filter(items, 'urgent', config);
 await score(items, 'quality', config);
 ```
 
-See [option resolution](./option-resolution.md) for the full internal API (`nameStep`, `track`, `getOptions`, `getOption`, `withPolicy`, mappers).
+See [option resolution](./option-resolution.md) for the full internal API (`nameStep`, `createProgressEmitter`, `getOptions`, `getOption`, `withPolicy`, mappers).
 
 ## Structured Output
 

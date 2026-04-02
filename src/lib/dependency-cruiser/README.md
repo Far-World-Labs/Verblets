@@ -3,7 +3,9 @@
 Wrapper around [dependency-cruiser](https://github.com/sverweij/dependency-cruiser) for enforcing architectural rules programmatically. Used by architecture tests to detect circular dependencies, enforce layer separation, and validate import boundaries.
 
 ```javascript
-import { runDCRule } from '@far-world-labs/verblets';
+import { init } from '@far-world-labs/verblets';
+
+const { runDCRule } = init();
 
 // Prevent verblets from importing chains
 await runDCRule({

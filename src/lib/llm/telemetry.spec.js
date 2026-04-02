@@ -5,11 +5,6 @@ vi.mock('node-fetch', () => ({
   default: vi.fn(),
 }));
 
-// Mock Redis (disable caching)
-vi.mock('../../services/redis/index.js', () => ({
-  getClient: vi.fn().mockResolvedValue(null),
-}));
-
 // Mock prompt cache
 vi.mock('../prompt-cache/index.js', () => ({
   get: vi.fn().mockResolvedValue({ result: null }),
@@ -22,9 +17,11 @@ import callLlm from './index.js';
 import retry from '../retry/index.js';
 import { nameStep, getOptionDetail } from '../context/option.js';
 import createProgressEmitter from '../progress/index.js';
+import { ModelService } from '../../services/llm-model/index.js';
 import {
   Kind,
   ChainEvent,
+  OpEvent,
   TelemetryEvent,
   LlmStatus,
   OptionSource,
@@ -33,6 +30,7 @@ import {
 } from '../progress/constants.js';
 
 const mockFetch = fetch;
+const testMs = new ModelService();
 
 const makeApiResponse = (content, usage) => ({
   ok: true,
@@ -67,6 +65,7 @@ describe('Telemetry events', () => {
       mockFetch.mockResolvedValueOnce(makeApiResponse('hello'));
 
       await callLlm('test prompt', {
+        modelService: testMs,
         onProgress: (e) => events.push(e),
         operation: 'test-chain',
       });
@@ -93,6 +92,7 @@ describe('Telemetry events', () => {
       );
 
       await callLlm('test prompt', {
+        modelService: testMs,
         onProgress: (e) => events.push(e),
         operation: 'filter',
       });
@@ -140,6 +140,7 @@ describe('Telemetry events', () => {
 
       await expect(
         callLlm('test prompt', {
+          modelService: testMs,
           onProgress: (e) => events.push(e),
           operation: 'score',
         })
@@ -177,6 +178,7 @@ describe('Telemetry events', () => {
 
       await expect(
         callLlm('test prompt', {
+          modelService: testMs,
           onProgress: (e) => events.push(e),
           operation: 'map',
         })
@@ -195,7 +197,7 @@ describe('Telemetry events', () => {
       mockFetch.mockResolvedValueOnce(makeApiResponse('hello'));
 
       // Should not throw — emitProgress handles undefined callback
-      await callLlm('test prompt', {});
+      await callLlm('test prompt', { modelService: testMs });
     });
 
     it('error still propagates after telemetry emission', async () => {
@@ -205,6 +207,7 @@ describe('Telemetry events', () => {
 
       await expect(
         callLlm('test prompt', {
+          modelService: testMs,
           onProgress: vi.fn(),
         })
       ).rejects.toThrow('Internal server error');
@@ -215,6 +218,7 @@ describe('Telemetry events', () => {
       mockFetch.mockResolvedValueOnce(makeApiResponse('hello'));
 
       await callLlm('test prompt', {
+        modelService: testMs,
         onProgress: (e) => events.push(e),
         operation: 'test',
       });
@@ -228,6 +232,7 @@ describe('Telemetry events', () => {
       mockFetch.mockResolvedValueOnce(makeApiResponse('hello'));
 
       await callLlm('test prompt', {
+        modelService: testMs,
         onProgress: (e) => events.push(e),
         fast: true,
         good: true,
@@ -307,12 +312,12 @@ describe('Telemetry events', () => {
       await vi.runAllTimersAsync();
       await promise;
 
-      const attemptEvents = events.filter((e) => e.event === TelemetryEvent.retryAttempt);
+      const attemptEvents = events.filter((e) => e.event === OpEvent.retryAttempt);
       expect(attemptEvents).toHaveLength(1);
       expect(attemptEvents[0]).toMatchObject({
         kind: Kind.telemetry,
         step: 'test-retry',
-        event: TelemetryEvent.retryAttempt,
+        event: OpEvent.retryAttempt,
         operation: 'filter',
         attemptNumber: 1,
       });
@@ -344,12 +349,12 @@ describe('Telemetry events', () => {
       await vi.runAllTimersAsync();
       await promise;
 
-      const errorEvents = events.filter((e) => e.event === TelemetryEvent.retryError);
+      const errorEvents = events.filter((e) => e.event === OpEvent.retryError);
       expect(errorEvents).toHaveLength(1);
       expect(errorEvents[0]).toMatchObject({
         kind: Kind.telemetry,
         step: 'llm-call',
-        event: TelemetryEvent.retryError,
+        event: OpEvent.retryError,
         operation: 'score',
         attemptNumber: 1,
         error: {
@@ -388,12 +393,12 @@ describe('Telemetry events', () => {
       await settled;
       await expect(promise).rejects.toThrow('Server error');
 
-      const exhaustEvents = events.filter((e) => e.event === TelemetryEvent.retryExhaust);
+      const exhaustEvents = events.filter((e) => e.event === OpEvent.retryExhaust);
       expect(exhaustEvents).toHaveLength(1);
       expect(exhaustEvents[0]).toMatchObject({
         kind: Kind.telemetry,
         step: 'failing',
-        event: TelemetryEvent.retryExhaust,
+        event: OpEvent.retryExhaust,
         operation: 'reduce',
         error: { message: 'Server error', httpStatus: 500 },
       });
@@ -421,7 +426,7 @@ describe('Telemetry events', () => {
       await vi.runAllTimersAsync();
       await promise;
 
-      const attemptEvents = events.filter((e) => e.event === TelemetryEvent.retryAttempt);
+      const attemptEvents = events.filter((e) => e.event === OpEvent.retryAttempt);
       expect(attemptEvents).toHaveLength(3);
       expect(attemptEvents[0].attemptNumber).toBe(1);
       expect(attemptEvents[1].attemptNumber).toBe(2);

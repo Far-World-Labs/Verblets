@@ -3,7 +3,9 @@
 Parse an LLM response string into a boolean. Strips markdown formatting, then matches against common truthy/falsy strings (case-insensitive).
 
 ```javascript
-import { toBool } from '@far-world-labs/verblets';
+import { init } from '@far-world-labs/verblets';
+
+const { toBool } = init();
 
 toBool('true');    // => true
 toBool('False');   // => false
