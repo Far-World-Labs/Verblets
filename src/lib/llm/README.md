@@ -5,7 +5,9 @@ Core LLM integration for making API calls with capability-based model selection,
 ## Usage
 
 ```javascript
-import { llm as callLlm } from '@far-world-labs/verblets';
+import { init } from '@far-world-labs/verblets';
+
+const { llm: callLlm } = init();
 
 // Basic usage — default model
 const response = await callLlm('Explain quantum computing in simple terms');
@@ -35,7 +37,7 @@ const result = await callLlm(prompt, {
 });
 ```
 
-Inside chains, callLlm receives the enriched config object directly — see [option resolution](../../../docs/option-resolution.md) for how `nameStep` + `track` prepare config.
+Inside chains, callLlm receives the enriched config object directly — see [option resolution](../../../docs/option-resolution.md) for how `nameStep` + `createProgressEmitter` prepare config.
 
 ## API
 
@@ -77,9 +79,10 @@ const config = {
 The `llm` parameter itself is also resolved from config — chains with non-standard model defaults set them via `nameStep`:
 
 ```javascript
-// nameStep returns the enriched config, track returns a lifecycle handle
+// nameStep returns the enriched config, createProgressEmitter returns a lifecycle handle
 const runConfig = nameStep('my-chain', { llm: 'fastGoodCheap', ...inputConfig });
-const span = track('my-chain', runConfig);
+const emitter = createProgressEmitter('my-chain', runConfig.onProgress, runConfig);
+emitter.start();
 // callLlm resolves llm from config automatically
 await callLlm(prompt, runConfig);
 ```

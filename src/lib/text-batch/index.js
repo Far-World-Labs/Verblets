@@ -1,4 +1,4 @@
-import modelService, { resolveModel } from '../../services/llm-model/index.js';
+import globalModelService, { resolveModel } from '../../services/llm-model/index.js';
 import { getOptions } from '../context/option.js';
 
 const FALLBACK_TOKENS_PER_CHAR = 0.25;
@@ -97,8 +97,9 @@ export default async function createBatches(list, config = {}) {
     maxTokenBudget: DEFAULT_MAX_TOKEN_BUDGET,
   });
 
-  const modelName = resolveModel(llm) || modelService.bestPublicModelKey;
-  const model = modelService.getModel(modelName);
+  const modelSvc = config.modelService || globalModelService;
+  const modelName = resolveModel(llm) || modelSvc.bestPublicModelKey;
+  const model = modelSvc.getModel(modelName);
   const budget = calculateBudget({
     model,
     outputRatio,

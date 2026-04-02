@@ -3,14 +3,15 @@
 Reusable JSON Schema definitions for shaping structured LLM output. These schemas are used by the `auto` verblet for function tool definitions and can be passed to any chain or verblet via `response_format`.
 
 ```javascript
-import { schemas } from '@far-world-labs/verblets';
+import { init } from '@far-world-labs/verblets';
+
+const { schemas, auto } = init();
 
 // All schemas available as a namespace
 console.log(Object.keys(schemas));
 // ['intent', 'cars-test', 'schema-dot-org-photograph', 'schema-dot-org-place']
 
 // Used by the auto verblet for function tool selection
-import { auto } from '@far-world-labs/verblets';
 const result = await auto('Parse this address', { schemas: myCustomSchemas });
 ```
 

@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import modelService from '../../services/llm-model/index.js';
+import { ModelService } from '../../services/llm-model/index.js';
 
 import shortenText from './index.js';
+
+const testMs = new ModelService();
 
 const examples = [
   {
@@ -45,6 +47,7 @@ describe('Shorten text', () => {
   examples.forEach((example) => {
     it(example.name, () => {
       const got = shortenText(example.inputs.text, {
+        modelService: testMs,
         targetTokenCount: example.inputs.targetTokenCount,
         minCharsToRemove: example.inputs.minCharsToRemove,
       });
@@ -59,7 +62,7 @@ describe('Shorten text', () => {
         expect(example.want.end.test(got)).toBe(true);
       }
       if (example.want.maxLength) {
-        expect(modelService.getBestPublicModel().toTokens(got).length).toBeLessThanOrEqual(
+        expect(testMs.getBestPublicModel().toTokens(got).length).toBeLessThanOrEqual(
           example.want.maxLength
         );
       }

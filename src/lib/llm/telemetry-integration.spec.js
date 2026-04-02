@@ -5,11 +5,6 @@ vi.mock('node-fetch', () => ({
   default: vi.fn(),
 }));
 
-// Mock Redis (disable caching)
-vi.mock('../../services/redis/index.js', () => ({
-  getClient: vi.fn().mockResolvedValue(null),
-}));
-
 // Mock prompt cache
 vi.mock('../prompt-cache/index.js', () => ({
   get: vi.fn().mockResolvedValue({ result: null }),
@@ -22,9 +17,11 @@ import callLlm from './index.js';
 import retry from '../retry/index.js';
 import { nameStep } from '../context/option.js';
 import createProgressEmitter from '../progress/index.js';
+import { ModelService } from '../../services/llm-model/index.js';
 import {
   Kind,
   ChainEvent,
+  OpEvent,
   TelemetryEvent,
   LlmStatus,
   Metric,
@@ -32,6 +29,7 @@ import {
 } from '../progress/constants.js';
 
 const mockFetch = fetch;
+const testMs = new ModelService();
 
 const makeApiResponse = (content, usage) => ({
   ok: true,
@@ -58,7 +56,7 @@ describe('Telemetry integration', () => {
       mockFetch.mockResolvedValueOnce(makeApiResponse('chain result'));
 
       // Simulate a chain: nameStep scopes the operation, createProgressEmitter emits chain:start, then callLlm runs inside it
-      const runConfig = nameStep('mychain', { onProgress });
+      const runConfig = nameStep('mychain', { onProgress, modelService: testMs });
       createProgressEmitter('mychain', runConfig.onProgress, runConfig).start();
       await callLlm('do something useful', runConfig);
 
@@ -94,7 +92,7 @@ describe('Telemetry integration', () => {
       mockFetch.mockResolvedValueOnce(makeApiResponse('nested result'));
 
       // Parent chain
-      const parent = nameStep('parent', { onProgress });
+      const parent = nameStep('parent', { onProgress, modelService: testMs });
       createProgressEmitter('parent', parent.onProgress, parent).start();
 
       // Child chain receives parent's enriched config
@@ -162,26 +160,22 @@ describe('Telemetry integration', () => {
       const retryTelemetry = events.filter(
         (e) =>
           e.kind === Kind.telemetry &&
-          [
-            TelemetryEvent.retryAttempt,
-            TelemetryEvent.retryError,
-            TelemetryEvent.retryExhaust,
-          ].includes(e.event)
+          [OpEvent.retryAttempt, OpEvent.retryError, OpEvent.retryExhaust].includes(e.event)
       );
 
       // Expected sequence: attempt(1) → error(1) → attempt(2)
       expect(retryTelemetry).toHaveLength(3);
       expect(retryTelemetry[0]).toMatchObject({
-        event: TelemetryEvent.retryAttempt,
+        event: OpEvent.retryAttempt,
         attemptNumber: 1,
       });
       expect(retryTelemetry[1]).toMatchObject({
-        event: TelemetryEvent.retryError,
+        event: OpEvent.retryError,
         attemptNumber: 1,
         error: { message: 'Rate limited', httpStatus: 429, type: 'rate_limit_error' },
       });
       expect(retryTelemetry[2]).toMatchObject({
-        event: TelemetryEvent.retryAttempt,
+        event: OpEvent.retryAttempt,
         attemptNumber: 2,
       });
 
@@ -219,29 +213,25 @@ describe('Telemetry integration', () => {
       const retryTelemetry = events.filter(
         (e) =>
           e.kind === Kind.telemetry &&
-          [
-            TelemetryEvent.retryAttempt,
-            TelemetryEvent.retryError,
-            TelemetryEvent.retryExhaust,
-          ].includes(e.event)
+          [OpEvent.retryAttempt, OpEvent.retryError, OpEvent.retryExhaust].includes(e.event)
       );
 
       // attempt(1) → error(1) → attempt(2) → exhaust
       expect(retryTelemetry).toHaveLength(4);
       expect(retryTelemetry[0]).toMatchObject({
-        event: TelemetryEvent.retryAttempt,
+        event: OpEvent.retryAttempt,
         attemptNumber: 1,
       });
       expect(retryTelemetry[1]).toMatchObject({
-        event: TelemetryEvent.retryError,
+        event: OpEvent.retryError,
         attemptNumber: 1,
       });
       expect(retryTelemetry[2]).toMatchObject({
-        event: TelemetryEvent.retryAttempt,
+        event: OpEvent.retryAttempt,
         attemptNumber: 2,
       });
       expect(retryTelemetry[3]).toMatchObject({
-        event: TelemetryEvent.retryExhaust,
+        event: OpEvent.retryExhaust,
         error: { message: 'Server down', httpStatus: 500 },
       });
     });
@@ -260,7 +250,7 @@ describe('Telemetry integration', () => {
           makeApiResponse('second', { prompt_tokens: 50, completion_tokens: 25, total_tokens: 75 })
         );
 
-      const runConfig = nameStep('aggregate', { onProgress });
+      const runConfig = nameStep('aggregate', { onProgress, modelService: testMs });
       createProgressEmitter('aggregate', runConfig.onProgress, runConfig).start();
 
       await callLlm('prompt one', runConfig);

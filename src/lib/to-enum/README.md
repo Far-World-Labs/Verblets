@@ -3,7 +3,9 @@
 Match an LLM response string to a key in an enum object. Case-insensitive, strips markdown formatting and punctuation before matching.
 
 ```javascript
-import { toEnum } from '@far-world-labs/verblets';
+import { init } from '@far-world-labs/verblets';
+
+const { toEnum } = init();
 
 const colors = { red: 'red', green: 'green', blue: 'blue' };
 

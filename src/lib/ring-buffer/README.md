@@ -3,7 +3,9 @@
 Single-writer, multiple-reader async ring buffer with backpressure. Uses a double-buffer technique to eliminate wraparound logic — readers get contiguous slices without copying.
 
 ```javascript
-import { ringBuffer as RingBuffer } from '@far-world-labs/verblets';
+import { init } from '@far-world-labs/verblets';
+
+const { ringBuffer: RingBuffer } = init();
 
 const buf = new RingBuffer(1000);
 const reader = buf.reader();

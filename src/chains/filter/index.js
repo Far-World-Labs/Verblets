@@ -1,12 +1,11 @@
 import listBatch, { ListStyle, determineStyle } from '../../verblets/list-batch/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { filterDecisionsJsonSchema } from './schemas.js';
-import { createLifecycleLogger, extractBatchConfig } from '../../lib/lifecycle-logger/index.js';
 import { createBatches, retry } from '../../lib/index.js';
 import { jsonSchema } from '../../lib/llm/index.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
-import { OpEvent } from '../../lib/progress/constants.js';
+import { OpEvent, DomainEvent } from '../../lib/progress/constants.js';
 
 const name = 'filter';
 
@@ -51,18 +50,10 @@ const filter = async function filter(list, instructions, config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
+  emitter.emit({ event: DomainEvent.input, value: list });
   const { guidance, errorPosture } = await getOptions(runConfig, {
     strictness: withPolicy(mapStrictness, ['guidance', 'errorPosture']),
   });
-  const lifecycleLogger = createLifecycleLogger(runConfig.logger, 'chain:filter');
-
-  lifecycleLogger.logStart(
-    extractBatchConfig({
-      totalItems: list.length,
-      batchSize: runConfig.batchSize,
-    })
-  );
-
   const results = [];
   let batchErrors = 0;
   const batches = await createBatches(list, runConfig);
@@ -75,22 +66,8 @@ const filter = async function filter(list, instructions, config = {}) {
     totalBatches: activeBatchCount,
   });
 
-  lifecycleLogger.logEvent('batches-created', {
-    totalBatches: batches.length,
-    activeBatches: activeBatchCount,
-    batchSizes: batches.map((b) => b.items?.length || 0),
-  });
-
   for (const [batchIndex, { items, skip }] of batches.entries()) {
-    if (skip) {
-      lifecycleLogger.logEvent('batch-skip', { batchIndex });
-      continue;
-    }
-
-    lifecycleLogger.logEvent('batch-start', {
-      batchIndex,
-      itemCount: items.length,
-    });
+    if (skip) continue;
 
     const batchStyle = determineStyle(runConfig.listStyle, items, runConfig.autoModeThreshold);
 
@@ -125,7 +102,6 @@ Process exactly ${count} items from the XML list below and return ${count} yes/n
       ...runConfig,
       listStyle: batchStyle,
       responseFormat: runConfig.responseFormat ?? filterResponseFormat,
-      logger: lifecycleLogger,
     };
 
     let response;
@@ -137,7 +113,6 @@ Process exactly ${count} items from the XML list below and return ${count} yes/n
       });
     } catch (error) {
       emitter.error(error, { batchIndex, itemCount: items.length });
-      lifecycleLogger.logError(error, { batchIndex, itemCount: items.length });
       if (errorPosture === 'strict') throw error;
       batchErrors++;
       continue;
@@ -146,22 +121,14 @@ Process exactly ${count} items from the XML list below and return ${count} yes/n
     // listBatch now returns arrays directly
     const decisions = response;
 
-    let included = 0;
     items.forEach((item, i) => {
       const decision = decisions[i]?.toLowerCase().trim();
       if (decision === 'yes') {
         results.push(item);
-        included++;
       }
     });
 
     batchDone(items.length);
-
-    lifecycleLogger.logEvent('batch-done', {
-      batchIndex,
-      included,
-      itemCount: items.length,
-    });
   }
 
   emitter.progress({
@@ -172,7 +139,7 @@ Process exactly ${count} items from the XML list below and return ${count} yes/n
 
   const outcome = batchErrors > 0 ? 'partial' : 'success';
   const resultMeta = { inputCount: list.length, outputCount: results.length, outcome };
-  lifecycleLogger.logResult(results, resultMeta);
+  emitter.emit({ event: DomainEvent.output, value: results });
   emitter.complete(resultMeta);
 
   return results;

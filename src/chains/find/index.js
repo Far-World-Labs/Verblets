@@ -1,13 +1,12 @@
 import listBatch, { ListStyle, determineStyle } from '../../verblets/list-batch/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { findResultJsonSchema } from './schemas.js';
-import { createLifecycleLogger, extractBatchConfig } from '../../lib/lifecycle-logger/index.js';
 import { createBatches, parallel, retry } from '../../lib/index.js';
 import { jsonSchema } from '../../lib/llm/index.js';
 import { debug } from '../../lib/debug/index.js';
 import { nameStep, getOptions } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
-import { OpEvent } from '../../lib/progress/constants.js';
+import { OpEvent, DomainEvent } from '../../lib/progress/constants.js';
 
 const name = 'find';
 
@@ -17,11 +16,11 @@ const find = async function find(list, instructions, config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
+  emitter.emit({ event: DomainEvent.input, value: list });
   const { maxParallel, errorPosture } = await getOptions(runConfig, {
     maxParallel: 3,
     errorPosture: 'resilient',
   });
-  const lifecycleLogger = createLifecycleLogger(runConfig.logger, 'chain:find');
   const findInstructions = ({ style, count }) => {
     const baseInstructions = `From the list below, identify and return the SINGLE item that BEST matches the search criteria.
 
@@ -58,14 +57,6 @@ Process exactly ${count} items from the XML list below and return the single bes
     totalBatches: batchesToProcess.length,
   });
 
-  lifecycleLogger.logStart(
-    extractBatchConfig({
-      totalItems: list.length,
-      totalBatches: batchesToProcess.length,
-      maxParallel,
-    })
-  );
-
   // Process in chunks to allow early termination
   for (let i = 0; i < batchesToProcess.length && !foundEarly; i += maxParallel) {
     const chunk = batchesToProcess.slice(i, i + maxParallel);
@@ -82,7 +73,6 @@ Process exactly ${count} items from the XML list below and return the single bes
                 ...runConfig,
                 listStyle: batchStyle,
                 responseFormat: runConfig.responseFormat || findResponseFormat,
-                logger: lifecycleLogger,
               }),
             {
               label: 'find:batch',
@@ -98,7 +88,6 @@ Process exactly ${count} items from the XML list below and return the single bes
             const itemIndex = list.findIndex((item) => item === foundItem);
             const matchIndex = itemIndex !== -1 ? itemIndex : startIndex;
             results.push({ result: foundItem, index: matchIndex });
-            lifecycleLogger.logEvent('match-found', { result: foundItem, index: matchIndex });
           }
 
           batchDone(items.length);
@@ -133,13 +122,13 @@ Process exactly ${count} items from the XML list below and return the single bes
       current.index < best.index ? current : best
     );
     const foundMeta = { found: true, totalItems: list.length, outcome: 'success' };
-    lifecycleLogger.logResult(earliest.result, foundMeta);
+    emitter.emit({ event: DomainEvent.output, value: earliest.result });
     emitter.complete(foundMeta);
     return earliest.result;
   }
 
   const notFoundMeta = { found: false, totalItems: list.length, outcome: 'success' };
-  lifecycleLogger.logResult('', notFoundMeta);
+  emitter.emit({ event: DomainEvent.output, value: '' });
   emitter.complete(notFoundMeta);
   return '';
 };

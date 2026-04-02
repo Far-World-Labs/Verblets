@@ -90,4 +90,4 @@ Each batch from `createBatches` includes:
 
 - `src/lib/text-batch/index.js` — `createBatches`, token-aware batch sizing
 - `src/lib/parallel-batch/index.js` — `parallelBatch`, concurrency control
-- `src/lib/progress/index.js` — `prepareBatches`, combines batching with progress tracking
+- `src/lib/progress/index.js` — `createProgressEmitter`, lifecycle tracking and batch progress

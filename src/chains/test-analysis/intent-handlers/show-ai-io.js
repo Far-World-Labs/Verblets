@@ -19,7 +19,10 @@ const extractIoEvents = (events) => {
     // Direct AI events
     if (eventType === 'ai-input' || eventType === 'ai-output') return true;
 
-    // Lifecycle logger events (e.g., bool:input, central-tendency:output)
+    // Domain events from progress emitter
+    if (eventType === 'input' || eventType === 'output') return true;
+
+    // Legacy lifecycle logger events (e.g., bool:input, central-tendency:output)
     if (eventType.includes(':input') || eventType.includes(':output')) return true;
 
     return false;

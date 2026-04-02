@@ -3,7 +3,9 @@
 Wrap an async function with a timer that resets each time the function signals progress. If the function goes silent for longer than the timeout, the returned promise rejects.
 
 ```javascript
-import { withInactivityTimeout } from '@far-world-labs/verblets';
+import { init } from '@far-world-labs/verblets';
+
+const { withInactivityTimeout } = init();
 
 const result = await withInactivityTimeout(
   async (onUpdate) => {

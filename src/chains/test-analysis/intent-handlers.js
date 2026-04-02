@@ -4,7 +4,6 @@
  */
 
 import auto from '../../verblets/auto/index.js';
-import { createLifecycleLogger } from '../../lib/lifecycle-logger/index.js';
 import { createIntentHandler } from './intent-handlers/index.js';
 import { cyan, bold } from './output-utils.js';
 
@@ -29,10 +28,6 @@ const intentSchemas = {
 };
 
 export async function processIntent(intent, context) {
-  // Create logger for this intent processing
-  const logger = context.logger || globalThis.logger;
-  const lifecycleLogger = logger ? createLifecycleLogger(logger, 'intent-processor') : undefined;
-
   try {
     // Debug: Check schemas are properly loaded
     if (!Object.keys(intentSchemas).length) {
@@ -48,7 +43,6 @@ Context: You are analyzing the module at ${context.moduleDir} which has ${
 
     // Call auto with our intent schemas directly
     const result = await auto(prompt, {
-      logger: lifecycleLogger,
       schemas: intentSchemas,
     });
 

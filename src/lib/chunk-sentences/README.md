@@ -3,7 +3,9 @@
 Split text into chunks that respect sentence boundaries. Uses the [compromise](https://github.com/spencermountain/compromise) NLP library for sentence detection, falling back to word-based splitting when no sentences are found.
 
 ```javascript
-import { chunkSentences } from '@far-world-labs/verblets';
+import { init } from '@far-world-labs/verblets';
+
+const { chunkSentences } = init();
 
 const chunks = chunkSentences(longArticle, 150);
 // => [
