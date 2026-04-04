@@ -58,11 +58,55 @@ const shouldKeep = (action, urlIndex, stepNumber, opts, url) => {
 };
 
 /**
+ * Resolve the action for a given step.
+ *
+ * Supports two step function styles:
+ *   1. Callback: step(ctx) → action  (called every step)
+ *   2. Async generator: step(ctx) → AsyncGenerator  (created once, yields actions)
+ *
+ * Generator protocol:
+ *   - The generator receives the initial ctx as its function argument.
+ *   - Each subsequent ctx is sent via generator.next(ctx) and received
+ *     as the return value of yield:
+ *       async function* step(ctx) {
+ *         ctx = yield { action: 'wait', ms: 1000 };
+ *         ctx = yield { action: 'eval', fn: ..., into: 'meta' };
+ *         if (ctx.accumulator.meta.demoHref) {
+ *           ctx = yield { action: 'navigate', url: ctx.accumulator.meta.demoHref };
+ *         }
+ *         yield { action: 'done', data: ctx.accumulator };
+ *       }
+ */
+const createStepDriver = (stepFn) => {
+  let gen;
+
+  return async (ctx) => {
+    if (gen) {
+      const { value, done } = await gen.next(ctx);
+      return done ? { action: 'done', data: value } : value;
+    }
+
+    const result = stepFn(ctx);
+
+    // Check if result is an async iterable (generator)
+    if (result && typeof result[Symbol.asyncIterator] === 'function') {
+      gen = result;
+      const { value, done } = await gen.next();
+      return done ? { action: 'done', data: value } : value;
+    }
+
+    // Plain callback — resolve the promise/value
+    return result;
+  };
+};
+
+/**
  * Process a single URL through the step loop.
  */
 const processUrl = async (entry, defaultStep, page, opts, screenshotDir, emitter, urlIndex) => {
   const { url } = entry;
   const stepFn = entry.step || defaultStep;
+  const getAction = createStepDriver(stepFn);
 
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
 
@@ -106,7 +150,7 @@ const processUrl = async (entry, defaultStep, page, opts, screenshotDir, emitter
       accumulator,
       data: entry.data,
     });
-    const action = await stepFn(ctx);
+    const action = await getAction(ctx);
 
     // Keep or discard screenshot based on action.keep and screenshotFilter
     if (shouldKeep(action, urlIndex, stepNumber, opts, url)) {
