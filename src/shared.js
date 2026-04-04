@@ -223,7 +223,7 @@ export { default as combinations, rangeCombinations } from './lib/combinations/i
 export { default as chunkSentences } from './lib/chunk-sentences/index.js';
 export { debug } from './lib/debug/index.js';
 export { default as createBatches } from './lib/text-batch/index.js';
-export { default as llm } from './lib/llm/index.js';
+export { default as llm, jsonSchema } from './lib/llm/index.js';
 export { default as normalizeLlm } from './lib/normalize-llm/index.js';
 export { default as parallel, parallelMap } from './lib/parallel-batch/index.js';
 export { default as retry } from './lib/retry/index.js';

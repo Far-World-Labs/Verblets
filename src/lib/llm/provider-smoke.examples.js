@@ -45,7 +45,7 @@ describe('Provider smoke tests', () => {
 
   it.skipIf(shouldSkip('ANTHROPIC_API_KEY', 'anthropic'))(
     'answers a simple question via Claude',
-    () => smokeTest('claude-sonnet-4-5', 'Anthropic'),
+    () => smokeTest('claude-sonnet-4-6', 'Anthropic'),
     longTestTimeout
   );
 });

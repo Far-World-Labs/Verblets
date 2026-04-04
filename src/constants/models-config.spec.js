@@ -211,7 +211,7 @@ describe('models.js config exports', () => {
       vi.stubEnv('OPENAI_API_KEY', '');
       vi.stubEnv('OPENWEBUI_API_KEY', '');
       const { defaultMapping } = await importModels();
-      expect(defaultMapping.fastGood).toBe('claude-sonnet-4-5');
+      expect(defaultMapping.fastGood).toBe('claude-sonnet-4-6');
       expect(defaultMapping.fastCheap).toBe('claude-haiku-4-5');
     });
 

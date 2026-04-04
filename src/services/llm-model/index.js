@@ -160,7 +160,7 @@ class ModelService {
       modelFound = Object.values(this.models).find((model) => model.name === name);
     }
 
-    // Fall back to catalog (supports direct model names like 'claude-sonnet-4-5')
+    // Fall back to catalog (supports direct model names like 'claude-sonnet-4-6')
     if (!modelFound && catalog[name]) {
       modelFound = new Model({
         name,

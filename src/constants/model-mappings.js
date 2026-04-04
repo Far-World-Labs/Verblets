@@ -21,7 +21,7 @@ const openaiMapping = {
 };
 
 const anthropicMapping = {
-  fastGood: 'claude-sonnet-4-5',
+  fastGood: 'claude-sonnet-4-6',
   fastCheap: 'claude-haiku-4-5',
   reasoning: 'claude-opus-4-6',
 };
@@ -86,11 +86,14 @@ if (configGet('NODE_ENV') !== 'test') {
 
 const _models = {};
 
-// Helper: resolve a mapping value to a catalog entry
+// Helper: resolve a mapping value to a catalog entry.
+// Uses defineProperties to preserve lazy getters (apiKey, apiUrl) from catalog.
 const resolveCatalogEntry = (modelName) => {
   const entry = catalog[modelName];
   if (!entry) return undefined;
-  return { name: modelName, ...entry };
+  const descriptors = Object.getOwnPropertyDescriptors(entry);
+  const result = Object.defineProperties({ name: modelName }, descriptors);
+  return result;
 };
 
 // Populate from defaultMapping
