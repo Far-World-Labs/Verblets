@@ -68,25 +68,18 @@ const filter = async function filter(list, instructions, config = {}) {
   const batches = await createBatches(list, runConfig);
   const batchDone = emitter.batch(list.length);
 
-  const activeBatchCount = batches.filter((b) => !b.skip).length;
   emitter.progress({
     event: OpEvent.start,
     totalItems: list.length,
-    totalBatches: activeBatchCount,
+    totalBatches: batches.length,
   });
 
   lifecycleLogger.logEvent('batches-created', {
     totalBatches: batches.length,
-    activeBatches: activeBatchCount,
-    batchSizes: batches.map((b) => b.items?.length || 0),
+    batchSizes: batches.map((b) => b.items.length),
   });
 
-  for (const [batchIndex, { items, skip }] of batches.entries()) {
-    if (skip) {
-      lifecycleLogger.logEvent('batch-skip', { batchIndex });
-      continue;
-    }
-
+  for (const [batchIndex, { items }] of batches.entries()) {
     lifecycleLogger.logEvent('batch-start', {
       batchIndex,
       itemCount: items.length,

@@ -167,25 +167,23 @@ describe('score chain', () => {
       expect(result[3]).toBeUndefined();
     });
 
-    it('skips batches marked as skip', async () => {
+    it('processes oversized items in isolated single-item batches', async () => {
       scaleSpec.mockResolvedValueOnce(mockSpec);
-      // Initial pass: one real batch, one skip
+      // Oversized item gets its own batch — no skip, just isolated
       createBatches.mockReturnValueOnce([
-        { items: ['a'], startIndex: 0 },
-        { items: [], startIndex: 1, skip: true },
+        { items: ['normal'], startIndex: 0 },
+        { items: ['oversized-item'], startIndex: 1 },
       ]);
-      listBatch.mockResolvedValueOnce([7]);
+      listBatch.mockResolvedValueOnce([7]).mockResolvedValueOnce([3]);
 
-      // Retry passes: skipped item is rebatched but still skipped
-      createBatches
-        .mockReturnValueOnce([{ items: [], startIndex: 0, skip: true }])
-        .mockReturnValueOnce([{ items: [], startIndex: 0, skip: true }]);
+      // Retry passes: both items already scored
+      createBatches.mockReturnValueOnce([]).mockReturnValueOnce([]);
 
-      const result = await score(['a', ''], 'score items');
+      const result = await score(['normal', 'oversized-item'], 'score items');
 
-      expect(listBatch).toHaveBeenCalledTimes(1);
+      expect(listBatch).toHaveBeenCalledTimes(2);
       expect(result[0]).toBe(7);
-      expect(result[1]).toBeUndefined();
+      expect(result[1]).toBe(3);
     });
   });
 

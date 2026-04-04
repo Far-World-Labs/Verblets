@@ -50,7 +50,7 @@ Process exactly ${count} items from the XML list below and return the single bes
 
   const batches = await createBatches(list, runConfig);
   const batchDone = emitter.batch(list.length);
-  const batchesToProcess = batches.filter((batch) => !batch.skip);
+  const batchesToProcess = batches;
 
   emitter.progress({
     event: OpEvent.start,

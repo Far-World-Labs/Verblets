@@ -167,7 +167,7 @@ export default async function group(list, instructions, config = {}) {
   const assignmentInstructions = createAssignmentInstructions(categories);
 
   const allBatches = await createBatches(list, runConfig);
-  const batchesToProcess = allBatches.filter((batch) => !batch.skip);
+  const batchesToProcess = allBatches;
   let processedItems = 0;
   emitter.progress({
     event: OpEvent.start,

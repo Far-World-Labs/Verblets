@@ -32,21 +32,12 @@ const mapOnce = async function (list, instructions, config = {}) {
   const results = new Array(list.length);
   const batches = await createBatches(list, config);
 
-  // Filter out skip batches
-  const batchesToProcess = batches.filter((batch) => {
-    if (batch.skip) {
-      results[batch.startIndex] = undefined;
-      return false;
-    }
-    return true;
-  });
-
   // Log batch processing start
   if (config.logger?.info) {
     config.logger.info('Map chain processing batches', {
-      totalBatches: batchesToProcess.length,
+      totalBatches: batches.length,
       maxParallel,
-      batchSizes: batchesToProcess.map((b) => b.items.length),
+      batchSizes: batches.map((b) => b.items.length),
     });
   }
 
@@ -57,7 +48,7 @@ const mapOnce = async function (list, instructions, config = {}) {
 
   // Process batches in parallel using parallelBatch
   await parallel(
-    batchesToProcess,
+    batches,
     async ({ items, startIndex }) => {
       const batchStyle = determineStyle(config.listStyle, items, config.autoModeThreshold);
 
