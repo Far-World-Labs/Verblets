@@ -209,12 +209,8 @@ export const run = async (prompt, options = {}) => {
     unwrapCollections,
   } = options;
   // Merge base policy (from init) under per-call policy so per-call wins
-  const effectiveOptions =
-    basePolicy && !options.policy
-      ? { ...options, policy: basePolicy }
-      : basePolicy
-        ? { ...options, policy: { ...basePolicy, ...options.policy } }
-        : options;
+  const mergedPolicy = basePolicy ? { ...basePolicy, ...options.policy } : options.policy;
+  const effectiveOptions = mergedPolicy ? { ...options, policy: mergedPolicy } : options;
 
   const forceQuery = await getOption('forceQuery', effectiveOptions, false);
 
