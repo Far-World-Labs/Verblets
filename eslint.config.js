@@ -2,6 +2,25 @@ import js from '@eslint/js';
 import prettierConfig from 'eslint-config-prettier';
 import prettierPlugin from 'eslint-plugin-prettier';
 
+// Node 25+ requires `with { type: 'json' }` on JSON imports.
+// Vite/vitest handle this via transform, but direct node execution fails without it.
+// This rule prevents regressions — if a JSON import is missing the attribute,
+// it will silently work in tests but break in production node invocations.
+const requireJsonImportType = {
+  meta: { type: 'problem', messages: { missing: 'JSON imports require: with { type: \'json\' }' } },
+  create(context) {
+    return {
+      ImportDeclaration(node) {
+        if (!node.source?.value?.endsWith('.json')) return;
+        const hasType = (node.attributes || []).some(
+          (a) => a.key?.name === 'type' && a.value?.value === 'json',
+        );
+        if (!hasType) context.report({ node, messageId: 'missing' });
+      },
+    };
+  },
+};
+
 export default [
   js.configs.recommended,
   {
@@ -38,9 +57,11 @@ export default [
     },
     plugins: {
       prettier: prettierPlugin,
+      local: { rules: { 'require-json-import-type': requireJsonImportType } },
     },
     rules: {
       'prettier/prettier': 'error',
+      'local/require-json-import-type': 'error',
 
       // TODO: Remove console statements and replace with proper logging
       'no-console': 'off',

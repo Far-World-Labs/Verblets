@@ -9,7 +9,7 @@
 import { resolve as resolvePath } from 'node:path';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 
-const PROJECT_ROOT = resolvePath(fileURLToPath(import.meta.url), '../..');
+const PROJECT_ROOT = resolvePath(fileURLToPath(import.meta.url), '../../../..');
 const APP_PREFIX = '@app/';
 
 export function resolve(specifier, context, next) {
