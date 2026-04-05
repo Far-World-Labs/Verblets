@@ -9,7 +9,7 @@ Automations are registered in an XDG-backed registry at `~/.config/verblets-auto
   "version": 1,
   "automations": {
     "eventing-quality": {
-      "path": "/home/steven/projects/fwl/verblets-automations/eventing-quality",
+      "path": "~/projects/fwl/verblets-automations/eventing-quality",
       "registeredAt": "2026-04-04T...",
       "lastRun": "2026-04-04T...",
       "runCount": 16
