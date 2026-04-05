@@ -19,7 +19,7 @@
  * // With extra arguments (tuple form)
  * const result = await pipe(
  *   items,
- *   [map, 'translate to French', { llm: 'fastGood' }],
+ *   [map, 'translate to French', { llm: 'default' }],
  *   compact,
  *   [score, 'translation quality'],
  * );

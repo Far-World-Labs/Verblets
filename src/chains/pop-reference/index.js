@@ -1,7 +1,7 @@
 import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
-import popReferenceSchema from './pop-reference-result.json';
+import popReferenceSchema from './pop-reference-result.json' with { type: 'json' };
 import createProgressEmitter from '../../lib/progress/index.js';
 import { nameStep, getOptions } from '../../lib/context/option.js';
 

@@ -19,25 +19,20 @@ const options = program.opts();
 
 if (options.privacy) {
   try {
-    modelService.setGlobalOverride('modelName', 'privacy');
-  } catch (err) {
-    console.error(`Privacy model error: ${err.message}`);
+    const sensitiveModel = modelService.getBestPrivateModel();
+    modelService.setRules([{ use: sensitiveModel.name }]);
+  } catch {
+    console.error('Privacy model error: no sensitive model configured');
   }
 }
 if (options.model) {
-  try {
-    modelService.setGlobalOverride('modelName', options.model);
-  } catch (err) {
-    console.error(`Model override error: ${err.message}`);
-  }
+  modelService.setRules([{ use: options.model }]);
 }
 
 await run(async () => {
   const results = await llm('make a list of nintendo games with a schema that includes a title, year, and maybe a couple others of your choice', {
     forceQuery: true,
-    modelOptions: {
-      tools: schemas
-    },
+    tools: schemas,
   });
 
   const functions = {

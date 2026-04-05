@@ -26,7 +26,7 @@ module-name/
 └── README.md         # Documentation
 ```
 
-See [guidelines/DOCUMENTATION.md](./guidelines/DOCUMENTATION.md) for README standards.
+See [.claude/guidelines/DOCUMENTATION.md](./.claude/guidelines/DOCUMENTATION.md) for README standards.
 
 ## Isomorphic Design
 
@@ -100,7 +100,7 @@ VERBLETS_ARCH_LOG=debug npm run arch:once
 2. Implement `index.js` with a default export
 3. Add `index.spec.js` with mocked LLM and table-driven examples
 4. Add `index.examples.js` with real LLM assertions
-5. Add `README.md` following [documentation guidelines](./guidelines/DOCUMENTATION.md)
+5. Add `README.md` following [documentation guidelines](./.claude/guidelines/DOCUMENTATION.md)
 6. Export from `src/shared.js` (this feeds both Node and browser builds)
 7. Add to the appropriate section in the root `README.md`
 
@@ -133,4 +133,4 @@ Detailed documentation by audience:
 - [Batching](./docs/batching.md) — auto-sizing, `parallelBatch`, `prepareBatches`
 - [Progress Tracking](./docs/progress-tracking.md) — `onProgress`, `scopeProgress`, event lifecycle
 - [Retry](./docs/retry.md) — config-aware retries, retryable errors, abort signal
-- [JSON Schemas](./guidelines/JSON_SCHEMAS.md) — `response_format`, schema design, auto-unwrapping
+- [JSON Schemas](./.claude/guidelines/JSON_SCHEMAS.md) — `response_format`, schema design, auto-unwrapping

@@ -6,7 +6,7 @@ import createProgressEmitter from '../../lib/progress/index.js';
 import { OpEvent, DomainEvent } from '../../lib/progress/constants.js';
 import { createBatches, parallel, retry } from '../../lib/index.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
-import scoreSingleResultSchema from './score-single-result.json';
+import scoreSingleResultSchema from './score-single-result.json' with { type: 'json' };
 
 const name = 'score';
 
@@ -141,11 +141,8 @@ async function scoreOnce(list, prompt, batchConfig, config) {
   const { maxParallel, errorPosture, onProgress, logger, anchoring } = config;
 
   const batches = await createBatches(list, batchConfig);
-  const batchesToProcess = batches.filter((b) => !b.skip);
+  const batchesToProcess = batches;
   const results = new Array(list.length);
-  batches.forEach((b) => {
-    if (b.skip) results[b.startIndex] = undefined;
-  });
 
   const emitter = createProgressEmitter('score', onProgress, config);
   const batchDone = emitter.batch(list.length);

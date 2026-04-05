@@ -1,7 +1,7 @@
 import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import score from '../score/index.js';
-import disambiguateMeaningsSchema from './disambiguate-meanings-result.json';
+import disambiguateMeaningsSchema from './disambiguate-meanings-result.json' with { type: 'json' };
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
 import { DomainEvent } from '../../lib/progress/constants.js';
 import { nameStep } from '../../lib/context/option.js';
@@ -19,7 +19,10 @@ Return a JSON object with a "meanings" array containing the distinct meanings.`;
 };
 
 export const getMeanings = async (term, config = {}) => {
-  config = nameStep('disambiguate:meanings', { llm: 'fastGoodCheap', ...config });
+  config = nameStep('disambiguate:meanings', {
+    llm: { fast: true, good: true, cheap: true },
+    ...config,
+  });
   const prompt = meaningsPrompt(term);
   const response = await retry(
     () =>

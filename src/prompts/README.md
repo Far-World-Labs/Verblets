@@ -33,4 +33,4 @@ prompts.summarize('long article text...', { budget: 100 });
 - `promptPiece` — Composable prompt fragments (see [SPEC.md](../lib/prompt-piece/SPEC.md))
 - RAG prompt fragments: `embedRewriteQuery`, `embedMultiQuery`, `embedStepBack`, `embedSubquestions`
 
-See [guidelines/PROMPTS.md](../../guidelines/PROMPTS.md) for prompt engineering guidelines.
+See [guidelines/PROMPTS.md](../../.claude/guidelines/PROMPTS.md) for prompt engineering guidelines.

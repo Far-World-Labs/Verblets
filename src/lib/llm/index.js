@@ -6,9 +6,6 @@ import {
   debugResultGlobally,
   debugResultGloballyIfChanged,
 } from '../../constants/llm-config.js';
-import { models } from '../../constants/model-mappings.js';
-import globalModelService from '../../services/llm-model/index.js';
-import { getClient as getRedisGlobal } from '../../services/redis/index.js';
 import { getProvider } from './providers/index.js';
 import normalizeLlm from '../normalize-llm/index.js';
 import { CAPABILITY_KEYS } from '../../constants/common.js';
@@ -170,6 +167,14 @@ const onAfterRequestDefault = ({ debugResult, isCached, resultShaped }) => {
   }
 };
 
+// ── Base policy ─────────────────────────────────────────────────────
+// Module-level policy set via init({ policy }). Merged under per-call
+// policy so per-call always wins.
+let basePolicy;
+export const setBasePolicy = (policy) => {
+  basePolicy = policy;
+};
+
 // Keys that belong to the model/request layer (as opposed to callLlm control keys).
 // Exported so consumers can discover which keys are policy-resolvable at the LLM level.
 export const MODEL_KEYS = [
@@ -186,8 +191,8 @@ export const MODEL_KEYS = [
 ];
 
 export const run = async (prompt, options = {}) => {
-  const modelSvc = options.modelService || globalModelService;
-  const redisGet = options.getRedis || getRedisGlobal;
+  const modelSvc = options.modelService;
+  const redisGet = options.getRedis;
 
   const {
     abortSignal,
@@ -203,67 +208,72 @@ export const run = async (prompt, options = {}) => {
     unwrapValues,
     unwrapCollections,
   } = options;
-  const forceQuery = await getOption('forceQuery', options, false);
+  // Merge base policy (from init) under per-call policy so per-call wins
+  const mergedPolicy = basePolicy ? { ...basePolicy, ...options.policy } : options.policy;
+  const effectiveOptions = mergedPolicy ? { ...options, policy: mergedPolicy } : options;
+
+  const forceQuery = await getOption('forceQuery', effectiveOptions, false);
 
   // Build modelOptions from flat config, resolving through context system.
   // This allows per-operation behavioral policy via the policy channel.
   const modelOptions = { ...normalizeLlm(llm) };
   for (const key of MODEL_KEYS) {
-    const resolved = await getOption(key, options, undefined);
+    const resolved = await getOption(key, effectiveOptions, undefined);
     if (resolved !== undefined) modelOptions[key] = resolved;
   }
   for (const key of CAPABILITY_KEYS) {
-    const resolved = await getOption(key, options, undefined);
+    const resolved = await getOption(key, effectiveOptions, undefined);
     if (resolved !== undefined) modelOptions[key] = resolved;
   }
 
   // Log start of llm execution
   const startTime = Date.now();
 
-  // Apply global overrides to model options
-  const modelOptionsWithOverrides = modelSvc.applyGlobalOverrides(modelOptions);
-
   // Extract capability flags for model negotiation
   // Supports both flat keys ({ fast: true }) and legacy negotiate wrapper ({ negotiate: { fast: true } })
   const negotiation = {};
   let shouldNegotiate = false;
 
-  if (modelOptionsWithOverrides.negotiate) {
-    Object.assign(negotiation, modelOptionsWithOverrides.negotiate);
+  if (modelOptions.negotiate) {
+    Object.assign(negotiation, modelOptions.negotiate);
     shouldNegotiate = true;
   }
 
   for (const key of CAPABILITY_KEYS) {
-    if (key in modelOptionsWithOverrides) {
-      negotiation[key] = modelOptionsWithOverrides[key];
+    if (key in modelOptions) {
+      negotiation[key] = modelOptions[key];
       shouldNegotiate = true;
     }
   }
 
-  const negotiationFromGlobalOverride = modelSvc.getGlobalOverride('negotiate');
-  const preferred = negotiationFromGlobalOverride ? null : modelOptionsWithOverrides.modelName;
+  const preferred = modelOptions.modelName;
 
-  const modelNameNegotiated = shouldNegotiate
-    ? modelSvc.negotiateModel(preferred, negotiation)
-    : modelOptionsWithOverrides.modelName;
+  let modelFound;
+  let modelNameNegotiated;
 
-  const modelFound = modelSvc.getModel(modelNameNegotiated);
+  if (shouldNegotiate) {
+    modelFound = modelSvc.negotiateModel(preferred, negotiation);
+    modelNameNegotiated = modelFound?.name;
+  } else {
+    modelNameNegotiated = modelOptions.modelName;
+    modelFound = modelSvc.getModel(modelNameNegotiated);
+  }
 
   // Telemetry: model selection
   const emitter = createProgressEmitter('llm', options.onProgress, options);
   const modelSource = shouldNegotiate
     ? ModelSource.negotiated
-    : modelOptionsWithOverrides.modelName
+    : modelOptions.modelName
       ? ModelSource.config
       : ModelSource.default;
 
   emitter.metrics({
     event: TelemetryEvent.llmModel,
     model: modelNameNegotiated,
-    provider: modelFound.provider || 'openai',
+    provider: modelFound?.provider || 'openai',
     source: modelSource,
     negotiation: shouldNegotiate ? negotiation : undefined,
-    preferred: negotiationFromGlobalOverride ? undefined : modelOptionsWithOverrides.modelName,
+    preferred: modelOptions.modelName,
   });
 
   // Log start event with model information
@@ -279,12 +289,13 @@ export const run = async (prompt, options = {}) => {
   }
 
   // Use model-specific API URL and key if defined, otherwise fall back to defaults
-  const apiUrl = modelFound?.apiUrl || models.fastGood.apiUrl;
-  const apiKey = modelFound?.apiKey || models.fastGood.apiKey;
+  const defaultModel = modelSvc.getDefaultModel();
+  const apiUrl = modelFound?.apiUrl || defaultModel?.apiUrl;
+  const apiKey = modelFound?.apiKey || defaultModel?.apiKey;
 
   const requestConfig = modelSvc.getRequestConfig({
     prompt,
-    ...modelOptionsWithOverrides,
+    ...modelOptions,
     modelName: modelNameNegotiated,
   });
 
@@ -347,8 +358,7 @@ export const run = async (prompt, options = {}) => {
     if (!cacheResult || forceQuery) {
       // Use custom requestTimeout from modelOptions if provided, otherwise use model default
       const requestTimeout =
-        modelOptionsWithOverrides.requestTimeout ||
-        modelSvc.getModel(modelNameNegotiated).requestTimeout;
+        modelOptions.requestTimeout || modelSvc.getModel(modelNameNegotiated).requestTimeout;
 
       const timeoutController = new TimedAbortController(requestTimeout);
 

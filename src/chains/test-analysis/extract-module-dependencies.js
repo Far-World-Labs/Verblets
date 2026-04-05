@@ -2,7 +2,7 @@ import llm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { readFile } from 'fs/promises';
 import { join } from 'path';
-import MODULE_DEPENDENCIES_SCHEMA from './schemas/module-dependencies-schema.json';
+import MODULE_DEPENDENCIES_SCHEMA from './schemas/module-dependencies-schema.json' with { type: 'json' };
 
 /**
  * Extract explicitly listed module dependencies from AI.md file

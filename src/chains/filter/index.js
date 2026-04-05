@@ -59,11 +59,10 @@ const filter = async function filter(list, instructions, config = {}) {
   const batches = await createBatches(list, runConfig);
   const batchDone = emitter.batch(list.length);
 
-  const activeBatchCount = batches.filter((b) => !b.skip).length;
   emitter.progress({
     event: OpEvent.start,
     totalItems: list.length,
-    totalBatches: activeBatchCount,
+    totalBatches: batches.length,
   });
 
   for (const [batchIndex, { items, skip }] of batches.entries()) {

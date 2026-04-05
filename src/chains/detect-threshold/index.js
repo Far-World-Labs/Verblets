@@ -4,7 +4,7 @@ import retry from '../../lib/retry/index.js';
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { debug } from '../../lib/debug/index.js';
-import thresholdResultSchema from './threshold-result.json';
+import thresholdResultSchema from './threshold-result.json' with { type: 'json' };
 import { nameStep, getOptions } from '../../lib/context/option.js';
 
 const name = 'detect-threshold';

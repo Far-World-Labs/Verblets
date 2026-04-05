@@ -15,7 +15,7 @@ vi.mock('../../lib/text-batch/index.js', () => ({
     const batchSize = config?.batchSize || 10;
     const batches = [];
     for (let i = 0; i < items.length; i += batchSize) {
-      batches.push({ items: items.slice(i, i + batchSize), startIndex: i, skip: false });
+      batches.push({ items: items.slice(i, i + batchSize), startIndex: i });
     }
     return batches;
   }),

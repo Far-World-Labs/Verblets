@@ -95,7 +95,7 @@ function logDebugInfo(attempt, prompt, response, error) {
  * Converts text to structured JSON object using LLM assistance
  */
 export default async function toObject(text, schema, config = {}) {
-  const runConfig = nameStep(name, { llm: 'fastGood', ...config });
+  const runConfig = nameStep(name, { llm: { fast: true, good: true }, ...config });
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
   let errorDetails;

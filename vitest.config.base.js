@@ -43,6 +43,8 @@ export const browserExclusions = [
   'src/services/redis/config.spec.js',
   'src/lib/config/index.spec.js',
   'src/init.spec.js',
+  'src/lib/run-context/**',
+  'src/lib/automation-runner/**',
 ];
 
 // Browser-specific aliases for modules with browser versions

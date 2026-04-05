@@ -14,7 +14,7 @@ Each verblet directory contains:
 
 ## Structured Output
 
-Pass `response_format` flat on the config object alongside other options. callLlm handles JSON parsing and auto-unwraps `{ value }` and `{ items }` wrappers. See [JSON Schema Guidelines](../../guidelines/JSON_SCHEMAS.md) for schema design patterns, collection conventions, and common mistakes.
+Pass `response_format` flat on the config object alongside other options. callLlm handles JSON parsing and auto-unwraps `{ value }` and `{ items }` wrappers. See [JSON Schema Guidelines](../../.claude/guidelines/JSON_SCHEMAS.md) for schema design patterns, collection conventions, and common mistakes.
 
 ```javascript
 import callLlm from '../../lib/llm/index.js';
@@ -114,7 +114,7 @@ export default async function sentiment(text, config = {}) {
 
 ## Documentation
 
-README is optional for verblets with a single parameter and obvious behavior. Required when there are multiple config options, non-obvious edge cases, or custom schemas. See [DOCUMENTATION.md](../../guidelines/DOCUMENTATION.md) for structure and quality standards.
+README is optional for verblets with a single parameter and obvious behavior. Required when there are multiple config options, non-obvious edge cases, or custom schemas. See [DOCUMENTATION.md](../../.claude/guidelines/DOCUMENTATION.md) for structure and quality standards.
 
 ## Testing
 
@@ -122,7 +122,7 @@ README is optional for verblets with a single parameter and obvious behavior. Re
 
 ## Anti-Patterns
 
-- Embedding schemas in prompts instead of using `response_format` (see [JSON Schema Guidelines](../../guidelines/JSON_SCHEMAS.md))
+- Embedding schemas in prompts instead of using `response_format` (see [JSON Schema Guidelines](../../.claude/guidelines/JSON_SCHEMAS.md))
 - Nesting model keys under `modelOptions` — pass `response_format`, `temperature`, etc. flat on config
 - Extracting `llm` from config to re-pass — callLlm resolves it automatically
 - Over-defensive input validation for simple single-parameter verblets

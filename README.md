@@ -39,22 +39,38 @@ const results = await score(
 
 ```js
 const { filter, map, bool, llm } = init({
-  embed: true,            // enable local embedding model (global, shared across instances)
-  redis: redisClient,     // pre-configured Redis client for caching (per-instance)
-  modelOverrides: {       // override default model selection (per-instance)
-    modelName: 'claude-sonnet-4-20250514',
+  embed: true,            // enable local embedding model
+  redis: redisClient,     // pre-configured Redis client for caching
+  models: {               // extend the model catalog (additive)
+    'my-llama': { provider: 'openai', apiUrl: 'http://localhost:11434/v1', endpoint: '/chat/completions', maxContextWindow: 8192, maxOutputTokens: 4096 },
+  },
+  rules: [                // override negotiation rules (first match wins)
+    { match: { sensitive: true, good: true }, use: 'my-llama' },
+    { match: { sensitive: true }, use: 'my-llama' },
+    { match: { reasoning: true }, use: 'claude-opus-4-6' },
+    { match: { cheap: true, good: false }, use: 'gpt-4.1-nano' },
+    { use: 'gpt-4.1-mini' },  // catch-all default
+  ],
+  policy: {               // base policy for all LLM calls
+    temperature: () => 0.7,
   },
 });
 ```
 
-Each `init()` call creates an isolated instance. Two instances do not share model configuration or caches:
+Each `init()` call creates an isolated instance with its own ModelService, so two instances do not share model configuration or caches:
 
 ```js
-const a = init({ modelOverrides: { modelName: 'gpt-4.1' } });
-const b = init({ modelOverrides: { modelName: 'claude-sonnet-4-20250514' } });
+const a = init({ rules: [{ use: 'gpt-4.1' }] });
+const b = init({ rules: [{ use: 'claude-sonnet-4-20250514' }] });
 await a.filter(items, 'urgent');   // uses gpt-4.1
 await b.filter(items, 'urgent');   // uses claude-sonnet-4-20250514
 ```
+
+The library selects models through ordered pattern-matching rules. Each rule has an optional `match` (capability conditions) and a `use` (model name). The first matching rule wins. A rule's `match` maps capabilities to `true` (must be requested) or `false` (must NOT be requested). Unmentioned capabilities are don't-care.
+
+Consumers express intent as capability objects: `{ fast: true }`, `{ reasoning: true }`, `{ sensitive: true, good: true }`. The value `'prefer'` acts as a soft preference that falls through gracefully when unavailable. Capabilities: `fast`, `cheap`, `good`, `reasoning`, `multi`, `sensitive`.
+
+Sensitive and reasoning capabilities are gated by default — they only match rules that explicitly mention them, preventing sensitive data from reaching cloud models or expensive reasoning models from being selected without opt-in.
 
 Without Redis, caching is disabled and the library operates statelessly.
 

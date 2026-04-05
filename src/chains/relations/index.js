@@ -4,7 +4,7 @@ import { asXML } from '../../prompts/wrap-variable.js';
 import buildInstructions from '../../lib/build-instructions/index.js';
 import createProgressEmitter from '../../lib/progress/index.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
-import relationResultSchema from './relation-result.json';
+import relationResultSchema from './relation-result.json' with { type: 'json' };
 
 const name = 'relations';
 

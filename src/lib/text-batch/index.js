@@ -3,7 +3,6 @@ import { getOptions } from '../context/option.js';
 
 const FALLBACK_TOKENS_PER_CHAR = 0.25;
 const SAFETY_MARGIN = 1.2;
-const MAX_ITEM_RATIO = 0.8;
 const DEFAULT_OUTPUT_RATIO = 2;
 const DEFAULT_MAX_TOKEN_BUDGET = 4000;
 const DEFAULT_CONTEXT_BUFFER = 0.9;
@@ -37,7 +36,6 @@ function calculateBudget({
     totalBudget: effectiveBudget,
     inputBudget,
     outputBudget: Math.floor((effectiveBudget * outputRatio) / (1 + outputRatio)),
-    maxItemTokens: Math.floor(inputBudget * MAX_ITEM_RATIO),
   };
 }
 
@@ -56,14 +54,17 @@ function buildBatches(list, { targetBatchSize, budget, model }) {
     const item = list[i];
     const itemTokens = estimateTokens(item, model);
 
-    if (itemTokens > budget.maxItemTokens) {
+    // Oversized items get isolated in their own single-item batch.
+    // The LLM call succeeds or fails based on the model's actual context
+    // window — no silent data loss.
+    if (itemTokens > budget.inputBudget) {
       if (currentBatch.length > 0) {
         batches.push({ items: currentBatch, startIndex: batchStartIndex });
         currentBatch = [];
         currentTokens = 0;
       }
 
-      batches.push({ items: [], startIndex: i, skip: true });
+      batches.push({ items: [item], startIndex: i });
       batchStartIndex = i + 1;
       continue;
     }
@@ -98,7 +99,7 @@ export default async function createBatches(list, config = {}) {
   });
 
   const modelSvc = config.modelService || globalModelService;
-  const modelName = resolveModel(llm) || modelSvc.bestPublicModelKey;
+  const modelName = resolveModel(llm) || modelSvc.getDefaultModel()?.name;
   const model = modelSvc.getModel(modelName);
   const budget = calculateBudget({
     model,

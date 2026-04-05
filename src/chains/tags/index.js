@@ -4,7 +4,7 @@ import { asXML } from '../../prompts/wrap-variable.js';
 import map from '../map/index.js';
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
 import { nameStep, getOptions, getOption } from '../../lib/context/option.js';
-import tagsResultSchema from './tags-result.json';
+import tagsResultSchema from './tags-result.json' with { type: 'json' };
 
 const name = 'tags';
 

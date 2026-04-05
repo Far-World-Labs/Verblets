@@ -1,6 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import init from './init.js';
 import * as config from './lib/config/index.js';
+import { setBasePolicy } from './lib/llm/index.js';
+
+vi.mock('./lib/llm/index.js', async (importOriginal) => {
+  const original = await importOriginal();
+  return { ...original, setBasePolicy: vi.fn() };
+});
+
 describe('init()', () => {
   beforeEach(() => {
     config.setRuntimeProvider(undefined);
@@ -36,13 +43,6 @@ describe('init()', () => {
     expect(a.modelService).not.toBe(b.modelService);
   });
 
-  it('model overrides on one instance do not affect another', () => {
-    const a = init({ modelOverrides: { temperature: 0.1 } });
-    const b = init({ modelOverrides: { temperature: 0.9 } });
-    expect(a.modelService.getGlobalOverride('temperature')).toBe(0.1);
-    expect(b.modelService.getGlobalOverride('temperature')).toBe(0.9);
-  });
-
   it('wires runtimeProvider into global config', () => {
     const provider = { get: vi.fn() };
     init({ runtimeProvider: provider });
@@ -63,10 +63,26 @@ describe('init()', () => {
     expect(client).toBe(mockRedis);
   });
 
-  it('applies model overrides to the instance ModelService', () => {
-    const result = init({ modelOverrides: { temperature: 0.5, modelName: 'gpt-4.1' } });
-    expect(result.modelService.getGlobalOverride('temperature')).toBe(0.5);
-    expect(result.modelService.getGlobalOverride('modelName')).toBe('gpt-4.1');
+  it('extends catalog via models (addModels)', () => {
+    const models = {
+      'my-llama': { maxContextWindow: 8192, maxOutputTokens: 4096, requestTimeout: 1000 },
+    };
+    const result = init({ models });
+    expect(result.modelService.customModels['my-llama']).toBeDefined();
+  });
+
+  it('overrides negotiation rules via rules (setRules)', () => {
+    const rules = [{ match: { reasoning: true }, use: 'gpt-4.1-mini' }, { use: 'gpt-4.1-mini' }];
+    const result = init({ rules });
+    expect(result.modelService.rules).toBe(rules);
+  });
+
+  it('rules on one instance do not affect another', () => {
+    const rulesA = [{ use: 'gpt-4.1-mini' }];
+    const a = init({ rules: rulesA });
+    const b = init();
+    expect(a.modelService.rules).toBe(rulesA);
+    expect(b.modelService.rules).not.toBe(rulesA);
   });
 
   it('returns a context builder', () => {
@@ -82,8 +98,16 @@ describe('init()', () => {
     expect(typeof result.constants).toBe('object');
   });
 
+  it('applies base policy via setBasePolicy', () => {
+    const policy = { temperature: () => 0.8 };
+    init({ policy });
+    expect(setBasePolicy).toHaveBeenCalledWith(policy);
+  });
+
   it('skips undefined options gracefully', () => {
-    expect(() => init({ redis: undefined, modelOverrides: undefined })).not.toThrow();
+    expect(() =>
+      init({ redis: undefined, models: undefined, rules: undefined, policy: undefined })
+    ).not.toThrow();
   });
 
   describe('validation', () => {

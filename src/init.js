@@ -6,17 +6,20 @@
  * inject these services automatically.
  *
  * @param {object} [options]
- * @param {boolean} [options.embed] - Enable local embedding model — GLOBAL, shared across instances
- * @param {boolean} [options.imageProcessing] - Enable image processing via Sharp — GLOBAL, shared across instances
- * @param {boolean} [options.browser] - Enable browser automation via Playwright — GLOBAL, shared across instances
- * @param {object} [options.runtimeProvider] - Provider with get(key) — GLOBAL, shared across instances
- * @param {object} [options.redis] - Pre-configured Redis client instance — per-instance
- * @param {Record<string, any>} [options.modelOverrides] - Per-key global overrides — per-instance ModelService
+ * @param {boolean} [options.embed] - Enable local embedding model (downloads on first use)
+ * @param {boolean} [options.imageProcessing] - Enable image processing via Sharp (must be installed)
+ * @param {boolean} [options.browser] - Enable browser automation via Playwright (must be installed)
+ * @param {object} [options.runtimeProvider] - Provider with get(key) → Promise<value|undefined>
+ * @param {object} [options.redis] - Pre-configured Redis client instance (per-instance)
+ * @param {Record<string, object>} [options.models] - Custom model definitions to add to the catalog (additive, per-instance)
+ * @param {Array<{ match?: object, use: string }>} [options.rules] - Negotiation rules (full override of defaults, per-instance). First match wins.
+ * @param {Record<string, function>} [options.policy] - Base policy for all LLM calls (per-call policy takes precedence)
  * @returns {object} Instance with config, modelService, context, and all wrapped exports
  */
 import * as configModule from './lib/config/index.js';
 import { validate } from './lib/config/index.js';
 import { ModelService } from './services/llm-model/index.js';
+import { setBasePolicy } from './lib/llm/index.js';
 import { setEmbedEnabled } from './lib/embed-local/state.js';
 import { setImageProcessingEnabled } from './lib/image-utils/state.js';
 import { setBrowserEnabled } from './chains/web-scrape/state.js';
@@ -25,7 +28,8 @@ import withConfig from './lib/with-config/index.js';
 import * as shared from './shared.js';
 
 export default function init(options = {}) {
-  const { embed, imageProcessing, browser, redis, modelOverrides, runtimeProvider } = options;
+  const { embed, imageProcessing, browser, redis, models, rules, policy, runtimeProvider } =
+    options;
 
   const errors = validate();
   if (errors.length > 0) {
@@ -40,10 +44,14 @@ export default function init(options = {}) {
 
   // Per-instance: fresh ModelService
   const modelService = new ModelService();
-  if (modelOverrides) {
-    for (const [key, value] of Object.entries(modelOverrides)) {
-      modelService.setGlobalOverride(key, value);
-    }
+  if (models) {
+    modelService.addModels(models);
+  }
+  if (rules) {
+    modelService.setRules(rules);
+  }
+  if (policy) {
+    setBasePolicy(policy);
   }
 
   // Per-instance: Redis getter

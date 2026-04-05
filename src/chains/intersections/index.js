@@ -5,7 +5,7 @@ import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 import { intersectionElementsSchema } from './schemas.js';
-import intersectionResultSchema from './intersection-result.json';
+import intersectionResultSchema from './intersection-result.json' with { type: 'json' };
 import { debug } from '../../lib/debug/index.js';
 import { nameStep, getOptions } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
@@ -90,7 +90,7 @@ const processCombo = async (combo, instructions, config = {}) => {
  * @param {number} config.minSize - Minimum combination size (default: 2)
  * @param {number} config.maxSize - Maximum combination size (default: items.length)
  * @param {number} config.batchSize - Number of combinations to process in parallel (default: 10)
- * @param {string|Object} config.llm - LLM model to use (default: 'fastGoodCheap')
+ * @param {string|Object} config.llm - LLM model to use (default: { fast: true, good: true, cheap: true })
  * @param {boolean} config.useSchemaValidation - Whether to validate results with JSON schema (default: false)
  * @returns {Object} Results with combinations, elements, and intersections
  */
@@ -99,7 +99,7 @@ export default async function intersections(items, config = {}) {
     return {};
   }
 
-  const runConfig = nameStep(name, { llm: 'fastGoodCheap', ...config });
+  const runConfig = nameStep(name, { llm: { fast: true, good: true, cheap: true }, ...config });
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
   const { useSchemaValidation } = await getOptions(runConfig, {

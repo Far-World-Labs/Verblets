@@ -6,7 +6,7 @@ import {
   generateList as generateListPrompt,
   constants as promptConstants,
 } from '../../prompts/index.js';
-import listResultSchema from './list-result.json';
+import listResultSchema from './list-result.json' with { type: 'json' };
 import { nameStep } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
 import { DomainEvent } from '../../lib/progress/constants.js';
@@ -45,7 +45,10 @@ const shouldStopDefault = ({ queryCount, startTime, queryLimit, timeoutMs } = {}
 };
 
 export const generateList = async function* generateListGenerator(text, config = {}) {
-  const runConfig = nameStep('list:generate', { llm: 'fastGoodCheap', ...config });
+  const runConfig = nameStep('list:generate', {
+    llm: { fast: true, good: true, cheap: true },
+    ...config,
+  });
   const resultsAll = [];
   const resultsAllMap = {};
   let isDone = false;

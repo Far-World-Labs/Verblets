@@ -40,6 +40,9 @@ vi.mock('playwright-core', () => {
     chromium: {
       launch: vi.fn(async () => mockBrowser),
     },
+    firefox: {
+      launch: vi.fn(async () => mockBrowser),
+    },
     __mockBrowser: mockBrowser,
     __mockContext: mockContext,
     __mockPages: pages,
@@ -79,7 +82,7 @@ vi.mock('../../lib/image-utils/index.js', () => ({
 
 import webScrape from './index.js';
 import { setBrowserEnabled } from './state.js';
-import { chromium, __mockPages } from 'playwright-core';
+import { chromium, firefox, __mockPages } from 'playwright-core';
 import { resizeImage, tileImages } from '../../lib/image-utils/index.js';
 import { createTempDir } from '../../lib/temp-files/index.js';
 
@@ -624,5 +627,80 @@ describe('web-scrape', () => {
     // but we can verify it doesn't fail validation
     const { validateAction } = await import('./actions.js');
     expect(() => validateAction({ action: 'resize', width: 375 })).not.toThrow();
+  });
+
+  it('uses browserEngine config to select browser type', async () => {
+    const step = async () => ({ action: 'done' });
+    await webScrape('https://example.com', step, { browserEngine: 'firefox' });
+
+    expect(firefox.launch).toHaveBeenCalledTimes(1);
+    expect(chromium.launch).not.toHaveBeenCalled();
+  });
+
+  it('supports async generator step functions', async () => {
+    const captured = [];
+
+    async function* genStep(ctx) {
+      // Step 0: initial ctx comes as function argument
+      captured.push({ step: ctx.stepNumber, url: ctx.url });
+      ctx = yield { action: 'click', selector: '.btn' };
+
+      // Step 1: updated ctx sent via generator.next(ctx)
+      captured.push({ step: ctx.stepNumber, url: ctx.url });
+      ctx = yield { action: 'wait', ms: 100 };
+
+      // Step 2: done
+      captured.push({ step: ctx.stepNumber });
+      yield { action: 'done', data: { total: captured.length } };
+    }
+
+    const result = await webScrape('https://example.com', genStep);
+
+    expect(result.steps).toBe(3);
+    expect(result.data).toEqual({ total: 3 });
+    expect(captured).toEqual([
+      { step: 0, url: 'https://example.com' },
+      { step: 1, url: 'https://example.com' },
+      { step: 2 },
+    ]);
+    expect(result.screenshots).toHaveLength(3);
+  });
+
+  it('generator can branch on accumulator state', async () => {
+    const pages = (await import('playwright-core')).__mockPages;
+    pages.length = 0;
+
+    async function* genStep(ctx) {
+      // eval stores into accumulator — mock evaluate returns { hasThing: true }
+      ctx = yield { action: 'eval', fn: () => ({ hasThing: true }), into: 'check' };
+
+      // Branch based on accumulator (populated by web-scrape after eval)
+      if (ctx.accumulator.check?.hasThing) {
+        ctx = yield { action: 'wait', ms: 50 };
+      }
+      yield { action: 'done', data: { branched: !!ctx.accumulator.check?.hasThing } };
+    }
+
+    // Configure mock evaluate to return the eval function's intended result
+    const result = await (async () => {
+      const r = await webScrape('https://example.com', genStep);
+      return r;
+    })();
+
+    // Mock evaluate returns undefined, so branch is NOT taken — 2 steps: eval, done
+    expect(result.data).toEqual({ branched: false });
+    expect(result.steps).toBe(2);
+  });
+
+  it('generator early return produces done action', async () => {
+    /* eslint-disable require-yield, no-unused-vars */
+    async function* genStep(_ctx) {
+      return { earlyExit: true };
+    }
+    /* eslint-enable require-yield, no-unused-vars */
+
+    const result = await webScrape('https://example.com', genStep);
+    expect(result.data).toEqual({ earlyExit: true });
+    expect(result.steps).toBe(1);
   });
 });

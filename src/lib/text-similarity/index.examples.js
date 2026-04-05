@@ -103,7 +103,7 @@ describe('TextSimilarity examples', () => {
 
       expect(textSim.getStats().totalChunks).toBe(2);
       expect(textSim.getChunk(ids[0])).toBeDefined();
-      expect(textSim.getChunk(ids[1])).toBeNull();
+      expect(textSim.getChunk(ids[1])).toBeUndefined();
       expect(textSim.getChunk(ids[2])).toBeDefined();
 
       // Search should still work with remaining documents

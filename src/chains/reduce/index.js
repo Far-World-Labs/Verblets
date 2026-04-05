@@ -37,7 +37,7 @@ const reduce = async function reduce(list, instructions, config = {}) {
 
     const batches = await createBatches(list, runConfig);
     const batchDone = emitter.batch(list.length);
-    const activeBatches = batches.filter((b) => !b.skip);
+    const activeBatches = batches;
 
     emitter.progress({
       event: OpEvent.start,

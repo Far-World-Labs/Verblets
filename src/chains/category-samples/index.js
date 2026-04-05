@@ -92,7 +92,7 @@ export function buildSeedGenerationPrompt(categoryName, { context = '', diversit
  * @param {string} [config.context=''] - Context for sample generation
  * @param {number} [config.count=30] - Number of sample items to generate
  * @param {string} [config.diversity] - 'low' or 'high' (default: balanced behavior)
- * @param {string|Object} [config.llm='fastGoodCheap'] - LLM model to use
+ * @param {string|Object} [config.llm={ fast: true, good: true, cheap: true }] - LLM model to use
  * @returns {Promise<string[]>}
  */
 export default async function categorySamples(categoryName, config = {}) {
@@ -100,7 +100,7 @@ export default async function categorySamples(categoryName, config = {}) {
     throw new Error('categoryName must be a non-empty string');
   }
 
-  const runConfig = nameStep(name, { llm: 'fastGoodCheap', ...config });
+  const runConfig = nameStep(name, { llm: { fast: true, good: true, cheap: true }, ...config });
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
   const { diversity, count } = await getOptions(runConfig, {

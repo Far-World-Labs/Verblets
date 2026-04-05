@@ -24,12 +24,6 @@ export const ENV_VARS = {
   OPENAI_PROXY_URL: { type: 'string', scope: 'deploy', default: 'https://api.openai.com/' },
   OPENWEBUI_API_URL: { type: 'string', scope: 'deploy', requiredIf: 'OPENWEBUI_API_KEY' },
 
-  // ── LLM Parameters ──────────────────────────────────────────────────
-  VERBLETS_TEMPERATURE: { type: 'number', default: 0, scope: 'deploy' },
-  VERBLETS_FREQUENCY_PENALTY: { type: 'number', default: 0, scope: 'deploy' },
-  VERBLETS_PRESENCE_PENALTY: { type: 'number', default: 0, scope: 'deploy' },
-  VERBLETS_TOPP: { type: 'number', default: 0.5, scope: 'deploy' },
-
   // ── Output & Storage ─────────────────────────────────────────────────
   VERBLETS_OUTPUT_DIR: { type: 'string', scope: 'deploy' },
 

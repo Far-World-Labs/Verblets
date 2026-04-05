@@ -5,9 +5,9 @@ import llm from '../../lib/llm/index.js';
 
 vi.mock('../../services/llm-model/index.js', () => ({
   default: {
-    negotiateModel: vi.fn().mockReturnValue('fastGood'),
+    negotiateModel: vi.fn().mockReturnValue({ name: 'test-model' }),
     getBestPublicModel: vi.fn().mockReturnValue({
-      name: 'fastGood',
+      name: 'test-model',
       tokenizer: (text) => text.split(' '),
       maxContextWindow: 128000,
       maxOutputTokens: 16384,
@@ -26,7 +26,7 @@ vi.mock('../../services/llm-model/index.js', () => ({
       },
     }),
     getModel: vi.fn().mockReturnValue({
-      name: 'fastGood',
+      name: 'test-model',
       tokenizer: (text) => text.split(' '),
       maxContextWindow: 128000,
       maxOutputTokens: 16384,
@@ -86,7 +86,7 @@ const examples = [
     name: 'Model options and sensitivity',
     inputs: {
       targetTokens: 50,
-      llm: 'fastGood',
+      llm: { fast: true, good: true },
       keys: [
         {
           key: 'example.text',

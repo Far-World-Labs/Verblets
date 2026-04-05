@@ -78,7 +78,7 @@ export const catalog = {
     systemPrompt,
   },
   // ── Anthropic ──────────────────────────────────────────────────────
-  'claude-sonnet-4-5': {
+  'claude-sonnet-4-6': {
     provider: 'anthropic',
     endpoint: 'v1/messages',
     maxContextWindow: 200_000,

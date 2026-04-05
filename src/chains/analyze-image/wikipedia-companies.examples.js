@@ -1,6 +1,12 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { chromium } from 'playwright';
 import path from 'node:path';
+
+let chromium;
+try {
+  ({ chromium } = await import('playwright'));
+} catch {
+  // playwright not installed — tests will be skipped
+}
 
 import { existsSync } from 'node:fs';
 import init from '../../init.js';
@@ -128,7 +134,7 @@ const comparisonSchema = jsonSchema('page_comparison', {
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
-describe('Wikipedia Companies Vision Integration', () => {
+describe.skipIf(!chromium)('Wikipedia Companies Vision Integration', () => {
   // ── 1. Structured extraction from table screenshot ──
 
   let extractedCompanies = [];

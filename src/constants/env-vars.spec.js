@@ -59,13 +59,6 @@ describe('env-vars registry', () => {
     expect(ENV_VARS.OPENWEBUI_API_KEY).toBeDefined();
   });
 
-  it('includes all known LLM parameter vars', () => {
-    expect(ENV_VARS.VERBLETS_TEMPERATURE).toBeDefined();
-    expect(ENV_VARS.VERBLETS_FREQUENCY_PENALTY).toBeDefined();
-    expect(ENV_VARS.VERBLETS_PRESENCE_PENALTY).toBeDefined();
-    expect(ENV_VARS.VERBLETS_TOPP).toBeDefined();
-  });
-
   it('includes cache and redis vars', () => {
     expect(ENV_VARS.VERBLETS_CACHE_TTL).toBeDefined();
     expect(ENV_VARS.VERBLETS_DISABLE_CACHE).toBeDefined();

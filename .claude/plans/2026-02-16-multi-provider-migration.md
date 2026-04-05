@@ -261,7 +261,7 @@ Three providers, each a small module (~50-80 lines). All normalize to a **canoni
 
 ## Phase 6: Smoke test from NPM
 
-Update `/home/steven/projects/fwl/verblets-npm-test/`:
+In a separate test directory:
 - `npm install @far-world-labs/verblets@latest`
 - Create test script importing `llm`, `bool`, `list` etc.
 - Run against both OpenAI and Anthropic

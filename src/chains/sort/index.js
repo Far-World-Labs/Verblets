@@ -2,7 +2,7 @@ import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import { chunk } from '../../lib/pure/index.js';
 import retry from '../../lib/retry/index.js';
 import { sort as sortPromptInitial } from '../../prompts/index.js';
-import sortSchema from './sort-result.json';
+import sortSchema from './sort-result.json' with { type: 'json' };
 import createProgressEmitter from '../../lib/progress/index.js';
 import { OpEvent, DomainEvent } from '../../lib/progress/constants.js';
 import { debug } from '../../lib/debug/index.js';

@@ -105,4 +105,4 @@ See [option resolution](./option-resolution.md) for the full internal API (`name
 
 When a function needs structured JSON responses, it uses `response_format` internally. The `callLlm` module auto-parses responses and unwraps common patterns (`{value: x}` → `x`, `{items: [...]}` → `[...]`).
 
-For custom structured output at the consumer level, see [to-object](../src/chains/to-object/) for JSON repair and [JSON Schema Guidelines](../guidelines/JSON_SCHEMAS.md) for schema design.
+For custom structured output at the consumer level, see [to-object](../src/chains/to-object/) for JSON repair and [JSON Schema Guidelines](../.claude/guidelines/JSON_SCHEMAS.md) for schema design.

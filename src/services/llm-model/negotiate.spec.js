@@ -1,840 +1,304 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import modelService, { resolveModel, getCapabilities } from './index.js';
+import modelService, { resolveModel } from './index.js';
 import Model from './model.js';
 
-// helper tokenizer
-const tokenizer = (t) => t.split(' ');
-
-describe('Model negotiation', () => {
+describe('Rule-based model negotiation', () => {
   beforeEach(() => {
-    // Reset models before each test
-    modelService.models = {};
-    modelService.bestPublicModelKey = 'fastGood';
-  });
+    modelService._modelCache.clear();
+    modelService.customModels = {};
+    modelService.gatedCapabilities = new Set(['sensitive', 'reasoning']);
 
-  describe('Sensitive models (two-tier)', () => {
-    it('sensitive: true selects fast (2b) tier by default', () => {
-      modelService.models = {
-        sensitive: new Model({
-          name: 'qwen3.5:2b',
-          maxContextWindow: 32768,
-          maxOutputTokens: 8192,
-          requestTimeout: 1000,
-          tokenizer,
-        }),
-        sensitiveGood: new Model({
-          name: 'qwen3.5:4b',
-          maxContextWindow: 32768,
-          maxOutputTokens: 8192,
-          requestTimeout: 1000,
-          tokenizer,
-        }),
-        fastGood: new Model({
-          name: 'fast-good',
-          maxContextWindow: 128000,
-          maxOutputTokens: 16384,
-          requestTimeout: 1000,
-          tokenizer,
-        }),
-      };
-
-      expect(modelService.negotiateModel('fastGood', { sensitive: true })).toBe('sensitive');
-    });
-
-    it('sensitive + good selects quality (4b) tier', () => {
-      modelService.models = {
-        sensitive: new Model({
-          name: 'qwen3.5:2b',
-          maxContextWindow: 32768,
-          maxOutputTokens: 8192,
-          requestTimeout: 1000,
-          tokenizer,
-        }),
-        sensitiveGood: new Model({
-          name: 'qwen3.5:4b',
-          maxContextWindow: 32768,
-          maxOutputTokens: 8192,
-          requestTimeout: 1000,
-          tokenizer,
-        }),
-        fastGood: new Model({
-          name: 'fast-good',
-          maxContextWindow: 128000,
-          maxOutputTokens: 16384,
-          requestTimeout: 1000,
-          tokenizer,
-        }),
-      };
-
-      expect(modelService.negotiateModel('fastGood', { sensitive: true, good: true })).toBe(
-        'sensitiveGood'
-      );
-    });
-
-    it('sensitive + fast selects fast (2b) tier', () => {
-      modelService.models = {
-        sensitive: new Model({
-          name: 'qwen3.5:2b',
-          maxContextWindow: 32768,
-          maxOutputTokens: 8192,
-          requestTimeout: 1000,
-          tokenizer,
-        }),
-        sensitiveGood: new Model({
-          name: 'qwen3.5:4b',
-          maxContextWindow: 32768,
-          maxOutputTokens: 8192,
-          requestTimeout: 1000,
-          tokenizer,
-        }),
-      };
-
-      expect(modelService.negotiateModel(null, { sensitive: true, fast: true })).toBe('sensitive');
-    });
-
-    it('falls back to sensitiveGood when only quality tier is available', () => {
-      modelService.models = {
-        sensitiveGood: new Model({
-          name: 'qwen3.5:4b',
-          maxContextWindow: 32768,
-          maxOutputTokens: 8192,
-          requestTimeout: 1000,
-          tokenizer,
-        }),
-      };
-
-      // No good flag, but only sensitiveGood exists — falls back
-      expect(modelService.negotiateModel(null, { sensitive: true })).toBe('sensitiveGood');
-    });
-
-    it('falls back to sensitive when good requested but only fast tier available', () => {
-      modelService.models = {
-        sensitive: new Model({
-          name: 'qwen3.5:2b',
-          maxContextWindow: 32768,
-          maxOutputTokens: 8192,
-          requestTimeout: 1000,
-          tokenizer,
-        }),
-      };
-
-      expect(modelService.negotiateModel(null, { sensitive: true, good: true })).toBe('sensitive');
-    });
-
-    it('returns undefined when no sensitive models configured and sensitive required', () => {
-      modelService.models = {
-        fastGood: new Model({
-          name: 'fast-good',
-          maxContextWindow: 128000,
-          maxOutputTokens: 16384,
-          requestTimeout: 1000,
-          tokenizer,
-        }),
-      };
-
-      expect(modelService.negotiateModel('fastGood', { sensitive: true })).toBe(undefined);
-    });
-  });
-
-  describe('Exact model key matching', () => {
-    beforeEach(() => {
-      modelService.models = {
-        fastGood: new Model({
-          name: 'fast-good',
-          maxContextWindow: 128000,
-          maxOutputTokens: 16384,
-          requestTimeout: 1000,
-          tokenizer,
-        }),
-        fastCheap: new Model({
-          name: 'fast-cheap',
-          maxContextWindow: 128000,
-          maxOutputTokens: 8192,
-          requestTimeout: 1000,
-          tokenizer,
-        }),
-        fastReasoning: new Model({
-          name: 'fast-reasoning',
-          maxContextWindow: 200000,
-          maxOutputTokens: 100000,
-          requestTimeout: 1000,
-          tokenizer,
-        }),
-        fastCheapReasoning: new Model({
-          name: 'fast-cheap-reasoning',
-          maxContextWindow: 128000,
-          maxOutputTokens: 16384,
-          requestTimeout: 1000,
-          tokenizer,
-        }),
-        fastGoodMulti: new Model({
-          name: 'fast-good-multi',
-          maxContextWindow: 1000000,
-          maxOutputTokens: 32768,
-          requestTimeout: 1000,
-          tokenizer,
-        }),
-        fastCheapReasoningMulti: new Model({
-          name: 'fast-cheap-reasoning-multi',
-          maxContextWindow: 128000,
-          maxOutputTokens: 16384,
-          requestTimeout: 1000,
-          tokenizer,
-        }),
-        good: new Model({
-          name: 'good',
-          maxContextWindow: 128000,
-          maxOutputTokens: 16384,
-          requestTimeout: 1000,
-          tokenizer,
-        }),
-        reasoning: new Model({
-          name: 'reasoning',
-          maxContextWindow: 200000,
-          maxOutputTokens: 100000,
-          requestTimeout: 1000,
-          tokenizer,
-        }),
-        fast: new Model({
-          name: 'fast',
-          maxContextWindow: 128000,
-          maxOutputTokens: 16384,
-          requestTimeout: 1000,
-          tokenizer,
-        }),
-        cheap: new Model({
-          name: 'cheap',
-          maxContextWindow: 128000,
-          maxOutputTokens: 8192,
-          requestTimeout: 1000,
-          tokenizer,
-        }),
-      };
-    });
-
-    it('returns highest priority match for fast + cheap', () => {
-      // Should find fastCheap since it has both fast and cheap
-      const key = modelService.negotiateModel(null, { fast: true, cheap: true });
-      expect(key).toBe('fastCheap'); // fastCheap matches both requirements
-    });
-
-    it('returns highest priority match for fast + reasoning', () => {
-      // Should find fastReasoning since it has both fast and reasoning
-      const key = modelService.negotiateModel(null, { fast: true, reasoning: true });
-      expect(key).toBe('fastCheapReasoning'); // fastReasoning matches both requirements
-    });
-
-    it('returns exact match when it exists and has high priority', () => {
-      const key = modelService.negotiateModel(null, { fast: true, cheap: true, reasoning: true });
-      expect(key).toBe('fastCheapReasoning'); // Exact match exists
-    });
-
-    it('returns exact match for fast + good + multi', () => {
-      const key = modelService.negotiateModel(null, { fast: true, good: true, multi: true });
-      expect(key).toBe('fastGoodMulti'); // Exact match exists
-    });
-
-    it('returns exact match for fast + cheap + reasoning + multi', () => {
-      const key = modelService.negotiateModel(null, {
-        fast: true,
-        cheap: true,
-        reasoning: true,
-        multi: true,
-      });
-      expect(key).toBe('fastCheapReasoningMulti'); // Exact match exists
-    });
-  });
-
-  describe('Fallback logic', () => {
-    beforeEach(() => {
-      modelService.models = {
-        fastGoodCheap: new Model({
-          name: 'fast-good-cheap',
-          maxContextWindow: 128000,
-          maxOutputTokens: 16384,
-          requestTimeout: 1000,
-          tokenizer,
-        }),
-        fastGood: new Model({
-          name: 'fast-good',
-          maxContextWindow: 128000,
-          maxOutputTokens: 16384,
-          requestTimeout: 1000,
-          tokenizer,
-        }),
-        fastCheap: new Model({
-          name: 'fast-cheap',
-          maxContextWindow: 128000,
-          maxOutputTokens: 8192,
-          requestTimeout: 1000,
-          tokenizer,
-        }),
-        fastReasoning: new Model({
-          name: 'fast-reasoning',
-          maxContextWindow: 200000,
-          maxOutputTokens: 100000,
-          requestTimeout: 1000,
-          tokenizer,
-        }),
-        good: new Model({
-          name: 'good',
-          maxContextWindow: 128000,
-          maxOutputTokens: 16384,
-          requestTimeout: 1000,
-          tokenizer,
-        }),
-        reasoning: new Model({
-          name: 'reasoning',
-          maxContextWindow: 200000,
-          maxOutputTokens: 100000,
-          requestTimeout: 1000,
-          tokenizer,
-        }),
-        fast: new Model({
-          name: 'fast',
-          maxContextWindow: 128000,
-          maxOutputTokens: 16384,
-          requestTimeout: 1000,
-          tokenizer,
-        }),
-        cheap: new Model({
-          name: 'cheap',
-          maxContextWindow: 128000,
-          maxOutputTokens: 8192,
-          requestTimeout: 1000,
-          tokenizer,
-        }),
-      };
-    });
-
-    it('finds exact match when available', () => {
-      const key = modelService.negotiateModel(null, { fast: true, good: true });
-      expect(key).toBe('fastGoodCheap');
-    });
-
-    it('requires all specified features to match', () => {
-      // Request multi but no multi models exist - should return undefined
-      expect(modelService.negotiateModel(null, { fast: true, multi: true })).toBe(undefined);
-    });
-
-    it('picks higher priority model when multiple match', () => {
-      // Both fastGoodCheap, fastGood and good match { good: true }, should pick fastGoodCheap (highest priority)
-      const key = modelService.negotiateModel(null, { good: true });
-      expect(key).toBe('fastGoodCheap');
-    });
-
-    it('respects all requirements strictly', () => {
-      // Request fast + cheap + reasoning - no exact match available, should return undefined since reasoning is requested
-      expect(modelService.negotiateModel(null, { fast: true, cheap: true, reasoning: true })).toBe(
-        undefined
-      );
-    });
-
-    it('works with single requirements', () => {
-      const key = modelService.negotiateModel(null, { reasoning: true });
-      expect(key).toBe('fastReasoning');
-    });
-
-    it('works with multi requirement when available', () => {
-      modelService.models.fastGoodMulti = new Model({
-        name: 'fast-good-multi',
-        maxContextWindow: 1000000,
-        maxOutputTokens: 32768,
+    // Custom models simulate the catalog for tests
+    modelService.addModels({
+      'fast-default': { maxContextWindow: 128000, maxOutputTokens: 16384, requestTimeout: 1000 },
+      'budget-model': { maxContextWindow: 128000, maxOutputTokens: 16384, requestTimeout: 1000 },
+      'reasoning-model': { maxContextWindow: 128000, maxOutputTokens: 16384, requestTimeout: 1000 },
+      'sensitive-default': {
+        maxContextWindow: 128000,
+        maxOutputTokens: 16384,
         requestTimeout: 1000,
-        tokenizer,
-      });
-
-      const key = modelService.negotiateModel(null, { fast: true, good: true, multi: true });
-      expect(key).toBe('fastGoodMulti');
+      },
+      'sensitive-good': { maxContextWindow: 128000, maxOutputTokens: 16384, requestTimeout: 1000 },
     });
 
-    it('falls back to best public model when no matches found', () => {
-      // Request something that doesn't exist with reasoning - should return undefined
-      expect(
-        modelService.negotiateModel(null, {
-          fast: true,
-          cheap: true,
-          good: true,
-          reasoning: true,
-          multi: true,
-        })
-      ).toBe(undefined);
+    modelService.setRules([
+      { match: { sensitive: true, good: true }, use: 'sensitive-good' },
+      { match: { sensitive: true }, use: 'sensitive-default' },
+      { match: { reasoning: true }, use: 'reasoning-model' },
+      { match: { cheap: true, good: false }, use: 'budget-model' },
+      { use: 'fast-default' }, // catch-all
+    ]);
+  });
+
+  // ── Rule matching basics ──────────────────────────────────────────
+
+  describe('Basic rule matching', () => {
+    it('returns the catch-all model with empty negotiation', () => {
+      const result = modelService.negotiateModel(undefined, {});
+      expect(result.name).toBe('fast-default');
     });
 
-    it('prioritizes better combinations over individual features', () => {
-      // Both fast and fastGoodCheap match { fast: true }, should pick fastGoodCheap
-      const key = modelService.negotiateModel(null, { fast: true });
-      expect(key).toBe('fastGoodCheap');
+    it('returns the catch-all model with undefined negotiation', () => {
+      const result = modelService.negotiateModel(undefined);
+      expect(result.name).toBe('fast-default');
+    });
+
+    it('matches a rule requiring cheap: true and good: false', () => {
+      const result = modelService.negotiateModel(undefined, { cheap: true, good: false });
+      expect(result.name).toBe('budget-model');
+    });
+
+    it('falls through to catch-all when no specific rule matches', () => {
+      const result = modelService.negotiateModel(undefined, { fast: true });
+      expect(result.name).toBe('fast-default');
+    });
+
+    it('first matching rule wins (order matters)', () => {
+      // sensitive + good matches the first sensitive rule, not the second
+      const result = modelService.negotiateModel(undefined, { sensitive: true, good: true });
+      expect(result.name).toBe('sensitive-good');
+    });
+
+    it('sensitive: true without good matches the second sensitive rule', () => {
+      const result = modelService.negotiateModel(undefined, { sensitive: true });
+      expect(result.name).toBe('sensitive-default');
     });
   });
 
-  describe('Preferred model handling', () => {
-    beforeEach(() => {
-      modelService.models = {
-        fastGood: new Model({
-          name: 'fast-good',
-          maxContextWindow: 128000,
-          maxOutputTokens: 16384,
-          requestTimeout: 1000,
-          tokenizer,
-        }),
-        customModel: new Model({
-          name: 'custom',
-          maxContextWindow: 64000,
-          maxOutputTokens: 8192,
-          requestTimeout: 1000,
-          tokenizer,
-        }),
-      };
+  // ── Gating ────────────────────────────────────────────────────────
+
+  describe('Gating', () => {
+    it('catch-all rule is skipped when consumer hard-requires a gated cap', () => {
+      // reasoning: true is gated — catch-all doesn't mention it, so it's skipped
+      const result = modelService.negotiateModel(undefined, { reasoning: true });
+      expect(result.name).toBe('reasoning-model');
     });
 
-    it('returns preferred model when available and no sensitive requested', () => {
-      const key = modelService.negotiateModel('customModel', { fast: true });
-      expect(key).toBe('fastGood');
+    it('sensitive: true prevents fallthrough to catch-all', () => {
+      const result = modelService.negotiateModel(undefined, { sensitive: true });
+      expect(result.name).toBe('sensitive-default');
     });
 
-    it('ignores preferred model when sensitive is requested', () => {
-      modelService.models.sensitive = new Model({
-        name: 'qwen3.5:2b',
-        maxContextWindow: 32768,
-        maxOutputTokens: 8192,
-        requestTimeout: 1000,
-        tokenizer,
-      });
-
-      const key = modelService.negotiateModel('customModel', { sensitive: true });
-      expect(key).toBe('sensitive');
+    it('returns undefined when gated cap required but no rule addresses it', () => {
+      // Remove all sensitive rules
+      modelService.setRules([
+        { match: { reasoning: true }, use: 'reasoning-model' },
+        { use: 'fast-default' },
+      ]);
+      const result = modelService.negotiateModel(undefined, { sensitive: true });
+      expect(result).toBeUndefined();
     });
 
-    it('falls back to negotiation when preferred model does not exist', () => {
-      const key = modelService.negotiateModel('nonExistentModel', { fast: true });
-      expect(key).toBe('fastGood');
+    it('gating does not apply to prefer — graceful fallthrough', () => {
+      // Remove sensitive rules
+      modelService.setRules([
+        { match: { reasoning: true }, use: 'reasoning-model' },
+        { use: 'fast-default' },
+      ]);
+      // sensitive: 'prefer' is soft — catch-all still matches
+      const result = modelService.negotiateModel(undefined, { sensitive: 'prefer' });
+      expect(result.name).toBe('fast-default');
     });
 
-    it('returns preferred model when it satisfies all requires', () => {
-      // fastGood has capabilities {fast, good} — satisfies { fast: true }
-      const key = modelService.negotiateModel('fastGood', { fast: true });
-      expect(key).toBe('fastGood');
+    it('reasoning: prefer falls through to catch-all when no reasoning rule matches', () => {
+      modelService.setRules([{ use: 'fast-default' }]);
+      const result = modelService.negotiateModel(undefined, { reasoning: 'prefer' });
+      expect(result.name).toBe('fast-default');
     });
 
-    it('skips preferred model when it does not satisfy requires', () => {
-      // customModel has no capabilities — does not satisfy { fast: true }
-      const key = modelService.negotiateModel('customModel', { fast: true });
-      expect(key).toBe('fastGood');
-    });
-
-    it('returns preferred model when it satisfies requires, even with prefers', () => {
-      // No hard requires, just prefers — preferred satisfies requires (vacuously) → preferred wins
-      // User explicitly named a model; it qualifies, so we respect their choice
-      const key = modelService.negotiateModel('customModel', { fast: 'prefer' });
-      expect(key).toBe('customModel');
+    it("rules that don't mention a gated cap are skipped for hard-required gated caps", () => {
+      // Add a rule that matches cheap: true but doesn't mention sensitive
+      modelService.setRules([
+        { match: { cheap: true }, use: 'budget-model' },
+        { match: { sensitive: true }, use: 'sensitive-default' },
+        { use: 'fast-default' },
+      ]);
+      // Consumer requires sensitive + cheap — the cheap rule is skipped (doesn't mention sensitive)
+      const result = modelService.negotiateModel(undefined, { sensitive: true, cheap: true });
+      expect(result.name).toBe('sensitive-default');
     });
   });
 
-  describe('Edge cases', () => {
-    beforeEach(() => {
-      modelService.models = {
-        fastGood: new Model({
-          name: 'fast-good',
-          maxContextWindow: 128000,
-          maxOutputTokens: 16384,
-          requestTimeout: 1000,
-          tokenizer,
-        }),
-      };
-    });
-
-    it('handles empty negotiation object', () => {
-      const key = modelService.negotiateModel(null, {});
-      expect(key).toBe('fastGood');
-    });
-
-    it('handles undefined negotiation', () => {
-      const key = modelService.negotiateModel(null);
-      expect(key).toBe('fastGood');
-    });
-
-    it('handles single flag requests', () => {
-      const key = modelService.negotiateModel(null, { fast: true });
-      expect(key).toBe('fastGood');
-    });
-
-    it('prioritizes reasoning over good when both are requested', () => {
-      modelService.models.fastReasoning = new Model({
-        name: 'fast-reasoning',
-        maxContextWindow: 200000,
-        maxOutputTokens: 100000,
-        requestTimeout: 1000,
-        tokenizer,
-      });
-
-      // Request fast + reasoning + good but no model has all three - should return undefined
-      expect(modelService.negotiateModel(null, { fast: true, reasoning: true, good: true })).toBe(
-        undefined
-      );
-    });
-  });
-
-  describe('Property negation', () => {
-    beforeEach(() => {
-      modelService.models = {
-        fastGoodCheap: new Model({
-          name: 'fast-good-cheap',
-          maxContextWindow: 128000,
-          maxOutputTokens: 16384,
-          requestTimeout: 1000,
-          tokenizer,
-        }),
-        fastGood: new Model({
-          name: 'fast-good',
-          maxContextWindow: 128000,
-          maxOutputTokens: 16384,
-          requestTimeout: 1000,
-          tokenizer,
-        }),
-        good: new Model({
-          name: 'good',
-          maxContextWindow: 128000,
-          maxOutputTokens: 16384,
-          requestTimeout: 1000,
-          tokenizer,
-        }),
-        fast: new Model({
-          name: 'fast',
-          maxContextWindow: 128000,
-          maxOutputTokens: 16384,
-          requestTimeout: 1000,
-          tokenizer,
-        }),
-        reasoning: new Model({
-          name: 'reasoning',
-          maxContextWindow: 200000,
-          maxOutputTokens: 100000,
-          requestTimeout: 1000,
-          tokenizer,
-        }),
-      };
-    });
-
-    it('excludes models with negated properties', () => {
-      // Request good but NOT fast - should pick 'good' over 'fastGood'
-      const key = modelService.negotiateModel(null, { good: true, fast: false });
-      expect(key).toBe('good');
-    });
-
-    it('excludes models with multiple negated properties', () => {
-      // Request good but NOT fast and NOT cheap - should pick 'good'
-      const key = modelService.negotiateModel(null, { good: true, fast: false, cheap: false });
-      expect(key).toBe('good');
-    });
-
-    it('works with only negated properties', () => {
-      // Request NOT fast - should pick 'good' (first non-fast model in priority)
-      const key = modelService.negotiateModel(null, { fast: false });
-      expect(key).toBe('good');
-    });
-
-    it('combines positive and negative requirements', () => {
-      // Request fast but NOT good - should pick 'fast' over 'fastGood'
-      // fastGoodCheap has both fast and good, so it's excluded by good: false
-      // fastGood has both fast and good, so it's excluded by good: false
-      // fast has fast but no good, so it matches
-      const key = modelService.negotiateModel(null, { fast: true, good: false });
-      expect(key).toBe('fast');
-    });
-
-    it('falls back when negation eliminates all matches', () => {
-      // Request NOT reasoning (all models are non-reasoning, so should pick first priority)
-      const key = modelService.negotiateModel(null, { good: false });
-      expect(key).toBe('fast');
-    });
-  });
+  // ── Prefer semantics ──────────────────────────────────────────────
 
   describe('Prefer semantics', () => {
-    beforeEach(() => {
-      modelService.models = {
-        fastGoodCheap: new Model({
-          name: 'fast-good-cheap',
-          maxContextWindow: 128000,
-          maxOutputTokens: 16384,
-          requestTimeout: 1000,
-          tokenizer,
-        }),
-        fastGood: new Model({
-          name: 'fast-good',
-          maxContextWindow: 128000,
-          maxOutputTokens: 16384,
-          requestTimeout: 1000,
-          tokenizer,
-        }),
-        fastCheap: new Model({
-          name: 'fast-cheap',
-          maxContextWindow: 128000,
-          maxOutputTokens: 8192,
-          requestTimeout: 1000,
-          tokenizer,
-        }),
-        good: new Model({
-          name: 'good',
-          maxContextWindow: 128000,
-          maxOutputTokens: 16384,
-          requestTimeout: 1000,
-          tokenizer,
-        }),
-        fast: new Model({
-          name: 'fast',
-          maxContextWindow: 128000,
-          maxOutputTokens: 16384,
-          requestTimeout: 1000,
-          tokenizer,
-        }),
-        cheap: new Model({
-          name: 'cheap',
-          maxContextWindow: 128000,
-          maxOutputTokens: 8192,
-          requestTimeout: 1000,
-          tokenizer,
-        }),
-        reasoning: new Model({
-          name: 'reasoning',
-          maxContextWindow: 200000,
-          maxOutputTokens: 100000,
-          requestTimeout: 1000,
-          tokenizer,
-        }),
-        fastReasoning: new Model({
-          name: 'fast-reasoning',
-          maxContextWindow: 200000,
-          maxOutputTokens: 100000,
-          requestTimeout: 1000,
-          tokenizer,
-        }),
-      };
+    it('prefer satisfies a rule condition of true', () => {
+      // sensitive: 'prefer' satisfies the sensitive: true match condition
+      const result = modelService.negotiateModel(undefined, { sensitive: 'prefer' });
+      expect(result.name).toBe('sensitive-default');
     });
 
-    it('prefer alone acts as soft preference, picks model with most matches', () => {
-      // prefer good — fastGoodCheap has good, so it wins
-      const key = modelService.negotiateModel(null, { good: 'prefer' });
-      expect(key).toBe('fastGoodCheap');
+    it('prefer + good: true matches sensitive-good rule', () => {
+      const result = modelService.negotiateModel(undefined, { sensitive: 'prefer', good: true });
+      expect(result.name).toBe('sensitive-good');
     });
 
-    it('prefer does not fail when no model has the capability', () => {
-      // prefer multi — no multi models, but prefer is soft, so first model is returned
-      const key = modelService.negotiateModel(null, { multi: 'prefer' });
-      // All candidates match requires (none), best prefer score is 0 for all, first priority wins
-      expect(key).toBe('fastGoodCheap');
+    it('prefer does not trigger gating — can fall through', () => {
+      modelService.setRules([{ use: 'fast-default' }]);
+      const result = modelService.negotiateModel(undefined, { sensitive: 'prefer' });
+      expect(result.name).toBe('fast-default');
+    });
+  });
+
+  // ── Negation ──────────────────────────────────────────────────────
+
+  describe('Negation', () => {
+    it('rule with good: false rejects consumer requesting good: true', () => {
+      // The budget rule requires good: false; consumer has good: true → no match
+      const result = modelService.negotiateModel(undefined, { cheap: true, good: true });
+      // Falls through to catch-all
+      expect(result.name).toBe('fast-default');
     });
 
-    it('require + prefer: filters by require, then ranks by prefer', () => {
-      // require fast, prefer good — among fast models, pick one that also has good
-      const key = modelService.negotiateModel(null, { fast: true, good: 'prefer' });
-      expect(key).toBe('fastGoodCheap'); // has fast (required) + good (preferred)
+    it('consumer good: false matches rule requiring good: false', () => {
+      const result = modelService.negotiateModel(undefined, { cheap: true, good: false });
+      expect(result.name).toBe('budget-model');
     });
 
-    it('require + prefer: prefer does not override require', () => {
-      // require reasoning, prefer fast — among reasoning models, prefer fast
-      const key = modelService.negotiateModel(null, { reasoning: true, fast: 'prefer' });
-      expect(key).toBe('fastReasoning'); // reasoning (required) + fast (preferred)
+    it('consumer with negated cap that no rule checks falls through to catch-all', () => {
+      const result = modelService.negotiateModel(undefined, { fast: false });
+      expect(result.name).toBe('fast-default');
+    });
+  });
+
+  // ── Preferred model name (escape hatch) ───────────────────────────
+
+  describe('Preferred model name', () => {
+    it('returns the named model directly when it resolves', () => {
+      const result = modelService.negotiateModel('budget-model', { fast: true });
+      expect(result.name).toBe('budget-model');
     });
 
-    it('prefer picks higher prefer-score over priority order', () => {
-      // require fast, prefer good + cheap — fastGoodCheap has both prefers (score=2), fastGood has 1
-      const key = modelService.negotiateModel(null, {
-        fast: true,
-        good: 'prefer',
-        cheap: 'prefer',
+    it("falls back to rule negotiation when preferred model name doesn't resolve", () => {
+      const result = modelService.negotiateModel('nonexistent', { cheap: true, good: false });
+      expect(result.name).toBe('budget-model');
+    });
+
+    it("uses preferred model even if it doesn't match rule conditions", () => {
+      // Escape hatch ignores rules entirely — just resolves the name
+      const result = modelService.negotiateModel('reasoning-model');
+      expect(result.name).toBe('reasoning-model');
+    });
+  });
+
+  // ── Default model ─────────────────────────────────────────────────
+
+  describe('getDefaultModel', () => {
+    it('returns the model from the catch-all rule', () => {
+      expect(modelService.getDefaultModel().name).toBe('fast-default');
+    });
+
+    it('returns the last rule if no explicit catch-all exists', () => {
+      modelService.setRules([
+        { match: { sensitive: true }, use: 'sensitive-default' },
+        { match: { reasoning: true }, use: 'reasoning-model' },
+      ]);
+      // No catch-all → last rule is the fallback
+      expect(modelService.getDefaultModel().name).toBe('reasoning-model');
+    });
+  });
+
+  // ── getBestPrivateModel ───────────────────────────────────────────
+
+  describe('getBestPrivateModel', () => {
+    it('returns the sensitive model when one is configured', () => {
+      expect(modelService.getBestPrivateModel().name).toBe('sensitive-good');
+    });
+
+    it('throws when no sensitive rule is configured', () => {
+      modelService.setRules([{ use: 'fast-default' }]);
+      expect(() => modelService.getBestPrivateModel()).toThrow('No sensitive model configured');
+    });
+  });
+
+  // ── Custom models via addModels ───────────────────────────────────
+
+  describe('addModels', () => {
+    it('custom models are resolvable by name', () => {
+      modelService.addModels({
+        'my-llama': { maxContextWindow: 8192, maxOutputTokens: 4096, requestTimeout: 1000 },
       });
-      expect(key).toBe('fastGoodCheap');
+      const model = modelService.getModel('my-llama');
+      expect(model.name).toBe('my-llama');
     });
 
-    it('require + exclude + prefer work together', () => {
-      // require fast, exclude cheap, prefer good — fast models without cheap, prefer good
-      const key = modelService.negotiateModel(null, {
-        fast: true,
-        cheap: false,
-        good: 'prefer',
+    it('custom models can be used in rules', () => {
+      modelService.addModels({
+        'my-llama': { maxContextWindow: 8192, maxOutputTokens: 4096, requestTimeout: 1000 },
       });
-      expect(key).toBe('fastGood'); // fast (required), not cheap (excluded), good (preferred)
+      modelService.setRules([{ use: 'my-llama' }]);
+      const result = modelService.negotiateModel(undefined, {});
+      expect(result.name).toBe('my-llama');
+    });
+  });
+
+  // ── Return type ───────────────────────────────────────────────────
+
+  describe('Return type', () => {
+    it('returns a Model instance', () => {
+      const result = modelService.negotiateModel(undefined, {});
+      expect(result).toBeInstanceOf(Model);
     });
 
-    it('when prefer is tied, priority order breaks the tie', () => {
-      // prefer cheap — fastGoodCheap and fastCheap both have cheap (score=1)
-      // fastGoodCheap is higher priority, so it wins
-      const key = modelService.negotiateModel(null, { cheap: 'prefer' });
-      expect(key).toBe('fastGoodCheap');
-    });
-
-    it('sensitive as prefer falls through when no sensitive model', () => {
-      // prefer sensitive but no sensitive model — should fall through to normal negotiation
-      const key = modelService.negotiateModel(null, { sensitive: 'prefer', fast: true });
-      expect(key).toBe('fastGoodCheap');
-    });
-
-    it('sensitive as prefer returns fast sensitive model when available', () => {
-      modelService.models.sensitive = new Model({
-        name: 'qwen3.5:2b',
-        maxContextWindow: 32768,
-        maxOutputTokens: 8192,
-        requestTimeout: 1000,
-        tokenizer,
-      });
-
-      const key = modelService.negotiateModel(null, { sensitive: 'prefer', fast: true });
-      expect(key).toBe('sensitive');
-    });
-
-    it('sensitive as prefer with good returns quality tier', () => {
-      modelService.models.sensitive = new Model({
-        name: 'qwen3.5:2b',
-        maxContextWindow: 32768,
-        maxOutputTokens: 8192,
-        requestTimeout: 1000,
-        tokenizer,
-      });
-      modelService.models.sensitiveGood = new Model({
-        name: 'qwen3.5:4b',
-        maxContextWindow: 32768,
-        maxOutputTokens: 8192,
-        requestTimeout: 1000,
-        tokenizer,
-      });
-
-      const key = modelService.negotiateModel(null, { sensitive: 'prefer', good: true });
-      expect(key).toBe('sensitiveGood');
+    it('returns undefined when no rule matches', () => {
+      const result = modelService.negotiateModel(undefined, { sensitive: true, reasoning: true });
+      expect(result).toBeUndefined();
     });
   });
 });
 
 describe('resolveModel', () => {
   beforeEach(() => {
-    modelService.models = {
-      fastGoodCheap: new Model({
-        name: 'fast-good-cheap',
-        maxContextWindow: 128000,
-        maxOutputTokens: 16384,
-        requestTimeout: 1000,
-        tokenizer,
-      }),
-      fastGood: new Model({
-        name: 'fast-good',
-        maxContextWindow: 128000,
-        maxOutputTokens: 16384,
-        requestTimeout: 1000,
-        tokenizer,
-      }),
-      fastCheap: new Model({
-        name: 'fast-cheap',
-        maxContextWindow: 128000,
-        maxOutputTokens: 8192,
-        requestTimeout: 1000,
-        tokenizer,
-      }),
-      good: new Model({
-        name: 'good',
-        maxContextWindow: 128000,
-        maxOutputTokens: 16384,
-        requestTimeout: 1000,
-        tokenizer,
-      }),
-      reasoning: new Model({
-        name: 'reasoning',
-        maxContextWindow: 200000,
-        maxOutputTokens: 100000,
-        requestTimeout: 1000,
-        tokenizer,
-      }),
-    };
-    modelService.bestPublicModelKey = 'fastGood';
+    modelService._modelCache.clear();
+    modelService.customModels = {};
+    modelService.gatedCapabilities = new Set(['sensitive', 'reasoning']);
+
+    modelService.addModels({
+      'gpt-4.1-mini': { maxContextWindow: 128000, maxOutputTokens: 16384, requestTimeout: 1000 },
+      'gpt-4.1-nano': { maxContextWindow: 128000, maxOutputTokens: 16384, requestTimeout: 1000 },
+      'o3-mini': { maxContextWindow: 128000, maxOutputTokens: 16384, requestTimeout: 1000 },
+    });
+
+    modelService.setRules([
+      { match: { reasoning: true }, use: 'o3-mini' },
+      { match: { cheap: true, good: false }, use: 'gpt-4.1-nano' },
+      { use: 'gpt-4.1-mini' },
+    ]);
   });
 
-  it('resolves a string model key', () => {
-    expect(resolveModel('fastGood')).toBe('fastGood');
+  it('resolves a string model name to itself', () => {
+    expect(resolveModel('gpt-4.1-mini')).toBe('gpt-4.1-mini');
   });
 
-  it('resolves flat capability flags', () => {
-    expect(resolveModel({ fast: true, good: true })).toBe('fastGoodCheap');
+  it('resolves flat capability flags to a model name', () => {
+    expect(resolveModel({ cheap: true, good: false })).toBe('gpt-4.1-nano');
   });
 
-  it('resolves capability flags with prefer', () => {
-    expect(resolveModel({ fast: true, good: 'prefer' })).toBe('fastGoodCheap');
+  it('resolves reasoning capability to reasoning model name', () => {
+    expect(resolveModel({ reasoning: true })).toBe('o3-mini');
   });
 
-  it('resolves modelName with capability constraints', () => {
-    // fastGood has {fast, good} — satisfies { good: true }
-    expect(resolveModel({ modelName: 'fastGood', good: true })).toBe('fastGood');
+  it('resolves modelName as escape hatch', () => {
+    expect(resolveModel({ modelName: 'gpt-4.1-nano' })).toBe('gpt-4.1-nano');
   });
 
-  it('falls back when modelName does not satisfy constraints', () => {
-    // fastCheap has {fast, cheap} — does not satisfy { good: true }
-    expect(resolveModel({ modelName: 'fastCheap', good: true })).toBe('fastGoodCheap');
+  it('returns default model name for undefined', () => {
+    expect(resolveModel(undefined)).toBe('gpt-4.1-mini');
   });
 
-  it('returns default for undefined/null', () => {
-    expect(resolveModel(undefined)).toBe('fastGood');
-    expect(resolveModel(null)).toBe('fastGood');
+  it('returns default model name for null', () => {
+    expect(resolveModel(null)).toBe('gpt-4.1-mini');
   });
 
   it('resolves explicit negotiate object', () => {
-    // fastGoodCheap is higher priority and satisfies both fast + cheap
-    expect(resolveModel({ negotiate: { fast: true, cheap: true } })).toBe('fastGoodCheap');
-  });
-});
-
-describe('getCapabilities', () => {
-  beforeEach(() => {
-    modelService.models = {
-      fastGoodCheap: new Model({
-        name: 'fast-good-cheap',
-        maxContextWindow: 128000,
-        maxOutputTokens: 16384,
-        requestTimeout: 1000,
-        tokenizer,
-      }),
-      reasoning: new Model({
-        name: 'reasoning',
-        maxContextWindow: 200000,
-        maxOutputTokens: 100000,
-        requestTimeout: 1000,
-        tokenizer,
-      }),
-      sensitive: new Model({
-        name: 'sensitive-model',
-        maxContextWindow: 128000,
-        maxOutputTokens: 8192,
-        requestTimeout: 1000,
-        tokenizer,
-      }),
-    };
+    expect(resolveModel({ negotiate: { reasoning: true } })).toBe('o3-mini');
   });
 
-  it('returns capability Set for a registered model', () => {
-    const caps = getCapabilities('fastGoodCheap');
-    expect(caps).toBeInstanceOf(Set);
-    expect(caps.has('fast')).toBe(true);
-    expect(caps.has('good')).toBe(true);
-    expect(caps.has('cheap')).toBe(true);
-    expect(caps.has('reasoning')).toBe(false);
+  it('returns undefined for unknown string model name', () => {
+    expect(resolveModel('nonexistent-model')).toBeUndefined();
   });
 
-  it('returns correct capabilities for reasoning model', () => {
-    const caps = getCapabilities('reasoning');
-    expect(caps.has('reasoning')).toBe(true);
-    expect(caps.has('fast')).toBe(false);
-  });
-
-  it('returns correct capabilities for sensitive model', () => {
-    const caps = getCapabilities('sensitive');
-    expect(caps.has('sensitive')).toBe(true);
-    expect(caps.size).toBe(1);
-  });
-
-  it('returns undefined for unknown model key', () => {
-    expect(getCapabilities('nonExistent')).toBeUndefined();
-  });
-
-  it('caches capabilities on the model instance', () => {
-    const caps1 = getCapabilities('fastGoodCheap');
-    const caps2 = getCapabilities('fastGoodCheap');
-    expect(caps1).toBe(caps2);
+  it('returns default for empty object', () => {
+    expect(resolveModel({})).toBe('gpt-4.1-mini');
   });
 });

@@ -12,6 +12,7 @@ describe('models.js config exports', () => {
 
   // Helper to import with clean module cache
   const importModels = () => import('./models.js');
+  const importMappings = () => import('./model-mappings.js');
 
   describe('cacheTTL', () => {
     it('defaults to one year in seconds (31_536_000)', async () => {
@@ -42,58 +43,6 @@ describe('models.js config exports', () => {
       vi.stubEnv('VERBLETS_DISABLE_CACHE', 'false');
       const { cachingEnabled } = await importModels();
       expect(cachingEnabled).toBe(true);
-    });
-  });
-
-  describe('temperature', () => {
-    it('defaults to 0', async () => {
-      const { temperature } = await importModels();
-      expect(temperature).toBe(0);
-    });
-
-    it('reads VERBLETS_TEMPERATURE from env', async () => {
-      vi.stubEnv('VERBLETS_TEMPERATURE', '0.7');
-      const { temperature } = await importModels();
-      expect(temperature).toBe(0.7);
-    });
-  });
-
-  describe('topP', () => {
-    it('defaults to 0.5', async () => {
-      const { topP } = await importModels();
-      expect(topP).toBe(0.5);
-    });
-
-    it('reads VERBLETS_TOPP from env', async () => {
-      vi.stubEnv('VERBLETS_TOPP', '0.9');
-      const { topP } = await importModels();
-      expect(topP).toBe(0.9);
-    });
-  });
-
-  describe('frequencyPenalty', () => {
-    it('defaults to 0', async () => {
-      const { frequencyPenalty } = await importModels();
-      expect(frequencyPenalty).toBe(0);
-    });
-
-    it('reads VERBLETS_FREQUENCY_PENALTY from env', async () => {
-      vi.stubEnv('VERBLETS_FREQUENCY_PENALTY', '0.2');
-      const { frequencyPenalty } = await importModels();
-      expect(frequencyPenalty).toBe(0.2);
-    });
-  });
-
-  describe('presencePenalty', () => {
-    it('defaults to 0', async () => {
-      const { presencePenalty } = await importModels();
-      expect(presencePenalty).toBe(0);
-    });
-
-    it('reads VERBLETS_PRESENCE_PENALTY from env', async () => {
-      vi.stubEnv('VERBLETS_PRESENCE_PENALTY', '0.4');
-      const { presencePenalty } = await importModels();
-      expect(presencePenalty).toBe(0.4);
     });
   });
 
@@ -149,79 +98,83 @@ describe('models.js config exports', () => {
     });
   });
 
-  describe('selectMapping (via defaultMapping)', () => {
-    it('includes sensitive mapping when OPENWEBUI_API_KEY is set', async () => {
+  describe('defaultRules (via model-mappings)', () => {
+    const findRule = (rules, cap) => rules.find((r) => r.match?.[cap] === true);
+    const hasSensitiveRules = (rules) => rules.some((r) => r.match?.sensitive === true);
+
+    it('includes sensitive rules when OPENWEBUI_API_KEY is set', async () => {
       vi.stubEnv('OPENAI_API_KEY', 'test-key');
       vi.stubEnv('OPENWEBUI_API_KEY', 'owui-key');
-      const { defaultMapping } = await importModels();
-      expect(defaultMapping.sensitive).toBeDefined();
-      expect(defaultMapping.sensitiveGood).toBeDefined();
+      const { defaultRules } = await importMappings();
+      expect(hasSensitiveRules(defaultRules)).toBe(true);
     });
 
-    it('sensitive defaults to qwen3.5:2b', async () => {
+    it('sensitive rule defaults to VERBLETS_SENSITIVITY_MODEL', async () => {
       vi.stubEnv('OPENAI_API_KEY', 'test-key');
       vi.stubEnv('OPENWEBUI_API_KEY', 'owui-key');
-      const { defaultMapping } = await importModels();
-      expect(defaultMapping.sensitive).toBe('qwen3.5:2b');
-    });
-
-    it('sensitiveGood defaults to qwen3.5:4b', async () => {
-      vi.stubEnv('OPENAI_API_KEY', 'test-key');
-      vi.stubEnv('OPENWEBUI_API_KEY', 'owui-key');
-      const { defaultMapping } = await importModels();
-      expect(defaultMapping.sensitiveGood).toBe('qwen3.5:4b');
+      const { defaultRules } = await importMappings();
+      const rule = findRule(defaultRules, 'sensitive');
+      expect(rule).toBeDefined();
     });
 
     it('reads VERBLETS_SENSITIVITY_MODEL override', async () => {
       vi.stubEnv('OPENAI_API_KEY', 'test-key');
       vi.stubEnv('OPENWEBUI_API_KEY', 'owui-key');
       vi.stubEnv('VERBLETS_SENSITIVITY_MODEL', 'gemma3:4b-it-qat');
-      const { defaultMapping } = await importModels();
-      expect(defaultMapping.sensitive).toBe('gemma3:4b-it-qat');
+      const { defaultRules } = await importMappings();
+      // The second sensitive rule (without good) uses VERBLETS_SENSITIVITY_MODEL
+      const sensitiveRules = defaultRules.filter((r) => r.match?.sensitive === true);
+      const basicSensitive = sensitiveRules.find((r) => !r.match?.good);
+      expect(basicSensitive.use).toBe('gemma3:4b-it-qat');
     });
 
     it('reads VERBLETS_SENSITIVITY_GOOD_MODEL override', async () => {
       vi.stubEnv('OPENAI_API_KEY', 'test-key');
       vi.stubEnv('OPENWEBUI_API_KEY', 'owui-key');
       vi.stubEnv('VERBLETS_SENSITIVITY_GOOD_MODEL', 'qwen3:8b');
-      const { defaultMapping } = await importModels();
-      expect(defaultMapping.sensitiveGood).toBe('qwen3:8b');
+      const { defaultRules } = await importMappings();
+      const sensitiveRules = defaultRules.filter((r) => r.match?.sensitive === true);
+      const goodSensitive = sensitiveRules.find((r) => r.match?.good === true);
+      expect(goodSensitive.use).toBe('qwen3:8b');
     });
 
-    it('omits sensitive mappings when OPENWEBUI_API_KEY is unset', async () => {
+    it('omits sensitive rules when OPENWEBUI_API_KEY is unset', async () => {
       vi.stubEnv('OPENAI_API_KEY', 'test-key');
       vi.stubEnv('OPENWEBUI_API_KEY', '');
       vi.stubEnv('ANTHROPIC_API_KEY', '');
-      const { defaultMapping } = await importModels();
-      expect(defaultMapping.sensitive).toBeUndefined();
-      expect(defaultMapping.sensitiveGood).toBeUndefined();
+      const { defaultRules } = await importMappings();
+      expect(hasSensitiveRules(defaultRules)).toBe(false);
     });
 
-    it('uses openai mapping when only OPENAI_API_KEY is set', async () => {
+    it('uses openai rules when only OPENAI_API_KEY is set', async () => {
       vi.stubEnv('OPENAI_API_KEY', 'test-key');
       vi.stubEnv('ANTHROPIC_API_KEY', '');
       vi.stubEnv('OPENWEBUI_API_KEY', '');
-      const { defaultMapping } = await importModels();
-      expect(defaultMapping.fastGood).toBe('gpt-4.1-mini');
-      expect(defaultMapping.fastCheap).toBe('gpt-4.1-nano');
+      const { defaultRules } = await importMappings();
+      // Catch-all (last rule) should be gpt-4.1-mini
+      const catchAll = defaultRules.find((r) => !r.match || Object.keys(r.match).length === 0);
+      expect(catchAll.use).toBe('gpt-4.1-mini');
     });
 
-    it('uses anthropic mapping when only ANTHROPIC_API_KEY is set', async () => {
+    it('uses anthropic rules when only ANTHROPIC_API_KEY is set', async () => {
       vi.stubEnv('ANTHROPIC_API_KEY', 'test-key');
       vi.stubEnv('OPENAI_API_KEY', '');
       vi.stubEnv('OPENWEBUI_API_KEY', '');
-      const { defaultMapping } = await importModels();
-      expect(defaultMapping.fastGood).toBe('claude-sonnet-4-5');
-      expect(defaultMapping.fastCheap).toBe('claude-haiku-4-5');
+      const { defaultRules } = await importMappings();
+      const catchAll = defaultRules.find((r) => !r.match || Object.keys(r.match).length === 0);
+      expect(catchAll.use).toBe('claude-sonnet-4-6');
     });
 
-    it('uses mixed mapping when both keys are set', async () => {
+    it('uses mixed rules when both keys are set', async () => {
       vi.stubEnv('OPENAI_API_KEY', 'test-key');
       vi.stubEnv('ANTHROPIC_API_KEY', 'test-key');
       vi.stubEnv('OPENWEBUI_API_KEY', '');
-      const { defaultMapping } = await importModels();
-      expect(defaultMapping.fastGood).toBe('gpt-4.1-mini');
-      expect(defaultMapping.reasoning).toBe('claude-opus-4-6');
+      const { defaultRules } = await importMappings();
+      const catchAll = defaultRules.find((r) => !r.match || Object.keys(r.match).length === 0);
+      expect(catchAll.use).toBe('gpt-4.1-mini');
+      const reasoning = findRule(defaultRules, 'reasoning');
+      expect(reasoning).toBeDefined();
+      expect(reasoning.use).toBe('claude-opus-4-6');
     });
   });
 });

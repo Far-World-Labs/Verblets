@@ -18,7 +18,7 @@ export default defineConfig({
   test: {
     ...baseConfig,
     environment: 'jsdom',
-    setupFiles: ['./test/setup/browser.js', './test/setup/llm-provider.js'],
+    setupFiles: ['./src/test-setup/browser.js', './src/test-setup/llm-provider.js'],
     include: ['src/**/*.examples.js'],
     exclude: [...baseConfig.exclude, ...browserExclusions, ...browserExampleExclusions],
     server: {

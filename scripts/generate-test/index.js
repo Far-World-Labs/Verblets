@@ -25,17 +25,14 @@ const [modulePath, functionName] = program.args;
 
 if (options.privacy) {
   try {
-    modelService.setGlobalOverride('modelName', 'privacy');
-  } catch (err) {
-    console.error(`Privacy model error: ${err.message}`);
+    const sensitiveModel = modelService.getBestPrivateModel();
+    modelService.setRules([{ use: sensitiveModel.name }]);
+  } catch {
+    console.error('Privacy model error: no sensitive model configured');
   }
 }
 if (options.model) {
-  try {
-    modelService.setGlobalOverride('modelName', options.model);
-  } catch (err) {
-    console.error(`Model override error: ${err.message}`);
-  }
+  modelService.setRules([{ use: options.model }]);
 }
 
 if (!modulePath) {

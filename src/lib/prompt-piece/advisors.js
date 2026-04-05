@@ -62,10 +62,8 @@ const createAdvisor = (label, systemPrompt, schema, buildParts) => {
       () =>
         callLlm(effectiveParts.join('\n\n'), {
           llm,
-          modelOptions: {
-            systemPrompt: effectiveSystemPrompt,
-            response_format: { type: 'json_schema', json_schema: resolvedSchema },
-          },
+          systemPrompt: effectiveSystemPrompt,
+          response_format: { type: 'json_schema', json_schema: resolvedSchema },
           ...rest,
         }),
       { label, maxAttempts, onProgress, abortSignal }

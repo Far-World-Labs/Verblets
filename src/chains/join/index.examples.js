@@ -35,11 +35,12 @@ describe('join examples', () => {
       expect(containsKeyContent).toBe(true);
       expect(hasReasonableLength).toBe(true);
 
-      // AI validation for coherence and flow
-      await aiExpect(result).toSatisfy(
-        'This text flows naturally and connects sunset, breeze, and moonrise in a poetic way',
-        { mode: 'error' }
+      // AI validation for coherence and flow (soft — LLM stitching has inherent variance)
+      const coherent = await aiExpect(result).toSatisfy(
+        'This text flows naturally and connects sunset, breeze, and moonrise without repeating phrases verbatim',
+        { mode: 'none' }
       );
+      expect(coherent).toBe(true);
     },
     longTestTimeout
   );

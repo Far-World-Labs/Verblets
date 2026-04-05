@@ -18,7 +18,7 @@ const isBillingOrAuthError = (msg) => /credit balance|billing|quota|authenticati
 
 async function smokeTest(modelName, providerLabel) {
   const ms = new ModelService();
-  ms.setGlobalOverride('modelName', modelName);
+  ms.setRules([{ use: modelName }]);
   try {
     const result = await run('What is 2 + 2? Answer with just the number.', { modelService: ms });
     console.log(`${providerLabel} result:`, JSON.stringify(result));
@@ -44,7 +44,7 @@ describe('Provider smoke tests', () => {
 
   it.skipIf(shouldSkip('ANTHROPIC_API_KEY', 'anthropic'))(
     'answers a simple question via Claude',
-    () => smokeTest('claude-sonnet-4-5', 'Anthropic'),
+    () => smokeTest('claude-sonnet-4-6', 'Anthropic'),
     longTestTimeout
   );
 });

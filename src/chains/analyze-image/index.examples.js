@@ -11,7 +11,12 @@ import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 
 const require = createRequire(import.meta.url);
-const { chromium } = require('playwright');
+let chromium;
+try {
+  ({ chromium } = require('playwright'));
+} catch {
+  // playwright not installed — tests will be skipped
+}
 
 import init from '../../init.js';
 import analyzeImage from './index.js';
@@ -32,7 +37,7 @@ const onProgress = (event) => {
   console.error(`  ${tag} op=${op}${extra}`);
 };
 
-describe('HN Vision Integration', { timeout: 300_000 }, () => {
+describe.skipIf(!chromium)('HN Vision Integration', { timeout: 300_000 }, () => {
   let screenshotDir;
   let browser;
   let page;
