@@ -15,6 +15,7 @@ import { randomBytes } from 'node:crypto';
 const REGISTRY_VERSION = 1;
 
 function registryPath() {
+  if (process.env.VERBLETS_REGISTRY_PATH) return process.env.VERBLETS_REGISTRY_PATH;
   const xdgConfig = process.env.XDG_CONFIG_HOME || resolve(homedir(), '.config');
   return resolve(xdgConfig, 'verblets-automations', 'registry.json');
 }

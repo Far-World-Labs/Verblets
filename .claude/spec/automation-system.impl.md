@@ -2,14 +2,14 @@
 
 ## Discovery & Registry
 
-Automations are registered in an XDG-backed registry at `~/.config/verblets-automations/registry.json`. Each entry maps a name to an absolute path where the automation code lives.
+Automations are registered in an XDG-backed registry at `$XDG_CONFIG_HOME/verblets-automations/registry.json`. Each entry maps a name to an absolute path where the automation code lives.
 
 ```json
 {
   "version": 1,
   "automations": {
     "eventing-quality": {
-      "path": "~/projects/fwl/verblets-automations/eventing-quality",
+      "path": "/path/to/verblets-automations/eventing-quality",
       "registeredAt": "2026-04-04T...",
       "lastRun": "2026-04-04T...",
       "runCount": 16
@@ -24,12 +24,12 @@ Writes are atomic (write temp → rename).
 
 ## Automation Code Location
 
-Automations live in `~/projects/fwl/verblets-automations/<name>/`. Each directory contains:
+Automation directories are registered by absolute path — they can live anywhere on the filesystem. Each directory contains:
 - `index.js` — exports `{ run }` (pure sandboxed function, no static imports)
 - Co-located modules (e.g., `criteria.js`) loaded by the runner as `params._modules`
 - `schemas/` — JSON schemas loaded by the runner as `params.schemas`
 
-Templates are loaded from `~/data/verblets/automations/<name>/` and `~/data/verblets/automations/shared/` as `params.templates`.
+Templates are loaded from `$VERBLETS_DATA_ROOT/<name>/` and `$VERBLETS_DATA_ROOT/shared/` as `params.templates`. The data root defaults to `$XDG_DATA_HOME/verblets/automations` but is configurable.
 
 ## Import Resolution
 
@@ -46,7 +46,7 @@ node --import ./src/lib/automation-runner/loader.js -e "import { runAutomation }
 All storage domains use XDG-backed local filesystem:
 
 ```
-~/.local/share/verblets-automations/           ← XDG_DATA_HOME
+$XDG_DATA_HOME/verblets-automations/           ← defaults to ~/.local/share
   <automation-name>/
     automation/                                ← automationStorage (persistent across runs)
   domain/                                      ← domainStorage (shared across automations)

@@ -5,7 +5,7 @@
  * their shape, and provides a programmatic invocation surface.
  *
  * Before calling run(), the runner loads human-editable templates from
- * ~/data/verblets/automations/<name>/ and injects them as params.templates.
+ * a configurable data root and injects them as params.templates.
  * This keeps automations sandboxed — they never touch the filesystem for
  * templates or configuration directly.
  */
@@ -20,7 +20,10 @@ import init from '../../init.js';
 import { RunContext } from '../run-context/index.js';
 import { list, resolve as resolveAutomation, updateStats } from '../automation-registry/index.js';
 
-const DATA_ROOT = () => resolve(homedir(), 'data', 'verblets', 'automations');
+const DATA_ROOT = () => {
+  const xdgData = process.env.XDG_DATA_HOME || resolve(homedir(), '.local', 'share');
+  return process.env.VERBLETS_DATA_ROOT || resolve(xdgData, 'verblets', 'automations');
+};
 
 /**
  * Load all text files (.md, .txt) from a directory as a key→content map.
@@ -125,8 +128,8 @@ export async function discoverAutomations() {
 /**
  * Run an automation by name.
  *
- * Loads templates from ~/data/verblets/automations/<name>/ and
- * ~/data/verblets/automations/shared/, injects as params.templates.
+ * Loads templates from $VERBLETS_DATA_ROOT/<name>/ and
+ * $VERBLETS_DATA_ROOT/shared/, injects as params.templates.
  *
  * @param {string} name - Automation name (as registered)
  * @param {object} [params={}] - Invocation parameters

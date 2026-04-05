@@ -58,8 +58,10 @@ export class RunContext {
     const { projectRoot, onProgress, initOptions = {}, params = {} } = options;
 
     // --- XDG-backed storage domains ---
+    // VERBLETS_STORAGE_ROOT overrides the entire storage base (for parent apps with their own storage).
+    // Otherwise defaults to $XDG_DATA_HOME/verblets-automations.
     const { xdgData } = xdgPaths();
-    const appData = resolve(xdgData, 'verblets-automations');
+    const appData = process.env.VERBLETS_STORAGE_ROOT || resolve(xdgData, 'verblets-automations');
     const runId = `${automationName}-${new Date().toISOString().replace(/[:.]/g, '-')}`;
 
     const localStoragePath = resolve(appData, '_runs', runId);
