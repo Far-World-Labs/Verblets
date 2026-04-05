@@ -12,11 +12,11 @@ describe('normalizeLlm', () => {
   });
 
   it('converts a string to { modelName }', () => {
-    expect(normalizeLlm('fastGood')).toEqual({ modelName: 'fastGood' });
+    expect(normalizeLlm('gpt-4.1-mini')).toEqual({ modelName: 'gpt-4.1-mini' });
   });
 
   it('passes through an object with modelName', () => {
-    const input = { modelName: 'fastGood' };
+    const input = { modelName: 'gpt-4.1-mini' };
     expect(normalizeLlm(input)).toBe(input);
   });
 
@@ -26,7 +26,7 @@ describe('normalizeLlm', () => {
   });
 
   it('passes through mixed modelName and capabilities', () => {
-    const input = { modelName: 'fastGood', good: true };
+    const input = { modelName: 'gpt-4.1-mini', good: true };
     expect(normalizeLlm(input)).toBe(input);
   });
 

@@ -17,7 +17,8 @@ const isBillingOrAuthError = (msg) => /credit balance|billing|quota|authenticati
 // ── Shared smoke test ─────────────────────────────────────────────────
 
 async function smokeTest(modelName, providerLabel) {
-  modelService.setGlobalOverride('modelName', modelName);
+  const savedRules = modelService.rules;
+  modelService.setRules([{ use: modelName }]);
   try {
     const result = await run('What is 2 + 2? Answer with just the number.');
     console.log(`${providerLabel} result:`, JSON.stringify(result));
@@ -30,7 +31,7 @@ async function smokeTest(modelName, providerLabel) {
     }
     throw error;
   } finally {
-    modelService.clearGlobalOverride('modelName');
+    modelService.setRules(savedRules);
   }
 }
 

@@ -18,11 +18,3 @@ export const debugPromptGloballyIfChanged = configGet('VERBLETS_DEBUG_REQUEST_IF
 export const debugResultGlobally = configGet('VERBLETS_DEBUG_RESPONSE');
 
 export const debugResultGloballyIfChanged = configGet('VERBLETS_DEBUG_RESPONSE_IF_CHANGED');
-
-export const frequencyPenalty = configGet('VERBLETS_FREQUENCY_PENALTY');
-
-export const presencePenalty = configGet('VERBLETS_PRESENCE_PENALTY');
-
-export const temperature = configGet('VERBLETS_TEMPERATURE');
-
-export const topP = configGet('VERBLETS_TOPP');

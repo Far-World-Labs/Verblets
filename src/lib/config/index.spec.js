@@ -9,9 +9,9 @@ describe('config provider', () => {
 
   describe('get() defaults', () => {
     it('returns registry default when env var is unset', () => {
-      // VERBLETS_TEMPERATURE has default 0
-      delete process.env.VERBLETS_TEMPERATURE;
-      expect(get('VERBLETS_TEMPERATURE')).toBe(0);
+      // VERBLETS_CACHE_TTL has default 31_536_000
+      delete process.env.VERBLETS_CACHE_TTL;
+      expect(get('VERBLETS_CACHE_TTL')).toBe(31_536_000);
     });
 
     it('returns undefined for credential vars with no default', () => {
@@ -31,8 +31,8 @@ describe('config provider', () => {
     });
 
     it('coerces number env var', () => {
-      vi.stubEnv('VERBLETS_TEMPERATURE', '0.7');
-      expect(get('VERBLETS_TEMPERATURE')).toBe(0.7);
+      vi.stubEnv('VERBLETS_CACHE_TTL', '3600');
+      expect(get('VERBLETS_CACHE_TTL')).toBe(3600);
     });
 
     it('coerces boolean env var (truthy)', () => {
@@ -56,16 +56,16 @@ describe('config provider', () => {
     });
 
     it('returns default for empty string env var', () => {
-      vi.stubEnv('VERBLETS_TEMPERATURE', '');
-      expect(get('VERBLETS_TEMPERATURE')).toBe(0);
+      vi.stubEnv('VERBLETS_CACHE_TTL', '');
+      expect(get('VERBLETS_CACHE_TTL')).toBe(31_536_000);
     });
   });
 
   describe('get() force overrides', () => {
     it('force override wins over normal env', () => {
-      vi.stubEnv('VERBLETS_TEMPERATURE', '0.7');
-      vi.stubEnv('VERBLETS_FORCE_VERBLETS_TEMPERATURE', '0.9');
-      expect(get('VERBLETS_TEMPERATURE')).toBe(0.9);
+      vi.stubEnv('VERBLETS_CACHE_TTL', '3600');
+      vi.stubEnv('VERBLETS_FORCE_VERBLETS_CACHE_TTL', '7200');
+      expect(get('VERBLETS_CACHE_TTL')).toBe(7200);
     });
 
     it('force override wins over defaults', () => {
@@ -77,10 +77,10 @@ describe('config provider', () => {
 
   describe('type coercion edge cases', () => {
     it('falls through to registry default for NaN number coercion', () => {
-      vi.stubEnv('VERBLETS_TEMPERATURE', 'notanumber');
-      const result = get('VERBLETS_TEMPERATURE');
-      // coerceNumber('notanumber') → undefined → falls through to registry default (0)
-      expect(result).toBe(0);
+      vi.stubEnv('VERBLETS_CACHE_TTL', 'notanumber');
+      const result = get('VERBLETS_CACHE_TTL');
+      // coerceNumber('notanumber') → undefined → falls through to registry default
+      expect(result).toBe(31_536_000);
     });
 
     it('falls through to registry default for unrecognized boolean string', () => {
@@ -99,30 +99,30 @@ describe('config provider', () => {
 
   describe('getAsync()', () => {
     it('falls through to sync get when no runtime provider', async () => {
-      vi.stubEnv('VERBLETS_TEMPERATURE', '0.7');
-      expect(await getAsync('VERBLETS_TEMPERATURE')).toBe(0.7);
+      vi.stubEnv('VERBLETS_CACHE_TTL', '3600');
+      expect(await getAsync('VERBLETS_CACHE_TTL')).toBe(3600);
     });
 
     it('uses runtime provider value when available', async () => {
-      const provider = { get: vi.fn().mockResolvedValue(0.42) };
+      const provider = { get: vi.fn().mockResolvedValue(7200) };
       setRuntimeProvider(provider);
-      delete process.env.VERBLETS_TEMPERATURE;
-      expect(await getAsync('VERBLETS_TEMPERATURE')).toBe(0.42);
-      expect(provider.get).toHaveBeenCalledWith('VERBLETS_TEMPERATURE');
+      delete process.env.VERBLETS_CACHE_TTL;
+      expect(await getAsync('VERBLETS_CACHE_TTL')).toBe(7200);
+      expect(provider.get).toHaveBeenCalledWith('VERBLETS_CACHE_TTL');
     });
 
     it('falls through to sync when runtime provider returns undefined', async () => {
       const provider = { get: vi.fn().mockResolvedValue(undefined) };
       setRuntimeProvider(provider);
-      vi.stubEnv('VERBLETS_TEMPERATURE', '0.7');
-      expect(await getAsync('VERBLETS_TEMPERATURE')).toBe(0.7);
+      vi.stubEnv('VERBLETS_CACHE_TTL', '3600');
+      expect(await getAsync('VERBLETS_CACHE_TTL')).toBe(3600);
     });
 
     it('force override wins over runtime provider', async () => {
-      const provider = { get: vi.fn().mockResolvedValue(0.42) };
+      const provider = { get: vi.fn().mockResolvedValue(7200) };
       setRuntimeProvider(provider);
-      vi.stubEnv('VERBLETS_FORCE_VERBLETS_TEMPERATURE', '0.9');
-      expect(await getAsync('VERBLETS_TEMPERATURE')).toBe(0.9);
+      vi.stubEnv('VERBLETS_FORCE_VERBLETS_CACHE_TTL', '1800');
+      expect(await getAsync('VERBLETS_CACHE_TTL')).toBe(1800);
       expect(provider.get).not.toHaveBeenCalled();
     });
   });

@@ -3,9 +3,12 @@ import { calibrateSpec, applyCalibrate, createCalibratedClassifier } from './ind
 import probeScan from '../probe-scan/index.js';
 import embedProbes from '../../lib/embed-probes/index.js';
 import { extendedTestTimeout } from '../../constants/common.js';
+import { isEmbedEnabled } from '../../lib/embed-local/state.js';
 import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 
 const { it, expect, aiExpect } = getTestHelpers('Calibrate chain');
+
+const skip = !isEmbedEnabled();
 
 const PROBES = [
   { category: 'pii-name', label: 'Personal full names', queries: ['full name of a person'] },
@@ -32,7 +35,7 @@ const PROBES = [
   { category: 'contact-email', label: 'Email addresses', queries: ['email address contact'] },
 ];
 
-describe('Calibrate examples', () => {
+describe.skipIf(skip)('Calibrate examples', () => {
   it(
     'LLM-enhanced classification: learn severity rules from corpus scans',
     { timeout: extendedTestTimeout },

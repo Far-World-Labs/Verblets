@@ -19,7 +19,10 @@ Return a JSON object with a "meanings" array containing the distinct meanings.`;
 };
 
 export const getMeanings = async (term, config = {}) => {
-  config = nameStep('disambiguate:meanings', { llm: 'fastGoodCheap', ...config });
+  config = nameStep('disambiguate:meanings', {
+    llm: { fast: true, good: true, cheap: true },
+    ...config,
+  });
   const prompt = meaningsPrompt(term);
   const response = await retry(
     () =>

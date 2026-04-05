@@ -2,7 +2,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import init from './init.js';
 import * as config from './lib/config/index.js';
 import modelService from './services/llm-model/index.js';
+import { setBasePolicy } from './lib/llm/index.js';
 import { getClient } from './services/redis/index.js';
+
+vi.mock('./lib/llm/index.js', async (importOriginal) => {
+  const original = await importOriginal();
+  return { ...original, setBasePolicy: vi.fn() };
+});
 
 describe('init()', () => {
   beforeEach(() => {
@@ -29,11 +35,21 @@ describe('init()', () => {
     expect(client).toBe(mockRedis);
   });
 
-  it('applies model overrides', () => {
-    const spy = vi.spyOn(modelService, 'setGlobalOverride');
-    init({ modelOverrides: { temperature: 0.5, modelName: 'gpt-4.1' } });
-    expect(spy).toHaveBeenCalledWith('temperature', 0.5);
-    expect(spy).toHaveBeenCalledWith('modelName', 'gpt-4.1');
+  it('extends catalog via models (addModels)', () => {
+    const spy = vi.spyOn(modelService, 'addModels');
+    const models = {
+      'my-llama': { maxContextWindow: 8192, maxOutputTokens: 4096, requestTimeout: 1000 },
+    };
+    init({ models });
+    expect(spy).toHaveBeenCalledWith(models);
+    spy.mockRestore();
+  });
+
+  it('overrides negotiation rules via rules (setRules)', () => {
+    const spy = vi.spyOn(modelService, 'setRules');
+    const rules = [{ match: { reasoning: true }, use: 'my-llama' }, { use: 'gpt-4.1-mini' }];
+    init({ rules });
+    expect(spy).toHaveBeenCalledWith(rules);
     spy.mockRestore();
   });
 
@@ -46,8 +62,16 @@ describe('init()', () => {
     expect(config.getRuntimeProvider()).toBe(p2);
   });
 
+  it('applies base policy via setBasePolicy', () => {
+    const policy = { temperature: () => 0.8 };
+    init({ policy });
+    expect(setBasePolicy).toHaveBeenCalledWith(policy);
+  });
+
   it('skips undefined options gracefully', () => {
-    expect(() => init({ redis: undefined, modelOverrides: undefined })).not.toThrow();
+    expect(() =>
+      init({ redis: undefined, models: undefined, rules: undefined, policy: undefined })
+    ).not.toThrow();
   });
 
   describe('validation', () => {

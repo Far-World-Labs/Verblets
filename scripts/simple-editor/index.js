@@ -19,17 +19,14 @@ const argv = program.opts();
 
 if (argv.privacy) {
   try {
-    modelService.setGlobalOverride('modelName', 'privacy');
-  } catch (err) {
-    console.error(`Privacy model error: ${err.message}`);
+    const sensitiveModel = modelService.getBestPrivateModel();
+    modelService.setRules([{ use: sensitiveModel.name }]);
+  } catch {
+    console.error('Privacy model error: no sensitive model configured');
   }
 }
 if (argv.model) {
-  try {
-    modelService.setGlobalOverride('modelName', argv.model);
-  } catch (err) {
-    console.error(`Model override error: ${err.message}`);
-  }
+  modelService.setRules([{ use: argv.model }]);
 }
 
 const operations = [

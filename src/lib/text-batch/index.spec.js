@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // Mock model service to control token estimation and model properties
 vi.mock('../../services/llm-model/index.js', () => ({
   default: {
-    bestPublicModelKey: 'test-model',
+    getDefaultModel: vi.fn(() => ({ name: 'test-model' })),
     getModel: vi.fn(() => ({
       maxContextWindow: 128_000,
       maxOutputTokens: 8192,

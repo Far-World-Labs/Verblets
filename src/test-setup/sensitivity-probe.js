@@ -9,21 +9,24 @@
  * means worst case adds 3s to worker startup, not the 15s warm-up probe.
  */
 
-import { models } from '../../src/constants/model-mappings.js';
+import { findRule, resolveCatalogEntry } from '../../src/constants/model-mappings.js';
 
 const REACHABILITY_TIMEOUT = 3_000;
 
-if (models.sensitive?.apiUrl && !process.env.VERBLETS_SENSITIVITY_TEST_SKIP) {
+const sensitiveRule = findRule('sensitive');
+const sensitiveModel = sensitiveRule ? resolveCatalogEntry(sensitiveRule.use) : undefined;
+
+if (sensitiveModel?.apiUrl && !process.env.VERBLETS_SENSITIVITY_TEST_SKIP) {
   try {
-    const url = `${models.sensitive.apiUrl}${models.sensitive.endpoint}`;
+    const url = `${sensitiveModel.apiUrl}${sensitiveModel.endpoint}`;
     const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${models.sensitive.apiKey}`,
+        Authorization: `Bearer ${sensitiveModel.apiKey}`,
       },
       body: JSON.stringify({
-        model: models.sensitive.name,
+        model: sensitiveModel.name,
         messages: [{ role: 'user', content: 'hi' }],
         think: false,
         keep_alive: '30m',

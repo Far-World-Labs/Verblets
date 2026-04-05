@@ -24,12 +24,15 @@ const providerModels = {
 
 const provider = (process.env.VERBLETS_LLM_PROVIDER || '').toLowerCase();
 
+let savedRules;
+
 if (provider && providerModels[provider]) {
   beforeAll(() => {
-    modelService.setGlobalOverride('modelName', providerModels[provider]);
+    savedRules = modelService.rules;
+    modelService.setRules([{ use: providerModels[provider] }]);
   });
 
   afterAll(() => {
-    modelService.clearGlobalOverride('modelName');
+    modelService.setRules(savedRules);
   });
 }

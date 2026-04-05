@@ -2,12 +2,15 @@ import { describe } from 'vitest';
 import { embed, embedBatch, embedChunked, embedWarmup } from './index.js';
 import { cosineSimilarity, vectorSearch } from '../pure/index.js';
 import { extendedTestTimeout } from '../../constants/common.js';
+import { isEmbedEnabled } from './state.js';
 
 import { getTestHelpers } from '../../chains/test-analysis/test-wrappers.js';
 
 const { it, expect } = getTestHelpers('Embed verblet');
 
-describe('Embed verblet', () => {
+const skip = !isEmbedEnabled();
+
+describe.skipIf(skip)('Embed verblet', () => {
   it(
     'produces a 384-dimensional Float32Array',
     async () => {

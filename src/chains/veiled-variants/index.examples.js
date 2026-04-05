@@ -2,13 +2,13 @@ import { describe } from 'vitest';
 import veiledVariants from './index.js';
 import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 import { extendedTestTimeout } from '../../constants/common.js';
-import { models } from '../../constants/model-mappings.js';
+import { findRule } from '../../constants/model-mappings.js';
 import { env } from '../../lib/env/index.js';
 
 // Sensitivity model (local Ollama) can be much slower than cloud LLMs
 const sensitivityTimeout = 2 * extendedTestTimeout;
 
-const skipSensitivity = env.VERBLETS_SENSITIVITY_TEST_SKIP || !models.sensitive;
+const skipSensitivity = env.VERBLETS_SENSITIVITY_TEST_SKIP || !findRule('sensitive');
 
 const { it, expect, aiExpect } = getTestHelpers('Veiled variants chain');
 

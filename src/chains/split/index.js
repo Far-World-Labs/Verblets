@@ -60,7 +60,7 @@ IMPORTANT RULES:
 };
 
 export default async function split(text, instructions, config = {}) {
-  const runConfig = nameStep(name, { llm: 'fastGoodCheapCoding', ...config });
+  const runConfig = nameStep(name, { llm: { fast: true, good: true, cheap: true }, ...config });
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
   const {

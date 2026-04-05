@@ -45,7 +45,10 @@ const shouldStopDefault = ({ queryCount, startTime, queryLimit, timeoutMs } = {}
 };
 
 export const generateList = async function* generateListGenerator(text, config = {}) {
-  const runConfig = nameStep('list:generate', { llm: 'fastGoodCheap', ...config });
+  const runConfig = nameStep('list:generate', {
+    llm: { fast: true, good: true, cheap: true },
+    ...config,
+  });
   const resultsAll = [];
   const resultsAllMap = {};
   let isDone = false;

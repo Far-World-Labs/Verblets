@@ -23,7 +23,12 @@ import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 
 const require = createRequire(import.meta.url);
-const { chromium } = require('playwright');
+let chromium;
+try {
+  ({ chromium } = require('playwright'));
+} catch {
+  // playwright not installed — tests will be skipped
+}
 
 import init from '../../init.js';
 import analyzeImage from './index.js';
@@ -74,7 +79,7 @@ const repoListSchema = jsonSchema('repo_list', {
   additionalProperties: false,
 });
 
-describe('GitHub Trending Vision Integration', { timeout: 300_000 }, () => {
+describe.skipIf(!chromium)('GitHub Trending Vision Integration', { timeout: 300_000 }, () => {
   let screenshotDir;
   let browser;
   let page;

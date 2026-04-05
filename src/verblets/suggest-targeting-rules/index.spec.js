@@ -108,10 +108,10 @@ describe('suggest-targeting-rules', () => {
     it('passes config through to callLlm', async () => {
       callLlm.mockResolvedValueOnce({ rules: [] });
 
-      await suggestTargetingRules([makeTrace()], undefined, { llm: 'fastGood' });
+      await suggestTargetingRules([makeTrace()], undefined, { llm: { fast: true, good: true } });
 
       const config = callLlm.mock.calls[0][1];
-      expect(config.llm).toBe('fastGood');
+      expect(config.llm).toEqual({ fast: true, good: true });
     });
 
     it('rule output matches targeting-rule AST shape', async () => {

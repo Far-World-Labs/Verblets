@@ -34,7 +34,7 @@ describe('centralTendency', () => {
     const result = await centralTendency('robin', ['sparrow', 'bluejay', 'cardinal'], {
       context: 'Evaluate based on typical bird characteristics',
       coreFeatures: ['feathers', 'beak', 'lays eggs'],
-      llm: 'fastGoodCheap',
+      llm: { fast: true, good: true, cheap: true },
     });
 
     expect(result).toEqual({
@@ -46,7 +46,7 @@ describe('centralTendency', () => {
     expect(llm).toHaveBeenCalledWith(
       expect.stringContaining('Evaluate how central "robin" is among these category members'),
       expect.objectContaining({
-        llm: 'fastGoodCheap',
+        llm: { fast: true, good: true, cheap: true },
       })
     );
   });

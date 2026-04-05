@@ -116,7 +116,7 @@ function createResponseFormat(schemaName = 'central_tendency_result', customSche
  * @param {Object} [config={}] - Configuration options
  * @param {string} [config.context=''] - Context description for evaluation
  * @param {string[]} [config.coreFeatures=[]] - Known core/definitional features of the category
- * @param {string} [config.llm='fastGoodCheap'] - LLM model to use
+ * @param {string|Object} [config.llm={ fast: true, good: true }] - LLM model to use
  * @returns {Promise<{score: number, reason: string, confidence: number}>}
  */
 export default async function centralTendency(item, seedItems, config = {}) {

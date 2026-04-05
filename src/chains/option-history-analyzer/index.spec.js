@@ -316,10 +316,10 @@ describe('createOptionHistoryAnalyzer', () => {
   it('analyze merges config overrides', async () => {
     callLlm.mockResolvedValueOnce({ rules: [] });
 
-    const suggester = createOptionHistoryAnalyzer({ llm: 'fastCheap' });
+    const suggester = createOptionHistoryAnalyzer({ llm: { fast: true, cheap: true } });
     suggester.write(makeTrace());
 
-    await suggester.analyze(undefined, { llm: 'fastGood' });
+    await suggester.analyze(undefined, { llm: { fast: true, good: true } });
 
     const config = callLlm.mock.calls[0][1];
     expect(config).toBeDefined();

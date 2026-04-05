@@ -223,7 +223,7 @@ export { default as combinations, rangeCombinations } from './lib/combinations/i
 export { default as chunkSentences } from './lib/chunk-sentences/index.js';
 export { debug } from './lib/debug/index.js';
 export { default as createBatches } from './lib/text-batch/index.js';
-export { default as llm, jsonSchema } from './lib/llm/index.js';
+export { default as llm, jsonSchema, MODEL_KEYS } from './lib/llm/index.js';
 export { default as normalizeLlm } from './lib/normalize-llm/index.js';
 export { default as parallel, parallelMap } from './lib/parallel-batch/index.js';
 export { default as retry } from './lib/retry/index.js';
@@ -232,6 +232,17 @@ export { default as TimedAbortController } from './lib/timed-abort-controller/in
 export { default as templateReplace } from './lib/template-replace/index.js';
 export { default as ringBuffer } from './lib/ring-buffer/index.js';
 export { default as createProgressEmitter, scopePhase } from './lib/progress/index.js';
+export {
+  DomainEvent,
+  OpEvent,
+  ChainEvent,
+  TelemetryEvent,
+  Kind,
+  Level,
+  StatusCode,
+  ModelSource,
+  OptionSource,
+} from './lib/progress/constants.js';
 export { default as version } from './lib/version/index.js';
 export { default as windowFor } from './lib/window-for/index.js';
 export { default as withInactivityTimeout } from './lib/with-inactivity-timeout/index.js';
@@ -275,7 +286,7 @@ import * as messages from './constants/messages.js';
 import * as models from './constants/models.js';
 import * as redis from './services/redis/index.js';
 import modelService from './services/llm-model/model.js';
-export { resolveModel, getCapabilities } from './services/llm-model/index.js';
+export { resolveModel } from './services/llm-model/index.js';
 export { CAPABILITY_KEYS } from './constants/common.js';
 export { default as init } from './init.js';
 export * as config from './lib/config/index.js';

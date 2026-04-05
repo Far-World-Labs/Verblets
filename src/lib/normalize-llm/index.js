@@ -2,7 +2,7 @@
  * Normalize the llm config parameter into a consistent object form.
  *
  * Users can pass llm as:
- *   - a string model key:   'fastGood'       → { modelName: 'fastGood' }
+ *   - a model name string:  'gpt-4.1-mini'    → { modelName: 'gpt-4.1-mini' }
  *   - capability flags:     { fast: true }    → passed through (callLlm extracts them)
  *   - a full config object: { modelName, … }  → passed through
  *   - undefined/null                           → undefined

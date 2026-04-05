@@ -9,8 +9,9 @@
  * not live runtime objects.
  */
 
-import { readFile, writeFile, access, unlink, mkdir, readdir } from 'node:fs/promises';
+import { readFile, writeFile, access, unlink, mkdir, readdir, rename } from 'node:fs/promises';
 import { resolve, dirname, relative, join } from 'node:path';
+import { randomBytes } from 'node:crypto';
 
 // eslint-disable-next-line no-control-regex
 const UNSAFE_CHARS = /[<>:"|?*\x00-\x1f]/g;
@@ -71,7 +72,9 @@ export default function createDataStore(basePath) {
     async set(key, value) {
       const filePath = keyToPath(basePath, key);
       await ensureDir(filePath);
-      await writeFile(filePath, String(value), 'utf-8');
+      const tmpPath = `${filePath}.${randomBytes(4).toString('hex')}.tmp`;
+      await writeFile(tmpPath, String(value), 'utf-8');
+      await rename(tmpPath, filePath);
     },
 
     has(key) {

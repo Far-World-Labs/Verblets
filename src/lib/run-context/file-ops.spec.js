@@ -110,6 +110,14 @@ describe('createFileOps', () => {
       await files.copy('original.txt', 'copied.txt');
       expect(await files.read('copied.txt')).toBe('data');
     });
+
+    it('copies a directory recursively', async () => {
+      await files.write('src/a.txt', 'aaa');
+      await files.write('src/sub/b.txt', 'bbb');
+      await files.copy('src', 'dst');
+      expect(await files.read('dst/a.txt')).toBe('aaa');
+      expect(await files.read('dst/sub/b.txt')).toBe('bbb');
+    });
   });
 
   describe('move', () => {
@@ -118,6 +126,27 @@ describe('createFileOps', () => {
       await files.move('before.txt', 'after.txt');
       expect(await files.exists('before.txt')).toBe(false);
       expect(await files.read('after.txt')).toBe('data');
+    });
+  });
+
+  describe('path traversal guard', () => {
+    it('rejects ../ traversal that escapes rootDir', () => {
+      expect(() => files.read('../../etc/passwd')).toThrow('Path escapes root directory');
+    });
+
+    it('rejects absolute paths outside rootDir', () => {
+      expect(() => files.read('/etc/passwd')).toThrow('Path escapes root directory');
+    });
+
+    it('rejects traversal on write', async () => {
+      await expect(files.write('../escape.txt', 'data')).rejects.toThrow(
+        'Path escapes root directory'
+      );
+    });
+
+    it('allows ../ that stays within rootDir', async () => {
+      await files.write('a/b/test.txt', 'ok');
+      expect(await files.read('a/b/../b/test.txt')).toBe('ok');
     });
   });
 });

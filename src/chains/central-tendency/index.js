@@ -49,7 +49,7 @@ ${corePrompt}`;
  * @param {Object} [config={}] - Configuration options
  * @param {string} [config.context=''] - Context description for evaluation
  * @param {string[]} [config.coreFeatures=[]] - Known core/definitional features
- * @param {string|Object} [config.llm='fastGoodCheap'] - LLM model to use
+ * @param {string|Object} [config.llm={ fast: true, good: true }] - LLM model to use
  * @param {number} [config.batchSize=5] - Batch size for processing
  * @param {number} [config.maxAttempts=3] - Max retry attempts for failed items
  * @returns {Promise<Array>} Array of central tendency results
