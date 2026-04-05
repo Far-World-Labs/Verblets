@@ -3,7 +3,9 @@
 Parse a string value into a number. Designed for post-processing LLM responses that contain numeric values.
 
 ```javascript
-import { toNumber } from '@far-world-labs/verblets';
+import { init } from '@far-world-labs/verblets';
+
+const { toNumber } = init();
 
 toNumber('42');          // => 42
 toNumber('3.14');        // => 3.14

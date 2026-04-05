@@ -59,7 +59,7 @@ const emitter = createProgressEmitter('filter', runConfig.onProgress, runConfig)
 emitter.start();
 ```
 
-The returned handle exposes:
+The emitter does not emit on construction — call `start()` explicitly to emit the `chain:start` event. The returned handle exposes:
 
 - `start(context?)` — emit `chain:start` with optional context
 - `emit(data)` — dispatch a domain event (`kind: 'event'`)

@@ -5,7 +5,9 @@ Factory for creating collection instruction builders. Chains that follow the spe
 These instruction builders compose a chain's specification with collection chains like `map`, `filter`, `find`, `reduce`, and `group`:
 
 ```javascript
-import { map, scoreMapInstructions, scoreSpec } from '@far-world-labs/verblets';
+import { init } from '@far-world-labs/verblets';
+
+const { map, scoreMapInstructions, scoreSpec } = init();
 
 // Generate a reusable scoring specification
 const spec = await scoreSpec('Rate writing quality 0-10');

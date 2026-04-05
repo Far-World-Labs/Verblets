@@ -2,11 +2,6 @@ import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import socraticQuestionSchema from './socratic-question-schema.js';
 import socraticAnswerSchema from './socratic-answer-schema.js';
-import {
-  createLifecycleLogger,
-  extractPromptAnalysis,
-  extractResultValue,
-} from '../../lib/lifecycle-logger/index.js';
 import createProgressEmitter from '../../lib/progress/index.js';
 import { DomainEvent } from '../../lib/progress/constants.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
@@ -58,7 +53,6 @@ const defaultAsk = async ({
   topic,
   history = [],
   llm,
-  logger,
   temperature = 0.7,
   challenge,
   config,
@@ -66,15 +60,12 @@ const defaultAsk = async ({
   const historyText = history.map((turn) => `Q: ${turn.question}\nA: ${turn.answer}`).join('\n');
   const prompt = buildAskPrompt(topic, historyText, challenge);
 
-  logger?.logEvent('ask-prompt', extractPromptAnalysis(prompt));
-
   const response = await retry(
     () =>
       callLlm(prompt, {
         llm,
         temperature,
         response_format: jsonSchema('socratic_question', socraticQuestionSchema),
-        logger,
       }),
     {
       label: 'socratic-ask',
@@ -90,14 +81,11 @@ const defaultAnswer = async ({
   history = [],
   _topic,
   llm,
-  logger,
   temperature = 0.7,
   config,
 } = {}) => {
   const historyText = history.map((turn) => `Q: ${turn.question}\nA: ${turn.answer}`).join('\n');
   const prompt = buildAnswerPrompt(question, historyText);
-
-  logger?.logEvent('answer-prompt', extractPromptAnalysis(prompt));
 
   const response = await retry(
     () =>
@@ -105,7 +93,6 @@ const defaultAnswer = async ({
         llm,
         temperature,
         response_format: jsonSchema('socratic_answer', socraticAnswerSchema),
-        logger,
       }),
     {
       label: 'socratic-answer',
@@ -121,6 +108,7 @@ class SocraticMethod {
     const runConfig = nameStep(name, options);
     const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
     emitter.start();
+    emitter.emit({ event: DomainEvent.input, value: statement });
     const { challenge, temperature } = await getOptions(runConfig, {
       challenge: withPolicy(mapChallenge, ['challenge', 'temperature']),
     });
@@ -140,7 +128,7 @@ class SocraticMethod {
     this.emitter = fromCreate ? options.emitter : undefined;
     const opts = fromCreate ? options.config : options;
 
-    const { ask = defaultAsk, answer = defaultAnswer, llm, logger, abortSignal } = opts;
+    const { ask = defaultAsk, answer = defaultAnswer, llm, abortSignal } = opts;
     this.statement = statement;
     this.ask = ask;
     this.answer = answer;
@@ -158,14 +146,6 @@ class SocraticMethod {
       this.emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
     }
     this.abortSignal = abortSignal;
-    this.logger = createLifecycleLogger(logger, 'chain:socratic');
-
-    // Log construction
-    this.logger.logStart({
-      statement,
-      hasCustomAsk: ask !== defaultAsk,
-      hasCustomAnswer: answer !== defaultAnswer,
-    });
   }
 
   getDialogue() {
@@ -175,8 +155,6 @@ class SocraticMethod {
   async step() {
     const turnNumber = this.history.length + 1;
 
-    this.logger.logEvent('step-start', { turnNumber });
-
     this.emitter.emit({
       event: DomainEvent.step,
       stepName: 'asking-question',
@@ -184,29 +162,13 @@ class SocraticMethod {
       topic: this.statement,
     });
 
-    // Log input (topic and history)
-    this.logger.info({
-      event: 'chain:socratic:input',
-      value: {
-        topic: this.statement,
-        historyLength: this.history.length,
-        history: this.history,
-      },
-    });
-
     const question = await this.ask({
       topic: this.statement,
       history: this.history,
       llm: this.llm,
-      logger: this.logger,
       temperature: this.temperature,
       challenge: this.challenge,
       config: this.config,
-    });
-
-    // Log question as intermediate event
-    this.logger.logEvent('question-generated', {
-      value: question,
     });
 
     this.emitter.emit({
@@ -221,7 +183,6 @@ class SocraticMethod {
       history: this.history,
       topic: this.statement,
       llm: this.llm,
-      logger: this.logger,
       temperature: this.temperature,
       config: this.config,
     });
@@ -229,24 +190,10 @@ class SocraticMethod {
     const turn = { question, answer };
     this.history.push(turn);
 
-    // Log output (the complete turn)
-    this.logger.info({
-      event: 'chain:socratic:output',
-      value: turn,
-    });
-
-    this.logger.logEvent('step-complete', {
-      turnNumber: this.history.length,
-      question,
-      answer,
-    });
-
     return turn;
   }
 
   async run(depth = 3) {
-    this.logger.logEvent('run-start', { depth });
-
     try {
       for (let i = 0; i < depth; i += 1) {
         this.emitter.emit({
@@ -260,8 +207,7 @@ class SocraticMethod {
         await this.step();
       }
 
-      this.logger.logResult(this.history, extractResultValue(this.history, this.history));
-
+      this.emitter.emit({ event: DomainEvent.output, value: this.history });
       this.emitter.complete({ outcome: 'success', turns: this.history.length });
 
       return this.history;

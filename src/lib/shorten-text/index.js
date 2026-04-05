@@ -1,13 +1,11 @@
-import modelService from '../../services/llm-model/index.js';
+import globalModelService from '../../services/llm-model/index.js';
 
-export default (
-  text,
-  { minCharsToRemove = 10, model = modelService.getBestPublicModel(), targetTokenCount }
-) => {
+export default (text, { minCharsToRemove = 10, model, modelService, targetTokenCount }) => {
+  const resolvedModel = model || (modelService || globalModelService).getBestPublicModel();
   const ellipsis = '...';
-  const textToTokenRatio = text.length / model.toTokens(text).length;
+  const textToTokenRatio = text.length / resolvedModel.toTokens(text).length;
   let trimmedText = text;
-  let tokenCount = model.toTokens(trimmedText).length;
+  let tokenCount = resolvedModel.toTokens(trimmedText).length;
 
   while (tokenCount > targetTokenCount) {
     const charsToRemove = Math.max(
@@ -18,7 +16,7 @@ export default (
     const startIndex = middleIndex - Math.ceil(charsToRemove / 2);
     const endIndex = middleIndex + Math.floor(charsToRemove / 2);
     trimmedText = trimmedText.slice(0, startIndex) + ellipsis + trimmedText.slice(endIndex);
-    tokenCount = model.toTokens(trimmedText).length;
+    tokenCount = resolvedModel.toTokens(trimmedText).length;
   }
 
   return trimmedText;

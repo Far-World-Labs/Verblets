@@ -261,6 +261,7 @@ class ModelService {
 
 const modelService = new ModelService();
 
+export { ModelService };
 export default modelService;
 
 /**

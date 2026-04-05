@@ -1,7 +1,7 @@
 import { defaultMaxAttempts, retryDelay as retryDelayDefault } from '../../constants/common.js';
 import { getOption } from '../context/option.js';
 import createProgressEmitter from '../progress/index.js';
-import { TelemetryEvent, OpEvent, Metric, RetryOutcome } from '../progress/constants.js';
+import { OpEvent, Metric, RetryOutcome } from '../progress/constants.js';
 
 const abortError = (signal) => signal?.reason ?? new Error('The operation was aborted.');
 
@@ -56,7 +56,7 @@ async function retry(fn, opts = {}) {
     }
 
     emitter.metrics({
-      event: TelemetryEvent.retryAttempt,
+      event: OpEvent.retryAttempt,
       attemptNumber: attempt + 1,
       maxAttempts,
       outcome: RetryOutcome.attempt,
@@ -105,7 +105,7 @@ async function retry(fn, opts = {}) {
         }
 
         emitter.metrics({
-          event: TelemetryEvent.retryError,
+          event: OpEvent.retryError,
           attemptNumber: attempt + 1,
           maxAttempts,
           outcome: RetryOutcome.error,
@@ -137,7 +137,7 @@ async function retry(fn, opts = {}) {
         }
 
         emitter.metrics({
-          event: TelemetryEvent.retryExhaust,
+          event: OpEvent.retryExhaust,
           attemptNumber: attempt,
           maxAttempts,
           outcome: RetryOutcome.exhaust,

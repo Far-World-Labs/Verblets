@@ -12,8 +12,6 @@ import { CAPABILITY_KEYS } from '../../constants/common.js';
 import anySignal from '../any-signal/index.js';
 import { get as getPromptResult, set as setPromptResult } from '../prompt-cache/index.js';
 import TimedAbortController from '../timed-abort-controller/index.js';
-import modelService from '../../services/llm-model/index.js';
-import { getClient as getRedis } from '../../services/redis/index.js';
 import { get as configGet } from '../config/index.js';
 import extractJson from '../extract-json/index.js';
 import stripResponse from '../strip-response/index.js';
@@ -192,14 +190,9 @@ export const MODEL_KEYS = [
   'topP',
 ];
 
-export const run = async (prompt, config = {}) => {
-  // Handle config parameter - can be string (model name) or object (full options)
-  let options;
-  if (typeof config === 'string') {
-    options = { modelName: config };
-  } else {
-    options = config;
-  }
+export const run = async (prompt, options = {}) => {
+  const modelSvc = options.modelService;
+  const redisGet = options.getRedis;
 
   const {
     abortSignal,
@@ -263,11 +256,11 @@ export const run = async (prompt, config = {}) => {
   let modelNameNegotiated;
 
   if (shouldNegotiate) {
-    modelFound = modelService.negotiateModel(preferred, negotiation);
+    modelFound = modelSvc.negotiateModel(preferred, negotiation);
     modelNameNegotiated = modelFound?.name;
   } else {
     modelNameNegotiated = modelOptions.modelName;
-    modelFound = modelService.getModel(modelNameNegotiated);
+    modelFound = modelSvc.getModel(modelNameNegotiated);
   }
 
   // Telemetry: model selection
@@ -300,11 +293,11 @@ export const run = async (prompt, config = {}) => {
   }
 
   // Use model-specific API URL and key if defined, otherwise fall back to defaults
-  const defaultModel = modelService.getDefaultModel();
+  const defaultModel = modelSvc.getDefaultModel();
   const apiUrl = modelFound?.apiUrl || defaultModel?.apiUrl;
   const apiKey = modelFound?.apiKey || defaultModel?.apiKey;
 
-  const requestConfig = modelService.getRequestConfig({
+  const requestConfig = modelSvc.getRequestConfig({
     prompt,
     ...modelOptions,
     modelName: modelNameNegotiated,
@@ -351,8 +344,8 @@ export const run = async (prompt, config = {}) => {
   let cacheResult = null;
   let cache = null;
 
-  if (!cachingDisabled) {
-    cache = await getRedis();
+  if (!cachingDisabled && redisGet) {
+    cache = await redisGet();
     const { result } = await getPromptResult(cache, requestConfig);
     cacheResult = result;
   }
@@ -369,7 +362,7 @@ export const run = async (prompt, config = {}) => {
     if (!cacheResult || forceQuery) {
       // Use custom requestTimeout from modelOptions if provided, otherwise use model default
       const requestTimeout =
-        modelOptions.requestTimeout || modelService.getModel(modelNameNegotiated).requestTimeout;
+        modelOptions.requestTimeout || modelSvc.getModel(modelNameNegotiated).requestTimeout;
 
       const timeoutController = new TimedAbortController(requestTimeout);
 

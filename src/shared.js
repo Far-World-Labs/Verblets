@@ -284,9 +284,8 @@ import * as common from './constants/common.js';
 import * as contextConsts from './constants/context.js';
 import * as messages from './constants/messages.js';
 import * as models from './constants/models.js';
-import * as redis from './services/redis/index.js';
-import modelService from './services/llm-model/model.js';
 export { resolveModel } from './services/llm-model/index.js';
+export { ModelService } from './services/llm-model/index.js';
 export { CAPABILITY_KEYS } from './constants/common.js';
 export { default as init } from './init.js';
 export * as config from './lib/config/index.js';
@@ -296,9 +295,4 @@ export const constants = {
   context: contextConsts,
   messages,
   models,
-};
-
-export const services = {
-  redis,
-  modelService,
 };

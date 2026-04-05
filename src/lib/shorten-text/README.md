@@ -21,7 +21,8 @@ const shortened = shortenText(longText, {
 - **config** (Object): Configuration options
   - **targetTokenCount** (number): Maximum number of tokens allowed
   - **minCharsToRemove** (number): Minimum characters to remove per iteration (default: 10)
-  - **model** (Object): LLM model for token counting (default: best public model)
+  - **model** (Object): LLM model object for token counting
+  - **modelService** (Object): Model service instance — used to resolve the best public model when `model` is not provided. One of `model` or `modelService` is required.
 
 ## Return Value
 

@@ -30,7 +30,6 @@ export const ChainEvent = Object.freeze({
   start: 'chain:start',
   complete: 'chain:complete',
   error: 'chain:error',
-  tick: 'chain:tick',
 });
 
 /** Operation event names — emitted by progress() and batch(). */
@@ -39,6 +38,9 @@ export const OpEvent = Object.freeze({
   complete: 'complete',
   batchComplete: 'batch:complete',
   retry: 'retry',
+  retryAttempt: 'retry:attempt',
+  retryError: 'retry:error',
+  retryExhaust: 'retry:exhaust',
   error: 'error',
 });
 
@@ -46,15 +48,15 @@ export const OpEvent = Object.freeze({
 export const DomainEvent = Object.freeze({
   phase: 'phase',
   step: 'step',
+  tick: 'chain:tick',
+  input: 'input',
+  output: 'output',
 });
 
 /** Telemetry event names — emitted by metrics(). */
 export const TelemetryEvent = Object.freeze({
   llmModel: 'llm:model',
   llmCall: 'llm:call',
-  retryAttempt: 'retry:attempt',
-  retryError: 'retry:error',
-  retryExhaust: 'retry:exhaust',
   optionResolve: 'option:resolve',
 });
 

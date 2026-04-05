@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { run } from './index.js';
-import modelService from '../../services/llm-model/index.js';
+import { ModelService } from '../../services/llm-model/index.js';
 import { env } from '../../lib/env/index.js';
 import { longTestTimeout } from '../../constants/common.js';
 
@@ -17,10 +17,10 @@ const isBillingOrAuthError = (msg) => /credit balance|billing|quota|authenticati
 // ── Shared smoke test ─────────────────────────────────────────────────
 
 async function smokeTest(modelName, providerLabel) {
-  const savedRules = modelService.rules;
-  modelService.setRules([{ use: modelName }]);
+  const ms = new ModelService();
+  ms.setRules([{ use: modelName }]);
   try {
-    const result = await run('What is 2 + 2? Answer with just the number.');
+    const result = await run('What is 2 + 2? Answer with just the number.', { modelService: ms });
     console.log(`${providerLabel} result:`, JSON.stringify(result));
     expect(result).toBeDefined();
     expect(String(result)).toContain('4');
@@ -30,8 +30,6 @@ async function smokeTest(modelName, providerLabel) {
       return;
     }
     throw error;
-  } finally {
-    modelService.setRules(savedRules);
   }
 }
 
