@@ -19,7 +19,8 @@
 import { resolve } from 'node:path';
 import { homedir } from 'node:os';
 
-import * as verblets from '../../shared.js';
+import * as rawVerblets from '../../shared.js';
+import withConfig from '../with-config/index.js';
 
 // Node-only chains and utilities (not in shared.js)
 import webScrape from '../../chains/web-scrape/index.js';
@@ -55,7 +56,7 @@ export class RunContext {
    * @param {object} [options.params] - Invocation parameters
    */
   constructor(automationName, options = {}) {
-    const { projectRoot, onProgress, initOptions = {}, params = {} } = options;
+    const { projectRoot, onProgress, initConfig, params = {} } = options;
 
     // --- XDG-backed storage domains ---
     // VERBLETS_STORAGE_ROOT overrides the entire storage base (for parent apps with their own storage).
@@ -85,10 +86,29 @@ export class RunContext {
         automationDir: childAutomationDir,
         projectRoot,
         onProgress,
-        initOptions,
+        initConfig,
       });
 
     const exec = createExec({ emit, buildChildContext });
+
+    // Wrap verblets with init config (modelService, getRedis) so LLM calls resolve.
+    // Skip utility functions whose last arg is data, not config.
+    const SKIP_WRAP = new Set([
+      'jsonSchema',
+      'isSimpleCollectionSchema',
+      'determineStyle',
+      'eventToTrace',
+      'scopePhase',
+      'nameStep',
+    ]);
+    const verblets = initConfig
+      ? Object.fromEntries(
+          Object.entries(rawVerblets).map(([k, v]) => [
+            k,
+            SKIP_WRAP.has(k) ? v : withConfig(initConfig, v),
+          ])
+        )
+      : rawVerblets;
 
     this.lib = {
       // Isomorphic verblets library — safe for browser + Node

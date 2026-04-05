@@ -143,7 +143,7 @@ export async function runAutomation(name, params = {}, options = {}) {
   const { projectRoot, onProgress, initOptions = {} } = options;
 
   dotenv.config({ override: true });
-  init(initOptions);
+  const instance = init(initOptions);
 
   const automationDir = await resolveAutomation(name);
   if (!automationDir) {
@@ -171,7 +171,7 @@ export async function runAutomation(name, params = {}, options = {}) {
     automationDir,
     projectRoot: projectRoot || process.cwd(),
     onProgress,
-    initOptions,
+    initConfig: instance.config,
     params: enrichedParams,
   });
 
