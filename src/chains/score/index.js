@@ -6,7 +6,7 @@ import createProgressEmitter from '../../lib/progress/index.js';
 import { OpEvent, DomainEvent } from '../../lib/progress/constants.js';
 import { createBatches, parallel, retry } from '../../lib/index.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
-import scoreSingleResultSchema from './score-single-result.json';
+import scoreSingleResultSchema from './score-single-result.json' with { type: 'json' };
 
 const name = 'score';
 

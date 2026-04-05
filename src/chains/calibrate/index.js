@@ -4,7 +4,7 @@ import { asXML } from '../../prompts/wrap-variable.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
 import { calibrateSpecificationJsonSchema } from './schemas.js';
-import calibrateResultSchema from './calibrate-result.json';
+import calibrateResultSchema from './calibrate-result.json' with { type: 'json' };
 
 // ===== Option Mappers =====
 

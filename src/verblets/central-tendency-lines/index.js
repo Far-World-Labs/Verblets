@@ -7,7 +7,7 @@ import {
 } from '../../lib/lifecycle-logger/index.js';
 import { nameStep } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
-import centralTendencySchema from './central-tendency-result.json';
+import centralTendencySchema from './central-tendency-result.json' with { type: 'json' };
 
 const name = 'central-tendency-lines';
 

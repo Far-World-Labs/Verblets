@@ -5,6 +5,9 @@ import prettierPlugin from 'eslint-plugin-prettier';
 export default [
   js.configs.recommended,
   {
+    ignores: ['src/test-setup/**', 'src/lib/automation-runner/loader*.js'],
+  },
+  {
     files: ['src/**/*.js'],
     languageOptions: {
       ecmaVersion: 'latest',

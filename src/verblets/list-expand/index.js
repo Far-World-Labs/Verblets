@@ -3,7 +3,7 @@ import { asXML } from '../../prompts/wrap-variable.js';
 import { debug } from '../../lib/debug/index.js';
 import { nameStep } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
-import listExpandSchema from './list-expand-result.json';
+import listExpandSchema from './list-expand-result.json' with { type: 'json' };
 
 const name = 'list-expand';
 

@@ -1,6 +1,6 @@
 import { asXML } from './wrap-variable.js';
 import { onlyJSON } from './constants.js';
-import intentSchema from '../json-schemas/intent.json';
+import intentSchema from '../json-schemas/intent.json' with { type: 'json' };
 
 const contentIsIntent = 'The intent is:';
 const contentIsSchema = 'The schema is:';

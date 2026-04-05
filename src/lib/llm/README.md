@@ -131,7 +131,7 @@ const result = await callLlm('List 5 programming languages', {
 // => ['JavaScript', 'Python', 'Java', 'C++', 'Go']
 ```
 
-See [JSON Schema Guidelines](../../../guidelines/JSON_SCHEMAS.md) for schema design patterns.
+See [JSON Schema Guidelines](../../../.claude/guidelines/JSON_SCHEMAS.md) for schema design patterns.
 
 ## Related Modules
 

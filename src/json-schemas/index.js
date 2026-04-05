@@ -7,13 +7,13 @@
  */
 
 // Import schemas directly as JSON modules
-import intentResult from './intent-result.json';
-import intent from './intent.json';
-import archResult from './arch-result.json';
-import expectResult from './expect-result.json';
-import scoreResult from './score-result.json';
-import schemaDotOrgPhotograph from './schema-dot-org-photograph.json';
-import schemaDotOrgPlace from './schema-dot-org-place.json';
+import intentResult from './intent-result.json' with { type: 'json' };
+import intent from './intent.json' with { type: 'json' };
+import archResult from './arch-result.json' with { type: 'json' };
+import expectResult from './expect-result.json' with { type: 'json' };
+import scoreResult from './score-result.json' with { type: 'json' };
+import schemaDotOrgPhotograph from './schema-dot-org-photograph.json' with { type: 'json' };
+import schemaDotOrgPlace from './schema-dot-org-place.json' with { type: 'json' };
 
 // Import test analysis intent schemas
 import * as testAnalysisIntents from './test-analysis-intents.js';

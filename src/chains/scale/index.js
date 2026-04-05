@@ -3,7 +3,7 @@ import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import buildInstructions from '../../lib/build-instructions/index.js';
 import { scaleSpecificationJsonSchema } from './schemas.js';
-import scaleResultSchema from './scale-result.json';
+import scaleResultSchema from './scale-result.json' with { type: 'json' };
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
 import { DomainEvent } from '../../lib/progress/constants.js';
 import { nameStep } from '../../lib/context/option.js';

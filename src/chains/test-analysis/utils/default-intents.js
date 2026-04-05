@@ -2,13 +2,13 @@
  * Default intents extracted from available schemas
  */
 
-import showLLMPerformanceMetricsSchema from '../schemas/show-llm-performance-metrics.json';
-import listAllPromptsSchema from '../schemas/list-all-prompts.json';
-import analyzePromptSchema from '../schemas/analyze-prompt.json';
-import showTestErrorsSchema from '../schemas/show-test-errors.json';
-import analyzeFunctionSchema from '../schemas/analyze-function.json';
-import showAiInputOutputSchema from '../schemas/show-ai-input-output.json';
-import listModuleFunctionsSchema from '../schemas/list-module-functions.json';
+import showLLMPerformanceMetricsSchema from '../schemas/show-llm-performance-metrics.json' with { type: 'json' };
+import listAllPromptsSchema from '../schemas/list-all-prompts.json' with { type: 'json' };
+import analyzePromptSchema from '../schemas/analyze-prompt.json' with { type: 'json' };
+import showTestErrorsSchema from '../schemas/show-test-errors.json' with { type: 'json' };
+import analyzeFunctionSchema from '../schemas/analyze-function.json' with { type: 'json' };
+import showAiInputOutputSchema from '../schemas/show-ai-input-output.json' with { type: 'json' };
+import listModuleFunctionsSchema from '../schemas/list-module-functions.json' with { type: 'json' };
 
 // Collect all schemas
 const allSchemas = {

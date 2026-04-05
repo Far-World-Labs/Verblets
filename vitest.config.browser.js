@@ -8,7 +8,7 @@ export default defineConfig({
     environment: 'jsdom',
     include: ['src/**/*.spec.js'],
     exclude: [...baseConfig.exclude, ...browserExclusions],
-    setupFiles: ['./test/setup/browser.js'],
+    setupFiles: ['./src/test-setup/browser.js'],
     server: {
       deps: {
         inline: ['underscore', 'natural'],

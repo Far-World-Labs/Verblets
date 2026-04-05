@@ -5,7 +5,7 @@ import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 import { intersectionElementsSchema } from './schemas.js';
-import intersectionResultSchema from './intersection-result.json';
+import intersectionResultSchema from './intersection-result.json' with { type: 'json' };
 import { debug } from '../../lib/debug/index.js';
 import { nameStep, getOptions } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';

@@ -1,7 +1,7 @@
 import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import score from '../score/index.js';
-import disambiguateMeaningsSchema from './disambiguate-meanings-result.json';
+import disambiguateMeaningsSchema from './disambiguate-meanings-result.json' with { type: 'json' };
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
 import { DomainEvent } from '../../lib/progress/constants.js';
 import { nameStep } from '../../lib/context/option.js';

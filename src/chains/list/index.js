@@ -6,7 +6,7 @@ import {
   generateList as generateListPrompt,
   constants as promptConstants,
 } from '../../prompts/index.js';
-import listResultSchema from './list-result.json';
+import listResultSchema from './list-result.json' with { type: 'json' };
 import { nameStep } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
 import { DomainEvent } from '../../lib/progress/constants.js';

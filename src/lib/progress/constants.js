@@ -1,11 +1,22 @@
-/** Event kind — discriminates the three progress event categories. */
+/**
+ * Event kind — structural shape of the event, not its audience.
+ * Any consumer can subscribe to any event regardless of kind.
+ */
 export const Kind = Object.freeze({
-  /** Domain moments: decisions, phase transitions, meaningful outcomes. */
+  /** Decisions, phases, meaningful outcomes. Audit-log-shaped. */
   event: 'event',
-  /** Execution progress: start, complete, batch bookkeeping. */
+  /** Execution mechanics: lifecycle, batch progress, retries. Progress-bar-shaped. */
   operation: 'operation',
-  /** Infrastructure metrics: LLM calls, retries, model selection. */
+  /** Measurements: counts, durations, rates. Dashboard-shaped. */
   telemetry: 'telemetry',
+});
+
+/** Log level — severity hint for log-like events, orthogonal to kind. */
+export const Level = Object.freeze({
+  debug: 'debug',
+  info: 'info',
+  warn: 'warn',
+  error: 'error',
 });
 
 /** Status code — normalized outcome on lifecycle events. */

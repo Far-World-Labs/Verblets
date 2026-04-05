@@ -3,7 +3,7 @@ import { asXML } from '../../prompts/wrap-variable.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 import { nameStep } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
-import commonalitiesSchema from './commonalities-result.json';
+import commonalitiesSchema from './commonalities-result.json' with { type: 'json' };
 
 const { contentIsQuestion, tryCompleteData } = promptConstants;
 

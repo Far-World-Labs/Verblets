@@ -2,7 +2,7 @@ import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import buildInstructions from '../../lib/build-instructions/index.js';
-import entityResultSchema from './entity-result.json';
+import entityResultSchema from './entity-result.json' with { type: 'json' };
 import createProgressEmitter from '../../lib/progress/index.js';
 import { DomainEvent } from '../../lib/progress/constants.js';
 import { nameStep } from '../../lib/context/option.js';

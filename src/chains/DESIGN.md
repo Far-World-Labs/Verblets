@@ -100,7 +100,7 @@ Retry is config-aware — see [retry](../../docs/retry.md) for the full API. Cha
 
 ## Chain-Specific Schema Patterns
 
-For schema design fundamentals, see [JSON Schema Guidelines](../../guidelines/JSON_SCHEMAS.md). Chains commonly need bulk processing schemas that handle arrays of results:
+For schema design fundamentals, see [JSON Schema Guidelines](../../.claude/guidelines/JSON_SCHEMAS.md). Chains commonly need bulk processing schemas that handle arrays of results:
 
 ```javascript
 const bulkSchema = {
@@ -156,7 +156,7 @@ export default async function chainName(items, config = {}) {
 
 ## Documentation
 
-README structure and quality standards are in [DOCUMENTATION.md](../../guidelines/DOCUMENTATION.md). Key chain-specific points: avoid generic feature lists (bulk processing, retries), show the dial options the chain accepts, include realistic examples that demonstrate AI capabilities.
+README structure and quality standards are in [DOCUMENTATION.md](../../.claude/guidelines/DOCUMENTATION.md). Key chain-specific points: avoid generic feature lists (bulk processing, retries), show the dial options the chain accepts, include realistic examples that demonstrate AI capabilities.
 
 ## Anti-Patterns
 

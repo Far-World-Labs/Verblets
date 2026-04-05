@@ -101,5 +101,5 @@ Multiple encodings can coexist per artifact. The stable contract covers purpose 
 - Option resolution: `docs/option-resolution.md`, `src/lib/context/option.js`
 - Chain design: `src/chains/DESIGN.md`
 - Verblet design: `src/verblets/DESIGN.md`
-- Permanent flags: `spec/permanent-flags.md`
-- Context design: `spec/context-design.md`
+- Permanent flags: `.claude/spec/permanent-flags.md`
+- Context design: `.claude/spec/context-design.md`

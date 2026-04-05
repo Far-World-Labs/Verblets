@@ -51,16 +51,18 @@ class ModelService {
     this.models = {};
     const capabilityKeySet = new Set(CAPABILITY_KEYS);
     this.models = Object.entries(models).reduce((acc, [key, modelDef]) => {
+      if (!modelDef) return acc;
       const lower = key.toLowerCase();
-      return {
-        ...acc,
-        [key]: new Model({
-          ...modelDef,
+      const merged = Object.defineProperties(
+        {
           key,
           capabilities: new Set([...capabilityKeySet].filter((c) => lower.includes(c))),
           tokenizer: tokenizer.encode,
-        }),
-      };
+        },
+        Object.getOwnPropertyDescriptors(modelDef)
+      );
+      acc[key] = new Model(merged);
+      return acc;
     }, {});
 
     // Always default to fastGood for public model
@@ -162,12 +164,11 @@ class ModelService {
 
     // Fall back to catalog (supports direct model names like 'claude-sonnet-4-6')
     if (!modelFound && catalog[name]) {
-      modelFound = new Model({
-        name,
-        ...catalog[name],
-        key: name,
-        tokenizer: tokenizer.encode,
-      });
+      const merged = Object.defineProperties(
+        { name, key: name, tokenizer: tokenizer.encode },
+        Object.getOwnPropertyDescriptors(catalog[name])
+      );
+      modelFound = new Model(merged);
     }
 
     if (!modelFound) {

@@ -27,7 +27,7 @@ Cross-cutting subsystems have their own centralized documentation in `docs/`. Mo
 - [Batching](../docs/batching.md) — auto-sizing, `parallelBatch`, `prepareBatches`, `batchSize`/`maxParallel`
 - [Progress Tracking](../docs/progress-tracking.md) — `onProgress`, `scopeProgress`, `trackBatch`, event lifecycle
 - [Retry](../docs/retry.md) — config-aware retries, retryable errors, abort signal
-- [JSON Schemas](../guidelines/JSON_SCHEMAS.md) — `response_format`, schema design, auto-unwrapping
+- [JSON Schemas](JSON_SCHEMAS.md) — `response_format`, schema design, auto-unwrapping
 
 ### Common mistakes
 

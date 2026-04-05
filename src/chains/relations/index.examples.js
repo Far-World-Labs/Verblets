@@ -13,7 +13,7 @@ import filter from '../filter/index.js';
 import group from '../group/index.js';
 import find from '../find/index.js';
 import { techCompanyArticle, historicalNarrative } from '../entities/sample-text.js';
-import relationResultSchema from './relation-result.json';
+import relationResultSchema from './relation-result.json' with { type: 'json' };
 import {
   longTestTimeout,
   extendedTestTimeout,

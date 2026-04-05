@@ -5,7 +5,7 @@ import score from '../../../chains/score/index.js';
 import llm from '../../../lib/llm/index.js';
 import retry from '../../../lib/retry/index.js';
 import { bold, cyan, gray } from '../../../chains/test-analysis/output-utils.js';
-import compressedContextSchema from '../schemas/compressed-context.json';
+import compressedContextSchema from '../schemas/compressed-context.json' with { type: 'json' };
 import { extractAIMdConfig } from '../utils/ai-md-extractor.js';
 import { ModuleCollector } from '../collectors/module-collector.js';
 

@@ -10,7 +10,7 @@ if (typeof window !== 'undefined') {
   // Ensure window.verblets.env exists before any module imports
   window.verblets = window.verblets || {};
   window.verblets.env = window.verblets.env || {};
-  
+
   // Set API keys from process.env (injected by Vite's define)
   if (typeof process !== 'undefined') {
     if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'undefined') {
@@ -26,17 +26,16 @@ if (typeof window !== 'undefined') {
       window.verblets.env.ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
     }
   }
-  
+
   // Set test environment
   window.verblets.env.NODE_ENV = 'test';
   window.verblets.env.USE_REDIS_CACHE = 'true';
-  
-  
+
   // Enable debug logging if requested
   if (process.env.VERBLETS_DEBUG) {
     window.verblets.env.VERBLETS_DEBUG = process.env.VERBLETS_DEBUG;
   }
-  
+
   // Log for debugging (only in verbose mode)
   if (process.env.VERBOSE) {
     console.log('Browser test setup complete.');

@@ -16,7 +16,7 @@ await aiArchExpect(eachFile('src/**/*.js'), {
   maxConcurrency: 8,
   maxFailures: 3,
 })
-  .withContext(fileContext('guidelines/CODE_QUALITY.md'))
+  .withContext(fileContext('.claude/guidelines/CODE_QUALITY.md'))
   .satisfies('File follows code quality standards')
   .start();
 ```

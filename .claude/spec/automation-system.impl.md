@@ -33,12 +33,12 @@ Templates are loaded from `~/data/verblets/automations/<name>/` and `~/data/verb
 
 ## Import Resolution
 
-The ESM loader hook at `automations/loader.js` handles:
+The ESM loader hook at `src/lib/automation-runner/loader.js` handles:
 - `@app/*` → `src/lib/*/index.js`
 - Bare `.json` imports → adds `{ type: 'json' }` attribute
 
 ```bash
-node --import ./automations/loader.js -e "import { runAutomation } from './src/lib/automation-runner/index.js'; ..."
+node --import ./src/lib/automation-runner/loader.js -e "import { runAutomation } from './src/lib/automation-runner/index.js'; ..."
 ```
 
 ## Storage Backing
@@ -76,13 +76,13 @@ const enrichedParams = {
 
 ```bash
 # Run via the runner (primary interface)
-node --import ./automations/loader.js -e "
+node --import ./src/lib/automation-runner/loader.js -e "
   import { runAutomation } from './src/lib/automation-runner/index.js';
   await runAutomation('eventing-quality', { modules: 'filter', capture: false });
 "
 
 # With fresh env (when shell has stale API keys)
-(unset ANTHROPIC_API_KEY; unset OPENAI_API_KEY; source .env; node --import ./automations/loader.js -e "...")
+(unset ANTHROPIC_API_KEY; unset OPENAI_API_KEY; source .env; node --import ./src/lib/automation-runner/loader.js -e "...")
 ```
 
 ## ctx.lib.emit

@@ -3,7 +3,7 @@
  */
 
 import Ajv from 'ajv';
-import modelDefinitionSchema from './model-definition-schema.json';
+import modelDefinitionSchema from './model-definition-schema.json' with { type: 'json' };
 
 const ajv = new Ajv();
 const validate = ajv.compile(modelDefinitionSchema);

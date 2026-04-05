@@ -1,6 +1,6 @@
 export default class Model {
   constructor(options) {
-    Object.assign(this, options);
+    Object.defineProperties(this, Object.getOwnPropertyDescriptors(options));
   }
 
   toTokens(text) {

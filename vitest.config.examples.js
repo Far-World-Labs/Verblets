@@ -20,7 +20,7 @@ export default defineConfig({
     testTimeout: 60_000,
     environment: 'node',
     include: ['src/**/*.examples.js'],
-    globalSetup: ['./test/setup/warm-up-probe.js'],
+    globalSetup: ['./src/test-setup/warm-up-probe.js'],
     // Use forks pool with limited concurrency instead of threads.
     // Threads exhaust the pool during parallel collection of 70+ files.
     // Forks use separate processes, avoiding thread pool contention.
@@ -35,8 +35,8 @@ export default defineConfig({
     exclude: [...baseConfig.exclude],
     includeTaskLocation: true, // for precise file/line in reporters (v3)
     setupFiles: [
-      './test/setup/sensitivity-probe.js',
-      './test/setup/llm-provider.js',
+      './src/test-setup/sensitivity-probe.js',
+      './src/test-setup/llm-provider.js',
       ...(aiModeEnabled ? ['./src/chains/test-analysis/setup.js'] : []),
     ],
     reporters: aiModeEnabled
