@@ -27,7 +27,7 @@ export const handlers = {
  * Higher-order function that captures context and returns a handler
  */
 export function createIntentHandler(context) {
-  return async function (functionName, args) {
+  return function (functionName, args) {
     const handler = handlers[functionName];
 
     if (!handler) {
@@ -35,6 +35,6 @@ export function createIntentHandler(context) {
     }
 
     // Call the handler with context and args
-    return await handler(context, args);
+    return handler(context, args);
   };
 }

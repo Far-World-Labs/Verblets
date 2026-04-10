@@ -104,9 +104,21 @@ const visitWithCooldown = async (
   let totalCooldownMs = 0;
 
   for (let attempt = 0; attempt <= cooldown.maxRetries; attempt++) {
-    const pageData = await visitFn(page, url);
+    let pageData;
+    try {
+      pageData = await visitFn(page, url);
+    } catch (err) {
+      emitter.emit({ event: 'cooldown:visitError', url, attempt, error: err.message });
+      throw err;
+    }
 
-    const blockReason = await isBlocked(page);
+    let blockReason;
+    try {
+      blockReason = await isBlocked(page);
+    } catch (err) {
+      emitter.emit({ event: 'cooldown:blockCheckError', url, attempt, error: err.message });
+      throw err;
+    }
     if (!blockReason) {
       return { pageData, retries: attempt, totalCooldownMs };
     }

@@ -60,6 +60,7 @@ describe('List verblet', () => {
             result.some((item) => item.toLowerCase().includes(needle.toLowerCase()))
           );
           expect(found).equals(true);
+          await aiExpect(result).toSatisfy('a list of 2021 electric vehicles');
         }
 
         if (example.want.listModelContainsAny) {

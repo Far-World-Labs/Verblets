@@ -5,7 +5,7 @@ import { longTestTimeout } from '../../constants/common.js';
 import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 import { logBatchSchema } from './log-batch-schema.js';
 
-const { it, expect, makeLogger } = getTestHelpers('Extract Blocks chain');
+const { it, expect, aiExpect, makeLogger } = getTestHelpers('Extract Blocks chain');
 
 describe('extract-blocks examples', () => {
   it(
@@ -85,6 +85,9 @@ describe('extract-blocks examples', () => {
         expect(log).toHaveProperty('level');
         expect(log).toHaveProperty('message');
       });
+      await aiExpect(validLogs).toSatisfy(
+        'structured log entries with valid timestamps, standard log levels (INFO/DEBUG/ERROR/WARN), and descriptive messages'
+      );
     },
     longTestTimeout
   );
@@ -170,6 +173,10 @@ END OF STATEMENT`;
       const atmBlock = blocks[3];
       expect(atmBlock.some((line) => line.includes('ATM'))).toBe(true);
       expect(atmBlock.some((line) => line.includes('Fee: $3.00'))).toBe(true);
+
+      await aiExpect(blocks.map((b) => b.join('\n'))).toSatisfy(
+        'five bank statement transactions: a deposit, a debit card withdrawal, a transfer, an ATM withdrawal, and a bill payment'
+      );
     },
     longTestTimeout
   );

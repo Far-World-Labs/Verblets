@@ -4,7 +4,7 @@ import retry from '../../lib/retry/index.js';
 import { sort as sortPromptInitial } from '../../prompts/index.js';
 import sortSchema from './sort-result.json' with { type: 'json' };
 import createProgressEmitter from '../../lib/progress/index.js';
-import { OpEvent, DomainEvent } from '../../lib/progress/constants.js';
+import { OpEvent, DomainEvent, Outcome } from '../../lib/progress/constants.js';
 import { debug } from '../../lib/debug/index.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 
@@ -88,6 +88,7 @@ const sort = async (list, criteria, config = {}) => {
           label: 'sort-batch',
           config: runConfig,
           onProgress,
+          abortSignal: runConfig.abortSignal,
         }
       );
 
@@ -104,6 +105,7 @@ const sort = async (list, criteria, config = {}) => {
       let globalTop = [];
       let globalBottom = [];
       let processedChunks = 0;
+      const chunkDone = emitter.batch(chunks.length);
 
       for (const chunk of chunks) {
         emitter.emit({
@@ -154,6 +156,7 @@ const sort = async (list, criteria, config = {}) => {
         }
 
         processedChunks++;
+        chunkDone(1);
       }
 
       // After seeing all chunks, we have the true global extremes
@@ -238,7 +241,7 @@ const sort = async (list, criteria, config = {}) => {
       remainingItems: remaining.length,
     });
 
-    emitter.complete({ outcome: 'success', totalItems: items.length });
+    emitter.complete({ outcome: Outcome.success, totalItems: items.length });
 
     return result;
   } catch (err) {

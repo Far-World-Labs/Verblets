@@ -1,9 +1,10 @@
 import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
+import parallelBatch from '../../lib/parallel-batch/index.js';
 import windowFor from '../../lib/window-for/index.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
-import { DomainEvent } from '../../lib/progress/constants.js';
+import { DomainEvent, Outcome, ErrorPosture } from '../../lib/progress/constants.js';
 
 const name = 'join';
 
@@ -66,45 +67,48 @@ export default async function join(
     const windows = windowFor(list, windowSize, overlapPercent);
 
     // Process each window
-    const windowResults = [];
     const batchDone = emitter.batch(windows.length);
 
-    //TODO:DOCS_OBSERVATIONS windows are processed sequentially — could use parallelBatch for concurrency since windows are independent after creation
-    for (const [windowIndex, window] of windows.entries()) {
-      emitter.emit({
-        event: DomainEvent.step,
-        stepName: 'processing-window',
-        windowNumber: windowIndex + 1,
-        totalWindows: windows.length,
-      });
+    const windowResults = await parallelBatch(
+      windows,
+      async (window, windowIndex) => {
+        emitter.emit({
+          event: DomainEvent.step,
+          stepName: 'processing-window',
+          windowNumber: windowIndex + 1,
+          totalWindows: windows.length,
+        });
 
-      const fragmentList = window.fragments.map((f, idx) => `${idx + 1}. ${f}`).join('\n');
+        const fragmentList = window.fragments.map((f, idx) => `${idx + 1}. ${f}`).join('\n');
 
-      const instruction = `${prompt}${styleHint ? `\n\nStyle guidance: ${styleHint}` : ''}
+        const instruction = `${prompt}${styleHint ? `\n\nStyle guidance: ${styleHint}` : ''}
 
 Window ${windowIndex + 1} of ${windows.length} - Join these fragments:
 ${fragmentList}
 
 Important: This is part of a larger sequence. Join these fragments while being mindful that this result will be combined with other processed windows. Add necessary connecting words, prepositions, conjunctions, or other filler text to create a coherent, grammatically correct, and semantically meaningful result. Output only the joined result for this window.`;
 
-      const result = await retry(() => callLlm(instruction, runConfig), {
-        label: `join-window-${windowIndex + 1}`,
-        config: runConfig,
-      });
+        const result = await retry(() => callLlm(instruction, runConfig), {
+          label: `join-window-${windowIndex + 1}`,
+          config: runConfig,
+          abortSignal: runConfig.abortSignal,
+        });
 
-      windowResults.push({
-        content: result || window.fragments.join(' '),
-        window,
-      });
+        batchDone(1);
 
-      batchDone(1);
-    }
+        return {
+          content: result || window.fragments.join(' '),
+          window,
+        };
+      },
+      { maxParallel: 3, errorPosture: ErrorPosture.resilient, abortSignal: runConfig.abortSignal }
+    );
 
     // Filter valid results
     const validResults = windowResults.filter((r) => r.content && r.content.trim());
 
     if (validResults.length === 1) {
-      emitter.complete({ outcome: 'success', windows: windows.length });
+      emitter.complete({ outcome: Outcome.success, windows: windows.length });
       return validResults[0].content;
     }
 
@@ -150,6 +154,7 @@ Add necessary connecting words, prepositions, conjunctions, or other filler text
         const stitchResult = await retry(() => callLlm(stitchInstruction, runConfig), {
           label: `join-stitch-${i}`,
           config: runConfig,
+          abortSignal: runConfig.abortSignal,
         });
 
         stitchedResult = stitchResult || stitchedResult;
@@ -166,13 +171,14 @@ Add necessary connecting words, prepositions, conjunctions, or other filler text
         const joinResult = await retry(() => callLlm(joinInstruction, runConfig), {
           label: `join-nonoverlap-${i}`,
           config: runConfig,
+          abortSignal: runConfig.abortSignal,
         });
 
         stitchedResult = joinResult || stitchedResult;
       }
     }
 
-    emitter.complete({ outcome: 'success', windows: windows.length });
+    emitter.complete({ outcome: Outcome.success, windows: windows.length });
 
     return stitchedResult;
   } catch (err) {

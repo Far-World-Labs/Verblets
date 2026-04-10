@@ -24,48 +24,62 @@ const processLocalImport = async (source) => {
   }));
 };
 
+const findProjectRoot = async () => {
+  let currentDir = process.cwd();
+  while (true) {
+    const candidate = path.join(currentDir, 'package.json');
+    const exists = await fs
+      .access(candidate)
+      .then(() => true)
+      .catch(() => false);
+    if (exists) return currentDir;
+    const parentDir = path.dirname(currentDir);
+    if (parentDir === currentDir) return undefined;
+    currentDir = parentDir;
+  }
+};
+
 const processNpmImport = async (source, includeNodeModules = false) => {
   if (!includeNodeModules) return [];
 
+  const projectRoot = await findProjectRoot();
+  if (!projectRoot) return [];
+
+  let packageJson;
   try {
-    // Find the project root by looking for package.json
-    let currentDir = process.cwd();
-    let packageJsonPath = path.join(currentDir, 'package.json');
-
-    // If not found in current directory, try to find it in parent directories
-    while (
-      !(await fs
-        .access(packageJsonPath)
-        .then(() => true)
-        .catch(() => false))
-    ) {
-      const parentDir = path.dirname(currentDir);
-      if (parentDir === currentDir) break; // Reached filesystem root
-      currentDir = parentDir;
-      packageJsonPath = path.join(currentDir, 'package.json');
-    }
-
-    const packageJson = JSON.parse(await fs.readFile(packageJsonPath, 'utf8'));
-    if (packageJson.dependencies[source] || packageJson.devDependencies[source]) {
-      const nodeModulePath = path.join(currentDir, 'node_modules', source);
-      const npmPackageJson = JSON.parse(
-        await fs.readFile(path.join(nodeModulePath, 'package.json'), 'utf8')
-      );
-      const mainFilePath = npmPackageJson.main || 'index.js';
-      const importedFile = await fs.readFile(path.join(nodeModulePath, mainFilePath), 'utf-8');
-      const parsedImport = parseJSParts(mainFilePath, importedFile);
-
-      return Object.entries(parsedImport.functionsMap).map(([importKey, importValue]) => ({
-        filename: path.join(nodeModulePath, mainFilePath),
-        functionName: importKey,
-        functionData: importValue,
-      }));
-    }
-  } catch (error) {
-    console.error(`Process npm import [error]: ${error.message} (source: ${source})`);
+    packageJson = JSON.parse(await fs.readFile(path.join(projectRoot, 'package.json'), 'utf8'));
+  } catch {
+    return [];
   }
 
-  return [];
+  const deps = { ...packageJson.dependencies, ...packageJson.devDependencies };
+  if (!deps[source]) return [];
+
+  const nodeModulePath = path.join(projectRoot, 'node_modules', source);
+  let npmPackageJson;
+  try {
+    npmPackageJson = JSON.parse(
+      await fs.readFile(path.join(nodeModulePath, 'package.json'), 'utf8')
+    );
+  } catch {
+    return [];
+  }
+
+  const mainFilePath = npmPackageJson.main || 'index.js';
+  const fullPath = path.join(nodeModulePath, mainFilePath);
+  let importedFile;
+  try {
+    importedFile = await fs.readFile(fullPath, 'utf-8');
+  } catch {
+    return [];
+  }
+
+  const parsedImport = parseJSParts(mainFilePath, importedFile);
+  return Object.entries(parsedImport.functionsMap).map(([importKey, importValue]) => ({
+    filename: fullPath,
+    functionName: importKey,
+    functionData: importValue,
+  }));
 };
 
 const visitDefault = ({ state }) => {
@@ -74,7 +88,7 @@ const visitDefault = ({ state }) => {
 
 const rank = ({ nodes }) => {
   // Example: Rank by the length of the function name
-  return nodes.sort(
+  return nodes.toSorted(
     (a, b) => (a.functionName ?? a.filename).length - (b.functionName ?? b.filename).length
   );
 };
@@ -103,22 +117,20 @@ const prepareNext = async ({ node, includeNodeModules }) => {
     return processNpmImport(importData.source, includeNodeModules);
   });
 
-  const importFunctions = await Promise.all(importPromises);
-  const importsFound = importFunctions.reduce((acc, importedFuncs) => {
-    return [
-      ...acc,
-      ...importedFuncs.map(
+  const importResults = await Promise.allSettled(importPromises);
+  const importsFound = importResults
+    .filter((r) => r.status === 'fulfilled')
+    .flatMap((r) =>
+      r.value.map(
         (f) =>
           new Node({
             ...f,
             ...f.functionData,
             functionData: undefined,
-            // not including function names in the imports knowing we will scan the file for them better
             functionName: undefined,
           })
-      ),
-    ];
-  }, []);
+      )
+    );
 
   return {
     functions: functionsFound,

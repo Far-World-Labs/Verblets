@@ -5,7 +5,7 @@ import buildInstructions from '../../lib/build-instructions/index.js';
 import { scaleSpecificationJsonSchema } from './schemas.js';
 import scaleResultSchema from './scale-result.json' with { type: 'json' };
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
-import { DomainEvent } from '../../lib/progress/constants.js';
+import { DomainEvent, Outcome } from '../../lib/progress/constants.js';
 import { nameStep } from '../../lib/context/option.js';
 
 const name = 'scale';
@@ -76,10 +76,11 @@ IMPORTANT: Each property must be a simple string value, not a nested object or a
       {
         label: 'spec',
         config: runConfig,
+        abortSignal: runConfig.abortSignal,
       }
     );
 
-    specEmitter.complete({ outcome: 'success' });
+    specEmitter.complete({ outcome: Outcome.success });
 
     return response;
   } catch (err) {
@@ -117,6 +118,7 @@ Return a JSON object with a "value" property containing the scaled result.`;
     {
       label: 'scale item',
       config: runConfig,
+      abortSignal: runConfig.abortSignal,
     }
   );
 
@@ -148,7 +150,7 @@ export async function scaleItem(item, instructions, config = {}) {
       onProgress: scopePhase(runConfig.onProgress, 'scale:apply'),
     });
 
-    emitter.complete({ outcome: 'success' });
+    emitter.complete({ outcome: Outcome.success });
     return result;
   } catch (err) {
     emitter.error(err);
@@ -165,8 +167,8 @@ export async function scaleItem(item, instructions, config = {}) {
  * @returns {Function} Scaling function with specification property
  */
 export function createScale(specification, config = {}) {
-  const scaleFunction = async function (input) {
-    return await applyScale(input, specification, config);
+  const scaleFunction = function (input) {
+    return applyScale(input, specification, config);
   };
 
   // Add specification property for introspection
@@ -187,8 +189,8 @@ export function createScale(specification, config = {}) {
  * @returns {Function} Scaling function
  */
 export default function scale(prompt, config = {}) {
-  const scaleFunction = async function (input) {
-    return await scaleItem(input, prompt, config);
+  const scaleFunction = function (input) {
+    return scaleItem(input, prompt, config);
   };
 
   Object.defineProperty(scaleFunction, 'prompt', {

@@ -4,6 +4,7 @@ import { testPromptShapingOption } from '../../lib/test-utils/index.js';
 
 // Mock the llm function
 vi.mock('../../lib/llm/index.js', () => ({
+  jsonSchema: (name, schema) => ({ type: 'json_schema', json_schema: { name, schema } }),
   default: vi.fn(),
 }));
 

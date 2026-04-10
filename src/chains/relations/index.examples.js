@@ -12,6 +12,7 @@ import reduce from '../reduce/index.js';
 import filter from '../filter/index.js';
 import group from '../group/index.js';
 import find from '../find/index.js';
+import { jsonSchema } from '../../lib/llm/index.js';
 import { techCompanyArticle, historicalNarrative } from '../entities/sample-text.js';
 import relationResultSchema from './relation-result.json' with { type: 'json' };
 import {
@@ -90,10 +91,7 @@ describe.skipIf(!isHighBudget)('[high] relations examples', () => {
       });
 
       const results = await map(techChunks.slice(3, 6), instructions, {
-        responseFormat: {
-          type: 'json_schema',
-          json_schema: { name: 'relation_result', schema: relationResultSchema },
-        },
+        responseFormat: jsonSchema('relation_result', relationResultSchema),
       });
 
       expect(Array.isArray(results)).toBe(true);
@@ -126,10 +124,7 @@ describe.skipIf(!isHighBudget)('[high] relations examples', () => {
 
       const consolidated = await reduce(techChunks.slice(0, 8), instructions, {
         initial: [],
-        responseFormat: {
-          type: 'json_schema',
-          json_schema: { name: 'relation_result', schema: relationResultSchema },
-        },
+        responseFormat: jsonSchema('relation_result', relationResultSchema),
       });
 
       expect(consolidated).toBeTruthy();

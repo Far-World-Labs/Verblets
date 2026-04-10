@@ -5,6 +5,7 @@ import { glossaryExtractionJsonSchema } from './schemas.js';
 import { nameStep, getOptions } from '../../lib/context/option.js';
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
 import { jsonSchema } from '../../lib/llm/index.js';
+import { Outcome } from '../../lib/progress/constants.js';
 
 const name = 'glossary';
 
@@ -37,7 +38,7 @@ export default async function glossary(text, config = {}) {
     overlap: 1,
   });
   if (!text || !text.trim()) {
-    emitter.complete({ outcome: 'success', terms: 0 });
+    emitter.complete({ outcome: Outcome.success, terms: 0 });
     return [];
   }
 
@@ -47,7 +48,7 @@ export default async function glossary(text, config = {}) {
     const sentences = doc.sentences().out('array');
 
     if (sentences.length === 0) {
-      emitter.complete({ outcome: 'success', terms: 0 });
+      emitter.complete({ outcome: Outcome.success, terms: 0 });
       return [];
     }
 
@@ -60,6 +61,9 @@ export default async function glossary(text, config = {}) {
       }
     }
 
+    // +1 for the sort phase
+    const batchDone = emitter.batch(textChunks.length + 1);
+
     const instructions = `Extract every proper noun and every term that a general reader would need to look up. Over-extract — the list will be filtered later.
 
 Return a "terms" object containing an array of the extracted terms.`;
@@ -69,7 +73,10 @@ Return a "terms" object containing an array of the extracted terms.`;
       batchSize: runConfig.batchSize ?? 1,
       responseFormat: GLOSSARY_RESPONSE_FORMAT,
       onProgress: scopePhase(runConfig.onProgress, 'glossary:extract'),
+      abortSignal: runConfig.abortSignal,
     });
+
+    batchDone(textChunks.length);
 
     const termSet = new Set();
     mapResults.forEach((result) => {
@@ -85,7 +92,7 @@ Return a "terms" object containing an array of the extracted terms.`;
 
     const terms = Array.from(termSet);
     if (terms.length === 0) {
-      emitter.complete({ outcome: 'success', terms: 0 });
+      emitter.complete({ outcome: Outcome.success, terms: 0 });
       return [];
     }
 
@@ -93,11 +100,14 @@ Return a "terms" object containing an array of the extracted terms.`;
     const sorted = await sort(terms, sortBy, {
       ...runConfig,
       onProgress: scopePhase(runConfig.onProgress, 'glossary:sort'),
+      abortSignal: runConfig.abortSignal,
     });
+
+    batchDone(1);
 
     const result = sorted.slice(0, maxTerms);
 
-    emitter.complete({ outcome: 'success', terms: result.length });
+    emitter.complete({ outcome: Outcome.success, terms: result.length });
 
     return result;
   } catch (err) {

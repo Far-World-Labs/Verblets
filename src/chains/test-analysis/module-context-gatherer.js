@@ -60,7 +60,7 @@ export async function gatherModuleContext(moduleDir, options = {}) {
   const combinedFiles = [...mainModuleMdFiles, ...mainModuleJsFiles, ...dependencyJsFiles];
 
   // Apply priority sorting to main module files
-  const finalFiles = combinedFiles.sort((a, b) => {
+  const finalFiles = combinedFiles.toSorted((a, b) => {
     const aName = basename(a);
     const bName = basename(b);
     const aIsMain = a.startsWith(moduleDir);

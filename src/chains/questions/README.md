@@ -25,7 +25,7 @@ const qs = await questions(
 ### `questions(text, config?)`
 
 - **text** (string): Input text to generate questions about
-- **config.exploration** (`'low'`|`'high'`|number): Controls breadth of exploration. `'low'` focuses narrowly (0.3). `'high'` explores broadly (0.7). A raw number (0–1) passes through directly. Default: 0.5
+- **config.exploration** (`'low'`|`'high'`|number): Controls breadth of exploration. `'low'` focuses narrowly (0.3). `'high'` explores broadly (0.8). A raw number (0–1) passes through directly. Default: 0.5
 - **config.shouldSkip** (function): Skip specific questions. Receives `(question, allQuestions)`, returns boolean
 - **config.shouldStop** (function): Stop generation early. Receives `(question, allQuestions, recentQuestions, attempts)`, returns boolean
 - **config.llm** (string|Object): LLM model configuration

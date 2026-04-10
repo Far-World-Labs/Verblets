@@ -4,7 +4,7 @@ import { asXML } from '../../prompts/wrap-variable.js';
 import buildInstructions from '../../lib/build-instructions/index.js';
 import entityResultSchema from './entity-result.json' with { type: 'json' };
 import createProgressEmitter from '../../lib/progress/index.js';
-import { DomainEvent } from '../../lib/progress/constants.js';
+import { DomainEvent, Outcome } from '../../lib/progress/constants.js';
 import { nameStep } from '../../lib/context/option.js';
 
 const name = 'entities';
@@ -68,6 +68,7 @@ Keep it simple and actionable.`;
     {
       label: 'entities-spec',
       config,
+      abortSignal: config.abortSignal,
     }
   );
 
@@ -90,11 +91,11 @@ ${asXML(specification, { tag: 'entity-specification' })}
 
 ${asXML(text, { tag: 'text' })}
 
-Extract entities according to the specification.
-Return a JSON object with an "entities" array.
-Each entity should include:
-- name: The entity name
-- type: What kind of entity (if relevant)`;
+Extract entities according to the specification. Return a JSON object with an "entities" array where each element has exactly two properties:
+- "name" (string): The entity name or text as it appears in the source
+- "type" (string): The category of entity (e.g. person, company, location, date, concept)
+
+Include every entity that matches the specification. Do not add properties beyond "name" and "type".`;
 
   const response = await retry(
     () =>
@@ -105,6 +106,7 @@ Each entity should include:
     {
       label: 'entities-apply',
       config,
+      abortSignal: config.abortSignal,
     }
   );
 
@@ -132,7 +134,7 @@ export async function extractEntities(text, instructions, config = {}) {
 
     const result = await applyEntities(text, spec, runConfig);
 
-    emitter.complete({ outcome: 'success' });
+    emitter.complete({ outcome: Outcome.success });
 
     return result;
   } catch (err) {
@@ -150,8 +152,8 @@ export async function extractEntities(text, instructions, config = {}) {
  * @returns {Function} Entity extraction function with specification property
  */
 export function createEntityExtractor(specification, config = {}) {
-  const extractorFunction = async function (input) {
-    return await applyEntities(input, specification, config);
+  const extractorFunction = function (input) {
+    return applyEntities(input, specification, config);
   };
 
   // Add specification property for introspection
@@ -172,8 +174,8 @@ export function createEntityExtractor(specification, config = {}) {
  * @returns {Function} Entity extraction function
  */
 export default function entities(prompt, config = {}) {
-  const extractorFunction = async function (input) {
-    return await extractEntities(input, prompt, config);
+  const extractorFunction = function (input) {
+    return extractEntities(input, prompt, config);
   };
 
   Object.defineProperty(extractorFunction, 'prompt', {

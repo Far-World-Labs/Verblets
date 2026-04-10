@@ -2,6 +2,7 @@ import list from '../list/index.js';
 import score from '../score/index.js';
 import { nameStep, getOptions } from '../../lib/context/option.js';
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
+import { Outcome } from '../../lib/progress/constants.js';
 
 const name = 'collect-terms';
 
@@ -49,7 +50,7 @@ export default async function collectTerms(text, config = {}) {
 
     // If we already have fewer terms than requested, return them all
     if (uniqueTerms.length <= topN) {
-      emitter.complete({ outcome: 'success' });
+      emitter.complete({ outcome: Outcome.success });
       return uniqueTerms;
     }
 
@@ -62,11 +63,11 @@ export default async function collectTerms(text, config = {}) {
 
     // Sort by score and take top N
     const termsWithScores = uniqueTerms.map((term, i) => ({ term, score: scores[i] }));
-    termsWithScores.sort((a, b) => b.score - a.score);
+    const sorted = termsWithScores.toSorted((a, b) => b.score - a.score);
 
-    emitter.complete({ outcome: 'success' });
+    emitter.complete({ outcome: Outcome.success });
 
-    return termsWithScores.slice(0, topN).map((item) => item.term);
+    return sorted.slice(0, topN).map((item) => item.term);
   } catch (err) {
     emitter.error(err);
     throw err;

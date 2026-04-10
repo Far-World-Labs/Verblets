@@ -61,7 +61,7 @@ export function buildStepContext(
     urlIndex,
     previousAction,
     accumulator,
-    data: data || {},
+    data: data ?? {},
     page,
     query,
     queryAll,

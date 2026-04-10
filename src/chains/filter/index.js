@@ -5,13 +5,13 @@ import { createBatches, retry } from '../../lib/index.js';
 import { jsonSchema } from '../../lib/llm/index.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
-import { OpEvent, DomainEvent } from '../../lib/progress/constants.js';
+import { OpEvent, DomainEvent, Outcome, ErrorPosture } from '../../lib/progress/constants.js';
 
 const name = 'filter';
 
 // ===== Option Mappers =====
 
-const DEFAULT_STRICTNESS = { guidance: undefined, errorPosture: 'strict' };
+const DEFAULT_STRICTNESS = { guidance: undefined, errorPosture: ErrorPosture.strict };
 
 /**
  * Map strictness option to borderline handling guidance + error posture coordination.
@@ -29,13 +29,13 @@ export const mapStrictness = (value) => {
       low: {
         guidance:
           'When uncertain whether an item satisfies the criteria, err on the side of inclusion — return "yes". Only exclude items that clearly fail.',
-        errorPosture: 'resilient',
+        errorPosture: ErrorPosture.resilient,
       },
       med: DEFAULT_STRICTNESS,
       high: {
         guidance:
           'When uncertain whether an item satisfies the criteria, err on the side of exclusion — return "no". Only include items that clearly pass.',
-        errorPosture: 'strict',
+        errorPosture: ErrorPosture.strict,
       },
     }[value] ?? DEFAULT_STRICTNESS
   );
@@ -109,10 +109,11 @@ Process exactly ${count} items from the XML list below and return ${count} yes/n
         label: 'filter:batch',
         config: runConfig,
         onProgress: runConfig.onProgress,
+        abortSignal: runConfig.abortSignal,
       });
     } catch (error) {
       emitter.error(error, { batchIndex, itemCount: items.length });
-      if (errorPosture === 'strict') throw error;
+      if (errorPosture === ErrorPosture.strict) throw error;
       batchErrors++;
       continue;
     }
@@ -136,7 +137,7 @@ Process exactly ${count} items from the XML list below and return ${count} yes/n
     processedItems: batchDone.count,
   });
 
-  const outcome = batchErrors > 0 ? 'partial' : 'success';
+  const outcome = batchErrors > 0 ? Outcome.partial : Outcome.success;
   const resultMeta = { inputCount: list.length, outputCount: results.length, outcome };
   emitter.emit({ event: DomainEvent.output, value: results });
   emitter.complete(resultMeta);

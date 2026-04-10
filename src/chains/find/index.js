@@ -6,7 +6,7 @@ import { jsonSchema } from '../../lib/llm/index.js';
 import { debug } from '../../lib/debug/index.js';
 import { nameStep, getOptions } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
-import { OpEvent, DomainEvent } from '../../lib/progress/constants.js';
+import { OpEvent, DomainEvent, Outcome, ErrorPosture } from '../../lib/progress/constants.js';
 
 const name = 'find';
 
@@ -19,7 +19,7 @@ const find = async function find(list, instructions, config = {}) {
   emitter.emit({ event: DomainEvent.input, value: list });
   const { maxParallel, errorPosture } = await getOptions(runConfig, {
     maxParallel: 3,
-    errorPosture: 'resilient',
+    errorPosture: ErrorPosture.resilient,
   });
   const findInstructions = ({ style, count }) => {
     const baseInstructions = `From the list below, identify and return the SINGLE item that BEST matches the search criteria.
@@ -78,6 +78,7 @@ Process exactly ${count} items from the XML list below and return the single bes
               label: 'find:batch',
               config: runConfig,
               onProgress: runConfig.onProgress,
+              abortSignal: runConfig.abortSignal,
             }
           );
 
@@ -93,7 +94,7 @@ Process exactly ${count} items from the XML list below and return the single bes
           batchDone(items.length);
         } catch (error) {
           emitter.error(error, { startIndex, itemCount: items.length });
-          if (errorPosture === 'strict') throw error;
+          if (errorPosture === ErrorPosture.strict) throw error;
           debug(`find batch at index ${startIndex} failed: ${error.message}`);
         }
       },
@@ -101,6 +102,7 @@ Process exactly ${count} items from the XML list below and return the single bes
         maxParallel,
         errorPosture,
         label: 'find batches',
+        abortSignal: runConfig.abortSignal,
       }
     );
 
@@ -121,13 +123,13 @@ Process exactly ${count} items from the XML list below and return the single bes
     const earliest = results.reduce((best, current) =>
       current.index < best.index ? current : best
     );
-    const foundMeta = { found: true, totalItems: list.length, outcome: 'success' };
+    const foundMeta = { found: true, totalItems: list.length, outcome: Outcome.success };
     emitter.emit({ event: DomainEvent.output, value: earliest.result });
     emitter.complete(foundMeta);
     return earliest.result;
   }
 
-  const notFoundMeta = { found: false, totalItems: list.length, outcome: 'success' };
+  const notFoundMeta = { found: false, totalItems: list.length, outcome: Outcome.success };
   emitter.emit({ event: DomainEvent.output, value: '' });
   emitter.complete(notFoundMeta);
   return '';

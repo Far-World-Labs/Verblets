@@ -2,10 +2,11 @@ import collectTerms from '../collect-terms/index.js';
 import score from '../score/index.js';
 import map from '../map/index.js';
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
-import { DomainEvent } from '../../lib/progress/constants.js';
+import { DomainEvent, Outcome } from '../../lib/progress/constants.js';
 import TextSimilarity from '../../lib/text-similarity/index.js';
 import { debug } from '../../lib/debug/index.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
+import { asXML } from '../../prompts/wrap-variable.js';
 
 const name = 'document-shrink';
 
@@ -323,7 +324,7 @@ async function scoreEdgeChunks(candidates, query, maxChunks, options = {}) {
 
   const scores = await score(
     cleanedChunks,
-    `relevance to query: "${query}" (0=unrelated, 5=partially related, 10=directly answers)`,
+    `relevance to query: ${asXML(query, { tag: 'query' })} (0=unrelated, 5=partially related, 10=directly answers)`,
     {
       ...options,
       batchSize: LLM_CHUNK_BATCH_SIZE,
@@ -338,7 +339,7 @@ async function scoreEdgeChunks(candidates, query, maxChunks, options = {}) {
   }));
 
   return {
-    scored: scored.sort((a, b) => b.finalScore - a.finalScore),
+    scored: scored.toSorted((a, b) => b.finalScore - a.finalScore),
     tokensUsed: toScore.length * TOKENS_PER_CHUNK_SCORE,
   };
 }
@@ -359,7 +360,7 @@ async function compressHighValueChunks(
   // Select chunks worth compressing based on size and score
   const compressible = chunks
     .filter((c) => c.size >= minCompressSize)
-    .sort((a, b) => {
+    .toSorted((a, b) => {
       // Prioritize larger chunks with good scores
       const aValue = (a.tfIdfScore || 0) * Math.log(a.size);
       const bValue = (b.tfIdfScore || 0) * Math.log(b.size);
@@ -382,7 +383,7 @@ async function compressHighValueChunks(
 
   const texts = await map(
     cleanedTexts,
-    `Extract key parts answering: "${query}". Preserve important details. Target ${compressionTarget}% of original.`,
+    `Extract key parts answering: ${asXML(query, { tag: 'query' })}. Preserve important details. Target ${compressionTarget}% of original.`,
     {
       ...options,
       batchSize: 10,
@@ -437,7 +438,7 @@ function getUnselectedChunks(allChunks, selectedChunks) {
   const selectedIndices = new Set(selectedChunks.map((c) => c.index));
   return allChunks
     .filter((c) => !selectedIndices.has(c.index))
-    .sort((a, b) => b.tfIdfScore - a.tfIdfScore);
+    .toSorted((a, b) => b.tfIdfScore - a.tfIdfScore);
 }
 
 // Pure function: Group consecutive chunks together
@@ -528,7 +529,7 @@ function selectGapFillers(allChunks, selectedChunks, gapFillerBudget) {
       combinedScore: (chunk.tfIdfScore || 0) + adjacencyScores[idx],
     }))
     .filter((_, idx) => !selectedSet.has(idx) && adjacencyScores[idx] > 0)
-    .sort((a, b) => b.combinedScore - a.combinedScore);
+    .toSorted((a, b) => b.combinedScore - a.combinedScore);
 
   // Select chunks within budget
   const gapFillers = [];
@@ -594,7 +595,7 @@ export default async function documentShrink(document, query, config = {}) {
       },
     };
 
-    emitter.complete({ outcome: 'success' });
+    emitter.complete({ outcome: Outcome.success });
 
     return emptyResult;
   }
@@ -743,7 +744,7 @@ export default async function documentShrink(document, query, config = {}) {
       },
     };
 
-    emitter.complete({ outcome: 'success' });
+    emitter.complete({ outcome: Outcome.success });
 
     return finalResult;
   } catch (err) {

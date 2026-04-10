@@ -84,8 +84,8 @@ export default function createDataStore(basePath) {
     async delete(key) {
       try {
         await unlink(keyToPath(basePath, key));
-      } catch {
-        // key did not exist — no-op
+      } catch (err) {
+        if (err.code !== 'ENOENT') throw err;
       }
     },
 

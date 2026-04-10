@@ -39,7 +39,7 @@ export class DiagnosticProcessor extends BaseProcessor {
     });
 
     this.debugModes = debugModes;
-    this.currentRunId = null;
+    this.currentRunId = undefined;
 
     // Suite tracking
     this.suitesSeen = new Set();
@@ -267,7 +267,7 @@ export class DiagnosticProcessor extends BaseProcessor {
       console.log(`[Diagnostic:Missing] All suites detected: ${allSuites.size}`);
       if (this.debugModes.has('suites')) {
         Array.from(allSuites)
-          .sort()
+          .toSorted()
           .forEach((suite) => {
             const hasStart = this.suitesStarted.has(suite) ? '✓' : '✗';
             const hasEnd = this.suitesCompleted.has(suite) ? '✓' : '✗';

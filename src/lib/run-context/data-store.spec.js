@@ -76,7 +76,7 @@ describe('createDataStore', () => {
       await store.set('b/c', '2');
       await store.set('b/d', '3');
       const keys = await store.list();
-      expect(keys.sort()).toEqual(['a', 'b/c', 'b/d']);
+      expect(keys.toSorted()).toEqual(['a', 'b/c', 'b/d']);
     });
 
     it('filters by prefix', async () => {
@@ -84,7 +84,7 @@ describe('createDataStore', () => {
       await store.set('runs/two', '2');
       await store.set('config', '3');
       const keys = await store.list('runs/');
-      expect(keys.sort()).toEqual(['runs/one', 'runs/two']);
+      expect(keys.toSorted()).toEqual(['runs/one', 'runs/two']);
     });
   });
 

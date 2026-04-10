@@ -3,7 +3,7 @@ import retry from '../../lib/retry/index.js';
 import { constants as promptConstants, asXML } from '../../prompts/index.js';
 import { questionsListSchema, selectedQuestionSchema } from './schemas.js';
 import createProgressEmitter from '../../lib/progress/index.js';
-import { DomainEvent } from '../../lib/progress/constants.js';
+import { DomainEvent, Outcome } from '../../lib/progress/constants.js';
 import { getOption, nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 
 const name = 'questions';
@@ -60,7 +60,7 @@ const formatQuestionsPrompt = (text, { existing = [] } = {}) => {
 
   return `Instead of answering the following question, I would like you to generate additional questions. Consider interesting perspectives. Consider what information is unknown. Overall, just come up with good questions.
 
-Question: ${text}
+${asXML(text, { tag: 'question' })}
 
 ${existing.length > 0 ? `Questions to omit: ${asXML(existingJoined, { tag: 'omitted' })}` : ''}
 
@@ -110,6 +110,7 @@ const generateQuestions = async function* generateQuestionsGenerator(text, confi
           {
             label: 'questions-pick-interesting',
             config: runConfig,
+            abortSignal: runConfig.abortSignal,
           }
         );
         textSelected = selectedResult.question;
@@ -129,6 +130,7 @@ const generateQuestions = async function* generateQuestionsGenerator(text, confi
       const results = await retry(() => callLlm(promptCreated, llmConfig), {
         label: 'questions-generate',
         config: runConfig,
+        abortSignal: runConfig.abortSignal,
       });
       const resultsNew = getRandomSubset(results, searchBreadth);
       if (searchBreadth < 0.5) {
@@ -154,7 +156,7 @@ const generateQuestions = async function* generateQuestionsGenerator(text, confi
       }
     }
 
-    emitter.complete({ outcome: 'success', questions: resultsAll.length, attempts });
+    emitter.complete({ outcome: Outcome.success, questions: resultsAll.length, attempts });
   } catch (err) {
     emitter.error(err);
     throw err;

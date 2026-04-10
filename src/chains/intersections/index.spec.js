@@ -139,8 +139,10 @@ describe('intersections chain', () => {
     });
   });
 
-  it('propagates errors from dependencies', async () => {
+  it('gracefully degrades when dependencies fail (resilient mode)', async () => {
     retry.mockRejectedValue(new Error('LLM call failed'));
-    await expect(intersections(['A', 'B'])).rejects.toThrow('LLM call failed');
+    const result = await intersections(['A', 'B']);
+    // parallelBatch with resilient errorPosture swallows per-combo errors
+    expect(result).toEqual({});
   });
 });

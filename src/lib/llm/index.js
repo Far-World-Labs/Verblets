@@ -337,8 +337,8 @@ export const run = async (prompt, options = {}) => {
     (cacheEnabled === undefined && configGet('VERBLETS_DISABLE_CACHE') === true);
   const cacheTTL = await getOption('cacheTTL', options, undefined);
 
-  let cacheResult = null;
-  let cache = null;
+  let cacheResult;
+  let cache;
 
   if (!cachingDisabled && redisGet) {
     cache = await redisGet();

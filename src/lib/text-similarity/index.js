@@ -9,7 +9,7 @@ export class TextSimilarity {
     this.documentIds = [];
   }
 
-  addChunk(text, id = null) {
+  addChunk(text, id) {
     const chunkId = id || uuidv4();
 
     if (this.chunks.has(chunkId)) {
@@ -75,9 +75,9 @@ export class TextSimilarity {
       }
     }
 
-    similarities.sort((a, b) => b.score - a.score);
+    const sorted = similarities.toSorted((a, b) => b.score - a.score);
 
-    const results = similarities.slice(0, limit);
+    const results = sorted.slice(0, limit);
 
     if (!includeScores) {
       return results.map(({ id, text }) => ({ id, text }));

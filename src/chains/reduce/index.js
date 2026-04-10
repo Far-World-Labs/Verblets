@@ -3,7 +3,7 @@ import { asXML } from '../../prompts/wrap-variable.js';
 import { reduceAccumulatorJsonSchema } from './schemas.js';
 import { retry, createBatches } from '../../lib/index.js';
 import createProgressEmitter from '../../lib/progress/index.js';
-import { OpEvent, DomainEvent } from '../../lib/progress/constants.js';
+import { OpEvent, DomainEvent, Outcome } from '../../lib/progress/constants.js';
 import { nameStep, getOptions } from '../../lib/context/option.js';
 
 import { jsonSchema } from '../../lib/llm/index.js';
@@ -64,10 +64,9 @@ Example: If reducing ["one", "two", "three"] with "sum the numeric values" and i
 
 ${asXML(instructions, { tag: 'instructions' })}
 
-${asXML(
-  acc !== undefined && acc !== null ? acc : 'No initial value - use first item as starting point',
-  { tag: 'accumulator' }
-)}
+${asXML(acc !== undefined ? acc : 'No initial value - use first item as starting point', {
+  tag: 'accumulator',
+})}
 
 Process exactly ${count} items from the ${itemFormat} list below and return the final accumulator value.`;
       };
@@ -85,6 +84,7 @@ Process exactly ${count} items from the ${itemFormat} list below and return the 
         label: 'reduce:batch',
         config: runConfig,
         onProgress: runConfig.onProgress,
+        abortSignal: runConfig.abortSignal,
       });
 
       if (!runConfig.responseFormat && result?.accumulator !== undefined) {
@@ -105,7 +105,7 @@ Process exactly ${count} items from the ${itemFormat} list below and return the 
     const resultMeta = {
       totalItems: list.length,
       totalBatches: activeBatches.length,
-      outcome: 'success',
+      outcome: Outcome.success,
     };
     emitter.emit({ event: DomainEvent.output, value: acc });
     emitter.complete(resultMeta);
@@ -118,8 +118,8 @@ Process exactly ${count} items from the ${itemFormat} list below and return the 
 };
 
 reduce.with = function (instructions, config = {}) {
-  return async (acc, item) => {
-    return await reduce([item], instructions, { ...config, initial: acc });
+  return (acc, item) => {
+    return reduce([item], instructions, { ...config, initial: acc });
   };
 };
 

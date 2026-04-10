@@ -1,7 +1,7 @@
 import reduce from '../reduce/index.js';
 import shuffle from '../../lib/shuffle/index.js';
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
-import { DomainEvent } from '../../lib/progress/constants.js';
+import { DomainEvent, Outcome } from '../../lib/progress/constants.js';
 import { nameStep, getOptions } from '../../lib/context/option.js';
 
 const name = 'themes';
@@ -22,6 +22,7 @@ export default async function themes(text, config = {}) {
 
   try {
     const pieces = splitText(text);
+    const batchDone = emitter.batch(2);
 
     emitter.emit({
       event: DomainEvent.phase,
@@ -34,11 +35,13 @@ export default async function themes(text, config = {}) {
     const firstPass = await reduce(shuffledPieces, reducePrompt, {
       ...runConfig,
       onProgress: scopePhase(runConfig.onProgress, 'themes:extract'),
+      abortSignal: runConfig.abortSignal,
     });
     const rawThemes = firstPass
       .split(',')
       .map((t) => t.trim())
       .filter(Boolean);
+    batchDone(1);
 
     emitter.emit({
       event: DomainEvent.phase,
@@ -50,13 +53,15 @@ export default async function themes(text, config = {}) {
     const final = await reduce(rawThemes, refinePrompt, {
       ...runConfig,
       onProgress: scopePhase(runConfig.onProgress, 'themes:refine'),
+      abortSignal: runConfig.abortSignal,
     });
     const result = final
       .split(',')
       .map((t) => t.trim())
       .filter(Boolean);
+    batchDone(1);
 
-    emitter.complete({ outcome: 'success', themes: result.length });
+    emitter.complete({ outcome: Outcome.success, themes: result.length });
 
     return result;
   } catch (err) {

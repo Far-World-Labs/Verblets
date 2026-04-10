@@ -3,6 +3,7 @@ import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
+import { Outcome } from '../../lib/progress/constants.js';
 import { calibrateSpecificationJsonSchema } from './schemas.js';
 import calibrateResultSchema from './calibrate-result.json' with { type: 'json' };
 
@@ -142,10 +143,11 @@ IMPORTANT: Each property must be a simple string value, not a nested object or a
       {
         label: 'calibrate spec',
         config: runConfig,
+        abortSignal: runConfig.abortSignal,
       }
     );
 
-    specEmitter.complete({ outcome: 'success' });
+    specEmitter.complete({ outcome: Outcome.success });
 
     return response;
   } catch (err) {
@@ -190,10 +192,11 @@ Return a JSON object with:
       {
         label: 'calibrate classify',
         config: runConfig,
+        abortSignal: runConfig.abortSignal,
       }
     );
 
-    applyEmitter.complete({ outcome: 'success' });
+    applyEmitter.complete({ outcome: Outcome.success });
     return response;
   } catch (err) {
     applyEmitter.error(err);
@@ -209,8 +212,8 @@ Return a JSON object with:
  * @returns {Function} async (scan) => calibration result, with .specification property
  */
 export function createCalibratedClassifier(specification, config = {}) {
-  const classifierFunction = async function (scan) {
-    return await applyCalibrate(scan, specification, config);
+  const classifierFunction = function (scan) {
+    return applyCalibrate(scan, specification, config);
   };
 
   Object.defineProperty(classifierFunction, 'specification', {
@@ -235,7 +238,7 @@ export function createCalibratedClassifier(specification, config = {}) {
 export default function calibrate(instructions, config = {}) {
   const calibrateFunction = async function (scan) {
     const spec = await calibrateSpec([scan], { ...config, instructions });
-    return await applyCalibrate(scan, spec, config);
+    return applyCalibrate(scan, spec, config);
   };
 
   Object.defineProperty(calibrateFunction, 'instructions', {

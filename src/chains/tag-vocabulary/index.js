@@ -3,7 +3,7 @@ import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import tagVocabularyResultSchema from './tag-vocabulary-result.json' with { type: 'json' };
 import createProgressEmitter from '../../lib/progress/index.js';
-import { DomainEvent } from '../../lib/progress/constants.js';
+import { DomainEvent, Outcome } from '../../lib/progress/constants.js';
 import { nameStep } from '../../lib/context/option.js';
 
 const name = 'tag-vocabulary';
@@ -46,7 +46,7 @@ export function computeTagStatistics(vocabulary, taggedItems, options = {}) {
       tag: vocabulary.tags.find((t) => t.id === tagId),
       count,
     }))
-    .sort((a, b) => b.count - a.count);
+    .toSorted((a, b) => b.count - a.count);
 
   // Get most and least used tags
   const mostUsed = sortedTags.slice(0, topN);
@@ -152,6 +152,7 @@ The vocabulary should be complete enough to categorize diverse items along the i
     {
       label: 'tag-vocabulary-initial',
       config,
+      abortSignal: config.abortSignal,
     }
   );
 
@@ -207,6 +208,7 @@ Return an improved vocabulary that provides better coverage and clearer distinct
     {
       label: 'tag-vocabulary-refine',
       config,
+      abortSignal: config.abortSignal,
     }
   );
 
@@ -248,7 +250,7 @@ export default async function tagVocabulary(tagSystemSpec, items, config = {}) {
     emitter.emit({ event: DomainEvent.step, stepName: 'refine-vocabulary' });
     const finalVocab = await refineVocabulary(initialVocab, taggedItems, tagSystemSpec, runConfig);
 
-    emitter.complete({ outcome: 'success' });
+    emitter.complete({ outcome: Outcome.success });
 
     return finalVocab;
   } catch (err) {

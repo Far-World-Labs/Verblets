@@ -48,9 +48,18 @@ export default class TimedAbortController extends BaseController {
   }
 
   /**
+   * Aborts the signal and clears the timeout to prevent redundant abort calls.
+   */
+  abort(reason) {
+    this.clearTimeout();
+    super.abort(reason);
+  }
+
+  /**
    * Clears the timeout, preventing the abort signal from being automatically triggered.
    */
   clearTimeout() {
     clearTimeout(this.timeoutId);
+    this.timeoutId = undefined;
   }
 }

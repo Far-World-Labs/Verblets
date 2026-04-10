@@ -71,7 +71,7 @@ const scoreCallees = async (calleeFunctions, intent) => {
 
   return scored
     .filter((c) => c.relevance >= RELEVANCE_THRESHOLD)
-    .sort((a, b) => b.relevance - a.relevance);
+    .toSorted((a, b) => b.relevance - a.relevance);
 };
 
 const formatCalleeSection = (scoredCallees, budgetRemaining) => {

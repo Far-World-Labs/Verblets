@@ -4,7 +4,7 @@ import Dismantle from './index.js';
 import { longTestTimeout, isMediumBudget } from '../../constants/common.js'; // standard: 3 LLM calls
 import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 
-const { it, expect } = getTestHelpers('Dismantle chain');
+const { it, expect, aiExpect } = getTestHelpers('Dismantle chain');
 
 describe('Dismantle chain', () => {
   it.skipIf(!isMediumBudget)(
@@ -27,6 +27,9 @@ describe('Dismantle chain', () => {
       });
 
       expect(dismantleBike.tree.children.length).toBeGreaterThan(0);
+      await aiExpect(dismantleBike.tree.children.map((c) => c.name)).toSatisfy(
+        'motorcycle component names relevant to a 2022 Aprilia Tuono 660'
+      );
     },
     longTestTimeout
   );

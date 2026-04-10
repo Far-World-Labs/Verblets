@@ -18,6 +18,7 @@ import map from '../map/index.js';
 import filter from '../filter/index.js';
 import score from '../score/index.js';
 import sort from '../sort/index.js';
+import { ErrorPosture } from '../../lib/progress/constants.js';
 
 init({ imageProcessing: true });
 
@@ -334,7 +335,7 @@ describe.skipIf(!chromium)('Wikipedia Companies Vision Integration', () => {
         onProgress: captureProgress,
         operation: 'classify-companies',
         maxParallel: 1,
-        errorPosture: 'strict',
+        errorPosture: ErrorPosture.strict,
         temperature: 0,
       }
     );

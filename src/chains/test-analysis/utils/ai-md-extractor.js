@@ -6,7 +6,7 @@
 import { readFile, access } from 'node:fs/promises';
 import { join } from 'node:path';
 import { constants } from 'node:fs';
-import llm from '../../../lib/llm/index.js';
+import llm, { jsonSchema } from '../../../lib/llm/index.js';
 import retry from '../../../lib/retry/index.js';
 import { debug } from '../../../lib/debug/index.js';
 import aiMdExtractionSchema from '../schemas/ai-md-extraction.json' with { type: 'json' };
@@ -47,13 +47,7 @@ export async function extractAIMdConfig(moduleDir) {
     const response = await retry(
       () =>
         llm(prompt, {
-          response_format: {
-            type: 'json_schema',
-            json_schema: {
-              name: 'ai_md_extraction',
-              schema: aiMdExtractionSchema,
-            },
-          },
+          response_format: jsonSchema('ai_md_extraction', aiMdExtractionSchema),
         }),
       { maxAttempts: 2, label: 'AI.md extractor' }
     );

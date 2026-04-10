@@ -223,10 +223,10 @@ export function selectBest(strings) {
 /**
  * Analyze prompts with custom query
  */
-export async function analyzePrompts(strings, query, modelName) {
+export function analyzePrompts(strings, query, modelName) {
   const texts = strings.map((s) => s.normalizedText || s.text);
 
-  return await map(texts, query, {
+  return map(texts, query, {
     llm: { modelName },
   });
 }

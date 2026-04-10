@@ -3,45 +3,47 @@ import aiExpect from './index.js';
 import { longTestTimeout } from '../../constants/common.js';
 
 // Mock the llm function to avoid actual API calls
+// With response_format + value schema, callLlm auto-unwraps to a bare boolean
 vi.mock('../../lib/llm/index.js', () => ({
+  jsonSchema: (name, schema) => ({ type: 'json_schema', json_schema: { name, schema } }),
   default: vi.fn().mockImplementation((prompt) => {
     // Handle exact equality checks
     if (prompt.includes('Does the actual value strictly equal the expected value?')) {
       if (prompt.includes('Actual: "hello"') && prompt.includes('Expected: "hello"')) {
-        return 'True';
+        return true;
       }
       if (prompt.includes('Actual: "goodbye"') && prompt.includes('Expected: "hello"')) {
-        return 'False';
+        return false;
       }
     }
 
     // Handle constraint-based validations (format: "Given this constraint:")
     if (prompt.includes('Given this constraint:')) {
       if (prompt.includes('Is this a greeting?') && prompt.includes('Hello world!')) {
-        return 'True';
+        return true;
       }
 
       if (prompt.includes('Is this text professional and grammatically correct?')) {
         if (prompt.includes('well-written, professional email')) {
-          return 'True';
+          return true;
         }
       }
 
       if (prompt.includes('Does this person data look realistic?')) {
         if (prompt.includes('John Doe') && prompt.includes('"age": 30')) {
-          return 'True';
+          return true;
         }
       }
 
       if (prompt.includes('Is this recommendation specific and actionable?')) {
         if (prompt.includes('Increase marketing budget by 20%')) {
-          return 'True';
+          return true;
         }
       }
     }
 
-    // Default to False for unmatched cases
-    return 'False';
+    // Default to false for unmatched cases
+    return false;
   }),
 }));
 

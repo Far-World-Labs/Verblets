@@ -1,8 +1,9 @@
-import callLlm from '../../lib/llm/index.js';
+import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import { multiQuery as multiQueryPrompt } from '../../prompts/embed-query-transforms.js';
 import { embedMultiQuerySchema } from './schema.js';
 import { nameStep } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
+import { Outcome } from '../../lib/progress/constants.js';
 
 const name = 'embed-multi-query';
 
@@ -47,15 +48,9 @@ export default async function embedMultiQuery(query, config = {}) {
 
     const result = await callLlm(multiQueryPrompt(query, count, { divergenceGuidance }), {
       ...runConfig,
-      response_format: {
-        type: 'json_schema',
-        json_schema: {
-          name: 'multi_query',
-          schema: embedMultiQuerySchema,
-        },
-      },
+      response_format: jsonSchema('multi_query', embedMultiQuerySchema),
     });
-    emitter.complete({ outcome: 'success' });
+    emitter.complete({ outcome: Outcome.success });
     return result;
   } catch (err) {
     emitter.error(err);

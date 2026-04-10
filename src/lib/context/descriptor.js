@@ -1,3 +1,5 @@
+import { jsonSchema } from '../llm/index.js';
+
 /**
  * Convert composed context attribute descriptors to a JSON Schema response_format
  * suitable for structured LLM output. Each descriptor becomes an enum property.
@@ -19,16 +21,10 @@ export function descriptorToSchema(descriptors, name = 'context_population') {
     required.push(key);
   }
 
-  return {
-    type: 'json_schema',
-    json_schema: {
-      name,
-      schema: {
-        type: 'object',
-        properties,
-        required,
-        additionalProperties: false,
-      },
-    },
-  };
+  return jsonSchema(name, {
+    type: 'object',
+    properties,
+    required,
+    additionalProperties: false,
+  });
 }

@@ -9,7 +9,7 @@ const jsonStartRegex = /(?:\s*[{[]|[{[]+\s*[{[])/;
 export default (val) => {
   const [questionPart = '', , answerPart = ''] = val.split(/(=){11,29}/);
 
-  const answerPartTrimmed = answerPart.trim() ?? '';
+  const answerPartTrimmed = answerPart.trim();
 
   const answerSection = answerPartTrimmed.length ? answerPart.trim() : questionPart.trim();
 

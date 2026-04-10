@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { listFunctions } from '../../../lib/parse-js-parts/function-utils.js';
 import score from '../../../chains/score/index.js';
-import llm from '../../../lib/llm/index.js';
+import llm, { jsonSchema } from '../../../lib/llm/index.js';
 import retry from '../../../lib/retry/index.js';
 import { bold, cyan, gray } from '../../../chains/test-analysis/output-utils.js';
 import compressedContextSchema from '../schemas/compressed-context.json' with { type: 'json' };
@@ -27,13 +27,7 @@ async function getAiMdContext(moduleDir) {
     const compressed = await retry(
       () =>
         llm(prompt, {
-          response_format: {
-            type: 'json_schema',
-            json_schema: {
-              name: 'compressed_context',
-              schema: compressedContextSchema,
-            },
-          },
+          response_format: jsonSchema('compressed_context', compressedContextSchema),
         }),
       { maxAttempts: 2, label: 'AI.md compression' }
     );

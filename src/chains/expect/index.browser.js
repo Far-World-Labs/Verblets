@@ -22,9 +22,9 @@ export async function expect(actual, expected, constraint, config = {}) {
   const passes = await expectCore(actual, expected, constraint, {}, config);
 
   // Generate advice if needed
-  let advice = null;
+  let advice;
   if (!passes && (mode === 'warn' || mode === 'info' || mode === 'error')) {
-    advice = await generateAdvice(actual, expected, constraint, null, null, config);
+    advice = await generateAdvice(actual, expected, constraint, undefined, undefined, config);
   }
 
   // Browser caller info stub

@@ -11,7 +11,7 @@ const normalizeUrl = (raw) => {
   const url = new URL(raw);
   url.hash = '';
   // Sort query params for consistent dedup
-  const params = [...url.searchParams.entries()].sort(([a], [b]) => a.localeCompare(b));
+  const params = Array.from(url.searchParams.entries()).toSorted(([a], [b]) => a.localeCompare(b));
   url.search = new URLSearchParams(params).toString();
   // Strip trailing slash except for root
   const normalized = url.toString();

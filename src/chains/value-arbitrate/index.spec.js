@@ -4,6 +4,7 @@ import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
+  jsonSchema: (name, schema) => ({ type: 'json_schema', json_schema: { name, schema } }),
   default: vi.fn(),
 }));
 

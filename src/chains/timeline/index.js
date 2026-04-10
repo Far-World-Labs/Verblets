@@ -7,6 +7,7 @@ import map from '../map/index.js';
 import reduce from '../reduce/index.js';
 import { timelineEventJsonSchema } from './schemas.js';
 import { debug } from '../../lib/debug/index.js';
+import { Outcome, ErrorPosture } from '../../lib/progress/constants.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 
 const name = 'timeline';
@@ -48,7 +49,7 @@ Use consistent naming - preserve the exact phrasing from the source text.`;
  * Sort timeline events by date parsing only
  */
 function sortTimelineEvents(events) {
-  return events.sort((a, b) => {
+  return events.toSorted((a, b) => {
     // Try ISO date parsing
     const dateA = new Date(a.timestamp);
     const dateB = new Date(b.timestamp);
@@ -130,11 +131,14 @@ export default async function timeline(text, config = {}) {
     chunkSize: 2000,
     overlap: 200,
     maxParallel: 3,
-    errorPosture: 'resilient',
+    errorPosture: ErrorPosture.resilient,
   });
   const { onProgress, batchSize, now } = runConfig;
 
   try {
+    const phaseCount = 1 + (llmDedup ? 1 : 0) + (knowledgeBase ? 2 : 0);
+    const batchDone = emitter.batch(phaseCount);
+
     // Create overlapping chunks to avoid missing events at boundaries
     const chunks = chunkSentences(text, chunkSize, { overlap });
 
@@ -149,12 +153,13 @@ export default async function timeline(text, config = {}) {
           const events = await retry(() => extractFromChunk(chunk, { ...runConfig, now }), {
             label: `timeline chunk ${chunkIndex + 1}`,
             config: runConfig,
+            abortSignal: runConfig.abortSignal,
           });
           allEvents.push(...events);
           onProgress?.(chunkIndex + 1, chunks.length);
         } catch (error) {
           failedChunks++;
-          if (errorPosture === 'strict') throw error;
+          if (errorPosture === ErrorPosture.strict) throw error;
           if (runConfig.logger?.warn) {
             runConfig.logger.warn(
               `Timeline extraction failed for chunk ${chunkIndex + 1}:`,
@@ -168,11 +173,14 @@ export default async function timeline(text, config = {}) {
         maxParallel,
         errorPosture,
         label: 'timeline chunks',
+        abortSignal: runConfig.abortSignal,
       }
     );
 
     // Merge and deduplicate events from all chunks
     debug(`Timeline: processed ${chunks.length} chunks, found ${allEvents.length} total events`);
+
+    batchDone(1);
 
     let mergedEvents = mergeTimelineEvents([allEvents]);
 
@@ -198,6 +206,7 @@ ${eventList}`;
       if (Array.isArray(deduplicatedEvents) && deduplicatedEvents.length > 0) {
         mergedEvents = sortTimelineEvents(deduplicatedEvents);
       }
+      batchDone(1);
     }
 
     // Enrich with knowledge if requested
@@ -232,6 +241,7 @@ Return as JSON with the same event format, maintaining chronological order.`;
       } catch (e) {
         debug('Failed to parse knowledge base:', e.message);
       }
+      batchDone(1);
 
       // Create the enrichment instructions with knowledge base embedded
       const knowledgeBaseStr = knownEvents.map((e) => `- ${e.timestamp}: ${e.name}`).join('\n');
@@ -296,9 +306,10 @@ Return the enriched event as: "YYYY-MM-DD: Event name" or with the appropriate t
 
       // Combine and sort all events
       mergedEvents = sortTimelineEvents([...enrichedExtractedEvents, ...additionalEvents]);
+      batchDone(1);
     }
 
-    const outcome = failedChunks > 0 ? 'partial' : 'success';
+    const outcome = failedChunks > 0 ? Outcome.partial : Outcome.success;
     emitter.complete({ outcome });
 
     return mergedEvents;

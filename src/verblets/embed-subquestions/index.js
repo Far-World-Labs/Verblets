@@ -1,8 +1,9 @@
-import callLlm from '../../lib/llm/index.js';
+import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import { decomposeQuery as decomposeQueryPrompt } from '../../prompts/embed-query-transforms.js';
 import { embedSubquestionsSchema } from './schema.js';
 import { nameStep } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
+import { Outcome } from '../../lib/progress/constants.js';
 
 const name = 'embed-subquestions';
 
@@ -48,15 +49,9 @@ export default async function embedSubquestions(query, config = {}) {
 
     const result = await callLlm(decomposeQueryPrompt(query, { granularityGuidance }), {
       ...runConfig,
-      response_format: {
-        type: 'json_schema',
-        json_schema: {
-          name: 'decompose_query',
-          schema: embedSubquestionsSchema,
-        },
-      },
+      response_format: jsonSchema('decompose_query', embedSubquestionsSchema),
     });
-    emitter.complete({ outcome: 'success' });
+    emitter.complete({ outcome: Outcome.success });
     return result;
   } catch (err) {
     emitter.error(err);

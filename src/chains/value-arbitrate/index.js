@@ -1,6 +1,8 @@
-import callLlm from '../../lib/llm/index.js';
+import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
+import parallelBatch from '../../lib/parallel-batch/index.js';
 import createProgressEmitter from '../../lib/progress/index.js';
+import { Outcome, ErrorPosture } from '../../lib/progress/constants.js';
 import { nameStep, getOptions } from '../../lib/context/option.js';
 
 const name = 'value-arbitrate';
@@ -81,14 +83,16 @@ export default async function valueArbitrate(signals, ctx, values, config = {}) 
 
   try {
     // Step 1: Evaluate all signals concurrently
-    const evaluated = await Promise.all(
-      signals.map(async (signal) => ({
+    const evaluated = await parallelBatch(
+      signals,
+      async (signal) => ({
         name: signal.name,
         strictness: signal.strictness,
         weight: signal.weight,
         prompt: signal.prompt,
         resolved: await signal.value(ctx),
-      }))
+      }),
+      { maxParallel: 5, errorPosture: ErrorPosture.resilient, abortSignal: runConfig.abortSignal }
     );
 
     // Step 2: Separate must and may results
@@ -103,12 +107,12 @@ export default async function valueArbitrate(signals, ctx, values, config = {}) 
 
     if (candidates.length === 0) {
       // Must-floor is at or beyond the most restrictive value — return it
-      emitter.complete({ outcome: 'success' });
+      emitter.complete({ outcome: Outcome.success });
       return values[values.length - 1];
     }
 
     if (candidates.length === 1) {
-      emitter.complete({ outcome: 'success' });
+      emitter.complete({ outcome: Outcome.success });
       return candidates[0];
     }
 
@@ -118,13 +122,13 @@ export default async function valueArbitrate(signals, ctx, values, config = {}) 
     // If all mays agree, no AI needed
     const uniqueMayValues = [...new Set(viableMays.map((s) => s.resolved))];
     if (uniqueMayValues.length === 1) {
-      emitter.complete({ outcome: 'success' });
+      emitter.complete({ outcome: Outcome.success });
       return uniqueMayValues[0];
     }
 
     // If no mays have opinions within the candidate space, return the floor
     if (viableMays.length === 0) {
-      emitter.complete({ outcome: 'success' });
+      emitter.complete({ outcome: Outcome.success });
       return candidates[0];
     }
 
@@ -149,17 +153,14 @@ export default async function valueArbitrate(signals, ctx, values, config = {}) 
       () =>
         callLlm(prompt, {
           ...runConfig,
-          response_format: {
-            type: 'json_schema',
-            json_schema: { name: 'value_arbitrate', schema },
-          },
+          response_format: jsonSchema('value_arbitrate', schema),
         }),
-      { label: 'value-arbitrate', config: runConfig }
+      { label: 'value-arbitrate', config: runConfig, abortSignal: runConfig.abortSignal }
     );
 
     // callLlm auto-unwraps the value from the JSON response
     const selected = enumValues[result];
-    emitter.complete({ outcome: 'success' });
+    emitter.complete({ outcome: Outcome.success });
     return selected !== undefined ? selected : candidates[0];
   } catch (err) {
     emitter.error(err);

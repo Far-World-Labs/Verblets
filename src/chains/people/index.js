@@ -3,6 +3,7 @@ import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { peopleListJsonSchema } from './schemas.js';
 import createProgressEmitter from '../../lib/progress/index.js';
+import { Outcome } from '../../lib/progress/constants.js';
 import { nameStep } from '../../lib/context/option.js';
 
 const name = 'people';
@@ -27,10 +28,11 @@ ${instructions}`;
       {
         label: `people-list generation for ${count} people`,
         config: runConfig,
+        abortSignal: runConfig.abortSignal,
       }
     );
 
-    emitter.complete({ outcome: 'success' });
+    emitter.complete({ outcome: Outcome.success });
 
     return response.people;
   } catch (err) {

@@ -6,10 +6,12 @@
  * like (trace collector, database query, manual construction).
  */
 
-import callLlm from '../../lib/llm/index.js';
+import callLlm, { jsonSchema } from '../../lib/llm/index.js';
+import { asXML } from '../../prompts/wrap-variable.js';
 import { schema } from '../../lib/targeting-rule/index.js';
 import { nameStep } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
+import { Outcome } from '../../lib/progress/constants.js';
 
 const name = 'suggest-targeting-rules';
 
@@ -37,9 +39,9 @@ Look for patterns that suggest targeting rules:
 Express each suggestion as a targeting rule with clauses. Each clause matches a context attribute using an operator (in, startsWith, endsWith, contains, lessThan, greaterThan). All clauses in a rule must match for the rule to apply. Each rule sets one option to one value.
 
 DECISION TRACES (${traces.length} total):
-${traceBlock}
+${asXML(traceBlock, { tag: 'traces' })}
 
-Based on these patterns, suggest concrete targeting rules.${instruction ? `\n\nAdditional guidance: ${instruction}` : ''}`;
+Based on these patterns, suggest concrete targeting rules.${instruction ? `\n\nAdditional guidance: ${asXML(instruction, { tag: 'instruction' })}` : ''}`;
 };
 
 /**
@@ -56,7 +58,7 @@ export default async function suggestTargetingRules(traces, instruction, config 
   emitter.start();
 
   if (!traces || traces.length === 0) {
-    emitter.complete({ outcome: 'success' });
+    emitter.complete({ outcome: Outcome.success });
     return [];
   }
 
@@ -65,15 +67,12 @@ export default async function suggestTargetingRules(traces, instruction, config 
 
     const result = await callLlm(prompt, {
       ...runConfig,
-      response_format: {
-        type: 'json_schema',
-        json_schema: { name: 'targeting_rules', schema },
-      },
+      response_format: jsonSchema('targeting_rules', schema),
     });
 
     const rules = result?.rules ?? result ?? [];
 
-    emitter.complete({ outcome: 'success' });
+    emitter.complete({ outcome: Outcome.success });
 
     return rules;
   } catch (err) {

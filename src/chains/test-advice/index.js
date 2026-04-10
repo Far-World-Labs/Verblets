@@ -1,5 +1,6 @@
 import test from '../test/index.js';
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
+import { Outcome } from '../../lib/progress/constants.js';
 import { nameStep } from '../../lib/context/option.js';
 
 const name = 'test-advice';
@@ -54,7 +55,7 @@ export default async function testAdvice(path, config = {}) {
       batchDone(1);
     }
 
-    emitter.complete({ outcome: 'success', totalIssues: results.length });
+    emitter.complete({ outcome: Outcome.success, totalIssues: results.length });
     return results;
   } catch (err) {
     emitter.error(err);

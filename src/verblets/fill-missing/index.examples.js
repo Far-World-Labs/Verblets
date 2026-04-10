@@ -14,6 +14,7 @@ describe('fillMissing example', () => {
         .filter(([, v]) => v.confidence > 0.8)
         .map(([k, v]) => [k, v.candidate])
     );
-    templateReplace(template, confident, '<unknown>');
+    const filled = templateReplace(template, confident, '<unknown>');
+    await aiExpect(filled).toSatisfy('a sentence with blanks filled in by plausible words');
   });
 });

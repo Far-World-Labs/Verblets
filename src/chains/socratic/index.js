@@ -1,9 +1,10 @@
 import callLlm, { jsonSchema } from '../../lib/llm/index.js';
+import { asXML } from '../../prompts/wrap-variable.js';
 import retry from '../../lib/retry/index.js';
 import socraticQuestionSchema from './socratic-question-schema.js';
 import socraticAnswerSchema from './socratic-answer-schema.js';
 import createProgressEmitter from '../../lib/progress/index.js';
-import { DomainEvent } from '../../lib/progress/constants.js';
+import { DomainEvent, Outcome } from '../../lib/progress/constants.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 
 const name = 'socratic';
@@ -41,12 +42,12 @@ const CHALLENGE_GUIDELINES = {
 
 // Prompt builders
 const buildAskPrompt = (topic, historyText, challenge) =>
-  `${historyText ? `${historyText}\n` : ''}${CHALLENGE_GUIDELINES[challenge] || CHALLENGE_GUIDELINES.default} about "${topic}".`;
+  `${historyText ? `${historyText}\n` : ''}${CHALLENGE_GUIDELINES[challenge] || CHALLENGE_GUIDELINES.default} about ${asXML(topic, { tag: 'topic' })}.`;
 
 const buildAnswerPrompt = (question, historyText) => `${
   historyText ? `${historyText}\n` : ''
 }Answer the question thoughtfully and briefly:
-"${question}"`;
+${asXML(question, { tag: 'question' })}`;
 
 //TODO:DOCS_OBSERVATIONS defaultAsk and defaultAnswer pass llm/temperature directly instead of through config — inconsistent with config-threading pattern used elsewhere
 const defaultAsk = async ({
@@ -70,6 +71,7 @@ const defaultAsk = async ({
     {
       label: 'socratic-ask',
       config,
+      abortSignal: config.abortSignal,
     }
   );
 
@@ -97,6 +99,7 @@ const defaultAnswer = async ({
     {
       label: 'socratic-answer',
       config,
+      abortSignal: config.abortSignal,
     }
   );
 
@@ -195,6 +198,7 @@ class SocraticMethod {
 
   async run(depth = 3) {
     try {
+      const roundDone = this.emitter.batch(depth);
       for (let i = 0; i < depth; i += 1) {
         this.emitter.emit({
           event: DomainEvent.phase,
@@ -205,10 +209,11 @@ class SocraticMethod {
 
         // eslint-disable-next-line no-await-in-loop
         await this.step();
+        roundDone(1);
       }
 
       this.emitter.emit({ event: DomainEvent.output, value: this.history });
-      this.emitter.complete({ outcome: 'success', turns: this.history.length });
+      this.emitter.complete({ outcome: Outcome.success, turns: this.history.length });
 
       return this.history;
     } catch (err) {
@@ -218,7 +223,6 @@ class SocraticMethod {
   }
 }
 
-export const socratic = async (statement, options) =>
-  await SocraticMethod.create(statement, options);
+export const socratic = (statement, options) => SocraticMethod.create(statement, options);
 
 export default SocraticMethod;

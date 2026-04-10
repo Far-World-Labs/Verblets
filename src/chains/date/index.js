@@ -3,10 +3,12 @@ import toDate from '../../lib/to-date/index.js';
 import bool from '../../verblets/bool/index.js';
 import retry from '../../lib/retry/index.js';
 import { constants as promptConstants } from '../../prompts/index.js';
+import { asXML } from '../../prompts/wrap-variable.js';
 import { dateExpectationsSchema, dateValueSchema } from './schemas.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
-import { DomainEvent } from '../../lib/progress/constants.js';
+import { DomainEvent, Outcome } from '../../lib/progress/constants.js';
+import { parallel } from '../../lib/index.js';
 
 const name = 'date';
 
@@ -50,11 +52,13 @@ const disambiguationGuideline = `When interpreting dates:
 - For quarters: Q1=Jan-Mar, Q2=Apr-Jun, Q3=Jul-Sep, Q4=Oct-Dec`;
 
 // Prompt builders
-const buildExpectationPrompt = (question) => `${contentIsQuestion} ${question}
+const buildExpectationPrompt = (
+  question
+) => `${contentIsQuestion} ${asXML(question, { tag: 'question' })}
 
 List up to three short yes/no checks that would confirm a date answer is correct. If nothing specific comes to mind, include "The result is a valid date".`;
 
-const buildDatePrompt = (text) => `${contentIsQuestion} ${text}
+const buildDatePrompt = (text) => `${contentIsQuestion} ${asXML(text, { tag: 'text' })}
 
 ${disambiguationGuideline}
 
@@ -119,18 +123,23 @@ export default async function date(text, config = {}) {
     if (!validate) {
       const firstDate = await extractDate(datePrompt, runConfig);
       emitter.emit({ event: DomainEvent.output, value: firstDate });
-      emitter.complete({ outcome: 'success' });
+      emitter.complete({ outcome: Outcome.success });
       return firstDate;
     }
 
     // Parallelize expectations and first date extraction
-    const [expectationsResult, firstDate] = await Promise.all([
-      callLlm(expectationPrompt, {
-        ...runConfig,
-        response_format: jsonSchema('date_expectations', dateExpectationsSchema),
-      }),
-      extractDate(datePrompt, runConfig),
-    ]);
+    const [expectationsResult, firstDate] = await parallel(
+      [
+        () =>
+          callLlm(expectationPrompt, {
+            ...runConfig,
+            response_format: jsonSchema('date_expectations', dateExpectationsSchema),
+          }),
+        () => extractDate(datePrompt, runConfig),
+      ],
+      (fn) => fn(),
+      { maxParallel: 2, abortSignal: runConfig?.abortSignal }
+    );
 
     const expectations =
       expectationsResult.length > 0 ? expectationsResult : ['The result is a valid date'];
@@ -138,19 +147,31 @@ export default async function date(text, config = {}) {
     // Handle undefined response
     if (!firstDate) {
       emitter.emit({ event: DomainEvent.output, value: undefined });
-      emitter.complete({ outcome: 'success' });
+      emitter.complete({ outcome: Outcome.success });
       return undefined;
     }
 
     // State for retry loop
     let currentDate = firstDate;
     let currentText = text;
+    let attempt = 0;
+    const batchDone = emitter.batch(maxAttempts);
 
     // Use retry for the entire chain
     const result = await retry(
       async () => {
+        attempt += 1;
+        emitter.emit({
+          event: DomainEvent.step,
+          stepName: 'validation-attempt',
+          attempt,
+          maxAttempts,
+          currentDate: currentDate?.toISOString(),
+        });
+
         // Validate current date
         const validation = await validateDate(currentDate, expectations, runConfig);
+        batchDone(1);
 
         if (validation.passed) {
           return currentDate;
@@ -180,11 +201,12 @@ export default async function date(text, config = {}) {
         config: runConfig,
         maxAttempts,
         retryOnAll: true,
+        abortSignal: runConfig.abortSignal,
       }
     );
 
     emitter.emit({ event: DomainEvent.output, value: result });
-    emitter.complete({ outcome: 'success' });
+    emitter.complete({ outcome: Outcome.success });
     return result;
   } catch (err) {
     emitter.error(err);

@@ -1,9 +1,10 @@
 import conversationTurnReduce from '../conversation-turn-reduce/index.js';
 import { defaultTurnPolicy } from './turn-policies.js';
-import pLimit from 'p-limit';
 import { debug } from '../../lib/debug/index.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
+import { Outcome, ErrorPosture } from '../../lib/progress/constants.js';
+import { parallel } from '../../lib/index.js';
 
 const name = 'conversation';
 
@@ -176,45 +177,46 @@ export default class Conversation {
           });
         } else if (this.speakFn) {
           // Use provided speakFn with controlled concurrency
-          const limit = pLimit(this.maxParallel);
-
-          const speakerPromises = speakers.map((speaker, index) =>
-            limit(() =>
-              this.speakFn({
-                ...this.runConfig,
-                ...this.otherOptions,
-                speaker,
-                topic: this.topic,
-                history: this.messages.slice(),
-                rules: this.rules,
-                llm: this.llm,
-                onProgress: scopePhase(this.runConfig.onProgress, `round-${round}`),
-              })
-                .then((comment) => ({ speaker, comment, index }))
-                .catch((error) => {
-                  debug(`Speaker ${speaker.id} failed: ${error.message}`);
-                  return { speaker, comment: '', index };
-                })
-            )
+          const results = await parallel(
+            speakers,
+            async (speaker) => {
+              try {
+                const comment = await this.speakFn({
+                  ...this.runConfig,
+                  ...this.otherOptions,
+                  speaker,
+                  topic: this.topic,
+                  history: this.messages.slice(),
+                  rules: this.rules,
+                  llm: this.llm,
+                  onProgress: scopePhase(this.runConfig.onProgress, `round-${round}`),
+                });
+                return { speaker, comment };
+              } catch (error) {
+                debug(`Speaker ${speaker.id} failed: ${error.message}`);
+                return { speaker, comment: '' };
+              }
+            },
+            {
+              maxParallel: this.maxParallel,
+              errorPosture: ErrorPosture.resilient,
+              abortSignal: this.runConfig?.abortSignal,
+            }
           );
 
-          const results = await Promise.all(speakerPromises);
-
-          // Push comments in original speaker order
-          results
-            .sort((a, b) => a.index - b.index)
-            .forEach(({ speaker, comment }) => {
-              if (comment) {
-                this._push(speaker.id, comment);
-              }
-            });
+          // Push comments in original speaker order (parallel preserves order)
+          results.forEach(({ speaker, comment }) => {
+            if (comment) {
+              this._push(speaker.id, comment);
+            }
+          });
         }
 
         round += 1;
         batchDone(1);
       }
 
-      this.emitter.complete({ outcome: 'success' });
+      this.emitter.complete({ outcome: Outcome.success });
 
       return this.messages;
     } catch (err) {

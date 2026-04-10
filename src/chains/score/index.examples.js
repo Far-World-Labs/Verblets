@@ -4,7 +4,7 @@ import score, { reduceInstructions } from './index.js';
 import reduce from '../reduce/index.js';
 import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 
-const { it, expect } = getTestHelpers('Score chain');
+const { it, expect, aiExpect } = getTestHelpers('Score chain');
 
 describe('score examples', () => {
   it(
@@ -20,6 +20,9 @@ describe('score examples', () => {
 
       expect(scores).toHaveLength(jokes.length);
       scores.forEach((s) => expect(typeof s).toBe('number'));
+      await aiExpect(scores).toSatisfy(
+        'numeric humor scores where each value is a reasonable rating'
+      );
     },
     longTestTimeout
   );
@@ -43,6 +46,9 @@ describe('score examples', () => {
 
       expect(typeof bestValue).toBe('string');
       expect(products).toContain(bestValue);
+      await aiExpect(bestValue).toSatisfy(
+        'a product selected for best value-for-money considering specs'
+      );
     },
     longTestTimeout
   );

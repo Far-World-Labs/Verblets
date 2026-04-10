@@ -2,6 +2,7 @@ import * as playwrightCore from 'playwright-core';
 import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
+import { Outcome, ErrorPosture } from '../../lib/progress/constants.js';
 import { createTempDir } from '../../lib/temp-files/index.js';
 import { resizeImage, mapImageShrink } from '../../lib/image-utils/index.js';
 import { isBrowserEnabled } from '../web-scrape/state.js';
@@ -263,7 +264,7 @@ const siteCrawl = async (startUrl, config = {}) => {
     gateInterval: 5,
     headless: true,
     screenshots: false,
-    errorPosture: 'resilient',
+    errorPosture: ErrorPosture.resilient,
     imageShrink: withPolicy(mapImageShrink),
     heartbeatInterval: 1000,
   });
@@ -397,7 +398,7 @@ const siteCrawl = async (startUrl, config = {}) => {
           });
         } catch (err) {
           emitter.emit({ event: 'page:error', url: entry.url, error: err.message });
-          if (opts.errorPosture === 'strict') throw err;
+          if (opts.errorPosture === ErrorPosture.strict) throw err;
         }
       }
     } finally {
@@ -434,7 +435,7 @@ const siteCrawl = async (startUrl, config = {}) => {
     };
 
     emitter.complete({
-      outcome: 'success',
+      outcome: Outcome.success,
       pagesVisited: pages.length,
       apisFound: apis.length,
       gateCallCount,

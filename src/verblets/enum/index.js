@@ -1,7 +1,9 @@
-import callLlm from '../../lib/llm/index.js';
+import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import { nameStep } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
+import { Outcome } from '../../lib/progress/constants.js';
 import { asEnum, constants } from '../../prompts/index.js';
+import { asXML } from '../../prompts/wrap-variable.js';
 import { createEnumSchema } from './schema.js';
 
 const { asUndefinedByDefault, contentIsQuestion, explainAndSeparate } = constants;
@@ -13,7 +15,7 @@ export default async (text, enumVal, config = {}) => {
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
 
-  const enumText = `${contentIsQuestion} ${text}\n\n${explainAndSeparate}
+  const enumText = `${contentIsQuestion} ${asXML(text, { tag: 'text' })}\n\n${explainAndSeparate}
 
 ${asEnum(enumVal)} ${asUndefinedByDefault}
 
@@ -24,20 +26,14 @@ The value should be your selection.`;
   try {
     const result = await callLlm(enumText, {
       ...runConfig,
-      response_format: {
-        type: 'json_schema',
-        json_schema: {
-          name: 'enum_selection',
-          schema,
-        },
-      },
+      response_format: jsonSchema('enum_selection', schema),
     });
 
     //TODO:DOCS_OBSERVATIONS string 'undefined' check is fragile — if the schema constrains to the enum values plus a sentinel, this becomes unnecessary
     // With auto-unwrapping, result should be the value directly
     const interpreted = result === 'undefined' ? undefined : result;
 
-    emitter.complete({ outcome: 'success' });
+    emitter.complete({ outcome: Outcome.success });
 
     return interpreted;
   } catch (err) {

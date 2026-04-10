@@ -1,8 +1,20 @@
-import callLlm from '../../lib/llm/index.js';
+import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import { nameStep } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
+import { Outcome } from '../../lib/progress/constants.js';
 
 const name = 'expect';
+
+const expectSchema = {
+  type: 'object',
+  properties: {
+    value: { type: 'boolean' },
+  },
+  required: ['value'],
+  additionalProperties: false,
+};
+
+const EXPECT_RESPONSE_FORMAT = jsonSchema('expect_result', expectSchema);
 
 function buildEqualityPrompt({ actual, expected, context }) {
   return `Does the actual value strictly equal the expected value?\n\nActual: ${JSON.stringify(
@@ -11,7 +23,7 @@ function buildEqualityPrompt({ actual, expected, context }) {
     2
   )}\nExpected: ${JSON.stringify(expected, null, 2)}\n\n${
     context ? `Context: ${JSON.stringify(context, null, 2)}\n` : ''
-  }Answer only "True" or "False".`;
+  }Answer true or false.`;
 }
 
 function buildConstraintPrompt({ actual, constraint, context }) {
@@ -21,7 +33,7 @@ function buildConstraintPrompt({ actual, constraint, context }) {
     2
   )}\n\n${
     context ? `Additional context: ${JSON.stringify(context, null, 2)}\n` : ''
-  }Does the actual value satisfy the constraint? Answer only "True" or "False".`;
+  }Does the actual value satisfy the constraint? Answer true or false.`;
 }
 
 export async function llmAssert({
@@ -48,9 +60,12 @@ export async function llmAssert({
         ? buildEqualityPrompt({ actual, expected: equals, context })
         : buildConstraintPrompt({ actual, constraint, context });
 
-    const answer = await callLlm(prompt, { ...runConfig, llm });
-    const text = typeof answer === 'string' ? answer : answer.content;
-    passed = /^true$/i.test(text.trim());
+    const answer = await callLlm(prompt, {
+      ...runConfig,
+      llm,
+      response_format: EXPECT_RESPONSE_FORMAT,
+    });
+    passed = answer === true;
 
     if (!passed && throws) {
       let msg;
@@ -70,7 +85,7 @@ export async function llmAssert({
       throw new Error(msg);
     }
 
-    emitter.complete({ outcome: 'success' });
+    emitter.complete({ outcome: Outcome.success });
   } catch (err) {
     emitter.error(err);
     throw err;

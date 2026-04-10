@@ -1,6 +1,7 @@
-import callLlm from '../../lib/llm/index.js';
+import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import { nameStep } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
+import { Outcome } from '../../lib/progress/constants.js';
 import { asXML } from '../../prompts/index.js';
 import { intent as intentSchema } from '../../json-schemas/index.js';
 
@@ -28,13 +29,7 @@ export const mapTolerance = (value) => {
   return undefined;
 };
 
-const responseFormat = {
-  type: 'json_schema',
-  json_schema: {
-    name: 'intent_result',
-    schema: intentSchema,
-  },
-};
+const responseFormat = jsonSchema('intent_result', intentSchema);
 
 /**
  * Extract intent and parameters from text based on available operations
@@ -90,7 +85,7 @@ Return the result as a structured JSON object with the operation name, extracted
       response_format: responseFormat,
     });
 
-    emitter.complete({ outcome: 'success' });
+    emitter.complete({ outcome: Outcome.success });
 
     return response;
   } catch (err) {

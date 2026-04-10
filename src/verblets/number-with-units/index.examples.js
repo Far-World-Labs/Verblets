@@ -32,6 +32,9 @@ describe('Number with units verblet', () => {
       if (example.want.unit) {
         expect(result?.unit).toStrictEqual(example.want.unit);
       }
+      await aiExpect(result).toSatisfy(
+        `an object with value and unit answering: "${example.inputs.text}"`
+      );
     });
   });
 });

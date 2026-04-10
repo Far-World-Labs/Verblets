@@ -3,7 +3,7 @@ import llm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { extractCodeWindow } from '../../lib/code-extractor/index.js';
 import createProgressEmitter from '../../lib/progress/index.js';
-import { DomainEvent } from '../../lib/progress/constants.js';
+import { DomainEvent, Outcome } from '../../lib/progress/constants.js';
 import { getOption, nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 
 const name = 'test-analyzer';
@@ -99,7 +99,7 @@ export default async function analyzeTestError(logs, config = {}) {
   const maxTokens = await getOption('maxTokens', runConfig, depthConfig.maxTokens);
   if (!logs || logs.length === 0) {
     debug('analyzeTestError: No logs provided');
-    emitter.complete({ outcome: 'success' });
+    emitter.complete({ outcome: Outcome.success });
     return '';
   }
 
@@ -109,7 +109,7 @@ export default async function analyzeTestError(logs, config = {}) {
 
   if (!testStart || !testComplete) {
     debug('analyzeTestError: Missing test-start or test-complete logs');
-    emitter.complete({ outcome: 'success' });
+    emitter.complete({ outcome: Outcome.success });
     return '';
   }
 
@@ -197,11 +197,12 @@ Discussion:
     const response = await retry(() => llm(prompt, { ...runConfig, maxTokens }), {
       label: 'test-analyzer',
       config: runConfig,
+      abortSignal: runConfig.abortSignal,
     });
 
     const result = response.trim();
     emitter.emit({ event: DomainEvent.output, value: result });
-    emitter.complete({ outcome: 'success' });
+    emitter.complete({ outcome: Outcome.success });
 
     return result;
   } catch (err) {

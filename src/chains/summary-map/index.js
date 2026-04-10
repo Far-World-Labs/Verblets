@@ -4,6 +4,7 @@ import shortenText from '../../lib/shorten-text/index.js';
 import { summarize as basicSummarize, tokenBudget } from '../../prompts/index.js';
 import modelService from '../../services/llm-model/index.js';
 import createProgressEmitter from '../../lib/progress/index.js';
+import { Outcome } from '../../lib/progress/constants.js';
 import { nameStep } from '../../lib/context/option.js';
 
 const summarize = ({ budget, type, value, fixes = [], llmOptions, sensitivity }) => {
@@ -164,7 +165,7 @@ export default class SummaryMap extends Map {
       }
 
       this.isCacheValid = true;
-      emitter.complete({ outcome: 'success', entries: budgets.length });
+      emitter.complete({ outcome: Outcome.success, entries: budgets.length });
     } catch (err) {
       emitter.error(err);
       throw err;

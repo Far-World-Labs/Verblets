@@ -1,8 +1,9 @@
-import callLlm from '../../lib/llm/index.js';
+import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import { stepBack as stepBackPrompt } from '../../prompts/embed-query-transforms.js';
 import { embedStepBackSchema } from './schema.js';
 import { nameStep } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
+import { Outcome } from '../../lib/progress/constants.js';
 
 const name = 'embed-step-back';
 
@@ -50,15 +51,9 @@ export default async function embedStepBack(query, config = {}) {
 
     const result = await callLlm(stepBackPrompt(query, count, { abstractionGuidance }), {
       ...runConfig,
-      response_format: {
-        type: 'json_schema',
-        json_schema: {
-          name: 'step_back',
-          schema: embedStepBackSchema,
-        },
-      },
+      response_format: jsonSchema('step_back', embedStepBackSchema),
     });
-    emitter.complete({ outcome: 'success' });
+    emitter.complete({ outcome: Outcome.success });
     return result;
   } catch (err) {
     emitter.error(err);

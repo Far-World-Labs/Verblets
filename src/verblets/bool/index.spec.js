@@ -3,6 +3,7 @@ import { getTestHelpers } from '../../chains/test-analysis/test-wrappers.js';
 import bool from './index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
+  jsonSchema: (name, schema) => ({ type: 'json_schema', json_schema: { name, schema } }),
   default: vi.fn().mockImplementation((text, options) => {
     // When responseFormat is used, auto-unwrapping will return the value directly
     const systemPrompt = options?.systemPrompt || '';

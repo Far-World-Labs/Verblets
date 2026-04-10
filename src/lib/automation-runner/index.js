@@ -126,10 +126,78 @@ export async function discoverAutomations() {
 }
 
 /**
+ * HTTP status codes that indicate irrecoverable provider errors.
+ * Seeing any of these means retrying is pointless — abort the entire run.
+ *
+ * 400 with specific messages (credit exhaustion, invalid API key) are
+ * irrecoverable. Generic 400s are not — they could be a malformed request
+ * for one item that doesn't affect others.
+ */
+const IRRECOVERABLE_PATTERNS = [
+  /credit balance is too low/i,
+  /invalid.*api.?key/i,
+  /authentication/i,
+  /account.*deactivated/i,
+  /billing/i,
+  /quota.*exceeded/i,
+  /rate.*limit/i, // 429s should be retried, but persistent ones are irrecoverable
+];
+
+const IRRECOVERABLE_STATUS_CODES = new Set([401, 403]);
+
+/**
+ * Count consecutive irrecoverable errors. A single 429 is retryable,
+ * but N in a row means the provider is rejecting everything.
+ */
+const CONSECUTIVE_THRESHOLD = 3;
+
+function createOutageDetector(abortController) {
+  let consecutiveErrors = 0;
+
+  return function observe(event) {
+    // Only watch LLM call telemetry errors
+    if (event.event !== 'llm:call' || event.status !== 'error') {
+      // Successful LLM call resets the counter
+      if (event.event === 'llm:call' && event.status === 'success') {
+        consecutiveErrors = 0;
+      }
+      return;
+    }
+
+    const error = event.error || {};
+    const httpStatus = error.httpStatusCode;
+    const message = error.message || '';
+
+    // Immediate abort: auth failures, account issues
+    if (IRRECOVERABLE_STATUS_CODES.has(httpStatus)) {
+      abortController.abort(new Error(`Provider error (${httpStatus}): ${message}`));
+      return;
+    }
+
+    // Pattern-matched 400s: credit exhaustion, billing, etc.
+    if (httpStatus === 400 && IRRECOVERABLE_PATTERNS.some((p) => p.test(message))) {
+      abortController.abort(new Error(`Provider error: ${message}`));
+      return;
+    }
+
+    // Consecutive error accumulation (catches persistent 429s, 500s)
+    if (httpStatus === 429 || (httpStatus >= 500 && httpStatus < 600)) {
+      consecutiveErrors++;
+      if (consecutiveErrors >= CONSECUTIVE_THRESHOLD) {
+        abortController.abort(
+          new Error(`Provider outage: ${consecutiveErrors} consecutive failures. Last: ${message}`)
+        );
+      }
+    }
+  };
+}
+
+/**
  * Run an automation by name.
  *
- * Loads templates from $VERBLETS_DATA_ROOT/<name>/ and
- * $VERBLETS_DATA_ROOT/shared/, injects as params.templates.
+ * Injects outage detection: an onProgress middleware watches LLM telemetry
+ * for irrecoverable errors (auth, billing, persistent 429/5xx) and aborts
+ * the entire run via AbortController rather than letting retry exhaust.
  *
  * @param {string} name - Automation name (as registered)
  * @param {object} [params={}] - Invocation parameters
@@ -143,7 +211,25 @@ export async function runAutomation(name, params = {}, options = {}) {
   const { projectRoot, onProgress, initOptions = {} } = options;
 
   dotenv.config({ override: true });
+
+  // Outage detection: abort controller + progress middleware
+  const abortController = new AbortController();
+  const outageDetector = createOutageDetector(abortController);
+
   const instance = init(initOptions);
+
+  // Inject abort signal into init config so it flows to every LLM call via withConfig
+  const initConfig = { ...instance.config, abortSignal: abortController.signal };
+
+  // Wrap external onProgress with outage detection
+  const wrappedOnProgress = onProgress
+    ? (event) => {
+        outageDetector(event);
+        onProgress(event);
+      }
+    : (event) => {
+        outageDetector(event);
+      };
 
   const automationDir = await resolveAutomation(name);
   if (!automationDir) {
@@ -170,8 +256,8 @@ export async function runAutomation(name, params = {}, options = {}) {
   const ctx = new RunContext(name, {
     automationDir,
     projectRoot: projectRoot || process.cwd(),
-    onProgress,
-    initConfig: instance.config,
+    onProgress: wrappedOnProgress,
+    initConfig,
     params: enrichedParams,
   });
 

@@ -30,7 +30,7 @@ export class RunSeparatorProcessor extends BaseProcessor {
     });
 
     this.hasSeenRun = false;
-    this.lastRunId = null;
+    this.lastRunId = undefined;
   }
 
   handleRunStart(event) {

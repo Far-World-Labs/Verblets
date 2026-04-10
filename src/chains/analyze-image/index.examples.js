@@ -319,7 +319,7 @@ describe.skipIf(!chromium)('HN Vision Integration', { timeout: 300_000 }, () => 
 
     // Verify operation path hierarchy exists
     const operations = new Set(allEvents.map((e) => e.operation).filter(Boolean));
-    console.error(`  Unique operation paths: ${[...operations].sort().join(', ')}`);
+    console.error(`  Unique operation paths: ${Array.from(operations).toSorted().join(', ')}`);
     expect(operations.has('analyze-image')).toBe(true);
     expect(operations.has('analyze-image/llm')).toBe(true);
     expect(operations.has('web-scrape/analyze-image')).toBe(true);

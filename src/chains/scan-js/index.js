@@ -8,7 +8,7 @@ import search from '../../lib/search-js-files/index.js';
 import codeFeaturesPrompt from '../../prompts/code-features.js';
 import makeJSONSchema from '../../prompts/features-json-schema.js';
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
-import { DomainEvent } from '../../lib/progress/constants.js';
+import { DomainEvent, Outcome } from '../../lib/progress/constants.js';
 import { nameStep } from '../../lib/context/option.js';
 
 const name = 'scan-js';
@@ -37,6 +37,7 @@ const visit = async ({
       ...config,
       batchSize: 4,
       extremeK: 4,
+      abortSignal: config.abortSignal,
     }
   );
   const sortCriteria = sortResults.slice(0, 5);
@@ -73,7 +74,7 @@ const visit = async ({
       state.abbreviations = state.abbreviations ?? {};
       state.abbreviations[id] = state.abbreviations[id] ?? state.nodesFound;
     },
-    { label: 'scan-js', config }
+    { label: 'scan-js', config, abortSignal: config.abortSignal }
   );
 
   return state;
@@ -118,7 +119,7 @@ export default async (moduleOptions) => {
         }),
     });
 
-    emitter.complete({ outcome: 'success', nodesFound: result.nodesFound ?? 0 });
+    emitter.complete({ outcome: Outcome.success, nodesFound: result.nodesFound ?? 0 });
 
     return result;
   } catch (err) {

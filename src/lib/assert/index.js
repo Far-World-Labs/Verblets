@@ -13,7 +13,7 @@
  * Assertion class that provides fluent interface for assertions
  */
 class Assertion {
-  constructor(actual, message = null) {
+  constructor(actual, message = undefined) {
     this.actual = actual;
     this.customMessage = message;
   }
@@ -42,7 +42,7 @@ class Assertion {
  * @param {string} [message] - Optional custom error message
  * @returns {Assertion} Assertion instance with fluent interface
  */
-export function assert(actual, message = null) {
+export function assert(actual, message = undefined) {
   return new Assertion(actual, message);
 }
 

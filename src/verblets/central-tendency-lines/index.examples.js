@@ -31,6 +31,7 @@ describe('centralTendency examples', () => {
       expect(robinResult).toHaveProperty('reason');
       expect(robinResult).toHaveProperty('confidence');
       expect(robinResult.score).toBeGreaterThanOrEqual(0.6); // Should be high centrality
+      await aiExpect(robinResult).toSatisfy('a robin scored as a highly central/prototypical bird');
 
       // Test atypical but valid bird
       const penguinResult = await centralTendency('penguin', birdSeeds, config);

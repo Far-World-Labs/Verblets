@@ -77,14 +77,14 @@ export async function createTempDir(name = 'scratch', outputDir) {
     async cleanup() {
       try {
         await cleanupPaths(tracked);
-      } catch {
-        /* swallow */
+      } catch (err) {
+        console.warn('[temp-files] cleanup error:', err?.message ?? err);
       }
       if (!persistent) {
         try {
           await rm(dir, { recursive: true, force: true });
-        } catch {
-          /* swallow */
+        } catch (err) {
+          console.warn('[temp-files] rm error:', err?.message ?? err);
         }
       }
     },

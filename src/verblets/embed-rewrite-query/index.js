@@ -1,8 +1,9 @@
-import callLlm from '../../lib/llm/index.js';
+import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import { rewriteQuery as rewriteQueryPrompt } from '../../prompts/embed-query-transforms.js';
 import { embedRewriteQuerySchema } from './schema.js';
 import { nameStep } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
+import { Outcome } from '../../lib/progress/constants.js';
 
 const name = 'embed-rewrite-query';
 
@@ -20,15 +21,9 @@ export default async function embedRewriteQuery(query, config = {}) {
   try {
     const result = await callLlm(rewriteQueryPrompt(query), {
       ...runConfig,
-      response_format: {
-        type: 'json_schema',
-        json_schema: {
-          name: 'rewrite_query',
-          schema: embedRewriteQuerySchema,
-        },
-      },
+      response_format: jsonSchema('rewrite_query', embedRewriteQuerySchema),
     });
-    emitter.complete({ outcome: 'success' });
+    emitter.complete({ outcome: Outcome.success });
     return result;
   } catch (err) {
     emitter.error(err);

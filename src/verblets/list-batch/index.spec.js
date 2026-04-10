@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-vi.mock('../../lib/llm/index.js', () => ({ default: vi.fn() }));
+vi.mock('../../lib/llm/index.js', () => ({
+  default: vi.fn(),
+  jsonSchema: (name, schema) => ({ type: 'json_schema', json_schema: { name, schema } }),
+}));
 
 import listBatch, { ListStyle, determineStyle } from './index.js';
 import callLlm from '../../lib/llm/index.js';

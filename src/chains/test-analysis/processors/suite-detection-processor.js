@@ -168,7 +168,7 @@ export default class SuiteDetectionProcessor extends BaseProcessor {
       // In suite debug mode, list all suites
       if (this.config.debug?.suites) {
         console.log('\nAll Suites Detected:');
-        const sortedSuites = Array.from(this.suiteData.keys()).sort();
+        const sortedSuites = Array.from(this.suiteData.keys()).toSorted();
         for (const suiteName of sortedSuites) {
           const info = this.suiteData.get(suiteName);
           const status = info.status === 'completed' ? '✓' : '⚠';

@@ -2,6 +2,7 @@ import list from '../list/index.js';
 import score from '../score/index.js';
 import { nameStep, getOptions } from '../../lib/context/option.js';
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
+import { Outcome } from '../../lib/progress/constants.js';
 
 const name = 'filter-ambiguous';
 
@@ -15,7 +16,7 @@ export default async function filterAmbiguous(text, config = {}) {
 
   try {
     if (!text) {
-      emitter.complete({ outcome: 'success' });
+      emitter.complete({ outcome: Outcome.success });
       return [];
     }
     const sentences = text
@@ -23,7 +24,7 @@ export default async function filterAmbiguous(text, config = {}) {
       .map((s) => s.trim())
       .filter(Boolean);
     if (sentences.length === 0) {
-      emitter.complete({ outcome: 'success' });
+      emitter.complete({ outcome: Outcome.success });
       return [];
     }
 
@@ -38,7 +39,7 @@ export default async function filterAmbiguous(text, config = {}) {
 
     const rankedSentences = sentences
       .map((s, i) => ({ sentence: s, score: sentenceScores[i] ?? 0 }))
-      .sort((a, b) => b.score - a.score)
+      .toSorted((a, b) => b.score - a.score)
       .slice(0, topN);
 
     const batchDone = emitter.batch(rankedSentences.length);
@@ -57,7 +58,7 @@ export default async function filterAmbiguous(text, config = {}) {
     }
 
     if (termPairs.length === 0) {
-      emitter.complete({ outcome: 'success' });
+      emitter.complete({ outcome: Outcome.success });
       return [];
     }
 
@@ -71,9 +72,9 @@ export default async function filterAmbiguous(text, config = {}) {
     );
 
     const scored = termPairs.map((p, i) => ({ ...p, score: scores[i] }));
-    scored.sort((a, b) => (b.score || 0) - (a.score || 0));
-    emitter.complete({ outcome: 'success' });
-    return scored.slice(0, topN);
+    const sorted = scored.toSorted((a, b) => (b.score || 0) - (a.score || 0));
+    emitter.complete({ outcome: Outcome.success });
+    return sorted.slice(0, topN);
   } catch (err) {
     emitter.error(err);
     throw err;

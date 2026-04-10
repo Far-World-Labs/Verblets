@@ -7,9 +7,10 @@ import { constants as promptConstants } from '../../prompts/index.js';
 import { intersectionElementsSchema } from './schemas.js';
 import intersectionResultSchema from './intersection-result.json' with { type: 'json' };
 import { debug } from '../../lib/debug/index.js';
+import parallelBatch from '../../lib/parallel-batch/index.js';
 import { nameStep, getOptions } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
-import { DomainEvent } from '../../lib/progress/constants.js';
+import { Outcome, ErrorPosture } from '../../lib/progress/constants.js';
 
 const name = 'intersections';
 
@@ -61,6 +62,7 @@ const processCombo = async (combo, instructions, config = {}) => {
       {
         label: 'intersections-elements',
         config,
+        abortSignal: config.abortSignal,
       }
     ),
     commonalities(combo, { ...config, instructions }),
@@ -112,45 +114,44 @@ export default async function intersections(items, config = {}) {
     const allCombinations = rangeCombinations(items, minSize, maxSize);
 
     if (allCombinations.length === 0) {
-      emitter.complete({ outcome: 'success', combinations: 0 });
+      emitter.complete({ outcome: Outcome.success, combinations: 0 });
       return {};
     }
 
-    // Process all combinations in batches
+    // Process all combinations in parallel batches
     const results = {};
     const batchDone = emitter.batch(allCombinations.length);
 
-    for (let i = 0; i < allCombinations.length; i += batchSize) {
-      const batch = allCombinations.slice(i, i + batchSize);
+    const batchResults = await parallelBatch(
+      allCombinations,
+      async (combo) => {
+        const result = await processCombo(combo, instructions, runConfig);
+        batchDone(1);
+        return result;
+      },
+      {
+        maxParallel: batchSize,
+        errorPosture: ErrorPosture.resilient,
+        label: 'intersections combos',
+        abortSignal: runConfig.abortSignal,
+      }
+    );
 
-      emitter.emit({
-        event: DomainEvent.step,
-        stepName: 'processing-batch',
-        batchNumber: Math.floor(i / batchSize) + 1,
-        totalBatches: Math.ceil(allCombinations.length / batchSize),
-      });
-
-      const batchResults = await Promise.all(
-        batch.map((combo) => processCombo(combo, instructions, runConfig))
-      );
-
-      // Add batch results to final results
-      for (const result of batchResults) {
+    for (const result of batchResults) {
+      if (result) {
         results[result.key] = result.intersection;
       }
-
-      batchDone(batch.length);
     }
 
     // Validate results with JSON schema if enabled
     if (useSchemaValidation && Object.keys(results).length > 0) {
       const validated = await validateIntersectionResults(results, runConfig);
       const validatedResults = validated.intersections || results;
-      emitter.complete({ outcome: 'success', combinations: allCombinations.length });
+      emitter.complete({ outcome: Outcome.success, combinations: allCombinations.length });
       return validatedResults;
     }
 
-    emitter.complete({ outcome: 'success', combinations: allCombinations.length });
+    emitter.complete({ outcome: Outcome.success, combinations: allCombinations.length });
 
     return results;
   } catch (err) {
@@ -198,6 +199,7 @@ Return the properly structured JSON object with an "intersections" property cont
       {
         label: 'intersections-validation',
         config,
+        abortSignal: config.abortSignal,
       }
     );
     // Extract intersections from the object structure
@@ -206,7 +208,7 @@ Return the properly structured JSON object with an "intersections" property cont
     // Validate that the result is an object
     if (
       typeof resultIntersections !== 'object' ||
-      resultIntersections === null ||
+      resultIntersections == null ||
       Array.isArray(resultIntersections)
     ) {
       debug('Schema validation failed: invalid structure, returning original results');

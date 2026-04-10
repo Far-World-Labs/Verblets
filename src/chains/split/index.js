@@ -2,7 +2,9 @@ import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import chunkSentences from '../../lib/chunk-sentences/index.js';
 import wrapVariable from '../../prompts/wrap-variable.js';
+import parallelBatch from '../../lib/parallel-batch/index.js';
 import createProgressEmitter from '../../lib/progress/index.js';
+import { Outcome, ErrorPosture } from '../../lib/progress/constants.js';
 import { getOption, nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 
 const name = 'split';
@@ -33,7 +35,7 @@ export const mapPreservation = (value) => {
 const defaultDelimiter = '---763927459---';
 
 const buildPrompt = (chunk, instructions, delimiter, context = {}) => {
-  const { previousContent = '', targetSplitCount = null } = context;
+  const { previousContent = '', targetSplitCount = undefined } = context;
 
   let prompt = `You are marking split points in text with "${delimiter}". 
 
@@ -70,7 +72,7 @@ export default async function split(text, instructions, config = {}) {
     preservation: preservationConfig,
   } = await getOptions(runConfig, {
     chunkLen: 4000,
-    targetSplitsPerChunk: null,
+    targetSplitsPerChunk: undefined,
     temperature: 0.1,
     preservation: withPolicy(mapPreservation),
   });
@@ -86,65 +88,82 @@ export default async function split(text, instructions, config = {}) {
     const chunks = chunkSentences(text, chunkLen);
     const batchDone = emitter.batch(chunks.length);
 
-    // Process chunks in parallel for better performance
-    const promises = chunks.map(async (chunk, index) => {
-      const context = {
-        targetSplitCount: targetSplitsPerChunk,
-      };
+    // Process chunks in parallel batches for controlled concurrency
+    const results = await parallelBatch(
+      chunks,
+      async (chunk, index) => {
+        const context = {
+          targetSplitCount: targetSplitsPerChunk,
+        };
 
-      const prompt = buildPrompt(chunk, instructions, delimiter, context);
-      const llmConfig = {
-        ...runConfig,
-        temperature,
-      };
+        const prompt = buildPrompt(chunk, instructions, delimiter, context);
+        const llmConfig = {
+          ...runConfig,
+          temperature,
+        };
 
-      try {
-        const output = await retry(() => callLlm(prompt, llmConfig), {
-          label: 'split',
-          config: runConfig,
-        });
+        try {
+          const output = await retry(() => callLlm(prompt, llmConfig), {
+            label: 'split',
+            config: runConfig,
+            abortSignal: runConfig.abortSignal,
+          });
 
-        const outputWithoutDelimiters = output.replace(
-          new RegExp(delimiter.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'),
-          ''
-        );
-        const originalChunk = chunk.trim();
+          const outputWithoutDelimiters = output.replace(
+            new RegExp(delimiter.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'),
+            ''
+          );
+          const originalChunk = chunk.trim();
 
-        // If the output is significantly different, fall back to original
-        // Be more lenient for shorter texts (common in tests)
-        const maxDifference = originalChunk.length < 100 ? preservationShort : preservationLong;
-        if (
-          Math.abs(outputWithoutDelimiters.length - originalChunk.length) >
-          originalChunk.length * maxDifference
-        ) {
+          // If the output is significantly different, fall back to original
+          // Be more lenient for shorter texts (common in tests)
+          const maxDifference = originalChunk.length < 100 ? preservationShort : preservationLong;
+          if (
+            Math.abs(outputWithoutDelimiters.length - originalChunk.length) >
+            originalChunk.length * maxDifference
+          ) {
+            if (runConfig.logger?.warn) {
+              runConfig.logger.warn(
+                `Split output differs significantly from input for chunk ${
+                  index + 1
+                }, using original chunk`
+              );
+            }
+            batchDone(1);
+            return chunk;
+          }
+
+          batchDone(1);
+          return output;
+        } catch (error) {
           if (runConfig.logger?.warn) {
-            runConfig.logger.warn(
-              `Split output differs significantly from input for chunk ${
-                index + 1
-              }, using original chunk`
-            );
+            runConfig.logger.warn(`Split failed for chunk ${index + 1}:`, error.message);
           }
           batchDone(1);
           return chunk;
         }
-
-        batchDone(1);
-        return output;
-      } catch (error) {
-        if (runConfig.logger?.warn) {
-          runConfig.logger.warn(`Split failed for chunk ${index + 1}:`, error.message);
-        }
-        batchDone(1);
-        return chunk;
+      },
+      {
+        maxParallel: 3,
+        errorPosture: ErrorPosture.resilient,
+        abortSignal: runConfig.abortSignal,
+        label: 'split chunks',
       }
+    );
+    const escapedDelimiter = delimiter.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const segments = results
+      .join('')
+      .split(new RegExp(escapedDelimiter))
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    emitter.complete({
+      outcome: Outcome.success,
+      chunks: chunks.length,
+      segments: segments.length,
     });
 
-    const results = await Promise.all(promises);
-    const result = results.join('');
-
-    emitter.complete({ outcome: 'success', chunks: chunks.length });
-
-    return result;
+    return segments;
   } catch (err) {
     emitter.error(err);
     throw err;

@@ -23,7 +23,7 @@ export default class Transcriber {
     this.wordPauseDuration = wordPauseDuration;
     this.transcription = '';
     this.lastTranscribedTime = Date.now();
-    this.recording = null;
+    this.recording = undefined;
   }
 
   async startRecording() {

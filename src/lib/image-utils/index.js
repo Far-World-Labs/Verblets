@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { randomUUID } from 'node:crypto';
 import { isImageProcessingEnabled } from './state.js';
 import { resolveOutputDir } from '../temp-files/index.js';
+import parallelBatch from '../parallel-batch/index.js';
 
 export { setImageProcessingEnabled } from './state.js';
 
@@ -59,10 +60,10 @@ export async function tileImages(
 ) {
   assertEnabled();
 
-  const resizedBuffers = await Promise.all(
-    inputPaths.map((p) =>
-      sharp(p).resize({ height: tileHeight }).toBuffer({ resolveWithObject: true })
-    )
+  const resizedBuffers = await parallelBatch(
+    inputPaths,
+    (p) => sharp(p).resize({ height: tileHeight }).toBuffer({ resolveWithObject: true }),
+    { maxParallel: 4, label: 'tile-resize' }
   );
 
   const tiles = resizedBuffers.map((buf, i) => ({

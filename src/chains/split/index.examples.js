@@ -17,13 +17,11 @@ describe.skipIf(!isMediumBudget)('[medium] split chain examples', () => {
     'should split comedy set into distinct topics',
     async () => {
       const TOPIC_DELIM = '---TOPIC-BREAK---';
-      const topicsMarked = await split(
-        comedySet,
-        'between different comedy topics or subject changes',
-        { delimiter: TOPIC_DELIM, chunkLen: 2000, targetSplitsPerChunk: 2 }
-      );
-
-      const topics = topicsMarked.split(TOPIC_DELIM).filter((topic) => topic.trim());
+      const topics = await split(comedySet, 'between different comedy topics or subject changes', {
+        delimiter: TOPIC_DELIM,
+        chunkLen: 2000,
+        targetSplitsPerChunk: 2,
+      });
 
       expect(topics.length).toBeGreaterThan(2);
       // Each topic should have meaningful content
@@ -41,24 +39,18 @@ describe.skipIf(!isMediumBudget)('[medium] split chain examples', () => {
       const PUNCHLINE_DELIM = '---PUNCHLINE---';
 
       // Use larger chunks to get meaningful topics
-      const topicsMarked = await split(
-        comedySet,
-        'between different comedy topics or subject changes',
-        { delimiter: TOPIC_DELIM, chunkLen: 3000 }
-      );
-
-      const topics = topicsMarked.split(TOPIC_DELIM).filter((topic) => topic.trim());
+      const topics = await split(comedySet, 'between different comedy topics or subject changes', {
+        delimiter: TOPIC_DELIM,
+        chunkLen: 3000,
+      });
 
       // Find a topic that's long enough for punchline splitting
       const longTopic = topics.find((topic) => topic.length > 500) || topics[0];
 
-      const punchlineSplit = await split(
-        longTopic,
-        'after sentences that end with punchlines or jokes',
-        { delimiter: PUNCHLINE_DELIM, chunkLen: 800 }
-      );
-
-      const jokes = punchlineSplit.split(PUNCHLINE_DELIM).filter((joke) => joke.trim());
+      const jokes = await split(longTopic, 'after sentences that end with punchlines or jokes', {
+        delimiter: PUNCHLINE_DELIM,
+        chunkLen: 800,
+      });
 
       expect(jokes.length).toBeGreaterThanOrEqual(1);
       // Each joke segment should have content
@@ -71,12 +63,12 @@ describe.skipIf(!isMediumBudget)('[medium] split chain examples', () => {
     'should preserve all original text content',
     async () => {
       const DELIM = '---SPLIT---';
-      const splitText = await split(comedySet, 'between different comedy topics', {
+      const segments = await split(comedySet, 'between different comedy topics', {
         delimiter: DELIM,
         chunkLen: 1500,
       });
 
-      const reconstructed = splitText.split(DELIM).join('');
+      const reconstructed = segments.join(' ');
       const originalWords = comedySet.replace(/\s+/g, ' ').trim().split(' ');
       const reconstructedWords = reconstructed.replace(/\s+/g, ' ').trim().split(' ');
 

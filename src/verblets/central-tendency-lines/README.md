@@ -31,7 +31,7 @@ const penguin = await centralTendencyLines('penguin', birdSeeds, {
 - **config** (object):
   - `context` (string): Evaluation context (default: `''`)
   - `coreFeatures` (string[]): Definitional features of the category (default: `[]`)
-  - `llm` (string|object): LLM configuration (default: `'fastGoodCheap'`)
+  - `llm` (string|object): LLM configuration
 
 ### Return value
 

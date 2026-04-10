@@ -1,4 +1,5 @@
 import { chunk } from '../pure/index.js';
+import { ErrorPosture } from '../progress/constants.js';
 
 /**
  * Process items in parallel batches with controlled concurrency
@@ -9,10 +10,11 @@ import { chunk } from '../pure/index.js';
  * @param {number} options.maxParallel - Maximum parallel executions (default: 3)
  * @param {string} options.label - Label for debugging (optional)
  * @param {string} options.errorPosture - 'strict' (default): fail on first error; 'resilient': continue, fill undefined for failures
+ * @param {AbortSignal} options.abortSignal - Signal to abort processing between batch groups
  * @returns {Promise<Array>} Results in same order as input items
  */
 export async function parallelBatch(items, processor, options = {}) {
-  const { maxParallel = 3, errorPosture = 'strict' } = options;
+  const { maxParallel = 3, errorPosture = ErrorPosture.strict, abortSignal } = options;
 
   if (!Array.isArray(items) || items.length === 0) {
     return [];
@@ -23,7 +25,11 @@ export async function parallelBatch(items, processor, options = {}) {
   let offset = 0;
 
   for (const batch of batches) {
-    if (errorPosture === 'resilient') {
+    if (abortSignal?.aborted) {
+      throw abortSignal.reason ?? new Error('The operation was aborted.');
+    }
+
+    if (errorPosture === ErrorPosture.resilient) {
       const settled = await Promise.allSettled(
         batch.map((item, index) => processor(item, offset + index))
       );

@@ -1,10 +1,19 @@
 import { nameStep, getOptions } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
-import callLlm, { buildVisionPrompt } from '../../lib/llm/index.js';
+import { Outcome } from '../../lib/progress/constants.js';
+import callLlm, { buildVisionPrompt, jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
+import parallelBatch from '../../lib/parallel-batch/index.js';
 import { imageToBase64, tileImages } from '../../lib/image-utils/index.js';
 
 const name = 'analyze-image';
+
+const analysisFormat = jsonSchema('analysis', {
+  type: 'object',
+  properties: { value: { type: 'string', description: 'The analysis result' } },
+  required: ['value'],
+  additionalProperties: false,
+});
 
 /**
  * Map detail level string to API detail value.
@@ -65,13 +74,24 @@ const analyzeImage = async (images, instructions, config = {}) => {
       const tileData = await imageToBase64(tileResult.path);
       imageDataArray = [tileData];
     } else {
-      imageDataArray = await Promise.all(normalizedImages.map((img) => imageToBase64(img.path)));
+      imageDataArray = await parallelBatch(normalizedImages, (img) => imageToBase64(img.path), {
+        maxParallel: 4,
+        label: 'analyze-image:encode',
+        abortSignal: runConfig.abortSignal,
+      });
     }
 
     const contentArray = buildVisionPrompt(instructions, imageDataArray);
-    const result = await retry(() => callLlm(contentArray, runConfig));
+    const llmConfig = runConfig.response_format
+      ? runConfig
+      : { ...runConfig, response_format: analysisFormat };
+    const result = await retry(() => callLlm(contentArray, llmConfig), {
+      label: 'analyze-image:llm',
+      config: runConfig,
+      abortSignal: runConfig.abortSignal,
+    });
 
-    emitter.complete({ outcome: 'success', imageCount, tiled: shouldTile });
+    emitter.complete({ outcome: Outcome.success, imageCount, tiled: shouldTile });
 
     return result;
   } catch (err) {

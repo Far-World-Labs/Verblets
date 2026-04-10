@@ -1,6 +1,7 @@
-import callLlm from '../../lib/llm/index.js';
+import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import { nameStep } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
+import { Outcome } from '../../lib/progress/constants.js';
 import { constants as promptConstants, asXML } from '../../prompts/index.js';
 import fillMissingSchema from './fill-missing-result.json' with { type: 'json' };
 
@@ -8,13 +9,7 @@ const { tryCompleteData, contentIsMain } = promptConstants;
 
 const name = 'fill-missing';
 
-const responseFormat = {
-  type: 'json_schema',
-  json_schema: {
-    name: 'fill_missing_result',
-    schema: fillMissingSchema,
-  },
-};
+const responseFormat = jsonSchema('fill_missing_result', fillMissingSchema);
 
 // ===== Option Mappers =====
 
@@ -56,7 +51,7 @@ export default async function fillMissing(text, config = {}) {
       response_format: responseFormat,
     });
 
-    emitter.complete({ outcome: 'success' });
+    emitter.complete({ outcome: Outcome.success });
 
     return response;
   } catch (err) {

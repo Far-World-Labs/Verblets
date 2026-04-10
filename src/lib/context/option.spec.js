@@ -118,7 +118,7 @@ describe('getOption', () => {
     expect(result).toBe('policy-value');
   });
 
-  it('catches async function errors, returns fallback', async () => {
+  it('propagates async policy function errors', async () => {
     const options = {
       policy: {
         protection: async () => {
@@ -126,11 +126,12 @@ describe('getOption', () => {
         },
       },
     };
-    const result = await getOption('protection', options, 'depersonalize');
-    expect(result).toBe('depersonalize');
+    await expect(getOption('protection', options, 'depersonalize')).rejects.toThrow(
+      'service unavailable'
+    );
   });
 
-  it('catches sync function errors, returns fallback', async () => {
+  it('propagates sync policy function errors', async () => {
     const options = {
       policy: {
         protection: () => {
@@ -138,8 +139,7 @@ describe('getOption', () => {
         },
       },
     };
-    const result = await getOption('protection', options, 'depersonalize');
-    expect(result).toBe('depersonalize');
+    await expect(getOption('protection', options, 'depersonalize')).rejects.toThrow('boom');
   });
 
   it('returns fallback when async function returns undefined', async () => {
@@ -481,7 +481,7 @@ describe('config pipeline integration', () => {
     expect(result.factor).toBe(2); // (1) * 2
   });
 
-  it('policy function error falls back gracefully in getOptions', async () => {
+  it('policy function error propagates through getOptions', async () => {
     const config = {
       policy: {
         temperature: () => {
@@ -489,7 +489,6 @@ describe('config pipeline integration', () => {
         },
       },
     };
-    const result = await getOptions(config, { temperature: 0.5 });
-    expect(result.temperature).toBe(0.5); // fallback
+    await expect(getOptions(config, { temperature: 0.5 })).rejects.toThrow('boom');
   });
 });

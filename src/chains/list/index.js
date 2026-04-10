@@ -9,7 +9,7 @@ import {
 import listResultSchema from './list-result.json' with { type: 'json' };
 import { nameStep } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
-import { DomainEvent } from '../../lib/progress/constants.js';
+import { DomainEvent, Outcome } from '../../lib/progress/constants.js';
 
 const name = 'list';
 
@@ -72,6 +72,7 @@ export const generateList = async function* generateListGenerator(text, config =
         {
           label: 'list-generate',
           config: runConfig,
+          abortSignal: runConfig.abortSignal,
         }
       );
 
@@ -150,6 +151,7 @@ export default async function list(prompt, config = {}) {
       {
         label: 'list-main',
         config: runConfig,
+        abortSignal: runConfig.abortSignal,
       }
     );
 
@@ -167,6 +169,7 @@ export default async function list(prompt, config = {}) {
         const transformResponse = await retry(() => callLlm(transformPrompt, runConfig), {
           label: 'list-transform',
           config: runConfig,
+          abortSignal: runConfig.abortSignal,
         });
         try {
           const transformedItem = JSON.parse(transformResponse);
@@ -177,11 +180,11 @@ export default async function list(prompt, config = {}) {
         }
         batchDone(1);
       }
-      emitter.complete({ outcome: 'success' });
+      emitter.complete({ outcome: Outcome.success });
       return transformedItems;
     }
 
-    emitter.complete({ outcome: 'success' });
+    emitter.complete({ outcome: Outcome.success });
     return items;
   } catch (err) {
     emitter.error(err);

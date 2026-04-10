@@ -35,6 +35,6 @@ const results = await centralTendency(
   - `maxAttempts` (number, default: 3): Retry attempts per batch
   - `onProgress` (function): Progress callback
   - `abortSignal` (AbortSignal): Cancellation signal
-  - `llm` (string|object): LLM configuration (default: `'fastGoodCheap'`)
+  - `llm` (string|object): LLM configuration
 
 Returns `Array<{ score, reason, confidence }>`, one per input item.

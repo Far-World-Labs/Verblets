@@ -151,8 +151,8 @@ export default class TestAnalysisReporter {
     this.reader = undefined;
     this.redis = undefined;
     this.config = undefined;
-    this.currentRunId = null;
-    this.lastEndedRunId = null;
+    this.currentRunId = undefined;
+    this.lastEndedRunId = undefined;
 
     // Stdin monitor removed - was interfering with Vitest's watch mode
 
@@ -293,12 +293,12 @@ export default class TestAnalysisReporter {
       if (this.reader?.buffer) {
         await this.reader.buffer.close();
       }
-      this.reader = null;
+      this.reader = undefined;
 
       // disconnect() matches the pattern in setup.js and global-setup.js.
       if (this.redis) {
         await this.redis.disconnect();
-        this.redis = null;
+        this.redis = undefined;
       }
     }
     // In watch mode, processors continue running for the next test run
@@ -331,7 +331,7 @@ export default class TestAnalysisReporter {
     // Reset our state for the new run
     this._stdinDebugLogged = false;
     // Clear the last ended run ID to allow the next run-end
-    this.lastEndedRunId = null;
+    this.lastEndedRunId = undefined;
   }
 
   // Helper methods

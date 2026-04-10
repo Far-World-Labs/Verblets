@@ -4,6 +4,7 @@ import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { testResultJsonSchema } from './schemas.js';
 import createProgressEmitter from '../../lib/progress/index.js';
+import { Outcome } from '../../lib/progress/constants.js';
 import { nameStep } from '../../lib/context/option.js';
 
 const name = 'test';
@@ -40,13 +41,14 @@ GUIDELINES:
       {
         label: 'test chain',
         config: runConfig,
+        abortSignal: runConfig.abortSignal,
       }
     );
 
     // With structured output, we get a validated object
     const issues = result.hasIssues ? result.issues : [];
 
-    emitter.complete({ outcome: 'success' });
+    emitter.complete({ outcome: Outcome.success });
 
     return issues;
   } catch (error) {

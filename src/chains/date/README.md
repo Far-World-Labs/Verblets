@@ -20,7 +20,7 @@ const result = await date(text);
 **Parameters:**
 - `text` (string): Text containing a date to extract
 - `config` (Object): Configuration options
-  - `rigor` (`'low'`|`'high'`): Controls validation depth. `'low'` skips expectation generation and validation — extraction only (1 LLM call). `'high'` uses more validation attempts (5) and returns `undefined` on exhaustion instead of best-effort. Default: extract + validate with 3 attempts, returning best-effort date on exhaustion
+  - `rigor` (`'low'`|`'med'`|`'high'`): Controls validation depth. `'low'` skips expectation generation and validation — extraction only (1 LLM call). `'med'` (default) extracts + validates with 3 attempts, returning best-effort date on exhaustion. `'high'` uses more validation attempts (5) and returns `undefined` on exhaustion instead of best-effort
   - `validate` (boolean): Override whether to run the validation loop
   - `maxAttempts` (number): Override maximum extraction attempts
   - `returnBestEffort` (boolean): Override whether to return best-effort date on exhaustion

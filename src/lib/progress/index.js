@@ -72,8 +72,8 @@ function send(callback, data) {
 
   try {
     callback(event);
-  } catch {
-    // Progress callbacks must not crash callers.
+  } catch (err) {
+    console.warn('[progress] callback error:', err?.message ?? err);
   }
 }
 

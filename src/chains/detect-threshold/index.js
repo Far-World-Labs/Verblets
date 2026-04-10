@@ -5,6 +5,7 @@ import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { debug } from '../../lib/debug/index.js';
 import thresholdResultSchema from './threshold-result.json' with { type: 'json' };
+import { Outcome } from '../../lib/progress/constants.js';
 import { nameStep, getOptions } from '../../lib/context/option.js';
 
 const name = 'detect-threshold';
@@ -12,9 +13,8 @@ const name = 'detect-threshold';
 export function calculateStatistics(data, targetProperty) {
   const values = data
     .map((item) => item[targetProperty])
-    //TODO:DOCS_OBSERVATIONS null check here violates project null-ban — should be undefined-only
-    .filter((v) => v !== null && v !== undefined && !isNaN(v))
-    .sort((a, b) => a - b);
+    .filter((v) => v !== undefined && !isNaN(v))
+    .toSorted((a, b) => a - b);
 
   if (values.length === 0) {
     throw new Error(`No valid numeric values found for property: ${targetProperty}`);
@@ -103,11 +103,13 @@ export default async function detectThreshold(options = {}) {
               rationale: { type: 'string' },
             },
             required: ['value', 'rationale'],
+            additionalProperties: false,
           },
         },
         distributionInsights: { type: 'array', items: { type: 'string' } },
       },
       required: ['observedPatterns', 'potentialThresholds', 'distributionInsights'],
+      additionalProperties: false,
     };
 
     // Initial accumulator with schema structure
@@ -151,6 +153,8 @@ Accumulator should track:
 
 Return the updated accumulator as valid JSON.`;
 
+    const batchDone = emitter.batch(2);
+
     // Convert enrichedData to strings for reduce - batch multiple items per line
     const ITEMS_PER_LINE = 20;
     const dataStrings = [];
@@ -166,9 +170,11 @@ Return the updated accumulator as valid JSON.`;
       batchSize,
       responseFormat: jsonSchema('analysis_accumulator', accumulatorSchema),
       onProgress: scopePhase(runConfig.onProgress, 'reduce:analysis'),
+      abortSignal: runConfig.abortSignal,
     });
 
     const accumulated = analysisResult;
+    batchDone(1);
 
     // Now use llm directly with structured output for final recommendations
     const finalPrompt = `Based on the following analysis of ${
@@ -217,6 +223,7 @@ Return threshold candidates with their rationales.`;
       {
         label: 'detect-threshold-analysis',
         config: runConfig,
+        abortSignal: runConfig.abortSignal,
       }
     );
 
@@ -234,6 +241,8 @@ Return threshold candidates with their rationales.`;
       });
     }
 
+    batchDone(1);
+
     // Add distribution analysis
     result.distributionAnalysis = {
       mean: stats.mean,
@@ -245,7 +254,7 @@ Return threshold candidates with their rationales.`;
       dataPoints: stats.count,
     };
 
-    emitter.complete({ outcome: 'success' });
+    emitter.complete({ outcome: Outcome.success });
 
     return result;
   } catch (err) {

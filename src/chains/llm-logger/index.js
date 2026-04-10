@@ -14,6 +14,7 @@ import RingBuffer from '../../lib/ring-buffer/index.js';
 import assert from '../../lib/assert/index.js';
 import { extractFileContext as extractFileContextMain } from '../../lib/logger/index.js';
 import createProgressEmitter from '../../lib/progress/index.js';
+import { Outcome } from '../../lib/progress/constants.js';
 import { nameStep } from '../../lib/context/option.js';
 
 /**
@@ -65,7 +66,7 @@ function setAtPath(obj, path, value) {
 
   for (let i = 0; i < parts.length - 1; i++) {
     const part = parts[i];
-    if (!(part in current) || typeof current[part] !== 'object' || current[part] === null) {
+    if (!(part in current) || typeof current[part] !== 'object' || current[part] == null) {
       current[part] = {};
     }
     current = current[part];
@@ -180,7 +181,7 @@ export function createLLMLogger(config = {}) {
     processors = [],
     flushInterval = 1000,
     immediateFlush = false,
-    hostLogger = null,
+    hostLogger = undefined,
   } = config;
 
   // Initialize ring buffer
@@ -190,13 +191,13 @@ export function createLLMLogger(config = {}) {
   const allLogs = [];
 
   // Host logger integration for internal logging
-  const internalLogger = hostLogger ? createHostLoggerIntegration(hostLogger) : null;
+  const internalLogger = hostLogger ? createHostLoggerIntegration(hostLogger) : undefined;
 
   // Lane buffers for batching
   const laneBuffers = new Map();
 
   lanes.forEach((lane) => {
-    assert(typeof lane.laneId !== 'undefined', 'Each lane must have an laneId property').toBe(true);
+    assert(lane.laneId !== undefined, 'Each lane must have an laneId property').toBe(true);
     laneBuffers.set(lane.laneId, []);
   });
 
@@ -359,8 +360,8 @@ export function createLLMLogger(config = {}) {
         let outputData;
 
         // Handle different data types appropriately
-        if (data === null || data === undefined) {
-          // Handle null/undefined
+        if (data == null) {
+          // Handle undefined
           outputData = {
             data,
             id: logEntry.id,
@@ -381,7 +382,7 @@ export function createLLMLogger(config = {}) {
             level,
             ...logEntry.attachments,
           };
-        } else if (typeof data === 'object' && data !== null) {
+        } else if (typeof data === 'object') {
           // Handle objects - merge properties
           outputData = {
             ...data, // Spread all original properties
@@ -445,7 +446,11 @@ export function createLLMLogger(config = {}) {
     }
   }
 
-  emitter.complete({ outcome: 'success', lanes: lanes.length, processors: processors.length });
+  emitter.complete({
+    outcome: Outcome.success,
+    lanes: lanes.length,
+    processors: processors.length,
+  });
 
   // Return enhanced logger instance
   return {

@@ -2,7 +2,7 @@ import map from '../map/index.js';
 import { CENTRAL_TENDENCY_PROMPT } from '../../verblets/central-tendency-lines/index.js';
 import { centralTendencyResultsJsonSchema } from './schemas.js';
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
-import { DomainEvent } from '../../lib/progress/constants.js';
+import { DomainEvent, Outcome } from '../../lib/progress/constants.js';
 import { jsonSchema } from '../../lib/llm/index.js';
 import { nameStep, getOptions } from '../../lib/context/option.js';
 
@@ -49,7 +49,7 @@ ${corePrompt}`;
  * @param {Object} [config={}] - Configuration options
  * @param {string} [config.context=''] - Context description for evaluation
  * @param {string[]} [config.coreFeatures=[]] - Known core/definitional features
- * @param {string|Object} [config.llm={ fast: true, good: true }] - LLM model to use
+ * @param {string|Object} [config.llm] - LLM model configuration
  * @param {number} [config.batchSize=5] - Batch size for processing
  * @param {number} [config.maxAttempts=3] - Max retry attempts for failed items
  * @returns {Promise<Array>} Array of central tendency results
@@ -85,15 +85,16 @@ export default async function centralTendency(items, seedItems, config = {}) {
       batchSize,
       responseFormat: centralTendencyResponseFormat,
       onProgress: scopePhase(runConfig.onProgress, 'map:evaluation'),
+      abortSignal: runConfig.abortSignal,
     });
 
     const resultMeta = {
       totalItems: results.length,
-      successCount: results.filter((r) => r !== undefined).length,
-      failureCount: results.filter((r) => r === undefined).length,
+      successCount: results.filter((r) => r != null).length,
+      failureCount: results.filter((r) => r == null).length,
     };
     emitter.emit({ event: DomainEvent.output, value: results });
-    emitter.complete({ outcome: 'success', ...resultMeta });
+    emitter.complete({ outcome: Outcome.success, ...resultMeta });
 
     return results;
   } catch (err) {

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ErrorPosture } from '../../lib/progress/constants.js';
 
 // Mock playwright-core
 vi.mock('playwright-core', () => {
@@ -349,7 +350,7 @@ describe('web-scrape', () => {
     };
 
     const results = await webScrape(['https://ok.com', 'https://fail.com'], step, {
-      errorPosture: 'resilient',
+      errorPosture: ErrorPosture.resilient,
     });
 
     expect(results[0].data).toBe('ok');
@@ -363,7 +364,7 @@ describe('web-scrape', () => {
     };
 
     await expect(
-      webScrape('https://example.com', step, { errorPosture: 'strict' })
+      webScrape('https://example.com', step, { errorPosture: ErrorPosture.strict })
     ).rejects.toThrow('fatal');
 
     const { chromium: pw } = await import('playwright-core');

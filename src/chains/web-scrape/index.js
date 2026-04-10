@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
-import { DomainEvent } from '../../lib/progress/constants.js';
+import { DomainEvent, Outcome, ErrorPosture } from '../../lib/progress/constants.js';
 import { createTempDir } from '../../lib/temp-files/index.js';
 import { resizeImage, tileImages, mapImageShrink } from '../../lib/image-utils/index.js';
 import { parallelBatch } from '../../lib/parallel-batch/index.js';
@@ -214,7 +214,7 @@ const webScrape = async (urls, step, config = {}) => {
     maxSteps: 50,
     tile: false,
     headless: true,
-    errorPosture: 'resilient',
+    errorPosture: ErrorPosture.resilient,
     imageShrink: withPolicy(mapImageShrink),
   });
 
@@ -286,14 +286,18 @@ const webScrape = async (urls, step, config = {}) => {
             url: entry.url,
             error: err.message,
           });
-          if (opts.errorPosture === 'strict') throw err;
+          if (opts.errorPosture === ErrorPosture.strict) throw err;
           batchDone(1);
           return { url: entry.url, data: undefined, screenshots: [], steps: 0, error: err.message };
         } finally {
           await page.close();
         }
       },
-      { maxParallel: opts.maxParallel, errorPosture: opts.errorPosture }
+      {
+        maxParallel: opts.maxParallel,
+        errorPosture: opts.errorPosture,
+        abortSignal: runConfig.abortSignal,
+      }
     );
 
     // Teardown (logout, best-effort)
@@ -312,7 +316,7 @@ const webScrape = async (urls, step, config = {}) => {
 
     const successCount = results.filter((r) => !r.error).length;
     const totalSteps = results.reduce((sum, r) => sum + r.steps, 0);
-    const outcome = successCount < urlList.length ? 'partial' : 'success';
+    const outcome = successCount < urlList.length ? Outcome.partial : Outcome.success;
     emitter.complete({ totalUrls: urlList.length, successCount, totalSteps, outcome });
 
     const output = single ? results[0] : results;

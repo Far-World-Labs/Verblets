@@ -22,28 +22,26 @@ export default (envelope) => {
     throw new Error(`LLM output [error]: ${error.message}`);
   }
 
-  let unitParsed = unitExtracted;
-  if (unitExtracted === 'undefined') {
-    unitParsed = undefined;
-  } else if (typeof unitExtracted === 'undefined') {
-    unitParsed = undefined;
-  }
+  const unitParsed =
+    unitExtracted === 'undefined' || unitExtracted == null ? undefined : unitExtracted;
 
   let valueParsed;
   if (typeof valueExtracted === 'string') {
     const valueLower = valueExtracted.toLowerCase();
-    valueParsed = +stripNumeric(valueLower);
+    if (valueLower === 'unanswerable') {
+      valueParsed = undefined;
+    } else {
+      valueParsed = +stripNumeric(valueLower);
+    }
   } else if (typeof valueExtracted === 'number') {
     valueParsed = valueExtracted;
-  } else if (valueExtracted === 'undefined') {
-    valueParsed = undefined;
-  } else if (typeof valueExtracted === 'undefined' || valueExtracted === null) {
+  } else if (valueExtracted == null) {
     valueParsed = undefined;
   } else {
     throw new Error(`LLM output [error]: ${badDatatypeError}`);
   }
 
-  if (typeof valueParsed !== 'undefined' && Number.isNaN(valueParsed)) {
+  if (valueParsed !== undefined && Number.isNaN(valueParsed)) {
     throw new Error(`LLM output [error]: ${valueNotANumberError}`);
   }
 

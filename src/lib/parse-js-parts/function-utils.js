@@ -106,9 +106,7 @@ export function listFunctions(code, minLines = 2) {
   });
 
   // Sort by line count (longest first)
-  functions.sort((a, b) => b.lineCount - a.lineCount);
-
-  return functions;
+  return functions.toSorted((a, b) => b.lineCount - a.lineCount);
 }
 
 /**
@@ -223,7 +221,7 @@ export function findCallers(code, functionName) {
     },
     CallExpression(node, ancestors) {
       // Find which function this call is inside
-      let containingFunction = null;
+      let containingFunction;
       for (let i = ancestors.length - 1; i >= 0; i--) {
         const ancestor = ancestors[i];
         if (

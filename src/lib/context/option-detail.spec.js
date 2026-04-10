@@ -46,7 +46,7 @@ describe('getOptionDetail', () => {
     expect(detail.policyReturned).toBe(undefined);
   });
 
-  it('falls back when policy throws', async () => {
+  it('propagates policy errors instead of swallowing them', async () => {
     const config = nameStep('filter', {
       policy: {
         strictness: () => {
@@ -55,11 +55,7 @@ describe('getOptionDetail', () => {
       },
     });
 
-    const { value, detail } = await getOptionDetail('strictness', config, 'med');
-
-    expect(value).toBe('med');
-    expect(detail.source).toBe('fallback');
-    expect(detail.error).toBe('provider down');
+    await expect(getOptionDetail('strictness', config, 'med')).rejects.toThrow('provider down');
   });
 
   it('passes context with operation to policy function', async () => {

@@ -1,6 +1,7 @@
 import { embedChunked } from '../../lib/embed-local/index.js';
 import { cosineSimilarity } from '../../lib/pure/index.js';
 import createProgressEmitter from '../../lib/progress/index.js';
+import { Outcome } from '../../lib/progress/constants.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 
 const name = 'probe-scan';
@@ -70,11 +71,11 @@ export default async function probeScan(textOrChunks, probes, config = {}) {
       }
     }
 
-    hits.sort((a, b) => b.score - a.score);
+    const sorted = hits.toSorted((a, b) => b.score - a.score);
 
-    emitter.complete({ outcome: 'success' });
+    emitter.complete({ outcome: Outcome.success });
 
-    return { flagged: hits.length > 0, hits };
+    return { flagged: sorted.length > 0, hits: sorted };
   } catch (err) {
     emitter.error(err);
     throw err;

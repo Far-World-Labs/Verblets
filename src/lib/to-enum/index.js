@@ -10,5 +10,5 @@ export default (value, enumValue) => {
     (key) => key.toLowerCase() === valueCleaned.toLowerCase()
   );
 
-  return foundKey || undefined;
+  return foundKey;
 };

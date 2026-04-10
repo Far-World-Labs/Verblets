@@ -3,6 +3,7 @@ import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import popReferenceSchema from './pop-reference-result.json' with { type: 'json' };
 import createProgressEmitter from '../../lib/progress/index.js';
+import { Outcome } from '../../lib/progress/constants.js';
 import { nameStep, getOptions } from '../../lib/context/option.js';
 
 const name = 'pop-reference';
@@ -84,6 +85,7 @@ Requirements:
       {
         label: 'pop-reference',
         config: runConfig,
+        abortSignal: runConfig.abortSignal,
       }
     );
 
@@ -93,7 +95,7 @@ Requirements:
       throw new Error('Expected array of references in response');
     }
 
-    emitter.complete({ outcome: 'success', references: references.length });
+    emitter.complete({ outcome: Outcome.success, references: references.length });
 
     return references;
   } catch (err) {

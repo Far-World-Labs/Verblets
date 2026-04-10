@@ -3,7 +3,7 @@ import map from './index.js';
 import { longTestTimeout } from '../../constants/common.js';
 import { getTestHelpers } from '../../chains/test-analysis/test-wrappers.js';
 
-const { it, expect } = getTestHelpers('Map chain');
+const { it, expect, aiExpect } = getTestHelpers('Map chain');
 
 describe('map examples', () => {
   it(
@@ -14,6 +14,9 @@ describe('map examples', () => {
       // e.g. result[0] === 'bark'
       //      result[2] === 'moo'
       expect(result.length).toBe(5);
+      await aiExpect(result).toSatisfy(
+        'each item is the sound the corresponding animal makes (e.g. bark, meow, moo, baa, quack)'
+      );
     },
     longTestTimeout
   );

@@ -19,6 +19,7 @@
 import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import { nameStep } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
+import { Outcome } from '../../lib/progress/constants.js';
 
 const name = 'phail-forge';
 
@@ -77,6 +78,7 @@ const enhancementSchema = {
           },
         },
         required: ['category', 'description'],
+        additionalProperties: false,
       },
       maxItems: 5,
       description: 'Key improvements made',
@@ -106,6 +108,7 @@ const enhancementSchema = {
     },
   },
   required: ['enhanced', 'improvements'],
+  additionalProperties: false,
 };
 
 const analysisSchema = {
@@ -140,6 +143,7 @@ const analysisSchema = {
     },
   },
   required: ['strengths', 'opportunities', 'suggestions'],
+  additionalProperties: false,
 };
 
 /**
@@ -193,7 +197,7 @@ export default async function phailForge(prompt, config = {}) {
       enhancedResponse.analysis = analysis;
     }
 
-    emitter.complete({ outcome: 'success' });
+    emitter.complete({ outcome: Outcome.success });
     return enhancedResponse;
   } catch (err) {
     emitter.error(err);

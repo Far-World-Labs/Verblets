@@ -5,7 +5,7 @@ import { getClient } from '../../services/redis/index.js';
 // Import helper functions for testing Redis boundary behavior
 const getInt = async (redis, key, defaultValue = 0) => {
   const value = await redis.get(key);
-  if (value === null || value === undefined) return defaultValue;
+  if (value == null) return defaultValue;
   return parseInt(value);
 };
 
@@ -529,7 +529,7 @@ conditionalDescribe('RedisRingBuffer Integration', () => {
 
         if (want.keysRemoved) {
           const sequenceAfter = await redis.get(buffer.keys.sequence);
-          expect(sequenceAfter).toBeNull();
+          expect(sequenceAfter).toBeUndefined();
         }
 
         if (want.localReadersCleared) {

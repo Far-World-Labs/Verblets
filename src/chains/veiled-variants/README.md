@@ -33,7 +33,7 @@ const variants = await veiledVariants({
 The entire input is a single config object.
 
 - `prompt` (string, required): The text to reframe
-- `coverage` (`'low'`|`'high'`): Controls strategy breadth and variant count. `'low'` runs 1 strategy producing 3 variants. `'high'` runs all 3 strategies with 8 variants each (24 total). Default: all 3 strategies with 5 each (15 total).
+- `coverage` (`'low'`|`'med'`|`'high'`): Controls strategy breadth and variant count. `'low'` runs 1 strategy producing 3 variants. `'med'` (default) runs all 3 strategies with 5 variants each (15 total). `'high'` runs all 3 strategies with 8 variants each (24 total).
 - `strategies` (Array): Override which strategies to use. Values: `'scientific'`, `'causal'`, `'softCover'`
 - `variantCount` (number): Override variants per strategy
 - `llm` (string|Object): Model selection. Defaults to `{ sensitive: true }`, requesting a privacy-capable model.

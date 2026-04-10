@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import numberWithUnits from './index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
+  jsonSchema: (name, schema) => ({ type: 'json_schema', json_schema: { name, schema } }),
   default: vi.fn().mockImplementation((text) => {
     if (/Everest/.test(text)) {
       return { value: 29029, unit: 'feet' };

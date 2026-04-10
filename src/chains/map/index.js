@@ -2,7 +2,7 @@ import listBatch, { ListStyle, determineStyle } from '../../verblets/list-batch/
 import { asXML } from '../../prompts/wrap-variable.js';
 import { createBatches, parallel, retry } from '../../lib/index.js';
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
-import { DomainEvent } from '../../lib/progress/constants.js';
+import { DomainEvent, Outcome, ErrorPosture } from '../../lib/progress/constants.js';
 import { nameStep, getOptions } from '../../lib/context/option.js';
 
 const name = 'map';
@@ -23,7 +23,7 @@ const name = 'map';
  * @returns { Promise<(string|undefined)[]> } results aligned with input order
  */
 const mapOnce = async function (list, instructions, config = {}) {
-  const { maxParallel = 3, errorPosture, onProgress } = config;
+  const { maxParallel = 3, errorPosture, onProgress, _batchDone } = config;
 
   const results = new Array(list.length);
   const batches = await createBatches(list, config);
@@ -37,10 +37,7 @@ const mapOnce = async function (list, instructions, config = {}) {
     return true;
   });
 
-  const batchDone = { count: 0 };
-  const trackBatch = (count) => {
-    batchDone.count += count;
-  };
+  const batchDone = _batchDone ?? (() => {});
 
   // Process batches in parallel using parallelBatch
   await parallel(
@@ -101,6 +98,7 @@ Preserve all formatting and newlines within each <item> element.`;
           label: 'map:batch',
           config,
           onProgress,
+          abortSignal: config?.abortSignal,
         });
 
         // listBatch now returns arrays directly
@@ -112,9 +110,11 @@ Preserve all formatting and newlines within each <item> element.`;
           results[startIndex + j] = item;
         });
 
-        trackBatch(items.length);
+        batchDone(items.length);
       } catch (error) {
-        if (errorPosture === 'strict') throw error;
+        // Abort errors always propagate — they signal system-level shutdown
+        if (error.name === 'AbortError' || config?.abortSignal?.aborted) throw error;
+        if (errorPosture === ErrorPosture.strict) throw error;
 
         // On error, mark all items in batch as undefined
         for (let j = 0; j < items.length; j += 1) {
@@ -125,6 +125,7 @@ Preserve all formatting and newlines within each <item> element.`;
     {
       maxParallel,
       errorPosture,
+      abortSignal: config?.abortSignal,
       label: 'map batches',
     }
   );
@@ -156,13 +157,15 @@ const map = async function (list, instructions, config = {}) {
     const { maxAttempts, maxParallel, errorPosture } = await getOptions(runConfig, {
       maxAttempts: 3,
       maxParallel: 3,
-      errorPosture: 'resilient',
+      errorPosture: ErrorPosture.resilient,
     });
+    const batchDone = emitter.batch(list.length);
     const results = await mapOnce(list, instructions, {
       ...runConfig,
       maxAttempts,
       maxParallel,
       errorPosture,
+      _batchDone: batchDone,
     });
 
     for (let attempt = 1; attempt < maxAttempts; attempt += 1) {
@@ -170,7 +173,7 @@ const map = async function (list, instructions, config = {}) {
       const missingItems = [];
 
       results.forEach((val, idx) => {
-        if (val === undefined) {
+        if (val == null) {
           missingIdx.push(idx);
           missingItems.push(list[idx]);
         }
@@ -192,7 +195,7 @@ const map = async function (list, instructions, config = {}) {
     // Log final results
     const successCount = results.filter((r) => r !== undefined).length;
     const failedItems = results.length - successCount;
-    const outcome = failedItems > 0 ? 'partial' : 'success';
+    const outcome = failedItems > 0 ? Outcome.partial : Outcome.success;
     const resultMeta = {
       totalItems: results.length,
       successCount,

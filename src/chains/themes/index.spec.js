@@ -25,7 +25,7 @@ describe('themes chain', () => {
     // First call receives the shuffled paragraphs as list
     const firstCallList = reduce.mock.calls[0][0];
     expect(firstCallList).toHaveLength(3);
-    expect(firstCallList.sort()).toStrictEqual(['first', 'second', 'third']);
+    expect(firstCallList.toSorted()).toStrictEqual(['first', 'second', 'third']);
   });
 
   it('passes topN to the refinement prompt', async () => {

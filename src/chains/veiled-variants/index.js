@@ -1,7 +1,9 @@
 import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
+import parallelBatch from '../../lib/parallel-batch/index.js';
 import { asXML } from '../../prompts/index.js';
 import createProgressEmitter from '../../lib/progress/index.js';
+import { Outcome, ErrorPosture } from '../../lib/progress/constants.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 
 const name = 'veiled-variants';
@@ -105,19 +107,21 @@ const veiledVariants = async (inputConfig = {}) => {
 
   try {
     const batchDone = emitter.batch(prompts.length);
-    const results = await Promise.all(
-      prompts.map((p) =>
-        retry(() => callLlm(p, { ...runConfig, response_format: responseFormat }), {
+    const results = await parallelBatch(
+      prompts,
+      async (p) => {
+        const r = await retry(() => callLlm(p, { ...runConfig, response_format: responseFormat }), {
           label: 'veiled-variants',
           config: runConfig,
-        }).then((r) => {
-          batchDone(1);
-          return r;
-        })
-      )
+          abortSignal: runConfig.abortSignal,
+        });
+        batchDone(1);
+        return r;
+      },
+      { maxParallel: 3, errorPosture: ErrorPosture.resilient, abortSignal: runConfig.abortSignal }
     );
 
-    emitter.complete({ outcome: 'success' });
+    emitter.complete({ outcome: Outcome.success });
 
     return results.flat();
   } catch (err) {

@@ -15,7 +15,7 @@ class NullRedisClient {
   }
 
   get(key) {
-    return this.store[key] ?? null;
+    return this.store[key];
   }
 
   del(keys) {
@@ -74,7 +74,7 @@ class NullRedisClient {
   }
 
   hget(key, field) {
-    return this.hashes[key]?.[field] ?? null;
+    return this.hashes[key]?.[field];
   }
 
   hgetall(key) {
@@ -170,30 +170,30 @@ class NullRedisClient {
   // Transaction support (simplified)
   multi() {
     const operations = [];
-    return {
+    const proxy = {
       set: (key, value) => {
         operations.push(['set', key, value]);
-        return this;
+        return proxy;
       },
       hset: (key, field, value) => {
         operations.push(['hset', key, field, value]);
-        return this;
+        return proxy;
       },
       lset: (key, index, value) => {
         operations.push(['lset', key, index, value]);
-        return this;
+        return proxy;
       },
       rpush: (key, ...values) => {
         operations.push(['rpush', key, ...values]);
-        return this;
+        return proxy;
       },
       lpush: (key, ...values) => {
         operations.push(['lpush', key, ...values]);
-        return this;
+        return proxy;
       },
       ltrim: (key, start, stop) => {
         operations.push(['ltrim', key, start, stop]);
-        return this;
+        return proxy;
       },
       exec: () => {
         const results = [];
@@ -207,6 +207,7 @@ class NullRedisClient {
         return Promise.resolve(results);
       },
     };
+    return proxy;
   }
 
   disconnect() {
@@ -462,33 +463,34 @@ class SafeRedisClient {
   multi() {
     try {
       const multi = this.redisClient.multi();
-      return {
+      const proxy = {
         set: (key, value) => {
           multi.set(key, value);
-          return this;
+          return proxy;
         },
         hset: (key, field, value) => {
           multi.hSet(key, field, value);
-          return this;
+          return proxy;
         },
         lset: (key, index, value) => {
           multi.lSet(key, index, value);
-          return this;
+          return proxy;
         },
         rpush: (key, ...values) => {
           multi.rPush(key, values);
-          return this;
+          return proxy;
         },
         lpush: (key, ...values) => {
           multi.lPush(key, values);
-          return this;
+          return proxy;
         },
         ltrim: (key, start, stop) => {
           multi.lTrim(key, start, stop);
-          return this;
+          return proxy;
         },
         exec: async () => await multi.exec(),
       };
+      return proxy;
     } catch (error) {
       if (this.isConnectionError(error)) {
         console.warn('Redis connection lost, falling back to in-memory cache');

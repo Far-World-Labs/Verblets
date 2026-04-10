@@ -60,7 +60,6 @@ Evaluation rules:
       type: 'json_schema',
       json_schema: {
         name: 'assertion_result',
-        strict: true,
         schema: {
           type: 'object',
           properties: {
@@ -82,14 +81,7 @@ Evaluation rules:
 /**
  * Generate advice for failed assertions
  */
-export async function generateAdvice(
-  actual,
-  expected,
-  constraint,
-  codeContext,
-  callerInfo,
-  config = {}
-) {
+export function generateAdvice(actual, expected, constraint, codeContext, callerInfo, config = {}) {
   // Build debug context if available
   let debugContext = '';
   if (codeContext) {
@@ -127,7 +119,7 @@ Provide:
 
 Keep the advice concise and actionable.`;
 
-  return await llm(prompt, {
+  return llm(prompt, {
     ...config,
     temperature: 0.3,
   });

@@ -2,11 +2,11 @@
 // AI-powered structural analysis of prompt text. Single LLM call,
 // returns proposals — nothing auto-applies.
 
-import callLlm from '../llm/index.js';
+import callLlm, { jsonSchema } from '../llm/index.js';
 import retry from '../retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import createProgressEmitter from '../progress/index.js';
-import { DomainEvent, OpEvent } from '../progress/constants.js';
+import { DomainEvent, Outcome } from '../progress/constants.js';
 import { debug } from '../debug/index.js';
 import { untrustedSystemSuffix, untrustedBoundary } from '../../prompts/prompt-piece.js';
 import { reshapeEditsSchema, reshapeDiagnosticSchema } from './schemas.js';
@@ -50,6 +50,7 @@ const createAdvisor = (label, systemPrompt, schema, buildParts) => {
       typeof systemPrompt === 'function' ? systemPrompt(input, config) : systemPrompt;
 
     const emitter = createProgressEmitter(label, onProgress);
+    emitter.start();
     emitter.emit({ event: DomainEvent.step, stepName: 'analyzing' });
 
     const parts = buildParts(input, config);
@@ -63,16 +64,15 @@ const createAdvisor = (label, systemPrompt, schema, buildParts) => {
         callLlm(effectiveParts.join('\n\n'), {
           llm,
           systemPrompt: effectiveSystemPrompt,
-          response_format: { type: 'json_schema', json_schema: resolvedSchema },
+          response_format: jsonSchema(resolvedSchema.name, resolvedSchema.schema),
+          abortSignal,
           ...rest,
         }),
       { label, maxAttempts, onProgress, abortSignal }
     );
 
     debug(`${label}: complete`);
-    emitter.progress({
-      event: OpEvent.complete,
-    });
+    emitter.complete({ outcome: Outcome.success });
 
     return response;
   };

@@ -1,6 +1,7 @@
-import callLlm from '../../lib/llm/index.js';
+import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import { nameStep } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
+import { Outcome } from '../../lib/progress/constants.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { xmlEscape } from '../../lib/functional/index.js';
 
@@ -92,7 +93,7 @@ export default async function listBatch(list, instructions, config = {}) {
   }
 
   if (!list || list.length === 0) {
-    emitter.complete({ outcome: 'success' });
+    emitter.complete({ outcome: Outcome.success });
     return [];
   }
 
@@ -101,13 +102,7 @@ export default async function listBatch(list, instructions, config = {}) {
 
     const prompt = buildPrompt(list, instructions, effectiveStyle);
 
-    const foundResponseFormat = responseFormat ?? {
-      type: 'json_schema',
-      json_schema: {
-        name: 'list_result',
-        schema: defaultListSchema,
-      },
-    };
+    const foundResponseFormat = responseFormat ?? jsonSchema('list_result', defaultListSchema);
 
     const llmModelKeys = {
       ...(maxTokens && { maxTokens }),
@@ -149,7 +144,7 @@ export default async function listBatch(list, instructions, config = {}) {
       });
     }
 
-    emitter.complete({ outcome: 'success' });
+    emitter.complete({ outcome: Outcome.success });
 
     // llm will auto-unwrap simple collections, so output is already an array
     return output;

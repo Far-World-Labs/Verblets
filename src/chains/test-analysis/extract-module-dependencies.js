@@ -1,4 +1,4 @@
-import llm from '../../lib/llm/index.js';
+import llm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { readFile } from 'fs/promises';
 import { join } from 'path';
@@ -35,13 +35,7 @@ If no dependencies are explicitly listed, return an empty array.`;
     const result = await retry(
       () =>
         llm(prompt, {
-          response_format: {
-            type: 'json_schema',
-            json_schema: {
-              name: 'module_dependencies',
-              schema,
-            },
-          },
+          response_format: jsonSchema('module_dependencies', schema),
         }),
       { maxAttempts: 2, label: 'extract module dependencies' }
     );

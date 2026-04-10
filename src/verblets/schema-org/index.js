@@ -1,8 +1,9 @@
-import callLlm from '../../lib/llm/index.js';
+import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import { asSchemaOrgText } from '../../prompts/index.js';
 import { schemaOrgSchemas } from '../../json-schemas/index.js';
 import { nameStep } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
+import { Outcome } from '../../lib/progress/constants.js';
 
 const name = 'schema-org';
 
@@ -22,20 +23,14 @@ export default async (text, type, config = {}) => {
     const schema = type ? getSchema(type) : undefined;
 
     const response_format = schema
-      ? {
-          type: 'json_schema',
-          json_schema: {
-            name: `schema_org_${type.toLowerCase()}`,
-            schema,
-          },
-        }
+      ? jsonSchema(`schema_org_${type.toLowerCase()}`, schema)
       : { type: 'json_object' };
 
     const response = await callLlm(asSchemaOrgText(text, type, schema), {
       ...runConfig,
       response_format,
     });
-    emitter.complete({ outcome: 'success' });
+    emitter.complete({ outcome: Outcome.success });
     return response;
   } catch (err) {
     emitter.error(err);

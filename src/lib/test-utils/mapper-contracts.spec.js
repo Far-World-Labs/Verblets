@@ -91,7 +91,7 @@ const enumMappers = [['mapAnchoring', mapAnchoring]];
 
 describe('object mapper contract', () => {
   it.each(objectMappers)('%s: satisfies contract', (_name, fn) => {
-    const keys = ['low', 'med', 'high'].map((l) => Object.keys(fn(l)).sort());
+    const keys = ['low', 'med', 'high'].map((l) => Object.keys(fn(l)).toSorted());
     expect(keys[0]).toEqual(keys[1]);
     expect(keys[1]).toEqual(keys[2]);
     expect(fn(undefined)).toBeDefined();

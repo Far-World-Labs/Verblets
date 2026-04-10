@@ -1,6 +1,7 @@
-import callLlm from '../../lib/llm/index.js';
+import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import { nameStep } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
+import { Outcome } from '../../lib/progress/constants.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 import { nameSchema } from './schema.js';
@@ -24,18 +25,12 @@ export default async function name(subject, config = {}) {
   try {
     const response = await callLlm(prompt, {
       ...runConfig,
-      response_format: {
-        type: 'json_schema',
-        json_schema: {
-          name: 'name_suggestion',
-          schema: nameSchema,
-        },
-      },
+      response_format: jsonSchema('name_suggestion', nameSchema),
     });
 
     const result = response === 'undefined' ? undefined : response;
 
-    emitter.complete({ outcome: 'success' });
+    emitter.complete({ outcome: Outcome.success });
 
     return result;
   } catch (err) {

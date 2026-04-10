@@ -101,6 +101,19 @@ export const TokenType = Object.freeze({
   output: 'output',
 });
 
+/** Chain outcome — normalized result status on complete events. */
+export const Outcome = Object.freeze({
+  success: 'success',
+  partial: 'partial',
+  degraded: 'degraded',
+});
+
+/** Error posture — how a batch or parallel operation handles failures. */
+export const ErrorPosture = Object.freeze({
+  strict: 'strict',
+  resilient: 'resilient',
+});
+
 /** Retry outcome attribute — discriminates attempt results. */
 export const RetryOutcome = Object.freeze({
   attempt: 'attempt',

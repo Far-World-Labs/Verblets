@@ -3,6 +3,7 @@ import { patternCandidatesJsonSchema } from './schemas.js';
 import { jsonSchema } from '../../lib/llm/index.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
+import { Outcome } from '../../lib/progress/constants.js';
 
 const name = 'detect-patterns';
 
@@ -38,7 +39,7 @@ const PATTERN_RESPONSE_FORMAT = jsonSchema(
 );
 
 function filterObject(obj, maxStringLength = 50, maxArrayLength = 10) {
-  if (typeof obj !== 'object' || obj === null) {
+  if (typeof obj !== 'object' || obj == null) {
     return obj;
   }
 
@@ -116,17 +117,17 @@ export default async function detectPatterns(objects, config = {}) {
     // Since PATTERN_RESPONSE_FORMAT is a simple collection schema,
     // and reduce should handle it properly
     if (!Array.isArray(candidateArray)) {
-      emitter.complete({ outcome: 'success' });
+      emitter.complete({ outcome: Outcome.success });
       return [];
     }
 
     const patterns = candidateArray
       .filter((item) => item.type === 'pattern' && item.count >= 2)
-      .sort((a, b) => b.count - a.count)
+      .toSorted((a, b) => b.count - a.count)
       .map((item) => item.template)
       .slice(0, topN);
 
-    emitter.complete({ outcome: 'success' });
+    emitter.complete({ outcome: Outcome.success });
 
     return patterns;
   } catch (err) {

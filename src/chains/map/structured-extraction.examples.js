@@ -5,7 +5,7 @@ import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 import { fakeTransactions } from './fake-transactions.js';
 import { transactionBatchSchema } from './transaction-batch-schema.js';
 
-const { it, expect } = getTestHelpers('Map chain - Structured Extraction');
+const { it, expect, aiExpect } = getTestHelpers('Map chain - Structured Extraction');
 
 describe('map structured extraction examples', () => {
   it(
@@ -64,6 +64,10 @@ describe('map structured extraction examples', () => {
           expect(['entertainment', 'shopping', 'other']).toContain(firstValid.category);
         }
       }
+
+      await aiExpect(validResults).toSatisfy(
+        'structured transaction objects with realistic dates, merchant names, dollar amounts, and correct category assignments'
+      );
     },
     longTestTimeout
   );
