@@ -279,6 +279,7 @@ export * as prompts from './prompts/index.js';
 export * as schemas from './json-schemas/index.js';
 export * as promptCache from './lib/prompt-cache/index.js';
 export * as promptPiece from './lib/prompt-piece/index.js';
+export * as sem from './lib/sem/index.js';
 
 import * as common from './constants/common.js';
 import * as contextConsts from './constants/context.js';

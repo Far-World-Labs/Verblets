@@ -90,9 +90,18 @@ export default function init(options = {}) {
     'scopePhase',
     'nameStep',
   ]);
+  // Namespace objects whose functions need config injection
+  const NAMESPACE_KEYS = new Set(['sem']);
+
   const wrapped = {};
   for (const [key, value] of Object.entries(shared)) {
     if (SKIP_KEYS.has(key)) continue;
+    if (NAMESPACE_KEYS.has(key) && typeof value === 'object' && value !== null) {
+      wrapped[key] = Object.fromEntries(
+        Object.entries(value).map(([k, v]) => [k, withConfig(baseConfig, v)])
+      );
+      continue;
+    }
     wrapped[key] = withConfig(baseConfig, value);
   }
 
