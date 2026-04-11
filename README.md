@@ -167,7 +167,7 @@ Retrieval utilities transform queries and prepare text for search and RAG (retri
 - [embed-step-back](./src/verblets/embed-step-back) - Broaden queries to underlying concepts and principles
 - [embed-subquestions](./src/verblets/embed-subquestions) - Split complex queries into atomic sub-questions
 - [embed-rewrite-to-output-doc](./src/verblets/embed-rewrite-to-output-doc) - Rewrite a query as if it were the answer document
-- [embed-score](./src/lib/embed-score) - Score and rank items against a query using embedding similarity
+- [embed-score](./src/chains/embed-score) - Score and rank items against a query using embedding similarity
 
 
 ### Utility Operations
@@ -202,8 +202,8 @@ Low-level utilities that support chains and verblets. Most are synchronous and m
 - [retry](./src/lib/retry) - Config-aware async retry
 - [parallel-batch](./src/lib/parallel-batch) - Parallel execution with concurrency limits
 - [ring-buffer](./src/lib/ring-buffer) - Circular buffer for running LLMs on streams of data
-- [embed-normalize-text](./src/lib/embed-normalize-text) - Normalize text (NFC, whitespace, line endings) for consistent embedding
-- [embed-neighbor-chunks](./src/lib/embed-neighbor-chunks) - Expand retrieved chunks with neighboring context
+- [embed-normalize-text](./src/lib/embed/normalize-text) - Normalize text (NFC, whitespace, line endings) for consistent embedding
+- [embed-neighbor-chunks](./src/lib/embed/neighbor-chunks) - Expand retrieved chunks with neighboring context
 - [progress](./src/lib/progress) - Progress event system: lifecycle tracking, batch progress, event emission
 
 ## Contributing

@@ -1,4 +1,4 @@
-import { embedChunked } from '../../lib/embed-local/index.js';
+import { embedChunked } from '../../lib/embed/local/index.js';
 import { cosineSimilarity } from '../../lib/pure/index.js';
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
 import { Outcome } from '../../lib/progress/constants.js';

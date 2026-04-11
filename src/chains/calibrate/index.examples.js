@@ -1,9 +1,9 @@
 import { describe } from 'vitest';
 import { calibrateSpec, applyCalibrate, createCalibratedClassifier } from './index.js';
 import probeScan from '../probe-scan/index.js';
-import embedProbes from '../../lib/embed-probes/index.js';
+import embedProbes from '../../lib/embed/probes/index.js';
 import { extendedTestTimeout } from '../../constants/common.js';
-import { isEmbedEnabled } from '../../lib/embed-local/state.js';
+import { isEmbedEnabled } from '../../lib/embed/local/state.js';
 import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 
 const { it, expect, aiExpect } = getTestHelpers('Calibrate chain');

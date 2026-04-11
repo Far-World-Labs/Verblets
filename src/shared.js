@@ -200,10 +200,10 @@ export {
   setEmbedEnabled,
   embedImage,
   embedImageBatch,
-} from './lib/embed-local/index.js';
+} from './lib/embed/local/index.js';
 
 // Embedding Collection
-export { default as embedScore } from './lib/embed-score/index.js';
+export { default as embedScore } from './chains/embed-score/index.js';
 
 // RAG Helpers
 export { default as embedRewriteQuery } from './verblets/embed-rewrite-query/index.js';
@@ -211,14 +211,14 @@ export { default as embedMultiQuery } from './verblets/embed-multi-query/index.j
 export { default as embedStepBack } from './verblets/embed-step-back/index.js';
 export { default as embedSubquestions } from './verblets/embed-subquestions/index.js';
 export { default as embedRewriteToOutputDoc } from './verblets/embed-rewrite-to-output-doc/index.js';
-export { default as embedNormalizeText } from './lib/embed-normalize-text/index.js';
+export { default as embedNormalizeText } from './lib/embed/normalize-text/index.js';
 export {
   default as embedNeighborChunks,
   buildIndex as embedBuildIndex,
   mergeRanges as embedMergeRanges,
   assembleSpan as embedAssembleSpan,
   standaloneSpan as embedStandaloneSpan,
-} from './lib/embed-neighbor-chunks/index.js';
+} from './lib/embed/neighbor-chunks/index.js';
 
 // Library Helpers (documented in README)
 export { default as combinations, rangeCombinations } from './lib/combinations/index.js';
@@ -281,7 +281,7 @@ export * as prompts from './prompts/index.js';
 export * as schemas from './json-schemas/index.js';
 export * as promptCache from './lib/prompt-cache/index.js';
 export * as promptPiece from './lib/prompt-piece/index.js';
-export * as sem from './lib/sem/index.js';
+export * as sem from './lib/embed/sem/index.js';
 
 import * as common from './constants/common.js';
 import * as contextConsts from './constants/context.js';
