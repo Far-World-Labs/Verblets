@@ -5,6 +5,7 @@ import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { debug } from '../../lib/debug/index.js';
 import thresholdResultSchema from './threshold-result.json' with { type: 'json' };
+import { Outcome } from '../../lib/progress/constants.js';
 import { nameStep, getOptions } from '../../lib/context/option.js';
 
 const name = 'detect-threshold';
@@ -12,9 +13,8 @@ const name = 'detect-threshold';
 export function calculateStatistics(data, targetProperty) {
   const values = data
     .map((item) => item[targetProperty])
-    //TODO:DOCS_OBSERVATIONS null check here violates project null-ban — should be undefined-only
-    .filter((v) => v !== null && v !== undefined && !isNaN(v))
-    .sort((a, b) => a - b);
+    .filter((v) => v !== undefined && !isNaN(v))
+    .toSorted((a, b) => a - b);
 
   if (values.length === 0) {
     throw new Error(`No valid numeric values found for property: ${targetProperty}`);
@@ -103,11 +103,13 @@ export default async function detectThreshold(options = {}) {
               rationale: { type: 'string' },
             },
             required: ['value', 'rationale'],
+            additionalProperties: false,
           },
         },
         distributionInsights: { type: 'array', items: { type: 'string' } },
       },
       required: ['observedPatterns', 'potentialThresholds', 'distributionInsights'],
+      additionalProperties: false,
     };
 
     // Initial accumulator with schema structure
@@ -212,7 +214,7 @@ Return threshold candidates with their rationales.`;
       () =>
         callLlm(finalPrompt, {
           ...runConfig,
-          response_format: jsonSchema('threshold_result', thresholdResultSchema),
+          responseFormat: jsonSchema('threshold_result', thresholdResultSchema),
         }),
       {
         label: 'detect-threshold-analysis',
@@ -245,7 +247,7 @@ Return threshold candidates with their rationales.`;
       dataPoints: stats.count,
     };
 
-    emitter.complete({ outcome: 'success' });
+    emitter.complete({ outcome: Outcome.success });
 
     return result;
   } catch (err) {

@@ -8,7 +8,7 @@ import search from '../../lib/search-js-files/index.js';
 import codeFeaturesPrompt from '../../prompts/code-features.js';
 import makeJSONSchema from '../../prompts/features-json-schema.js';
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
-import { DomainEvent } from '../../lib/progress/constants.js';
+import { DomainEvent, Outcome } from '../../lib/progress/constants.js';
 import { nameStep } from '../../lib/context/option.js';
 
 const name = 'scan-js';
@@ -63,7 +63,7 @@ const visit = async ({
     async () => {
       const resultParsed = await callLlm(visitPrompt, {
         ...config,
-        response_format: jsonSchema('code_features_analysis', schema),
+        responseFormat: jsonSchema('code_features_analysis', schema),
       });
 
       const id = `${node.filename}:::${node.functionName}`;
@@ -118,7 +118,7 @@ export default async (moduleOptions) => {
         }),
     });
 
-    emitter.complete({ outcome: 'success', nodesFound: result.nodesFound ?? 0 });
+    emitter.complete({ outcome: Outcome.success, nodesFound: result.nodesFound ?? 0 });
 
     return result;
   } catch (err) {

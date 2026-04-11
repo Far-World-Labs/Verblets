@@ -64,10 +64,10 @@ describe.skipIf(skip)('Embed verblet', () => {
         document: documents[i],
         score: cosineSimilarity(queryVec, vec),
       }));
-      scores.sort((a, b) => b.score - a.score);
+      const sorted = scores.toSorted((a, b) => b.score - a.score);
 
       // The two programming-related documents should rank in the top 2
-      const topTwoIndices = scores.slice(0, 2).map((s) => s.index);
+      const topTwoIndices = sorted.slice(0, 2).map((s) => s.index);
       expect(topTwoIndices).toContain(0); // Python
       expect(topTwoIndices).toContain(3); // JavaScript
     },

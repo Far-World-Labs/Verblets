@@ -68,7 +68,7 @@ describe('createFileOps', () => {
       await files.write('dir/a.txt', '1');
       await files.write('dir/b.txt', '2');
       const entries = await files.readdir('dir');
-      expect(entries.sort()).toEqual(['a.txt', 'b.txt']);
+      expect(entries.toSorted()).toEqual(['a.txt', 'b.txt']);
     });
   });
 
@@ -78,7 +78,7 @@ describe('createFileOps', () => {
       await files.write('src/b.js', '2');
       await files.write('src/c.txt', '3');
       const matches = await files.glob('src/*.js');
-      expect(matches.sort()).toEqual(['src/a.js', 'src/b.js']);
+      expect(matches.toSorted()).toEqual(['src/a.js', 'src/b.js']);
     });
 
     it('matches nested patterns with **', async () => {
@@ -86,7 +86,10 @@ describe('createFileOps', () => {
       await files.write('src/chains/sort/index.js', 'b');
       await files.write('src/chains/sort/schema.json', 'c');
       const matches = await files.glob('src/chains/*/index.js');
-      expect(matches.sort()).toEqual(['src/chains/filter/index.js', 'src/chains/sort/index.js']);
+      expect(matches.toSorted()).toEqual([
+        'src/chains/filter/index.js',
+        'src/chains/sort/index.js',
+      ]);
     });
   });
 

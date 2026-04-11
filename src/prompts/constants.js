@@ -1,5 +1,5 @@
 // ── Output Format ──────────────────────────────────────────────────────
-// Prefer response_format with JSON schemas for structured output.
+// Prefer responseFormat with JSON schemas for structured output.
 // These remain useful when you need lightweight format steering inside
 // free-form prompts or when appending to user-supplied instructions.
 

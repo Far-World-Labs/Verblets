@@ -36,7 +36,7 @@ The criteria describe *what kind of boundary to look for*, and the AI decides wh
 - **config.preservation** (`'low'`|`'high'`|Object): How closely the output must match the original text. `'low'` allows more deviation (0.7 short / 0.25 long thresholds). `'high'` enforces tight fidelity (0.3 / 0.05). Default: 0.5 / 0.1
 - **config.delimiter** (string): Custom delimiter string for marking split points
 - **config.maxAttempts** (number): Maximum retry attempts (default: 2)
-- **config.llm** (string|Object): LLM model configuration (default: `'fastGoodCheapCoding'`)
+- **config.llm** (string|Object): LLM model configuration (default: `{ fast: true, good: true, cheap: true }`)
 - **config.onProgress** (function): Progress callback
 - **config.abortSignal** (AbortSignal): Signal to cancel the operation
 

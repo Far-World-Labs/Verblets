@@ -61,7 +61,7 @@ describe('withInactivityTimeout', () => {
     );
 
     expect(hookCalls).toEqual([
-      { input: 'step-1', error: null },
+      { input: 'step-1', error: undefined },
       { input: 'step-2', error: expect.any(Error) },
     ]);
   });

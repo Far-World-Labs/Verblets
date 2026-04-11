@@ -3,6 +3,7 @@ import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import buildInstructions from '../../lib/build-instructions/index.js';
 import createProgressEmitter from '../../lib/progress/index.js';
+import { Outcome } from '../../lib/progress/constants.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 import relationResultSchema from './relation-result.json' with { type: 'json' };
 
@@ -251,7 +252,7 @@ Example: {"object": "42^^xsd:integer"} NOT {"object": '"42"^^xsd:integer'}`;
     () =>
       callLlm(prompt, {
         ...runConfig,
-        response_format: jsonSchema('relation_result', relationResultSchema),
+        responseFormat: jsonSchema('relation_result', relationResultSchema),
       }),
     {
       label: 'relations-apply',
@@ -291,7 +292,7 @@ export async function extractRelations(text, instructions, config = {}) {
     const result = await applyRelations(text, spec, { ...runConfig, entities });
     const items = result.items || [];
 
-    emitter.complete({ outcome: 'success' });
+    emitter.complete({ outcome: Outcome.success });
 
     return items;
   } catch (err) {
@@ -333,8 +334,8 @@ export function createRelationExtractor(specification, config = {}) {
  * @returns {Function} Relation extraction function
  */
 export default function relations(prompt, config = {}) {
-  const extractorFunction = async function (input) {
-    return await extractRelations(input, prompt, config);
+  const extractorFunction = function (input) {
+    return extractRelations(input, prompt, config);
   };
 
   Object.defineProperty(extractorFunction, 'prompt', {

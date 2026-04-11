@@ -10,7 +10,7 @@ import {
 // Redis operations as pure functions
 const getInt = async (redis, key, defaultValue = 0) => {
   const value = await redis.get(key);
-  if (value === null || value === undefined) return defaultValue;
+  if (value == null) return defaultValue;
   return parseInt(value);
 };
 
@@ -236,7 +236,7 @@ export default class RedisRingBuffer {
 
   async initialize() {
     const sequence = await this.redis.get(this.keys.sequence);
-    if (sequence !== null && sequence !== undefined) return;
+    if (sequence != null) return;
 
     // Initialize sequence to 0 so first incr() gives us 1, making first write at position 0
     await Promise.all([
@@ -345,10 +345,11 @@ export default class RedisRingBuffer {
     }
 
     return new Promise((resolve, reject) => {
-      this.pendingWrites.push({ resolve, reject, data, timeoutMs });
+      const waiter = { resolve, reject, data, timeoutMs };
+      this.pendingWrites.push(waiter);
 
       if (timeoutMs) {
-        setTimeout(() => {
+        waiter.timeoutId = setTimeout(() => {
           const index = this.pendingWrites.findIndex((w) => w.data === data);
           if (index >= 0) {
             this.pendingWrites.splice(index, 1);
@@ -446,9 +447,11 @@ export default class RedisRingBuffer {
     for (const waiter of this.pendingWrites) {
       try {
         const sequence = await this.writeData(waiter.data);
+        if (waiter.timeoutId) clearTimeout(waiter.timeoutId);
         waiter.resolve(sequence);
         processed.push(waiter);
       } catch (error) {
+        if (waiter.timeoutId) clearTimeout(waiter.timeoutId);
         waiter.reject(error);
         processed.push(waiter);
       }
@@ -543,7 +546,10 @@ export default class RedisRingBuffer {
     }
     this.pendingReads.clear();
 
-    this.pendingWrites.forEach((waiter) => waiter.reject(new Error('Ring buffer cleared')));
+    this.pendingWrites.forEach((waiter) => {
+      if (waiter.timeoutId) clearTimeout(waiter.timeoutId);
+      waiter.reject(new Error('Ring buffer cleared'));
+    });
     this.pendingWrites = [];
   }
 
@@ -572,7 +578,10 @@ export default class RedisRingBuffer {
     }
     this.pendingReads.clear();
 
-    this.pendingWrites.forEach((waiter) => waiter.reject(new Error('Ring buffer closed')));
+    this.pendingWrites.forEach((waiter) => {
+      if (waiter.timeoutId) clearTimeout(waiter.timeoutId);
+      waiter.reject(new Error('Ring buffer closed'));
+    });
     this.pendingWrites = [];
   }
 

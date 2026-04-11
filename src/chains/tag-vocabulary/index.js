@@ -3,7 +3,7 @@ import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import tagVocabularyResultSchema from './tag-vocabulary-result.json' with { type: 'json' };
 import createProgressEmitter from '../../lib/progress/index.js';
-import { DomainEvent } from '../../lib/progress/constants.js';
+import { DomainEvent, Outcome } from '../../lib/progress/constants.js';
 import { nameStep } from '../../lib/context/option.js';
 
 const name = 'tag-vocabulary';
@@ -46,7 +46,7 @@ export function computeTagStatistics(vocabulary, taggedItems, options = {}) {
       tag: vocabulary.tags.find((t) => t.id === tagId),
       count,
     }))
-    .sort((a, b) => b.count - a.count);
+    .toSorted((a, b) => b.count - a.count);
 
   // Get most and least used tags
   const mostUsed = sortedTags.slice(0, topN);
@@ -124,7 +124,7 @@ export function computeTagStatistics(vocabulary, taggedItems, options = {}) {
  * @returns {Promise<Object>} Initial tag vocabulary
  */
 async function generateInitialVocabulary(tagSystemSpec, sampleItems, config = {}) {
-  config = nameStep('tag-vocabulary:generate', config);
+  const runConfig = nameStep('tag-vocabulary:generate', config);
 
   const prompt = `Generate a comprehensive tag vocabulary for categorizing items.
 
@@ -146,12 +146,12 @@ The vocabulary should be complete enough to categorize diverse items along the i
   const response = await retry(
     () =>
       callLlm(prompt, {
-        ...config,
-        response_format: jsonSchema('tag_vocabulary_result', tagVocabularyResultSchema),
+        ...runConfig,
+        responseFormat: jsonSchema('tag_vocabulary_result', tagVocabularyResultSchema),
       }),
     {
       label: 'tag-vocabulary-initial',
-      config,
+      config: runConfig,
     }
   );
 
@@ -167,8 +167,8 @@ The vocabulary should be complete enough to categorize diverse items along the i
  * @returns {Promise<Object>} Refined tag vocabulary
  */
 async function refineVocabulary(vocabulary, taggedItems, tagSystemSpec, config = {}) {
-  config = nameStep('tag-vocabulary:refine', config);
-  const { topN = 3, bottomN = 3 } = config;
+  const runConfig = nameStep('tag-vocabulary:refine', config);
+  const { topN = 3, bottomN = 3 } = runConfig;
 
   // Compute statistics using pure function
   const analysis = computeTagStatistics(vocabulary, taggedItems, { topN, bottomN });
@@ -201,12 +201,12 @@ Return an improved vocabulary that provides better coverage and clearer distinct
   const response = await retry(
     () =>
       callLlm(prompt, {
-        ...config,
-        response_format: jsonSchema('tag_vocabulary_result', tagVocabularyResultSchema),
+        ...runConfig,
+        responseFormat: jsonSchema('tag_vocabulary_result', tagVocabularyResultSchema),
       }),
     {
       label: 'tag-vocabulary-refine',
-      config,
+      config: runConfig,
     }
   );
 
@@ -248,7 +248,7 @@ export default async function tagVocabulary(tagSystemSpec, items, config = {}) {
     emitter.emit({ event: DomainEvent.step, stepName: 'refine-vocabulary' });
     const finalVocab = await refineVocabulary(initialVocab, taggedItems, tagSystemSpec, runConfig);
 
-    emitter.complete({ outcome: 'success' });
+    emitter.complete({ outcome: Outcome.success });
 
     return finalVocab;
   } catch (err) {

@@ -63,7 +63,7 @@ Looks up a model by name, then by catalog name. Returns a `Model` instance with 
 
 ### `modelService.getRequestConfig(options)`
 
-Builds a provider-ready request object from `{ prompt, modelName, temperature, maxTokens, topP, frequencyPenalty, presencePenalty, systemPrompt, response_format, tools, toolChoice }`.
+Builds a provider-ready request object from `{ prompt, modelName, temperature, maxTokens, topP, frequencyPenalty, presencePenalty, systemPrompt, responseFormat, tools, toolChoice }`.
 
 ### `modelService.setModels(entries)`
 
@@ -79,7 +79,10 @@ modelService.setModels([
 
 ## Negotiation algorithm
 
-1. **Filter** — entries must satisfy hard constraints (`true` = must have, `false` = must not have)
-2. **Gating** — entries with gated capabilities (`sensitive`, `reasoning`) excluded unless consumer requests them
-3. **Preferred model** — if `preferred` satisfies all constraints, return it
-4. **Score** — `(prefer matches × 1000) + total capability count`; highest wins, array order breaks ties
+1. **Escape hatch** — if `preferred` is a model name, resolve it directly (no capability check)
+2. **Rule walk** — rules are walked in registration order; first match wins
+3. **Match test** — each rule's `match` object is checked against the negotiation flags: required capabilities (`true`) must be present, excluded capabilities must be absent
+4. **Gating** — gated capabilities (`sensitive`, `reasoning`) exclude a rule unless the consumer explicitly requests them and the rule addresses them
+5. **Catch-all** — a rule with no `match` conditions matches any non-gated request
+
+Rules are configured via `modelService.setRules(rules)` where each rule is `{ match: { cap: true/false }, use: 'model-name' }`.

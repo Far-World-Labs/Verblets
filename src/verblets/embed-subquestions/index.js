@@ -1,8 +1,9 @@
-import callLlm from '../../lib/llm/index.js';
+import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import { decomposeQuery as decomposeQueryPrompt } from '../../prompts/embed-query-transforms.js';
 import { embedSubquestionsSchema } from './schema.js';
-import { nameStep } from '../../lib/context/option.js';
+import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
+import { Outcome } from '../../lib/progress/constants.js';
 
 const name = 'embed-subquestions';
 
@@ -25,7 +26,7 @@ export const mapGranularity = (value) => {
       high: 'Decompose into many fine-grained sub-questions. Each sub-question should target a single specific fact, entity, or data point needed to fully answer the original query. Be thorough — prefer many narrow, precise questions over fewer broad ones.',
     }[value];
   }
-  return undefined;
+  return value;
 };
 
 /**
@@ -44,19 +45,15 @@ export default async function embedSubquestions(query, config = {}) {
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
   try {
-    const granularityGuidance = mapGranularity(runConfig.granularity);
+    const { granularity: granularityGuidance } = await getOptions(runConfig, {
+      granularity: withPolicy(mapGranularity),
+    });
 
     const result = await callLlm(decomposeQueryPrompt(query, { granularityGuidance }), {
       ...runConfig,
-      response_format: {
-        type: 'json_schema',
-        json_schema: {
-          name: 'decompose_query',
-          schema: embedSubquestionsSchema,
-        },
-      },
+      responseFormat: jsonSchema('decompose_query', embedSubquestionsSchema),
     });
-    emitter.complete({ outcome: 'success' });
+    emitter.complete({ outcome: Outcome.success });
     return result;
   } catch (err) {
     emitter.error(err);

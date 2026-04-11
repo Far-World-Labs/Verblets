@@ -5,16 +5,12 @@
     "value": {
       "oneOf": [
         { "type": "number" },
-        { "type": "string" },
-        { "type": "null" }
+        { "type": "string" }
       ],
       "description": "The numeric value extracted from the text"
     },
     "unit": {
-      "oneOf": [
-        { "type": "string" },
-        { "type": "null" }
-      ],
+      "type": "string",
       "description": "The unit of measurement, if any"
     }
   },

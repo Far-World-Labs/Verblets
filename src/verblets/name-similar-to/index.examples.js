@@ -13,5 +13,8 @@ describe('nameSimilarTo examples', () => {
       'BrewIndex',
     ]);
     expect(typeof result).toBe('string');
+    await aiExpect(result).toSatisfy(
+      'one of BeanDiary, RoastLog, or BrewIndex — whichever best matches a record of coffee tasting notes'
+    );
   });
 });

@@ -8,6 +8,7 @@ import retry from '../../lib/retry/index.js';
 import stripResponse from '../../lib/strip-response/index.js';
 import { constants as promptConstants, asXML } from '../../prompts/index.js';
 import createProgressEmitter from '../../lib/progress/index.js';
+import { Outcome } from '../../lib/progress/constants.js';
 import { nameStep } from '../../lib/context/option.js';
 
 const name = 'to-object';
@@ -25,7 +26,7 @@ class ValidationError extends Error {
 const buildJsonPrompt = function (text, schema, errors) {
   let errorsDisplay = '';
   if (errors?.length) {
-    errorsDisplay = asXML(JSON.stringify(errors) ?? '', {
+    errorsDisplay = asXML(JSON.stringify(errors), {
       tag: 'json-schema-errors--do-not-output',
     });
   }
@@ -105,7 +106,7 @@ export default async function toObject(text, schema, config = {}) {
     try {
       const directResult = parseAndValidate(text, schema);
 
-      emitter.complete({ outcome: 'success' });
+      emitter.complete({ outcome: Outcome.success });
 
       return directResult;
     } catch (error) {
@@ -116,14 +117,17 @@ export default async function toObject(text, schema, config = {}) {
     // Second attempt: use LLM to fix JSON
     try {
       const prompt = buildJsonPrompt(text, schema, errorDetails);
-      const response = await retry(() => callLlm(prompt, runConfig), {
-        label: 'to-object json fix',
-        config: runConfig,
-      });
+      const response = await retry(
+        () => callLlm(prompt, { ...runConfig, responseFormat: { type: 'json_object' } }),
+        {
+          label: 'to-object json fix',
+          config: runConfig,
+        }
+      );
 
       const result = parseAndValidate(response, schema);
 
-      emitter.complete({ outcome: 'degraded' });
+      emitter.complete({ outcome: Outcome.degraded });
 
       return result;
     } catch (error) {
@@ -133,15 +137,18 @@ export default async function toObject(text, schema, config = {}) {
 
     // Third attempt: final retry with updated errors
     const prompt = buildJsonPrompt(text, schema, errorDetails);
-    const response = await retry(() => callLlm(prompt, runConfig), {
-      label: 'to-object final retry',
-      config: runConfig,
-    });
+    const response = await retry(
+      () => callLlm(prompt, { ...runConfig, responseFormat: { type: 'json_object' } }),
+      {
+        label: 'to-object final retry',
+        config: runConfig,
+      }
+    );
 
     const result = parseAndValidate(response, schema);
     logDebugInfo(3, prompt, response, null); // Log successful attempt
 
-    emitter.complete({ outcome: 'degraded' });
+    emitter.complete({ outcome: Outcome.degraded });
 
     return result;
   } catch (err) {

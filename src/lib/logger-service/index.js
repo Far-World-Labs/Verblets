@@ -1,5 +1,5 @@
 // Global logger service
-let globalLogger = null;
+let globalLogger;
 
 /**
  * Set the global logger instance
@@ -10,15 +10,15 @@ export const setLogger = (logger) => {
 };
 
 /**
- * Reset the global logger to null
+ * Reset the global logger
  */
 export const resetLogger = () => {
-  globalLogger = null;
+  globalLogger = undefined;
 };
 
 /**
  * Get the current global logger instance
- * @returns {Object|null} Current logger instance or null if not set
+ * @returns {Object|undefined} Current logger instance or undefined if not set
  */
 export const getLogger = () => globalLogger;
 

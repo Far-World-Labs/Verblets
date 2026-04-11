@@ -11,8 +11,8 @@ function isWatchMode() {
 const config = getConfig();
 
 // Singleton Redis client shared across all test files
-let sharedRedisClient = null;
-let sharedRingBuffer = null;
+let sharedRedisClient;
+let sharedRingBuffer;
 
 // Initialize logger asynchronously to avoid blocking
 async function initializeLogger() {
@@ -57,7 +57,7 @@ async function initializeLogger() {
         // Stop internal pollers that keep the event loop alive
         sharedRingBuffer.readerPoller.stop();
         sharedRingBuffer.writerPoller.stop();
-        sharedRingBuffer = null;
+        sharedRingBuffer = undefined;
       }
       if (redis) {
         await redis.disconnect();

@@ -16,8 +16,11 @@ export const buildRequest = (apiUrl, apiKey, endpoint, requestConfig) => {
     headers.Authorization = `Bearer ${apiKey}`;
   }
 
+  // Convert camelCase responseFormat to snake_case response_format for OpenAI-compatible API
+  const { responseFormat, ...rest } = requestConfig;
   const ollamaConfig = {
-    ...requestConfig,
+    ...rest,
+    ...(responseFormat ? { response_format: responseFormat } : {}),
     think: false,
     keep_alive: '30m',
   };

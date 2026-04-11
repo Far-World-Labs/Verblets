@@ -13,7 +13,9 @@ const examples = [
 describe('sentiment', () => {
   examples.forEach(({ text, want }) => {
     it(text, async () => {
-      expect(await sentiment(text)).toBe(want);
+      const result = await sentiment(text);
+      expect(result).toBe(want);
+      await aiExpect(result).toSatisfy(`the correct sentiment (${want}) for: "${text}"`);
     });
   });
 });

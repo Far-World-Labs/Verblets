@@ -3,8 +3,8 @@ import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import buildInstructions from '../../lib/build-instructions/index.js';
 import entityResultSchema from './entity-result.json' with { type: 'json' };
-import createProgressEmitter from '../../lib/progress/index.js';
-import { DomainEvent } from '../../lib/progress/constants.js';
+import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
+import { DomainEvent, Outcome } from '../../lib/progress/constants.js';
 import { nameStep } from '../../lib/context/option.js';
 
 const name = 'entities';
@@ -44,7 +44,7 @@ export const {
  * @returns {Promise<string>} Entity specification as descriptive text
  */
 export async function entitySpec(prompt, config = {}) {
-  config = nameStep('entities:spec', config);
+  const runConfig = nameStep('entities:spec', config);
 
   const specSystemPrompt = `You are an entity specification generator. Create a clear, concise specification for entity extraction.`;
 
@@ -62,12 +62,12 @@ Keep it simple and actionable.`;
   const response = await retry(
     () =>
       callLlm(specUserPrompt, {
-        ...config,
+        ...runConfig,
         systemPrompt: specSystemPrompt,
       }),
     {
       label: 'entities-spec',
-      config,
+      config: runConfig,
     }
   );
 
@@ -82,7 +82,7 @@ Keep it simple and actionable.`;
  * @returns {Promise<Object>} Object with entities array
  */
 export async function applyEntities(text, specification, config = {}) {
-  config = nameStep('entities:apply', config);
+  const runConfig = nameStep('entities:apply', config);
 
   const prompt = `Apply the entity specification to extract entities from this text.
 
@@ -90,21 +90,21 @@ ${asXML(specification, { tag: 'entity-specification' })}
 
 ${asXML(text, { tag: 'text' })}
 
-Extract entities according to the specification.
-Return a JSON object with an "entities" array.
-Each entity should include:
-- name: The entity name
-- type: What kind of entity (if relevant)`;
+Extract entities according to the specification. Return a JSON object with an "entities" array where each element has exactly two properties:
+- "name" (string): The entity name or text as it appears in the source
+- "type" (string): The category of entity (e.g. person, company, location, date, concept)
+
+Include every entity that matches the specification. Do not add properties beyond "name" and "type".`;
 
   const response = await retry(
     () =>
       callLlm(prompt, {
-        ...config,
-        response_format: jsonSchema('entity_result', entityResultSchema),
+        ...runConfig,
+        responseFormat: jsonSchema('entity_result', entityResultSchema),
       }),
     {
       label: 'entities-apply',
-      config,
+      config: runConfig,
     }
   );
 
@@ -126,13 +126,21 @@ export async function extractEntities(text, instructions, config = {}) {
   try {
     emitter.emit({ event: DomainEvent.step, stepName: 'generating-specification', instructions });
 
-    const spec = runConfig.spec || (await entitySpec(instructions, runConfig));
+    const spec =
+      runConfig.spec ||
+      (await entitySpec(instructions, {
+        ...runConfig,
+        onProgress: scopePhase(runConfig.onProgress, 'spec'),
+      }));
 
     emitter.emit({ event: DomainEvent.step, stepName: 'extracting-entities', specification: spec });
 
-    const result = await applyEntities(text, spec, runConfig);
+    const result = await applyEntities(text, spec, {
+      ...runConfig,
+      onProgress: scopePhase(runConfig.onProgress, 'apply'),
+    });
 
-    emitter.complete({ outcome: 'success' });
+    emitter.complete({ outcome: Outcome.success });
 
     return result;
   } catch (err) {
@@ -150,17 +158,11 @@ export async function extractEntities(text, instructions, config = {}) {
  * @returns {Function} Entity extraction function with specification property
  */
 export function createEntityExtractor(specification, config = {}) {
-  const extractorFunction = async function (input) {
-    return await applyEntities(input, specification, config);
+  const extractorFunction = function (input) {
+    return applyEntities(input, specification, config);
   };
 
-  // Add specification property for introspection
-  Object.defineProperty(extractorFunction, 'specification', {
-    get() {
-      return specification;
-    },
-    enumerable: true,
-  });
+  extractorFunction.specification = specification;
 
   return extractorFunction;
 }
@@ -172,16 +174,11 @@ export function createEntityExtractor(specification, config = {}) {
  * @returns {Function} Entity extraction function
  */
 export default function entities(prompt, config = {}) {
-  const extractorFunction = async function (input) {
-    return await extractEntities(input, prompt, config);
+  const extractorFunction = function (input) {
+    return extractEntities(input, prompt, config);
   };
 
-  Object.defineProperty(extractorFunction, 'prompt', {
-    get() {
-      return prompt;
-    },
-    enumerable: true,
-  });
+  extractorFunction.prompt = prompt;
 
   return extractorFunction;
 }

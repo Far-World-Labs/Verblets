@@ -1,8 +1,9 @@
-import callLlm from '../../lib/llm/index.js';
+import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import { multiQuery as multiQueryPrompt } from '../../prompts/embed-query-transforms.js';
 import { embedMultiQuerySchema } from './schema.js';
-import { nameStep } from '../../lib/context/option.js';
+import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
+import { Outcome } from '../../lib/progress/constants.js';
 
 const name = 'embed-multi-query';
 
@@ -25,7 +26,7 @@ export const mapDivergence = (value) => {
       high: 'Maximize diversity. Include queries that approach the topic from very different angles, use contrasting terminology, and explore adjacent or tangential concepts. Each variant should retrieve documents the others would miss.',
     }[value];
   }
-  return undefined;
+  return value;
 };
 
 /**
@@ -42,20 +43,16 @@ export default async function embedMultiQuery(query, config = {}) {
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
   try {
-    const { count = 3 } = runConfig;
-    const divergenceGuidance = mapDivergence(runConfig.divergence);
+    const { divergence: divergenceGuidance, count } = await getOptions(runConfig, {
+      divergence: withPolicy(mapDivergence),
+      count: 3,
+    });
 
     const result = await callLlm(multiQueryPrompt(query, count, { divergenceGuidance }), {
       ...runConfig,
-      response_format: {
-        type: 'json_schema',
-        json_schema: {
-          name: 'multi_query',
-          schema: embedMultiQuerySchema,
-        },
-      },
+      responseFormat: jsonSchema('multi_query', embedMultiQuerySchema),
     });
-    emitter.complete({ outcome: 'success' });
+    emitter.complete({ outcome: Outcome.success });
     return result;
   } catch (err) {
     emitter.error(err);

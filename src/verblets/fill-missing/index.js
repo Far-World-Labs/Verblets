@@ -1,6 +1,7 @@
-import callLlm from '../../lib/llm/index.js';
+import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import { nameStep } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
+import { Outcome } from '../../lib/progress/constants.js';
 import { constants as promptConstants, asXML } from '../../prompts/index.js';
 import fillMissingSchema from './fill-missing-result.json' with { type: 'json' };
 
@@ -8,13 +9,7 @@ const { tryCompleteData, contentIsMain } = promptConstants;
 
 const name = 'fill-missing';
 
-const responseFormat = {
-  type: 'json_schema',
-  json_schema: {
-    name: 'fill_missing_result',
-    schema: fillMissingSchema,
-  },
-};
+const responseFormat = jsonSchema('fill_missing_result', fillMissingSchema);
 
 // ===== Option Mappers =====
 
@@ -35,7 +30,7 @@ export const mapCreativity = (value) => {
       high: 'Be speculative. Make your best educated guess for every missing value using all available context clues. Prefer a plausible candidate over "[UNKNOWN]". Assign confidence scores that honestly reflect your certainty, but always attempt a fill.',
     }[value];
   }
-  return undefined;
+  return value;
 };
 
 export const buildPrompt = (text, { creativityGuidance } = {}) =>
@@ -53,10 +48,10 @@ export default async function fillMissing(text, config = {}) {
     const prompt = buildPrompt(text, { creativityGuidance });
     const response = await callLlm(prompt, {
       ...runConfig,
-      response_format: responseFormat,
+      responseFormat,
     });
 
-    emitter.complete({ outcome: 'success' });
+    emitter.complete({ outcome: Outcome.success });
 
     return response;
   } catch (err) {

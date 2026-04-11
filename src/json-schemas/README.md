@@ -1,6 +1,6 @@
 # json-schemas
 
-Reusable JSON Schema definitions for shaping structured LLM output. These schemas are used by the `auto` verblet for function tool definitions and can be passed to any chain or verblet via `response_format`.
+Reusable JSON Schema definitions for shaping structured LLM output. These schemas are used by the `auto` verblet for function tool definitions and can be passed to any chain or verblet via `responseFormat`.
 
 ```javascript
 import { init } from '@far-world-labs/verblets';

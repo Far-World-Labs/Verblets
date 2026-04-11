@@ -4,6 +4,7 @@ import callLlm from '../../lib/llm/index.js';
 import { OptionSource } from '../../lib/progress/constants.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
+  jsonSchema: (name, schema) => ({ type: 'json_schema', json_schema: { name, schema } }),
   default: vi.fn(),
 }));
 
@@ -94,7 +95,7 @@ describe('suggest-targeting-rules', () => {
       expect(prompt).toContain('decision traces');
       expect(prompt).toContain('strictness');
       expect(prompt).toContain('Focus on defaults');
-      expect(config.response_format.json_schema.name).toBe('targeting_rules');
+      expect(config.responseFormat.json_schema.name).toBe('targeting_rules');
     });
 
     it('handles LLM returning bare array', async () => {

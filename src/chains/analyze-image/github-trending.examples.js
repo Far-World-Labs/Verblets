@@ -2,7 +2,7 @@
  * Integration test: Browse GitHub Trending, extract structured data via vision,
  * then compose with filter/sort/score chains. Exercises:
  *
- *   - analyze-image with response_format (structured JSON extraction)
+ *   - analyze-image with responseFormat (structured JSON extraction)
  *   - analyze-image with temperature control
  *   - analyze-image with systemPrompt
  *   - analyze-image with llm capability flags (fast vs good)
@@ -17,6 +17,7 @@
  * Run: source .env && npx vitest run /tmp/verblets-scratch/github-trending-vision.js --config vitest.config.examples.js
  */
 import { describe, it, expect } from 'vitest';
+import { ChainEvent, TelemetryEvent, LlmStatus } from '../../lib/progress/constants.js';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { mkdtemp } from 'node:fs/promises';
@@ -105,11 +106,11 @@ describe.skipIf(!chromium)('GitHub Trending Vision Integration', { timeout: 300_
     expect(trendingShot).toBeTruthy();
   });
 
-  // ─── Structured extraction via response_format ───────────────────────
+  // ─── Structured extraction via responseFormat ───────────────────────
 
-  it('extracts repos as structured JSON via response_format', async () => {
+  it('extracts repos as structured JSON via responseFormat', async () => {
     const before = allEvents.length;
-    console.error('\n--- Structured extraction with response_format ---');
+    console.error('\n--- Structured extraction with responseFormat ---');
 
     const imageData = await imageToBase64(trendingShot);
     const contentArray = buildVisionPrompt(
@@ -121,12 +122,12 @@ describe.skipIf(!chromium)('GitHub Trending Vision Integration', { timeout: 300_
       callLlm(contentArray, {
         onProgress,
         operation: 'extract-repos',
-        response_format: repoListSchema,
+        responseFormat: repoListSchema,
       })
     );
 
     console.error(`\n  Extracted type: ${typeof extracted}, isArray: ${Array.isArray(extracted)}`);
-    // response_format with items wrapper gets auto-unwrapped by callLlm
+    // responseFormat with items wrapper gets auto-unwrapped by callLlm
     repos = Array.isArray(extracted) ? extracted : extracted?.repos || [];
     console.error(`  Repos extracted: ${repos.length}`);
     for (const r of repos.slice(0, 5)) {
@@ -137,7 +138,7 @@ describe.skipIf(!chromium)('GitHub Trending Vision Integration', { timeout: 300_
 
     // Verify telemetry
     const newEvents = allEvents.slice(before);
-    const llmCall = newEvents.find((e) => e.event === 'llm:call');
+    const llmCall = newEvents.find((e) => e.event === TelemetryEvent.llmCall);
     expect(llmCall.operation).toBe('extract-repos/llm');
     expect(llmCall.status).toBe('success');
     expect(llmCall.tokens.total).toBeGreaterThan(0);
@@ -169,7 +170,7 @@ describe.skipIf(!chromium)('GitHub Trending Vision Integration', { timeout: 300_
     expect(hotResult).toBeTruthy();
 
     const newEvents = allEvents.slice(before);
-    const llmCalls = newEvents.filter((e) => e.event === 'llm:call');
+    const llmCalls = newEvents.filter((e) => e.event === TelemetryEvent.llmCall);
     expect(llmCalls.length).toBe(2);
     // Both should compose: temp-compare/analyze-image/llm
     expect(llmCalls[0].operation).toBe('temp-compare/analyze-image/llm');
@@ -197,7 +198,7 @@ describe.skipIf(!chromium)('GitHub Trending Vision Integration', { timeout: 300_
     expect(result.length).toBeGreaterThan(50);
 
     const newEvents = allEvents.slice(before);
-    const llmModel = newEvents.find((e) => e.event === 'llm:model');
+    const llmModel = newEvents.find((e) => e.event === TelemetryEvent.llmModel);
     expect(llmModel.operation).toBe('analyze-image/llm');
   });
 
@@ -235,7 +236,7 @@ describe.skipIf(!chromium)('GitHub Trending Vision Integration', { timeout: 300_
     console.error(`\n  Tiled comparison:\n  ${comparison.slice(0, 500)}`);
 
     const newEvents = allEvents.slice(before);
-    const complete = newEvents.find((e) => e.event === 'chain:complete');
+    const complete = newEvents.find((e) => e.event === ChainEvent.complete);
     expect(complete.imageCount).toBe(3);
     expect(complete.tiled).toBe(true);
     expect(complete.operation).toBe('repo-compare/analyze-image');
@@ -269,7 +270,7 @@ describe.skipIf(!chromium)('GitHub Trending Vision Integration', { timeout: 300_
     expect(typeof scored[0]).toBe('number');
 
     const newEvents = allEvents.slice(before);
-    const scoreStart = newEvents.find((e) => e.event === 'chain:start' && e.step === 'score');
+    const scoreStart = newEvents.find((e) => e.event === ChainEvent.start && e.step === 'score');
     expect(scoreStart.operation).toBe('pipeline/score');
   });
 
@@ -296,7 +297,7 @@ describe.skipIf(!chromium)('GitHub Trending Vision Integration', { timeout: 300_
     expect(filtered.length).toBeLessThanOrEqual(repoDescriptions.length);
 
     const newEvents = allEvents.slice(before);
-    const filterStart = newEvents.find((e) => e.event === 'chain:start' && e.step === 'filter');
+    const filterStart = newEvents.find((e) => e.event === ChainEvent.start && e.step === 'filter');
     expect(filterStart.operation).toBe('pipeline/filter');
   });
 
@@ -324,7 +325,7 @@ describe.skipIf(!chromium)('GitHub Trending Vision Integration', { timeout: 300_
     expect(sorted.length).toBe(repoDescriptions.length);
 
     const newEvents = allEvents.slice(before);
-    const sortStart = newEvents.find((e) => e.event === 'chain:start' && e.step === 'sort');
+    const sortStart = newEvents.find((e) => e.event === ChainEvent.start && e.step === 'sort');
     expect(sortStart.operation).toBe('pipeline/sort');
   });
 
@@ -366,7 +367,7 @@ describe.skipIf(!chromium)('GitHub Trending Vision Integration', { timeout: 300_
       callLlm(contentArray, {
         onProgress,
         operation: 'design-analysis',
-        response_format: colorSchema,
+        responseFormat: colorSchema,
         temperature: 0.0,
       })
     );
@@ -380,7 +381,7 @@ describe.skipIf(!chromium)('GitHub Trending Vision Integration', { timeout: 300_
     expect(palette.overall_feel).toMatch(/^(technical|playful|corporate|minimal)$/);
 
     const newEvents = allEvents.slice(before);
-    const llmCall = newEvents.find((e) => e.event === 'llm:call');
+    const llmCall = newEvents.find((e) => e.event === TelemetryEvent.llmCall);
     expect(llmCall.operation).toBe('design-analysis/llm');
   });
 
@@ -414,7 +415,9 @@ describe.skipIf(!chromium)('GitHub Trending Vision Integration', { timeout: 300_
     for (const [k, v] of Object.entries(byStep).sort()) console.error(`    ${k}: ${v}`);
 
     // Token accounting
-    const llmCalls = allEvents.filter((e) => e.event === 'llm:call' && e.status === 'success');
+    const llmCalls = allEvents.filter(
+      (e) => e.event === TelemetryEvent.llmCall && e.status === LlmStatus.success
+    );
     const totalTokens = llmCalls.reduce((s, e) => s + (e.tokens?.total || 0), 0);
     const totalInput = llmCalls.reduce((s, e) => s + (e.tokens?.input || 0), 0);
     const totalOutput = llmCalls.reduce((s, e) => s + (e.tokens?.output || 0), 0);

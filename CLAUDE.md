@@ -8,7 +8,7 @@ AI-powered functions that accept natural language instructions to transform and 
 
 ### Project-Specific Rules
 - **Never use null** - Convert to undefined at boundaries (JSON, Redis, LLM responses)
-- **Use response_format with JSON schemas** - The llm module auto-unwraps `value` and `items`
+- **Use responseFormat with JSON schemas** - The llm module auto-unwraps `value` and `items`
 - **JSON imports require `with { type: 'json' }`** - e.g. `import schema from './foo.json' with { type: 'json' };`. Required by Node 25+. Vite/vitest handle it via transform so tests pass without it, but direct node execution breaks. Enforced by ESLint `local/require-json-import-type` rule.
 - **Example tests MUST use vitest core function wrappers** - For AI analysis of test output
 - **One compelling example per README** - Show unique AI capabilities with real-world scenarios

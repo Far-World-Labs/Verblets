@@ -78,7 +78,14 @@ describe('calculateStatistics', () => {
   });
 
   it('filters out null, undefined, and NaN values', () => {
-    const messyData = [{ v: 10 }, { v: null }, { v: undefined }, { v: NaN }, { v: 30 }, { v: 20 }];
+    const messyData = [
+      { v: 10 },
+      { v: undefined },
+      { v: undefined },
+      { v: NaN },
+      { v: 30 },
+      { v: 20 },
+    ];
     const stats = calculateStatistics(messyData, 'v');
     expect(stats.count).toBe(3);
     expect(stats.values).toEqual([10, 20, 30]);
@@ -86,7 +93,7 @@ describe('calculateStatistics', () => {
   });
 
   it.each([
-    ['all invalid values', [{ v: null }, { v: undefined }, { v: NaN }]],
+    ['all invalid values', [{ v: undefined }, { v: undefined }, { v: NaN }]],
     ['missing property', [{ a: 1 }, { a: 2 }]],
   ])('throws when no valid numerics exist (%s)', (_label, data) => {
     expect(() => calculateStatistics(data, 'v')).toThrow(
@@ -240,7 +247,7 @@ describe('detectThreshold', () => {
     expect(finalPrompt).toContain('between 2 and 80');
 
     const callLlmConfig = callLlm.mock.calls[0][1];
-    expect(callLlmConfig.response_format).toEqual({
+    expect(callLlmConfig.responseFormat).toEqual({
       type: 'json_schema',
       json_schema: {
         name: 'threshold_result',

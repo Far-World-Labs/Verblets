@@ -50,7 +50,6 @@ const blocks = await extractBlocks(
 - `config` (Object): Configuration options
   - `precision` (`'low'`|`'high'`|Object): Coordinates window and overlap size for boundary detection. `'low'` uses larger windows with less overlap (200/10). `'high'` uses smaller windows with more overlap (50/30). Default: 100 window, 20 overlap
   - `maxParallel` (number): Concurrent window processing (default: 3)
-  - `maxAttempts` (number): Retry attempts per window (default: 3)
   - `llm` (string|Object): LLM model options
   - `onProgress` (Function): Progress callback
   - `abortSignal` (AbortSignal): Signal to cancel the operation

@@ -1,6 +1,8 @@
 import map from '../map/index.js';
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
+import { Outcome } from '../../lib/progress/constants.js';
 import { nameStep } from '../../lib/context/option.js';
+import { asXML } from '../../prompts/wrap-variable.js';
 
 const name = 'conversation-turn-reduce';
 
@@ -46,7 +48,7 @@ export default async function conversationTurnReduce({
     const baseContext = [
       customPrompt,
       historySnippet ? `Previous conversation:\n${historySnippet}` : '',
-      `Topic: "${topic}"`,
+      topic ? `Topic: ${asXML(topic, { tag: 'topic' })}` : '',
     ]
       .filter(Boolean)
       .join('\n\n');
@@ -68,12 +70,14 @@ ${baseContext}
 For the speaker described in the input, provide their response to the topic. The response should reflect their role, bio, and agenda if provided.`;
 
     // Generate all responses using map
+    const batchDone = emitter.batch(speakers.length);
     const result = await map(speakerDescriptions, instructions, {
       ...runConfig,
       onProgress: scopePhase(runConfig.onProgress, 'conversation-turn-reduce:map'),
     });
+    batchDone(speakers.length);
 
-    emitter.complete({ outcome: 'success', speakers: speakers.length });
+    emitter.complete({ outcome: Outcome.success, speakers: speakers.length });
     return result;
   } catch (err) {
     emitter.error(err);

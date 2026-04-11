@@ -15,10 +15,10 @@
  */
 
 import RingBuffer from '../../lib/ring-buffer/index.js';
-import callLlm from '../../lib/llm/index.js';
+import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import createProgressEmitter from '../../lib/progress/index.js';
-import { TelemetryEvent, ModelSource } from '../../lib/progress/constants.js';
+import { TelemetryEvent, ModelSource, Outcome } from '../../lib/progress/constants.js';
 import { nameStep } from '../../lib/context/option.js';
 
 const name = 'option-history-analyzer';
@@ -211,10 +211,7 @@ export default function createOptionHistoryAnalyzer(config = {}) {
         () =>
           callLlm(prompt, {
             ...runConfig,
-            response_format: {
-              type: 'json_schema',
-              json_schema: { name: 'rule_suggestions', schema: RULE_SCHEMA },
-            },
+            responseFormat: jsonSchema('rule_suggestions', RULE_SCHEMA),
           }),
         { label: 'option-history-analyzer', config: runConfig }
       );
@@ -225,7 +222,7 @@ export default function createOptionHistoryAnalyzer(config = {}) {
         onRules(rules);
       }
 
-      emitter.complete({ outcome: 'success' });
+      emitter.complete({ outcome: Outcome.success });
 
       return rules;
     } catch (err) {

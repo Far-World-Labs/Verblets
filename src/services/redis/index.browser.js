@@ -9,7 +9,7 @@ class NullRedisClient {
   }
 
   get(key) {
-    return this.store[key] ?? null;
+    return this.store[key];
   }
 
   del(keys) {
@@ -68,7 +68,7 @@ class NullRedisClient {
   }
 
   hget(key, field) {
-    return this.hashes[key]?.[field] ?? null;
+    return this.hashes[key]?.[field];
   }
 
   hgetall(key) {

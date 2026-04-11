@@ -305,7 +305,7 @@ const extractStructure = (page) =>
     return {
       headings,
       landmarks,
-      dataAttributes: [...dataAttrNames].sort().slice(0, 100),
+      dataAttributes: Array.from(dataAttrNames).toSorted().slice(0, 100),
       stylesheets: stylesheets.slice(0, 20),
       sampleClasses: classArray,
       globals,

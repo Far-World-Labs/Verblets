@@ -3,9 +3,13 @@ import setInterval from './index.js';
 
 vi.useFakeTimers();
 
-vi.mock('../../lib/llm/index.js', () => ({
-  default: vi.fn(),
-}));
+vi.mock('../../lib/llm/index.js', async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    default: vi.fn(),
+  };
+});
 vi.mock('../date/index.js', () => ({
   default: vi.fn(),
 }));

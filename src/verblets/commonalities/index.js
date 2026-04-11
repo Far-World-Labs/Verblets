@@ -1,21 +1,16 @@
-import callLlm from '../../lib/llm/index.js';
+import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 import { nameStep } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
+import { Outcome } from '../../lib/progress/constants.js';
 import commonalitiesSchema from './commonalities-result.json' with { type: 'json' };
 
 const { contentIsQuestion, tryCompleteData } = promptConstants;
 
 const name = 'commonalities';
 
-const responseFormat = {
-  type: 'json_schema',
-  json_schema: {
-    name: 'commonalities_result',
-    schema: commonalitiesSchema,
-  },
-};
+const responseFormat = jsonSchema('commonalities_result', commonalitiesSchema);
 
 // ===== Option Mappers =====
 
@@ -36,7 +31,7 @@ export const mapDepth = (value) => {
       high: 'Look beyond surface features to find deep structural patterns, functional relationships, and abstract connections. Identify shared underlying mechanisms, analogous roles, philosophical parallels, and non-obvious conceptual links. Prefer insightful, non-trivial commonalities over obvious ones.',
     }[value];
   }
-  return undefined;
+  return value;
 };
 
 export const buildPrompt = (items, { instructions, depthGuidance } = {}) => {
@@ -60,13 +55,13 @@ export default async function commonalities(items, config = {}) {
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
   if (!Array.isArray(items) || items.length === 0) {
-    emitter.complete({ outcome: 'success' });
+    emitter.complete({ outcome: Outcome.success });
     return [];
   }
 
   // Finding commonalities requires at least 2 items
   if (items.length < 2) {
-    emitter.complete({ outcome: 'success' });
+    emitter.complete({ outcome: Outcome.success });
     return [];
   }
 
@@ -74,11 +69,11 @@ export default async function commonalities(items, config = {}) {
     const depthGuidance = mapDepth(runConfig.depth);
     const output = await callLlm(buildPrompt(items, { ...runConfig, depthGuidance }), {
       ...runConfig,
-      response_format: responseFormat,
+      responseFormat,
     });
 
     const resultArray = output?.items || output;
-    emitter.complete({ outcome: 'success' });
+    emitter.complete({ outcome: Outcome.success });
     return Array.isArray(resultArray) ? resultArray.filter(Boolean) : [];
   } catch (err) {
     emitter.error(err);

@@ -1,9 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import llm from '../../lib/llm/index.js';
+import llm, { jsonSchema } from '../../lib/llm/index.js';
 import reduce from '../reduce/index.js';
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
-import { OpEvent } from '../../lib/progress/constants.js';
+import { OpEvent, Outcome } from '../../lib/progress/constants.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 
 // Configuration constants
@@ -126,13 +126,7 @@ async function processIndividualItem(
 
     const response = await llm(prompt, {
       ...runConfig,
-      response_format: {
-        type: 'json_schema',
-        json_schema: {
-          name: 'arch_result',
-          schema: resultSchema,
-        },
-      },
+      responseFormat: jsonSchema('arch_result', resultSchema),
     });
 
     return { item, ...response, error: undefined };
@@ -196,14 +190,8 @@ async function processBulkChunk(
     const prompt = buildBulkPrompt(contextText, chunk, description);
     const reduceConfig = {
       ...config,
-      responseFormat: {
-        type: 'json_schema',
-        json_schema: {
-          name: 'arch_bulk_result',
-          schema: bulkResultSchema,
-        },
-      },
-      onProgress: scopePhase(config.onProgress, 'reduce'),
+      responseFormat: jsonSchema('arch_bulk_result', bulkResultSchema),
+      onProgress: scopePhase(onProgress, 'reduce'),
     };
     const response = await reduce(chunk, prompt, reduceConfig);
 
@@ -330,7 +318,7 @@ function createProcessingStrategy(target, onChunkProcessed, itemContextFns, item
   };
 }
 
-async function processIndividualBatch(batch, contextText, config) {
+function processIndividualBatch(batch, contextText, config) {
   const batchPromises = batch.items.map((item) =>
     processIndividualItem(
       item,
@@ -341,7 +329,7 @@ async function processIndividualBatch(batch, contextText, config) {
       config.runConfig
     )
   );
-  return await Promise.all(batchPromises);
+  return Promise.all(batchPromises);
 }
 
 function processBatchByMode(batchResults, mode, config) {
@@ -648,12 +636,16 @@ class ArchExpectation {
           throw new Error(message);
         }
 
-        emitter.complete({ outcome: 'success', coverage, total: items.length });
+        emitter.complete({ outcome: Outcome.success, coverage, total: items.length });
         return { passed: coveragePassed, coverage, message };
       }
 
       const result = this.summarize(items, allResults);
-      emitter.complete({ outcome: 'success', total: items.length, passed: result.details.passed });
+      emitter.complete({
+        outcome: Outcome.success,
+        total: items.length,
+        passed: result.details.passed,
+      });
       return result;
     } catch (err) {
       emitter.error(err);

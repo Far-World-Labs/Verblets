@@ -7,7 +7,7 @@ import vitestAiExpect from '../expect/index.js';
 import { getConfig } from './config.js';
 import { extractFileContext } from '../../lib/logger/index.js';
 
-const getTestLineCount = (fn) => fn?.toString?.().split('\n').length ?? 0;
+const getTestLineCount = (fn) => fn?.toString?.().split('\n').length;
 
 const isAssertionError = (error) =>
   error.name === 'AssertionError' || error.message?.includes('expected');

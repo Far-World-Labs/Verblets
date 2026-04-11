@@ -1,6 +1,7 @@
 import callLlm from '../../lib/llm/index.js';
-import { nameStep } from '../../lib/context/option.js';
+import { nameStep, getOptions } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
+import { Outcome } from '../../lib/progress/constants.js';
 import { schemas as defaultSchemas } from '../../json-schemas/index.js';
 
 const name = 'auto';
@@ -10,11 +11,14 @@ export default async (text, config = {}) => {
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
 
-  // Use provided schemas or fall back to default schemas
-  const schemasToUse = runConfig.schemas || defaultSchemas;
+  const { schemas, defaultFunction, defaultArguments } = await getOptions(runConfig, {
+    schemas: defaultSchemas,
+    defaultFunction: undefined,
+    defaultArguments: {},
+  });
 
   // Convert JSON schemas to OpenAI function tools format
-  const tools = Object.entries(schemasToUse).map(([schemaName, schema]) => ({
+  const tools = Object.entries(schemas).map(([schemaName, schema]) => ({
     type: 'function',
     function: {
       name: schemaName,
@@ -40,11 +44,11 @@ export default async (text, config = {}) => {
     if (typeof response === 'string') {
       // No function was selected, return a no-match indicator
       result = {
-        name: runConfig.defaultFunction || null,
-        arguments: runConfig.defaultArguments || {},
+        name: defaultFunction,
+        arguments: defaultArguments,
         noMatch: true,
         reason: response,
-        functionArgsAsArray: [runConfig.defaultArguments || {}],
+        functionArgsAsArray: [defaultArguments],
       };
     } else {
       // Function was called successfully
@@ -58,7 +62,7 @@ export default async (text, config = {}) => {
       };
     }
 
-    emitter.complete({ outcome: 'success' });
+    emitter.complete({ outcome: Outcome.success });
 
     return result;
   } catch (err) {

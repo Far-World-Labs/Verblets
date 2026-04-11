@@ -2,12 +2,12 @@
 
 Transform a basic prompt into an expert-level one. Analyzes the domain, adds precise terminology and terms of art, includes quality defaults, and structures the result with clear specifications — producing the prompt you *would* have written if you were already an expert in the subject.
 
-Exported as both `phailForge` and `makePrompt`.
+Also available as a named export `phailForge`.
 
 ```javascript
-import { makePrompt } from '@far-world-labs/verblets';
+import { phailForge } from '@far-world-labs/verblets';
 
-const result = await makePrompt('write a REST API for user management');
+const result = await phailForge('write a REST API for user management');
 
 console.log(result.enhanced);
 // "Design and implement a RESTful API for user lifecycle management following
@@ -33,7 +33,7 @@ console.log(result.metadata);
 
 ## API
 
-### `phailForge(prompt, config)` / `makePrompt(prompt, config)`
+### `phailForge(prompt, config)`
 
 - `prompt` (string, required): The original prompt to enhance
 - `config` (Object):

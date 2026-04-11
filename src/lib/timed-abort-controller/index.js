@@ -23,13 +23,7 @@
  * timeoutController.clearTimeout(); // Manually clear the timeout
  */
 
-// Use the global AbortController to ensure compatibility across environments
-// In browsers, this uses the native AbortController
-// In Node.js, this uses the polyfilled AbortController
-const BaseController =
-  (typeof globalThis !== 'undefined' && globalThis.AbortController) || AbortController;
-
-export default class TimedAbortController extends BaseController {
+export default class TimedAbortController extends AbortController {
   /**
    * Creates a new TimedAbortController instance.
    *
@@ -48,9 +42,18 @@ export default class TimedAbortController extends BaseController {
   }
 
   /**
+   * Aborts the signal and clears the timeout to prevent redundant abort calls.
+   */
+  abort(reason) {
+    this.clearTimeout();
+    super.abort(reason);
+  }
+
+  /**
    * Clears the timeout, preventing the abort signal from being automatically triggered.
    */
   clearTimeout() {
     clearTimeout(this.timeoutId);
+    this.timeoutId = undefined;
   }
 }

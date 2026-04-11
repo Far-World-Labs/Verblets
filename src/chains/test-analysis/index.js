@@ -9,6 +9,7 @@
  */
 
 import createProgressEmitter from '../../lib/progress/index.js';
+import { Outcome } from '../../lib/progress/constants.js';
 import { nameStep } from '../../lib/context/option.js';
 
 export { default } from './reporter.js';
@@ -30,7 +31,7 @@ export async function runAnalysis(runFn, config = {}) {
 
   try {
     const result = await runFn(runConfig);
-    emitter.complete({ outcome: 'success' });
+    emitter.complete({ outcome: Outcome.success });
     return result;
   } catch (err) {
     emitter.error(err);

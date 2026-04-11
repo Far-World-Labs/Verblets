@@ -24,6 +24,9 @@ describe('Enum verblet', () => {
       if (example.want.result) {
         expect(result).toStrictEqual(example.want.result);
       }
+      await aiExpect(result).toSatisfy(
+        'the correct answer to the question from the given enum options'
+      );
     });
   });
 });

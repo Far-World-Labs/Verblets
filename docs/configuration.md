@@ -103,6 +103,6 @@ See [option resolution](./option-resolution.md) for the full internal API (`name
 
 ## Structured Output
 
-When a function needs structured JSON responses, it uses `response_format` internally. The `callLlm` module auto-parses responses and unwraps common patterns (`{value: x}` → `x`, `{items: [...]}` → `[...]`).
+When a function needs structured JSON responses, it uses `responseFormat` internally. The `callLlm` module auto-parses responses and unwraps common patterns (`{value: x}` → `x`, `{items: [...]}` → `[...]`).
 
 For custom structured output at the consumer level, see [to-object](../src/chains/to-object/) for JSON repair and [JSON Schema Guidelines](../.claude/guidelines/JSON_SCHEMAS.md) for schema design.

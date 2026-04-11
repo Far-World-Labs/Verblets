@@ -230,7 +230,7 @@ export const buildRequest = (apiUrl, apiKey, endpoint, requestConfig) => {
     model,
     max_tokens,
     temperature,
-    response_format,
+    responseFormat,
     tools,
     tool_choice,
     // Strip unsupported params
@@ -270,7 +270,7 @@ export const buildRequest = (apiUrl, apiKey, endpoint, requestConfig) => {
     }
   }
 
-  const responseFormatTranslated = translateResponseFormat(response_format);
+  const responseFormatTranslated = translateResponseFormat(responseFormat);
   Object.assign(body, responseFormatTranslated);
 
   const fetchOptions = {

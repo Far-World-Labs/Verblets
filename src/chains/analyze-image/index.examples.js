@@ -5,6 +5,7 @@
  * Run: source .env && npx vitest run src/chains/analyze-image/index.examples.js --config vitest.config.examples.js
  */
 import { describe, it, expect } from 'vitest';
+import { ChainEvent, TelemetryEvent } from '../../lib/progress/constants.js';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { mkdtemp } from 'node:fs/promises';
@@ -83,21 +84,21 @@ describe.skipIf(!chromium)('HN Vision Integration', { timeout: 300_000 }, () => 
     }
 
     // Chain-level events: operation = 'analyze-image'
-    const chainStart = newEvents.find((e) => e.event === 'chain:start');
+    const chainStart = newEvents.find((e) => e.event === ChainEvent.start);
     expect(chainStart.step).toBe('analyze-image');
     expect(chainStart.operation).toBe('analyze-image');
 
-    const chainComplete = newEvents.find((e) => e.event === 'chain:complete');
+    const chainComplete = newEvents.find((e) => e.event === ChainEvent.complete);
     expect(chainComplete.operation).toBe('analyze-image');
     expect(chainComplete.imageCount).toBe(1);
     expect(chainComplete.tiled).toBe(false);
 
     // LLM-level events: operation = 'analyze-image/llm' (composed!)
-    const llmModel = newEvents.find((e) => e.event === 'llm:model');
+    const llmModel = newEvents.find((e) => e.event === TelemetryEvent.llmModel);
     expect(llmModel.step).toBe('llm');
     expect(llmModel.operation).toBe('analyze-image/llm');
 
-    const llmCall = newEvents.find((e) => e.event === 'llm:call');
+    const llmCall = newEvents.find((e) => e.event === TelemetryEvent.llmCall);
     expect(llmCall.operation).toBe('analyze-image/llm');
     expect(llmCall.status).toBe('success');
     expect(llmCall.tokens).toBeDefined();
@@ -166,9 +167,9 @@ describe.skipIf(!chromium)('HN Vision Integration', { timeout: 300_000 }, () => 
 
       // Verify per-call events
       const newEvents = allEvents.slice(eventsBefore);
-      const starts = newEvents.filter((e) => e.event === 'chain:start');
-      const completes = newEvents.filter((e) => e.event === 'chain:complete');
-      const llmCalls = newEvents.filter((e) => e.event === 'llm:call');
+      const starts = newEvents.filter((e) => e.event === ChainEvent.start);
+      const completes = newEvents.filter((e) => e.event === ChainEvent.complete);
+      const llmCalls = newEvents.filter((e) => e.event === TelemetryEvent.llmCall);
       console.error(
         `  Events: ${starts.length} start, ${completes.length} complete, ${llmCalls.length} llm:call`
       );
@@ -215,12 +216,12 @@ describe.skipIf(!chromium)('HN Vision Integration', { timeout: 300_000 }, () => 
     console.error(tiledAnalysis);
 
     const newEvents = allEvents.slice(eventsBefore);
-    const complete = newEvents.find((e) => e.event === 'chain:complete');
+    const complete = newEvents.find((e) => e.event === ChainEvent.complete);
     expect(complete.imageCount).toBe(2);
     expect(complete.tiled).toBe(true);
 
     // Even in tile mode, only one LLM call
-    const llmCalls = newEvents.filter((e) => e.event === 'llm:call');
+    const llmCalls = newEvents.filter((e) => e.event === TelemetryEvent.llmCall);
     expect(llmCalls.length).toBe(1);
 
     expect(tiledAnalysis).toBeTruthy();
@@ -249,7 +250,7 @@ describe.skipIf(!chromium)('HN Vision Integration', { timeout: 300_000 }, () => 
 
     // Direct callLlm (no parent chain) — operation is just 'llm'
     const newEvents = allEvents.slice(eventsBefore);
-    const llmModel = newEvents.find((e) => e.event === 'llm:model');
+    const llmModel = newEvents.find((e) => e.event === TelemetryEvent.llmModel);
     expect(llmModel.operation).toBe('llm');
 
     expect(answer.toLowerCase()).toMatch(/orange/);
@@ -271,11 +272,11 @@ describe.skipIf(!chromium)('HN Vision Integration', { timeout: 300_000 }, () => 
     const newEvents = allEvents.slice(eventsBefore);
 
     // Chain-level: operation = 'web-scrape/analyze-image'
-    const chainStart = newEvents.find((e) => e.event === 'chain:start');
+    const chainStart = newEvents.find((e) => e.event === ChainEvent.start);
     expect(chainStart.operation).toBe('web-scrape/analyze-image');
 
     // LLM-level: operation = 'web-scrape/analyze-image/llm'
-    const llmCall = newEvents.find((e) => e.event === 'llm:call');
+    const llmCall = newEvents.find((e) => e.event === TelemetryEvent.llmCall);
     expect(llmCall.operation).toBe('web-scrape/analyze-image/llm');
 
     expect(result).toBeTruthy();
@@ -313,13 +314,13 @@ describe.skipIf(!chromium)('HN Vision Integration', { timeout: 300_000 }, () => 
 
     // Verify we have a meaningful number of events
     // 7 analyzeImage calls (5 comments + 1 front page + 1 tiled + 1 nested) + 1 direct callLlm = 8 LLM calls minimum
-    const llmCalls = allEvents.filter((e) => e.event === 'llm:call');
+    const llmCalls = allEvents.filter((e) => e.event === TelemetryEvent.llmCall);
     console.error(`\n  Total LLM calls: ${llmCalls.length}`);
     expect(llmCalls.length).toBeGreaterThanOrEqual(8);
 
     // Verify operation path hierarchy exists
     const operations = new Set(allEvents.map((e) => e.operation).filter(Boolean));
-    console.error(`  Unique operation paths: ${[...operations].sort().join(', ')}`);
+    console.error(`  Unique operation paths: ${Array.from(operations).toSorted().join(', ')}`);
     expect(operations.has('analyze-image')).toBe(true);
     expect(operations.has('analyze-image/llm')).toBe(true);
     expect(operations.has('web-scrape/analyze-image')).toBe(true);

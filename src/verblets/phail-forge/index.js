@@ -19,6 +19,7 @@
 import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import { nameStep } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
+import { Outcome } from '../../lib/progress/constants.js';
 
 const name = 'phail-forge';
 
@@ -77,6 +78,7 @@ const enhancementSchema = {
           },
         },
         required: ['category', 'description'],
+        additionalProperties: false,
       },
       maxItems: 5,
       description: 'Key improvements made',
@@ -106,6 +108,7 @@ const enhancementSchema = {
     },
   },
   required: ['enhanced', 'improvements'],
+  additionalProperties: false,
 };
 
 const analysisSchema = {
@@ -140,6 +143,7 @@ const analysisSchema = {
     },
   },
   required: ['strengths', 'opportunities', 'suggestions'],
+  additionalProperties: false,
 };
 
 /**
@@ -172,29 +176,30 @@ export default async function phailForge(prompt, config = {}) {
     // Get the enhanced prompt
     const enhancedResponse = await callLlm(fullPrompt, {
       ...runConfig,
-      response_format: jsonSchema('phail_enhancement', enhancementSchema),
+      responseFormat: jsonSchema('phail_enhancement', enhancementSchema),
     });
 
-    // Calculate expansion ratio
-    enhancedResponse.metadata = {
-      ...enhancedResponse.metadata,
-      expansionRatio: enhancedResponse.enhanced.length / prompt.length,
+    // Build result without mutating the LLM response
+    const result = {
+      ...enhancedResponse,
+      metadata: {
+        ...enhancedResponse.metadata,
+        expansionRatio: enhancedResponse.enhanced.length / prompt.length,
+      },
     };
 
     // Optionally analyze the enhancement
     if (analyze) {
       const analysisPrompt = `${ANALYSIS_PROMPT}\n\nPrompt to analyze:\n${enhancedResponse.enhanced}`;
 
-      const analysis = await callLlm(analysisPrompt, {
+      result.analysis = await callLlm(analysisPrompt, {
         ...runConfig,
-        response_format: jsonSchema('prompt_analysis', analysisSchema),
+        responseFormat: jsonSchema('prompt_analysis', analysisSchema),
       });
-
-      enhancedResponse.analysis = analysis;
     }
 
-    emitter.complete({ outcome: 'success' });
-    return enhancedResponse;
+    emitter.complete({ outcome: Outcome.success });
+    return result;
   } catch (err) {
     emitter.error(err);
     throw err;

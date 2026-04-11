@@ -63,9 +63,33 @@ export default function init(options = {}) {
 
   const baseConfig = { modelService, getRedis };
 
-  // Wrap every shared export with config injection
-  // Skip keys that shouldn't be wrapped or would collide with return properties
-  const SKIP_KEYS = new Set(['init', 'config', 'services']);
+  // Wrap every shared export with config injection.
+  // Skip keys that shouldn't be wrapped: return-property collisions, constants,
+  // and utility functions whose last plain-object arg is NOT a config.
+  const SKIP_KEYS = new Set([
+    'init',
+    'config',
+    'services',
+    // Constants / enums (non-functions, but listed for clarity)
+    'MODEL_KEYS',
+    'ListStyle',
+    'DomainEvent',
+    'OpEvent',
+    'ChainEvent',
+    'TelemetryEvent',
+    'Kind',
+    'Level',
+    'StatusCode',
+    'ModelSource',
+    'OptionSource',
+    // Utility functions where last arg is data, not config
+    'jsonSchema',
+    'isSimpleCollectionSchema',
+    'determineStyle',
+    'eventToTrace',
+    'scopePhase',
+    'nameStep',
+  ]);
   const wrapped = {};
   for (const [key, value] of Object.entries(shared)) {
     if (SKIP_KEYS.has(key)) continue;

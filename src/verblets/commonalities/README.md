@@ -1,6 +1,6 @@
 # commonalities
 
-Find common threads between multiple items using an LLM. The verblet checks every combination from pairs up to the full set. If no relationship is obvious, an empty array is returned.
+Find common threads between multiple items using a single LLM call. If no relationship is obvious, an empty array is returned. Accepts a `depth` option (`'low'`, `'med'`, `'high'`) to control analysis depth from surface-level features to abstract structural patterns.
 
 ```javascript
 import { commonalities } from '@far-world-labs/verblets';

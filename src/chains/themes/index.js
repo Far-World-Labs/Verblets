@@ -1,7 +1,7 @@
 import reduce from '../reduce/index.js';
 import shuffle from '../../lib/shuffle/index.js';
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
-import { DomainEvent } from '../../lib/progress/constants.js';
+import { DomainEvent, Outcome } from '../../lib/progress/constants.js';
 import { nameStep, getOptions } from '../../lib/context/option.js';
 
 const name = 'themes';
@@ -56,7 +56,7 @@ export default async function themes(text, config = {}) {
       .map((t) => t.trim())
       .filter(Boolean);
 
-    emitter.complete({ outcome: 'success', themes: result.length });
+    emitter.complete({ outcome: Outcome.success, themes: result.length });
 
     return result;
   } catch (err) {

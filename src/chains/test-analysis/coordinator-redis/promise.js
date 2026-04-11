@@ -107,7 +107,7 @@ export class RedisPromise {
   // Non-blocking status checks
   async isPending() {
     const data = await this.redis.get(this.key);
-    return data === null;
+    return data == null;
   }
 
   async isResolved() {

@@ -120,7 +120,7 @@ describe('Conversation', () => {
     const speakFn = makeSpeak();
     const speakers = [{ id: 'a' }, { id: 'b' }];
 
-    let historyReceived = null;
+    let historyReceived;
     const rules = {
       shouldContinue: (r) => r < 2,
       turnPolicy: (round, history) => {
@@ -133,7 +133,7 @@ describe('Conversation', () => {
     await chain.run();
 
     // History should have been passed to turn policy
-    expect(historyReceived).not.toBeNull();
+    expect(historyReceived).toBeDefined();
     expect(Array.isArray(historyReceived)).toBe(true);
   });
 

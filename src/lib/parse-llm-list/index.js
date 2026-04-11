@@ -30,8 +30,9 @@ export default function parseLLMList(
     if (Array.isArray(parsed)) {
       items.push(...parsed.filter((item) => typeof item === 'string'));
     }
-  } catch {
-    // Fallback to comma-separated parsing if JSON fails
+  } catch (err) {
+    if (!(err instanceof SyntaxError)) throw err;
+    // Fallback to comma-separated parsing if JSON parse fails
     items.push(...response.split(','));
   }
 

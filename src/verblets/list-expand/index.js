@@ -1,23 +1,14 @@
-import callLlm from '../../lib/llm/index.js';
+import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { debug } from '../../lib/debug/index.js';
 import { nameStep } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
+import { Outcome } from '../../lib/progress/constants.js';
 import listExpandSchema from './list-expand-result.json' with { type: 'json' };
 
 const name = 'list-expand';
 
-const responseFormat = {
-  type: 'json_schema',
-  json_schema: {
-    name: 'list_expand_result',
-    schema: listExpandSchema,
-  },
-};
-
-// TODO: This could potentially be refactored to use the list chain (../../chains/list/index.js)
-// for better consistency, but would require adapting the list chain to support this simpler
-// expansion use case without changing the current behavior and test expectations.
+const responseFormat = jsonSchema('list_expand_result', listExpandSchema);
 
 const buildPrompt = function (list, count) {
   const listBlock = asXML(list.join('\n'), { tag: 'list' });
@@ -45,18 +36,18 @@ export default async function listExpand(list, count = list.length * 2, config =
   try {
     const output = await callLlm(buildPrompt(list, count), {
       ...runConfig,
-      response_format: responseFormat,
+      responseFormat,
     });
 
     const items = output?.items || output;
 
     if (!Array.isArray(items)) {
       debug(`Expected items array, got: ${typeof items}`);
-      emitter.complete({ outcome: 'success' });
+      emitter.complete({ outcome: Outcome.success });
       return [];
     }
 
-    emitter.complete({ outcome: 'success' });
+    emitter.complete({ outcome: Outcome.success });
     return items;
   } catch (err) {
     emitter.error(err);

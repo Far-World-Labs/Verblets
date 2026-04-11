@@ -7,9 +7,11 @@ import { constants as promptConstants } from '../../prompts/index.js';
 import { intersectionElementsSchema } from './schemas.js';
 import intersectionResultSchema from './intersection-result.json' with { type: 'json' };
 import { debug } from '../../lib/debug/index.js';
+import parallelBatch from '../../lib/parallel-batch/index.js';
+import { parallel } from '../../lib/index.js';
 import { nameStep, getOptions } from '../../lib/context/option.js';
-import createProgressEmitter from '../../lib/progress/index.js';
-import { DomainEvent } from '../../lib/progress/constants.js';
+import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
+import { Outcome, ErrorPosture } from '../../lib/progress/constants.js';
 
 const name = 'intersections';
 
@@ -51,20 +53,25 @@ const processCombo = async (combo, instructions, config = {}) => {
   const comboKey = combo.join(' + ');
 
   // Get elements and description in parallel
-  const [elementsResponse, intersectionItems] = await Promise.all([
-    retry(
+  const [elementsResponse, intersectionItems] = await parallel(
+    [
       () =>
-        callLlm(INTERSECTION_PROMPT(combo, instructions), {
-          ...config,
-          response_format: jsonSchema('intersection_elements', intersectionElementsSchema),
-        }),
-      {
-        label: 'intersections-elements',
-        config,
-      }
-    ),
-    commonalities(combo, { ...config, instructions }),
-  ]);
+        retry(
+          () =>
+            callLlm(INTERSECTION_PROMPT(combo, instructions), {
+              ...config,
+              responseFormat: jsonSchema('intersection_elements', intersectionElementsSchema),
+            }),
+          {
+            label: 'intersections-elements',
+            config,
+          }
+        ),
+      () => commonalities(combo, { ...config, instructions }),
+    ],
+    (fn) => fn(),
+    { maxParallel: 2, abortSignal: config?.abortSignal }
+  );
 
   const elementList = parseElements(elementsResponse);
   const description = Array.isArray(intersectionItems)
@@ -112,45 +119,47 @@ export default async function intersections(items, config = {}) {
     const allCombinations = rangeCombinations(items, minSize, maxSize);
 
     if (allCombinations.length === 0) {
-      emitter.complete({ outcome: 'success', combinations: 0 });
+      emitter.complete({ outcome: Outcome.success, combinations: 0 });
       return {};
     }
 
-    // Process all combinations in batches
+    // Process all combinations in parallel batches
     const results = {};
     const batchDone = emitter.batch(allCombinations.length);
 
-    for (let i = 0; i < allCombinations.length; i += batchSize) {
-      const batch = allCombinations.slice(i, i + batchSize);
+    const batchResults = await parallelBatch(
+      allCombinations,
+      async (combo) => {
+        const result = await processCombo(combo, instructions, {
+          ...runConfig,
+          onProgress: scopePhase(runConfig.onProgress, 'combo'),
+        });
+        batchDone(1);
+        return result;
+      },
+      {
+        maxParallel: batchSize,
+        errorPosture: ErrorPosture.resilient,
+        label: 'intersections combos',
+        abortSignal: runConfig.abortSignal,
+      }
+    );
 
-      emitter.emit({
-        event: DomainEvent.step,
-        stepName: 'processing-batch',
-        batchNumber: Math.floor(i / batchSize) + 1,
-        totalBatches: Math.ceil(allCombinations.length / batchSize),
-      });
-
-      const batchResults = await Promise.all(
-        batch.map((combo) => processCombo(combo, instructions, runConfig))
-      );
-
-      // Add batch results to final results
-      for (const result of batchResults) {
+    for (const result of batchResults) {
+      if (result) {
         results[result.key] = result.intersection;
       }
-
-      batchDone(batch.length);
     }
 
     // Validate results with JSON schema if enabled
     if (useSchemaValidation && Object.keys(results).length > 0) {
       const validated = await validateIntersectionResults(results, runConfig);
       const validatedResults = validated.intersections || results;
-      emitter.complete({ outcome: 'success', combinations: allCombinations.length });
+      emitter.complete({ outcome: Outcome.success, combinations: allCombinations.length });
       return validatedResults;
     }
 
-    emitter.complete({ outcome: 'success', combinations: allCombinations.length });
+    emitter.complete({ outcome: Outcome.success, combinations: allCombinations.length });
 
     return results;
   } catch (err) {
@@ -166,7 +175,7 @@ export default async function intersections(items, config = {}) {
  */
 function createModelOptions(schemaName = 'intersection_result') {
   return {
-    response_format: jsonSchema(schemaName, intersectionResultSchema),
+    responseFormat: jsonSchema(schemaName, intersectionResultSchema),
   };
 }
 
@@ -206,7 +215,7 @@ Return the properly structured JSON object with an "intersections" property cont
     // Validate that the result is an object
     if (
       typeof resultIntersections !== 'object' ||
-      resultIntersections === null ||
+      resultIntersections == null ||
       Array.isArray(resultIntersections)
     ) {
       debug('Schema validation failed: invalid structure, returning original results');

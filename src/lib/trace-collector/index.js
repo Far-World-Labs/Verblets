@@ -11,17 +11,18 @@
  */
 
 import RingBuffer from '../ring-buffer/index.js';
+import { TelemetryEvent, ModelSource } from '../progress/constants.js';
 
 const DEFAULT_BUFFER_SIZE = 1000;
 
-const TRACE_EVENTS = new Set(['option:resolve', 'llm:model']);
+const TRACE_EVENTS = new Set([TelemetryEvent.optionResolve, TelemetryEvent.llmModel]);
 
 /**
  * Convert a telemetry event into the trace shape the collector stores.
  * Returns undefined for events that aren't trace-worthy.
  */
 export const eventToTrace = (event) => {
-  if (event.event === 'option:resolve') {
+  if (event.event === TelemetryEvent.optionResolve) {
     return {
       option: event.step,
       operation: event.operation,
@@ -32,11 +33,11 @@ export const eventToTrace = (event) => {
     };
   }
 
-  if (event.event === 'llm:model') {
+  if (event.event === TelemetryEvent.llmModel) {
     return {
       option: 'llm',
       operation: event.operation,
-      source: event.source === 'default' ? 'fallback' : event.source,
+      source: event.source === ModelSource.default ? 'fallback' : event.source,
       value: event.model,
       policyReturned: event.negotiation,
     };

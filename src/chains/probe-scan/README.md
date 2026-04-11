@@ -9,8 +9,8 @@ import { probeScan } from '@far-world-labs/verblets';
 import { embedProbes } from '@far-world-labs/verblets/lib/embed-probes/index.js';
 
 const probes = await embedProbes([
-  { category: 'pii', label: 'email address' },
-  { category: 'pii', label: 'phone number' },
+  { category: 'pii', label: 'email address', query: 'email address contact' },
+  { category: 'pii', label: 'phone number', query: 'phone number telephone' },
 ]);
 
 const result = await probeScan('Contact me at john@example.com', probes);
@@ -28,6 +28,5 @@ const result = await probeScan('Contact me at john@example.com', probes);
   - `detection` (`'low'`|`'high'`|number): Controls detection sensitivity via cosine similarity threshold. `'low'` uses a higher threshold (0.55) for fewer hits and fewer false positives. `'high'` uses a lower threshold (0.3) for more hits, catching weaker signals. Default: 0.4
   - `categories` (string[]): Only scan for these category strings
   - `maxTokens` (number): Chunk size for long texts (default: 256)
-  - `llm` (string|Object): LLM model configuration
 
 **Returns:** Promise<{ flagged: boolean, hits: Array<{ category, label, score, chunk }> }> - Hits sorted by score descending

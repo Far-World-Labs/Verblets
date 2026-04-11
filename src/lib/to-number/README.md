@@ -11,7 +11,7 @@ toNumber('42');          // => 42
 toNumber('3.14');        // => 3.14
 toNumber('$1,299.99');   // => 1299.99  (stripped by stripNumeric)
 toNumber('undefined');   // => undefined
-toNumber('abc');         // throws Error('LLM output [error]')
+toNumber('abc');         // throws Error('Expected numeric LLM output, got: "abc"')
 ```
 
 ## API

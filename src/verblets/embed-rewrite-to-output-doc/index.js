@@ -1,8 +1,9 @@
-import callLlm from '../../lib/llm/index.js';
+import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import { hydeOutputDoc } from '../../prompts/embed-query-transforms.js';
 import { schema } from './schema.js';
 import { nameStep } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
+import { Outcome } from '../../lib/progress/constants.js';
 
 const name = 'embed-rewrite-to-output-doc';
 
@@ -23,12 +24,9 @@ export default async function embedRewriteToOutputDoc(query, config = {}) {
   try {
     const result = await callLlm(hydeOutputDoc(query), {
       ...runConfig,
-      response_format: {
-        type: 'json_schema',
-        json_schema: { name: 'hyde_output_doc', schema },
-      },
+      responseFormat: jsonSchema('hyde_output_doc', schema),
     });
-    emitter.complete({ outcome: 'success' });
+    emitter.complete({ outcome: Outcome.success });
     return result;
   } catch (err) {
     emitter.error(err);

@@ -4,6 +4,7 @@ import intent from './index.js';
 import { testPromptShapingOption } from '../../lib/test-utils/index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
+  jsonSchema: (name, schema) => ({ type: 'json_schema', json_schema: { name, schema } }),
   default: vi.fn().mockImplementation((text) => {
     if (/a flight to/.test(text)) {
       return {

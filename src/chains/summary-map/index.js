@@ -4,6 +4,7 @@ import shortenText from '../../lib/shorten-text/index.js';
 import { summarize as basicSummarize, tokenBudget } from '../../prompts/index.js';
 import modelService from '../../services/llm-model/index.js';
 import createProgressEmitter from '../../lib/progress/index.js';
+import { Outcome } from '../../lib/progress/constants.js';
 import { nameStep } from '../../lib/context/option.js';
 
 const summarize = ({ budget, type, value, fixes = [], llmOptions, sensitivity }) => {
@@ -164,7 +165,7 @@ export default class SummaryMap extends Map {
       }
 
       this.isCacheValid = true;
-      emitter.complete({ outcome: 'success', entries: budgets.length });
+      emitter.complete({ outcome: Outcome.success, entries: budgets.length });
     } catch (err) {
       emitter.error(err);
       throw err;
@@ -203,11 +204,7 @@ export default class SummaryMap extends Map {
     }
 
     if (!this.isCacheValid) {
-      return this.myFillCache()
-        .then(() => this.cache.get(key))
-        .catch((error) => {
-          return Promise.reject(error);
-        });
+      return this.myFillCache().then(() => this.cache.get(key));
     }
 
     return Promise.resolve(this.getStale(key));
@@ -219,11 +216,7 @@ export default class SummaryMap extends Map {
 
   values() {
     if (!this.isCacheValid) {
-      return this.myFillCache()
-        .then(() => this.cache.values())
-        .catch((error) => {
-          return Promise.reject(error);
-        });
+      return this.myFillCache().then(() => this.cache.values());
     }
     return Promise.resolve(this.valuesStale());
   }
@@ -234,11 +227,7 @@ export default class SummaryMap extends Map {
 
   entries() {
     if (!this.isCacheValid) {
-      return this.myFillCache()
-        .then(() => this.cache.entries())
-        .catch((error) => {
-          return Promise.reject(error);
-        });
+      return this.myFillCache().then(() => this.cache.entries());
     }
     return Promise.resolve(this.entriesStale());
   }
@@ -249,11 +238,7 @@ export default class SummaryMap extends Map {
 
   pavedSummaryResult() {
     if (!this.isCacheValid) {
-      return this.myFillCache()
-        .then(() => this.pavedSummaryResultStale())
-        .catch((error) => {
-          return Promise.reject(error);
-        });
+      return this.myFillCache().then(() => this.pavedSummaryResultStale());
     }
     return Promise.resolve(this.pavedSummaryResultStale());
   }

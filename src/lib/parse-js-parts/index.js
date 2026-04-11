@@ -135,7 +135,7 @@ const scanFile = (file, code) => {
               importsMap[importKey] = {
                 start: expNode.start,
                 end: expNode.end,
-                declaration: null,
+                declaration: undefined,
                 specifiers: [],
                 source,
               };

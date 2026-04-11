@@ -2,9 +2,8 @@ import listBatch, { ListStyle, determineStyle } from '../../verblets/list-batch/
 import reduce from '../reduce/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
-import { OpEvent, DomainEvent } from '../../lib/progress/constants.js';
+import { DomainEvent, Outcome, ErrorPosture } from '../../lib/progress/constants.js';
 import { parallel, retry, createBatches } from '../../lib/index.js';
-import { debug } from '../../lib/debug/index.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 
 const name = 'group';
@@ -111,7 +110,7 @@ const assignItemsToGroups = (batchResults) => {
 
 const applyTopNFilter = (groups, topN) => {
   const sortedEntries = Object.entries(groups)
-    .sort(([, a], [, b]) => b.length - a.length)
+    .toSorted(([, a], [, b]) => b.length - a.length)
     .slice(0, topN);
   return Object.fromEntries(sortedEntries);
 };
@@ -128,7 +127,7 @@ export default async function group(list, instructions, config = {}) {
   } = await getOptions(runConfig, {
     granularity: withPolicy(mapGranularity, ['guidance', 'topN']),
     maxParallel: 3,
-    errorPosture: 'resilient',
+    errorPosture: ErrorPosture.resilient,
   });
   const { categoryPrompt, listStyle, autoModeThreshold, now } = runConfig;
   // Phase 1: Category Discovery - reduce pass to build taxonomy
@@ -168,12 +167,7 @@ export default async function group(list, instructions, config = {}) {
 
   const allBatches = await createBatches(list, runConfig);
   const batchesToProcess = allBatches;
-  let processedItems = 0;
-  emitter.progress({
-    event: OpEvent.start,
-    totalItems: list.length,
-    totalBatches: batchesToProcess.length,
-  });
+  const batchDone = emitter.batch(list.length);
 
   // Process batches in parallel using parallelBatch
   await parallel(
@@ -197,7 +191,7 @@ export default async function group(list, instructions, config = {}) {
           {
             label: 'group:batch',
             config: runConfig,
-            onProgress: runConfig.onProgress,
+            onProgress: scopePhase(runConfig.onProgress, 'assign'),
           }
         );
 
@@ -208,43 +202,28 @@ export default async function group(list, instructions, config = {}) {
           batchResults.push({ items, labels, startIndex });
         }
 
-        processedItems += items.length;
-        emitter.progress({
-          event: OpEvent.batchComplete,
-          totalItems: list.length,
-          processedItems,
-          batchSize: items.length,
-        });
+        batchDone(items.length);
       } catch (error) {
         emitter.error(error, { startIndex, itemCount: items.length });
-        if (errorPosture === 'strict') throw error;
-        debug(`group batch at index ${startIndex} failed, using fallback labels: ${error.message}`);
-        const fallbackLabels = new Array(items.length).fill('other');
-        batchResults.push({ items, labels: fallbackLabels, startIndex });
+        throw error;
       }
     },
     {
       maxParallel,
       errorPosture,
       label: 'group assignment batches',
+      abortSignal: runConfig.abortSignal,
     }
   );
 
   // Final grouping
-  batchResults.sort((a, b) => a.startIndex - b.startIndex);
-  const groups = assignItemsToGroups(batchResults);
-
-  emitter.progress({
-    event: OpEvent.complete,
-    totalItems: list.length,
-    processedItems,
-    categoryCount: categories.length,
-  });
+  const sorted = batchResults.toSorted((a, b) => a.startIndex - b.startIndex);
+  const groups = assignItemsToGroups(sorted);
 
   const result = topN ? applyTopNFilter(groups, topN) : groups;
 
   const groupCount = Object.keys(result).length;
-  emitter.complete({ groupCount, outcome: 'success' });
+  emitter.complete({ groupCount, outcome: Outcome.success });
 
   return result;
 }

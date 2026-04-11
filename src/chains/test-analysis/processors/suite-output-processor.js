@@ -24,7 +24,7 @@ export class SuiteOutputProcessor extends BaseProcessor {
     // Track suites and their test counts
     this.suites = new Map(); // suite -> { started: Set, completed: Set, debounceTimer }
     this.outputSuites = new Set();
-    this.currentRunId = null;
+    this.currentRunId = undefined;
     this.DEBOUNCE_MS = 500; // Wait 500ms after last test event to ensure all events arrive
   }
 
@@ -45,7 +45,7 @@ export class SuiteOutputProcessor extends BaseProcessor {
       this.suites.set(log.suite, {
         started: new Set(),
         completed: new Set(),
-        debounceTimer: null,
+        debounceTimer: undefined,
       });
     }
 
@@ -83,7 +83,7 @@ export class SuiteOutputProcessor extends BaseProcessor {
       this.suites.set(log.suite, {
         started: new Set(),
         completed: new Set(),
-        debounceTimer: null,
+        debounceTimer: undefined,
       });
     }
 
@@ -106,7 +106,7 @@ export class SuiteOutputProcessor extends BaseProcessor {
     // Clear existing timer
     if (suite.debounceTimer) {
       clearTimeout(suite.debounceTimer);
-      suite.debounceTimer = null;
+      suite.debounceTimer = undefined;
     }
   }
 

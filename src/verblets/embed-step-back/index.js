@@ -1,8 +1,9 @@
-import callLlm from '../../lib/llm/index.js';
+import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import { stepBack as stepBackPrompt } from '../../prompts/embed-query-transforms.js';
 import { embedStepBackSchema } from './schema.js';
-import { nameStep } from '../../lib/context/option.js';
+import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
+import { Outcome } from '../../lib/progress/constants.js';
 
 const name = 'embed-step-back';
 
@@ -25,7 +26,7 @@ export const mapAbstraction = (value) => {
       high: 'Step back to foundational principles and theories. Generate questions about the underlying mechanisms, first principles, or cross-domain analogies that explain why the specific topic works the way it does. Prefer theoretical depth over topical proximity.',
     }[value];
   }
-  return undefined;
+  return value;
 };
 
 /**
@@ -45,20 +46,16 @@ export default async function embedStepBack(query, config = {}) {
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
   try {
-    const { count = 3 } = runConfig;
-    const abstractionGuidance = mapAbstraction(runConfig.abstraction);
+    const { abstraction: abstractionGuidance, count } = await getOptions(runConfig, {
+      abstraction: withPolicy(mapAbstraction),
+      count: 3,
+    });
 
     const result = await callLlm(stepBackPrompt(query, count, { abstractionGuidance }), {
       ...runConfig,
-      response_format: {
-        type: 'json_schema',
-        json_schema: {
-          name: 'step_back',
-          schema: embedStepBackSchema,
-        },
-      },
+      responseFormat: jsonSchema('step_back', embedStepBackSchema),
     });
-    emitter.complete({ outcome: 'success' });
+    emitter.complete({ outcome: Outcome.success });
     return result;
   } catch (err) {
     emitter.error(err);

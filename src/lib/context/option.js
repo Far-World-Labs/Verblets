@@ -47,12 +47,8 @@ export function nameStep(step, config) {
 export async function getOption(name, config, fallback) {
   const fn = config.policy?.[name];
   if (typeof fn === 'function') {
-    try {
-      const context = { operation: config.operation };
-      return (await fn(context, { logger: config.logger })) ?? fallback;
-    } catch {
-      return fallback;
-    }
+    const context = { operation: config.operation };
+    return (await fn(context, { logger: config.logger })) ?? fallback;
   }
 
   return config[name] ?? fallback;
@@ -79,18 +75,12 @@ export async function getOptionDetail(name, config, fallback) {
 
   const fn = config.policy?.[name];
   if (typeof fn === 'function') {
-    try {
-      const context = { operation: config.operation };
-      const raw = await fn(context, { logger: config.logger });
-      const value = raw ?? fallback;
-      detail.source = OptionSource.policy;
-      detail.value = value;
-      detail.policyReturned = raw;
-    } catch (err) {
-      detail.source = OptionSource.fallback;
-      detail.value = fallback;
-      detail.error = err?.message;
-    }
+    const context = { operation: config.operation };
+    const raw = await fn(context, { logger: config.logger });
+    const value = raw ?? fallback;
+    detail.source = OptionSource.policy;
+    detail.value = value;
+    detail.policyReturned = raw;
   } else if (config[name] !== undefined) {
     detail.source = OptionSource.config;
     detail.value = config[name];

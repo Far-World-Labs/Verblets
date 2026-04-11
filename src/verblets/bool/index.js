@@ -1,8 +1,8 @@
-import callLlm from '../../lib/llm/index.js';
+import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 import { nameStep } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
-import { DomainEvent } from '../../lib/progress/constants.js';
+import { DomainEvent, Outcome } from '../../lib/progress/constants.js';
 import { booleanSchema } from './schema.js';
 
 const name = 'bool';
@@ -26,20 +26,14 @@ The value should be "true", "false", or "undefined".`;
     const response = await callLlm(text, {
       ...runConfig,
       systemPrompt,
-      response_format: {
-        type: 'json_schema',
-        json_schema: {
-          name: 'boolean_evaluation',
-          schema: booleanSchema,
-        },
-      },
+      responseFormat: jsonSchema('boolean_evaluation', booleanSchema),
     });
 
     // Interpret response
     const interpreted = response === 'true' ? true : response === 'false' ? false : undefined;
 
     emitter.emit({ event: DomainEvent.output, value: interpreted });
-    emitter.complete({ outcome: 'success' });
+    emitter.complete({ outcome: Outcome.success });
 
     return interpreted;
   } catch (err) {

@@ -11,7 +11,7 @@ const normalizeUrl = (raw) => {
   const url = new URL(raw);
   url.hash = '';
   // Sort query params for consistent dedup
-  const params = [...url.searchParams.entries()].sort(([a], [b]) => a.localeCompare(b));
+  const params = Array.from(url.searchParams.entries()).toSorted(([a], [b]) => a.localeCompare(b));
   url.search = new URLSearchParams(params).toString();
   // Strip trailing slash except for root
   const normalized = url.toString();
@@ -107,16 +107,16 @@ const createFrontier = (startUrl, opts = {}) => {
    * Mark URLs as skipped (e.g. by LLM gate).
    */
   const skip = (urls, reason) => {
+    const skippedNorm = new Set();
     for (const url of urls) {
       const normalized = normalizeUrl(url);
       skipped.set(normalized, reason);
+      skippedNorm.add(normalized);
     }
     // Remove skipped from pending
-    const skippedNorm = new Set(urls.map(normalizeUrl));
     const before = pending.length;
     const filtered = pending.filter((e) => !skippedNorm.has(e.normalized));
-    pending.length = 0;
-    pending.push(...filtered);
+    pending.splice(0, pending.length, ...filtered);
     return before - filtered.length;
   };
 

@@ -1,6 +1,6 @@
 # text-similarity
 
-TF-IDF and cosine similarity over a managed collection of text chunks. Supports nearest-neighbor lookup, threshold matching, and k-means clustering. Used internally by chains that need local text comparison without LLM calls.
+TF-IDF and cosine similarity over a managed collection of text chunks. Supports nearest-neighbor lookup, threshold matching, and threshold-based agglomerative clustering. Used internally by chains that need local text comparison without LLM calls.
 
 ```javascript
 import { init } from '@far-world-labs/verblets';

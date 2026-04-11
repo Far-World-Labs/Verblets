@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import name from './index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
+  jsonSchema: (name, schema) => ({ type: 'json_schema', json_schema: { name, schema } }),
   default: vi.fn().mockImplementation((text) => {
     if (/weather pattern/i.test(text)) {
       return 'BlueSkies';

@@ -46,6 +46,9 @@ describe('Schema.org verblet', () => {
           }
           expect(isValid).toStrictEqual(true);
         }
+        await aiExpect(result).toSatisfy(
+          `a valid Schema.org structured data object describing "${example.inputs.text}"`
+        );
       },
       longTestTimeout
     );

@@ -4,6 +4,7 @@ import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
+  jsonSchema: (name, schema) => ({ type: 'json_schema', json_schema: { name, schema } }),
   default: vi.fn(),
 }));
 
@@ -309,7 +310,7 @@ describe('valueArbitrate', () => {
     });
   });
 
-  describe('response_format', () => {
+  describe('responseFormat', () => {
     it('sends a JSON schema constraining to candidate values', async () => {
       callLlm.mockResolvedValueOnce('strict');
 
@@ -324,7 +325,7 @@ describe('valueArbitrate', () => {
       );
 
       const configArg = callLlm.mock.calls[0][1];
-      const schema = configArg.response_format.json_schema.schema;
+      const schema = configArg.responseFormat.json_schema.schema;
       expect(schema.properties.value.enum).toEqual(['standard', 'strict', 'maximum']);
     });
   });

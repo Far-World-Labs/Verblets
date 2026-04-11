@@ -1,7 +1,9 @@
-import callLlm from '../../lib/llm/index.js';
+import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import { nameStep } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
+import { Outcome } from '../../lib/progress/constants.js';
 import { constants as promptConstants } from '../../prompts/index.js';
+import { asXML } from '../../prompts/wrap-variable.js';
 import { numberSchema } from './schema.js';
 
 const {
@@ -19,7 +21,7 @@ export default async (text, config = {}) => {
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
 
-  const numberText = `${contentIsQuestion} ${text}
+  const numberText = `${contentIsQuestion} ${asXML(text, { tag: 'text' })}
 
 ${explainAndSeparate} ${explainAndSeparatePrimitive}
 
@@ -30,18 +32,12 @@ The value should be the number or "undefined".`;
   try {
     const result = await callLlm(numberText, {
       ...runConfig,
-      response_format: {
-        type: 'json_schema',
-        json_schema: {
-          name: 'number_extraction',
-          schema: numberSchema,
-        },
-      },
+      responseFormat: jsonSchema('number_extraction', numberSchema),
     });
 
     const interpreted = result === 'undefined' ? undefined : result;
 
-    emitter.complete({ outcome: 'success' });
+    emitter.complete({ outcome: Outcome.success });
 
     return interpreted;
   } catch (err) {

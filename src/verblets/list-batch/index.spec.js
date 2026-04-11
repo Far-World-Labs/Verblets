@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-vi.mock('../../lib/llm/index.js', () => ({ default: vi.fn() }));
+vi.mock('../../lib/llm/index.js', () => ({
+  default: vi.fn(),
+  jsonSchema: (name, schema) => ({ type: 'json_schema', json_schema: { name, schema } }),
+}));
 
 import listBatch, { ListStyle, determineStyle } from './index.js';
 import callLlm from '../../lib/llm/index.js';
@@ -51,16 +54,16 @@ describe('listBatch verblet', () => {
       await listBatch(['a'], 'transform', { responseFormat: customFormat });
 
       const options = callLlm.mock.calls[0][1];
-      expect(options.response_format).toStrictEqual(customFormat);
+      expect(options.responseFormat).toStrictEqual(customFormat);
     });
 
-    it('forwards incoming model keys and merges with response_format', async () => {
+    it('forwards incoming model keys and merges with responseFormat', async () => {
       await listBatch(['a'], 'transform', { temperature: 0.5, systemPrompt: 'be terse' });
 
       const options = callLlm.mock.calls[0][1];
       expect(options.temperature).toBe(0.5);
       expect(options.systemPrompt).toBe('be terse');
-      expect(options.response_format).toBeDefined();
+      expect(options.responseFormat).toBeDefined();
     });
   });
 

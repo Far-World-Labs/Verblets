@@ -41,7 +41,7 @@ export const waitForAllKeys = async (redis, keys, timeoutMs = 30000) =>
       values[key] = JSON.parse(value);
     }
     return values;
-  }, timeoutMs)) || null;
+  }, timeoutMs)) || undefined;
 
 export const waitForHashFields = async (redis, hashKey, fields, timeoutMs = 30000) =>
   (await poll(async () => {
@@ -53,7 +53,7 @@ export const waitForHashFields = async (redis, hashKey, fields, timeoutMs = 3000
       result[field] = JSON.parse(hash[field]);
     }
     return result;
-  }, timeoutMs)) || null;
+  }, timeoutMs)) || undefined;
 
 export const waitForCount = async (redis, key, targetCount, timeoutMs = 30000) =>
   (await poll(async () => {

@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import enumValue from './index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
+  jsonSchema: (name, schema) => ({ type: 'json_schema', json_schema: { name, schema } }),
   default: vi.fn().mockImplementation((text) => {
     // When responseFormat is used, auto-unwrapping will return the value directly
     if (/traffic light/.test(text)) {

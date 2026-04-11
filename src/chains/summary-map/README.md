@@ -30,15 +30,15 @@ const compressedData = await summaryMap.pavedSummaryResult();
 
 ## Advanced Usage
 
-### Privacy-Aware Processing
+### Sensitivity-Aware Processing
 ```javascript
-// Handle sensitive data with privacy controls
-const privacyMap = new SummaryMap({ targetTokens: 150 });
+// Handle sensitive data with sensitivity controls
+const sensitiveMap = new SummaryMap({ targetTokens: 150 });
 
-privacyMap.set('customerFeedback', {
+sensitiveMap.set('customerFeedback', {
   value: 'Customer John Smith from Acme Corp said...',
   weight: 1.0,
-  privacy: { blacklist: 'names' }
+  sensitivity: { blacklist: 'names' }
 });
 
 const sanitizedData = await privacyMap.pavedSummaryResult();
@@ -70,8 +70,7 @@ Creates a new summary map instance for managing data compression within token bu
 **Options**
 
 - `targetTokens` (number): Maximum token budget for all compressed data
-- `compressionRatio` (number): Default compression ratio (default: 0.5)
-- `summaryDetail` (`'low'`|`'high'`|number): Controls token ratio reserved for summarization. `'low'` reserves more space for summaries (0.4 ratio). `'high'` reserves less, keeping summaries tighter (0.2 ratio). Default: 0.3
+- `summaryDetail` (`'low'`|`'med'`|`'high'`|number): Controls token ratio reserved for summarization. `'low'` reserves more space for summaries (0.4 ratio). `'med'` (default) uses 0.3 ratio. `'high'` reserves less, keeping summaries tighter (0.2 ratio)
 
 ### `summaryMap.set(key, dataElement)`
 
@@ -82,7 +81,7 @@ Adds or updates a data element in the summary map.
 - `value` (string): The data content to be managed
 - `weight` (number): Relative importance (0.0 to 1.0)
 - `type` ('text' | 'code' | 'structured'): Data type for specialized handling
-- `privacy` (object): Privacy controls with blacklist options
+- `sensitivity` (object): Sensitivity controls with `whitelist` and `blacklist` options
 
 ### `summaryMap.pavedSummaryResult()`
 

@@ -108,7 +108,7 @@ describe('tag-vocabulary', () => {
       expect(llm).toHaveBeenCalledWith(
         expect.stringContaining(spec),
         expect.objectContaining({
-          response_format: expect.objectContaining({
+          responseFormat: expect.objectContaining({
             type: 'json_schema',
           }),
         })

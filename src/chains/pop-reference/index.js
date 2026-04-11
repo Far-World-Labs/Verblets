@@ -3,6 +3,7 @@ import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import popReferenceSchema from './pop-reference-result.json' with { type: 'json' };
 import createProgressEmitter from '../../lib/progress/index.js';
+import { Outcome } from '../../lib/progress/constants.js';
 import { nameStep, getOptions } from '../../lib/context/option.js';
 
 const name = 'pop-reference';
@@ -79,7 +80,7 @@ Requirements:
       () =>
         callLlm(prompt, {
           ...runConfig,
-          response_format: popReferenceResponseFormat,
+          responseFormat: popReferenceResponseFormat,
         }),
       {
         label: 'pop-reference',
@@ -93,7 +94,7 @@ Requirements:
       throw new Error('Expected array of references in response');
     }
 
-    emitter.complete({ outcome: 'success', references: references.length });
+    emitter.complete({ outcome: Outcome.success, references: references.length });
 
     return references;
   } catch (err) {

@@ -7,7 +7,7 @@
 
 import { cyan, gray, yellow, green, red } from '../output-utils.js';
 import * as promptUtils from '../prompt-utils.js';
-import llm from '../../../lib/llm/index.js';
+import llm, { jsonSchema } from '../../../lib/llm/index.js';
 import retry from '../../../lib/retry/index.js';
 import promptAnalysisSchema from '../schemas/prompt-analysis-schema.json' with { type: 'json' };
 import * as promptConstants from '../../../prompts/constants.js';
@@ -140,7 +140,7 @@ function detectIndicators(text) {
   return {
     xml: /<\w+>/.test(text),
     constants: Object.keys(promptConstants).some((k) => text.includes(promptConstants[k])),
-    schema: /json_schema|response_format/.test(text),
+    schema: /json_schema|responseFormat/.test(text),
     lines: text.split('\n').length,
     chain: 'unknown', // TODO: Detect chain type
   };
@@ -154,10 +154,7 @@ async function runAnalysis(promptText) {
   const analysis = await retry(
     () =>
       llm(analysisPrompt, {
-        response_format: {
-          type: 'json_schema',
-          json_schema: promptAnalysisSchema,
-        },
+        responseFormat: jsonSchema(promptAnalysisSchema.name, promptAnalysisSchema.schema),
       }),
     { maxAttempts: 2, label: 'prompt analysis' }
   );

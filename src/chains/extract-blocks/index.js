@@ -3,8 +3,8 @@ import retry from '../../lib/retry/index.js';
 import parallelBatch from '../../lib/parallel-batch/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { blockExtractionSchema } from './block-schema.js';
-import createProgressEmitter from '../../lib/progress/index.js';
-import { OpEvent, DomainEvent } from '../../lib/progress/constants.js';
+import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
+import { OpEvent, DomainEvent, Outcome } from '../../lib/progress/constants.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 
 const name = 'extract-blocks';
@@ -79,11 +79,10 @@ export async function extractBlocks(text, instructions, config = {}) {
     precision: withPolicy(mapPrecision, ['windowSize', 'overlapSize']),
     maxParallel: 3,
   });
-  const { onProgress } = runConfig;
 
   // Handle empty text
   if (!text || text.trim() === '') {
-    emitter.complete({ blocksExtracted: 0, outcome: 'success' });
+    emitter.complete({ blocksExtracted: 0, outcome: Outcome.success });
     return [];
   }
 
@@ -97,13 +96,24 @@ export async function extractBlocks(text, instructions, config = {}) {
       windowStarts.push(start);
     }
 
-    const batchDone = emitter.batch(lines.length);
+    emitter.emit({
+      event: DomainEvent.phase,
+      phase: 'windowing',
+      totalLines,
+      windowCount: windowStarts.length,
+      windowSize,
+      overlapSize,
+    });
+
+    const batchDone = emitter.batch(windowStarts.length);
     emitter.progress({
       event: OpEvent.start,
-      totalItems: lines.length,
+      totalItems: windowStarts.length,
       totalBatches: windowStarts.length,
       maxParallel,
     });
+
+    emitter.emit({ event: DomainEvent.phase, phase: 'extraction' });
 
     // Process windows with controlled parallelism
     const allBlockBoundaries = await parallelBatch(
@@ -118,16 +128,16 @@ export async function extractBlocks(text, instructions, config = {}) {
           () =>
             callLlm(prompt, {
               ...runConfig,
-              response_format: blockExtractionSchema,
+              responseFormat: blockExtractionSchema,
             }),
           {
             label: `extract-blocks:window`,
             config: runConfig,
-            onProgress,
+            onProgress: scopePhase(runConfig.onProgress, 'window'),
           }
         );
 
-        batchDone(windowLines.length);
+        batchDone(1);
 
         // Results should already have global line numbers
         return result.blocks || [];
@@ -135,14 +145,21 @@ export async function extractBlocks(text, instructions, config = {}) {
       {
         maxParallel,
         label: 'extract-blocks windows',
+        abortSignal: runConfig.abortSignal,
       }
     );
+
+    emitter.emit({
+      event: DomainEvent.phase,
+      phase: 'merging',
+      rawBlocks: allBlockBoundaries.flat().length,
+    });
 
     // Flatten all blocks and sort by start line, then by end line (descending)
     const allBlocks = allBlockBoundaries
       .flat()
       .filter((b) => b && b.startLine !== undefined && b.endLine !== undefined)
-      .sort((a, b) => a.startLine - b.startLine || b.endLine - a.endLine);
+      .toSorted((a, b) => a.startLine - b.startLine || b.endLine - a.endLine);
 
     // Merge overlapping blocks
     const mergedBlocks = [];
@@ -165,12 +182,12 @@ export async function extractBlocks(text, instructions, config = {}) {
 
     emitter.progress({
       event: OpEvent.complete,
-      totalItems: lines.length,
+      totalItems: windowStarts.length,
       processedItems: batchDone.count,
       blocksExtracted: blocks.length,
     });
 
-    const resultMeta = { blocksExtracted: blocks.length, outcome: 'success' };
+    const resultMeta = { blocksExtracted: blocks.length, outcome: Outcome.success };
     emitter.emit({ event: DomainEvent.output, value: blocks });
     emitter.complete(resultMeta);
 

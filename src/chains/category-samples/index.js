@@ -1,6 +1,7 @@
 import list from '../list/index.js';
 import retry from '../../lib/retry/index.js';
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
+import { Outcome } from '../../lib/progress/constants.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 
 const name = 'category-samples';
@@ -131,7 +132,7 @@ export default async function categorySamples(categoryName, config = {}) {
       config: runConfig,
     });
 
-    emitter.complete({ outcome: 'success' });
+    emitter.complete({ outcome: Outcome.success });
 
     return result;
   } catch (err) {

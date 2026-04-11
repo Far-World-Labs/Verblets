@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import sentiment from './index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
+  jsonSchema: (name, schema) => ({ type: 'json_schema', json_schema: { name, schema } }),
   default: vi.fn(async (prompt) => {
     if (/fantastic|amazing|wonderful/.test(prompt)) return 'positive';
     if (/worst|terrible|awful/.test(prompt)) return 'negative';

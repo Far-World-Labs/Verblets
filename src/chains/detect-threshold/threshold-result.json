@@ -70,7 +70,8 @@
             "type": "string",
             "description": "Key insight about the distribution at this threshold (e.g., 'natural break in bimodal distribution')"
           }
-        }
+        },
+        "additionalProperties": false
       }
     },
     "distributionAnalysis": {
@@ -100,7 +101,9 @@
           "enum": ["normal", "bimodal", "multimodal", "uniform", "exponential", "long-tail"],
           "description": "Identified distribution pattern"
         }
-      }
+      },
+      "additionalProperties": false
     }
-  }
+  },
+  "additionalProperties": false
 }

@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { ChainEvent, TelemetryEvent, LlmStatus } from '../../lib/progress/constants.js';
 import path from 'node:path';
 
 let chromium;
@@ -18,6 +19,7 @@ import map from '../map/index.js';
 import filter from '../filter/index.js';
 import score from '../score/index.js';
 import sort from '../sort/index.js';
+import { ErrorPosture } from '../../lib/progress/constants.js';
 
 init({ imageProcessing: true });
 
@@ -148,7 +150,7 @@ describe.skipIf(!chromium)('Wikipedia Companies Vision Integration', () => {
       'Extract all companies visible in the table. For each company, provide: name, revenue in USD billions, industry, and headquarters country. Be precise with numbers.',
       {
         onProgress: captureProgress,
-        response_format: companyListSchema,
+        responseFormat: companyListSchema,
         temperature: 0,
       }
     );
@@ -334,7 +336,7 @@ describe.skipIf(!chromium)('Wikipedia Companies Vision Integration', () => {
         onProgress: captureProgress,
         operation: 'classify-companies',
         maxParallel: 1,
-        errorPosture: 'strict',
+        errorPosture: ErrorPosture.strict,
         temperature: 0,
       }
     );
@@ -361,7 +363,7 @@ describe.skipIf(!chromium)('Wikipedia Companies Vision Integration', () => {
         onProgress: captureProgress,
         operation: 'revenue-vs-employers',
         tile: true,
-        response_format: comparisonSchema,
+        responseFormat: comparisonSchema,
         temperature: 0.2,
       }
     );
@@ -532,7 +534,9 @@ describe.skipIf(!chromium)('Wikipedia Companies Vision Integration', () => {
     for (const [k, v] of Object.entries(byStep).sort()) console.error(`    ${k}: ${v}`);
 
     // Token accounting
-    const llmCalls = allEvents.filter((e) => e.event === 'llm:call' && e.status === 'success');
+    const llmCalls = allEvents.filter(
+      (e) => e.event === TelemetryEvent.llmCall && e.status === LlmStatus.success
+    );
     const totalTokens = llmCalls.reduce((s, e) => s + (e.tokens?.total || 0), 0);
     const totalInput = llmCalls.reduce((s, e) => s + (e.tokens?.input || 0), 0);
     const totalOutput = llmCalls.reduce((s, e) => s + (e.tokens?.output || 0), 0);
@@ -574,7 +578,9 @@ describe.skipIf(!chromium)('Wikipedia Companies Vision Integration', () => {
     expect(ops.size).toBeGreaterThanOrEqual(15);
 
     // Verify chains we exercised
-    const chainStarts = allEvents.filter((e) => e.event === 'chain:start').map((e) => e.operation);
+    const chainStarts = allEvents
+      .filter((e) => e.event === ChainEvent.start)
+      .map((e) => e.operation);
     console.error(`\n  Chain starts: ${chainStarts.join(', ')}`);
 
     // Verify hierarchical composition: vision chains compose analyze-image/llm

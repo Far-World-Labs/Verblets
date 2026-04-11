@@ -28,6 +28,6 @@ const birds = await categorySamples('bird', {
   - `diversity` (`'low'`|`'high'`): Controls both the prompt framing and how many items are generated before truncation. `'low'` focuses on typical central members (15 items). `'high'` spans edge cases and borderline members (50 items). Default: balanced (30 items).
   - `count` (number): Override the number of items to return (independent of `diversity`)
   - `context` (string): Domain context to guide generation (e.g., "North American species")
-  - `llm` (string|Object): LLM configuration. Default: `'fastGoodCheap'`
+  - `llm` (string|Object): LLM configuration. Default: `{ fast: true, good: true, cheap: true }`
 
 **Returns:** `Promise<string[]>` — array of category member names

@@ -52,7 +52,7 @@ describe('test chain', () => {
     expect(llm).toHaveBeenCalledWith(
       expect.any(String),
       expect.objectContaining({
-        response_format: expect.objectContaining({
+        responseFormat: expect.objectContaining({
           type: 'json_schema',
         }),
       })

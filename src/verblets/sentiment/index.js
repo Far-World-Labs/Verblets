@@ -1,6 +1,8 @@
-import callLlm from '../../lib/llm/index.js';
+import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import { nameStep } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
+import { Outcome } from '../../lib/progress/constants.js';
+import { asXML } from '../../prompts/wrap-variable.js';
 import { sentimentSchema } from './schema.js';
 
 const name = 'sentiment';
@@ -17,21 +19,19 @@ export default async function sentiment(text, config = {}) {
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
 
-  const prompt = `Identify the overall sentiment of the following text as "positive", "negative", or "neutral".\n\nText: ${text}\n\nThe value should be the sentiment classification.`;
+  const prompt = `Identify the overall sentiment of the following text as "positive", "negative", or "neutral".
+
+${asXML(text, { tag: 'text' })}
+
+The value should be the sentiment classification.`;
 
   try {
     const response = await callLlm(prompt, {
       ...runConfig,
-      response_format: {
-        type: 'json_schema',
-        json_schema: {
-          name: 'sentiment_analysis',
-          schema: sentimentSchema,
-        },
-      },
+      responseFormat: jsonSchema('sentiment_analysis', sentimentSchema),
     });
 
-    emitter.complete({ outcome: 'success' });
+    emitter.complete({ outcome: Outcome.success });
 
     return response;
   } catch (err) {

@@ -4,7 +4,7 @@ import number from './index.js';
 import { longTestTimeout } from '../../constants/common.js';
 import { getTestHelpers } from '../../chains/test-analysis/test-wrappers.js';
 
-const { it, expect } = getTestHelpers('Number verblet');
+const { it, expect, aiExpect } = getTestHelpers('Number verblet');
 
 const examples = [
   {
@@ -48,6 +48,9 @@ describe('Number verblet', () => {
 
       expect(typeof result).toBe('number');
       expect(result).toBe(2);
+      await aiExpect(result).toSatisfy(
+        'the number of eggs in a standard chocolate chip cookie recipe'
+      );
     },
     longTestTimeout
   );
@@ -63,6 +66,7 @@ describe('Number verblet', () => {
       expect(result).toBeGreaterThan(1000); // Should be more than principal
       // Compound interest: 1000 * (1.05)^10 ≈ 1628.89
       expect(result).toBeLessThan(2000);
+      await aiExpect(result).toSatisfy('approximately $1628.89, the compound interest result');
     },
     longTestTimeout
   );

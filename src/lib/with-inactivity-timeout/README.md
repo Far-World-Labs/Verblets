@@ -21,10 +21,12 @@ const result = await withInactivityTimeout(
 
 ## API
 
-### `withInactivityTimeout(work, timeoutMs, hook?)`
+### `withInactivityTimeout(work, timeoutMs, config?)`
 
 - **work** (Function): Async function receiving an `onUpdate(message, error?)` callback. Each call resets the inactivity timer.
 - **timeoutMs** (number): Milliseconds of silence before the promise rejects with an `Error`.
-- **hook** (Function, optional): Called on every `onUpdate` with the same arguments — useful for logging or metrics.
+- **config** (Object, optional): Configuration options. For backwards compatibility, a bare function is accepted and treated as `{ hook }`.
+  - **hook** (Function): Called on every `onUpdate` with the same arguments — useful for logging or metrics.
+  - **abortSignal** (AbortSignal): Signal to abort the timeout externally. When signalled, the promise rejects with the abort reason and cleanup runs immediately.
 
-**Returns:** Promise resolving with the work function's return value, or rejecting on timeout.
+**Returns:** Promise resolving with the work function's return value, or rejecting on timeout or abort.

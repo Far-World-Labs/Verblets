@@ -16,7 +16,7 @@ await expect('goodbye').toEqual('hello');
 // throws: "LLM assertion failed: Does the actual value strictly equal the expected value?"
 ```
 
-The underlying `llmAssert` function (not a public export) accepts `{ throws: false }` to return a boolean instead of throwing.
+The underlying `llmAssert` function (also a named export) accepts `{ throws: false }` to return a boolean instead of throwing.
 
 For test suites, the [aiExpect chain](../../chains/expect/) adds debugging advice and environment-controlled verbosity:
 

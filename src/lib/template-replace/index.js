@@ -12,7 +12,7 @@ export default function templateReplace(template, data, missingValue = '') {
     return template || '';
   }
 
-  if (data === undefined || data === null || typeof data !== 'object') {
+  if (data == null || typeof data !== 'object') {
     return template;
   }
 

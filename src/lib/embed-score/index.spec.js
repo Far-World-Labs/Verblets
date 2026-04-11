@@ -52,7 +52,9 @@ describe('embedScore', () => {
       accessor: (item) => item.name,
     });
 
-    expect(embedBatch).toHaveBeenCalledWith(['vehicle', 'red car', 'blue sky']);
+    expect(embedBatch).toHaveBeenCalledWith(['vehicle', 'red car', 'blue sky'], {
+      abortSignal: undefined,
+    });
     expect(result[0].item).toBe(items[0]);
     expect(result[1].item).toBe(items[1]);
   });

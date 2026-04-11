@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import timeline, { mapEnrichment } from './index.js';
-import { Kind, ChainEvent } from '../../lib/progress/constants.js';
+import { Kind, ChainEvent, OpEvent } from '../../lib/progress/constants.js';
 
 // Mock all dependencies
 vi.mock('../../lib/llm/index.js', async (importOriginal) => ({
@@ -180,8 +180,8 @@ describe('timeline', () => {
       onProgress: progressCallback,
     });
 
-    expect(progressCallback).toHaveBeenCalledTimes(5);
-    // First call is the chain:start telemetry event from track
+    expect(progressCallback).toHaveBeenCalledTimes(6);
+    // First call is the chain:start telemetry event
     expect(progressCallback).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({
@@ -189,12 +189,21 @@ describe('timeline', () => {
         event: ChainEvent.start,
       })
     );
+    // Per-chunk progress via onProgress
     expect(progressCallback).toHaveBeenNthCalledWith(2, 1, 3);
     expect(progressCallback).toHaveBeenNthCalledWith(3, 2, 3);
     expect(progressCallback).toHaveBeenNthCalledWith(4, 3, 3);
-    // Last call is the chain:complete telemetry event
+    // Phase batch progress after extraction completes
     expect(progressCallback).toHaveBeenNthCalledWith(
       5,
+      expect.objectContaining({
+        kind: Kind.operation,
+        event: OpEvent.batchComplete,
+      })
+    );
+    // Final chain:complete telemetry event
+    expect(progressCallback).toHaveBeenNthCalledWith(
+      6,
       expect.objectContaining({
         kind: Kind.telemetry,
         event: ChainEvent.complete,

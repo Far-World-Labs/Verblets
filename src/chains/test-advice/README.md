@@ -11,12 +11,15 @@ const allIssues = await testAdvice('./src/utils/calculateDiscount.js');
 
 ## API
 
-### `testAdvice(path)`
+### `testAdvice(path, config)`
 
 **Parameters:**
 - `path` (string): File path to analyze
+- `config` (Object): Configuration options
+  - `llm` (Object): LLM model options
+  - `onProgress` (Function): Progress callback
 
-**Returns:** Promise<Array<string>> - Combined array of all issues and suggestions found
+**Returns:** `Promise<Array<string>>` - Combined array of all issues and suggestions found across all categories
 
 ## Test Categories
 

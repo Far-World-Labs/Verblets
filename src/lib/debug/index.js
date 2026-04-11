@@ -7,7 +7,7 @@
 import { get as configGet } from '../config/index.js';
 
 const isDebugEnabled = () => {
-  return configGet('VERBLETS_DEBUG') === true;
+  return !!configGet('VERBLETS_DEBUG');
 };
 
 export const debug = (...args) => {

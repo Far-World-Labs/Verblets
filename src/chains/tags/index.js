@@ -4,6 +4,7 @@ import { asXML } from '../../prompts/wrap-variable.js';
 import map from '../map/index.js';
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
 import { nameStep, getOptions, getOption } from '../../lib/context/option.js';
+import { Outcome } from '../../lib/progress/constants.js';
 import tagsResultSchema from './tags-result.json' with { type: 'json' };
 
 const name = 'tags';
@@ -28,15 +29,6 @@ const tagsMapSchema = {
   required: ['items'],
   additionalProperties: false,
 };
-
-// ===== Option Mappers =====
-
-/**
- * Map vocabularyMode option value. Accepts 'strict' or 'open'.
- * @param {string|undefined} value
- * @returns {string} Resolved vocabulary mode
- */
-export const mapVocabularyMode = (value) => value ?? 'strict';
 
 // ===== Core Functions =====
 
@@ -78,7 +70,7 @@ Keep it concise and actionable.`;
       }
     );
 
-    emitter.complete({ outcome: 'success' });
+    emitter.complete({ outcome: Outcome.success });
     return response;
   } catch (err) {
     emitter.error(err);
@@ -128,7 +120,7 @@ Do NOT return tag labels, descriptions, or full tag objects - ONLY the string ID
       () =>
         callLlm(prompt, {
           ...runConfig,
-          response_format: jsonSchema('tags_result', tagsResultSchema),
+          responseFormat: jsonSchema('tags_result', tagsResultSchema),
         }),
       {
         label: 'tags-apply',
@@ -139,7 +131,7 @@ Do NOT return tag labels, descriptions, or full tag objects - ONLY the string ID
     // llm auto-unwraps {items: [...]} to just the array
     const result = Array.isArray(response) ? response : [];
 
-    applyEmitter.complete({ outcome: 'success' });
+    applyEmitter.complete({ outcome: Outcome.success });
 
     return result;
   } catch (err) {
@@ -159,7 +151,7 @@ Do NOT return tag labels, descriptions, or full tag objects - ONLY the string ID
 export async function tagItem(item, instructions, vocabulary, config = {}) {
   const providedSpec = await getOption('spec', config);
   const spec = providedSpec || (await tagSpec(instructions, config));
-  return await applyTags(item, spec, vocabulary, config);
+  return applyTags(item, spec, vocabulary, config);
 }
 
 /**
@@ -189,6 +181,8 @@ export async function mapTags(list, instructions, vocabulary, config = {}) {
       typeof item === 'object' && item !== null ? JSON.stringify(item) : item
     );
 
+    const batchDone = emitter.batch(serializedList.length);
+
     // Configure map to use our structured schema for tag arrays
     const mapConfig = {
       ...runConfig,
@@ -198,8 +192,9 @@ export async function mapTags(list, instructions, vocabulary, config = {}) {
 
     // Map will return array of tag arrays directly
     const results = await map(serializedList, mapInstr, mapConfig);
+    batchDone(serializedList.length);
 
-    emitter.complete({ outcome: 'success' });
+    emitter.complete({ outcome: Outcome.success });
     return results;
   } catch (err) {
     emitter.error(err);
@@ -362,8 +357,8 @@ Tag each item and use the tags to determine grouping.`,
  * @returns {Function} Tag extraction function with specification and vocabulary properties
  */
 export function createTagExtractor(specification, vocabulary, config = {}) {
-  const extractorFunction = async function (input) {
-    return await applyTags(input, specification, vocabulary, config);
+  const extractorFunction = function (input) {
+    return applyTags(input, specification, vocabulary, config);
   };
 
   // Add properties for introspection
@@ -391,12 +386,12 @@ export function createTagExtractor(specification, vocabulary, config = {}) {
  * @returns {Function} Configured tagger function
  */
 export function createTagger(vocabulary, config = {}) {
-  const taggerFunction = async function (items, instructions) {
+  const taggerFunction = function (items, instructions) {
     // Handle both single items and arrays
     if (Array.isArray(items)) {
-      return await mapTags(items, instructions, vocabulary, config);
+      return mapTags(items, instructions, vocabulary, config);
     }
-    return await tagItem(items, instructions, vocabulary, config);
+    return tagItem(items, instructions, vocabulary, config);
   };
 
   // Add vocabulary property for introspection
@@ -408,11 +403,11 @@ export function createTagger(vocabulary, config = {}) {
   });
 
   // Expose map operation specifically for tag-vocabulary chain
-  taggerFunction.mapWithVocabulary = async function (list, overrideVocabulary) {
+  taggerFunction.mapWithVocabulary = function (list, overrideVocabulary) {
     const vocabToUse = overrideVocabulary || vocabulary;
     // Default instructions when used by tag-vocabulary
     const defaultInstructions = 'Assign all applicable tags based on the item content';
-    return await mapTags(list, defaultInstructions, vocabToUse, config);
+    return mapTags(list, defaultInstructions, vocabToUse, config);
   };
 
   return taggerFunction;
@@ -426,6 +421,7 @@ export function createTagger(vocabulary, config = {}) {
  * @returns {Function} Stateless tagger function
  */
 export default function tags(instructions, config = {}) {
+  // eslint-disable-next-line require-await -- async is intentional: throw becomes a rejected promise for callers using .catch()
   const taggerFunction = async function (items, vocabulary) {
     if (!vocabulary) {
       throw new Error('Vocabulary must be provided as second argument');
@@ -433,9 +429,9 @@ export default function tags(instructions, config = {}) {
 
     // Handle both single items and arrays
     if (Array.isArray(items)) {
-      return await mapTags(items, instructions, vocabulary, config);
+      return mapTags(items, instructions, vocabulary, config);
     }
-    return await tagItem(items, instructions, vocabulary, config);
+    return tagItem(items, instructions, vocabulary, config);
   };
 
   Object.defineProperty(taggerFunction, 'instructions', {

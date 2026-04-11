@@ -3,6 +3,7 @@ import centralTendency from './index.js';
 
 // Mock the LLM service
 vi.mock('../../lib/llm/index.js', () => ({
+  jsonSchema: (name, schema) => ({ type: 'json_schema', json_schema: { name, schema } }),
   default: vi.fn(),
 }));
 
@@ -44,7 +45,7 @@ describe('centralTendency', () => {
     });
 
     expect(llm).toHaveBeenCalledWith(
-      expect.stringContaining('Evaluate how central "robin" is among these category members'),
+      expect.stringContaining('Evaluate how central'),
       expect.objectContaining({
         llm: { fast: true, good: true, cheap: true },
       })
@@ -66,8 +67,8 @@ describe('centralTendency', () => {
     });
 
     const calledPrompt = llm.mock.calls[0][0];
-    expect(calledPrompt).toContain('Context: Bird evaluation context');
+    expect(calledPrompt).toContain('<context>\nBird evaluation context\n</context>');
     expect(calledPrompt).toContain('Core Features: feathers, beak, flight');
-    expect(calledPrompt).toContain('sparrow, bluejay');
+    expect(calledPrompt).toContain('<seed-items>\nsparrow, bluejay\n</seed-items>');
   });
 });

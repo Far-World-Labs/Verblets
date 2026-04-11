@@ -8,6 +8,7 @@ import { expectCore, handleAssertionResult, generateAdvice } from './shared.js';
 import { extractFileContext } from '../../lib/logger/index.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
+import { Outcome } from '../../lib/progress/constants.js';
 
 const name = 'expect';
 
@@ -178,7 +179,7 @@ export async function expect(actual, expected, constraint, config = {}) {
     const callerInfo = extractFileContext(5);
 
     // Get code context if mode requires it
-    let codeContext = null;
+    let codeContext;
     if (mode === 'warn' || mode === 'info' || mode === 'error') {
       codeContext = getCodeContext(callerInfo.file, callerInfo.line);
     }
@@ -219,7 +220,7 @@ export async function expect(actual, expected, constraint, config = {}) {
     );
 
     // Generate advice if needed
-    let advice = null;
+    let advice;
     if (!passes && (mode === 'warn' || mode === 'info' || mode === 'error')) {
       if (introspection) {
         advice = await generateAdviceWithIntrospection(
@@ -243,7 +244,7 @@ export async function expect(actual, expected, constraint, config = {}) {
     }
 
     // Emit before handleAssertionResult — it intentionally throws in 'error' mode
-    emitter.complete({ outcome: 'success' });
+    emitter.complete({ outcome: Outcome.success });
 
     // Handle result based on mode - this may throw an error in 'error' mode
     const result = handleAssertionResult(

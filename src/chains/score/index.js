@@ -2,8 +2,8 @@ import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { scaleSpec } from '../scale/index.js';
 import listBatch from '../../verblets/list-batch/index.js';
-import createProgressEmitter from '../../lib/progress/index.js';
-import { OpEvent, DomainEvent } from '../../lib/progress/constants.js';
+import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
+import { OpEvent, DomainEvent, Outcome, ErrorPosture } from '../../lib/progress/constants.js';
 import { createBatches, parallel, retry } from '../../lib/index.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 import scoreSingleResultSchema from './score-single-result.json' with { type: 'json' };
@@ -42,7 +42,7 @@ function buildScoringAnchors(items, scores, anchoring = 'default') {
   const paired = items
     .map((item, i) => ({ item: String(item), score: scores[i] }))
     .filter((s) => Number.isFinite(s.score))
-    .sort((a, b) => a.score - b.score);
+    .toSorted((a, b) => a.score - b.score);
   if (paired.length < 2) return '';
 
   let anchors;
@@ -94,7 +94,7 @@ export const scoreSpec = scaleSpec;
  * @returns {Promise<*>} Score value (type depends on specification range)
  */
 export async function applyScore(item, specification, config = {}) {
-  config = nameStep('score:item', config);
+  const runConfig = nameStep('score:item', config);
 
   const prompt = `Apply the score specification to evaluate this item.
 
@@ -106,13 +106,13 @@ Return a JSON object with a "value" property containing the score from the range
 ${asXML(item, { tag: 'item' })}`;
 
   const llmConfig = {
-    ...config,
-    response_format: jsonSchema('score_single_result', scoreSingleResultSchema),
+    ...runConfig,
+    responseFormat: jsonSchema('score_single_result', scoreSingleResultSchema),
   };
 
   const response = await retry(() => callLlm(prompt, llmConfig), {
     label: 'score item',
-    config,
+    config: runConfig,
   });
 
   // llm auto-unwraps single value property, returns the number directly
@@ -128,7 +128,7 @@ ${asXML(item, { tag: 'item' })}`;
  */
 export async function scoreItem(item, instructions, config = {}) {
   const spec = await scoreSpec(instructions, config);
-  return await applyScore(item, spec, config);
+  return applyScore(item, spec, config);
 }
 
 /**
@@ -161,6 +161,7 @@ async function scoreOnce(list, prompt, batchConfig, config) {
       const scores = await retry(() => listBatch(first.items, prompt, batchConfig), {
         label: 'score:batch',
         config,
+        onProgress: scopePhase(onProgress, 'batch'),
       });
       alignScores(scores, first.items.length).forEach((s, j) => {
         results[first.startIndex + j] = s;
@@ -168,7 +169,7 @@ async function scoreOnce(list, prompt, batchConfig, config) {
       anchorBlock = buildScoringAnchors(first.items, scores, anchoring);
     } catch (error) {
       emitter.error(error, { batchIndex: 0, itemCount: first.items.length });
-      if (errorPosture === 'strict') throw error;
+      if (errorPosture === ErrorPosture.strict) throw error;
       if (logger?.error)
         logger.error('Score batch 0 failed', {
           error: error.message,
@@ -190,13 +191,14 @@ async function scoreOnce(list, prompt, batchConfig, config) {
           const scores = await retry(() => listBatch(items, anchoredPrompt, batchConfig), {
             label: 'score:batch',
             config,
+            onProgress: scopePhase(onProgress, 'batch'),
           });
           alignScores(scores, items.length).forEach((s, j) => {
             results[startIndex + j] = s;
           });
         } catch (error) {
           emitter.error(error, { itemCount: items.length });
-          if (errorPosture === 'strict') throw error;
+          if (errorPosture === ErrorPosture.strict) throw error;
           if (logger?.error)
             logger.error(`Score batch failed`, {
               error: error.message,
@@ -206,7 +208,7 @@ async function scoreOnce(list, prompt, batchConfig, config) {
 
         batchDone(items.length);
       },
-      { maxParallel, errorPosture, label: 'score batches' }
+      { maxParallel, errorPosture, label: 'score batches', abortSignal: config.abortSignal }
     );
   }
 
@@ -238,7 +240,7 @@ export async function mapScore(list, instructions, config = {}) {
       maxParallel: 3,
       maxAttempts: 3,
       temperature: 0,
-      errorPosture: 'resilient',
+      errorPosture: ErrorPosture.resilient,
       anchoring: withPolicy(mapAnchoring),
     }
   );
@@ -272,7 +274,7 @@ export async function mapScore(list, instructions, config = {}) {
     const missingItems = [];
 
     results.forEach((val, idx) => {
-      if (val === undefined) {
+      if (val == null) {
         missingIdx.push(idx);
         missingItems.push(list[idx]);
       }
@@ -292,7 +294,7 @@ export async function mapScore(list, instructions, config = {}) {
 
   const successCount = results.filter((r) => r !== undefined).length;
   const failedItems = results.length - successCount;
-  const outcome = failedItems > 0 ? 'partial' : 'success';
+  const outcome = failedItems > 0 ? Outcome.partial : Outcome.success;
   emitter.complete({ totalItems: results.length, successCount, failedItems, outcome });
 
   return results;
@@ -395,8 +397,8 @@ ${processing}
 
 mapScore.with = async function (instructions, config = {}) {
   const spec = await scoreSpec(instructions, config);
-  return async (item) => {
-    return await applyScore(item, spec, config);
+  return (item) => {
+    return applyScore(item, spec, config);
   };
 };
 

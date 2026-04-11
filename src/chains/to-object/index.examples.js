@@ -4,7 +4,7 @@ import llm from '../../lib/llm/index.js';
 import { longTestTimeout } from '../../constants/common.js';
 import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 
-const { it, expect } = getTestHelpers('To-object chain');
+const { it, expect, aiExpect } = getTestHelpers('To-object chain');
 
 describe('To object verblet', () => {
   it(
@@ -14,6 +14,9 @@ describe('To object verblet', () => {
       const result = await toObject(llmResult);
       expect(typeof result).toBe('object');
       expect(Object.keys(result).length).toBeGreaterThan(0);
+      await aiExpect(result).toSatisfy(
+        'structured object containing factual information about SpaceX Starship'
+      );
     },
     longTestTimeout
   );

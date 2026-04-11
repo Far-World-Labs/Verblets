@@ -4,9 +4,10 @@
  * @param {string} path - The dot-separated path indicating where to set the value.
  * @param {*} value - The value to set at the specified path.
  */
-export default (obj, path, value) => {
-  const pathRe = /^([^.]+(\.[^.]+)*)$/;
+const isNumeric = (str) => /^\d+$/.test(str);
+const pathRe = /^([^.]+(\.[^.]+)*)$/;
 
+export default (obj, path, value) => {
   if (!pathRe.test(path)) {
     throw new Error(`Invalid path: "${path}"`);
   }
@@ -14,8 +15,6 @@ export default (obj, path, value) => {
   const keys = path.split('.');
   const objNew = JSON.parse(JSON.stringify(obj));
   let objMutating = objNew;
-
-  const isNumeric = (str) => /^\d+$/.test(str);
 
   for (let i = 0; i < keys.length; i += 1) {
     const key = isNumeric(keys[i]) ? parseInt(keys[i], 10) : keys[i];

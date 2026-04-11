@@ -22,7 +22,6 @@ const result = await themes(news);
 **Parameters:**
 - `text` (string): Text to extract themes from (split on double newlines into paragraphs)
 - `config` (Object): Configuration options
-  - `batchSize` (number): Paragraphs per reduce batch (default: 5)
   - `topN` (number): Limit to top N themes in the refinement pass
   - `llm` (string|Object): LLM model configuration
 

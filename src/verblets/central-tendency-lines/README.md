@@ -24,14 +24,14 @@ const penguin = await centralTendencyLines('penguin', birdSeeds, {
 
 ## API
 
-### `centralTendency(item, seedItems, config)`
+### `centralTendencyLines(item, seedItems, config)`
 
 - **item** (string): The item to evaluate
 - **seedItems** (string[]): Known category members for comparison
 - **config** (object):
   - `context` (string): Evaluation context (default: `''`)
   - `coreFeatures` (string[]): Definitional features of the category (default: `[]`)
-  - `llm` (string|object): LLM configuration (default: `'fastGoodCheap'`)
+  - `llm` (string|object): LLM configuration
 
 ### Return value
 

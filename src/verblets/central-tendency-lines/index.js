@@ -1,8 +1,9 @@
-import callLlm from '../../lib/llm/index.js';
+import callLlm, { jsonSchema } from '../../lib/llm/index.js';
+import { asXML } from '../../prompts/wrap-variable.js';
 import { strictFormat } from '../../prompts/constants.js';
 import { nameStep } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
-import { DomainEvent } from '../../lib/progress/constants.js';
+import { DomainEvent, Outcome } from '../../lib/progress/constants.js';
 import centralTendencySchema from './central-tendency-result.json' with { type: 'json' };
 
 const name = 'central-tendency-lines';
@@ -52,9 +53,9 @@ CENTRALITY SCORING GUIDE (use precise decimals):
 export function buildCentralTendencyPrompt(
   item,
   seedItems,
-  { context = '', coreFeatures = [], outputRequirements = null } = {}
+  { context = '', coreFeatures = [], outputRequirements = undefined } = {}
 ) {
-  const contextLine = context ? `Context: ${context}` : '';
+  const contextLine = context ? `Context: ${asXML(context, { tag: 'context' })}` : '';
   const coreFeaturesLine =
     coreFeatures.length > 0 ? `Core Features: ${coreFeatures.join(', ')}` : '';
 
@@ -78,7 +79,7 @@ The "confidence" should reflect how certain you are about the assessment (higher
     .replace('{coreFeatures}', coreFeaturesLine)
     .replace('{outputRequirements}', outputRequirementsLine);
 
-  return `Evaluate how central "${item}" is among these category members: ${seedItems.join(', ')}
+  return `Evaluate how central ${asXML(item, { tag: 'item' })} is among these category members: ${asXML(seedItems.join(', '), { tag: 'seed-items' })}
 
 ${prompt}`;
 }
@@ -87,18 +88,11 @@ ${prompt}`;
  * Create response format for structured outputs
  * @param {string} schemaName - Name for the JSON schema
  * @param {Object} [customSchema] - Custom schema to use instead of default
- * @returns {Object} response_format object for callLlm
+ * @returns {Object} responseFormat object for callLlm
  */
-function createResponseFormat(schemaName = 'central_tendency_result', customSchema = null) {
+function createResponseFormat(schemaName = 'central_tendency_result', customSchema = undefined) {
   const schema = customSchema || centralTendencySchema;
-
-  return {
-    type: 'json_schema',
-    json_schema: {
-      name: schemaName,
-      schema,
-    },
-  };
+  return jsonSchema(schemaName, schema);
 }
 
 /**
@@ -138,11 +132,11 @@ export default async function centralTendency(item, seedItems, config = {}) {
 
     const response = await callLlm(prompt, {
       ...runConfig,
-      response_format: responseFormat,
+      responseFormat,
     });
 
     emitter.emit({ event: DomainEvent.output, value: response });
-    emitter.complete({ outcome: 'success' });
+    emitter.complete({ outcome: Outcome.success });
     return response;
   } catch (err) {
     emitter.error(err);

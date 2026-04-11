@@ -36,22 +36,22 @@ beforeEach(() => {
 
 const examples = [
   {
-    name: 'inserts delimiters based on instructions',
+    name: 'splits text into segments based on instructions',
     inputs: {
       text: 'alpha beta gamma delta',
       instructions: 'before "gamma"',
       config: { delimiter: DELIM },
     },
-    want: { result: `alpha beta ${DELIM}gamma delta` },
+    want: { segments: ['alpha beta', 'gamma delta'] },
   },
   {
-    name: 'chunks long text and joins results',
+    name: 'chunks long text and joins before splitting',
     inputs: {
       text: 'alpha beta gamma delta epsilon',
       instructions: 'before "delta"',
       config: { delimiter: DELIM, chunkLen: 20 },
     },
-    want: { result: `alpha beta gamma ${DELIM}delta epsilon` },
+    want: { segments: ['alpha beta gamma', 'delta epsilon'] },
   },
   {
     name: 'handles multiple split points',
@@ -60,7 +60,7 @@ const examples = [
       instructions: 'before "beta" or "delta"',
       config: { delimiter: DELIM },
     },
-    want: { result: `alpha ${DELIM}beta gamma ${DELIM}delta epsilon` },
+    want: { segments: ['alpha', 'beta gamma', 'delta epsilon'] },
   },
 ];
 
@@ -69,7 +69,7 @@ describe('split chain', () => {
     it(example.name, async () => {
       const { text, instructions, config } = example.inputs;
       const result = await split(text, instructions, config);
-      expect(result).toBe(example.want.result);
+      expect(result).toEqual(example.want.segments);
     });
   });
 });

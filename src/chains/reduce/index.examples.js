@@ -1,5 +1,6 @@
 import { describe } from 'vitest';
 import reduce from './index.js';
+import { jsonSchema } from '../../lib/llm/index.js';
 import { longTestTimeout } from '../../constants/common.js';
 import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 
@@ -23,25 +24,20 @@ describe('reduce examples', () => {
       const numbers = [10, 20, 30, 40];
       const result = await reduce(numbers, 'calculate sum and count', {
         initial: { sum: 0, count: 0 },
-        responseFormat: {
-          type: 'json_schema',
-          json_schema: {
-            name: 'accumulator',
-            schema: {
-              type: 'object',
-              properties: {
-                sum: { type: 'number' },
-                count: { type: 'number' },
-              },
-              required: ['sum', 'count'],
-            },
+        responseFormat: jsonSchema('accumulator', {
+          type: 'object',
+          properties: {
+            sum: { type: 'number' },
+            count: { type: 'number' },
           },
-        },
+          required: ['sum', 'count'],
+        }),
       });
       expect(result).toHaveProperty('sum');
       expect(result).toHaveProperty('count');
       expect(result.sum).toBe(100);
       expect(result.count).toBe(4);
+      await aiExpect(result).toSatisfy('correctly sums and counts the numbers');
     },
     longTestTimeout
   );

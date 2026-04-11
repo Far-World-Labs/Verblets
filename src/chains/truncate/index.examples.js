@@ -64,6 +64,11 @@ describe('truncate', () => {
 
         const truncated = example.inputs.text.slice(0, result);
         expect(truncated.length).toBe(result);
+        if (example.wants.shouldTruncate) {
+          await aiExpect(truncated).toSatisfy(
+            'the text was truncated — unwanted content at the end was removed'
+          );
+        }
       },
       longTestTimeout
     );

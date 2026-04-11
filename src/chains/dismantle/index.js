@@ -6,9 +6,9 @@ import { outputSuccinctNames } from '../../prompts/index.js';
 import { subComponentsSchema, componentOptionsSchema } from './schemas.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
-import { DomainEvent } from '../../lib/progress/constants.js';
+import { DomainEvent, Outcome } from '../../lib/progress/constants.js';
 
-const _name = 'dismantle'; // eslint: unused — ChainTree.create receives name as parameter
+const _name = 'dismantle';
 
 // ===== Option Mappers =====
 
@@ -100,7 +100,7 @@ const defaultDecompose = async ({
         llm,
         frequencyPenalty: variety ?? DEFAULT_DECOMPOSE_PENALTY,
         temperature: temperature ?? 0.7,
-        response_format: jsonSchema('subcomponents', subComponentsSchema),
+        responseFormat: jsonSchema('subcomponents', subComponentsSchema),
       }),
     {
       label: 'dismantle-decompose',
@@ -128,7 +128,7 @@ const defaultEnhance = async ({
         llm,
         frequencyPenalty: enhanceVariety,
         temperature: temperature ?? 0.3,
-        response_format: jsonSchema('component_options', componentOptionsSchema),
+        responseFormat: jsonSchema('component_options', componentOptionsSchema),
       }),
     {
       label: 'dismantle-enhance',
@@ -313,7 +313,7 @@ class ChainTree {
 
       const tree = new ChainTree(name, options, runConfig, { temperature, variety });
 
-      emitter.complete({ outcome: 'success' });
+      emitter.complete({ outcome: Outcome.success });
 
       return tree;
     } catch (err) {
@@ -393,12 +393,16 @@ export const dismantle = async (text, options = {}) => {
   emitter.start();
 
   try {
+    const batchDone = emitter.batch(1);
+
     emitter.emit({ event: DomainEvent.phase, phase: 'tree-construction' });
     const tree = await ChainTree.create(text, {
       ...runConfig,
       onProgress: scopePhase(runConfig.onProgress, 'tree-construction'),
     });
-    emitter.complete({ outcome: 'success' });
+    batchDone(1);
+
+    emitter.complete({ outcome: Outcome.success });
     return tree;
   } catch (err) {
     emitter.error(err);

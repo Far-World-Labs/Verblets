@@ -1,9 +1,10 @@
 import callLlm, { jsonSchema } from '../../lib/llm/index.js';
+import { asXML } from '../../prompts/wrap-variable.js';
 import retry from '../../lib/retry/index.js';
 import score from '../score/index.js';
 import disambiguateMeaningsSchema from './disambiguate-meanings-result.json' with { type: 'json' };
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
-import { DomainEvent } from '../../lib/progress/constants.js';
+import { DomainEvent, Outcome } from '../../lib/progress/constants.js';
 import { nameStep } from '../../lib/context/option.js';
 
 const name = 'disambiguate';
@@ -14,12 +15,12 @@ const disambiguateResponseFormat = jsonSchema(
 );
 
 const meaningsPrompt = (term) => {
-  return `List all distinct dictionary meanings or common uses of "${term}".
+  return `List all distinct dictionary meanings or common uses of ${asXML(term, { tag: 'term' })}.
 Return a JSON object with a "meanings" array containing the distinct meanings.`;
 };
 
 export const getMeanings = async (term, config = {}) => {
-  config = nameStep('disambiguate:meanings', {
+  const runConfig = nameStep('disambiguate:meanings', {
     llm: { fast: true, good: true, cheap: true },
     ...config,
   });
@@ -27,12 +28,12 @@ export const getMeanings = async (term, config = {}) => {
   const response = await retry(
     () =>
       callLlm(prompt, {
-        ...config,
-        response_format: disambiguateResponseFormat,
+        ...runConfig,
+        responseFormat: disambiguateResponseFormat,
       }),
     {
       label: 'disambiguate-get-meanings',
-      config,
+      config: runConfig,
     }
   );
 
@@ -48,7 +49,10 @@ export default async function disambiguate({ term, context, ...config } = {}) {
   try {
     emitter.emit({ event: DomainEvent.step, stepName: 'extracting-meanings', term });
 
-    const meanings = await getMeanings(term, runConfig);
+    const meanings = await getMeanings(term, {
+      ...runConfig,
+      onProgress: scopePhase(runConfig.onProgress, 'meanings'),
+    });
 
     emitter.emit({
       event: DomainEvent.step,
@@ -59,7 +63,7 @@ export default async function disambiguate({ term, context, ...config } = {}) {
 
     const scores = await score(
       meanings,
-      `how well this meaning of "${term}" matches the context: ${context}`,
+      `how well this meaning of ${asXML(term, { tag: 'term' })} matches the context: ${asXML(context, { tag: 'context' })}`,
       {
         ...runConfig,
         onProgress: scopePhase(runConfig.onProgress, 'score:relevance'),
@@ -76,7 +80,7 @@ export default async function disambiguate({ term, context, ...config } = {}) {
       }
     }
 
-    emitter.complete({ outcome: 'success' });
+    emitter.complete({ outcome: Outcome.success });
 
     return { meaning: meanings[bestIndex], meanings };
   } catch (err) {

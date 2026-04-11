@@ -2,7 +2,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import reshape from './advisors.js';
 import llm from '../llm/index.js';
 
-vi.mock('../llm/index.js');
+vi.mock('../llm/index.js', async (importOriginal) => ({
+  ...(await importOriginal()),
+  default: vi.fn(),
+}));
 
 describe('reshape advisor', () => {
   beforeEach(() => {
@@ -54,7 +57,7 @@ describe('reshape advisor', () => {
       expect.stringContaining('<piece-text>'),
       expect.objectContaining({
         systemPrompt: expect.stringContaining('prompt structure advisor'),
-        response_format: expect.objectContaining({ type: 'json_schema' }),
+        responseFormat: expect.objectContaining({ type: 'json_schema' }),
       })
     );
   });
@@ -123,7 +126,7 @@ describe('reshape advisor', () => {
 
     await reshape('Test prompt.');
 
-    const schemaName = llm.mock.calls[0][1].response_format.json_schema.name;
+    const schemaName = llm.mock.calls[0][1].responseFormat.json_schema.name;
     expect(schemaName).toBe('prompt_piece_reshape_edits');
 
     const systemPrompt = llm.mock.calls[0][1].systemPrompt;
@@ -136,7 +139,7 @@ describe('reshape advisor', () => {
 
     await reshape('Test.', { mode: 'edits' });
 
-    const schemaName = llm.mock.calls[0][1].response_format.json_schema.name;
+    const schemaName = llm.mock.calls[0][1].responseFormat.json_schema.name;
     expect(schemaName).toBe('prompt_piece_reshape_edits');
   });
 
@@ -163,7 +166,7 @@ describe('reshape advisor', () => {
     expect(result.diagnostics[0].issue.severity).toBe('critical');
     expect(result.diagnostics[0]).not.toHaveProperty('fix');
 
-    const schemaName = llm.mock.calls[0][1].response_format.json_schema.name;
+    const schemaName = llm.mock.calls[0][1].responseFormat.json_schema.name;
     expect(schemaName).toBe('prompt_piece_reshape_diagnostic');
 
     const systemPrompt = llm.mock.calls[0][1].systemPrompt;
@@ -190,7 +193,7 @@ describe('reshape advisor', () => {
     const result = await diagnose('Do the thing.');
 
     expect(result.diagnostics).toHaveLength(1);
-    const schemaName = llm.mock.calls[0][1].response_format.json_schema.name;
+    const schemaName = llm.mock.calls[0][1].responseFormat.json_schema.name;
     expect(schemaName).toBe('prompt_piece_reshape_diagnostic');
   });
 

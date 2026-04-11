@@ -128,7 +128,7 @@ const OP_FNS = {
  */
 const evaluateClause = (clauseObj, context) => {
   const actual = context[clauseObj.attribute];
-  if (actual === undefined) return false;
+  if (actual == null) return false;
   const fn = OP_FNS[clauseObj.op];
   return fn ? fn(actual, clauseObj.values) : false;
 };

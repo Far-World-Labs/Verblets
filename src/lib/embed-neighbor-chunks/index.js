@@ -93,8 +93,8 @@ export default function embedNeighborChunks(hits, allChunks, options = {}) {
     indexed.push({ lo, hi, score: hit.score ?? 0 });
   }
 
-  indexed.sort((a, b) => a.lo - b.lo);
-  const merged = mergeRanges(indexed);
+  const sorted = indexed.toSorted((a, b) => a.lo - b.lo);
+  const merged = mergeRanges(sorted);
 
   const results = merged.map(({ lo, hi, score }) => assembleSpan(allChunks, lo, hi, score));
 

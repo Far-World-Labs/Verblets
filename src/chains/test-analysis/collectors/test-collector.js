@@ -142,7 +142,7 @@ export class TestCollector {
             p95: this.calculatePercentile(durations, 95),
             p99: this.calculatePercentile(durations, 99),
           }
-        : null;
+        : undefined;
 
     // Count by type
     const callsByType = {};

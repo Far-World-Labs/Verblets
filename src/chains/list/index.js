@@ -9,7 +9,7 @@ import {
 import listResultSchema from './list-result.json' with { type: 'json' };
 import { nameStep } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
-import { DomainEvent } from '../../lib/progress/constants.js';
+import { DomainEvent, Outcome } from '../../lib/progress/constants.js';
 
 const name = 'list';
 
@@ -24,7 +24,7 @@ const { onlyJSON, contentIsTransformationSource } = promptConstants;
  */
 function createModelOptions() {
   return {
-    response_format: jsonSchema('list_result', listResultSchema),
+    responseFormat: jsonSchema('list_result', listResultSchema),
   };
 }
 
@@ -78,16 +78,14 @@ export const generateList = async function* generateListGenerator(text, config =
       const resultArray = results?.items || results;
       resultsNew = Array.isArray(resultArray) ? resultArray.filter(Boolean) : [];
     } catch (error) {
-      if (/The operation was aborted/.test(error.message)) {
-        debug('Generate list [error]: Aborted');
-        resultsNew = [];
-      } else {
-        debug(
-          `Generate list [error]: ${error.message} ${listPrompt.slice(0, 100).replace('\n', '\\n')}`
-        );
-        isDone = true;
-        break;
+      if (error.name === 'AbortError') {
+        throw error;
       }
+      debug(
+        `Generate list [error]: ${error.message} ${listPrompt.slice(0, 100).replace('\n', '\\n')}`
+      );
+      isDone = true;
+      break;
     }
 
     const resultsNewUnique = resultsNew.filter((item) => !(item in resultsAllMap));
@@ -177,11 +175,11 @@ export default async function list(prompt, config = {}) {
         }
         batchDone(1);
       }
-      emitter.complete({ outcome: 'success' });
+      emitter.complete({ outcome: Outcome.success });
       return transformedItems;
     }
 
-    emitter.complete({ outcome: 'success' });
+    emitter.complete({ outcome: Outcome.success });
     return items;
   } catch (err) {
     emitter.error(err);

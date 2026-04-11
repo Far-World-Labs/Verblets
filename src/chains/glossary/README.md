@@ -1,9 +1,9 @@
 # glossary
 
 Identify difficult or technical terms in any text so you can explain them later.
-The chain breaks long passages into paragraphs and uses the `map` retry
-utility to collect candidate terms from each chunk. Any failed paragraphs are
-automatically retried. Finally the terms are ranked by importance using `sort`.
+The chain breaks long passages into overlapping sentence windows and uses `map`
+to collect candidate terms from each chunk. Finally the terms are deduplicated
+and ranked by importance using `sort`.
 
 ```javascript
 import { glossary } from '@far-world-labs/verblets';

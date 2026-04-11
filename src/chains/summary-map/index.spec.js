@@ -11,6 +11,7 @@ vi.mock('../../services/llm-model/index.js', () => ({
       tokenizer: (text) => text.split(' '),
       maxContextWindow: 128000,
       maxOutputTokens: 16384,
+      maxTokens: 16384,
       toTokens(text) {
         return this.tokenizer(text);
       },
@@ -30,6 +31,7 @@ vi.mock('../../services/llm-model/index.js', () => ({
       tokenizer: (text) => text.split(' '),
       maxContextWindow: 128000,
       maxOutputTokens: 16384,
+      maxTokens: 16384,
       toTokens(text) {
         return this.tokenizer(text);
       },

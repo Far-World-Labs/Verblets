@@ -29,7 +29,7 @@ const result = await disambiguate({
 **Parameters** (single object):
 - `term` (string): The ambiguous term to disambiguate
 - `context` (string): Context to score meanings against
-- `llm` (string|Object): LLM model configuration (default: `'fastGoodCheap'`)
+- `llm` (string|Object): LLM model configuration (default: `{ fast: true, good: true, cheap: true }`)
 - `onProgress` (Function): Progress callback
 
 **Returns:** Promise<{ meaning: string, meanings: string[] }> - Best matching meaning and all discovered meanings

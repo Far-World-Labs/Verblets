@@ -3,6 +3,7 @@ import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { peopleListJsonSchema } from './schemas.js';
 import createProgressEmitter from '../../lib/progress/index.js';
+import { Outcome } from '../../lib/progress/constants.js';
 import { nameStep } from '../../lib/context/option.js';
 
 const name = 'people';
@@ -22,7 +23,7 @@ ${instructions}`;
       () =>
         callLlm(prompt, {
           ...runConfig,
-          response_format: jsonSchema(peopleListJsonSchema.name, peopleListJsonSchema.schema),
+          responseFormat: jsonSchema(peopleListJsonSchema.name, peopleListJsonSchema.schema),
         }),
       {
         label: `people-list generation for ${count} people`,
@@ -30,7 +31,7 @@ ${instructions}`;
       }
     );
 
-    emitter.complete({ outcome: 'success' });
+    emitter.complete({ outcome: Outcome.success });
 
     return response.people;
   } catch (err) {

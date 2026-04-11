@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ChainEvent, Kind } from '../../lib/progress/constants.js';
 
 vi.mock('../../lib/llm/index.js', async () => {
   const actual = await vi.importActual('../../lib/llm/index.js');
@@ -113,10 +114,10 @@ describe('analyze-image', () => {
     await analyzeImage('/photos/cat.png', 'describe', { onProgress });
 
     const startEvent = progressEvents.find(
-      (e) => e.kind === 'telemetry' && e.event === 'chain:start'
+      (e) => e.kind === Kind.telemetry && e.event === ChainEvent.start
     );
     const completeEvent = progressEvents.find(
-      (e) => e.kind === 'telemetry' && e.event === 'chain:complete'
+      (e) => e.kind === Kind.telemetry && e.event === ChainEvent.complete
     );
     expect(startEvent).toBeDefined();
     expect(completeEvent).toBeDefined();
@@ -136,7 +137,7 @@ describe('analyze-image', () => {
     );
 
     const errorEvent = progressEvents.find(
-      (e) => e.kind === 'telemetry' && e.event === 'chain:error'
+      (e) => e.kind === Kind.telemetry && e.event === ChainEvent.error
     );
     expect(errorEvent).toBeDefined();
     expect(errorEvent.imageCount).toBe(1);

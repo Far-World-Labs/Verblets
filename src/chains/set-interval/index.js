@@ -1,4 +1,4 @@
-import callLlm from '../../lib/llm/index.js';
+import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { debug } from '../../lib/debug/index.js';
 import numberWithUnits from '../../verblets/number-with-units/index.js';
@@ -8,7 +8,7 @@ import { asXML } from '../../prompts/wrap-variable.js';
 import templateReplace from '../../lib/template-replace/index.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 import createProgressEmitter from '../../lib/progress/index.js';
-import { Metric, DomainEvent } from '../../lib/progress/constants.js';
+import { Metric, DomainEvent, Outcome } from '../../lib/progress/constants.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 
 const name = 'set-interval';
@@ -40,6 +40,19 @@ const UNIT_MS = {
 };
 
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/;
+
+const intervalResponseFormat = jsonSchema('set_interval_timing', {
+  type: 'object',
+  properties: {
+    value: {
+      type: 'string',
+      description:
+        'An ISO date (e.g. "2026-04-08T10:00:00Z") or a short duration (e.g. "10 minutes", "2 hours", "30 seconds")',
+    },
+  },
+  required: ['value'],
+  additionalProperties: false,
+});
 
 async function toMs(text, config = {}) {
   const clean = String(text).trim();
@@ -82,7 +95,7 @@ export default function setInterval({
   prompt,
   getData,
   historySize = 5,
-  initial = null,
+  initial = undefined,
   onTick,
   llm,
   ...options
@@ -139,10 +152,17 @@ ${asXML(history, { tag: 'history', title: 'History:' })}
 ${asXML(count, { tag: 'count', title: 'Count:' })}
 Next wait:`;
 
-      const intervalText = await retry(() => callLlm(intervalPrompt, config), {
-        label: 'set-interval',
-        config,
-      });
+      const intervalText = await retry(
+        () =>
+          callLlm(intervalPrompt, {
+            ...config,
+            responseFormat: intervalResponseFormat,
+          }),
+        {
+          label: 'set-interval',
+          config,
+        }
+      );
 
       history.push(intervalText);
       if (history.length > historySize) history.shift();
@@ -220,7 +240,7 @@ Next wait:`;
   const stop = () => {
     active = false;
     clearTimeout(timer);
-    emitter.complete({ outcome: 'success', ticks: count });
+    emitter.complete({ outcome: Outcome.success, ticks: count });
   };
 
   return stop;

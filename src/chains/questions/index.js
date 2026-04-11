@@ -3,7 +3,7 @@ import retry from '../../lib/retry/index.js';
 import { constants as promptConstants, asXML } from '../../prompts/index.js';
 import { questionsListSchema, selectedQuestionSchema } from './schemas.js';
 import createProgressEmitter from '../../lib/progress/index.js';
-import { DomainEvent } from '../../lib/progress/constants.js';
+import { DomainEvent, Outcome } from '../../lib/progress/constants.js';
 import { getOption, nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 
 const name = 'questions';
@@ -60,7 +60,7 @@ const formatQuestionsPrompt = (text, { existing = [] } = {}) => {
 
   return `Instead of answering the following question, I would like you to generate additional questions. Consider interesting perspectives. Consider what information is unknown. Overall, just come up with good questions.
 
-Question: ${text}
+${asXML(text, { tag: 'question' })}
 
 ${existing.length > 0 ? `Questions to omit: ${asXML(existingJoined, { tag: 'omitted' })}` : ''}
 
@@ -105,7 +105,7 @@ const generateQuestions = async function* generateQuestionsGenerator(text, confi
           () =>
             callLlm(pickInterestingQuestionPrompt, {
               ...runConfig,
-              response_format: jsonSchema('selected_question', selectedQuestionSchema),
+              responseFormat: jsonSchema('selected_question', selectedQuestionSchema),
             }),
           {
             label: 'questions-pick-interesting',
@@ -122,7 +122,7 @@ const generateQuestions = async function* generateQuestionsGenerator(text, confi
       const llmConfig = {
         ...runConfig,
         temperature,
-        response_format: jsonSchema('questions_list', questionsListSchema),
+        responseFormat: jsonSchema('questions_list', questionsListSchema),
       };
 
       // eslint-disable-next-line no-await-in-loop
@@ -154,7 +154,7 @@ const generateQuestions = async function* generateQuestionsGenerator(text, confi
       }
     }
 
-    emitter.complete({ outcome: 'success', questions: resultsAll.length, attempts });
+    emitter.complete({ outcome: Outcome.success, questions: resultsAll.length, attempts });
   } catch (err) {
     emitter.error(err);
     throw err;

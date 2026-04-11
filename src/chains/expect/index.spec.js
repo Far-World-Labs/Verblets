@@ -44,7 +44,7 @@ vi.mock('../../lib/llm/index.js', () => ({
       const actualNorm = normalize(actual);
       const expectedNorm = normalize(expected);
 
-      // Handle equality checks - return boolean since we're using response_format
+      // Handle equality checks - return boolean since we're using responseFormat
       if (expected && constraint?.includes('same identity or meaning')) {
         return actualNorm === expectedNorm;
       }
