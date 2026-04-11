@@ -2,7 +2,7 @@ import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import parallelBatch from '../../lib/parallel-batch/index.js';
 import { asXML } from '../../prompts/index.js';
-import createProgressEmitter from '../../lib/progress/index.js';
+import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
 import { Outcome, ErrorPosture } from '../../lib/progress/constants.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 
@@ -110,10 +110,10 @@ const veiledVariants = async (inputConfig = {}) => {
     const results = await parallelBatch(
       prompts,
       async (p) => {
-        const r = await retry(() => callLlm(p, { ...runConfig, response_format: responseFormat }), {
+        const r = await retry(() => callLlm(p, { ...runConfig, responseFormat }), {
           label: 'veiled-variants',
           config: runConfig,
-          abortSignal: runConfig.abortSignal,
+          onProgress: scopePhase(runConfig.onProgress, 'strategy'),
         });
         batchDone(1);
         return r;

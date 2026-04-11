@@ -88,7 +88,7 @@ ${prompt}`;
  * Create response format for structured outputs
  * @param {string} schemaName - Name for the JSON schema
  * @param {Object} [customSchema] - Custom schema to use instead of default
- * @returns {Object} response_format object for callLlm
+ * @returns {Object} responseFormat object for callLlm
  */
 function createResponseFormat(schemaName = 'central_tendency_result', customSchema = undefined) {
   const schema = customSchema || centralTendencySchema;
@@ -132,7 +132,7 @@ export default async function centralTendency(item, seedItems, config = {}) {
 
     const response = await callLlm(prompt, {
       ...runConfig,
-      response_format: responseFormat,
+      responseFormat,
     });
 
     emitter.emit({ event: DomainEvent.output, value: response });

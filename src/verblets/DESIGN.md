@@ -14,7 +14,7 @@ Each verblet directory contains:
 
 ## Structured Output
 
-Pass `response_format` flat on the config object alongside other options. callLlm handles JSON parsing and auto-unwraps `{ value }` and `{ items }` wrappers. See [JSON Schema Guidelines](../../.claude/guidelines/JSON_SCHEMAS.md) for schema design patterns, collection conventions, and common mistakes.
+Pass `responseFormat` flat on the config object alongside other options. callLlm handles JSON parsing and auto-unwraps `{ value }` and `{ items }` wrappers. See [JSON Schema Guidelines](../../.claude/guidelines/JSON_SCHEMAS.md) for schema design patterns, collection conventions, and common mistakes.
 
 ```javascript
 import callLlm from '../../lib/llm/index.js';
@@ -22,7 +22,7 @@ import callLlm from '../../lib/llm/index.js';
 export default async function sentiment(text, config = {}) {
   return callLlm(`Analyze the sentiment of this text: ${text}`, {
     ...config,
-    response_format: {
+    responseFormat: {
       type: 'json_schema',
       json_schema: {
         name: 'sentiment_result',
@@ -66,7 +66,7 @@ export default async function multiQuery(query, config = {}) {
   const guidance = mapDivergence(divergence);
 
   const prompt = buildPrompt(query, guidance);
-  return callLlm(prompt, { ...config, response_format: schema });
+  return callLlm(prompt, { ...config, responseFormat: schema });
 }
 ```
 
@@ -107,7 +107,7 @@ export default async function sentiment(text, config = {}) {
 
   return callLlm(buildPrompt(text), {
     ...config,
-    response_format: sentimentSchema,
+    responseFormat: sentimentSchema,
   });
 }
 ```
@@ -118,12 +118,12 @@ README is optional for verblets with a single parameter and obvious behavior. Re
 
 ## Testing
 
-**Unit tests** (`index.spec.js`): mock `callLlm`, verify the prompt contains expected content and `response_format` is passed. **Integration tests** (`index.examples.js`): real LLM calls with vitest test wrappers. See [example test conventions](../../docs/example-test-conventions.md).
+**Unit tests** (`index.spec.js`): mock `callLlm`, verify the prompt contains expected content and `responseFormat` is passed. **Integration tests** (`index.examples.js`): real LLM calls with vitest test wrappers. See [example test conventions](../../docs/example-test-conventions.md).
 
 ## Anti-Patterns
 
-- Embedding schemas in prompts instead of using `response_format` (see [JSON Schema Guidelines](../../.claude/guidelines/JSON_SCHEMAS.md))
-- Nesting model keys under `modelOptions` — pass `response_format`, `temperature`, etc. flat on config
+- Embedding schemas in prompts instead of using `responseFormat` (see [JSON Schema Guidelines](../../.claude/guidelines/JSON_SCHEMAS.md))
+- Nesting model keys under `modelOptions` — pass `responseFormat`, `temperature`, etc. flat on config
 - Extracting `llm` from config to re-pass — callLlm resolves it automatically
 - Over-defensive input validation for simple single-parameter verblets
 - Hard-coding model names instead of capability-based selection

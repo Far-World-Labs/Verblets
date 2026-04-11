@@ -8,6 +8,7 @@ import { asXML } from '../../prompts/wrap-variable.js';
 import createProgressEmitter from '../progress/index.js';
 import { DomainEvent, Outcome } from '../progress/constants.js';
 import { debug } from '../debug/index.js';
+import { nameStep } from '../context/option.js';
 import { untrustedSystemSuffix, untrustedBoundary } from '../../prompts/prompt-piece.js';
 import { reshapeEditsSchema, reshapeDiagnosticSchema } from './schemas.js';
 
@@ -43,17 +44,18 @@ const formatRegistry = (registry) =>
 
 const createAdvisor = (label, systemPrompt, schema, buildParts) => {
   const fn = async (input, config = {}) => {
-    const { llm, maxAttempts = 3, onProgress, abortSignal, untrusted = false, ...rest } = config;
+    const { untrusted = false } = config;
+    const runConfig = nameStep(label, { maxAttempts: 3, ...config });
 
-    const resolvedSchema = typeof schema === 'function' ? schema(input, config) : schema;
+    const resolvedSchema = typeof schema === 'function' ? schema(input, runConfig) : schema;
     const resolvedSystemPrompt =
-      typeof systemPrompt === 'function' ? systemPrompt(input, config) : systemPrompt;
+      typeof systemPrompt === 'function' ? systemPrompt(input, runConfig) : systemPrompt;
 
-    const emitter = createProgressEmitter(label, onProgress);
+    const emitter = createProgressEmitter(label, runConfig.onProgress, runConfig);
     emitter.start();
     emitter.emit({ event: DomainEvent.step, stepName: 'analyzing' });
 
-    const parts = buildParts(input, config);
+    const parts = buildParts(input, runConfig);
     const effectiveSystemPrompt = untrusted
       ? resolvedSystemPrompt + untrustedSystemSuffix
       : resolvedSystemPrompt;
@@ -62,13 +64,11 @@ const createAdvisor = (label, systemPrompt, schema, buildParts) => {
     const response = await retry(
       () =>
         callLlm(effectiveParts.join('\n\n'), {
-          llm,
+          ...runConfig,
           systemPrompt: effectiveSystemPrompt,
-          response_format: jsonSchema(resolvedSchema.name, resolvedSchema.schema),
-          abortSignal,
-          ...rest,
+          responseFormat: jsonSchema(resolvedSchema.name, resolvedSchema.schema),
         }),
-      { label, maxAttempts, onProgress, abortSignal }
+      { label, config: runConfig }
     );
 
     debug(`${label}: complete`);

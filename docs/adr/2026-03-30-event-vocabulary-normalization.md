@@ -39,7 +39,7 @@ The lifecycle is: `instructions` (user input) → `xxxSpec()` → `specification
 
 These are not synonyms. They are pipeline stages. The only fix needed: rename the `prompt` parameter in `scaleSpec`, `entitySpec`, and `relationSpec` to `instructions`, matching `tagSpec` and all chain-level APIs. The word `prompt` is reserved for assembled LLM prompt strings.
 
-`schema` always means JSON Schema for `response_format`. No ambiguity in kind, only in role (spec-shaping vs result-shaping). No change needed.
+`schema` always means JSON Schema for `responseFormat`. No ambiguity in kind, only in role (spec-shaping vs result-shaping). No change needed.
 
 Rejected alternative: a type alias for "composed instructions." The `xxxInstructions` function names are clear enough; adding a type would be over-engineering.
 

@@ -9,7 +9,7 @@ import intersectionResultSchema from './intersection-result.json' with { type: '
 import { debug } from '../../lib/debug/index.js';
 import parallelBatch from '../../lib/parallel-batch/index.js';
 import { nameStep, getOptions } from '../../lib/context/option.js';
-import createProgressEmitter from '../../lib/progress/index.js';
+import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
 import { Outcome, ErrorPosture } from '../../lib/progress/constants.js';
 
 const name = 'intersections';
@@ -57,12 +57,11 @@ const processCombo = async (combo, instructions, config = {}) => {
       () =>
         callLlm(INTERSECTION_PROMPT(combo, instructions), {
           ...config,
-          response_format: jsonSchema('intersection_elements', intersectionElementsSchema),
+          responseFormat: jsonSchema('intersection_elements', intersectionElementsSchema),
         }),
       {
         label: 'intersections-elements',
         config,
-        abortSignal: config.abortSignal,
       }
     ),
     commonalities(combo, { ...config, instructions }),
@@ -125,7 +124,10 @@ export default async function intersections(items, config = {}) {
     const batchResults = await parallelBatch(
       allCombinations,
       async (combo) => {
-        const result = await processCombo(combo, instructions, runConfig);
+        const result = await processCombo(combo, instructions, {
+          ...runConfig,
+          onProgress: scopePhase(runConfig.onProgress, 'combo'),
+        });
         batchDone(1);
         return result;
       },
@@ -167,7 +169,7 @@ export default async function intersections(items, config = {}) {
  */
 function createModelOptions(schemaName = 'intersection_result') {
   return {
-    response_format: jsonSchema(schemaName, intersectionResultSchema),
+    responseFormat: jsonSchema(schemaName, intersectionResultSchema),
   };
 }
 
@@ -199,7 +201,6 @@ Return the properly structured JSON object with an "intersections" property cont
       {
         label: 'intersections-validation',
         config,
-        abortSignal: config.abortSignal,
       }
     );
     // Extract intersections from the object structure

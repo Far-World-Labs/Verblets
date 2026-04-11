@@ -80,12 +80,11 @@ Requirements:
       () =>
         callLlm(prompt, {
           ...runConfig,
-          response_format: popReferenceResponseFormat,
+          responseFormat: popReferenceResponseFormat,
         }),
       {
         label: 'pop-reference',
         config: runConfig,
-        abortSignal: runConfig.abortSignal,
       }
     );
 

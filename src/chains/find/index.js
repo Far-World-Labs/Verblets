@@ -5,7 +5,7 @@ import { createBatches, parallel, retry } from '../../lib/index.js';
 import { jsonSchema } from '../../lib/llm/index.js';
 import { debug } from '../../lib/debug/index.js';
 import { nameStep, getOptions } from '../../lib/context/option.js';
-import createProgressEmitter from '../../lib/progress/index.js';
+import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
 import { OpEvent, DomainEvent, Outcome, ErrorPosture } from '../../lib/progress/constants.js';
 
 const name = 'find';
@@ -77,8 +77,7 @@ Process exactly ${count} items from the XML list below and return the single bes
             {
               label: 'find:batch',
               config: runConfig,
-              onProgress: runConfig.onProgress,
-              abortSignal: runConfig.abortSignal,
+              onProgress: scopePhase(runConfig.onProgress, 'batch'),
             }
           );
 

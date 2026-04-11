@@ -153,9 +153,9 @@ export default async function valueArbitrate(signals, ctx, values, config = {}) 
       () =>
         callLlm(prompt, {
           ...runConfig,
-          response_format: jsonSchema('value_arbitrate', schema),
+          responseFormat: jsonSchema('value_arbitrate', schema),
         }),
-      { label: 'value-arbitrate', config: runConfig, abortSignal: runConfig.abortSignal }
+      { label: 'value-arbitrate', config: runConfig }
     );
 
     // callLlm auto-unwraps the value from the JSON response

@@ -1,6 +1,6 @@
 import globalModelService from '../../services/llm-model/index.js';
 
-export default (text, { minCharsToRemove = 10, model, modelService, targetTokenCount }) => {
+export default (text, { minCharsToRemove = 10, model, modelService, targetTokenCount } = {}) => {
   if (typeof text !== 'string' || text.length === 0) {
     throw new Error('shorten-text: text must be a non-empty string');
   }

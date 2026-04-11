@@ -48,7 +48,7 @@ export default async function embedMultiQuery(query, config = {}) {
 
     const result = await callLlm(multiQueryPrompt(query, count, { divergenceGuidance }), {
       ...runConfig,
-      response_format: jsonSchema('multi_query', embedMultiQuerySchema),
+      responseFormat: jsonSchema('multi_query', embedMultiQuerySchema),
     });
     emitter.complete({ outcome: Outcome.success });
     return result;

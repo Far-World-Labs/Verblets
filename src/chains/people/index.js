@@ -23,12 +23,11 @@ ${instructions}`;
       () =>
         callLlm(prompt, {
           ...runConfig,
-          response_format: jsonSchema(peopleListJsonSchema.name, peopleListJsonSchema.schema),
+          responseFormat: jsonSchema(peopleListJsonSchema.name, peopleListJsonSchema.schema),
         }),
       {
         label: `people-list generation for ${count} people`,
         config: runConfig,
-        abortSignal: runConfig.abortSignal,
       }
     );
 

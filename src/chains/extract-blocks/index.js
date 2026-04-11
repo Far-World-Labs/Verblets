@@ -3,7 +3,7 @@ import retry from '../../lib/retry/index.js';
 import parallelBatch from '../../lib/parallel-batch/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { blockExtractionSchema } from './block-schema.js';
-import createProgressEmitter from '../../lib/progress/index.js';
+import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
 import { OpEvent, DomainEvent, Outcome } from '../../lib/progress/constants.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 
@@ -79,7 +79,6 @@ export async function extractBlocks(text, instructions, config = {}) {
     precision: withPolicy(mapPrecision, ['windowSize', 'overlapSize']),
     maxParallel: 3,
   });
-  const { onProgress } = runConfig;
 
   // Handle empty text
   if (!text || text.trim() === '') {
@@ -129,13 +128,12 @@ export async function extractBlocks(text, instructions, config = {}) {
           () =>
             callLlm(prompt, {
               ...runConfig,
-              response_format: blockExtractionSchema,
+              responseFormat: blockExtractionSchema,
             }),
           {
             label: `extract-blocks:window`,
             config: runConfig,
-            onProgress,
-            abortSignal: runConfig.abortSignal,
+            onProgress: scopePhase(runConfig.onProgress, 'window'),
           }
         );
 

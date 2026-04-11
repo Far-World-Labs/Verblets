@@ -176,7 +176,7 @@ export default async function phailForge(prompt, config = {}) {
     // Get the enhanced prompt
     const enhancedResponse = await callLlm(fullPrompt, {
       ...runConfig,
-      response_format: jsonSchema('phail_enhancement', enhancementSchema),
+      responseFormat: jsonSchema('phail_enhancement', enhancementSchema),
     });
 
     // Calculate expansion ratio
@@ -191,7 +191,7 @@ export default async function phailForge(prompt, config = {}) {
 
       const analysis = await callLlm(analysisPrompt, {
         ...runConfig,
-        response_format: jsonSchema('prompt_analysis', analysisSchema),
+        responseFormat: jsonSchema('prompt_analysis', analysisSchema),
       });
 
       enhancedResponse.analysis = analysis;

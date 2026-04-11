@@ -28,7 +28,7 @@ The value should be the sentiment classification.`;
   try {
     const response = await callLlm(prompt, {
       ...runConfig,
-      response_format: jsonSchema('sentiment_analysis', sentimentSchema),
+      responseFormat: jsonSchema('sentiment_analysis', sentimentSchema),
     });
 
     emitter.complete({ outcome: Outcome.success });

@@ -247,7 +247,7 @@ describe('detectThreshold', () => {
     expect(finalPrompt).toContain('between 2 and 80');
 
     const callLlmConfig = callLlm.mock.calls[0][1];
-    expect(callLlmConfig.response_format).toEqual({
+    expect(callLlmConfig.responseFormat).toEqual({
       type: 'json_schema',
       json_schema: {
         name: 'threshold_result',

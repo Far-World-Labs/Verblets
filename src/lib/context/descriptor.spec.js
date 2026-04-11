@@ -14,7 +14,7 @@ const riskDescriptor = {
 };
 
 describe('descriptorToSchema', () => {
-  it('converts a single descriptor to a JSON Schema response_format', () => {
+  it('converts a single descriptor to a JSON Schema responseFormat', () => {
     const schema = descriptorToSchema({ healthSignal: healthDescriptor });
 
     expect(schema.type).toBe('json_schema');

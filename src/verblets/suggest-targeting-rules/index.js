@@ -67,7 +67,7 @@ export default async function suggestTargetingRules(traces, instruction, config 
 
     const result = await callLlm(prompt, {
       ...runConfig,
-      response_format: jsonSchema('targeting_rules', schema),
+      responseFormat: jsonSchema('targeting_rules', schema),
     });
 
     const rules = result?.rules ?? result ?? [];

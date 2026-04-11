@@ -37,7 +37,6 @@ const visit = async ({
       ...config,
       batchSize: 4,
       extremeK: 4,
-      abortSignal: config.abortSignal,
     }
   );
   const sortCriteria = sortResults.slice(0, 5);
@@ -64,7 +63,7 @@ const visit = async ({
     async () => {
       const resultParsed = await callLlm(visitPrompt, {
         ...config,
-        response_format: jsonSchema('code_features_analysis', schema),
+        responseFormat: jsonSchema('code_features_analysis', schema),
       });
 
       const id = `${node.filename}:::${node.functionName}`;
@@ -74,7 +73,7 @@ const visit = async ({
       state.abbreviations = state.abbreviations ?? {};
       state.abbreviations[id] = state.abbreviations[id] ?? state.nodesFound;
     },
-    { label: 'scan-js', config, abortSignal: config.abortSignal }
+    { label: 'scan-js', config }
   );
 
   return state;

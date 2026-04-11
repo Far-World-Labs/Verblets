@@ -106,7 +106,7 @@ export default async function listBatch(list, instructions, config = {}) {
 
     const llmModelKeys = {
       ...(maxTokens && { maxTokens }),
-      response_format: foundResponseFormat,
+      responseFormat: foundResponseFormat,
     };
 
     if (logger?.debug) {
@@ -115,7 +115,7 @@ export default async function listBatch(list, instructions, config = {}) {
         llmConfig: {
           hasLLM: !!llm,
           llmKeys: llm && typeof llm === 'object' ? Object.keys(llm) : [],
-          hasResponseFormat: !!llmModelKeys.response_format,
+          hasResponseFormat: !!llmModelKeys.responseFormat,
         },
         optionKeys: Object.keys(options),
       });

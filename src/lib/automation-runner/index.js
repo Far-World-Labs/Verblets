@@ -19,6 +19,7 @@ import dotenv from 'dotenv';
 import init from '../../init.js';
 import { RunContext } from '../run-context/index.js';
 import { list, resolve as resolveAutomation, updateStats } from '../automation-registry/index.js';
+import { TelemetryEvent, LlmStatus } from '../progress/constants.js';
 
 const DATA_ROOT = () => {
   const xdgData = process.env.XDG_DATA_HOME || resolve(homedir(), '.local', 'share');
@@ -156,9 +157,9 @@ function createOutageDetector(abortController) {
 
   return function observe(event) {
     // Only watch LLM call telemetry errors
-    if (event.event !== 'llm:call' || event.status !== 'error') {
+    if (event.event !== TelemetryEvent.llmCall || event.status !== LlmStatus.error) {
       // Successful LLM call resets the counter
-      if (event.event === 'llm:call' && event.status === 'success') {
+      if (event.event === TelemetryEvent.llmCall && event.status === LlmStatus.success) {
         consecutiveErrors = 0;
       }
       return;

@@ -126,7 +126,7 @@ async function processIndividualItem(
 
     const response = await llm(prompt, {
       ...runConfig,
-      response_format: jsonSchema('arch_result', resultSchema),
+      responseFormat: jsonSchema('arch_result', resultSchema),
     });
 
     return { item, ...response, error: undefined };
@@ -191,7 +191,7 @@ async function processBulkChunk(
     const reduceConfig = {
       ...config,
       responseFormat: jsonSchema('arch_bulk_result', bulkResultSchema),
-      onProgress: scopePhase(config.onProgress, 'reduce'),
+      onProgress: scopePhase(onProgress, 'reduce'),
     };
     const response = await reduce(chunk, prompt, reduceConfig);
 

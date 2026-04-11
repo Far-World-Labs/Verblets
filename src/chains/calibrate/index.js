@@ -135,7 +135,7 @@ IMPORTANT: Each property must be a simple string value, not a nested object or a
         callLlm(specUserPrompt, {
           ...runConfig,
           systemPrompt: specSystemPrompt,
-          response_format: jsonSchema(
+          responseFormat: jsonSchema(
             calibrateSpecificationJsonSchema.name,
             calibrateSpecificationJsonSchema.schema
           ),
@@ -143,7 +143,6 @@ IMPORTANT: Each property must be a simple string value, not a nested object or a
       {
         label: 'calibrate spec',
         config: runConfig,
-        abortSignal: runConfig.abortSignal,
       }
     );
 
@@ -187,12 +186,11 @@ Return a JSON object with:
       () =>
         callLlm(prompt, {
           ...runConfig,
-          response_format: jsonSchema('calibrate_result', calibrateResultSchema),
+          responseFormat: jsonSchema('calibrate_result', calibrateResultSchema),
         }),
       {
         label: 'calibrate classify',
         config: runConfig,
-        abortSignal: runConfig.abortSignal,
       }
     );
 
@@ -216,12 +214,7 @@ export function createCalibratedClassifier(specification, config = {}) {
     return applyCalibrate(scan, specification, config);
   };
 
-  Object.defineProperty(classifierFunction, 'specification', {
-    get() {
-      return specification;
-    },
-    enumerable: true,
-  });
+  classifierFunction.specification = specification;
 
   return classifierFunction;
 }
@@ -241,12 +234,7 @@ export default function calibrate(instructions, config = {}) {
     return applyCalibrate(scan, spec, config);
   };
 
-  Object.defineProperty(calibrateFunction, 'instructions', {
-    get() {
-      return instructions;
-    },
-    enumerable: true,
-  });
+  calibrateFunction.instructions = instructions;
 
   return calibrateFunction;
 }

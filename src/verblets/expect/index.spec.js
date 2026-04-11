@@ -3,7 +3,7 @@ import aiExpect from './index.js';
 import { longTestTimeout } from '../../constants/common.js';
 
 // Mock the llm function to avoid actual API calls
-// With response_format + value schema, callLlm auto-unwraps to a bare boolean
+// With responseFormat + value schema, callLlm auto-unwraps to a bare boolean
 vi.mock('../../lib/llm/index.js', () => ({
   jsonSchema: (name, schema) => ({ type: 'json_schema', json_schema: { name, schema } }),
   default: vi.fn().mockImplementation((prompt) => {

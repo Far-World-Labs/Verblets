@@ -22,13 +22,13 @@ export default async (text, type, config = {}) => {
   try {
     const schema = type ? getSchema(type) : undefined;
 
-    const response_format = schema
+    const responseFormat = schema
       ? jsonSchema(`schema_org_${type.toLowerCase()}`, schema)
       : { type: 'json_object' };
 
     const response = await callLlm(asSchemaOrgText(text, type, schema), {
       ...runConfig,
-      response_format,
+      responseFormat,
     });
     emitter.complete({ outcome: Outcome.success });
     return response;

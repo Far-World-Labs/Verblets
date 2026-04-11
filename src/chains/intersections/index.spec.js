@@ -78,11 +78,11 @@ describe('intersections chain', () => {
     expect(commonalities).toHaveBeenCalledTimes(4);
   });
 
-  it('passes json_schema response_format to callLlm', async () => {
+  it('passes json_schema responseFormat to callLlm', async () => {
     await intersections(['A', 'B']);
     const config = callLlm.mock.calls[0][1];
-    expect(config.response_format.type).toBe('json_schema');
-    expect(config.response_format.json_schema.name).toBe('intersection_elements');
+    expect(config.responseFormat.type).toBe('json_schema');
+    expect(config.responseFormat.json_schema.name).toBe('intersection_elements');
   });
 
   it('includes instructions in prompt and forwards to commonalities', async () => {

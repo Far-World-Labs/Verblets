@@ -116,7 +116,6 @@ export default async function categorySamples(categoryName, config = {}) {
       ...runConfig,
       shouldStop: ({ resultsAll }) => resultsAll.length >= count,
       onProgress: scopePhase(runConfig.onProgress, 'list:sampling'),
-      abortSignal: runConfig.abortSignal,
     });
 
     if (!results || results.length === 0) {
@@ -131,7 +130,6 @@ export default async function categorySamples(categoryName, config = {}) {
     const result = await retry(generateWithRetry, {
       label: 'category-samples',
       config: runConfig,
-      abortSignal: runConfig.abortSignal,
     });
 
     emitter.complete({ outcome: Outcome.success });

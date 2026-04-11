@@ -1,6 +1,6 @@
 import { embedBatch } from '../embed-local/index.js';
 
-const cache = new Map();
+let cache = new WeakMap();
 
 /**
  * Embed a set of probe definitions for use with probeScan.
@@ -29,5 +29,5 @@ export default function embedProbes(probes) {
 }
 
 export function clearProbeCache() {
-  cache.clear();
+  cache = new WeakMap();
 }

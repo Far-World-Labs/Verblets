@@ -57,7 +57,7 @@ function configureAbortSignal(fetchOptions, abortSignal, timeoutController) {
 }
 
 /**
- * Build a response_format object for structured JSON output.
+ * Build a responseFormat object for structured JSON output.
  * Wraps a JSON schema in the standard { type, json_schema: { name, schema } } envelope.
  *
  * @param {string} name - Schema name (e.g. 'sort_result', 'filter_decisions')
@@ -109,10 +109,10 @@ const shapeOutputDefault = (result, requestConfig, options = {}) => {
     if (typeof content === 'object' && content !== null) {
       return content;
     }
-    // If using response_format and content is a string, parse it as JSON unless disabled
+    // If using responseFormat and content is a string, parse it as JSON unless disabled
     if (
       typeof content === 'string' &&
-      requestConfig?.response_format &&
+      requestConfig?.responseFormat &&
       !options.skipResponseParse
     ) {
       const trimmed = content.trim();
@@ -121,7 +121,7 @@ const shapeOutputDefault = (result, requestConfig, options = {}) => {
 
         // Auto-unwrap simple collection wrappers (default enabled)
         const unwrapCollections = options.unwrapCollections !== false;
-        if (unwrapCollections && isSimpleCollectionSchema(requestConfig.response_format)) {
+        if (unwrapCollections && isSimpleCollectionSchema(requestConfig.responseFormat)) {
           if (parsed?.items && Array.isArray(parsed.items)) {
             return parsed.items;
           }
@@ -129,7 +129,7 @@ const shapeOutputDefault = (result, requestConfig, options = {}) => {
 
         // Auto-unwrap simple value wrappers (default enabled)
         const unwrapValues = options.unwrapValues !== false;
-        if (unwrapValues && isSimpleValueSchema(requestConfig.response_format)) {
+        if (unwrapValues && isSimpleValueSchema(requestConfig.responseFormat)) {
           if ('value' in parsed) {
             return parsed.value;
           }
@@ -138,7 +138,7 @@ const shapeOutputDefault = (result, requestConfig, options = {}) => {
         return parsed;
       } catch {
         // Models without structured output may return unparseable text despite
-        // response_format being set. Throwing lets the caller's retry wrapper
+        // responseFormat being set. Throwing lets the caller's retry wrapper
         // re-attempt the LLM call rather than silently returning a string.
         throw new Error(
           `Structured output parse failed — model returned non-JSON: ${trimmed.slice(0, 200)}`
@@ -178,7 +178,7 @@ export const setBasePolicy = (policy) => {
 // Keys that belong to the model/request layer (as opposed to callLlm control keys).
 // Exported so consumers can discover which keys are policy-resolvable at the LLM level.
 export const MODEL_KEYS = [
-  'response_format',
+  'responseFormat',
   'temperature',
   'frequencyPenalty',
   'presencePenalty',
@@ -299,13 +299,13 @@ export const run = async (prompt, options = {}) => {
     modelName: modelNameNegotiated,
   });
 
-  // Structured output fallback for models that can't do response_format (e.g. local sensitive models)
+  // Structured output fallback for models that can't do responseFormat (e.g. local sensitive models)
   const needsJsonExtraction =
-    modelFound.structuredOutput === false && !!requestConfig.response_format;
+    modelFound.structuredOutput === false && !!requestConfig.responseFormat;
   let fetchConfig = requestConfig;
 
   if (needsJsonExtraction) {
-    const schema = requestConfig.response_format?.json_schema?.schema;
+    const schema = requestConfig.responseFormat?.json_schema?.schema;
     const schemaInstruction = schema
       ? `${onlyJSON} ${contentIsSchema} ${asXML(JSON.stringify(schema), { tag: 'json-schema--do-not-output' })}`
       : onlyJSON;
@@ -324,9 +324,9 @@ export const run = async (prompt, options = {}) => {
           : msg
       ) ?? requestConfig.messages;
 
-    // Build fetch config without response_format
+    // Build fetch config without responseFormat
     // eslint-disable-next-line no-unused-vars
-    const { response_format: _rf, ...rest } = requestConfig;
+    const { responseFormat: _rf, ...rest } = requestConfig;
     fetchConfig = { ...rest, messages };
   }
 

@@ -231,7 +231,7 @@ describe('createOptionHistoryAnalyzer', () => {
     expect(prompt).toContain('decision traces');
     expect(prompt).toContain('strictness');
     expect(prompt).toContain('fallback');
-    expect(config.response_format.json_schema.name).toBe('rule_suggestions');
+    expect(config.responseFormat.json_schema.name).toBe('rule_suggestions');
   });
 
   it('analyze passes instruction through to the prompt', async () => {

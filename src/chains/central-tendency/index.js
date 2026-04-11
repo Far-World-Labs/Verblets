@@ -85,7 +85,6 @@ export default async function centralTendency(items, seedItems, config = {}) {
       batchSize,
       responseFormat: centralTendencyResponseFormat,
       onProgress: scopePhase(runConfig.onProgress, 'map:evaluation'),
-      abortSignal: runConfig.abortSignal,
     });
 
     const resultMeta = {

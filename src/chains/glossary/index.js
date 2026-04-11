@@ -73,7 +73,6 @@ Return a "terms" object containing an array of the extracted terms.`;
       batchSize: runConfig.batchSize ?? 1,
       responseFormat: GLOSSARY_RESPONSE_FORMAT,
       onProgress: scopePhase(runConfig.onProgress, 'glossary:extract'),
-      abortSignal: runConfig.abortSignal,
     });
 
     batchDone(textChunks.length);
@@ -100,7 +99,6 @@ Return a "terms" object containing an array of the extracted terms.`;
     const sorted = await sort(terms, sortBy, {
       ...runConfig,
       onProgress: scopePhase(runConfig.onProgress, 'glossary:sort'),
-      abortSignal: runConfig.abortSignal,
     });
 
     batchDone(1);

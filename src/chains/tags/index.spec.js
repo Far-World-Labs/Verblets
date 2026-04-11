@@ -71,7 +71,7 @@ describe('tags', () => {
       expect(llm).toHaveBeenCalledWith(
         expect.stringContaining(item),
         expect.objectContaining({
-          response_format: expect.objectContaining({
+          responseFormat: expect.objectContaining({
             type: 'json_schema',
           }),
         })

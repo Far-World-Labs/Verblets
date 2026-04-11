@@ -24,7 +24,7 @@ export default async function embedRewriteToOutputDoc(query, config = {}) {
   try {
     const result = await callLlm(hydeOutputDoc(query), {
       ...runConfig,
-      response_format: jsonSchema('hyde_output_doc', schema),
+      responseFormat: jsonSchema('hyde_output_doc', schema),
     });
     emitter.complete({ outcome: Outcome.success });
     return result;

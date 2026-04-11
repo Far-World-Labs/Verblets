@@ -188,7 +188,6 @@ Use natural language, not symbolic identifiers or linked data formats.`;
     {
       label: 'relations-spec',
       config: runConfig,
-      abortSignal: runConfig.abortSignal,
     }
   );
 
@@ -253,12 +252,11 @@ Example: {"object": "42^^xsd:integer"} NOT {"object": '"42"^^xsd:integer'}`;
     () =>
       callLlm(prompt, {
         ...runConfig,
-        response_format: jsonSchema('relation_result', relationResultSchema),
+        responseFormat: jsonSchema('relation_result', relationResultSchema),
       }),
     {
       label: 'relations-apply',
       config: runConfig,
-      abortSignal: runConfig.abortSignal,
     }
   );
 

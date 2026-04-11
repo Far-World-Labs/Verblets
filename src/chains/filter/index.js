@@ -4,7 +4,7 @@ import { filterDecisionsJsonSchema } from './schemas.js';
 import { createBatches, retry } from '../../lib/index.js';
 import { jsonSchema } from '../../lib/llm/index.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
-import createProgressEmitter from '../../lib/progress/index.js';
+import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
 import { OpEvent, DomainEvent, Outcome, ErrorPosture } from '../../lib/progress/constants.js';
 
 const name = 'filter';
@@ -108,8 +108,7 @@ Process exactly ${count} items from the XML list below and return ${count} yes/n
       response = await retry(() => listBatch(items, prompt, listBatchOptions), {
         label: 'filter:batch',
         config: runConfig,
-        onProgress: runConfig.onProgress,
-        abortSignal: runConfig.abortSignal,
+        onProgress: scopePhase(runConfig.onProgress, 'batch'),
       });
     } catch (error) {
       emitter.error(error, { batchIndex, itemCount: items.length });

@@ -60,7 +60,6 @@ const sort = async (list, criteria, config = {}) => {
     effort: withPolicy(mapEffort, ['extremeK', 'iterations', 'selectBottom']),
     batchSize: defaultSortBatchSize,
   });
-  const { onProgress } = runConfig;
   const items = sanitizeList(list);
 
   try {
@@ -83,12 +82,10 @@ const sort = async (list, criteria, config = {}) => {
       }
 
       const result = await retry(
-        () => callLlm(prompt, { ...runConfig, response_format: sortResponseFormat }),
+        () => callLlm(prompt, { ...runConfig, responseFormat: sortResponseFormat }),
         {
           label: 'sort-batch',
           config: runConfig,
-          onProgress,
-          abortSignal: runConfig.abortSignal,
         }
       );
 

@@ -23,13 +23,7 @@
  * timeoutController.clearTimeout(); // Manually clear the timeout
  */
 
-// Use the global AbortController to ensure compatibility across environments
-// In browsers, this uses the native AbortController
-// In Node.js, this uses the polyfilled AbortController
-const BaseController =
-  (typeof globalThis !== 'undefined' && globalThis.AbortController) || AbortController;
-
-export default class TimedAbortController extends BaseController {
+export default class TimedAbortController extends AbortController {
   /**
    * Creates a new TimedAbortController instance.
    *

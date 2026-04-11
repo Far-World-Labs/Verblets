@@ -196,8 +196,7 @@ export default async function group(list, instructions, config = {}) {
           {
             label: 'group:batch',
             config: runConfig,
-            onProgress: runConfig.onProgress,
-            abortSignal: runConfig.abortSignal,
+            onProgress: scopePhase(runConfig.onProgress, 'assign'),
           }
         );
 

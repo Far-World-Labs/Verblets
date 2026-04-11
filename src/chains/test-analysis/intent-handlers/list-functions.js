@@ -27,7 +27,7 @@ async function getAiMdContext(moduleDir) {
     const compressed = await retry(
       () =>
         llm(prompt, {
-          response_format: jsonSchema('compressed_context', compressedContextSchema),
+          responseFormat: jsonSchema('compressed_context', compressedContextSchema),
         }),
       { maxAttempts: 2, label: 'AI.md compression' }
     );

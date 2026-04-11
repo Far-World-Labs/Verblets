@@ -26,10 +26,9 @@ The value should be your selection.`;
   try {
     const result = await callLlm(enumText, {
       ...runConfig,
-      response_format: jsonSchema('enum_selection', schema),
+      responseFormat: jsonSchema('enum_selection', schema),
     });
 
-    //TODO:DOCS_OBSERVATIONS string 'undefined' check is fragile — if the schema constrains to the enum values plus a sentinel, this becomes unnecessary
     // With auto-unwrapping, result should be the value directly
     const interpreted = result === 'undefined' ? undefined : result;
 

@@ -63,7 +63,7 @@ Looks up a model by name, then by catalog name. Returns a `Model` instance with 
 
 ### `modelService.getRequestConfig(options)`
 
-Builds a provider-ready request object from `{ prompt, modelName, temperature, maxTokens, topP, frequencyPenalty, presencePenalty, systemPrompt, response_format, tools, toolChoice }`.
+Builds a provider-ready request object from `{ prompt, modelName, temperature, maxTokens, topP, frequencyPenalty, presencePenalty, systemPrompt, responseFormat, tools, toolChoice }`.
 
 ### `modelService.setModels(entries)`
 

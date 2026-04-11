@@ -53,7 +53,7 @@ export const buildRequest = (apiUrl, apiKey, endpoint, requestConfig) => {
     messages = [],
     model,
     max_tokens,
-    response_format,
+    responseFormat,
     tools,
     tool_choice,
     // Strip unsupported params
@@ -100,7 +100,7 @@ export const buildRequest = (apiUrl, apiKey, endpoint, requestConfig) => {
     }
   }
 
-  const textFormat = translateResponseFormat(response_format);
+  const textFormat = translateResponseFormat(responseFormat);
   Object.assign(body, textFormat);
 
   const fetchOptions = {

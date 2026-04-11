@@ -463,9 +463,9 @@ describe('config pipeline integration', () => {
 
   it('type preservation: objects are not coerced', async () => {
     const format = { type: 'json_schema', json_schema: { name: 'test' } };
-    const config = { response_format: format };
-    const result = await getOptions(config, { response_format: undefined });
-    expect(result.response_format).toBe(format); // same reference
+    const config = { responseFormat: format };
+    const result = await getOptions(config, { responseFormat: undefined });
+    expect(result.responseFormat).toBe(format); // same reference
   });
 
   it('withPolicy passes resolved value through mapper', async () => {

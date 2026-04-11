@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ErrorPosture } from '../../lib/progress/constants.js';
+import { ErrorPosture, ChainEvent, DomainEvent } from '../../lib/progress/constants.js';
 
 // Mock playwright-core
 vi.mock('playwright-core', () => {
@@ -330,9 +330,9 @@ describe('web-scrape', () => {
 
     const eventNames = events.map((e) => e.event);
     const stepNames = events.filter((e) => e.stepName).map((e) => e.stepName);
-    expect(eventNames).toContain('chain:start');
-    expect(eventNames).toContain('step');
-    expect(eventNames).toContain('chain:complete');
+    expect(eventNames).toContain(ChainEvent.start);
+    expect(eventNames).toContain(DomainEvent.step);
+    expect(eventNames).toContain(ChainEvent.complete);
     expect(stepNames).toContain('browser');
     expect(stepNames).toContain('url:start');
     expect(stepNames).toContain('url:complete');

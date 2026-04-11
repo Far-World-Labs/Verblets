@@ -3,7 +3,7 @@ import { asXML } from '../../prompts/wrap-variable.js';
 import retry from '../../lib/retry/index.js';
 import socraticQuestionSchema from './socratic-question-schema.js';
 import socraticAnswerSchema from './socratic-answer-schema.js';
-import createProgressEmitter from '../../lib/progress/index.js';
+import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
 import { DomainEvent, Outcome } from '../../lib/progress/constants.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 
@@ -49,7 +49,6 @@ const buildAnswerPrompt = (question, historyText) => `${
 }Answer the question thoughtfully and briefly:
 ${asXML(question, { tag: 'question' })}`;
 
-//TODO:DOCS_OBSERVATIONS defaultAsk and defaultAnswer pass llm/temperature directly instead of through config — inconsistent with config-threading pattern used elsewhere
 const defaultAsk = async ({
   topic,
   history = [],
@@ -64,14 +63,15 @@ const defaultAsk = async ({
   const response = await retry(
     () =>
       callLlm(prompt, {
+        ...config,
         llm,
         temperature,
-        response_format: jsonSchema('socratic_question', socraticQuestionSchema),
+        responseFormat: jsonSchema('socratic_question', socraticQuestionSchema),
       }),
     {
       label: 'socratic-ask',
       config,
-      abortSignal: config.abortSignal,
+      onProgress: scopePhase(config?.onProgress, 'ask'),
     }
   );
 
@@ -92,14 +92,15 @@ const defaultAnswer = async ({
   const response = await retry(
     () =>
       callLlm(prompt, {
+        ...config,
         llm,
         temperature,
-        response_format: jsonSchema('socratic_answer', socraticAnswerSchema),
+        responseFormat: jsonSchema('socratic_answer', socraticAnswerSchema),
       }),
     {
       label: 'socratic-answer',
       config,
-      abortSignal: config.abortSignal,
+      onProgress: scopePhase(config?.onProgress, 'answer'),
     }
   );
 

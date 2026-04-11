@@ -123,7 +123,6 @@ Consider the removal criteria above when scoring.`;
     const scores = await score(textsToScore, scoringInstructions, {
       ...runConfig,
       onProgress: scopePhase(runConfig.onProgress, 'score:relevance'),
-      abortSignal: runConfig.abortSignal,
       // Don't use stopOnThreshold - we need all scores to find high ones
     });
     batchDone(chunks.length);

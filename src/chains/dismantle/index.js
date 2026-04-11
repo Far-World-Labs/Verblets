@@ -8,7 +8,7 @@ import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
 import { DomainEvent, Outcome } from '../../lib/progress/constants.js';
 
-const _name = 'dismantle'; // eslint: unused — ChainTree.create receives name as parameter
+const _name = 'dismantle';
 
 // ===== Option Mappers =====
 
@@ -100,12 +100,11 @@ const defaultDecompose = async ({
         llm,
         frequencyPenalty: variety ?? DEFAULT_DECOMPOSE_PENALTY,
         temperature: temperature ?? 0.7,
-        response_format: jsonSchema('subcomponents', subComponentsSchema),
+        responseFormat: jsonSchema('subcomponents', subComponentsSchema),
       }),
     {
       label: 'dismantle-decompose',
       config,
-      abortSignal: config.abortSignal,
     }
   );
   return result;
@@ -129,12 +128,11 @@ const defaultEnhance = async ({
         llm,
         frequencyPenalty: enhanceVariety,
         temperature: temperature ?? 0.3,
-        response_format: jsonSchema('component_options', componentOptionsSchema),
+        responseFormat: jsonSchema('component_options', componentOptionsSchema),
       }),
     {
       label: 'dismantle-enhance',
       config,
-      abortSignal: config.abortSignal,
     }
   );
   const options = result;

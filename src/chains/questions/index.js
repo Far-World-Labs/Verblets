@@ -105,12 +105,11 @@ const generateQuestions = async function* generateQuestionsGenerator(text, confi
           () =>
             callLlm(pickInterestingQuestionPrompt, {
               ...runConfig,
-              response_format: jsonSchema('selected_question', selectedQuestionSchema),
+              responseFormat: jsonSchema('selected_question', selectedQuestionSchema),
             }),
           {
             label: 'questions-pick-interesting',
             config: runConfig,
-            abortSignal: runConfig.abortSignal,
           }
         );
         textSelected = selectedResult.question;
@@ -123,14 +122,13 @@ const generateQuestions = async function* generateQuestionsGenerator(text, confi
       const llmConfig = {
         ...runConfig,
         temperature,
-        response_format: jsonSchema('questions_list', questionsListSchema),
+        responseFormat: jsonSchema('questions_list', questionsListSchema),
       };
 
       // eslint-disable-next-line no-await-in-loop
       const results = await retry(() => callLlm(promptCreated, llmConfig), {
         label: 'questions-generate',
         config: runConfig,
-        abortSignal: runConfig.abortSignal,
       });
       const resultsNew = getRandomSubset(results, searchBreadth);
       if (searchBreadth < 0.5) {

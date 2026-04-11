@@ -26,7 +26,7 @@ The value should be "true", "false", or "undefined".`;
     const response = await callLlm(text, {
       ...runConfig,
       systemPrompt,
-      response_format: jsonSchema('boolean_evaluation', booleanSchema),
+      responseFormat: jsonSchema('boolean_evaluation', booleanSchema),
     });
 
     // Interpret response

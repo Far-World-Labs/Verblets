@@ -140,7 +140,7 @@ function detectIndicators(text) {
   return {
     xml: /<\w+>/.test(text),
     constants: Object.keys(promptConstants).some((k) => text.includes(promptConstants[k])),
-    schema: /json_schema|response_format/.test(text),
+    schema: /json_schema|responseFormat/.test(text),
     lines: text.split('\n').length,
     chain: 'unknown', // TODO: Detect chain type
   };
@@ -154,7 +154,7 @@ async function runAnalysis(promptText) {
   const analysis = await retry(
     () =>
       llm(analysisPrompt, {
-        response_format: jsonSchema(promptAnalysisSchema.name, promptAnalysisSchema.schema),
+        responseFormat: jsonSchema(promptAnalysisSchema.name, promptAnalysisSchema.schema),
       }),
     { maxAttempts: 2, label: 'prompt analysis' }
   );

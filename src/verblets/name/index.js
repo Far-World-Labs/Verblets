@@ -25,7 +25,7 @@ export default async function name(subject, config = {}) {
   try {
     const response = await callLlm(prompt, {
       ...runConfig,
-      response_format: jsonSchema('name_suggestion', nameSchema),
+      responseFormat: jsonSchema('name_suggestion', nameSchema),
     });
 
     const result = response === 'undefined' ? undefined : response;

@@ -17,19 +17,29 @@
 export default (signalsInitial) => {
   const signals = signalsInitial.filter((s) => s);
 
-  // Use the global AbortController to ensure compatibility across environments
-  const Controller =
-    (typeof globalThis !== 'undefined' && globalThis.AbortController) || AbortController;
+  const controller = new AbortController();
+  const registrations = [];
 
-  const controller = new Controller();
   for (const signal of signals) {
     if (signal.aborted) {
       controller.abort();
-      break;
+      return controller.signal;
     }
-    signal.addEventListener('abort', () => {
-      controller.abort();
-    });
+    const handler = () => controller.abort();
+    registrations.push([signal, handler]);
+    signal.addEventListener('abort', handler);
   }
+
+  // When the combined signal aborts, remove all source listeners
+  controller.signal.addEventListener(
+    'abort',
+    () => {
+      for (const [signal, handler] of registrations) {
+        signal.removeEventListener('abort', handler);
+      }
+    },
+    { once: true }
+  );
+
   return controller.signal;
 };

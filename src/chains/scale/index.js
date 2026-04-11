@@ -68,7 +68,7 @@ IMPORTANT: Each property must be a simple string value, not a nested object or a
         callLlm(specUserPrompt, {
           ...runConfig,
           systemPrompt: specSystemPrompt,
-          response_format: jsonSchema(
+          responseFormat: jsonSchema(
             scaleSpecificationJsonSchema.name,
             scaleSpecificationJsonSchema.schema
           ),
@@ -76,7 +76,6 @@ IMPORTANT: Each property must be a simple string value, not a nested object or a
       {
         label: 'spec',
         config: runConfig,
-        abortSignal: runConfig.abortSignal,
       }
     );
 
@@ -113,12 +112,11 @@ Return a JSON object with a "value" property containing the scaled result.`;
     () =>
       callLlm(prompt, {
         ...runConfig,
-        response_format: jsonSchema('scale_result', scaleResultSchema),
+        responseFormat: jsonSchema('scale_result', scaleResultSchema),
       }),
     {
       label: 'scale item',
       config: runConfig,
-      abortSignal: runConfig.abortSignal,
     }
   );
 

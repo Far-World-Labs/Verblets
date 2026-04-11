@@ -3,7 +3,7 @@ import retry from '../../lib/retry/index.js';
 import chunkSentences from '../../lib/chunk-sentences/index.js';
 import wrapVariable from '../../prompts/wrap-variable.js';
 import parallelBatch from '../../lib/parallel-batch/index.js';
-import createProgressEmitter from '../../lib/progress/index.js';
+import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
 import { Outcome, ErrorPosture } from '../../lib/progress/constants.js';
 import { getOption, nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 
@@ -106,7 +106,7 @@ export default async function split(text, instructions, config = {}) {
           const output = await retry(() => callLlm(prompt, llmConfig), {
             label: 'split',
             config: runConfig,
-            abortSignal: runConfig.abortSignal,
+            onProgress: scopePhase(runConfig.onProgress, 'chunk'),
           });
 
           const outputWithoutDelimiters = output.replace(

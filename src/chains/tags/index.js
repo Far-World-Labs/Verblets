@@ -30,15 +30,6 @@ const tagsMapSchema = {
   additionalProperties: false,
 };
 
-// ===== Option Mappers =====
-
-/**
- * Map vocabularyMode option value. Accepts 'strict' or 'open'.
- * @param {string|undefined} value
- * @returns {string} Resolved vocabulary mode
- */
-export const mapVocabularyMode = (value) => value ?? 'strict';
-
 // ===== Core Functions =====
 
 /**
@@ -76,7 +67,6 @@ Keep it concise and actionable.`;
       {
         label: 'tags-spec',
         config: runConfig,
-        abortSignal: runConfig.abortSignal,
       }
     );
 
@@ -130,12 +120,11 @@ Do NOT return tag labels, descriptions, or full tag objects - ONLY the string ID
       () =>
         callLlm(prompt, {
           ...runConfig,
-          response_format: jsonSchema('tags_result', tagsResultSchema),
+          responseFormat: jsonSchema('tags_result', tagsResultSchema),
         }),
       {
         label: 'tags-apply',
         config: runConfig,
-        abortSignal: runConfig.abortSignal,
       }
     );
 
@@ -199,7 +188,6 @@ export async function mapTags(list, instructions, vocabulary, config = {}) {
       ...runConfig,
       responseFormat: jsonSchema('tags_map_result', tagsMapSchema),
       onProgress: scopePhase(runConfig.onProgress, 'tags:map'),
-      abortSignal: runConfig.abortSignal,
     };
 
     // Map will return array of tag arrays directly

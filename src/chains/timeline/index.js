@@ -96,7 +96,7 @@ async function extractFromChunk(chunk, options = {}) {
   const response = await callLlm(chunk, {
     ...options,
     systemPrompt: extractTimelineInstructions,
-    response_format: jsonSchema(timelineEventJsonSchema.name, timelineEventJsonSchema.schema),
+    responseFormat: jsonSchema(timelineEventJsonSchema.name, timelineEventJsonSchema.schema),
   });
 
   return response.events || [];
@@ -124,7 +124,7 @@ export default async function timeline(text, config = {}) {
     maxParallel,
     errorPosture,
     llmDedup,
-    knowledgeBase,
+    knowledgeBase: enableKnowledgeBase,
     enrichMap: _enrichMap,
   } = await getOptions(runConfig, {
     enrichment: withPolicy(mapEnrichment, ['llmDedup', 'knowledgeBase', 'enrichMap']),
@@ -136,7 +136,7 @@ export default async function timeline(text, config = {}) {
   const { onProgress, batchSize, now } = runConfig;
 
   try {
-    const phaseCount = 1 + (llmDedup ? 1 : 0) + (knowledgeBase ? 2 : 0);
+    const phaseCount = 1 + (llmDedup ? 1 : 0) + (enableKnowledgeBase ? 2 : 0);
     const batchDone = emitter.batch(phaseCount);
 
     // Create overlapping chunks to avoid missing events at boundaries
@@ -153,7 +153,6 @@ export default async function timeline(text, config = {}) {
           const events = await retry(() => extractFromChunk(chunk, { ...runConfig, now }), {
             label: `timeline chunk ${chunkIndex + 1}`,
             config: runConfig,
-            abortSignal: runConfig.abortSignal,
           });
           allEvents.push(...events);
           onProgress?.(chunkIndex + 1, chunks.length);
@@ -199,7 +198,7 @@ ${eventList}`;
         ...runConfig,
         systemPrompt:
           'You are a timeline deduplication engine. Return all unique events, merging only true duplicates.',
-        response_format: jsonSchema(timelineEventJsonSchema.name, timelineEventJsonSchema.schema),
+        responseFormat: jsonSchema(timelineEventJsonSchema.name, timelineEventJsonSchema.schema),
       });
 
       const deduplicatedEvents = deduplicatedResult?.events || deduplicatedResult;
@@ -210,7 +209,7 @@ ${eventList}`;
     }
 
     // Enrich with knowledge if requested
-    if (knowledgeBase && mergedEvents.length > 0) {
+    if (enableKnowledgeBase && mergedEvents.length > 0) {
       // First, use reduce to build a knowledge base of known dates
       const knowledgeBaseInstructions = `You are building a historical knowledge base.
 Given the current knowledge base and a new event, return an updated knowledge base that:

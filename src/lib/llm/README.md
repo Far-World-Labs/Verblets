@@ -14,13 +14,13 @@ const response = await callLlm('Explain quantum computing in simple terms');
 
 // With config from a chain (typical usage)
 const config = { llm: 'fastGoodCheap', ...inputConfig };
-const result = await callLlm(prompt, { ...config, response_format: responseFormat });
+const result = await callLlm(prompt, { ...config, responseFormat: responseFormat });
 
 // With capability-based model selection and structured output
 const result = await callLlm(prompt, {
   llm: { fast: true, good: 'prefer' },
   temperature: 0.7,
-  response_format: {
+  responseFormat: {
     type: 'json_schema',
     json_schema: {
       name: 'colors',
@@ -47,7 +47,7 @@ Inside chains, callLlm receives the enriched config object directly — see [opt
 - `prompt` (string): The text prompt to send to the LLM
 - `options` (object, optional): Configuration — all keys are flat on the options object
   - `llm` (string | object): Model selection — string shorthand (`'fastGoodCheap'`), capability object (`{ fast: true, good: 'prefer' }`), or full config (`{ modelName: 'model-key' }`)
-  - `response_format` (object): Structured output schema
+  - `responseFormat` (object): Structured output schema
   - `temperature` (number): Sampling temperature
   - `frequencyPenalty` (number): Frequency penalty
   - `presencePenalty` (number): Presence penalty
@@ -65,7 +65,7 @@ Inside chains, callLlm receives the enriched config object directly — see [opt
 
 ## Config-aware resolution
 
-All model keys and capability keys are resolved through `getOption` before building the request. This means every parameter — `temperature`, `llm`, `response_format`, etc. — can be set directly on config, or dynamically via the `policy` channel.
+All model keys and capability keys are resolved through `getOption` before building the request. This means every parameter — `temperature`, `llm`, `responseFormat`, etc. — can be set directly on config, or dynamically via the `policy` channel.
 
 ```javascript
 const config = {
@@ -112,11 +112,11 @@ await callLlm(prompt, { llm: { sensitive: true } });
 
 ## Structured outputs
 
-When `response_format` is set, callLlm automatically parses JSON responses and unwraps common patterns: `{items: [...]}` becomes the array, `{value: x}` becomes `x`. Pass `skipResponseParse: true` to get the raw string.
+When `responseFormat` is set, callLlm automatically parses JSON responses and unwraps common patterns: `{items: [...]}` becomes the array, `{value: x}` becomes `x`. Pass `skipResponseParse: true` to get the raw string.
 
 ```javascript
 const result = await callLlm('List 5 programming languages', {
-  response_format: {
+  responseFormat: {
     type: 'json_schema',
     json_schema: {
       name: 'languages',

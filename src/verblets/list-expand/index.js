@@ -40,7 +40,7 @@ export default async function listExpand(list, count = list.length * 2, config =
   try {
     const output = await callLlm(buildPrompt(list, count), {
       ...runConfig,
-      response_format: responseFormat,
+      responseFormat,
     });
 
     const items = output?.items || output;

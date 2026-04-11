@@ -70,11 +70,12 @@ ${baseContext}
 For the speaker described in the input, provide their response to the topic. The response should reflect their role, bio, and agenda if provided.`;
 
     // Generate all responses using map
+    const batchDone = emitter.batch(speakers.length);
     const result = await map(speakerDescriptions, instructions, {
       ...runConfig,
       onProgress: scopePhase(runConfig.onProgress, 'conversation-turn-reduce:map'),
-      abortSignal: runConfig.abortSignal,
     });
+    batchDone(speakers.length);
 
     emitter.complete({ outcome: Outcome.success, speakers: speakers.length });
     return result;

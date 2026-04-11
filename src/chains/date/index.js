@@ -6,7 +6,7 @@ import { constants as promptConstants } from '../../prompts/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { dateExpectationsSchema, dateValueSchema } from './schemas.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
-import createProgressEmitter from '../../lib/progress/index.js';
+import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
 import { DomainEvent, Outcome } from '../../lib/progress/constants.js';
 import { parallel } from '../../lib/index.js';
 
@@ -86,7 +86,7 @@ const toUTCDate = (date) => {
 async function extractDate(prompt, config) {
   const response = await callLlm(prompt, {
     ...config,
-    response_format: jsonSchema('date_extraction', dateValueSchema),
+    responseFormat: jsonSchema('date_extraction', dateValueSchema),
   });
 
   if (response === 'undefined') return undefined;
@@ -133,9 +133,14 @@ export default async function date(text, config = {}) {
         () =>
           callLlm(expectationPrompt, {
             ...runConfig,
-            response_format: jsonSchema('date_expectations', dateExpectationsSchema),
+            onProgress: scopePhase(runConfig.onProgress, 'expectations'),
+            responseFormat: jsonSchema('date_expectations', dateExpectationsSchema),
           }),
-        () => extractDate(datePrompt, runConfig),
+        () =>
+          extractDate(datePrompt, {
+            ...runConfig,
+            onProgress: scopePhase(runConfig.onProgress, 'extract'),
+          }),
       ],
       (fn) => fn(),
       { maxParallel: 2, abortSignal: runConfig?.abortSignal }
@@ -201,7 +206,6 @@ export default async function date(text, config = {}) {
         config: runConfig,
         maxAttempts,
         retryOnAll: true,
-        abortSignal: runConfig.abortSignal,
       }
     );
 

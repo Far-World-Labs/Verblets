@@ -205,6 +205,9 @@ export function createLLMLogger(config = {}) {
   const processorOffsets = new Map();
   const processorReaders = new Map();
 
+  // Destruction flag — stops all recursive setTimeout loops
+  let destroyed = false;
+
   // Register processors and start parallel processing
   processors.forEach((processor) => {
     const readerId = ringBuffer.registerReader();
@@ -215,6 +218,7 @@ export function createLLMLogger(config = {}) {
 
     // Fully parallel processing loop - no coordination
     const processLoop = async () => {
+      if (destroyed) return;
       try {
         const batch = await ringBuffer.readBatch(readerId, batchSize, processor.batchTimeout);
 
@@ -279,12 +283,12 @@ export function createLLMLogger(config = {}) {
         processorOffsets.set(processor.processorId, batch.lastOffset);
 
         // Continue processing immediately (fully parallel)
-        setTimeout(processLoop, 0);
+        if (!destroyed) setTimeout(processLoop, 0);
       } catch (error) {
         if (internalLogger) {
           internalLogger.error(`Processor ${processor.processorId} error: ${error.message}`);
         }
-        setTimeout(processLoop, 1000); // Retry after delay
+        if (!destroyed) setTimeout(processLoop, 1000); // Retry after delay
       }
     };
 
@@ -316,6 +320,7 @@ export function createLLMLogger(config = {}) {
   if (!immediateFlush) {
     lanes.forEach((_lane) => {
       const flushLoop = () => {
+        if (destroyed) return;
         flushLanes();
         setTimeout(flushLoop, flushInterval);
       };
@@ -515,6 +520,16 @@ export function createLLMLogger(config = {}) {
     },
 
     clear: () => {
+      allLogs.length = 0;
+      ringBuffer.clear();
+      for (const buffer of laneBuffers.values()) {
+        buffer.length = 0;
+      }
+    },
+
+    destroy: () => {
+      destroyed = true;
+      flushLanes();
       allLogs.length = 0;
       ringBuffer.clear();
       for (const buffer of laneBuffers.values()) {

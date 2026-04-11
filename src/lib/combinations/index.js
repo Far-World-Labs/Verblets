@@ -2,20 +2,17 @@ export default function combinations(items, size = 2) {
   const result = [];
   if (!Array.isArray(items) || size < 1) return result;
 
-  const combo = [];
-  const generate = (start) => {
-    if (combo.length === size) {
-      result.push([...combo]);
+  const generate = (start, current) => {
+    if (current.length === size) {
+      result.push(current);
       return;
     }
     for (let i = start; i < items.length; i++) {
-      combo.push(items[i]);
-      generate(i + 1);
-      combo.pop();
+      generate(i + 1, [...current, items[i]]);
     }
   };
 
-  generate(0);
+  generate(0, []);
   return result;
 }
 

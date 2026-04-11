@@ -313,7 +313,7 @@ const riskClass = {
 const schema = descriptorToSchema({ healthSignal, riskClass });
 ```
 
-The result is a JSON schema where each attribute becomes a constrained enum property. You can pass it to an LLM as a `response_format`, and one call populates all the attributes at once — each value guaranteed to be from its defined set.
+The result is a JSON schema where each attribute becomes a constrained enum property. You can pass it to an LLM as a `responseFormat`, and one call populates all the attributes at once — each value guaranteed to be from its defined set.
 
 ### When multiple classifiers assess the same attribute
 

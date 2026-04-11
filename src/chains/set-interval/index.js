@@ -156,12 +156,11 @@ Next wait:`;
         () =>
           callLlm(intervalPrompt, {
             ...config,
-            response_format: intervalResponseFormat,
+            responseFormat: intervalResponseFormat,
           }),
         {
           label: 'set-interval',
           config,
-          abortSignal: config.abortSignal,
         }
       );
 

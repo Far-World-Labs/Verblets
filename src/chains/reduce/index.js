@@ -2,7 +2,7 @@ import listBatch, { ListStyle, determineStyle } from '../../verblets/list-batch/
 import { asXML } from '../../prompts/wrap-variable.js';
 import { reduceAccumulatorJsonSchema } from './schemas.js';
 import { retry, createBatches } from '../../lib/index.js';
-import createProgressEmitter from '../../lib/progress/index.js';
+import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
 import { OpEvent, DomainEvent, Outcome } from '../../lib/progress/constants.js';
 import { nameStep, getOptions } from '../../lib/context/option.js';
 
@@ -83,8 +83,7 @@ Process exactly ${count} items from the ${itemFormat} list below and return the 
       const result = await retry(() => listBatch(items, prompt, listBatchOptions), {
         label: 'reduce:batch',
         config: runConfig,
-        onProgress: runConfig.onProgress,
-        abortSignal: runConfig.abortSignal,
+        onProgress: scopePhase(runConfig.onProgress, 'batch'),
       });
 
       if (!runConfig.responseFormat && result?.accumulator !== undefined) {

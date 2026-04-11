@@ -51,7 +51,7 @@ export default async function embedStepBack(query, config = {}) {
 
     const result = await callLlm(stepBackPrompt(query, count, { abstractionGuidance }), {
       ...runConfig,
-      response_format: jsonSchema('step_back', embedStepBackSchema),
+      responseFormat: jsonSchema('step_back', embedStepBackSchema),
     });
     emitter.complete({ outcome: Outcome.success });
     return result;

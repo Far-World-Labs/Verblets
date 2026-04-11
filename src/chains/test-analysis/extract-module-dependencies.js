@@ -35,7 +35,7 @@ If no dependencies are explicitly listed, return an empty array.`;
     const result = await retry(
       () =>
         llm(prompt, {
-          response_format: jsonSchema('module_dependencies', schema),
+          responseFormat: jsonSchema('module_dependencies', schema),
         }),
       { maxAttempts: 2, label: 'extract module dependencies' }
     );

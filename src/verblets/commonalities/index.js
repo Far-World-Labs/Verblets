@@ -69,7 +69,7 @@ export default async function commonalities(items, config = {}) {
     const depthGuidance = mapDepth(runConfig.depth);
     const output = await callLlm(buildPrompt(items, { ...runConfig, depthGuidance }), {
       ...runConfig,
-      response_format: responseFormat,
+      responseFormat,
     });
 
     const resultArray = output?.items || output;

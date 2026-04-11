@@ -47,7 +47,7 @@ export async function extractAIMdConfig(moduleDir) {
     const response = await retry(
       () =>
         llm(prompt, {
-          response_format: jsonSchema('ai_md_extraction', aiMdExtractionSchema),
+          responseFormat: jsonSchema('ai_md_extraction', aiMdExtractionSchema),
         }),
       { maxAttempts: 2, label: 'AI.md extractor' }
     );

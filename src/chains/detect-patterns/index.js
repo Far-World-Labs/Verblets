@@ -107,12 +107,14 @@ export default async function detectPatterns(objects, config = {}) {
   `;
 
   try {
+    const batchDone = emitter.batch(stringifiedObjects.length);
     const candidateArray = await reduce(stringifiedObjects, patternInstructions, {
       ...runConfig,
       initial: [],
       responseFormat: PATTERN_RESPONSE_FORMAT,
       onProgress: scopePhase(runConfig.onProgress, 'reduce:accumulate'),
     });
+    batchDone(stringifiedObjects.length);
 
     // Since PATTERN_RESPONSE_FORMAT is a simple collection schema,
     // and reduce should handle it properly

@@ -95,7 +95,7 @@ describe('suggest-targeting-rules', () => {
       expect(prompt).toContain('decision traces');
       expect(prompt).toContain('strictness');
       expect(prompt).toContain('Focus on defaults');
-      expect(config.response_format.json_schema.name).toBe('targeting_rules');
+      expect(config.responseFormat.json_schema.name).toBe('targeting_rules');
     });
 
     it('handles LLM returning bare array', async () => {

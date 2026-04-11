@@ -2,7 +2,7 @@ import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { scaleSpec } from '../scale/index.js';
 import listBatch from '../../verblets/list-batch/index.js';
-import createProgressEmitter from '../../lib/progress/index.js';
+import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
 import { OpEvent, DomainEvent, Outcome, ErrorPosture } from '../../lib/progress/constants.js';
 import { createBatches, parallel, retry } from '../../lib/index.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
@@ -94,7 +94,7 @@ export const scoreSpec = scaleSpec;
  * @returns {Promise<*>} Score value (type depends on specification range)
  */
 export async function applyScore(item, specification, config = {}) {
-  config = nameStep('score:item', config);
+  const runConfig = nameStep('score:item', config);
 
   const prompt = `Apply the score specification to evaluate this item.
 
@@ -106,14 +106,13 @@ Return a JSON object with a "value" property containing the score from the range
 ${asXML(item, { tag: 'item' })}`;
 
   const llmConfig = {
-    ...config,
-    response_format: jsonSchema('score_single_result', scoreSingleResultSchema),
+    ...runConfig,
+    responseFormat: jsonSchema('score_single_result', scoreSingleResultSchema),
   };
 
   const response = await retry(() => callLlm(prompt, llmConfig), {
     label: 'score item',
-    config,
-    abortSignal: config.abortSignal,
+    config: runConfig,
   });
 
   // llm auto-unwraps single value property, returns the number directly
@@ -162,7 +161,7 @@ async function scoreOnce(list, prompt, batchConfig, config) {
       const scores = await retry(() => listBatch(first.items, prompt, batchConfig), {
         label: 'score:batch',
         config,
-        abortSignal: config.abortSignal,
+        onProgress: scopePhase(onProgress, 'batch'),
       });
       alignScores(scores, first.items.length).forEach((s, j) => {
         results[first.startIndex + j] = s;
@@ -192,7 +191,7 @@ async function scoreOnce(list, prompt, batchConfig, config) {
           const scores = await retry(() => listBatch(items, anchoredPrompt, batchConfig), {
             label: 'score:batch',
             config,
-            abortSignal: config.abortSignal,
+            onProgress: scopePhase(onProgress, 'batch'),
           });
           alignScores(scores, items.length).forEach((s, j) => {
             results[startIndex + j] = s;

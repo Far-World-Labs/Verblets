@@ -197,7 +197,6 @@ Discussion:
     const response = await retry(() => llm(prompt, { ...runConfig, maxTokens }), {
       label: 'test-analyzer',
       config: runConfig,
-      abortSignal: runConfig.abortSignal,
     });
 
     const result = response.trim();

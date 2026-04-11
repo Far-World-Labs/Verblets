@@ -211,9 +211,9 @@ export default function createOptionHistoryAnalyzer(config = {}) {
         () =>
           callLlm(prompt, {
             ...runConfig,
-            response_format: jsonSchema('rule_suggestions', RULE_SCHEMA),
+            responseFormat: jsonSchema('rule_suggestions', RULE_SCHEMA),
           }),
-        { label: 'option-history-analyzer', config: runConfig, abortSignal: runConfig.abortSignal }
+        { label: 'option-history-analyzer', config: runConfig }
       );
 
       const rules = result?.rules ?? result ?? [];

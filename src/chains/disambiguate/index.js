@@ -20,7 +20,7 @@ Return a JSON object with a "meanings" array containing the distinct meanings.`;
 };
 
 export const getMeanings = async (term, config = {}) => {
-  config = nameStep('disambiguate:meanings', {
+  const runConfig = nameStep('disambiguate:meanings', {
     llm: { fast: true, good: true, cheap: true },
     ...config,
   });
@@ -28,13 +28,12 @@ export const getMeanings = async (term, config = {}) => {
   const response = await retry(
     () =>
       callLlm(prompt, {
-        ...config,
-        response_format: disambiguateResponseFormat,
+        ...runConfig,
+        responseFormat: disambiguateResponseFormat,
       }),
     {
       label: 'disambiguate-get-meanings',
-      config,
-      abortSignal: config.abortSignal,
+      config: runConfig,
     }
   );
 
@@ -48,12 +47,12 @@ export default async function disambiguate({ term, context, ...config } = {}) {
   emitter.start();
 
   try {
-    const batchDone = emitter.batch(2);
-
     emitter.emit({ event: DomainEvent.step, stepName: 'extracting-meanings', term });
 
-    const meanings = await getMeanings(term, runConfig);
-    batchDone(1);
+    const meanings = await getMeanings(term, {
+      ...runConfig,
+      onProgress: scopePhase(runConfig.onProgress, 'meanings'),
+    });
 
     emitter.emit({
       event: DomainEvent.step,
@@ -68,7 +67,6 @@ export default async function disambiguate({ term, context, ...config } = {}) {
       {
         ...runConfig,
         onProgress: scopePhase(runConfig.onProgress, 'score:relevance'),
-        abortSignal: runConfig.abortSignal,
       }
     );
 
@@ -81,8 +79,6 @@ export default async function disambiguate({ term, context, ...config } = {}) {
         bestIndex = i;
       }
     }
-
-    batchDone(1);
 
     emitter.complete({ outcome: Outcome.success });
 

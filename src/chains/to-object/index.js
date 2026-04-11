@@ -118,11 +118,10 @@ export default async function toObject(text, schema, config = {}) {
     try {
       const prompt = buildJsonPrompt(text, schema, errorDetails);
       const response = await retry(
-        () => callLlm(prompt, { ...runConfig, response_format: { type: 'json_object' } }),
+        () => callLlm(prompt, { ...runConfig, responseFormat: { type: 'json_object' } }),
         {
           label: 'to-object json fix',
           config: runConfig,
-          abortSignal: runConfig.abortSignal,
         }
       );
 
@@ -139,11 +138,10 @@ export default async function toObject(text, schema, config = {}) {
     // Third attempt: final retry with updated errors
     const prompt = buildJsonPrompt(text, schema, errorDetails);
     const response = await retry(
-      () => callLlm(prompt, { ...runConfig, response_format: { type: 'json_object' } }),
+      () => callLlm(prompt, { ...runConfig, responseFormat: { type: 'json_object' } }),
       {
         label: 'to-object final retry',
         config: runConfig,
-        abortSignal: runConfig.abortSignal,
       }
     );
 

@@ -133,4 +133,4 @@ Detailed documentation by audience:
 - [Batching](./docs/batching.md) — auto-sizing, `parallelBatch`, `prepareBatches`
 - [Progress Tracking](./docs/progress-tracking.md) — `onProgress`, `scopeProgress`, event lifecycle
 - [Retry](./docs/retry.md) — config-aware retries, retryable errors, abort signal
-- [JSON Schemas](./.claude/guidelines/JSON_SCHEMAS.md) — `response_format`, schema design, auto-unwrapping
+- [JSON Schemas](./.claude/guidelines/JSON_SCHEMAS.md) — `responseFormat`, schema design, auto-unwrapping

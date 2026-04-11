@@ -204,11 +204,7 @@ export default class SummaryMap extends Map {
     }
 
     if (!this.isCacheValid) {
-      return this.myFillCache()
-        .then(() => this.cache.get(key))
-        .catch((error) => {
-          return Promise.reject(error);
-        });
+      return this.myFillCache().then(() => this.cache.get(key));
     }
 
     return Promise.resolve(this.getStale(key));
@@ -220,11 +216,7 @@ export default class SummaryMap extends Map {
 
   values() {
     if (!this.isCacheValid) {
-      return this.myFillCache()
-        .then(() => this.cache.values())
-        .catch((error) => {
-          return Promise.reject(error);
-        });
+      return this.myFillCache().then(() => this.cache.values());
     }
     return Promise.resolve(this.valuesStale());
   }
@@ -235,11 +227,7 @@ export default class SummaryMap extends Map {
 
   entries() {
     if (!this.isCacheValid) {
-      return this.myFillCache()
-        .then(() => this.cache.entries())
-        .catch((error) => {
-          return Promise.reject(error);
-        });
+      return this.myFillCache().then(() => this.cache.entries());
     }
     return Promise.resolve(this.entriesStale());
   }
@@ -250,11 +238,7 @@ export default class SummaryMap extends Map {
 
   pavedSummaryResult() {
     if (!this.isCacheValid) {
-      return this.myFillCache()
-        .then(() => this.pavedSummaryResultStale())
-        .catch((error) => {
-          return Promise.reject(error);
-        });
+      return this.myFillCache().then(() => this.pavedSummaryResultStale());
     }
     return Promise.resolve(this.pavedSummaryResultStale());
   }

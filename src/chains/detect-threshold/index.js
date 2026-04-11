@@ -153,8 +153,6 @@ Accumulator should track:
 
 Return the updated accumulator as valid JSON.`;
 
-    const batchDone = emitter.batch(2);
-
     // Convert enrichedData to strings for reduce - batch multiple items per line
     const ITEMS_PER_LINE = 20;
     const dataStrings = [];
@@ -170,11 +168,9 @@ Return the updated accumulator as valid JSON.`;
       batchSize,
       responseFormat: jsonSchema('analysis_accumulator', accumulatorSchema),
       onProgress: scopePhase(runConfig.onProgress, 'reduce:analysis'),
-      abortSignal: runConfig.abortSignal,
     });
 
     const accumulated = analysisResult;
-    batchDone(1);
 
     // Now use llm directly with structured output for final recommendations
     const finalPrompt = `Based on the following analysis of ${
@@ -218,12 +214,11 @@ Return threshold candidates with their rationales.`;
       () =>
         callLlm(finalPrompt, {
           ...runConfig,
-          response_format: jsonSchema('threshold_result', thresholdResultSchema),
+          responseFormat: jsonSchema('threshold_result', thresholdResultSchema),
         }),
       {
         label: 'detect-threshold-analysis',
         config: runConfig,
-        abortSignal: runConfig.abortSignal,
       }
     );
 
@@ -240,8 +235,6 @@ Return threshold candidates with their rationales.`;
         return true;
       });
     }
-
-    batchDone(1);
 
     // Add distribution analysis
     result.distributionAnalysis = {

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import createEmit from './emit.js';
+import { ChainEvent, OpEvent, Kind } from '../progress/constants.js';
 
 describe('createEmit', () => {
   it('creates a plain progress emitter with standard methods', () => {
@@ -18,7 +19,7 @@ describe('createEmit', () => {
     emit.start();
     expect(events.length).toBeGreaterThan(0);
     expect(events[0].step).toBe('test');
-    expect(events[0].event).toBe('chain:start');
+    expect(events[0].event).toBe(ChainEvent.start);
   });
 
   it('emit sends operation-kind events to onProgress', () => {
@@ -28,7 +29,7 @@ describe('createEmit', () => {
     const custom = events.find((e) => e.event === 'custom:thing');
     expect(custom).toBeDefined();
     expect(custom.detail).toBe(42);
-    expect(custom.kind).toBe('event');
+    expect(custom.kind).toBe(Kind.event);
   });
 
   it('batch returns a done callback for progress tracking', () => {
@@ -37,7 +38,7 @@ describe('createEmit', () => {
     const done = emit.batch(10);
     expect(typeof done).toBe('function');
     done(3);
-    const batchEvent = events.find((e) => e.event === 'batch:complete');
+    const batchEvent = events.find((e) => e.event === OpEvent.batchComplete);
     expect(batchEvent).toBeDefined();
     expect(batchEvent.processedItems).toBe(3);
     expect(batchEvent.totalItems).toBe(10);

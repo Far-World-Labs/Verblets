@@ -56,7 +56,7 @@ Evaluation rules:
   const response = await llm(prompt, {
     ...config,
     temperature: context.temperature ?? 0,
-    response_format: {
+    responseFormat: {
       type: 'json_schema',
       json_schema: {
         name: 'assertion_result',

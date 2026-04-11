@@ -36,12 +36,11 @@ GUIDELINES:
       () =>
         llm(prompt, {
           ...runConfig,
-          response_format: jsonSchema(testResultJsonSchema.name, testResultJsonSchema.schema),
+          responseFormat: jsonSchema(testResultJsonSchema.name, testResultJsonSchema.schema),
         }),
       {
         label: 'test chain',
         config: runConfig,
-        abortSignal: runConfig.abortSignal,
       }
     );
 

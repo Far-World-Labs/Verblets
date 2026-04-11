@@ -112,7 +112,7 @@ const consultGate = async (frontier, pages, budget, config) => {
 
   const result = await callLlm(prompt, {
     ...config,
-    response_format: gateResponseFormat,
+    responseFormat: gateResponseFormat,
     temperature: 0.2,
   });
 

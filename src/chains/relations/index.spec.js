@@ -18,7 +18,7 @@ vi.mock('../../lib/llm/index.js', () => ({
   jsonSchema: (name, schema) => ({ type: 'json_schema', json_schema: { name, schema } }),
   default: vi.fn().mockImplementation((prompt, config) => {
     // Relation extraction with JSON schema
-    if (config?.response_format?.json_schema?.name === 'relation_result') {
+    if (config?.responseFormat?.json_schema?.name === 'relation_result') {
       return Promise.resolve({
         items: [
           { subject: 'Apple', predicate: 'partnered with', object: 'Microsoft' },

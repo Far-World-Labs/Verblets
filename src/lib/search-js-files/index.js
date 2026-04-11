@@ -48,7 +48,8 @@ const processNpmImport = async (source, includeNodeModules = false) => {
   let packageJson;
   try {
     packageJson = JSON.parse(await fs.readFile(path.join(projectRoot, 'package.json'), 'utf8'));
-  } catch {
+  } catch (err) {
+    if (err.code !== 'ENOENT') throw err;
     return [];
   }
 
@@ -61,7 +62,8 @@ const processNpmImport = async (source, includeNodeModules = false) => {
     npmPackageJson = JSON.parse(
       await fs.readFile(path.join(nodeModulePath, 'package.json'), 'utf8')
     );
-  } catch {
+  } catch (err) {
+    if (err.code !== 'ENOENT') throw err;
     return [];
   }
 
@@ -70,7 +72,8 @@ const processNpmImport = async (source, includeNodeModules = false) => {
   let importedFile;
   try {
     importedFile = await fs.readFile(fullPath, 'utf-8');
-  } catch {
+  } catch (err) {
+    if (err.code !== 'ENOENT') throw err;
     return [];
   }
 

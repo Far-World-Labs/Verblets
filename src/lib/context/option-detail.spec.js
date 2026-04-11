@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { getOptionDetail, nameStep } from './option.js';
+import { TelemetryEvent } from '../progress/constants.js';
 
 describe('getOptionDetail', () => {
   it('resolves from policy and reports source', async () => {
@@ -91,7 +92,7 @@ describe('getOptionDetail', () => {
 
     await getOptionDetail('strictness', config, 'low');
 
-    const resolve = events.find((e) => e.event === 'option:resolve');
+    const resolve = events.find((e) => e.event === TelemetryEvent.optionResolve);
     expect(resolve).toBeDefined();
     expect(resolve.operation).toBe('filter');
     expect(resolve.source).toBe('config');

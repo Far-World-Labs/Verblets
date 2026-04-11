@@ -21,7 +21,7 @@ export default async function embedRewriteQuery(query, config = {}) {
   try {
     const result = await callLlm(rewriteQueryPrompt(query), {
       ...runConfig,
-      response_format: jsonSchema('rewrite_query', embedRewriteQuerySchema),
+      responseFormat: jsonSchema('rewrite_query', embedRewriteQuerySchema),
     });
     emitter.complete({ outcome: Outcome.success });
     return result;

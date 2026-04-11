@@ -82,7 +82,7 @@ Return the result as a structured JSON object with the operation name, extracted
 
     const response = await callLlm(prompt, {
       ...runConfig,
-      response_format: responseFormat,
+      responseFormat,
     });
 
     emitter.complete({ outcome: Outcome.success });

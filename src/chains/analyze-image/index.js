@@ -1,5 +1,5 @@
 import { nameStep, getOptions } from '../../lib/context/option.js';
-import createProgressEmitter from '../../lib/progress/index.js';
+import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
 import { Outcome } from '../../lib/progress/constants.js';
 import callLlm, { buildVisionPrompt, jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
@@ -82,13 +82,13 @@ const analyzeImage = async (images, instructions, config = {}) => {
     }
 
     const contentArray = buildVisionPrompt(instructions, imageDataArray);
-    const llmConfig = runConfig.response_format
+    const llmConfig = runConfig.responseFormat
       ? runConfig
-      : { ...runConfig, response_format: analysisFormat };
+      : { ...runConfig, responseFormat: analysisFormat };
     const result = await retry(() => callLlm(contentArray, llmConfig), {
       label: 'analyze-image:llm',
       config: runConfig,
-      abortSignal: runConfig.abortSignal,
+      onProgress: scopePhase(runConfig.onProgress, 'llm'),
     });
 
     emitter.complete({ outcome: Outcome.success, imageCount, tiled: shouldTile });

@@ -32,7 +32,7 @@ The value should be the number or "undefined".`;
   try {
     const result = await callLlm(numberText, {
       ...runConfig,
-      response_format: jsonSchema('number_extraction', numberSchema),
+      responseFormat: jsonSchema('number_extraction', numberSchema),
     });
 
     const interpreted = result === 'undefined' ? undefined : result;

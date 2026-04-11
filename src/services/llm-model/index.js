@@ -217,7 +217,7 @@ class ModelService {
   }
 
   getRequestConfig(options) {
-    const { tools, toolChoice, modelName, prompt, systemPrompt, response_format } = options;
+    const { tools, toolChoice, modelName, prompt, systemPrompt, responseFormat } = options;
 
     const modelFound = this.getModel(modelName);
 
@@ -242,16 +242,16 @@ class ModelService {
       ...data,
     };
 
-    if (response_format) {
-      if (response_format.json_schema?.schema?.$schema) {
-        const schema = { ...response_format.json_schema.schema };
+    if (responseFormat) {
+      if (responseFormat.json_schema?.schema?.$schema) {
+        const schema = { ...responseFormat.json_schema.schema };
         delete schema.$schema;
-        result.response_format = {
-          ...response_format,
-          json_schema: { ...response_format.json_schema, schema },
+        result.responseFormat = {
+          ...responseFormat,
+          json_schema: { ...responseFormat.json_schema, schema },
         };
       } else {
-        result.response_format = response_format;
+        result.responseFormat = responseFormat;
       }
     }
 

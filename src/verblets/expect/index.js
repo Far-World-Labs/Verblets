@@ -63,7 +63,7 @@ export async function llmAssert({
     const answer = await callLlm(prompt, {
       ...runConfig,
       llm,
-      response_format: EXPECT_RESPONSE_FORMAT,
+      responseFormat: EXPECT_RESPONSE_FORMAT,
     });
     passed = answer === true;
 

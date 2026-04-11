@@ -220,15 +220,7 @@ async function expandQuery(query, tokenBudget, options = {}) {
       ...options,
       topN: 5,
       chunkLen: 500,
-      onProgress:
-        options.onProgress &&
-        ((e) =>
-          options.onProgress({
-            ...e,
-            phase: e.phase
-              ? `collect-terms:query-expansion/${e.phase}`
-              : 'collect-terms:query-expansion',
-          })),
+      onProgress: scopePhase(options.onProgress, 'collect-terms:query-expansion'),
     });
 
     // Include original query and the extracted terms
@@ -263,8 +255,6 @@ function scoreChunksWithTfIdf(chunks, expansions) {
         ? matches.reduce((sum, match) => sum + match.score, 0) / matches.length
         : 0;
 
-    //TODO:DOCS_OBSERVATIONS dead debug logging — remove commented-out console.logs
-
     return { ...chunk, tfIdfScore };
   });
 }
@@ -293,8 +283,6 @@ function selectChunksByTfIdf(scoredChunks, tfIdfBudget) {
   // Update candidates list
   const selectedIndices = new Set(selected.map((c) => c.index));
   const candidates = scoredChunks.filter((c) => !selectedIndices.has(c.index));
-
-  //TODO:DOCS_OBSERVATIONS dead debug logging — remove commented-out console.logs
 
   return { selected, candidates, sizeUsed };
 }

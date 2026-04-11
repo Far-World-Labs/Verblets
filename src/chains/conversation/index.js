@@ -82,7 +82,6 @@ export default class Conversation {
     );
   }
 
-  //TODO:DOCS_OBSERVATIONS constructor is public but callers should use static create() — consider making constructor private or documenting the resolved parameter contract
   constructor(topic, speakers, options = {}, resolved = {}) {
     // options may be { config, emitter } from create() or plain config (direct construction)
     const fromCreate = options.emitter && options.config;

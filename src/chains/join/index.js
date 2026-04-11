@@ -3,7 +3,7 @@ import retry from '../../lib/retry/index.js';
 import parallelBatch from '../../lib/parallel-batch/index.js';
 import windowFor from '../../lib/window-for/index.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
-import createProgressEmitter from '../../lib/progress/index.js';
+import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
 import { DomainEvent, Outcome, ErrorPosture } from '../../lib/progress/constants.js';
 
 const name = 'join';
@@ -91,7 +91,7 @@ Important: This is part of a larger sequence. Join these fragments while being m
         const result = await retry(() => callLlm(instruction, runConfig), {
           label: `join-window-${windowIndex + 1}`,
           config: runConfig,
-          abortSignal: runConfig.abortSignal,
+          onProgress: scopePhase(runConfig.onProgress, 'window'),
         });
 
         batchDone(1);
@@ -154,7 +154,6 @@ Add necessary connecting words, prepositions, conjunctions, or other filler text
         const stitchResult = await retry(() => callLlm(stitchInstruction, runConfig), {
           label: `join-stitch-${i}`,
           config: runConfig,
-          abortSignal: runConfig.abortSignal,
         });
 
         stitchedResult = stitchResult || stitchedResult;
@@ -171,7 +170,6 @@ Add necessary connecting words, prepositions, conjunctions, or other filler text
         const joinResult = await retry(() => callLlm(joinInstruction, runConfig), {
           label: `join-nonoverlap-${i}`,
           config: runConfig,
-          abortSignal: runConfig.abortSignal,
         });
 
         stitchedResult = joinResult || stitchedResult;

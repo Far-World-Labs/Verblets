@@ -48,7 +48,7 @@ export default async function fillMissing(text, config = {}) {
     const prompt = buildPrompt(text, { creativityGuidance });
     const response = await callLlm(prompt, {
       ...runConfig,
-      response_format: responseFormat,
+      responseFormat,
     });
 
     emitter.complete({ outcome: Outcome.success });

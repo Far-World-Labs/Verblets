@@ -49,7 +49,7 @@ export default async function embedSubquestions(query, config = {}) {
 
     const result = await callLlm(decomposeQueryPrompt(query, { granularityGuidance }), {
       ...runConfig,
-      response_format: jsonSchema('decompose_query', embedSubquestionsSchema),
+      responseFormat: jsonSchema('decompose_query', embedSubquestionsSchema),
     });
     emitter.complete({ outcome: Outcome.success });
     return result;

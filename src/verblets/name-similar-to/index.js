@@ -29,7 +29,7 @@ export default async function nameSimilarTo(description, exampleNames = [], conf
     const prompt = buildPrompt(description, exampleNames);
     const response = await callLlm(prompt, {
       ...runConfig,
-      response_format: jsonSchema('similar_name', nameSimilarSchema),
+      responseFormat: jsonSchema('similar_name', nameSimilarSchema),
     });
 
     emitter.complete({ outcome: Outcome.success });

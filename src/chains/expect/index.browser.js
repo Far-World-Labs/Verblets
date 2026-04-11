@@ -8,8 +8,8 @@ import { nameStep, getOptions } from '../../lib/context/option.js';
  * Code introspection features are not available
  */
 export async function expect(actual, expected, constraint, config = {}) {
-  config = nameStep('expect', config);
-  const { mode } = await getOptions(config, {
+  const runConfig = nameStep('expect', config);
+  const { mode } = await getOptions(runConfig, {
     mode: env.VERBLETS_LLM_EXPECT_MODE || 'none',
   });
 
@@ -19,12 +19,12 @@ export async function expect(actual, expected, constraint, config = {}) {
   }
 
   // Run core expect without file context
-  const passes = await expectCore(actual, expected, constraint, {}, config);
+  const passes = await expectCore(actual, expected, constraint, {}, runConfig);
 
   // Generate advice if needed
   let advice;
   if (!passes && (mode === 'warn' || mode === 'info' || mode === 'error')) {
-    advice = await generateAdvice(actual, expected, constraint, undefined, undefined, config);
+    advice = await generateAdvice(actual, expected, constraint, undefined, undefined, runConfig);
   }
 
   // Browser caller info stub

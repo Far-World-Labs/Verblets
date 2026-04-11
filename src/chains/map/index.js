@@ -97,8 +97,6 @@ Preserve all formatting and newlines within each <item> element.`;
         const output = await retry(() => listBatch(items, compiledPrompt, listBatchOptions), {
           label: 'map:batch',
           config,
-          onProgress,
-          abortSignal: config?.abortSignal,
         });
 
         // listBatch now returns arrays directly

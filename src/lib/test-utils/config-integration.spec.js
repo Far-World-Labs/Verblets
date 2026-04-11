@@ -147,7 +147,7 @@ describe('MODEL_KEYS and CAPABILITY_KEYS resolution via getOption', () => {
 });
 
 describe('jsonSchema', () => {
-  it('wraps schema in response_format envelope', () => {
+  it('wraps schema in responseFormat envelope', () => {
     const schema = { type: 'object', properties: { value: { type: 'string' } } };
     const result = jsonSchema('test_schema', schema);
     expect(result).toEqual({

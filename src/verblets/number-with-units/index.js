@@ -35,7 +35,7 @@ ${asNumberWithUnits}`;
   try {
     const response = await callLlm(numberText, {
       ...runConfig,
-      response_format: responseFormat,
+      responseFormat,
     });
 
     // With structured output, response is already parsed

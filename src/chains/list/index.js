@@ -24,7 +24,7 @@ const { onlyJSON, contentIsTransformationSource } = promptConstants;
  */
 function createModelOptions() {
   return {
-    response_format: jsonSchema('list_result', listResultSchema),
+    responseFormat: jsonSchema('list_result', listResultSchema),
   };
 }
 
@@ -72,7 +72,6 @@ export const generateList = async function* generateListGenerator(text, config =
         {
           label: 'list-generate',
           config: runConfig,
-          abortSignal: runConfig.abortSignal,
         }
       );
 
@@ -151,7 +150,6 @@ export default async function list(prompt, config = {}) {
       {
         label: 'list-main',
         config: runConfig,
-        abortSignal: runConfig.abortSignal,
       }
     );
 
@@ -169,7 +167,6 @@ export default async function list(prompt, config = {}) {
         const transformResponse = await retry(() => callLlm(transformPrompt, runConfig), {
           label: 'list-transform',
           config: runConfig,
-          abortSignal: runConfig.abortSignal,
         });
         try {
           const transformedItem = JSON.parse(transformResponse);
