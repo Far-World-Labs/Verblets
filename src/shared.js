@@ -198,6 +198,8 @@ export {
   embedChunked,
   embedWarmup,
   setEmbedEnabled,
+  embedImage,
+  embedImageBatch,
 } from './lib/embed-local/index.js';
 
 // Embedding Collection
@@ -223,7 +225,7 @@ export { default as combinations, rangeCombinations } from './lib/combinations/i
 export { default as chunkSentences } from './lib/chunk-sentences/index.js';
 export { debug } from './lib/debug/index.js';
 export { default as createBatches } from './lib/text-batch/index.js';
-export { default as llm, jsonSchema, MODEL_KEYS } from './lib/llm/index.js';
+export { default as llm, jsonSchema } from './lib/llm/index.js';
 export { default as normalizeLlm } from './lib/normalize-llm/index.js';
 export { default as parallel, parallelMap } from './lib/parallel-batch/index.js';
 export { default as retry } from './lib/retry/index.js';
@@ -287,6 +289,7 @@ import * as messages from './constants/messages.js';
 import * as models from './constants/models.js';
 export { resolveModel } from './services/llm-model/index.js';
 export { ModelService } from './services/llm-model/index.js';
+export { EmbeddingService, resolveEmbedding } from './services/embedding-model/index.js';
 export { CAPABILITY_KEYS } from './constants/common.js';
 export { default as init } from './init.js';
 export * as config from './lib/config/index.js';

@@ -18,7 +18,8 @@
 /**
  * @typedef {object} Fragment
  * @property {string} fragmentId - Unique identifier
- * @property {string} text - Text shaped for one semantic purpose
+ * @property {string} [text] - Text shaped for one semantic purpose (exactly one of text or image required)
+ * @property {string} [image] - Image URL or file path (exactly one of text or image required)
  * @property {FragmentKind} fragmentKind - How this fragment was derived
  * @property {string} projectionName - Which semantic lane this serves
  * @property {string[]} sourceIds - Which sources contributed

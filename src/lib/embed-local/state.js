@@ -1,5 +1,5 @@
 let enabled = false;
-let extractorPromise;
+let globalService;
 
 export function isEmbedEnabled() {
   return enabled;
@@ -7,13 +7,13 @@ export function isEmbedEnabled() {
 
 export function setEmbedEnabled(value) {
   enabled = value;
-  if (!value) extractorPromise = undefined;
+  if (!value) globalService = undefined;
 }
 
-export function getExtractorPromise() {
-  return extractorPromise;
+export function getGlobalService() {
+  return globalService;
 }
 
-export function setExtractorPromise(value) {
-  extractorPromise = value;
+export function setGlobalService(value) {
+  globalService = value;
 }

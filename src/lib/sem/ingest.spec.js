@@ -16,6 +16,7 @@ vi.mock('../embed-local/index.js', () => {
   return {
     embed: vi.fn(async (text) => hashToVec(text)),
     embedBatch: vi.fn(async (texts) => texts.map(hashToVec)),
+    embedImageBatch: vi.fn(async (inputs) => inputs.map((img) => hashToVec(`img:${img}`))),
   };
 });
 
@@ -280,5 +281,127 @@ describe('ingest', () => {
 
     const { states } = await ingest({ fragmentSets, schema });
     expect(states[0].stateId).toBe('fs:fallback');
+  });
+
+  it('handles image fragments alongside text fragments', async () => {
+    const fragmentSets = [
+      {
+        fragmentSetId: 'fs:mixed',
+        fragments: [
+          {
+            fragmentId: 'f1',
+            text: 'Invoice text',
+            fragmentKind: 'literal',
+            projectionName: 'billing',
+            sourceIds: ['ticket:mixed'],
+          },
+          {
+            fragmentId: 'f2',
+            image: 'https://example.com/receipt.jpg',
+            fragmentKind: 'literal',
+            projectionName: 'billing',
+            sourceIds: ['ticket:mixed'],
+          },
+        ],
+      },
+    ];
+
+    const { states } = await ingest({ fragmentSets, schema });
+    expect(states).toHaveLength(1);
+    expect(states[0].stateId).toBe('ticket:mixed');
+    expect(states[0].vectorsByProjectionName.billing).toBeInstanceOf(Float32Array);
+  });
+
+  it('calls embedImageBatch for image fragments', async () => {
+    const { embedImageBatch } = await import('../embed-local/index.js');
+    embedImageBatch.mockClear();
+
+    const fragmentSets = [
+      {
+        fragmentSetId: 'fs:img',
+        fragments: [
+          {
+            fragmentId: 'f1',
+            image: 'photo1.jpg',
+            fragmentKind: 'literal',
+            projectionName: 'billing',
+            sourceIds: ['ticket:img'],
+          },
+          {
+            fragmentId: 'f2',
+            image: 'photo2.jpg',
+            fragmentKind: 'literal',
+            projectionName: 'compliance',
+            sourceIds: ['ticket:img'],
+          },
+        ],
+      },
+    ];
+
+    await ingest({ fragmentSets, schema });
+    expect(embedImageBatch).toHaveBeenCalled();
+    expect(embedImageBatch.mock.calls[0][0]).toEqual(['photo1.jpg', 'photo2.jpg']);
+  });
+
+  it('deduplicates identical image inputs', async () => {
+    const { embedImageBatch } = await import('../embed-local/index.js');
+    embedImageBatch.mockClear();
+
+    const fragmentSets = [
+      {
+        fragmentSetId: 'fs:dup-img',
+        fragments: [
+          {
+            fragmentId: 'f1',
+            image: 'same.jpg',
+            fragmentKind: 'literal',
+            projectionName: 'billing',
+            sourceIds: ['ticket:dup'],
+          },
+          {
+            fragmentId: 'f2',
+            image: 'same.jpg',
+            fragmentKind: 'recast',
+            projectionName: 'compliance',
+            sourceIds: ['ticket:dup'],
+          },
+        ],
+      },
+    ];
+
+    await ingest({ fragmentSets, schema });
+    expect(embedImageBatch.mock.calls[0][0]).toHaveLength(1);
+  });
+
+  it('passes multi embedding config when images present', async () => {
+    const { embedBatch } = await import('../embed-local/index.js');
+    embedBatch.mockClear();
+
+    const fragmentSets = [
+      {
+        fragmentSetId: 'fs:multi-config',
+        fragments: [
+          {
+            fragmentId: 'f1',
+            text: 'Some text',
+            fragmentKind: 'literal',
+            projectionName: 'billing',
+            sourceIds: ['ticket:mc'],
+          },
+          {
+            fragmentId: 'f2',
+            image: 'photo.jpg',
+            fragmentKind: 'literal',
+            projectionName: 'compliance',
+            sourceIds: ['ticket:mc'],
+          },
+        ],
+      },
+    ];
+
+    await ingest({ fragmentSets, schema });
+    // embedBatch should receive config with embedding: { multi: true }
+    const config = embedBatch.mock.calls[0][1];
+    expect(config.embedding).toEqual({ multi: true });
   });
 });

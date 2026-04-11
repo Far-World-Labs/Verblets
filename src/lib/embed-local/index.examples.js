@@ -17,7 +17,7 @@ describe.skipIf(skip)('Embed verblet', () => {
       const vector = await embed('The quick brown fox jumps over the lazy dog');
 
       expect(vector).toBeInstanceOf(Float32Array);
-      expect(vector).toHaveLength(384);
+      expect(vector.length).toBeGreaterThanOrEqual(384);
 
       // Normalized vectors should have unit magnitude (±tolerance for floating point)
       const magnitude = Math.sqrt(vector.reduce((sum, v) => sum + v * v, 0));

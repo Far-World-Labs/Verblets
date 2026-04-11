@@ -34,7 +34,7 @@ Four phases with hard boundaries:
 
 **Source text** — a raw string from your system (a ticket body, a message, a policy page).
 
-**Fragment** — a text unit shaped for one semantic purpose. Not just a chunk. A fragment might be a literal slice, a recast of the source into a projection's language, a cluster summary, or a meta-level observation. Every fragment knows where it came from (`sourceIds`) and how it was derived (`fragmentKind`).
+**Fragment** — a content unit shaped for one semantic purpose. Not just a chunk. A fragment might be a literal text slice, a recast of the source into a projection's language, a cluster summary, a meta-level observation, or an image. Fragments carry either `text` or `image` (a URL or file path). Every fragment knows where it came from (`sourceIds`) and how it was derived (`fragmentKind`).
 
 **Projection** — a named semantic lane (billing, compliance, timeline, entitlement). Text gets fragmented *into* projections. Vectors get grouped *by* projection. Projections are the structural backbone of the system.
 
@@ -87,13 +87,19 @@ const schema2 = await sem.refine({
 ### State assembly (embedding, no LLM)
 
 ```js
-// Build vector states from fragments
+// Build vector states from fragments (text-only uses default text model)
 const { states, schema: enrichedSchema } = await sem.ingest({ fragmentSets, schema });
-// states[0] = {
-//   stateId: 'ticket:4812',
-//   vectorsByProjectionName: { billing: Float32Array[384], compliance: Float32Array[384] }
-// }
-// enrichedSchema has pole vectors populated for property readout
+
+// Multimodal: when any fragment has an image, all embedding routes through
+// the multimodal model so text and image vectors share the same space
+const multimodalFragments = [{
+  fragmentSetId: 'fs:product',
+  fragments: [
+    { fragmentId: 'f1', text: 'Red running shoe, lightweight', projectionName: 'visual', sourceIds: ['product:1'] },
+    { fragmentId: 'f2', image: 'https://cdn.example.com/shoe.jpg', projectionName: 'visual', sourceIds: ['product:1'] },
+  ],
+}];
+const { states: multiStates } = await sem.ingest({ fragmentSets: multimodalFragments, schema });
 ```
 
 ```js
@@ -181,6 +187,33 @@ const values = sem.read({
   schema: enrichedSchema,
 });
 // Route, prioritize, filter based on values
+```
+
+## Embedding model negotiation
+
+Embedding models are selected through a rule-based negotiation system (same pattern as LLM model selection). The default model is CLIP multimodal — text and images share the same vector space.
+
+```js
+// Default: CLIP multimodal (text + images in same vector space)
+const { states } = await sem.ingest({ fragmentSets, schema });
+
+// Force text-only model (higher quality text embeddings, no image support)
+const { states } = await sem.ingest({ fragmentSets, schema }, { embedding: { good: true } });
+```
+
+When `ingest` encounters image fragments, it automatically negotiates a multimodal model for all vectors in that batch — you don't need to specify `{ multi: true }` manually.
+
+Custom models and rules can be configured at initialization:
+
+```js
+const instance = init({
+  embed: true,
+  embedModels: { 'custom/clip-model': { dimensions: 768, loader: 'clip', dtype: 'fp32' } },
+  embedRules: [
+    { match: { good: true, multi: false }, use: 'mixedbread-ai/mxbai-embed-xsmall-v1' },
+    { use: 'custom/clip-model' },
+  ],
+});
 ```
 
 ## Design principles
