@@ -179,26 +179,27 @@ export default async function phailForge(prompt, config = {}) {
       responseFormat: jsonSchema('phail_enhancement', enhancementSchema),
     });
 
-    // Calculate expansion ratio
-    enhancedResponse.metadata = {
-      ...enhancedResponse.metadata,
-      expansionRatio: enhancedResponse.enhanced.length / prompt.length,
+    // Build result without mutating the LLM response
+    const result = {
+      ...enhancedResponse,
+      metadata: {
+        ...enhancedResponse.metadata,
+        expansionRatio: enhancedResponse.enhanced.length / prompt.length,
+      },
     };
 
     // Optionally analyze the enhancement
     if (analyze) {
       const analysisPrompt = `${ANALYSIS_PROMPT}\n\nPrompt to analyze:\n${enhancedResponse.enhanced}`;
 
-      const analysis = await callLlm(analysisPrompt, {
+      result.analysis = await callLlm(analysisPrompt, {
         ...runConfig,
         responseFormat: jsonSchema('prompt_analysis', analysisSchema),
       });
-
-      enhancedResponse.analysis = analysis;
     }
 
     emitter.complete({ outcome: Outcome.success });
-    return enhancedResponse;
+    return result;
   } catch (err) {
     emitter.error(err);
     throw err;

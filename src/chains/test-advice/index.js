@@ -1,7 +1,8 @@
 import test from '../test/index.js';
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
-import { Outcome } from '../../lib/progress/constants.js';
+import { Outcome, ErrorPosture } from '../../lib/progress/constants.js';
 import { nameStep } from '../../lib/context/option.js';
+import parallelBatch from '../../lib/parallel-batch/index.js';
 
 const name = 'test-advice';
 
@@ -44,17 +45,26 @@ export default async function testAdvice(path, config = {}) {
 
   try {
     const batchDone = emitter.batch(ALL_INSTRUCTIONS.length);
-    const results = [];
 
-    for (const instructions of ALL_INSTRUCTIONS) {
-      const issues = await test(path, instructions, {
-        ...runConfig,
-        onProgress: scopePhase(runConfig.onProgress, 'test-advice:test'),
-      });
-      results.push(...issues);
-      batchDone(1);
-    }
+    const batchResults = await parallelBatch(
+      ALL_INSTRUCTIONS,
+      async (instructions) => {
+        const issues = await test(path, instructions, {
+          ...runConfig,
+          onProgress: scopePhase(runConfig.onProgress, 'test-advice:test'),
+        });
+        batchDone(1);
+        return issues;
+      },
+      {
+        maxParallel: 3,
+        errorPosture: ErrorPosture.resilient,
+        abortSignal: runConfig.abortSignal,
+        label: 'test-advice:instructions',
+      }
+    );
 
+    const results = batchResults.flat();
     emitter.complete({ outcome: Outcome.success, totalIssues: results.length });
     return results;
   } catch (err) {

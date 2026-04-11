@@ -7,10 +7,10 @@ The LLM evaluates the text's meaning against the provided options — it underst
 ```javascript
 import { classify } from '@far-world-labs/verblets';
 
-await classify('This needs to be done ASAP!!!', ['low', 'medium', 'high', 'critical']);
+await classify('This needs to be done ASAP!!!', { low: 1, medium: 1, high: 1, critical: 1 });
 // => 'critical'
 
-await classify('quantum physics research', ['sports', 'cooking', 'fashion']);
+await classify('quantum physics research', { sports: 1, cooking: 1, fashion: 1 });
 // => undefined
 ```
 
@@ -21,7 +21,7 @@ When no option fits, the result is `undefined` rather than a forced match.
 ### `classify(text, options, config?)`
 
 - **text** (string): Input to classify
-- **options** (string[]): Categories to choose from. The LLM sees these as an enum and picks the best match.
+- **options** (Object): Object whose keys are the categories to choose from. The LLM sees the keys as an enum and picks the best match.
 - **config.llm** (string|Object): LLM configuration
 
 **Returns:** `Promise<string | undefined>` — one of the provided options, or `undefined` if none applies.

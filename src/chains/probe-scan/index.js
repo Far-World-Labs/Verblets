@@ -1,6 +1,6 @@
 import { embedChunked } from '../../lib/embed-local/index.js';
 import { cosineSimilarity } from '../../lib/pure/index.js';
-import createProgressEmitter from '../../lib/progress/index.js';
+import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
 import { Outcome } from '../../lib/progress/constants.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 
@@ -46,16 +46,23 @@ export default async function probeScan(textOrChunks, probes, config = {}) {
     detection: withPolicy(mapDetection),
     maxTokens: 256,
   });
-  const { categories } = runConfig;
-
-  const chunks =
-    typeof textOrChunks === 'string'
-      ? await embedChunked(textOrChunks, { maxTokens })
-      : textOrChunks;
-
-  const activeProbes = categories ? probes.filter((p) => categories.includes(p.category)) : probes;
+  const { categories } = await getOptions(runConfig, { categories: undefined });
 
   try {
+    const chunks =
+      typeof textOrChunks === 'string'
+        ? await embedChunked(textOrChunks, {
+            maxTokens,
+            abortSignal: runConfig.abortSignal,
+            onProgress: scopePhase(runConfig.onProgress, 'probe-scan:embed'),
+          })
+        : textOrChunks;
+
+    const activeProbes = categories
+      ? probes.filter((p) => categories.includes(p.category))
+      : probes;
+
+    const batchDone = emitter.batch(chunks.length);
     const hits = [];
     for (const chunk of chunks) {
       for (const probe of activeProbes) {
@@ -69,6 +76,7 @@ export default async function probeScan(textOrChunks, probes, config = {}) {
           });
         }
       }
+      batchDone(1);
     }
 
     const sorted = hits.toSorted((a, b) => b.score - a.score);

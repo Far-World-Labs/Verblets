@@ -31,7 +31,7 @@ export const mapDepth = (value) => {
       high: 'Look beyond surface features to find deep structural patterns, functional relationships, and abstract connections. Identify shared underlying mechanisms, analogous roles, philosophical parallels, and non-obvious conceptual links. Prefer insightful, non-trivial commonalities over obvious ones.',
     }[value];
   }
-  return undefined;
+  return value;
 };
 
 export const buildPrompt = (items, { instructions, depthGuidance } = {}) => {

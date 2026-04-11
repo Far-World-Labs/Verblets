@@ -8,6 +8,7 @@ import { intersectionElementsSchema } from './schemas.js';
 import intersectionResultSchema from './intersection-result.json' with { type: 'json' };
 import { debug } from '../../lib/debug/index.js';
 import parallelBatch from '../../lib/parallel-batch/index.js';
+import { parallel } from '../../lib/index.js';
 import { nameStep, getOptions } from '../../lib/context/option.js';
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
 import { Outcome, ErrorPosture } from '../../lib/progress/constants.js';
@@ -52,20 +53,25 @@ const processCombo = async (combo, instructions, config = {}) => {
   const comboKey = combo.join(' + ');
 
   // Get elements and description in parallel
-  const [elementsResponse, intersectionItems] = await Promise.all([
-    retry(
+  const [elementsResponse, intersectionItems] = await parallel(
+    [
       () =>
-        callLlm(INTERSECTION_PROMPT(combo, instructions), {
-          ...config,
-          responseFormat: jsonSchema('intersection_elements', intersectionElementsSchema),
-        }),
-      {
-        label: 'intersections-elements',
-        config,
-      }
-    ),
-    commonalities(combo, { ...config, instructions }),
-  ]);
+        retry(
+          () =>
+            callLlm(INTERSECTION_PROMPT(combo, instructions), {
+              ...config,
+              responseFormat: jsonSchema('intersection_elements', intersectionElementsSchema),
+            }),
+          {
+            label: 'intersections-elements',
+            config,
+          }
+        ),
+      () => commonalities(combo, { ...config, instructions }),
+    ],
+    (fn) => fn(),
+    { maxParallel: 2, abortSignal: config?.abortSignal }
+  );
 
   const elementList = parseElements(elementsResponse);
   const description = Array.isArray(intersectionItems)

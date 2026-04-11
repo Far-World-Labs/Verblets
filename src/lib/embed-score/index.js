@@ -9,14 +9,14 @@ import { cosineSimilarity } from '../pure/index.js';
  *
  * @param {Array<string|any>} items
  * @param {string} query
- * @param {{ accessor?: (item) => string }} [config]
+ * @param {{ accessor?: (item) => string, abortSignal?: AbortSignal }} [config]
  * @returns {Promise<Array<{item: any, score: number}>>}
  */
 export default async function embedScore(items, query, config = {}) {
   if (items.length === 0) return [];
-  const { accessor = String } = config;
+  const { accessor = String, abortSignal } = config;
   const texts = items.map(accessor);
-  const vectors = await embedBatch([query, ...texts]);
+  const vectors = await embedBatch([query, ...texts], { abortSignal });
   const queryVector = vectors[0];
   return items.map((item, i) => ({
     item,

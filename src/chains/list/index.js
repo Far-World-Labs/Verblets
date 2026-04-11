@@ -78,16 +78,14 @@ export const generateList = async function* generateListGenerator(text, config =
       const resultArray = results?.items || results;
       resultsNew = Array.isArray(resultArray) ? resultArray.filter(Boolean) : [];
     } catch (error) {
-      if (/The operation was aborted/.test(error.message)) {
-        debug('Generate list [error]: Aborted');
-        resultsNew = [];
-      } else {
-        debug(
-          `Generate list [error]: ${error.message} ${listPrompt.slice(0, 100).replace('\n', '\\n')}`
-        );
-        isDone = true;
-        break;
+      if (error.name === 'AbortError') {
+        throw error;
       }
+      debug(
+        `Generate list [error]: ${error.message} ${listPrompt.slice(0, 100).replace('\n', '\\n')}`
+      );
+      isDone = true;
+      break;
     }
 
     const resultsNewUnique = resultsNew.filter((item) => !(item in resultsAllMap));

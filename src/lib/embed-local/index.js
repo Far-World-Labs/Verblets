@@ -60,10 +60,17 @@ export async function embed(text) {
  * Embed multiple texts. Runs them through the pipeline in a single batch.
  *
  * @param {string[]} texts
+ * @param {object} [config]
+ * @param {AbortSignal} [config.abortSignal] - Signal to abort the embedding operation
  * @returns {Promise<Float32Array[]>}
  */
-export async function embedBatch(texts) {
+export async function embedBatch(texts, config = {}) {
+  const { abortSignal } = config;
+  abortSignal?.throwIfAborted();
+
   const extractor = await getExtractor();
+  abortSignal?.throwIfAborted();
+
   const normalized = texts.map((t) => embedNormalizeText(t));
   const output = await extractor(normalized, {
     pooling: 'cls',
@@ -88,13 +95,16 @@ export async function embedBatch(texts) {
  * @returns {Promise<Array<{ text: string, vector: Float32Array, start: number, end: number }>>}
  */
 export async function embedChunked(text, options = {}) {
-  const { maxTokens = 256 } = options;
+  const { maxTokens = 256, abortSignal } = options;
   const normalized = embedNormalizeText(text);
 
   const chunks = splitIntoChunks(normalized, text, maxTokens);
   if (chunks.length === 0) return [];
 
-  const vectors = await embedBatch(chunks.map((c) => c.text));
+  const vectors = await embedBatch(
+    chunks.map((c) => c.text),
+    { abortSignal }
+  );
 
   return chunks.map((chunk, i) => ({
     ...chunk,

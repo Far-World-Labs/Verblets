@@ -10,10 +10,6 @@ const name = 'list-expand';
 
 const responseFormat = jsonSchema('list_expand_result', listExpandSchema);
 
-// TODO: This could potentially be refactored to use the list chain (../../chains/list/index.js)
-// for better consistency, but would require adapting the list chain to support this simpler
-// expansion use case without changing the current behavior and test expectations.
-
 const buildPrompt = function (list, count) {
   const listBlock = asXML(list.join('\n'), { tag: 'list' });
   return (

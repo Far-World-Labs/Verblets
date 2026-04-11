@@ -6,6 +6,17 @@
  * so consumers always know what's happening.
  */
 
+/** Domain events specific to cooldown retry logic. */
+const CooldownEvent = Object.freeze({
+  tick: 'cooldown:tick',
+  visitError: 'cooldown:visitError',
+  blockCheckError: 'cooldown:blockCheckError',
+  exhausted: 'cooldown:exhausted',
+  start: 'cooldown:start',
+  retry: 'cooldown:retry',
+  heartbeat: 'heartbeat',
+});
+
 const DEFAULT_COOLDOWN = {
   baseDelay: 5000, // 5s initial wait
   maxDelay: 300000, // 5 min ceiling
@@ -67,7 +78,7 @@ const sleepWithHeartbeat = async (ms, emitter, heartbeatInterval, context) => {
     elapsed = Date.now() - startedAt;
 
     emitter.emit({
-      event: 'cooldown:tick',
+      event: CooldownEvent.tick,
       elapsedMs: elapsed,
       remainingMs: Math.max(0, endsAt - Date.now()),
       totalMs: ms,
@@ -108,7 +119,7 @@ const visitWithCooldown = async (
     try {
       pageData = await visitFn(page, url);
     } catch (err) {
-      emitter.emit({ event: 'cooldown:visitError', url, attempt, error: err.message });
+      emitter.emit({ event: CooldownEvent.visitError, url, attempt, error: err.message });
       throw err;
     }
 
@@ -116,7 +127,7 @@ const visitWithCooldown = async (
     try {
       blockReason = await isBlocked(page);
     } catch (err) {
-      emitter.emit({ event: 'cooldown:blockCheckError', url, attempt, error: err.message });
+      emitter.emit({ event: CooldownEvent.blockCheckError, url, attempt, error: err.message });
       throw err;
     }
     if (!blockReason) {
@@ -126,7 +137,7 @@ const visitWithCooldown = async (
     // Blocked — decide whether to retry
     if (attempt >= cooldown.maxRetries) {
       emitter.emit({
-        event: 'cooldown:exhausted',
+        event: CooldownEvent.exhausted,
         url,
         reason: blockReason,
         attempts: attempt + 1,
@@ -140,7 +151,7 @@ const visitWithCooldown = async (
     totalCooldownMs += delay;
 
     emitter.emit({
-      event: 'cooldown:start',
+      event: CooldownEvent.start,
       url,
       reason: blockReason,
       attempt: attempt + 1,
@@ -156,7 +167,7 @@ const visitWithCooldown = async (
     });
 
     emitter.emit({
-      event: 'cooldown:retry',
+      event: CooldownEvent.retry,
       url,
       attempt: attempt + 1,
     });
@@ -170,7 +181,7 @@ const visitWithCooldown = async (
 const createHeartbeat = (emitter, intervalMs, getState) => {
   const timer = setInterval(() => {
     emitter.emit({
-      event: 'heartbeat',
+      event: CooldownEvent.heartbeat,
       ...getState(),
     });
   }, intervalMs);
@@ -181,6 +192,7 @@ const createHeartbeat = (emitter, intervalMs, getState) => {
 };
 
 export {
+  CooldownEvent,
   DEFAULT_COOLDOWN,
   defaultIsBlocked,
   retryDelay,

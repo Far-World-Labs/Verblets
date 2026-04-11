@@ -106,7 +106,6 @@ export default async function truncate(text, instructions, config = {}) {
   try {
     // Create chunks with tracked end positions
     const chunks = createChunks(text, chunkSize);
-    const batchDone = emitter.batch(chunks.length);
 
     // Reverse chunks to process from end to beginning
     const reversedChunks = [...chunks].reverse();
@@ -125,7 +124,6 @@ Consider the removal criteria above when scoring.`;
       onProgress: scopePhase(runConfig.onProgress, 'score:relevance'),
       // Don't use stopOnThreshold - we need all scores to find high ones
     });
-    batchDone(chunks.length);
 
     // Find the first chunk (from the end) that should be removed (score < threshold)
     const removeChunkIndex = scores.findIndex((s) => s < threshold);

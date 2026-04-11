@@ -72,14 +72,14 @@ export default async ({
     // eslint-disable-next-line no-await-in-loop
     const nextNodes = await next({ node, state });
 
-    nextNodes.filter(filterWith(state)).forEach((nextNode) => {
+    const filtered = nextNodes.filter(filterWith(state));
+    for (const nextNode of filtered) {
       const key = keyFor(nextNode);
       if (!parents.has(key)) {
         parents.set(key, node);
       }
-    });
+    }
 
-    const filtered = nextNodes.filter(filterWith(state));
     nodesTodo = unionByKey(nodesTodoNext, filtered);
   }
 

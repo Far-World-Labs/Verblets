@@ -13,8 +13,8 @@ beforeEach(() => {
 });
 
 const testProbes = [
-  { category: 'topic-a', label: 'Topic A', queries: ['about topic A'] },
-  { category: 'topic-b', label: 'Topic B', queries: ['about topic B'] },
+  { category: 'topic-a', label: 'Topic A', query: 'about topic A' },
+  { category: 'topic-b', label: 'Topic B', query: 'about topic B' },
 ];
 
 const fakeVectors = testProbes.map((_, i) => new Float32Array([i, i + 1, i + 2]));
@@ -34,15 +34,12 @@ describe('embedProbes', () => {
     expect(result[1].category).toBe('topic-b');
   });
 
-  it('embeds only the first query string from each probe', async () => {
-    const multiQueryProbes = [
-      { category: 'x', label: 'X', queries: ['first query', 'second query'] },
-    ];
+  it('embeds the query string from each probe', async () => {
     embedBatch.mockResolvedValueOnce([new Float32Array([1, 2, 3])]);
 
-    await embedProbes(multiQueryProbes);
+    await embedProbes([{ category: 'x', label: 'X', query: 'the query' }]);
 
-    expect(embedBatch.mock.calls[0][0]).toEqual(['first query']);
+    expect(embedBatch.mock.calls[0][0]).toEqual(['the query']);
   });
 
   it('caches by reference — same array returns same promise', async () => {
@@ -56,7 +53,7 @@ describe('embedProbes', () => {
   });
 
   it('different probe arrays get separate cache entries', async () => {
-    const otherProbes = [{ category: 'other', label: 'Other', queries: ['other'] }];
+    const otherProbes = [{ category: 'other', label: 'Other', query: 'other' }];
     embedBatch
       .mockResolvedValueOnce(fakeVectors)
       .mockResolvedValueOnce([new Float32Array([9, 9, 9])]);

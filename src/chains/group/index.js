@@ -2,7 +2,7 @@ import listBatch, { ListStyle, determineStyle } from '../../verblets/list-batch/
 import reduce from '../reduce/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
-import { OpEvent, DomainEvent, Outcome, ErrorPosture } from '../../lib/progress/constants.js';
+import { DomainEvent, Outcome, ErrorPosture } from '../../lib/progress/constants.js';
 import { parallel, retry, createBatches } from '../../lib/index.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 
@@ -167,12 +167,7 @@ export default async function group(list, instructions, config = {}) {
 
   const allBatches = await createBatches(list, runConfig);
   const batchesToProcess = allBatches;
-  let processedItems = 0;
-  emitter.progress({
-    event: OpEvent.start,
-    totalItems: list.length,
-    totalBatches: batchesToProcess.length,
-  });
+  const batchDone = emitter.batch(list.length);
 
   // Process batches in parallel using parallelBatch
   await parallel(
@@ -207,13 +202,7 @@ export default async function group(list, instructions, config = {}) {
           batchResults.push({ items, labels, startIndex });
         }
 
-        processedItems += items.length;
-        emitter.progress({
-          event: OpEvent.batchComplete,
-          totalItems: list.length,
-          processedItems,
-          batchSize: items.length,
-        });
+        batchDone(items.length);
       } catch (error) {
         emitter.error(error, { startIndex, itemCount: items.length });
         throw error;
@@ -230,13 +219,6 @@ export default async function group(list, instructions, config = {}) {
   // Final grouping
   const sorted = batchResults.toSorted((a, b) => a.startIndex - b.startIndex);
   const groups = assignItemsToGroups(sorted);
-
-  emitter.progress({
-    event: OpEvent.complete,
-    totalItems: list.length,
-    processedItems,
-    categoryCount: categories.length,
-  });
 
   const result = topN ? applyTopNFilter(groups, topN) : groups;
 

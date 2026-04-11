@@ -30,7 +30,7 @@ export const mapCreativity = (value) => {
       high: 'Be speculative. Make your best educated guess for every missing value using all available context clues. Prefer a plausible candidate over "[UNKNOWN]". Assign confidence scores that honestly reflect your certainty, but always attempt a fill.',
     }[value];
   }
-  return undefined;
+  return value;
 };
 
 export const buildPrompt = (text, { creativityGuidance } = {}) =>

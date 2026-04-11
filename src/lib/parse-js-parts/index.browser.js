@@ -10,6 +10,7 @@ const scanFile = (file) => {
     importsMap: {},
     exportsMap: {},
     commentsMap: {},
+    stringsMap: {},
   };
 };
 

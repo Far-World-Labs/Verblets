@@ -26,7 +26,7 @@ export const mapTolerance = (value) => {
       high: 'Be lenient about matching. Always select the closest matching operation even if the match is imperfect. Explain any uncertainty in the optional_parameters field. Infer reasonable parameter values from context even when not explicitly stated. Prefer dispatching to an operation over returning no match.',
     }[value];
   }
-  return undefined;
+  return value;
 };
 
 const responseFormat = jsonSchema('intent_result', intentSchema);

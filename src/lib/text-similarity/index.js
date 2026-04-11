@@ -6,7 +6,6 @@ export class TextSimilarity {
   constructor() {
     this.tfidf = new TfIdf();
     this.chunks = new Map();
-    this.documentIds = [];
   }
 
   addChunk(text, id) {
@@ -16,9 +15,8 @@ export class TextSimilarity {
       throw new Error(`Chunk with id '${chunkId}' already exists`);
     }
 
+    const documentIndex = this.chunks.size;
     this.tfidf.addDocument(text);
-    const documentIndex = this.documentIds.length;
-    this.documentIds.push(chunkId);
 
     this.chunks.set(chunkId, {
       id: chunkId,
@@ -40,8 +38,6 @@ export class TextSimilarity {
     this.tfidf.removeDocument(documentIndex);
     this.chunks.delete(id);
 
-    this.documentIds = this.documentIds.filter((docId) => docId !== id);
-
     for (const [, chunkData] of this.chunks.entries()) {
       if (chunkData.documentIndex > documentIndex) {
         chunkData.documentIndex--;
@@ -58,13 +54,25 @@ export class TextSimilarity {
       return [];
     }
 
+    // Extract query vector once before the loop
     const queryTfIdf = new TfIdf();
     queryTfIdf.addDocument(query);
+    const queryVector = this._getDocumentVector(queryTfIdf, 0);
+    const queryMagnitude = this._magnitude(queryVector);
+
+    if (queryMagnitude === 0) {
+      return [];
+    }
 
     const similarities = [];
 
     for (const [chunkId, chunkData] of this.chunks.entries()) {
-      const similarity = this._cosineSimilarity(queryTfIdf, chunkData.documentIndex);
+      const docVector = this._getDocumentVector(this.tfidf, chunkData.documentIndex);
+      const docMagnitude = this._magnitude(docVector);
+
+      if (docMagnitude === 0) continue;
+
+      const similarity = this._dotProduct(queryVector, docVector) / (queryMagnitude * docMagnitude);
 
       if (similarity >= threshold) {
         similarities.push({
@@ -135,21 +143,6 @@ export class TextSimilarity {
     };
   }
 
-  _cosineSimilarity(queryTfIdf, documentIndex) {
-    const queryVector = this._getDocumentVector(queryTfIdf, 0);
-    const docVector = this._getDocumentVector(this.tfidf, documentIndex);
-
-    const dotProduct = this._dotProduct(queryVector, docVector);
-    const queryMagnitude = this._magnitude(queryVector);
-    const docMagnitude = this._magnitude(docVector);
-
-    if (queryMagnitude === 0 || docMagnitude === 0) {
-      return 0;
-    }
-
-    return dotProduct / (queryMagnitude * docMagnitude);
-  }
-
   _getDocumentVector(tfidf, documentIndex) {
     const vector = new Map();
     const terms = tfidf.listTerms(documentIndex);
@@ -182,25 +175,36 @@ export class TextSimilarity {
     return Math.sqrt(sumSquares);
   }
 
+  /**
+   * Compute similarity matrix using the corpus TfIdf directly.
+   * Exploits symmetry: similarity(i,j) === similarity(j,i).
+   */
   _computeSimilarityMatrix(chunkIds) {
     const matrix = new Map();
 
+    // Pre-extract all document vectors and magnitudes
+    const vectors = chunkIds.map((id) => {
+      const chunk = this.chunks.get(id);
+      const vec = this._getDocumentVector(this.tfidf, chunk.documentIndex);
+      return { vec, magnitude: this._magnitude(vec) };
+    });
+
     for (let i = 0; i < chunkIds.length; i++) {
       matrix.set(chunkIds[i], new Map());
+    }
 
-      for (let j = 0; j < chunkIds.length; j++) {
-        if (i === j) {
-          matrix.get(chunkIds[i]).set(chunkIds[j], 1.0);
-        } else {
-          const chunk1 = this.chunks.get(chunkIds[i]);
-          const chunk2 = this.chunks.get(chunkIds[j]);
+    for (let i = 0; i < chunkIds.length; i++) {
+      matrix.get(chunkIds[i]).set(chunkIds[i], 1.0);
 
-          const queryTfIdf = new TfIdf();
-          queryTfIdf.addDocument(chunk1.text);
+      for (let j = i + 1; j < chunkIds.length; j++) {
+        const { vec: vec1, magnitude: mag1 } = vectors[i];
+        const { vec: vec2, magnitude: mag2 } = vectors[j];
 
-          const similarity = this._cosineSimilarity(queryTfIdf, chunk2.documentIndex);
-          matrix.get(chunkIds[i]).set(chunkIds[j], similarity);
-        }
+        const similarity =
+          mag1 === 0 || mag2 === 0 ? 0 : this._dotProduct(vec1, vec2) / (mag1 * mag2);
+
+        matrix.get(chunkIds[i]).set(chunkIds[j], similarity);
+        matrix.get(chunkIds[j]).set(chunkIds[i], similarity);
       }
     }
 
@@ -244,8 +248,9 @@ export class TextSimilarity {
 
   _getVocabularySize() {
     const vocabulary = new Set();
+    const chunkCount = this.chunks.size;
 
-    for (let i = 0; i < this.documentIds.length; i++) {
+    for (let i = 0; i < chunkCount; i++) {
       const terms = this.tfidf.listTerms(i);
       terms.forEach((term) => vocabulary.add(term.term));
     }

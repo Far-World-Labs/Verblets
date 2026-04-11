@@ -24,7 +24,7 @@ const penguin = await centralTendencyLines('penguin', birdSeeds, {
 
 ## API
 
-### `centralTendency(item, seedItems, config)`
+### `centralTendencyLines(item, seedItems, config)`
 
 - **item** (string): The item to evaluate
 - **seedItems** (string[]): Known category members for comparison

@@ -325,6 +325,8 @@ const siteCrawl = async (startUrl, config = {}) => {
       ...frontier.summary(),
     }));
 
+    const batchDone = emitter.batch(opts.maxPages);
+
     try {
       // Main crawl loop
       while (!frontier.isEmpty() && pages.length < opts.maxPages) {
@@ -396,6 +398,7 @@ const siteCrawl = async (startUrl, config = {}) => {
             pending: frontier.size(),
             blocked,
           });
+          batchDone(1);
         } catch (err) {
           emitter.emit({ event: 'page:error', url: entry.url, error: err.message });
           if (opts.errorPosture === ErrorPosture.strict) throw err;

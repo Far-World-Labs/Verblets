@@ -29,39 +29,3 @@ export const timelineEventJsonSchema = {
     additionalProperties: false,
   },
 };
-
-export const timelineMergeJsonSchema = {
-  name: 'timeline_merge',
-  strict: true,
-  schema: {
-    type: 'object',
-    properties: {
-      events: {
-        type: 'array',
-        description: 'Merged and deduplicated timeline events in chronological order',
-        items: {
-          type: 'object',
-          description: 'A timeline event with enhanced information from merging',
-          properties: {
-            timestamp: {
-              type: 'string',
-              description: 'Most specific timestamp available for this event',
-            },
-            name: {
-              type: 'string',
-              description: 'Most descriptive event name from merged sources',
-            },
-            category: {
-              type: 'string',
-              description: 'Event category or type, or empty string if none',
-            },
-          },
-          required: ['timestamp', 'name', 'category'],
-          additionalProperties: false,
-        },
-      },
-    },
-    required: ['events'],
-    additionalProperties: false,
-  },
-};

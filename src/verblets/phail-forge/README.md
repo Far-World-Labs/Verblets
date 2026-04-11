@@ -2,7 +2,7 @@
 
 Transform a basic prompt into an expert-level one. Analyzes the domain, adds precise terminology and terms of art, includes quality defaults, and structures the result with clear specifications — producing the prompt you *would* have written if you were already an expert in the subject.
 
-Also exported as `makePrompt`.
+Also available as a named export `phailForge`.
 
 ```javascript
 import { phailForge } from '@far-world-labs/verblets';
@@ -33,7 +33,7 @@ console.log(result.metadata);
 
 ## API
 
-### `phailForge(prompt, config)` / `makePrompt(prompt, config)`
+### `phailForge(prompt, config)`
 
 - `prompt` (string, required): The original prompt to enhance
 - `config` (Object):
