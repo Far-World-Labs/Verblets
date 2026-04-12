@@ -6,7 +6,7 @@ Probes are pre-embedded vectors built with `embedProbes` from the embed/probes l
 
 ```javascript
 import { probeScan } from '@far-world-labs/verblets';
-import { embedProbes } from '@far-world-labs/verblets/lib/embed/probes/index.js';
+import { embedProbes } from '@far-world-labs/verblets/embed/probes/index.js';
 
 const probes = await embedProbes([
   { category: 'pii', label: 'email address', query: 'email address contact' },

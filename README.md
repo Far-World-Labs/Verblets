@@ -202,8 +202,8 @@ Low-level utilities that support chains and verblets. Most are synchronous and m
 - [retry](./src/lib/retry) - Config-aware async retry
 - [parallel-batch](./src/lib/parallel-batch) - Parallel execution with concurrency limits
 - [ring-buffer](./src/lib/ring-buffer) - Circular buffer for running LLMs on streams of data
-- [embed-normalize-text](./src/lib/embed/normalize-text) - Normalize text (NFC, whitespace, line endings) for consistent embedding
-- [embed-neighbor-chunks](./src/lib/embed/neighbor-chunks) - Expand retrieved chunks with neighboring context
+- [embed-normalize-text](./src/embed/normalize-text) - Normalize text (NFC, whitespace, line endings) for consistent embedding
+- [embed-neighbor-chunks](./src/embed/neighbor-chunks) - Expand retrieved chunks with neighboring context
 - [progress](./src/lib/progress) - Progress event system: lifecycle tracking, batch progress, event emission
 
 ## Contributing
