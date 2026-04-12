@@ -83,7 +83,7 @@ export async function embed(text, config = {}) {
  * @returns {Promise<Float32Array[]>}
  */
 export async function embedBatch(texts, config = {}) {
-  const { abortSignal } = config;
+  const { abortSignal, batchSize } = config;
   abortSignal?.throwIfAborted();
 
   const service = getService(config);
@@ -92,7 +92,7 @@ export async function embedBatch(texts, config = {}) {
   abortSignal?.throwIfAborted();
 
   const normalized = texts.map((t) => embedNormalizeText(t));
-  return loader.embedTexts(normalized);
+  return loader.embedTexts(normalized, { batchSize, abortSignal });
 }
 
 /**
@@ -124,6 +124,7 @@ export async function embedImage(input, config = {}) {
  * @returns {Promise<Float32Array[]>}
  */
 export async function embedImageBatch(inputs, config = {}) {
+  const { abortSignal, batchSize } = config;
   const service = getService(config);
   const { modelName, caps } = resolveEmbedding(config?.embedding);
   const model = modelName
@@ -133,7 +134,7 @@ export async function embedImageBatch(inputs, config = {}) {
   if (!loader.embedImages) {
     throw new Error(`Model "${model.name}" does not support image embedding. Use a multi model.`);
   }
-  return loader.embedImages(inputs);
+  return loader.embedImages(inputs, { batchSize, abortSignal });
 }
 
 /**
@@ -157,7 +158,10 @@ export async function embedChunked(text, config = {}) {
   if (chunks.length === 0) return [];
 
   abortSignal?.throwIfAborted();
-  const vectors = await loader.embedTexts(chunks.map((c) => c.text));
+  const vectors = await loader.embedTexts(
+    chunks.map((c) => c.text),
+    { abortSignal }
+  );
 
   return chunks.map((chunk, i) => ({
     ...chunk,
