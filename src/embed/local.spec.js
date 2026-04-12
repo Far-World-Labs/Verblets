@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock the EmbeddingService and loaders to avoid real model downloads
-vi.mock('../../services/embedding-model/loaders.js', () => ({
+vi.mock('../services/embedding-model/loaders.js', () => ({
   loadPipeline: vi.fn(async (def) => ({
     embedTexts: vi.fn(async (texts) =>
       texts.map(() => {
@@ -39,21 +39,21 @@ describe('embed model configuration', () => {
   });
 
   it('throws when embed is not enabled and no service on config', async () => {
-    const { embed, setEmbedEnabled } = await import('./index.js');
+    const { embed, setEmbedEnabled } = await import('./local.js');
     setEmbedEnabled(false);
     await expect(embed('hello')).rejects.toThrow('Local embeddings are disabled');
   });
 
   it('works with global enable (backward compat)', async () => {
-    const { embed, setEmbedEnabled } = await import('./index.js');
+    const { embed, setEmbedEnabled } = await import('./local.js');
     setEmbedEnabled(true);
     const vec = await embed('hello');
     expect(vec).toBeInstanceOf(Float32Array);
   });
 
   it('uses embeddingService from config when provided', async () => {
-    const { EmbeddingService } = await import('../../services/embedding-model/index.js');
-    const { embed, setEmbedEnabled } = await import('./index.js');
+    const { EmbeddingService } = await import('../services/embedding-model/index.js');
+    const { embed, setEmbedEnabled } = await import('./local.js');
     setEmbedEnabled(false); // disabled globally
 
     const service = new EmbeddingService();
@@ -63,7 +63,7 @@ describe('embed model configuration', () => {
   });
 
   it('defaults to CLIP (multi) model', async () => {
-    const { embed, setEmbedEnabled } = await import('./index.js');
+    const { embed, setEmbedEnabled } = await import('./local.js');
     setEmbedEnabled(true);
     const vec = await embed('hello');
     // Default CLIP produces 512-dim vectors
@@ -71,7 +71,7 @@ describe('embed model configuration', () => {
   });
 
   it('uses pipeline model when embedding: { good: true }', async () => {
-    const { embed, setEmbedEnabled } = await import('./index.js');
+    const { embed, setEmbedEnabled } = await import('./local.js');
     setEmbedEnabled(true);
     const vec = await embed('hello', { embedding: { good: true } });
     // Pipeline (mxbai) produces 384-dim vectors
@@ -79,7 +79,7 @@ describe('embed model configuration', () => {
   });
 
   it('embedImage auto-negotiates multi', async () => {
-    const { embedImage, setEmbedEnabled } = await import('./index.js');
+    const { embedImage, setEmbedEnabled } = await import('./local.js');
     setEmbedEnabled(true);
     const vec = await embedImage('https://example.com/photo.jpg');
     expect(vec).toBeInstanceOf(Float32Array);
@@ -87,7 +87,7 @@ describe('embed model configuration', () => {
   });
 
   it('embedImage throws for non-multi model', async () => {
-    const { embedImage, setEmbedEnabled } = await import('./index.js');
+    const { embedImage, setEmbedEnabled } = await import('./local.js');
     setEmbedEnabled(true);
     await expect(
       embedImage('https://example.com/photo.jpg', {
@@ -97,7 +97,7 @@ describe('embed model configuration', () => {
   });
 
   it('embedBatch works with default model', async () => {
-    const { embedBatch, setEmbedEnabled } = await import('./index.js');
+    const { embedBatch, setEmbedEnabled } = await import('./local.js');
     setEmbedEnabled(true);
     const vecs = await embedBatch(['hello', 'world']);
     expect(vecs).toHaveLength(2);
@@ -105,7 +105,7 @@ describe('embed model configuration', () => {
   });
 
   it('embedImageBatch embeds multiple images', async () => {
-    const { embedImageBatch, setEmbedEnabled } = await import('./index.js');
+    const { embedImageBatch, setEmbedEnabled } = await import('./local.js');
     setEmbedEnabled(true);
     const vecs = await embedImageBatch(['img1.jpg', 'img2.jpg']);
     expect(vecs).toHaveLength(2);

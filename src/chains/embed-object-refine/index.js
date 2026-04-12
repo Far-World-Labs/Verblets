@@ -19,7 +19,7 @@ import createProgressEmitter from '../../lib/progress/index.js';
 import { Outcome } from '../../lib/progress/constants.js';
 import refineResultSchema from './refine-result.json' with { type: 'json' };
 
-const name = 'sem:refine';
+const name = 'embed-object:refine';
 
 function buildPrompt(schema, studySet) {
   const projectionList = schema.projections
@@ -81,7 +81,7 @@ export default async function refine({ schema, studySet }, config = {}) {
           responseFormat: jsonSchema('sem_refine', refineResultSchema),
           temperature: 0,
         }),
-      { label: 'sem:refine', config: runConfig }
+      { label: 'embed-object:refine', config: runConfig }
     );
 
     emitter.complete({ outcome: Outcome.success });

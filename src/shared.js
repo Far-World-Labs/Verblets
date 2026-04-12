@@ -199,11 +199,10 @@ export {
   setEmbedEnabled,
   embedImage,
   embedImageBatch,
-} from './embed/local/index.js';
+} from './embed/local.js';
 
 // Embedding Utilities
-export { default as scoreVectors } from './embed/score-vectors/index.js';
-export { default as scanVectors } from './embed/scan-vectors/index.js';
+export { default as scoreChunksByProbes } from './embed/score-chunks-by-probes/index.js';
 
 // RAG Helpers
 export { default as embedRewriteQuery } from './verblets/embed-rewrite-query/index.js';
@@ -281,7 +280,7 @@ export * as prompts from './prompts/index.js';
 export * as schemas from './json-schemas/index.js';
 export * as promptCache from './lib/prompt-cache/index.js';
 export * as promptPiece from './lib/prompt-piece/index.js';
-export * as sem from './embed/sem.js';
+export * as embedObject from './embed/index.js';
 
 import * as common from './constants/common.js';
 import * as contextConsts from './constants/context.js';

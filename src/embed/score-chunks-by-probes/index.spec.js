@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import scanVectors from './index.js';
+import scoreChunksByProbes from './index.js';
 
 const axis = (i, dim = 8) => {
   const v = new Float32Array(dim);
@@ -13,11 +13,11 @@ const probes = [
   { category: 'financial-card', label: 'Payment Cards', vector: axis(2) },
 ];
 
-describe('scanVectors', () => {
+describe('scoreChunksByProbes', () => {
   it('scores a matching chunk×probe pair', () => {
     const chunks = [{ text: 'John Smith', start: 0, end: 10, vector: axis(0) }];
 
-    const result = scanVectors(chunks, probes);
+    const result = scoreChunksByProbes(chunks, probes);
 
     const topHit = result[0];
     expect(topHit.category).toBe('pii-name');
@@ -32,7 +32,7 @@ describe('scanVectors', () => {
       { text: 'chunk B', start: 10, end: 17, vector: axis(1) },
     ];
 
-    const result = scanVectors(chunks, probes);
+    const result = scoreChunksByProbes(chunks, probes);
 
     // 2 chunks × 3 probes = 6 pairs
     expect(result).toHaveLength(6);
@@ -56,32 +56,20 @@ describe('scanVectors', () => {
       { text: 'chunk B', start: 10, end: 17, vector: chunkB },
     ];
 
-    const result = scanVectors(chunks, probes);
+    const result = scoreChunksByProbes(chunks, probes);
 
     for (let i = 1; i < result.length; i++) {
       expect(result[i - 1].score).toBeGreaterThanOrEqual(result[i].score);
     }
   });
 
-  it('filters by category list when provided', () => {
-    const mixed = new Float32Array(8);
-    mixed[0] = 0.7;
-    mixed[1] = 0.7;
-    const chunks = [{ text: 'john@example.com', start: 0, end: 16, vector: mixed }];
-
-    const result = scanVectors(chunks, probes, { categories: ['contact-email'] });
-
-    expect(result).toHaveLength(1);
-    expect(result[0].category).toBe('contact-email');
-  });
-
   it('returns empty array for empty chunks', () => {
-    expect(scanVectors([], probes)).toEqual([]);
+    expect(scoreChunksByProbes([], probes)).toEqual([]);
   });
 
   it('returns empty array for empty probes', () => {
     const chunks = [{ text: 'text', start: 0, end: 4, vector: axis(0) }];
-    expect(scanVectors(chunks, [])).toEqual([]);
+    expect(scoreChunksByProbes(chunks, [])).toEqual([]);
   });
 
   it('works with any probe set — not coupled to privacy', () => {
@@ -91,7 +79,7 @@ describe('scanVectors', () => {
     ];
     const chunks = [{ text: 'recipe for cake', start: 0, end: 15, vector: axis(3) }];
 
-    const result = scanVectors(chunks, topicProbes);
+    const result = scoreChunksByProbes(chunks, topicProbes);
 
     expect(result[0].category).toBe('cooking');
     expect(result[0].score).toBeCloseTo(1.0, 5);
@@ -102,7 +90,7 @@ describe('scanVectors', () => {
     weakMatch[0] = 0.3;
     const chunks = [{ text: 'weak signal', start: 0, end: 11, vector: weakMatch }];
 
-    const result = scanVectors(chunks, probes);
+    const result = scoreChunksByProbes(chunks, probes);
     const strict = result.filter((h) => h.score >= 0.4);
     const lenient = result.filter((h) => h.score >= 0.2);
 

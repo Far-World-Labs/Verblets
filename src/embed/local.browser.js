@@ -8,4 +8,4 @@ export {
   setEmbedEnabled,
   embedImage,
   embedImageBatch,
-} from './index.js';
+} from './local.js';

@@ -1,10 +1,10 @@
 import { describe } from 'vitest';
-import { embed, embedBatch, embedChunked, embedWarmup } from './index.js';
-import { cosineSimilarity, vectorSearch } from '../../lib/pure/index.js';
-import { extendedTestTimeout } from '../../constants/common.js';
+import { embed, embedBatch, embedChunked, embedWarmup } from './local.js';
+import { cosineSimilarity, vectorSearch } from '../lib/pure/index.js';
+import { extendedTestTimeout } from '../constants/common.js';
 import { isEmbedEnabled } from './state.js';
 
-import { getTestHelpers } from '../../chains/test-analysis/test-wrappers.js';
+import { getTestHelpers } from '../chains/test-analysis/test-wrappers.js';
 
 const { it, expect } = getTestHelpers('Embed verblet');
 

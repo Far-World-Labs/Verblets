@@ -26,7 +26,7 @@ import { DomainEvent, Outcome, ErrorPosture } from '../../lib/progress/constants
 import parallel from '../../lib/parallel-batch/index.js';
 import fragmentResultSchema from './fragment-result.json' with { type: 'json' };
 
-const name = 'sem:fragment';
+const name = 'embed-object:fragment';
 
 let nextFragId = 0;
 const generateFragId = () => `frag:${Date.now().toString(36)}:${(nextFragId++).toString(36)}`;
@@ -80,7 +80,7 @@ async function fragmentBatch(sourceTexts, schema, runConfig) {
         responseFormat: jsonSchema('sem_fragment', fragmentResultSchema),
         temperature: 0,
       }),
-    { label: 'sem:fragment', config: runConfig }
+    { label: 'embed-object:fragment', config: runConfig }
   );
 
   // rawResult is auto-unwrapped from { items: [...] } to the array

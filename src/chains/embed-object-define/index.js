@@ -19,7 +19,7 @@ import createProgressEmitter from '../../lib/progress/index.js';
 import { Outcome } from '../../lib/progress/constants.js';
 import defineResultSchema from './define-result.json' with { type: 'json' };
 
-const name = 'sem:define';
+const name = 'embed-object:define';
 
 function buildPrompt({ exampleTexts, projectionNames, propertyNames }) {
   const lines = [
@@ -69,7 +69,7 @@ export default async function define(
           responseFormat: jsonSchema('sem_define', defineResultSchema),
           temperature: 0,
         }),
-      { label: 'sem:define', config: runConfig }
+      { label: 'embed-object:define', config: runConfig }
     );
 
     emitter.complete({ outcome: Outcome.success });

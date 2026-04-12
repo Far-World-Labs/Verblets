@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { normalize } from '../vector-ops/index.js';
 
 // Mock embed-local before importing ingest
-vi.mock('../local/index.js', () => {
+vi.mock('../local.js', () => {
   // Deterministic embeddings: hash text to axis-aligned vectors
   const hashToVec = (text) => {
     let h = 0;
@@ -156,7 +156,7 @@ describe('ingest', () => {
   });
 
   it('deduplicates identical fragment texts in embedding batch', async () => {
-    const { embedBatch } = await import('../local/index.js');
+    const { embedBatch } = await import('../local.js');
     embedBatch.mockClear();
 
     const fragmentSets = [
@@ -313,7 +313,7 @@ describe('ingest', () => {
   });
 
   it('calls embedImageBatch for image fragments', async () => {
-    const { embedImageBatch } = await import('../local/index.js');
+    const { embedImageBatch } = await import('../local.js');
     embedImageBatch.mockClear();
 
     const fragmentSets = [
@@ -344,7 +344,7 @@ describe('ingest', () => {
   });
 
   it('deduplicates identical image inputs', async () => {
-    const { embedImageBatch } = await import('../local/index.js');
+    const { embedImageBatch } = await import('../local.js');
     embedImageBatch.mockClear();
 
     const fragmentSets = [
@@ -374,7 +374,7 @@ describe('ingest', () => {
   });
 
   it('passes multi embedding config when images present', async () => {
-    const { embedBatch } = await import('../local/index.js');
+    const { embedBatch } = await import('../local.js');
     embedBatch.mockClear();
 
     const fragmentSets = [

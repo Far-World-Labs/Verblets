@@ -1,9 +1,9 @@
 import { describe } from 'vitest';
 import { calibrateSpec, applyCalibrate, createCalibratedClassifier } from './index.js';
-import { embedBatch, embedChunked } from '../../embed/local/index.js';
-import scanVectors from '../../embed/scan-vectors/index.js';
+import { embedBatch, embedChunked } from '../../embed/local.js';
+import scoreChunksByProbes from '../../embed/score-chunks-by-probes/index.js';
 import { extendedTestTimeout } from '../../constants/common.js';
-import { isEmbedEnabled } from '../../embed/local/state.js';
+import { isEmbedEnabled } from '../../embed/state.js';
 import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 
 const { it, expect, aiExpect } = getTestHelpers('Calibrate chain');
@@ -46,7 +46,7 @@ async function embedProbes(defs) {
 
 async function scan(text, probes, threshold = 0.4) {
   const chunks = await embedChunked(text, { maxTokens: 256 });
-  const hits = scanVectors(chunks, probes).filter((h) => h.score >= threshold);
+  const hits = scoreChunksByProbes(chunks, probes).filter((h) => h.score >= threshold);
   return { flagged: hits.length > 0, hits };
 }
 

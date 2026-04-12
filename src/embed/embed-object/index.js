@@ -19,7 +19,7 @@
  * @returns {Promise<{ states: import('./types.js').State[], schema: import('./types.js').Schema }>}
  */
 
-import { embedBatch, embedImageBatch } from '../local/index.js';
+import { embedBatch, embedImageBatch } from '../local.js';
 import { meanVector, normalize } from '../vector-ops/index.js';
 
 /**
