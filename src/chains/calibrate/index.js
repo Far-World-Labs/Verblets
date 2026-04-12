@@ -75,7 +75,7 @@ function computeScanStatistics(scans) {
  * Computes corpus statistics and asks the LLM to produce a calibrated
  * classification spec — how to assign severity and salience to individual items.
  *
- * @param {Array<{ flagged: boolean, hits: Array }>} scans - Scan results from probeScan
+ * @param {Array<{ flagged: boolean, hits: Array }>} scans - Scan results (build with scanVectors + threshold)
  * @param {object} [config]
  * @param {string} [config.instructions] - Domain-specific instructions (e.g. "Classify sensitivity risk in medical records")
  * @returns {Promise<{ corpusProfile: string, classificationCriteria: string, salienceCriteria: string, categoryNotes: string }>}
@@ -158,7 +158,7 @@ IMPORTANT: Each property must be a simple string value, not a nested object or a
 /**
  * Apply a calibration specification to classify a single scan result (Pass 2).
  *
- * @param {object} scan - A single scan result from probeScan
+ * @param {object} scan - A single scan result with { flagged, hits }
  * @param {object} specification - Pre-generated calibration specification from calibrateSpec()
  * @param {object} [config]
  * @returns {Promise<{ severity: string, salience: string, categories: object, summary: string }>}

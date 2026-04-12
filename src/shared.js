@@ -21,8 +21,7 @@ export {
   groupInstructions as scaleGroupInstructions,
 } from './chains/scale/index.js';
 
-// Probe Scan & Calibration
-export { default as probeScan } from './chains/probe-scan/index.js';
+// Calibration
 export {
   default as calibrate,
   calibrateSpec,
@@ -198,10 +197,12 @@ export {
   embedChunked,
   embedWarmup,
   setEmbedEnabled,
-} from './lib/embed-local/index.js';
+  embedImage,
+  embedImageBatch,
+} from './embed/local.js';
 
-// Embedding Collection
-export { default as embedScore } from './lib/embed-score/index.js';
+// Embedding Utilities
+export { default as scoreChunksByProbes } from './embed/score-chunks-by-probes/index.js';
 
 // RAG Helpers
 export { default as embedRewriteQuery } from './verblets/embed-rewrite-query/index.js';
@@ -209,21 +210,21 @@ export { default as embedMultiQuery } from './verblets/embed-multi-query/index.j
 export { default as embedStepBack } from './verblets/embed-step-back/index.js';
 export { default as embedSubquestions } from './verblets/embed-subquestions/index.js';
 export { default as embedRewriteToOutputDoc } from './verblets/embed-rewrite-to-output-doc/index.js';
-export { default as embedNormalizeText } from './lib/embed-normalize-text/index.js';
+export { default as embedNormalizeText } from './embed/normalize-text/index.js';
 export {
   default as embedNeighborChunks,
   buildIndex as embedBuildIndex,
   mergeRanges as embedMergeRanges,
   assembleSpan as embedAssembleSpan,
   standaloneSpan as embedStandaloneSpan,
-} from './lib/embed-neighbor-chunks/index.js';
+} from './embed/neighbor-chunks/index.js';
 
 // Library Helpers (documented in README)
 export { default as combinations, rangeCombinations } from './lib/combinations/index.js';
 export { default as chunkSentences } from './lib/chunk-sentences/index.js';
 export { debug } from './lib/debug/index.js';
 export { default as createBatches } from './lib/text-batch/index.js';
-export { default as llm, jsonSchema, MODEL_KEYS } from './lib/llm/index.js';
+export { default as llm, jsonSchema } from './lib/llm/index.js';
 export { default as normalizeLlm } from './lib/normalize-llm/index.js';
 export { default as parallel, parallelMap } from './lib/parallel-batch/index.js';
 export { default as retry } from './lib/retry/index.js';
@@ -279,6 +280,7 @@ export * as prompts from './prompts/index.js';
 export * as schemas from './json-schemas/index.js';
 export * as promptCache from './lib/prompt-cache/index.js';
 export * as promptPiece from './lib/prompt-piece/index.js';
+export * as embedObject from './embed/index.js';
 
 import * as common from './constants/common.js';
 import * as contextConsts from './constants/context.js';
@@ -286,6 +288,7 @@ import * as messages from './constants/messages.js';
 import * as models from './constants/models.js';
 export { resolveModel } from './services/llm-model/index.js';
 export { ModelService } from './services/llm-model/index.js';
+export { EmbeddingService, resolveEmbedding } from './services/embedding-model/index.js';
 export { CAPABILITY_KEYS } from './constants/common.js';
 export { default as init } from './init.js';
 export * as config from './lib/config/index.js';
