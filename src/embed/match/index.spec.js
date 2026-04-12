@@ -3,7 +3,7 @@ import { normalize } from '../vector-ops/index.js';
 
 const vec = (...vals) => normalize(new Float32Array(vals));
 
-vi.mock('../../local/index.js', () => ({
+vi.mock('../local/index.js', () => ({
   embedBatch: vi.fn(async (texts) =>
     texts.map(() => normalize(new Float32Array([0.5, 0.5, 0, 0])))
   ),
@@ -124,7 +124,7 @@ describe('match', () => {
   });
 
   it('incorporates queryTexts when provided', async () => {
-    const { embedBatch } = await import('../../local/index.js');
+    const { embedBatch } = await import('../local/index.js');
     embedBatch.mockClear();
 
     const results = await match({
@@ -142,7 +142,7 @@ describe('match', () => {
   });
 
   it('works without queryTexts', async () => {
-    const { embedBatch } = await import('../../local/index.js');
+    const { embedBatch } = await import('../local/index.js');
     embedBatch.mockClear();
 
     await match({

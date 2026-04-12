@@ -23,7 +23,7 @@ import { validate } from './lib/config/index.js';
 import { ModelService } from './services/llm-model/index.js';
 import { EmbeddingService } from './services/embedding-model/index.js';
 import { setBasePolicy } from './lib/llm/index.js';
-import { setEmbedEnabled } from './lib/embed/local/state.js';
+import { setEmbedEnabled } from './embed/local/state.js';
 import { setImageProcessingEnabled } from './lib/image-utils/state.js';
 import { setBrowserEnabled } from './chains/web-scrape/state.js';
 import { createContextBuilder, observeApplication, observeProviders } from './lib/context/index.js';

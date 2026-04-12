@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-vi.mock('../../lib/embed/local/index.js', () => ({
+vi.mock('../../embed/local/index.js', () => ({
   embedChunked: vi.fn(),
 }));
 
-const { embedChunked } = await import('../../lib/embed/local/index.js');
+const { embedChunked } = await import('../../embed/local/index.js');
 const { default: probeScan } = await import('./index.js');
 
 beforeEach(() => {

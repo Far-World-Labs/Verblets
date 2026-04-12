@@ -12,11 +12,11 @@
  * @returns {Promise<import('./types.js').Schema>}
  */
 
-import callLlm, { jsonSchema } from '../../../llm/index.js';
-import retry from '../../../retry/index.js';
-import { nameStep } from '../../../context/option.js';
-import createProgressEmitter from '../../../progress/index.js';
-import { Outcome } from '../../../progress/constants.js';
+import callLlm, { jsonSchema } from '../../lib/llm/index.js';
+import retry from '../../lib/retry/index.js';
+import { nameStep } from '../../lib/context/option.js';
+import createProgressEmitter from '../../lib/progress/index.js';
+import { Outcome } from '../../lib/progress/constants.js';
 import defineResultSchema from './define-result.json' with { type: 'json' };
 
 const name = 'sem:define';

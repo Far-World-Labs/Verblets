@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 
-vi.mock('../../../llm/index.js', () => ({
+vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(async () => ({
     projections: [
       { projectionName: 'billing', description: 'invoices, charges, refunds' },
@@ -23,12 +23,12 @@ vi.mock('../../../llm/index.js', () => ({
   jsonSchema: vi.fn((name, schema) => ({ type: 'json_schema', json_schema: { name, schema } })),
 }));
 
-vi.mock('../../../retry/index.js', () => ({
+vi.mock('../../lib/retry/index.js', () => ({
   default: vi.fn((fn) => fn()),
 }));
 
 const { default: define } = await import('./index.js');
-const callLlm = (await import('../../../llm/index.js')).default;
+const callLlm = (await import('../../lib/llm/index.js')).default;
 
 describe('define', () => {
   it('returns a schema with projections and properties', async () => {
@@ -83,7 +83,7 @@ describe('define', () => {
   });
 
   it('uses jsonSchema for structured output', async () => {
-    const { jsonSchema } = await import('../../../llm/index.js');
+    const { jsonSchema } = await import('../../lib/llm/index.js');
     await define({ exampleTexts: ['test'] });
 
     expect(jsonSchema).toHaveBeenCalledWith('sem_define', expect.any(Object));

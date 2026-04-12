@@ -12,7 +12,7 @@
 import { encode } from 'gpt-tokenizer';
 
 import embedNormalizeText from '../normalize-text/index.js';
-import { EmbeddingService, resolveEmbedding } from '../../../services/embedding-model/index.js';
+import { EmbeddingService, resolveEmbedding } from '../../services/embedding-model/index.js';
 import { isEmbedEnabled, setEmbedEnabled, getGlobalService, setGlobalService } from './state.js';
 
 export { setEmbedEnabled };

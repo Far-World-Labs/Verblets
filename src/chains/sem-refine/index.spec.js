@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 
-vi.mock('../../../llm/index.js', () => ({
+vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(async () => ({
     projections: [
       { projectionName: 'billing', description: 'invoices and charges' },
@@ -35,12 +35,12 @@ vi.mock('../../../llm/index.js', () => ({
   jsonSchema: vi.fn((name, schema) => ({ type: 'json_schema', json_schema: { name, schema } })),
 }));
 
-vi.mock('../../../retry/index.js', () => ({
+vi.mock('../../lib/retry/index.js', () => ({
   default: vi.fn((fn) => fn()),
 }));
 
 const { default: refine } = await import('./index.js');
-const callLlm = (await import('../../../llm/index.js')).default;
+const callLlm = (await import('../../lib/llm/index.js')).default;
 
 const existingSchema = {
   projections: [

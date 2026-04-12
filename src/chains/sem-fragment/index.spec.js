@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 
-vi.mock('../../../llm/index.js', () => ({
+vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(async () => [
     {
       sourceIndex: 0,
@@ -17,11 +17,11 @@ vi.mock('../../../llm/index.js', () => ({
   jsonSchema: vi.fn((name, schema) => ({ type: 'json_schema', json_schema: { name, schema } })),
 }));
 
-vi.mock('../../../retry/index.js', () => ({
+vi.mock('../../lib/retry/index.js', () => ({
   default: vi.fn((fn) => fn()),
 }));
 
-vi.mock('../../../parallel-batch/index.js', () => ({
+vi.mock('../../lib/parallel-batch/index.js', () => ({
   default: vi.fn(async (items, fn) => {
     const results = [];
     for (const item of items) results.push(await fn(item));
@@ -30,7 +30,7 @@ vi.mock('../../../parallel-batch/index.js', () => ({
 }));
 
 const { default: fragment } = await import('./index.js');
-const callLlm = (await import('../../../llm/index.js')).default;
+const callLlm = (await import('../../lib/llm/index.js')).default;
 
 const schema = {
   projections: [
@@ -97,7 +97,7 @@ describe('fragment', () => {
   });
 
   it('batches large source sets', async () => {
-    const parallel = (await import('../../../parallel-batch/index.js')).default;
+    const parallel = (await import('../../lib/parallel-batch/index.js')).default;
     parallel.mockClear();
 
     const sourceTexts = Array.from({ length: 12 }, (_, i) => ({

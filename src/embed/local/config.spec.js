@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock the EmbeddingService and loaders to avoid real model downloads
-vi.mock('../../../services/embedding-model/loaders.js', () => ({
+vi.mock('../../services/embedding-model/loaders.js', () => ({
   loadPipeline: vi.fn(async (def) => ({
     embedTexts: vi.fn(async (texts) =>
       texts.map(() => {
@@ -52,7 +52,7 @@ describe('embed model configuration', () => {
   });
 
   it('uses embeddingService from config when provided', async () => {
-    const { EmbeddingService } = await import('../../../services/embedding-model/index.js');
+    const { EmbeddingService } = await import('../../services/embedding-model/index.js');
     const { embed, setEmbedEnabled } = await import('./index.js');
     setEmbedEnabled(false); // disabled globally
 

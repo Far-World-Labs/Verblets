@@ -18,12 +18,12 @@
  * @returns {Promise<import('./types.js').FragmentSet[]>}
  */
 
-import callLlm, { jsonSchema } from '../../../llm/index.js';
-import retry from '../../../retry/index.js';
-import { nameStep, getOptions } from '../../../context/option.js';
-import createProgressEmitter, { scopePhase } from '../../../progress/index.js';
-import { DomainEvent, Outcome, ErrorPosture } from '../../../progress/constants.js';
-import parallel from '../../../parallel-batch/index.js';
+import callLlm, { jsonSchema } from '../../lib/llm/index.js';
+import retry from '../../lib/retry/index.js';
+import { nameStep, getOptions } from '../../lib/context/option.js';
+import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
+import { DomainEvent, Outcome, ErrorPosture } from '../../lib/progress/constants.js';
+import parallel from '../../lib/parallel-batch/index.js';
 import fragmentResultSchema from './fragment-result.json' with { type: 'json' };
 
 const name = 'sem:fragment';

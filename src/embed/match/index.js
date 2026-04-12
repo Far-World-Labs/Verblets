@@ -13,8 +13,8 @@
  * @returns {Promise<import('./types.js').MatchResult[]>}
  */
 
-import { cosineSimilarity } from '../../../pure/index.js';
-import { embedBatch } from '../../local/index.js';
+import { cosineSimilarity } from '../../lib/pure/index.js';
+import { embedBatch } from '../local/index.js';
 import { meanVector, normalize } from '../vector-ops/index.js';
 
 export default async function match({ leftStates, rightStates, intent }, _config = {}) {

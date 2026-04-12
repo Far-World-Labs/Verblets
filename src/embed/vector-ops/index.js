@@ -3,7 +3,7 @@
  * All functions are non-mutating — inputs are never modified.
  */
 
-import { cosineSimilarity } from '../../../pure/index.js';
+import { cosineSimilarity } from '../../lib/pure/index.js';
 
 /**
  * Compute the element-wise mean of an array of Float32Array vectors.
