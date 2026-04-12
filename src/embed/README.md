@@ -6,7 +6,7 @@ The core idea: don't think "document → chunks → vectors." Think **sources �
 
 ## Why this exists
 
-Verblets already has embedding utilities for retrieval (embedScore, embedMultiQuery, etc.). Those solve "find similar text." This solves something different: **build a multi-dimensional semantic model of your data, then use it.**
+Verblets already has embedding utilities for retrieval (scoreVectors, embedMultiQuery, etc.). Those solve "find similar text." This solves something different: **build a multi-dimensional semantic model of your data, then use it.**
 
 Use cases:
 - **Indexing + search**: fragment documents across semantic lanes, match against weighted intent bundles instead of single query vectors

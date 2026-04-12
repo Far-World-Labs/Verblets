@@ -21,8 +21,7 @@ export {
   groupInstructions as scaleGroupInstructions,
 } from './chains/scale/index.js';
 
-// Probe Scan & Calibration
-export { default as probeScan } from './chains/probe-scan/index.js';
+// Calibration
 export {
   default as calibrate,
   calibrateSpec,
@@ -202,8 +201,9 @@ export {
   embedImageBatch,
 } from './embed/local/index.js';
 
-// Embedding Collection
-export { default as embedScore } from './chains/embed-score/index.js';
+// Embedding Utilities
+export { default as scoreVectors } from './embed/score-vectors/index.js';
+export { default as scanVectors } from './embed/scan-vectors/index.js';
 
 // RAG Helpers
 export { default as embedRewriteQuery } from './verblets/embed-rewrite-query/index.js';
