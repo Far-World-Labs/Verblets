@@ -6,6 +6,7 @@ import { DomainEvent, Outcome } from '../../lib/progress/constants.js';
 import TextSimilarity from '../../lib/text-similarity/index.js';
 import { debug } from '../../lib/debug/index.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
+import { resolveArgs, resolveTexts } from '../../lib/instruction/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 
 const name = 'document-shrink';
@@ -534,7 +535,10 @@ function selectGapFillers(allChunks, selectedChunks, gapFillerBudget) {
 }
 
 // Main function with proper budget planning
-export default async function documentShrink(document, query, config = {}) {
+export default async function documentShrink(document, query, config) {
+  [query, config] = resolveArgs(query, config, ['expansions']);
+  const { text: queryText, known, context } = resolveTexts(query, ['expansions']);
+  const effectiveQuery = context ? `${queryText}\n\n${context}` : queryText;
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
@@ -614,16 +618,28 @@ export default async function documentShrink(document, query, config = {}) {
       allocation.reservedSpace = 0;
     }
 
-    // Step 3: Expand query (gated by thoroughness)
+    // Step 3: Expand query (gated by thoroughness, skipped when expansions provided)
     emitter.emit({ event: DomainEvent.phase, phase: 'query-expansion' });
     const subOptions = runConfig;
-    const { expansions, tokensUsed: expansionTokens } = queryExpansion
-      ? await expandQuery(query, tokenBudget, subOptions)
-      : { expansions: [query], tokensUsed: 0 };
+    let expansions;
+    let expansionTokens = 0;
+    if (known.expansions) {
+      expansions = known.expansions
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
+      expansions.unshift(effectiveQuery);
+    } else if (queryExpansion) {
+      const expanded = await expandQuery(effectiveQuery, tokenBudget, subOptions);
+      expansions = expanded.expansions;
+      expansionTokens = expanded.tokensUsed;
+    } else {
+      expansions = [effectiveQuery];
+    }
     tokenBudget -= expansionTokens;
 
     // Step 4: Score with TF-IDF
-    emitter.emit({ event: DomainEvent.phase, phase: 'tfidf-scoring' });
+    emitter.emit({ event: DomainEvent.phase, phase: 'tfidf-scoring', expansions });
     const scoredChunks = scoreChunksWithTfIdf(chunks, expansions);
 
     // Step 5: Select chunks for TF-IDF budget (leaving room for LLM chunks)
@@ -635,7 +651,7 @@ export default async function documentShrink(document, query, config = {}) {
     // Step 6: Use LLM to find high-value edge chunks (gated by thoroughness)
     emitter.emit({ event: DomainEvent.phase, phase: 'edge-scoring' });
     const { scored, tokensUsed: scoreTokens } = llmScoring
-      ? await scoreEdgeChunks(candidates, query, allocation.chunksWeCanScore, {
+      ? await scoreEdgeChunks(candidates, effectiveQuery, allocation.chunksWeCanScore, {
           ...subOptions,
           llmWeight,
         })
@@ -660,7 +676,7 @@ export default async function documentShrink(document, query, config = {}) {
 
       const { compressed, tokensUsed } = await compressHighValueChunks(
         compressionCandidates,
-        query,
+        effectiveQuery,
         allocation.chunksWeCanCompress,
         remainingSpace,
         allocation,
@@ -740,3 +756,5 @@ export default async function documentShrink(document, query, config = {}) {
     throw err;
   }
 }
+
+documentShrink.knownTexts = ['expansions'];

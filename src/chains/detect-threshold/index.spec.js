@@ -176,8 +176,37 @@ describe('detectThreshold', () => {
       { data: KNOWN_DATA, targetProperty: 'score', goal: '' },
       'Goal must be specified to determine appropriate thresholds',
     ],
-  ])('rejects invalid input: %s', async (_label, input, expectedError) => {
-    await expect(detectThreshold(input)).rejects.toThrow(expectedError);
+  ])('rejects invalid input: %s', async (_label, { data, targetProperty, goal }, expectedError) => {
+    await expect(detectThreshold(data, targetProperty, goal)).rejects.toThrow(expectedError);
+  });
+
+  it('accepts positional arguments', async () => {
+    reduce.mockResolvedValueOnce(mockReduceResult);
+    callLlm.mockResolvedValueOnce(mockLlmResult);
+
+    const result = await detectThreshold(KNOWN_DATA, 'score', defaultGoal);
+
+    expect(result).toHaveProperty('thresholdCandidates');
+    expect(result).toHaveProperty('distributionAnalysis');
+  });
+
+  it('wires instruction bundle context into prompts', async () => {
+    reduce.mockResolvedValueOnce(mockReduceResult);
+    callLlm.mockResolvedValueOnce(mockLlmResult);
+
+    await detectThreshold(KNOWN_DATA, 'score', {
+      text: defaultGoal,
+      domain: 'financial risk',
+    });
+
+    const reduceInstructions = reduce.mock.calls[0][1];
+    expect(reduceInstructions).toContain('<domain>');
+    expect(reduceInstructions).toContain('financial risk');
+    expect(reduceInstructions).toContain(defaultGoal);
+
+    const finalPrompt = callLlm.mock.calls[0][0];
+    expect(finalPrompt).toContain('<domain>');
+    expect(finalPrompt).toContain('financial risk');
   });
 
   describe('delegation to reduce', () => {
@@ -185,7 +214,7 @@ describe('detectThreshold', () => {
       reduce.mockResolvedValueOnce(mockReduceResult);
       callLlm.mockResolvedValueOnce(mockLlmResult);
 
-      await detectThreshold({ data: KNOWN_DATA, targetProperty: 'score', goal: defaultGoal });
+      await detectThreshold(KNOWN_DATA, 'score', defaultGoal);
 
       const reduceConfig = reduce.mock.calls[0][2];
 
@@ -214,7 +243,7 @@ describe('detectThreshold', () => {
 
       // 25 items => ceil(25/20) = 2 data strings
       const largeData = Array.from({ length: 25 }, (_, i) => ({ score: i + 1 }));
-      await detectThreshold({ data: largeData, targetProperty: 'score', goal: defaultGoal });
+      await detectThreshold(largeData, 'score', defaultGoal);
 
       const dataStrings = reduce.mock.calls[0][0];
       expect(dataStrings).toHaveLength(2);
@@ -235,7 +264,7 @@ describe('detectThreshold', () => {
     reduce.mockResolvedValueOnce(mockReduceResult);
     callLlm.mockResolvedValueOnce(mockLlmResult);
 
-    await detectThreshold({ data: KNOWN_DATA, targetProperty: 'score', goal: defaultGoal });
+    await detectThreshold(KNOWN_DATA, 'score', defaultGoal);
 
     const finalPrompt = callLlm.mock.calls[0][0];
     expect(finalPrompt).toContain('score');
@@ -269,11 +298,7 @@ describe('detectThreshold', () => {
         thresholdCandidates: candidateValues.map((value) => mkCandidate({ value })),
       });
 
-      const result = await detectThreshold({
-        data: KNOWN_DATA,
-        targetProperty: 'score',
-        goal: defaultGoal,
-      });
+      const result = await detectThreshold(KNOWN_DATA, 'score', defaultGoal);
 
       expect(result.thresholdCandidates.map((c) => c.value)).toEqual(expectedValues);
     });
@@ -284,11 +309,7 @@ describe('detectThreshold', () => {
         thresholdCandidates: [mkCandidate({ value: 2 }), mkCandidate({ value: 80 })],
       });
 
-      const result = await detectThreshold({
-        data: KNOWN_DATA,
-        targetProperty: 'score',
-        goal: defaultGoal,
-      });
+      const result = await detectThreshold(KNOWN_DATA, 'score', defaultGoal);
 
       expect(result.thresholdCandidates).toHaveLength(2);
       expect(result.thresholdCandidates[0].value).toBe(2);
@@ -299,11 +320,7 @@ describe('detectThreshold', () => {
       reduce.mockResolvedValueOnce(mockReduceResult);
       callLlm.mockResolvedValueOnce({ someOtherField: 'no candidates' });
 
-      const result = await detectThreshold({
-        data: KNOWN_DATA,
-        targetProperty: 'score',
-        goal: defaultGoal,
-      });
+      const result = await detectThreshold(KNOWN_DATA, 'score', defaultGoal);
 
       expect(result.thresholdCandidates).toBeUndefined();
     });
@@ -316,11 +333,7 @@ describe('detectThreshold', () => {
       distributionAnalysis: { mean: 999, median: 999, standardDeviation: 999 },
     });
 
-    const result = await detectThreshold({
-      data: KNOWN_DATA,
-      targetProperty: 'score',
-      goal: defaultGoal,
-    });
+    const result = await detectThreshold(KNOWN_DATA, 'score', defaultGoal);
 
     const expectedStats = calculateStatistics(KNOWN_DATA, 'score');
     expect(result.distributionAnalysis).toEqual({

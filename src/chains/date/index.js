@@ -6,6 +6,7 @@ import { constants as promptConstants } from '../../prompts/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { dateExpectationsSchema, dateValueSchema } from './schemas.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
+import { resolveTexts } from '../../lib/instruction/index.js';
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
 import { DomainEvent, Outcome } from '../../lib/progress/constants.js';
 import { parallel } from '../../lib/index.js';
@@ -106,18 +107,20 @@ async function validateDate(dateValue, expectations, config) {
   return { passed: true };
 }
 
-export default async function date(text, config = {}) {
+async function date(text, config = {}) {
+  const { text: dateText, context } = resolveTexts(text, []);
+  const effectiveText = context ? `${dateText}\n\n${context}` : dateText;
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
-  emitter.emit({ event: DomainEvent.input, value: text });
+  emitter.emit({ event: DomainEvent.input, value: effectiveText });
   const { maxAttempts, validate, returnBestEffort } = await getOptions(runConfig, {
     rigor: withPolicy(mapRigor, ['validate', 'maxAttempts', 'returnBestEffort']),
   });
   try {
     // Build all prompts upfront
-    const expectationPrompt = buildExpectationPrompt(text);
-    const datePrompt = buildDatePrompt(text);
+    const expectationPrompt = buildExpectationPrompt(effectiveText);
+    const datePrompt = buildDatePrompt(effectiveText);
 
     // Low rigor: extraction only — skip expectations and validation
     if (!validate) {
@@ -183,7 +186,7 @@ export default async function date(text, config = {}) {
         }
 
         // Build retry prompt and get new date
-        currentText = `${text} The previous answer (${currentDate.toISOString()}) failed to satisfy: "${
+        currentText = `${effectiveText} The previous answer (${currentDate.toISOString()}) failed to satisfy: "${
           validation.failedCheck
         }". Try again.`;
         const retryPrompt = buildDatePrompt(currentText);
@@ -217,3 +220,7 @@ export default async function date(text, config = {}) {
     throw err;
   }
 }
+
+date.knownTexts = [];
+
+export default date;

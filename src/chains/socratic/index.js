@@ -1,5 +1,6 @@
 import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
+import { resolveTexts } from '../../lib/instruction/index.js';
 import retry from '../../lib/retry/index.js';
 import socraticQuestionSchema from './socratic-question-schema.js';
 import socraticAnswerSchema from './socratic-answer-schema.js';
@@ -56,9 +57,11 @@ const defaultAsk = async ({
   temperature = 0.7,
   challenge,
   config,
+  bundleContext = '',
 } = {}) => {
   const historyText = history.map((turn) => `Q: ${turn.question}\nA: ${turn.answer}`).join('\n');
-  const prompt = buildAskPrompt(topic, historyText, challenge);
+  const promptParts = [buildAskPrompt(topic, historyText, challenge), bundleContext];
+  const prompt = promptParts.filter(Boolean).join('\n\n');
 
   const response = await retry(
     () =>
@@ -85,9 +88,11 @@ const defaultAnswer = async ({
   llm,
   temperature = 0.7,
   config,
+  bundleContext = '',
 } = {}) => {
   const historyText = history.map((turn) => `Q: ${turn.question}\nA: ${turn.answer}`).join('\n');
-  const prompt = buildAnswerPrompt(question, historyText);
+  const promptParts = [buildAnswerPrompt(question, historyText), bundleContext];
+  const prompt = promptParts.filter(Boolean).join('\n\n');
 
   const response = await retry(
     () =>
@@ -109,16 +114,17 @@ const defaultAnswer = async ({
 
 class SocraticMethod {
   static async create(statement, options = {}) {
+    const { text: statementText, context: bundleContext } = resolveTexts(statement, []);
     const runConfig = nameStep(name, options);
     const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
     emitter.start();
-    emitter.emit({ event: DomainEvent.input, value: statement });
+    emitter.emit({ event: DomainEvent.input, value: statementText });
     const { challenge, temperature } = await getOptions(runConfig, {
       challenge: withPolicy(mapChallenge, ['challenge', 'temperature']),
     });
     return new SocraticMethod(
-      statement,
-      { config: runConfig, emitter },
+      statementText,
+      { config: runConfig, emitter, bundleContext },
       {
         challenge,
         temperature,
@@ -130,6 +136,7 @@ class SocraticMethod {
     // options may be { config, emitter } from create() or plain config (direct construction)
     const fromCreate = options.emitter && options.config;
     this.emitter = fromCreate ? options.emitter : undefined;
+    this.bundleContext = fromCreate ? (options.bundleContext ?? '') : '';
     const opts = fromCreate ? options.config : options;
 
     const { ask = defaultAsk, answer = defaultAnswer, llm, abortSignal } = opts;
@@ -173,6 +180,7 @@ class SocraticMethod {
       temperature: this.temperature,
       challenge: this.challenge,
       config: this.config,
+      bundleContext: this.bundleContext,
     });
 
     this.emitter.emit({
@@ -189,6 +197,7 @@ class SocraticMethod {
       llm: this.llm,
       temperature: this.temperature,
       config: this.config,
+      bundleContext: this.bundleContext,
     });
 
     const turn = { question, answer };
@@ -225,5 +234,7 @@ class SocraticMethod {
 }
 
 export const socratic = (statement, options) => SocraticMethod.create(statement, options);
+
+SocraticMethod.knownTexts = [];
 
 export default SocraticMethod;

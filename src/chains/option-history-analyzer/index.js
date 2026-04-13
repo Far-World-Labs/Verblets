@@ -18,8 +18,10 @@ import RingBuffer from '../../lib/ring-buffer/index.js';
 import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import createProgressEmitter from '../../lib/progress/index.js';
-import { TelemetryEvent, ModelSource, Outcome } from '../../lib/progress/constants.js';
+import { DomainEvent, TelemetryEvent, ModelSource, Outcome } from '../../lib/progress/constants.js';
+import { resolveTexts } from '../../lib/instruction/index.js';
 import { nameStep } from '../../lib/context/option.js';
+import { asXML } from '../../prompts/wrap-variable.js';
 
 const name = 'option-history-analyzer';
 
@@ -115,30 +117,32 @@ const RULE_SCHEMA = {
 /**
  * Build the analysis prompt from accumulated traces.
  * @param {object[]} traces - Decision trace objects
- * @param {string} [instruction] - Additional instruction for the analysis
+ * @param {string} [instructionText] - Additional instruction for the analysis
+ * @param {string} [bundleContext] - Context from instruction bundle
  * @returns {string}
  */
-const buildAnalysisPrompt = (traces, instruction) => {
-  const traceBlock = traces
+const buildAnalysisPrompt = (traces, instructionText, bundleContext) => {
+  const traceLines = traces
     .map(
       (t, i) =>
         `${i + 1}. option="${t.option}" operation="${t.operation}" source="${t.source}" value="${t.value}"${t.policyReturned !== undefined ? ` policyReturned="${t.policyReturned}"` : ''}${t.error ? ` error="${t.error}"` : ''}`
     )
     .join('\n');
 
-  return `Analyze the following decision traces from a configuration system. Each trace records how an option was resolved: via a policy function, direct config, or fallback default.
-
-Look for patterns that suggest targeting rules:
+  const parts = [
+    'Analyze the following decision traces from a configuration system. Each trace records how an option was resolved: via a policy function, direct config, or fallback default.',
+    `Look for patterns that suggest targeting rules:
 - Options that consistently fall back to defaults (missing coverage)
 - Clusters of similar contexts that should share a rule
-- Anomalous decisions that differ from the majority pattern
+- Anomalous decisions that differ from the majority pattern`,
+    `Express each suggestion as a targeting rule with clauses. Each clause matches a context attribute using an operator (in, startsWith, endsWith, contains, lessThan, greaterThan). All clauses in a rule must match for the rule to apply. Each rule sets one option to one value.`,
+    asXML(`${traces.length} total\n${traceLines}`, { tag: 'decision-traces' }),
+    'Based on these patterns, suggest concrete targeting rules.',
+    instructionText && asXML(instructionText, { tag: 'guidance' }),
+    bundleContext,
+  ];
 
-Express each suggestion as a targeting rule with clauses. Each clause matches a context attribute using an operator (in, startsWith, endsWith, contains, lessThan, greaterThan). All clauses in a rule must match for the rule to apply. Each rule sets one option to one value.
-
-DECISION TRACES (${traces.length} total):
-${traceBlock}
-
-Based on these patterns, suggest concrete targeting rules.${instruction ? `\n\nAdditional guidance: ${instruction}` : ''}`;
+  return parts.filter(Boolean).join('\n\n');
 };
 
 /**
@@ -193,6 +197,7 @@ export default function createOptionHistoryAnalyzer(config = {}) {
    * @returns {Promise<object[]>} Array of rule objects with clauses, option, value, reasoning
    */
   const analyze = async (instruction, analyzeConfig = {}) => {
+    const { text: instructionText, context: bundleContext } = resolveTexts(instruction, []);
     const traceWindow = Math.min(lookback, traceCount);
     const traces = buffer.lookback(traceWindow);
 
@@ -203,9 +208,10 @@ export default function createOptionHistoryAnalyzer(config = {}) {
     const runConfig = nameStep(name, { ...chainConfig, ...analyzeConfig });
     const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
     emitter.start();
+    emitter.emit({ event: DomainEvent.input, value: traces });
 
     try {
-      const prompt = buildAnalysisPrompt(traces, instruction);
+      const prompt = buildAnalysisPrompt(traces, instructionText, bundleContext);
 
       const result = await retry(
         () =>
@@ -222,6 +228,7 @@ export default function createOptionHistoryAnalyzer(config = {}) {
         onRules(rules);
       }
 
+      emitter.emit({ event: DomainEvent.output, value: rules });
       emitter.complete({ outcome: Outcome.success });
 
       return rules;
@@ -257,3 +264,5 @@ export default function createOptionHistoryAnalyzer(config = {}) {
 
   return { observe, write, analyze, reader, stats, clear };
 }
+
+createOptionHistoryAnalyzer.knownTexts = [];

@@ -4,8 +4,9 @@ import shortenText from '../../lib/shorten-text/index.js';
 import { summarize as basicSummarize, tokenBudget } from '../../prompts/index.js';
 import modelService from '../../services/llm-model/index.js';
 import createProgressEmitter from '../../lib/progress/index.js';
-import { Outcome } from '../../lib/progress/constants.js';
+import { DomainEvent, Outcome } from '../../lib/progress/constants.js';
 import { nameStep } from '../../lib/context/option.js';
+import ContextBudget from '../../lib/context-budget/index.js';
 
 const summarize = ({ budget, type, value, fixes = [], llmOptions, sensitivity }) => {
   if (budget) {
@@ -73,7 +74,7 @@ export default class SummaryMap extends Map {
     this.cache = new Map();
     this.data = new Map();
     this.isCacheValid = false;
-    this.maxTokensPerValue = maxTokensPerValue ?? model.maxTokens;
+    this.maxTokensPerValue = maxTokensPerValue ?? model.maxOutputTokens;
     this.llmOptions = { modelName: model.name, ...modelOptions };
     this.runConfig = nameStep(chainName, config);
 
@@ -81,7 +82,7 @@ export default class SummaryMap extends Map {
       this.targetTokens = targetTokens;
     } else if (promptText && model) {
       this.promptTokens = model.toTokens(promptText).length;
-      const maxModelTokens = model.maxTokens;
+      const maxModelTokens = model.maxOutputTokens;
       const remainingTokens = maxModelTokens - this.promptTokens;
       this.targetTokens = Math.floor(remainingTokens - remainingTokens * targetTokensTotalRatio);
     } else {
@@ -132,10 +133,16 @@ export default class SummaryMap extends Map {
           entryLlmOptions.sensitive = true;
         }
 
+        const entryModel = modelService.getModel(entryLlmOptions.modelName);
+        const originalTokens = entryModel.toTokens(valueObject.value).length;
+
         const value = shortenText(valueObject.value, {
           targetTokenCount: this.maxTokensPerValue,
-          model: modelService.getModel(entryLlmOptions.modelName),
+          model: entryModel,
         });
+
+        const shortenedTokens = entryModel.toTokens(value).length;
+        const wasTrimmed = shortenedTokens < originalTokens;
 
         // omit weight to skip summarization
         let summarizedValue = value;
@@ -159,6 +166,19 @@ export default class SummaryMap extends Map {
             value,
           });
         }
+
+        const finalTokens = entryModel.toTokens(summarizedValue).length;
+        emitter.emit({
+          event: DomainEvent.step,
+          stepName: 'context-trim',
+          key,
+          originalTokens,
+          shortenedTokens: wasTrimmed ? shortenedTokens : undefined,
+          finalTokens,
+          budget,
+          strategy: budget ? 'shorten+summarize' : 'shorten',
+          ratio: Number((finalTokens / originalTokens).toFixed(3)),
+        });
 
         this.cache.set(key, summarizedValue);
         batchDone(1);
@@ -242,4 +262,30 @@ export default class SummaryMap extends Map {
     }
     return Promise.resolve(this.pavedSummaryResultStale());
   }
+
+  /**
+   * Assemble cached entries into an XML context string via ContextBudget.
+   * Uses previously summarized/shortened values — no additional trimming.
+   * @returns {string}
+   */
+  buildStale() {
+    const budget = new ContextBudget();
+    for (const [tag, value] of this.cache) {
+      budget.set(tag, value);
+    }
+    return budget.build();
+  }
+
+  /**
+   * Fill cache if needed, then assemble into an XML context string.
+   * @returns {Promise<string>}
+   */
+  async build() {
+    if (!this.isCacheValid) {
+      await this.myFillCache();
+    }
+    return this.buildStale();
+  }
 }
+
+SummaryMap.knownTexts = [];

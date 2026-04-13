@@ -1,5 +1,6 @@
 import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import { nameStep } from '../../lib/context/option.js';
+import { resolveTexts } from '../../lib/instruction/index.js';
 import createProgressEmitter from '../../lib/progress/index.js';
 import { Outcome } from '../../lib/progress/constants.js';
 import { constants as promptConstants, asXML } from '../../prompts/index.js';
@@ -39,13 +40,15 @@ export const buildPrompt = (text, { creativityGuidance } = {}) =>
   `"candidate", and "confidence".${creativityGuidance ? `\n\n${creativityGuidance}` : ''}`;
 
 export default async function fillMissing(text, config = {}) {
+  const { text: inputText, context } = resolveTexts(text, []);
+  const effectiveText = context ? `${inputText}\n\n${context}` : inputText;
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
 
   try {
     const creativityGuidance = mapCreativity(runConfig.creativity);
-    const prompt = buildPrompt(text, { creativityGuidance });
+    const prompt = buildPrompt(effectiveText, { creativityGuidance });
     const response = await callLlm(prompt, {
       ...runConfig,
       responseFormat,
@@ -59,3 +62,5 @@ export default async function fillMissing(text, config = {}) {
     throw err;
   }
 }
+
+fillMissing.knownTexts = [];

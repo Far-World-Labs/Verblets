@@ -1,20 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import score, {
-  scoreItem,
-  scoreSpec,
-  applyScore,
-  mapInstructions,
-  filterInstructions,
-  reduceInstructions,
-  findInstructions,
-  groupInstructions,
-} from './index.js';
+import score, { scoreItem, scoreSpec, scoreInstructions } from './index.js';
 import llm from '../../lib/llm/index.js';
 import { scaleSpec } from '../scale/index.js';
 import listBatch from '../../verblets/list-batch/index.js';
 import createBatches from '../../lib/text-batch/index.js';
 import filter from '../filter/index.js';
-import { testInstructionBuilders } from '../../lib/test-utils/index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(),
@@ -92,11 +82,11 @@ describe('score chain', () => {
       expect(result).toEqual([1, 2, 3]);
     });
 
-    it('skips scoreSpec when config.spec is provided', async () => {
+    it('skips scoreSpec when spec is provided via instruction object', async () => {
       createBatches.mockReturnValueOnce([{ items: ['x', 'y'], startIndex: 0 }]);
       listBatch.mockResolvedValueOnce([5, 8]);
 
-      const result = await score(['x', 'y'], 'ignored instructions', { spec: mockSpec });
+      const result = await score(['x', 'y'], { text: 'ignored instructions', spec: mockSpec });
 
       expect(scaleSpec).not.toHaveBeenCalled();
       expect(listBatch).toHaveBeenCalledWith(
@@ -206,62 +196,48 @@ describe('score chain', () => {
     });
   });
 
-  describe('applyScore', () => {
-    it('applies a score specification to a single item', async () => {
-      llm.mockResolvedValueOnce(7); // llm auto-unwraps single value property
+  describe('scoreInstructions', () => {
+    it('returns instruction bundle with spec', () => {
+      const bundle = scoreInstructions({ spec: mockSpec });
 
-      const result = await applyScore('test item', mockSpec);
+      expect(bundle.text).toContain('score specification');
+      expect(bundle.spec).toBe(mockSpec);
+    });
 
-      expect(llm).toHaveBeenCalledWith(
-        expect.stringContaining('<score-specification>'),
-        expect.any(Object)
-      );
-      expect(result).toBe(7);
+    it('allows text override', () => {
+      const bundle = scoreInstructions({ spec: mockSpec, text: 'Custom scoring' });
+
+      expect(bundle.text).toBe('Custom scoring');
+      expect(bundle.spec).toBe(mockSpec);
+    });
+
+    it('passes through additional context keys', () => {
+      const bundle = scoreInstructions({ spec: mockSpec, domain: 'medical records' });
+
+      expect(bundle.spec).toBe(mockSpec);
+      expect(bundle.domain).toBe('medical records');
+    });
+
+    it('includes anchors when provided', () => {
+      const bundle = scoreInstructions({ spec: mockSpec, anchors: 'anchor data' });
+
+      expect(bundle.anchors).toBe('anchor data');
     });
   });
 
-  describe('score.with', () => {
-    it('calls scoreSpec once during factory creation', async () => {
-      scaleSpec.mockResolvedValueOnce(mockSpec);
-      llm.mockResolvedValue(7);
+  describe('integration with collection chains', () => {
+    it('scoreInstructions bundle works with filter chain', async () => {
+      filter.mockResolvedValueOnce(['item1', 'item3']);
 
-      const scorer = await score.with('quality');
-      expect(scaleSpec).toHaveBeenCalledTimes(1);
+      const bundle = scoreInstructions({ spec: mockSpec });
+      const items = ['item1', 'item2', 'item3'];
 
-      await scorer('item1');
-      await scorer('item2');
-      // scoreSpec was only called once, not per-item
-      expect(scaleSpec).toHaveBeenCalledTimes(1);
-      // llm (applyScore) was called per-item
-      expect(llm).toHaveBeenCalledTimes(2);
-    });
+      const filtered = await filter(items, bundle);
 
-    it('returned function scores a single item via applyScore', async () => {
-      scaleSpec.mockResolvedValueOnce(mockSpec);
-      llm.mockResolvedValueOnce(9);
-
-      const scorer = await score.with('depth');
-      const result = await scorer('deep article');
-
-      expect(result).toBe(9);
-      expect(llm).toHaveBeenCalledWith(expect.stringContaining('deep article'), expect.any(Object));
+      expect(filter).toHaveBeenCalledWith(items, expect.objectContaining({ spec: mockSpec }));
+      expect(filtered).toEqual(['item1', 'item3']);
     });
   });
-
-  testInstructionBuilders(
-    {
-      mapInstructions,
-      filterInstructions,
-      reduceInstructions,
-      findInstructions,
-      groupInstructions,
-    },
-    {
-      specTag: 'score-specification',
-      specification: mockSpec,
-      xmlTags: { filter: 'filter-condition' },
-    }
-  );
 
   describe('anchoring option', () => {
     it.each([
@@ -308,22 +284,5 @@ describe('score chain', () => {
         }
       }
     );
-  });
-
-  describe('integration with collection chains', () => {
-    it('can use filterInstructions with filter chain', async () => {
-      filter.mockResolvedValueOnce(['item1', 'item3']);
-
-      const instructions = filterInstructions({
-        specification: mockSpec,
-        processing: 'keep scores above 5',
-      });
-      const items = ['item1', 'item2', 'item3'];
-
-      const filtered = await filter(items, instructions);
-
-      expect(filter).toHaveBeenCalledWith(items, expect.stringContaining('score-specification'));
-      expect(filtered).toEqual(['item1', 'item3']);
-    });
   });
 });

@@ -6,6 +6,7 @@ import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
 import { OpEvent, DomainEvent, Outcome, ErrorPosture } from '../../lib/progress/constants.js';
 import { createBatches, parallel, retry } from '../../lib/index.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
+import { resolveArgs, resolveTexts } from '../../lib/instruction/index.js';
 import scoreSingleResultSchema from './score-single-result.json' with { type: 'json' };
 
 const name = 'score';
@@ -93,12 +94,12 @@ export const scoreSpec = scaleSpec;
  * @param {number} config.maxAttempts - Max retry attempts (default: 3)
  * @returns {Promise<*>} Score value (type depends on specification range)
  */
-export async function applyScore(item, specification, config = {}) {
+async function scoreWithSpec(item, spec, config = {}) {
   const runConfig = nameStep('score:item', config);
 
   const prompt = `Apply the score specification to evaluate this item.
 
-${asXML(specification, { tag: 'score-specification' })}
+${asXML(spec, { tag: 'score-specification' })}
 
 Score this item according to the specification.
 Return a JSON object with a "value" property containing the score from the range.
@@ -122,13 +123,16 @@ ${asXML(item, { tag: 'item' })}`;
 /**
  * Score a single item
  * @param {*} item - Item to score
- * @param {string} instructions - Scoring instructions
+ * @param {string|object} instructions - Scoring instructions (string or bundle with known keys: spec, anchors)
  * @param {Object} config - Configuration options
  * @returns {Promise<*>} Score value
  */
-export async function scoreItem(item, instructions, config = {}) {
-  const spec = await scoreSpec(instructions, config);
-  return applyScore(item, spec, config);
+export async function scoreItem(item, instructions, config) {
+  [instructions, config] = resolveArgs(instructions, config, ['spec', 'anchors']);
+  const { text, known, context } = resolveTexts(instructions, ['spec', 'anchors']);
+  const effectiveInstructions = context ? `${text}\n\n${context}` : text;
+  const spec = known.spec || (await scoreSpec(effectiveInstructions, config));
+  return scoreWithSpec(item, spec, config);
 }
 
 /**
@@ -138,7 +142,7 @@ export async function scoreItem(item, instructions, config = {}) {
  * Failed batches leave items as undefined (never throws).
  */
 async function scoreOnce(list, prompt, batchConfig, config) {
-  const { maxParallel, errorPosture, onProgress, logger, anchoring } = config;
+  const { maxParallel, errorPosture, onProgress, logger, anchoring, _providedAnchors } = config;
 
   const batches = await createBatches(list, batchConfig);
   const batchesToProcess = batches;
@@ -153,9 +157,9 @@ async function scoreOnce(list, prompt, batchConfig, config) {
     maxParallel,
   });
 
-  // First batch establishes scoring anchors
-  let anchorBlock = '';
-  if (batchesToProcess.length > 0) {
+  // First batch establishes scoring anchors (skipped when anchors are pre-supplied)
+  let anchorBlock = _providedAnchors || '';
+  if (!_providedAnchors && batchesToProcess.length > 0) {
     const first = batchesToProcess[0];
     try {
       const scores = await retry(() => listBatch(first.items, prompt, batchConfig), {
@@ -167,6 +171,11 @@ async function scoreOnce(list, prompt, batchConfig, config) {
         results[first.startIndex + j] = s;
       });
       anchorBlock = buildScoringAnchors(first.items, scores, anchoring);
+      emitter.emit({
+        event: DomainEvent.phase,
+        phase: 'anchors-established',
+        anchors: anchorBlock,
+      });
     } catch (error) {
       emitter.error(error, { batchIndex: 0, itemCount: first.items.length });
       if (errorPosture === ErrorPosture.strict) throw error;
@@ -224,13 +233,14 @@ async function scoreOnce(list, prompt, batchConfig, config) {
 /**
  * Score a list of items
  * @param {Array} list - Array of items
- * @param {string} instructions - Scoring instructions
+ * @param {string|object} instructions - Scoring instructions (string or bundle with known keys: spec, anchors)
  * @param {Object} config - Configuration options
- * @param {Object} config.spec - Optional pre-built spec (skips scoreSpec LLM call)
  * @returns {Promise<Array>} Array of scores
  */
-export async function mapScore(list, instructions, config = {}) {
-  const { spec: providedSpec, now } = config;
+export async function mapScore(list, instructions, config) {
+  [instructions, config] = resolveArgs(instructions, config, ['spec', 'anchors']);
+  const { text, known, context } = resolveTexts(instructions, ['spec', 'anchors']);
+  const { now } = config;
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
@@ -245,7 +255,8 @@ export async function mapScore(list, instructions, config = {}) {
     }
   );
   emitter.emit({ event: DomainEvent.phase, phase: 'generating-specification' });
-  const spec = providedSpec || (await scoreSpec(instructions, runConfig));
+  const effectiveInstructions = context ? `${text}\n\n${context}` : text;
+  const spec = known.spec || (await scoreSpec(effectiveInstructions, runConfig));
   emitter.emit({ event: DomainEvent.phase, phase: 'scoring-items', specification: spec });
 
   const scoringPrompt = buildScoringInstructions(
@@ -264,6 +275,7 @@ export async function mapScore(list, instructions, config = {}) {
     errorPosture,
     now,
     anchoring,
+    _providedAnchors: known.anchors,
   };
 
   const results = await scoreOnce(list, scoringPrompt, batchConfig, passOptions);
@@ -308,99 +320,37 @@ export async function mapScore(list, instructions, config = {}) {
  * @param {string} additionalInstructions - Additional instructions for specific operation
  * @returns {string} Complete instruction string
  */
-function buildScoringInstructions(specification, additionalInstructions = '') {
+function buildScoringInstructions(spec, additionalInstructions = '') {
   const base = `Apply this score specification to evaluate each item:
 
-${asXML(specification, { tag: 'score-specification' })}`;
+${asXML(spec, { tag: 'score-specification' })}`;
 
   return additionalInstructions ? `${base}\n\n${additionalInstructions}` : base;
 }
 
 /**
- * Create map instructions for scoring
- * @param {Object} params - Parameters object
- * @param {Object} params.specification - Pre-generated score specification
- * @returns {string} Instructions string
+ * Build an instruction bundle for scoring, usable with any collection chain.
+ *
+ * Returns an instruction object that resolveTexts can process:
+ * - When consumed by score(), `spec` and `anchors` are known keys → skip derivation
+ * - When consumed by map/filter/group/etc., they become XML context
+ *
+ * @param {object} params
+ * @param {string|object} params.spec - Pre-generated score specification
+ * @param {string} [params.anchors] - Pre-generated scoring anchors
+ * @param {string} [params.text] - Override the default instruction text
+ * @returns {object} Instruction bundle { text, spec, anchors?, ...context }
  */
-export function mapInstructions({ specification }) {
-  return buildScoringInstructions(
-    specification,
-    'Return ONLY the score value from the range for each item, nothing else.'
-  );
-}
-
-/**
- * Create filter instructions for scoring
- * @param {Object} params - Parameters object
- * @param {Object} params.specification - Pre-generated score specification
- * @param {string} params.processing - Which items to keep (e.g., "scores above 7", "only perfect scores")
- * @returns {string} Instructions string
- */
-export function filterInstructions({ specification, processing }) {
-  const filterContext = `<filter-condition>
-${processing}
-</filter-condition>`;
-
-  return `${buildScoringInstructions(specification)}\n\n${filterContext}`;
-}
-
-/**
- * Create reduce instructions for scoring
- * @param {Object} params - Parameters object
- * @param {Object} params.specification - Pre-generated score specification
- * @param {string} params.processing - How to reduce the scores (e.g., "sum all scores", "find highest score with its item")
- * @returns {string} Instructions string
- */
-export function reduceInstructions({ specification, processing }) {
-  const reduceContext = `<reduce-operation>
-${processing}
-
-Process each item by:
-1. Applying the score specification to get a numeric score
-2. Using that score in the reduction operation
-3. Accumulating results across all items
-4. Returning the final reduced value
-</reduce-operation>`;
-
-  return `${buildScoringInstructions(specification)}\n\n${reduceContext}`;
-}
-
-/**
- * Create find instructions for scoring
- * @param {Object} params - Parameters object
- * @param {Object} params.specification - Pre-generated score specification
- * @param {string} params.processing - Which item to select (e.g., "highest scoring", "first above threshold 8")
- * @returns {string} Instructions string
- */
-export function findInstructions({ specification, processing }) {
-  const findContext = `<selection-criteria>
-${processing}
-</selection-criteria>`;
-
-  return `${buildScoringInstructions(specification)}\n\n${findContext}`;
-}
-
-/**
- * Create group instructions for scoring
- * @param {Object} params - Parameters object
- * @param {Object} params.specification - Pre-generated score specification
- * @param {string} params.processing - How to group by scores (e.g., "low (0-3), medium (4-7), high (8-10)")
- * @returns {string} Instructions string
- */
-export function groupInstructions({ specification, processing }) {
-  const groupContext = `<grouping-strategy>
-${processing}
-</grouping-strategy>`;
-
-  return `${buildScoringInstructions(specification)}\n\n${groupContext}`;
-}
-
-mapScore.with = async function (instructions, config = {}) {
-  const spec = await scoreSpec(instructions, config);
-  return (item) => {
-    return applyScore(item, spec, config);
+export function scoreInstructions({ spec, anchors, text, ...context }) {
+  return {
+    text: text ?? 'Evaluate each item against the score specification and return a numeric score',
+    spec,
+    ...(anchors ? { anchors } : {}),
+    ...context,
   };
-};
+}
+
+mapScore.knownTexts = ['spec', 'anchors'];
 
 // Default export: Score a list of items
 export default mapScore;

@@ -6,22 +6,12 @@
  * - Arrays of [fn, ...extraArgs] to pass additional arguments
  *
  * @example
- * // Simple pipeline
  * const result = await pipe(
  *   items,
- *   map.with('summarize each item'),
+ *   [map, 'translate to French'],
  *   compact,
- *   filter.with('is relevant to AI'),
- *   sort.with('by importance'),
- * );
- *
- * @example
- * // With extra arguments (tuple form)
- * const result = await pipe(
- *   items,
- *   [map, 'translate to French', { llm: 'default' }],
- *   compact,
- *   [score, 'translation quality'],
+ *   [filter, 'is relevant to AI'],
+ *   [sort, 'by importance'],
  * );
  *
  * @param {*} initial - Starting value

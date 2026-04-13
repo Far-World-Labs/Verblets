@@ -4,6 +4,7 @@ import { createBatches, parallel, retry } from '../../lib/index.js';
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
 import { DomainEvent, Outcome, ErrorPosture } from '../../lib/progress/constants.js';
 import { nameStep, getOptions } from '../../lib/context/option.js';
+import { resolveArgs, resolveTexts } from '../../lib/instruction/index.js';
 
 const name = 'map';
 
@@ -23,7 +24,7 @@ const name = 'map';
  * @returns { Promise<(string|undefined)[]> } results aligned with input order
  */
 const mapOnce = async function (list, instructions, config = {}) {
-  const { maxParallel = 3, errorPosture, onProgress, _batchDone } = config;
+  const { maxParallel = 3, errorPosture, onProgress, _batchDone, _context } = config;
 
   const results = new Array(list.length);
   const batches = await createBatches(list, config);
@@ -46,6 +47,7 @@ const mapOnce = async function (list, instructions, config = {}) {
       const batchStyle = determineStyle(config.listStyle, items, config.autoModeThreshold);
 
       // Build the compiled prompt for this batch
+      const contextBlock = _context ? `\n\n${_context}` : '';
       const baseInstructions = `Transform each item in the list according to the instructions below. Apply the transformation consistently to every item.
 
 ${asXML(instructions, { tag: 'transformation-instructions' })}
@@ -54,7 +56,7 @@ IMPORTANT:
 - Transform each item independently
 - Apply the same transformation logic to all items
 - Preserve the order of items from the input list
-- Output one transformed result per input item`;
+- Output one transformed result per input item${contextBlock}`;
 
       // When a custom responseFormat is provided, the JSON schema already
       // constrains the output shape — don't add conflicting XML/newline
@@ -146,7 +148,9 @@ Preserve all formatting and newlines within each <item> element.`;
  * @param { object } [config.llm] - LLM configuration
  * @returns { Promise<(string|undefined)[]> }
  */
-const map = async function (list, instructions, config = {}) {
+const map = async function (list, instructions, config) {
+  [instructions, config] = resolveArgs(instructions, config);
+  const { text, context } = resolveTexts(instructions, []);
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
@@ -158,12 +162,13 @@ const map = async function (list, instructions, config = {}) {
       errorPosture: ErrorPosture.resilient,
     });
     const batchDone = emitter.batch(list.length);
-    const results = await mapOnce(list, instructions, {
+    const results = await mapOnce(list, text, {
       ...runConfig,
       maxAttempts,
       maxParallel,
       errorPosture,
       _batchDone: batchDone,
+      _context: context,
     });
 
     for (let attempt = 1; attempt < maxAttempts; attempt += 1) {
@@ -179,10 +184,11 @@ const map = async function (list, instructions, config = {}) {
 
       if (missingItems.length === 0) break;
 
-      const retryResults = await mapOnce(missingItems, instructions, {
+      const retryResults = await mapOnce(missingItems, text, {
         ...runConfig,
         maxAttempts,
         maxParallel,
+        _context: context,
       });
 
       retryResults.forEach((val, i) => {
@@ -210,11 +216,6 @@ const map = async function (list, instructions, config = {}) {
   }
 };
 
-map.with = function (instructions, config = {}) {
-  return async (item) => {
-    const results = await mapOnce([item], instructions, config);
-    return results[0];
-  };
-};
+map.knownTexts = [];
 
 export default map;

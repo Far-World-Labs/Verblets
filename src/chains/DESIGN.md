@@ -39,8 +39,10 @@ Every chain resolves options through `nameStep` + `createProgressEmitter` + `get
 ```javascript
 import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
+import { resolveArgs, resolveTexts } from '../../lib/instruction/index.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
+import { DomainEvent, Outcome } from '../../lib/progress/constants.js';
 
 export const mapEffort = (value) => {
   if (value === undefined) return { iterations: 1, extremeK: 10 };
@@ -51,22 +53,70 @@ export const mapEffort = (value) => {
   }[value] ?? { iterations: 1, extremeK: 10 };
 };
 
-export default async function myChain(items, config = {}) {
+export default async function myChain(items, instructions, config = {}) {
+  const { text, known, context } = resolveTexts(instructions, []);
   const runConfig = nameStep('my-chain', config);
   const emitter = createProgressEmitter('my-chain', runConfig.onProgress, runConfig);
   emitter.start();
+  emitter.emit({ event: DomainEvent.input, value: items });
+
   const { iterations, extremeK } = await getOptions(runConfig, {
     effort: withPolicy(mapEffort, ['iterations', 'extremeK']),
   });
+
+  const parts = [context, 'Process each item...', asXML(text, { tag: 'instructions' })];
+  const prompt = parts.filter(Boolean).join('\n\n');
 
   const result = await retry(
     () => callLlm(prompt, runConfig),
     { label: 'my-chain', config: runConfig }
   );
-  emitter.complete();
+
+  emitter.emit({ event: DomainEvent.output, value: result });
+  emitter.complete({ outcome: Outcome.success });
   return result;
 }
+
+myChain.knownTexts = [];
 ```
+
+### Instruction Normalization
+
+Every chain normalizes its instruction parameter through `resolveTexts`:
+
+```javascript
+import { resolveTexts } from '../../lib/instruction/index.js';
+
+const { text, known, context } = resolveTexts(instructions, ['spec']);
+const spec = known.spec ?? (await generateSpec(text, runConfig));
+```
+
+When the instruction parameter is optional, use `resolveArgs` first to disambiguate:
+
+```javascript
+import { resolveArgs, resolveTexts } from '../../lib/instruction/index.js';
+
+const [instructions, config] = resolveArgs(rawInstructions, rawConfig, ['spec']);
+const { text, known, context } = resolveTexts(instructions, ['spec']);
+```
+
+### Prompt Assembly
+
+Assemble prompts using the parts composition pattern:
+
+```javascript
+const parts = [
+  context,                                          // XML from unknown instruction keys
+  `Process the following based on the description.`,
+  asXML(text, { tag: 'description' }),
+  asXML(sentence, { tag: 'sentence' }),
+  spec && asXML(spec, { tag: 'specification' }),    // optional sections
+  `Requirements:\n- Be specific about expectations`,
+];
+const prompt = parts.filter(Boolean).join('\n\n');
+```
+
+This replaces template literals, `.replace()` on placeholder constants, and ad-hoc `bundleContext` conditionals. Optional parts are naturally handled — falsy values are filtered out.
 
 ### Prompt Engineering Best Practices
 
@@ -74,21 +124,6 @@ export default async function myChain(items, config = {}) {
 - **Content wrapping** - Wrap all caller-supplied content with `asXML()` for lengthy inputs to ensure proper formatting
 - **Structured tags** - Include proper XML tags for structured content (e.g., `<sentence>`, `<description>`, `<items>`)
 - **Clear sections** - Separate instructions, context, and data clearly in the prompt
-
-Example:
-```javascript
-const prompt = `Process the following based on the description.
-
-${asXML(description, { tag: 'description' })}
-
-${asXML(sentence, { tag: 'sentence' })}
-
-Requirements:
-- Be specific about expectations
-- Use the description to guide interpretation
-
-${onlyJSON}`;
-```
 
 ### Batch Processing with Progress Tracking
 
@@ -134,12 +169,16 @@ export const mapEffort = (value) => { /* ... */ };
 /**
  * Process items using AI-powered workflow
  * @param {Array} items - Items to process
+ * @param {string|object} [instructions] - Instruction string or bundle
  * @param {Object} [config] - Configuration (passed to nameStep)
  * @returns {Promise<Array>} Processed results
  */
-export default async function chainName(items, config = {}) {
+export default async function chainName(items, instructions, config = {}) {
   // Implementation
 }
+
+// Known instruction keys — introspectable by callers and tooling
+chainName.knownTexts = ['spec'];
 ```
 
 ## Adding a New Chain
@@ -162,6 +201,10 @@ README structure and quality standards are in [DOCUMENTATION.md](../../.claude/g
 
 - Destructuring config params and re-passing them individually — pass config directly (see [option resolution](../../docs/option-resolution.md))
 - Resolving retry or llm params in chains — retry and callLlm resolve them from config (see [retry](../../docs/retry.md))
-- Using `initChain` or `startChain` — replaced by `nameStep` + `track` + `getOptions` (called separately)
+- Using `initChain`, `startChain`, or `buildInstructions` — replaced by `nameStep` + `getOptions` + `resolveTexts`
+- Assembling prompts with template literals and `${contextBlock}` suffixes — use `parts.filter(Boolean).join('\n\n')`
+- Using `.replace()` on prompt constants with `{placeholder}` markers — use parts composition
+- Threading context on config — instruction is positional; config-based context leaks to sub-chains
 - Hard-coded processing strategies without dial options
-- Missing progress feedback for long-running operations
+- Missing `DomainEvent.input`/`output` emissions
+- Missing `knownTexts` static property

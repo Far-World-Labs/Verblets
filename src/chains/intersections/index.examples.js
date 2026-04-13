@@ -35,11 +35,11 @@ describe.skipIf(!isHighBudget)('[high] intersections chain examples', () => {
   it(
     'follows custom instructions',
     async () => {
-      const result = await intersections(['engineering', 'design'], {
-        instructions:
-          'List concrete project ideas that combine these fields. Avoid abstract themes.',
-        batchSize: 2,
-      });
+      const result = await intersections(
+        ['engineering', 'design'],
+        'List concrete project ideas that combine these fields. Avoid abstract themes.',
+        { batchSize: 2 }
+      );
 
       expect(typeof result).toBe('object');
       expect(Object.keys(result).length).toBeGreaterThan(0);

@@ -2,13 +2,13 @@ import llm from '../../lib/llm/index.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
-import wrapVariable from '../../prompts/wrap-variable.js';
+import { asXML } from '../../prompts/wrap-variable.js';
 import { env } from '../../lib/env/index.js';
 import { expectCore, handleAssertionResult, generateAdvice } from './shared.js';
 import { extractFileContext } from '../../lib/logger/index.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
-import { Outcome } from '../../lib/progress/constants.js';
+import { DomainEvent, Outcome } from '../../lib/progress/constants.js';
 
 const name = 'expect';
 
@@ -92,9 +92,13 @@ function getImports(filePath) {
 async function findModuleUnderTest(filePath, lineNumber, config = {}) {
   const context = getCodeContext(filePath, lineNumber);
   const imports = getImports(filePath);
-  const prompt = `Given the following code snippet and import list, identify the import path of the function or module under test.\nImports:\n${imports}\n\nSnippet:\n${
-    context?.lines.join('\n') || ''
-  }\n\nRespond with the import path or 'unknown'.`;
+  const prompt = `Given the following code snippet and import list, identify the import path of the function or module under test.
+
+${asXML(imports, { tag: 'imports' })}
+
+${asXML(context?.lines.join('\n') || '', { tag: 'code-snippet' })}
+
+Respond with the import path or 'unknown'.`;
   try {
     return (await llm(prompt, { ...config, llm: { fast: true, good: true, cheap: true } })).trim();
   } catch {
@@ -113,11 +117,8 @@ async function generateAdviceWithIntrospection(
   callerInfo,
   config = {}
 ) {
-  const contextInfo = codeContext
-    ? `\nCode context around assertion (line ${codeContext.assertionLine}):\n${wrapVariable(
-        codeContext.lines.join('\n'),
-        { tag: 'code-context' }
-      )}`
+  const codeContextBlock = codeContext
+    ? asXML(codeContext.lines.join('\n'), { tag: 'code-context' })
     : '';
 
   const imports = getImports(callerInfo.file);
@@ -131,34 +132,33 @@ async function generateAdviceWithIntrospection(
     }
   }
 
-  const prompt = `You are a debugging assistant helping with a failed LLM assertion.
+  const assertionDetails = [
+    `Actual: ${JSON.stringify(actual, null, 2)}`,
+    `Expected: ${expected ? JSON.stringify(expected, null, 2) : 'N/A'}`,
+    `Constraint: ${constraint || 'N/A'}`,
+    `File: ${callerInfo.file}:${callerInfo.line}`,
+  ].join('\n');
 
-ASSERTION DETAILS:
-- Actual value: ${JSON.stringify(actual, null, 2)}
-- Expected value: ${expected ? JSON.stringify(expected, null, 2) : 'N/A'}
-- Constraint: ${constraint || 'N/A'}
-- File: ${callerInfo.file}:${callerInfo.line}
-
-${contextInfo}
-
-Imports in the file:\n${wrapVariable(imports, { tag: 'imports' })}
-
-Implementation under test (${modulePath || 'unknown'}):\n${wrapVariable(moduleCode, {
-    tag: 'implementation',
-  })}
-
-Provide structured debugging advice in this format:
+  const parts = [
+    'You are a debugging assistant helping with a failed LLM assertion.',
+    asXML(assertionDetails, { tag: 'assertion-details' }),
+    codeContextBlock,
+    asXML(imports, { tag: 'imports' }),
+    asXML(moduleCode, { tag: 'implementation', name: modulePath || 'unknown' }),
+    `Provide structured debugging advice in this format:
 
 ISSUE: [Brief description of why the assertion failed]
 FIX: [Specific actionable steps to resolve the issue]
 CONTEXT: [Additional context about the problem and potential root causes]
 
-Keep your response concise but actionable. Focus on practical solutions.`;
+Keep your response concise but actionable. Focus on practical solutions.`,
+  ];
+
+  const prompt = parts.filter(Boolean).join('\n\n');
 
   try {
     return await llm(prompt, { ...config, llm: { fast: true, good: true, cheap: true } });
   } catch {
-    // Fallback to shared generateAdvice if introspection fails
     return await generateAdvice(actual, expected, constraint, codeContext, callerInfo, config);
   }
 }
@@ -170,6 +170,7 @@ export async function expect(actual, expected, constraint, config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
+  emitter.emit({ event: DomainEvent.input, value: actual });
   const { mode, introspection } = await getOptions(runConfig, {
     mode: env.VERBLETS_LLM_EXPECT_MODE || 'none',
     advice: withPolicy(mapAdvice, ['introspection']),
@@ -244,6 +245,7 @@ export async function expect(actual, expected, constraint, config = {}) {
     }
 
     // Emit before handleAssertionResult — it intentionally throws in 'error' mode
+    emitter.emit({ event: DomainEvent.output, value: passes });
     emitter.complete({ outcome: Outcome.success });
 
     // Handle result based on mode - this may throw an error in 'error' mode
@@ -307,6 +309,8 @@ export async function expectSimple(actual, expected, constraint) {
   const [passed] = await expect(actual, expected, constraint);
   return passed;
 }
+
+aiExpect.knownTexts = [];
 
 // Export aiExpect as default for cleaner imports
 export default aiExpect;

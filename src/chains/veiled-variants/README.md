@@ -10,9 +10,9 @@ The three built-in strategies:
 ```javascript
 import { veiledVariants } from '@far-world-labs/verblets';
 
-const variants = await veiledVariants({
-  prompt: 'What are the effects of long-term sleep deprivation?',
-});
+const variants = await veiledVariants(
+  'What are the effects of long-term sleep deprivation?'
+);
 
 // Returns 15 variants (5 per strategy):
 // [
@@ -28,15 +28,13 @@ const variants = await veiledVariants({
 
 ## API
 
-### `veiledVariants(config)`
-
-The entire input is a single config object.
+### `veiledVariants(prompt, config)`
 
 - `prompt` (string, required): The text to reframe
-- `coverage` (`'low'`|`'med'`|`'high'`): Controls strategy breadth and variant count. `'low'` runs 1 strategy producing 3 variants. `'med'` (default) runs all 3 strategies with 5 variants each (15 total). `'high'` runs all 3 strategies with 8 variants each (24 total).
-- `strategies` (Array): Override which strategies to use. Values: `'scientific'`, `'causal'`, `'softCover'`
-- `variantCount` (number): Override variants per strategy
-- `llm` (string|Object): Model selection. Defaults to `{ sensitive: true }`, requesting a privacy-capable model.
+- `config.coverage` (`'low'`|`'med'`|`'high'`): Controls strategy breadth and variant count. `'low'` runs 1 strategy producing 3 variants. `'med'` (default) runs all 3 strategies with 5 variants each (15 total). `'high'` runs all 3 strategies with 8 variants each (24 total).
+- `config.strategies` (Array): Override which strategies to use. Values: `'scientific'`, `'causal'`, `'softCover'`
+- `config.variantCount` (number): Override variants per strategy
+- `config.llm` (string|Object): Model selection. Defaults to `{ sensitive: true }`, requesting a privacy-capable model.
 
 **Returns:** `Promise<string[]>` — flat array of all generated variants across strategies.
 

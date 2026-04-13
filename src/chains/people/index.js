@@ -5,19 +5,21 @@ import { peopleListJsonSchema } from './schemas.js';
 import createProgressEmitter from '../../lib/progress/index.js';
 import { Outcome } from '../../lib/progress/constants.js';
 import { nameStep } from '../../lib/context/option.js';
+import { resolveTexts } from '../../lib/instruction/index.js';
 
 const name = 'people';
 
-export default async function peopleList(description, count = 3, config = {}) {
+async function peopleList(description, count = 3, config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
 
   try {
-    const instructions = asXML(description, { tag: 'description' });
+    const { text: descriptionText, context } = resolveTexts(description, []);
+    const contextBlock = context ? `\n\n${context}` : '';
     const prompt = `Create a list of ${count} people based on the following description:
 
-${instructions}`;
+${asXML(descriptionText, { tag: 'description' })}${contextBlock}`;
 
     const response = await retry(
       () =>
@@ -39,3 +41,7 @@ ${instructions}`;
     throw err;
   }
 }
+
+peopleList.knownTexts = [];
+
+export default peopleList;

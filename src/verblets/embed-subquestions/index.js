@@ -2,6 +2,7 @@ import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import { decomposeQuery as decomposeQueryPrompt } from '../../prompts/embed-query-transforms.js';
 import { embedSubquestionsSchema } from './schema.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
+import { resolveTexts } from '../../lib/instruction/index.js';
 import createProgressEmitter from '../../lib/progress/index.js';
 import { Outcome } from '../../lib/progress/constants.js';
 
@@ -41,6 +42,7 @@ export const mapGranularity = (value) => {
  * @returns {Promise<string[]>}
  */
 export default async function embedSubquestions(query, config = {}) {
+  const { text: inputQuery, context } = resolveTexts(query, []);
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
@@ -49,7 +51,9 @@ export default async function embedSubquestions(query, config = {}) {
       granularity: withPolicy(mapGranularity),
     });
 
-    const result = await callLlm(decomposeQueryPrompt(query, { granularityGuidance }), {
+    const basePrompt = decomposeQueryPrompt(inputQuery, { granularityGuidance });
+    const prompt = context ? `${basePrompt}\n\n${context}` : basePrompt;
+    const result = await callLlm(prompt, {
       ...runConfig,
       responseFormat: jsonSchema('decompose_query', embedSubquestionsSchema),
     });
@@ -60,3 +64,5 @@ export default async function embedSubquestions(query, config = {}) {
     throw err;
   }
 }
+
+embedSubquestions.knownTexts = [];

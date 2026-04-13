@@ -1,9 +1,10 @@
 import conversationTurnReduce from '../conversation-turn-reduce/index.js';
 import { defaultTurnPolicy } from './turn-policies.js';
+import { resolveTexts } from '../../lib/instruction/index.js';
 import { debug } from '../../lib/debug/index.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
-import { Outcome, ErrorPosture } from '../../lib/progress/constants.js';
+import { DomainEvent, Outcome, ErrorPosture } from '../../lib/progress/constants.js';
 import { parallel } from '../../lib/index.js';
 
 const name = 'conversation';
@@ -67,17 +68,19 @@ export default class Conversation {
       idSet.add(p.id);
     });
 
+    const { text: topicText, context: bundleContext } = resolveTexts(topic, []);
     const runConfig = nameStep(name, options);
     const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
     emitter.start();
+    emitter.emit({ event: DomainEvent.input, value: { topic: topicText, speakers } });
     const { depth, maxParallel } = await getOptions(runConfig, {
       depth: withPolicy(mapDepth),
       maxParallel: withPolicy(mapMaxParallel),
     });
     return new Conversation(
-      topic,
+      topicText,
       speakers,
-      { config: runConfig, emitter },
+      { config: runConfig, emitter, bundleContext },
       { depth, maxParallel }
     );
   }
@@ -86,6 +89,7 @@ export default class Conversation {
     // options may be { config, emitter } from create() or plain config (direct construction)
     const fromCreate = options.emitter && options.config;
     this.emitter = fromCreate ? options.emitter : undefined;
+    this.bundleContext = fromCreate ? (options.bundleContext ?? '') : '';
     const config = fromCreate ? options.config : nameStep(name, options);
 
     const {
@@ -166,6 +170,7 @@ export default class Conversation {
             ...this.otherOptions,
             speakers,
             topic: this.topic,
+            bundleContext: this.bundleContext,
             history: this.messages.slice(),
             rules: this.rules,
             llm: this.llm,
@@ -185,6 +190,7 @@ export default class Conversation {
                   ...this.otherOptions,
                   speaker,
                   topic: this.topic,
+                  bundleContext: this.bundleContext,
                   history: this.messages.slice(),
                   rules: this.rules,
                   llm: this.llm,
@@ -215,6 +221,7 @@ export default class Conversation {
         batchDone(1);
       }
 
+      this.emitter.emit({ event: DomainEvent.output, value: this.messages });
       this.emitter.complete({ outcome: Outcome.success });
 
       return this.messages;
@@ -224,3 +231,5 @@ export default class Conversation {
     }
   }
 }
+
+Conversation.knownTexts = [];

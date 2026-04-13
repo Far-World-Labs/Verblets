@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import scale, { createScale, scaleSpec, applyScale } from './index.js';
+import scaleItem, { scaleSpec, scaleInstructions } from './index.js';
 import llm from '../../lib/llm/index.js';
 
 vi.mock('../../lib/llm/index.js', async (importOriginal) => ({
@@ -7,13 +7,12 @@ vi.mock('../../lib/llm/index.js', async (importOriginal) => ({
   default: vi.fn(),
 }));
 
-describe('scale', () => {
+describe('scaleItem (default export)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('should create a scaling function that maps numeric values', async () => {
-    // First mock for scaleSpec, then mock for applyScale
+  it('should scale a numeric value with spec generation', async () => {
     vi.mocked(llm)
       .mockResolvedValueOnce({ domain: 'stars 1-5', range: '0-100 quality', mapping: 'linear' })
       .mockResolvedValueOnce(50);
@@ -30,11 +29,9 @@ bounds: [0, 100]
 
 Mapping: Map the "stars" field linearly to the quality range.`;
 
-    const scaleFunc = scale(prompt);
-    const result = await scaleFunc({ stars: 3 });
+    const result = await scaleItem({ stars: 3 }, prompt);
 
     expect(result).toBe(50);
-    // First call generates specification, second applies it
     expect(llm).toHaveBeenNthCalledWith(
       1,
       expect.stringContaining('<scaling-instructions>'),
@@ -58,9 +55,10 @@ Mapping: Map the "stars" field linearly to the quality range.`;
       })
       .mockResolvedValueOnce(75);
 
-    const prompt = 'Map sentiment words to a 0-100 scale where 0 is negative and 100 is positive';
-    const scaleFunc = scale(prompt);
-    const result = await scaleFunc('excellent');
+    const result = await scaleItem(
+      'excellent',
+      'Map sentiment words to a 0-100 scale where 0 is negative and 100 is positive'
+    );
 
     expect(result).toBe(75);
   });
@@ -74,9 +72,10 @@ Mapping: Map the "stars" field linearly to the quality range.`;
       })
       .mockResolvedValueOnce({ confidence: 0.8, category: 'high' });
 
-    const prompt = 'Categorize inputs and provide confidence scores';
-    const scaleFunc = scale(prompt);
-    const result = await scaleFunc('very important task');
+    const result = await scaleItem(
+      'very important task',
+      'Categorize inputs and provide confidence scores'
+    );
 
     expect(result).toEqual({ confidence: 0.8, category: 'high' });
   });
@@ -90,47 +89,9 @@ Mapping: Map the "stars" field linearly to the quality range.`;
       })
       .mockResolvedValueOnce(30);
 
-    const prompt = 'Scale complex objects';
-    const scaleFunc = scale(prompt);
-    await scaleFunc({ nested: { value: 123 }, array: [1, 2, 3] });
+    await scaleItem({ nested: { value: 123 }, array: [1, 2, 3] }, 'Scale complex objects');
 
     expect(llm).toHaveBeenCalledWith(expect.stringContaining('<item>'), expect.any(Object));
-  });
-
-  it('should expose prompt property', () => {
-    const prompt = 'Test scale';
-    const scaleFunc = scale(prompt);
-    expect(scaleFunc.prompt).toBe(prompt);
-  });
-});
-
-describe('createScale', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it('should use a pre-generated specification consistently', async () => {
-    vi.mocked(llm).mockResolvedValueOnce(50).mockResolvedValueOnce(100);
-
-    const specification = {
-      domain: '1-5',
-      range: '0-100',
-      mapping: 'Linear mapping',
-    };
-    const scaleFunc = createScale(specification);
-
-    // Specification should be available immediately
-    expect(scaleFunc.specification).toEqual(specification);
-
-    // Apply scale to different values
-    const result1 = await scaleFunc(3);
-    expect(result1).toBe(50);
-
-    const result2 = await scaleFunc(5);
-    expect(result2).toBe(100);
-
-    // Should have called llm 2 times for applications only
-    expect(llm).toHaveBeenCalledTimes(2);
   });
 });
 
@@ -162,38 +123,58 @@ describe('scaleSpec', () => {
   });
 });
 
-describe('applyScale', () => {
+describe('scaleItem', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('should apply a scale using a specification', async () => {
-    vi.mocked(llm).mockResolvedValue(75);
+  it('should scale a single item with spec generation', async () => {
+    vi.mocked(llm)
+      .mockResolvedValueOnce({
+        domain: '1-5',
+        range: '0-100',
+        mapping: 'Linear transformation',
+      })
+      .mockResolvedValueOnce(75);
 
-    const specification = {
+    const result = await scaleItem(4, 'Map 1-5 to 0-100');
+
+    expect(result).toBe(75);
+    expect(llm).toHaveBeenCalledTimes(2);
+  });
+
+  it('should skip spec generation when spec provided via instruction bundle', async () => {
+    vi.mocked(llm).mockResolvedValueOnce(75);
+
+    const spec = {
       domain: '1-5',
       range: '0-100',
       mapping: 'Linear transformation',
     };
-    const result = await applyScale(4, specification);
+    const result = await scaleItem(4, { text: 'Scale this', spec });
 
     expect(result).toBe(75);
+    // Only one LLM call — spec generation skipped
+    expect(llm).toHaveBeenCalledTimes(1);
     expect(llm).toHaveBeenCalledWith(
       expect.stringContaining('<scale-specification>'),
       expect.any(Object)
     );
   });
+});
 
-  it('should handle object inputs', async () => {
-    vi.mocked(llm).mockResolvedValue('high');
+describe('scaleInstructions', () => {
+  it('returns instruction bundle with spec', () => {
+    const spec = { domain: 'test', range: 'test', mapping: 'test' };
+    const bundle = scaleInstructions({ spec });
 
-    const specification = {
-      domain: 'scores between 0 and 1',
-      range: 'labels: low, medium, high',
-      mapping: 'Convert numeric scores to categorical labels',
-    };
-    const result = await applyScale({ score: 0.8 }, specification);
+    expect(bundle.text).toContain('scale specification');
+    expect(bundle.spec).toBe(spec);
+  });
 
-    expect(result).toBe('high');
+  it('passes through additional context keys', () => {
+    const bundle = scaleInstructions({ spec: 'spec', domain: 'temperature' });
+
+    expect(bundle.domain).toBe('temperature');
   });
 });

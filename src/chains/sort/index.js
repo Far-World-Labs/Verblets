@@ -7,6 +7,7 @@ import createProgressEmitter from '../../lib/progress/index.js';
 import { OpEvent, DomainEvent, Outcome } from '../../lib/progress/constants.js';
 import { debug } from '../../lib/debug/index.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
+import { resolveArgs, resolveTexts } from '../../lib/instruction/index.js';
 
 const name = 'sort';
 
@@ -52,7 +53,9 @@ const sanitizeList = (list) => {
   return [...new Set(list.filter((item) => item.trim() !== ''))];
 };
 
-const sort = async (list, criteria, config = {}) => {
+const sort = async (list, criteria, config) => {
+  [criteria, config] = resolveArgs(criteria, config);
+  const { text, context } = resolveTexts(criteria, []);
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
@@ -74,15 +77,17 @@ const sort = async (list, criteria, config = {}) => {
 
     // Sort a batch of items with LLM
     const sortBatch = async (batch) => {
-      const prompt = sortPrompt({ description: criteria }, batch);
+      const prompt = sortPrompt({ description: text }, batch);
 
       // Handle test mode where sortPrompt returns the list directly
       if (Array.isArray(prompt)) {
         return prompt;
       }
 
+      const effectivePrompt = context ? `${prompt}\n\n${context}` : prompt;
+
       const result = await retry(
-        () => callLlm(prompt, { ...runConfig, responseFormat: sortResponseFormat }),
+        () => callLlm(effectivePrompt, { ...runConfig, responseFormat: sortResponseFormat }),
         {
           label: 'sort-batch',
           config: runConfig,
@@ -246,5 +251,7 @@ const sort = async (list, criteria, config = {}) => {
     throw err;
   }
 };
+
+sort.knownTexts = [];
 
 export default sort;

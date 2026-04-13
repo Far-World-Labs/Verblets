@@ -5,48 +5,54 @@ Categorize items against a controlled vocabulary using AI-interpreted tagging ru
 ## Example
 
 ```javascript
-import { tags, createTagger } from '@far-world-labs/verblets';
+import { tagItem, mapTags } from '@far-world-labs/verblets';
 
-const expenseVocabulary = {
+const vocabulary = {
   tags: [
     { id: 'food', label: 'Food & Dining', description: 'Groceries, restaurants' },
     { id: 'transport', label: 'Transportation', description: 'Gas, rideshare, transit' },
-    { id: 'housing', label: 'Housing', description: 'Rent, utilities, maintenance' }
-  ]
+    { id: 'housing', label: 'Housing', description: 'Rent, utilities, maintenance' },
+  ],
 };
 
-const tagger = tags('Categorize by expense type');
-const result = await tagger(
+// Single item
+const tags = await tagItem(
   { description: 'Whole Foods Market', amount: 87.43 },
-  expenseVocabulary
+  { text: 'Categorize by expense type', vocabulary }
 );
 // => ['food']
 
-// Vocabulary-bound tagger for repeated use
-const expenseTagger = createTagger(expenseVocabulary);
-const tags1 = await expenseTagger('Uber ride to airport', 'Categorize by expense type');
-// => ['transport']
+// Batch — generates spec once, applies across list
+const allTags = await mapTags(expenses, { text: 'Categorize by expense type', vocabulary });
+// => [['food'], ['transport'], ['housing', 'transport'], ...]
 ```
 
 ## API
 
-### Default: `tags(instructions, config)` — returns a tagger function requiring vocabulary at call time
+### `tagItem(item, instructions, config?)` — tag a single item
 
-### Named exports
+### `mapTags(list, instructions, config?)` — tag multiple items in batches
 
-- `tagItem(item, instructions, vocabulary, config)` — tag a single item
-- `mapTags(list, instructions, vocabulary, config)` — tag multiple items in batches
+Instructions can be a string or a bundle. Vocabulary is required in the bundle:
+
+```javascript
+// String — vocabulary must be in the bundle
+await tagItem(item, { text: 'Categorize expenses', vocabulary });
+
+// Bundle with pre-built spec (skips spec generation)
+await tagItem(item, { spec: mySpec, vocabulary });
+
+// From tagInstructions builder
+await tagItem(item, tagInstructions({ spec, vocabulary }));
+```
+
+### `knownTexts`: `['spec', 'vocabulary', 'vocabularyMode']`
+
+- **spec** — pre-generated tag specification (skips `tagSpec` call)
+- **vocabulary** — `{ tags: [...] }` with available tag definitions
+- **vocabularyMode** — `'strict'` (default, only vocabulary tags) or `'open'` (may suggest new tags)
+
+### Other exports
+
 - `tagSpec(instructions, config)` — generate reusable tagging specification
-- `applyTags(item, specification, vocabulary, config)` — apply pre-generated spec
-- `createTagger(vocabulary, config)` — vocabulary-bound tagger
-- `createTagExtractor(specification, vocabulary, config)` — fixed spec + vocabulary extractor
-
-### Instruction builders (for collection chains)
-
-- `mapInstructions({ specification, vocabulary, processing })`
-- `filterInstructions({ specification, vocabulary, processing })`
-- `reduceInstructions({ specification, vocabulary, processing })`
-- `findInstructions({ specification, vocabulary, processing })`
-- `groupInstructions({ specification, vocabulary, processing })`
-
-Only valid tag IDs from the vocabulary are returned.
+- `tagInstructions({ spec, vocabulary, vocabularyMode?, text?, ...context })` — build instruction bundle

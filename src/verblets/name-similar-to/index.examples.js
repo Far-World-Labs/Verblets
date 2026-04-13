@@ -14,7 +14,7 @@ describe('nameSimilarTo examples', () => {
     ]);
     expect(typeof result).toBe('string');
     await aiExpect(result).toSatisfy(
-      'one of BeanDiary, RoastLog, or BrewIndex — whichever best matches a record of coffee tasting notes'
+      'a creative compound name related to coffee tasting notes, in the same naming style as BeanDiary, RoastLog, BrewIndex (CamelCase compound words combining a coffee/beverage term with a record-keeping term)'
     );
   });
 });

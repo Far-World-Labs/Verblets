@@ -1,14 +1,17 @@
 import callLlm from '../../lib/llm/index.js';
 import { nameStep, getOptions } from '../../lib/context/option.js';
+import { resolveTexts } from '../../lib/instruction/index.js';
 import createProgressEmitter from '../../lib/progress/index.js';
 import { Outcome } from '../../lib/progress/constants.js';
 import { schemas as defaultSchemas } from '../../json-schemas/index.js';
 
-const name = 'auto';
+const verbletName = 'auto';
 
-export default async (text, config = {}) => {
-  const runConfig = nameStep(name, config);
-  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+export default async function auto(text, config = {}) {
+  const { text: inputText, context } = resolveTexts(text, []);
+  const effectiveText = context ? `${inputText}\n\n${context}` : inputText;
+  const runConfig = nameStep(verbletName, config);
+  const emitter = createProgressEmitter(verbletName, runConfig.onProgress, runConfig);
   emitter.start();
 
   const { schemas, defaultFunction, defaultArguments } = await getOptions(runConfig, {
@@ -32,7 +35,7 @@ export default async (text, config = {}) => {
   }));
 
   try {
-    const response = await callLlm(text, {
+    const response = await callLlm(effectiveText, {
       ...runConfig,
       // toolChoice: 'auto' // by default
       tools,
@@ -69,4 +72,6 @@ export default async (text, config = {}) => {
     emitter.error(err);
     throw err;
   }
-};
+}
+
+auto.knownTexts = [];

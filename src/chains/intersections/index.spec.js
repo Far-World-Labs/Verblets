@@ -86,9 +86,19 @@ describe('intersections chain', () => {
   });
 
   it('includes instructions in prompt and forwards to commonalities', async () => {
-    await intersections(['Fruit', 'Red'], { instructions: 'Focus on tropical items' });
+    await intersections(['Fruit', 'Red'], 'Focus on tropical items');
     expect(callLlm.mock.calls[0][0]).toContain('Focus on tropical items');
-    expect(commonalities.mock.calls[0][1].instructions).toBe('Focus on tropical items');
+    expect(commonalities.mock.calls[0][1]).toBe('Focus on tropical items');
+  });
+
+  it('wires instruction bundle context into prompt', async () => {
+    await intersections(['Fruit', 'Red'], {
+      text: 'Focus on tropical items',
+      region: 'Southeast Asia',
+    });
+    expect(callLlm.mock.calls[0][0]).toContain('Focus on tropical items');
+    expect(callLlm.mock.calls[0][0]).toContain('<region>');
+    expect(callLlm.mock.calls[0][0]).toContain('Southeast Asia');
   });
 
   it('filters falsy elements from callLlm response', async () => {

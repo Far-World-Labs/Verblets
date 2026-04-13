@@ -63,16 +63,6 @@ describe('reduce chain', () => {
     expect(listBatch).toHaveBeenCalledTimes(1);
   });
 
-  describe('reduce.with', () => {
-    it('reduces with accumulator', async () => {
-      const fn = reduce.with('join');
-      const result = await fn('start', 'next');
-      expect(result).toBe('start-next');
-      expect(listBatch).toHaveBeenCalledTimes(1);
-      expect(listBatch).toHaveBeenCalledWith(['next'], expect.any(String), expect.any(Object));
-    });
-  });
-
   describe('custom responseFormat', () => {
     const statsFormat = {
       type: 'json_schema',

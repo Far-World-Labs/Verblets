@@ -2,6 +2,7 @@ import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import { hydeOutputDoc } from '../../prompts/embed-query-transforms.js';
 import { schema } from './schema.js';
 import { nameStep } from '../../lib/context/option.js';
+import { resolveTexts } from '../../lib/instruction/index.js';
 import createProgressEmitter from '../../lib/progress/index.js';
 import { Outcome } from '../../lib/progress/constants.js';
 
@@ -18,11 +19,14 @@ const name = 'embed-rewrite-to-output-doc';
  * @returns {Promise<string>}
  */
 export default async function embedRewriteToOutputDoc(query, config = {}) {
+  const { text: inputQuery, context } = resolveTexts(query, []);
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
   try {
-    const result = await callLlm(hydeOutputDoc(query), {
+    const basePrompt = hydeOutputDoc(inputQuery);
+    const prompt = context ? `${basePrompt}\n\n${context}` : basePrompt;
+    const result = await callLlm(prompt, {
       ...runConfig,
       responseFormat: jsonSchema('hyde_output_doc', schema),
     });
@@ -33,3 +37,5 @@ export default async function embedRewriteToOutputDoc(query, config = {}) {
     throw err;
   }
 }
+
+embedRewriteToOutputDoc.knownTexts = [];

@@ -99,24 +99,6 @@ describe('map', () => {
     expect(listBatch).toHaveBeenCalledTimes(3);
   });
 
-  describe('map.with', () => {
-    it('processes a single item', async () => {
-      listBatch.mockImplementationOnce(async (items) => items.map((i) => `${i}-mapped`));
-      const fn = map.with('transform');
-      const result = await fn('hello');
-      expect(result).toBe('hello-mapped');
-      expect(listBatch).toHaveBeenCalledTimes(1);
-      expect(listBatch).toHaveBeenCalledWith(['hello'], expect.any(String), expect.any(Object));
-    });
-
-    it('returns undefined on error', async () => {
-      listBatch.mockRejectedValueOnce(new Error('fail'));
-      const fn = map.with('transform');
-      const result = await fn('item');
-      expect(result).toBeUndefined();
-    });
-  });
-
   describe('progress callbacks', () => {
     it('emits progress events during batch processing', async () => {
       const progressEvents = [];

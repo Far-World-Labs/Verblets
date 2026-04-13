@@ -7,7 +7,8 @@ import { useSafeFakeTimers } from '../../lib/test-utils/fake-timers.js';
 const { it, expect } = getTestHelpers('Set interval chain');
 
 // Mock the dependencies like in the spec file
-vi.mock('../../lib/llm/index.js', () => ({
+vi.mock('../../lib/llm/index.js', async (importOriginal) => ({
+  ...(await importOriginal()),
   default: vi.fn(),
 }));
 vi.mock('../date/index.js', () => ({

@@ -6,9 +6,10 @@ Find what lies at the overlap between categories. Given a list of domains, the c
 import { intersections } from '@far-world-labs/verblets';
 
 const disciplines = ['linguistics', 'neuroscience', 'computer science'];
-const results = await intersections(disciplines, {
-  instructions: 'Find research fields and methods that span these areas'
-});
+const results = await intersections(
+  disciplines,
+  'Find research fields and methods that span these areas'
+);
 // => {
 //   'linguistics + neuroscience': {
 //     combination: ['linguistics', 'neuroscience'],
@@ -35,10 +36,10 @@ const results = await intersections(disciplines, {
 
 ## API
 
-### `intersections(categories, config?)`
+### `intersections(categories, instructions?, config?)`
 
 - **categories** (Array): Domains or concepts to find intersections between
-- **config.instructions** (string): Guide what kind of intersections to look for
+- **instructions** (string|Object): What kind of intersections to look for — string or instruction bundle with named context
 - **config.minSize** (number): Minimum combination size (default: 2)
 - **config.maxSize** (number): Maximum combination size (default: categories.length)
 - **config.batchSize** (number): Combinations to process in parallel (default: 10)

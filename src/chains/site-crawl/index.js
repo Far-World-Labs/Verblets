@@ -464,4 +464,6 @@ export {
   extractStructure,
 } from './extractor.js';
 
+siteCrawl.knownTexts = [];
+
 export default siteCrawl;

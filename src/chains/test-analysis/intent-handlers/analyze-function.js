@@ -10,6 +10,7 @@ import retry from '../../../lib/retry/index.js';
 import score from '../../../chains/score/index.js';
 import modelService from '../../../services/llm-model/index.js';
 import { bold, cyan } from '../../../chains/test-analysis/output-utils.js';
+import { asXML } from '../../../prompts/wrap-variable.js';
 
 const RELEVANCE_THRESHOLD = 0.3;
 const MAX_CALLERS = 3;
@@ -21,12 +22,11 @@ const formatFunctionBlock = (func) => `\`\`\`javascript
 ${func.text}
 \`\`\``;
 
-const formatEntrypoint = (targetFunction) => `<entrypoint>
-Function: ${targetFunction.name}
-Type: ${targetFunction.type}
-Lines: ${targetFunction.lineCount}
-${formatFunctionBlock(targetFunction)}
-</entrypoint>`;
+const formatEntrypoint = (targetFunction) =>
+  asXML(
+    `Function: ${targetFunction.name}\nType: ${targetFunction.type}\nLines: ${targetFunction.lineCount}\n${formatFunctionBlock(targetFunction)}`,
+    { tag: 'entrypoint' }
+  );
 
 const formatCallerSection = async (callers, rootDir) => {
   if (callers.length === 0) return '';
@@ -48,7 +48,7 @@ const formatCallerSection = async (callers, rootDir) => {
     })
   );
 
-  return `\n\n<callers>\n${callerTexts.join('\n')}\n</callers>`;
+  return `\n\n${asXML(callerTexts.join('\n'), { tag: 'callers' })}`;
 };
 
 const scoreCallees = async (calleeFunctions, intent) => {

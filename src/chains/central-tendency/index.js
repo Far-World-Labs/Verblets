@@ -1,10 +1,11 @@
 import map from '../map/index.js';
-import { CENTRAL_TENDENCY_PROMPT } from '../../verblets/central-tendency-lines/index.js';
+import { CENTRAL_TENDENCY_CORE } from '../../verblets/central-tendency-lines/index.js';
 import { centralTendencyResultsJsonSchema } from './schemas.js';
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
 import { DomainEvent, Outcome } from '../../lib/progress/constants.js';
 import { jsonSchema } from '../../lib/llm/index.js';
 import { nameStep, getOptions } from '../../lib/context/option.js';
+import { asXML } from '../../prompts/wrap-variable.js';
 
 const name = 'central-tendency';
 
@@ -14,30 +15,30 @@ const centralTendencyResponseFormat = jsonSchema(
 );
 
 /**
- * Build instructions for central tendency evaluation using the core verblet prompt
+ * Build instructions for central tendency evaluation using the core cognitive framework.
  * @param {string[]} seedItems - Array of seed items for comparison
- * @param {Object} config - Configuration options
+ * @param {Object} [options]
+ * @param {string} [options.context] - Context description
+ * @param {string[]} [options.coreFeatures] - Known core features
  * @returns {string} Instructions for the mapper
  */
 function buildCentralTendencyInstructions(seedItems, { context = '', coreFeatures = [] } = {}) {
-  const contextLine = context ? `Context: ${context}` : '';
-  const coreFeaturesLine =
-    coreFeatures.length > 0 ? `Core Features: ${coreFeatures.join(', ')}` : '';
-  const outputRequirementsLine = `OUTPUT FORMAT: For each item, provide:
+  const outputRequirements = `OUTPUT FORMAT: For each item, provide:
 - score: A number between 0 and 1 indicating centrality
 - reason: A brief explanation of the scoring
 - confidence: A number between 0 and 1 indicating confidence in the assessment`;
 
-  // Use the core prompt with all variables replaced
-  const corePrompt = CENTRAL_TENDENCY_PROMPT.replace('{context}', contextLine)
-    .replace('{coreFeatures}', coreFeaturesLine)
-    .replace('{outputRequirements}', outputRequirementsLine);
+  const parts = [
+    'For each item, evaluate its centrality among these category members:',
+    asXML(seedItems.join(', '), { tag: 'seed-items' }),
+    'Use cognitive science principles of prototype theory and family resemblance.',
+    context && asXML(context, { tag: 'context' }),
+    coreFeatures.length > 0 && asXML(coreFeatures.join(', '), { tag: 'core-features' }),
+    CENTRAL_TENDENCY_CORE,
+    outputRequirements,
+  ];
 
-  return `For each item, evaluate its centrality among these category members: ${seedItems.join(
-    ', '
-  )}
-
-${corePrompt}`;
+  return parts.filter(Boolean).join('\n\n');
 }
 
 /**
@@ -76,10 +77,8 @@ export default async function centralTendency(items, seedItems, config = {}) {
   });
 
   try {
-    // Build instructions for the mapper
     const instructions = buildCentralTendencyInstructions(seedItems, runConfig);
 
-    // Use map to handle all the complexity
     const results = await map(items, instructions, {
       ...runConfig,
       batchSize,
@@ -101,3 +100,5 @@ export default async function centralTendency(items, seedItems, config = {}) {
     throw err;
   }
 }
+
+centralTendency.knownTexts = [];

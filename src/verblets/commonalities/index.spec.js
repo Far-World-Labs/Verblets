@@ -55,14 +55,30 @@ describe('commonalities', () => {
     expect(result).toEqual([]);
   });
 
-  it('accepts custom instructions', async () => {
+  it('accepts instructions as positional argument', async () => {
     mockLlm.mockResolvedValueOnce({ items: ['Urban transport'] });
 
-    const result = await commonalities(['bus', 'subway', 'taxi'], {
-      instructions: 'focus on public transportation in cities',
-    });
+    const result = await commonalities(
+      ['bus', 'subway', 'taxi'],
+      'focus on public transportation in cities'
+    );
 
     expect(result).toEqual(['Urban transport']);
+    expect(mockLlm.mock.calls[0][0]).toContain('focus on public transportation in cities');
+  });
+
+  it('wires instruction bundle context into prompt', async () => {
+    mockLlm.mockResolvedValueOnce({ items: ['Urban rail'] });
+
+    await commonalities(['bus', 'subway'], {
+      text: 'focus on transit',
+      region: 'Southeast Asia',
+    });
+
+    const prompt = mockLlm.mock.calls[0][0];
+    expect(prompt).toContain('focus on transit');
+    expect(prompt).toContain('<region>');
+    expect(prompt).toContain('Southeast Asia');
   });
 
   testPromptShapingOption('depth', {

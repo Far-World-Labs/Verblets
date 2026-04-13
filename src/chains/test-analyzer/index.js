@@ -3,8 +3,10 @@ import llm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { extractCodeWindow } from '../../lib/code-extractor/index.js';
 import createProgressEmitter from '../../lib/progress/index.js';
-import { DomainEvent, Outcome } from '../../lib/progress/constants.js';
+import { DomainEvent, Outcome, ErrorPosture } from '../../lib/progress/constants.js';
 import { getOption, nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
+import parallelBatch from '../../lib/parallel-batch/index.js';
+import { asXML } from '../../prompts/wrap-variable.js';
 
 const name = 'test-analyzer';
 
@@ -86,6 +88,14 @@ const calculateCodeWindow = (
  * @param {Object} config - Options including maxAttempts
  */
 export default async function analyzeTestError(logs, config = {}) {
+  if (Array.isArray(logs) && logs.length > 0 && Array.isArray(logs[0])) {
+    return parallelBatch(logs, (logGroup) => analyzeTestError(logGroup, config), {
+      maxParallel: 3,
+      errorPosture: ErrorPosture.resilient,
+      abortSignal: config.abortSignal,
+      label: 'test-analyzer:collection',
+    });
+  }
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
@@ -156,21 +166,14 @@ export default async function analyzeTestError(logs, config = {}) {
 Expected: ${assertion.expected ?? 'undefined'}
 Actual: ${assertion.actual ?? 'undefined'}
 
-${
-  testSnippet
-    ? `<test-code>
-${testSnippet}
-</test-code>`
-    : ''
-}
+${asXML(testSnippet, { tag: 'test-code' })}
 
-${
+${asXML(
   executionLogs.length > 0
-    ? `<execution-logs>\n${executionLogs
-        .map((log) => JSON.stringify(log))
-        .join('\n')}\n</execution-logs>`
-    : '<execution-logs>No logs captured</execution-logs>'
-}
+    ? executionLogs.map((log) => JSON.stringify(log)).join('\n')
+    : 'No logs captured',
+  { tag: 'execution-logs' }
+)}
 
 <primary-task>
 Provide output in this exact format:
@@ -209,3 +212,5 @@ Discussion:
     throw err;
   }
 }
+
+analyzeTestError.knownTexts = [];

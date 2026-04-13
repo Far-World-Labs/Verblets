@@ -5,6 +5,7 @@ import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
 import { DomainEvent, Outcome, ErrorPosture } from '../../lib/progress/constants.js';
 import { parallel, retry, createBatches } from '../../lib/index.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
+import { resolveArgs, resolveTexts } from '../../lib/instruction/index.js';
 
 const name = 'group';
 
@@ -71,9 +72,10 @@ The accumulator should contain a comma-separated list of the current best catego
 const createAssignmentInstructions =
   (categories) =>
   ({ style, count }) => {
-    const baseInstructions = `Assign each item in the list below to one of these categories: ${categories.join(
-      ', '
-    )}
+    const categoryList = categories.join(', ');
+    const baseInstructions = `Assign each item in the list below to one of these categories:
+
+${asXML(categoryList, { tag: 'categories' })}
 
 Return exactly ${count} category names, one per line, in the same order as the input items.`;
 
@@ -115,7 +117,9 @@ const applyTopNFilter = (groups, topN) => {
   return Object.fromEntries(sortedEntries);
 };
 
-export default async function group(list, instructions, config = {}) {
+export default async function group(list, instructions, config) {
+  [instructions, config] = resolveArgs(instructions, config, ['categories']);
+  const { text, known, context } = resolveTexts(instructions, ['categories']);
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
@@ -130,26 +134,35 @@ export default async function group(list, instructions, config = {}) {
     errorPosture: ErrorPosture.resilient,
   });
   const { categoryPrompt, listStyle, autoModeThreshold, now } = runConfig;
-  // Phase 1: Category Discovery - reduce pass to build taxonomy
-  emitter.emit({
-    event: DomainEvent.phase,
-    phase: 'category-discovery',
-    description: 'Discovering categories from items',
-  });
 
-  const categoryDiscoveryPrompt = createCategoryDiscoveryPrompt(
-    instructions,
-    categoryPrompt,
-    granularityGuidance
-  );
-  const categoriesString = await reduce(list, categoryDiscoveryPrompt, {
-    ...runConfig,
-    initial: '',
-    now,
-    onProgress: scopePhase(runConfig.onProgress, 'reduce:category-discovery'),
-  });
+  let categories;
 
-  const categories = parseCategories(categoriesString);
+  if (known.categories) {
+    // Caller supplied categories — skip Phase 1 discovery
+    categories = parseCategories(known.categories);
+  } else {
+    // Phase 1: Category Discovery - reduce pass to build taxonomy
+    emitter.emit({
+      event: DomainEvent.phase,
+      phase: 'category-discovery',
+      description: 'Discovering categories from items',
+    });
+
+    const categoryDiscoveryPrompt = createCategoryDiscoveryPrompt(
+      text,
+      categoryPrompt,
+      granularityGuidance
+    );
+    const categoriesString = await reduce(list, categoryDiscoveryPrompt, {
+      ...runConfig,
+      initial: '',
+      now,
+      onProgress: scopePhase(runConfig.onProgress, 'reduce:category-discovery'),
+    });
+
+    categories = parseCategories(categoriesString);
+  }
+
   if (categories.length === 0) {
     categories.push('other');
   }
@@ -159,11 +172,15 @@ export default async function group(list, instructions, config = {}) {
     event: DomainEvent.phase,
     phase: 'assignment',
     description: 'Assigning items to categories',
+    categories,
     categoryCount: categories.length,
   });
 
   const batchResults = [];
-  const assignmentInstructions = createAssignmentInstructions(categories);
+  const assignmentFn = createAssignmentInstructions(categories);
+  const assignmentInstructions = context
+    ? (opts) => `${context}\n\n${assignmentFn(opts)}`
+    : assignmentFn;
 
   const allBatches = await createBatches(list, runConfig);
   const batchesToProcess = allBatches;
@@ -227,3 +244,5 @@ export default async function group(list, instructions, config = {}) {
 
   return result;
 }
+
+group.knownTexts = ['categories'];

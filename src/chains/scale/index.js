@@ -1,39 +1,32 @@
 import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
-import buildInstructions from '../../lib/build-instructions/index.js';
 import { scaleSpecificationJsonSchema } from './schemas.js';
 import scaleResultSchema from './scale-result.json' with { type: 'json' };
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
 import { DomainEvent, Outcome } from '../../lib/progress/constants.js';
 import { nameStep } from '../../lib/context/option.js';
+import { resolveArgs, resolveTexts } from '../../lib/instruction/index.js';
 
 const name = 'scale';
 
-// ===== Instruction Builders =====
+// ===== Instruction Builder =====
 
-export const {
-  mapInstructions,
-  filterInstructions,
-  reduceInstructions,
-  findInstructions,
-  groupInstructions,
-} = buildInstructions({
-  specTag: 'scale-specification',
-  defaults: {
-    map: `Apply the scale to each item and return only the transformed value.`,
-    filter: `Keep items whose scaled values fall in the upper half of the scale's range.\n\nNote: This evaluates against the scale's defined range, not the batch's actual distribution.`,
-    find: `Select an item whose scaled value falls in the upper quartile of the scale's range.\n\nNote: This evaluates against the scale's defined range, not the global maximum across all batches.`,
-    group: `Group items based on natural divisions in the scale's range (e.g., low/medium/high).`,
-  },
-  steps: {
-    reduce: `Transform each item with the scale, then apply the reduce operation to accumulate the results.`,
-    filter: `Apply the scale to determine which items meet the filter criteria.`,
-    find: `Use the scale to identify and return the item that best matches the selection criteria.`,
-    group: `Apply the scale to determine each item's group assignment.`,
-  },
-  mapApplyLine: 'Apply this scale to transform each item:',
-});
+/**
+ * Build an instruction bundle for scaling, usable with any collection chain.
+ *
+ * @param {object} params
+ * @param {string|object} params.spec - Pre-generated scale specification
+ * @param {string} [params.text] - Override the default instruction text
+ * @returns {object} Instruction bundle { text, spec, ...context }
+ */
+export function scaleInstructions({ spec, text, ...context }) {
+  return {
+    text: text ?? 'Apply the scale specification to transform each item',
+    spec,
+    ...context,
+  };
+}
 
 // ===== Core Functions =====
 
@@ -96,12 +89,12 @@ IMPORTANT: Each property must be a simple string value, not a nested object or a
  * @param {number} config.maxAttempts - Max retry attempts (default: 3)
  * @returns {Promise<*>} Scaled value (type depends on specification range)
  */
-export async function applyScale(item, specification, config = {}) {
+async function scaleWithSpec(item, spec, config = {}) {
   const runConfig = nameStep('scale:apply', config);
 
   const prompt = `Apply the scale specification to transform this item.
 
-${asXML(specification, { tag: 'scale-specification' })}
+${asXML(spec, { tag: 'scale-specification' })}
 
 ${asXML(item, { tag: 'item' })}
 
@@ -130,20 +123,24 @@ Return a JSON object with a "value" property containing the scaled result.`;
  * @param {Object} config - Configuration options
  * @returns {Promise<*>} Scaled value
  */
-export async function scaleItem(item, instructions, config = {}) {
+export default async function scaleItem(item, instructions, config) {
+  [instructions, config] = resolveArgs(instructions, config, ['spec']);
+  const { text, known, context } = resolveTexts(instructions, ['spec']);
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
 
   try {
     emitter.emit({ event: DomainEvent.step, stepName: 'generating-specification' });
-    const spec = await scaleSpec(instructions, {
-      ...runConfig,
-      onProgress: scopePhase(runConfig.onProgress, 'scale:spec'),
-    });
+    const spec =
+      known.spec ||
+      (await scaleSpec(context ? `${text}\n\n${context}` : text, {
+        ...runConfig,
+        onProgress: scopePhase(runConfig.onProgress, 'scale:spec'),
+      }));
 
-    emitter.emit({ event: DomainEvent.step, stepName: 'applying-scale' });
-    const result = await applyScale(item, spec, {
+    emitter.emit({ event: DomainEvent.step, stepName: 'applying-scale', specification: spec });
+    const result = await scaleWithSpec(item, spec, {
       ...runConfig,
       onProgress: scopePhase(runConfig.onProgress, 'scale:apply'),
     });
@@ -156,47 +153,4 @@ export async function scaleItem(item, instructions, config = {}) {
   }
 }
 
-// ===== Advanced Scale Functions =====
-
-/**
- * Create a scale function with a pre-generated specification
- * @param {Object} specification - Pre-generated scale specification
- * @param {Object} config - Configuration options
- * @returns {Function} Scaling function with specification property
- */
-export function createScale(specification, config = {}) {
-  const scaleFunction = function (input) {
-    return applyScale(input, specification, config);
-  };
-
-  // Add specification property for introspection
-  Object.defineProperty(scaleFunction, 'specification', {
-    get() {
-      return specification;
-    },
-    enumerable: true,
-  });
-
-  return scaleFunction;
-}
-
-/**
- * Original scale function - simple, stateless version
- * @param {string} prompt - Scaling instructions
- * @param {Object} config - Configuration options
- * @returns {Function} Scaling function
- */
-export default function scale(prompt, config = {}) {
-  const scaleFunction = function (input) {
-    return scaleItem(input, prompt, config);
-  };
-
-  Object.defineProperty(scaleFunction, 'prompt', {
-    get() {
-      return prompt;
-    },
-    enumerable: true,
-  });
-
-  return scaleFunction;
-}
+scaleItem.knownTexts = ['spec'];

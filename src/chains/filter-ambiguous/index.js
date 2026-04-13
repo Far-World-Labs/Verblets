@@ -1,13 +1,15 @@
 import list from '../list/index.js';
 import score from '../score/index.js';
 import { nameStep, getOptions } from '../../lib/context/option.js';
+import { resolveTexts } from '../../lib/instruction/index.js';
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
-import { Outcome, ErrorPosture } from '../../lib/progress/constants.js';
+import { DomainEvent, Outcome, ErrorPosture } from '../../lib/progress/constants.js';
 import parallelBatch from '../../lib/parallel-batch/index.js';
 
 const name = 'filter-ambiguous';
 
 export default async function filterAmbiguous(text, config = {}) {
+  const { text: sourceText, known, context } = resolveTexts(text, ['rankedSentences']);
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
@@ -16,32 +18,42 @@ export default async function filterAmbiguous(text, config = {}) {
   });
 
   try {
-    if (!text) {
-      emitter.complete({ outcome: Outcome.success });
-      return [];
-    }
-    const sentences = text
-      .split('\n')
-      .map((s) => s.trim())
-      .filter(Boolean);
-    if (sentences.length === 0) {
-      emitter.complete({ outcome: Outcome.success });
-      return [];
-    }
+    let rankedSentences;
 
-    const sentenceScores = await score(
-      sentences,
-      'How ambiguous or easily misinterpreted is this sentence?',
-      {
-        ...runConfig,
-        onProgress: scopePhase(runConfig.onProgress, 'score:sentence-ambiguity'),
+    if (known.rankedSentences) {
+      // Known rankedSentences provided — skip sentence scoring phase
+      rankedSentences = JSON.parse(known.rankedSentences);
+    } else {
+      if (!sourceText) {
+        emitter.complete({ outcome: Outcome.success });
+        return [];
       }
-    );
+      const sentences = sourceText
+        .split('\n')
+        .map((s) => s.trim())
+        .filter(Boolean);
+      if (sentences.length === 0) {
+        emitter.complete({ outcome: Outcome.success });
+        return [];
+      }
 
-    const rankedSentences = sentences
-      .map((s, i) => ({ sentence: s, score: sentenceScores[i] ?? 0 }))
-      .toSorted((a, b) => b.score - a.score)
-      .slice(0, topN);
+      const contextBlock = context ? `\n\n${context}` : '';
+      const sentenceScores = await score(
+        sentences,
+        `How ambiguous or easily misinterpreted is this sentence?${contextBlock}`,
+        {
+          ...runConfig,
+          onProgress: scopePhase(runConfig.onProgress, 'score:sentence-ambiguity'),
+        }
+      );
+
+      rankedSentences = sentences
+        .map((s, i) => ({ sentence: s, score: sentenceScores[i] ?? 0 }))
+        .toSorted((a, b) => b.score - a.score)
+        .slice(0, topN);
+    }
+
+    emitter.emit({ event: DomainEvent.phase, phase: 'ranked', rankedSentences });
 
     const batchDone = emitter.batch(rankedSentences.length);
     const batchResults = await parallelBatch(
@@ -88,3 +100,5 @@ export default async function filterAmbiguous(text, config = {}) {
     throw err;
   }
 }
+
+filterAmbiguous.knownTexts = ['rankedSentences'];

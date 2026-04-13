@@ -3,6 +3,7 @@ import { asXML } from '../../prompts/wrap-variable.js';
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
 import { Outcome } from '../../lib/progress/constants.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
+import { resolveArgs, resolveTexts } from '../../lib/instruction/index.js';
 
 const name = 'truncate';
 
@@ -94,7 +95,9 @@ function createChunks(text, chunkSize) {
  * @param {number} config.chunkSize - Target characters per chunk (default: 1000)
  * @returns {number} Character index where to truncate
  */
-export default async function truncate(text, instructions, config = {}) {
+export default async function truncate(text, instructions, config) {
+  [instructions, config] = resolveArgs(instructions, config);
+  const { text: instructionText, context } = resolveTexts(instructions, []);
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
@@ -112,12 +115,13 @@ export default async function truncate(text, instructions, config = {}) {
     const textsToScore = reversedChunks.map((chunk) => chunk.text);
 
     // Score chunks in reverse order - score how much content should be KEPT
-    const scoringInstructions = `${asXML(instructions, { tag: 'removal_criteria' })}
+    const contextBlock = context ? `\n\n${context}` : '';
+    const scoringInstructions = `${asXML(instructionText, { tag: 'removal_criteria' })}
 
 NOTE: These text blocks are in REVERSE order (from end to beginning of document).
 Score how important THE ENTIRE TEXT BLOCK is to KEEP in the document (0 = should be removed, 10 = must keep).
 Each item in the list is ONE complete text block - evaluate it as a whole unit.
-Consider the removal criteria above when scoring.`;
+Consider the removal criteria above when scoring.${contextBlock}`;
 
     const scores = await score(textsToScore, scoringInstructions, {
       ...runConfig,
@@ -152,3 +156,5 @@ Consider the removal criteria above when scoring.`;
     throw err;
   }
 }
+
+truncate.knownTexts = [];

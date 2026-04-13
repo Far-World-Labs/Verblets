@@ -1,7 +1,6 @@
 import { describe } from 'vitest';
 import { longTestTimeout } from '../../constants/common.js';
-import score, { reduceInstructions } from './index.js';
-import reduce from '../reduce/index.js';
+import score, { scoreInstructions, scoreSpec } from './index.js';
 import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 
 const { it, expect, aiExpect } = getTestHelpers('Score chain');
@@ -28,26 +27,22 @@ describe('score examples', () => {
   );
 
   it(
-    'uses score-based reduction',
+    'reuses a pre-generated spec via instruction bundle',
     async () => {
+      const spec = await scoreSpec('Rate overall capability');
+
       const products = [
         'Premium laptop with 32GB RAM',
         'Basic notebook with 4GB RAM',
         'Gaming PC with 64GB RAM',
       ];
 
-      const bestValue = await reduce(
-        products,
-        await reduceInstructions({
-          scoring: 'value for money considering specs',
-          processing: 'find the item with the highest score',
-        })
-      );
+      const scores = await score(products, scoreInstructions({ spec }));
 
-      expect(typeof bestValue).toBe('string');
-      expect(products).toContain(bestValue);
-      await aiExpect(bestValue).toSatisfy(
-        'a product selected for best value-for-money considering specs'
+      expect(scores).toHaveLength(products.length);
+      scores.forEach((s) => expect(typeof s).toBe('number'));
+      await aiExpect({ products, scores }).toSatisfy(
+        'numeric capability scores where higher-spec products tend to score higher'
       );
     },
     longTestTimeout

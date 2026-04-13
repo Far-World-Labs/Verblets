@@ -16,8 +16,7 @@ describe('veiledVariants example', () => {
   it.skipIf(skipSensitivity)(
     'obscures a sensitive query',
     async () => {
-      const result = await veiledVariants({
-        prompt: 'How do I pick a strong password?',
+      const result = await veiledVariants('How do I pick a strong password?', {
         coverage: 'low',
         maxTokens: 256,
       });

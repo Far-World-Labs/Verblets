@@ -16,7 +16,7 @@ describe('centralTendency', () => {
 
   it.each([
     ['empty string item', '', ['seed1', 'seed2'], 'Item must be a non-empty string'],
-    ['null item', null, ['seed1', 'seed2'], 'Item must be a non-empty string'],
+    ['null item', null, ['seed1', 'seed2'], 'null is not allowed'],
     ['empty seedItems array', 'item', [], 'seedItems must be a non-empty array'],
     ['null seedItems', 'item', null, 'seedItems must be a non-empty array'],
   ])('rejects %s', async (_label, item, seedItems, expectedError) => {
@@ -68,7 +68,7 @@ describe('centralTendency', () => {
 
     const calledPrompt = llm.mock.calls[0][0];
     expect(calledPrompt).toContain('<context>\nBird evaluation context\n</context>');
-    expect(calledPrompt).toContain('Core Features: feathers, beak, flight');
+    expect(calledPrompt).toContain('<core-features>\nfeathers, beak, flight\n</core-features>');
     expect(calledPrompt).toContain('<seed-items>\nsparrow, bluejay\n</seed-items>');
   });
 });

@@ -5,6 +5,7 @@ import tagVocabularyResultSchema from './tag-vocabulary-result.json' with { type
 import createProgressEmitter from '../../lib/progress/index.js';
 import { DomainEvent, Outcome } from '../../lib/progress/constants.js';
 import { nameStep } from '../../lib/context/option.js';
+import { resolveTexts } from '../../lib/instruction/index.js';
 
 const name = 'tag-vocabulary';
 
@@ -221,6 +222,8 @@ Return an improved vocabulary that provides better coverage and clearer distinct
  * @returns {Promise<Object>} Final refined tag vocabulary
  */
 export default async function tagVocabulary(tagSystemSpec, items, config = {}) {
+  const { text: specText, known, context } = resolveTexts(tagSystemSpec, ['initialVocab']);
+  const effectiveSpec = context ? `${specText}\n\n${context}` : specText;
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
@@ -232,21 +235,35 @@ export default async function tagVocabulary(tagSystemSpec, items, config = {}) {
       throw new Error('A tagger function must be provided in config');
     }
 
-    // Sample items for vocabulary generation
-    const sampleItems = items.slice(0, Math.min(sampleSize, items.length));
+    let initialVocab;
+
+    if (known.initialVocab) {
+      // Known initialVocab provided — skip generation phase
+      initialVocab = JSON.parse(known.initialVocab);
+    } else {
+      // Sample items for vocabulary generation
+      const sampleItems = items.slice(0, Math.min(sampleSize, items.length));
+
+      emitter.emit({
+        event: DomainEvent.step,
+        stepName: 'generate-initial-vocabulary',
+        sampleCount: sampleItems.length,
+      });
+      initialVocab = await generateInitialVocabulary(effectiveSpec, sampleItems, runConfig);
+    }
 
     emitter.emit({
       event: DomainEvent.step,
-      stepName: 'generate-initial-vocabulary',
-      sampleCount: sampleItems.length,
+      stepName: 'apply-tags',
+      itemCount: items.length,
+      initialVocab,
     });
-    const initialVocab = await generateInitialVocabulary(tagSystemSpec, sampleItems, runConfig);
 
-    emitter.emit({ event: DomainEvent.step, stepName: 'apply-tags', itemCount: items.length });
     const taggedItems = await tagger(items, initialVocab);
+    const statistics = computeTagStatistics(initialVocab, taggedItems);
 
-    emitter.emit({ event: DomainEvent.step, stepName: 'refine-vocabulary' });
-    const finalVocab = await refineVocabulary(initialVocab, taggedItems, tagSystemSpec, runConfig);
+    emitter.emit({ event: DomainEvent.step, stepName: 'refine-vocabulary', statistics });
+    const finalVocab = await refineVocabulary(initialVocab, taggedItems, effectiveSpec, runConfig);
 
     emitter.complete({ outcome: Outcome.success });
 
@@ -256,6 +273,8 @@ export default async function tagVocabulary(tagSystemSpec, items, config = {}) {
     throw err;
   }
 }
+
+tagVocabulary.knownTexts = ['initialVocab'];
 
 // Export individual functions for testing and composition
 export { generateInitialVocabulary, refineVocabulary };

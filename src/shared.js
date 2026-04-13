@@ -9,24 +9,13 @@ export { default as number } from './verblets/number/index.js';
 export { default as numberWithUnits } from './verblets/number-with-units/index.js';
 
 // Math
-export {
-  default as scale,
-  scaleSpec,
-  applyScale,
-  createScale,
-  mapInstructions as scaleMapInstructions,
-  filterInstructions as scaleFilterInstructions,
-  reduceInstructions as scaleReduceInstructions,
-  findInstructions as scaleFindInstructions,
-  groupInstructions as scaleGroupInstructions,
-} from './chains/scale/index.js';
+export { default as scaleItem, scaleSpec, scaleInstructions } from './chains/scale/index.js';
 
 // Calibration
 export {
   default as calibrate,
   calibrateSpec,
-  applyCalibrate,
-  createCalibratedClassifier,
+  calibrateInstructions,
 } from './chains/calibrate/index.js';
 
 // Context
@@ -73,15 +62,9 @@ export {
   calculateStatistics,
 } from './chains/detect-threshold/index.js';
 export {
-  default as entities,
+  default as extractEntities,
   entitySpec,
-  applyEntities,
-  createEntityExtractor,
-  mapInstructions as entitiesMapInstructions,
-  filterInstructions as entitiesFilterInstructions,
-  reduceInstructions as entitiesReduceInstructions,
-  findInstructions as entitiesFindInstructions,
-  groupInstructions as entitiesGroupInstructions,
+  entityInstructions,
 } from './chains/entities/index.js';
 export { default as extractBlocks } from './chains/extract-blocks/index.js';
 export { default as filter } from './chains/filter/index.js';
@@ -94,30 +77,9 @@ export { default as listBatch, ListStyle, determineStyle } from './verblets/list
 export { default as listExpand } from './verblets/list-expand/index.js';
 export { default as map } from './chains/map/index.js';
 export { default as reduce } from './chains/reduce/index.js';
-export {
-  default as score,
-  scoreSpec,
-  applyScore,
-  scoreItem,
-  mapInstructions as scoreMapInstructions,
-  filterInstructions as scoreFilterInstructions,
-  reduceInstructions as scoreReduceInstructions,
-  findInstructions as scoreFindInstructions,
-  groupInstructions as scoreGroupInstructions,
-} from './chains/score/index.js';
+export { default as score, scoreSpec, scoreItem, scoreInstructions } from './chains/score/index.js';
 export { default as sort } from './chains/sort/index.js';
-export {
-  default as tags,
-  tagSpec,
-  applyTags,
-  createTagExtractor,
-  createTagger,
-  mapInstructions as tagsMapInstructions,
-  filterInstructions as tagsFilterInstructions,
-  reduceInstructions as tagsReduceInstructions,
-  findInstructions as tagsFindInstructions,
-  groupInstructions as tagsGroupInstructions,
-} from './chains/tags/index.js';
+export { default as tagItem, tagSpec, mapTags, tagInstructions } from './chains/tags/index.js';
 
 export {
   default as categorySamples,
@@ -128,11 +90,7 @@ export { default as commonalities } from './verblets/commonalities/index.js';
 export { default as Conversation } from './chains/conversation/index.js';
 export { default as conversationTurnReduce } from './chains/conversation-turn-reduce/index.js';
 export { default as disambiguate, getMeanings } from './chains/disambiguate/index.js';
-export {
-  default as dismantle,
-  simplifyTree,
-  dismantle as dismantleFactory,
-} from './chains/dismantle/index.js';
+export { default as ChainTree, dismantle, simplifyTree } from './chains/dismantle/index.js';
 export { default as documentShrink } from './chains/document-shrink/index.js';
 export { default as fillMissing } from './verblets/fill-missing/index.js';
 export { default as filterAmbiguous } from './chains/filter-ambiguous/index.js';
@@ -143,17 +101,11 @@ export { default as people } from './chains/people/index.js';
 export { default as popReference } from './chains/pop-reference/index.js';
 export { default as questions } from './chains/questions/index.js';
 export {
-  default as relations,
+  default as extractRelations,
   relationSpec,
-  applyRelations,
-  createRelationExtractor,
   parseRDFLiteral,
   parseRelations,
-  mapInstructions as relationsMapInstructions,
-  filterInstructions as relationsFilterInstructions,
-  reduceInstructions as relationsReduceInstructions,
-  findInstructions as relationsFindInstructions,
-  groupInstructions as relationsGroupInstructions,
+  relationInstructions,
 } from './chains/relations/index.js';
 export { default as schemaOrg } from './verblets/schema-org/index.js';
 export { default as SocraticMethod, socratic } from './chains/socratic/index.js';
@@ -231,6 +183,10 @@ export { default as retry } from './lib/retry/index.js';
 export { default as anySignal } from './lib/any-signal/index.js';
 export { default as TimedAbortController } from './lib/timed-abort-controller/index.js';
 export { default as templateReplace } from './lib/template-replace/index.js';
+export { normalizeInstruction, resolveArgs, resolveTexts } from './lib/instruction/index.js';
+export { default as templateBuilder, slot } from './lib/template-builder/index.js';
+export { default as collectEventsWith } from './lib/collect-events-with/index.js';
+export { default as ContextBudget } from './lib/context-budget/index.js';
 export { default as ringBuffer } from './lib/ring-buffer/index.js';
 export { default as createProgressEmitter, scopePhase } from './lib/progress/index.js';
 export {
@@ -244,6 +200,18 @@ export {
   ModelSource,
   OptionSource,
 } from './lib/progress/constants.js';
+export {
+  pMap,
+  pFilter,
+  pFind,
+  pReduce,
+  pGroup,
+  mapEach,
+  filterEach,
+  findEach,
+  reduceEach,
+  groupEach,
+} from './lib/collection/index.js';
 export { default as version } from './lib/version/index.js';
 export { default as windowFor } from './lib/window-for/index.js';
 export { default as withInactivityTimeout } from './lib/with-inactivity-timeout/index.js';

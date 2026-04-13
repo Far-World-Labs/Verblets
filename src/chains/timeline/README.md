@@ -20,25 +20,33 @@ Last week's earnings call hinted at "transformative opportunities ahead."
 The rivalry between the two firms dates back to 2019.
 `;
 
-const events = await timeline(newsFragments);
+const events = await timeline(newsFragments, 'Focus on corporate actions');
 // Reconstructs chronological sequence from mixed absolute and relative timestamps
+
+// Or with an instruction bundle for richer context:
+const focused = await timeline(newsFragments, {
+  text: 'Focus on regulatory actions',
+  domain: 'EU competition law',
+});
 ```
 
 ## API
 
-### `timeline(text, config)`
+### `timeline(text, instructions?, config?)`
 
 **Parameters:**
 - `text` (string): Narrative text to extract timeline from
+- `instructions` (string|Object): Optional extraction focus — string or instruction bundle with named context
 - `config` (Object): Configuration options
   - `chunkSize` (number): Text chunk size for processing (default: 2000)
   - `maxParallel` (number): Maximum parallel chunk processing (default: 3)
-  - `maxAttempts` (number): Retry attempts per LLM call (default: 3)
   - `onProgress` (Function): Progress callback `(event) => void`. Events from nested reduce/map calls are tagged with `phase` (`'reduce:knowledge-base'`, `'map:enrichment'`)
   - `abortSignal` (AbortSignal): Signal to cancel the operation
   - `llm` (string|Object): LLM model configuration
   - `enrichment` (`'low'`|`'high'`): Controls timeline enrichment depth. `'low'` skips LLM dedup and knowledge enrichment. `'high'` enables LLM dedup + knowledge base building + enrichment mapping. Default: LLM dedup only
   - `batchSize` (number): Items per batch for reduce/map when enriching (auto-calculated if omitted)
+
+**Known texts:** `knowledge` — supply a pre-built knowledge base to skip the reduce derivation step
 
 **Returns:** Promise<Array<Event>> - Chronologically sorted timeline events
 

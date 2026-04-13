@@ -5,6 +5,7 @@ import popReferenceSchema from './pop-reference-result.json' with { type: 'json'
 import createProgressEmitter from '../../lib/progress/index.js';
 import { Outcome } from '../../lib/progress/constants.js';
 import { nameStep, getOptions } from '../../lib/context/option.js';
+import { resolveArgs, resolveTexts } from '../../lib/instruction/index.js';
 
 const name = 'pop-reference';
 
@@ -17,7 +18,9 @@ const popReferenceResponseFormat = jsonSchema('pop_reference_result', popReferen
  * @param {Object} config - Configuration options
  * @returns {Promise<Array>} Array of PopCultureReference objects
  */
-export default async function popReference(sentence, description, config = {}) {
+export default async function popReference(sentence, description, config) {
+  [description, config] = resolveArgs(description, config);
+  const { text: descriptionText, context } = resolveTexts(description, []);
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
@@ -43,12 +46,13 @@ export default async function popReference(sentence, description, config = {}) {
 
   // Wrap the sentence and description in XML
   const sentenceXml = asXML(sentence, { tag: 'sentence' });
-  const descriptionXml = asXML(description, { tag: 'description' });
+  const descriptionXml = asXML(descriptionText, { tag: 'description' });
 
   const contextInstruction = referenceContext
     ? 'Include a brief context description for each reference explaining the scene or idea being referenced.'
     : 'Do not include context descriptions.';
 
+  const contextBlock = context ? `\n\n${context}` : '';
   const prompt = `Find pop culture references that metaphorically capture the sentence based on its description.
 
 ${descriptionXml}
@@ -73,7 +77,7 @@ Requirements:
 - Each reference should be a specific moment, scene, or concept (not just the source name)
 - References should meaningfully connect to the sentence's meaning
 - Provide exact character positions for matched text
-- Higher scores mean stronger metaphorical fit`;
+- Higher scores mean stronger metaphorical fit${contextBlock}`;
 
   try {
     const response = await retry(
@@ -102,3 +106,5 @@ Requirements:
     throw err;
   }
 }
+
+popReference.knownTexts = [];

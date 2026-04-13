@@ -1,39 +1,31 @@
 import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
-import buildInstructions from '../../lib/build-instructions/index.js';
 import entityResultSchema from './entity-result.json' with { type: 'json' };
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
 import { DomainEvent, Outcome } from '../../lib/progress/constants.js';
 import { nameStep } from '../../lib/context/option.js';
+import { resolveArgs, resolveTexts } from '../../lib/instruction/index.js';
 
 const name = 'entities';
 
-// ===== Instruction Builders =====
+// ===== Instruction Builder =====
 
-export const {
-  mapInstructions,
-  filterInstructions,
-  reduceInstructions,
-  findInstructions,
-  groupInstructions,
-} = buildInstructions({
-  specTag: 'entity-specification',
-  defaults: {
-    map: `Extract entities from each text chunk.`,
-    filter: `Extract entities and keep only those matching the criteria.`,
-    find: `Extract entities and select the most significant one.`,
-    group: `Group entities by their types, themes, or co-occurrence patterns.`,
-  },
-  steps: {
-    reduce: `Consolidate entities across text chunks:\n1. Merge duplicates - same entity mentioned in different chunks\n2. Resolve variations - "Apple Inc." and "Apple" may be the same\n3. Build unified list - all unique entities discovered`,
-    filter: `Extract entities and filter to keep only those meeting the criteria.`,
-    find: `Extract entities and return the one best matching the selection criteria.`,
-    group: `Extract entities and group them by patterns, types, or relationships.`,
-  },
-  mapApplyLine: 'Apply this entity specification:',
-  reduceDefault: 'Build comprehensive entity list from all chunks',
-});
+/**
+ * Build an instruction bundle for entity extraction, usable with any collection chain.
+ *
+ * @param {object} params
+ * @param {string} params.spec - Pre-generated entity specification
+ * @param {string} [params.text] - Override the default instruction text
+ * @returns {object} Instruction bundle { text, spec, ...context }
+ */
+export function entityInstructions({ spec, text, ...context }) {
+  return {
+    text: text ?? 'Extract entities according to the entity specification',
+    spec,
+    ...context,
+  };
+}
 
 // ===== Core Functions =====
 
@@ -81,12 +73,12 @@ Keep it simple and actionable.`;
  * @param {Object} config - Configuration options
  * @returns {Promise<Object>} Object with entities array
  */
-export async function applyEntities(text, specification, config = {}) {
+async function extractWithSpec(text, spec, config = {}) {
   const runConfig = nameStep('entities:apply', config);
 
   const prompt = `Apply the entity specification to extract entities from this text.
 
-${asXML(specification, { tag: 'entity-specification' })}
+${asXML(spec, { tag: 'entity-specification' })}
 
 ${asXML(text, { tag: 'text' })}
 
@@ -118,24 +110,30 @@ Include every entity that matches the specification. Do not add properties beyon
  * @param {Object} config - Configuration options
  * @returns {Promise<Object>} Object with entities array
  */
-export async function extractEntities(text, instructions, config = {}) {
+export default async function extractEntities(text, instructions, config) {
+  [instructions, config] = resolveArgs(instructions, config, ['spec']);
+  const { text: instructionText, known, context } = resolveTexts(instructions, ['spec']);
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
 
   try {
-    emitter.emit({ event: DomainEvent.step, stepName: 'generating-specification', instructions });
+    emitter.emit({
+      event: DomainEvent.step,
+      stepName: 'generating-specification',
+      instructions: instructionText,
+    });
 
     const spec =
-      runConfig.spec ||
-      (await entitySpec(instructions, {
+      known.spec ||
+      (await entitySpec(context ? `${instructionText}\n\n${context}` : instructionText, {
         ...runConfig,
         onProgress: scopePhase(runConfig.onProgress, 'spec'),
       }));
 
     emitter.emit({ event: DomainEvent.step, stepName: 'extracting-entities', specification: spec });
 
-    const result = await applyEntities(text, spec, {
+    const result = await extractWithSpec(text, spec, {
       ...runConfig,
       onProgress: scopePhase(runConfig.onProgress, 'apply'),
     });
@@ -149,36 +147,4 @@ export async function extractEntities(text, instructions, config = {}) {
   }
 }
 
-// ===== Advanced Entity Functions =====
-
-/**
- * Create an entity extraction function with a pre-generated specification
- * @param {string} specification - Pre-generated entity specification
- * @param {Object} config - Configuration options
- * @returns {Function} Entity extraction function with specification property
- */
-export function createEntityExtractor(specification, config = {}) {
-  const extractorFunction = function (input) {
-    return applyEntities(input, specification, config);
-  };
-
-  extractorFunction.specification = specification;
-
-  return extractorFunction;
-}
-
-/**
- * Original entity extraction function - simple, stateless version
- * @param {string} prompt - Entity extraction instructions
- * @param {Object} config - Configuration options
- * @returns {Function} Entity extraction function
- */
-export default function entities(prompt, config = {}) {
-  const extractorFunction = function (input) {
-    return extractEntities(input, prompt, config);
-  };
-
-  extractorFunction.prompt = prompt;
-
-  return extractorFunction;
-}
+extractEntities.knownTexts = ['spec'];

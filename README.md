@@ -192,12 +192,53 @@ Codebase utilities analyze, test, and improve code quality using AI reasoning.
 - [test](./src/chains/test) - Generate test cases covering happy paths, edge cases, and error conditions
 
 
+## Instruction Bundles
+
+All chains and verblets accept instructions as a string or an object with named context. Unknown keys become XML context prepended to the prompt; known keys override internal derivation (skipping expensive LLM calls). This enables pipeline patterns where one chain's derived artifacts feed the next.
+
+```js
+// String — unchanged behavior
+const scores = await score(articles, 'Rate persuasiveness 0-10');
+
+// Object — text plus named context
+const scores = await score(articles, {
+  text: 'Rate persuasiveness 0-10',
+  domain: 'Political campaign ads',
+});
+
+// Known key — reuse a spec from a prior chain, skipping spec generation
+const scores = await score(articles, {
+  text: 'Rate persuasiveness 0-10',
+  spec: priorSpec,
+});
+```
+
+Capture derived artifacts for reuse with `collectEventsWith`:
+
+```js
+import { collectEventsWith, extractEntities } from '@far-world-labs/verblets';
+
+const [entities, { specification }] = await collectEventsWith(
+  (onProgress) => extractEntities(doc, 'Extract organizations', { onProgress }),
+  'specification',
+);
+
+// Reuse — skips the spec generation LLM call
+const more = await extractEntities(doc2, { text: 'Extract organizations', spec: specification });
+```
+
+Each function exports a `knownTexts` property listing the keys it recognizes.
+
 ## Library Helpers
 
 Low-level utilities that support chains and verblets. Most are synchronous and make no LLM calls.
 
 - [llm](./src/lib/llm) - Core LLM wrapper with capability-based model selection and structured output
 - [context](./src/lib/context) - Config resolution: `nameStep`, `getOption`, `getOptions`, `withPolicy`
+- [instruction](./src/lib/instruction) - Instruction normalization: `resolveTexts`, `resolveArgs`, `normalizeInstruction`
+- [context-budget](./src/lib/context-budget) - XML context assembler: collect named entries, wrap, join
+- [collect-events-with](./src/lib/collect-events-with) - Wrap a chain call and capture derived artifacts from progress events
+- [template-builder](./src/lib/template-builder) - Immutable tagged-template prompt builder with named slots
 - [prompt-cache](./src/lib/prompt-cache) - Cache LLM prompts and responses
 - [retry](./src/lib/retry) - Config-aware async retry
 - [parallel-batch](./src/lib/parallel-batch) - Parallel execution with concurrency limits

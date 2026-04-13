@@ -2,9 +2,28 @@
 
 Prompts in verblets are algorithmic components. Each one has a clear responsibility, a focused purpose, and reliable behavior across diverse inputs.
 
+## Assembly
+
+Assemble prompts from an array of parts, filtering out falsy values:
+
+```javascript
+const { text, known, context } = resolveTexts(instructions, ['spec']);
+
+const parts = [
+  context,                                        // XML from unknown instruction keys
+  `Rate each item in the list...`,
+  asXML(text, { tag: 'scoring-criteria' }),
+  spec && asXML(spec, { tag: 'specification' }),  // conditional section
+  `IMPORTANT: output valid JSON`,
+];
+const prompt = parts.filter(Boolean).join('\n\n');
+```
+
+This replaces template literals with embedded `${contextBlock}` suffixes, `.replace()` on constants with `{placeholder}` markers, and ad-hoc `bundleContext ? ... : ...` conditionals.
+
 ## Structure
 
-Separate static instructions from dynamic content. Use XML blocks (`<context>`, `<input>`, `<task>`) for variable content that changes per call. Parameterize embedded data rather than hardcoding it — a prompt with `{categoryName}` is reusable where one with "fruits" is not.
+Separate static instructions from dynamic content. Use XML blocks via `asXML()` for variable content that changes per call. Caller-supplied context arrives automatically through `resolveTexts` — unknown instruction keys become `<tag>value</tag>` XML blocks prepended to the prompt.
 
 Keep prompts focused on one task. Composability depends on each prompt doing one thing well. If a prompt tries to analyze, classify, and summarize in one call, it becomes fragile.
 
@@ -19,6 +38,8 @@ Define terms the LLM needs to know. Leave out terms it already understands. Fram
 ## Prompt Constants
 
 Standard behaviors live in `src/prompts/constants.js`. Use them for consistent instruction phrasing across the codebase — things like output formatting, name style ("succinct names"), or budget instructions. When you find yourself writing the same instruction in multiple prompts, extract it.
+
+Prompt constants should be plain strings (content only), not templates with `{placeholder}` markers. Consumers compose them into the parts array alongside other sections.
 
 ## What to Avoid
 

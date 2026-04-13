@@ -1,13 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import entities, { entitySpec, applyEntities, createEntityExtractor } from './index.js';
-import {
-  mapInstructions,
-  reduceInstructions,
-  filterInstructions,
-  groupInstructions,
-  findInstructions,
-} from './index.js';
-import { testInstructionBuilders } from '../../lib/test-utils/index.js';
+import extractEntities, { entitySpec, entityInstructions } from './index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(),
@@ -38,28 +30,7 @@ describe('entities', () => {
     });
   });
 
-  describe('applyEntities', () => {
-    it('extracts entities from text using specification', async () => {
-      const mockResponse = {
-        entities: [
-          { name: 'Tim Cook', type: 'person' },
-          { name: 'Apple', type: 'company' },
-          { name: 'Microsoft', type: 'company' },
-        ],
-      };
-      llm.mockResolvedValueOnce(mockResponse);
-
-      const result = await applyEntities(
-        "Tim Cook announced Apple's new partnership with Microsoft.",
-        'Extract companies and people'
-      );
-
-      expect(llm).toHaveBeenCalledWith(expect.stringContaining('Tim Cook'), expect.any(Object));
-      expect(result).toEqual(mockResponse);
-    });
-  });
-
-  describe('extractEntities (default export)', () => {
+  describe('extractEntities', () => {
     it('chains spec generation and extraction', async () => {
       llm.mockResolvedValueOnce('Specification for extracting companies').mockResolvedValueOnce({
         entities: [
@@ -68,8 +39,10 @@ describe('entities', () => {
         ],
       });
 
-      const extractor = entities('Extract all companies');
-      const result = await extractor('Google and Amazon are major tech companies.');
+      const result = await extractEntities(
+        'Google and Amazon are major tech companies.',
+        'Extract all companies'
+      );
 
       expect(llm).toHaveBeenCalledTimes(2);
       expect(result.entities).toHaveLength(2);
@@ -78,44 +51,24 @@ describe('entities', () => {
     it('handles empty text', async () => {
       llm.mockResolvedValueOnce('Spec').mockResolvedValueOnce({ entities: [] });
 
-      const extractor = entities('Extract any entities');
-      const result = await extractor('');
+      const result = await extractEntities('', 'Extract any entities');
 
       expect(result.entities).toEqual([]);
     });
   });
 
-  describe('createEntityExtractor', () => {
-    it('creates reusable extractor with pre-generated spec', async () => {
-      const spec = 'Pre-generated specification';
-      const extractor = createEntityExtractor(spec);
+  describe('entityInstructions', () => {
+    it('returns instruction bundle with spec', () => {
+      const bundle = entityInstructions({ spec: 'Entity specification' });
 
-      expect(extractor.specification).toBe(spec);
+      expect(bundle.text).toContain('entity specification');
+      expect(bundle.spec).toBe('Entity specification');
+    });
 
-      const mockEntities = { entities: [{ name: 'Test', type: 'test' }] };
-      llm.mockResolvedValueOnce(mockEntities);
+    it('passes through additional context keys', () => {
+      const bundle = entityInstructions({ spec: 'spec', domain: 'legal contracts' });
 
-      const result = await extractor('Test text');
-      expect(result).toEqual(mockEntities);
+      expect(bundle.domain).toBe('legal contracts');
     });
   });
-
-  testInstructionBuilders(
-    {
-      mapInstructions,
-      filterInstructions,
-      reduceInstructions,
-      findInstructions,
-      groupInstructions,
-    },
-    {
-      specTag: 'entity-specification',
-      specification: 'Entity specification',
-      xmlTags: {
-        filter: 'filter-criteria',
-        find: 'selection-criteria',
-        group: 'grouping-strategy',
-      },
-    }
-  );
 });

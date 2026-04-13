@@ -2,10 +2,13 @@ import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
+import { resolveArgs, resolveTexts } from '../../lib/instruction/index.js';
 import createProgressEmitter from '../../lib/progress/index.js';
-import { Outcome } from '../../lib/progress/constants.js';
+import { DomainEvent, Outcome } from '../../lib/progress/constants.js';
 import { calibrateSpecificationJsonSchema } from './schemas.js';
 import calibrateResultSchema from './calibrate-result.json' with { type: 'json' };
+
+const name = 'calibrate';
 
 // ===== Option Mappers =====
 
@@ -77,7 +80,7 @@ function computeScanStatistics(scans) {
  *
  * @param {Array<{ flagged: boolean, hits: Array }>} scans - Scan results (build with scanVectors + threshold)
  * @param {object} [config]
- * @param {string} [config.instructions] - Domain-specific instructions (e.g. "Classify sensitivity risk in medical records")
+ * @param {string} [config.instructions] - Domain-specific instructions for spec generation
  * @returns {Promise<{ corpusProfile: string, classificationCriteria: string, salienceCriteria: string, categoryNotes: string }>}
  */
 export async function calibrateSpec(scans, config = {}) {
@@ -163,14 +166,14 @@ IMPORTANT: Each property must be a simple string value, not a nested object or a
  * @param {object} [config]
  * @returns {Promise<{ severity: string, salience: string, categories: object, summary: string }>}
  */
-export async function applyCalibrate(scan, specification, config = {}) {
+async function calibrateWithSpec(scan, spec, config = {}) {
   const runConfig = nameStep('calibrate:apply', config);
   const applyEmitter = createProgressEmitter('calibrate:apply', runConfig.onProgress, runConfig);
   applyEmitter.start();
 
   const prompt = `Classify this scan result against the calibration specification.
 
-${asXML(specification, { tag: 'calibration-specification' })}
+${asXML(spec, { tag: 'calibration-specification' })}
 
 ${asXML(scan, { tag: 'scan-result' })}
 
@@ -202,39 +205,54 @@ Return a JSON object with:
   }
 }
 
+// ===== Instruction Builder =====
+
 /**
- * Create a reusable classifier with a baked-in specification.
+ * Build an instruction bundle for calibration, usable with any collection chain.
  *
- * @param {object} specification - Pre-generated calibration specification
- * @param {object} [config]
- * @returns {Function} async (scan) => calibration result, with .specification property
+ * @param {object} params
+ * @param {string|object} params.spec - Pre-generated calibration specification
+ * @param {string} [params.text] - Override the default instruction text
+ * @returns {object} Instruction bundle { text, spec, ...context }
  */
-export function createCalibratedClassifier(specification, config = {}) {
-  const classifierFunction = function (scan) {
-    return applyCalibrate(scan, specification, config);
+export function calibrateInstructions({ spec, text, ...context }) {
+  return {
+    text: text ?? 'Classify each item against the calibration specification',
+    spec,
+    ...context,
   };
-
-  classifierFunction.specification = specification;
-
-  return classifierFunction;
 }
 
 // ===== Default Export =====
 
 /**
- * Create a stateless calibrated classifier — each call builds a fresh spec from the single scan.
+ * Classify a single scan result — generates a spec from the scan if not provided.
  *
- * @param {string} [instructions] - Domain-specific classification instructions
+ * @param {object} scan - A single scan result from probeScan
+ * @param {string|object} instructions - Classification instructions (string or instruction bundle with spec)
  * @param {object} [config]
- * @returns {Function} async (scan) => calibration result, with .instructions property
+ * @returns {Promise<{ severity: string, salience: string, categories: object, summary: string }>}
  */
-export default function calibrate(instructions, config = {}) {
-  const calibrateFunction = async function (scan) {
-    const spec = await calibrateSpec([scan], { ...config, instructions });
-    return applyCalibrate(scan, spec, config);
-  };
+export default async function calibrate(scan, instructions, config) {
+  [instructions, config] = resolveArgs(instructions, config, ['spec']);
+  const { text, known, context } = resolveTexts(instructions, ['spec']);
+  const effectiveInstructions = context ? `${text}\n\n${context}` : text;
+  const runConfig = nameStep(name, config);
+  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  emitter.start();
 
-  calibrateFunction.instructions = instructions;
-
-  return calibrateFunction;
+  try {
+    const spec =
+      known.spec ||
+      (await calibrateSpec([scan], { ...runConfig, instructions: effectiveInstructions }));
+    emitter.emit({ event: DomainEvent.phase, phase: 'applying-calibrate', specification: spec });
+    const result = await calibrateWithSpec(scan, spec, runConfig);
+    emitter.complete({ outcome: Outcome.success });
+    return result;
+  } catch (err) {
+    emitter.error(err);
+    throw err;
+  }
 }
+
+calibrate.knownTexts = ['spec'];

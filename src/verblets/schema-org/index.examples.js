@@ -47,7 +47,7 @@ describe('Schema.org verblet', () => {
           expect(isValid).toStrictEqual(true);
         }
         await aiExpect(result).toSatisfy(
-          `a valid Schema.org structured data object describing "${example.inputs.text}"`
+          `a Schema.org JSON-LD object with @type and relevant properties for "${example.inputs.text}"${example.inputs.type ? ` (type: ${example.inputs.type})` : ''}`
         );
       },
       longTestTimeout

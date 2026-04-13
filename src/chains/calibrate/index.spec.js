@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import calibrate, { calibrateSpec, applyCalibrate, createCalibratedClassifier } from './index.js';
+import calibrate, { calibrateSpec, calibrateInstructions } from './index.js';
 import llm from '../../lib/llm/index.js';
 
 vi.mock('../../lib/llm/index.js', async (importOriginal) => ({
@@ -111,71 +111,29 @@ describe('calibrateSpec', () => {
   );
 });
 
-describe('applyCalibrate', () => {
-  it('passes scan + spec to LLM and returns result with severity + salience', async () => {
-    vi.mocked(llm).mockResolvedValueOnce(mockResult);
+describe('calibrateInstructions', () => {
+  it('returns instruction bundle with spec', () => {
+    const bundle = calibrateInstructions({ spec: mockSpec });
 
-    const scan = makeScan(['pii-name', 'financial-card'], [0.9, 0.8]);
-    const result = await applyCalibrate(scan, mockSpec);
-
-    expect(result).toEqual(mockResult);
-    expect(result.severity).toBe('high');
-    expect(result.salience).toBe('notable');
-    expect(result.categories['pii-name']).toEqual({ severity: 'medium', salience: 'routine' });
-    expect(result.categories['financial-card']).toEqual({
-      severity: 'critical',
-      salience: 'notable',
-    });
-    expect(result.summary).toBeDefined();
-
-    const [prompt] = vi.mocked(llm).mock.calls[0];
-    expect(prompt).toContain('<calibration-specification>');
-    expect(prompt).toContain('<scan-result>');
+    expect(bundle.text).toContain('calibration specification');
+    expect(bundle.spec).toBe(mockSpec);
   });
-});
 
-describe('createCalibratedClassifier', () => {
-  it('bakes in spec, exposes .specification, reuses across calls', async () => {
-    vi.mocked(llm)
-      .mockResolvedValueOnce(mockResult)
-      .mockResolvedValueOnce({
-        ...mockResult,
-        severity: 'low',
-        salience: 'routine',
-      });
+  it('passes through additional context keys', () => {
+    const bundle = calibrateInstructions({ spec: mockSpec, domain: 'medical records' });
 
-    const classify = createCalibratedClassifier(mockSpec);
-
-    expect(classify.specification).toBe(mockSpec);
-
-    const scan1 = makeScan(['pii-name'], [0.9]);
-    const scan2 = makeScan(['financial-card'], [0.6]);
-    const result1 = await classify(scan1);
-    const result2 = await classify(scan2);
-
-    expect(result1.severity).toBe('high');
-    expect(result2.severity).toBe('low');
-    expect(llm).toHaveBeenCalledTimes(2);
-
-    // Both calls should include the same spec in the prompt
-    const [prompt1] = vi.mocked(llm).mock.calls[0];
-    const [prompt2] = vi.mocked(llm).mock.calls[1];
-    expect(prompt1).toContain(mockSpec.corpusProfile);
-    expect(prompt2).toContain(mockSpec.corpusProfile);
+    expect(bundle.domain).toBe('medical records');
   });
 });
 
 describe('calibrate (default export)', () => {
-  it('returns function with .instructions that calls spec + apply', async () => {
+  it('classifies a scan with spec + apply in one call', async () => {
     vi.mocked(llm)
       .mockResolvedValueOnce(mockSpec) // calibrateSpec call
       .mockResolvedValueOnce(mockResult); // applyCalibrate call
 
-    const classify = calibrate('Classify privacy risk');
-    expect(classify.instructions).toBe('Classify privacy risk');
-
     const scan = makeScan(['pii-name', 'financial-card'], [0.9, 0.8]);
-    const result = await classify(scan);
+    const result = await calibrate(scan, 'Classify privacy risk');
 
     expect(result).toEqual(mockResult);
     expect(llm).toHaveBeenCalledTimes(2);
@@ -191,16 +149,17 @@ describe('calibrate (default export)', () => {
     expect(applyPrompt).toContain('<scan-result>');
   });
 
-  it('works without instructions', async () => {
-    vi.mocked(llm).mockResolvedValueOnce(mockSpec).mockResolvedValueOnce(mockResult);
-
-    const classify = calibrate();
-    expect(classify.instructions).toBeUndefined();
+  it('skips spec generation when spec provided via instruction bundle', async () => {
+    vi.mocked(llm).mockResolvedValueOnce(mockResult);
 
     const scan = makeScan(['pii-name'], [0.9]);
-    await classify(scan);
+    const result = await calibrate(scan, { text: 'Classify', spec: mockSpec });
 
-    const [specPrompt] = vi.mocked(llm).mock.calls[0];
-    expect(specPrompt).not.toContain('<classification-instructions>');
+    expect(result).toEqual(mockResult);
+    // Only one LLM call — spec generation skipped
+    expect(llm).toHaveBeenCalledTimes(1);
+
+    const [applyPrompt] = vi.mocked(llm).mock.calls[0];
+    expect(applyPrompt).toContain('<calibration-specification>');
   });
 });

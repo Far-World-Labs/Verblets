@@ -2,6 +2,7 @@ import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import { stepBack as stepBackPrompt } from '../../prompts/embed-query-transforms.js';
 import { embedStepBackSchema } from './schema.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
+import { resolveTexts } from '../../lib/instruction/index.js';
 import createProgressEmitter from '../../lib/progress/index.js';
 import { Outcome } from '../../lib/progress/constants.js';
 
@@ -42,6 +43,7 @@ export const mapAbstraction = (value) => {
  * @returns {Promise<string[]>}
  */
 export default async function embedStepBack(query, config = {}) {
+  const { text: inputQuery, context } = resolveTexts(query, []);
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
@@ -51,7 +53,9 @@ export default async function embedStepBack(query, config = {}) {
       count: 3,
     });
 
-    const result = await callLlm(stepBackPrompt(query, count, { abstractionGuidance }), {
+    const basePrompt = stepBackPrompt(inputQuery, count, { abstractionGuidance });
+    const prompt = context ? `${basePrompt}\n\n${context}` : basePrompt;
+    const result = await callLlm(prompt, {
       ...runConfig,
       responseFormat: jsonSchema('step_back', embedStepBackSchema),
     });
@@ -62,3 +66,5 @@ export default async function embedStepBack(query, config = {}) {
     throw err;
   }
 }
+
+embedStepBack.knownTexts = [];

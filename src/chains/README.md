@@ -18,26 +18,25 @@ const result = await chainName(input, instructions, {
 
 Model selection accepts a string shorthand (`'fastGoodCheap'`), a capability object (`{ fast: true, cheap: true }`), or a full config (`{ modelName: 'model-key' }`). Capability keys: `fast`, `cheap`, `good`, `reasoning`, `multi`, `sensitive`.
 
-## Collection Instruction Builders
+## Instruction Bundles
 
-Several chains (scale, score, entities, tags, relations) export instruction builder functions that compose their specifications with collection chains. This lets you build a specification once and apply it across `map`, `filter`, `reduce`, `find`, or `group`:
+All chains accept instructions as a string or an object with named context. Unknown keys become `<tag>value</tag>` XML prepended to the prompt. Known keys override internal derivation — supplying `spec` skips the spec-generation LLM call, supplying `categories` skips category discovery, etc.
 
 ```javascript
-import { map, filter, scoreSpec, scoreMapInstructions, scoreFilterInstructions } from '@far-world-labs/verblets';
+// String — unchanged
+const scores = await score(articles, 'Rate persuasiveness 0-10');
 
-const spec = await scoreSpec('Rate persuasiveness 0-10');
+// Named context — domain becomes <domain>...</domain> in the prompt
+const scores = await score(articles, {
+  text: 'Rate persuasiveness 0-10',
+  domain: 'Political campaign ads',
+});
 
-// Score every item
-const scores = await map(articles, scoreMapInstructions({ specification: spec }));
-
-// Keep only high-scoring items
-const best = await filter(articles, scoreFilterInstructions({
-  specification: spec,
-  processing: 'Keep items scoring 8 or above',
-}));
+// Known key — reuses a prior spec, skipping generation
+const scores = await score(articles, { text: 'Rate persuasiveness 0-10', spec: priorSpec });
 ```
 
-Each builder accepts `{ specification, processing? }` and returns a string instruction suitable for the corresponding collection chain. See [build-instructions](../lib/build-instructions/) for the full pattern.
+Each chain exports a `knownTexts` property listing the keys it recognizes. See [the ADR](../../docs/adr/2026-04-12-instruction-as-context.md) for the full known-key table and pipeline capture patterns.
 
 ## List Operations
 

@@ -3,9 +3,10 @@ import sort from '../sort/index.js';
 import map from '../map/index.js';
 import { glossaryExtractionJsonSchema } from './schemas.js';
 import { nameStep, getOptions } from '../../lib/context/option.js';
+import { resolveTexts } from '../../lib/instruction/index.js';
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
 import { jsonSchema } from '../../lib/llm/index.js';
-import { Outcome } from '../../lib/progress/constants.js';
+import { DomainEvent, Outcome } from '../../lib/progress/constants.js';
 
 const name = 'glossary';
 
@@ -28,6 +29,7 @@ const GLOSSARY_RESPONSE_FORMAT = jsonSchema(
  * @returns {Promise<string[]>} list of important terms, sorted by relevance
  */
 export default async function glossary(text, config = {}) {
+  const { text: sourceText, known, context } = resolveTexts(text, ['terms']);
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
@@ -37,59 +39,71 @@ export default async function glossary(text, config = {}) {
     sentencesPerBatch: 3,
     overlap: 1,
   });
-  if (!text || !text.trim()) {
+  if (!sourceText || !sourceText.trim()) {
     emitter.complete({ outcome: Outcome.success, terms: 0 });
     return [];
   }
 
   try {
-    // Parse sentences using compromise
-    const doc = nlp(text);
-    const sentences = doc.sentences().out('array');
+    let terms;
 
-    if (sentences.length === 0) {
-      emitter.complete({ outcome: Outcome.success, terms: 0 });
-      return [];
+    if (known.terms) {
+      // Known terms provided — skip extraction phase
+      terms = known.terms
+        .split(',')
+        .map((t) => t.trim())
+        .filter(Boolean);
+    } else {
+      // Parse sentences using compromise
+      const doc = nlp(sourceText);
+      const sentences = doc.sentences().out('array');
+
+      if (sentences.length === 0) {
+        emitter.complete({ outcome: Outcome.success, terms: 0 });
+        return [];
+      }
+
+      // Create batches of sentences with overlap
+      const textChunks = [];
+      for (let i = 0; i < sentences.length; i += sentencesPerBatch - overlap) {
+        const batch = sentences.slice(i, i + sentencesPerBatch);
+        if (batch.length > 0) {
+          textChunks.push(batch.join(' '));
+        }
+      }
+
+      const batchDone = emitter.batch(textChunks.length);
+
+      const contextBlock = context ? `\n\n${context}` : '';
+      const instructions = `Extract every proper noun and every term that a general reader would need to look up. Over-extract — the list will be filtered later.
+
+Return a "terms" object containing an array of the extracted terms.${contextBlock}`;
+
+      const mapResults = await map(textChunks, instructions, {
+        ...runConfig,
+        batchSize: runConfig.batchSize ?? 1,
+        responseFormat: GLOSSARY_RESPONSE_FORMAT,
+        onProgress: scopePhase(runConfig.onProgress, 'glossary:extract'),
+      });
+
+      batchDone(textChunks.length);
+
+      const termSet = new Set();
+      mapResults.forEach((result) => {
+        // Each mapResults item is an object with a 'terms' array
+        if (result && result.terms && Array.isArray(result.terms)) {
+          result.terms.forEach((term) => {
+            if (term && typeof term === 'string') {
+              termSet.add(term);
+            }
+          });
+        }
+      });
+
+      terms = Array.from(termSet);
     }
 
-    // Create batches of sentences with overlap
-    const textChunks = [];
-    for (let i = 0; i < sentences.length; i += sentencesPerBatch - overlap) {
-      const batch = sentences.slice(i, i + sentencesPerBatch);
-      if (batch.length > 0) {
-        textChunks.push(batch.join(' '));
-      }
-    }
-
-    // +1 for the sort phase
-    const batchDone = emitter.batch(textChunks.length + 1);
-
-    const instructions = `Extract every proper noun and every term that a general reader would need to look up. Over-extract — the list will be filtered later.
-
-Return a "terms" object containing an array of the extracted terms.`;
-
-    const mapResults = await map(textChunks, instructions, {
-      ...runConfig,
-      batchSize: runConfig.batchSize ?? 1,
-      responseFormat: GLOSSARY_RESPONSE_FORMAT,
-      onProgress: scopePhase(runConfig.onProgress, 'glossary:extract'),
-    });
-
-    batchDone(textChunks.length);
-
-    const termSet = new Set();
-    mapResults.forEach((result) => {
-      // Each mapResults item is an object with a 'terms' array
-      if (result && result.terms && Array.isArray(result.terms)) {
-        result.terms.forEach((term) => {
-          if (term && typeof term === 'string') {
-            termSet.add(term);
-          }
-        });
-      }
-    });
-
-    const terms = Array.from(termSet);
+    emitter.emit({ event: DomainEvent.phase, phase: 'extracted', terms });
     if (terms.length === 0) {
       emitter.complete({ outcome: Outcome.success, terms: 0 });
       return [];
@@ -101,8 +115,6 @@ Return a "terms" object containing an array of the extracted terms.`;
       onProgress: scopePhase(runConfig.onProgress, 'glossary:sort'),
     });
 
-    batchDone(1);
-
     const result = sorted.slice(0, maxTerms);
 
     emitter.complete({ outcome: Outcome.success, terms: result.length });
@@ -113,3 +125,5 @@ Return a "terms" object containing an array of the extracted terms.`;
     throw err;
   }
 }
+
+glossary.knownTexts = ['terms'];
