@@ -35,7 +35,6 @@ Convert raw LLM text responses into typed values. These are the internal impleme
 ## Embedding & Search
 
 - [embed](./embed) — Embedding primitives: `embed`, `embedBatch`, `embedChunked`, `embedWarmup`
-- [embed-score](./embed-score) — Score and rank items against a query using cosine similarity
 - [embed-normalize-text](./embed-normalize-text) — Normalize text (NFC, whitespace, line endings) for consistent embedding
 - [embed-neighbor-chunks](./embed-neighbor-chunks) — Expand retrieved chunks with neighboring context
 

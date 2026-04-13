@@ -96,7 +96,6 @@ Generate, transform, and analyze text while preserving structure and meaning.
 
 - [scale](./scale) — Convert qualitative descriptions to numeric values
 - [calibrate](./calibrate) — Build specification-based classifiers with adjustable sensitivity
-- [probe-scan](./probe-scan) — Scan items for relevance using embedding similarity
 
 ## Data Structures
 

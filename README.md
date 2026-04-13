@@ -102,7 +102,8 @@ Math chains transform values using conceptual reasoning and subjective judgment 
 
 - [scale](./src/chains/scale) - Convert qualitative descriptions to numeric values using a specification generator for consistency across invocations
 - [calibrate](./src/chains/calibrate) - Build and apply specification-based classifiers with adjustable sensitivity
-- [probe-scan](./src/chains/probe-scan) - Scan items for relevance using embedding similarity with configurable detection thresholds
+- [scan-vectors](./src/embed/scan-vectors) - Score chunk×probe pairs by cosine similarity for scanning
+- [score-vectors](./src/embed/score-vectors) - Score items by cosine similarity to a query vector
 
 ### Lists
 
@@ -167,7 +168,6 @@ Retrieval utilities transform queries and prepare text for search and RAG (retri
 - [embed-step-back](./src/verblets/embed-step-back) - Broaden queries to underlying concepts and principles
 - [embed-subquestions](./src/verblets/embed-subquestions) - Split complex queries into atomic sub-questions
 - [embed-rewrite-to-output-doc](./src/verblets/embed-rewrite-to-output-doc) - Rewrite a query as if it were the answer document
-- [embed-score](./src/lib/embed-score) - Score and rank items against a query using embedding similarity
 
 
 ### Utility Operations
@@ -243,8 +243,8 @@ Low-level utilities that support chains and verblets. Most are synchronous and m
 - [retry](./src/lib/retry) - Config-aware async retry
 - [parallel-batch](./src/lib/parallel-batch) - Parallel execution with concurrency limits
 - [ring-buffer](./src/lib/ring-buffer) - Circular buffer for running LLMs on streams of data
-- [embed-normalize-text](./src/lib/embed-normalize-text) - Normalize text (NFC, whitespace, line endings) for consistent embedding
-- [embed-neighbor-chunks](./src/lib/embed-neighbor-chunks) - Expand retrieved chunks with neighboring context
+- [embed-normalize-text](./src/embed/normalize-text) - Normalize text (NFC, whitespace, line endings) for consistent embedding
+- [embed-neighbor-chunks](./src/embed/neighbor-chunks) - Expand retrieved chunks with neighboring context
 - [progress](./src/lib/progress) - Progress event system: lifecycle tracking, batch progress, event emission
 
 ## Contributing

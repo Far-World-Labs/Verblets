@@ -1,10 +1,10 @@
 import { describe } from 'vitest';
-import { embed, embedBatch, embedChunked, embedWarmup } from './index.js';
-import { cosineSimilarity, vectorSearch } from '../pure/index.js';
-import { extendedTestTimeout } from '../../constants/common.js';
+import { embed, embedBatch, embedChunked, embedWarmup } from './local.js';
+import { cosineSimilarity, vectorSearch } from '../lib/pure/index.js';
+import { extendedTestTimeout } from '../constants/common.js';
 import { isEmbedEnabled } from './state.js';
 
-import { getTestHelpers } from '../../chains/test-analysis/test-wrappers.js';
+import { getTestHelpers } from '../chains/test-analysis/test-wrappers.js';
 
 const { it, expect } = getTestHelpers('Embed verblet');
 
@@ -17,7 +17,7 @@ describe.skipIf(skip)('Embed verblet', () => {
       const vector = await embed('The quick brown fox jumps over the lazy dog');
 
       expect(vector).toBeInstanceOf(Float32Array);
-      expect(vector).toHaveLength(384);
+      expect(vector.length).toBeGreaterThanOrEqual(384);
 
       // Normalized vectors should have unit magnitude (±tolerance for floating point)
       const magnitude = Math.sqrt(vector.reduce((sum, v) => sum + v * v, 0));

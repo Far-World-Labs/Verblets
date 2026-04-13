@@ -31,7 +31,6 @@ import { mapThoroughness as mapDocShrinkThoroughness } from '../../chains/docume
 
 // --- Numeric mappers (low/med/high → number, undefined → default, raw number → passthrough) ---
 import { mapStrictness as mapTruncateStrictness } from '../../chains/truncate/index.js';
-import { mapDetection } from '../../chains/probe-scan/index.js';
 import { mapSummaryDetail } from '../../chains/summary-map/index.js';
 import { mapExploration } from '../../chains/questions/index.js';
 import { mapCompression, mapRanking } from '../../chains/document-shrink/index.js';
@@ -69,7 +68,6 @@ const objectMappers = [
 
 const numericMappers = [
   ['mapTruncateStrictness', mapTruncateStrictness, 'asc'],
-  ['mapDetection', mapDetection, 'desc'],
   ['mapSummaryDetail', mapSummaryDetail, 'desc'],
   ['mapExploration', mapExploration, 'asc'],
   ['mapCompression', mapCompression, 'desc'],

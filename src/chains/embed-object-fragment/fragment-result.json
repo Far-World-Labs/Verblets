@@ -1,0 +1,31 @@
+{
+  "type": "object",
+  "properties": {
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "sourceIndex": { "type": "integer" },
+          "fragments": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "text": { "type": "string" },
+                "fragmentKind": { "type": "string", "enum": ["literal", "recast", "cluster", "meta", "query"] },
+                "projectionName": { "type": "string" }
+              },
+              "required": ["text", "fragmentKind", "projectionName"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": ["sourceIndex", "fragments"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["items"],
+  "additionalProperties": false
+}

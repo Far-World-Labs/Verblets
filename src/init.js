@@ -6,21 +6,24 @@
  * inject these services automatically.
  *
  * @param {object} [options]
- * @param {boolean} [options.embed] - Enable local embedding model (downloads on first use)
+ * @param {boolean} [options.embed] - Enable local embedding model (downloads on first use). Implied true if embedModels or embedRules provided.
  * @param {boolean} [options.imageProcessing] - Enable image processing via Sharp (must be installed)
  * @param {boolean} [options.browser] - Enable browser automation via Playwright (must be installed)
  * @param {object} [options.runtimeProvider] - Provider with get(key) → Promise<value|undefined>
  * @param {object} [options.redis] - Pre-configured Redis client instance (per-instance)
- * @param {Record<string, object>} [options.models] - Custom model definitions to add to the catalog (additive, per-instance)
- * @param {Array<{ match?: object, use: string }>} [options.rules] - Negotiation rules (full override of defaults, per-instance). First match wins.
+ * @param {Record<string, object>} [options.models] - Custom LLM model definitions to add to the catalog (additive, per-instance)
+ * @param {Array<{ match?: object, use: string }>} [options.rules] - LLM negotiation rules (full override of defaults, per-instance). First match wins.
+ * @param {Record<string, object>} [options.embedModels] - Custom embedding model definitions (additive, per-instance)
+ * @param {Array<{ match?: object, use: string }>} [options.embedRules] - Embedding negotiation rules (full override of defaults, per-instance)
  * @param {Record<string, function>} [options.policy] - Base policy for all LLM calls (per-call policy takes precedence)
- * @returns {object} Instance with config, modelService, context, and all wrapped exports
+ * @returns {object} Instance with config, modelService, embeddingService, context, and all wrapped exports
  */
 import * as configModule from './lib/config/index.js';
 import { validate } from './lib/config/index.js';
 import { ModelService } from './services/llm-model/index.js';
+import { EmbeddingService } from './services/embedding-model/index.js';
 import { setBasePolicy } from './lib/llm/index.js';
-import { setEmbedEnabled } from './lib/embed-local/state.js';
+import { setEmbedEnabled } from './embed/state.js';
 import { setImageProcessingEnabled } from './lib/image-utils/state.js';
 import { setBrowserEnabled } from './chains/web-scrape/state.js';
 import { createContextBuilder, observeApplication, observeProviders } from './lib/context/index.js';
@@ -28,8 +31,18 @@ import withConfig from './lib/with-config/index.js';
 import * as shared from './shared.js';
 
 export default function init(options = {}) {
-  const { embed, imageProcessing, browser, redis, models, rules, policy, runtimeProvider } =
-    options;
+  const {
+    embed,
+    imageProcessing,
+    browser,
+    redis,
+    models,
+    rules,
+    embedModels,
+    embedRules,
+    policy,
+    runtimeProvider,
+  } = options;
 
   const errors = validate();
   if (errors.length > 0) {
@@ -38,7 +51,11 @@ export default function init(options = {}) {
 
   // Process-level globals — these are not per-instance
   if (runtimeProvider) configModule.setRuntimeProvider(runtimeProvider);
-  if (embed) setEmbedEnabled(true);
+
+  // Embedding: implied true when embedModels or embedRules provided, explicit false overrides
+  const embedEnabled = embed ?? (!!(embedModels || embedRules) || false);
+  if (embedEnabled) setEmbedEnabled(true);
+
   if (imageProcessing) setImageProcessingEnabled(true);
   if (browser) setBrowserEnabled(true);
 
@@ -54,6 +71,14 @@ export default function init(options = {}) {
     setBasePolicy(policy);
   }
 
+  // Per-instance: EmbeddingService (created when embedding is enabled)
+  let embeddingService;
+  if (embedEnabled) {
+    embeddingService = new EmbeddingService();
+    if (embedModels) embeddingService.addModels(embedModels);
+    if (embedRules) embeddingService.setRules(embedRules);
+  }
+
   // Per-instance: Redis getter
   const getRedis = redis ? () => Promise.resolve(redis) : undefined;
 
@@ -61,7 +86,7 @@ export default function init(options = {}) {
   context.setApplication(observeApplication());
   context.setProviders(observeProviders());
 
-  const baseConfig = { modelService, getRedis };
+  const baseConfig = { modelService, embeddingService, getRedis };
 
   // Wrap every shared export with config injection.
   // Skip keys that shouldn't be wrapped: return-property collisions, constants,
@@ -70,8 +95,9 @@ export default function init(options = {}) {
     'init',
     'config',
     'services',
-    // Constants / enums (non-functions, but listed for clarity)
-    'MODEL_KEYS',
+    // Constants / enums / service classes (non-functions or not config-injectable)
+    'EmbeddingService',
+    'resolveEmbedding',
     'ListStyle',
     'DomainEvent',
     'OpEvent',
@@ -90,9 +116,18 @@ export default function init(options = {}) {
     'scopePhase',
     'nameStep',
   ]);
+  // Namespace objects whose functions need config injection
+  const NAMESPACE_KEYS = new Set(['embedObject']);
+
   const wrapped = {};
   for (const [key, value] of Object.entries(shared)) {
     if (SKIP_KEYS.has(key)) continue;
+    if (NAMESPACE_KEYS.has(key) && typeof value === 'object' && value !== null) {
+      wrapped[key] = Object.fromEntries(
+        Object.entries(value).map(([k, v]) => [k, withConfig(baseConfig, v)])
+      );
+      continue;
+    }
     wrapped[key] = withConfig(baseConfig, value);
   }
 
@@ -100,6 +135,7 @@ export default function init(options = {}) {
     ...wrapped,
     config: baseConfig,
     modelService,
+    embeddingService,
     context,
   };
 }

@@ -1,16 +1,16 @@
 import { describe } from 'vitest';
 import calibrate, { calibrateSpec, calibrateInstructions } from './index.js';
-import probeScan from '../probe-scan/index.js';
-import embedProbes from '../../lib/embed-probes/index.js';
+import { embedBatch, embedChunked } from '../../embed/local.js';
+import scoreChunksByProbes from '../../embed/score-chunks-by-probes/index.js';
 import { extendedTestTimeout } from '../../constants/common.js';
-import { isEmbedEnabled } from '../../lib/embed-local/state.js';
+import { isEmbedEnabled } from '../../embed/state.js';
 import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 
 const { it, expect, aiExpect } = getTestHelpers('Calibrate chain');
 
 const skip = !isEmbedEnabled();
 
-const PROBES = [
+const PROBE_DEFS = [
   { category: 'pii-name', label: 'Personal full names', query: 'full name of a person' },
   {
     category: 'pii-ssn',
@@ -35,12 +35,27 @@ const PROBES = [
   { category: 'contact-email', label: 'Email addresses', query: 'email address contact' },
 ];
 
+async function embedProbes(defs) {
+  const vectors = await embedBatch(defs.map((p) => p.query));
+  return defs.map((probe, i) => ({
+    category: probe.category,
+    label: probe.label,
+    vector: vectors[i],
+  }));
+}
+
+async function scan(text, probes, threshold = 0.4) {
+  const chunks = await embedChunked(text, { maxTokens: 256 });
+  const hits = scoreChunksByProbes(chunks, probes).filter((h) => h.score >= threshold);
+  return { flagged: hits.length > 0, hits };
+}
+
 describe.skipIf(skip)('Calibrate examples', () => {
   it(
     'LLM-enhanced classification: learn severity rules from corpus scans',
     { timeout: extendedTestTimeout },
     async () => {
-      const probes = await embedProbes(PROBES);
+      const probes = await embedProbes(PROBE_DEFS);
 
       // Step 1: Scan a representative corpus with custom probes
       const corpus = [
@@ -51,7 +66,7 @@ describe.skipIf(skip)('Calibrate examples', () => {
         'Credit card ending in 8842 was charged $3,200 on 2024-08-15.',
       ];
 
-      const scans = await Promise.all(corpus.map((text) => probeScan(text, probes)));
+      const scans = await Promise.all(corpus.map((text) => scan(text, probes)));
 
       const flaggedCount = scans.filter((s) => s.flagged).length;
       expect(flaggedCount).toBeGreaterThan(0);
@@ -86,7 +101,7 @@ describe.skipIf(skip)('Calibrate examples', () => {
     'reusable classifier via default export with pre-generated spec',
     { timeout: extendedTestTimeout },
     async () => {
-      const probes = await embedProbes(PROBES);
+      const probes = await embedProbes(PROBE_DEFS);
 
       // Train on a small corpus
       const trainingTexts = [
@@ -95,7 +110,7 @@ describe.skipIf(skip)('Calibrate examples', () => {
         'Invoice #7841 for $8,500 sent to accounts@client.org.',
       ];
 
-      const trainingScans = await Promise.all(trainingTexts.map((text) => probeScan(text, probes)));
+      const trainingScans = await Promise.all(trainingTexts.map((text) => scan(text, probes)));
 
       const spec = await calibrateSpec(trainingScans, {
         instructions:
@@ -103,7 +118,7 @@ describe.skipIf(skip)('Calibrate examples', () => {
       });
 
       // Classify new, unseen texts with pre-generated spec
-      const newScan = await probeScan(
+      const newScan = await scan(
         'Lisa Wang (DOB: 1995-02-14) requested prescription refill. Callback: (415) 555-9988.',
         probes
       );
