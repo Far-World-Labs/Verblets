@@ -29,8 +29,10 @@ describe('tags examples', () => {
           date: '2024-01-15',
         };
 
-        const instructions = 'Tag this expense based on the merchant and description';
-        const tags = await tagItem(transaction, instructions, expenseVocabulary);
+        const tags = await tagItem(transaction, {
+          text: 'Tag this expense based on the merchant and description',
+          vocabulary: expenseVocabulary,
+        });
 
         expect(tags).toBeInstanceOf(Array);
         const validTags = expenseVocabulary.tags.map((t) => t.id);
@@ -54,8 +56,10 @@ describe('tags examples', () => {
           { description: 'Uber ride to airport', amount: 35.5 },
         ];
 
-        const instructions = 'Categorize each transaction by its primary expense type';
-        const tagResults = await mapTags(transactions, instructions, expenseVocabulary);
+        const tagResults = await mapTags(transactions, {
+          text: 'Categorize each transaction by its primary expense type',
+          vocabulary: expenseVocabulary,
+        });
 
         expect(tagResults).toHaveLength(5);
 
@@ -98,7 +102,10 @@ describe('tags examples', () => {
           'Refactor database connection pooling',
         ];
 
-        const tagsBatch = await mapTags(tasks, instructions, projectVocabulary);
+        const tagsBatch = await mapTags(tasks, {
+          ...instructions,
+          vocabulary: projectVocabulary,
+        });
 
         const validTags = projectVocabulary.tags.map((t) => t.id);
         expect(tagsBatch).toHaveLength(4);
@@ -133,13 +140,12 @@ describe('tags examples', () => {
           'Thanks for the quick delivery.',
         ];
 
-        const results = await mapTags(
-          feedback,
-          `Analyze the sentiment and intent of customer feedback.
+        const results = await mapTags(feedback, {
+          text: `Analyze the sentiment and intent of customer feedback.
           Tag both the emotional tone (positive/negative/neutral) and the intent (question/complaint/praise).
           Multiple tags are expected.`,
-          sentimentVocabulary
-        );
+          vocabulary: sentimentVocabulary,
+        });
 
         const validTags = sentimentVocabulary.tags.map((t) => t.id);
         for (const tags of results) {
