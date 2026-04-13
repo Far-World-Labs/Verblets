@@ -1,5 +1,5 @@
 import { describe } from 'vitest';
-import { calibrateSpec, applyCalibrate, createCalibratedClassifier } from './index.js';
+import calibrate, { calibrateSpec, calibrateInstructions } from './index.js';
 import probeScan from '../probe-scan/index.js';
 import embedProbes from '../../lib/embed-probes/index.js';
 import { extendedTestTimeout } from '../../constants/common.js';
@@ -56,8 +56,7 @@ describe.skipIf(skip)('Calibrate examples', () => {
       const flaggedCount = scans.filter((s) => s.flagged).length;
       expect(flaggedCount).toBeGreaterThan(0);
 
-      // Step 2: Generate calibration spec from the scans — the LLM learns the
-      // corpus's sensitivity landscape and produces calibrated classification rules
+      // Step 2: Generate calibration spec from the scans
       const spec = await calibrateSpec(scans, {
         instructions:
           'Classify data sensitivity for a corporate compliance audit. Government IDs and medical data are critical; financial data is high; names alone are medium.',
@@ -72,9 +71,9 @@ describe.skipIf(skip)('Calibrate examples', () => {
         'describes a mixed-sensitivity corpus with business, employee PII, medical, and financial data'
       );
 
-      // Step 3: Apply the learned spec to classify individual items
+      // Step 3: Classify individual items using instruction bundle with pre-generated spec
       const medicalScan = scans[2]; // Ana Reyes medical record
-      const classification = await applyCalibrate(medicalScan, spec);
+      const classification = await calibrate(medicalScan, calibrateInstructions({ spec }));
 
       expect(classification).toHaveProperty('severity');
       expect(classification).toHaveProperty('salience');
@@ -84,7 +83,7 @@ describe.skipIf(skip)('Calibrate examples', () => {
   );
 
   it(
-    'createCalibratedClassifier: reusable classifier for streaming classification',
+    'reusable classifier via default export with pre-generated spec',
     { timeout: extendedTestTimeout },
     async () => {
       const probes = await embedProbes(PROBES);
@@ -103,17 +102,13 @@ describe.skipIf(skip)('Calibrate examples', () => {
           'Classify sensitivity for a healthcare contact center. Phone numbers with medical context are high severity.',
       });
 
-      // Create reusable classifier — spec is baked in, no LLM call to regenerate
-      const classifier = createCalibratedClassifier(spec);
-      expect(classifier.specification).toBe(spec);
-
-      // Classify new, unseen texts
+      // Classify new, unseen texts with pre-generated spec
       const newScan = await probeScan(
         'Lisa Wang (DOB: 1995-02-14) requested prescription refill. Callback: (415) 555-9988.',
         probes
       );
 
-      const result = await classifier(newScan);
+      const result = await calibrate(newScan, calibrateInstructions({ spec }));
 
       expect(result.severity).toBeDefined();
       expect(result.summary).toBeDefined();

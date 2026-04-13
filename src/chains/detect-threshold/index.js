@@ -5,8 +5,9 @@ import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { debug } from '../../lib/debug/index.js';
 import thresholdResultSchema from './threshold-result.json' with { type: 'json' };
-import { Outcome } from '../../lib/progress/constants.js';
+import { DomainEvent, Outcome } from '../../lib/progress/constants.js';
 import { nameStep, getOptions } from '../../lib/context/option.js';
+import { resolveArgs, resolveTexts } from '../../lib/instruction/index.js';
 
 const name = 'detect-threshold';
 
@@ -56,9 +57,10 @@ export function calculateStatistics(data, targetProperty) {
   };
 }
 
-export default async function detectThreshold(options = {}) {
-  const { data, targetProperty, goal } = options;
-  const runConfig = nameStep(name, { llm: { good: true }, ...options });
+export default async function detectThreshold(data, targetProperty, goal, config) {
+  [goal, config] = resolveArgs(goal, config);
+  const { text: goalText, context } = resolveTexts(goal, []);
+  const runConfig = nameStep(name, { llm: { good: true }, ...config });
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
   const { batchSize } = await getOptions(runConfig, {
@@ -72,13 +74,15 @@ export default async function detectThreshold(options = {}) {
     throw new Error('Target property must be specified');
   }
 
-  if (!goal) {
+  if (!goalText) {
     throw new Error('Goal must be specified to determine appropriate thresholds');
   }
 
   try {
-    // Calculate statistics for context
-    const stats = calculateStatistics(data, targetProperty);
+    // Calculate statistics for context (or use provided stats)
+    const stats = config.stats ?? calculateStatistics(data, targetProperty);
+
+    emitter.emit({ event: DomainEvent.phase, phase: 'statistics', stats });
 
     // Enrich data with statistical context
     const enrichedData = data.map((record) => ({
@@ -119,9 +123,9 @@ export default async function detectThreshold(options = {}) {
       distributionInsights: [],
     };
 
-    const instructions = `You are analyzing data to identify threshold candidates for the property "${targetProperty}".
+    const baseInstructions = `You are analyzing data to identify threshold candidates for the property "${targetProperty}".
 
-${asXML(goal, { tag: 'goal' })}
+${asXML(goalText, { tag: 'goal' })}
 
 ${asXML(
   `Mean: ${stats.mean.toFixed(2)}, Median: ${stats.median.toFixed(
@@ -152,6 +156,7 @@ Accumulator should track:
 - distributionInsights: Key insights about the data distribution
 
 Return the updated accumulator as valid JSON.`;
+    const instructions = [baseInstructions, context].filter(Boolean).join('\n\n');
 
     // Convert enrichedData to strings for reduce - batch multiple items per line
     const ITEMS_PER_LINE = 20;
@@ -161,6 +166,8 @@ Return the updated accumulator as valid JSON.`;
       const batch = enrichedData.slice(i, i + ITEMS_PER_LINE);
       dataStrings.push(JSON.stringify(batch));
     }
+
+    emitter.emit({ event: DomainEvent.phase, phase: 'enriched', enrichedData });
 
     const analysisResult = await reduce(dataStrings, instructions, {
       ...runConfig,
@@ -173,11 +180,11 @@ Return the updated accumulator as valid JSON.`;
     const accumulated = analysisResult;
 
     // Now use llm directly with structured output for final recommendations
-    const finalPrompt = `Based on the following analysis of ${
+    const baseFinalPrompt = `Based on the following analysis of ${
       stats.count
     } data points for property "${targetProperty}", generate threshold recommendations.
 
-${asXML(goal, { tag: 'goal' })}
+${asXML(goalText, { tag: 'goal' })}
 
 ${asXML(JSON.stringify(accumulated, null, 2), { tag: 'accumulated-analysis' })}
 
@@ -209,6 +216,7 @@ Generate specific threshold recommendations that:
 4. Consider the statistical distribution
 
 Return threshold candidates with their rationales.`;
+    const finalPrompt = [baseFinalPrompt, context].filter(Boolean).join('\n\n');
 
     const result = await retry(
       () =>
@@ -255,3 +263,5 @@ Return threshold candidates with their rationales.`;
     throw err;
   }
 }
+
+detectThreshold.knownTexts = [];

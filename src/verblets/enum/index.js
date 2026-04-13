@@ -1,5 +1,6 @@
 import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import { nameStep } from '../../lib/context/option.js';
+import { resolveTexts } from '../../lib/instruction/index.js';
 import createProgressEmitter from '../../lib/progress/index.js';
 import { Outcome } from '../../lib/progress/constants.js';
 import { asEnum, constants } from '../../prompts/index.js';
@@ -8,18 +9,25 @@ import { createEnumSchema } from './schema.js';
 
 const { asUndefinedByDefault, contentIsQuestion, explainAndSeparate } = constants;
 
-const name = 'enum';
+const verbletName = 'enum';
 
-export default async (text, enumVal, config = {}) => {
-  const runConfig = nameStep(name, config);
-  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+export default async function enumVerblet(text, enumVal, config = {}) {
+  const { text: inputText, context } = resolveTexts(text, []);
+
+  const runConfig = nameStep(verbletName, config);
+  const emitter = createProgressEmitter(verbletName, runConfig.onProgress, runConfig);
   emitter.start();
 
-  const enumText = `${contentIsQuestion} ${asXML(text, { tag: 'text' })}\n\n${explainAndSeparate}
+  const enumText = [
+    `${contentIsQuestion} ${asXML(inputText, { tag: 'text' })}\n\n${explainAndSeparate}
 
 ${asEnum(enumVal)} ${asUndefinedByDefault}
 
-The value should be your selection.`;
+The value should be your selection.`,
+    context,
+  ]
+    .filter(Boolean)
+    .join('\n\n');
 
   const schema = createEnumSchema(enumVal);
 
@@ -39,4 +47,6 @@ The value should be your selection.`;
     emitter.error(err);
     throw err;
   }
-};
+}
+
+enumVerblet.knownTexts = [];

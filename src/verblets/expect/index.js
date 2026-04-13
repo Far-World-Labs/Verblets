@@ -1,7 +1,8 @@
 import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import { nameStep } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
-import { Outcome } from '../../lib/progress/constants.js';
+import { DomainEvent, Outcome } from '../../lib/progress/constants.js';
+import { asXML } from '../../prompts/wrap-variable.js';
 
 const name = 'expect';
 
@@ -17,23 +18,27 @@ const expectSchema = {
 const EXPECT_RESPONSE_FORMAT = jsonSchema('expect_result', expectSchema);
 
 function buildEqualityPrompt({ actual, expected, context }) {
-  return `Does the actual value strictly equal the expected value?\n\nActual: ${JSON.stringify(
-    actual,
-    null,
-    2
-  )}\nExpected: ${JSON.stringify(expected, null, 2)}\n\n${
-    context ? `Context: ${JSON.stringify(context, null, 2)}\n` : ''
-  }Answer true or false.`;
+  const contextBlock = context ? `\n\n${asXML(context, { tag: 'context' })}` : '';
+
+  return `Does the actual value strictly equal the expected value?
+
+${asXML(actual, { tag: 'actual-value' })}
+
+${asXML(expected, { tag: 'expected-value' })}${contextBlock}
+
+Answer true or false.`;
 }
 
 function buildConstraintPrompt({ actual, constraint, context }) {
-  return `Given this constraint: "${constraint}"\n\nActual value: ${JSON.stringify(
-    actual,
-    null,
-    2
-  )}\n\n${
-    context ? `Additional context: ${JSON.stringify(context, null, 2)}\n` : ''
-  }Does the actual value satisfy the constraint? Answer true or false.`;
+  const contextBlock = context ? `\n\n${asXML(context, { tag: 'context' })}` : '';
+
+  return `Does the actual value satisfy the given constraint?
+
+${asXML(constraint, { tag: 'constraint' })}
+
+${asXML(actual, { tag: 'actual-value' })}${contextBlock}
+
+Answer true or false.`;
 }
 
 export async function llmAssert({
@@ -50,6 +55,7 @@ export async function llmAssert({
   const runConfig = nameStep(name, { onProgress, operation });
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
+  emitter.emit({ event: DomainEvent.input, value: actual });
 
   let passed;
   try {
@@ -85,6 +91,7 @@ export async function llmAssert({
       throw new Error(msg);
     }
 
+    emitter.emit({ event: DomainEvent.output, value: passed });
     emitter.complete({ outcome: Outcome.success });
   } catch (err) {
     emitter.error(err);
@@ -105,3 +112,5 @@ export default function expect(actual, shared = {}) {
     },
   };
 }
+
+expect.knownTexts = [];

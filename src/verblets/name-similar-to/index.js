@@ -1,11 +1,12 @@
 import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import { nameStep } from '../../lib/context/option.js';
+import { resolveTexts } from '../../lib/instruction/index.js';
 import createProgressEmitter from '../../lib/progress/index.js';
 import { Outcome } from '../../lib/progress/constants.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { nameSimilarSchema } from './schema.js';
 
-const name = 'name-similar-to';
+const verbletName = 'name-similar-to';
 
 const buildPrompt = (description, exampleNames) => {
   const descriptionBlock = asXML(description, { tag: 'description' });
@@ -21,12 +22,14 @@ The value should be the generated name.`;
 };
 
 export default async function nameSimilarTo(description, exampleNames = [], config = {}) {
-  const runConfig = nameStep(name, config);
-  const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+  const { text: inputDescription, context } = resolveTexts(description, []);
+  const runConfig = nameStep(verbletName, config);
+  const emitter = createProgressEmitter(verbletName, runConfig.onProgress, runConfig);
   emitter.start();
 
   try {
-    const prompt = buildPrompt(description, exampleNames);
+    const basePrompt = buildPrompt(inputDescription, exampleNames);
+    const prompt = context ? `${basePrompt}\n\n${context}` : basePrompt;
     const response = await callLlm(prompt, {
       ...runConfig,
       responseFormat: jsonSchema('similar_name', nameSimilarSchema),
@@ -40,3 +43,5 @@ export default async function nameSimilarTo(description, exampleNames = [], conf
     throw err;
   }
 }
+
+nameSimilarTo.knownTexts = [];

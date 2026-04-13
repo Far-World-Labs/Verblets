@@ -1,5 +1,6 @@
 import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import { nameStep } from '../../lib/context/option.js';
+import { resolveArgs, resolveTexts } from '../../lib/instruction/index.js';
 import createProgressEmitter from '../../lib/progress/index.js';
 import { Outcome } from '../../lib/progress/constants.js';
 import { asXML } from '../../prompts/wrap-variable.js';
@@ -67,7 +68,15 @@ const defaultListSchema = {
 
 const verbletName = 'list-batch';
 
-export default async function listBatch(list, instructions, config = {}) {
+export default async function listBatch(list, instructions, config) {
+  [instructions, config] = resolveArgs(instructions, config);
+  let effectiveInstructions;
+  if (typeof instructions === 'function') {
+    effectiveInstructions = instructions;
+  } else {
+    const { text, context } = resolveTexts(instructions, []);
+    effectiveInstructions = context ? `${text}\n\n${context}` : text;
+  }
   const runConfig = nameStep(verbletName, config);
   const emitter = createProgressEmitter(verbletName, runConfig.onProgress, runConfig);
   emitter.start();
@@ -85,7 +94,7 @@ export default async function listBatch(list, instructions, config = {}) {
   if (logger?.debug) {
     logger.debug('listBatch called', {
       listLength: list?.length,
-      instructionsLength: instructions?.length,
+      instructionsLength: effectiveInstructions?.length,
       hasLLM: !!llm,
       llmType: typeof llm === 'object' ? llm.name : llm,
       hasResponseFormat: !!responseFormat,
@@ -100,7 +109,7 @@ export default async function listBatch(list, instructions, config = {}) {
   try {
     const effectiveStyle = determineStyle(listStyle, list, autoModeThreshold);
 
-    const prompt = buildPrompt(list, instructions, effectiveStyle);
+    const prompt = buildPrompt(list, effectiveInstructions, effectiveStyle);
 
     const foundResponseFormat = responseFormat ?? jsonSchema('list_result', defaultListSchema);
 
@@ -161,3 +170,5 @@ export default async function listBatch(list, instructions, config = {}) {
     throw error;
   }
 }
+
+listBatch.knownTexts = [];

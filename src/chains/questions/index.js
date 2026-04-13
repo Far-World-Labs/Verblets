@@ -5,6 +5,7 @@ import { questionsListSchema, selectedQuestionSchema } from './schemas.js';
 import createProgressEmitter from '../../lib/progress/index.js';
 import { DomainEvent, Outcome } from '../../lib/progress/constants.js';
 import { getOption, nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
+import { resolveTexts } from '../../lib/instruction/index.js';
 
 const name = 'questions';
 
@@ -37,12 +38,13 @@ const getRandomSubset = (list, value) => {
 const pickInterestingQuestion = (originalQuestion, { existing = [] }) => {
   const existingJoined = existing.map((item) => ` - ${item}`).join('\n');
 
-  return `Choose one interesting question from the following list of questions. The main goal is to determine "${originalQuestion}".
+  return `Choose one interesting question from the following list of questions. The main goal is to determine:
+
+${asXML(originalQuestion, { tag: 'original-question' })}
 
 ${contentIsChoices}
-\`\`\`
-${existingJoined}
-\`\`\`
+
+${asXML(existingJoined, { tag: 'candidate-questions' })}
 
 Return a JSON object with a "question" property containing the selected question.`;
 };
@@ -68,6 +70,8 @@ One question per string.`;
 };
 
 const generateQuestions = async function* generateQuestionsGenerator(text, config = {}) {
+  const { text: questionText, context } = resolveTexts(text, []);
+  const effectiveText = context ? `${questionText}\n\n${context}` : questionText;
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
@@ -78,7 +82,7 @@ const generateQuestions = async function* generateQuestionsGenerator(text, confi
   const resultsAllMap = {};
   const drilldownResults = [];
   let isDone = false;
-  let textSelected = text;
+  let textSelected = effectiveText;
 
   const { shouldSkip = shouldSkipNull, shouldStop = shouldStopNull } = runConfig;
   const temperature = await getOption('temperature', runConfig, 1);
@@ -161,7 +165,7 @@ const generateQuestions = async function* generateQuestionsGenerator(text, confi
   }
 };
 
-export default async (text, config = {}) => {
+const questions = async (text, config = {}) => {
   const generator = generateQuestions(text, config);
 
   const results = [];
@@ -175,3 +179,7 @@ export default async (text, config = {}) => {
 
   return resultsSorted;
 };
+
+export default questions;
+
+questions.knownTexts = [];

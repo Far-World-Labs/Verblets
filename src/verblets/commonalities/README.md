@@ -9,8 +9,9 @@ await commonalities(['smartphone', 'tablet', 'laptop']);
 // => ['Portable electronics', 'Portable computers']
 
 // Provide custom instructions for how to find commonalities
-await commonalities(['car', 'bicycle', 'train'], {
-  instructions: 'focus on transportation methods available in a city',
-});
+await commonalities(
+  ['car', 'bicycle', 'train'],
+  'focus on transportation methods available in a city'
+);
 // => ['Wheeled vehicles', 'Public transit']
 ```

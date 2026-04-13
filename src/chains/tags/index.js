@@ -3,8 +3,9 @@ import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import map from '../map/index.js';
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
-import { nameStep, getOptions, getOption } from '../../lib/context/option.js';
-import { Outcome } from '../../lib/progress/constants.js';
+import { nameStep, getOptions } from '../../lib/context/option.js';
+import { resolveArgs, resolveTexts } from '../../lib/instruction/index.js';
+import { DomainEvent, Outcome } from '../../lib/progress/constants.js';
 import tagsResultSchema from './tags-result.json' with { type: 'json' };
 
 const name = 'tags';
@@ -86,7 +87,7 @@ Keep it concise and actionable.`;
  * @param {Object} config - Configuration options
  * @returns {Promise<Array>} Array of tag IDs
  */
-export async function applyTags(item, specification, vocabulary, config = {}) {
+async function tagWithSpec(item, spec, vocabulary, config = {}) {
   const runConfig = nameStep(`${name}:apply`, config);
   const applyEmitter = createProgressEmitter(`${name}:apply`, runConfig.onProgress, runConfig);
   applyEmitter.start();
@@ -105,7 +106,7 @@ ${asXML(JSON.stringify(vocabulary.tags), { tag: 'available-tags' })}`;
 
     const prompt = `You are a tagger. Apply tags to the given item based on the specification.
 
-${asXML(specification, { tag: 'tag-specification' })}
+${asXML(spec, { tag: 'tag-specification' })}
 
 ${vocabularyConstraint}
 
@@ -140,40 +141,54 @@ Do NOT return tag labels, descriptions, or full tag objects - ONLY the string ID
   }
 }
 
+const KNOWN_KEYS = ['spec', 'vocabulary', 'vocabularyMode'];
+
 /**
  * Tag a single item
  * @param {*} item - Item to tag
- * @param {string} instructions - Natural language tagging instructions
- * @param {Object} vocabulary - Tag vocabulary to use
+ * @param {string|object} instructions - Tagging instructions (string or bundle with vocabulary, spec)
  * @param {Object} config - Configuration options
  * @returns {Promise<Array>} Array of tag IDs
  */
-export async function tagItem(item, instructions, vocabulary, config = {}) {
-  const providedSpec = await getOption('spec', config);
-  const spec = providedSpec || (await tagSpec(instructions, config));
-  return applyTags(item, spec, vocabulary, config);
+export default async function tagItem(item, instructions, config) {
+  [instructions, config] = resolveArgs(instructions, config, KNOWN_KEYS);
+  const { text, known, context } = resolveTexts(instructions, KNOWN_KEYS);
+  const vocabulary = known.vocabulary;
+  const effectiveInstructions = context ? `${text}\n\n${context}` : text;
+  const spec = known.spec || (await tagSpec(effectiveInstructions, config));
+  return tagWithSpec(item, spec, vocabulary, config);
 }
 
 /**
  * Tag a list of items
  * @param {Array} list - Array of items to tag
- * @param {string} instructions - Natural language tagging instructions
- * @param {Object} vocabulary - Tag vocabulary to use
+ * @param {string|object} instructions - Tagging instructions (string or bundle with vocabulary, spec)
  * @param {Object} config - Configuration options
  * @returns {Promise<Array>} Array of tag arrays
  */
-export async function mapTags(list, instructions, vocabulary, config = {}) {
+export async function mapTags(list, instructions, config) {
+  [instructions, config] = resolveArgs(instructions, config, KNOWN_KEYS);
   const runConfig = nameStep('tags:map', config);
   const emitter = createProgressEmitter('tags:map', runConfig.onProgress, runConfig);
   emitter.start();
 
   try {
-    const { vocabularyMode } = await getOptions(runConfig, {
-      vocabularyMode: 'strict',
-    });
-    const providedSpec = await getOption('spec', runConfig);
-    const spec = providedSpec || (await tagSpec(instructions, runConfig));
-    const mapInstr = mapInstructions({ specification: spec, vocabulary, vocabularyMode });
+    const { text, known, context } = resolveTexts(instructions, KNOWN_KEYS);
+    const vocabulary = known.vocabulary;
+    const vocabularyMode =
+      known.vocabularyMode ??
+      (await getOptions(runConfig, { vocabularyMode: 'strict' })).vocabularyMode;
+    const effectiveInstructions = context ? `${text}\n\n${context}` : text;
+    const spec = known.spec || (await tagSpec(effectiveInstructions, runConfig));
+    emitter.emit({ event: DomainEvent.phase, phase: 'applying-tags', specification: spec });
+    const mapInstr = buildTaggingInstructions(
+      spec,
+      vocabulary,
+      `For each item, return an array of tag IDs that apply according to the specification.
+Return only IDs from the available tags list.
+Return empty array when no tags apply.`,
+      vocabularyMode
+    );
 
     // Ensure items are properly serialized for the map chain
     // The map chain converts items to strings, so we need to handle objects specially
@@ -202,17 +217,14 @@ export async function mapTags(list, instructions, vocabulary, config = {}) {
   }
 }
 
-// ===== Instruction Builders =====
+// ===== Instruction Builder =====
 
 /**
- * Build tagging instructions with specification and vocabulary
- * @param {string} specification - The tag specification
- * @param {Object} vocabulary - The tag vocabulary
- * @param {string} additionalInstructions - Additional instructions for specific operation
- * @returns {string} Complete instruction string
+ * Build tagging instructions with specification and vocabulary.
+ * Internal — used by mapTags and tagInstructions.
  */
 function buildTaggingInstructions(
-  specification,
+  spec,
   vocabulary,
   additionalInstructions = '',
   vocabularyMode = 'strict'
@@ -229,7 +241,7 @@ Do NOT return labels, descriptions, or tag objects - just the ID strings.`;
 
   const base = `Apply this tag specification to evaluate each item:
 
-${asXML(specification, { tag: 'tag-specification' })}
+${asXML(spec, { tag: 'tag-specification' })}
 
 ${vocabularyConstraint}`;
 
@@ -237,209 +249,26 @@ ${vocabularyConstraint}`;
 }
 
 /**
- * Create map instructions for tagging
- * @param {Object} params - Parameters object
- * @param {string} params.specification - Pre-generated tag specification
- * @param {Object} params.vocabulary - Tag vocabulary to use
- * @param {string} params.processing - Additional processing instructions (optional)
- * @returns {string} Instructions string
+ * Build an instruction bundle for tagging, usable with any collection chain.
+ *
+ * Tags require a vocabulary in addition to a spec, so the bundle includes it.
+ *
+ * @param {object} params
+ * @param {string} params.spec - Pre-generated tag specification
+ * @param {object} params.vocabulary - Tag vocabulary to use
+ * @param {string} [params.vocabularyMode='strict'] - 'strict' or 'open'
+ * @param {string} [params.text] - Override the default instruction text
+ * @returns {object} Instruction bundle { text, spec, vocabulary, ...context }
  */
-export function mapInstructions({ specification, vocabulary, processing, vocabularyMode }) {
-  const additionalInstructions =
-    processing ||
-    `For each item, return an array of tag IDs that apply according to the specification.
-Return only IDs from the available tags list.
-Return empty array when no tags apply.`;
-
-  return buildTaggingInstructions(
-    specification,
+export function tagInstructions({ spec, vocabulary, vocabularyMode = 'strict', text, ...context }) {
+  return {
+    text: text ?? 'Assign tags from the vocabulary to each item according to the tag specification',
+    spec,
     vocabulary,
-    additionalInstructions,
-    vocabularyMode
-  );
-}
-
-/**
- * Create filter instructions for tagging
- * @param {Object} params - Parameters object
- * @param {string} params.specification - Pre-generated tag specification
- * @param {Object} params.vocabulary - Tag vocabulary to use
- * @param {string} params.processing - Filter criteria (e.g., "items with financial tags")
- * @returns {string} Instructions string
- */
-export function filterInstructions({ specification, vocabulary, processing, vocabularyMode }) {
-  if (!processing) {
-    throw new Error('Filter processing criteria must be provided');
-  }
-
-  return buildTaggingInstructions(
-    specification,
-    vocabulary,
-    `${asXML(processing, { tag: 'filter-criteria' })}
-
-First tag the item, then determine if it matches the filter criteria based on its tags.`,
-    vocabularyMode
-  );
-}
-
-/**
- * Create reduce instructions for tagging
- * @param {Object} params - Parameters object
- * @param {string} params.specification - Pre-generated tag specification
- * @param {Object} params.vocabulary - Tag vocabulary to use
- * @param {string} params.processing - How to reduce tagged items
- * @returns {string} Instructions string
- */
-export function reduceInstructions({ specification, vocabulary, processing, vocabularyMode }) {
-  const defaultProcessing = `Build a unified tag frequency map across all items`;
-
-  return buildTaggingInstructions(
-    specification,
-    vocabulary,
-    `${asXML(processing || defaultProcessing, { tag: 'reduce-operation' })}
-
-Tag each item and use the tags in the reduction operation.`,
-    vocabularyMode
-  );
-}
-
-/**
- * Create find instructions for tagging
- * @param {Object} params - Parameters object
- * @param {string} params.specification - Pre-generated tag specification
- * @param {Object} params.vocabulary - Tag vocabulary to use
- * @param {string} params.processing - Selection criteria (e.g., "item with most diverse tags")
- * @returns {string} Instructions string
- */
-export function findInstructions({ specification, vocabulary, processing, vocabularyMode }) {
-  if (!processing) {
-    throw new Error('Find selection criteria must be provided');
-  }
-
-  return buildTaggingInstructions(
-    specification,
-    vocabulary,
-    `${asXML(processing, { tag: 'selection-criteria' })}
-
-Tag each item and use the tags to determine which item to select.`,
-    vocabularyMode
-  );
-}
-
-/**
- * Create group instructions for tagging
- * @param {Object} params - Parameters object
- * @param {string} params.specification - Pre-generated tag specification
- * @param {Object} params.vocabulary - Tag vocabulary to use
- * @param {string} params.processing - Grouping strategy (e.g., "group by primary tag")
- * @returns {string} Instructions string
- */
-export function groupInstructions({ specification, vocabulary, processing, vocabularyMode }) {
-  const defaultProcessing = `Group items by their primary (first) tag`;
-
-  return buildTaggingInstructions(
-    specification,
-    vocabulary,
-    `${asXML(processing || defaultProcessing, { tag: 'grouping-strategy' })}
-
-Tag each item and use the tags to determine grouping.`,
-    vocabularyMode
-  );
-}
-
-// ===== Advanced Functions =====
-
-/**
- * Create a tag extractor with pre-generated specification and vocabulary
- * @param {string} specification - Pre-generated tag specification
- * @param {Object} vocabulary - Tag vocabulary to use
- * @param {Object} config - Configuration options
- * @returns {Function} Tag extraction function with specification and vocabulary properties
- */
-export function createTagExtractor(specification, vocabulary, config = {}) {
-  const extractorFunction = function (input) {
-    return applyTags(input, specification, vocabulary, config);
+    vocabularyMode,
+    ...context,
   };
-
-  // Add properties for introspection
-  Object.defineProperty(extractorFunction, 'specification', {
-    get() {
-      return specification;
-    },
-    enumerable: true,
-  });
-
-  Object.defineProperty(extractorFunction, 'vocabulary', {
-    get() {
-      return vocabulary;
-    },
-    enumerable: true,
-  });
-
-  return extractorFunction;
 }
 
-/**
- * Create a configured tagger function bound to a vocabulary
- * @param {Object} vocabulary - Tag vocabulary to use
- * @param {Object} config - Configuration options
- * @returns {Function} Configured tagger function
- */
-export function createTagger(vocabulary, config = {}) {
-  const taggerFunction = function (items, instructions) {
-    // Handle both single items and arrays
-    if (Array.isArray(items)) {
-      return mapTags(items, instructions, vocabulary, config);
-    }
-    return tagItem(items, instructions, vocabulary, config);
-  };
-
-  // Add vocabulary property for introspection
-  Object.defineProperty(taggerFunction, 'vocabulary', {
-    get() {
-      return vocabulary;
-    },
-    enumerable: true,
-  });
-
-  // Expose map operation specifically for tag-vocabulary chain
-  taggerFunction.mapWithVocabulary = function (list, overrideVocabulary) {
-    const vocabToUse = overrideVocabulary || vocabulary;
-    // Default instructions when used by tag-vocabulary
-    const defaultInstructions = 'Assign all applicable tags based on the item content';
-    return mapTags(list, defaultInstructions, vocabToUse, config);
-  };
-
-  return taggerFunction;
-}
-
-/**
- * Default export - stateless tagging function
- * Requires vocabulary to be passed with each call
- * @param {string} instructions - Natural language tagging instructions
- * @param {Object} config - Configuration options
- * @returns {Function} Stateless tagger function
- */
-export default function tags(instructions, config = {}) {
-  // eslint-disable-next-line require-await -- async is intentional: throw becomes a rejected promise for callers using .catch()
-  const taggerFunction = async function (items, vocabulary) {
-    if (!vocabulary) {
-      throw new Error('Vocabulary must be provided as second argument');
-    }
-
-    // Handle both single items and arrays
-    if (Array.isArray(items)) {
-      return mapTags(items, instructions, vocabulary, config);
-    }
-    return tagItem(items, instructions, vocabulary, config);
-  };
-
-  Object.defineProperty(taggerFunction, 'instructions', {
-    get() {
-      return instructions;
-    },
-    enumerable: true,
-  });
-
-  return taggerFunction;
-}
+tagItem.knownTexts = KNOWN_KEYS;
+mapTags.knownTexts = KNOWN_KEYS;

@@ -5,6 +5,7 @@ import { retry, createBatches } from '../../lib/index.js';
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
 import { OpEvent, DomainEvent, Outcome } from '../../lib/progress/constants.js';
 import { nameStep, getOptions } from '../../lib/context/option.js';
+import { resolveArgs, resolveTexts } from '../../lib/instruction/index.js';
 
 import { jsonSchema } from '../../lib/llm/index.js';
 
@@ -16,7 +17,9 @@ const DEFAULT_REDUCE_RESPONSE_FORMAT = jsonSchema(
   reduceAccumulatorJsonSchema.schema
 );
 
-const reduce = async function reduce(list, instructions, config = {}) {
+const reduce = async function reduce(list, instructions, config) {
+  [instructions, config] = resolveArgs(instructions, config);
+  const { text, context } = resolveTexts(instructions, []);
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
@@ -52,6 +55,7 @@ const reduce = async function reduce(list, instructions, config = {}) {
 
       const reduceInstructions = ({ style, count }) => {
         const itemFormat = style === ListStyle.XML ? 'XML' : '';
+        const contextBlock = context ? `\n\n${context}` : '';
 
         return `Start with the given accumulator. Apply the transformation instructions to each item in the list sequentially, using the result as the new accumulator each time. Return only the final accumulator.
 
@@ -62,13 +66,13 @@ Example: If reducing ["one", "two", "three"] with "sum the numeric values" and i
 - Process "three": 3 + 3 = 6
 - Return: 6
 
-${asXML(instructions, { tag: 'instructions' })}
+${asXML(text, { tag: 'instructions' })}
 
 ${asXML(acc !== undefined ? acc : 'No initial value - use first item as starting point', {
   tag: 'accumulator',
 })}
 
-Process exactly ${count} items from the ${itemFormat} list below and return the final accumulator value.`;
+Process exactly ${count} items from the ${itemFormat} list below and return the final accumulator value.${contextBlock}`;
       };
 
       const effectiveResponseFormat = runConfig.responseFormat || DEFAULT_REDUCE_RESPONSE_FORMAT;
@@ -116,10 +120,6 @@ Process exactly ${count} items from the ${itemFormat} list below and return the 
   }
 };
 
-reduce.with = function (instructions, config = {}) {
-  return (acc, item) => {
-    return reduce([item], instructions, { ...config, initial: acc });
-  };
-};
+reduce.knownTexts = [];
 
 export default reduce;

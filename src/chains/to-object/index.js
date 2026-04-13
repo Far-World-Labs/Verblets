@@ -159,3 +159,5 @@ export default async function toObject(text, schema, config = {}) {
     throw new Error(`Failed to convert to valid JSON after 3 attempts: ${err.message}`);
   }
 }
+
+toObject.knownTexts = [];

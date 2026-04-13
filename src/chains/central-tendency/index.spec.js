@@ -40,7 +40,8 @@ describe('centralTendency chain', () => {
     });
 
     const instructions = map.mock.calls[0][1];
-    expect(instructions).toContain('Context: Household pets');
+    expect(instructions).toContain('<context>');
+    expect(instructions).toContain('Household pets');
   });
 
   it('includes coreFeatures in the instructions passed to map', async () => {
@@ -51,7 +52,8 @@ describe('centralTendency chain', () => {
     });
 
     const instructions = map.mock.calls[0][1];
-    expect(instructions).toContain('Core Features: warm-blooded, domesticated');
+    expect(instructions).toContain('<core-features>');
+    expect(instructions).toContain('warm-blooded, domesticated');
   });
 
   it('returns empty array for empty items', async () => {

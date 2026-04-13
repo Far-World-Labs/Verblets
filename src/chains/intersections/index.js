@@ -10,6 +10,7 @@ import { debug } from '../../lib/debug/index.js';
 import parallelBatch from '../../lib/parallel-batch/index.js';
 import { parallel } from '../../lib/index.js';
 import { nameStep, getOptions } from '../../lib/context/option.js';
+import { resolveArgs, resolveTexts } from '../../lib/instruction/index.js';
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
 import { Outcome, ErrorPosture } from '../../lib/progress/constants.js';
 
@@ -20,20 +21,24 @@ const { strictFormat, contentIsQuestion } = promptConstants;
 /**
  * Generalized prompt for finding intersection elements
  */
-const INTERSECTION_PROMPT = (categories, instructions) => {
-  const basePrompt = `${contentIsQuestion} Find specific examples, instances, or elements that belong to all of these categories: ${categories.join(
-    ', '
-  )}.
+const INTERSECTION_PROMPT = (categories, instructionText, contextXml) => {
+  const categoryList = categories.join(', ');
+  const basePrompt = `${contentIsQuestion} Find specific examples, instances, or elements that belong to all of the given categories.
 
 Focus on items that genuinely exist in the intersection of all categories.`;
 
-  const instructionsText = instructions ? `\n\nAdditional context: ${instructions}` : '';
+  const instructionBlock = instructionText
+    ? `\n\n${asXML(instructionText, { tag: 'additional-context' })}`
+    : '';
 
-  return `${basePrompt}${instructionsText}
-
-${asXML(categories.join(' | '), { tag: 'categories' })}
-
-${strictFormat}`;
+  return [
+    contextXml,
+    `${basePrompt}${instructionBlock}`,
+    asXML(categoryList, { tag: 'categories' }),
+    strictFormat,
+  ]
+    .filter(Boolean)
+    .join('\n\n');
 };
 
 /**
@@ -49,7 +54,7 @@ const parseElements = (elements) => {
 /**
  * Process a single combination to get intersection elements and description
  */
-const processCombo = async (combo, instructions, config = {}) => {
+const processCombo = async (combo, instructionText, context, config = {}) => {
   const comboKey = combo.join(' + ');
 
   // Get elements and description in parallel
@@ -58,7 +63,7 @@ const processCombo = async (combo, instructions, config = {}) => {
       () =>
         retry(
           () =>
-            callLlm(INTERSECTION_PROMPT(combo, instructions), {
+            callLlm(INTERSECTION_PROMPT(combo, instructionText, context), {
               ...config,
               responseFormat: jsonSchema('intersection_elements', intersectionElementsSchema),
             }),
@@ -67,7 +72,7 @@ const processCombo = async (combo, instructions, config = {}) => {
             config,
           }
         ),
-      () => commonalities(combo, { ...config, instructions }),
+      () => commonalities(combo, instructionText, config),
     ],
     (fn) => fn(),
     { maxParallel: 2, abortSignal: config?.abortSignal }
@@ -92,27 +97,29 @@ const processCombo = async (combo, instructions, config = {}) => {
  * Find intersections for all combinations of items with consistent results
  *
  * @param {Array} items - Array of items to find intersections between
- * @param {Object} config - Configuration options
- * @param {string} config.instructions - Custom instructions for intersection finding
- * @param {number} config.minSize - Minimum combination size (default: 2)
- * @param {number} config.maxSize - Maximum combination size (default: items.length)
- * @param {number} config.batchSize - Number of combinations to process in parallel (default: 10)
- * @param {string|Object} config.llm - LLM model to use (default: { fast: true, good: true, cheap: true })
- * @param {boolean} config.useSchemaValidation - Whether to validate results with JSON schema (default: false)
+ * @param {string|Object} [instructions] - Instructions for intersection finding (string or instruction bundle)
+ * @param {Object} [config] - Configuration options
+ * @param {number} [config.minSize=2] - Minimum combination size
+ * @param {number} [config.maxSize] - Maximum combination size (default: items.length)
+ * @param {number} [config.batchSize=10] - Number of combinations to process in parallel
+ * @param {string|Object} [config.llm] - LLM model to use (default: { fast: true, good: true, cheap: true })
+ * @param {boolean} [config.useSchemaValidation=false] - Whether to validate results with JSON schema
  * @returns {Object} Results with combinations, elements, and intersections
  */
-export default async function intersections(items, config = {}) {
+export default async function intersections(items, instructions, config) {
+  [instructions, config] = resolveArgs(instructions, config);
   if (!Array.isArray(items) || items.length < 2) {
     return {};
   }
 
+  const { text: instructionText, context } = resolveTexts(instructions, []);
   const runConfig = nameStep(name, { llm: { fast: true, good: true, cheap: true }, ...config });
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
   const { useSchemaValidation } = await getOptions(runConfig, {
     useSchemaValidation: false,
   });
-  const { instructions, minSize = 2, maxSize = items.length, batchSize = 10 } = runConfig;
+  const { minSize = 2, maxSize = items.length, batchSize = 10 } = runConfig;
 
   try {
     // Generate all combinations
@@ -130,7 +137,7 @@ export default async function intersections(items, config = {}) {
     const batchResults = await parallelBatch(
       allCombinations,
       async (combo) => {
-        const result = await processCombo(combo, instructions, {
+        const result = await processCombo(combo, instructionText, context, {
           ...runConfig,
           onProgress: scopePhase(runConfig.onProgress, 'combo'),
         });
@@ -228,3 +235,5 @@ Return the properly structured JSON object with an "intersections" property cont
     return { intersections };
   }
 }
+
+intersections.knownTexts = [];

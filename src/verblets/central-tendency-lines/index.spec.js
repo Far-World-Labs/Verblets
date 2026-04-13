@@ -68,7 +68,7 @@ describe('centralTendency', () => {
 
     const calledPrompt = llm.mock.calls[0][0];
     expect(calledPrompt).toContain('<context>\nBird evaluation context\n</context>');
-    expect(calledPrompt).toContain('Core Features: feathers, beak, flight');
+    expect(calledPrompt).toContain('<core-features>\nfeathers, beak, flight\n</core-features>');
     expect(calledPrompt).toContain('<seed-items>\nsparrow, bluejay\n</seed-items>');
   });
 });

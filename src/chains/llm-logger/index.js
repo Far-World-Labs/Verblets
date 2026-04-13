@@ -624,4 +624,6 @@ export function createLLMLogger(config = {}) {
   }
 }
 
+createLLMLogger.knownTexts = [];
+
 export default createLLMLogger;

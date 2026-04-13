@@ -2,6 +2,7 @@ import { v4 as uuid } from 'uuid';
 
 import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
+import { resolveTexts } from '../../lib/instruction/index.js';
 import { outputSuccinctNames } from '../../prompts/index.js';
 import { subComponentsSchema, componentOptionsSchema } from './schemas.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
@@ -89,10 +90,15 @@ const defaultDecompose = async ({
   config,
   temperature,
   variety,
+  bundleContext = '',
 } = {}) => {
   const focusFormatted = focus ? `: ${focus}` : '';
 
-  const promptCreated = subComponentsPrompt(`${name}${focusFormatted}`, rootName, fixes);
+  const promptParts = [
+    subComponentsPrompt(`${name}${focusFormatted}`, rootName, fixes),
+    bundleContext,
+  ];
+  const promptCreated = promptParts.filter(Boolean).join('\n\n');
   const result = await retry(
     () =>
       callLlm(promptCreated, {
@@ -118,8 +124,10 @@ const defaultEnhance = async ({
   config,
   temperature,
   variety,
+  bundleContext = '',
 } = {}) => {
-  const promptCreated = componentOptionsPrompt(name, rootName, fixes);
+  const promptParts = [componentOptionsPrompt(name, rootName, fixes), bundleContext];
+  const promptCreated = promptParts.filter(Boolean).join('\n\n');
   const enhanceVariety = variety ? variety * 0.7 : DEFAULT_ENHANCE_PENALTY;
   const result = await retry(
     () =>
@@ -301,8 +309,10 @@ export const simplifyTree = (node) => {
 
 class ChainTree {
   static async create(name, options = {}) {
-    const runConfig = nameStep(name, options);
-    const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
+    const { text: entityName, context: ownContext } = resolveTexts(name, []);
+    const bundleContext = [options.bundleContext, ownContext].filter(Boolean).join('\n\n');
+    const runConfig = nameStep(entityName, options);
+    const emitter = createProgressEmitter(entityName, runConfig.onProgress, runConfig);
     emitter.start();
 
     try {
@@ -311,7 +321,11 @@ class ChainTree {
         variety: withPolicy(mapVariety),
       });
 
-      const tree = new ChainTree(name, options, runConfig, { temperature, variety });
+      const tree = new ChainTree(entityName, options, runConfig, {
+        temperature,
+        variety,
+        bundleContext,
+      });
 
       emitter.complete({ outcome: Outcome.success });
 
@@ -333,6 +347,7 @@ class ChainTree {
     this.enhanceFixes = enhanceFixes;
     this.decomposeFixes = decomposeFixes;
     this.config = config;
+    this.bundleContext = resolved.bundleContext ?? '';
     this.temperature = resolved.temperature ?? options.temperature;
     this.variety =
       resolved.variety ?? (options.variety !== undefined ? mapVariety(options.variety) : undefined);
@@ -388,20 +403,24 @@ class ChainTree {
 }
 
 export const dismantle = async (text, options = {}) => {
+  const { text: entityName, context: bundleContext } = resolveTexts(text, []);
   const runConfig = nameStep(_name, options);
   const emitter = createProgressEmitter(_name, runConfig.onProgress, runConfig);
   emitter.start();
+  emitter.emit({ event: DomainEvent.input, value: entityName });
 
   try {
     const batchDone = emitter.batch(1);
 
     emitter.emit({ event: DomainEvent.phase, phase: 'tree-construction' });
-    const tree = await ChainTree.create(text, {
+    const tree = await ChainTree.create(entityName, {
       ...runConfig,
+      bundleContext,
       onProgress: scopePhase(runConfig.onProgress, 'tree-construction'),
     });
     batchDone(1);
 
+    emitter.emit({ event: DomainEvent.output, value: tree });
     emitter.complete({ outcome: Outcome.success });
     return tree;
   } catch (err) {
@@ -409,5 +428,8 @@ export const dismantle = async (text, options = {}) => {
     throw err;
   }
 };
+
+ChainTree.knownTexts = [];
+dismantle.knownTexts = [];
 
 export default ChainTree;

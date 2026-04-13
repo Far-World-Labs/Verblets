@@ -6,6 +6,7 @@ import disambiguateMeaningsSchema from './disambiguate-meanings-result.json' wit
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
 import { DomainEvent, Outcome } from '../../lib/progress/constants.js';
 import { nameStep } from '../../lib/context/option.js';
+import { resolveArgs, resolveTexts } from '../../lib/instruction/index.js';
 
 const name = 'disambiguate';
 
@@ -41,7 +42,10 @@ export const getMeanings = async (term, config = {}) => {
   return Array.isArray(resultArray) ? resultArray.filter(Boolean) : [];
 };
 
-export default async function disambiguate({ term, context, ...config } = {}) {
+export default async function disambiguate(term, instructions, config) {
+  [instructions, config] = resolveArgs(instructions, config);
+  const { text: contextText, context: xmlContext } = resolveTexts(instructions, []);
+  const effectiveContext = xmlContext ? `${xmlContext}\n\n${contextText}` : contextText;
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
@@ -58,12 +62,13 @@ export default async function disambiguate({ term, context, ...config } = {}) {
       event: DomainEvent.step,
       stepName: 'scoring-meanings',
       term,
+      meanings,
       meaningCount: meanings.length,
     });
 
     const scores = await score(
       meanings,
-      `how well this meaning of ${asXML(term, { tag: 'term' })} matches the context: ${asXML(context, { tag: 'context' })}`,
+      `how well this meaning of ${asXML(term, { tag: 'term' })} matches the context: ${asXML(effectiveContext, { tag: 'context' })}`,
       {
         ...runConfig,
         onProgress: scopePhase(runConfig.onProgress, 'score:relevance'),
@@ -88,3 +93,5 @@ export default async function disambiguate({ term, context, ...config } = {}) {
     throw err;
   }
 }
+
+disambiguate.knownTexts = [];

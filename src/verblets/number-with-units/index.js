@@ -1,5 +1,6 @@
 import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import { nameStep } from '../../lib/context/option.js';
+import { resolveTexts } from '../../lib/instruction/index.js';
 import createProgressEmitter from '../../lib/progress/index.js';
 import { Outcome } from '../../lib/progress/constants.js';
 import toNumberWithUnits from '../../lib/to-number-with-units/index.js';
@@ -22,15 +23,21 @@ const responseFormat = jsonSchema('number_with_units_result', numberWithUnitsSch
  * @returns {Promise<Object>} Object with value and unit properties
  */
 export default async function numberWithUnits(text, config = {}) {
+  const { text: inputText, context } = resolveTexts(text, []);
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
 
-  const numberText = `${contentIsQuestion} ${asXML(text, { tag: 'text' })} \n\n${explainAndSeparate} ${explainAndSeparateJSON}
+  const numberText = [
+    `${contentIsQuestion} ${asXML(inputText, { tag: 'text' })} \n\n${explainAndSeparate} ${explainAndSeparateJSON}
 
 Answer the question and provide the numeric value and unit. If the question is unanswerable or the specific numeric value cannot be determined, set "value" to "unanswerable" but still identify the unit being asked for.
 
-${asNumberWithUnits}`;
+${asNumberWithUnits}`,
+    context,
+  ]
+    .filter(Boolean)
+    .join('\n\n');
 
   try {
     const response = await callLlm(numberText, {
@@ -49,3 +56,5 @@ ${asNumberWithUnits}`;
     throw err;
   }
 }
+
+numberWithUnits.knownTexts = [];

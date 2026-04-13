@@ -80,7 +80,7 @@ const visit = async ({
 };
 
 // node: { filename: './src/index.js' },
-export default async (moduleOptions) => {
+const scanJs = async (moduleOptions) => {
   const runConfig = nameStep(name, moduleOptions);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
@@ -126,3 +126,7 @@ export default async (moduleOptions) => {
     throw err;
   }
 };
+
+scanJs.knownTexts = [];
+
+export default scanJs;

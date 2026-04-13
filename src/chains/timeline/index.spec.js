@@ -89,6 +89,28 @@ describe('timeline', () => {
     );
   });
 
+  it('incorporates string instructions into extraction systemPrompt', async () => {
+    llm.mockResolvedValueOnce({ events: [] });
+
+    await timeline('some text', 'Focus on political events');
+
+    const callArgs = llm.mock.calls[0][1];
+    expect(callArgs.systemPrompt).toContain('Focus on political events');
+    expect(callArgs.systemPrompt).toContain('Extract timeline events');
+  });
+
+  it('wires instruction bundle context into extraction prompt', async () => {
+    llm.mockResolvedValueOnce({ events: [] });
+
+    await timeline('some text', { text: 'Focus on politics', domain: 'US history' });
+
+    const callArgs = llm.mock.calls[0][1];
+    expect(callArgs.systemPrompt).toContain('<domain>');
+    expect(callArgs.systemPrompt).toContain('US history');
+    expect(callArgs.systemPrompt).toContain('Focus on politics');
+    expect(callArgs.systemPrompt).toContain('Extract timeline events');
+  });
+
   it('chunks text based on chunkSize parameter', async () => {
     const mockText = 'a'.repeat(5000);
     chunkSentences.mockReturnValueOnce(['chunk1', 'chunk2', 'chunk3']);

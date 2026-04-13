@@ -1,5 +1,5 @@
 import { describe } from 'vitest';
-import tags, { tagItem, mapTags, createTagger, createTagExtractor, tagSpec } from './index.js';
+import tagItem, { mapTags, tagSpec, tagInstructions } from './index.js';
 import { longTestTimeout } from '../../constants/common.js';
 import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 
@@ -71,9 +71,9 @@ describe('tags examples', () => {
     );
   });
 
-  describe('createTagger - vocabulary-bound tagger', () => {
+  describe('tagInstructions with mapTags', () => {
     it(
-      'should create reusable tagger for consistent categorization',
+      'should tag tasks with pre-generated spec via instruction bundle',
       async () => {
         const projectVocabulary = {
           tags: [
@@ -88,17 +88,9 @@ describe('tags examples', () => {
           ],
         };
 
-        const projectTagger = createTagger(projectVocabulary);
+        const spec = await tagSpec('Identify the development area and work type');
+        const instructions = tagInstructions({ spec, vocabulary: projectVocabulary });
 
-        // Tag single task
-        const task1 = 'Fix responsive layout issues on mobile devices';
-        const tags1 = await projectTagger(task1, 'Identify the development area and work type');
-
-        const validTags = projectVocabulary.tags.map((t) => t.id);
-        expect(tags1).toBeInstanceOf(Array);
-        tags1.forEach((tag) => expect(validTags).toContain(tag));
-
-        // Tag multiple tasks
         const tasks = [
           'Add unit tests for user service',
           'Update API documentation for v2 endpoints',
@@ -106,8 +98,9 @@ describe('tags examples', () => {
           'Refactor database connection pooling',
         ];
 
-        const tagsBatch = await projectTagger(tasks, 'Categorize each task by area and type');
+        const tagsBatch = await mapTags(tasks, instructions, projectVocabulary);
 
+        const validTags = projectVocabulary.tags.map((t) => t.id);
         expect(tagsBatch).toHaveLength(4);
         for (const tags of tagsBatch) {
           expect(tags).toBeInstanceOf(Array);
@@ -118,55 +111,9 @@ describe('tags examples', () => {
     );
   });
 
-  describe('createTagExtractor - pre-configured extractor', () => {
+  describe('mapTags with instruction string', () => {
     it(
-      'should create optimized extractor with fixed specification',
-      async () => {
-        const priorityVocabulary = {
-          tags: [
-            { id: 'p0', label: 'P0 - Critical', description: 'System down, data loss risk' },
-            {
-              id: 'p1',
-              label: 'P1 - High',
-              description: 'Major feature broken, many users affected',
-            },
-            { id: 'p2', label: 'P2 - Medium', description: 'Important but workaround exists' },
-            { id: 'p3', label: 'P3 - Low', description: 'Nice to have, minor issue' },
-          ],
-        };
-
-        const spec = await tagSpec(`Assign priority based on:
-          - User impact (how many affected)
-          - Severity (data loss, feature availability)
-          - Business criticality
-          Only assign ONE priority tag per item.`);
-
-        const priorityExtractor = createTagExtractor(spec, priorityVocabulary);
-
-        const issues = [
-          'Login system completely broken for all users',
-          'Typo in footer copyright year',
-        ];
-
-        const validPriorities = priorityVocabulary.tags.map((t) => t.id);
-        for (const issue of issues) {
-          const priority = await priorityExtractor(issue);
-
-          expect(priority).toHaveLength(1); // Only one priority
-          expect(validPriorities).toContain(priority[0]);
-        }
-
-        // Check specification is accessible
-        expect(priorityExtractor.specification).toBe(spec);
-        expect(priorityExtractor.vocabulary).toBe(priorityVocabulary);
-      },
-      longTestTimeout
-    );
-  });
-
-  describe('stateless tagger with instructions', () => {
-    it(
-      'should create instruction-bound tagger',
+      'should tag feedback by sentiment and intent',
       async () => {
         const sentimentVocabulary = {
           tags: [
@@ -179,10 +126,6 @@ describe('tags examples', () => {
           ],
         };
 
-        const sentimentTagger = tags(`Analyze the sentiment and intent of customer feedback.
-          Tag both the emotional tone (positive/negative/neutral) and the intent (question/complaint/praise).
-          Multiple tags are expected.`);
-
         const feedback = [
           'Your product is amazing! Best purchase ever!',
           'How do I reset my password?',
@@ -190,7 +133,13 @@ describe('tags examples', () => {
           'Thanks for the quick delivery.',
         ];
 
-        const results = await sentimentTagger(feedback, sentimentVocabulary);
+        const results = await mapTags(
+          feedback,
+          `Analyze the sentiment and intent of customer feedback.
+          Tag both the emotional tone (positive/negative/neutral) and the intent (question/complaint/praise).
+          Multiple tags are expected.`,
+          sentimentVocabulary
+        );
 
         const validTags = sentimentVocabulary.tags.map((t) => t.id);
         for (const tags of results) {

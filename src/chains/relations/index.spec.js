@@ -1,18 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
-import relations, {
+import extractRelations, {
   relationSpec,
-  applyRelations,
-  extractRelations,
-  createRelationExtractor,
-  mapInstructions,
-  filterInstructions,
-  reduceInstructions,
-  findInstructions,
-  groupInstructions,
+  relationInstructions,
   parseRDFLiteral,
   parseRelations,
 } from './index.js';
-import { testInstructionBuilders } from '../../lib/test-utils/index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
   jsonSchema: (name, schema) => ({ type: 'json_schema', json_schema: { name, schema } }),
@@ -60,21 +52,6 @@ describe('relations', () => {
     });
   });
 
-  describe('applyRelations', () => {
-    it('extracts relations from text using specification', async () => {
-      const spec = await relationSpec('Extract all relationships');
-      const result = await applyRelations(
-        'John works for Microsoft. Microsoft partnered with Apple.',
-        spec
-      );
-
-      expect(result.items.length).toBeGreaterThan(0);
-      expect(result.items[0]).toHaveProperty('subject');
-      expect(result.items[0]).toHaveProperty('predicate');
-      expect(result.items[0]).toHaveProperty('object');
-    });
-  });
-
   describe('extractRelations', () => {
     it('combines spec generation and extraction', async () => {
       const result = await extractRelations(
@@ -85,45 +62,20 @@ describe('relations', () => {
     });
   });
 
-  describe('createRelationExtractor', () => {
-    it('creates reusable extractor with pre-generated spec', async () => {
-      const spec = await relationSpec('Extract leadership relationships');
-      const extractor = createRelationExtractor(spec);
+  describe('relationInstructions', () => {
+    it('returns instruction bundle with spec', () => {
+      const bundle = relationInstructions({ spec: 'Relation specification' });
 
-      expect(extractor.specification).toBe(spec);
-      const result = await extractor('The CEO manages the company.');
-      expect(result.length).toBeGreaterThan(0);
+      expect(bundle.text).toContain('relation specification');
+      expect(bundle.spec).toBe('Relation specification');
+    });
+
+    it('passes through additional context keys', () => {
+      const bundle = relationInstructions({ spec: 'spec', entityContext: 'known entities' });
+
+      expect(bundle.entityContext).toBe('known entities');
     });
   });
-
-  describe('default export', () => {
-    it('creates stateless extractor', async () => {
-      const extractor = relations('Extract all relationships');
-      expect(extractor.prompt).toBe('Extract all relationships');
-
-      const result = await extractor('Microsoft acquired GitHub.');
-      expect(result.length).toBeGreaterThan(0);
-    });
-  });
-
-  testInstructionBuilders(
-    {
-      mapInstructions,
-      filterInstructions,
-      reduceInstructions,
-      findInstructions,
-      groupInstructions,
-    },
-    {
-      specTag: 'relation-specification',
-      specification: 'Relation specification',
-      xmlTags: {
-        filter: 'filter-criteria',
-        find: 'selection-criteria',
-        group: 'grouping-strategy',
-      },
-    }
-  );
 
   describe('RDF literal parsing', () => {
     it('parses typed literals', () => {

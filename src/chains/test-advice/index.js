@@ -72,3 +72,5 @@ export default async function testAdvice(path, config = {}) {
     throw err;
   }
 }
+
+testAdvice.knownTexts = [];

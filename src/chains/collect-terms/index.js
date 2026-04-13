@@ -1,8 +1,9 @@
 import list from '../list/index.js';
 import score from '../score/index.js';
 import { nameStep, getOptions } from '../../lib/context/option.js';
+import { resolveTexts } from '../../lib/instruction/index.js';
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
-import { Outcome, ErrorPosture } from '../../lib/progress/constants.js';
+import { DomainEvent, Outcome, ErrorPosture } from '../../lib/progress/constants.js';
 import parallelBatch from '../../lib/parallel-batch/index.js';
 
 const name = 'collect-terms';
@@ -24,6 +25,7 @@ const splitIntoChunks = (text, maxLen) => {
 };
 
 export default async function collectTerms(text, config = {}) {
+  const { text: sourceText, known, context } = resolveTexts(text, ['uniqueTerms']);
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
@@ -33,30 +35,43 @@ export default async function collectTerms(text, config = {}) {
   });
 
   try {
-    const chunks = splitIntoChunks(text, chunkLen);
-    const batchDone = emitter.batch(chunks.length);
+    let uniqueTerms;
 
-    // Collect terms from each chunk
-    const chunkResults = await parallelBatch(
-      chunks,
-      async (chunk) => {
-        const terms = await list(
-          `key words and phrases that would help find documents about: ${chunk}`,
-          { ...runConfig, onProgress: scopePhase(runConfig.onProgress, 'list:extract') }
-        );
-        batchDone(1);
-        return terms;
-      },
-      {
-        maxParallel: 3,
-        errorPosture: ErrorPosture.resilient,
-        abortSignal: runConfig.abortSignal,
-        label: 'collect-terms:extract',
-      }
-    );
-    const allTerms = chunkResults.flat();
+    if (known.uniqueTerms) {
+      // Known uniqueTerms provided — skip extraction phase
+      uniqueTerms = known.uniqueTerms
+        .split(',')
+        .map((t) => t.trim())
+        .filter(Boolean);
+    } else {
+      const chunks = splitIntoChunks(sourceText, chunkLen);
+      const batchDone = emitter.batch(chunks.length);
 
-    const uniqueTerms = Array.from(new Set(allTerms.map((t) => t.trim()))).filter(Boolean);
+      // Collect terms from each chunk
+      const chunkResults = await parallelBatch(
+        chunks,
+        async (chunk) => {
+          const contextBlock = context ? `\n\n${context}` : '';
+          const terms = await list(
+            `key words and phrases that would help find documents about: ${chunk}${contextBlock}`,
+            { ...runConfig, onProgress: scopePhase(runConfig.onProgress, 'list:extract') }
+          );
+          batchDone(1);
+          return terms;
+        },
+        {
+          maxParallel: 3,
+          errorPosture: ErrorPosture.resilient,
+          abortSignal: runConfig.abortSignal,
+          label: 'collect-terms:extract',
+        }
+      );
+      const allTerms = chunkResults.flat();
+
+      uniqueTerms = Array.from(new Set(allTerms.map((t) => t.trim()))).filter(Boolean);
+    }
+
+    emitter.emit({ event: DomainEvent.phase, phase: 'extracted', uniqueTerms });
 
     // If we already have fewer terms than requested, return them all
     if (uniqueTerms.length <= topN) {
@@ -74,6 +89,7 @@ export default async function collectTerms(text, config = {}) {
     // Sort by score and take top N
     const termsWithScores = uniqueTerms.map((term, i) => ({ term, score: scores[i] }));
     const sorted = termsWithScores.toSorted((a, b) => b.score - a.score);
+    emitter.emit({ event: DomainEvent.phase, phase: 'scored', termsWithScores: sorted });
 
     emitter.complete({ outcome: Outcome.success });
 
@@ -83,3 +99,5 @@ export default async function collectTerms(text, config = {}) {
     throw err;
   }
 }
+
+collectTerms.knownTexts = ['uniqueTerms'];

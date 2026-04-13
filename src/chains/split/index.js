@@ -1,11 +1,12 @@
 import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import chunkSentences from '../../lib/chunk-sentences/index.js';
-import wrapVariable from '../../prompts/wrap-variable.js';
+import { asXML } from '../../prompts/wrap-variable.js';
 import parallelBatch from '../../lib/parallel-batch/index.js';
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
 import { Outcome, ErrorPosture } from '../../lib/progress/constants.js';
 import { getOption, nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
+import { resolveArgs, resolveTexts } from '../../lib/instruction/index.js';
 
 const name = 'split';
 
@@ -37,31 +38,32 @@ const defaultDelimiter = '---763927459---';
 const buildPrompt = (chunk, instructions, delimiter, context = {}) => {
   const { previousContent = '', targetSplitCount = undefined } = context;
 
-  let prompt = `You are marking split points in text with "${delimiter}". 
+  const splitCountRule = targetSplitCount
+    ? `\n- Aim for approximately ${targetSplitCount} sections in this chunk`
+    : '';
 
-${wrapVariable(instructions, { tag: 'instructions', forceHTML: true })}
+  const previousContextBlock = previousContent
+    ? `\n\n${asXML(previousContent.slice(-200), { tag: 'previous-context' })}`
+    : '';
+
+  return `You are marking split points in text with "${delimiter}".
+
+${asXML(instructions, { tag: 'instructions' })}
 
 IMPORTANT RULES:
 - Only insert "${delimiter}" at natural break points - do NOT split mid-sentence
 - Each section should be substantively different from adjacent sections
 - Preserve ALL original text exactly - only add delimiters
 - For topic changes: Look for shifts in subject matter, not just related themes
-- Be selective - fewer, more meaningful splits are better than many weak ones`;
+- Be selective - fewer, more meaningful splits are better than many weak ones${splitCountRule}${previousContextBlock}
 
-  if (targetSplitCount) {
-    prompt += `\n- Aim for approximately ${targetSplitCount} sections in this chunk`;
-  }
-
-  if (previousContent) {
-    prompt += `\n\nPREVIOUS CONTEXT (for continuity):\n${previousContent.slice(-200)}...\n`;
-  }
-
-  prompt += `\n\n${wrapVariable(chunk, { tag: 'text-to-process', forceHTML: true })}`;
-
-  return prompt;
+${asXML(chunk, { tag: 'text-to-process' })}`;
 };
 
-export default async function split(text, instructions, config = {}) {
+export default async function split(text, instructions, config) {
+  [instructions, config] = resolveArgs(instructions, config);
+  const { text: instructionText, context } = resolveTexts(instructions, []);
+  const effectiveInstructions = context ? `${instructionText}\n\n${context}` : instructionText;
   const runConfig = nameStep(name, { llm: { fast: true, good: true, cheap: true }, ...config });
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
@@ -92,11 +94,11 @@ export default async function split(text, instructions, config = {}) {
     const results = await parallelBatch(
       chunks,
       async (chunk, index) => {
-        const context = {
+        const splitContext = {
           targetSplitCount: targetSplitsPerChunk,
         };
 
-        const prompt = buildPrompt(chunk, instructions, delimiter, context);
+        const prompt = buildPrompt(chunk, effectiveInstructions, delimiter, splitContext);
         const llmConfig = {
           ...runConfig,
           temperature,
@@ -169,3 +171,5 @@ export default async function split(text, instructions, config = {}) {
     throw err;
   }
 }
+
+split.knownTexts = [];

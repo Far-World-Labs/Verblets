@@ -19,7 +19,7 @@ vi.mock('../score/index.js', () => ({
 
 describe('disambiguate chain', () => {
   it('selects meaning based on context', async () => {
-    const result = await disambiguate({ term: 'bank', context: 'withdraw money' });
+    const result = await disambiguate('bank', 'withdraw money');
     expect(result.meaning).toBe('financial institution');
     expect(result.meanings).toStrictEqual(['financial institution', 'edge of a river']);
   });

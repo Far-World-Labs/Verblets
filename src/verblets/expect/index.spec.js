@@ -4,41 +4,36 @@ import { longTestTimeout } from '../../constants/common.js';
 
 // Mock the llm function to avoid actual API calls
 // With responseFormat + value schema, callLlm auto-unwraps to a bare boolean
+const extractTag = (prompt, tag) => {
+  const match = prompt.match(new RegExp(`<${tag}>\\n?([\\s\\S]*?)\\n?<\\/${tag}>`));
+  return match?.[1]?.trim() ?? '';
+};
+
 vi.mock('../../lib/llm/index.js', () => ({
   jsonSchema: (name, schema) => ({ type: 'json_schema', json_schema: { name, schema } }),
   default: vi.fn().mockImplementation((prompt) => {
     // Handle exact equality checks
     if (prompt.includes('Does the actual value strictly equal the expected value?')) {
-      if (prompt.includes('Actual: "hello"') && prompt.includes('Expected: "hello"')) {
-        return true;
-      }
-      if (prompt.includes('Actual: "goodbye"') && prompt.includes('Expected: "hello"')) {
-        return false;
-      }
+      return extractTag(prompt, 'actual-value') === extractTag(prompt, 'expected-value');
     }
 
-    // Handle constraint-based validations (format: "Given this constraint:")
-    if (prompt.includes('Given this constraint:')) {
-      if (prompt.includes('Is this a greeting?') && prompt.includes('Hello world!')) {
-        return true;
+    // Handle constraint-based validations
+    if (prompt.includes('Does the actual value satisfy the given constraint?')) {
+      const actual = extractTag(prompt, 'actual-value');
+      const constraint = extractTag(prompt, 'constraint');
+
+      if (constraint === 'Is this a greeting?' && actual === 'Hello world!') return true;
+
+      if (constraint === 'Is this text professional and grammatically correct?') {
+        return actual.includes('well-written, professional email');
       }
 
-      if (prompt.includes('Is this text professional and grammatically correct?')) {
-        if (prompt.includes('well-written, professional email')) {
-          return true;
-        }
+      if (constraint === 'Does this person data look realistic?') {
+        return actual.includes('John Doe') && actual.includes('"age": 30');
       }
 
-      if (prompt.includes('Does this person data look realistic?')) {
-        if (prompt.includes('John Doe') && prompt.includes('"age": 30')) {
-          return true;
-        }
-      }
-
-      if (prompt.includes('Is this recommendation specific and actionable?')) {
-        if (prompt.includes('Increase marketing budget by 20%')) {
-          return true;
-        }
+      if (constraint === 'Is this recommendation specific and actionable?') {
+        return actual.includes('Increase marketing budget by 20%');
       }
     }
 

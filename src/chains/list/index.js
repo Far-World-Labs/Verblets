@@ -10,6 +10,7 @@ import listResultSchema from './list-result.json' with { type: 'json' };
 import { nameStep } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
 import { DomainEvent, Outcome } from '../../lib/progress/constants.js';
+import { resolveTexts } from '../../lib/instruction/index.js';
 
 const name = 'list';
 
@@ -45,6 +46,8 @@ const shouldStopDefault = ({ queryCount, startTime, queryLimit, timeoutMs } = {}
 };
 
 export const generateList = async function* generateListGenerator(text, config = {}) {
+  const { text: instructionText, context } = resolveTexts(text, []);
+  const effectiveText = context ? `${instructionText}\n\n${context}` : instructionText;
   const runConfig = nameStep('list:generate', {
     llm: { fast: true, good: true, cheap: true },
     ...config,
@@ -59,7 +62,7 @@ export const generateList = async function* generateListGenerator(text, config =
   let queryCount = 0;
 
   while (!isDone) {
-    const listPrompt = generateListPrompt(text, {
+    const listPrompt = generateListPrompt(effectiveText, {
       ...runConfig,
       existing: resultsAll,
     });
@@ -136,13 +139,14 @@ export const generateList = async function* generateListGenerator(text, config =
 };
 
 export default async function list(prompt, config = {}) {
+  const { text, context } = resolveTexts(prompt, []);
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
 
   try {
     const { schema } = runConfig;
-    const fullPrompt = prompt;
+    const fullPrompt = context ? `${text}\n\n${context}` : text;
     const response = await retry(
       () => callLlm(fullPrompt, { ...runConfig, ...createModelOptions() }),
       {
@@ -186,3 +190,5 @@ export default async function list(prompt, config = {}) {
     throw err;
   }
 }
+
+list.knownTexts = [];

@@ -3,6 +3,8 @@ import retry from '../../lib/retry/index.js';
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
 import { Outcome } from '../../lib/progress/constants.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
+import { resolveTexts } from '../../lib/instruction/index.js';
+import { asXML } from '../../prompts/wrap-variable.js';
 
 const name = 'category-samples';
 
@@ -70,7 +72,7 @@ export function buildSeedGenerationPrompt(categoryName, { context = '', diversit
     low: 'Focus primarily on typical members',
   };
 
-  const contextLine = context ? `Context: ${context}` : '';
+  const contextLine = context ? asXML(context, { tag: 'context' }) : '';
 
   return SAMPLE_GENERATION_PROMPT.replace('{categoryName}', categoryName)
     .replace('{context}', contextLine)
@@ -96,7 +98,7 @@ export function buildSeedGenerationPrompt(categoryName, { context = '', diversit
  * @param {string|Object} [config.llm={ fast: true, good: true, cheap: true }] - LLM model to use
  * @returns {Promise<string[]>}
  */
-export default async function categorySamples(categoryName, config = {}) {
+async function categorySamples(categoryName, config = {}) {
   if (!categoryName || typeof categoryName !== 'string') {
     throw new Error('categoryName must be a non-empty string');
   }
@@ -104,13 +106,18 @@ export default async function categorySamples(categoryName, config = {}) {
   const runConfig = nameStep(name, { llm: { fast: true, good: true, cheap: true }, ...config });
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
+  const { text: categoryText, context: resolvedContext } = resolveTexts(categoryName, []);
   const { diversity, count } = await getOptions(runConfig, {
     diversity: withPolicy(mapDiversity, ['diversity', 'count']),
   });
-  const { context = '' } = runConfig;
+  const { context: configContext = '' } = runConfig;
+  const effectiveContext = [resolvedContext, configContext].filter(Boolean).join('\n\n');
 
   const generateWithRetry = async () => {
-    const prompt = buildSeedGenerationPrompt(categoryName, { context, diversity });
+    const prompt = buildSeedGenerationPrompt(categoryText, {
+      context: effectiveContext,
+      diversity,
+    });
 
     const results = await list(prompt, {
       ...runConfig,
@@ -140,3 +147,7 @@ export default async function categorySamples(categoryName, config = {}) {
     throw err;
   }
 }
+
+categorySamples.knownTexts = [];
+
+export default categorySamples;

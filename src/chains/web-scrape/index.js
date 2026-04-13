@@ -330,4 +330,6 @@ const webScrape = async (urls, step, config = {}) => {
   }
 };
 
+webScrape.knownTexts = [];
+
 export default webScrape;

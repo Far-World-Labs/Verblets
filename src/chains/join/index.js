@@ -5,6 +5,8 @@ import windowFor from '../../lib/window-for/index.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
 import { DomainEvent, Outcome, ErrorPosture } from '../../lib/progress/constants.js';
+import { resolveArgs, resolveTexts } from '../../lib/instruction/index.js';
+import { asXML } from '../../prompts/wrap-variable.js';
 
 const name = 'join';
 
@@ -46,14 +48,14 @@ export const mapFidelity = (value) => {
  * @param {number} config.maxAttempts - Maximum retry attempts (default: 3)
  * @returns {Promise<string>} Single result as dictated by prompt
  */
-export default async function join(
-  list,
-  prompt = 'Join these text fragments into a coherent, unified text. Preserve key information while ensuring smooth transitions between fragments. Remove redundancy and maintain consistent style throughout.',
-  config = {}
-) {
+export default async function join(list, prompt, config) {
+  [prompt, config] = resolveArgs(prompt, config);
+  prompt ??= 'Combine these into a coherent single output.';
   if (list.length === 0) return '';
   if (list.length === 1) return list[0];
 
+  const { text: promptText, context } = resolveTexts(prompt, []);
+  const effectivePrompt = context ? `${promptText}\n\n${context}` : promptText;
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
@@ -80,11 +82,13 @@ export default async function join(
         });
 
         const fragmentList = window.fragments.map((f, idx) => `${idx + 1}. ${f}`).join('\n');
+        const styleBlock = styleHint ? `\n\n${asXML(styleHint, { tag: 'style-guidance' })}` : '';
 
-        const instruction = `${prompt}${styleHint ? `\n\nStyle guidance: ${styleHint}` : ''}
+        const instruction = `${effectivePrompt}${styleBlock}
 
 Window ${windowIndex + 1} of ${windows.length} - Join these fragments:
-${fragmentList}
+
+${asXML(fragmentList, { tag: 'fragments' })}
 
 Important: This is part of a larger sequence. Join these fragments while being mindful that this result will be combined with other processed windows. Add necessary connecting words, prepositions, conjunctions, or other filler text to create a coherent, grammatically correct, and semantically meaningful result. Output only the joined result for this window.`;
 
@@ -135,19 +139,22 @@ Important: This is part of a larger sequence. Join these fragments while being m
         // There's an overlap - process only the overlapping section
         const overlapFragments = list.slice(overlapStart, overlapEnd + 1);
 
-        const stitchInstruction = `${prompt}${styleHint ? `\n\nStyle guidance: ${styleHint}` : ''}
+        const stitchStyleBlock = styleHint
+          ? `\n\n${asXML(styleHint, { tag: 'style-guidance' })}`
+          : '';
+        const overlapText = overlapFragments.join(' | ');
+
+        const stitchInstruction = `${effectivePrompt}${stitchStyleBlock}
 
 Stitch these two sections by resolving their overlapping region:
 
-SECTION A (preserve terminals): ${stitchedResult}
+${asXML(stitchedResult, { tag: 'section-a', name: 'preserve-terminals' })}
 
-SECTION B (preserve terminals): ${currentResult.content}
+${asXML(currentResult.content, { tag: 'section-b', name: 'preserve-terminals' })}
 
-OVERLAPPING FRAGMENTS (original): ${overlapFragments.join(' | ')}
+${asXML(overlapText, { tag: 'overlapping-fragments' })}
 
-The terminal ends of both sections should be preserved. Only resolve the overlapping middle region where these fragments appear: ${overlapFragments.join(
-          ', '
-        )}
+The terminal ends of both sections should be preserved. Only resolve the overlapping middle region where these fragments appear.
 
 Add necessary connecting words, prepositions, conjunctions, or other filler text to create a coherent, grammatically correct, and semantically meaningful result. Output only the final stitched result with terminals preserved.`;
 
@@ -159,11 +166,17 @@ Add necessary connecting words, prepositions, conjunctions, or other filler text
         stitchedResult = stitchResult || stitchedResult;
       } else {
         // No overlap - simple join
-        const joinInstruction = `${prompt}${styleHint ? `\n\nStyle guidance: ${styleHint}` : ''}
+        const joinStyleBlock = styleHint
+          ? `\n\n${asXML(styleHint, { tag: 'style-guidance' })}`
+          : '';
+
+        const joinInstruction = `${effectivePrompt}${joinStyleBlock}
 
 Join these two non-overlapping sections:
-1. ${stitchedResult}
-2. ${currentResult.content}
+
+${asXML(stitchedResult, { tag: 'section-1' })}
+
+${asXML(currentResult.content, { tag: 'section-2' })}
 
 Add necessary connecting words, prepositions, conjunctions, or other filler text to create a coherent, grammatically correct, and semantically meaningful result. Output only the joined result.`;
 
@@ -184,3 +197,5 @@ Add necessary connecting words, prepositions, conjunctions, or other filler text
     throw err;
   }
 }
+
+join.knownTexts = [];

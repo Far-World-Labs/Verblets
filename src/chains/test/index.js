@@ -6,10 +6,13 @@ import { testResultJsonSchema } from './schemas.js';
 import createProgressEmitter from '../../lib/progress/index.js';
 import { Outcome } from '../../lib/progress/constants.js';
 import { nameStep } from '../../lib/context/option.js';
+import { resolveArgs, resolveTexts } from '../../lib/instruction/index.js';
 
 const name = 'test';
 
-export default async function test(path, instructions, config = {}) {
+async function test(path, instructions, config) {
+  [instructions, config] = resolveArgs(instructions, config);
+  const { text, context } = resolveTexts(instructions, []);
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
@@ -17,7 +20,8 @@ export default async function test(path, instructions, config = {}) {
   try {
     const code = await fs.readFile(path, 'utf-8');
 
-    const prompt = `Analyze this code and ${instructions}:
+    const contextBlock = context ? `\n\n${context}` : '';
+    const prompt = `Analyze this code and ${text}:
 
 ${asXML(code, { tag: 'code-to-analyze' })}
 
@@ -30,7 +34,7 @@ GUIDELINES:
 - Provide specific line numbers or code references when possible
 - Suggest concrete fixes for each issue identified
 - Be concise but clear in your feedback
-- If no issues are found, return {"hasIssues": false, "issues": []}`;
+- If no issues are found, return {"hasIssues": false, "issues": []}${contextBlock}`;
 
     const result = await retry(
       () =>
@@ -55,3 +59,7 @@ GUIDELINES:
     throw error;
   }
 }
+
+test.knownTexts = [];
+
+export default test;

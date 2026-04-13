@@ -1,4 +1,5 @@
 import { nameStep, getOptions } from '../../lib/context/option.js';
+import { resolveArgs, resolveTexts } from '../../lib/instruction/index.js';
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
 import { Outcome } from '../../lib/progress/constants.js';
 import callLlm, { buildVisionPrompt, jsonSchema } from '../../lib/llm/index.js';
@@ -41,7 +42,10 @@ const normalizeImages = (images) => {
  * @param {boolean} [config.tile] - Combine images into a single sprite for one LLM call
  * @returns {Promise<string|object>} LLM analysis result
  */
-const analyzeImage = async (images, instructions, config = {}) => {
+const analyzeImage = async (images, instructions, config) => {
+  [instructions, config] = resolveArgs(instructions, config);
+  const { text: instructionText, context } = resolveTexts(instructions, []);
+  const effectiveInstructions = context ? `${instructionText}\n\n${context}` : instructionText;
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
@@ -81,7 +85,7 @@ const analyzeImage = async (images, instructions, config = {}) => {
       });
     }
 
-    const contentArray = buildVisionPrompt(instructions, imageDataArray);
+    const contentArray = buildVisionPrompt(effectiveInstructions, imageDataArray);
     const llmConfig = runConfig.responseFormat
       ? runConfig
       : { ...runConfig, responseFormat: analysisFormat };
@@ -99,5 +103,7 @@ const analyzeImage = async (images, instructions, config = {}) => {
     throw err;
   }
 };
+
+analyzeImage.knownTexts = [];
 
 export default analyzeImage;

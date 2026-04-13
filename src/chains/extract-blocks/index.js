@@ -6,6 +6,7 @@ import { blockExtractionSchema } from './block-schema.js';
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
 import { OpEvent, DomainEvent, Outcome } from '../../lib/progress/constants.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
+import { resolveArgs, resolveTexts } from '../../lib/instruction/index.js';
 
 const name = 'extract-blocks';
 
@@ -70,7 +71,10 @@ ${asXML(numberedLines, { tag: 'window' })}`;
  * @param {Object} config.logger - Logger instance
  * @returns {Promise<Array<Array<string>>>} Array of blocks, each block is array of lines
  */
-export async function extractBlocks(text, instructions, config = {}) {
+export async function extractBlocks(text, instructions, config) {
+  [instructions, config] = resolveArgs(instructions, config);
+  const { text: instructionText, context } = resolveTexts(instructions, []);
+  const effectiveInstructions = context ? `${instructionText}\n\n${context}` : instructionText;
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
@@ -122,7 +126,7 @@ export async function extractBlocks(text, instructions, config = {}) {
         const windowEnd = Math.min(windowStart + windowSize, totalLines);
         const windowLines = lines.slice(windowStart, windowEnd);
 
-        const prompt = buildBlockExtractionPrompt(windowLines, windowStart, instructions);
+        const prompt = buildBlockExtractionPrompt(windowLines, windowStart, effectiveInstructions);
 
         const result = await retry(
           () =>
@@ -197,5 +201,7 @@ export async function extractBlocks(text, instructions, config = {}) {
     throw err;
   }
 }
+
+extractBlocks.knownTexts = [];
 
 export default extractBlocks;

@@ -7,8 +7,10 @@ import map from '../map/index.js';
 import reduce from '../reduce/index.js';
 import { timelineEventJsonSchema } from './schemas.js';
 import { debug } from '../../lib/debug/index.js';
-import { Outcome, ErrorPosture } from '../../lib/progress/constants.js';
+import { DomainEvent, Outcome, ErrorPosture } from '../../lib/progress/constants.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
+import { resolveArgs, resolveTexts } from '../../lib/instruction/index.js';
+import { asXML } from '../../prompts/wrap-variable.js';
 
 const name = 'timeline';
 
@@ -95,7 +97,6 @@ function mergeTimelineEvents(eventArrays) {
 async function extractFromChunk(chunk, options = {}) {
   const response = await callLlm(chunk, {
     ...options,
-    systemPrompt: extractTimelineInstructions,
     responseFormat: jsonSchema(timelineEventJsonSchema.name, timelineEventJsonSchema.schema),
   });
 
@@ -114,8 +115,13 @@ async function extractFromChunk(chunk, options = {}) {
  * @param {number} [config.batchSize] - Batch size for reduce/map operations when enriching (auto-calculated if not provided)
  * @returns {Promise<Array>} Array of timeline events with {timestamp, name}
  */
-export default async function timeline(text, config = {}) {
+export default async function timeline(text, instructions, config) {
+  [instructions, config] = resolveArgs(instructions, config, ['knowledge']);
+  const { text: instructionText, known, context } = resolveTexts(instructions, ['knowledge']);
   const runConfig = nameStep(name, config);
+  const extractionSystemPrompt = [extractTimelineInstructions, instructionText, context]
+    .filter(Boolean)
+    .join('\n\n');
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
   const {
@@ -133,6 +139,7 @@ export default async function timeline(text, config = {}) {
     maxParallel: 3,
     errorPosture: ErrorPosture.resilient,
   });
+  const providedKnowledge = known.knowledge;
   const { onProgress, batchSize, now } = runConfig;
 
   try {
@@ -150,10 +157,14 @@ export default async function timeline(text, config = {}) {
       chunks,
       async (chunk, chunkIndex) => {
         try {
-          const events = await retry(() => extractFromChunk(chunk, { ...runConfig, now }), {
-            label: `timeline chunk ${chunkIndex + 1}`,
-            config: runConfig,
-          });
+          const events = await retry(
+            () =>
+              extractFromChunk(chunk, { ...runConfig, now, systemPrompt: extractionSystemPrompt }),
+            {
+              label: `timeline chunk ${chunkIndex + 1}`,
+              config: runConfig,
+            }
+          );
           allEvents.push(...events);
           onProgress?.(chunkIndex + 1, chunks.length);
         } catch (error) {
@@ -191,8 +202,7 @@ export default async function timeline(text, config = {}) {
 
       const deduplicationPrompt = `Consolidate these timeline events by merging duplicates that refer to the same occurrence. Keep the most descriptive version of each event and preserve ALL unique events.
 
-Events:
-${eventList}`;
+${asXML(eventList, { tag: 'events' })}`;
 
       const deduplicatedResult = await callLlm(deduplicationPrompt, {
         ...runConfig,
@@ -208,10 +218,27 @@ ${eventList}`;
       batchDone(1);
     }
 
-    // Enrich with knowledge if requested
-    if (enableKnowledgeBase && mergedEvents.length > 0) {
-      // First, use reduce to build a knowledge base of known dates
-      const knowledgeBaseInstructions = `You are building a historical knowledge base.
+    // Enrich with knowledge if requested (or pre-supplied)
+    if ((enableKnowledgeBase || providedKnowledge) && mergedEvents.length > 0) {
+      let knownEvents = [];
+
+      if (providedKnowledge) {
+        // Knowledge base pre-supplied — skip reduce derivation
+        try {
+          const parsed =
+            typeof providedKnowledge === 'string'
+              ? JSON.parse(providedKnowledge)
+              : providedKnowledge;
+          knownEvents = sortTimelineEvents(parsed.events || parsed);
+        } catch (e) {
+          debug('Failed to parse provided knowledge:', e.message);
+        }
+      } else {
+        // First, use reduce to build a knowledge base of known dates
+        const focusArea = instructionText
+          ? `\n${asXML(instructionText, { tag: 'focus-area' })}`
+          : '';
+        const knowledgeBaseInstructions = `You are building a historical knowledge base.${focusArea}
 Given the current knowledge base and a new event, return an updated knowledge base that:
 1. Adds accurate dates for any events you recognize
 2. Corrects any wrong dates based on your knowledge
@@ -221,34 +248,34 @@ Given the current knowledge base and a new event, return an updated knowledge ba
 
 Return as JSON with the same event format, maintaining chronological order.`;
 
-      // Convert events to strings for reduce
-      const eventStrings = mergedEvents.map((e) => `${e.timestamp}: ${e.name}`);
+        // Convert events to strings for reduce
+        const eventStrings = mergedEvents.map((e) => `${e.timestamp}: ${e.name}`);
 
-      // Reduce to build knowledge base
-      const knowledgeBase = await reduce(eventStrings, knowledgeBaseInstructions, {
-        ...runConfig,
-        initial: JSON.stringify({ events: [] }),
-        responseFormat: jsonSchema(timelineEventJsonSchema.name, timelineEventJsonSchema.schema),
-        ...(batchSize !== undefined && { batchSize }),
-        onProgress: scopePhase(runConfig.onProgress, 'reduce:knowledge-base'),
-      });
+        // Reduce to build knowledge base
+        const knowledgeBase = await reduce(eventStrings, knowledgeBaseInstructions, {
+          ...runConfig,
+          initial: JSON.stringify({ events: [] }),
+          responseFormat: jsonSchema(timelineEventJsonSchema.name, timelineEventJsonSchema.schema),
+          ...(batchSize !== undefined && { batchSize }),
+          onProgress: scopePhase(runConfig.onProgress, 'reduce:knowledge-base'),
+        });
 
-      let knownEvents = [];
-      try {
-        const parsed = knowledgeBase;
-        knownEvents = sortTimelineEvents(parsed.events || []);
-      } catch (e) {
-        debug('Failed to parse knowledge base:', e.message);
+        try {
+          const parsed = knowledgeBase;
+          knownEvents = sortTimelineEvents(parsed.events || []);
+        } catch (e) {
+          debug('Failed to parse knowledge base:', e.message);
+        }
       }
+
+      emitter.emit({ event: DomainEvent.phase, phase: 'enrichment', knowledgeBase: knownEvents });
       batchDone(1);
 
       // Create the enrichment instructions with knowledge base embedded
       const knowledgeBaseStr = knownEvents.map((e) => `- ${e.timestamp}: ${e.name}`).join('\n');
       const enrichmentInstructions = `Given an extracted event, enrich it using this knowledge base:
 
-<knowledge_base>
-${knowledgeBaseStr}
-</knowledge_base>
+${asXML(knowledgeBaseStr, { tag: 'knowledge-base' })}
 
 Rules:
 1. If the knowledge base has a more accurate date for this event, use it
@@ -317,3 +344,5 @@ Return the enriched event as: "YYYY-MM-DD: Event name" or with the appropriate t
     throw err;
   }
 }
+
+timeline.knownTexts = ['knowledge'];

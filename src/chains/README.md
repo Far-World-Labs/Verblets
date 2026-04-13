@@ -18,26 +18,23 @@ const result = await chainName(input, instructions, {
 
 Model selection accepts a string shorthand (`'fastGoodCheap'`), a capability object (`{ fast: true, cheap: true }`), or a full config (`{ modelName: 'model-key' }`). Capability keys: `fast`, `cheap`, `good`, `reasoning`, `multi`, `sensitive`.
 
-## Collection Instruction Builders
+## Instruction Bundles
 
-Several chains (scale, score, entities, tags, relations) export instruction builder functions that compose their specifications with collection chains. This lets you build a specification once and apply it across `map`, `filter`, `reduce`, `find`, or `group`:
+Domain chains (score, entities, scale, tags, relations, calibrate) export instruction builder functions that compose specifications into bundles. A bundle works with any collection chain or directly with the domain chain:
 
 ```javascript
-import { map, filter, scoreSpec, scoreMapInstructions, scoreFilterInstructions } from '@far-world-labs/verblets';
+import { score, scoreInstructions, map } from '@far-world-labs/verblets';
 
-const spec = await scoreSpec('Rate persuasiveness 0-10');
+// Direct use — score generates a spec internally
+const scores = await score(articles, 'Rate persuasiveness 0-10');
 
-// Score every item
-const scores = await map(articles, scoreMapInstructions({ specification: spec }));
-
-// Keep only high-scoring items
-const best = await filter(articles, scoreFilterInstructions({
-  specification: spec,
-  processing: 'Keep items scoring 8 or above',
-}));
+// Pipeline — capture spec, reuse across chains
+const spec = '...'; // from collectEventsWith or prior call
+const bundle = scoreInstructions({ spec, text: 'Rate persuasiveness 0-10' });
+const mapped = await map(articles, bundle);
 ```
 
-Each builder accepts `{ specification, processing? }` and returns a string instruction suitable for the corresponding collection chain. See [build-instructions](../lib/build-instructions/) for the full pattern.
+Each builder returns an instruction bundle (`{ text, spec, ...context }`) compatible with `resolveTexts`.
 
 ## List Operations
 

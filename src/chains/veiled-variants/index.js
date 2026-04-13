@@ -4,6 +4,7 @@ import parallelBatch from '../../lib/parallel-batch/index.js';
 import { asXML } from '../../prompts/index.js';
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
 import { Outcome, ErrorPosture } from '../../lib/progress/constants.js';
+import { resolveTexts } from '../../lib/instruction/index.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 
 const name = 'veiled-variants';
@@ -95,15 +96,18 @@ export const mapCoverage = (value) => {
   );
 };
 
-const veiledVariants = async (inputConfig = {}) => {
-  const { prompt } = inputConfig;
-  const runConfig = nameStep(name, { llm: { sensitive: true }, ...inputConfig });
+const veiledVariants = async (prompt, config = {}) => {
+  const { text: effectivePrompt, context: bundleContext } = resolveTexts(prompt, []);
+  const contextBlock = bundleContext ? `\n\n${bundleContext}` : '';
+  const runConfig = nameStep(name, { llm: { sensitive: true }, ...config });
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
   const { strategies, variantCount } = await getOptions(runConfig, {
     coverage: withPolicy(mapCoverage, ['strategies', 'variantCount']),
   });
-  const prompts = strategies.map((name) => STRATEGY_FNS[name](prompt, variantCount));
+  const prompts = strategies.map(
+    (s) => `${STRATEGY_FNS[s](effectivePrompt, variantCount)}${contextBlock}`
+  );
 
   try {
     const batchDone = emitter.batch(prompts.length);
@@ -129,5 +133,7 @@ const veiledVariants = async (inputConfig = {}) => {
     throw err;
   }
 };
+
+veiledVariants.knownTexts = [];
 
 export default veiledVariants;

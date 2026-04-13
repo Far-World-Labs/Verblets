@@ -167,3 +167,5 @@ export default async function valueArbitrate(signals, ctx, values, config = {}) 
     throw err;
   }
 }
+
+valueArbitrate.knownTexts = [];

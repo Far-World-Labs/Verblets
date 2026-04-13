@@ -3,7 +3,7 @@ import { patternCandidatesJsonSchema } from './schemas.js';
 import { jsonSchema } from '../../lib/llm/index.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
-import { Outcome } from '../../lib/progress/constants.js';
+import { DomainEvent, Outcome } from '../../lib/progress/constants.js';
 
 const name = 'detect-patterns';
 
@@ -68,6 +68,7 @@ export default async function detectPatterns(objects, config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
+  emitter.emit({ event: DomainEvent.input, value: objects });
   const { maxStringLength, maxArrayLength, topN, capacity } = await getOptions(runConfig, {
     thoroughness: withPolicy(mapThoroughness, ['topN', 'capacity']),
     maxStringLength: 50,
@@ -129,6 +130,7 @@ export default async function detectPatterns(objects, config = {}) {
       .map((item) => item.template)
       .slice(0, topN);
 
+    emitter.emit({ event: DomainEvent.output, value: patterns });
     emitter.complete({ outcome: Outcome.success });
 
     return patterns;
@@ -137,3 +139,5 @@ export default async function detectPatterns(objects, config = {}) {
     throw err;
   }
 }
+
+detectPatterns.knownTexts = [];

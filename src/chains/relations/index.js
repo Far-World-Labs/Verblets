@@ -1,10 +1,10 @@
 import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
-import buildInstructions from '../../lib/build-instructions/index.js';
 import createProgressEmitter from '../../lib/progress/index.js';
-import { Outcome } from '../../lib/progress/constants.js';
+import { DomainEvent, Outcome } from '../../lib/progress/constants.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
+import { resolveArgs, resolveTexts } from '../../lib/instruction/index.js';
 import relationResultSchema from './relation-result.json' with { type: 'json' };
 
 const name = 'relations';
@@ -22,36 +22,23 @@ export const mapCanonicalization = (value) => {
   return undefined;
 };
 
-// ===== Instruction Builders =====
+// ===== Instruction Builder =====
 
-export const {
-  mapInstructions,
-  filterInstructions,
-  reduceInstructions,
-  findInstructions,
-  groupInstructions,
-} = buildInstructions({
-  specTag: 'relation-specification',
-  defaults: {
-    map: `Extract relations from each text chunk and return them as JSON.`,
-    filter: `Extract relations and keep only those matching the criteria.`,
-    find: `Extract relations and select the most significant one.`,
-    group: `Group relations by their predicates, subjects, or patterns.`,
-  },
-  steps: {
-    reduce: `Consolidate relations across text chunks:\n1. Merge duplicate relations - same triple mentioned in different chunks\n2. Resolve entity variations - ensure consistent canonical forms\n3. Build unified relation set - all unique relations discovered\n4. Preserve relation context through metadata`,
-    filter: `Extract relations and filter to keep only those meeting the criteria.`,
-    find: `Extract relations and return the one best matching the selection criteria.`,
-    group: `Extract relations and group them by patterns, types, or entities involved.`,
-  },
-  mapApplyLine: 'Apply this relation specification:',
-  mapSuffix: {
-    processing:
-      'Return a JSON object with an "items" array containing the extracted relations.\nEach relation must have: subject (string), predicate (string), object (string), and optional metadata (object).',
-    default: 'Return a JSON object with an "items" array containing the extracted relations.',
-  },
-  reduceDefault: 'Build comprehensive relation graph from all chunks',
-});
+/**
+ * Build an instruction bundle for relation extraction, usable with any collection chain.
+ *
+ * @param {object} params
+ * @param {string} params.spec - Pre-generated relation specification
+ * @param {string} [params.text] - Override the default instruction text
+ * @returns {object} Instruction bundle { text, spec, ...context }
+ */
+export function relationInstructions({ spec, text, ...context }) {
+  return {
+    text: text ?? 'Extract relations according to the relation specification',
+    spec,
+    ...context,
+  };
+}
 
 // ===== RDF Literal Parsing =====
 
@@ -202,7 +189,7 @@ Use natural language, not symbolic identifiers or linked data formats.`;
  * @param {Array<Object>} config.entities - Pre-identified entities for disambiguation (optional)
  * @returns {Promise<Object>} Object with relations array
  */
-export async function applyRelations(text, specification, config = {}) {
+async function extractRelationsWithSpec(text, spec, config = {}) {
   const runConfig = nameStep('relations:apply', config);
   const { canonicalization } = await getOptions(runConfig, {
     canonicalization: withPolicy(mapCanonicalization),
@@ -211,7 +198,7 @@ export async function applyRelations(text, specification, config = {}) {
 
   let prompt = `Apply the relation specification to extract relations from this text.
 
-${asXML(specification, { tag: 'relation-specification' })}`;
+${asXML(spec, { tag: 'relation-specification' })}`;
 
   if (entities && entities.length > 0) {
     prompt += `
@@ -281,15 +268,18 @@ Example: {"object": "42^^xsd:integer"} NOT {"object": '"42"^^xsd:integer'}`;
  * @param {Object} config - Configuration options
  * @returns {Promise<Array>} Array of relation objects
  */
-export async function extractRelations(text, instructions, config = {}) {
+export default async function extractRelations(text, instructions, config) {
+  [instructions, config] = resolveArgs(instructions, config, ['spec']);
+  const { text: instructionText, known, context } = resolveTexts(instructions, ['spec']);
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
 
   try {
-    const spec = runConfig.spec || (await relationSpec(instructions, runConfig));
-    const entities = typeof instructions === 'object' ? instructions.entities : runConfig.entities;
-    const result = await applyRelations(text, spec, { ...runConfig, entities });
+    const effectiveInstructions = context ? `${instructionText}\n\n${context}` : instructionText;
+    const spec = known.spec || (await relationSpec(effectiveInstructions, runConfig));
+    emitter.emit({ event: DomainEvent.phase, phase: 'applying-relations', specification: spec });
+    const result = await extractRelationsWithSpec(text, spec, runConfig);
     const items = result.items || [];
 
     emitter.complete({ outcome: Outcome.success });
@@ -301,49 +291,4 @@ export async function extractRelations(text, instructions, config = {}) {
   }
 }
 
-// ===== Advanced Relation Functions =====
-
-/**
- * Create a relation extraction function with a pre-generated specification
- * @param {string} specification - Pre-generated relation specification
- * @param {Object} config - Configuration options
- * @param {Array<Object>} config.entities - Pre-identified entities for disambiguation (optional)
- * @returns {Function} Relation extraction function with specification property
- */
-export function createRelationExtractor(specification, config = {}) {
-  const extractorFunction = async function (input) {
-    const result = await applyRelations(input, specification, config);
-    return result.items || [];
-  };
-
-  // Add specification property for introspection
-  Object.defineProperty(extractorFunction, 'specification', {
-    get() {
-      return specification;
-    },
-    enumerable: true,
-  });
-
-  return extractorFunction;
-}
-
-/**
- * Original relation extraction function - simple, stateless version
- * @param {string|Object} prompt - Relation extraction instructions
- * @param {Object} config - Configuration options
- * @returns {Function} Relation extraction function
- */
-export default function relations(prompt, config = {}) {
-  const extractorFunction = function (input) {
-    return extractRelations(input, prompt, config);
-  };
-
-  Object.defineProperty(extractorFunction, 'prompt', {
-    get() {
-      return prompt;
-    },
-    enumerable: true,
-  });
-
-  return extractorFunction;
-}
+extractRelations.knownTexts = ['spec'];

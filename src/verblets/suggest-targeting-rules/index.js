@@ -10,6 +10,7 @@ import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { schema } from '../../lib/targeting-rule/index.js';
 import { nameStep } from '../../lib/context/option.js';
+import { resolveArgs, resolveTexts } from '../../lib/instruction/index.js';
 import createProgressEmitter from '../../lib/progress/index.js';
 import { Outcome } from '../../lib/progress/constants.js';
 
@@ -48,11 +49,14 @@ Based on these patterns, suggest concrete targeting rules.${instruction ? `\n\nA
  * Suggest targeting rules from decision traces.
  *
  * @param {object[]} traces - Decision trace objects (from trace-collector or any source)
- * @param {string} [instruction] - Additional guidance for the analysis
- * @param {object} [config={}] - LLM config
+ * @param {string|object} [instruction] - Additional guidance for the analysis (string or instruction bundle)
+ * @param {object} [config] - LLM config
  * @returns {Promise<object[]>} Array of targeting rule AST nodes
  */
-export default async function suggestTargetingRules(traces, instruction, config = {}) {
+export default async function suggestTargetingRules(traces, instruction, config) {
+  [instruction, config] = resolveArgs(instruction, config);
+  const { text, context } = resolveTexts(instruction, []);
+  const effectiveInstruction = context ? `${text}\n\n${context}` : text;
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
@@ -63,7 +67,7 @@ export default async function suggestTargetingRules(traces, instruction, config 
   }
 
   try {
-    const prompt = buildPrompt(traces, instruction);
+    const prompt = buildPrompt(traces, effectiveInstruction);
 
     const result = await callLlm(prompt, {
       ...runConfig,
@@ -80,3 +84,5 @@ export default async function suggestTargetingRules(traces, instruction, config 
     throw err;
   }
 }
+
+suggestTargetingRules.knownTexts = [];

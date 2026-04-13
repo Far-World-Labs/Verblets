@@ -55,10 +55,6 @@ Convert raw LLM text responses into typed values. These are the internal impleme
 - [window-for](./window-for) — Calculate sliding windows for batch processing
 - [text-batch](./text-batch) — Create text batches by token count
 
-## Chain Support
-
-- [build-instructions](./build-instructions) — Factory for collection instruction builders (spec → map/filter/reduce/find/group)
-
 ## Code Analysis
 
 - [search-best-first](./search-best-first) — Best-first tree search algorithm

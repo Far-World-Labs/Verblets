@@ -18,6 +18,7 @@
 
 import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import { nameStep } from '../../lib/context/option.js';
+import { resolveTexts } from '../../lib/instruction/index.js';
 import createProgressEmitter from '../../lib/progress/index.js';
 import { Outcome } from '../../lib/progress/constants.js';
 
@@ -153,6 +154,7 @@ const analysisSchema = {
  * @returns {Promise<Object>} Enhanced prompt with metadata
  */
 export default async function phailForge(prompt, config = {}) {
+  const { text: inputPrompt, context: bundleContext } = resolveTexts(prompt, []);
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
@@ -166,9 +168,10 @@ export default async function phailForge(prompt, config = {}) {
     // Build the enhancement request
     const fullPrompt = [
       ENHANCEMENT_PROMPT,
-      prompt,
+      inputPrompt,
       context && `\nDomain context: ${context}`,
       style && `\nEnhancement style: ${style}`,
+      bundleContext,
     ]
       .filter(Boolean)
       .join('\n');
@@ -184,7 +187,7 @@ export default async function phailForge(prompt, config = {}) {
       ...enhancedResponse,
       metadata: {
         ...enhancedResponse.metadata,
-        expansionRatio: enhancedResponse.enhanced.length / prompt.length,
+        expansionRatio: enhancedResponse.enhanced.length / inputPrompt.length,
       },
     };
 
@@ -205,6 +208,8 @@ export default async function phailForge(prompt, config = {}) {
     throw err;
   }
 }
+
+phailForge.knownTexts = [];
 
 // Export for use in chains
 export { phailForge };

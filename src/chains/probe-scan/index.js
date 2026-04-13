@@ -1,7 +1,7 @@
 import { embedChunked } from '../../lib/embed-local/index.js';
 import { cosineSimilarity } from '../../lib/pure/index.js';
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
-import { Outcome } from '../../lib/progress/constants.js';
+import { DomainEvent, Outcome } from '../../lib/progress/constants.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 
 const name = 'probe-scan';
@@ -42,6 +42,7 @@ export default async function probeScan(textOrChunks, probes, config = {}) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
+  emitter.emit({ event: DomainEvent.input, value: textOrChunks });
   const { detection: threshold, maxTokens } = await getOptions(runConfig, {
     detection: withPolicy(mapDetection),
     maxTokens: 256,
@@ -81,11 +82,15 @@ export default async function probeScan(textOrChunks, probes, config = {}) {
 
     const sorted = hits.toSorted((a, b) => b.score - a.score);
 
+    const result = { flagged: sorted.length > 0, hits: sorted };
+    emitter.emit({ event: DomainEvent.output, value: result });
     emitter.complete({ outcome: Outcome.success });
 
-    return { flagged: sorted.length > 0, hits: sorted };
+    return result;
   } catch (err) {
     emitter.error(err);
     throw err;
   }
 }
+
+probeScan.knownTexts = [];

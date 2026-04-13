@@ -169,4 +169,27 @@ describe('Summary map', () => {
 
     expect(result).toBeUndefined();
   });
+
+  it('build() assembles cached entries as XML context', async () => {
+    vi.clearAllMocks();
+    const map = new SummaryMap({ targetTokens: 100 });
+    map.set('knowledge', { key: 'knowledge', value: legalText, weight: 1, type: 'text' });
+    map.set('code', { key: 'code', value: codeText, weight: 0.5, type: 'code' });
+
+    const result = await map.build();
+
+    expect(result).toContain('<knowledge>');
+    expect(result).toContain('</knowledge>');
+    expect(result).toContain('<code>');
+    expect(result).toContain('</code>');
+    // Entries separated by double newline (cache is weight-sorted: code first)
+    expect(result).toMatch(/<\/code>\n\n<knowledge>/);
+  });
+
+  it('buildStale() returns empty string before cache fill', () => {
+    const map = new SummaryMap({ targetTokens: 100 });
+    map.set('a', { key: 'a', value: 'text', weight: 1 });
+
+    expect(map.buildStale()).toBe('');
+  });
 });

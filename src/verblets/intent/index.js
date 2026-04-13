@@ -1,5 +1,6 @@
 import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import { nameStep } from '../../lib/context/option.js';
+import { resolveTexts } from '../../lib/instruction/index.js';
 import createProgressEmitter from '../../lib/progress/index.js';
 import { Outcome } from '../../lib/progress/constants.js';
 import { asXML } from '../../prompts/index.js';
@@ -39,6 +40,7 @@ const responseFormat = jsonSchema('intent_result', intentSchema);
  * @returns {Promise<Object>} Intent result with operation, parameters, and optional parameters
  */
 export default async function intent(text, operations, config = {}) {
+  const { text: inputText, context } = resolveTexts(text, []);
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
@@ -67,18 +69,23 @@ export default async function intent(text, operations, config = {}) {
       })
       .join('\n\n');
 
-    const prompt = `Analyze the user input and determine the most appropriate intent and extract relevant parameters.
+    const prompt = [
+      `Analyze the user input and determine the most appropriate intent and extract relevant parameters.
 
 ${asXML(operationsText, { tag: 'available-operations' })}
 
-${asXML(text, { tag: 'user-input' })}
+${asXML(inputText, { tag: 'user-input' })}
 
 Determine:
 1. Which operation best matches the user's intent
 2. Extract any parameters mentioned in the input
 3. Identify optional parameters that could be relevant
 
-Return the result as a structured JSON object with the operation name, extracted parameters, and any optional parameters that might be useful.${toleranceGuidance ? `\n\n${toleranceGuidance}` : ''}`;
+Return the result as a structured JSON object with the operation name, extracted parameters, and any optional parameters that might be useful.${toleranceGuidance ? `\n\n${toleranceGuidance}` : ''}`,
+      context,
+    ]
+      .filter(Boolean)
+      .join('\n\n');
 
     const response = await callLlm(prompt, {
       ...runConfig,
@@ -93,3 +100,5 @@ Return the result as a structured JSON object with the operation name, extracted
     throw err;
   }
 }
+
+intent.knownTexts = [];

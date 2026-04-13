@@ -6,6 +6,7 @@ import number from '../../verblets/number/index.js';
 import date from '../date/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import templateReplace from '../../lib/template-replace/index.js';
+import { resolveTexts } from '../../lib/instruction/index.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 import createProgressEmitter from '../../lib/progress/index.js';
 import { Metric, DomainEvent, Outcome } from '../../lib/progress/constants.js';
@@ -92,7 +93,7 @@ export const mapTolerance = (value) => {
 };
 
 export default function setInterval({
-  prompt,
+  prompt: rawPrompt,
   getData,
   historySize = 5,
   initial = undefined,
@@ -100,9 +101,11 @@ export default function setInterval({
   llm,
   ...options
 } = {}) {
+  const { text: prompt, context: bundleContext } = resolveTexts(rawPrompt, []);
   const config = nameStep(name, { llm, ...options });
   const emitter = createProgressEmitter(name, config.onProgress, config);
   emitter.start();
+  emitter.emit({ event: DomainEvent.input, value: prompt });
 
   const startTime = config.now ?? new Date();
   const batchDone = emitter.batch();
@@ -142,15 +145,17 @@ export default function setInterval({
       const processedPrompt = templateReplace(prompt, lastResult);
 
       // Always invoke the prompt to determine the next interval
-      const intervalPrompt = `${contentIsInstructions} ${processedPrompt}
-
-${explainAndSeparate} ${explainAndSeparatePrimitive}
-
-Your response should be an ISO date or a short duration like "10 minutes".
-${asXML(lastResult, { tag: 'last-result', title: 'Last result:' })}
-${asXML(history, { tag: 'history', title: 'History:' })}
-${asXML(count, { tag: 'count', title: 'Count:' })}
-Next wait:`;
+      const intervalParts = [
+        `${contentIsInstructions} ${processedPrompt}`,
+        `${explainAndSeparate} ${explainAndSeparatePrimitive}`,
+        'Your response should be an ISO date or a short duration like "10 minutes".',
+        asXML(lastResult, { tag: 'last-result', title: 'Last result:' }),
+        asXML(history, { tag: 'history', title: 'History:' }),
+        asXML(count, { tag: 'tick-count', title: 'Count:' }),
+        'Next wait:',
+        bundleContext,
+      ];
+      const intervalPrompt = intervalParts.filter(Boolean).join('\n\n');
 
       const intervalText = await retry(
         () =>
@@ -245,3 +250,5 @@ Next wait:`;
 
   return stop;
 }
+
+setInterval.knownTexts = [];

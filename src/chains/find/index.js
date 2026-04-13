@@ -7,12 +7,15 @@ import { debug } from '../../lib/debug/index.js';
 import { nameStep, getOptions } from '../../lib/context/option.js';
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
 import { OpEvent, DomainEvent, Outcome, ErrorPosture } from '../../lib/progress/constants.js';
+import { resolveArgs, resolveTexts } from '../../lib/instruction/index.js';
 
 const name = 'find';
 
 const findResponseFormat = jsonSchema(findResultJsonSchema.name, findResultJsonSchema.schema);
 
-const find = async function find(list, instructions, config = {}) {
+const find = async function find(list, instructions, config) {
+  [instructions, config] = resolveArgs(instructions, config);
+  const { text, context } = resolveTexts(instructions, []);
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
@@ -22,16 +25,17 @@ const find = async function find(list, instructions, config = {}) {
     errorPosture: ErrorPosture.resilient,
   });
   const findInstructions = ({ style, count }) => {
+    const contextBlock = context ? `\n\n${context}` : '';
     const baseInstructions = `From the list below, identify and return the SINGLE item that BEST matches the search criteria.
 
-${asXML(instructions, { tag: 'search-criteria' })}
+${asXML(text, { tag: 'search-criteria' })}
 
 IMPORTANT:
 - Evaluate all items before selecting
 - Choose the BEST match, not just any match
 - Return the complete original item text, unchanged
 - If NO items match the criteria, return an empty string
-- Return ONLY ONE item, even if multiple items match`;
+- Return ONLY ONE item, even if multiple items match${contextBlock}`;
 
     if (style === ListStyle.NEWLINE) {
       return `${baseInstructions}
@@ -133,5 +137,7 @@ Process exactly ${count} items from the XML list below and return the single bes
   emitter.complete(notFoundMeta);
   return '';
 };
+
+find.knownTexts = [];
 
 export default find;

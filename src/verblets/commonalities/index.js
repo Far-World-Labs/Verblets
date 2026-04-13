@@ -2,6 +2,7 @@ import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { constants as promptConstants } from '../../prompts/index.js';
 import { nameStep } from '../../lib/context/option.js';
+import { resolveArgs, resolveTexts } from '../../lib/instruction/index.js';
 import createProgressEmitter from '../../lib/progress/index.js';
 import { Outcome } from '../../lib/progress/constants.js';
 import commonalitiesSchema from './commonalities-result.json' with { type: 'json' };
@@ -34,23 +35,30 @@ export const mapDepth = (value) => {
   return value;
 };
 
-export const buildPrompt = (items, { instructions, depthGuidance } = {}) => {
+export const buildPrompt = (items, { instructionText, context, depthGuidance } = {}) => {
   const itemsList = items.join(' | ');
   const itemsBlock = asXML(itemsList, { tag: 'items' });
   const intro =
-    instructions ||
+    instructionText ||
     'Identify the common elements, shared features, or overlapping aspects that connect all the given items.';
 
-  return `${contentIsQuestion} ${intro}
+  return [
+    `${contentIsQuestion} ${intro}
 
 ${itemsBlock}
 
 Provide a clear, focused list of items that represent the intersection or commonality between all the given categories.${depthGuidance ? `\n\n${depthGuidance}` : ''}
 
-${tryCompleteData}`;
+${tryCompleteData}`,
+    context,
+  ]
+    .filter(Boolean)
+    .join('\n\n');
 };
 
-export default async function commonalities(items, config = {}) {
+export default async function commonalities(items, instructions, config) {
+  [instructions, config] = resolveArgs(instructions, config);
+  const { text: instructionText, context } = resolveTexts(instructions, []);
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
@@ -67,7 +75,7 @@ export default async function commonalities(items, config = {}) {
 
   try {
     const depthGuidance = mapDepth(runConfig.depth);
-    const output = await callLlm(buildPrompt(items, { ...runConfig, depthGuidance }), {
+    const output = await callLlm(buildPrompt(items, { instructionText, context, depthGuidance }), {
       ...runConfig,
       responseFormat,
     });
@@ -80,3 +88,5 @@ export default async function commonalities(items, config = {}) {
     throw err;
   }
 }
+
+commonalities.knownTexts = [];

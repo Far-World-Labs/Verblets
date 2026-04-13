@@ -20,11 +20,11 @@ describe('detect-threshold examples', () => {
       { id: 10, amount: 3500, riskScore: 0.83, merchant: 'Online Marketplace' },
     ];
 
-    const result = await detectThreshold({
-      data: transactions,
-      targetProperty: 'riskScore',
-      goal: 'Set thresholds for a three-tier system: auto-approve low risk, manual review medium risk, auto-decline high risk. Minimize customer friction while preventing fraud.',
-    });
+    const result = await detectThreshold(
+      transactions,
+      'riskScore',
+      'Set thresholds for a three-tier system: auto-approve low risk, manual review medium risk, auto-decline high risk. Minimize customer friction while preventing fraud.'
+    );
 
     expect(result).toHaveProperty('thresholdCandidates');
     expect(result).toHaveProperty('distributionAnalysis');
@@ -60,11 +60,11 @@ describe('detect-threshold examples', () => {
         timestamp: new Date(2024, 0, 1, 0, i * 5).toISOString(),
       }));
 
-      const result = await detectThreshold({
-        data: apiMetrics,
-        targetProperty: 'responseTime',
-        goal: 'Identify response time thresholds for SLA monitoring. Need to distinguish between normal latency, degraded performance, and critical slowdowns.',
-      });
+      const result = await detectThreshold(
+        apiMetrics,
+        'responseTime',
+        'Identify response time thresholds for SLA monitoring. Need to distinguish between normal latency, degraded performance, and critical slowdowns.'
+      );
 
       expect(result.thresholdCandidates).toBeInstanceOf(Array);
       expect(result.distributionAnalysis).toHaveProperty('mean');

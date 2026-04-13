@@ -22,7 +22,7 @@ describe('veiledVariants', () => {
       return ['w1', 'w2', 'w3', 'w4', 'w5'];
     });
 
-    const result = await veiledVariants({ prompt: 'secret' });
+    const result = await veiledVariants('secret');
 
     expect(result).toHaveLength(15);
     expect(result).toEqual([
@@ -54,7 +54,7 @@ describe('veiledVariants', () => {
     callLlm.mockClear();
     callLlm.mockResolvedValue(['v1', 'v2', 'v3']);
 
-    const result = await veiledVariants({ prompt: 'secret', coverage: 'low' });
+    const result = await veiledVariants('secret', { coverage: 'low' });
 
     expect(callLlm).toHaveBeenCalledTimes(1);
     expect(result).toHaveLength(3);
@@ -65,7 +65,7 @@ describe('veiledVariants', () => {
     callLlm.mockClear();
     callLlm.mockResolvedValue(['v1', 'v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8']);
 
-    const result = await veiledVariants({ prompt: 'secret', coverage: 'high' });
+    const result = await veiledVariants('secret', { coverage: 'high' });
 
     expect(callLlm).toHaveBeenCalledTimes(3);
     expect(result).toHaveLength(24);
@@ -79,8 +79,7 @@ describe('veiledVariants', () => {
     callLlm.mockClear();
     callLlm.mockResolvedValue(['v1', 'v2', 'v3']);
 
-    await veiledVariants({
-      prompt: 'secret',
+    await veiledVariants('secret', {
       coverage: 'low',
       strategies: ['causal', 'softCover'],
     });

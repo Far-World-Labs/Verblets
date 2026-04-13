@@ -3,8 +3,9 @@ import path from 'node:path';
 import llm, { jsonSchema } from '../../lib/llm/index.js';
 import reduce from '../reduce/index.js';
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
-import { OpEvent, Outcome } from '../../lib/progress/constants.js';
+import { DomainEvent, OpEvent, Outcome } from '../../lib/progress/constants.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
+import { asXML } from '../../prompts/wrap-variable.js';
 
 // Configuration constants
 // These control the behavior of the architecture testing system
@@ -484,19 +485,18 @@ const bulkResultSchema = {
 function resolveContext(ctx) {
   switch (ctx.type) {
     case 'file': {
-      return fs.existsSync(ctx.filePath)
-        ? `<${ctx.name}>\n${fs.readFileSync(ctx.filePath, 'utf8')}\n</${ctx.name}>`
-        : '';
+      if (!fs.existsSync(ctx.filePath)) return '';
+      return asXML(fs.readFileSync(ctx.filePath, 'utf8'), { tag: ctx.name });
     }
     case 'json': {
       if (!fs.existsSync(ctx.filePath)) return '';
       const data = JSON.parse(fs.readFileSync(ctx.filePath, 'utf8'));
-      return `<${ctx.name}>\n${JSON.stringify(data, undefined, 2)}\n</${ctx.name}>`;
+      return asXML(JSON.stringify(data, undefined, 2), { tag: ctx.name });
     }
     case 'data': {
       const dataStr =
         typeof ctx.data === 'string' ? ctx.data : JSON.stringify(ctx.data, undefined, 2);
-      return `<${ctx.name}>\n${dataStr}\n</${ctx.name}>`;
+      return asXML(dataStr, { tag: ctx.name });
     }
     default:
       return '';
@@ -518,23 +518,25 @@ function getItemContent(item) {
 
 function buildPrompt(contextText, item, description, isFile) {
   const content = getItemContent(item);
-  return `${contextText}
-Analyze this ${isFile ? 'file' : 'directory'}: ${item}
-
-Content:
-${content}
-
-Does it satisfy: "${description}"?
-
-Return JSON with "passed" (boolean) and "reason" (string).`;
+  const parts = [
+    contextText,
+    `Analyze this ${isFile ? 'file' : 'directory'}: ${item}`,
+    asXML(content, { tag: 'content' }),
+    asXML(description, { tag: 'description' }),
+    'Return JSON with "passed" (boolean) and "reason" (string).',
+  ];
+  return parts.filter(Boolean).join('\n\n');
 }
 
 function buildBulkPrompt(contextText, items, description) {
-  return `${contextText}
-Analyze each item and determine if it satisfies: "${description}"
-Items: ${items.join(', ')}
-
-Return JSON with "results" array containing objects with "path", "passed" (boolean), and "reason" (string).`;
+  const parts = [
+    contextText,
+    'Analyze each item and determine if it satisfies the given description.',
+    asXML(description, { tag: 'description' }),
+    asXML(items.join('\n'), { tag: 'items' }),
+    'Return JSON with "results" array containing objects with "path", "passed" (boolean), and "reason" (string).',
+  ];
+  return parts.filter(Boolean).join('\n\n');
 }
 
 // Main expectation class
@@ -582,6 +584,7 @@ class ArchExpectation {
     const runConfig = nameStep('ai-arch-expect', this.options);
     const emitter = createProgressEmitter('ai-arch-expect', runConfig.onProgress, runConfig);
     emitter.start();
+    emitter.emit({ event: DomainEvent.input, value: this.description });
 
     try {
       if (!this.description) {
@@ -636,11 +639,14 @@ class ArchExpectation {
           throw new Error(message);
         }
 
+        const coverageResult = { passed: coveragePassed, coverage, message };
+        emitter.emit({ event: DomainEvent.output, value: coverageResult });
         emitter.complete({ outcome: Outcome.success, coverage, total: items.length });
-        return { passed: coveragePassed, coverage, message };
+        return coverageResult;
       }
 
       const result = this.summarize(items, allResults);
+      emitter.emit({ event: DomainEvent.output, value: result });
       emitter.complete({
         outcome: Outcome.success,
         total: items.length,
@@ -668,5 +674,7 @@ class ArchExpectation {
 export function aiArchExpect(target, options = {}) {
   return new ArchExpectation(target, options);
 }
+
+aiArchExpect.knownTexts = [];
 
 export default aiArchExpect;
