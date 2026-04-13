@@ -1,21 +1,29 @@
 import { ChainEvent } from '../progress/constants.js';
 
 /**
- * Create a progress callback that collects named fields from domain events,
- * resolving a promise when the chain completes.
+ * Run a function with a progress callback that captures named fields
+ * from domain events. Returns the function's result alongside the
+ * captured artifacts.
  *
  * Usage:
- *   const onProgress = collectEventsWith('specification', 'categories');
- *   const result = await chain(items, instruction, { onProgress });
- *   const { specification, categories } = await onProgress.captured;
+ *   const [result, { specification }] = await collectEventsWith(
+ *     (onProgress) => chain(items, instruction, { onProgress }),
+ *     'specification',
+ *   );
  *
- * Compose with an existing callback via .pipe():
- *   const onProgress = collectEventsWith('specification').pipe(existingCallback);
+ * Compose with an existing callback inside the wrapper:
+ *   const [result, captured] = await collectEventsWith(
+ *     (onProgress) => chain(items, instruction, {
+ *       onProgress: (e) => { onProgress(e); existingCallback(e); },
+ *     }),
+ *     'specification',
+ *   );
  *
+ * @param {Function} fn - Receives onProgress callback, returns a promise
  * @param {...string} fields - Event property names to collect
- * @returns {Function} onProgress callback with .captured promise and .pipe() method
+ * @returns {Promise<[*, object]>} Tuple of [fn result, captured fields]
  */
-export default function collectEventsWith(...fields) {
+export default async function collectEventsWith(fn, ...fields) {
   let resolve;
   const captured = new Promise((r) => {
     resolve = r;
@@ -26,19 +34,12 @@ export default function collectEventsWith(...fields) {
     for (const field of fields) {
       if (event[field] !== undefined) derived[field] = event[field];
     }
-    if (event.event === ChainEvent.complete) resolve(derived);
+    if (event.event === ChainEvent.complete || event.event === ChainEvent.error) {
+      resolve(derived);
+    }
   };
 
-  onProgress.captured = captured;
-
-  onProgress.pipe = (outer) => {
-    const composed = (event) => {
-      onProgress(event);
-      outer?.(event);
-    };
-    composed.captured = captured;
-    return composed;
-  };
-
-  return onProgress;
+  const result = await fn(onProgress);
+  const artifacts = await captured;
+  return [result, artifacts];
 }

@@ -16,7 +16,7 @@ describe('centralTendency', () => {
 
   it.each([
     ['empty string item', '', ['seed1', 'seed2'], 'Item must be a non-empty string'],
-    ['null item', null, ['seed1', 'seed2'], 'Item must be a non-empty string'],
+    ['null item', null, ['seed1', 'seed2'], 'null is not allowed'],
     ['empty seedItems array', 'item', [], 'seedItems must be a non-empty array'],
     ['null seedItems', 'item', null, 'seedItems must be a non-empty array'],
   ])('rejects %s', async (_label, item, seedItems, expectedError) => {

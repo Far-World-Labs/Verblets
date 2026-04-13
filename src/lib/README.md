@@ -5,7 +5,11 @@ Low-level utilities that support [chains](../chains/) and [verblets](../verblets
 ## Core
 
 - [llm](./llm) — LLM API wrapper with capability-based model selection, structured output, and automatic JSON parsing
-- [context](./context) — Config resolution: `getOption`, `getOptions`, `withPolicy`, `nameStep`, `track`
+- [context](./context) — Config resolution: `getOption`, `getOptions`, `withPolicy`, `nameStep`
+- [instruction](./instruction) — Instruction normalization: `resolveTexts`, `resolveArgs`, `normalizeInstruction`
+- [context-budget](./context-budget) — XML context assembler: collect named entries, wrap, join
+- [collect-events-with](./collect-events-with) — Wrap a chain call and capture derived artifacts from progress events
+- [template-builder](./template-builder) — Immutable tagged-template prompt builder with named slots
 - [retry](./retry) — Config-aware async retry with configurable attempts and delay
 - [parallel-batch](./parallel-batch) — Parallel execution with concurrency limits
 
@@ -46,7 +50,7 @@ Convert raw LLM text responses into typed values. These are the internal impleme
 ## Infrastructure
 
 - [prompt-cache](./prompt-cache) — Cache prompts and responses (Redis with in-memory fallback)
-- [progress](./progress) — Progress event system: `track`, `trackBatch`, `scopeProgress`, emit utilities
+- [progress](./progress) — Progress event system: `createProgressEmitter`, `scopePhase`, lifecycle and batch tracking
 - [debug](./debug) — Debug logging
 - [any-signal](./any-signal) — Combine multiple AbortSignals
 - [timed-abort-controller](./timed-abort-controller) — AbortController with timeout

@@ -20,21 +20,23 @@ Model selection accepts a string shorthand (`'fastGoodCheap'`), a capability obj
 
 ## Instruction Bundles
 
-Domain chains (score, entities, scale, tags, relations, calibrate) export instruction builder functions that compose specifications into bundles. A bundle works with any collection chain or directly with the domain chain:
+All chains accept instructions as a string or an object with named context. Unknown keys become `<tag>value</tag>` XML prepended to the prompt. Known keys override internal derivation — supplying `spec` skips the spec-generation LLM call, supplying `categories` skips category discovery, etc.
 
 ```javascript
-import { score, scoreInstructions, map } from '@far-world-labs/verblets';
-
-// Direct use — score generates a spec internally
+// String — unchanged
 const scores = await score(articles, 'Rate persuasiveness 0-10');
 
-// Pipeline — capture spec, reuse across chains
-const spec = '...'; // from collectEventsWith or prior call
-const bundle = scoreInstructions({ spec, text: 'Rate persuasiveness 0-10' });
-const mapped = await map(articles, bundle);
+// Named context — domain becomes <domain>...</domain> in the prompt
+const scores = await score(articles, {
+  text: 'Rate persuasiveness 0-10',
+  domain: 'Political campaign ads',
+});
+
+// Known key — reuses a prior spec, skipping generation
+const scores = await score(articles, { text: 'Rate persuasiveness 0-10', spec: priorSpec });
 ```
 
-Each builder returns an instruction bundle (`{ text, spec, ...context }`) compatible with `resolveTexts`.
+Each chain exports a `knownTexts` property listing the keys it recognizes. See [the ADR](../../docs/adr/2026-04-12-instruction-as-context.md) for the full known-key table and pipeline capture patterns.
 
 ## List Operations
 

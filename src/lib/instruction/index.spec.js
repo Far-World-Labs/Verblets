@@ -15,6 +15,14 @@ describe('normalizeInstruction', () => {
     const instruction = { text: 'hello', domain: 'finance' };
     expect(normalizeInstruction(instruction)).toBe(instruction);
   });
+
+  it('returns { text: undefined } for undefined', () => {
+    expect(normalizeInstruction(undefined)).toEqual({ text: undefined });
+  });
+
+  it('throws on null', () => {
+    expect(() => normalizeInstruction(null)).toThrow(/null is not allowed/);
+  });
 });
 
 describe('resolveArgs', () => {
@@ -56,8 +64,8 @@ describe('resolveArgs', () => {
     expect(resolveArgs(arr)).toEqual([arr, {}]);
   });
 
-  it('does not shift null', () => {
-    expect(resolveArgs(null, { x: 1 })).toEqual([null, { x: 1 }]);
+  it('throws on null instructions', () => {
+    expect(() => resolveArgs(null, { x: 1 })).toThrow(/null is not allowed/);
   });
 
   it('keeps object with a known instruction key as instructions', () => {

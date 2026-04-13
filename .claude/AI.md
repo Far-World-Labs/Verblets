@@ -6,12 +6,24 @@ Chains and verblets are abstract by design — accuracy depends on the user prov
 
 ## Implementation Guidelines
 
+### Instructions
+- Every chain/verblet normalizes instructions through `resolveTexts(instruction, knownKeys)` from `src/lib/instruction/index.js`
+- Instructions are strings or objects: `{ text, ...namedContext }`. Unknown keys become XML context; known keys override internal derivation.
+- When instructions are optional, use `resolveArgs(instructions, config, knownKeys)` to disambiguate positional arguments
+- Every function exports a `knownTexts` static property listing recognized keys
+
 ### Prompts
+- Assemble prompts with `parts.filter(Boolean).join('\n\n')` — not template literals, `.replace()`, or ad-hoc conditionals
 - Reuse shared prompts from `src/prompts/index.js` for consistency
 - Extract `response_format` schemas to separate files (`schema.js` or `schemas.js`)
 - Schema keys are part of the prompt interface — use descriptive names to guide output
 - System prompts define the LLM's role; user prompts supply runtime content
 - Be mindful of input size variability; adapt prompt construction to model context limits
+
+### Progress Events
+- Every chain/verblet emits `DomainEvent.input` after `emitter.start()` and `DomainEvent.output` before `emitter.complete()`
+- Domain chains emit derived artifacts (specifications, anchors, categories) on existing domain events
+- `collectEventsWith(fn, ...fields)` wraps a chain call and captures named fields from progress events
 
 ### Model Selection
 - Use capability-based selection (`{ fast: true, good: 'prefer' }`) over hardcoded model names

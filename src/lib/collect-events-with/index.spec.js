@@ -3,85 +3,102 @@ import collectEventsWith from './index.js';
 import { ChainEvent } from '../progress/constants.js';
 
 describe('collectEventsWith', () => {
-  it('captures named fields from events', async () => {
-    const onProgress = collectEventsWith('specification');
+  it('captures named fields from events and returns the function result', async () => {
+    const [result, captured] = await collectEventsWith((onProgress) => {
+      onProgress({ event: 'step', stepName: 'deriving', specification: 'my spec' });
+      onProgress({ event: ChainEvent.complete });
+      return 'chain-result';
+    }, 'specification');
 
-    onProgress({ event: 'step', stepName: 'deriving', specification: 'my spec' });
-    onProgress({ event: ChainEvent.complete });
-
-    const derived = await onProgress.captured;
-    expect(derived.specification).toBe('my spec');
+    expect(result).toBe('chain-result');
+    expect(captured.specification).toBe('my spec');
   });
 
   it('captures multiple fields from different events', async () => {
-    const onProgress = collectEventsWith('specification', 'categories');
+    const [, captured] = await collectEventsWith(
+      (onProgress) => {
+        onProgress({ event: 'step', specification: 'entity spec' });
+        onProgress({ event: 'phase', categories: ['a', 'b', 'c'] });
+        onProgress({ event: ChainEvent.complete });
+        return undefined;
+      },
+      'specification',
+      'categories'
+    );
 
-    onProgress({ event: 'step', specification: 'entity spec' });
-    onProgress({ event: 'phase', categories: ['a', 'b', 'c'] });
-    onProgress({ event: ChainEvent.complete });
-
-    const derived = await onProgress.captured;
-    expect(derived.specification).toBe('entity spec');
-    expect(derived.categories).toEqual(['a', 'b', 'c']);
+    expect(captured.specification).toBe('entity spec');
+    expect(captured.categories).toEqual(['a', 'b', 'c']);
   });
 
   it('keeps the last value when a field appears in multiple events', async () => {
-    const onProgress = collectEventsWith('specification');
+    const [, captured] = await collectEventsWith((onProgress) => {
+      onProgress({ event: 'step', specification: 'first' });
+      onProgress({ event: 'step', specification: 'second' });
+      onProgress({ event: ChainEvent.complete });
+      return undefined;
+    }, 'specification');
 
-    onProgress({ event: 'step', specification: 'first' });
-    onProgress({ event: 'step', specification: 'second' });
-    onProgress({ event: ChainEvent.complete });
-
-    const derived = await onProgress.captured;
-    expect(derived.specification).toBe('second');
+    expect(captured.specification).toBe('second');
   });
 
   it('ignores fields not in the capture list', async () => {
-    const onProgress = collectEventsWith('specification');
+    const [, captured] = await collectEventsWith((onProgress) => {
+      onProgress({ event: 'step', specification: 'my spec', other: 'ignored' });
+      onProgress({ event: ChainEvent.complete });
+      return undefined;
+    }, 'specification');
 
-    onProgress({ event: 'step', specification: 'my spec', other: 'ignored' });
-    onProgress({ event: ChainEvent.complete });
-
-    const derived = await onProgress.captured;
-    expect(derived.specification).toBe('my spec');
-    expect(derived.other).toBeUndefined();
+    expect(captured.specification).toBe('my spec');
+    expect(captured.other).toBeUndefined();
   });
 
   it('resolves with empty object when no fields are found', async () => {
-    const onProgress = collectEventsWith('specification');
+    const [, captured] = await collectEventsWith((onProgress) => {
+      onProgress({ event: 'step', stepName: 'something' });
+      onProgress({ event: ChainEvent.complete });
+      return undefined;
+    }, 'specification');
 
-    onProgress({ event: 'step', stepName: 'something' });
-    onProgress({ event: ChainEvent.complete });
-
-    const derived = await onProgress.captured;
-    expect(derived).toEqual({});
+    expect(captured).toEqual({});
   });
 
-  it('composes with existing callback via pipe', async () => {
+  it('composes with existing callback inside the wrapper', async () => {
     const events = [];
     const outer = (event) => events.push(event);
 
-    const composed = collectEventsWith('specification').pipe(outer);
+    const [, captured] = await collectEventsWith((onProgress) => {
+      const composed = (e) => {
+        onProgress(e);
+        outer(e);
+      };
+      composed({ event: 'step', specification: 'my spec' });
+      composed({ event: ChainEvent.complete });
+      return undefined;
+    }, 'specification');
 
-    composed({ event: 'step', specification: 'my spec' });
-    composed({ event: ChainEvent.complete });
-
-    // Outer callback received all events
     expect(events).toHaveLength(2);
     expect(events[0].specification).toBe('my spec');
-
-    // Captured still works
-    const derived = await composed.captured;
-    expect(derived.specification).toBe('my spec');
+    expect(captured.specification).toBe('my spec');
   });
 
-  it('pipe handles undefined outer callback', async () => {
-    const composed = collectEventsWith('specification').pipe(undefined);
+  it('resolves captured on chain error events', async () => {
+    const [, captured] = await collectEventsWith((onProgress) => {
+      onProgress({ event: 'step', specification: 'partial' });
+      onProgress({ event: ChainEvent.error, error: new Error('boom') });
+      return undefined;
+    }, 'specification');
 
-    composed({ event: 'step', specification: 'my spec' });
-    composed({ event: ChainEvent.complete });
+    expect(captured.specification).toBe('partial');
+  });
 
-    const derived = await composed.captured;
-    expect(derived.specification).toBe('my spec');
+  it('awaits async function results', async () => {
+    const [result, captured] = await collectEventsWith(async (onProgress) => {
+      onProgress({ event: 'step', specification: 'async spec' });
+      onProgress({ event: ChainEvent.complete });
+      return Promise.resolve(42);
+    }, 'specification');
+
+    expect(result).toBe(42);
+    expect(captured.specification).toBe('async spec');
   });
 });

@@ -42,6 +42,20 @@ export default async function sentiment(text, config = {}) {
 }
 ```
 
+## Instruction Normalization
+
+Verblets that accept an instruction parameter normalize it through `resolveTexts`, the same as chains. Unknown keys become XML context; known keys override internal behavior. Most verblets have no known keys.
+
+```javascript
+import { resolveTexts } from '../../lib/instruction/index.js';
+
+const { text, context } = resolveTexts(instructions, []);
+const parts = [context, `Rewrite this query...`, asXML(text, { tag: 'query' })];
+const prompt = parts.filter(Boolean).join('\n\n');
+```
+
+All verblets export a `knownTexts` property (typically `[]`).
+
 ## Config System
 
 Verblets participate in the same config system as chains (see [option resolution](../../docs/option-resolution.md)). The difference: verblets typically have 1-2 options, so they use `getOption` directly rather than `getOptions` batch resolution.
@@ -85,6 +99,9 @@ export const mapDivergence = (value) => { /* ... */ };
 export default async function sentiment(text, config = {}) {
   // Implementation
 }
+
+// Known instruction keys — introspectable by callers and tooling
+sentiment.knownTexts = [];
 ```
 
 ## Common Verblet Types
@@ -125,5 +142,7 @@ README is optional for verblets with a single parameter and obvious behavior. Re
 - Embedding schemas in prompts instead of using `responseFormat` (see [JSON Schema Guidelines](../../.claude/guidelines/JSON_SCHEMAS.md))
 - Nesting model keys under `modelOptions` — pass `responseFormat`, `temperature`, etc. flat on config
 - Extracting `llm` from config to re-pass — callLlm resolves it automatically
+- Assembling prompts with template literals and `${contextBlock}` suffixes — use `parts.filter(Boolean).join('\n\n')`
+- Missing `knownTexts` static property
 - Over-defensive input validation for simple single-parameter verblets
 - Hard-coding model names instead of capability-based selection

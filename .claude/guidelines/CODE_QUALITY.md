@@ -22,7 +22,8 @@ Collection chains (`map`, `filter`, `find`, `sort`, etc.) return arrays directly
 ```javascript
 // Chain returns a plain array
 export default async function map(list, instructions, config = {}) {
-  // ... batching, LLM calls ...
+  const { text, context } = resolveTexts(instructions, []);
+  // ... prompt assembly, batching, LLM calls ...
   return results; // Array, not { items: results }
 }
 ```

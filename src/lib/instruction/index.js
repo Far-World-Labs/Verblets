@@ -20,9 +20,12 @@ import { asXML } from '../../prompts/wrap-variable.js';
  * @returns {[instructions: *, config: object]}
  */
 export function resolveArgs(instructions, config, knownKeys) {
+  if (instructions === null) {
+    throw new Error('Instructions must be a string, object, or undefined — null is not allowed');
+  }
   if (
     config === undefined &&
-    instructions != null &&
+    instructions !== undefined &&
     typeof instructions === 'object' &&
     !Array.isArray(instructions) &&
     !('text' in instructions) &&
@@ -45,7 +48,10 @@ export function resolveArgs(instructions, config, knownKeys) {
  * @returns {{ text: string, [key: string]: * }}
  */
 export function normalizeInstruction(instruction) {
-  if (instruction == null) return { text: undefined };
+  if (instruction === null) {
+    throw new Error('Instructions must be a string, object, or undefined — null is not allowed');
+  }
+  if (instruction === undefined) return { text: undefined };
   if (typeof instruction === 'string') return { text: instruction };
   if (instruction?.build) return { text: instruction.build() };
   return instruction;
