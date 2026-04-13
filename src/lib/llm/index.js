@@ -13,6 +13,7 @@ import anySignal from '../any-signal/index.js';
 import { get as getPromptResult, set as setPromptResult } from '../prompt-cache/index.js';
 import TimedAbortController from '../timed-abort-controller/index.js';
 import { get as configGet } from '../config/index.js';
+import defaultModelService from '../../services/llm-model/index.js';
 import extractJson from '../extract-json/index.js';
 import stripResponse from '../strip-response/index.js';
 import { onlyJSON, contentIsSchema } from '../../prompts/constants.js';
@@ -191,7 +192,7 @@ export const MODEL_KEYS = [
 ];
 
 export const run = async (prompt, options = {}) => {
-  const modelSvc = options.modelService;
+  const modelSvc = options.modelService ?? defaultModelService;
   const redisGet = options.getRedis;
 
   const {

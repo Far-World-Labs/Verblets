@@ -28,10 +28,20 @@ export const translateContentBlocks = (content) => {
 export const buildRequest = (apiUrl, apiKey, endpoint, requestConfig) => {
   const url = `${apiUrl}${endpoint}`;
 
-  const { max_tokens, temperature, top_p, frequency_penalty, presence_penalty, ...rest } =
-    requestConfig;
+  const {
+    max_tokens,
+    temperature,
+    top_p,
+    frequency_penalty,
+    presence_penalty,
+    responseFormat,
+    ...rest
+  } = requestConfig;
 
-  const body = { ...rest };
+  const body = {
+    ...rest,
+    ...(responseFormat ? { response_format: responseFormat } : {}),
+  };
 
   // Translate internal image content blocks to OpenAI format
   if (body.messages) {
