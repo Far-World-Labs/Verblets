@@ -80,6 +80,7 @@ Without Redis, caching is disabled and the library operates statelessly.
 
 - [Chains](./src/chains/) - Prompt chains and algorithms based on LLMs
 - [Verblets](./src/verblets/) - Core AI utility functions. At most a single LLM call, no prompt chains. 
+- [Embedding](./src/embed/) - Local embedding, vector scoring, and semantic state construction
 - [Library Helpers](./src/lib/) - Utility functions and wrappers
 - [Prompts](./src/prompts/) - Reusable prompt templates
 - [JSON Schemas](./src/json-schemas/) - Data validation schemas
@@ -102,8 +103,6 @@ Math chains transform values using conceptual reasoning and subjective judgment 
 
 - [scale](./src/chains/scale) - Convert qualitative descriptions to numeric values using a specification generator for consistency across invocations
 - [calibrate](./src/chains/calibrate) - Build and apply specification-based classifiers with adjustable sensitivity
-- [scan-vectors](./src/embed/scan-vectors) - Score chunk×probe pairs by cosine similarity for scanning
-- [score-vectors](./src/embed/score-vectors) - Score items by cosine similarity to a query vector
 
 ### Lists
 
@@ -229,6 +228,30 @@ const more = await extractEntities(doc2, { text: 'Extract organizations', spec: 
 
 Each function exports a `knownTexts` property listing the keys it recognizes.
 
+## Embedding
+
+Embedding utilities provide local vector embedding and a semantic state construction system for building vector representations of structured objects.
+
+### Primitives
+
+- [embed](./src/embed) - Local embedding: `embed`, `embedBatch`, `embedChunked`, `embedWarmup`, `embedImage`, `embedImageBatch`
+- [normalize-text](./src/embed/normalize-text) - Normalize text (NFC, whitespace, line endings) for consistent embedding
+- [neighbor-chunks](./src/embed/neighbor-chunks) - Expand retrieved chunks with neighboring context
+- [score-chunks-by-probes](./src/embed/score-chunks-by-probes) - Score chunk×probe pairs by cosine similarity, sorted by score
+
+### Object Construction
+
+Build multi-projection vector states from text sources using LLM-driven fragmentation and local embedding.
+
+- [embed-object-define](./src/chains/embed-object-define) - Discover projection schema from example texts
+- [embed-object-fragment](./src/chains/embed-object-fragment) - Fragment source texts into projection-tagged pieces
+- [embed-object-refine](./src/chains/embed-object-refine) - Refine schema using a study set of selected states
+- [embed-object](./src/embed/embed-object) - Embed fragments into multi-projection vector states
+- [shape-state](./src/embed/shape-state) - Clone and scale projection vectors within states
+- [plan-read](./src/embed/plan-read) - Construct read plans from schema defaults or overrides
+- [read](./src/embed/read) - Extract scalar property values from states (`read` and `readDetails`)
+- [match](./src/embed/match) - Weighted cosine matching across projection vectors
+
 ## Library Helpers
 
 Low-level utilities that support chains and verblets. Most are synchronous and make no LLM calls.
@@ -243,8 +266,6 @@ Low-level utilities that support chains and verblets. Most are synchronous and m
 - [retry](./src/lib/retry) - Config-aware async retry
 - [parallel-batch](./src/lib/parallel-batch) - Parallel execution with concurrency limits
 - [ring-buffer](./src/lib/ring-buffer) - Circular buffer for running LLMs on streams of data
-- [embed-normalize-text](./src/embed/normalize-text) - Normalize text (NFC, whitespace, line endings) for consistent embedding
-- [embed-neighbor-chunks](./src/embed/neighbor-chunks) - Expand retrieved chunks with neighboring context
 - [progress](./src/lib/progress) - Progress event system: lifecycle tracking, batch progress, event emission
 
 ## Contributing

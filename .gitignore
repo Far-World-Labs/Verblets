@@ -1,9 +1,15 @@
 node_modules
 dist/
 
-# dotenv environment variables file
+# Secrets and credentials
 .env
 .env.test
+.claude-api-key
+.claude-jwk.json
+*.key
+*.pem
+*.p12
+*.pfx
 
 # Debugging and test files
 lint-output.txt
