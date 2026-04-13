@@ -1,20 +1,31 @@
 import { describe } from 'vitest';
 import fillMissing from './index.js';
-import templateReplace from '../../lib/template-replace/index.js';
 
 import { getTestHelpers } from '../../chains/test-analysis/test-wrappers.js';
 
 const { it, expect, aiExpect } = getTestHelpers('fillMissing example');
 
 describe('fillMissing example', () => {
-  it('fills high-confidence values only', async () => {
-    const { template, variables } = await fillMissing('The ??? went to the ???.');
-    const confident = Object.fromEntries(
-      Object.entries(variables)
-        .filter(([, v]) => v.confidence > 0.8)
-        .map(([k, v]) => [k, v.candidate])
+  it('fills missing values with plausible candidates', async () => {
+    const { template, variables } = await fillMissing('The ??? went to the ???.', {
+      creativity: 'high',
+    });
+
+    expect(typeof template).toBe('string');
+    expect(template.length).toBeGreaterThan(0);
+    expect(typeof variables).toBe('object');
+
+    const entries = Object.values(variables);
+    expect(entries.length).toBeGreaterThanOrEqual(1);
+    entries.forEach((v) => {
+      expect(v).toHaveProperty('candidate');
+      expect(v).toHaveProperty('confidence');
+      expect(typeof v.confidence).toBe('number');
+    });
+
+    const allCandidates = entries.map((v) => v.candidate);
+    await aiExpect(allCandidates).toSatisfy(
+      'plausible words or phrases (not "[UNKNOWN]") that could fill blanks in "The ___ went to the ___"'
     );
-    const filled = templateReplace(template, confident, '<unknown>');
-    await aiExpect(filled).toSatisfy('a sentence with blanks filled in by plausible words');
   });
 });

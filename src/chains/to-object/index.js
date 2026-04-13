@@ -44,7 +44,7 @@ ${schemaPart}
 
 ${errorsDisplay}
 
-${contentToJSON} ${asXML(stripResponse(text), { tag: 'content' })}
+${contentToJSON} ${asXML(typeof text === 'string' ? stripResponse(text) : JSON.stringify(text), { tag: 'content' })}
 
 ${onlyJSON}`;
 };
@@ -67,7 +67,9 @@ function validateWithSchema(result, schema) {
 
 function parseAndValidate(text, schema) {
   try {
-    const result = extractJson(stripResponse(text));
+    // Already-parsed objects (from responseFormat: json_object) skip extraction
+    const result =
+      typeof text === 'object' && text !== null ? text : extractJson(stripResponse(text));
     return validateWithSchema(result, schema);
   } catch (error) {
     if (error instanceof ValidationError) {
@@ -88,7 +90,9 @@ function logDebugInfo(attempt, prompt, response, error) {
   if (prompt) {
     debug(`<prompt>\n${prompt}\n</prompt>`);
   }
-  debug(`<response>\n${stripResponse(response)}\n</response>`);
+  debug(
+    `<response>\n${typeof response === 'string' ? stripResponse(response) : JSON.stringify(response)}\n</response>`
+  );
   debug(`<error>\n${error}\n</error>`);
 }
 

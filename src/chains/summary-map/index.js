@@ -74,7 +74,7 @@ export default class SummaryMap extends Map {
     this.cache = new Map();
     this.data = new Map();
     this.isCacheValid = false;
-    this.maxTokensPerValue = maxTokensPerValue ?? model.maxTokens;
+    this.maxTokensPerValue = maxTokensPerValue ?? model.maxOutputTokens;
     this.llmOptions = { modelName: model.name, ...modelOptions };
     this.runConfig = nameStep(chainName, config);
 
@@ -82,7 +82,7 @@ export default class SummaryMap extends Map {
       this.targetTokens = targetTokens;
     } else if (promptText && model) {
       this.promptTokens = model.toTokens(promptText).length;
-      const maxModelTokens = model.maxTokens;
+      const maxModelTokens = model.maxOutputTokens;
       const remainingTokens = maxModelTokens - this.promptTokens;
       this.targetTokens = Math.floor(remainingTokens - remainingTokens * targetTokensTotalRatio);
     } else {
