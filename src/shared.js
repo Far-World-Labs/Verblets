@@ -56,6 +56,7 @@ export { default as suggestTargetingRules } from './verblets/suggest-targeting-r
 // Lists
 export { default as centralTendency } from './chains/central-tendency/index.js';
 export { default as centralTendencyLines } from './verblets/central-tendency-lines/index.js';
+export { default as deliberation } from './chains/deliberation/index.js';
 export { default as detectPatterns } from './chains/detect-patterns/index.js';
 export {
   default as detectThreshold,
@@ -177,6 +178,7 @@ export { default as chunkSentences } from './lib/chunk-sentences/index.js';
 export { debug } from './lib/debug/index.js';
 export { default as createBatches } from './lib/text-batch/index.js';
 export { default as llm, jsonSchema } from './lib/llm/index.js';
+export { default as callAgent } from './lib/agent/index.js';
 export { default as normalizeLlm } from './lib/normalize-llm/index.js';
 export { default as parallel, parallelMap } from './lib/parallel-batch/index.js';
 export { default as retry } from './lib/retry/index.js';
@@ -199,6 +201,8 @@ export {
   StatusCode,
   ModelSource,
   OptionSource,
+  ErrorCategory,
+  RetryMode,
 } from './lib/progress/constants.js';
 export {
   pMap,
