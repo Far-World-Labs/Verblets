@@ -56,7 +56,6 @@ export { default as suggestTargetingRules } from './verblets/suggest-targeting-r
 // Lists
 export { default as centralTendency } from './chains/central-tendency/index.js';
 export { default as centralTendencyLines } from './verblets/central-tendency-lines/index.js';
-export { default as deliberation } from './chains/deliberation/index.js';
 export { default as detectPatterns } from './chains/detect-patterns/index.js';
 export {
   default as detectThreshold,
