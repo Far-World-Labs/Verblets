@@ -78,6 +78,11 @@ export { default as listExpand } from './verblets/list-expand/index.js';
 export { default as map } from './chains/map/index.js';
 export { default as reduce } from './chains/reduce/index.js';
 export { default as score, scoreSpec, scoreItem, scoreInstructions } from './chains/score/index.js';
+export {
+  default as scoreMatrix,
+  normalizeRubric,
+  scoreMatrixInstructions,
+} from './chains/score-matrix/index.js';
 export { default as sort } from './chains/sort/index.js';
 export { default as tagItem, tagSpec, mapTags, tagInstructions } from './chains/tags/index.js';
 
