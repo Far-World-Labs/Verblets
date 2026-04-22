@@ -67,7 +67,6 @@ export {
   entityInstructions,
 } from './chains/entities/index.js';
 export { default as extractBlocks } from './chains/extract-blocks/index.js';
-export { default as extractBlocksToRelations } from './chains/extract-blocks-to-relations/index.js';
 export { default as filter } from './chains/filter/index.js';
 export { default as find } from './chains/find/index.js';
 export { default as glossary } from './chains/glossary/index.js';
@@ -120,7 +119,6 @@ export { default as SummaryMap } from './chains/summary-map/index.js';
 export { default as tagVocabulary, computeTagStatistics } from './chains/tag-vocabulary/index.js';
 export { default as themes } from './chains/themes/index.js';
 export { default as timeline } from './chains/timeline/index.js';
-export { default as understandingEvolution } from './chains/understanding-evolution/index.js';
 export { default as toObject } from './chains/to-object/index.js';
 export { default as truncate } from './chains/truncate/index.js';
 export {

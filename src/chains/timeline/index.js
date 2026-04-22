@@ -11,7 +11,6 @@ import { DomainEvent, Outcome, ErrorPosture } from '../../lib/progress/constants
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 import { resolveArgs, resolveTexts } from '../../lib/instruction/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
-import understandingEvolutionChain from '../understanding-evolution/index.js';
 
 const name = 'timeline';
 
@@ -133,24 +132,18 @@ export default async function timeline(text, instructions, config) {
     llmDedup,
     knowledgeBase: enableKnowledgeBase,
     enrichMap: _enrichMap,
-    understandingEvolution: enableUnderstandingEvolution,
   } = await getOptions(runConfig, {
     enrichment: withPolicy(mapEnrichment, ['llmDedup', 'knowledgeBase', 'enrichMap']),
     chunkSize: 2000,
     overlap: 200,
     maxParallel: 3,
     errorPosture: ErrorPosture.resilient,
-    understandingEvolution: false,
   });
   const providedKnowledge = known.knowledge;
   const { onProgress, batchSize, now } = runConfig;
 
   try {
-    const phaseCount =
-      1 +
-      (llmDedup ? 1 : 0) +
-      (enableKnowledgeBase ? 2 : 0) +
-      (enableUnderstandingEvolution ? 1 : 0);
+    const phaseCount = 1 + (llmDedup ? 1 : 0) + (enableKnowledgeBase ? 2 : 0);
     const batchDone = emitter.batch(phaseCount);
 
     // Create overlapping chunks to avoid missing events at boundaries
@@ -339,17 +332,6 @@ Return the enriched event as: "YYYY-MM-DD: Event name" or with the appropriate t
 
       // Combine and sort all events
       mergedEvents = sortTimelineEvents([...enrichedExtractedEvents, ...additionalEvents]);
-      batchDone(1);
-    }
-
-    if (enableUnderstandingEvolution) {
-      const evolutionEvents = await understandingEvolutionChain(text, instructions, {
-        ...runConfig,
-        onProgress: scopePhase(runConfig.onProgress, 'understanding-evolution'),
-      });
-
-      const annotatedEvolution = evolutionEvents.map((e) => ({ ...e, evolution: true }));
-      mergedEvents = sortTimelineEvents([...mergedEvents, ...annotatedEvolution]);
       batchDone(1);
     }
 

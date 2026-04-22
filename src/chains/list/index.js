@@ -7,7 +7,6 @@ import {
   constants as promptConstants,
 } from '../../prompts/index.js';
 import listResultSchema from './list-result.json' with { type: 'json' };
-import { argumentMapResultSchema } from '../argument-map/index.js';
 import { nameStep } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
 import { DomainEvent, Outcome } from '../../lib/progress/constants.js';
@@ -15,7 +14,7 @@ import { resolveTexts } from '../../lib/instruction/index.js';
 
 const name = 'list';
 
-const KNOWN_TEXTS = ['outputFormat'];
+const KNOWN_TEXTS = [];
 
 const DEFAULT_LIST_TIMEOUT_MS = 90_000;
 
@@ -23,15 +22,9 @@ const { onlyJSON, contentIsTransformationSource } = promptConstants;
 
 /**
  * Create model options for structured outputs
- * @param {string} [outputFormat] - Output format: undefined for default list, 'argument-map' for argument structure
  * @returns {Object} Model options for llm
  */
-function createModelOptions(outputFormat) {
-  if (outputFormat === 'argument-map') {
-    return {
-      responseFormat: jsonSchema('argument_map_result', argumentMapResultSchema),
-    };
-  }
+function createModelOptions() {
   return {
     responseFormat: jsonSchema('list_result', listResultSchema),
   };
@@ -147,8 +140,7 @@ export const generateList = async function* generateListGenerator(text, config =
 };
 
 export default async function list(prompt, config = {}) {
-  const { text, known, context } = resolveTexts(prompt, KNOWN_TEXTS);
-  const { outputFormat } = known;
+  const { text, context } = resolveTexts(prompt, KNOWN_TEXTS);
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
@@ -157,24 +149,12 @@ export default async function list(prompt, config = {}) {
     const { schema } = runConfig;
     const fullPrompt = context ? `${text}\n\n${context}` : text;
     const response = await retry(
-      () => callLlm(fullPrompt, { ...runConfig, ...createModelOptions(outputFormat) }),
+      () => callLlm(fullPrompt, { ...runConfig, ...createModelOptions() }),
       {
         label: 'list-main',
         config: runConfig,
       }
     );
-
-    if (outputFormat === 'argument-map') {
-      const result = {
-        claims: Array.isArray(response?.claims) ? response.claims : [],
-        evidence: Array.isArray(response?.evidence) ? response.evidence : [],
-        counterarguments: Array.isArray(response?.counterarguments)
-          ? response.counterarguments
-          : [],
-      };
-      emitter.complete({ outcome: Outcome.success });
-      return result;
-    }
 
     // Extract items from the object structure
     const resultArray = response?.items || response;
