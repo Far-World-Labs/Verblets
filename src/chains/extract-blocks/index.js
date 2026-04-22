@@ -35,6 +35,26 @@ export const mapPrecision = (value) => {
   );
 };
 
+// ===== Response Validation =====
+
+const blockItemSchema = blockExtractionSchema.json_schema.schema.properties.blocks.items;
+
+export function validateBlockResponse(response) {
+  if (!response || !Array.isArray(response.blocks)) {
+    throw new Error('Block extraction response missing required "blocks" array');
+  }
+  for (const block of response.blocks) {
+    for (const field of blockItemSchema.required) {
+      const expectedType = blockItemSchema.properties[field].type;
+      const actualType = typeof block[field];
+      if (actualType !== expectedType) {
+        throw new Error(`Invalid block: "${field}" must be ${expectedType}, got ${actualType}`);
+      }
+    }
+  }
+  return response.blocks;
+}
+
 const buildBlockExtractionPrompt = (windowLines, windowStart, instructions) => {
   // Add global line numbers to each line for easier reference
   const numberedLines = windowLines.map((line, i) => `${windowStart + i}: ${line}`).join('\n');
@@ -79,10 +99,14 @@ export async function extractBlocks(text, instructions, config) {
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
   emitter.emit({ event: DomainEvent.input, value: text });
-  const { maxParallel, windowSize, overlapSize } = await getOptions(runConfig, {
-    precision: withPolicy(mapPrecision, ['windowSize', 'overlapSize']),
-    maxParallel: 3,
-  });
+  const { maxParallel, windowSize, overlapSize, maxAttempts, retryMode, retryOnAll } =
+    await getOptions(runConfig, {
+      precision: withPolicy(mapPrecision, ['windowSize', 'overlapSize']),
+      maxParallel: 3,
+      maxAttempts: undefined,
+      retryMode: undefined,
+      retryOnAll: true,
+    });
 
   // Handle empty text
   if (!text || text.trim() === '') {
@@ -128,23 +152,27 @@ export async function extractBlocks(text, instructions, config) {
 
         const prompt = buildBlockExtractionPrompt(windowLines, windowStart, effectiveInstructions);
 
-        const result = await retry(
-          () =>
-            callLlm(prompt, {
+        const blocks = await retry(
+          async () => {
+            const response = await callLlm(prompt, {
               ...runConfig,
               responseFormat: blockExtractionSchema,
-            }),
+            });
+            return validateBlockResponse(response);
+          },
           {
-            label: `extract-blocks:window`,
+            label: 'extract-blocks:window',
             config: runConfig,
+            maxAttempts,
+            retryMode,
+            retryOnAll,
             onProgress: scopePhase(runConfig.onProgress, 'window'),
           }
         );
 
         batchDone(1);
 
-        // Results should already have global line numbers
-        return result.blocks || [];
+        return blocks;
       },
       {
         maxParallel,

@@ -1,5 +1,23 @@
 import { asXML } from '../../prompts/wrap-variable.js';
 
+const templates = {};
+
+export function registerTemplate(key, instruction) {
+  if (instruction === undefined) {
+    delete templates[key];
+    return;
+  }
+  templates[key] = instruction;
+}
+
+export function getTemplate(key) {
+  return templates[key];
+}
+
+export function listTemplates() {
+  return Object.keys(templates);
+}
+
 /**
  * Disambiguate (instructions, config) when instructions is optional.
  *

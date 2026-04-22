@@ -201,7 +201,10 @@ async function date(text, config = {}) {
 
         currentDate = newDate;
 
-        // Throw to trigger retry
+        if (attempt >= maxAttempts) {
+          return returnBestEffort ? currentDate : undefined;
+        }
+
         throw new Error(`Retrying after validation failure`);
       },
       {

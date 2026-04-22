@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import map from './index.js';
+import map, { streamingMap } from './index.js';
 import listBatch from '../../verblets/list-batch/index.js';
-import { OpEvent, ChainEvent } from '../../lib/progress/constants.js';
+import { OpEvent, ChainEvent, DomainEvent } from '../../lib/progress/constants.js';
 
 vi.mock('../../lib/text-batch/index.js', () => ({
   default: vi.fn((list) => {
@@ -190,5 +190,230 @@ describe('map', () => {
       expect(completeEvent.successCount).toBeDefined();
       expect(completeEvent.failedItems).toBeDefined();
     });
+  });
+
+  describe('incremental batch progress', () => {
+    it('emits batch:complete events as each batch finishes', async () => {
+      const progressEvents = [];
+      const onProgress = vi.fn((event) => progressEvents.push(event));
+
+      await map(['a', 'b', 'c', 'd', 'e'], 'transform', {
+        batchSize: 2,
+        onProgress,
+      });
+
+      const batchEvents = progressEvents.filter(
+        (e) => e.step === 'map' && e.event === OpEvent.batchComplete
+      );
+      // 5 items in batches of 2 → 3 batches (2, 2, 1)
+      expect(batchEvents).toHaveLength(3);
+
+      // processedItems grows incrementally
+      expect(batchEvents[0].processedItems).toBe(2);
+      expect(batchEvents[0].totalItems).toBe(5);
+      expect(batchEvents[1].processedItems).toBe(4);
+      expect(batchEvents[2].processedItems).toBe(5);
+    });
+
+    it('reports progress ratio on each batch event', async () => {
+      const progressEvents = [];
+      const onProgress = vi.fn((event) => progressEvents.push(event));
+
+      await map(['a', 'b', 'c', 'd'], 'transform', {
+        batchSize: 2,
+        onProgress,
+      });
+
+      const batchEvents = progressEvents.filter(
+        (e) => e.step === 'map' && e.event === OpEvent.batchComplete
+      );
+      expect(batchEvents).toHaveLength(2);
+      expect(batchEvents[0].progress).toBeCloseTo(0.5);
+      expect(batchEvents[1].progress).toBeCloseTo(1.0);
+    });
+
+    it('emits batch progress even when some batches fail', async () => {
+      let call = 0;
+      listBatch.mockImplementation(async (items) => {
+        call += 1;
+        if (call === 1) throw new Error('first batch fails');
+        return items.map((i) => `${i}-x`);
+      });
+
+      const progressEvents = [];
+      const onProgress = vi.fn((event) => progressEvents.push(event));
+
+      const result = await map(['a', 'b', 'c', 'd'], 'transform', {
+        batchSize: 2,
+        maxAttempts: 1,
+        onProgress,
+      });
+
+      // Failed items become undefined
+      expect(result[0]).toBeUndefined();
+      expect(result[1]).toBeUndefined();
+      expect(result[2]).toBe('c-x');
+      expect(result[3]).toBe('d-x');
+
+      const completeEvent = progressEvents.find(
+        (e) => e.step === 'map' && e.event === ChainEvent.complete
+      );
+      expect(completeEvent.outcome).toBe('partial');
+      expect(completeEvent.failedItems).toBe(2);
+      expect(completeEvent.successCount).toBe(2);
+    });
+  });
+});
+
+describe('streamingMap', () => {
+  it('yields cumulative results after each batch', async () => {
+    const yields = [];
+    for await (const partial of streamingMap(['a', 'b', 'c', 'd'], 'transform', {
+      batchSize: 2,
+    })) {
+      yields.push(partial);
+    }
+
+    // Two batches of 2 → two yields
+    expect(yields).toHaveLength(2);
+
+    // First yield: first two items filled, rest undefined
+    expect(yields[0][0]).toBe('a-x');
+    expect(yields[0][1]).toBe('b-x');
+    expect(yields[0][2]).toBeUndefined();
+    expect(yields[0][3]).toBeUndefined();
+
+    // Second yield: all items filled
+    expect(yields[1][0]).toBe('a-x');
+    expect(yields[1][1]).toBe('b-x');
+    expect(yields[1][2]).toBe('c-x');
+    expect(yields[1][3]).toBe('d-x');
+  });
+
+  it('emits partial domain events matching each yield', async () => {
+    const progressEvents = [];
+    const onProgress = vi.fn((event) => progressEvents.push(event));
+
+    const yields = [];
+    for await (const partial of streamingMap(['a', 'b', 'c', 'd', 'e'], 'transform', {
+      batchSize: 2,
+      onProgress,
+    })) {
+      yields.push(partial);
+    }
+
+    const partialEvents = progressEvents.filter(
+      (e) => e.step === 'streaming-map' && e.event === DomainEvent.partial
+    );
+    // One partial event per batch yield
+    expect(partialEvents).toHaveLength(yields.length);
+
+    // Each partial event carries the cumulative snapshot
+    expect(partialEvents[0].value[0]).toBe('a-x');
+    expect(partialEvents[0].value[2]).toBeUndefined();
+    expect(partialEvents[1].value[2]).toBe('c-x');
+  });
+
+  it('emits batch:complete events incrementally', async () => {
+    const progressEvents = [];
+    const onProgress = vi.fn((event) => progressEvents.push(event));
+
+    const chunks = [];
+    for await (const partial of streamingMap(['a', 'b', 'c'], 'transform', {
+      batchSize: 2,
+      onProgress,
+    })) {
+      chunks.push(partial);
+    }
+
+    expect(chunks.length).toBeGreaterThan(0);
+    const batchEvents = progressEvents.filter(
+      (e) => e.step === 'streaming-map' && e.event === OpEvent.batchComplete
+    );
+    expect(batchEvents).toHaveLength(2);
+    expect(batchEvents[0].processedItems).toBe(2);
+    expect(batchEvents[0].totalItems).toBe(3);
+    expect(batchEvents[1].processedItems).toBe(3);
+  });
+
+  it('marks failed batch items as undefined in cumulative yields', async () => {
+    let call = 0;
+    listBatch.mockImplementation(async (items) => {
+      call += 1;
+      if (call === 2) throw new Error('second batch fails');
+      return items.map((i) => `${i}-x`);
+    });
+
+    const yields = [];
+    for await (const partial of streamingMap(['a', 'b', 'c', 'd', 'e', 'f'], 'transform', {
+      batchSize: 2,
+    })) {
+      yields.push(partial);
+    }
+
+    // 3 batches: first succeeds, second fails, third succeeds
+    expect(yields).toHaveLength(3);
+
+    // After first batch
+    expect(yields[0][0]).toBe('a-x');
+    expect(yields[0][1]).toBe('b-x');
+    expect(yields[0][2]).toBeUndefined();
+
+    // After second batch (failed) — items 2,3 remain undefined
+    expect(yields[1][2]).toBeUndefined();
+    expect(yields[1][3]).toBeUndefined();
+
+    // After third batch — items 4,5 filled, 2,3 still undefined
+    expect(yields[2][4]).toBe('e-x');
+    expect(yields[2][5]).toBe('f-x');
+    expect(yields[2][2]).toBeUndefined();
+    expect(yields[2][3]).toBeUndefined();
+  });
+
+  it('emits full lifecycle: start → partial → output → complete', async () => {
+    const progressEvents = [];
+    const onProgress = vi.fn((event) => progressEvents.push(event));
+
+    const chunks = [];
+    for await (const partial of streamingMap(['a', 'b'], 'transform', {
+      batchSize: 2,
+      onProgress,
+    })) {
+      chunks.push(partial);
+    }
+
+    expect(chunks.length).toBeGreaterThan(0);
+    const stepEvents = progressEvents.filter((e) => e.step === 'streaming-map');
+    const eventNames = stepEvents.map((e) => e.event);
+
+    expect(eventNames[0]).toBe(ChainEvent.start);
+    expect(eventNames).toContain(DomainEvent.input);
+    expect(eventNames).toContain(DomainEvent.partial);
+    expect(eventNames).toContain(DomainEvent.output);
+    expect(eventNames[eventNames.length - 1]).toBe(ChainEvent.complete);
+  });
+
+  it('complete event reports batch and item counts', async () => {
+    const progressEvents = [];
+    const onProgress = vi.fn((event) => progressEvents.push(event));
+
+    const chunks = [];
+    for await (const partial of streamingMap(['a', 'b', 'c'], 'transform', {
+      batchSize: 2,
+      onProgress,
+    })) {
+      chunks.push(partial);
+    }
+
+    expect(chunks.length).toBeGreaterThan(0);
+    const completeEvent = progressEvents.find(
+      (e) => e.step === 'streaming-map' && e.event === ChainEvent.complete
+    );
+    expect(completeEvent).toBeDefined();
+    expect(completeEvent.totalItems).toBe(3);
+    expect(completeEvent.totalBatches).toBe(2);
+    expect(completeEvent.successCount).toBe(3);
+    expect(completeEvent.failedItems).toBe(0);
+    expect(completeEvent.outcome).toBe('success');
   });
 });

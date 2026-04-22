@@ -82,10 +82,10 @@ describe('Verblets Library Architecture', () => {
         const expectation = aiArchExpect(eachFile('src/**/*.js'), {
           maxFailures: 5
         })
-          .withContext(fileContext('.claude/guidelines/CODE_QUALITY.md', 'code-quality-guidelines'))
+          .withContext(fileContext('.claude/guidelines/code-quality.md', 'code-quality-guidelines'))
           .withContext(fileContext('src/chains/DESIGN.md', 'chain-guidelines'))
           .withContext(fileContext('src/verblets/DESIGN.md', 'verblet-guidelines'))
-          .withContext(fileContext('.claude/guidelines/ARCHITECTURE_TESTS.md', 'architecture-testing-guidelines'))
+          .withContext(fileContext('.claude/guidelines/architecture-tests.md', 'architecture-testing-guidelines'))
           .satisfies(`File follows appropriate code quality standards based on its file type and purpose. 
 
 Apply context-specific expectations from the guidelines. Focus on practical code quality over perfect adherence to abstract principles.`);
@@ -111,7 +111,7 @@ Apply context-specific expectations from the guidelines. Focus on practical code
         const expectation = aiArchExpect(eachFile('src/**/*.spec.js'), {
           maxFailures: 5
         })
-          .withContext(fileContext('.claude/guidelines/UNIT_TESTS.md', 'unit-test-guidelines'))
+          .withContext(fileContext('.claude/guidelines/unit-tests.md', 'unit-test-guidelines'))
           .withContext(fileContext('src/chains/DESIGN.md', 'chain-guidelines'))
           .withContext(fileContext('src/verblets/DESIGN.md', 'verblet-guidelines'))
           .satisfies('Test file follows unit testing best practices based on the module type and guidelines. Focus on practical testing patterns appropriate for the code being tested.');
@@ -138,7 +138,7 @@ Apply context-specific expectations from the guidelines. Focus on practical code
           bulkSize: 8,
           maxFailures: 3
         })
-          .withContext(fileContext('.claude/guidelines/EXAMPLE_TESTS.md', 'example-guidelines'))
+          .withContext(fileContext('.claude/guidelines/example-tests.md', 'example-guidelines'))
           .withContext(fileContext('src/chains/DESIGN.md', 'chain-guidelines'))
           .withContext(fileContext('src/verblets/DESIGN.md', 'verblet-guidelines'))
           .withItemContext(dir => fileContext(`${dir}/index.examples.js`, 'example'))

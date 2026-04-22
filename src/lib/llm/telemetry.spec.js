@@ -15,7 +15,7 @@ import fetch from 'node-fetch';
 import { get as getPromptResult, set as setPromptResult } from '../prompt-cache/index.js';
 import callLlm from './index.js';
 import retry from '../retry/index.js';
-import { nameStep, getOptionDetail } from '../context/option.js';
+import { nameStep, getOptionDetail } from '../option/index.js';
 import createProgressEmitter from '../progress/index.js';
 import { ModelService } from '../../services/llm-model/index.js';
 import {

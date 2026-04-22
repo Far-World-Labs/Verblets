@@ -1,4 +1,4 @@
-import { jsonSchema } from '../llm/index.js';
+import { jsonSchema } from '../response-format/index.js';
 
 /**
  * Convert composed context attribute descriptors to a JSON Schema responseFormat

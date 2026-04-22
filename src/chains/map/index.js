@@ -8,6 +8,44 @@ import { resolveArgs, resolveTexts } from '../../lib/instruction/index.js';
 
 const name = 'map';
 
+function buildBatchPrompt(instructions, items, batchStyle, context, responseFormat) {
+  const contextBlock = context ? `\n\n${context}` : '';
+  const baseInstructions = `Transform each item in the list according to the instructions below. Apply the transformation consistently to every item.
+
+${asXML(instructions, { tag: 'transformation-instructions' })}
+
+IMPORTANT:
+- Transform each item independently
+- Apply the same transformation logic to all items
+- Preserve the order of items from the input list
+- Output one transformed result per input item${contextBlock}`;
+
+  if (responseFormat) {
+    return `${baseInstructions}
+
+The input list contains exactly ${items.length} item${items.length === 1 ? '' : 's'}.
+Return exactly ${items.length} result${items.length === 1 ? '' : 's'} in the items array, one per input item.`;
+  }
+
+  if (batchStyle === ListStyle.NEWLINE) {
+    return `${baseInstructions}
+
+The input list contains exactly ${items.length} item${items.length === 1 ? '' : 's'}, separated by newlines.
+Return exactly ${items.length} line${items.length === 1 ? '' : 's'} of output, one transformed item per line. Do not number the lines.`;
+  }
+
+  return `${baseInstructions}
+
+Return the transformed items as an XML list with exactly ${items.length} items:
+<list>
+  <item>transformed content 1</item>
+  <item>transformed content 2</item>
+  ...
+</list>
+
+Preserve all formatting and newlines within each <item> element.`;
+}
+
 /**
  * Map over a list of items by calling `listBatch` on XML-enriched batches.
  * Missing or mismatched output results in `undefined` entries so callers can
@@ -45,49 +83,13 @@ const mapOnce = async function (list, instructions, config = {}) {
     batchesToProcess,
     async ({ items, startIndex }) => {
       const batchStyle = determineStyle(config.listStyle, items, config.autoModeThreshold);
-
-      // Build the compiled prompt for this batch
-      const contextBlock = _context ? `\n\n${_context}` : '';
-      const baseInstructions = `Transform each item in the list according to the instructions below. Apply the transformation consistently to every item.
-
-${asXML(instructions, { tag: 'transformation-instructions' })}
-
-IMPORTANT:
-- Transform each item independently
-- Apply the same transformation logic to all items
-- Preserve the order of items from the input list
-- Output one transformed result per input item${contextBlock}`;
-
-      // When a custom responseFormat is provided, the JSON schema already
-      // constrains the output shape — don't add conflicting XML/newline
-      // formatting instructions.
-      let compiledPrompt;
-      if (config.responseFormat) {
-        compiledPrompt = `${baseInstructions}
-
-The input list contains exactly ${items.length} item${items.length === 1 ? '' : 's'}.
-Return exactly ${items.length} result${items.length === 1 ? '' : 's'} in the items array, one per input item.`;
-      } else if (batchStyle === ListStyle.NEWLINE) {
-        compiledPrompt = `${baseInstructions}
-
-The input list contains exactly ${items.length} item${
-          items.length === 1 ? '' : 's'
-        }, separated by newlines.
-Return exactly ${items.length} line${
-          items.length === 1 ? '' : 's'
-        } of output, one transformed item per line. Do not number the lines.`;
-      } else {
-        compiledPrompt = `${baseInstructions}
-
-Return the transformed items as an XML list with exactly ${items.length} items:
-<list>
-  <item>transformed content 1</item>
-  <item>transformed content 2</item>
-  ...
-</list>
-
-Preserve all formatting and newlines within each <item> element.`;
-      }
+      const compiledPrompt = buildBatchPrompt(
+        instructions,
+        items,
+        batchStyle,
+        _context,
+        config.responseFormat
+      );
 
       try {
         const listBatchOptions = {
@@ -218,4 +220,128 @@ const map = async function (list, instructions, config) {
 
 map.knownTexts = [];
 
+/**
+ * Streaming map: process a list incrementally, yielding partial results after
+ * each batch completes. Batches are processed sequentially (not in parallel)
+ * to enable incremental emission with reduced peak memory usage.
+ *
+ * @param {string[]} list - Items to process
+ * @param {string|object} instructions - Mapping instructions
+ * @param {object} [config={}] - Configuration options
+ * @param {number} [config.batchSize] - Items per batch (auto-calculated if omitted)
+ * @param {string} [config.errorPosture='resilient'] - 'strict' or 'resilient'
+ * @param {string} [config.listStyle='auto'] - ListStyle enum value
+ * @param {object} [config.responseFormat] - Custom JSON schema for output
+ * @param {object} [config.llm] - LLM configuration
+ * @param {Function} [config.onProgress] - Progress callback
+ * @param {AbortSignal} [config.abortSignal] - Signal to abort processing
+ * @returns {AsyncGenerator<(string|undefined)[]>} Yields cumulative results after each batch
+ */
+const streamingMap = async function* streamingMap(list, instructions, config) {
+  [instructions, config] = resolveArgs(instructions, config);
+  const { text, context } = resolveTexts(instructions, []);
+  const runConfig = nameStep('streaming-map', config);
+  const emitter = createProgressEmitter('streaming-map', runConfig.onProgress, runConfig);
+  emitter.start();
+  emitter.emit({ event: DomainEvent.input, value: list });
+
+  let completed = false;
+  try {
+    if (list.length === 0) {
+      emitter.emit({ event: DomainEvent.output, value: [] });
+      emitter.complete({ totalItems: 0, totalBatches: 0, outcome: Outcome.success });
+      completed = true;
+      return;
+    }
+
+    const { errorPosture } = await getOptions(runConfig, {
+      errorPosture: ErrorPosture.resilient,
+    });
+
+    const results = new Array(list.length);
+    const batches = await createBatches(list, runConfig);
+    const activeBatches = batches.filter((b) => !b.skip);
+    const batchDone = emitter.batch(list.length);
+
+    for (const batch of batches) {
+      if (batch.skip) {
+        results[batch.startIndex] = undefined;
+        continue;
+      }
+
+      if (runConfig.abortSignal?.aborted) {
+        throw runConfig.abortSignal.reason ?? new Error('The operation was aborted.');
+      }
+
+      const { items, startIndex } = batch;
+      const batchStyle = determineStyle(runConfig.listStyle, items, runConfig.autoModeThreshold);
+      const compiledPrompt = buildBatchPrompt(
+        text,
+        items,
+        batchStyle,
+        context,
+        runConfig.responseFormat
+      );
+
+      try {
+        const output = await retry(
+          () =>
+            listBatch(items, compiledPrompt, {
+              ...runConfig,
+              onProgress: scopePhase(runConfig.onProgress, 'streaming-map:list-batch'),
+              listStyle: batchStyle,
+            }),
+          { label: 'streaming-map:batch', config: runConfig }
+        );
+
+        if (!Array.isArray(output)) {
+          throw new Error(`Expected array from listBatch, got: ${typeof output}`);
+        }
+
+        output.forEach((item, j) => {
+          results[startIndex + j] = item;
+        });
+
+        batchDone(items.length);
+      } catch (error) {
+        if (error.name === 'AbortError' || runConfig.abortSignal?.aborted) throw error;
+        if (errorPosture === ErrorPosture.strict) throw error;
+
+        for (let j = 0; j < items.length; j += 1) {
+          results[startIndex + j] = undefined;
+        }
+        batchDone(items.length);
+      }
+
+      emitter.emit({ event: DomainEvent.partial, value: [...results] });
+      yield [...results];
+    }
+
+    const successCount = results.filter((r) => r !== undefined).length;
+    const failedItems = results.length - successCount;
+    const outcome = failedItems > 0 ? Outcome.partial : Outcome.success;
+
+    emitter.emit({ event: DomainEvent.output, value: results });
+    emitter.complete({
+      totalItems: results.length,
+      totalBatches: activeBatches.length,
+      successCount,
+      failedItems,
+      outcome,
+    });
+    completed = true;
+  } catch (err) {
+    emitter.error(err);
+    completed = true;
+    throw err;
+  } finally {
+    if (!completed) {
+      emitter.complete({ outcome: Outcome.partial, earlyTermination: true });
+    }
+  }
+};
+
+streamingMap.knownTexts = [];
+
+export { streamingMap };
 export default map;

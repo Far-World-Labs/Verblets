@@ -18,7 +18,12 @@ import extractJson from '../extract-json/index.js';
 import stripResponse from '../strip-response/index.js';
 import { onlyJSON, contentIsSchema } from '../../prompts/constants.js';
 import { asXML } from '../../prompts/wrap-variable.js';
-import { getOption } from '../context/option.js';
+import { getOption } from '../option/index.js';
+import {
+  jsonSchema,
+  isSimpleCollectionSchema,
+  isSimpleValueSchema,
+} from '../response-format/index.js';
 import createProgressEmitter from '../progress/index.js';
 import {
   TelemetryEvent,
@@ -27,6 +32,19 @@ import {
   Metric,
   TokenType,
 } from '../progress/constants.js';
+
+/**
+ * Parse a Retry-After header value to milliseconds.
+ * Handles both seconds (integer/float) and HTTP-date formats.
+ */
+function parseRetryAfter(header) {
+  if (!header) return undefined;
+  const seconds = Number(header);
+  if (!Number.isNaN(seconds)) return Math.round(seconds * 1000);
+  const date = Date.parse(header);
+  if (!Number.isNaN(date)) return Math.max(0, date - Date.now());
+  return undefined;
+}
 
 /**
  * Configure the appropriate abort signal for fetch requests.
@@ -57,42 +75,7 @@ function configureAbortSignal(fetchOptions, abortSignal, timeoutController) {
   // In browser/jsdom environments, we skip the signal to avoid compatibility issues
 }
 
-/**
- * Build a responseFormat object for structured JSON output.
- * Wraps a JSON schema in the standard { type, json_schema: { name, schema } } envelope.
- *
- * @param {string} name - Schema name (e.g. 'sort_result', 'filter_decisions')
- * @param {object} schema - JSON Schema object
- * @returns {{ type: 'json_schema', json_schema: { name: string, schema: object } }}
- */
-export const jsonSchema = (name, schema) => ({
-  type: 'json_schema',
-  json_schema: { name, schema },
-});
-
-// Helper to detect if a response format schema is a simple collection wrapper
-export const isSimpleCollectionSchema = (responseFormat) => {
-  const schema = responseFormat?.json_schema?.schema;
-  if (!schema || schema.type !== 'object') return false;
-
-  const props = schema.properties;
-  const propKeys = Object.keys(props || {});
-
-  // Single 'items' property that's an array
-  return propKeys.length === 1 && propKeys[0] === 'items' && props.items?.type === 'array';
-};
-
-// Helper to detect if a response format schema is a simple value wrapper
-export const isSimpleValueSchema = (responseFormat) => {
-  const schema = responseFormat?.json_schema?.schema;
-  if (!schema || schema.type !== 'object') return false;
-
-  const props = schema.properties;
-  const propKeys = Object.keys(props || {});
-
-  // Single 'value' property
-  return propKeys.length === 1 && propKeys[0] === 'value';
-};
+export { jsonSchema, isSimpleCollectionSchema, isSimpleValueSchema };
 
 const shapeOutputDefault = (result, requestConfig, options = {}) => {
   // GPT-4
@@ -388,18 +371,22 @@ export const run = async (prompt, options = {}) => {
           `Completions request [error]: expected JSON response but got ${contentType || 'unknown content-type'} (status: ${response.status}, body: ${bodyPreview})`
         );
         err.httpStatus = response.status;
+        err.retryAfterMs = parseRetryAfter(response.headers.get('retry-after'));
+        err.provider = providerName;
         throw err;
       }
 
       const rawJson = await response.json();
 
       if (!response.ok) {
-        // Anthropic uses error.message, OpenAI uses error.message — both work
         const errorMessage = rawJson?.error?.message || rawJson?.error?.type || 'Unknown error';
         const vars = [`status: ${response?.status}`, `type: ${rawJson?.error?.type}`].join(', ');
         const err = new Error(`Completions request [error]: ${errorMessage} (${vars})`);
         err.httpStatus = response.status;
         err.errorType = rawJson?.error?.type;
+        err.errorCode = rawJson?.error?.code;
+        err.retryAfterMs = parseRetryAfter(response.headers.get('retry-after'));
+        err.provider = providerName;
         throw err;
       }
 

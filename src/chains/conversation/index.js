@@ -136,6 +136,7 @@ export default class Conversation {
     this.runConfig = config;
     this.otherOptions = otherOptions;
     this.messages = [];
+    this.speakerMemory = new Map();
   }
 
   _push(id, comment) {
@@ -145,7 +146,12 @@ export default class Conversation {
     const idx = this.speakers.indexOf(speaker);
     const name = speaker?.name || `Speaker ${idx + 1}`;
     const time = this.clock().toISOString().substring(11, 16);
-    this.messages.push({ id, name, comment: trimmed, time });
+    const message = { id, name, comment: trimmed, time };
+    this.messages.push(message);
+    if (!this.speakerMemory.has(id)) {
+      this.speakerMemory.set(id, []);
+    }
+    this.speakerMemory.get(id).push(message);
   }
 
   async run() {
@@ -163,6 +169,10 @@ export default class Conversation {
 
         const speakers = order.map((id) => this.speakers.find((p) => p.id === id)).filter(Boolean);
 
+        const memorySnapshot = new Map(
+          [...this.speakerMemory].map(([id, msgs]) => [id, msgs.slice()])
+        );
+
         if (this.bulkSpeakFn) {
           // Use bulkSpeakFn (either provided or default conversationTurnReduce)
           const comments = await this.bulkSpeakFn({
@@ -172,6 +182,7 @@ export default class Conversation {
             topic: this.topic,
             bundleContext: this.bundleContext,
             history: this.messages.slice(),
+            speakerMemory: memorySnapshot,
             rules: this.rules,
             llm: this.llm,
             onProgress: scopePhase(this.runConfig.onProgress, `round-${round}`),
@@ -192,6 +203,7 @@ export default class Conversation {
                   topic: this.topic,
                   bundleContext: this.bundleContext,
                   history: this.messages.slice(),
+                  speakerMemory: memorySnapshot,
                   rules: this.rules,
                   llm: this.llm,
                   onProgress: scopePhase(this.runConfig.onProgress, `round-${round}`),

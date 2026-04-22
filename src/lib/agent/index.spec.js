@@ -74,6 +74,45 @@ describe('claude backend', () => {
       expect(idx).toBeGreaterThan(-1);
       expect(args[idx + 1]).toBe('claude-sonnet-4-5-20250514');
     });
+
+    it('includes --effort when set', () => {
+      const args = claudeBackend.buildCliArgs({ effort: 'high', allowedTools: [] }, 'task');
+      const idx = args.indexOf('--effort');
+      expect(idx).toBeGreaterThan(-1);
+      expect(args[idx + 1]).toBe('high');
+    });
+
+    it('omits --effort when not set', () => {
+      const args = claudeBackend.buildCliArgs({ allowedTools: [] }, 'task');
+      expect(args).not.toContain('--effort');
+    });
+
+    it('includes --dangerously-skip-permissions when skipPermissions is true', () => {
+      const args = claudeBackend.buildCliArgs({ skipPermissions: true, allowedTools: [] }, 'task');
+      expect(args).toContain('--dangerously-skip-permissions');
+    });
+
+    it('omits --dangerously-skip-permissions when skipPermissions is false', () => {
+      const args = claudeBackend.buildCliArgs({ skipPermissions: false, allowedTools: [] }, 'task');
+      expect(args).not.toContain('--dangerously-skip-permissions');
+    });
+
+    it('includes --bare and --add-dir when bare is true with cwd', () => {
+      const args = claudeBackend.buildCliArgs(
+        { bare: true, cwd: '/tmp/worktree', allowedTools: [] },
+        'task'
+      );
+      expect(args).toContain('--bare');
+      const addDirIdx = args.indexOf('--add-dir');
+      expect(addDirIdx).toBeGreaterThan(-1);
+      expect(args[addDirIdx + 1]).toBe('/tmp/worktree');
+    });
+
+    it('includes --bare without --add-dir when no cwd', () => {
+      const args = claudeBackend.buildCliArgs({ bare: true, allowedTools: [] }, 'task');
+      expect(args).toContain('--bare');
+      expect(args).not.toContain('--add-dir');
+    });
   });
 
   describe('parseOutput', () => {

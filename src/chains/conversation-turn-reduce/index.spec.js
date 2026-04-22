@@ -6,6 +6,10 @@ vi.mock('../map/index.js', () => ({
   default: vi.fn(),
 }));
 
+beforeEach(() => {
+  map.mockClear();
+});
+
 describe('conversationTurnReduce', () => {
   it('generates multiline responses for multiple speakers', async () => {
     const speakers = [
@@ -89,5 +93,104 @@ What if we do a minimal viable UX first, then iterate?`,
         llm: 'test',
       })
     ).rejects.toThrow('Topic is required');
+  });
+
+  describe('speaker memory integration', () => {
+    it('includes prior statements in speaker descriptions', async () => {
+      const speakers = [
+        { id: 'alice', name: 'Alice', bio: 'engineer' },
+        { id: 'bob', name: 'Bob' },
+      ];
+      const speakerMemory = new Map([
+        [
+          'alice',
+          [
+            { id: 'alice', name: 'Alice', comment: 'I think we need more tests', time: '10:00' },
+            { id: 'alice', name: 'Alice', comment: 'Coverage is too low', time: '10:05' },
+          ],
+        ],
+      ]);
+
+      map.mockResolvedValueOnce(['Alice response', 'Bob response']);
+
+      await conversationTurnReduce({
+        speakers,
+        topic: 'code quality',
+        history: [],
+        speakerMemory,
+        rules: {},
+        llm: 'test',
+      });
+
+      const descriptions = map.mock.calls[0][0];
+      // Alice's description should include her prior statements
+      expect(descriptions[0]).toContain('Alice');
+      expect(descriptions[0]).toContain('Bio: engineer');
+      expect(descriptions[0]).toContain('Prior statements:');
+      expect(descriptions[0]).toContain('[10:00] I think we need more tests');
+      expect(descriptions[0]).toContain('[10:05] Coverage is too low');
+      // Bob has no memory — no prior statements section
+      expect(descriptions[1]).toBe('Bob');
+      expect(descriptions[1]).not.toContain('Prior statements:');
+    });
+
+    it('omits prior statements section when memory is empty', async () => {
+      const speakers = [{ id: 'alice', name: 'Alice' }];
+
+      map.mockResolvedValueOnce(['Alice response']);
+
+      await conversationTurnReduce({
+        speakers,
+        topic: 'test topic',
+        history: [],
+        speakerMemory: new Map(),
+        rules: {},
+        llm: 'test',
+      });
+
+      const descriptions = map.mock.calls[0][0];
+      expect(descriptions[0]).toBe('Alice');
+      expect(descriptions[0]).not.toContain('Prior statements:');
+    });
+
+    it('works when speakerMemory is not provided (defaults to empty)', async () => {
+      const speakers = [{ id: 'alice', name: 'Alice' }];
+
+      map.mockResolvedValueOnce(['Alice response']);
+
+      await conversationTurnReduce({
+        speakers,
+        topic: 'test topic',
+        history: [],
+        rules: {},
+        llm: 'test',
+      });
+
+      const descriptions = map.mock.calls[0][0];
+      expect(descriptions[0]).toBe('Alice');
+      expect(descriptions[0]).not.toContain('Prior statements:');
+    });
+
+    it('includes consistency instruction when speakers have memory', async () => {
+      const speakers = [{ id: 'alice', name: 'Alice' }];
+      const speakerMemory = new Map([
+        ['alice', [{ id: 'alice', name: 'Alice', comment: 'Prior point', time: '09:00' }]],
+      ]);
+
+      map.mockResolvedValueOnce(['Alice response']);
+
+      await conversationTurnReduce({
+        speakers,
+        topic: 'debate',
+        history: [],
+        speakerMemory,
+        rules: {},
+        llm: 'test',
+      });
+
+      const instructions = map.mock.calls[0][1];
+      expect(instructions).toContain('maintain consistency');
+      expect(instructions).toContain('prior statements');
+    });
   });
 });

@@ -22,6 +22,34 @@ vi.mock('../../lib/llm/index.js', () => ({
     if (/EV cars/.test(text)) {
       return { items: ['Tesla Model Y', 'Nissan Leaf', 'Chevy Bolt'] };
     }
+    if (/climate change/.test(text)) {
+      return {
+        claims: [
+          {
+            id: 'c1',
+            statement: 'Climate change is accelerating',
+            type: 'factual',
+            confidence: 'strong',
+          },
+        ],
+        evidence: [
+          {
+            claimId: 'c1',
+            content: 'Global temperatures rising',
+            type: 'empirical',
+            strength: 'strong',
+          },
+        ],
+        counterarguments: [
+          {
+            targetClaimId: 'c1',
+            statement: 'Natural cycles account for warming',
+            type: 'alternative',
+            strength: 'weak',
+          },
+        ],
+      };
+    }
     return 'undefined';
   }),
   jsonSchema: (name, schema) => ({ type: 'json_schema', json_schema: { name, schema } }),
@@ -88,5 +116,21 @@ describe('List verblet', () => {
     expect(firstPerQueryCall.resultsAll.length).toBeGreaterThan(0);
     expect(Array.isArray(firstPerQueryCall.resultsNew)).toBe(true);
     expect(firstPerQueryCall.resultsNew.length).toBeGreaterThan(0);
+  });
+
+  it('returns argument map structure when outputFormat is argument-map', async () => {
+    const result = await list({
+      text: 'Arguments about climate change',
+      outputFormat: 'argument-map',
+    });
+
+    expect(result).toHaveProperty('claims');
+    expect(result).toHaveProperty('evidence');
+    expect(result).toHaveProperty('counterarguments');
+    expect(Array.isArray(result.claims)).toBe(true);
+    expect(result.claims).toHaveLength(1);
+    expect(result.claims[0].statement).toMatch(/Climate change/);
+    expect(result.evidence[0].claimId).toBe('c1');
+    expect(result.counterarguments[0].targetClaimId).toBe('c1');
   });
 });

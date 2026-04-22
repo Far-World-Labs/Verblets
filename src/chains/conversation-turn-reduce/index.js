@@ -24,6 +24,7 @@ export default async function conversationTurnReduce({
   topic,
   bundleContext: parentContext = '',
   history = [],
+  speakerMemory = new Map(),
   rules = {},
   ...options
 }) {
@@ -65,6 +66,11 @@ export default async function conversationTurnReduce({
       const parts = [speakerName];
       if (speaker.bio) parts.push(`Bio: ${speaker.bio}`);
       if (speaker.agenda) parts.push(`Agenda: ${speaker.agenda}`);
+      const priorStatements = speakerMemory.get?.(speaker.id) ?? [];
+      if (priorStatements.length > 0) {
+        const formatted = priorStatements.map((m) => `[${m.time}] ${m.comment}`).join('\n');
+        parts.push(`Prior statements:\n${formatted}`);
+      }
       return parts.join('\n');
     });
 
@@ -72,7 +78,7 @@ export default async function conversationTurnReduce({
     const instructionParts = [
       'Given a speaker description, generate their response to the conversation.',
       baseContext,
-      'For the speaker described in the input, provide their response to the topic. The response should reflect their role, bio, and agenda if provided.',
+      'For the speaker described in the input, provide their response to the topic. The response should reflect their role, bio, and agenda if provided. If prior statements are included, maintain consistency with positions and claims the speaker has already made.',
       bundleContext,
     ];
     const instructions = instructionParts.filter(Boolean).join('\n\n');

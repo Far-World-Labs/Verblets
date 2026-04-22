@@ -32,10 +32,13 @@ export default async function callAgent(instruction, config = {}) {
   emitter.start({ instruction: instruction.slice(0, 200) });
 
   const opts = await getOptions(runConfig, {
-    maxTurns: 10,
+    maxTurns: undefined,
     cwd: undefined,
     systemPrompt: undefined,
     model: undefined,
+    effort: undefined,
+    bare: false,
+    skipPermissions: false,
     backend: 'claude',
     allowedTools: withPolicy(mapAllowedTools),
   });
@@ -51,7 +54,7 @@ export default async function callAgent(instruction, config = {}) {
 
   const args = backend.buildCliArgs(resolvedOpts, instruction);
 
-  emitter.emit({ event: 'agent:exec', backend: opts.backend, maxTurns: opts.maxTurns });
+  emitter.emit({ event: 'agent:exec', backend: opts.backend, model: opts.model });
 
   const requestTimeout = await getOption('requestTimeout', runConfig, 300_000);
   let raw;

@@ -10,6 +10,28 @@ import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 import createProgressEmitter from '../../lib/progress/index.js';
 import { DomainEvent, Outcome } from '../../lib/progress/constants.js';
 
+const uncertaintySchema = {
+  type: 'object',
+  properties: {
+    confidence: { type: 'number' },
+    confidenceInterval: {
+      type: 'object',
+      properties: {
+        low: { type: 'number' },
+        high: { type: 'number' },
+      },
+      required: ['low', 'high'],
+      additionalProperties: false,
+    },
+    unknowns: {
+      type: 'array',
+      items: { type: 'string' },
+    },
+  },
+  required: ['confidence', 'confidenceInterval', 'unknowns'],
+  additionalProperties: false,
+};
+
 const name = 'expect';
 
 // ===== Option Mappers =====
@@ -264,6 +286,57 @@ export async function expect(actual, expected, constraint, config = {}) {
     emitter.error(err);
     throw err;
   }
+}
+
+function assessUncertainty(actual, expected, constraint, passed, config) {
+  const valueXml = asXML(actual, { tag: 'value', fit: 'compact' });
+  const expectedXml =
+    expected !== undefined ? asXML(expected, { tag: 'expected', fit: 'compact' }) : '';
+  const constraintXml = constraint ? asXML(constraint, { tag: 'constraint', fit: 'compact' }) : '';
+
+  const prompt = `Assess the uncertainty of this assertion result.
+
+${valueXml}
+${expectedXml}
+${constraintXml}
+
+The assertion ${passed ? 'passed' : 'failed'}.
+
+Evaluate:
+- Your confidence in this result (0.0 to 1.0)
+- A confidence interval with low and high bounds (0.0 to 1.0)
+- Factors that make the assessment uncertain (as a list of unknowns)`;
+
+  return llm(prompt, {
+    ...config,
+    temperature: 0,
+    responseFormat: {
+      type: 'json_schema',
+      json_schema: { name: 'uncertainty_assessment', schema: uncertaintySchema },
+    },
+  });
+}
+
+/**
+ * Expect with structured uncertainty output.
+ * Wraps the standard expect result with confidence intervals and unknown flags.
+ * @param {*} actual - The actual value
+ * @param {*} expected - The expected value
+ * @param {string} constraint - Optional constraint description
+ * @param {Object} config - Configuration options
+ * @returns {Promise<[boolean, { passed, uncertainty, file, line }]>}
+ */
+export async function expectWithUncertainty(actual, expected, constraint, config = {}) {
+  const [passed, details] = await expect(actual, expected, constraint, config);
+
+  const runConfig = nameStep('expect:uncertainty', config);
+  const emitter = createProgressEmitter('expect:uncertainty', runConfig.onProgress, runConfig);
+  emitter.start();
+  const uncertainty = await assessUncertainty(actual, expected, constraint, passed, runConfig);
+  emitter.uncertainty(uncertainty);
+  emitter.complete({ passed });
+
+  return [passed, { ...details, uncertainty }];
 }
 
 /**

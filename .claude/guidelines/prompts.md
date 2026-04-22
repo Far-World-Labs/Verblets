@@ -29,7 +29,7 @@ Keep prompts focused on one task. Composability depends on each prompt doing one
 
 ## Output Requirements
 
-Always specify the expected output format. Ambiguity in output instructions produces unpredictable responses. When structured output is needed, use `response_format` with a JSON schema (see [JSON Schema Guidelines](./JSON_SCHEMAS.md)). When text output is needed, state the expected shape: a single sentence, a list, a paragraph.
+Always specify the expected output format. Ambiguity in output instructions produces unpredictable responses. When structured output is needed, use `response_format` with a JSON schema (see [JSON Schema Guidelines](./json-schemas.md)). When text output is needed, state the expected shape: a single sentence, a list, a paragraph.
 
 ## Clarity
 

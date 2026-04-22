@@ -33,6 +33,19 @@ function resolveClaudeBinary() {
 export function buildCliArgs(opts, instruction) {
   const args = [resolveClaudeBinary(), '--print', '--output-format', 'stream-json', '--verbose'];
 
+  if (opts.bare) {
+    // Skip hooks, LSP, plugins, auto-memory — faster non-interactive execution.
+    // Auth falls back to ANTHROPIC_API_KEY (OAuth/keychain not read in bare mode).
+    args.push('--bare');
+    if (opts.cwd) {
+      args.push('--add-dir', opts.cwd);
+    }
+  }
+
+  if (opts.skipPermissions) {
+    args.push('--dangerously-skip-permissions');
+  }
+
   if (opts.maxTurns) {
     args.push('--max-turns', String(opts.maxTurns));
   }
@@ -48,6 +61,10 @@ export function buildCliArgs(opts, instruction) {
 
   if (opts.model) {
     args.push('--model', opts.model);
+  }
+
+  if (opts.effort) {
+    args.push('--effort', opts.effort);
   }
 
   args.push('-p', instruction);

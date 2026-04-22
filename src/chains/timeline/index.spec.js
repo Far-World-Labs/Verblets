@@ -202,7 +202,7 @@ describe('timeline', () => {
       onProgress: progressCallback,
     });
 
-    expect(progressCallback).toHaveBeenCalledTimes(6);
+    expect(progressCallback).toHaveBeenCalledTimes(8);
     // First call is the chain:start telemetry event
     expect(progressCallback).toHaveBeenNthCalledWith(
       1,
@@ -211,13 +211,22 @@ describe('timeline', () => {
         event: ChainEvent.start,
       })
     );
+    // getOptions emits its own start/complete lifecycle
+    expect(progressCallback).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ kind: Kind.operation, event: OpEvent.start, step: 'options' })
+    );
+    expect(progressCallback).toHaveBeenNthCalledWith(
+      3,
+      expect.objectContaining({ kind: Kind.operation, event: OpEvent.complete, step: 'options' })
+    );
     // Per-chunk progress via onProgress
-    expect(progressCallback).toHaveBeenNthCalledWith(2, 1, 3);
-    expect(progressCallback).toHaveBeenNthCalledWith(3, 2, 3);
-    expect(progressCallback).toHaveBeenNthCalledWith(4, 3, 3);
+    expect(progressCallback).toHaveBeenNthCalledWith(4, 1, 3);
+    expect(progressCallback).toHaveBeenNthCalledWith(5, 2, 3);
+    expect(progressCallback).toHaveBeenNthCalledWith(6, 3, 3);
     // Phase batch progress after extraction completes
     expect(progressCallback).toHaveBeenNthCalledWith(
-      5,
+      7,
       expect.objectContaining({
         kind: Kind.operation,
         event: OpEvent.batchComplete,
@@ -225,7 +234,7 @@ describe('timeline', () => {
     );
     // Final chain:complete telemetry event
     expect(progressCallback).toHaveBeenNthCalledWith(
-      6,
+      8,
       expect.objectContaining({
         kind: Kind.telemetry,
         event: ChainEvent.complete,
