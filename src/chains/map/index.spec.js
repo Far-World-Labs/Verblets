@@ -60,10 +60,11 @@ describe('map', () => {
     expect(listBatch).toHaveBeenCalledTimes(2);
   });
 
-  it('passes original items through on error', async () => {
+  it('throws when all items fail', async () => {
     listBatch.mockRejectedValueOnce(new Error('fail'));
-    const result = await map(['FAIL', 'oops'], 'x', { batchSize: 2 });
-    expect(result).toStrictEqual(['FAIL', 'oops']);
+    await expect(map(['FAIL', 'oops'], 'x', { batchSize: 2 })).rejects.toThrow(
+      'all 2 items failed'
+    );
   });
 
   it('retries only failed fragments', async () => {

@@ -190,6 +190,13 @@ const map = async function (list, instructions, config) {
         failedItems++;
       }
     }
+
+    if (failedItems === results.length && results.length > 0) {
+      const err = new Error(`map: all ${results.length} items failed to process`);
+      emitter.error(err);
+      throw err;
+    }
+
     const outcome = failedItems > 0 ? Outcome.partial : Outcome.success;
     const resultMeta = {
       totalItems: results.length,
@@ -304,6 +311,14 @@ const streamingMap = async function* streamingMap(list, instructions, config) {
         failedItems++;
       }
     }
+
+    if (failedItems === results.length && results.length > 0) {
+      const err = new Error(`streamingMap: all ${results.length} items failed to process`);
+      emitter.error(err);
+      completed = true;
+      throw err;
+    }
+
     const outcome = failedItems > 0 ? Outcome.partial : Outcome.success;
 
     emitter.emit({ event: DomainEvent.output, value: results });
