@@ -47,6 +47,42 @@ describe('filter', () => {
     expect(listBatch).toHaveBeenCalledTimes(2);
   });
 
+  it('handles undersized LLM response by defaulting missing items to excluded', async () => {
+    listBatch.mockImplementation(async (items) => {
+      // Return fewer decisions than items sent
+      return items.slice(0, 1).map((item) => (item.includes('a') ? 'yes' : 'no'));
+    });
+
+    const result = await filter(['apple', 'banana', 'box'], 'contains a', { batchSize: 10 });
+    // Only the first item got a real decision; rest default to excluded
+    expect(result).toStrictEqual(['apple']);
+  });
+
+  it('handles oversized LLM response without corruption', async () => {
+    listBatch.mockImplementation(async (items) => {
+      // Return more decisions than items sent
+      return [...items.map(() => 'yes'), 'yes', 'yes'];
+    });
+
+    const result = await filter(['apple', 'banana'], 'include all', { batchSize: 10 });
+    // Should include exactly the original items, no extras
+    expect(result).toStrictEqual(['apple', 'banana']);
+  });
+
+  it('advances batch progress on resilient failure', async () => {
+    listBatch.mockRejectedValue(new Error('fail'));
+
+    const events = [];
+    await filter(['a', 'b'], 'x', {
+      batchSize: 10,
+      strictness: 'low',
+      onProgress: (e) => events.push(e),
+    });
+
+    const batchEvents = events.filter((e) => e.event === 'batch:complete');
+    expect(batchEvents.length).toBeGreaterThan(0);
+  });
+
   it('retries failed batches', async () => {
     let call = 0;
     listBatch.mockImplementation(async (items) => {

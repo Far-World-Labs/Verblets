@@ -1,4 +1,4 @@
-import listBatch, { ListStyle, determineStyle } from '../../verblets/list-batch/index.js';
+import listBatch, { determineStyle } from '../../verblets/list-batch/index.js';
 import reduce from '../reduce/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
@@ -71,23 +71,13 @@ The accumulator should contain a comma-separated list of the current best catego
 
 const createAssignmentInstructions =
   (categories) =>
-  ({ style, count }) => {
+  ({ count }) => {
     const categoryList = categories.join(', ');
-    const baseInstructions = `Assign each item in the list below to one of these categories:
+    return `Assign each item in the list below to one of these categories:
 
 ${asXML(categoryList, { tag: 'categories' })}
 
-Return exactly ${count} category names, one per line, in the same order as the input items.`;
-
-    if (style === ListStyle.NEWLINE) {
-      return `${baseInstructions}
-
-Process exactly ${count} items from the list below.`;
-    }
-
-    return `${baseInstructions}
-
-Process exactly ${count} items from the XML list below.`;
+Return exactly ${count} category names in the items array, one per input item, in the same order as the input list.`;
   };
 
 const parseCategories = (categoriesString) =>
@@ -199,12 +189,7 @@ export default async function group(list, instructions, config) {
         };
 
         const labels = await retry(
-          () =>
-            listBatch(
-              items,
-              assignmentInstructions({ style: batchStyle, count: items.length }),
-              listBatchOptions
-            ),
+          () => listBatch(items, assignmentInstructions({ count: items.length }), listBatchOptions),
           {
             label: 'group:batch',
             config: runConfig,

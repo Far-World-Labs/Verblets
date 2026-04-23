@@ -1,4 +1,4 @@
-import listBatch, { ListStyle, determineStyle } from '../../verblets/list-batch/index.js';
+import listBatch, { determineStyle } from '../../verblets/list-batch/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { createBatches, parallel, retry } from '../../lib/index.js';
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
@@ -9,9 +9,9 @@ import { resolveArgs, resolveTexts } from '../../lib/instruction/index.js';
 const name = 'map';
 const UNPROCESSED = Symbol('unprocessed');
 
-function buildBatchPrompt(instructions, items, batchStyle, context, responseFormat) {
+function buildBatchPrompt(instructions, items, batchStyle, context) {
   const contextBlock = context ? `\n\n${context}` : '';
-  const baseInstructions = `Transform each item in the list according to the instructions below. Apply the transformation consistently to every item.
+  return `Transform each item in the list according to the instructions below. Apply the transformation consistently to every item.
 
 ${asXML(instructions, { tag: 'transformation-instructions' })}
 
@@ -19,32 +19,10 @@ IMPORTANT:
 - Transform each item independently
 - Apply the same transformation logic to all items
 - Preserve the order of items from the input list
-- Output one transformed result per input item${contextBlock}`;
-
-  if (responseFormat) {
-    return `${baseInstructions}
+- Output one transformed result per input item${contextBlock}
 
 The input list contains exactly ${items.length} item${items.length === 1 ? '' : 's'}.
 Return exactly ${items.length} result${items.length === 1 ? '' : 's'} in the items array, one per input item.`;
-  }
-
-  if (batchStyle === ListStyle.NEWLINE) {
-    return `${baseInstructions}
-
-The input list contains exactly ${items.length} item${items.length === 1 ? '' : 's'}, separated by newlines.
-Return exactly ${items.length} line${items.length === 1 ? '' : 's'} of output, one transformed item per line. Do not number the lines.`;
-  }
-
-  return `${baseInstructions}
-
-Return the transformed items as an XML list with exactly ${items.length} items:
-<list>
-  <item>transformed content 1</item>
-  <item>transformed content 2</item>
-  ...
-</list>
-
-Preserve all formatting and newlines within each <item> element.`;
 }
 
 /**
@@ -74,13 +52,7 @@ const mapOnce = async function (list, instructions, config = {}) {
     batches,
     async ({ items, startIndex }) => {
       const batchStyle = determineStyle(config.listStyle, items, config.autoModeThreshold);
-      const compiledPrompt = buildBatchPrompt(
-        instructions,
-        items,
-        batchStyle,
-        _context,
-        config.responseFormat
-      );
+      const compiledPrompt = buildBatchPrompt(instructions, items, batchStyle, _context);
 
       try {
         const listBatchOptions = {
@@ -266,13 +238,7 @@ const streamingMap = async function* streamingMap(list, instructions, config) {
 
       const { items, startIndex } = batch;
       const batchStyle = determineStyle(runConfig.listStyle, items, runConfig.autoModeThreshold);
-      const compiledPrompt = buildBatchPrompt(
-        text,
-        items,
-        batchStyle,
-        context,
-        runConfig.responseFormat
-      );
+      const compiledPrompt = buildBatchPrompt(text, items, batchStyle, context);
 
       try {
         const output = await retry(

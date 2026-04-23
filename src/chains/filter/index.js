@@ -117,9 +117,20 @@ Process exactly ${count} items from the XML list below and return ${count} yes/n
           onProgress: scopePhase(runConfig.onProgress, 'batch'),
         });
 
-        items.forEach((_, i) => {
-          decisions[startIndex + i] = response[i]?.toLowerCase().trim() === 'yes';
-        });
+        if (!Array.isArray(response) || response.length !== items.length) {
+          const safeResponse = Array.isArray(response) ? response : [];
+          const count = Math.min(safeResponse.length, items.length);
+          for (let i = 0; i < count; i++) {
+            decisions[startIndex + i] = safeResponse[i]?.toLowerCase().trim() === 'yes';
+          }
+          for (let i = count; i < items.length; i++) {
+            decisions[startIndex + i] = false;
+          }
+        } else {
+          for (let i = 0; i < items.length; i++) {
+            decisions[startIndex + i] = response[i]?.toLowerCase().trim() === 'yes';
+          }
+        }
 
         batchDone(items.length);
       } catch (error) {
@@ -130,6 +141,7 @@ Process exactly ${count} items from the XML list below and return ${count} yes/n
         for (let i = 0; i < items.length; i++) {
           decisions[startIndex + i] = false;
         }
+        batchDone(items.length);
       }
     },
     {
