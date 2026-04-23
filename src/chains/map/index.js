@@ -98,9 +98,10 @@ const mapOnce = async function (list, instructions, config = {}) {
           throw new Error(`Expected array from listBatch, got: ${typeof output}`);
         }
 
-        output.forEach((item, j) => {
-          results[startIndex + j] = item;
-        });
+        const count = Math.min(output.length, items.length);
+        for (let j = 0; j < count; j++) {
+          results[startIndex + j] = output[j];
+        }
 
         batchDone(items.length);
       } catch (error) {
@@ -288,9 +289,10 @@ const streamingMap = async function* streamingMap(list, instructions, config) {
           throw new Error(`Expected array from listBatch, got: ${typeof output}`);
         }
 
-        output.forEach((item, j) => {
-          results[startIndex + j] = item;
-        });
+        const count = Math.min(output.length, items.length);
+        for (let j = 0; j < count; j++) {
+          results[startIndex + j] = output[j];
+        }
 
         batchDone(items.length);
       } catch (error) {

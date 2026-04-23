@@ -67,6 +67,33 @@ describe('map', () => {
     );
   });
 
+  it('caps oversized LLM output to prevent overflow into adjacent batches', async () => {
+    let call = 0;
+    listBatch.mockImplementation(async (items) => {
+      call += 1;
+      if (call === 1) return ['a-x', 'b-x', 'OVERFLOW-1', 'OVERFLOW-2'];
+      return items.map((i) => `${i}-x`);
+    });
+
+    const result = await map(['a', 'b', 'c', 'd'], 'x', { batchSize: 2 });
+    expect(result).toStrictEqual(['a-x', 'b-x', 'c-x', 'd-x']);
+  });
+
+  it('handles undersized LLM output by retrying missing items', async () => {
+    let call = 0;
+    listBatch.mockImplementation(async (items) => {
+      call += 1;
+      if (call === 1) return ['a-x'];
+      return items.map((i) => `${i}-x`);
+    });
+
+    const result = await map(['a', 'b', 'c', 'd'], 'x', {
+      batchSize: 2,
+      maxAttempts: 2,
+    });
+    expect(result).toStrictEqual(['a-x', 'b-x', 'c-x', 'd-x']);
+  });
+
   it('retries only failed fragments', async () => {
     let call = 0;
     listBatch.mockImplementation(async (items, _instructions) => {
@@ -335,6 +362,22 @@ describe('streamingMap', () => {
     expect(batchEvents[0].processedItems).toBe(2);
     expect(batchEvents[0].totalItems).toBe(3);
     expect(batchEvents[1].processedItems).toBe(3);
+  });
+
+  it('caps oversized LLM output to prevent overflow into adjacent batches', async () => {
+    listBatch.mockImplementation(async (items) => {
+      return [...items.map((i) => `${i}-x`), 'OVERFLOW-1', 'OVERFLOW-2'];
+    });
+
+    const yields = [];
+    for await (const partial of streamingMap(['a', 'b', 'c', 'd'], 'transform', {
+      batchSize: 2,
+    })) {
+      yields.push(partial);
+    }
+
+    expect(yields).toHaveLength(2);
+    expect(yields[1]).toStrictEqual(['a-x', 'b-x', 'c-x', 'd-x']);
   });
 
   it('marks failed batch items as undefined in cumulative yields', async () => {
