@@ -153,7 +153,7 @@ export default async function intersections(items, instructions, config) {
     );
 
     for (const result of batchResults) {
-      if (result) {
+      if (result?.key !== undefined) {
         results[result.key] = result.intersection;
       }
     }

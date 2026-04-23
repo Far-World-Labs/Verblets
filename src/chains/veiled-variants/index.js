@@ -127,7 +127,7 @@ const veiledVariants = async (prompt, config = {}) => {
 
     emitter.complete({ outcome: Outcome.success });
 
-    return results.flat();
+    return results.filter(Array.isArray).flat();
   } catch (err) {
     emitter.error(err);
     throw err;

@@ -64,7 +64,7 @@ export default async function testAdvice(path, config = {}) {
       }
     );
 
-    const results = batchResults.flat();
+    const results = batchResults.filter(Array.isArray).flat();
     emitter.complete({ outcome: Outcome.success, totalIssues: results.length });
     return results;
   } catch (err) {

@@ -86,10 +86,12 @@ export default async function centralTendency(items, seedItems, config = {}) {
       onProgress: scopePhase(runConfig.onProgress, 'map:evaluation'),
     });
 
+    const isValid = (r) => r && typeof r === 'object' && typeof r.score === 'number';
+    const successCount = results.filter(isValid).length;
     const resultMeta = {
       totalItems: results.length,
-      successCount: results.filter((r) => r != null).length,
-      failureCount: results.filter((r) => r == null).length,
+      successCount,
+      failureCount: results.length - successCount,
     };
     emitter.emit({ event: DomainEvent.output, value: results });
     emitter.complete({ outcome: Outcome.success, ...resultMeta });

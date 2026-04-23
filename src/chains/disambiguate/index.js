@@ -45,7 +45,7 @@ export const getMeanings = async (term, config = {}) => {
 export default async function disambiguate(term, instructions, config) {
   [instructions, config] = resolveArgs(instructions, config);
   const { text: contextText, context: xmlContext } = resolveTexts(instructions, []);
-  const effectiveContext = xmlContext ? `${xmlContext}\n\n${contextText}` : contextText;
+  const effectiveContext = xmlContext ? `${contextText}\n\n${xmlContext}` : contextText;
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
@@ -76,10 +76,10 @@ export default async function disambiguate(term, instructions, config) {
     );
 
     let bestIndex = 0;
-    let bestScore = scores[0];
+    let bestScore = -Infinity;
 
-    for (let i = 1; i < scores.length; i++) {
-      if (scores[i] > bestScore) {
+    for (let i = 0; i < scores.length; i++) {
+      if (typeof scores[i] === 'number' && scores[i] > bestScore) {
         bestScore = scores[i];
         bestIndex = i;
       }

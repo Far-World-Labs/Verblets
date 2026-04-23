@@ -72,12 +72,26 @@ describe('centralTendency chain', () => {
     );
   });
 
-  it('passes through undefined results from map without transformation', async () => {
-    const results = [mockResult(0.9, 'good', 0.8), undefined, mockResult(0.4, 'ok', 0.6)];
+  it('passes through original items from map when transformation fails', async () => {
+    const results = [mockResult(0.9, 'good', 0.8), 'b', mockResult(0.4, 'ok', 0.6)];
     map.mockResolvedValueOnce(results);
 
     const output = await centralTendency(['a', 'b', 'c'], ['seed']);
     expect(output).toStrictEqual(results);
-    expect(output[1]).toBeUndefined();
+    expect(output[1]).toBe('b');
+  });
+
+  it('reports correct success/failure counts when map returns originals', async () => {
+    const results = [mockResult(0.9, 'good', 0.8), 'b', mockResult(0.4, 'ok', 0.6)];
+    map.mockResolvedValueOnce(results);
+
+    const events = [];
+    await centralTendency(['a', 'b', 'c'], ['seed'], {
+      onProgress: (e) => events.push(e),
+    });
+
+    const complete = events.find((e) => e.event === 'chain:complete');
+    expect(complete.successCount).toBe(2);
+    expect(complete.failureCount).toBe(1);
   });
 });

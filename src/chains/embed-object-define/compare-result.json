@@ -1,0 +1,138 @@
+{
+  "type": "object",
+  "properties": {
+    "value": {
+      "type": "object",
+      "properties": {
+        "projections": {
+          "type": "object",
+          "properties": {
+            "overlapping": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "nameA": { "type": "string" },
+                  "nameB": { "type": "string" },
+                  "semanticSimilarity": { "type": "string", "enum": ["high", "moderate", "low"] },
+                  "rationale": { "type": "string" }
+                },
+                "required": ["nameA", "nameB", "semanticSimilarity", "rationale"],
+                "additionalProperties": false
+              }
+            },
+            "uniqueToA": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "projectionName": { "type": "string" },
+                  "description": { "type": "string" }
+                },
+                "required": ["projectionName", "description"],
+                "additionalProperties": false
+              }
+            },
+            "uniqueToB": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "projectionName": { "type": "string" },
+                  "description": { "type": "string" }
+                },
+                "required": ["projectionName", "description"],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": ["overlapping", "uniqueToA", "uniqueToB"],
+          "additionalProperties": false
+        },
+        "properties": {
+          "type": "object",
+          "properties": {
+            "overlapping": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "nameA": { "type": "string" },
+                  "nameB": { "type": "string" },
+                  "semanticSimilarity": { "type": "string", "enum": ["high", "moderate", "low"] },
+                  "rationale": { "type": "string" },
+                  "valueRangeDivergence": { "type": "string" }
+                },
+                "required": ["nameA", "nameB", "semanticSimilarity", "rationale", "valueRangeDivergence"],
+                "additionalProperties": false
+              }
+            },
+            "uniqueToA": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "propertyName": { "type": "string" },
+                  "valueRange": {
+                    "type": "object",
+                    "properties": {
+                      "type": { "type": "string", "enum": ["continuous", "categorical"] },
+                      "low": { "type": "number" },
+                      "high": { "type": "number" },
+                      "lowLabel": { "type": "string" },
+                      "highLabel": { "type": "string" },
+                      "categories": { "type": "array", "items": { "type": "string" } }
+                    },
+                    "required": ["type"],
+                    "additionalProperties": false
+                  },
+                  "projectionWeights": {
+                    "type": "object",
+                    "additionalProperties": { "type": "number" }
+                  }
+                },
+                "required": ["propertyName", "valueRange", "projectionWeights"],
+                "additionalProperties": false
+              }
+            },
+            "uniqueToB": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "propertyName": { "type": "string" },
+                  "valueRange": {
+                    "type": "object",
+                    "properties": {
+                      "type": { "type": "string", "enum": ["continuous", "categorical"] },
+                      "low": { "type": "number" },
+                      "high": { "type": "number" },
+                      "lowLabel": { "type": "string" },
+                      "highLabel": { "type": "string" },
+                      "categories": { "type": "array", "items": { "type": "string" } }
+                    },
+                    "required": ["type"],
+                    "additionalProperties": false
+                  },
+                  "projectionWeights": {
+                    "type": "object",
+                    "additionalProperties": { "type": "number" }
+                  }
+                },
+                "required": ["propertyName", "valueRange", "projectionWeights"],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": ["overlapping", "uniqueToA", "uniqueToB"],
+          "additionalProperties": false
+        },
+        "summary": { "type": "string" }
+      },
+      "required": ["projections", "properties", "summary"],
+      "additionalProperties": false
+    }
+  },
+  "required": ["value"],
+  "additionalProperties": false
+}

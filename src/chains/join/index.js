@@ -108,8 +108,12 @@ Important: This is part of a larger sequence. Join these fragments while being m
       { maxParallel: 3, errorPosture: ErrorPosture.resilient, abortSignal: runConfig.abortSignal }
     );
 
-    // Filter valid results
-    const validResults = windowResults.filter((r) => r.content && r.content.trim());
+    const validResults = windowResults.filter((r) => r?.content && r.content.trim());
+
+    if (validResults.length === 0) {
+      emitter.complete({ outcome: Outcome.success, windows: windows.length });
+      return list.join(' ');
+    }
 
     if (validResults.length === 1) {
       emitter.complete({ outcome: Outcome.success, windows: windows.length });

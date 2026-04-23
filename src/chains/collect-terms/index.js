@@ -66,7 +66,7 @@ export default async function collectTerms(text, config = {}) {
           label: 'collect-terms:extract',
         }
       );
-      const allTerms = chunkResults.flat();
+      const allTerms = chunkResults.filter(Array.isArray).flat();
 
       uniqueTerms = Array.from(new Set(allTerms.map((t) => t.trim()))).filter(Boolean);
     }
@@ -87,7 +87,7 @@ export default async function collectTerms(text, config = {}) {
     );
 
     // Sort by score and take top N
-    const termsWithScores = uniqueTerms.map((term, i) => ({ term, score: scores[i] }));
+    const termsWithScores = uniqueTerms.map((term, i) => ({ term, score: scores[i] ?? 0 }));
     const sorted = termsWithScores.toSorted((a, b) => b.score - a.score);
     emitter.emit({ event: DomainEvent.phase, phase: 'scored', termsWithScores: sorted });
 

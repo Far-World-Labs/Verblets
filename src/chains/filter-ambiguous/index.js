@@ -75,7 +75,7 @@ export default async function filterAmbiguous(text, config = {}) {
         label: 'filter-ambiguous:extract',
       }
     );
-    const termPairs = batchResults.flat();
+    const termPairs = batchResults.filter(Array.isArray).flat();
 
     if (termPairs.length === 0) {
       emitter.complete({ outcome: Outcome.success });
@@ -91,7 +91,7 @@ export default async function filterAmbiguous(text, config = {}) {
       }
     );
 
-    const scored = termPairs.map((p, i) => ({ ...p, score: scores[i] }));
+    const scored = termPairs.map((p, i) => ({ ...p, score: scores[i] ?? 0 }));
     const sorted = scored.toSorted((a, b) => (b.score || 0) - (a.score || 0));
     emitter.complete({ outcome: Outcome.success });
     return sorted.slice(0, topN);

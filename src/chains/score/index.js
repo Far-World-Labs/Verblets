@@ -158,7 +158,7 @@ async function scoreOnce(list, prompt, batchConfig, config) {
 
   const batches = await createBatches(list, batchConfig);
   const batchesToProcess = batches;
-  const results = new Array(list.length);
+  const results = new Array(list.length).fill(undefined);
 
   const emitter = createProgressEmitter('score', onProgress, config);
   const batchDone = emitter.batch(list.length);

@@ -179,7 +179,7 @@ export default async function group(list, instructions, config) {
   const batchResults = [];
   const assignmentFn = createAssignmentInstructions(categories);
   const assignmentInstructions = context
-    ? (opts) => `${context}\n\n${assignmentFn(opts)}`
+    ? (opts) => `${assignmentFn(opts)}\n\n${context}`
     : assignmentFn;
 
   const allBatches = await createBatches(list, runConfig);

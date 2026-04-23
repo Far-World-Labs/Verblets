@@ -321,11 +321,14 @@ async function scoreEdgeChunks(candidates, query, maxChunks, options = {}) {
     }
   );
 
-  const scored = toScore.map((chunk, i) => ({
-    ...chunk,
-    llmScore: scores[i] / 10,
-    finalScore: chunk.tfIdfScore * (1 - llmWeight) + (scores[i] / 10) * llmWeight,
-  }));
+  const scored = toScore.map((chunk, i) => {
+    const s = (scores[i] ?? 0) / 10;
+    return {
+      ...chunk,
+      llmScore: s,
+      finalScore: chunk.tfIdfScore * (1 - llmWeight) + s * llmWeight,
+    };
+  });
 
   return {
     scored: scored.toSorted((a, b) => b.finalScore - a.finalScore),

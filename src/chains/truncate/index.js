@@ -130,7 +130,7 @@ Consider the removal criteria above when scoring.${contextBlock}`;
     });
 
     // Find the first chunk (from the end) that should be removed (score < threshold)
-    const removeChunkIndex = scores.findIndex((s) => s < threshold);
+    const removeChunkIndex = scores.findIndex((s) => (s ?? Infinity) < threshold);
 
     let result;
     if (removeChunkIndex >= 0) {
