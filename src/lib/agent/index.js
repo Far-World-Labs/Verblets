@@ -37,7 +37,6 @@ export default async function callAgent(instruction, config = {}) {
     systemPrompt: undefined,
     model: undefined,
     effort: undefined,
-    bare: false,
     skipPermissions: false,
     backend: 'claude',
     allowedTools: withPolicy(mapAllowedTools),

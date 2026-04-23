@@ -56,9 +56,9 @@ describe('claude backend', () => {
       expect(args[idx + 1]).toBe('be concise');
     });
 
-    it('maps allowedTools through TOOL_MAP', () => {
+    it('maps allowedTools through TOOL_MAP to --tools flag', () => {
       const args = claudeBackend.buildCliArgs({ allowedTools: ['read', 'write', 'bash'] }, 'task');
-      const idx = args.indexOf('--allowedTools');
+      const idx = args.indexOf('--tools');
       expect(idx).toBeGreaterThan(-1);
       expect(args[idx + 1]).toContain('Read');
       expect(args[idx + 1]).toContain('Write');
@@ -97,21 +97,9 @@ describe('claude backend', () => {
       expect(args).not.toContain('--dangerously-skip-permissions');
     });
 
-    it('includes --bare and --add-dir when bare is true with cwd', () => {
-      const args = claudeBackend.buildCliArgs(
-        { bare: true, cwd: '/tmp/worktree', allowedTools: [] },
-        'task'
-      );
-      expect(args).toContain('--bare');
-      const addDirIdx = args.indexOf('--add-dir');
-      expect(addDirIdx).toBeGreaterThan(-1);
-      expect(args[addDirIdx + 1]).toBe('/tmp/worktree');
-    });
-
-    it('includes --bare without --add-dir when no cwd', () => {
-      const args = claudeBackend.buildCliArgs({ bare: true, allowedTools: [] }, 'task');
-      expect(args).toContain('--bare');
-      expect(args).not.toContain('--add-dir');
+    it('does not include --bare', () => {
+      const args = claudeBackend.buildCliArgs({ allowedTools: [] }, 'task');
+      expect(args).not.toContain('--bare');
     });
   });
 
@@ -224,10 +212,10 @@ describe('claude backend', () => {
       expect(result.summary).toBe('ok');
     });
 
-    it('truncates rawOutput to 10k chars', () => {
-      const long = 'x'.repeat(20_000);
+    it('truncates rawOutput to 200k chars', () => {
+      const long = 'x'.repeat(300_000);
       const result = claudeBackend.parseOutput(long);
-      expect(result.rawOutput.length).toBe(10_000);
+      expect(result.rawOutput.length).toBe(200_000);
     });
   });
 });
