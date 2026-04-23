@@ -34,7 +34,10 @@ function adjustConcurrency(current, metrics, bounds, thresholds) {
 }
 
 /**
- * Process items in parallel batches with controlled concurrency
+ * Process items in parallel batches with controlled concurrency.
+ * In resilient mode, failed items pass through untransformed (original item
+ * replaces the rejected result) so callers always get a positionally-aligned
+ * array with no undefined entries.
  *
  * @param {Array} items - Items to process
  * @param {Function} processor - Async function to process each item
@@ -44,7 +47,7 @@ function adjustConcurrency(current, metrics, bounds, thresholds) {
  * @param {number} options.latencyThreshold - Batch latency in ms above which concurrency decreases (default: 10000)
  * @param {number} options.errorThreshold - Error rate (0-1) above which concurrency decreases (default: 0.3)
  * @param {string} options.label - Label for debugging (optional)
- * @param {string} options.errorPosture - 'strict' (default): fail on first error; 'resilient': continue, fill undefined for failures
+ * @param {string} options.errorPosture - 'strict' (default): fail on first error; 'resilient': continue, pass original items through for failures
  * @param {AbortSignal} options.abortSignal - Signal to abort processing between batch groups
  * @returns {Promise<Array>} Results in same order as input items
  */
@@ -78,7 +81,7 @@ export async function parallelBatch(items, processor, options = {}) {
         const settled = await Promise.allSettled(
           batch.map((item, index) => processor(item, offset + index))
         );
-        results.push(...settled.map((r) => (r.status === 'fulfilled' ? r.value : undefined)));
+        results.push(...settled.map((r, i) => (r.status === 'fulfilled' ? r.value : batch[i])));
       } else {
         const batchResults = await Promise.all(
           batch.map((item, index) => processor(item, offset + index))
@@ -111,7 +114,7 @@ export async function parallelBatch(items, processor, options = {}) {
         batch.map((item, index) => processor(item, position + index))
       );
       errorCount = settled.filter((r) => r.status === 'rejected').length;
-      results.push(...settled.map((r) => (r.status === 'fulfilled' ? r.value : undefined)));
+      results.push(...settled.map((r, i) => (r.status === 'fulfilled' ? r.value : batch[i])));
     } else {
       const batchResults = await Promise.all(
         batch.map((item, index) => processor(item, position + index))

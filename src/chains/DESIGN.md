@@ -131,7 +131,7 @@ The standard pattern uses `prepareBatches` + `parallelBatch` + `trackBatch`. See
 
 ### Failure Handling
 
-Retry is config-aware — see [retry](../../.claude/docs/retry.md) for the full API. Chains that need per-item error control resolve an error posture through their option mapper (e.g., `strictness: withPolicy(mapStrictness, ['errorPosture'])`). `'strict'` re-throws on failure; `'resilient'` pushes `undefined` and continues. `parallelBatch` also supports `errorPosture` directly.
+Retry is config-aware — see [retry](../../.claude/docs/retry.md) for the full API. Chains that need per-item error control resolve an error posture through their option mapper (e.g., `strictness: withPolicy(mapStrictness, ['errorPosture'])`). `'strict'` re-throws on failure; `'resilient'` passes the original item through untransformed and continues. `parallelBatch` also supports `errorPosture` directly.
 
 ## Chain-Specific Schema Patterns
 

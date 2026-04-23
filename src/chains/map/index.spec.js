@@ -60,10 +60,10 @@ describe('map', () => {
     expect(listBatch).toHaveBeenCalledTimes(2);
   });
 
-  it('leaves undefined on error', async () => {
+  it('passes original items through on error', async () => {
     listBatch.mockRejectedValueOnce(new Error('fail'));
     const result = await map(['FAIL', 'oops'], 'x', { batchSize: 2 });
-    expect(result).toStrictEqual([undefined, undefined]);
+    expect(result).toStrictEqual(['FAIL', 'oops']);
   });
 
   it('retries only failed fragments', async () => {
@@ -249,9 +249,9 @@ describe('map', () => {
         onProgress,
       });
 
-      // Failed items become undefined
-      expect(result[0]).toBeUndefined();
-      expect(result[1]).toBeUndefined();
+      // Failed items pass through as originals
+      expect(result[0]).toBe('a');
+      expect(result[1]).toBe('b');
       expect(result[2]).toBe('c-x');
       expect(result[3]).toBe('d-x');
 
@@ -277,11 +277,11 @@ describe('streamingMap', () => {
     // Two batches of 2 → two yields
     expect(yields).toHaveLength(2);
 
-    // First yield: first two items filled, rest undefined
+    // First yield: first two items transformed, rest show as originals
     expect(yields[0][0]).toBe('a-x');
     expect(yields[0][1]).toBe('b-x');
-    expect(yields[0][2]).toBeUndefined();
-    expect(yields[0][3]).toBeUndefined();
+    expect(yields[0][2]).toBe('c');
+    expect(yields[0][3]).toBe('d');
 
     // Second yield: all items filled
     expect(yields[1][0]).toBe('a-x');
@@ -308,9 +308,9 @@ describe('streamingMap', () => {
     // One partial event per batch yield
     expect(partialEvents).toHaveLength(yields.length);
 
-    // Each partial event carries the cumulative snapshot
+    // Each partial event carries the cumulative snapshot (unprocessed items show as originals)
     expect(partialEvents[0].value[0]).toBe('a-x');
-    expect(partialEvents[0].value[2]).toBeUndefined();
+    expect(partialEvents[0].value[2]).toBe('c');
     expect(partialEvents[1].value[2]).toBe('c-x');
   });
 
@@ -354,20 +354,19 @@ describe('streamingMap', () => {
     // 3 batches: first succeeds, second fails, third succeeds
     expect(yields).toHaveLength(3);
 
-    // After first batch
+    // After first batch — processed items transformed, rest still sparse
     expect(yields[0][0]).toBe('a-x');
     expect(yields[0][1]).toBe('b-x');
-    expect(yields[0][2]).toBeUndefined();
 
-    // After second batch (failed) — items 2,3 remain undefined
-    expect(yields[1][2]).toBeUndefined();
-    expect(yields[1][3]).toBeUndefined();
+    // After second batch (failed) — items 2,3 pass through as originals
+    expect(yields[1][2]).toBe('c');
+    expect(yields[1][3]).toBe('d');
 
-    // After third batch — items 4,5 filled, 2,3 still undefined
+    // After third batch — items 4,5 filled, 2,3 still originals
     expect(yields[2][4]).toBe('e-x');
     expect(yields[2][5]).toBe('f-x');
-    expect(yields[2][2]).toBeUndefined();
-    expect(yields[2][3]).toBeUndefined();
+    expect(yields[2][2]).toBe('c');
+    expect(yields[2][3]).toBe('d');
   });
 
   it('emits full lifecycle: start → partial → output → complete', async () => {

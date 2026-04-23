@@ -7,6 +7,7 @@ import { nameStep, getOptions } from '../../lib/context/option.js';
 import { resolveArgs, resolveTexts } from '../../lib/instruction/index.js';
 
 const name = 'map';
+const UNPROCESSED = Symbol('unprocessed');
 
 function buildBatchPrompt(instructions, items, batchStyle, context, responseFormat) {
   const contextBlock = context ? `\n\n${context}` : '';
@@ -48,8 +49,8 @@ Preserve all formatting and newlines within each <item> element.`;
 
 /**
  * Map over a list of items by calling `listBatch` on XML-enriched batches.
- * Missing or mismatched output results in `undefined` entries so callers can
- * selectively retry.
+ * On batch failure in resilient mode, original items pass through untransformed
+ * so callers always receive a positionally-aligned array with no undefined.
  *
  * @param { string[] } list - array of items to process
  * @param { string } instructions - mapping instructions passed to `listBatch`
@@ -59,28 +60,18 @@ Preserve all formatting and newlines within each <item> element.`;
  * @param { string } [config.listStyle='auto'] - ListStyle enum value
  * @param { number } [config.autoModeThreshold] - character threshold for auto mode
  * @param { object } [config.llm] - LLM configuration
- * @returns { Promise<(string|undefined)[]> } results aligned with input order
+ * @returns { Promise<string[]> } results aligned with input order
  */
 const mapOnce = async function (list, instructions, config = {}) {
   const { maxParallel = 3, errorPosture, onProgress, _batchDone, _context } = config;
 
-  const results = new Array(list.length);
+  const results = new Array(list.length).fill(UNPROCESSED);
   const batches = await createBatches(list, config);
-
-  // Filter out skip batches
-  const batchesToProcess = batches.filter((batch) => {
-    if (batch.skip) {
-      results[batch.startIndex] = undefined;
-      return false;
-    }
-    return true;
-  });
 
   const batchDone = _batchDone ?? (() => {});
 
-  // Process batches in parallel using parallelBatch
   await parallel(
-    batchesToProcess,
+    batches,
     async ({ items, startIndex }) => {
       const batchStyle = determineStyle(config.listStyle, items, config.autoModeThreshold);
       const compiledPrompt = buildBatchPrompt(
@@ -103,7 +94,6 @@ const mapOnce = async function (list, instructions, config = {}) {
           config,
         });
 
-        // listBatch now returns arrays directly
         if (!Array.isArray(output)) {
           throw new Error(`Expected array from listBatch, got: ${typeof output}`);
         }
@@ -114,14 +104,9 @@ const mapOnce = async function (list, instructions, config = {}) {
 
         batchDone(items.length);
       } catch (error) {
-        // Abort errors always propagate — they signal system-level shutdown
         if (error.name === 'AbortError' || config?.abortSignal?.aborted) throw error;
         if (errorPosture === ErrorPosture.strict) throw error;
-
-        // On error, mark all items in batch as undefined
-        for (let j = 0; j < items.length; j += 1) {
-          results[startIndex + j] = undefined;
-        }
+        batchDone(items.length);
       }
     },
     {
@@ -137,7 +122,7 @@ const mapOnce = async function (list, instructions, config = {}) {
 
 /**
  * Map over a list of items with retry support (default export).
- * Retry undefined results until maxAttempts is reached.
+ * Items that fail all retries pass through untransformed.
  *
  * @param { string[] } list - array of items
  * @param { string } instructions - mapping instructions passed to `listBatch`
@@ -148,7 +133,7 @@ const mapOnce = async function (list, instructions, config = {}) {
  * @param { string } [config.listStyle='auto'] - ListStyle enum value
  * @param { number } [config.autoModeThreshold] - character threshold for auto mode
  * @param { object } [config.llm] - LLM configuration
- * @returns { Promise<(string|undefined)[]> }
+ * @returns { Promise<string[]> } results aligned with input order
  */
 const map = async function (list, instructions, config) {
   [instructions, config] = resolveArgs(instructions, config);
@@ -178,7 +163,7 @@ const map = async function (list, instructions, config) {
       const missingItems = [];
 
       results.forEach((val, idx) => {
-        if (val == null) {
+        if (val === UNPROCESSED) {
           missingIdx.push(idx);
           missingItems.push(list[idx]);
         }
@@ -198,13 +183,17 @@ const map = async function (list, instructions, config) {
       });
     }
 
-    // Log final results
-    const successCount = results.filter((r) => r !== undefined).length;
-    const failedItems = results.length - successCount;
+    let failedItems = 0;
+    for (let i = 0; i < results.length; i++) {
+      if (results[i] === UNPROCESSED) {
+        results[i] = list[i];
+        failedItems++;
+      }
+    }
     const outcome = failedItems > 0 ? Outcome.partial : Outcome.success;
     const resultMeta = {
       totalItems: results.length,
-      successCount,
+      successCount: results.length - failedItems,
       failedItems,
       outcome,
     };
@@ -235,7 +224,7 @@ map.knownTexts = [];
  * @param {object} [config.llm] - LLM configuration
  * @param {Function} [config.onProgress] - Progress callback
  * @param {AbortSignal} [config.abortSignal] - Signal to abort processing
- * @returns {AsyncGenerator<(string|undefined)[]>} Yields cumulative results after each batch
+ * @returns {AsyncGenerator<string[]>} Yields cumulative results after each batch
  */
 const streamingMap = async function* streamingMap(list, instructions, config) {
   [instructions, config] = resolveArgs(instructions, config);
@@ -258,17 +247,11 @@ const streamingMap = async function* streamingMap(list, instructions, config) {
       errorPosture: ErrorPosture.resilient,
     });
 
-    const results = new Array(list.length);
+    const results = new Array(list.length).fill(UNPROCESSED);
     const batches = await createBatches(list, runConfig);
-    const activeBatches = batches.filter((b) => !b.skip);
     const batchDone = emitter.batch(list.length);
 
     for (const batch of batches) {
-      if (batch.skip) {
-        results[batch.startIndex] = undefined;
-        continue;
-      }
-
       if (runConfig.abortSignal?.aborted) {
         throw runConfig.abortSignal.reason ?? new Error('The operation was aborted.');
       }
@@ -306,26 +289,28 @@ const streamingMap = async function* streamingMap(list, instructions, config) {
       } catch (error) {
         if (error.name === 'AbortError' || runConfig.abortSignal?.aborted) throw error;
         if (errorPosture === ErrorPosture.strict) throw error;
-
-        for (let j = 0; j < items.length; j += 1) {
-          results[startIndex + j] = undefined;
-        }
         batchDone(items.length);
       }
 
-      emitter.emit({ event: DomainEvent.partial, value: [...results] });
-      yield [...results];
+      const snapshot = results.map((r, i) => (r === UNPROCESSED ? list[i] : r));
+      emitter.emit({ event: DomainEvent.partial, value: snapshot });
+      yield snapshot;
     }
 
-    const successCount = results.filter((r) => r !== undefined).length;
-    const failedItems = results.length - successCount;
+    let failedItems = 0;
+    for (let i = 0; i < results.length; i++) {
+      if (results[i] === UNPROCESSED) {
+        results[i] = list[i];
+        failedItems++;
+      }
+    }
     const outcome = failedItems > 0 ? Outcome.partial : Outcome.success;
 
     emitter.emit({ event: DomainEvent.output, value: results });
     emitter.complete({
       totalItems: results.length,
-      totalBatches: activeBatches.length,
-      successCount,
+      totalBatches: batches.length,
+      successCount: results.length - failedItems,
       failedItems,
       outcome,
     });

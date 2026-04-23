@@ -35,7 +35,7 @@ describe('parallel collection utilities', () => {
       expect(fn).toHaveBeenCalledTimes(5);
     });
 
-    it('fills undefined on error in resilient mode', async () => {
+    it('passes original item through on error in resilient mode', async () => {
       const fn = vi.fn(async (item) => {
         if (item === 2) throw new Error('fail');
         return item * 10;
@@ -43,7 +43,7 @@ describe('parallel collection utilities', () => {
 
       const result = await map(fn, [1, 2, 3], { errorPosture: 'resilient' });
 
-      expect(result).toEqual([10, undefined, 30]);
+      expect(result).toEqual([10, 2, 30]);
     });
 
     it('throws on first error in strict mode', async () => {
