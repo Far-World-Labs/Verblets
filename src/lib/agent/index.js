@@ -19,11 +19,9 @@ import createProgressEmitter from '../progress/index.js';
 import { mapAllowedTools } from './tools.js';
 
 import * as claudeBackend from './backends/claude.js';
-import * as openaiBackend from './backends/openai.js';
 
 const BACKENDS = {
   claude: claudeBackend,
-  openai: openaiBackend,
 };
 
 export default async function callAgent(instruction, config = {}) {
@@ -102,6 +100,8 @@ function agentEnv() {
   return env;
 }
 
+const SIGKILL_GRACE_MS = 5000;
+
 function execCliAgent(args, { cwd, timeout, abortSignal }) {
   return new Promise((resolve, reject) => {
     const [cmd, ...cmdArgs] = args;
@@ -114,13 +114,19 @@ function execCliAgent(args, { cwd, timeout, abortSignal }) {
     const stdoutChunks = [];
     const stderrChunks = [];
     let settled = false;
+    let killTimer;
+
+    const escalateKill = () => {
+      child.kill('SIGTERM');
+      killTimer = setTimeout(() => child.kill('SIGKILL'), SIGKILL_GRACE_MS);
+    };
 
     child.stdout.on('data', (chunk) => stdoutChunks.push(chunk));
     child.stderr.on('data', (chunk) => stderrChunks.push(chunk));
 
     const timer = timeout
       ? setTimeout(() => {
-          child.kill('SIGTERM');
+          escalateKill();
           if (!settled) {
             settled = true;
             reject(new Error(`Agent timed out after ${timeout}ms`));
@@ -130,6 +136,7 @@ function execCliAgent(args, { cwd, timeout, abortSignal }) {
 
     child.on('close', (code) => {
       if (timer) clearTimeout(timer);
+      if (killTimer) clearTimeout(killTimer);
       if (settled) return;
       settled = true;
 
@@ -145,14 +152,14 @@ function execCliAgent(args, { cwd, timeout, abortSignal }) {
 
     if (abortSignal) {
       const onAbort = () => {
-        child.kill('SIGTERM');
+        escalateKill();
         if (!settled) {
           settled = true;
           reject(new Error('Agent execution aborted'));
         }
       };
       if (abortSignal.aborted) {
-        child.kill('SIGTERM');
+        escalateKill();
         settled = true;
         reject(new Error('Agent execution aborted'));
       } else {

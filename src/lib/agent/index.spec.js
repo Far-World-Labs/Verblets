@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 import * as claudeBackend from './backends/claude.js';
-import * as openaiBackend from './backends/openai.js';
 import { mapAllowedTools, DEFAULT_TOOLS, TOOL_CATEGORIES } from './tools.js';
 
 // ── tools.js ──
@@ -243,29 +242,6 @@ describe('claude backend', () => {
       const result = claudeBackend.parseOutput(long);
       expect(result.rawOutput.length).toBe(200_000);
     });
-  });
-});
-
-// ── openai backend ──
-
-describe('openai backend', () => {
-  it('produces basic args with instruction', () => {
-    const args = openaiBackend.buildCliArgs({}, 'build feature');
-    expect(args[0]).toBe('codex');
-    expect(args).toContain('build feature');
-  });
-
-  it('includes --model when set', () => {
-    const args = openaiBackend.buildCliArgs({ model: 'o3' }, 'task');
-    expect(args).toContain('--model');
-    expect(args).toContain('o3');
-  });
-
-  it('parseOutput returns stub shape', () => {
-    const result = openaiBackend.parseOutput('some output');
-    expect(result.summary).toBe('some output');
-    expect(result.filesModified).toEqual([]);
-    expect(result.filesCreated).toEqual([]);
   });
 });
 

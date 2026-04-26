@@ -67,13 +67,13 @@ export function buildCliArgs(opts, instruction) {
 export function parseOutput(raw) {
   const lines = raw.split('\n').filter(Boolean);
   const messages = [];
+  let malformedLines = 0;
 
   for (const line of lines) {
     try {
-      const parsed = JSON.parse(line);
-      messages.push(parsed);
+      messages.push(JSON.parse(line));
     } catch {
-      // non-JSON output line
+      malformedLines += 1;
     }
   }
 
@@ -93,8 +93,10 @@ export function parseOutput(raw) {
     costUsd: resultMessage?.total_cost_usd,
     numTurns: resultMessage?.num_turns,
     isError: resultMessage?.is_error,
+    ...(malformedLines > 0 && { malformedLines }),
     messages,
     rawOutput: raw.slice(0, 200_000),
+    rawOutputTruncated: raw.length > 200_000,
   };
 }
 
