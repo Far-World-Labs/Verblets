@@ -124,17 +124,19 @@ async function arbitrateMulti(signals, ctx, dimensions, config) {
   });
 
   try {
-    const evaluated = await parallelBatch(
-      signals,
-      async (signal) => ({
-        name: signal.name,
-        strictness: signal.strictness,
-        weight: signal.weight,
-        prompt: signal.prompt,
-        resolved: await signal.value(ctx),
-      }),
-      { maxParallel: 5, errorPosture: ErrorPosture.resilient, abortSignal: runConfig.abortSignal }
-    );
+    const evaluated = (
+      await parallelBatch(
+        signals,
+        async (signal) => ({
+          name: signal.name,
+          strictness: signal.strictness,
+          weight: signal.weight,
+          prompt: signal.prompt,
+          resolved: await signal.value(ctx),
+        }),
+        { maxParallel: 5, errorPosture: ErrorPosture.resilient, abortSignal: runConfig.abortSignal }
+      )
+    ).filter(Boolean);
 
     const dimState = new Map();
     for (const dim of dimensions) {
@@ -310,18 +312,20 @@ export default async function valueArbitrate(signals, ctx, values, config = {}) 
   });
 
   try {
-    // Step 1: Evaluate all signals concurrently
-    const evaluated = await parallelBatch(
-      signals,
-      async (signal) => ({
-        name: signal.name,
-        strictness: signal.strictness,
-        weight: signal.weight,
-        prompt: signal.prompt,
-        resolved: await signal.value(ctx),
-      }),
-      { maxParallel: 5, errorPosture: ErrorPosture.resilient, abortSignal: runConfig.abortSignal }
-    );
+    // Step 1: Evaluate all signals concurrently; failed evaluations drop out
+    const evaluated = (
+      await parallelBatch(
+        signals,
+        async (signal) => ({
+          name: signal.name,
+          strictness: signal.strictness,
+          weight: signal.weight,
+          prompt: signal.prompt,
+          resolved: await signal.value(ctx),
+        }),
+        { maxParallel: 5, errorPosture: ErrorPosture.resilient, abortSignal: runConfig.abortSignal }
+      )
+    ).filter(Boolean);
 
     // Step 2: Separate must and may results
     const mustResults = evaluated.filter((s) => s.strictness === 'must');
