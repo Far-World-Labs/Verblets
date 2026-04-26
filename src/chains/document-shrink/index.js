@@ -321,12 +321,18 @@ async function scoreEdgeChunks(candidates, query, maxChunks, options = {}) {
     }
   );
 
+  // Chunks the LLM didn't score (undefined slots) fall back to tfIdfScore
+  // alone rather than being penalized as "definitely irrelevant" via `?? 0`.
   const scored = toScore.map((chunk, i) => {
-    const s = (scores[i] ?? 0) / 10;
+    const raw = scores[i];
+    if (raw === undefined) {
+      return { ...chunk, llmScore: undefined, finalScore: chunk.tfIdfScore };
+    }
+    const llmScore = raw / 10;
     return {
       ...chunk,
-      llmScore: s,
-      finalScore: chunk.tfIdfScore * (1 - llmWeight) + s * llmWeight,
+      llmScore,
+      finalScore: chunk.tfIdfScore * (1 - llmWeight) + llmScore * llmWeight,
     };
   });
 
