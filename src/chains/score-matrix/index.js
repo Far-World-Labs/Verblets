@@ -108,7 +108,7 @@ function buildAnchors(batchItems, matrix, dimensions, anchoring) {
   }
 
   const dimNames = dimensions.map((d) => d.dimension);
-  const formatRow = (row) => dimNames.map((n, i) => `${n}: ${row[i]?.score}`).join(', ');
+  const formatRow = (row) => dimNames.map((n, i) => `${n}: ${row[i].score}`).join(', ');
 
   return `\nUse these scored examples as calibration anchors:\n${asXML(
     anchors.map((a) => `[${formatRow(a.row)}] ${a.item}`).join('\n'),
@@ -174,6 +174,11 @@ async function matrixOnce(list, dimensions, instruction, scale, batchConfig, opt
     } catch (error) {
       emitter.error(error, { batchIndex: 0, itemCount: first.items.length });
       if (errorPosture === ErrorPosture.strict) throw error;
+      emitter.emit({
+        event: DomainEvent.phase,
+        phase: 'anchors-skipped',
+        reason: 'first-batch-failed',
+      });
     }
     batchDone(first.items.length);
     parallelStart = 1;
@@ -302,22 +307,25 @@ export default async function scoreMatrix(items, rubric, instructions, config) {
     });
   }
 
-  const matrix = results.map(
-    (row) =>
-      row ?? dimensions.map(() => ({ score: DEFAULT_SCALE.min, rationale: 'scoring failed' }))
-  );
   const successCount = results.filter((r) => r !== undefined).length;
   const failedItems = results.length - successCount;
+
+  if (successCount === 0 && results.length > 0) {
+    const err = new Error(`score-matrix: all ${results.length} rows failed to score`);
+    emitter.error(err);
+    throw err;
+  }
+
   const outcome = failedItems > 0 ? Outcome.partial : Outcome.success;
 
   emitter.emit({
     event: DomainEvent.output,
-    value: { rows: matrix.length, columns: dimensions.length },
+    value: { rows: results.length, columns: dimensions.length },
   });
   emitter.complete({ totalItems: items.length, successCount, failedItems, outcome });
 
   return {
-    matrix,
+    matrix: results,
     dimensions: dimensions.map((d) => d.dimension),
     scale: DEFAULT_SCALE,
   };

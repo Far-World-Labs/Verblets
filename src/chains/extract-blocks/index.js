@@ -187,10 +187,10 @@ export async function extractBlocks(text, instructions, config) {
       rawBlocks: allBlockBoundaries.flat().length,
     });
 
-    // Flatten all blocks and sort by start line, then by end line (descending)
+    // Flatten all blocks and sort by start line, then by end line (descending).
+    // validateBlockResponse already enforces shape; no post-filter needed.
     const allBlocks = allBlockBoundaries
       .flat()
-      .filter((b) => b && b.startLine !== undefined && b.endLine !== undefined)
       .toSorted((a, b) => a.startLine - b.startLine || b.endLine - a.endLine);
 
     // Merge overlapping blocks

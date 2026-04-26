@@ -263,7 +263,7 @@ describe('score-matrix chain', () => {
       expect(result.matrix[2]).toEqual(row2(7, 7));
     });
 
-    it('fills failed rows with min-score fallback after retries exhaust', async () => {
+    it('returns undefined for failed rows after retries exhaust', async () => {
       createBatches.mockReturnValueOnce([{ items: ['a', 'b'], startIndex: 0 }]);
       llm.mockResolvedValueOnce(
         llmMatrixResponse([
@@ -275,10 +275,7 @@ describe('score-matrix chain', () => {
       const result = await scoreMatrix(['a', 'b'], rubric2, { maxAttempts: 1 });
 
       expect(result.matrix[0]).toEqual(row2(5, 5));
-      expect(result.matrix[1]).toEqual([
-        { score: 0, rationale: 'scoring failed' },
-        { score: 0, rationale: 'scoring failed' },
-      ]);
+      expect(result.matrix[1]).toBeUndefined();
     });
 
     it('contains batch errors without throwing in resilient mode', async () => {
@@ -296,7 +293,16 @@ describe('score-matrix chain', () => {
       const result = await scoreMatrix(['a', 'b'], [{ dimension: 'd1' }], { maxAttempts: 2 });
 
       expect(result.matrix[0]).toEqual([cell(8)]);
-      expect(result.matrix[1]).toEqual([{ score: 0, rationale: 'scoring failed' }]);
+      expect(result.matrix[1]).toBeUndefined();
+    });
+
+    it('throws when every row fails', async () => {
+      createBatches.mockReturnValueOnce([{ items: ['a', 'b'], startIndex: 0 }]);
+      llm.mockRejectedValue(new Error('500'));
+
+      await expect(
+        scoreMatrix(['a', 'b'], [{ dimension: 'd1' }], { maxAttempts: 1 })
+      ).rejects.toThrow(/all 2 rows failed/);
     });
   });
 

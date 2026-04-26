@@ -43,7 +43,7 @@ Where `score` gives you a single number per item, `scoreMatrix` gives you a full
 - `instructions` — optional scoring guidance (scale, emphasis, strictness)
 - `config` — chain configuration
 
-Returns `{ matrix, dimensions, scale }` where `matrix[i][j]` is `{ score, rationale }` for item `i` on dimension `j`.
+Returns `{ matrix, dimensions, scale }` where `matrix[i][j]` is `{ score, rationale }` for item `i` on dimension `j`. Rows that fail to score after retries are left as `undefined` so callers can distinguish them from real low-score results. If every row fails, the chain throws.
 
 ### Named exports
 
