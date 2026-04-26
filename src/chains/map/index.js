@@ -148,7 +148,6 @@ const map = async function (list, instructions, config) {
         ...runConfig,
         maxAttempts,
         maxParallel,
-        _batchDone: batchDone,
         _context: context,
       });
 
