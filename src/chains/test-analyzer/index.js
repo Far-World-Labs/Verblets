@@ -89,22 +89,12 @@ const calculateCodeWindow = (
  */
 export default async function analyzeTestError(logs, config = {}) {
   if (Array.isArray(logs) && logs.length > 0 && Array.isArray(logs[0])) {
-    return parallelBatch(
-      logs,
-      async (logGroup) => {
-        try {
-          return await analyzeTestError(logGroup, config);
-        } catch {
-          return '';
-        }
-      },
-      {
-        maxParallel: 3,
-        errorPosture: ErrorPosture.resilient,
-        abortSignal: config.abortSignal,
-        label: 'test-analyzer:collection',
-      }
-    );
+    return parallelBatch(logs, (logGroup) => analyzeTestError(logGroup, config), {
+      maxParallel: 3,
+      errorPosture: ErrorPosture.resilient,
+      abortSignal: config.abortSignal,
+      label: 'test-analyzer:collection',
+    });
   }
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);

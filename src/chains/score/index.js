@@ -70,10 +70,13 @@ function alignScores(scores, expectedLength) {
 
 export function aggregateScoreVectors(vectors, weights) {
   if (!vectors?.length) return [];
+  if (weights && weights.reduce((s, w) => s + w, 0) <= 0) {
+    throw new Error('aggregateScoreVectors: weights must sum to a positive value');
+  }
   return vectors.map((v) => {
     if (!Array.isArray(v) || v.length === 0) return undefined;
     const ws = weights ?? v.map(() => 1);
-    const wsum = ws.reduce((sum, w) => sum + w, 0) || 1;
+    const wsum = ws.reduce((sum, w) => sum + w, 0);
     return v.reduce((sum, s, i) => sum + s * ws[i], 0) / wsum;
   });
 }
@@ -457,8 +460,10 @@ export async function iterativeScoreLoop(items, instruction, config) {
     });
 
     const validScores = currentScores.filter((s) => s !== undefined);
-    const currentAvg =
-      validScores.length > 0 ? validScores.reduce((sum, s) => sum + s, 0) / validScores.length : 0;
+    if (validScores.length === 0) {
+      throw new Error(`iterativeScoreLoop: no items scored successfully on iteration ${iteration}`);
+    }
+    const currentAvg = validScores.reduce((sum, s) => sum + s, 0) / validScores.length;
 
     iteration += 1;
 

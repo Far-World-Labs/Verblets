@@ -123,14 +123,17 @@ Score how important THE ENTIRE TEXT BLOCK is to KEEP in the document (0 = should
 Each item in the list is ONE complete text block - evaluate it as a whole unit.
 Consider the removal criteria above when scoring.${contextBlock}`;
 
-    const scores = await score(textsToScore, scoringInstructions, {
+    const rawScores = await score(textsToScore, scoringInstructions, {
       ...runConfig,
       onProgress: scopePhase(runConfig.onProgress, 'score:relevance'),
       // Don't use stopOnThreshold - we need all scores to find high ones
     });
 
+    // Boundary policy: missing scores → keep the chunk (treat as max-importance signal).
+    const scores = rawScores.map((s) => (typeof s === 'number' ? s : Infinity));
+
     // Find the first chunk (from the end) that should be removed (score < threshold)
-    const removeChunkIndex = scores.findIndex((s) => (s ?? Infinity) < threshold);
+    const removeChunkIndex = scores.findIndex((s) => s < threshold);
 
     let result;
     if (removeChunkIndex >= 0) {

@@ -111,8 +111,9 @@ Important: This is part of a larger sequence. Join these fragments while being m
     const validResults = windowResults.filter((r) => r?.content && r.content.trim());
 
     if (validResults.length === 0) {
-      emitter.complete({ outcome: Outcome.success, windows: windows.length });
-      return list.join(' ');
+      const err = new Error(`join: all ${windows.length} windows failed to process`);
+      emitter.error(err);
+      throw err;
     }
 
     if (validResults.length === 1) {

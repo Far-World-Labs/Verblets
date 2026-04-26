@@ -75,15 +75,15 @@ export default async function disambiguate(term, instructions, config) {
       }
     );
 
-    let bestIndex = 0;
-    let bestScore = -Infinity;
+    const valid = scores
+      .map((score, index) => ({ score, index }))
+      .filter(({ score }) => typeof score === 'number');
 
-    for (let i = 0; i < scores.length; i++) {
-      if (typeof scores[i] === 'number' && scores[i] > bestScore) {
-        bestScore = scores[i];
-        bestIndex = i;
-      }
+    if (valid.length === 0) {
+      throw new Error(`disambiguate: no meanings could be scored for term "${term}"`);
     }
+
+    const bestIndex = valid.reduce((best, x) => (x.score > best.score ? x : best)).index;
 
     emitter.complete({ outcome: Outcome.success });
 

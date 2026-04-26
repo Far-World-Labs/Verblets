@@ -80,14 +80,12 @@ function buildAnchors(batchItems, matrix, dimensions, anchoring) {
   if (anchoring === 'none') return '';
 
   const paired = batchItems
-    .map((item, i) => ({
-      item: String(item),
-      row: matrix[i],
-      avg: matrix[i]
-        ? matrix[i].reduce((sum, cell) => sum + (cell?.score ?? 0), 0) / matrix[i].length
-        : 0,
-    }))
+    .map((item, i) => ({ item: String(item), row: matrix[i] }))
     .filter((p) => p.row && p.row.every((cell) => Number.isFinite(cell?.score)))
+    .map((p) => ({
+      ...p,
+      avg: p.row.reduce((sum, cell) => sum + cell.score, 0) / p.row.length,
+    }))
     .toSorted((a, b) => a.avg - b.avg);
 
   if (paired.length < 2) return '';
