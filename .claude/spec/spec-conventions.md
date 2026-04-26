@@ -80,7 +80,7 @@ Apply to every spec. Don't repeat in per-spec pragmas.
 
 ## Spec Kinds
 
-Generic kinds. System-specific kinds belong in the companion file (`spec-conventions.lib.md` or `spec-conventions.app.md`).
+Generic kinds.
 
 ### Public Surface
 

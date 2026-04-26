@@ -1,12 +1,12 @@
 # Discovery Philosophy
 
-How the hypothesis pipeline discovers new operations. Governs angle generation, topic exploration, and evaluation criteria across the improvement-hypotheses automation.
+How the hypothesis pipeline discovers new operations.
 
 ---
 
 ## Pragma
 
-- **include:** discovery framing, horizon definitions, angle quality, topic quality, anti-patterns
+- **include:** discovery framing, horizon definitions
 - **exclude:** pipeline mechanics, scoring formulas, agent execution, enrichment format
 
 ---
@@ -23,7 +23,7 @@ Discovery finds the next operations like `score`. It uses futures thinking, desi
 
 ## Three Discovery Horizons
 
-Each horizon approaches the same question — what operations would support people in their activities? — from a different angle. Together they ensure the pipeline considers diverse sources of inspiration without collapsing into any single frame.
+Each horizon approaches the same question — what operations would support people in their activities? — from a different starting point. Together they ensure the pipeline considers diverse sources of inspiration without collapsing into any single frame.
 
 ### H1 — Technical Patterns Elevated to Meaning
 
@@ -36,20 +36,3 @@ People evaluate, compare, categorize, extract, and sort — and those are alread
 ### H3 — Functions Hiding in Other Fields
 
 Cognitive science, linguistics, decision science, creativity research, and other fields describe structured processes that people engage in. Some of these map cleanly to composable operations with clear I/O. The source is the field's insight into human activity, but the output is an intuitive operation named in plain language.
-
----
-
-## Quality
-
-A good operation is like `score`: intuitively named, abstractly powerful, composable, and useful across many contexts simultaneously — not because it's vague, but because the abstraction captures something real that people do in all parts of life.
-
-A good angle is evocative — it names a territory where useful operations are likely hiding and makes someone want to go look.
-
----
-
-## Anti-patterns
-
-- **One frame as the whole story**: human needs, automation use cases, plain verbs, cognitive science — each is one lens. The best operations serve many contexts simultaneously. Don't optimize for one quality at the expense of others.
-- **Methodology as output**: futures thinking and design thinking are generative lenses, not the output. The output is operations people use.
-- **Jargon names**: if the name needs a glossary entry, the operation fails. Academic terminology for what people already do in plain language.
-- **Shallow obvious operations**: the name should be intuitive, but the insight behind the operation should be deep. `score` isn't interesting because "score" is a good word — it's interesting because "evaluate anything against any criteria" is a profound abstraction.

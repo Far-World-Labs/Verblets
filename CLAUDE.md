@@ -11,9 +11,8 @@ AI-powered functions that accept natural language instructions to transform and 
 #### Specs
 
 - **[spec/spec-conventions.md](spec/spec-conventions.md)** — How to write specs: two-layer split (timeless/impl), length and file organization, specification techniques (constraints, decision criteria, shape declarations, corrective notes), why not examples, generic spec kinds.
-- **[spec/spec-conventions.lib.md](spec/spec-conventions.lib.md)** — This library's spec families: LLM integration, chains/verblets, embedding, progress/events, instruction/prompt, automation. System-wide corrective notes, coverage gaps.
 - **[spec/automation.md](spec/automation.md)** / **[.impl.md](spec/automation.impl.md)** — Automation execution model: RunContext shape, ctx.lib split, storage domains and API, observability, run history, composition, termination.
-- **[spec/discovery-philosophy.md](spec/discovery-philosophy.md)** — How hypothesis discovery works: start from human needs, arrive at operations. Three horizons (present needs, emerging possibilities, deep analogues), angle/topic quality criteria, anti-patterns.
+- **[spec/discovery-philosophy.md](spec/discovery-philosophy.md)** — How hypothesis discovery works: the library as standard library for people's lives. Three horizons (technical patterns elevated to meaning, activities people already do, functions hiding in other fields).
 
 #### Docs
 
