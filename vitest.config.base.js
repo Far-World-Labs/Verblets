@@ -47,6 +47,7 @@ export const browserExclusions = [
   'src/init.spec.js',
   'src/lib/run-context/**',
   'src/lib/automation-runner/**',
+  'src/lib/agent/**',
 ];
 
 // Browser-specific aliases for modules with browser versions

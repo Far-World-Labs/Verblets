@@ -9,7 +9,7 @@ import { resolveArgs, resolveTexts } from '../../lib/instruction/index.js';
 const name = 'map';
 const UNPROCESSED = Symbol('unprocessed');
 
-function buildBatchPrompt(instructions, items, batchStyle, context) {
+function buildBatchPrompt(instructions, items, context) {
   const contextBlock = context ? `\n\n${context}` : '';
   return `Transform each item in the list according to the instructions below. Apply the transformation consistently to every item.
 
@@ -52,7 +52,7 @@ const mapOnce = async function (list, instructions, config = {}) {
     batches,
     async ({ items, startIndex }) => {
       const batchStyle = determineStyle(config.listStyle, items, config.autoModeThreshold);
-      const compiledPrompt = buildBatchPrompt(instructions, items, batchStyle, _context);
+      const compiledPrompt = buildBatchPrompt(instructions, items, _context);
 
       try {
         const listBatchOptions = {
@@ -148,6 +148,7 @@ const map = async function (list, instructions, config) {
         ...runConfig,
         maxAttempts,
         maxParallel,
+        _batchDone: batchDone,
         _context: context,
       });
 
@@ -238,7 +239,7 @@ const streamingMap = async function* streamingMap(list, instructions, config) {
 
       const { items, startIndex } = batch;
       const batchStyle = determineStyle(runConfig.listStyle, items, runConfig.autoModeThreshold);
-      const compiledPrompt = buildBatchPrompt(text, items, batchStyle, context);
+      const compiledPrompt = buildBatchPrompt(text, items, context);
 
       try {
         const output = await retry(

@@ -46,24 +46,15 @@ function buildScoringAnchors(items, scores, anchoring = 'default') {
     .toSorted((a, b) => a.score - b.score);
   if (paired.length < 2) return '';
 
-  let anchors;
-  if (anchoring === 'rich') {
-    // More anchors: extremes plus median for tighter calibration
-    const count = Math.min(3, Math.ceil(paired.length / 4));
-    const mid = Math.floor(paired.length / 2);
-    const medianItems = paired.slice(Math.max(0, mid - 1), mid + 1);
-    const combined = [...paired.slice(0, count), ...medianItems, ...paired.slice(-count)];
-    // Deduplicate by item text
-    const seen = new Set();
-    anchors = combined.filter((a) => {
-      if (seen.has(a.item)) return false;
-      seen.add(a.item);
-      return true;
-    });
-  } else {
-    const count = Math.min(2, Math.ceil(paired.length / 3));
-    anchors = [...paired.slice(0, count), ...paired.slice(-count)];
-  }
+  const count =
+    anchoring === 'rich'
+      ? Math.min(3, Math.ceil(paired.length / 4))
+      : Math.min(2, Math.ceil(paired.length / 3));
+  const mid = Math.floor(paired.length / 2);
+  const extras = anchoring === 'rich' ? paired.slice(Math.max(0, mid - 1), mid + 1) : [];
+  const combined = [...paired.slice(0, count), ...extras, ...paired.slice(-count)];
+  const seen = new Set();
+  const anchors = combined.filter((a) => !seen.has(a.item) && seen.add(a.item));
 
   return `\nUse these scored examples as reference points:\n${asXML(
     anchors.map((a) => `${a.score} — ${a.item}`).join('\n'),
@@ -74,20 +65,16 @@ function buildScoringAnchors(items, scores, anchoring = 'default') {
 function alignScores(scores, expectedLength) {
   const arr = Array.isArray(scores) ? scores : [];
   if (arr.length === expectedLength) return arr;
-  return Array.from({ length: expectedLength }, (_, i) =>
-    i < arr.length && typeof arr[i] === 'number' ? arr[i] : undefined
-  );
+  return Array.from({ length: expectedLength }, (_, i) => arr[i]);
 }
 
 export function aggregateScoreVectors(vectors, weights) {
-  if (!vectors || vectors.length === 0) return [];
-  const criteriaCount = vectors.find((v) => Array.isArray(v))?.length ?? 0;
-  if (criteriaCount === 0) return vectors.map(() => undefined);
-  const effectiveWeights = weights ?? Array.from({ length: criteriaCount }, () => 1);
-  const weightSum = effectiveWeights.reduce((sum, w) => sum + w, 0);
+  if (!vectors?.length) return [];
   return vectors.map((v) => {
-    if (!Array.isArray(v)) return undefined;
-    return v.reduce((sum, s, i) => sum + s * (effectiveWeights[i] / weightSum), 0);
+    if (!Array.isArray(v) || v.length === 0) return undefined;
+    const ws = weights ?? v.map(() => 1);
+    const wsum = ws.reduce((sum, w) => sum + w, 0) || 1;
+    return v.reduce((sum, s, i) => sum + s * ws[i], 0) / wsum;
   });
 }
 
@@ -103,7 +90,6 @@ export const scoreSpec = scaleSpec;
  * @param {*} item - Item to score
  * @param {Object} specification - Pre-generated score specification
  * @param {Object} config - Configuration options
- * @param {number} config.maxAttempts - Max retry attempts (default: 3)
  * @returns {Promise<*>} Score value (type depends on specification range)
  */
 async function scoreWithSpec(item, spec, config = {}) {
@@ -157,7 +143,6 @@ async function scoreOnce(list, prompt, batchConfig, config) {
   const { maxParallel, errorPosture, onProgress, logger, anchoring, _providedAnchors } = config;
 
   const batches = await createBatches(list, batchConfig);
-  const batchesToProcess = batches;
   const results = new Array(list.length).fill(undefined);
 
   const emitter = createProgressEmitter('score', onProgress, config);
@@ -165,14 +150,14 @@ async function scoreOnce(list, prompt, batchConfig, config) {
   emitter.progress({
     event: OpEvent.start,
     totalItems: list.length,
-    totalBatches: batchesToProcess.length,
+    totalBatches: batches.length,
     maxParallel,
   });
 
   // First batch establishes scoring anchors (skipped when anchors are pre-supplied)
   let anchorBlock = _providedAnchors || '';
-  if (!_providedAnchors && batchesToProcess.length > 0) {
-    const first = batchesToProcess[0];
+  if (!_providedAnchors && batches.length > 0) {
+    const first = batches[0];
     try {
       const scores = await retry(() => listBatch(first.items, prompt, batchConfig), {
         label: 'score:batch',
@@ -202,11 +187,11 @@ async function scoreOnce(list, prompt, batchConfig, config) {
   }
 
   // Remaining batches run in parallel with anchors
-  if (batchesToProcess.length > 1) {
+  if (batches.length > 1) {
     const anchoredPrompt = anchorBlock ? `${prompt}\n${anchorBlock}` : prompt;
 
     await parallel(
-      batchesToProcess.slice(1),
+      batches.slice(1),
       async ({ items, startIndex }) => {
         try {
           const scores = await retry(() => listBatch(items, anchoredPrompt, batchConfig), {
@@ -459,7 +444,7 @@ export async function iterativeScoreLoop(items, instruction, config) {
   const scoringBundle = scoreInstructions({ spec, anchors: known.anchors });
 
   let currentItems = items;
-  let currentScores;
+  let currentScores = [];
   let previousAvg;
   let iteration = 0;
 
