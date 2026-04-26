@@ -45,10 +45,11 @@ export function buildCliArgs(opts, instruction) {
     args.push('--system-prompt', opts.systemPrompt);
   }
 
-  if (opts.allowedTools?.length) {
-    const mapped = opts.allowedTools.map((t) => TOOL_MAP[t] || t).join(',');
-    args.push('--tools', mapped);
+  if (!opts.allowedTools?.length) {
+    throw new Error('Claude backend requires non-empty allowedTools');
   }
+  const mapped = opts.allowedTools.map((t) => TOOL_MAP[t] || t).join(',');
+  args.push('--tools', mapped);
 
   if (opts.model) {
     args.push('--model', opts.model);

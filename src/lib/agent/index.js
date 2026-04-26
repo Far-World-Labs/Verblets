@@ -16,7 +16,7 @@ import { homedir } from 'node:os';
 
 import { nameStep, getOption, getOptions, withPolicy } from '../context/option.js';
 import createProgressEmitter from '../progress/index.js';
-import { mapAllowedTools, DEFAULT_TOOLS } from './tools.js';
+import { mapAllowedTools } from './tools.js';
 
 import * as claudeBackend from './backends/claude.js';
 import * as openaiBackend from './backends/openai.js';
@@ -42,16 +42,13 @@ export default async function callAgent(instruction, config = {}) {
     allowedTools: withPolicy(mapAllowedTools),
   });
 
-  const allowedTools = Array.isArray(opts.allowedTools) ? opts.allowedTools : DEFAULT_TOOLS;
-  const resolvedOpts = { ...opts, allowedTools };
-
   const backend = BACKENDS[opts.backend];
   if (!backend) {
     emitter.error({ message: `Unknown agent backend: ${opts.backend}`, type: 'configuration' });
     throw new Error(`Unknown agent backend: ${opts.backend}`);
   }
 
-  const args = backend.buildCliArgs(resolvedOpts, instruction);
+  const args = backend.buildCliArgs(opts, instruction);
 
   emitter.emit({ event: 'agent:exec', backend: opts.backend, model: opts.model });
 
@@ -69,6 +66,12 @@ export default async function callAgent(instruction, config = {}) {
   }
 
   const result = backend.parseOutput(raw);
+
+  if (result.isError) {
+    const message = result.summary || 'agent reported an error';
+    emitter.error({ message, type: 'agent-error' });
+    throw new Error(`Agent: ${message}`);
+  }
 
   emitter.complete({
     filesModified: result.filesModified.length,
@@ -130,15 +133,14 @@ function execCliAgent(args, { cwd, timeout, abortSignal }) {
       if (settled) return;
       settled = true;
 
-      const stdout = Buffer.concat(stdoutChunks).toString();
-      const stderr = Buffer.concat(stderrChunks).toString();
-
-      if (code !== 0 && !stdout.trim()) {
+      if (code !== 0) {
+        const stderr = Buffer.concat(stderrChunks).toString();
         const message = stderr?.trim() || `exit code ${code}`;
         reject(new Error(`Agent exited with code ${code}: ${message}`));
-      } else {
-        resolve(stdout);
+        return;
       }
+
+      resolve(Buffer.concat(stdoutChunks).toString());
     });
 
     if (abortSignal) {

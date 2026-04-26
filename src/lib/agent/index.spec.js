@@ -7,6 +7,10 @@ import { mapAllowedTools, DEFAULT_TOOLS, TOOL_CATEGORIES } from './tools.js';
 // ── tools.js ──
 
 describe('mapAllowedTools', () => {
+  it('returns DEFAULT_TOOLS for undefined', () => {
+    expect(mapAllowedTools(undefined)).toEqual(DEFAULT_TOOLS);
+  });
+
   it('returns all categories for "all"', () => {
     expect(mapAllowedTools('all')).toEqual(TOOL_CATEGORIES);
   });
@@ -19,9 +23,25 @@ describe('mapAllowedTools', () => {
     expect(mapAllowedTools('safe')).toEqual(DEFAULT_TOOLS);
   });
 
-  it('passes through array values unchanged', () => {
+  it('passes through valid array values unchanged', () => {
     const custom = ['read', 'bash'];
     expect(mapAllowedTools(custom)).toBe(custom);
+  });
+
+  it('throws on empty array', () => {
+    expect(() => mapAllowedTools([])).toThrow(/empty array is not supported/);
+  });
+
+  it('throws on unknown category', () => {
+    expect(() => mapAllowedTools(['read', 'mystery'])).toThrow(/unknown category: mystery/);
+  });
+
+  it('throws on non-array, non-string input', () => {
+    expect(() => mapAllowedTools(42)).toThrow(/expected an array/);
+  });
+
+  it('throws on unknown string preset', () => {
+    expect(() => mapAllowedTools('bogus')).toThrow(/expected an array/);
   });
 });
 
@@ -30,7 +50,7 @@ describe('mapAllowedTools', () => {
 describe('claude backend', () => {
   describe('buildCliArgs', () => {
     it('produces minimal args with defaults', () => {
-      const args = claudeBackend.buildCliArgs({ allowedTools: [] }, 'do something');
+      const args = claudeBackend.buildCliArgs({ allowedTools: ['read'] }, 'do something');
       expect(args[0]).toContain('claude');
       expect(args).toContain('--print');
       expect(args).toContain('--output-format');
@@ -40,7 +60,7 @@ describe('claude backend', () => {
     });
 
     it('includes --max-turns when set', () => {
-      const args = claudeBackend.buildCliArgs({ maxTurns: 25, allowedTools: [] }, 'task');
+      const args = claudeBackend.buildCliArgs({ maxTurns: 25, allowedTools: ['read'] }, 'task');
       const idx = args.indexOf('--max-turns');
       expect(idx).toBeGreaterThan(-1);
       expect(args[idx + 1]).toBe('25');
@@ -48,7 +68,7 @@ describe('claude backend', () => {
 
     it('includes --system-prompt when set', () => {
       const args = claudeBackend.buildCliArgs(
-        { systemPrompt: 'be concise', allowedTools: [] },
+        { systemPrompt: 'be concise', allowedTools: ['read'] },
         'task'
       );
       const idx = args.indexOf('--system-prompt');
@@ -67,7 +87,7 @@ describe('claude backend', () => {
 
     it('includes --model when set', () => {
       const args = claudeBackend.buildCliArgs(
-        { model: 'claude-sonnet-4-5-20250514', allowedTools: [] },
+        { model: 'claude-sonnet-4-5-20250514', allowedTools: ['read'] },
         'task'
       );
       const idx = args.indexOf('--model');
@@ -76,29 +96,35 @@ describe('claude backend', () => {
     });
 
     it('includes --effort when set', () => {
-      const args = claudeBackend.buildCliArgs({ effort: 'high', allowedTools: [] }, 'task');
+      const args = claudeBackend.buildCliArgs({ effort: 'high', allowedTools: ['read'] }, 'task');
       const idx = args.indexOf('--effort');
       expect(idx).toBeGreaterThan(-1);
       expect(args[idx + 1]).toBe('high');
     });
 
     it('omits --effort when not set', () => {
-      const args = claudeBackend.buildCliArgs({ allowedTools: [] }, 'task');
+      const args = claudeBackend.buildCliArgs({ allowedTools: ['read'] }, 'task');
       expect(args).not.toContain('--effort');
     });
 
     it('includes --dangerously-skip-permissions when skipPermissions is true', () => {
-      const args = claudeBackend.buildCliArgs({ skipPermissions: true, allowedTools: [] }, 'task');
+      const args = claudeBackend.buildCliArgs(
+        { skipPermissions: true, allowedTools: ['read'] },
+        'task'
+      );
       expect(args).toContain('--dangerously-skip-permissions');
     });
 
     it('omits --dangerously-skip-permissions when skipPermissions is false', () => {
-      const args = claudeBackend.buildCliArgs({ skipPermissions: false, allowedTools: [] }, 'task');
+      const args = claudeBackend.buildCliArgs(
+        { skipPermissions: false, allowedTools: ['read'] },
+        'task'
+      );
       expect(args).not.toContain('--dangerously-skip-permissions');
     });
 
     it('does not include --bare', () => {
-      const args = claudeBackend.buildCliArgs({ allowedTools: [] }, 'task');
+      const args = claudeBackend.buildCliArgs({ allowedTools: ['read'] }, 'task');
       expect(args).not.toContain('--bare');
     });
   });
