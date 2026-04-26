@@ -272,17 +272,10 @@ describe('compareSchemas', () => {
     expect(report.summary).toBe('Both schemas are empty.');
   });
 
-  it('handles missing projections and properties fields', async () => {
-    callLlm.mockResolvedValueOnce({
-      projections: { overlapping: [], uniqueToA: [], uniqueToB: [] },
-      properties: { overlapping: [], uniqueToA: [], uniqueToB: [] },
-      summary: 'No content to compare.',
-    });
-
-    const report = await compareSchemas({}, {});
-
-    expect(report.projections.overlapping).toHaveLength(0);
-    expect(report.properties.overlapping).toHaveLength(0);
+  it('throws when schemas are missing projections or properties', async () => {
+    await expect(compareSchemas({}, {})).rejects.toThrow(
+      /must have projections and properties arrays/
+    );
   });
 
   it('includes both schemas in the prompt', async () => {

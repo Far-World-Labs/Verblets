@@ -56,19 +56,23 @@ function buildPrompt({ exampleTexts, projectionNames, propertyNames }) {
 function formatSchema(label, schema) {
   const lines = [`## ${label}`, '', '### Projections'];
 
-  for (const p of schema.projections ?? []) {
+  for (const p of schema.projections) {
     lines.push(`- **${p.projectionName}**: ${p.description}`);
   }
 
   lines.push('', '### Properties');
 
-  for (const p of schema.properties ?? []) {
+  for (const p of schema.properties) {
     const vr = p.valueRange;
-    const rangeDesc =
-      vr.type === 'continuous'
-        ? `continuous [${vr.low}–${vr.high}], low="${vr.lowLabel}", high="${vr.highLabel}"`
-        : `categorical [${(vr.categories ?? []).join(', ')}]`;
-    const weights = Object.entries(p.projectionWeights ?? {})
+    let rangeDesc;
+    if (vr.type === 'continuous') {
+      rangeDesc = `continuous [${vr.low}–${vr.high}], low="${vr.lowLabel}", high="${vr.highLabel}"`;
+    } else if (vr.type === 'categorical') {
+      rangeDesc = `categorical [${vr.categories.join(', ')}]`;
+    } else {
+      throw new Error(`embed-object: unknown valueRange.type "${vr.type}"`);
+    }
+    const weights = Object.entries(p.projectionWeights)
       .map(([k, v]) => `${k}:${v}`)
       .join(', ');
     lines.push(`- **${p.propertyName}**: ${rangeDesc}, weights={${weights}}`);
@@ -146,7 +150,16 @@ export default async function define(
  * // report.properties.uniqueToA / uniqueToB — properties exclusive to one schema
  * // report.summary — brief overall assessment
  */
+function requireSchema(schema, label) {
+  if (!Array.isArray(schema?.projections) || !Array.isArray(schema?.properties)) {
+    throw new Error(`compareSchemas: ${label} must have projections and properties arrays`);
+  }
+}
+
 export async function compareSchemas(schemaA, schemaB, config = {}) {
+  requireSchema(schemaA, 'schemaA');
+  requireSchema(schemaB, 'schemaB');
+
   const runConfig = nameStep(compareName, config);
   const emitter = createProgressEmitter(compareName, runConfig.onProgress, runConfig);
   emitter.start();
