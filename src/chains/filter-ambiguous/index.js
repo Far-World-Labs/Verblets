@@ -75,7 +75,7 @@ export default async function filterAmbiguous(text, config = {}) {
         label: 'filter-ambiguous:extract',
       }
     );
-    const termPairs = batchResults.filter(Array.isArray).flat();
+    const termPairs = batchResults.flatMap((r) => r ?? []);
 
     if (termPairs.length === 0) {
       emitter.complete({ outcome: Outcome.success });

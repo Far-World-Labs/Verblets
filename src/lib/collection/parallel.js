@@ -42,7 +42,7 @@ export async function map(fn, items, opts = {}) {
           results[idx] = await fn(item, idx);
         } catch (err) {
           if (errorPosture === ErrorPosture.strict) throw err;
-          results[idx] = item;
+          results[idx] = undefined;
         }
         batchDone(1);
       });

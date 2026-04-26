@@ -66,7 +66,7 @@ export default async function collectTerms(text, config = {}) {
           label: 'collect-terms:extract',
         }
       );
-      const allTerms = chunkResults.filter(Array.isArray).flat();
+      const allTerms = chunkResults.flatMap((r) => r ?? []);
 
       uniqueTerms = Array.from(new Set(allTerms.map((t) => t.trim()))).filter(Boolean);
     }

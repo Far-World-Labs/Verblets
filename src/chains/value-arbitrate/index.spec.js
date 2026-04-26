@@ -241,16 +241,12 @@ describe('valueArbitrate', () => {
       expect(result).toBe('locked');
     });
 
-    it('falls back to first candidate when AI returns unexpected value', async () => {
-      callLlm.mockResolvedValueOnce('nonsense');
+    it('throws when AI returns a value not in the candidates', async () => {
+      callLlm.mockResolvedValue('nonsense');
 
-      const result = await valueArbitrate(
-        [signal('a', 'minimal', 'may'), signal('b', 'standard', 'may')],
-        {},
-        VALUES
-      );
-
-      expect(result).toBe('minimal');
+      await expect(
+        valueArbitrate([signal('a', 'minimal', 'may'), signal('b', 'standard', 'may')], {}, VALUES)
+      ).rejects.toThrow(/not in candidates/);
     });
 
     it('works with numeric values', async () => {
@@ -707,19 +703,19 @@ describe('valueArbitrate', () => {
     });
 
     describe('edge cases', () => {
-      it('falls back to first candidate per dimension when AI returns unexpected values', async () => {
-        callLlm.mockResolvedValueOnce({ verification: 'nonsense', logging: 'garbage' });
+      it('throws when AI returns a value not in any dimension candidates', async () => {
+        callLlm.mockResolvedValue({ verification: 'nonsense', logging: 'garbage' });
 
-        const result = await valueArbitrate(
-          [
-            signal('a', { verification: 'light', logging: 'minimal' }, 'may'),
-            signal('b', { verification: 'standard', logging: 'verbose' }, 'may'),
-          ],
-          {},
-          DIMS
-        );
-
-        expect(result).toEqual(['light', 'minimal']);
+        await expect(
+          valueArbitrate(
+            [
+              signal('a', { verification: 'light', logging: 'minimal' }, 'may'),
+              signal('b', { verification: 'standard', logging: 'verbose' }, 'may'),
+            ],
+            {},
+            DIMS
+          )
+        ).rejects.toThrow(/not in candidates/);
       });
 
       it('works with numeric dimension values', async () => {

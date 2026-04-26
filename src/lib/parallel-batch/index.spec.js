@@ -86,7 +86,7 @@ describe('parallelBatch', () => {
       ).rejects.toThrow('strict-fail');
     });
 
-    it('continues in resilient mode and passes original items through for failures', async () => {
+    it('continues in resilient mode and emits undefined for failed slots', async () => {
       const items = [1, 2, 3, 4];
       const result = await parallelBatch(
         items,
@@ -96,7 +96,7 @@ describe('parallelBatch', () => {
         },
         { maxParallel: 4, errorPosture: ErrorPosture.resilient }
       );
-      expect(result).toEqual([10, 2, 30, 4]);
+      expect(result).toEqual([10, undefined, 30, undefined]);
     });
   });
 
@@ -357,7 +357,7 @@ describe('parallelBatch', () => {
         }
       );
 
-      expect(result).toEqual([10, 2, 30, 4, 50]);
+      expect(result).toEqual([10, undefined, 30, undefined, 50]);
     });
 
     it('respects abortSignal under adaptive concurrency', async () => {

@@ -230,23 +230,32 @@ async function arbitrateMulti(signals, ctx, dimensions, config) {
       additionalProperties: false,
     };
 
-    const result = await retry(
-      () =>
-        callLlm(prompt, {
+    const mapped = await retry(
+      async () => {
+        const aiResult = await callLlm(prompt, {
           ...runConfig,
           responseFormat: jsonSchema('value_arbitrate_multi', schema),
-        }),
+        });
+        const out = {};
+        for (const dim of needsMediation) {
+          const aiValue = aiResult?.[dim.name];
+          const m = enumMaps[dim.name]?.[aiValue];
+          if (m === undefined) {
+            const candidates = dimState.get(dim.name).candidates.join(', ');
+            throw new Error(
+              `value-arbitrate: LLM returned ${JSON.stringify(aiValue)} for "${dim.name}", not in candidates [${candidates}]`
+            );
+          }
+          out[dim.name] = m;
+        }
+        return out;
+      },
       { label: 'value-arbitrate', config: runConfig }
     );
 
     for (const dim of needsMediation) {
       const state = dimState.get(dim.name);
-      const aiValue = result?.[dim.name];
-      const mapped = enumMaps[dim.name]?.[aiValue];
-      dimState.set(dim.name, {
-        ...state,
-        selection: mapped !== undefined ? mapped : state.candidates[0],
-      });
+      dimState.set(dim.name, { ...state, selection: mapped[dim.name] });
     }
 
     emitter.complete({
@@ -368,19 +377,26 @@ export default async function valueArbitrate(signals, ctx, values, config = {}) 
       additionalProperties: false,
     };
 
-    const result = await retry(
-      () =>
-        callLlm(prompt, {
+    const selected = await retry(
+      async () => {
+        const result = await callLlm(prompt, {
           ...runConfig,
           responseFormat: jsonSchema('value_arbitrate', schema),
-        }),
+        });
+        // callLlm auto-unwraps the value from the JSON response
+        const m = enumValues[result];
+        if (m === undefined) {
+          throw new Error(
+            `value-arbitrate: LLM returned ${JSON.stringify(result)}, not in candidates [${candidates.join(', ')}]`
+          );
+        }
+        return m;
+      },
       { label: 'value-arbitrate', config: runConfig }
     );
 
-    // callLlm auto-unwraps the value from the JSON response
-    const selected = enumValues[result];
     emitter.complete({ outcome: Outcome.success });
-    return selected !== undefined ? selected : candidates[0];
+    return selected;
   } catch (err) {
     emitter.error(err);
     throw err;
