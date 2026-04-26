@@ -103,7 +103,7 @@ function agentEnv() {
 const SIGKILL_GRACE_MS = 5000;
 
 function execCliAgent(args, { cwd, timeout, abortSignal }) {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolveOutput, reject) => {
     const [cmd, ...cmdArgs] = args;
     const child = spawn(cmd, cmdArgs, {
       cwd,
@@ -147,7 +147,7 @@ function execCliAgent(args, { cwd, timeout, abortSignal }) {
         return;
       }
 
-      resolve(Buffer.concat(stdoutChunks).toString());
+      resolveOutput(Buffer.concat(stdoutChunks).toString());
     });
 
     if (abortSignal) {
