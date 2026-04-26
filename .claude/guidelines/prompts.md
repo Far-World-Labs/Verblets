@@ -1,10 +1,8 @@
 # Prompt Engineering Guidelines
 
-Prompts in verblets are algorithmic components. Each one has a clear responsibility, a focused purpose, and reliable behavior across diverse inputs.
+Prompts are algorithmic components: one responsibility, predictable behavior, composable.
 
 ## Assembly
-
-Assemble prompts from an array of parts, filtering out falsy values:
 
 ```javascript
 const { text, known, context } = resolveTexts(instructions, ['spec']);
@@ -13,40 +11,39 @@ const parts = [
   context,                                        // XML from unknown instruction keys
   `Rate each item in the list...`,
   asXML(text, { tag: 'scoring-criteria' }),
-  spec && asXML(spec, { tag: 'specification' }),  // conditional section
+  spec && asXML(spec, { tag: 'specification' }),  // conditional
   `IMPORTANT: output valid JSON`,
 ];
 const prompt = parts.filter(Boolean).join('\n\n');
 ```
 
-This replaces template literals with embedded `${contextBlock}` suffixes, `.replace()` on constants with `{placeholder}` markers, and ad-hoc `bundleContext ? ... : ...` conditionals.
+`resolveTexts` normalizes the instruction parameter: known keys override internal behavior; unknown keys become `<tag>value</tag>` blocks prepended as `context`.
 
 ## Structure
 
-Separate static instructions from dynamic content. Use XML blocks via `asXML()` for variable content that changes per call. Caller-supplied context arrives automatically through `resolveTexts` — unknown instruction keys become `<tag>value</tag>` XML blocks prepended to the prompt.
+Wrap variable content with `asXML()`. Place description/instruction parameters earlier — they guide interpretation more than supporting context.
 
-Keep prompts focused on one task. Composability depends on each prompt doing one thing well. If a prompt tries to analyze, classify, and summarize in one call, it becomes fragile.
+Each prompt does one thing. Composability depends on it.
 
-## Output Requirements
+## Output
 
-Always specify the expected output format. Ambiguity in output instructions produces unpredictable responses. When structured output is needed, use `response_format` with a JSON schema (see [JSON Schema Guidelines](./json-schemas.md)). When text output is needed, state the expected shape: a single sentence, a list, a paragraph.
+When the output is text, state its shape: a sentence, a list, a paragraph.
 
 ## Clarity
 
-Define terms the LLM needs to know. Leave out terms it already understands. Frame instructions as guidelines ("focus on X", "prefer Y") rather than exhaustive rules — guidelines generalize better than rigid constraints. Avoid cognitive overload: if a prompt needs more than a screen of instructions, it probably needs to be split across multiple calls.
+Define terms the LLM doesn't already know. Frame as guidelines ("focus on X", "prefer Y"), not exhaustive rules — guidelines generalize.
 
-## Prompt Constants
+## Describe, don't enumerate
 
-Standard behaviors live in `src/prompts/constants.js`. Use them for consistent instruction phrasing across the codebase — things like output formatting, name style ("succinct names"), or budget instructions. When you find yourself writing the same instruction in multiple prompts, extract it.
+Examples bias the LLM toward the specific patterns shown — it pattern-matches instead of reasoning. The same is true of long do/don't lists. Describe the qualities of the desired output and the space to explore; let the LLM bring its own intelligence.
 
-Prompt constants should be plain strings (content only), not templates with `{placeholder}` markers. Consumers compose them into the parts array alongside other sections.
+## Constants
 
-## What to Avoid
+Standard phrases live in `src/prompts/constants.js` — plain strings, no `{placeholder}` markers. Consumers compose them into the parts array.
 
-Avoid adding examples to prompts. Examples bias the LLM toward the specific patterns shown, reducing generality across diverse inputs. Guidelines and criteria produce more flexible behavior.
+## What to avoid
 
-Prompts are for LLMs, not programs. Avoid flags, switches, or parameter-like syntax. Natural language instructions work better than structured command formats.
-
-## Automated Analysis
-
-The `analyze-prompt` intent handler (in `src/chains/test-analysis/intent-handlers/`) can evaluate prompts against these principles programmatically.
+- `${contextBlock}`-style template literals — use parts composition.
+- `.replace()` on prompts with `{placeholder}` markers — use parts composition.
+- Flags, switches, or parameter-style syntax — natural language, not API shapes.
+- Examples or do/don't lists as the carrier of a rule.

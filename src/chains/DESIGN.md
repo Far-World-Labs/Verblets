@@ -118,13 +118,6 @@ const prompt = parts.filter(Boolean).join('\n\n');
 
 This replaces template literals, `.replace()` on placeholder constants, and ad-hoc `bundleContext` conditionals. Optional parts are naturally handled — falsy values are filtered out.
 
-### Prompt Engineering Best Practices
-
-- **Parameter ordering** - Put description/instruction parameters higher in the prompt since they're more important for guiding LLM interpretation
-- **Content wrapping** - Wrap all caller-supplied content with `asXML()` for lengthy inputs to ensure proper formatting
-- **Structured tags** - Include proper XML tags for structured content (e.g., `<sentence>`, `<description>`, `<items>`)
-- **Clear sections** - Separate instructions, context, and data clearly in the prompt
-
 ### Batch Processing with Progress Tracking
 
 The standard pattern uses `prepareBatches` + `parallelBatch` + `trackBatch`. See [batching](../../.claude/docs/batching.md) for the full pattern with auto-sizing and code example, and [progress tracking](../../.claude/docs/progress-tracking.md) for the event lifecycle, `scopeProgress`, and `filterProgress`.
