@@ -144,7 +144,7 @@ async function generateAdviceWithIntrospection(
     : '';
 
   const imports = getImports(callerInfo.file);
-  const modulePath = await findModuleUnderTest(callerInfo.file, callerInfo.line);
+  const modulePath = await findModuleUnderTest(callerInfo.file, callerInfo.line, config);
 
   let moduleCode = '';
   if (modulePath && modulePath !== 'unknown') {
