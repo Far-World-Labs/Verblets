@@ -157,6 +157,8 @@ export default class Conversation {
   async run() {
     try {
       let round = 0;
+      let speakersFailed = 0;
+      let speakersAttempted = 0;
       const batchDone = this.emitter.batch();
       while (this.rules.shouldContinue(round, this.messages.slice())) {
         let order = this.rules.turnPolicy(round, this.messages.slice()) || [];
@@ -187,10 +189,21 @@ export default class Conversation {
             llm: this.llm,
             onProgress: scopePhase(this.runConfig.onProgress, `round-${round}`),
           });
+          // Validate boundary contract: bulkSpeakFn must return array aligned
+          // with speakers. Undefined entries (failed slots) are accepted —
+          // _push silently drops empty/whitespace comments.
+          if (!Array.isArray(comments) || comments.length !== speakers.length) {
+            throw new Error(
+              `conversation: bulkSpeakFn must return an array of length ${speakers.length} (got ${
+                Array.isArray(comments) ? `array of ${comments.length}` : typeof comments
+              })`
+            );
+          }
           comments.forEach((comment, idx) => {
             this._push(speakers[idx].id, comment);
           });
         } else if (this.speakFn) {
+          speakersAttempted += speakers.length;
           // Use provided speakFn with controlled concurrency
           const results = await parallel(
             speakers,
@@ -208,10 +221,10 @@ export default class Conversation {
                   llm: this.llm,
                   onProgress: scopePhase(this.runConfig.onProgress, `round-${round}`),
                 });
-                return { speaker, comment };
+                return { speaker, comment, failed: false };
               } catch (error) {
                 debug(`Speaker ${speaker.id} failed: ${error.message}`);
-                return { speaker, comment: '' };
+                return { speaker, comment: '', failed: true, error };
               }
             },
             {
@@ -222,7 +235,8 @@ export default class Conversation {
           );
 
           // Push comments in original speaker order (parallel preserves order)
-          results.forEach(({ speaker, comment }) => {
+          results.forEach(({ speaker, comment, failed }) => {
+            if (failed) speakersFailed += 1;
             if (comment) {
               this._push(speaker.id, comment);
             }
@@ -233,8 +247,25 @@ export default class Conversation {
         batchDone(1);
       }
 
+      // Total-failure detection: if any rounds ran but no messages produced,
+      // surface explicitly rather than silently returning an empty conversation.
+      if (round > 0 && this.messages.length === 0) {
+        const err = new Error(
+          `conversation: ${round} round${round === 1 ? '' : 's'} ran but no speakers produced messages`
+        );
+        this.emitter.error(err);
+        throw err;
+      }
+
+      const outcome = speakersFailed > 0 ? Outcome.degraded : Outcome.success;
       this.emitter.emit({ event: DomainEvent.output, value: this.messages });
-      this.emitter.complete({ outcome: Outcome.success });
+      this.emitter.complete({
+        outcome,
+        rounds: round,
+        speakersAttempted,
+        speakersFailed,
+        messageCount: this.messages.length,
+      });
 
       return this.messages;
     } catch (err) {
