@@ -258,19 +258,14 @@ describe('valueArbitrate', () => {
       expect(callLlm).not.toHaveBeenCalled();
     });
 
-    it('handles must value not in the values array gracefully', async () => {
-      // If a must returns a value not in the array, floor index is -1
-      // so all values remain candidates
-      callLlm.mockResolvedValueOnce('standard');
-
-      const result = await valueArbitrate(
-        [signal('bogus-must', 'unknown', 'must'), signal('preference', 'standard', 'may')],
-        {},
-        VALUES
-      );
-
-      // No floor applied since the must value isn't in the ordered list
-      expect(result).toBe('standard');
+    it('throws when a must signal resolves to a value not in the values array', async () => {
+      await expect(
+        valueArbitrate(
+          [signal('bogus-must', 'unknown', 'must'), signal('preference', 'standard', 'may')],
+          {},
+          VALUES
+        )
+      ).rejects.toThrow(/not in values/);
     });
   });
 

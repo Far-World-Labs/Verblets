@@ -81,6 +81,46 @@ ${dimSections}
 For each dimension, select exactly one value from its allowed options. Consider the weights and context of each signal, and how choices across dimensions relate to each other.${instruction ? `\n\n${instruction}` : ''}`;
 };
 
+/**
+ * Evaluate signals concurrently, honoring strictness modifiers per error-policy spec.
+ * - must signals: errorPosture strict — evaluation failure throws
+ * - may signals: errorPosture resilient — failures filter out
+ * - all signals failed: throw (no information to arbitrate)
+ */
+async function evaluateSignals(signals, ctx, abortSignal) {
+  const evalSignal = async (signal) => ({
+    name: signal.name,
+    strictness: signal.strictness,
+    weight: signal.weight,
+    prompt: signal.prompt,
+    resolved: await signal.value(ctx),
+  });
+
+  const mustSignals = signals.filter((s) => s.strictness === 'must');
+  const maySignals = signals.filter((s) => s.strictness === 'may');
+
+  const [mustEvaluated, mayEvaluated] = await Promise.all([
+    parallelBatch(mustSignals, evalSignal, {
+      maxParallel: 5,
+      errorPosture: ErrorPosture.strict,
+      abortSignal,
+    }),
+    parallelBatch(maySignals, evalSignal, {
+      maxParallel: 5,
+      errorPosture: ErrorPosture.resilient,
+      abortSignal,
+    }),
+  ]);
+
+  const evaluated = [...mustEvaluated, ...mayEvaluated.filter(Boolean)];
+
+  if (evaluated.length === 0) {
+    throw new Error('value-arbitrate: no signals could be evaluated');
+  }
+
+  return evaluated;
+}
+
 const arbitrateDimension = (dim, evaluated) => {
   const mustResults = [];
   const mayResults = [];
@@ -124,19 +164,20 @@ async function arbitrateMulti(signals, ctx, dimensions, config) {
   });
 
   try {
-    const evaluated = (
-      await parallelBatch(
-        signals,
-        async (signal) => ({
-          name: signal.name,
-          strictness: signal.strictness,
-          weight: signal.weight,
-          prompt: signal.prompt,
-          resolved: await signal.value(ctx),
-        }),
-        { maxParallel: 5, errorPosture: ErrorPosture.resilient, abortSignal: runConfig.abortSignal }
-      )
-    ).filter(Boolean);
+    const evaluated = await evaluateSignals(signals, ctx, runConfig.abortSignal);
+
+    // Validate must-resolved values against each dim's value set
+    for (const s of evaluated) {
+      if (s.strictness !== 'must' || s.resolved == null) continue;
+      for (const dim of dimensions) {
+        const dimValue = s.resolved[dim.name];
+        if (dimValue !== undefined && !dim.values.includes(dimValue)) {
+          throw new Error(
+            `value-arbitrate: must-signal "${s.name}" resolved to ${JSON.stringify(dimValue)} for dimension "${dim.name}", not in values [${dim.values.join(', ')}]`
+          );
+        }
+      }
+    }
 
     const dimState = new Map();
     for (const dim of dimensions) {
@@ -165,10 +206,18 @@ async function arbitrateMulti(signals, ctx, dimensions, config) {
 
         for (const [dimName, requiredValue] of Object.entries(adjustments)) {
           const dim = dimensions.find((d) => d.name === dimName);
-          if (!dim) continue;
+          if (!dim) {
+            throw new Error(
+              `value-arbitrate: constraint "${constraint.name}" targets nonexistent dimension "${dimName}"`
+            );
+          }
 
           const requiredIdx = dim.values.indexOf(requiredValue);
-          if (requiredIdx < 0) continue;
+          if (requiredIdx < 0) {
+            throw new Error(
+              `value-arbitrate: constraint "${constraint.name}" requires ${JSON.stringify(requiredValue)} for "${dimName}", not in values [${dim.values.join(', ')}]`
+            );
+          }
 
           const state = dimState.get(dimName);
 
@@ -312,23 +361,18 @@ export default async function valueArbitrate(signals, ctx, values, config = {}) 
   });
 
   try {
-    // Step 1: Evaluate all signals concurrently; failed evaluations drop out
-    const evaluated = (
-      await parallelBatch(
-        signals,
-        async (signal) => ({
-          name: signal.name,
-          strictness: signal.strictness,
-          weight: signal.weight,
-          prompt: signal.prompt,
-          resolved: await signal.value(ctx),
-        }),
-        { maxParallel: 5, errorPosture: ErrorPosture.resilient, abortSignal: runConfig.abortSignal }
-      )
-    ).filter(Boolean);
+    // Step 1: Evaluate signals; must signals throw on failure, may signals filter
+    const evaluated = await evaluateSignals(signals, ctx, runConfig.abortSignal);
 
-    // Step 2: Separate must and may results
+    // Step 2: Separate must and may results, validate must values are in the set
     const mustResults = evaluated.filter((s) => s.strictness === 'must');
+    for (const m of mustResults) {
+      if (!values.includes(m.resolved)) {
+        throw new Error(
+          `value-arbitrate: must-signal "${m.name}" resolved to ${JSON.stringify(m.resolved)}, not in values [${values.join(', ')}]`
+        );
+      }
+    }
     const mayResults = evaluated.filter((s) => s.strictness === 'may');
 
     // Step 3: Determine must-floor

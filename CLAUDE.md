@@ -12,6 +12,7 @@ AI-powered functions that accept natural language instructions to transform and 
 
 - **[spec/spec-conventions.md](spec/spec-conventions.md)** — How to write specs: two-layer split (timeless/impl), length and file organization, specification techniques (constraints, decision criteria, shape declarations, corrective notes), why not examples, generic spec kinds.
 - **[spec/automation.md](spec/automation.md)** / **[.impl.md](spec/automation.impl.md)** — Automation execution model: RunContext shape, ctx.lib split, storage domains and API, observability, run history, composition, termination.
+- **[spec/error-policy.md](spec/error-policy.md)** — How chains handle anomalous input and failed work: caller-config errors throw, external-service failures respect errorPosture, liberal-input acceptance stays silent. Severity vocabulary (Outcome, Level, ErrorPosture), decision criteria, boundary validation, strictness-modifier override.
 - **[spec/discovery-philosophy.md](spec/discovery-philosophy.md)** — How hypothesis discovery works: the library as standard library for people's lives. Three horizons (technical patterns elevated to meaning, activities people already do, functions hiding in other fields).
 
 #### Docs
