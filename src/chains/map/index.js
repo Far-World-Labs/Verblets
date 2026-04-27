@@ -27,10 +27,12 @@ Return exactly ${items.length} result${items.length === 1 ? '' : 's'} in the ite
 
 /**
  * Map over a list of items by calling `listBatch` on XML-enriched batches.
- * On batch failure in resilient mode, original items pass through untransformed
- * so callers always receive a positionally-aligned array with no undefined.
+ * In resilient mode, slots whose batch fails are left as undefined so callers
+ * can distinguish "successfully transformed" from "failed to process."
+ * Output items can be any shape the transformation produces — strings, numbers,
+ * objects — whatever `listBatch` returns.
  *
- * @param { string[] } list - array of items to process
+ * @param { Array } list - items to process; any shape
  * @param { string } instructions - mapping instructions passed to `listBatch`
  * @param { object } [config={}] - configuration options
  * @param { number } [config.batchSize] - how many items to send per batch (auto-calculated if not provided)
@@ -38,7 +40,7 @@ Return exactly ${items.length} result${items.length === 1 ? '' : 's'} in the ite
  * @param { string } [config.listStyle='auto'] - ListStyle enum value
  * @param { number } [config.autoModeThreshold] - character threshold for auto mode
  * @param { object } [config.llm] - LLM configuration
- * @returns { Promise<string[]> } results aligned with input order
+ * @returns { Promise<Array> } results aligned with input order; undefined for failed slots in resilient mode
  */
 const mapOnce = async function (list, instructions, config = {}) {
   const { maxParallel = 3, errorPosture, onProgress, _batchDone, _context } = config;
@@ -70,9 +72,13 @@ const mapOnce = async function (list, instructions, config = {}) {
           throw new Error(`Expected array from listBatch, got: ${typeof output}`);
         }
 
+        // Skip undefined LLM responses so they stay UNPROCESSED and become
+        // retry candidates. Real outputs (including null, 0, '') are accepted.
         const count = Math.min(output.length, items.length);
         for (let j = 0; j < count; j++) {
-          results[startIndex + j] = output[j];
+          if (output[j] !== undefined) {
+            results[startIndex + j] = output[j];
+          }
         }
 
         batchDone(items.length);
@@ -95,9 +101,11 @@ const mapOnce = async function (list, instructions, config = {}) {
 
 /**
  * Map over a list of items with retry support (default export).
- * Items that fail all retries pass through untransformed.
+ * Output items can be any shape the transformation produces. In resilient
+ * mode, slots that fail every retry are returned as undefined so callers can
+ * distinguish them from successful results.
  *
- * @param { string[] } list - array of items
+ * @param { Array } list - items to process; any shape
  * @param { string } instructions - mapping instructions passed to `listBatch`
  * @param { object } [config={}] - configuration options
  * @param { number } [config.batchSize] - items per batch (auto-calculated if not provided)
@@ -106,7 +114,7 @@ const mapOnce = async function (list, instructions, config = {}) {
  * @param { string } [config.listStyle='auto'] - ListStyle enum value
  * @param { number } [config.autoModeThreshold] - character threshold for auto mode
  * @param { object } [config.llm] - LLM configuration
- * @returns { Promise<string[]> } results aligned with input order
+ * @returns { Promise<Array> } results aligned with input order; undefined for failed slots in resilient mode
  */
 const map = async function (list, instructions, config) {
   [instructions, config] = resolveArgs(instructions, config);
@@ -159,7 +167,7 @@ const map = async function (list, instructions, config) {
     let failedItems = 0;
     for (let i = 0; i < results.length; i++) {
       if (results[i] === UNPROCESSED) {
-        results[i] = list[i];
+        results[i] = undefined;
         failedItems++;
       }
     }
@@ -194,7 +202,11 @@ map.knownTexts = [];
  * each batch completes. Batches are processed sequentially (not in parallel)
  * to enable incremental emission with reduced peak memory usage.
  *
- * @param {string[]} list - Items to process
+ * Each yielded snapshot is positionally aligned with the input. Slots that
+ * haven't been processed yet (or that failed) are `undefined` — the snapshot
+ * doesn't fabricate pre-transformed originals.
+ *
+ * @param {Array} list - Items to process; any shape
  * @param {string|object} instructions - Mapping instructions
  * @param {object} [config={}] - Configuration options
  * @param {number} [config.batchSize] - Items per batch (auto-calculated if omitted)
@@ -204,7 +216,7 @@ map.knownTexts = [];
  * @param {object} [config.llm] - LLM configuration
  * @param {Function} [config.onProgress] - Progress callback
  * @param {AbortSignal} [config.abortSignal] - Signal to abort processing
- * @returns {AsyncGenerator<string[]>} Yields cumulative results after each batch
+ * @returns {AsyncGenerator<Array>} Yields cumulative results; `undefined` for slots not yet processed or failed
  */
 const streamingMap = async function* streamingMap(list, instructions, config) {
   [instructions, config] = resolveArgs(instructions, config);
@@ -255,9 +267,12 @@ const streamingMap = async function* streamingMap(list, instructions, config) {
           throw new Error(`Expected array from listBatch, got: ${typeof output}`);
         }
 
+        // Skip undefined LLM responses so they stay UNPROCESSED.
         const count = Math.min(output.length, items.length);
         for (let j = 0; j < count; j++) {
-          results[startIndex + j] = output[j];
+          if (output[j] !== undefined) {
+            results[startIndex + j] = output[j];
+          }
         }
 
         batchDone(items.length);
@@ -267,7 +282,7 @@ const streamingMap = async function* streamingMap(list, instructions, config) {
         batchDone(items.length);
       }
 
-      const snapshot = results.map((r, i) => (r === UNPROCESSED ? list[i] : r));
+      const snapshot = results.map((r) => (r === UNPROCESSED ? undefined : r));
       emitter.emit({ event: DomainEvent.partial, value: snapshot });
       yield snapshot;
     }
@@ -275,7 +290,7 @@ const streamingMap = async function* streamingMap(list, instructions, config) {
     let failedItems = 0;
     for (let i = 0; i < results.length; i++) {
       if (results[i] === UNPROCESSED) {
-        results[i] = list[i];
+        results[i] = undefined;
         failedItems++;
       }
     }
