@@ -1,6 +1,5 @@
 import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
-import { debug } from '../../lib/debug/index.js';
 import {
   asObjectWithSchema as asObjectWithSchemaPrompt,
   generateList as generateListPrompt,
@@ -68,29 +67,20 @@ export const generateList = async function* generateListGenerator(text, config =
       existing: resultsAll,
     });
 
-    let resultsNew = [];
-    try {
-      // eslint-disable-next-line no-await-in-loop
-      const results = await retry(
-        () => callLlm(listPrompt, { ...runConfig, ...createModelOptions() }),
-        {
-          label: 'list-generate',
-          config: runConfig,
-        }
-      );
-
-      const resultArray = results?.items || results;
-      resultsNew = Array.isArray(resultArray) ? resultArray.filter(Boolean) : [];
-    } catch (error) {
-      if (error.name === 'AbortError') {
-        throw error;
+    // eslint-disable-next-line no-await-in-loop
+    const results = await retry(
+      () => callLlm(listPrompt, { ...runConfig, ...createModelOptions() }),
+      {
+        label: 'list-generate',
+        config: runConfig,
       }
-      debug(
-        `Generate list [error]: ${error.message} ${listPrompt.slice(0, 100).replace('\n', '\\n')}`
-      );
-      isDone = true;
-      break;
+    );
+
+    const resultArray = results?.items || results;
+    if (!Array.isArray(resultArray)) {
+      throw new Error(`generateList: expected array response from LLM, got ${typeof resultArray}`);
     }
+    const resultsNew = resultArray.filter(Boolean);
 
     const resultsNewUnique = resultsNew.filter((item) => !(item in resultsAllMap));
 
@@ -147,6 +137,20 @@ export default async function list(prompt, config = {}) {
 
   try {
     const { schema } = runConfig;
+
+    // Validate caller-supplied schema at the boundary so transform calls don't
+    // explode mid-flow with cryptic errors.
+    if (schema !== undefined) {
+      if (
+        !schema ||
+        typeof schema !== 'object' ||
+        !schema.properties ||
+        typeof schema.properties !== 'object'
+      ) {
+        throw new Error('list: schema must be a JSON-schema object with a properties map');
+      }
+    }
+
     const fullPrompt = context ? `${text}\n\n${context}` : text;
     const response = await retry(
       () => callLlm(fullPrompt, { ...runConfig, ...createModelOptions() }),
@@ -156,9 +160,13 @@ export default async function list(prompt, config = {}) {
       }
     );
 
-    // Extract items from the object structure
+    // Extract items from the object structure; throw if shape is wrong rather
+    // than silently substituting [].
     const resultArray = response?.items || response;
-    const items = Array.isArray(resultArray) ? resultArray : [];
+    if (!Array.isArray(resultArray)) {
+      throw new Error(`list: expected array response from LLM, got ${typeof resultArray}`);
+    }
+    const items = resultArray;
 
     // If schema is provided, transform each item to match the schema
     if (schema && items.length > 0) {
@@ -172,11 +180,11 @@ export default async function list(prompt, config = {}) {
           config: runConfig,
         });
         try {
-          const transformedItem = JSON.parse(transformResponse);
-          transformedItems.push(transformedItem);
+          transformedItems.push(JSON.parse(transformResponse));
         } catch (error) {
-          debug(`list-transform JSON.parse failed, keeping original item: ${error.message}`);
-          transformedItems.push(item);
+          throw new Error(
+            `list: transform returned non-JSON for item ${JSON.stringify(item)}: ${error.message}`
+          );
         }
         batchDone(1);
       }

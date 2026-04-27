@@ -16,8 +16,14 @@ const getSchema = () => ({
 
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn().mockImplementation((text) => {
-    if (/Transform/.test(text) && /Model Y/.test(text)) {
+    if (/Transform/.test(text) && /Tesla Model Y/.test(text)) {
       return '{"make":"Tesla", "model": "Model Y"}';
+    }
+    if (/Transform/.test(text) && /Nissan Leaf/.test(text)) {
+      return '{"make":"Nissan", "model": "Leaf"}';
+    }
+    if (/Transform/.test(text) && /Chevy Bolt/.test(text)) {
+      return '{"make":"Chevy", "model": "Bolt"}';
     }
     if (/EV cars/.test(text)) {
       return { items: ['Tesla Model Y', 'Nissan Leaf', 'Chevy Bolt'] };
