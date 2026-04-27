@@ -88,16 +88,25 @@ const parseCategories = (categoriesString) =>
 
 const assignItemsToGroups = (batchResults) => {
   const groups = {};
+  let droppedLabels = 0;
 
   for (const { items, labels } of batchResults) {
     labels.forEach((label, idx) => {
-      const key = String(label).trim() || 'other';
+      if (label == null) {
+        droppedLabels += 1;
+        return;
+      }
+      const key = String(label).trim();
+      if (!key) {
+        droppedLabels += 1;
+        return;
+      }
       if (!groups[key]) groups[key] = [];
       groups[key].push(items[idx]);
     });
   }
 
-  return groups;
+  return { groups, droppedLabels };
 };
 
 const applyTopNFilter = (groups, topN) => {
@@ -113,6 +122,19 @@ export default async function group(list, instructions, config) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
+
+  // Empty list short-circuits — documented liberal-accept path
+  if (list.length === 0) {
+    emitter.complete({
+      groupCount: 0,
+      totalItems: 0,
+      successCount: 0,
+      failedItems: 0,
+      droppedLabels: 0,
+      outcome: Outcome.success,
+    });
+    return {};
+  }
   const {
     guidance: granularityGuidance,
     maxParallel,
@@ -154,7 +176,10 @@ export default async function group(list, instructions, config) {
   }
 
   if (categories.length === 0) {
-    categories.push('other');
+    const source = known.categories ? 'known.categories' : 'category discovery';
+    const err = new Error(`group: no categories available (from ${source})`);
+    emitter.error(err);
+    throw err;
   }
 
   // Phase 2: Assignment - map items to established categories
@@ -198,11 +223,13 @@ export default async function group(list, instructions, config) {
         );
 
         if (!Array.isArray(labels) || labels.length !== items.length) {
-          const fallbackLabels = new Array(items.length).fill('other');
-          batchResults.push({ items, labels: fallbackLabels, startIndex });
-        } else {
-          batchResults.push({ items, labels, startIndex });
+          throw new Error(
+            `group: malformed batch response (expected array of ${items.length}, got ${
+              Array.isArray(labels) ? `array of ${labels.length}` : typeof labels
+            })`
+          );
         }
+        batchResults.push({ items, labels, startIndex });
 
         batchDone(items.length);
       } catch (error) {
@@ -220,12 +247,29 @@ export default async function group(list, instructions, config) {
 
   // Final grouping
   const sorted = batchResults.toSorted((a, b) => a.startIndex - b.startIndex);
-  const groups = assignItemsToGroups(sorted);
+  const { groups, droppedLabels } = assignItemsToGroups(sorted);
+
+  const totalAssigned = Object.values(groups).reduce((s, arr) => s + arr.length, 0);
+
+  if (totalAssigned === 0 && list.length > 0) {
+    const err = new Error(`group: failed to assign any of ${list.length} items`);
+    emitter.error(err);
+    throw err;
+  }
 
   const result = topN ? applyTopNFilter(groups, topN) : groups;
 
   const groupCount = Object.keys(result).length;
-  emitter.complete({ groupCount, outcome: Outcome.success });
+  const failedItems = list.length - totalAssigned;
+  const outcome = failedItems > 0 ? Outcome.partial : Outcome.success;
+  emitter.complete({
+    groupCount,
+    totalItems: list.length,
+    successCount: totalAssigned,
+    failedItems,
+    droppedLabels,
+    outcome,
+  });
 
   return result;
 }
