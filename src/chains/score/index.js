@@ -232,10 +232,10 @@ async function scoreOnce(list, prompt, batchConfig, config) {
 
 /**
  * Score a list of items
- * @param {Array} list - Array of items
+ * @param {Array} list - Array of items; any shape (item is stringified into the prompt)
  * @param {string|object} instructions - Scoring instructions (string or bundle with known keys: spec, anchors)
  * @param {Object} config - Configuration options
- * @returns {Promise<Array>} Array of scores
+ * @returns {Promise<Array<number|undefined>>} Scores aligned with input order; undefined for items that failed all retries
  */
 export async function mapScore(list, instructions, config) {
   [instructions, config] = resolveArgs(instructions, config, ['spec', 'anchors']);

@@ -17,7 +17,7 @@ const name = 'conversation-turn-reduce';
  * @param {Array} options.history - Array of previous messages
  * @param {Object} options.rules - Conversation rules including customPrompt
  * @param {string|Object} options.llm - LLM configuration (resolved by callLlm)
- * @returns {Promise<Array<string>>} Array of responses, one per speaker
+ * @returns {Promise<Array>} Array of responses aligned with speaker order; undefined slots for speakers whose response failed all retries
  */
 export default async function conversationTurnReduce({
   speakers,
