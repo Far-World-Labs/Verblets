@@ -110,6 +110,7 @@ When a parameter carries an explicit strictness modifier (e.g. `strictness: 'mus
 - **Resilient ≠ best-effort fabrication.** Under `errorPosture: resilient`, signal failures via undefined slots and Outcome — don't synthesize plausible defaults.
 - **Returning `candidates[0]` (or any fabricated default) when no information is available is a smell.** If there's no basis for the result, throw.
 - **Outcome must not lie.** Don't report `Outcome.success` when constraints couldn't be honored or some inputs were dropped; use `degraded` or throw.
+- **Total-failure throws count malformed work, not empty work.** A valid-shaped result that legitimately yielded nothing (a chunk with `{ terms: [] }`, a search that found no matches) is success. Only throw when every unit was unusable (wrong shape, parse failure, undefined slot under resilient posture). Conflating the two punishes well-formed empty inputs.
 
 ---
 
