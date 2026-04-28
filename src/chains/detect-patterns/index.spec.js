@@ -50,9 +50,13 @@ describe('detect-patterns', () => {
     expect(await detectPatterns([])).toStrictEqual([]);
   });
 
-  it('returns empty array for malformed reduce response', async () => {
+  it('throws on malformed reduce response (not an array)', async () => {
     reduce.mockResolvedValueOnce('not an array');
-    expect(await detectPatterns([{ a: 1 }])).toStrictEqual([]);
+    await expect(detectPatterns([{ a: 1 }])).rejects.toThrow(/expected pattern candidates array/);
+  });
+
+  it('throws on non-array input', async () => {
+    await expect(detectPatterns('not array')).rejects.toThrow(/objects must be an array/);
   });
 
   it('thoroughness low limits capacity in reduce prompt', async () => {

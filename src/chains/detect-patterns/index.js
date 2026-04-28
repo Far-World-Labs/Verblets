@@ -65,6 +65,9 @@ function filterObject(obj, maxStringLength = 50, maxArrayLength = 10) {
 }
 
 export default async function detectPatterns(objects, config = {}) {
+  if (!Array.isArray(objects)) {
+    throw new Error(`detect-patterns: objects must be an array (got ${typeof objects})`);
+  }
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
@@ -117,15 +120,21 @@ export default async function detectPatterns(objects, config = {}) {
     });
     batchDone(stringifiedObjects.length);
 
-    // Since PATTERN_RESPONSE_FORMAT is a simple collection schema,
-    // and reduce should handle it properly
     if (!Array.isArray(candidateArray)) {
-      emitter.complete({ outcome: Outcome.success });
-      return [];
+      throw new Error(
+        `detect-patterns: expected pattern candidates array from reduce (got ${typeof candidateArray})`
+      );
     }
 
     const patterns = candidateArray
-      .filter((item) => item.type === 'pattern' && item.count >= 2)
+      .filter(
+        (item) =>
+          item &&
+          typeof item === 'object' &&
+          item.type === 'pattern' &&
+          typeof item.count === 'number' &&
+          item.count >= 2
+      )
       .toSorted((a, b) => b.count - a.count)
       .map((item) => item.template)
       .slice(0, topN);
