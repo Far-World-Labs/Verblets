@@ -50,6 +50,15 @@ export const useTestSortPrompt = () => {
 };
 
 const sanitizeList = (list) => {
+  // Validate at the boundary: sort operates on strings end-to-end (LLM
+  // serialization, set-based reconciliation, .trim filtering). A non-string
+  // entry crashes deep in the loop with a cryptic TypeError; surface the
+  // contract violation up front.
+  for (const item of list) {
+    if (typeof item !== 'string') {
+      throw new Error(`sort: expected string items (got ${item === null ? 'null' : typeof item})`);
+    }
+  }
   return [...new Set(list.filter((item) => item.trim() !== ''))];
 };
 
@@ -94,8 +103,11 @@ const sort = async (list, criteria, config) => {
         }
       );
 
-      const resultArray = result?.items || result;
-      return Array.isArray(resultArray) ? resultArray.filter(Boolean) : [];
+      const resultArray = result?.items ?? result;
+      if (!Array.isArray(resultArray)) {
+        throw new Error(`sort: expected array from sort-batch LLM (got ${typeof result})`);
+      }
+      return resultArray.filter(Boolean);
     };
 
     // Process one complete pass through all items
