@@ -38,8 +38,11 @@ export const getMeanings = async (term, config = {}) => {
     }
   );
 
-  const resultArray = response?.meanings || response;
-  return Array.isArray(resultArray) ? resultArray.filter(Boolean) : [];
+  const resultArray = response?.meanings ?? response;
+  if (!Array.isArray(resultArray)) {
+    throw new Error(`disambiguate: expected meanings array from LLM (got ${typeof resultArray})`);
+  }
+  return resultArray.filter(Boolean);
 };
 
 export default async function disambiguate(term, instructions, config) {
@@ -57,6 +60,10 @@ export default async function disambiguate(term, instructions, config) {
       ...runConfig,
       onProgress: scopePhase(runConfig.onProgress, 'meanings'),
     });
+
+    if (meanings.length === 0) {
+      throw new Error(`disambiguate: no meanings extracted for term "${term}"`);
+    }
 
     emitter.emit({
       event: DomainEvent.step,
