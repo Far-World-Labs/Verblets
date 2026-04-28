@@ -47,26 +47,39 @@ describe('filter', () => {
     expect(listBatch).toHaveBeenCalledTimes(2);
   });
 
-  it('handles undersized LLM response by defaulting missing items to excluded', async () => {
+  it('throws on undersized LLM response in strict mode (default)', async () => {
     listBatch.mockImplementation(async (items) => {
-      // Return fewer decisions than items sent
       return items.slice(0, 1).map((item) => (item.includes('a') ? 'yes' : 'no'));
     });
 
-    const result = await filter(['apple', 'banana', 'box'], 'contains a', { batchSize: 10 });
-    // Only the first item got a real decision; rest default to excluded
-    expect(result).toStrictEqual(['apple']);
+    await expect(
+      filter(['apple', 'banana', 'box'], 'contains a', { batchSize: 10 })
+    ).rejects.toThrow(/decisions for/);
   });
 
-  it('handles oversized LLM response without corruption', async () => {
+  it('throws on oversized LLM response in strict mode (default)', async () => {
     listBatch.mockImplementation(async (items) => {
-      // Return more decisions than items sent
       return [...items.map(() => 'yes'), 'yes', 'yes'];
     });
 
-    const result = await filter(['apple', 'banana'], 'include all', { batchSize: 10 });
-    // Should include exactly the original items, no extras
-    expect(result).toStrictEqual(['apple', 'banana']);
+    await expect(filter(['apple', 'banana'], 'include all', { batchSize: 10 })).rejects.toThrow(
+      /decisions for/
+    );
+  });
+
+  it('size-mismatch surfaces outcome=partial in resilient mode', async () => {
+    listBatch.mockImplementation(async (items) => {
+      return items.slice(0, 1).map((item) => (item.includes('a') ? 'yes' : 'no'));
+    });
+
+    const events = [];
+    await filter(['apple', 'banana', 'box'], 'contains a', {
+      batchSize: 10,
+      strictness: 'low',
+      onProgress: (e) => events.push(e),
+    });
+    const complete = events.find((e) => e.step === 'filter' && e.event === 'chain:complete');
+    expect(complete.outcome).toBe('partial');
   });
 
   it('advances batch progress on resilient failure', async () => {
