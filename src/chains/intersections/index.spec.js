@@ -107,10 +107,9 @@ describe('intersections chain', () => {
     expect(result['A + B'].elements).toStrictEqual(['valid', 'also valid']);
   });
 
-  it('returns empty elements when callLlm returns non-array', async () => {
+  it('throws when callLlm returns non-array (single combo = total failure)', async () => {
     callLlm.mockResolvedValue('not an array');
-    const result = await intersections(['A', 'B']);
-    expect(result['A + B'].elements).toStrictEqual([]);
+    await expect(intersections(['A', 'B'])).rejects.toThrow(/all 1 combinations failed/);
   });
 
   describe('schema validation', () => {
@@ -149,10 +148,22 @@ describe('intersections chain', () => {
     });
   });
 
-  it('gracefully degrades when dependencies fail (resilient mode)', async () => {
+  it('throws when every combination fails (no successes to return)', async () => {
     retry.mockRejectedValue(new Error('LLM call failed'));
-    const result = await intersections(['A', 'B']);
-    // parallelBatch with resilient errorPosture swallows per-combo errors
-    expect(result).toEqual({});
+    await expect(intersections(['A', 'B'])).rejects.toThrow(/all 1 combinations failed/);
+  });
+
+  it('returns partial results when some combinations succeed', async () => {
+    let call = 0;
+    retry.mockImplementation(async (fn) => {
+      call += 1;
+      if (call === 1) throw new Error('first combo fail');
+      return fn();
+    });
+    callLlm.mockResolvedValue(['elem']);
+    const result = await intersections(['A', 'B', 'C']);
+    // 4 combos total (A+B, A+C, B+C, A+B+C); first fails, others succeed
+    expect(Object.keys(result).length).toBeGreaterThan(0);
+    expect(Object.keys(result).length).toBeLessThan(4);
   });
 });
