@@ -41,6 +41,18 @@ const CHALLENGE_GUIDELINES = {
   high: `Using the Socratic method, ask one short, provocative question that directly confronts the weakest point in the reasoning`,
 };
 
+// Validate that the LLM produced a usable string. Without this, garbage
+// (object/null/empty) propagates into history and renders as
+// "Q: undefined\nA: undefined" in subsequent prompts.
+const parseDialogueResponse = (response, kind) => {
+  if (typeof response !== 'string' || response.length === 0) {
+    throw new Error(
+      `socratic: expected non-empty string from ${kind} LLM (got ${typeof response})`
+    );
+  }
+  return response;
+};
+
 // Prompt builders
 const buildAskPrompt = (topic, historyText, challenge) =>
   `${historyText ? `${historyText}\n` : ''}${CHALLENGE_GUIDELINES[challenge] || CHALLENGE_GUIDELINES.default} about ${asXML(topic, { tag: 'topic' })}.`;
@@ -78,7 +90,7 @@ const defaultAsk = async ({
     }
   );
 
-  return response;
+  return parseDialogueResponse(response, 'ask');
 };
 
 const defaultAnswer = async ({
@@ -109,7 +121,7 @@ const defaultAnswer = async ({
     }
   );
 
-  return response;
+  return parseDialogueResponse(response, 'answer');
 };
 
 class SocraticMethod {
