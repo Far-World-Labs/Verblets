@@ -68,7 +68,9 @@ describe('timeline', () => {
 
     llm.mockResolvedValueOnce(mockResponse);
 
-    const result = await timeline('Founded in 2010. Funded in March 2012.');
+    const result = await timeline('Founded in 2010. Funded in March 2012.', undefined, {
+      enrichment: 'low',
+    });
 
     expect(result).toStrictEqual([
       { timestamp: '2010', name: 'Company founded' },
@@ -128,7 +130,7 @@ describe('timeline', () => {
       .mockResolvedValueOnce({ events: [{ timestamp: '2020', name: 'Event 1' }] })
       .mockResolvedValueOnce({ events: [{ timestamp: '2021', name: 'Event 2' }] });
 
-    const result = await timeline('text', { chunkSize: 100 });
+    const result = await timeline('text', undefined, { chunkSize: 100, enrichment: 'low' });
 
     expect(result).toHaveLength(2);
     expect(result).toContainEqual({ timestamp: '2020', name: 'Event 1' });
@@ -141,7 +143,7 @@ describe('timeline', () => {
       .mockResolvedValueOnce({ events: [{ timestamp: '2020-01-01', name: 'Same Event' }] })
       .mockResolvedValueOnce({ events: [{ timestamp: '2020-01-01', name: 'same event' }] });
 
-    const result = await timeline('text');
+    const result = await timeline('text', undefined, { enrichment: 'low' });
 
     expect(result).toHaveLength(1);
     expect(result[0]).toEqual({ timestamp: '2020-01-01', name: 'Same Event' });
@@ -156,7 +158,7 @@ describe('timeline', () => {
       ],
     });
 
-    const result = await timeline('text');
+    const result = await timeline('text', undefined, { enrichment: 'low' });
 
     expect(result[0].name).toBe('January');
     expect(result[1].name).toBe('June');
@@ -172,7 +174,7 @@ describe('timeline', () => {
       ],
     });
 
-    const result = await timeline('text');
+    const result = await timeline('text', undefined, { enrichment: 'low' });
 
     expect(result[0].name).toBe('Precise');
     expect(result[1].timestamp).toBe('sometime later');
@@ -186,7 +188,7 @@ describe('timeline', () => {
       .mockResolvedValueOnce({ events: [] })
       .mockRejectedValueOnce(new Error('API error'));
 
-    const result = await timeline('text');
+    const result = await timeline('text', undefined, { enrichment: 'low' });
 
     expect(result).toHaveLength(1);
     expect(result[0]).toEqual({ timestamp: '2023', name: 'Good' });
@@ -195,10 +197,11 @@ describe('timeline', () => {
   it('calls progress callback', async () => {
     const progressCallback = vi.fn();
     chunkSentences.mockReturnValueOnce(['c1', 'c2', 'c3']);
-    llm.mockResolvedValue('{"events":[]}');
+    llm.mockResolvedValue({ events: [] });
 
-    await timeline('Text requiring 3 chunks', {
+    await timeline('Text requiring 3 chunks', undefined, {
       chunkSize: 10,
+      enrichment: 'low',
       onProgress: progressCallback,
     });
 
@@ -250,15 +253,15 @@ describe('timeline', () => {
     expect(result).toEqual([]);
   });
 
-  it('handles all chunks returning errors', async () => {
+  it('throws when all chunks fail extraction', async () => {
     chunkSentences.mockReturnValueOnce(['c1', 'c2']);
     llm
       .mockRejectedValueOnce(new Error('API error 1'))
       .mockRejectedValueOnce(new Error('API error 2'));
 
-    const result = await timeline('text');
-
-    expect(result).toEqual([]);
+    await expect(timeline('text', undefined, { enrichment: 'low' })).rejects.toThrow(
+      /all 2 chunks failed/
+    );
   });
 
   it('maintains relative order for non-date timestamps', async () => {
@@ -270,7 +273,7 @@ describe('timeline', () => {
       ],
     });
 
-    const result = await timeline('text');
+    const result = await timeline('text', undefined, { enrichment: 'low' });
 
     // Non-parseable dates should maintain their original order
     expect(result.map((e) => e.name)).toEqual(['A', 'B', 'C']);
@@ -320,12 +323,12 @@ describe('timeline', () => {
       return new Promise((resolve) => {
         setTimeout(() => {
           activeRequests--;
-          resolve('{"events":[]}');
+          resolve({ events: [] });
         }, 10);
       });
     });
 
-    await timeline('text', { maxParallel: 2 });
+    await timeline('text', undefined, { maxParallel: 2, enrichment: 'low' });
 
     expect(maxActiveRequests).toBeLessThanOrEqual(2);
   });
