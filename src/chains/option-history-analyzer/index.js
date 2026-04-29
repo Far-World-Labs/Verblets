@@ -22,6 +22,7 @@ import { DomainEvent, TelemetryEvent, ModelSource, Outcome } from '../../lib/pro
 import { resolveTexts } from '../../lib/instruction/index.js';
 import { nameStep } from '../../lib/context/option.js';
 import { asXML } from '../../prompts/wrap-variable.js';
+import { expectArray } from '../../lib/expect-shape/index.js';
 
 const name = 'option-history-analyzer';
 
@@ -223,21 +224,11 @@ export default function createOptionHistoryAnalyzer(config = {}) {
       );
 
       // Accept the schema-shaped { rules: [...] } or a bare array (some
-      // models drop the wrapper). Reject anything else — silently returning
-      // a non-array as "rules" would propagate garbage to onRules and the
-      // caller.
-      let rules;
-      if (Array.isArray(result)) {
-        rules = result;
-      } else if (result && typeof result === 'object' && Array.isArray(result.rules)) {
-        rules = result.rules;
-      } else {
-        throw new Error(
-          `option-history-analyzer: expected rules array or { rules: [] } from LLM (got ${
-            result === null ? 'null' : typeof result
-          })`
-        );
-      }
+      // models drop the wrapper). Reject anything else.
+      const rules = expectArray(Array.isArray(result) ? result : result?.rules, {
+        chain: 'option-history-analyzer',
+        expected: 'rules array or { rules: [] } from LLM',
+      });
 
       if (onRules && rules.length > 0) {
         onRules(rules);

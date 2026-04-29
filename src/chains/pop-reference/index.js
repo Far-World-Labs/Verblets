@@ -6,6 +6,7 @@ import createProgressEmitter from '../../lib/progress/index.js';
 import { Outcome } from '../../lib/progress/constants.js';
 import { nameStep, getOptions } from '../../lib/context/option.js';
 import { resolveArgs, resolveTexts } from '../../lib/instruction/index.js';
+import { expectArray, expectObject } from '../../lib/expect-shape/index.js';
 
 const name = 'pop-reference';
 
@@ -99,19 +100,11 @@ Requirements:
       }
     );
 
-    if (!response || typeof response !== 'object' || Array.isArray(response)) {
-      throw new Error(
-        `pop-reference: expected object from LLM (got ${
-          response === null ? 'null' : typeof response
-        })`
-      );
-    }
-    const references = response.references;
-    if (!Array.isArray(references)) {
-      throw new Error(
-        `pop-reference: LLM response missing required "references" array (got ${typeof references})`
-      );
-    }
+    expectObject(response, { chain: 'pop-reference', expected: 'object from LLM' });
+    const references = expectArray(response.references, {
+      chain: 'pop-reference',
+      expected: 'references array from LLM',
+    });
 
     emitter.complete({ outcome: Outcome.success, references: references.length });
 

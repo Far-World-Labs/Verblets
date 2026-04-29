@@ -6,6 +6,7 @@ import createProgressEmitter from '../../lib/progress/index.js';
 import { Outcome } from '../../lib/progress/constants.js';
 import { nameStep } from '../../lib/context/option.js';
 import { resolveTexts } from '../../lib/instruction/index.js';
+import { expectArray, expectObject } from '../../lib/expect-shape/index.js';
 
 const name = 'people';
 
@@ -40,16 +41,8 @@ ${asXML(descriptionText, { tag: 'description' })}${contextBlock}`;
       }
     );
 
-    if (!response || typeof response !== 'object' || Array.isArray(response)) {
-      throw new Error(
-        `people: expected object from LLM (got ${response === null ? 'null' : typeof response})`
-      );
-    }
-    if (!Array.isArray(response.people)) {
-      throw new Error(
-        `people: LLM response missing required "people" array (got ${typeof response.people})`
-      );
-    }
+    expectObject(response, { chain: 'people', expected: 'object from LLM' });
+    expectArray(response.people, { chain: 'people', expected: 'people array from LLM' });
 
     emitter.complete({ outcome: Outcome.success });
 

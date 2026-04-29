@@ -6,6 +6,7 @@ import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
 import { DomainEvent, Outcome } from '../../lib/progress/constants.js';
 import { nameStep } from '../../lib/context/option.js';
 import { resolveArgs, resolveTexts } from '../../lib/instruction/index.js';
+import { expectArray, expectObject, expectString } from '../../lib/expect-shape/index.js';
 
 const name = 'entities';
 
@@ -63,11 +64,7 @@ Keep it simple and actionable.`;
     }
   );
 
-  if (typeof response !== 'string' || response.length === 0) {
-    throw new Error(`entities: expected non-empty string from spec LLM (got ${typeof response})`);
-  }
-
-  return response;
+  return expectString(response, { chain: 'entities', expected: 'spec from LLM' });
 }
 
 /**
@@ -104,19 +101,11 @@ Include every entity that matches the specification. Do not add properties beyon
     }
   );
 
-  if (!response || typeof response !== 'object' || Array.isArray(response)) {
-    throw new Error(
-      `entities: expected object from extraction LLM (got ${
-        response === null ? 'null' : typeof response
-      })`
-    );
-  }
-  if (!Array.isArray(response.entities)) {
-    throw new Error(
-      `entities: LLM response missing required "entities" array (got ${typeof response.entities})`
-    );
-  }
-
+  expectObject(response, { chain: 'entities', expected: 'object from extraction LLM' });
+  expectArray(response.entities, {
+    chain: 'entities',
+    expected: 'entities array from extraction LLM',
+  });
   return response;
 }
 

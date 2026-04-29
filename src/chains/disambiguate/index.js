@@ -7,6 +7,7 @@ import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
 import { DomainEvent, Outcome } from '../../lib/progress/constants.js';
 import { nameStep } from '../../lib/context/option.js';
 import { resolveArgs, resolveTexts } from '../../lib/instruction/index.js';
+import { expectArray } from '../../lib/expect-shape/index.js';
 
 const name = 'disambiguate';
 
@@ -38,10 +39,12 @@ export const getMeanings = async (term, config = {}) => {
     }
   );
 
-  const resultArray = response?.meanings ?? response;
-  if (!Array.isArray(resultArray)) {
-    throw new Error(`disambiguate: expected meanings array from LLM (got ${typeof resultArray})`);
-  }
+  // Schema returns { meanings: [...] }; some models drop the wrapper and
+  // return a bare array. Accept both, then validate it really is one.
+  const resultArray = expectArray(response?.meanings ?? response, {
+    chain: 'disambiguate',
+    expected: 'meanings array from LLM',
+  });
   return resultArray.filter(Boolean);
 };
 

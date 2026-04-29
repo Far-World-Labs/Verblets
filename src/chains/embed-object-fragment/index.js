@@ -24,6 +24,7 @@ import { nameStep, getOptions } from '../../lib/context/option.js';
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
 import { DomainEvent, Outcome, ErrorPosture } from '../../lib/progress/constants.js';
 import parallel from '../../lib/parallel-batch/index.js';
+import { expectArray, expectObject } from '../../lib/expect-shape/index.js';
 import fragmentResultSchema from './fragment-result.json' with { type: 'json' };
 
 const name = 'embed-object:fragment';
@@ -84,25 +85,12 @@ async function fragmentBatch(sourceTexts, schema, runConfig) {
   );
 
   // rawResult is auto-unwrapped from { items: [...] } to the array.
-  // Wrapping a non-array would silently produce a fake one-element array
-  // and downstream entry.sourceIndex / entry.fragments accesses would
-  // crash deep with cryptic errors. Surface honestly.
-  if (!Array.isArray(rawResult)) {
-    throw new Error(
-      `embed-object:fragment: expected array from LLM (got ${
-        rawResult === null ? 'null' : typeof rawResult
-      })`
-    );
-  }
+  expectArray(rawResult, { chain: 'embed-object:fragment', expected: 'array from LLM' });
 
   return rawResult.map((entry) => {
-    if (!entry || typeof entry !== 'object') {
-      throw new Error(
-        `embed-object:fragment: expected object entry (got ${
-          entry === null ? 'null' : typeof entry
-        })`
-      );
-    }
+    expectObject(entry, { chain: 'embed-object:fragment', expected: 'object entry' });
+    // sourceIndex is integer-typed in the schema; Number.isInteger rejects
+    // both NaN and non-numbers in one check (more specific than expectNumber).
     if (!Number.isInteger(entry.sourceIndex)) {
       throw new Error(
         `embed-object:fragment: entry missing required integer "sourceIndex" (got ${typeof entry.sourceIndex})`
@@ -114,11 +102,10 @@ async function fragmentBatch(sourceTexts, schema, runConfig) {
         `embed-object:fragment: entry.sourceIndex ${entry.sourceIndex} out of range (batch size ${sourceTexts.length})`
       );
     }
-    if (!Array.isArray(entry.fragments)) {
-      throw new Error(
-        `embed-object:fragment: entry missing required "fragments" array (got ${typeof entry.fragments})`
-      );
-    }
+    expectArray(entry.fragments, {
+      chain: 'embed-object:fragment',
+      expected: '"fragments" array on entry',
+    });
     return {
       fragmentSetId: `fs:${source.sourceId}`,
       fragments: entry.fragments.map((f) => ({
