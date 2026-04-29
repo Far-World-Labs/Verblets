@@ -81,6 +81,24 @@ const search = (node, { match = defaultMatch, matches = [] } = {}) => {
   return matches.length > 0 ? matches : undefined;
 };
 
+// Both schemas auto-unwrap `items` to a string[]. Anything else means the
+// LLM violated the contract — surface honestly so .map and .[0] indexing
+// don't propagate undefined silently into the tree.
+const validateStringArray = (value, label) => {
+  if (!Array.isArray(value)) {
+    throw new Error(
+      `dismantle: expected string array from ${label} LLM (got ${
+        value === null ? 'null' : typeof value
+      })`
+    );
+  }
+  for (const item of value) {
+    if (typeof item !== 'string') {
+      throw new Error(`dismantle: ${label} array must contain only strings (got ${typeof item})`);
+    }
+  }
+};
+
 const defaultDecompose = async ({
   name,
   focus,
@@ -113,6 +131,7 @@ const defaultDecompose = async ({
       config,
     }
   );
+  validateStringArray(result, 'decompose');
   return result;
 };
 
@@ -143,12 +162,13 @@ const defaultEnhance = async ({
       config,
     }
   );
+  validateStringArray(result, 'enhance');
   const options = result;
 
   return {
     name,
     options,
-    topOptionName: options?.[0],
+    topOptionName: options[0],
   };
 };
 
@@ -404,6 +424,13 @@ class ChainTree {
 
 export const dismantle = async (text, options = {}) => {
   const { text: entityName, context: bundleContext } = resolveTexts(text, []);
+  if (typeof entityName !== 'string' || entityName.length === 0) {
+    throw new Error(
+      `dismantle: text must be a non-empty string (got ${
+        entityName === null ? 'null' : typeof entityName
+      })`
+    );
+  }
   const runConfig = nameStep(_name, options);
   const emitter = createProgressEmitter(_name, runConfig.onProgress, runConfig);
   emitter.start();
