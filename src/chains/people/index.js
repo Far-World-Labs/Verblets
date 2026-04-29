@@ -10,6 +10,13 @@ import { resolveTexts } from '../../lib/instruction/index.js';
 const name = 'people';
 
 async function peopleList(description, count = 3, config = {}) {
+  if (!Number.isInteger(count) || count <= 0) {
+    throw new Error(
+      `people: count must be a positive integer (got ${
+        typeof count === 'number' ? count : typeof count
+      })`
+    );
+  }
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
@@ -32,6 +39,17 @@ ${asXML(descriptionText, { tag: 'description' })}${contextBlock}`;
         config: runConfig,
       }
     );
+
+    if (!response || typeof response !== 'object' || Array.isArray(response)) {
+      throw new Error(
+        `people: expected object from LLM (got ${response === null ? 'null' : typeof response})`
+      );
+    }
+    if (!Array.isArray(response.people)) {
+      throw new Error(
+        `people: LLM response missing required "people" array (got ${typeof response.people})`
+      );
+    }
 
     emitter.complete({ outcome: Outcome.success });
 
