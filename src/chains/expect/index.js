@@ -193,10 +193,15 @@ export async function expect(actual, expected, constraint, config = {}) {
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
   emitter.emit({ event: DomainEvent.input, value: actual });
-  const { mode, introspection } = await getOptions(runConfig, {
+  const { mode: rawMode, introspection } = await getOptions(runConfig, {
     mode: env.VERBLETS_LLM_EXPECT_MODE || 'none',
     advice: withPolicy(mapAdvice, ['introspection']),
   });
+  // Tuning-knob convention: an unrecognized mode (typo'd env var or stale
+  // config) falls back silently to 'none'. The set is small and stable, so
+  // a user who really needs strict mode would notice the no-op quickly.
+  const VALID_MODES = new Set(['none', 'warn', 'info', 'error']);
+  const mode = VALID_MODES.has(rawMode) ? rawMode : 'none';
 
   try {
     const callerInfo = extractFileContext(5);
@@ -288,7 +293,25 @@ export async function expect(actual, expected, constraint, config = {}) {
   }
 }
 
-function assessUncertainty(actual, expected, constraint, passed, config) {
+function validateUncertainty(u) {
+  if (!u || typeof u !== 'object' || Array.isArray(u)) {
+    throw new Error(
+      `expect: expected uncertainty object from LLM (got ${u === null ? 'null' : typeof u})`
+    );
+  }
+  if (typeof u.confidence !== 'number') {
+    throw new Error(`expect: uncertainty.confidence must be a number (got ${typeof u.confidence})`);
+  }
+  const ci = u.confidenceInterval;
+  if (!ci || typeof ci !== 'object' || typeof ci.low !== 'number' || typeof ci.high !== 'number') {
+    throw new Error('expect: uncertainty.confidenceInterval must be { low: number, high: number }');
+  }
+  if (!Array.isArray(u.unknowns)) {
+    throw new Error(`expect: uncertainty.unknowns must be an array (got ${typeof u.unknowns})`);
+  }
+}
+
+async function assessUncertainty(actual, expected, constraint, passed, config) {
   const valueXml = asXML(actual, { tag: 'value', fit: 'compact' });
   const expectedXml =
     expected !== undefined ? asXML(expected, { tag: 'expected', fit: 'compact' }) : '';
@@ -307,7 +330,7 @@ Evaluate:
 - A confidence interval with low and high bounds (0.0 to 1.0)
 - Factors that make the assessment uncertain (as a list of unknowns)`;
 
-  return llm(prompt, {
+  const response = await llm(prompt, {
     ...config,
     temperature: 0,
     responseFormat: {
@@ -315,6 +338,9 @@ Evaluate:
       json_schema: { name: 'uncertainty_assessment', schema: uncertaintySchema },
     },
   });
+
+  validateUncertainty(response);
+  return response;
 }
 
 /**
