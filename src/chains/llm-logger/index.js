@@ -199,6 +199,13 @@ export function createLLMLogger(config = {}) {
 
     lanes.forEach((lane) => {
       assert(lane.laneId !== undefined, 'Each lane must have an laneId property').toBe(true);
+      // Validate writer at construction so a missing/invalid writer crashes
+      // here rather than deep in flushLanes during the first log dispatch.
+      if (typeof lane.writer !== 'function') {
+        throw new Error(
+          `llm-logger: lane "${lane.laneId}" requires a writer function (got ${typeof lane.writer})`
+        );
+      }
       laneBuffers.set(lane.laneId, []);
     });
 
@@ -211,6 +218,17 @@ export function createLLMLogger(config = {}) {
 
     // Register processors and start parallel processing
     processors.forEach((processor) => {
+      // Validate at construction so a missing/invalid process function
+      // crashes here rather than deep in the parallel loop after multiple
+      // ringBuffer reads have already happened.
+      if (typeof processor.processorId !== 'string' || processor.processorId.length === 0) {
+        throw new Error('llm-logger: each processor requires a non-empty "processorId" string');
+      }
+      if (typeof processor.process !== 'function') {
+        throw new Error(
+          `llm-logger: processor "${processor.processorId}" requires a process function (got ${typeof processor.process})`
+        );
+      }
       const readerId = ringBuffer.registerReader();
       processorReaders.set(processor.processorId, readerId);
       processorOffsets.set(processor.processorId, -1);
