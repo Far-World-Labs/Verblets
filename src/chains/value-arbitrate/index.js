@@ -345,9 +345,52 @@ async function arbitrateMulti(signals, ctx, dimensions, config) {
  * @param {Array<{name: string, enforce: function}>} [config.constraints] - Cross-value constraints (multi-value mode)
  * @returns {Promise<*|*[]>} The selected value (single) or array of values (multi)
  */
+const validateSignals = (signals) => {
+  if (!Array.isArray(signals)) {
+    throw new Error(
+      `valueArbitrate: signals must be an array (got ${signals === null ? 'null' : typeof signals})`
+    );
+  }
+  if (signals.length === 0) {
+    throw new Error('valueArbitrate requires at least one signal');
+  }
+  for (let i = 0; i < signals.length; i += 1) {
+    const s = signals[i];
+    if (!s || typeof s !== 'object') {
+      throw new Error(
+        `valueArbitrate: signal at index ${i} must be an object (got ${
+          s === null ? 'null' : typeof s
+        })`
+      );
+    }
+    if (typeof s.name !== 'string' || s.name.length === 0) {
+      throw new Error(`valueArbitrate: signal at index ${i} requires a non-empty "name" string`);
+    }
+    if (typeof s.value !== 'function') {
+      throw new Error(`valueArbitrate: signal "${s.name}" requires a "value" function`);
+    }
+    if (s.strictness !== 'must' && s.strictness !== 'may') {
+      throw new Error(
+        `valueArbitrate: signal "${s.name}" has invalid strictness ${JSON.stringify(s.strictness)} (must be 'must' or 'may')`
+      );
+    }
+  }
+};
+
+const validateValues = (values) => {
+  if (!Array.isArray(values)) {
+    throw new Error(
+      `valueArbitrate: values must be an array (got ${values === null ? 'null' : typeof values})`
+    );
+  }
+  if (values.length === 0) {
+    throw new Error('valueArbitrate requires at least one value');
+  }
+};
+
 export default async function valueArbitrate(signals, ctx, values, config = {}) {
-  if (!signals?.length) throw new Error('valueArbitrate requires at least one signal');
-  if (!values?.length) throw new Error('valueArbitrate requires at least one value');
+  validateSignals(signals);
+  validateValues(values);
 
   if (isMultiValueMode(values)) {
     return arbitrateMulti(signals, ctx, values, config);
