@@ -38,10 +38,8 @@ export default async function themes(text, config = {}) {
     let rawThemes;
 
     if (known.rawThemes !== undefined) {
-      // Known rawThemes provided — skip extraction phase
       rawThemes = parseCommaList(known.rawThemes, 'known.rawThemes');
     } else {
-      // Liberal-empty path: no source text → no themes to extract.
       if (typeof sourceText !== 'string') {
         throw new Error(
           `themes: text must be a string (got ${sourceText === null ? 'null' : typeof sourceText})`
@@ -49,6 +47,8 @@ export default async function themes(text, config = {}) {
       }
       const pieces = splitText(sourceText);
 
+      // Empty/whitespace text yields no paragraphs — return [] without
+      // calling the extraction reduce.
       if (pieces.length === 0) {
         emitter.complete({ outcome: Outcome.success, themes: 0 });
         return [];

@@ -250,19 +250,16 @@ Return threshold candidates with their rationales.`;
       );
     }
 
-    // Validate and fix threshold values to be within data range
-    {
-      result.thresholdCandidates = result.thresholdCandidates.filter((candidate) => {
-        // Ensure threshold value is within the data range
-        if (candidate.value < stats.min || candidate.value > stats.max) {
-          debug(
-            `Threshold value ${candidate.value} is outside data range [${stats.min}, ${stats.max}]`
-          );
-          return false;
-        }
-        return true;
-      });
-    }
+    // Drop threshold candidates whose value is outside the observed data range
+    result.thresholdCandidates = result.thresholdCandidates.filter((candidate) => {
+      if (candidate.value < stats.min || candidate.value > stats.max) {
+        debug(
+          `Threshold value ${candidate.value} is outside data range [${stats.min}, ${stats.max}]`
+        );
+        return false;
+      }
+      return true;
+    });
 
     // Add distribution analysis
     result.distributionAnalysis = {

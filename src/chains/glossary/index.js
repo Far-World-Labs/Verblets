@@ -95,14 +95,12 @@ Return a "terms" object containing an array of the extracted terms.${contextBloc
       const termSet = new Set();
       let validChunks = 0;
       mapResults.forEach((result) => {
-        // Each mapResults item is an object with a 'terms' array
-        if (result && result.terms && Array.isArray(result.terms)) {
-          validChunks += 1;
-          result.terms.forEach((term) => {
-            if (term && typeof term === 'string') {
-              termSet.add(term);
-            }
-          });
+        if (!Array.isArray(result?.terms)) return;
+        validChunks += 1;
+        for (const term of result.terms) {
+          if (typeof term === 'string' && term.length > 0) {
+            termSet.add(term);
+          }
         }
       });
 

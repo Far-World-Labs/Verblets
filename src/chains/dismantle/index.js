@@ -310,21 +310,12 @@ const makeSubtree = async ({
 };
 
 export const simplifyTree = (node) => {
-  if (!node.children || node.children.length === 0) {
-    const parts = (node.children ?? []).map((child) => child.name);
-    return {
-      id: node.id,
-      name: `${node.name}${node.options?.[0] ? `: ${node.options?.[0]}` : ''}`,
-      parts: parts.length ? parts : undefined,
-    };
-  }
-
-  const parts = node.children.map((child) => simplifyTree(child));
-  return {
-    id: node.id,
-    name: `${node.name}${node.options?.[0] ? `: ${node.options?.[0]}` : ''}`,
-    parts: parts.length ? parts : undefined,
-  };
+  const optionSuffix = node.options?.[0] ? `: ${node.options[0]}` : '';
+  const name = `${node.name}${optionSuffix}`;
+  const parts = node.children?.length
+    ? node.children.map((child) => simplifyTree(child))
+    : undefined;
+  return { id: node.id, name, parts };
 };
 
 class ChainTree {
