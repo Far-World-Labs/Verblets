@@ -117,7 +117,16 @@ ${asXML(item, { tag: 'item' })}`;
     config: runConfig,
   });
 
-  // llm auto-unwraps single value property, returns the number directly
+  // Schema declares value as number|string (auto-unwrapped). Anything else
+  // means the LLM violated the contract — surface honestly rather than
+  // returning the wrapper object/null/array as if it were a score.
+  if (typeof response !== 'number' && typeof response !== 'string') {
+    throw new Error(
+      `score: expected number or string from LLM (got ${
+        response === null ? 'null' : typeof response
+      })`
+    );
+  }
   return response;
 }
 
@@ -401,6 +410,33 @@ ${asXML(item, { tag: 'item' })}`;
     label: 'score:uncertainty',
     config: runConfig,
   });
+
+  // Schema declares value, confidence, unknowns as required. A malformed
+  // response would silently yield a score of undefined and a half-built
+  // uncertainty object — caller's downstream math (averaging, thresholding)
+  // would silently produce garbage.
+  if (!response || typeof response !== 'object' || Array.isArray(response)) {
+    throw new Error(
+      `score: expected object from uncertainty LLM (got ${
+        response === null ? 'null' : typeof response
+      })`
+    );
+  }
+  if (typeof response.value !== 'number') {
+    throw new Error(
+      `score: uncertainty response.value must be a number (got ${typeof response.value})`
+    );
+  }
+  if (typeof response.confidence !== 'number') {
+    throw new Error(
+      `score: uncertainty response.confidence must be a number (got ${typeof response.confidence})`
+    );
+  }
+  if (!Array.isArray(response.unknowns)) {
+    throw new Error(
+      `score: uncertainty response.unknowns must be an array (got ${typeof response.unknowns})`
+    );
+  }
 
   const uncertainty = { confidence: response.confidence, unknowns: response.unknowns };
   emitter.uncertainty(uncertainty);
