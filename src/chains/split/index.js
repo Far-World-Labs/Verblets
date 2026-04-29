@@ -131,14 +131,23 @@ export default async function split(text, instructions, config) {
             onProgress: scopePhase(runConfig.onProgress, 'chunk'),
           });
 
+          if (typeof output !== 'string') {
+            throw new Error(
+              `split: expected string from LLM (got ${output === null ? 'null' : typeof output})`
+            );
+          }
+
           const outputWithoutDelimiters = output.replace(
             new RegExp(delimiter.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'),
             ''
           );
           const originalChunk = chunk.trim();
 
-          // If the output is significantly different, fall back to original
-          // Be more lenient for shorter texts (common in tests)
+          // Preservation guard: if the output diverges substantially in length
+          // the LLM probably hallucinated or dropped content. Falling back to
+          // the original chunk keeps the text intact at the cost of any splits
+          // it might have contained. Tracked via fallback flag so the chain
+          // surfaces partial outcome / total-failure honestly.
           const maxDifference = originalChunk.length < 100 ? preservationShort : preservationLong;
           if (
             Math.abs(outputWithoutDelimiters.length - originalChunk.length) >
@@ -152,17 +161,18 @@ export default async function split(text, instructions, config) {
               );
             }
             batchDone(1);
-            return chunk;
+            return { text: chunk, fallback: true };
           }
 
           batchDone(1);
-          return output;
+          return { text: output, fallback: false };
         } catch (error) {
           if (runConfig.logger?.warn) {
             runConfig.logger.warn(`Split failed for chunk ${index + 1}:`, error.message);
           }
+          emitter.error(error, { chunkIndex: index });
           batchDone(1);
-          return chunk;
+          return { text: chunk, fallback: true };
         }
       },
       {
@@ -172,17 +182,26 @@ export default async function split(text, instructions, config) {
         label: 'split chunks',
       }
     );
+
+    const fallbacks = results.filter((r) => r.fallback).length;
+    if (fallbacks === results.length && results.length > 0) {
+      throw new Error(
+        `split: all ${results.length} chunks fell back to original — no splits produced`
+      );
+    }
     const escapedDelimiter = delimiter.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const segments = results
+      .map((r) => r.text)
       .join('')
       .split(new RegExp(escapedDelimiter))
       .map((s) => s.trim())
       .filter(Boolean);
 
     emitter.complete({
-      outcome: Outcome.success,
+      outcome: fallbacks > 0 ? Outcome.partial : Outcome.success,
       chunks: chunks.length,
       segments: segments.length,
+      fallbacks,
     });
 
     return segments;
