@@ -80,7 +80,7 @@ What if we do a minimal viable UX first, then iterate?`,
         rules: {},
         llm: 'test',
       })
-    ).rejects.toThrow('At least one speaker is required');
+    ).rejects.toThrow(/speakers must be a non-empty array/);
   });
 
   it('throws error when no topic provided', async () => {
@@ -92,7 +92,7 @@ What if we do a minimal viable UX first, then iterate?`,
         rules: {},
         llm: 'test',
       })
-    ).rejects.toThrow('Topic is required');
+    ).rejects.toThrow(/topic is required/);
   });
 
   describe('speaker memory integration', () => {

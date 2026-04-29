@@ -31,12 +31,16 @@ export default async function conversationTurnReduce({
   const { text: topicText, context: ownContext } = resolveTexts(topic, []);
   const bundleContext = [parentContext, ownContext].filter(Boolean).join('\n\n');
 
-  if (!speakers || speakers.length === 0) {
-    throw new Error('At least one speaker is required');
+  if (!Array.isArray(speakers) || speakers.length === 0) {
+    throw new Error(
+      `conversation-turn-reduce: speakers must be a non-empty array (got ${
+        speakers === null ? 'null' : typeof speakers
+      })`
+    );
   }
 
   if (!topicText) {
-    throw new Error('Topic is required');
+    throw new Error('conversation-turn-reduce: topic is required');
   }
 
   const runConfig = nameStep(name, options);
@@ -91,8 +95,23 @@ export default async function conversationTurnReduce({
     });
     batchDone(speakers.length);
 
+    // map returns positionally-aligned results with undefined slots for
+    // failed speakers. Surface the partial-vs-total distinction honestly:
+    // total failure throws (no usable conversation), partial reports
+    // failedSpeakers and outcome=partial.
+    const failedSpeakers = result.filter((r) => r === undefined).length;
+    if (failedSpeakers === speakers.length) {
+      throw new Error(
+        `conversation-turn-reduce: all ${speakers.length} speakers failed to respond`
+      );
+    }
+
     emitter.emit({ event: DomainEvent.output, value: result });
-    emitter.complete({ outcome: Outcome.success, speakers: speakers.length });
+    emitter.complete({
+      outcome: failedSpeakers > 0 ? Outcome.partial : Outcome.success,
+      speakers: speakers.length,
+      failedSpeakers,
+    });
     return result;
   } catch (err) {
     emitter.error(err);
