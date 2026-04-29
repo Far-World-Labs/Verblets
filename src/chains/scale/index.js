@@ -72,6 +72,17 @@ IMPORTANT: Each property must be a simple string value, not a nested object or a
       }
     );
 
+    if (!response || typeof response !== 'object' || Array.isArray(response)) {
+      throw new Error(
+        `scale: expected spec object from LLM (got ${response === null ? 'null' : typeof response})`
+      );
+    }
+    for (const field of ['domain', 'range', 'mapping']) {
+      if (typeof response[field] !== 'string') {
+        throw new Error(`scale: spec.${field} must be a string (got ${typeof response[field]})`);
+      }
+    }
+
     specEmitter.complete({ outcome: Outcome.success });
 
     return response;
@@ -112,6 +123,18 @@ Return a JSON object with a "value" property containing the scaled result.`;
       config: runConfig,
     }
   );
+
+  // Schema declares value as number|string; auto-unwrap returns that value
+  // directly. Anything else means the LLM violated the schema or auto-unwrap
+  // didn't fire — surface the contract failure rather than propagating
+  // undefined/object as the scaled result.
+  if (typeof response !== 'number' && typeof response !== 'string') {
+    throw new Error(
+      `scale: expected number or string from apply LLM (got ${
+        response === null ? 'null' : typeof response
+      })`
+    );
+  }
 
   return response;
 }
