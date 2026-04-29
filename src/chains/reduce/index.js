@@ -18,6 +18,9 @@ const DEFAULT_REDUCE_RESPONSE_FORMAT = jsonSchema(
 );
 
 const reduce = async function reduce(list, instructions, config) {
+  if (!Array.isArray(list)) {
+    throw new Error(`reduce: list must be an array (got ${list === null ? 'null' : typeof list})`);
+  }
   [instructions, config] = resolveArgs(instructions, config);
   const { text, context } = resolveTexts(instructions, []);
   const runConfig = nameStep(name, config);
@@ -90,9 +93,28 @@ Process exactly ${count} items from the ${itemFormat} list below and return the 
         onProgress: scopePhase(runConfig.onProgress, 'batch'),
       });
 
-      if (!runConfig.responseFormat && result?.accumulator !== undefined) {
+      if (!runConfig.responseFormat) {
+        // Default schema declares { accumulator: string } — without it the
+        // accumulator becomes garbage on the next iteration.
+        if (!result || typeof result !== 'object' || Array.isArray(result)) {
+          throw new Error(
+            `reduce: expected accumulator object from LLM (got ${
+              result === null ? 'null' : typeof result
+            })`
+          );
+        }
+        if (result.accumulator === undefined) {
+          throw new Error('reduce: LLM response missing required "accumulator" field');
+        }
         acc = result.accumulator;
       } else {
+        // Caller provided a custom schema — we can't validate shape, but
+        // null/undefined accumulators corrupt subsequent batches silently.
+        if (result === null || result === undefined) {
+          throw new Error(
+            `reduce: LLM returned ${result === null ? 'null' : 'undefined'} under custom responseFormat`
+          );
+        }
         acc = result;
       }
 
