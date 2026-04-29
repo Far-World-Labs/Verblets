@@ -1,5 +1,23 @@
 import { asXML } from '../../prompts/wrap-variable.js';
 
+const templates = {};
+
+export function registerTemplate(key, instruction) {
+  if (instruction === undefined) {
+    delete templates[key];
+    return;
+  }
+  templates[key] = instruction;
+}
+
+export function getTemplate(key) {
+  return templates[key];
+}
+
+export function listTemplates() {
+  return Object.keys(templates);
+}
+
 /**
  * Disambiguate (instructions, config) when instructions is optional.
  *
@@ -76,7 +94,9 @@ function resolveValue(value) {
  * derivation (e.g. supplying 'spec' skips spec generation).
  *
  * Unknown keys become XML context blocks joined into a single string,
- * prepended to the chain's core prompt. Array values of {name, text}
+ * returned separately for chains to append after their core prompt.
+ * Context must go at the END of the final prompt so it doesn't compete
+ * with the chain's primary instructions. Array values of {name, text}
  * objects produce nested XML: `<key><name>text</name>...</key>`.
  *
  * Template builder values (.build method) are rendered automatically.

@@ -34,7 +34,7 @@ Each chain directory contains:
 
 ## Config System
 
-Every chain resolves options through `nameStep` + `createProgressEmitter` + `getOptions` and passes `runConfig` to `callLlm`, `retry`, and sub-chains. `nameStep` returns a plain config object with the composed operation path and timestamp. `createProgressEmitter` returns a lifecycle handle with `start()`, `emit()`, `metrics()`, `complete()`, `error()`, and `batch()` methods. Call `start()` to emit `chain:start`. See [option resolution](../../docs/option-resolution.md) for the full API (`nameStep`, `createProgressEmitter`, `getOptions`, `getOption`, `withPolicy`, mappers, override keys).
+Every chain resolves options through `nameStep` + `createProgressEmitter` + `getOptions` and passes `runConfig` to `callLlm`, `retry`, and sub-chains. `nameStep` returns a plain config object with the composed operation path and timestamp. `createProgressEmitter` returns a lifecycle handle with `start()`, `emit()`, `metrics()`, `complete()`, `error()`, and `batch()` methods. Call `start()` to emit `chain:start`. See [option resolution](../../.claude/docs/option-resolution.md) for the full API (`nameStep`, `createProgressEmitter`, `getOptions`, `getOption`, `withPolicy`, mappers, override keys).
 
 ```javascript
 import callLlm from '../../lib/llm/index.js';
@@ -118,24 +118,17 @@ const prompt = parts.filter(Boolean).join('\n\n');
 
 This replaces template literals, `.replace()` on placeholder constants, and ad-hoc `bundleContext` conditionals. Optional parts are naturally handled — falsy values are filtered out.
 
-### Prompt Engineering Best Practices
-
-- **Parameter ordering** - Put description/instruction parameters higher in the prompt since they're more important for guiding LLM interpretation
-- **Content wrapping** - Wrap all caller-supplied content with `asXML()` for lengthy inputs to ensure proper formatting
-- **Structured tags** - Include proper XML tags for structured content (e.g., `<sentence>`, `<description>`, `<items>`)
-- **Clear sections** - Separate instructions, context, and data clearly in the prompt
-
 ### Batch Processing with Progress Tracking
 
-The standard pattern uses `prepareBatches` + `parallelBatch` + `trackBatch`. See [batching](../../docs/batching.md) for the full pattern with auto-sizing and code example, and [progress tracking](../../docs/progress-tracking.md) for the event lifecycle, `scopeProgress`, and `filterProgress`.
+The standard pattern uses `prepareBatches` + `parallelBatch` + `trackBatch`. See [batching](../../.claude/docs/batching.md) for the full pattern with auto-sizing and code example, and [progress tracking](../../.claude/docs/progress-tracking.md) for the event lifecycle, `scopeProgress`, and `filterProgress`.
 
 ### Failure Handling
 
-Retry is config-aware — see [retry](../../docs/retry.md) for the full API. Chains that need per-item error control resolve an error posture through their option mapper (e.g., `strictness: withPolicy(mapStrictness, ['errorPosture'])`). `'strict'` re-throws on failure; `'resilient'` pushes `undefined` and continues. `parallelBatch` also supports `errorPosture` directly.
+Retry is config-aware — see [retry](../../.claude/docs/retry.md) for the full API. Chains that need per-item error control resolve an error posture through their option mapper (e.g., `strictness: withPolicy(mapStrictness, ['errorPosture'])`). `'strict'` re-throws on failure; `'resilient'` passes the original item through untransformed and continues. `parallelBatch` also supports `errorPosture` directly.
 
 ## Chain-Specific Schema Patterns
 
-For schema design fundamentals, see [JSON Schema Guidelines](../../.claude/guidelines/JSON_SCHEMAS.md). Chains commonly need bulk processing schemas that handle arrays of results:
+For schema design fundamentals, see [JSON Schema Guidelines](../../.claude/guidelines/json-schemas.md). Chains commonly need bulk processing schemas that handle arrays of results:
 
 ```javascript
 const bulkSchema = {
@@ -191,16 +184,16 @@ chainName.knownTexts = ['spec'];
 
 **Unit tests** (`index.spec.js`): mock LLM calls; cover option mapper behavior (structural contracts, not exact values), config forwarding to callLlm and retry, failure handling, and progress callbacks.
 
-**Integration tests** (`index.examples.js`): real LLM calls; validate end-to-end workflows with realistic data. See [example test conventions](../../docs/example-test-conventions.md) for budget tiers and skip tagging.
+**Integration tests** (`index.examples.js`): real LLM calls; validate end-to-end workflows with realistic data. See [example test conventions](../../.claude/guidelines/example-tests.md) for budget tiers and skip tagging.
 
 ## Documentation
 
-README structure and quality standards are in [DOCUMENTATION.md](../../.claude/guidelines/DOCUMENTATION.md). Key chain-specific points: avoid generic feature lists (bulk processing, retries), show the dial options the chain accepts, include realistic examples that demonstrate AI capabilities.
+README structure and quality standards are in [documentation.md](../../.claude/guidelines/documentation.md). Key chain-specific points: avoid generic feature lists (bulk processing, retries), show the dial options the chain accepts, include realistic examples that demonstrate AI capabilities.
 
 ## Anti-Patterns
 
-- Destructuring config params and re-passing them individually — pass config directly (see [option resolution](../../docs/option-resolution.md))
-- Resolving retry or llm params in chains — retry and callLlm resolve them from config (see [retry](../../docs/retry.md))
+- Destructuring config params and re-passing them individually — pass config directly (see [option resolution](../../.claude/docs/option-resolution.md))
+- Resolving retry or llm params in chains — retry and callLlm resolve them from config (see [retry](../../.claude/docs/retry.md))
 - Using `initChain`, `startChain`, or `buildInstructions` — replaced by `nameStep` + `getOptions` + `resolveTexts`
 - Assembling prompts with template literals and `${contextBlock}` suffixes — use `parts.filter(Boolean).join('\n\n')`
 - Using `.replace()` on prompt constants with `{placeholder}` markers — use parts composition

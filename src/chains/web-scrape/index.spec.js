@@ -102,6 +102,56 @@ describe('web-scrape', () => {
     );
   });
 
+  describe('input validation', () => {
+    it('throws on null urls', async () => {
+      const step = async () => ({ action: 'done' });
+      await expect(webScrape(null, step)).rejects.toThrow();
+    });
+
+    it('throws on undefined urls', async () => {
+      const step = async () => ({ action: 'done' });
+      await expect(webScrape(undefined, step)).rejects.toThrow();
+    });
+
+    it('throws on empty array', async () => {
+      const step = async () => ({ action: 'done' });
+      await expect(webScrape([], step)).rejects.toThrow(/at least one URL/);
+    });
+
+    it('throws on empty string url', async () => {
+      const step = async () => ({ action: 'done' });
+      await expect(webScrape('', step)).rejects.toThrow(/non-empty "url"/);
+    });
+
+    it('throws on object without url field', async () => {
+      const step = async () => ({ action: 'done' });
+      await expect(webScrape([{ step }], step)).rejects.toThrow(/non-empty "url"/);
+    });
+
+    it('throws on null inside array', async () => {
+      const step = async () => ({ action: 'done' });
+      await expect(webScrape([null, 'https://example.com'], step)).rejects.toThrow(
+        /string or .* object/
+      );
+    });
+
+    it('throws on missing step (and no per-URL step)', async () => {
+      await expect(webScrape('https://example.com')).rejects.toThrow(/step must be a function/);
+    });
+
+    it('throws on non-function step', async () => {
+      await expect(webScrape('https://example.com', 'not-fn')).rejects.toThrow(
+        /step must be a function/
+      );
+    });
+
+    it('accepts per-URL step without top-level step', async () => {
+      const step = async () => ({ action: 'done' });
+      const result = await webScrape([{ url: 'https://example.com', step }]);
+      expect(result).toBeDefined();
+    });
+  });
+
   it('processes a single URL with a one-step callback', async () => {
     const step = vi.fn(async (ctx) => {
       expect(ctx.url).toBe('https://example.com');

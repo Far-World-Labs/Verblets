@@ -63,7 +63,7 @@ Mapping: Map the "stars" field linearly to the quality range.`;
     expect(result).toBe(75);
   });
 
-  it('should handle complex object outputs', async () => {
+  it('throws when LLM returns object output (schema declares number|string)', async () => {
     vi.mocked(llm)
       .mockResolvedValueOnce({
         domain: 'task descriptions',
@@ -72,12 +72,9 @@ Mapping: Map the "stars" field linearly to the quality range.`;
       })
       .mockResolvedValueOnce({ confidence: 0.8, category: 'high' });
 
-    const result = await scaleItem(
-      'very important task',
-      'Categorize inputs and provide confidence scores'
-    );
-
-    expect(result).toEqual({ confidence: 0.8, category: 'high' });
+    await expect(
+      scaleItem('very important task', 'Categorize inputs and provide confidence scores')
+    ).rejects.toThrow(/expected number or string/);
   });
 
   it('should convert object inputs to JSON strings', async () => {

@@ -79,7 +79,7 @@ For deeper coverage of these subsystems, see [batching](./batching.md), [retry](
 
 Many chains have their own tuning parameters that control how deeply or broadly they operate. All dial-style options accept `'low'` or `'high'` as string shorthands, or a structured object for fine-grained control.
 
-For example, `strictness` on [filter](../src/chains/filter) controls borderline inclusion. `granularity` on [group](../src/chains/group) controls category breadth. `thoroughness` on [detect-patterns](../src/chains/detect-patterns) controls analysis depth. `effort` on [score](../src/chains/score) controls iterations and precision. Each chain's README documents its specific options.
+For example, `strictness` on [filter](../../src/chains/filter) controls borderline inclusion. `granularity` on [group](../../src/chains/group) controls category breadth. `thoroughness` on [detect-patterns](../../src/chains/detect-patterns) controls analysis depth. `effort` on [score](../../src/chains/score) controls iterations and precision. Each chain's README documents its specific options.
 
 ## Policy
 
@@ -105,4 +105,4 @@ See [option resolution](./option-resolution.md) for the full internal API (`name
 
 When a function needs structured JSON responses, it uses `responseFormat` internally. The `callLlm` module auto-parses responses and unwraps common patterns (`{value: x}` → `x`, `{items: [...]}` → `[...]`).
 
-For custom structured output at the consumer level, see [to-object](../src/chains/to-object/) for JSON repair and [JSON Schema Guidelines](../.claude/guidelines/JSON_SCHEMAS.md) for schema design.
+For custom structured output at the consumer level, see [to-object](../../src/chains/to-object/) for JSON repair and [JSON Schema Guidelines](../guidelines/json-schemas.md) for schema design.

@@ -19,6 +19,13 @@ const popReferenceResponseFormat = jsonSchema('pop_reference_result', popReferen
  * @returns {Promise<Array>} Array of PopCultureReference objects
  */
 export default async function popReference(sentence, description, config) {
+  if (typeof sentence !== 'string' || sentence.length === 0) {
+    throw new Error(
+      `pop-reference: sentence must be a non-empty string (got ${
+        sentence === null ? 'null' : typeof sentence
+      })`
+    );
+  }
   [description, config] = resolveArgs(description, config);
   const { text: descriptionText, context } = resolveTexts(description, []);
   const runConfig = nameStep(name, config);
@@ -92,10 +99,18 @@ Requirements:
       }
     );
 
-    const references = response?.references || response;
-
+    if (!response || typeof response !== 'object' || Array.isArray(response)) {
+      throw new Error(
+        `pop-reference: expected object from LLM (got ${
+          response === null ? 'null' : typeof response
+        })`
+      );
+    }
+    const references = response.references;
     if (!Array.isArray(references)) {
-      throw new Error('Expected array of references in response');
+      throw new Error(
+        `pop-reference: LLM response missing required "references" array (got ${typeof references})`
+      );
     }
 
     emitter.complete({ outcome: Outcome.success, references: references.length });

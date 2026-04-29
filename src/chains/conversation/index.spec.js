@@ -161,4 +161,111 @@ describe('Conversation', () => {
     expect(messages.length).toBeGreaterThan(0);
     expect(messages.length).toBeLessThanOrEqual(5); // Max 5 speakers per round
   });
+
+  describe('speaker memory', () => {
+    it('accumulates per-speaker memory across rounds', async () => {
+      const speakFn = makeSpeak();
+      const speakers = [
+        { id: 'a', name: 'A' },
+        { id: 'b', name: 'B' },
+      ];
+      const chain = new Conversation('test topic', speakers, {
+        rules: {
+          shouldContinue: (r) => r < 3,
+          turnPolicy: () => ['a', 'b'],
+        },
+        speakFn,
+      });
+      await chain.run();
+
+      expect(chain.speakerMemory.has('a')).toBe(true);
+      expect(chain.speakerMemory.has('b')).toBe(true);
+      expect(chain.speakerMemory.get('a')).toHaveLength(3);
+      expect(chain.speakerMemory.get('b')).toHaveLength(3);
+      chain.speakerMemory.get('a').forEach((m) => {
+        expect(m.id).toBe('a');
+        expect(m.comment).toBe('a speaks');
+      });
+    });
+
+    it('passes speakerMemory to bulkSpeakFn (conversationTurnReduce)', async () => {
+      const speakers = [{ id: 'x', name: 'X' }];
+      const chain = new Conversation('test topic', speakers, {
+        rules: {
+          shouldContinue: (r) => r < 2,
+          turnPolicy: () => ['x'],
+        },
+      });
+      await chain.run();
+
+      // Second call to conversationTurnReduce should have received memory from round 0
+      expect(conversationTurnReduceMock.speakerMemory).toBeDefined();
+      expect(conversationTurnReduceMock.speakerMemory).toBeInstanceOf(Map);
+    });
+
+    it('passes speakerMemory snapshot to speakFn', async () => {
+      let receivedMemory;
+      const speakFn = vi.fn(async ({ speaker, speakerMemory }) => {
+        receivedMemory = speakerMemory;
+        return `${speaker.id} speaks`;
+      });
+      const speakers = [{ id: 'a', name: 'A' }];
+      const chain = new Conversation('test topic', speakers, {
+        rules: {
+          shouldContinue: (r) => r < 2,
+          turnPolicy: () => ['a'],
+        },
+        speakFn,
+      });
+      await chain.run();
+
+      // On the second round, speakFn should receive memory with round 0's message
+      expect(receivedMemory).toBeInstanceOf(Map);
+      expect(receivedMemory.get('a')).toHaveLength(1);
+      expect(receivedMemory.get('a')[0].comment).toBe('a speaks');
+    });
+
+    it('provides isolated memory snapshots per round', async () => {
+      const memorySnapshots = [];
+      const bulkSpeakFn = vi.fn(async ({ speakers, speakerMemory }) => {
+        memorySnapshots.push(new Map([...speakerMemory].map(([k, v]) => [k, v.slice()])));
+        return speakers.map((s) => `${s.id} round`);
+      });
+      const speakers = [{ id: 'a', name: 'A' }];
+      const chain = new Conversation('test topic', speakers, {
+        rules: {
+          shouldContinue: (r) => r < 3,
+          turnPolicy: () => ['a'],
+        },
+        bulkSpeakFn,
+      });
+      await chain.run();
+
+      // Round 0: no prior memory
+      expect(memorySnapshots[0].size).toBe(0);
+      // Round 1: memory from round 0
+      expect(memorySnapshots[1].get('a')).toHaveLength(1);
+      // Round 2: memory from rounds 0 and 1
+      expect(memorySnapshots[2].get('a')).toHaveLength(2);
+    });
+
+    it('only tracks speakers who have spoken', async () => {
+      const speakFn = makeSpeak();
+      const speakers = [
+        { id: 'a', name: 'A' },
+        { id: 'b', name: 'B' },
+      ];
+      const chain = new Conversation('test topic', speakers, {
+        rules: {
+          shouldContinue: (r) => r < 2,
+          turnPolicy: () => ['a'],
+        },
+        speakFn,
+      });
+      await chain.run();
+
+      expect(chain.speakerMemory.has('a')).toBe(true);
+      expect(chain.speakerMemory.has('b')).toBe(false);
+    });
+  });
 });

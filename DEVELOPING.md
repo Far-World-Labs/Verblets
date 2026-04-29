@@ -26,7 +26,7 @@ module-name/
 └── README.md         # Documentation
 ```
 
-See [.claude/guidelines/DOCUMENTATION.md](./.claude/guidelines/DOCUMENTATION.md) for README standards.
+See [.claude/guidelines/documentation.md](./.claude/guidelines/documentation.md) for README standards.
 
 ## Isomorphic Design
 
@@ -100,7 +100,7 @@ VERBLETS_ARCH_LOG=debug npm run arch:once
 2. Implement `index.js` with a default export
 3. Add `index.spec.js` with mocked LLM and table-driven examples
 4. Add `index.examples.js` with real LLM assertions
-5. Add `README.md` following [documentation guidelines](./.claude/guidelines/DOCUMENTATION.md)
+5. Add `README.md` following [documentation guidelines](./.claude/guidelines/documentation.md)
 6. Export from `src/shared.js` (this feeds both Node and browser builds)
 7. Add to the appropriate section in the root `README.md`
 
@@ -128,9 +128,9 @@ Config flows through without extraction — pass `config` directly to `callLlm`,
 
 Detailed documentation by audience:
 
-- [Configuration](./docs/configuration.md) — consumer-facing: model selection, capabilities, parameters, policy
-- [Option Resolution](./docs/option-resolution.md) — chain author internals: `nameStep`, `track`, `getOptions`, `getOption`, `withPolicy`, mappers
-- [Batching](./docs/batching.md) — auto-sizing, `parallelBatch`, `prepareBatches`
-- [Progress Tracking](./docs/progress-tracking.md) — `onProgress`, `scopeProgress`, event lifecycle
-- [Retry](./docs/retry.md) — config-aware retries, retryable errors, abort signal
-- [JSON Schemas](./.claude/guidelines/JSON_SCHEMAS.md) — `responseFormat`, schema design, auto-unwrapping
+- [Configuration](./.claude/docs/configuration.md) — consumer-facing: model selection, capabilities, parameters, policy
+- [Option Resolution](./.claude/docs/option-resolution.md) — chain author internals: `nameStep`, `track`, `getOptions`, `getOption`, `withPolicy`, mappers
+- [Batching](./.claude/docs/batching.md) — auto-sizing, `parallelBatch`, `prepareBatches`
+- [Progress Tracking](./.claude/docs/progress-tracking.md) — `onProgress`, `scopeProgress`, event lifecycle
+- [Retry](./.claude/docs/retry.md) — config-aware retries, retryable errors, abort signal
+- [JSON Schemas](./.claude/guidelines/json-schemas.md) — `responseFormat`, schema design, auto-unwrapping

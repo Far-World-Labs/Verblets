@@ -63,6 +63,10 @@ Keep it simple and actionable.`;
     }
   );
 
+  if (typeof response !== 'string' || response.length === 0) {
+    throw new Error(`entities: expected non-empty string from spec LLM (got ${typeof response})`);
+  }
+
   return response;
 }
 
@@ -99,6 +103,19 @@ Include every entity that matches the specification. Do not add properties beyon
       config: runConfig,
     }
   );
+
+  if (!response || typeof response !== 'object' || Array.isArray(response)) {
+    throw new Error(
+      `entities: expected object from extraction LLM (got ${
+        response === null ? 'null' : typeof response
+      })`
+    );
+  }
+  if (!Array.isArray(response.entities)) {
+    throw new Error(
+      `entities: LLM response missing required "entities" array (got ${typeof response.entities})`
+    );
+  }
 
   return response;
 }

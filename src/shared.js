@@ -78,6 +78,11 @@ export { default as listExpand } from './verblets/list-expand/index.js';
 export { default as map } from './chains/map/index.js';
 export { default as reduce } from './chains/reduce/index.js';
 export { default as score, scoreSpec, scoreItem, scoreInstructions } from './chains/score/index.js';
+export {
+  default as scoreMatrix,
+  normalizeRubric,
+  scoreMatrixInstructions,
+} from './chains/score-matrix/index.js';
 export { default as sort } from './chains/sort/index.js';
 export { default as tagItem, tagSpec, mapTags, tagInstructions } from './chains/tags/index.js';
 
@@ -177,6 +182,7 @@ export { default as chunkSentences } from './lib/chunk-sentences/index.js';
 export { debug } from './lib/debug/index.js';
 export { default as createBatches } from './lib/text-batch/index.js';
 export { default as llm, jsonSchema } from './lib/llm/index.js';
+export { default as callAgent } from './lib/agent/index.js';
 export { default as normalizeLlm } from './lib/normalize-llm/index.js';
 export { default as parallel, parallelMap } from './lib/parallel-batch/index.js';
 export { default as retry } from './lib/retry/index.js';
@@ -199,6 +205,8 @@ export {
   StatusCode,
   ModelSource,
   OptionSource,
+  ErrorCategory,
+  RetryMode,
 } from './lib/progress/constants.js';
 export {
   pMap,

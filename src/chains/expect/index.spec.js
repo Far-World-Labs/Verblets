@@ -1,5 +1,5 @@
 import { describe, expect as vitestExpect, it, vi, beforeEach, afterEach } from 'vitest';
-import { expectSimple, expect } from './index.js';
+import { expectSimple, expect, expectWithUncertainty } from './index.js';
 import { mapAdvice } from './index.js';
 import { longTestTimeout } from '../../constants/common.js';
 import { setTestEnv, saveTestEnv } from './test-utils.js';
@@ -75,6 +75,15 @@ vi.mock('../../lib/llm/index.js', () => ({
           }
         }
       }
+    }
+
+    // Handle uncertainty assessment
+    if (prompt.includes('Assess the uncertainty')) {
+      return {
+        confidence: 0.85,
+        confidenceInterval: { low: 0.75, high: 0.95 },
+        unknowns: ['semantic ambiguity'],
+      };
     }
 
     // Default to false for unmatched cases
@@ -341,6 +350,96 @@ describe('expect chain', () => {
       longTestTimeout
     );
   });
+});
+
+describe('expectWithUncertainty', () => {
+  let restoreEnv;
+
+  beforeEach(() => {
+    restoreEnv = saveTestEnv('VERBLETS_LLM_EXPECT_MODE');
+  });
+
+  afterEach(() => {
+    if (restoreEnv) {
+      restoreEnv();
+    }
+  });
+
+  it(
+    'returns uncertainty data with confidence interval on passing assertion',
+    async () => {
+      setTestEnv('VERBLETS_LLM_EXPECT_MODE', 'none');
+
+      const [passed, details] = await expectWithUncertainty(
+        'Hello world!',
+        undefined,
+        'Is this a greeting?'
+      );
+
+      vitestExpect(passed).toBe(true);
+      vitestExpect(details.uncertainty).toBeDefined();
+      vitestExpect(details.uncertainty.confidence).toBeTypeOf('number');
+      vitestExpect(details.uncertainty.confidence).toBe(0.85);
+      vitestExpect(details.uncertainty.confidenceInterval).toBeDefined();
+      vitestExpect(details.uncertainty.confidenceInterval.low).toBeTypeOf('number');
+      vitestExpect(details.uncertainty.confidenceInterval.high).toBeTypeOf('number');
+      vitestExpect(details.uncertainty.confidenceInterval.low).toBeLessThanOrEqual(
+        details.uncertainty.confidenceInterval.high
+      );
+    },
+    longTestTimeout
+  );
+
+  it(
+    'returns unknown flags on failing assertion',
+    async () => {
+      setTestEnv('VERBLETS_LLM_EXPECT_MODE', 'none');
+
+      const [passed, details] = await expectWithUncertainty('hello', 'goodbye');
+
+      vitestExpect(passed).toBe(false);
+      vitestExpect(details.uncertainty).toBeDefined();
+      vitestExpect(details.uncertainty.unknowns).toBeInstanceOf(Array);
+      vitestExpect(details.uncertainty.unknowns.length).toBeGreaterThan(0);
+      vitestExpect(details.uncertainty.unknowns[0]).toBeTypeOf('string');
+    },
+    longTestTimeout
+  );
+
+  it(
+    'preserves original expect output fields alongside uncertainty',
+    async () => {
+      setTestEnv('VERBLETS_LLM_EXPECT_MODE', 'none');
+
+      const [passed, details] = await expectWithUncertainty('hello', 'hello');
+
+      vitestExpect(passed).toBe(true);
+      vitestExpect(details.passed).toBe(true);
+      vitestExpect(details.file).toBeDefined();
+      vitestExpect(details.line).toBeTypeOf('number');
+      vitestExpect(details.uncertainty).toBeDefined();
+    },
+    longTestTimeout
+  );
+
+  it(
+    'emits uncertainty progress events via onProgress callback',
+    async () => {
+      setTestEnv('VERBLETS_LLM_EXPECT_MODE', 'none');
+      const events = [];
+
+      await expectWithUncertainty('hello', 'hello', undefined, {
+        onProgress: (event) => events.push(event),
+      });
+
+      const uncertaintyEvent = events.find((e) => e.event === 'uncertainty');
+      vitestExpect(uncertaintyEvent).toBeDefined();
+      vitestExpect(uncertaintyEvent.confidence).toBeTypeOf('number');
+      vitestExpect(uncertaintyEvent.confidenceInterval).toBeDefined();
+      vitestExpect(uncertaintyEvent.unknowns).toBeInstanceOf(Array);
+    },
+    longTestTimeout
+  );
 });
 
 describe('mapAdvice', () => {

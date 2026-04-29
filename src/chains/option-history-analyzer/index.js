@@ -222,7 +222,22 @@ export default function createOptionHistoryAnalyzer(config = {}) {
         { label: 'option-history-analyzer', config: runConfig }
       );
 
-      const rules = result?.rules ?? result ?? [];
+      // Accept the schema-shaped { rules: [...] } or a bare array (some
+      // models drop the wrapper). Reject anything else — silently returning
+      // a non-array as "rules" would propagate garbage to onRules and the
+      // caller.
+      let rules;
+      if (Array.isArray(result)) {
+        rules = result;
+      } else if (result && typeof result === 'object' && Array.isArray(result.rules)) {
+        rules = result.rules;
+      } else {
+        throw new Error(
+          `option-history-analyzer: expected rules array or { rules: [] } from LLM (got ${
+            result === null ? 'null' : typeof result
+          })`
+        );
+      }
 
       if (onRules && rules.length > 0) {
         onRules(rules);

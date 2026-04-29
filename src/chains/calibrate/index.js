@@ -26,10 +26,37 @@ export const mapSensitivity = (value) => {
   return undefined;
 };
 
+const VALID_THRESHOLD_STRATEGIES = ['statistical', 'percentile', 'fixed'];
+
+/**
+ * Validate scan shape at the chain boundary. Per error-policy: caller-config
+ * errors throw rather than silently producing junk statistics.
+ * @param {Array} scans - expected shape: [{ flagged, hits: [{ category, score }] }]
+ * @param {string} label - error message prefix
+ */
+function validateScans(scans, label) {
+  if (!Array.isArray(scans)) {
+    throw new Error(`${label}: scans must be an array (got ${typeof scans})`);
+  }
+  for (const [i, scan] of scans.entries()) {
+    if (!scan || typeof scan !== 'object' || !Array.isArray(scan.hits)) {
+      throw new Error(`${label}: scan at index ${i} must be {flagged, hits: Array}`);
+    }
+    for (const [j, hit] of scan.hits.entries()) {
+      if (!hit || typeof hit.category !== 'string' || !Number.isFinite(hit.score)) {
+        throw new Error(
+          `${label}: scan[${i}].hits[${j}] must be {category: string, score: finite number}`
+        );
+      }
+    }
+  }
+}
+
 // ===== Statistics =====
 
 /**
  * Compute summary statistics from an array of scan results for the spec prompt.
+ * Caller must validate scan shape before calling.
  * @param {Array<{ flagged: boolean, hits: Array<{ category: string, score: number }> }>} scans
  * @returns {object} Statistics object
  */
@@ -84,6 +111,8 @@ function computeScanStatistics(scans) {
  * @returns {Promise<{ corpusProfile: string, classificationCriteria: string, salienceCriteria: string, categoryNotes: string }>}
  */
 export async function calibrateSpec(scans, config = {}) {
+  validateScans(scans, 'calibrateSpec');
+
   const runConfig = nameStep('calibrate:spec', config);
   const specEmitter = createProgressEmitter('calibrate:spec', runConfig.onProgress, runConfig);
   specEmitter.start();
@@ -91,6 +120,15 @@ export async function calibrateSpec(scans, config = {}) {
     thresholdStrategy: 'statistical',
     sensitivity: withPolicy(mapSensitivity),
   });
+
+  if (!VALID_THRESHOLD_STRATEGIES.includes(thresholdStrategy)) {
+    const err = new Error(
+      `calibrateSpec: invalid thresholdStrategy ${JSON.stringify(thresholdStrategy)}, expected one of [${VALID_THRESHOLD_STRATEGIES.join(', ')}]`
+    );
+    specEmitter.error(err);
+    throw err;
+  }
+
   const { instructions } = runConfig;
 
   const statistics = computeScanStatistics(scans);
@@ -234,6 +272,8 @@ export function calibrateInstructions({ spec, text, ...context }) {
  * @returns {Promise<{ severity: string, salience: string, categories: object, summary: string }>}
  */
 export default async function calibrate(scan, instructions, config) {
+  validateScans([scan], 'calibrate');
+
   [instructions, config] = resolveArgs(instructions, config, ['spec']);
   const { text, known, context } = resolveTexts(instructions, ['spec']);
   const effectiveInstructions = context ? `${text}\n\n${context}` : text;

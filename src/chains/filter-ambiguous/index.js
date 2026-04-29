@@ -23,6 +23,9 @@ export default async function filterAmbiguous(text, config = {}) {
     if (known.rankedSentences) {
       // Known rankedSentences provided — skip sentence scoring phase
       rankedSentences = JSON.parse(known.rankedSentences);
+      if (!Array.isArray(rankedSentences)) {
+        throw new Error('filter-ambiguous: known.rankedSentences must parse to an array');
+      }
     } else {
       if (!sourceText) {
         emitter.complete({ outcome: Outcome.success });
@@ -47,10 +50,18 @@ export default async function filterAmbiguous(text, config = {}) {
         }
       );
 
+      // Drop sentences whose score failed entirely instead of coercing to 0
+      // (which would silently rank them at the bottom and pretend they were
+      // judged). Total failure surfaces as an empty pool below.
       rankedSentences = sentences
-        .map((s, i) => ({ sentence: s, score: sentenceScores[i] ?? 0 }))
+        .map((s, i) => ({ sentence: s, score: sentenceScores[i] }))
+        .filter((r) => typeof r.score === 'number')
         .toSorted((a, b) => b.score - a.score)
         .slice(0, topN);
+
+      if (rankedSentences.length === 0) {
+        throw new Error(`filter-ambiguous: all ${sentences.length} sentences failed to score`);
+      }
     }
 
     emitter.emit({ event: DomainEvent.phase, phase: 'ranked', rankedSentences });
@@ -75,7 +86,16 @@ export default async function filterAmbiguous(text, config = {}) {
         label: 'filter-ambiguous:extract',
       }
     );
-    const termPairs = batchResults.flat();
+    // parallelBatch returns undefined for failed slots; distinguish total
+    // failure (every sentence's extraction threw) from legitimate empty
+    // (every sentence yielded zero ambiguous terms).
+    const failedExtractions = batchResults.filter((r) => r === undefined).length;
+    if (failedExtractions === batchResults.length && batchResults.length > 0) {
+      throw new Error(
+        `filter-ambiguous: all ${batchResults.length} sentences failed term extraction`
+      );
+    }
+    const termPairs = batchResults.flatMap((r) => r ?? []);
 
     if (termPairs.length === 0) {
       emitter.complete({ outcome: Outcome.success });
@@ -91,8 +111,16 @@ export default async function filterAmbiguous(text, config = {}) {
       }
     );
 
-    const scored = termPairs.map((p, i) => ({ ...p, score: scores[i] }));
-    const sorted = scored.toSorted((a, b) => (b.score || 0) - (a.score || 0));
+    // Drop term pairs whose score failed instead of fabricating 0.
+    const scored = termPairs
+      .map((p, i) => ({ ...p, score: scores[i] }))
+      .filter((p) => typeof p.score === 'number');
+
+    if (scored.length === 0) {
+      throw new Error(`filter-ambiguous: all ${termPairs.length} term pairs failed to score`);
+    }
+
+    const sorted = scored.toSorted((a, b) => b.score - a.score);
     emitter.complete({ outcome: Outcome.success });
     return sorted.slice(0, topN);
   } catch (err) {

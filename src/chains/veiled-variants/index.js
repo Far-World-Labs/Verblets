@@ -98,6 +98,13 @@ export const mapCoverage = (value) => {
 
 const veiledVariants = async (prompt, config = {}) => {
   const { text: effectivePrompt, context: bundleContext } = resolveTexts(prompt, []);
+  if (typeof effectivePrompt !== 'string' || effectivePrompt.length === 0) {
+    throw new Error(
+      `veiled-variants: prompt must be a non-empty string (got ${
+        effectivePrompt === null ? 'null' : typeof effectivePrompt
+      })`
+    );
+  }
   const contextBlock = bundleContext ? `\n\n${bundleContext}` : '';
   const runConfig = nameStep(name, { llm: { sensitive: true }, ...config });
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
@@ -105,6 +112,22 @@ const veiledVariants = async (prompt, config = {}) => {
   const { strategies, variantCount } = await getOptions(runConfig, {
     coverage: withPolicy(mapCoverage, ['strategies', 'variantCount']),
   });
+
+  if (!Array.isArray(strategies) || strategies.length === 0) {
+    const err = new Error('veiled-variants: at least one strategy is required');
+    emitter.error(err);
+    throw err;
+  }
+  for (const s of strategies) {
+    if (!STRATEGY_FNS[s]) {
+      const err = new Error(
+        `veiled-variants: unknown strategy "${s}" (valid: ${ALL_STRATEGIES.join(', ')})`
+      );
+      emitter.error(err);
+      throw err;
+    }
+  }
+
   const prompts = strategies.map(
     (s) => `${STRATEGY_FNS[s](effectivePrompt, variantCount)}${contextBlock}`
   );
@@ -125,9 +148,24 @@ const veiledVariants = async (prompt, config = {}) => {
       { maxParallel: 3, errorPosture: ErrorPosture.resilient, abortSignal: runConfig.abortSignal }
     );
 
-    emitter.complete({ outcome: Outcome.success });
+    const validBatches = results.filter(Array.isArray);
+    const failedStrategies = strategies.length - validBatches.length;
 
-    return results.flat();
+    if (validBatches.length === 0) {
+      throw new Error(
+        `veiled-variants: all ${strategies.length} strategies failed to produce variants`
+      );
+    }
+
+    const variants = validBatches.flat();
+
+    emitter.complete({
+      outcome: failedStrategies > 0 ? Outcome.partial : Outcome.success,
+      variants: variants.length,
+      failedStrategies,
+    });
+
+    return variants;
   } catch (err) {
     emitter.error(err);
     throw err;

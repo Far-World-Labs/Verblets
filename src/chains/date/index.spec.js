@@ -83,4 +83,80 @@ describe('date chain', () => {
     expect(llm).toHaveBeenCalledTimes(1);
     expect(bool).not.toHaveBeenCalled();
   });
+
+  describe('retry integration', () => {
+    it('retries on transient LLM error during validation and succeeds', async () => {
+      llm.mockResolvedValueOnce(['Is it a valid date?']);
+      llm.mockResolvedValueOnce('2023-06-15');
+      const transientError = new Error('Rate limited');
+      transientError.httpStatus = 429;
+      bool.mockRejectedValueOnce(transientError);
+      bool.mockResolvedValueOnce(true);
+
+      const result = await date('When was the event?', { retryDelay: 0 });
+
+      expect(result).toBeInstanceOf(Date);
+      expect(result.toISOString()).toMatch(/^2023-06-15/);
+      expect(bool).toHaveBeenCalledTimes(2);
+    });
+
+    it('retries on 500 server error during validation and succeeds', async () => {
+      llm.mockResolvedValueOnce(['check']);
+      llm.mockResolvedValueOnce('2024-03-20');
+      const serverError = new Error('Internal Server Error');
+      serverError.httpStatus = 500;
+      bool.mockRejectedValueOnce(serverError);
+      bool.mockResolvedValueOnce(true);
+
+      const result = await date('March 20 2024', { retryDelay: 0 });
+
+      expect(result).toBeInstanceOf(Date);
+      expect(result.toISOString()).toMatch(/^2024-03-20/);
+      expect(bool).toHaveBeenCalledTimes(2);
+    });
+
+    it('returns best-effort date when retries are exhausted', async () => {
+      llm.mockResolvedValueOnce(['check']);
+      llm.mockResolvedValueOnce('2023-01-01');
+      bool.mockResolvedValueOnce(false);
+      llm.mockResolvedValueOnce('2023-02-02');
+      bool.mockResolvedValueOnce(false);
+      llm.mockResolvedValueOnce('2023-03-03');
+
+      const result = await date('Some date', { maxAttempts: 2, retryDelay: 0 });
+
+      expect(result).toBeInstanceOf(Date);
+      expect(result.toISOString()).toMatch(/^2023-03-03/);
+      expect(llm).toHaveBeenCalledTimes(4);
+      expect(bool).toHaveBeenCalledTimes(2);
+    });
+
+    it('returns undefined when retries exhausted with returnBestEffort false', async () => {
+      llm.mockResolvedValueOnce(['check']);
+      llm.mockResolvedValueOnce('2023-01-01');
+      bool.mockResolvedValueOnce(false);
+      llm.mockResolvedValueOnce('2023-02-02');
+      bool.mockResolvedValueOnce(false);
+      llm.mockResolvedValueOnce('2023-03-03');
+
+      const result = await date('Some date', {
+        maxAttempts: 2,
+        returnBestEffort: false,
+        retryDelay: 0,
+      });
+
+      expect(result).toBeUndefined();
+    });
+
+    it('does not retry on auth failure', async () => {
+      llm.mockResolvedValueOnce(['check']);
+      llm.mockResolvedValueOnce('2023-01-01');
+      const authError = new Error('Unauthorized');
+      authError.httpStatus = 401;
+      bool.mockRejectedValueOnce(authError);
+
+      await expect(date('Some date', { retryDelay: 0 })).rejects.toThrow('Unauthorized');
+      expect(bool).toHaveBeenCalledTimes(1);
+    });
+  });
 });

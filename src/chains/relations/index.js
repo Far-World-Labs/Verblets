@@ -100,6 +100,26 @@ export function parseRelations(relations) {
   }));
 }
 
+/**
+ * Validate the LLM extraction response and unwrap to a plain items array.
+ * Throws on malformed shapes — the schema is the contract; silent fallback
+ * to [] hides corrupt LLM output and produces garbage downstream.
+ */
+function parseExtractedRelations(response) {
+  const items = Array.isArray(response) ? response : response?.items;
+  if (!Array.isArray(items)) {
+    throw new Error(
+      `relations: expected { items: [] } or array from extraction LLM (got ${typeof response})`
+    );
+  }
+  for (const item of items) {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) {
+      throw new Error(`relations: expected relation object in items (got ${typeof item})`);
+    }
+  }
+  return parseRelations(items);
+}
+
 // ===== Core Functions =====
 
 /**
@@ -247,18 +267,7 @@ Example: {"object": "42^^xsd:integer"} NOT {"object": '"42"^^xsd:integer'}`;
     }
   );
 
-  // Handle auto-unwrapped response (llm unwraps simple collection schemas)
-  // If response is an array, it's already the items array
-  if (Array.isArray(response)) {
-    return { items: parseRelations(response) };
-  }
-
-  // Otherwise handle as normal object with items property
-  if (response && response.items) {
-    response.items = parseRelations(response.items);
-  }
-
-  return response;
+  return { items: parseExtractedRelations(response) };
 }
 
 /**
@@ -280,11 +289,10 @@ export default async function extractRelations(text, instructions, config) {
     const spec = known.spec || (await relationSpec(effectiveInstructions, runConfig));
     emitter.emit({ event: DomainEvent.phase, phase: 'applying-relations', specification: spec });
     const result = await extractRelationsWithSpec(text, spec, runConfig);
-    const items = result.items || [];
 
     emitter.complete({ outcome: Outcome.success });
 
-    return items;
+    return result.items;
   } catch (err) {
     emitter.error(err);
     throw err;

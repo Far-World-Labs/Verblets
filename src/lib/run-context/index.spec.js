@@ -9,7 +9,7 @@ vi.mock('../../init.js', () => ({ default: vi.fn() }));
 // Mock heavy imports that require full verblets setup
 vi.mock('../llm/index.js', () => ({
   default: vi.fn(),
-  jsonSchema: vi.fn(),
+  jsonSchema: vi.fn((name, schema) => ({ type: 'json_schema', json_schema: { name, schema } })),
 }));
 vi.mock('../retry/index.js', () => ({
   default: vi.fn(),

@@ -250,6 +250,33 @@ describe('site-crawl', () => {
     expect(result.gateCallCount).toBeGreaterThanOrEqual(1);
   });
 
+  it('throws when gate LLM returns malformed shape (no decisions key)', async () => {
+    const callLlm = (await import('../../lib/llm/index.js')).default;
+    callLlm.mockResolvedValueOnce({ wrong: 'shape' });
+
+    await expect(
+      siteCrawl('https://example.com/', { maxPages: 3, gateInterval: 1 })
+    ).rejects.toThrow(/expected.*decisions/);
+  });
+
+  it('throws when gate LLM returns null', async () => {
+    const callLlm = (await import('../../lib/llm/index.js')).default;
+    callLlm.mockResolvedValueOnce(null);
+
+    await expect(
+      siteCrawl('https://example.com/', { maxPages: 3, gateInterval: 1 })
+    ).rejects.toThrow(/expected.*decisions/);
+  });
+
+  it('throws when gate LLM returns non-array decisions', async () => {
+    const callLlm = (await import('../../lib/llm/index.js')).default;
+    callLlm.mockResolvedValueOnce({ decisions: 'not-array' });
+
+    await expect(
+      siteCrawl('https://example.com/', { maxPages: 3, gateInterval: 1 })
+    ).rejects.toThrow(/expected.*decisions/);
+  });
+
   it('provides cleanup function', async () => {
     const result = await siteCrawl('https://example.com/', { maxPages: 1, gateInterval: 100 });
 

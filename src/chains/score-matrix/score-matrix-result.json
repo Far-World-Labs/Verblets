@@ -1,0 +1,36 @@
+{
+  "type": "object",
+  "properties": {
+    "matrix": {
+      "type": "array",
+      "items": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "score": {
+              "type": "number"
+            },
+            "rationale": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": ["score", "rationale"],
+          "additionalProperties": false
+        }
+      }
+    },
+    "scale": {
+      "type": "object",
+      "properties": {
+        "min": { "type": "number" },
+        "max": { "type": "number" }
+      },
+      "required": ["min", "max"],
+      "additionalProperties": false
+    }
+  },
+  "required": ["matrix", "scale"],
+  "additionalProperties": false
+}

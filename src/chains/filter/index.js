@@ -62,7 +62,7 @@ const filter = async function filter(list, instructions, config) {
     strictness: withPolicy(mapStrictness, ['guidance', 'errorPosture']),
   });
   const guidance = known.guidance ?? mapperGuidance;
-  const decisions = new Array(list.length);
+  const decisions = Array.from({ length: list.length }, () => undefined);
   const batches = await createBatches(list, runConfig);
   const batchDone = emitter.batch(list.length);
 
@@ -117,9 +117,17 @@ Process exactly ${count} items from the XML list below and return ${count} yes/n
           onProgress: scopePhase(runConfig.onProgress, 'batch'),
         });
 
-        items.forEach((_, i) => {
+        if (!Array.isArray(response)) {
+          throw new Error(`filter: expected decisions array from LLM (got ${typeof response})`);
+        }
+        if (response.length !== items.length) {
+          throw new Error(
+            `filter: LLM returned ${response.length} decisions for ${items.length} items`
+          );
+        }
+        for (let i = 0; i < items.length; i++) {
           decisions[startIndex + i] = response[i]?.toLowerCase().trim() === 'yes';
-        });
+        }
 
         batchDone(items.length);
       } catch (error) {
@@ -127,9 +135,12 @@ Process exactly ${count} items from the XML list below and return ${count} yes/n
         if (errorPosture === ErrorPosture.strict) throw error;
 
         emitter.error(error, { startIndex, itemCount: items.length });
-        for (let i = 0; i < items.length; i++) {
-          decisions[startIndex + i] = false;
-        }
+        // Leave decisions for this batch undefined so the partial-outcome
+        // detector below sees the unfilled slots. Items are excluded from
+        // results because `list.filter((_, i) => decisions[i])` treats
+        // undefined as falsy — but the chain reports outcome=partial,
+        // distinguishing "excluded after a failure" from "excluded by LLM".
+        batchDone(items.length);
       }
     },
     {

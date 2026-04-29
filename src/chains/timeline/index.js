@@ -92,7 +92,9 @@ function mergeTimelineEvents(eventArrays) {
 }
 
 /**
- * Extract events from a single chunk
+ * Extract events from a single chunk. Throws on malformed response so the
+ * caller's task-level catch counts the chunk as failed rather than silently
+ * inflating "succeeded with zero events."
  */
 async function extractFromChunk(chunk, options = {}) {
   const response = await callLlm(chunk, {
@@ -100,7 +102,10 @@ async function extractFromChunk(chunk, options = {}) {
     responseFormat: jsonSchema(timelineEventJsonSchema.name, timelineEventJsonSchema.schema),
   });
 
-  return response.events || [];
+  if (!response || !Array.isArray(response.events)) {
+    throw new Error('timeline: extraction returned malformed response (expected { events: [] })');
+  }
+  return response.events;
 }
 
 /**
@@ -152,6 +157,7 @@ export default async function timeline(text, instructions, config) {
     // Process chunks in parallel batches
     const allEvents = [];
     let failedChunks = 0;
+    let succeededChunks = 0;
 
     await parallelBatch(
       chunks,
@@ -166,6 +172,7 @@ export default async function timeline(text, instructions, config) {
             }
           );
           allEvents.push(...events);
+          succeededChunks++;
           onProgress?.(chunkIndex + 1, chunks.length);
         } catch (error) {
           failedChunks++;
@@ -186,6 +193,12 @@ export default async function timeline(text, instructions, config) {
         abortSignal: runConfig.abortSignal,
       }
     );
+
+    // Total-failure detection: if every chunk failed, surface that explicitly
+    // rather than silently returning [].
+    if (chunks.length > 0 && succeededChunks === 0) {
+      throw new Error(`timeline: all ${chunks.length} chunks failed extraction`);
+    }
 
     // Merge and deduplicate events from all chunks
     debug(`Timeline: processed ${chunks.length} chunks, found ${allEvents.length} total events`);
@@ -211,10 +224,13 @@ ${asXML(eventList, { tag: 'events' })}`;
         responseFormat: jsonSchema(timelineEventJsonSchema.name, timelineEventJsonSchema.schema),
       });
 
-      const deduplicatedEvents = deduplicatedResult?.events || deduplicatedResult;
-      if (Array.isArray(deduplicatedEvents) && deduplicatedEvents.length > 0) {
-        mergedEvents = sortTimelineEvents(deduplicatedEvents);
+      const deduplicatedEvents = deduplicatedResult?.events ?? deduplicatedResult;
+      if (!Array.isArray(deduplicatedEvents)) {
+        throw new Error(
+          'timeline: dedup LLM returned malformed response (expected { events: [] })'
+        );
       }
+      mergedEvents = sortTimelineEvents(deduplicatedEvents);
       batchDone(1);
     }
 
@@ -223,16 +239,26 @@ ${asXML(eventList, { tag: 'events' })}`;
       let knownEvents = [];
 
       if (providedKnowledge) {
-        // Knowledge base pre-supplied — skip reduce derivation
-        try {
-          const parsed =
-            typeof providedKnowledge === 'string'
-              ? JSON.parse(providedKnowledge)
-              : providedKnowledge;
-          knownEvents = sortTimelineEvents(parsed.events || parsed);
-        } catch (e) {
-          debug('Failed to parse provided knowledge:', e.message);
+        // Knowledge base pre-supplied — skip reduce derivation. Validate at the
+        // boundary: caller-config errors throw rather than silently collapsing
+        // to an empty knowledge base.
+        let parsed;
+        if (typeof providedKnowledge === 'string') {
+          try {
+            parsed = JSON.parse(providedKnowledge);
+          } catch (e) {
+            throw new Error(`timeline: providedKnowledge is invalid JSON: ${e.message}`);
+          }
+        } else {
+          parsed = providedKnowledge;
         }
+        const eventsArray = parsed?.events ?? parsed;
+        if (!Array.isArray(eventsArray)) {
+          throw new Error(
+            'timeline: providedKnowledge must be { events: [...] } or an events array'
+          );
+        }
+        knownEvents = sortTimelineEvents(eventsArray);
       } else {
         // First, use reduce to build a knowledge base of known dates
         const focusArea = instructionText
@@ -260,12 +286,12 @@ Return as JSON with the same event format, maintaining chronological order.`;
           onProgress: scopePhase(runConfig.onProgress, 'reduce:knowledge-base'),
         });
 
-        try {
-          const parsed = knowledgeBase;
-          knownEvents = sortTimelineEvents(parsed.events || []);
-        } catch (e) {
-          debug('Failed to parse knowledge base:', e.message);
+        if (!knowledgeBase || !Array.isArray(knowledgeBase.events)) {
+          throw new Error(
+            'timeline: knowledge base reduce returned malformed result (expected { events: [] })'
+          );
         }
+        knownEvents = sortTimelineEvents(knowledgeBase.events);
       }
 
       emitter.emit({ event: DomainEvent.phase, phase: 'enrichment', knowledgeBase: knownEvents });
