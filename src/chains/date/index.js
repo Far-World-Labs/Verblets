@@ -163,6 +163,7 @@ async function date(text, config = {}) {
     let currentDate = firstDate;
     let currentText = text;
     let attempt = 0;
+    let validationPassed = false;
     const batchDone = emitter.batch(maxAttempts);
 
     // Use retry for the entire chain
@@ -182,6 +183,7 @@ async function date(text, config = {}) {
         batchDone(1);
 
         if (validation.passed) {
+          validationPassed = true;
           return currentDate;
         }
 
@@ -215,8 +217,15 @@ async function date(text, config = {}) {
       }
     );
 
+    // Outcome distinguishes clean-validation vs exhausted-with-best-effort.
+    // When validationPassed is false, the loop exited because attempts ran
+    // out — caller intent (a date that satisfies the checks) was unmet.
+    // Don't lie about that with Outcome.success.
     emitter.emit({ event: DomainEvent.output, value: result });
-    emitter.complete({ outcome: Outcome.success });
+    emitter.complete({
+      outcome: validationPassed ? Outcome.success : Outcome.degraded,
+      attempts: attempt,
+    });
     return result;
   } catch (err) {
     emitter.error(err);
