@@ -83,11 +83,42 @@ async function fragmentBatch(sourceTexts, schema, runConfig) {
     { label: 'embed-object:fragment', config: runConfig }
   );
 
-  // rawResult is auto-unwrapped from { items: [...] } to the array
-  const results = Array.isArray(rawResult) ? rawResult : [rawResult];
+  // rawResult is auto-unwrapped from { items: [...] } to the array.
+  // Wrapping a non-array would silently produce a fake one-element array
+  // and downstream entry.sourceIndex / entry.fragments accesses would
+  // crash deep with cryptic errors. Surface honestly.
+  if (!Array.isArray(rawResult)) {
+    throw new Error(
+      `embed-object:fragment: expected array from LLM (got ${
+        rawResult === null ? 'null' : typeof rawResult
+      })`
+    );
+  }
 
-  return results.map((entry) => {
-    const source = sourceTexts[entry.sourceIndex] ?? sourceTexts[0];
+  return rawResult.map((entry) => {
+    if (!entry || typeof entry !== 'object') {
+      throw new Error(
+        `embed-object:fragment: expected object entry (got ${
+          entry === null ? 'null' : typeof entry
+        })`
+      );
+    }
+    if (!Number.isInteger(entry.sourceIndex)) {
+      throw new Error(
+        `embed-object:fragment: entry missing required integer "sourceIndex" (got ${typeof entry.sourceIndex})`
+      );
+    }
+    const source = sourceTexts[entry.sourceIndex];
+    if (!source) {
+      throw new Error(
+        `embed-object:fragment: entry.sourceIndex ${entry.sourceIndex} out of range (batch size ${sourceTexts.length})`
+      );
+    }
+    if (!Array.isArray(entry.fragments)) {
+      throw new Error(
+        `embed-object:fragment: entry missing required "fragments" array (got ${typeof entry.fragments})`
+      );
+    }
     return {
       fragmentSetId: `fs:${source.sourceId}`,
       fragments: entry.fragments.map((f) => ({
@@ -102,6 +133,16 @@ async function fragmentBatch(sourceTexts, schema, runConfig) {
 }
 
 export default async function fragment({ sourceTexts, schema }, config = {}) {
+  if (!Array.isArray(sourceTexts) || sourceTexts.length === 0) {
+    throw new Error(
+      `embed-object:fragment: sourceTexts must be a non-empty array (got ${
+        sourceTexts === null ? 'null' : typeof sourceTexts
+      })`
+    );
+  }
+  if (!schema || typeof schema !== 'object' || !Array.isArray(schema.projections)) {
+    throw new Error('embed-object:fragment: schema requires a projections array');
+  }
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
