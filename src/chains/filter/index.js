@@ -1,4 +1,5 @@
 import listBatch, { ListStyle, determineStyle } from '../../verblets/list-batch/index.js';
+import bool from '../../verblets/bool/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { filterDecisionsJsonSchema } from './schemas.js';
 import { createBatches, parallel, retry } from '../../lib/index.js';
@@ -173,5 +174,95 @@ filter.knownTexts = ['guidance'];
 // callers the smallest LLM building block in the same shape as filter, without
 // duplicating the prompt scaffolding.
 export { default as filterItem } from '../../verblets/bool/index.js';
+
+/**
+ * Filter a list by running one bool call per item with managed concurrency.
+ *
+ * Use this when batched LLM filtering smears items together (e.g. items vary
+ * widely in length or domain) or when you want per-item retry granularity.
+ * Items whose bool call fails are excluded; the chain reports outcome=partial
+ * when any failures occurred so callers can distinguish "LLM said no" from
+ * "we never got an answer."
+ *
+ * @param {Array} list - Items to evaluate
+ * @param {string|object} instructions - Filtering criteria (string or bundle with `guidance`)
+ * @param {object} [config={}] - `maxParallel`, `strictness`, `errorPosture`
+ * @returns {Promise<Array>} Items that passed
+ */
+const filterParallel = async function filterParallel(list, instructions, config) {
+  [instructions, config] = resolveArgs(instructions, config, ['guidance']);
+  if (!Array.isArray(list)) {
+    throw new Error(
+      `filterParallel: list must be an array (got ${list === null ? 'null' : typeof list})`
+    );
+  }
+  const { text, known, context } = resolveTexts(instructions, ['guidance']);
+  const runConfig = nameStep('filter:parallel', config);
+  const emitter = createProgressEmitter('filter:parallel', runConfig.onProgress, runConfig);
+  emitter.start();
+  emitter.emit({ event: DomainEvent.input, value: list });
+
+  try {
+    const {
+      guidance: mapperGuidance,
+      errorPosture,
+      maxParallel,
+    } = await getOptions(runConfig, {
+      strictness: withPolicy(mapStrictness, ['guidance', 'errorPosture']),
+      maxParallel: 3,
+    });
+    const guidance = known.guidance ?? mapperGuidance;
+    const guidanceBlock = guidance ? `\n\n${asXML(guidance, { tag: 'borderline-handling' })}` : '';
+    const contextBlock = context ? `\n\n${context}` : '';
+
+    const decisions = new Array(list.length).fill(undefined);
+    const batchDone = emitter.batch(list.length);
+    const indexed = list.map((value, index) => ({ value, index }));
+
+    await parallel(
+      indexed,
+      async ({ value, index }) => {
+        const itemSerialized = typeof value === 'string' ? value : JSON.stringify(value);
+        const question = `Decide whether the item below satisfies the filtering criteria.
+
+${asXML(text, { tag: 'filtering-criteria' })}${guidanceBlock}
+
+${asXML(itemSerialized, { tag: 'item' })}${contextBlock}`;
+
+        try {
+          const result = await bool(question, {
+            ...runConfig,
+            onProgress: scopePhase(runConfig.onProgress, 'item'),
+          });
+          decisions[index] = result === true;
+        } catch (error) {
+          emitter.error(error, { itemIndex: index });
+          if (errorPosture === ErrorPosture.strict) throw error;
+        } finally {
+          batchDone(1);
+        }
+      },
+      {
+        maxParallel,
+        errorPosture,
+        abortSignal: runConfig.abortSignal,
+        label: 'filter parallel items',
+      }
+    );
+
+    const results = list.filter((_, i) => decisions[i]);
+    const outcome = decisions.some((d) => d === undefined) ? Outcome.partial : Outcome.success;
+    emitter.emit({ event: DomainEvent.output, value: results });
+    emitter.complete({ inputCount: list.length, outputCount: results.length, outcome });
+    return results;
+  } catch (err) {
+    emitter.error(err);
+    throw err;
+  }
+};
+
+filterParallel.knownTexts = ['guidance'];
+
+export { filterParallel };
 
 export default filter;

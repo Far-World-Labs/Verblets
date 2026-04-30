@@ -1,4 +1,4 @@
-import group, { groupItem } from './index.js';
+import group, { groupItem, groupParallel } from './index.js';
 import listBatch from '../../verblets/list-batch/index.js';
 import reduce from '../reduce/index.js';
 import callLlm from '../../lib/llm/index.js';
@@ -137,5 +137,43 @@ describe('groupItem', () => {
     await expect(groupItem('a', { text: 'classify', categories: 'one, two' })).rejects.toThrow(
       /blank category name/
     );
+  });
+});
+
+describe('groupParallel', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('assigns each item using groupItem and aggregates by category', async () => {
+    vi.mocked(callLlm)
+      .mockResolvedValueOnce('odd')
+      .mockResolvedValueOnce('even')
+      .mockResolvedValueOnce('odd');
+    const result = await groupParallel(['a', 'bb', 'ccc'], {
+      text: 'odd or even by length',
+      categories: 'odd, even',
+    });
+    expect(result).toEqual({ odd: ['a', 'ccc'], even: ['bb'] });
+    expect(callLlm).toHaveBeenCalledTimes(3);
+  });
+
+  it('throws when categories are missing', async () => {
+    await expect(groupParallel(['a'], 'instructions')).rejects.toThrow(
+      /categories must be provided/
+    );
+  });
+
+  it('returns empty object on empty list', async () => {
+    const result = await groupParallel([], { text: 'x', categories: 'one, two' });
+    expect(result).toEqual({});
+    expect(callLlm).not.toHaveBeenCalled();
+  });
+
+  it('throws when every item fails', async () => {
+    vi.mocked(callLlm).mockResolvedValue('   '); // blank category triggers groupItem error
+    await expect(
+      groupParallel(['a', 'b'], { text: 'x', categories: 'one, two' }, { maxParallel: 1 })
+    ).rejects.toThrow(/failed to assign any of 2 items/);
   });
 });

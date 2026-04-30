@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import calibrate, { calibrateSpec, calibrateInstructions, mapCalibrate } from './index.js';
+import calibrate, {
+  calibrateSpec,
+  calibrateInstructions,
+  mapCalibrate,
+  mapCalibrateBatched,
+} from './index.js';
+import map from '../map/index.js';
 import llm from '../../lib/llm/index.js';
 
 vi.mock('../../lib/llm/index.js', async (importOriginal) => ({
@@ -13,6 +19,10 @@ vi.mock('../../lib/parallel-batch/index.js', () => ({
       await processor(items[i], i);
     }
   }),
+}));
+
+vi.mock('../map/index.js', () => ({
+  default: vi.fn(),
 }));
 
 const mockSpec = {
@@ -218,5 +228,48 @@ describe('mapCalibrate', () => {
     await expect(
       mapCalibrate(scans, { text: 'x', spec: mockSpec }, { maxAttempts: 1 })
     ).rejects.toThrow(/all 1 scans failed/);
+  });
+});
+
+describe('mapCalibrateBatched', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('routes through the map chain with the batch responseFormat', async () => {
+    vi.mocked(map).mockResolvedValueOnce([mockResult, mockResult]);
+    const scans = [makeScan(['pii-name'], [0.9]), makeScan(['pii-name'], [0.8])];
+    const result = await mapCalibrateBatched(scans, { text: 'x', spec: mockSpec });
+    expect(result).toEqual([mockResult, mockResult]);
+    const mapConfig = vi.mocked(map).mock.calls[0][2];
+    expect(mapConfig.responseFormat?.json_schema?.name).toBe('calibrate_batch');
+  });
+
+  it('generates spec once when not bundled', async () => {
+    vi.mocked(llm).mockResolvedValueOnce(mockSpec);
+    vi.mocked(map).mockResolvedValueOnce([mockResult]);
+    const scans = [makeScan(['pii-name'], [0.9])];
+    await mapCalibrateBatched(scans, 'classify privacy risk');
+    // spec call only — map() does the per-scan dispatch
+    expect(llm).toHaveBeenCalledTimes(1);
+    const mapInstructions = vi.mocked(map).mock.calls[0][1];
+    expect(mapInstructions).toContain('<calibration-specification>');
+  });
+
+  it('reports partial outcome when map returns undefined slots', async () => {
+    vi.mocked(map).mockResolvedValueOnce([mockResult, undefined]);
+    const events = [];
+    const scans = [makeScan(['pii-name'], [0.9]), makeScan(['pii-name'], [0.8])];
+    const result = await mapCalibrateBatched(
+      scans,
+      { text: 'x', spec: mockSpec },
+      { onProgress: (e) => events.push(e) }
+    );
+    expect(result[0]).toEqual(mockResult);
+    expect(result[1]).toBeUndefined();
+    const complete = events.find(
+      (e) => e.event === 'chain:complete' && e.step === 'calibrate:batched'
+    );
+    expect(complete.outcome).toBe('partial');
   });
 });

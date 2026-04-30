@@ -1,8 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { testPromptShapingOption } from '../../lib/test-utils/index.js';
-import filter from './index.js';
+import filter, { filterParallel } from './index.js';
 import listBatch from '../../verblets/list-batch/index.js';
+import bool from '../../verblets/bool/index.js';
 import { ChainEvent, DomainEvent, OpEvent } from '../../lib/progress/constants.js';
+
+vi.mock('../../verblets/bool/index.js', () => ({
+  default: vi.fn(),
+}));
 
 vi.mock('../../verblets/list-batch/index.js', () => ({
   default: vi.fn(async (items) => {
@@ -258,5 +263,48 @@ describe('filter', () => {
       expect(chainStart.operation).toBeDefined();
       expect(chainStart.timestamp).toBeDefined();
     });
+  });
+});
+
+describe('filterParallel', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('keeps items where bool returns true', async () => {
+    vi.mocked(bool)
+      .mockResolvedValueOnce(true)
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(true);
+    const result = await filterParallel(['a', 'b', 'c'], 'criteria');
+    expect(result).toEqual(['a', 'c']);
+    expect(bool).toHaveBeenCalledTimes(3);
+  });
+
+  it('passes filtering criteria into each per-item question', async () => {
+    vi.mocked(bool).mockResolvedValue(true);
+    await filterParallel(['x'], 'must include letter');
+    const question = vi.mocked(bool).mock.calls[0][0];
+    expect(question).toContain('<filtering-criteria>');
+    expect(question).toContain('must include letter');
+  });
+
+  it('reports partial outcome when an item bool fails', async () => {
+    vi.mocked(bool).mockResolvedValueOnce(true).mockRejectedValueOnce(new Error('boom'));
+    const events = [];
+    const result = await filterParallel(['a', 'b'], 'x', {
+      maxParallel: 1,
+      strictness: 'low',
+      onProgress: (e) => events.push(e),
+    });
+    expect(result).toEqual(['a']);
+    const complete = events.find(
+      (e) => e.event === 'chain:complete' && e.step === 'filter:parallel'
+    );
+    expect(complete.outcome).toBe('partial');
+  });
+
+  it('throws when list is not an array', async () => {
+    await expect(filterParallel('not-an-array', 'x')).rejects.toThrow(/must be an array/);
   });
 });

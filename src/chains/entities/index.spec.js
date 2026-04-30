@@ -1,5 +1,11 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import extractEntities, { entitySpec, entityInstructions, mapEntities } from './index.js';
+import extractEntities, {
+  entitySpec,
+  entityInstructions,
+  mapEntities,
+  mapEntitiesBatched,
+} from './index.js';
+import map from '../map/index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(),
@@ -12,6 +18,10 @@ vi.mock('../../lib/parallel-batch/index.js', () => ({
       await processor(items[i], i);
     }
   }),
+}));
+
+vi.mock('../map/index.js', () => ({
+  default: vi.fn(),
 }));
 
 import llm from '../../lib/llm/index.js';
@@ -123,6 +133,31 @@ describe('entities', () => {
 
     it('throws when texts is not an array', async () => {
       await expect(mapEntities('not-an-array', 'x')).rejects.toThrow(/must be an array/);
+    });
+  });
+
+  describe('mapEntitiesBatched', () => {
+    it('routes through map() with the entities batch responseFormat', async () => {
+      vi.mocked(map).mockResolvedValueOnce([
+        { entities: [{ name: 'A', type: 'p' }] },
+        { entities: [{ name: 'B', type: 'p' }] },
+      ]);
+      const result = await mapEntitiesBatched(['t1', 't2'], { text: 'x', spec: 'reused' });
+      expect(result).toHaveLength(2);
+      expect(result[0].entities[0].name).toBe('A');
+      const mapConfig = vi.mocked(map).mock.calls[0][2];
+      expect(mapConfig.responseFormat?.json_schema?.name).toBe('entities_batch');
+    });
+
+    it('generates spec when not bundled', async () => {
+      llm.mockResolvedValueOnce('shared spec');
+      vi.mocked(map).mockResolvedValueOnce([{ entities: [] }]);
+      await mapEntitiesBatched(['t'], 'extract');
+      expect(llm).toHaveBeenCalledTimes(1);
+    });
+
+    it('throws when texts is not an array', async () => {
+      await expect(mapEntitiesBatched('not-an-array', 'x')).rejects.toThrow(/must be an array/);
     });
   });
 });

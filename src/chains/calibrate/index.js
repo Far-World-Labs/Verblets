@@ -1,6 +1,7 @@
 import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import parallel from '../../lib/parallel-batch/index.js';
+import map from '../map/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 import { resolveArgs, resolveTexts } from '../../lib/instruction/index.js';
@@ -8,6 +9,20 @@ import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
 import { DomainEvent, Outcome, ErrorPosture } from '../../lib/progress/constants.js';
 import { calibrateSpecificationJsonSchema } from './schemas.js';
 import calibrateResultSchema from './calibrate-result.json' with { type: 'json' };
+
+const calibrateBatchSchema = {
+  type: 'object',
+  properties: {
+    items: {
+      type: 'array',
+      items: calibrateResultSchema,
+    },
+  },
+  required: ['items'],
+  additionalProperties: false,
+};
+
+const calibrateBatchResponseFormat = jsonSchema('calibrate_batch', calibrateBatchSchema);
 
 const name = 'calibrate';
 
@@ -391,3 +406,85 @@ export async function mapCalibrate(scans, instructions, config) {
 }
 
 mapCalibrate.knownTexts = ['spec'];
+
+/**
+ * Classify a list of scans by packing scans into batched LLM prompts (one
+ * call per batch). Sister to `mapCalibrate`, which dispatches per-scan in
+ * parallel — use the batched form to amortize per-call overhead when scans
+ * are uniform enough that the LLM can produce one consistent classification
+ * vector per prompt.
+ *
+ * Failed batches leave their slots as `undefined`; chain reports
+ * outcome=partial. The classification spec is still generated once over
+ * the full corpus.
+ *
+ * @param {Array<{ flagged: boolean, hits: Array }>} scans - Scan results
+ * @param {string|object} instructions - Calibration instructions (string or bundle with `spec`)
+ * @param {object} [config={}] - `batchSize`, `maxParallel`, `errorPosture`
+ * @returns {Promise<Array<object|undefined>>}
+ */
+export async function mapCalibrateBatched(scans, instructions, config) {
+  validateScans(scans, 'mapCalibrateBatched');
+
+  [instructions, config] = resolveArgs(instructions, config, ['spec']);
+  const { text, known, context } = resolveTexts(instructions, ['spec']);
+  const effectiveInstructions = context ? `${text}\n\n${context}` : text;
+
+  const runConfig = nameStep('calibrate:batched', config);
+  const emitter = createProgressEmitter('calibrate:batched', runConfig.onProgress, runConfig);
+  emitter.start();
+  emitter.emit({ event: DomainEvent.input, value: scans });
+
+  try {
+    const spec =
+      known.spec ||
+      (await calibrateSpec(scans, {
+        ...runConfig,
+        instructions: effectiveInstructions,
+        onProgress: scopePhase(runConfig.onProgress, 'calibrate:spec'),
+      }));
+
+    emitter.emit({ event: DomainEvent.phase, phase: 'classifying', specification: spec });
+
+    const mapInstructions = `Classify each scan result against the calibration specification.
+
+${asXML(spec, { tag: 'calibration-specification' })}
+
+For every scan in the input list, return a classification object with:
+- severity: one of "none", "low", "medium", "high", "critical"
+- salience: one of "routine", "notable", "significant", "exceptional"
+- categories: object mapping each detected category to { severity, salience }
+- summary: brief explanation of the classification
+
+Return one classification object per input scan, in the same order.`;
+
+    const serializedScans = scans.map((scan) => JSON.stringify(scan));
+
+    const results = await map(serializedScans, mapInstructions, {
+      ...runConfig,
+      responseFormat: calibrateBatchResponseFormat,
+      onProgress: scopePhase(runConfig.onProgress, 'calibrate:map'),
+    });
+
+    if (!Array.isArray(results)) {
+      throw new Error(
+        `calibrate: expected array of classifications from map (got ${typeof results})`
+      );
+    }
+
+    const failedItems = results.filter((r) => r === undefined).length;
+    const outcome = failedItems > 0 ? Outcome.partial : Outcome.success;
+    emitter.complete({
+      totalItems: results.length,
+      successCount: results.length - failedItems,
+      failedItems,
+      outcome,
+    });
+    return results;
+  } catch (err) {
+    emitter.error(err);
+    throw err;
+  }
+}
+
+mapCalibrateBatched.knownTexts = ['spec'];

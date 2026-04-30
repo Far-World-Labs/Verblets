@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import map, { streamingMap, mapItem } from './index.js';
+import map, { streamingMap, mapItem, mapParallel } from './index.js';
 import listBatch from '../../verblets/list-batch/index.js';
 import callLlm from '../../lib/llm/index.js';
 import { OpEvent, ChainEvent, DomainEvent } from '../../lib/progress/constants.js';
@@ -497,5 +497,44 @@ describe('mapItem', () => {
     await mapItem('item', 'instructions', { responseFormat: customFormat });
     const cfg = vi.mocked(callLlm).mock.calls[0][1];
     expect(cfg.responseFormat).toBe(customFormat);
+  });
+});
+
+describe('mapParallel', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('runs one LLM call per item and aligns results', async () => {
+    vi.mocked(callLlm)
+      .mockResolvedValueOnce('A')
+      .mockResolvedValueOnce('B')
+      .mockResolvedValueOnce('C');
+    const result = await mapParallel(['a', 'b', 'c'], 'uppercase', { maxParallel: 3 });
+    expect(result).toEqual(['A', 'B', 'C']);
+    expect(callLlm).toHaveBeenCalledTimes(3);
+  });
+
+  it('reports partial outcome when one slot fails after retries', async () => {
+    vi.mocked(callLlm)
+      .mockResolvedValueOnce('A')
+      .mockRejectedValueOnce(new Error('boom'))
+      .mockResolvedValueOnce('C');
+    const events = [];
+    const result = await mapParallel(['a', 'b', 'c'], 'transform', {
+      maxParallel: 1,
+      maxAttempts: 1,
+      onProgress: (e) => events.push(e),
+    });
+    expect(result[0]).toBe('A');
+    expect(result[1]).toBeUndefined();
+    expect(result[2]).toBe('C');
+    const complete = events.find((e) => e.event === 'chain:complete' && e.step === 'map:parallel');
+    expect(complete.outcome).toBe('partial');
+    expect(complete.failedItems).toBe(1);
+  });
+
+  it('throws when list is not an array', async () => {
+    await expect(mapParallel('not-an-array', 'x')).rejects.toThrow(/must be an array/);
   });
 });

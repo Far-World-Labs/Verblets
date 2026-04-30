@@ -350,3 +350,126 @@ Return only the chosen category name, exactly as it appears in the categories li
 }
 
 groupItem.knownTexts = ['categories'];
+
+/**
+ * Assign every item in a list to one of the supplied categories with managed
+ * concurrency — one LLM call per item.
+ *
+ * Skips the discovery phase the default `group` runs; categories must be
+ * supplied in the instruction bundle. Use this when:
+ *   - The taxonomy is already known (e.g. carried forward from a prior run)
+ *   - Items vary widely so a batched assignment would smear them
+ *   - You want per-item retry granularity
+ *
+ * Items whose assignment fails are dropped from the result; the chain reports
+ * outcome=partial so callers can distinguish "not in any group" from "we
+ * never got an answer."
+ *
+ * @param {Array} list - Items to assign
+ * @param {string|object} instructions - Instruction bundle including `categories`
+ * @param {object} [config={}] - `maxParallel`, `errorPosture`, `topN`
+ * @returns {Promise<Object<string, Array>>} category-name → items
+ */
+export async function groupParallel(list, instructions, config) {
+  [instructions, config] = resolveArgs(instructions, config, ['categories']);
+  if (!Array.isArray(list)) {
+    throw new Error(
+      `groupParallel: list must be an array (got ${list === null ? 'null' : typeof list})`
+    );
+  }
+  const { text, known, context } = resolveTexts(instructions, ['categories']);
+
+  if (!known.categories) {
+    throw new Error('groupParallel: categories must be provided in the instruction bundle');
+  }
+  const categories = Array.isArray(known.categories)
+    ? known.categories
+    : parseCategories(known.categories);
+  if (categories.length === 0) {
+    throw new Error('groupParallel: categories list is empty');
+  }
+
+  const runConfig = nameStep('group:parallel', config);
+  const emitter = createProgressEmitter('group:parallel', runConfig.onProgress, runConfig);
+  emitter.start();
+  emitter.emit({ event: DomainEvent.input, value: list });
+
+  if (list.length === 0) {
+    emitter.complete({
+      groupCount: 0,
+      totalItems: 0,
+      successCount: 0,
+      failedItems: 0,
+      outcome: Outcome.success,
+    });
+    return {};
+  }
+
+  try {
+    const { maxParallel, errorPosture, topN } = await getOptions(runConfig, {
+      granularity: withPolicy(mapGranularity, ['guidance', 'topN']),
+      maxParallel: 3,
+      errorPosture: ErrorPosture.resilient,
+    });
+
+    // Pass `categories` as a known key so groupItem skips re-parsing on every call.
+    const itemInstructions = {
+      text,
+      categories,
+      ...(context ? { _ctx: context } : {}),
+    };
+
+    const labels = new Array(list.length).fill(undefined);
+    const batchDone = emitter.batch(list.length);
+    const indexed = list.map((value, index) => ({ value, index }));
+
+    await parallel(
+      indexed,
+      async ({ value, index }) => {
+        try {
+          labels[index] = await groupItem(value, itemInstructions, {
+            ...runConfig,
+            onProgress: scopePhase(runConfig.onProgress, 'item'),
+          });
+        } catch (error) {
+          emitter.error(error, { itemIndex: index });
+          if (errorPosture === ErrorPosture.strict) throw error;
+        } finally {
+          batchDone(1);
+        }
+      },
+      {
+        maxParallel,
+        errorPosture,
+        abortSignal: runConfig.abortSignal,
+        label: 'group parallel items',
+      }
+    );
+
+    const { groups, droppedLabels } = assignItemsToGroups([{ items: list, labels }]);
+    const totalAssigned = Object.values(groups).reduce((s, arr) => s + arr.length, 0);
+
+    if (totalAssigned === 0 && list.length > 0) {
+      throw new Error(`groupParallel: failed to assign any of ${list.length} items`);
+    }
+
+    const result = topN ? applyTopNFilter(groups, topN) : groups;
+    const failedItems = list.length - totalAssigned;
+    const outcome = failedItems > 0 ? Outcome.partial : Outcome.success;
+
+    emitter.complete({
+      groupCount: Object.keys(result).length,
+      totalItems: list.length,
+      successCount: totalAssigned,
+      failedItems,
+      droppedLabels,
+      outcome,
+    });
+    return result;
+  } catch (err) {
+    emitter.error(err);
+    throw err;
+  }
+}
+
+groupParallel.knownTexts = ['categories'];

@@ -1,6 +1,7 @@
 import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import parallel from '../../lib/parallel-batch/index.js';
+import map from '../map/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
 import { DomainEvent, Outcome, ErrorPosture } from '../../lib/progress/constants.js';
@@ -8,6 +9,29 @@ import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 import { resolveArgs, resolveTexts } from '../../lib/instruction/index.js';
 import { expectArray, expectObject } from '../../lib/expect-shape/index.js';
 import relationResultSchema from './relation-result.json' with { type: 'json' };
+
+// Per-text result uses `relations` rather than `items` so the outer schema can
+// keep its own `items` wrapper that the LLM auto-unwraps cleanly.
+const relationBatchSchema = {
+  type: 'object',
+  properties: {
+    items: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          relations: relationResultSchema.properties.items,
+        },
+        required: ['relations'],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ['items'],
+  additionalProperties: false,
+};
+
+const relationBatchResponseFormat = jsonSchema('relation_batch', relationBatchSchema);
 
 const name = 'relations';
 
@@ -388,3 +412,86 @@ export async function mapRelations(texts, instructions, config) {
 }
 
 mapRelations.knownTexts = ['spec'];
+
+/**
+ * Extract relations from each text by packing texts into batched LLM prompts
+ * (one call per batch). Sister to `mapRelations`, which dispatches per-text
+ * in parallel — use the batched form to amortize per-call overhead when
+ * texts are short and homogeneous enough that the LLM can produce one
+ * relations vector per prompt without conflating subjects across documents.
+ *
+ * @param {string[]} texts - Source texts
+ * @param {string|object} instructions - Extraction instructions
+ * @param {object} [config={}] - `batchSize`, `maxParallel`, `errorPosture`
+ * @returns {Promise<Array<Array<object>|undefined>>} Per-text relation arrays
+ */
+export async function mapRelationsBatched(texts, instructions, config) {
+  if (!Array.isArray(texts)) {
+    throw new Error(
+      `mapRelationsBatched: texts must be an array (got ${texts === null ? 'null' : typeof texts})`
+    );
+  }
+  [instructions, config] = resolveArgs(instructions, config, ['spec']);
+  const { text: instructionText, known, context } = resolveTexts(instructions, ['spec']);
+  const effectiveInstructions = context ? `${instructionText}\n\n${context}` : instructionText;
+
+  const runConfig = nameStep('relations:batched', config);
+  const emitter = createProgressEmitter('relations:batched', runConfig.onProgress, runConfig);
+  emitter.start();
+  emitter.emit({ event: DomainEvent.input, value: texts });
+
+  try {
+    const spec = known.spec || (await relationSpec(effectiveInstructions, runConfig));
+
+    emitter.emit({ event: DomainEvent.phase, phase: 'extracting-relations', specification: spec });
+
+    const mapInstructions = `Apply the relation specification to each input text and extract relations for every one.
+
+${asXML(spec, { tag: 'relation-specification' })}
+
+For each text, return an object with a "relations" array. Every relation has:
+- subject: canonical-form string
+- predicate: relationship label
+- object: canonical entity string OR an RDF literal (e.g. "42^^xsd:integer", "true^^xsd:boolean")
+- metadata: optional additional context
+
+Return one relations object per input text, in the same order. Use an empty relations array when the text contains nothing matching the specification.`;
+
+    const results = await map(texts, mapInstructions, {
+      ...runConfig,
+      responseFormat: relationBatchResponseFormat,
+      onProgress: scopePhase(runConfig.onProgress, 'relations:map'),
+    });
+
+    if (!Array.isArray(results)) {
+      throw new Error(`relations: expected array of results from map (got ${typeof results})`);
+    }
+
+    // Each per-text entry is { relations: [...] }; unwrap to bare arrays and
+    // apply parseRelations so RDF literals are converted to JS primitives.
+    const parsed = results.map((entry) => {
+      if (entry === undefined) return undefined;
+      expectObject(entry, { chain: 'relations', expected: 'per-text result object' });
+      const relations = expectArray(entry.relations, {
+        chain: 'relations',
+        expected: '"relations" array on per-text result',
+      });
+      return parseRelations(relations);
+    });
+
+    const failedItems = parsed.filter((r) => r === undefined).length;
+    const outcome = failedItems > 0 ? Outcome.partial : Outcome.success;
+    emitter.complete({
+      totalItems: parsed.length,
+      successCount: parsed.length - failedItems,
+      failedItems,
+      outcome,
+    });
+    return parsed;
+  } catch (err) {
+    emitter.error(err);
+    throw err;
+  }
+}
+
+mapRelationsBatched.knownTexts = ['spec'];

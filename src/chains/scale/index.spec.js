@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import scaleItem, { scaleSpec, scaleInstructions, mapScale } from './index.js';
+import scaleItem, { scaleSpec, scaleInstructions, mapScale, mapScaleParallel } from './index.js';
 import llm from '../../lib/llm/index.js';
 import map from '../map/index.js';
 
@@ -10,6 +10,14 @@ vi.mock('../../lib/llm/index.js', async (importOriginal) => ({
 
 vi.mock('../map/index.js', () => ({
   default: vi.fn(),
+}));
+
+vi.mock('../../lib/parallel-batch/index.js', () => ({
+  default: vi.fn(async (items, processor) => {
+    for (let i = 0; i < items.length; i++) {
+      await processor(items[i], i);
+    }
+  }),
 }));
 
 describe('scaleItem (default export)', () => {
@@ -222,5 +230,54 @@ describe('mapScale', () => {
     const list = vi.mocked(map).mock.calls[0][0];
     expect(list[0]).toBe('{"a":1}');
     expect(list[1]).toBe('plain');
+  });
+});
+
+describe('mapScaleParallel', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const mockSpec = { domain: 'd', range: 'r', mapping: 'm' };
+
+  it('runs scaleItem per item with one shared spec', async () => {
+    vi.mocked(llm)
+      .mockResolvedValueOnce(mockSpec) // spec generation
+      .mockResolvedValueOnce(10)
+      .mockResolvedValueOnce(20)
+      .mockResolvedValueOnce(30);
+    const result = await mapScaleParallel([1, 2, 3], 'scale 1-3 to 0-30');
+    expect(result).toEqual([10, 20, 30]);
+    expect(llm).toHaveBeenCalledTimes(4);
+  });
+
+  it('skips spec generation when bundled', async () => {
+    vi.mocked(llm).mockResolvedValueOnce(5).mockResolvedValueOnce(7);
+    const result = await mapScaleParallel([1, 2], { text: 'x', spec: mockSpec });
+    expect(result).toEqual([5, 7]);
+    expect(llm).toHaveBeenCalledTimes(2);
+  });
+
+  it('reports partial outcome when an item fails', async () => {
+    vi.mocked(llm).mockResolvedValueOnce(10).mockRejectedValueOnce(new Error('boom'));
+    const events = [];
+    const result = await mapScaleParallel(
+      [1, 2],
+      { text: 'x', spec: mockSpec },
+      { onProgress: (e) => events.push(e), maxAttempts: 1 }
+    );
+    expect(result[0]).toBe(10);
+    expect(result[1]).toBeUndefined();
+    const complete = events.find(
+      (e) => e.event === 'chain:complete' && e.step === 'scale:parallel'
+    );
+    expect(complete.outcome).toBe('partial');
+  });
+
+  it('throws when every item fails', async () => {
+    vi.mocked(llm).mockRejectedValue(new Error('boom'));
+    await expect(
+      mapScaleParallel([1, 2], { text: 'x', spec: mockSpec }, { maxAttempts: 1 })
+    ).rejects.toThrow(/all 2 items failed to scale/);
   });
 });

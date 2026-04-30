@@ -1,12 +1,13 @@
 import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
+import parallel from '../../lib/parallel-batch/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { scaleSpecificationJsonSchema } from './schemas.js';
 import scaleResultSchema from './scale-result.json' with { type: 'json' };
 import map from '../map/index.js';
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
-import { DomainEvent, Outcome } from '../../lib/progress/constants.js';
-import { nameStep } from '../../lib/context/option.js';
+import { DomainEvent, Outcome, ErrorPosture } from '../../lib/progress/constants.js';
+import { nameStep, getOptions } from '../../lib/context/option.js';
 import { resolveArgs, resolveTexts } from '../../lib/instruction/index.js';
 
 const name = 'scale';
@@ -262,3 +263,99 @@ Return one scaled value per input item according to the specification range.`;
 }
 
 mapScale.knownTexts = ['spec'];
+
+/**
+ * Scale a list by running one scaleItem call per entry with managed concurrency.
+ *
+ * Sister to `mapScale`, which packs items into batched LLM prompts. Use the
+ * parallel form when items are heterogeneous, when the batched form smears
+ * domain assumptions across rows, or when you want per-item retry granularity.
+ * Slots whose call fails after retries return `undefined`; chain reports
+ * outcome=partial. Throws only when the whole list fails.
+ *
+ * @param {Array} list - Items to scale
+ * @param {string|object} instructions - Scaling instructions (string or bundle with `spec`)
+ * @param {object} [config={}] - `maxParallel`, `errorPosture`
+ * @returns {Promise<Array<number|string|undefined>>}
+ */
+export async function mapScaleParallel(list, instructions, config) {
+  [instructions, config] = resolveArgs(instructions, config, ['spec']);
+  if (!Array.isArray(list)) {
+    throw new Error(
+      `mapScaleParallel: list must be an array (got ${list === null ? 'null' : typeof list})`
+    );
+  }
+  const { text, known, context } = resolveTexts(instructions, ['spec']);
+  const effectiveInstructions = context ? `${text}\n\n${context}` : text;
+
+  const runConfig = nameStep('scale:parallel', config);
+  const emitter = createProgressEmitter('scale:parallel', runConfig.onProgress, runConfig);
+  emitter.start();
+  emitter.emit({ event: DomainEvent.input, value: list });
+
+  try {
+    const { maxParallel, errorPosture } = await getOptions(runConfig, {
+      maxParallel: 3,
+      errorPosture: ErrorPosture.resilient,
+    });
+
+    const spec =
+      known.spec ||
+      (await scaleSpec(effectiveInstructions, {
+        ...runConfig,
+        onProgress: scopePhase(runConfig.onProgress, 'scale:spec'),
+      }));
+
+    emitter.emit({ event: DomainEvent.phase, phase: 'applying-scale', specification: spec });
+    const batchDone = emitter.batch(list.length);
+
+    const results = new Array(list.length).fill(undefined);
+    const indexed = list.map((value, index) => ({ value, index }));
+
+    await parallel(
+      indexed,
+      async ({ value, index }) => {
+        try {
+          results[index] = await scaleItem(
+            value,
+            { text: 'Apply the scale specification to the item', spec },
+            {
+              ...runConfig,
+              onProgress: scopePhase(runConfig.onProgress, 'item'),
+            }
+          );
+        } catch (error) {
+          emitter.error(error, { itemIndex: index });
+          if (errorPosture === ErrorPosture.strict) throw error;
+        } finally {
+          batchDone(1);
+        }
+      },
+      {
+        maxParallel,
+        errorPosture,
+        abortSignal: runConfig.abortSignal,
+        label: 'scale parallel items',
+      }
+    );
+
+    const failedItems = results.filter((r) => r === undefined).length;
+    if (failedItems === results.length && results.length > 0) {
+      throw new Error(`scale: all ${results.length} items failed to scale`);
+    }
+    const outcome = failedItems > 0 ? Outcome.partial : Outcome.success;
+    emitter.emit({ event: DomainEvent.output, value: results });
+    emitter.complete({
+      totalItems: results.length,
+      successCount: results.length - failedItems,
+      failedItems,
+      outcome,
+    });
+    return results;
+  } catch (err) {
+    emitter.error(err);
+    throw err;
+  }
+}
+
+mapScaleParallel.knownTexts = ['spec'];

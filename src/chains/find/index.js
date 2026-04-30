@@ -1,4 +1,5 @@
 import listBatch, { ListStyle, determineStyle } from '../../verblets/list-batch/index.js';
+import bool from '../../verblets/bool/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { findResultJsonSchema } from './schemas.js';
 import { createBatches, parallel, retry } from '../../lib/index.js';
@@ -172,5 +173,121 @@ find.knownTexts = [];
 // match within a list; for one item the question collapses to a boolean
 // "does this match", so we re-export bool rather than duplicate it.
 export { default as findItem } from '../../verblets/bool/index.js';
+
+/**
+ * Find the first matching item by running one bool call per item with managed
+ * concurrency and chunk-by-chunk early termination.
+ *
+ * Use this when batched-LLM find smears items together or when you want
+ * cleaner per-item decisions. Items are processed in chunks of `maxParallel`;
+ * after each chunk completes, if any item in it matched, we return the
+ * earliest-index match found so far and skip the remaining chunks. Within a
+ * single chunk we still wait for all calls to settle so the index ordering is
+ * deterministic — same contract the batched form provides.
+ *
+ * @param {Array} list - Items to search
+ * @param {string|object} instructions - Search criteria
+ * @param {object} [config={}] - `maxParallel`, `errorPosture`
+ * @returns {Promise<*>} First matching item, or '' when no match
+ */
+const findParallel = async function findParallel(list, instructions, config) {
+  [instructions, config] = resolveArgs(instructions, config);
+  if (!Array.isArray(list)) {
+    throw new Error(
+      `findParallel: list must be an array (got ${list === null ? 'null' : typeof list})`
+    );
+  }
+  const { text, context } = resolveTexts(instructions, []);
+  const runConfig = nameStep('find:parallel', config);
+  const emitter = createProgressEmitter('find:parallel', runConfig.onProgress, runConfig);
+  emitter.start();
+  emitter.emit({ event: DomainEvent.input, value: list });
+
+  try {
+    const { maxParallel, errorPosture } = await getOptions(runConfig, {
+      maxParallel: 3,
+      errorPosture: ErrorPosture.resilient,
+    });
+    const contextBlock = context ? `\n\n${context}` : '';
+
+    const decisions = new Array(list.length).fill(undefined);
+    let itemsFailed = 0;
+    let matchIndex;
+
+    // Process in chunks so we can short-circuit once any chunk produces a match.
+    // Within a chunk we still settle all pending calls so the earliest-index
+    // tie-break is stable — matches the batched form's semantics.
+    for (let start = 0; start < list.length; start += maxParallel) {
+      const chunk = list.slice(start, start + maxParallel).map((value, offset) => ({
+        value,
+        index: start + offset,
+      }));
+
+      await parallel(
+        chunk,
+        async ({ value, index }) => {
+          const itemSerialized = typeof value === 'string' ? value : JSON.stringify(value);
+          const question = `Decide whether the item below matches the search criteria.
+
+${asXML(text, { tag: 'search-criteria' })}
+
+${asXML(itemSerialized, { tag: 'item' })}${contextBlock}`;
+
+          try {
+            const matched = await bool(question, {
+              ...runConfig,
+              onProgress: scopePhase(runConfig.onProgress, 'item'),
+            });
+            decisions[index] = matched === true;
+          } catch (error) {
+            itemsFailed += 1;
+            emitter.error(error, { itemIndex: index });
+            if (errorPosture === ErrorPosture.strict) throw error;
+          }
+        },
+        {
+          maxParallel,
+          errorPosture,
+          abortSignal: runConfig.abortSignal,
+          label: 'find parallel items',
+        }
+      );
+
+      const earliestInChunk = chunk.find(({ index }) => decisions[index] === true)?.index;
+      if (earliestInChunk !== undefined) {
+        matchIndex = earliestInChunk;
+        break;
+      }
+    }
+
+    if (matchIndex === undefined && itemsFailed > 0 && itemsFailed === list.length) {
+      throw new Error(`findParallel: all ${list.length} items failed to evaluate`);
+    }
+
+    const outcome = itemsFailed > 0 ? Outcome.degraded : Outcome.success;
+    if (matchIndex !== undefined) {
+      const result = list[matchIndex];
+      emitter.emit({ event: DomainEvent.output, value: result });
+      emitter.complete({
+        found: true,
+        totalItems: list.length,
+        itemsFailed,
+        outcome,
+      });
+      return result;
+    }
+
+    emitter.emit({ event: DomainEvent.output, value: '' });
+    emitter.complete({ found: false, totalItems: list.length, itemsFailed, outcome });
+    return '';
+  } catch (err) {
+    emitter.error(err);
+    throw err;
+  }
+};
+
+findParallel.knownTexts = [];
+
+export { findParallel };
 
 export default find;

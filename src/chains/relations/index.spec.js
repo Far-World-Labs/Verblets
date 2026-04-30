@@ -5,8 +5,10 @@ import extractRelations, {
   parseRDFLiteral,
   parseRelations,
   mapRelations,
+  mapRelationsBatched,
 } from './index.js';
 import llm from '../../lib/llm/index.js';
+import map from '../map/index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
   jsonSchema: (name, schema) => ({ type: 'json_schema', json_schema: { name, schema } }),
@@ -43,6 +45,10 @@ vi.mock('../../lib/parallel-batch/index.js', () => ({
       await processor(items[i], i);
     }
   }),
+}));
+
+vi.mock('../map/index.js', () => ({
+  default: vi.fn(),
 }));
 
 describe('relations', () => {
@@ -165,6 +171,33 @@ describe('relations', () => {
 
     it('throws when texts is not an array', async () => {
       await expect(mapRelations('not-an-array', 'x')).rejects.toThrow(/must be an array/);
+    });
+  });
+
+  describe('mapRelationsBatched', () => {
+    it('routes through map() with the relations batch responseFormat', async () => {
+      vi.mocked(map).mockResolvedValueOnce([
+        { relations: [{ subject: 'A', predicate: 'is', object: 'thing' }] },
+        { relations: [] },
+      ]);
+      const result = await mapRelationsBatched(['t1', 't2'], { text: 'x', spec: 'reused' });
+      expect(result).toHaveLength(2);
+      expect(result[0]).toEqual([{ subject: 'A', predicate: 'is', object: 'thing' }]);
+      expect(result[1]).toEqual([]);
+      const mapConfig = vi.mocked(map).mock.calls[0][2];
+      expect(mapConfig.responseFormat?.json_schema?.name).toBe('relation_batch');
+    });
+
+    it('parses RDF literals on per-text relations', async () => {
+      vi.mocked(map).mockResolvedValueOnce([
+        { relations: [{ subject: 'X', predicate: 'count', object: '42^^xsd:integer' }] },
+      ]);
+      const result = await mapRelationsBatched(['t1'], { text: 'x', spec: 'reused' });
+      expect(result[0][0].object).toBe(42);
+    });
+
+    it('throws when texts is not an array', async () => {
+      await expect(mapRelationsBatched('not-an-array', 'x')).rejects.toThrow(/must be an array/);
     });
   });
 });

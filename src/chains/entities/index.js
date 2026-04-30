@@ -1,6 +1,7 @@
 import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
 import parallel from '../../lib/parallel-batch/index.js';
+import map from '../map/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import entityResultSchema from './entity-result.json' with { type: 'json' };
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
@@ -8,6 +9,20 @@ import { DomainEvent, Outcome, ErrorPosture } from '../../lib/progress/constants
 import { nameStep, getOptions } from '../../lib/context/option.js';
 import { resolveArgs, resolveTexts } from '../../lib/instruction/index.js';
 import { expectArray, expectObject, expectString } from '../../lib/expect-shape/index.js';
+
+const entitiesBatchSchema = {
+  type: 'object',
+  properties: {
+    items: {
+      type: 'array',
+      items: entityResultSchema,
+    },
+  },
+  required: ['items'],
+  additionalProperties: false,
+};
+
+const entitiesBatchResponseFormat = jsonSchema('entities_batch', entitiesBatchSchema);
 
 const name = 'entities';
 
@@ -249,3 +264,77 @@ export async function mapEntities(texts, instructions, config) {
 }
 
 mapEntities.knownTexts = ['spec'];
+
+/**
+ * Extract entities from each text by packing texts into batched LLM prompts
+ * (one call per batch). Sister to `mapEntities`, which dispatches per-text
+ * in parallel — use the batched form to amortize per-call overhead when
+ * texts are short and homogeneous enough that the LLM can handle them in
+ * one prompt without smearing entity types across documents.
+ *
+ * @param {string[]} texts - Source texts to extract entities from
+ * @param {string|object} instructions - Extraction instructions
+ * @param {object} [config={}] - `batchSize`, `maxParallel`, `errorPosture`
+ * @returns {Promise<Array<{entities: Array}|undefined>>}
+ */
+export async function mapEntitiesBatched(texts, instructions, config) {
+  if (!Array.isArray(texts)) {
+    throw new Error(
+      `mapEntitiesBatched: texts must be an array (got ${texts === null ? 'null' : typeof texts})`
+    );
+  }
+  [instructions, config] = resolveArgs(instructions, config, ['spec']);
+  const { text: instructionText, known, context } = resolveTexts(instructions, ['spec']);
+  const effectiveInstructions = context ? `${instructionText}\n\n${context}` : instructionText;
+
+  const runConfig = nameStep('entities:batched', config);
+  const emitter = createProgressEmitter('entities:batched', runConfig.onProgress, runConfig);
+  emitter.start();
+  emitter.emit({ event: DomainEvent.input, value: texts });
+
+  try {
+    const spec =
+      known.spec ||
+      (await entitySpec(effectiveInstructions, {
+        ...runConfig,
+        onProgress: scopePhase(runConfig.onProgress, 'spec'),
+      }));
+
+    emitter.emit({ event: DomainEvent.phase, phase: 'extracting-entities', specification: spec });
+
+    const mapInstructions = `Apply the entity specification to each input text and extract entities for every one.
+
+${asXML(spec, { tag: 'entity-specification' })}
+
+For each text, return an object with an "entities" array. Every entity has exactly:
+- "name" (string): The entity name or text as it appears in the source
+- "type" (string): The category (e.g. person, company, location, date, concept)
+
+Return one entities object per input text, in the same order. Use an empty entities array when the text contains nothing matching the specification.`;
+
+    const results = await map(texts, mapInstructions, {
+      ...runConfig,
+      responseFormat: entitiesBatchResponseFormat,
+      onProgress: scopePhase(runConfig.onProgress, 'entities:map'),
+    });
+
+    if (!Array.isArray(results)) {
+      throw new Error(`entities: expected array of results from map (got ${typeof results})`);
+    }
+
+    const failedItems = results.filter((r) => r === undefined).length;
+    const outcome = failedItems > 0 ? Outcome.partial : Outcome.success;
+    emitter.complete({
+      totalItems: results.length,
+      successCount: results.length - failedItems,
+      failedItems,
+      outcome,
+    });
+    return results;
+  } catch (err) {
+    emitter.error(err);
+    throw err;
+  }
+}
+
+mapEntitiesBatched.knownTexts = ['spec'];

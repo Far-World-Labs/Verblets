@@ -246,6 +246,85 @@ ${asXML(itemSerialized, { tag: 'item' })}`;
 mapItem.knownTexts = [];
 
 /**
+ * Run mapItem against each entry in a list with managed concurrency.
+ *
+ * One LLM call per item (vs. list-form `map` which packs many items into one
+ * prompt). Use this when items vary widely, you want per-item retry granularity,
+ * or you'd rather pay N calls for cleaner per-item outputs than batch artifacts.
+ * Slots that fail every retry are `undefined`; chain reports outcome=partial,
+ * throws only when every item failed.
+ *
+ * @param {Array} list - Items to transform; any shape
+ * @param {string|object} instructions - Mapping instructions
+ * @param {object} [config={}] - `maxParallel`, `errorPosture`, `responseFormat`
+ * @returns {Promise<Array<*|undefined>>}
+ */
+const mapParallel = async function mapParallel(list, instructions, config) {
+  [instructions, config] = resolveArgs(instructions, config);
+  if (!Array.isArray(list)) {
+    throw new Error(
+      `mapParallel: list must be an array (got ${list === null ? 'null' : typeof list})`
+    );
+  }
+  const runConfig = nameStep('map:parallel', config);
+  const emitter = createProgressEmitter('map:parallel', runConfig.onProgress, runConfig);
+  emitter.start();
+  emitter.emit({ event: DomainEvent.input, value: list });
+
+  try {
+    const { maxParallel, errorPosture } = await getOptions(runConfig, {
+      maxParallel: 3,
+      errorPosture: ErrorPosture.resilient,
+    });
+    const batchDone = emitter.batch(list.length);
+
+    const results = new Array(list.length).fill(undefined);
+    const indexed = list.map((value, index) => ({ value, index }));
+    await parallel(
+      indexed,
+      async ({ value, index }) => {
+        try {
+          results[index] = await mapItem(value, instructions, {
+            ...runConfig,
+            onProgress: scopePhase(runConfig.onProgress, 'item'),
+          });
+        } catch (error) {
+          emitter.error(error, { itemIndex: index });
+          if (errorPosture === ErrorPosture.strict) throw error;
+        } finally {
+          batchDone(1);
+        }
+      },
+      {
+        maxParallel,
+        errorPosture,
+        abortSignal: runConfig.abortSignal,
+        label: 'map parallel items',
+      }
+    );
+
+    const failedItems = results.filter((r) => r === undefined).length;
+    if (failedItems === results.length && results.length > 0) {
+      throw new Error(`mapParallel: all ${results.length} items failed to transform`);
+    }
+    const outcome = failedItems > 0 ? Outcome.partial : Outcome.success;
+    emitter.emit({ event: DomainEvent.output, value: results });
+    emitter.complete({
+      totalItems: results.length,
+      successCount: results.length - failedItems,
+      failedItems,
+      outcome,
+    });
+    return results;
+  } catch (err) {
+    emitter.error(err);
+    throw err;
+  }
+};
+
+mapParallel.knownTexts = [];
+
+/**
  * Streaming map: process a list incrementally, yielding partial results after
  * each batch completes. Batches are processed sequentially (not in parallel)
  * to enable incremental emission with reduced peak memory usage.
@@ -374,5 +453,5 @@ const streamingMap = async function* streamingMap(list, instructions, config) {
 
 streamingMap.knownTexts = [];
 
-export { streamingMap, mapItem };
+export { streamingMap, mapItem, mapParallel };
 export default map;
