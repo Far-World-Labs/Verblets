@@ -7,6 +7,7 @@ import socraticAnswerSchema from './socratic-answer-schema.js';
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
 import { DomainEvent, Outcome } from '../../lib/progress/constants.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
+import { expectString } from '../../lib/expect-shape/index.js';
 
 const name = 'socratic';
 
@@ -44,14 +45,8 @@ const CHALLENGE_GUIDELINES = {
 // Validate that the LLM produced a usable string. Without this, garbage
 // (object/null/empty) propagates into history and renders as
 // "Q: undefined\nA: undefined" in subsequent prompts.
-const parseDialogueResponse = (response, kind) => {
-  if (typeof response !== 'string' || response.length === 0) {
-    throw new Error(
-      `socratic: expected non-empty string from ${kind} LLM (got ${typeof response})`
-    );
-  }
-  return response;
-};
+const parseDialogueResponse = (response, kind) =>
+  expectString(response, { chain: 'socratic', expected: `non-empty string from ${kind} LLM` });
 
 // Prompt builders
 const buildAskPrompt = (topic, historyText, challenge) =>

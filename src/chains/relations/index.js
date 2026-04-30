@@ -5,6 +5,7 @@ import createProgressEmitter from '../../lib/progress/index.js';
 import { DomainEvent, Outcome } from '../../lib/progress/constants.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 import { resolveArgs, resolveTexts } from '../../lib/instruction/index.js';
+import { expectArray, expectObject } from '../../lib/expect-shape/index.js';
 import relationResultSchema from './relation-result.json' with { type: 'json' };
 
 const name = 'relations';
@@ -106,16 +107,12 @@ export function parseRelations(relations) {
  * to [] hides corrupt LLM output and produces garbage downstream.
  */
 function parseExtractedRelations(response) {
-  const items = Array.isArray(response) ? response : response?.items;
-  if (!Array.isArray(items)) {
-    throw new Error(
-      `relations: expected { items: [] } or array from extraction LLM (got ${typeof response})`
-    );
-  }
+  const items = expectArray(Array.isArray(response) ? response : response?.items, {
+    chain: 'relations',
+    expected: '{ items: [] } or array from extraction LLM',
+  });
   for (const item of items) {
-    if (!item || typeof item !== 'object' || Array.isArray(item)) {
-      throw new Error(`relations: expected relation object in items (got ${typeof item})`);
-    }
+    expectObject(item, { chain: 'relations', expected: 'relation object in items' });
   }
   return parseRelations(items);
 }

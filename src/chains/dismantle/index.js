@@ -8,6 +8,7 @@ import { subComponentsSchema, componentOptionsSchema } from './schemas.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
 import { DomainEvent, Outcome } from '../../lib/progress/constants.js';
+import { expectArray } from '../../lib/expect-shape/index.js';
 
 const _name = 'dismantle';
 
@@ -83,15 +84,11 @@ const search = (node, { match = defaultMatch, matches = [] } = {}) => {
 
 // Both schemas auto-unwrap `items` to a string[]. Anything else means the
 // LLM violated the contract — surface honestly so .map and .[0] indexing
-// don't propagate undefined silently into the tree.
+// don't propagate undefined silently into the tree. Empty strings are
+// allowed (schema has no minLength), so the inner check uses bare typeof
+// rather than expectString (which rejects '').
 const validateStringArray = (value, label) => {
-  if (!Array.isArray(value)) {
-    throw new Error(
-      `dismantle: expected string array from ${label} LLM (got ${
-        value === null ? 'null' : typeof value
-      })`
-    );
-  }
+  expectArray(value, { chain: 'dismantle', expected: `string array from ${label} LLM` });
   for (const item of value) {
     if (typeof item !== 'string') {
       throw new Error(`dismantle: ${label} array must contain only strings (got ${typeof item})`);

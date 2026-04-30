@@ -6,6 +6,7 @@ import createProgressEmitter from '../../lib/progress/index.js';
 import { DomainEvent, Outcome } from '../../lib/progress/constants.js';
 import { nameStep } from '../../lib/context/option.js';
 import { resolveTexts } from '../../lib/instruction/index.js';
+import { expectArray, expectObject } from '../../lib/expect-shape/index.js';
 
 const name = 'tag-vocabulary';
 
@@ -123,18 +124,11 @@ export function computeTagStatistics(vocabulary, taggedItems, options = {}) {
 // ===== Core Functions =====
 
 const validateVocabResponse = (response, label) => {
-  if (!response || typeof response !== 'object' || Array.isArray(response)) {
-    throw new Error(
-      `tag-vocabulary: expected object from ${label} LLM (got ${
-        response === null ? 'null' : typeof response
-      })`
-    );
-  }
-  if (!Array.isArray(response.tags)) {
-    throw new Error(
-      `tag-vocabulary: ${label} response missing required "tags" array (got ${typeof response.tags})`
-    );
-  }
+  expectObject(response, { chain: 'tag-vocabulary', expected: `object from ${label} LLM` });
+  expectArray(response.tags, {
+    chain: 'tag-vocabulary',
+    expected: `tags array from ${label} LLM`,
+  });
 };
 
 /**

@@ -7,6 +7,7 @@ import { OpEvent, DomainEvent, Outcome, ErrorPosture } from '../../lib/progress/
 import { createBatches, parallel, retry } from '../../lib/index.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 import { resolveArgs, resolveTexts } from '../../lib/instruction/index.js';
+import { expectArray, expectNumber, expectObject } from '../../lib/expect-shape/index.js';
 import scoreSingleResultSchema from './score-single-result.json' with { type: 'json' };
 
 const name = 'score';
@@ -415,28 +416,13 @@ ${asXML(item, { tag: 'item' })}`;
   // response would silently yield a score of undefined and a half-built
   // uncertainty object — caller's downstream math (averaging, thresholding)
   // would silently produce garbage.
-  if (!response || typeof response !== 'object' || Array.isArray(response)) {
-    throw new Error(
-      `score: expected object from uncertainty LLM (got ${
-        response === null ? 'null' : typeof response
-      })`
-    );
-  }
-  if (typeof response.value !== 'number') {
-    throw new Error(
-      `score: uncertainty response.value must be a number (got ${typeof response.value})`
-    );
-  }
-  if (typeof response.confidence !== 'number') {
-    throw new Error(
-      `score: uncertainty response.confidence must be a number (got ${typeof response.confidence})`
-    );
-  }
-  if (!Array.isArray(response.unknowns)) {
-    throw new Error(
-      `score: uncertainty response.unknowns must be an array (got ${typeof response.unknowns})`
-    );
-  }
+  expectObject(response, { chain: 'score', expected: 'object from uncertainty LLM' });
+  expectNumber(response.value, { chain: 'score', expected: 'numeric uncertainty.value' });
+  expectNumber(response.confidence, {
+    chain: 'score',
+    expected: 'numeric uncertainty.confidence',
+  });
+  expectArray(response.unknowns, { chain: 'score', expected: 'uncertainty.unknowns array' });
 
   const uncertainty = { confidence: response.confidence, unknowns: response.unknowns };
   emitter.uncertainty(uncertainty);
