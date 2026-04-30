@@ -1,6 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import popReference from './index.js';
+import popReferenceItem, { mapPopReference, mapPopReferenceParallel } from './index.js';
 import llm from '../../lib/llm/index.js';
+import map from '../map/index.js';
+
+vi.mock('../../lib/parallel-batch/index.js', () => ({
+  default: vi.fn(async (items, processor) => {
+    for (let i = 0; i < items.length; i++) {
+      await processor(items[i], i);
+    }
+  }),
+}));
+
+vi.mock('../map/index.js', () => ({
+  default: vi.fn(),
+}));
 
 // Mock dependencies
 vi.mock('../../lib/llm/index.js', () => ({
@@ -40,7 +53,7 @@ vi.mock('node:fs/promises', () => ({
   ),
 }));
 
-describe('popReference', () => {
+describe('popReferenceItem', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -64,7 +77,7 @@ describe('popReference', () => {
 
     llm.mockResolvedValue(mockResponse);
 
-    const result = await popReference(
+    const result = await popReferenceItem(
       'She finally made a decision after months of doubt',
       'pivotal moment of choosing clarity over comfort'
     );
@@ -94,7 +107,7 @@ describe('popReference', () => {
 
     llm.mockResolvedValue(mockResponse);
 
-    const result = await popReference(
+    const result = await popReferenceItem(
       'There was an awkward silence after the joke',
       'uncomfortable social moment',
       {
@@ -124,7 +137,7 @@ describe('popReference', () => {
 
     llm.mockResolvedValue(mockResponse);
 
-    const result = await popReference(
+    const result = await popReferenceItem(
       'They kept smiling through the chaos',
       'maintaining composure during disaster',
       {
@@ -168,7 +181,7 @@ describe('popReference', () => {
 
     llm.mockResolvedValue(mockResponse);
 
-    const result = await popReference(
+    const result = await popReferenceItem(
       'It was a warning sign of things to come',
       'ominous foreshadowing',
       {
@@ -187,14 +200,84 @@ describe('popReference', () => {
   it('should handle parsing errors gracefully', async () => {
     llm.mockResolvedValue('invalid json');
 
-    await expect(popReference('Test', 'Description')).rejects.toThrow();
+    await expect(popReferenceItem('Test', 'Description')).rejects.toThrow();
   });
 
   it('should handle empty reference arrays', async () => {
     llm.mockResolvedValue({ references: [] });
 
-    const result = await popReference('A very unique situation', 'no clear pop culture parallels');
+    const result = await popReferenceItem(
+      'A very unique situation',
+      'no clear pop culture parallels'
+    );
 
     expect(result).toEqual([]);
+  });
+});
+
+describe('mapPopReferenceParallel', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('runs popReferenceItem per sentence with one shared description', async () => {
+    llm
+      .mockResolvedValueOnce({
+        references: [
+          { reference: 'A', source: 's', score: 1, match: { text: 't', start: 0, end: 1 } },
+        ],
+      })
+      .mockResolvedValueOnce({ references: [] });
+    const result = await mapPopReferenceParallel(['s1', 's2'], 'shared description');
+    expect(result).toHaveLength(2);
+    expect(result[0]).toHaveLength(1);
+    expect(result[1]).toEqual([]);
+    expect(llm).toHaveBeenCalledTimes(2);
+  });
+
+  it('reports partial outcome when one sentence fails', async () => {
+    llm.mockResolvedValueOnce({ references: [] }).mockRejectedValueOnce(new Error('boom'));
+    const events = [];
+    const result = await mapPopReferenceParallel(['ok', 'bad'], 'desc', {
+      maxAttempts: 1,
+      onProgress: (e) => events.push(e),
+    });
+    expect(result[0]).toEqual([]);
+    expect(result[1]).toBeUndefined();
+    const complete = events.find(
+      (e) => e.event === 'chain:complete' && e.step === 'pop-reference:parallel'
+    );
+    expect(complete.outcome).toBe('partial');
+  });
+
+  it('throws when sentences is not an array', async () => {
+    await expect(mapPopReferenceParallel('not-an-array', 'd')).rejects.toThrow(/must be an array/);
+  });
+});
+
+describe('mapPopReference (batched)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('routes through map() with the pop-reference batch responseFormat', async () => {
+    vi.mocked(map).mockResolvedValueOnce([
+      {
+        references: [
+          { reference: 'A', source: 's', score: 1, match: { text: 't', start: 0, end: 1 } },
+        ],
+      },
+      { references: [] },
+    ]);
+    const result = await mapPopReference(['s1', 's2'], 'description');
+    expect(result).toHaveLength(2);
+    expect(result[0][0].reference).toBe('A');
+    expect(result[1]).toEqual([]);
+    const mapConfig = vi.mocked(map).mock.calls[0][2];
+    expect(mapConfig.responseFormat?.json_schema?.name).toBe('pop_reference_batch');
+  });
+
+  it('throws when sentences is not an array', async () => {
+    await expect(mapPopReference('not-an-array', 'd')).rejects.toThrow(/must be an array/);
   });
 });

@@ -66,7 +66,28 @@ function buildPrompt(schema, studySet) {
   ].join('\n');
 }
 
+function validateInputs(schema, studySet) {
+  if (!schema || !Array.isArray(schema.projections) || !Array.isArray(schema.properties)) {
+    throw new Error('embed-object:refine: schema requires projections and properties arrays');
+  }
+  if (!studySet || !Array.isArray(studySet.selectedStateIds)) {
+    throw new Error('embed-object:refine: studySet requires a selectedStateIds array');
+  }
+}
+
+function validateRefineResult(result) {
+  if (!result || typeof result !== 'object') {
+    throw new Error(`embed-object:refine: expected object from LLM (got ${typeof result})`);
+  }
+  if (!Array.isArray(result.projections) || !Array.isArray(result.properties)) {
+    throw new Error(
+      'embed-object:refine: LLM response must include projections and properties arrays'
+    );
+  }
+}
+
 export default async function refine({ schema, studySet }, config = {}) {
+  validateInputs(schema, studySet);
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
@@ -83,6 +104,8 @@ export default async function refine({ schema, studySet }, config = {}) {
         }),
       { label: 'embed-object:refine', config: runConfig }
     );
+
+    validateRefineResult(result);
 
     emitter.complete({ outcome: Outcome.success });
 

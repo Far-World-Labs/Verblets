@@ -8,6 +8,7 @@ import { subComponentsSchema, componentOptionsSchema } from './schemas.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
 import { DomainEvent, Outcome } from '../../lib/progress/constants.js';
+import { expectArray } from '../../lib/expect-shape/index.js';
 
 const _name = 'dismantle';
 
@@ -81,6 +82,20 @@ const search = (node, { match = defaultMatch, matches = [] } = {}) => {
   return matches.length > 0 ? matches : undefined;
 };
 
+// Both schemas auto-unwrap `items` to a string[]. Anything else means the
+// LLM violated the contract — surface honestly so .map and .[0] indexing
+// don't propagate undefined silently into the tree. Empty strings are
+// allowed (schema has no minLength), so the inner check uses bare typeof
+// rather than expectString (which rejects '').
+const validateStringArray = (value, label) => {
+  expectArray(value, { chain: 'dismantle', expected: `string array from ${label} LLM` });
+  for (const item of value) {
+    if (typeof item !== 'string') {
+      throw new Error(`dismantle: ${label} array must contain only strings (got ${typeof item})`);
+    }
+  }
+};
+
 const defaultDecompose = async ({
   name,
   focus,
@@ -113,6 +128,7 @@ const defaultDecompose = async ({
       config,
     }
   );
+  validateStringArray(result, 'decompose');
   return result;
 };
 
@@ -143,12 +159,13 @@ const defaultEnhance = async ({
       config,
     }
   );
+  validateStringArray(result, 'enhance');
   const options = result;
 
   return {
     name,
     options,
-    topOptionName: options?.[0],
+    topOptionName: options[0],
   };
 };
 
@@ -290,21 +307,12 @@ const makeSubtree = async ({
 };
 
 export const simplifyTree = (node) => {
-  if (!node.children || node.children.length === 0) {
-    const parts = (node.children ?? []).map((child) => child.name);
-    return {
-      id: node.id,
-      name: `${node.name}${node.options?.[0] ? `: ${node.options?.[0]}` : ''}`,
-      parts: parts.length ? parts : undefined,
-    };
-  }
-
-  const parts = node.children.map((child) => simplifyTree(child));
-  return {
-    id: node.id,
-    name: `${node.name}${node.options?.[0] ? `: ${node.options?.[0]}` : ''}`,
-    parts: parts.length ? parts : undefined,
-  };
+  const optionSuffix = node.options?.[0] ? `: ${node.options[0]}` : '';
+  const name = `${node.name}${optionSuffix}`;
+  const parts = node.children?.length
+    ? node.children.map((child) => simplifyTree(child))
+    : undefined;
+  return { id: node.id, name, parts };
 };
 
 class ChainTree {
@@ -404,6 +412,13 @@ class ChainTree {
 
 export const dismantle = async (text, options = {}) => {
   const { text: entityName, context: bundleContext } = resolveTexts(text, []);
+  if (typeof entityName !== 'string' || entityName.length === 0) {
+    throw new Error(
+      `dismantle: text must be a non-empty string (got ${
+        entityName === null ? 'null' : typeof entityName
+      })`
+    );
+  }
   const runConfig = nameStep(_name, options);
   const emitter = createProgressEmitter(_name, runConfig.onProgress, runConfig);
   emitter.start();

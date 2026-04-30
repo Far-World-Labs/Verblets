@@ -19,10 +19,35 @@ const DISABLED_MESSAGE = 'Browser support is disabled. Call init({ browser: true
 
 /**
  * Normalize URL input to array of { url, step? } objects.
+ * Validates each entry has a non-empty url string at the boundary —
+ * downstream `page.goto(url)` fails opaquely with "URL is required" on
+ * undefined/empty paths and the missing url silently masquerades as a
+ * crawler bug.
  */
 const normalizeUrls = (urls) => {
+  if (urls === null || urls === undefined) {
+    throw new Error(
+      `web-scrape: urls must be provided (got ${urls === null ? 'null' : 'undefined'})`
+    );
+  }
   const list = Array.isArray(urls) ? urls : [urls];
-  return list.map((item) => (typeof item === 'string' ? { url: item } : item));
+  if (list.length === 0) {
+    throw new Error('web-scrape: at least one URL is required');
+  }
+  return list.map((item, i) => {
+    const normalized = typeof item === 'string' ? { url: item } : item;
+    if (!normalized || typeof normalized !== 'object') {
+      throw new Error(
+        `web-scrape: URL at index ${i} must be a string or { url, ... } object (got ${
+          item === null ? 'null' : typeof item
+        })`
+      );
+    }
+    if (typeof normalized.url !== 'string' || normalized.url.length === 0) {
+      throw new Error(`web-scrape: URL at index ${i} requires a non-empty "url" string`);
+    }
+    return normalized;
+  });
 };
 
 /**
@@ -205,6 +230,16 @@ const webScrape = async (urls, step, config = {}) => {
 
   const single = !Array.isArray(urls);
   const urlList = normalizeUrls(urls);
+  // Each URL entry can carry its own step override (entry.step); only
+  // require the top-level step when at least one entry doesn't supply one.
+  const needsTopLevelStep = urlList.some((entry) => typeof entry.step !== 'function');
+  if (needsTopLevelStep && typeof step !== 'function') {
+    throw new Error(
+      `web-scrape: step must be a function when URL entries don't provide their own (got ${
+        step === null ? 'null' : typeof step
+      })`
+    );
+  }
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();

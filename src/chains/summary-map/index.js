@@ -165,6 +165,18 @@ export default class SummaryMap extends Map {
             type: valueObject.type,
             value,
           });
+
+          // The summarize prompt has no responseFormat, so the LLM
+          // controls the return type. A non-string would be cached and
+          // crash deep on toTokens, or render as "[object Object]" in
+          // build()'s XML output. Surface honestly at this boundary.
+          if (typeof summarizedValue !== 'string') {
+            throw new Error(
+              `summary-map: expected string from summarize LLM (got ${
+                summarizedValue === null ? 'null' : typeof summarizedValue
+              })`
+            );
+          }
         }
 
         const finalTokens = entryModel.toTokens(summarizedValue).length;
@@ -197,6 +209,18 @@ export default class SummaryMap extends Map {
   }
 
   set(key, config) {
+    if (!config || typeof config !== 'object') {
+      throw new Error(
+        `summary-map: set("${key}", config) requires an object config (got ${
+          config === null ? 'null' : typeof config
+        })`
+      );
+    }
+    if (typeof config.value !== 'string') {
+      throw new Error(
+        `summary-map: set("${key}", config) requires config.value to be a string (got ${typeof config.value})`
+      );
+    }
     this.data.set(key, config);
     this.cache.delete(key);
     this.isCacheValid = false;

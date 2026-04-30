@@ -88,17 +88,30 @@ Return a "terms" object containing an array of the extracted terms.${contextBloc
 
       batchDone(textChunks.length);
 
+      if (!Array.isArray(mapResults)) {
+        throw new Error(`glossary: expected map results array (got ${typeof mapResults})`);
+      }
+
       const termSet = new Set();
+      let validChunks = 0;
       mapResults.forEach((result) => {
-        // Each mapResults item is an object with a 'terms' array
-        if (result && result.terms && Array.isArray(result.terms)) {
-          result.terms.forEach((term) => {
-            if (term && typeof term === 'string') {
-              termSet.add(term);
-            }
-          });
+        if (!Array.isArray(result?.terms)) return;
+        validChunks += 1;
+        for (const term of result.terms) {
+          if (typeof term === 'string' && term.length > 0) {
+            termSet.add(term);
+          }
         }
       });
+
+      // Total-failure detection: every chunk returned malformed shape.
+      // Empty chunks are valid (genuinely no terms found); only throw
+      // when nothing was usable.
+      if (validChunks === 0 && mapResults.length > 0) {
+        throw new Error(
+          `glossary: all ${mapResults.length} chunks returned malformed term extractions`
+        );
+      }
 
       terms = Array.from(termSet);
     }

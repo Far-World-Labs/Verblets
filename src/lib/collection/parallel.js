@@ -12,7 +12,7 @@ import { Outcome, ErrorPosture } from '../progress/constants.js';
  * @param {AbortSignal} [opts.abortSignal]
  * @param {Function} [opts.onProgress]
  * @param {string} [opts.label='pMap']
- * @returns {Promise<Array>} results aligned with input order
+ * @returns {Promise<Array>} results aligned with input order; undefined for failed slots in resilient mode
  */
 export async function map(fn, items, opts = {}) {
   const {

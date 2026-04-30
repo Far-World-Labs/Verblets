@@ -41,6 +41,8 @@ export const OpEvent = Object.freeze({
   retryAttempt: 'retry:attempt',
   retryError: 'retry:error',
   retryExhaust: 'retry:exhaust',
+  providerWait: 'provider:wait',
+  providerRetry: 'provider:retry',
   error: 'error',
 });
 
@@ -51,6 +53,8 @@ export const DomainEvent = Object.freeze({
   tick: 'chain:tick',
   input: 'input',
   output: 'output',
+  partial: 'partial',
+  uncertainty: 'uncertainty',
 });
 
 /** Telemetry event names — emitted by metrics(). */
@@ -92,6 +96,7 @@ export const Metric = Object.freeze({
   tokenUsage: 'gen_ai.client.token.usage',
   llmDuration: 'gen_ai.client.operation.duration',
   retryDelay: 'verblets.retry.delay',
+  providerWait: 'verblets.provider.wait',
   tickDuration: 'verblets.tick.duration',
 });
 
@@ -119,4 +124,29 @@ export const RetryOutcome = Object.freeze({
   attempt: 'attempt',
   error: 'error',
   exhaust: 'exhaust',
+});
+
+/** Provider error category — drives retry strategy selection. */
+export const ErrorCategory = Object.freeze({
+  rateLimited: 'rate-limited',
+  creditExhausted: 'credit-exhausted',
+  overloaded: 'overloaded',
+  serverError: 'server-error',
+  authFailure: 'auth-failure',
+  transient: 'transient',
+});
+
+/**
+ * Retry mode — controls how the retry module handles provider-level errors.
+ *
+ * Aligned with ErrorPosture (strict/resilient) — describes posture toward provider throttling.
+ *
+ * strict:     Fast failure on rate limits and credit exhaustion. No provider-level waits.
+ * patient:    Waits for rate limits (up to 1h), retries credit exhaustion every 2min indefinitely.
+ * persistent: Like patient with higher rate limit ceiling (4h) and longer overload backoff.
+ */
+export const RetryMode = Object.freeze({
+  strict: 'strict',
+  patient: 'patient',
+  persistent: 'persistent',
 });

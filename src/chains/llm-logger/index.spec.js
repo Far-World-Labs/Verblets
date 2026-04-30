@@ -361,4 +361,54 @@ describe('LLM Logger - Factory Pattern', () => {
       expect(logger.ringBuffer.size()).toBe(50);
     });
   });
+
+  describe('Configuration validation', () => {
+    it('throws when lane is missing writer function', () => {
+      expect(() =>
+        createLLMLogger({
+          lanes: [{ laneId: 'main' }],
+        })
+      ).toThrow(/writer function/);
+    });
+
+    it('throws when lane writer is not a function', () => {
+      expect(() =>
+        createLLMLogger({
+          lanes: [{ laneId: 'main', writer: 'not-fn' }],
+        })
+      ).toThrow(/writer function/);
+    });
+
+    it('throws when processor is missing processorId', () => {
+      expect(() =>
+        createLLMLogger({
+          processors: [{ process: vi.fn() }],
+        })
+      ).toThrow(/processorId/);
+    });
+
+    it('throws when processor processorId is empty string', () => {
+      expect(() =>
+        createLLMLogger({
+          processors: [{ processorId: '', process: vi.fn() }],
+        })
+      ).toThrow(/processorId/);
+    });
+
+    it('throws when processor.process is not a function', () => {
+      expect(() =>
+        createLLMLogger({
+          processors: [{ processorId: 'p1', process: 'not-fn' }],
+        })
+      ).toThrow(/process function/);
+    });
+
+    it('throws when processor.process is missing', () => {
+      expect(() =>
+        createLLMLogger({
+          processors: [{ processorId: 'p1' }],
+        })
+      ).toThrow(/process function/);
+    });
+  });
 });

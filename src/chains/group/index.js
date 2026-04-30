@@ -1,4 +1,5 @@
-import listBatch, { ListStyle, determineStyle } from '../../verblets/list-batch/index.js';
+import callLlm from '../../lib/llm/index.js';
+import listBatch, { determineStyle } from '../../verblets/list-batch/index.js';
 import reduce from '../reduce/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
@@ -6,6 +7,7 @@ import { DomainEvent, Outcome, ErrorPosture } from '../../lib/progress/constants
 import { parallel, retry, createBatches } from '../../lib/index.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 import { resolveArgs, resolveTexts } from '../../lib/instruction/index.js';
+import { expectString } from '../../lib/expect-shape/index.js';
 
 const name = 'group';
 
@@ -71,23 +73,13 @@ The accumulator should contain a comma-separated list of the current best catego
 
 const createAssignmentInstructions =
   (categories) =>
-  ({ style, count }) => {
+  ({ count }) => {
     const categoryList = categories.join(', ');
-    const baseInstructions = `Assign each item in the list below to one of these categories:
+    return `Assign each item in the list below to one of these categories:
 
 ${asXML(categoryList, { tag: 'categories' })}
 
-Return exactly ${count} category names, one per line, in the same order as the input items.`;
-
-    if (style === ListStyle.NEWLINE) {
-      return `${baseInstructions}
-
-Process exactly ${count} items from the list below.`;
-    }
-
-    return `${baseInstructions}
-
-Process exactly ${count} items from the XML list below.`;
+Return exactly ${count} category names in the items array, one per input item, in the same order as the input list.`;
   };
 
 const parseCategories = (categoriesString) =>
@@ -98,16 +90,25 @@ const parseCategories = (categoriesString) =>
 
 const assignItemsToGroups = (batchResults) => {
   const groups = {};
+  let droppedLabels = 0;
 
   for (const { items, labels } of batchResults) {
     labels.forEach((label, idx) => {
-      const key = String(label).trim() || 'other';
+      if (label == null) {
+        droppedLabels += 1;
+        return;
+      }
+      const key = String(label).trim();
+      if (!key) {
+        droppedLabels += 1;
+        return;
+      }
       if (!groups[key]) groups[key] = [];
       groups[key].push(items[idx]);
     });
   }
 
-  return groups;
+  return { groups, droppedLabels };
 };
 
 const applyTopNFilter = (groups, topN) => {
@@ -123,6 +124,19 @@ export default async function group(list, instructions, config) {
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
+
+  // Empty list short-circuits — documented liberal-accept path
+  if (list.length === 0) {
+    emitter.complete({
+      groupCount: 0,
+      totalItems: 0,
+      successCount: 0,
+      failedItems: 0,
+      droppedLabels: 0,
+      outcome: Outcome.success,
+    });
+    return {};
+  }
   const {
     guidance: granularityGuidance,
     maxParallel,
@@ -164,7 +178,10 @@ export default async function group(list, instructions, config) {
   }
 
   if (categories.length === 0) {
-    categories.push('other');
+    const source = known.categories ? 'known.categories' : 'category discovery';
+    const err = new Error(`group: no categories available (from ${source})`);
+    emitter.error(err);
+    throw err;
   }
 
   // Phase 2: Assignment - map items to established categories
@@ -179,7 +196,7 @@ export default async function group(list, instructions, config) {
   const batchResults = [];
   const assignmentFn = createAssignmentInstructions(categories);
   const assignmentInstructions = context
-    ? (opts) => `${context}\n\n${assignmentFn(opts)}`
+    ? (opts) => `${assignmentFn(opts)}\n\n${context}`
     : assignmentFn;
 
   const allBatches = await createBatches(list, runConfig);
@@ -199,12 +216,7 @@ export default async function group(list, instructions, config) {
         };
 
         const labels = await retry(
-          () =>
-            listBatch(
-              items,
-              assignmentInstructions({ style: batchStyle, count: items.length }),
-              listBatchOptions
-            ),
+          () => listBatch(items, assignmentInstructions({ count: items.length }), listBatchOptions),
           {
             label: 'group:batch',
             config: runConfig,
@@ -213,11 +225,13 @@ export default async function group(list, instructions, config) {
         );
 
         if (!Array.isArray(labels) || labels.length !== items.length) {
-          const fallbackLabels = new Array(items.length).fill('other');
-          batchResults.push({ items, labels: fallbackLabels, startIndex });
-        } else {
-          batchResults.push({ items, labels, startIndex });
+          throw new Error(
+            `group: malformed batch response (expected array of ${items.length}, got ${
+              Array.isArray(labels) ? `array of ${labels.length}` : typeof labels
+            })`
+          );
         }
+        batchResults.push({ items, labels, startIndex });
 
         batchDone(items.length);
       } catch (error) {
@@ -235,14 +249,227 @@ export default async function group(list, instructions, config) {
 
   // Final grouping
   const sorted = batchResults.toSorted((a, b) => a.startIndex - b.startIndex);
-  const groups = assignItemsToGroups(sorted);
+  const { groups, droppedLabels } = assignItemsToGroups(sorted);
+
+  const totalAssigned = Object.values(groups).reduce((s, arr) => s + arr.length, 0);
+
+  if (totalAssigned === 0 && list.length > 0) {
+    const err = new Error(`group: failed to assign any of ${list.length} items`);
+    emitter.error(err);
+    throw err;
+  }
 
   const result = topN ? applyTopNFilter(groups, topN) : groups;
 
   const groupCount = Object.keys(result).length;
-  emitter.complete({ groupCount, outcome: Outcome.success });
+  const failedItems = list.length - totalAssigned;
+  const outcome = failedItems > 0 ? Outcome.partial : Outcome.success;
+  emitter.complete({
+    groupCount,
+    totalItems: list.length,
+    successCount: totalAssigned,
+    failedItems,
+    droppedLabels,
+    outcome,
+  });
 
   return result;
 }
 
 group.knownTexts = ['categories'];
+
+/**
+ * Assign a single item to one of the supplied categories with one LLM call.
+ *
+ * The list-form `group` discovers categories then assigns; this is the
+ * assignment-only primitive when the taxonomy is already known. Categories
+ * must be provided via the instruction bundle (`{ categories: 'a, b, c' }`
+ * or an array on `known.categories`). Returns the chosen category name as
+ * a trimmed string; the caller decides whether to validate it against the
+ * supplied list.
+ *
+ * @param {*} item - Item to classify
+ * @param {string|object} instructions - Grouping instructions; bundle must include `categories`
+ * @param {object} [config={}] - Configuration options
+ * @returns {Promise<string>} Assigned category name
+ */
+export async function groupItem(item, instructions, config) {
+  [instructions, config] = resolveArgs(instructions, config, ['categories']);
+  const { text, known, context } = resolveTexts(instructions, ['categories']);
+
+  if (!known.categories) {
+    throw new Error('groupItem: categories must be provided in the instruction bundle');
+  }
+  const categories = Array.isArray(known.categories)
+    ? known.categories
+    : parseCategories(known.categories);
+  if (categories.length === 0) {
+    throw new Error('groupItem: categories list is empty');
+  }
+
+  const runConfig = nameStep('group:item', config);
+  const emitter = createProgressEmitter('group:item', runConfig.onProgress, runConfig);
+  emitter.start();
+  emitter.emit({ event: DomainEvent.input, value: item });
+
+  try {
+    const contextBlock = context ? `\n\n${context}` : '';
+    const itemSerialized = typeof item === 'string' ? item : JSON.stringify(item);
+    const categoryList = categories.join(', ');
+
+    const prompt = `Assign the item below to exactly one of the listed categories.
+
+${asXML(text, { tag: 'grouping-criteria' })}
+
+${asXML(categoryList, { tag: 'categories' })}
+
+${asXML(itemSerialized, { tag: 'item' })}
+
+Return only the chosen category name, exactly as it appears in the categories list.${contextBlock}`;
+
+    const response = await retry(() => callLlm(prompt, runConfig), {
+      label: 'group:item',
+      config: runConfig,
+    });
+
+    const label = expectString(response, {
+      chain: 'group',
+      expected: 'category name from LLM',
+    }).trim();
+    if (!label) {
+      throw new Error('group: LLM returned a blank category name');
+    }
+
+    emitter.emit({ event: DomainEvent.output, value: label });
+    emitter.complete({ outcome: Outcome.success });
+    return label;
+  } catch (err) {
+    emitter.error(err);
+    throw err;
+  }
+}
+
+groupItem.knownTexts = ['categories'];
+
+/**
+ * Assign every item in a list to one of the supplied categories with managed
+ * concurrency — one LLM call per item.
+ *
+ * Skips the discovery phase the default `group` runs; categories must be
+ * supplied in the instruction bundle. Use this when:
+ *   - The taxonomy is already known (e.g. carried forward from a prior run)
+ *   - Items vary widely so a batched assignment would smear them
+ *   - You want per-item retry granularity
+ *
+ * Items whose assignment fails are dropped from the result; the chain reports
+ * outcome=partial so callers can distinguish "not in any group" from "we
+ * never got an answer."
+ *
+ * @param {Array} list - Items to assign
+ * @param {string|object} instructions - Instruction bundle including `categories`
+ * @param {object} [config={}] - `maxParallel`, `errorPosture`, `topN`
+ * @returns {Promise<Object<string, Array>>} category-name → items
+ */
+export async function groupParallel(list, instructions, config) {
+  [instructions, config] = resolveArgs(instructions, config, ['categories']);
+  if (!Array.isArray(list)) {
+    throw new Error(
+      `groupParallel: list must be an array (got ${list === null ? 'null' : typeof list})`
+    );
+  }
+  const { text, known, context } = resolveTexts(instructions, ['categories']);
+
+  if (!known.categories) {
+    throw new Error('groupParallel: categories must be provided in the instruction bundle');
+  }
+  const categories = Array.isArray(known.categories)
+    ? known.categories
+    : parseCategories(known.categories);
+  if (categories.length === 0) {
+    throw new Error('groupParallel: categories list is empty');
+  }
+
+  const runConfig = nameStep('group:parallel', config);
+  const emitter = createProgressEmitter('group:parallel', runConfig.onProgress, runConfig);
+  emitter.start();
+  emitter.emit({ event: DomainEvent.input, value: list });
+
+  if (list.length === 0) {
+    emitter.complete({
+      groupCount: 0,
+      totalItems: 0,
+      successCount: 0,
+      failedItems: 0,
+      outcome: Outcome.success,
+    });
+    return {};
+  }
+
+  try {
+    const { maxParallel, errorPosture, topN } = await getOptions(runConfig, {
+      granularity: withPolicy(mapGranularity, ['guidance', 'topN']),
+      maxParallel: 3,
+      errorPosture: ErrorPosture.resilient,
+    });
+
+    // Pass `categories` as a known key so groupItem skips re-parsing on every call.
+    const itemInstructions = {
+      text,
+      categories,
+      ...(context ? { _ctx: context } : {}),
+    };
+
+    const labels = new Array(list.length).fill(undefined);
+    const batchDone = emitter.batch(list.length);
+    const indexed = list.map((value, index) => ({ value, index }));
+
+    await parallel(
+      indexed,
+      async ({ value, index }) => {
+        try {
+          labels[index] = await groupItem(value, itemInstructions, {
+            ...runConfig,
+            onProgress: scopePhase(runConfig.onProgress, 'item'),
+          });
+        } catch (error) {
+          emitter.error(error, { itemIndex: index });
+          if (errorPosture === ErrorPosture.strict) throw error;
+        } finally {
+          batchDone(1);
+        }
+      },
+      {
+        maxParallel,
+        errorPosture,
+        abortSignal: runConfig.abortSignal,
+        label: 'group parallel items',
+      }
+    );
+
+    const { groups, droppedLabels } = assignItemsToGroups([{ items: list, labels }]);
+    const totalAssigned = Object.values(groups).reduce((s, arr) => s + arr.length, 0);
+
+    if (totalAssigned === 0 && list.length > 0) {
+      throw new Error(`groupParallel: failed to assign any of ${list.length} items`);
+    }
+
+    const result = topN ? applyTopNFilter(groups, topN) : groups;
+    const failedItems = list.length - totalAssigned;
+    const outcome = failedItems > 0 ? Outcome.partial : Outcome.success;
+
+    emitter.complete({
+      groupCount: Object.keys(result).length,
+      totalItems: list.length,
+      successCount: totalAssigned,
+      failedItems,
+      droppedLabels,
+      outcome,
+    });
+    return result;
+  } catch (err) {
+    emitter.error(err);
+    throw err;
+  }
+}
+
+groupParallel.knownTexts = ['categories'];

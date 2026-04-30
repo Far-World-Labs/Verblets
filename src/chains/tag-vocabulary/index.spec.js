@@ -197,7 +197,7 @@ describe('tag-vocabulary', () => {
 
     it('should throw error without tagger', async () => {
       await expect(tagVocabulary('Task tags', mockItems, {})).rejects.toThrow(
-        'A tagger function must be provided'
+        /tagger function must be provided/
       );
     });
 

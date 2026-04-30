@@ -1,12 +1,28 @@
 import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
+import parallel from '../../lib/parallel-batch/index.js';
+import map from '../map/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 import { resolveArgs, resolveTexts } from '../../lib/instruction/index.js';
-import createProgressEmitter from '../../lib/progress/index.js';
-import { DomainEvent, Outcome } from '../../lib/progress/constants.js';
+import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
+import { DomainEvent, Outcome, ErrorPosture } from '../../lib/progress/constants.js';
 import { calibrateSpecificationJsonSchema } from './schemas.js';
 import calibrateResultSchema from './calibrate-result.json' with { type: 'json' };
+
+const calibrateBatchSchema = {
+  type: 'object',
+  properties: {
+    items: {
+      type: 'array',
+      items: calibrateResultSchema,
+    },
+  },
+  required: ['items'],
+  additionalProperties: false,
+};
+
+const calibrateBatchResponseFormat = jsonSchema('calibrate_batch', calibrateBatchSchema);
 
 const name = 'calibrate';
 
@@ -26,10 +42,37 @@ export const mapSensitivity = (value) => {
   return undefined;
 };
 
+const VALID_THRESHOLD_STRATEGIES = ['statistical', 'percentile', 'fixed'];
+
+/**
+ * Validate scan shape at the chain boundary. Per error-policy: caller-config
+ * errors throw rather than silently producing junk statistics.
+ * @param {Array} scans - expected shape: [{ flagged, hits: [{ category, score }] }]
+ * @param {string} label - error message prefix
+ */
+function validateScans(scans, label) {
+  if (!Array.isArray(scans)) {
+    throw new Error(`${label}: scans must be an array (got ${typeof scans})`);
+  }
+  for (const [i, scan] of scans.entries()) {
+    if (!scan || typeof scan !== 'object' || !Array.isArray(scan.hits)) {
+      throw new Error(`${label}: scan at index ${i} must be {flagged, hits: Array}`);
+    }
+    for (const [j, hit] of scan.hits.entries()) {
+      if (!hit || typeof hit.category !== 'string' || !Number.isFinite(hit.score)) {
+        throw new Error(
+          `${label}: scan[${i}].hits[${j}] must be {category: string, score: finite number}`
+        );
+      }
+    }
+  }
+}
+
 // ===== Statistics =====
 
 /**
  * Compute summary statistics from an array of scan results for the spec prompt.
+ * Caller must validate scan shape before calling.
  * @param {Array<{ flagged: boolean, hits: Array<{ category: string, score: number }> }>} scans
  * @returns {object} Statistics object
  */
@@ -84,6 +127,8 @@ function computeScanStatistics(scans) {
  * @returns {Promise<{ corpusProfile: string, classificationCriteria: string, salienceCriteria: string, categoryNotes: string }>}
  */
 export async function calibrateSpec(scans, config = {}) {
+  validateScans(scans, 'calibrateSpec');
+
   const runConfig = nameStep('calibrate:spec', config);
   const specEmitter = createProgressEmitter('calibrate:spec', runConfig.onProgress, runConfig);
   specEmitter.start();
@@ -91,6 +136,15 @@ export async function calibrateSpec(scans, config = {}) {
     thresholdStrategy: 'statistical',
     sensitivity: withPolicy(mapSensitivity),
   });
+
+  if (!VALID_THRESHOLD_STRATEGIES.includes(thresholdStrategy)) {
+    const err = new Error(
+      `calibrateSpec: invalid thresholdStrategy ${JSON.stringify(thresholdStrategy)}, expected one of [${VALID_THRESHOLD_STRATEGIES.join(', ')}]`
+    );
+    specEmitter.error(err);
+    throw err;
+  }
+
   const { instructions } = runConfig;
 
   const statistics = computeScanStatistics(scans);
@@ -233,7 +287,9 @@ export function calibrateInstructions({ spec, text, ...context }) {
  * @param {object} [config]
  * @returns {Promise<{ severity: string, salience: string, categories: object, summary: string }>}
  */
-export default async function calibrate(scan, instructions, config) {
+export default async function calibrateItem(scan, instructions, config) {
+  validateScans([scan], 'calibrateItem');
+
   [instructions, config] = resolveArgs(instructions, config, ['spec']);
   const { text, known, context } = resolveTexts(instructions, ['spec']);
   const effectiveInstructions = context ? `${text}\n\n${context}` : text;
@@ -255,4 +311,179 @@ export default async function calibrate(scan, instructions, config) {
   }
 }
 
-calibrate.knownTexts = ['spec'];
+calibrateItem.knownTexts = ['spec'];
+
+/**
+ * Classify a list of scan results in parallel against one calibration spec.
+ *
+ * The spec is generated once from the entire corpus (so percentile/statistical
+ * thresholds reflect the whole list) and reused for every per-scan apply.
+ * Per-scan failures leave that slot as `undefined` rather than throwing —
+ * matching the partial-outcome contract used by `mapScore`/`mapTags`.
+ *
+ * Per-scan dispatch is parallel rather than batched-into-one-prompt; use this
+ * when the per-scan output's structure makes batched-LLM responses unreliable.
+ *
+ * @param {Array<{ flagged: boolean, hits: Array }>} scans - Scan results
+ * @param {string|object} instructions - Calibration instructions (string or bundle with `spec`)
+ * @param {object} [config={}] - Configuration options (`maxParallel`, `errorPosture`)
+ * @returns {Promise<Array<{ severity: string, salience: string, categories: object, summary: string }|undefined>>}
+ */
+export async function mapCalibrateParallel(scans, instructions, config) {
+  validateScans(scans, 'mapCalibrateParallel');
+
+  [instructions, config] = resolveArgs(instructions, config, ['spec']);
+  const { text, known, context } = resolveTexts(instructions, ['spec']);
+  const effectiveInstructions = context ? `${text}\n\n${context}` : text;
+
+  const runConfig = nameStep('calibrate:parallel', config);
+  const emitter = createProgressEmitter('calibrate:parallel', runConfig.onProgress, runConfig);
+  emitter.start();
+  emitter.emit({ event: DomainEvent.input, value: scans });
+
+  try {
+    const { maxParallel, errorPosture } = await getOptions(runConfig, {
+      maxParallel: 3,
+      errorPosture: ErrorPosture.resilient,
+    });
+
+    const spec =
+      known.spec ||
+      (await calibrateSpec(scans, {
+        ...runConfig,
+        instructions: effectiveInstructions,
+        onProgress: scopePhase(runConfig.onProgress, 'calibrate:spec'),
+      }));
+
+    emitter.emit({ event: DomainEvent.phase, phase: 'applying-calibrate', specification: spec });
+    const batchDone = emitter.batch(scans.length);
+
+    const results = new Array(scans.length).fill(undefined);
+    const items = scans.map((scan, index) => ({ scan, index }));
+
+    await parallel(
+      items,
+      async ({ scan, index }) => {
+        try {
+          results[index] = await calibrateWithSpec(scan, spec, {
+            ...runConfig,
+            onProgress: scopePhase(runConfig.onProgress, 'calibrate:apply'),
+          });
+        } catch (error) {
+          emitter.error(error, { itemIndex: index });
+          if (errorPosture === ErrorPosture.strict) throw error;
+        } finally {
+          batchDone(1);
+        }
+      },
+      {
+        maxParallel,
+        errorPosture,
+        label: 'calibrate items',
+        abortSignal: runConfig.abortSignal,
+      }
+    );
+
+    const failedItems = results.filter((r) => r === undefined).length;
+    if (failedItems === results.length && results.length > 0) {
+      throw new Error(`calibrate: all ${results.length} scans failed to classify`);
+    }
+
+    const outcome = failedItems > 0 ? Outcome.partial : Outcome.success;
+    emitter.emit({ event: DomainEvent.output, value: results });
+    emitter.complete({
+      totalItems: results.length,
+      successCount: results.length - failedItems,
+      failedItems,
+      outcome,
+    });
+    return results;
+  } catch (err) {
+    emitter.error(err);
+    throw err;
+  }
+}
+
+mapCalibrateParallel.knownTexts = ['spec'];
+
+/**
+ * Classify a list of scans by packing them into batched LLM prompts (one
+ * call per batch). The classification spec is generated once over the full
+ * corpus and reused across all batches. Sister to `mapCalibrateParallel`,
+ * which sends one LLM call per scan — use the batched form to amortize
+ * per-call overhead when scans are uniform enough that the LLM can produce
+ * one consistent classification vector per prompt.
+ *
+ * Failed batches leave their slots as `undefined`; chain reports
+ * outcome=partial.
+ *
+ * @param {Array<{ flagged: boolean, hits: Array }>} scans - Scan results
+ * @param {string|object} instructions - Calibration instructions (string or bundle with `spec`)
+ * @param {object} [config={}] - `batchSize`, `maxParallel`, `errorPosture`
+ * @returns {Promise<Array<object|undefined>>}
+ */
+export async function mapCalibrate(scans, instructions, config) {
+  validateScans(scans, 'mapCalibrate');
+
+  [instructions, config] = resolveArgs(instructions, config, ['spec']);
+  const { text, known, context } = resolveTexts(instructions, ['spec']);
+  const effectiveInstructions = context ? `${text}\n\n${context}` : text;
+
+  const runConfig = nameStep('calibrate:map', config);
+  const emitter = createProgressEmitter('calibrate:map', runConfig.onProgress, runConfig);
+  emitter.start();
+  emitter.emit({ event: DomainEvent.input, value: scans });
+
+  try {
+    const spec =
+      known.spec ||
+      (await calibrateSpec(scans, {
+        ...runConfig,
+        instructions: effectiveInstructions,
+        onProgress: scopePhase(runConfig.onProgress, 'calibrate:spec'),
+      }));
+
+    emitter.emit({ event: DomainEvent.phase, phase: 'classifying', specification: spec });
+
+    const mapInstructions = `Classify each scan result against the calibration specification.
+
+${asXML(spec, { tag: 'calibration-specification' })}
+
+For every scan in the input list, return a classification object with:
+- severity: one of "none", "low", "medium", "high", "critical"
+- salience: one of "routine", "notable", "significant", "exceptional"
+- categories: object mapping each detected category to { severity, salience }
+- summary: brief explanation of the classification
+
+Return one classification object per input scan, in the same order.`;
+
+    const serializedScans = scans.map((scan) => JSON.stringify(scan));
+
+    const results = await map(serializedScans, mapInstructions, {
+      ...runConfig,
+      responseFormat: calibrateBatchResponseFormat,
+      onProgress: scopePhase(runConfig.onProgress, 'calibrate:map'),
+    });
+
+    if (!Array.isArray(results)) {
+      throw new Error(
+        `calibrate: expected array of classifications from map (got ${typeof results})`
+      );
+    }
+
+    const failedItems = results.filter((r) => r === undefined).length;
+    const outcome = failedItems > 0 ? Outcome.partial : Outcome.success;
+    emitter.complete({
+      totalItems: results.length,
+      successCount: results.length - failedItems,
+      failedItems,
+      outcome,
+    });
+    return results;
+  } catch (err) {
+    emitter.error(err);
+    throw err;
+  }
+}
+
+mapCalibrate.knownTexts = ['spec'];

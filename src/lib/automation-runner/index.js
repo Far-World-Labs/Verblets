@@ -20,6 +20,7 @@ import init from '../../init.js';
 import { RunContext } from '../run-context/index.js';
 import { list, resolve as resolveAutomation, updateStats } from '../automation-registry/index.js';
 import { TelemetryEvent, LlmStatus } from '../progress/constants.js';
+import { defaultRetryMode } from '../../constants/common.js';
 
 const DATA_ROOT = () => {
   const xdgData = process.env.XDG_DATA_HOME || resolve(homedir(), '.local', 'share');
@@ -134,31 +135,32 @@ export async function discoverAutomations() {
  * irrecoverable. Generic 400s are not — they could be a malformed request
  * for one item that doesn't affect others.
  */
-const IRRECOVERABLE_PATTERNS = [
+const AUTH_PATTERNS = [/invalid.*api.?key/i, /authentication/i, /account.*deactivated/i];
+
+const CREDIT_PATTERNS = [
   /credit balance is too low/i,
-  /invalid.*api.?key/i,
-  /authentication/i,
-  /account.*deactivated/i,
   /billing/i,
   /quota.*exceeded/i,
-  /rate.*limit/i, // 429s should be retried, but persistent ones are irrecoverable
+  /rate.*limit/i,
 ];
 
 const IRRECOVERABLE_STATUS_CODES = new Set([401, 403]);
 
-/**
- * Count consecutive irrecoverable errors. A single 429 is retryable,
- * but N in a row means the provider is rejecting everything.
- */
 const CONSECUTIVE_THRESHOLD = 3;
 
-function createOutageDetector(abortController) {
+/**
+ * Watch LLM telemetry for irrecoverable errors and abort the run.
+ *
+ * In patient/persistent retryMode, rate limits and credit exhaustion are
+ * handled by the retry module — the outage detector only aborts on auth
+ * failures. In strict mode, it aborts on persistent 429s and credit errors.
+ */
+function createOutageDetector(abortController, retryMode = defaultRetryMode) {
   let consecutiveErrors = 0;
+  const isPatient = retryMode === 'patient' || retryMode === 'persistent';
 
   return function observe(event) {
-    // Only watch LLM call telemetry errors
     if (event.event !== TelemetryEvent.llmCall || event.status !== LlmStatus.error) {
-      // Successful LLM call resets the counter
       if (event.event === TelemetryEvent.llmCall && event.status === LlmStatus.success) {
         consecutiveErrors = 0;
       }
@@ -169,19 +171,24 @@ function createOutageDetector(abortController) {
     const httpStatus = error.httpStatusCode;
     const message = error.message || '';
 
-    // Immediate abort: auth failures, account issues
     if (IRRECOVERABLE_STATUS_CODES.has(httpStatus)) {
       abortController.abort(new Error(`Provider error (${httpStatus}): ${message}`));
       return;
     }
 
-    // Pattern-matched 400s: credit exhaustion, billing, etc.
-    if (httpStatus === 400 && IRRECOVERABLE_PATTERNS.some((p) => p.test(message))) {
+    if (AUTH_PATTERNS.some((p) => p.test(message))) {
       abortController.abort(new Error(`Provider error: ${message}`));
       return;
     }
 
-    // Consecutive error accumulation (catches persistent 429s, 500s)
+    // In patient/persistent mode, retry module handles everything else
+    if (isPatient) return;
+
+    if (httpStatus === 400 && CREDIT_PATTERNS.some((p) => p.test(message))) {
+      abortController.abort(new Error(`Provider error: ${message}`));
+      return;
+    }
+
     if (httpStatus === 429 || (httpStatus >= 500 && httpStatus < 600)) {
       consecutiveErrors++;
       if (consecutiveErrors >= CONSECUTIVE_THRESHOLD) {
@@ -213,14 +220,15 @@ export async function runAutomation(name, params = {}, options = {}) {
 
   dotenv.config({ override: true });
 
-  // Outage detection: abort controller + progress middleware
+  // Automations default to patient retry — waits for rate limits and credit refills
+  const retryMode = params.retryMode || initOptions.retryMode || 'patient';
   const abortController = new AbortController();
-  const outageDetector = createOutageDetector(abortController);
+  const outageDetector = createOutageDetector(abortController, retryMode);
 
   const instance = init(initOptions);
 
-  // Inject abort signal into init config so it flows to every LLM call via withConfig
-  const initConfig = { ...instance.config, abortSignal: abortController.signal };
+  // Inject abort signal + retry mode so they flow to every LLM call via withConfig
+  const initConfig = { ...instance.config, abortSignal: abortController.signal, retryMode };
 
   // Wrap external onProgress with outage detection
   const wrappedOnProgress = onProgress

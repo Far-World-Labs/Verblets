@@ -9,11 +9,19 @@ export { default as number } from './verblets/number/index.js';
 export { default as numberWithUnits } from './verblets/number-with-units/index.js';
 
 // Math
-export { default as scaleItem, scaleSpec, scaleInstructions } from './chains/scale/index.js';
+export {
+  default as scaleItem,
+  mapScale,
+  mapScaleParallel,
+  scaleSpec,
+  scaleInstructions,
+} from './chains/scale/index.js';
 
 // Calibration
 export {
-  default as calibrate,
+  default as calibrateItem,
+  mapCalibrate,
+  mapCalibrateParallel,
   calibrateSpec,
   calibrateInstructions,
 } from './chains/calibrate/index.js';
@@ -62,22 +70,29 @@ export {
   calculateStatistics,
 } from './chains/detect-threshold/index.js';
 export {
-  default as extractEntities,
+  default as entityItem,
+  mapEntities,
+  mapEntitiesParallel,
   entitySpec,
   entityInstructions,
 } from './chains/entities/index.js';
 export { default as extractBlocks } from './chains/extract-blocks/index.js';
-export { default as filter } from './chains/filter/index.js';
-export { default as find } from './chains/find/index.js';
+export { default as filter, filterItem, filterParallel } from './chains/filter/index.js';
+export { default as find, findItem, findParallel } from './chains/find/index.js';
 export { default as glossary } from './chains/glossary/index.js';
-export { default as group } from './chains/group/index.js';
+export { default as group, groupItem, groupParallel } from './chains/group/index.js';
 export { default as intersections } from './chains/intersections/index.js';
 export { default as list, generateList } from './chains/list/index.js';
 export { default as listBatch, ListStyle, determineStyle } from './verblets/list-batch/index.js';
 export { default as listExpand } from './verblets/list-expand/index.js';
-export { default as map } from './chains/map/index.js';
-export { default as reduce } from './chains/reduce/index.js';
+export { default as map, mapItem, mapParallel } from './chains/map/index.js';
+export { default as reduce, reduceItem } from './chains/reduce/index.js';
 export { default as score, scoreSpec, scoreItem, scoreInstructions } from './chains/score/index.js';
+export {
+  default as scoreMatrix,
+  normalizeRubric,
+  scoreMatrixInstructions,
+} from './chains/score-matrix/index.js';
 export { default as sort } from './chains/sort/index.js';
 export { default as tagItem, tagSpec, mapTags, tagInstructions } from './chains/tags/index.js';
 
@@ -97,11 +112,17 @@ export { default as filterAmbiguous } from './chains/filter-ambiguous/index.js';
 export { default as join } from './chains/join/index.js';
 export { default as name } from './verblets/name/index.js';
 export { default as nameSimilarTo } from './verblets/name-similar-to/index.js';
-export { default as people } from './chains/people/index.js';
-export { default as popReference } from './chains/pop-reference/index.js';
+export { default as peopleSet, mapPeopleSet, mapPeopleSetParallel } from './chains/people/index.js';
+export {
+  default as popReferenceItem,
+  mapPopReference,
+  mapPopReferenceParallel,
+} from './chains/pop-reference/index.js';
 export { default as questions } from './chains/questions/index.js';
 export {
-  default as extractRelations,
+  default as relationItem,
+  mapRelations,
+  mapRelationsParallel,
   relationSpec,
   parseRDFLiteral,
   parseRelations,
@@ -177,6 +198,7 @@ export { default as chunkSentences } from './lib/chunk-sentences/index.js';
 export { debug } from './lib/debug/index.js';
 export { default as createBatches } from './lib/text-batch/index.js';
 export { default as llm, jsonSchema } from './lib/llm/index.js';
+export { default as callAgent } from './lib/agent/index.js';
 export { default as normalizeLlm } from './lib/normalize-llm/index.js';
 export { default as parallel, parallelMap } from './lib/parallel-batch/index.js';
 export { default as retry } from './lib/retry/index.js';
@@ -199,6 +221,8 @@ export {
   StatusCode,
   ModelSource,
   OptionSource,
+  ErrorCategory,
+  RetryMode,
 } from './lib/progress/constants.js';
 export {
   pMap,

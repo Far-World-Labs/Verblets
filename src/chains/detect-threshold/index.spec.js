@@ -316,13 +316,13 @@ describe('detectThreshold', () => {
       expect(result.thresholdCandidates[1].value).toBe(80);
     });
 
-    it('handles result with no thresholdCandidates property gracefully', async () => {
+    it('throws when LLM response is missing thresholdCandidates', async () => {
       reduce.mockResolvedValueOnce(mockReduceResult);
       callLlm.mockResolvedValueOnce({ someOtherField: 'no candidates' });
 
-      const result = await detectThreshold(KNOWN_DATA, 'score', defaultGoal);
-
-      expect(result.thresholdCandidates).toBeUndefined();
+      await expect(detectThreshold(KNOWN_DATA, 'score', defaultGoal)).rejects.toThrow(
+        /missing required "thresholdCandidates"/
+      );
     });
   });
 

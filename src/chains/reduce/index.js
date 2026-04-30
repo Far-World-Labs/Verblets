@@ -7,7 +7,7 @@ import { OpEvent, DomainEvent, Outcome } from '../../lib/progress/constants.js';
 import { nameStep, getOptions } from '../../lib/context/option.js';
 import { resolveArgs, resolveTexts } from '../../lib/instruction/index.js';
 
-import { jsonSchema } from '../../lib/llm/index.js';
+import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 
 const name = 'reduce';
 
@@ -18,6 +18,9 @@ const DEFAULT_REDUCE_RESPONSE_FORMAT = jsonSchema(
 );
 
 const reduce = async function reduce(list, instructions, config) {
+  if (!Array.isArray(list)) {
+    throw new Error(`reduce: list must be an array (got ${list === null ? 'null' : typeof list})`);
+  }
   [instructions, config] = resolveArgs(instructions, config);
   const { text, context } = resolveTexts(instructions, []);
   const runConfig = nameStep(name, config);
@@ -90,9 +93,28 @@ Process exactly ${count} items from the ${itemFormat} list below and return the 
         onProgress: scopePhase(runConfig.onProgress, 'batch'),
       });
 
-      if (!runConfig.responseFormat && result?.accumulator !== undefined) {
+      if (!runConfig.responseFormat) {
+        // Default schema declares { accumulator: string } — without it the
+        // accumulator becomes garbage on the next iteration.
+        if (!result || typeof result !== 'object' || Array.isArray(result)) {
+          throw new Error(
+            `reduce: expected accumulator object from LLM (got ${
+              result === null ? 'null' : typeof result
+            })`
+          );
+        }
+        if (result.accumulator === undefined) {
+          throw new Error('reduce: LLM response missing required "accumulator" field');
+        }
         acc = result.accumulator;
       } else {
+        // Caller provided a custom schema — we can't validate shape, but
+        // null/undefined accumulators corrupt subsequent batches silently.
+        if (result === null || result === undefined) {
+          throw new Error(
+            `reduce: LLM returned ${result === null ? 'null' : 'undefined'} under custom responseFormat`
+          );
+        }
         acc = result;
       }
 
@@ -121,5 +143,88 @@ Process exactly ${count} items from the ${itemFormat} list below and return the 
 };
 
 reduce.knownTexts = [];
+
+/**
+ * Apply a single reduce step: combine an existing accumulator with one new
+ * item via one LLM call. The list-form `reduce` walks batches sequentially;
+ * this is the per-step primitive callers can compose into their own loops
+ * (e.g. streaming consumers, generator-driven aggregations).
+ *
+ * @param {*} accumulator - Current accumulator value (any shape)
+ * @param {*} item - Item to fold into the accumulator
+ * @param {string|object} instructions - Reduction instructions
+ * @param {object} [config={}] - Configuration options. `responseFormat` and
+ *   `accumulatorMode` thread through identically to `reduce`.
+ * @returns {Promise<*>} Updated accumulator
+ */
+export async function reduceItem(accumulator, item, instructions, config) {
+  [instructions, config] = resolveArgs(instructions, config);
+  const { text, context } = resolveTexts(instructions, []);
+  const runConfig = nameStep('reduce:item', config);
+  const emitter = createProgressEmitter('reduce:item', runConfig.onProgress, runConfig);
+  emitter.start();
+  emitter.emit({ event: DomainEvent.input, value: { accumulator, item } });
+
+  try {
+    const { accumulatorMode } = await getOptions(runConfig, {
+      accumulatorMode: 'auto',
+    });
+
+    const needsItemsWrapper =
+      accumulatorMode === 'collection' ||
+      (accumulatorMode === 'auto' && Array.isArray(accumulator) && !runConfig.responseFormat);
+    const acc = needsItemsWrapper ? { items: accumulator } : accumulator;
+
+    const contextBlock = context ? `\n\n${context}` : '';
+    const prompt = `Start with the given accumulator. Apply the transformation instructions to the new item, using the result as the updated accumulator. Return only the updated accumulator value.
+
+${asXML(text, { tag: 'instructions' })}
+
+${asXML(acc !== undefined ? acc : 'No initial value - use the item as the starting accumulator', {
+  tag: 'accumulator',
+})}
+
+${asXML(item, { tag: 'item' })}${contextBlock}`;
+
+    const effectiveResponseFormat = runConfig.responseFormat || DEFAULT_REDUCE_RESPONSE_FORMAT;
+    const llmOptions = { ...runConfig, responseFormat: effectiveResponseFormat };
+
+    const result = await retry(() => callLlm(prompt, llmOptions), {
+      label: 'reduce:item',
+      config: runConfig,
+    });
+
+    let newAcc;
+    if (!runConfig.responseFormat) {
+      if (!result || typeof result !== 'object' || Array.isArray(result)) {
+        throw new Error(
+          `reduce: expected accumulator object from LLM (got ${
+            result === null ? 'null' : typeof result
+          })`
+        );
+      }
+      if (result.accumulator === undefined) {
+        throw new Error('reduce: LLM response missing required "accumulator" field');
+      }
+      newAcc = result.accumulator;
+    } else {
+      if (result === null || result === undefined) {
+        throw new Error(
+          `reduce: LLM returned ${result === null ? 'null' : 'undefined'} under custom responseFormat`
+        );
+      }
+      newAcc = result;
+    }
+
+    emitter.emit({ event: DomainEvent.output, value: newAcc });
+    emitter.complete({ outcome: Outcome.success });
+    return newAcc;
+  } catch (err) {
+    emitter.error(err);
+    throw err;
+  }
+}
+
+reduceItem.knownTexts = [];
 
 export default reduce;

@@ -1,7 +1,13 @@
-import group from './index.js';
+import group, { groupItem, groupParallel } from './index.js';
 import listBatch from '../../verblets/list-batch/index.js';
 import reduce from '../reduce/index.js';
+import callLlm from '../../lib/llm/index.js';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
+
+vi.mock('../../lib/llm/index.js', async (importOriginal) => ({
+  ...(await importOriginal()),
+  default: vi.fn(),
+}));
 
 vi.mock('../../verblets/list-batch/index.js', () => ({
   default: vi.fn(),
@@ -95,5 +101,79 @@ describe('group chain', () => {
 
     const [, discoveryPrompt] = reduce.mock.calls[0];
     expect(discoveryPrompt).not.toContain('granularity-guidance');
+  });
+});
+
+describe('groupItem', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('assigns one item to a provided category', async () => {
+    vi.mocked(callLlm).mockResolvedValueOnce('odd');
+    const result = await groupItem('a', { text: 'odd or even', categories: 'odd, even' });
+    expect(result).toBe('odd');
+    expect(callLlm).toHaveBeenCalledTimes(1);
+    const prompt = vi.mocked(callLlm).mock.calls[0][0];
+    expect(prompt).toContain('<categories>');
+    expect(prompt).toContain('odd, even');
+  });
+
+  it('accepts categories as an array', async () => {
+    vi.mocked(callLlm).mockResolvedValueOnce('animals');
+    const result = await groupItem('cat', {
+      text: 'classify',
+      categories: ['animals', 'plants', 'minerals'],
+    });
+    expect(result).toBe('animals');
+  });
+
+  it('throws when categories are not provided', async () => {
+    await expect(groupItem('x', 'instructions')).rejects.toThrow(/categories must be provided/);
+  });
+
+  it('throws when LLM returns a blank category name', async () => {
+    vi.mocked(callLlm).mockResolvedValueOnce('   ');
+    await expect(groupItem('a', { text: 'classify', categories: 'one, two' })).rejects.toThrow(
+      /blank category name/
+    );
+  });
+});
+
+describe('groupParallel', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('assigns each item using groupItem and aggregates by category', async () => {
+    vi.mocked(callLlm)
+      .mockResolvedValueOnce('odd')
+      .mockResolvedValueOnce('even')
+      .mockResolvedValueOnce('odd');
+    const result = await groupParallel(['a', 'bb', 'ccc'], {
+      text: 'odd or even by length',
+      categories: 'odd, even',
+    });
+    expect(result).toEqual({ odd: ['a', 'ccc'], even: ['bb'] });
+    expect(callLlm).toHaveBeenCalledTimes(3);
+  });
+
+  it('throws when categories are missing', async () => {
+    await expect(groupParallel(['a'], 'instructions')).rejects.toThrow(
+      /categories must be provided/
+    );
+  });
+
+  it('returns empty object on empty list', async () => {
+    const result = await groupParallel([], { text: 'x', categories: 'one, two' });
+    expect(result).toEqual({});
+    expect(callLlm).not.toHaveBeenCalled();
+  });
+
+  it('throws when every item fails', async () => {
+    vi.mocked(callLlm).mockResolvedValue('   '); // blank category triggers groupItem error
+    await expect(
+      groupParallel(['a', 'b'], { text: 'x', categories: 'one, two' }, { maxParallel: 1 })
+    ).rejects.toThrow(/failed to assign any of 2 items/);
   });
 });

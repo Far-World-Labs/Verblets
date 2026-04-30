@@ -4,7 +4,7 @@ import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { testResultJsonSchema } from './schemas.js';
 import createProgressEmitter from '../../lib/progress/index.js';
-import { Outcome } from '../../lib/progress/constants.js';
+import { Outcome, DomainEvent } from '../../lib/progress/constants.js';
 import { nameStep } from '../../lib/context/option.js';
 import { resolveArgs, resolveTexts } from '../../lib/instruction/index.js';
 
@@ -19,6 +19,7 @@ async function test(path, instructions, config) {
 
   try {
     const code = await fs.readFile(path, 'utf-8');
+    emitter.emit({ event: DomainEvent.phase, phase: 'file-read', path });
 
     const contextBlock = context ? `\n\n${context}` : '';
     const prompt = `Analyze this code and ${text}:
@@ -36,6 +37,8 @@ GUIDELINES:
 - Be concise but clear in your feedback
 - If no issues are found, return {"hasIssues": false, "issues": []}${contextBlock}`;
 
+    emitter.emit({ event: DomainEvent.phase, phase: 'analyzing' });
+
     const result = await retry(
       () =>
         llm(prompt, {
@@ -48,8 +51,12 @@ GUIDELINES:
       }
     );
 
-    // With structured output, we get a validated object
     const issues = result.hasIssues ? result.issues : [];
+    emitter.emit({
+      event: DomainEvent.phase,
+      phase: 'analysis-complete',
+      issueCount: issues.length,
+    });
 
     emitter.complete({ outcome: Outcome.success });
 

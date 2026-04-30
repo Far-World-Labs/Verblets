@@ -1,6 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import reduce from './index.js';
+import reduce, { reduceItem } from './index.js';
 import listBatch from '../../verblets/list-batch/index.js';
+import callLlm from '../../lib/llm/index.js';
+import { ChainEvent, DomainEvent, OpEvent, Outcome } from '../../lib/progress/constants.js';
+
+vi.mock('../../lib/llm/index.js', async (importOriginal) => ({
+  ...(await importOriginal()),
+  default: vi.fn(),
+}));
 
 vi.mock('../../lib/text-batch/index.js', () => ({
   default: vi.fn((list) => {
@@ -118,5 +125,183 @@ describe('reduce chain', () => {
     const result = await reduce(['x', 'y', 'z'], 'join', { initial: '0', batchSize: 2 });
     expect(result).toBe('0-x-y-z');
     expect(listBatch).toHaveBeenCalledTimes(2);
+  });
+
+  describe('incremental batch progress', () => {
+    it('emits batch:complete events as each batch finishes', async () => {
+      const progressEvents = [];
+      const onProgress = vi.fn((event) => progressEvents.push(event));
+
+      await reduce(['a', 'b', 'c', 'd', 'e'], 'join', {
+        batchSize: 2,
+        onProgress,
+      });
+
+      const batchEvents = progressEvents.filter(
+        (e) => e.step === 'reduce' && e.event === OpEvent.batchComplete
+      );
+      // 5 items in batches of 2 → 3 batches
+      expect(batchEvents).toHaveLength(3);
+
+      // processedItems grows incrementally
+      expect(batchEvents[0].processedItems).toBe(2);
+      expect(batchEvents[0].totalItems).toBe(5);
+      expect(batchEvents[1].processedItems).toBe(4);
+      expect(batchEvents[2].processedItems).toBe(5);
+    });
+
+    it('reports progress ratio on each batch event', async () => {
+      const progressEvents = [];
+      const onProgress = vi.fn((event) => progressEvents.push(event));
+
+      await reduce(['a', 'b', 'c', 'd'], 'join', {
+        batchSize: 2,
+        onProgress,
+      });
+
+      const batchEvents = progressEvents.filter(
+        (e) => e.step === 'reduce' && e.event === OpEvent.batchComplete
+      );
+      expect(batchEvents).toHaveLength(2);
+      expect(batchEvents[0].progress).toBeCloseTo(0.5);
+      expect(batchEvents[1].progress).toBeCloseTo(1.0);
+    });
+
+    it('brackets batch processing with operation start and complete', async () => {
+      const progressEvents = [];
+      const onProgress = vi.fn((event) => progressEvents.push(event));
+
+      await reduce(['a', 'b', 'c', 'd'], 'join', {
+        batchSize: 2,
+        onProgress,
+      });
+
+      const opEvents = progressEvents.filter(
+        (e) => e.step === 'reduce' && (e.event === OpEvent.start || e.event === OpEvent.complete)
+      );
+      expect(opEvents).toHaveLength(2);
+      expect(opEvents[0].event).toBe(OpEvent.start);
+      expect(opEvents[0].totalItems).toBe(4);
+      expect(opEvents[0].totalBatches).toBe(2);
+      expect(opEvents[1].event).toBe(OpEvent.complete);
+      expect(opEvents[1].totalItems).toBe(4);
+    });
+
+    it('emits full lifecycle: start → input → batch:complete → output → complete', async () => {
+      const progressEvents = [];
+      const onProgress = vi.fn((event) => progressEvents.push(event));
+
+      await reduce(['a', 'b', 'c'], 'join', {
+        batchSize: 2,
+        onProgress,
+      });
+
+      const stepEvents = progressEvents.filter((e) => e.step === 'reduce');
+      const eventNames = stepEvents.map((e) => e.event);
+
+      expect(eventNames[0]).toBe(ChainEvent.start);
+      expect(eventNames).toContain(DomainEvent.input);
+      expect(eventNames).toContain(OpEvent.batchComplete);
+      expect(eventNames).toContain(DomainEvent.output);
+      expect(eventNames[eventNames.length - 1]).toBe(ChainEvent.complete);
+
+      // batch:complete events appear between input and output
+      const inputIdx = eventNames.indexOf(DomainEvent.input);
+      const outputIdx = eventNames.indexOf(DomainEvent.output);
+      const batchIdx = eventNames.indexOf(OpEvent.batchComplete);
+      expect(batchIdx).toBeGreaterThan(inputIdx);
+      expect(batchIdx).toBeLessThan(outputIdx);
+    });
+
+    it('complete event reports batch and item counts with success outcome', async () => {
+      const progressEvents = [];
+      const onProgress = vi.fn((event) => progressEvents.push(event));
+
+      await reduce(['a', 'b', 'c', 'd'], 'join', {
+        batchSize: 2,
+        onProgress,
+      });
+
+      const completeEvent = progressEvents.find(
+        (e) => e.step === 'reduce' && e.event === ChainEvent.complete
+      );
+      expect(completeEvent).toBeDefined();
+      expect(completeEvent.totalItems).toBe(4);
+      expect(completeEvent.totalBatches).toBe(2);
+      expect(completeEvent.outcome).toBe(Outcome.success);
+    });
+
+    it('threads accumulator through batches with incremental tracking', async () => {
+      const accumulators = [];
+      listBatch.mockImplementation(async (items, instructions) => {
+        const accMatch = instructions.match(/<accumulator>(.*?)<\/accumulator>/s);
+        const acc = accMatch ? accMatch[1].trim() : '';
+        const result = [acc, ...items].filter(Boolean).join('-');
+        accumulators.push(result);
+        return { accumulator: result };
+      });
+
+      const progressEvents = [];
+      const onProgress = vi.fn((event) => progressEvents.push(event));
+
+      const result = await reduce(['a', 'b', 'c', 'd'], 'join', {
+        batchSize: 2,
+        initial: 'start',
+        onProgress,
+      });
+
+      // Accumulator grows through each batch
+      expect(accumulators[0]).toBe('start-a-b');
+      expect(accumulators[1]).toBe('start-a-b-c-d');
+      expect(result).toBe('start-a-b-c-d');
+
+      // One batch:complete per batch, each reflecting progress
+      const batchEvents = progressEvents.filter(
+        (e) => e.step === 'reduce' && e.event === OpEvent.batchComplete
+      );
+      expect(batchEvents).toHaveLength(2);
+      expect(batchEvents[0].processedItems).toBe(2);
+      expect(batchEvents[1].processedItems).toBe(4);
+    });
+  });
+});
+
+describe('reduceItem', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('folds one item into the accumulator via one LLM call', async () => {
+    vi.mocked(callLlm).mockResolvedValueOnce({ accumulator: 'a-b' });
+    const result = await reduceItem('a', 'b', 'concat with dash');
+    expect(result).toBe('a-b');
+    expect(callLlm).toHaveBeenCalledTimes(1);
+    const prompt = vi.mocked(callLlm).mock.calls[0][0];
+    expect(prompt).toContain('<accumulator>');
+    expect(prompt).toContain('<item>');
+  });
+
+  it('returns custom-format result directly without unwrapping', async () => {
+    const customFormat = { type: 'json_schema', json_schema: { name: 'stats', schema: {} } };
+    vi.mocked(callLlm).mockResolvedValueOnce({ sum: 7, count: 2 });
+    const result = await reduceItem({ sum: 5, count: 1 }, 'two', 'add', {
+      responseFormat: customFormat,
+    });
+    expect(result).toEqual({ sum: 7, count: 2 });
+  });
+
+  it('throws when default-schema response is missing accumulator', async () => {
+    vi.mocked(callLlm).mockResolvedValueOnce({});
+    await expect(reduceItem('seed', 'x', 'instructions')).rejects.toThrow(
+      /missing required "accumulator"/
+    );
+  });
+
+  it('throws when custom-format response is null', async () => {
+    const customFormat = { type: 'json_schema', json_schema: { name: 's', schema: {} } };
+    vi.mocked(callLlm).mockResolvedValueOnce(null);
+    await expect(reduceItem('a', 'b', 'x', { responseFormat: customFormat })).rejects.toThrow(
+      /returned null under custom responseFormat/
+    );
   });
 });

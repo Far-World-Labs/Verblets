@@ -116,6 +116,7 @@ export class RunContext {
 
       // Node.js-dependent utilities — automation scripts only
       scripts: {
+        projectRoot: projectRoot || process.cwd(),
         files,
         exec,
         mediaEncoding,

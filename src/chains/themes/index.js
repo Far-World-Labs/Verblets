@@ -13,6 +13,18 @@ const splitText = (text) =>
     .map((p) => p.trim())
     .filter(Boolean);
 
+const parseCommaList = (s, label) => {
+  if (typeof s !== 'string') {
+    throw new Error(
+      `themes: expected comma-separated string for ${label} (got ${s === null ? 'null' : typeof s})`
+    );
+  }
+  return s
+    .split(',')
+    .map((t) => t.trim())
+    .filter(Boolean);
+};
+
 export default async function themes(text, config = {}) {
   const { text: sourceText, known, context } = resolveTexts(text, ['rawThemes']);
   const runConfig = nameStep(name, config);
@@ -25,14 +37,22 @@ export default async function themes(text, config = {}) {
   try {
     let rawThemes;
 
-    if (known.rawThemes) {
-      // Known rawThemes provided — skip extraction phase
-      rawThemes = known.rawThemes
-        .split(',')
-        .map((t) => t.trim())
-        .filter(Boolean);
+    if (known.rawThemes !== undefined) {
+      rawThemes = parseCommaList(known.rawThemes, 'known.rawThemes');
     } else {
+      if (typeof sourceText !== 'string') {
+        throw new Error(
+          `themes: text must be a string (got ${sourceText === null ? 'null' : typeof sourceText})`
+        );
+      }
       const pieces = splitText(sourceText);
+
+      // Empty/whitespace text yields no paragraphs — return [] without
+      // calling the extraction reduce.
+      if (pieces.length === 0) {
+        emitter.complete({ outcome: Outcome.success, themes: 0 });
+        return [];
+      }
 
       emitter.emit({
         event: DomainEvent.phase,
@@ -46,10 +66,7 @@ export default async function themes(text, config = {}) {
         ...runConfig,
         onProgress: scopePhase(runConfig.onProgress, 'themes:extract'),
       });
-      rawThemes = firstPass
-        .split(',')
-        .map((t) => t.trim())
-        .filter(Boolean);
+      rawThemes = parseCommaList(firstPass, 'extraction reduce result');
     }
 
     emitter.emit({
@@ -58,16 +75,18 @@ export default async function themes(text, config = {}) {
       rawThemes,
     });
 
+    if (rawThemes.length === 0) {
+      emitter.complete({ outcome: Outcome.success, themes: 0 });
+      return [];
+    }
+
     const limitText = topN ? `Limit to the top ${topN} themes.` : 'Return all meaningful themes.';
     const refinePrompt = `Refine the accumulator by merging similar themes. ${limitText} Return ONLY a comma-separated list with no explanation or additional text.`;
     const final = await reduce(rawThemes, refinePrompt, {
       ...runConfig,
       onProgress: scopePhase(runConfig.onProgress, 'themes:refine'),
     });
-    const result = final
-      .split(',')
-      .map((t) => t.trim())
-      .filter(Boolean);
+    const result = parseCommaList(final, 'refinement reduce result');
 
     emitter.complete({ outcome: Outcome.success, themes: result.length });
 

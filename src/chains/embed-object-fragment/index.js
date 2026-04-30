@@ -24,6 +24,7 @@ import { nameStep, getOptions } from '../../lib/context/option.js';
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
 import { DomainEvent, Outcome, ErrorPosture } from '../../lib/progress/constants.js';
 import parallel from '../../lib/parallel-batch/index.js';
+import { expectArray, expectObject } from '../../lib/expect-shape/index.js';
 import fragmentResultSchema from './fragment-result.json' with { type: 'json' };
 
 const name = 'embed-object:fragment';
@@ -83,11 +84,28 @@ async function fragmentBatch(sourceTexts, schema, runConfig) {
     { label: 'embed-object:fragment', config: runConfig }
   );
 
-  // rawResult is auto-unwrapped from { items: [...] } to the array
-  const results = Array.isArray(rawResult) ? rawResult : [rawResult];
+  // rawResult is auto-unwrapped from { items: [...] } to the array.
+  expectArray(rawResult, { chain: 'embed-object:fragment', expected: 'array from LLM' });
 
-  return results.map((entry) => {
-    const source = sourceTexts[entry.sourceIndex] ?? sourceTexts[0];
+  return rawResult.map((entry) => {
+    expectObject(entry, { chain: 'embed-object:fragment', expected: 'object entry' });
+    // sourceIndex is integer-typed in the schema; Number.isInteger rejects
+    // both NaN and non-numbers in one check (more specific than expectNumber).
+    if (!Number.isInteger(entry.sourceIndex)) {
+      throw new Error(
+        `embed-object:fragment: entry missing required integer "sourceIndex" (got ${typeof entry.sourceIndex})`
+      );
+    }
+    const source = sourceTexts[entry.sourceIndex];
+    if (!source) {
+      throw new Error(
+        `embed-object:fragment: entry.sourceIndex ${entry.sourceIndex} out of range (batch size ${sourceTexts.length})`
+      );
+    }
+    expectArray(entry.fragments, {
+      chain: 'embed-object:fragment',
+      expected: '"fragments" array on entry',
+    });
     return {
       fragmentSetId: `fs:${source.sourceId}`,
       fragments: entry.fragments.map((f) => ({
@@ -102,6 +120,16 @@ async function fragmentBatch(sourceTexts, schema, runConfig) {
 }
 
 export default async function fragment({ sourceTexts, schema }, config = {}) {
+  if (!Array.isArray(sourceTexts) || sourceTexts.length === 0) {
+    throw new Error(
+      `embed-object:fragment: sourceTexts must be a non-empty array (got ${
+        sourceTexts === null ? 'null' : typeof sourceTexts
+      })`
+    );
+  }
+  if (!schema || typeof schema !== 'object' || !Array.isArray(schema.projections)) {
+    throw new Error('embed-object:fragment: schema requires a projections array');
+  }
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();

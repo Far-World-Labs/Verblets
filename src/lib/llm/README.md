@@ -37,7 +37,7 @@ const result = await callLlm(prompt, {
 });
 ```
 
-Inside chains, callLlm receives the enriched config object directly — see [option resolution](../../../docs/option-resolution.md) for how `nameStep` + `createProgressEmitter` prepare config.
+Inside chains, callLlm receives the enriched config object directly — see [option resolution](../../../.claude/docs/option-resolution.md) for how `nameStep` + `createProgressEmitter` prepare config.
 
 ## API
 
@@ -87,7 +87,7 @@ emitter.start();
 await callLlm(prompt, runConfig);
 ```
 
-See [configuration](../../../docs/configuration.md) for model selection, capabilities, and policy. See [option resolution](../../../docs/option-resolution.md) for how `getOption` works.
+See [configuration](../../../.claude/docs/configuration.md) for model selection, capabilities, and policy. See [option resolution](../../../.claude/docs/option-resolution.md) for how `getOption` works.
 
 ## Model selection
 
@@ -134,7 +134,7 @@ const result = await callLlm('List 5 programming languages', {
 // => ['JavaScript', 'Python', 'Java', 'C++', 'Go']
 ```
 
-See [JSON Schema Guidelines](../../../.claude/guidelines/JSON_SCHEMAS.md) for schema design patterns.
+See [JSON Schema Guidelines](../../../.claude/guidelines/json-schemas.md) for schema design patterns.
 
 ## Related Modules
 

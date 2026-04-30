@@ -1,11 +1,28 @@
 import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
+import parallel from '../../lib/parallel-batch/index.js';
+import map from '../map/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import entityResultSchema from './entity-result.json' with { type: 'json' };
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
-import { DomainEvent, Outcome } from '../../lib/progress/constants.js';
-import { nameStep } from '../../lib/context/option.js';
+import { DomainEvent, Outcome, ErrorPosture } from '../../lib/progress/constants.js';
+import { nameStep, getOptions } from '../../lib/context/option.js';
 import { resolveArgs, resolveTexts } from '../../lib/instruction/index.js';
+import { expectArray, expectObject, expectString } from '../../lib/expect-shape/index.js';
+
+const entitiesBatchSchema = {
+  type: 'object',
+  properties: {
+    items: {
+      type: 'array',
+      items: entityResultSchema,
+    },
+  },
+  required: ['items'],
+  additionalProperties: false,
+};
+
+const entitiesBatchResponseFormat = jsonSchema('entities_batch', entitiesBatchSchema);
 
 const name = 'entities';
 
@@ -63,7 +80,7 @@ Keep it simple and actionable.`;
     }
   );
 
-  return response;
+  return expectString(response, { chain: 'entities', expected: 'spec from LLM' });
 }
 
 /**
@@ -100,6 +117,11 @@ Include every entity that matches the specification. Do not add properties beyon
     }
   );
 
+  expectObject(response, { chain: 'entities', expected: 'object from extraction LLM' });
+  expectArray(response.entities, {
+    chain: 'entities',
+    expected: 'entities array from extraction LLM',
+  });
   return response;
 }
 
@@ -110,7 +132,7 @@ Include every entity that matches the specification. Do not add properties beyon
  * @param {Object} config - Configuration options
  * @returns {Promise<Object>} Object with entities array
  */
-export default async function extractEntities(text, instructions, config) {
+export default async function entityItem(text, instructions, config) {
   [instructions, config] = resolveArgs(instructions, config, ['spec']);
   const { text: instructionText, known, context } = resolveTexts(instructions, ['spec']);
   const runConfig = nameStep(name, config);
@@ -147,4 +169,172 @@ export default async function extractEntities(text, instructions, config) {
   }
 }
 
-extractEntities.knownTexts = ['spec'];
+entityItem.knownTexts = ['spec'];
+
+/**
+ * Extract entities from each text in a list with managed concurrency — one LLM
+ * call per text. Sister to `mapEntities`, which packs texts into batched LLM
+ * prompts. Use the parallel form when texts vary widely or batched responses
+ * smear entity types across documents.
+ *
+ * The spec is generated once (skipped when supplied via the instruction
+ * bundle) and reused for every per-text extraction. Per-text failures leave
+ * that slot as `undefined`; chain reports outcome=partial.
+ *
+ * @param {string[]} texts - Source texts to extract entities from
+ * @param {string|object} instructions - Extraction instructions (string or bundle with `spec`)
+ * @param {object} [config={}] - Configuration options (`maxParallel`, `errorPosture`)
+ * @returns {Promise<Array<{entities: Array}|undefined>>}
+ */
+export async function mapEntitiesParallel(texts, instructions, config) {
+  if (!Array.isArray(texts)) {
+    throw new Error(
+      `mapEntitiesParallel: texts must be an array (got ${texts === null ? 'null' : typeof texts})`
+    );
+  }
+  [instructions, config] = resolveArgs(instructions, config, ['spec']);
+  const { text: instructionText, known, context } = resolveTexts(instructions, ['spec']);
+  const effectiveInstructions = context ? `${instructionText}\n\n${context}` : instructionText;
+
+  const runConfig = nameStep('entities:parallel', config);
+  const emitter = createProgressEmitter('entities:parallel', runConfig.onProgress, runConfig);
+  emitter.start();
+  emitter.emit({ event: DomainEvent.input, value: texts });
+
+  try {
+    const { maxParallel, errorPosture } = await getOptions(runConfig, {
+      maxParallel: 3,
+      errorPosture: ErrorPosture.resilient,
+    });
+
+    const spec =
+      known.spec ||
+      (await entitySpec(effectiveInstructions, {
+        ...runConfig,
+        onProgress: scopePhase(runConfig.onProgress, 'spec'),
+      }));
+
+    emitter.emit({ event: DomainEvent.phase, phase: 'extracting-entities', specification: spec });
+    const batchDone = emitter.batch(texts.length);
+
+    const results = new Array(texts.length).fill(undefined);
+    const items = texts.map((source, index) => ({ source, index }));
+
+    await parallel(
+      items,
+      async ({ source, index }) => {
+        try {
+          results[index] = await extractWithSpec(source, spec, {
+            ...runConfig,
+            onProgress: scopePhase(runConfig.onProgress, 'apply'),
+          });
+        } catch (error) {
+          emitter.error(error, { itemIndex: index });
+          if (errorPosture === ErrorPosture.strict) throw error;
+        } finally {
+          batchDone(1);
+        }
+      },
+      {
+        maxParallel,
+        errorPosture,
+        label: 'entities items',
+        abortSignal: runConfig.abortSignal,
+      }
+    );
+
+    const failedItems = results.filter((r) => r === undefined).length;
+    if (failedItems === results.length && results.length > 0) {
+      throw new Error(`entities: all ${results.length} texts failed to extract`);
+    }
+
+    const outcome = failedItems > 0 ? Outcome.partial : Outcome.success;
+    emitter.emit({ event: DomainEvent.output, value: results });
+    emitter.complete({
+      totalItems: results.length,
+      successCount: results.length - failedItems,
+      failedItems,
+      outcome,
+    });
+    return results;
+  } catch (err) {
+    emitter.error(err);
+    throw err;
+  }
+}
+
+mapEntitiesParallel.knownTexts = ['spec'];
+
+/**
+ * Extract entities from each text by packing texts into batched LLM prompts
+ * (one call per batch). Sister to `mapEntitiesParallel`, which dispatches one
+ * LLM call per text — use the batched form to amortize per-call overhead
+ * when texts are short and homogeneous enough that the LLM can handle them
+ * in one prompt without smearing entity types across documents.
+ *
+ * @param {string[]} texts - Source texts to extract entities from
+ * @param {string|object} instructions - Extraction instructions
+ * @param {object} [config={}] - `batchSize`, `maxParallel`, `errorPosture`
+ * @returns {Promise<Array<{entities: Array}|undefined>>}
+ */
+export async function mapEntities(texts, instructions, config) {
+  if (!Array.isArray(texts)) {
+    throw new Error(
+      `mapEntities: texts must be an array (got ${texts === null ? 'null' : typeof texts})`
+    );
+  }
+  [instructions, config] = resolveArgs(instructions, config, ['spec']);
+  const { text: instructionText, known, context } = resolveTexts(instructions, ['spec']);
+  const effectiveInstructions = context ? `${instructionText}\n\n${context}` : instructionText;
+
+  const runConfig = nameStep('entities:map', config);
+  const emitter = createProgressEmitter('entities:map', runConfig.onProgress, runConfig);
+  emitter.start();
+  emitter.emit({ event: DomainEvent.input, value: texts });
+
+  try {
+    const spec =
+      known.spec ||
+      (await entitySpec(effectiveInstructions, {
+        ...runConfig,
+        onProgress: scopePhase(runConfig.onProgress, 'spec'),
+      }));
+
+    emitter.emit({ event: DomainEvent.phase, phase: 'extracting-entities', specification: spec });
+
+    const mapInstructions = `Apply the entity specification to each input text and extract entities for every one.
+
+${asXML(spec, { tag: 'entity-specification' })}
+
+For each text, return an object with an "entities" array. Every entity has exactly:
+- "name" (string): The entity name or text as it appears in the source
+- "type" (string): The category (e.g. person, company, location, date, concept)
+
+Return one entities object per input text, in the same order. Use an empty entities array when the text contains nothing matching the specification.`;
+
+    const results = await map(texts, mapInstructions, {
+      ...runConfig,
+      responseFormat: entitiesBatchResponseFormat,
+      onProgress: scopePhase(runConfig.onProgress, 'entities:map'),
+    });
+
+    if (!Array.isArray(results)) {
+      throw new Error(`entities: expected array of results from map (got ${typeof results})`);
+    }
+
+    const failedItems = results.filter((r) => r === undefined).length;
+    const outcome = failedItems > 0 ? Outcome.partial : Outcome.success;
+    emitter.complete({
+      totalItems: results.length,
+      successCount: results.length - failedItems,
+      failedItems,
+      outcome,
+    });
+    return results;
+  } catch (err) {
+    emitter.error(err);
+    throw err;
+  }
+}
+
+mapEntities.knownTexts = ['spec'];

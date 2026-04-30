@@ -96,6 +96,11 @@ function createChunks(text, chunkSize) {
  * @returns {number} Character index where to truncate
  */
 export default async function truncate(text, instructions, config) {
+  if (typeof text !== 'string') {
+    throw new Error(
+      `truncate: text must be a string (got ${text === null ? 'null' : typeof text})`
+    );
+  }
   [instructions, config] = resolveArgs(instructions, config);
   const { text: instructionText, context } = resolveTexts(instructions, []);
   const runConfig = nameStep(name, config);
@@ -123,11 +128,22 @@ Score how important THE ENTIRE TEXT BLOCK is to KEEP in the document (0 = should
 Each item in the list is ONE complete text block - evaluate it as a whole unit.
 Consider the removal criteria above when scoring.${contextBlock}`;
 
-    const scores = await score(textsToScore, scoringInstructions, {
+    const rawScores = await score(textsToScore, scoringInstructions, {
       ...runConfig,
       onProgress: scopePhase(runConfig.onProgress, 'score:relevance'),
       // Don't use stopOnThreshold - we need all scores to find high ones
     });
+
+    // Boundary policy: missing scores → keep the chunk (treat as max-importance signal).
+    // Count failures so the outcome reports partial honestly; throw if every chunk
+    // failed since we have no information to make truncation decisions.
+    const failedChunks = rawScores.filter((s) => typeof s !== 'number').length;
+    if (chunks.length > 0 && failedChunks === chunks.length) {
+      throw new Error(
+        `truncate: all ${chunks.length} chunk scores failed — no basis for truncation`
+      );
+    }
+    const scores = rawScores.map((s) => (typeof s === 'number' ? s : Infinity));
 
     // Find the first chunk (from the end) that should be removed (score < threshold)
     const removeChunkIndex = scores.findIndex((s) => s < threshold);
@@ -148,7 +164,11 @@ Consider the removal criteria above when scoring.${contextBlock}`;
       result = text.length;
     }
 
-    emitter.complete({ outcome: Outcome.success });
+    emitter.complete({
+      outcome: failedChunks > 0 ? Outcome.partial : Outcome.success,
+      totalChunks: chunks.length,
+      failedChunks,
+    });
 
     return result;
   } catch (err) {

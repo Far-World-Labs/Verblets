@@ -17,15 +17,40 @@ The wrappers feed test structure and results into the test-analysis pipeline, so
 
 ## Budget Tiers
 
-Examples are gated by `VERBLETS_EXAMPLE_BUDGET` (default: `low`). See [example-test-conventions](../docs/example-test-conventions.md) for tier definitions and skip-tagging conventions.
+Examples are gated by `VERBLETS_EXAMPLE_BUDGET` (env var, default: `low`).
+
+| Tier     | Gate             | What runs                              |
+|----------|------------------|----------------------------------------|
+| `low`    | always           | Single-call chains, quick validations  |
+| `medium` | `isMediumBudget` | Multi-call chains (2-10 LLM calls)     |
+| `high`   | `isHighBudget`   | Expensive pipelines (10+ LLM calls)    |
+
+Run with: `VERBLETS_EXAMPLE_BUDGET=medium npx vitest run --config vitest.config.examples.js`
+
+Budget-gated describes/tests include a `[tier]` tag in their name so vitest verbose output shows *why* something is skipped:
 
 ```javascript
 import { isMediumBudget } from '../../constants/common.js';
 
+// Good — reason visible in test output
 describe.skipIf(!isMediumBudget)('[medium] multi-step workflow', () => {
   // 3-5 LLM calls
 });
 ```
+
+When adding a new budget-gated test: import the gate from `../../constants/common.js`, use `describe.skipIf` or `it.skipIf`, prefix the name with `[medium]` or `[high]`, and comment the approximate LLM call count.
+
+### Other Skip Gates
+
+| Gate | Trigger | Tests |
+|------|---------|-------|
+| `skipSensitivity` | Ollama model unreachable | veiled-variants |
+| `shouldSkip(key, provider)` | Missing API key or provider mismatch | provider-smoke |
+| `it.skip` | Intentional (test-infra validation) | test-analysis race condition |
+
+### Suite Config Banner
+
+The global setup (`test/setup/warm-up-probe.js`) prints a config banner at the start of every example run showing the current budget tier, available providers (detected from API keys), and sensitivity model status.
 
 ## Writing Examples
 
