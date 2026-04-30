@@ -1,5 +1,5 @@
 import { describe } from 'vitest';
-import peopleList from './index.js';
+import peopleSet from './index.js';
 import { longTestTimeout } from '../../constants/common.js';
 import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 
@@ -9,7 +9,7 @@ describe('people chain', () => {
   it(
     'generates diverse people for team scenarios',
     async () => {
-      const people = await peopleList(
+      const people = await peopleSet(
         'diverse software engineering team with different specialties',
         5
       );

@@ -112,8 +112,12 @@ export { default as filterAmbiguous } from './chains/filter-ambiguous/index.js';
 export { default as join } from './chains/join/index.js';
 export { default as name } from './verblets/name/index.js';
 export { default as nameSimilarTo } from './verblets/name-similar-to/index.js';
-export { default as people } from './chains/people/index.js';
-export { default as popReference } from './chains/pop-reference/index.js';
+export { default as peopleSet, mapPeopleSet, mapPeopleSetParallel } from './chains/people/index.js';
+export {
+  default as popReferenceItem,
+  mapPopReference,
+  mapPopReferenceParallel,
+} from './chains/pop-reference/index.js';
 export { default as questions } from './chains/questions/index.js';
 export {
   default as relationItem,
