@@ -1,8 +1,9 @@
 import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
+import parallel from '../../lib/parallel-batch/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
-import createProgressEmitter from '../../lib/progress/index.js';
-import { DomainEvent, Outcome } from '../../lib/progress/constants.js';
+import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
+import { DomainEvent, Outcome, ErrorPosture } from '../../lib/progress/constants.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 import { resolveArgs, resolveTexts } from '../../lib/instruction/index.js';
 import { expectArray, expectObject } from '../../lib/expect-shape/index.js';
@@ -297,3 +298,93 @@ export default async function extractRelations(text, instructions, config) {
 }
 
 extractRelations.knownTexts = ['spec'];
+
+/**
+ * Extract relations from each text in a list, sharing one spec across all calls.
+ *
+ * The spec is generated once (skipped when supplied via the instruction
+ * bundle) and reused for every per-text extraction. Per-text dispatch is
+ * parallel because the per-call output is a structured object that doesn't
+ * compress well into a batched array-of-objects schema. Per-text failures
+ * leave that slot as `undefined` rather than throwing — matching the
+ * partial-outcome contract used by `mapScore`/`mapTags`.
+ *
+ * @param {string[]} texts - Source texts to extract relations from
+ * @param {string|object} instructions - Extraction instructions (string, bundle with `spec`, or object with relations/entities/predicates)
+ * @param {object} [config={}] - Configuration options (`maxParallel`, `errorPosture`)
+ * @returns {Promise<Array<Array<object>|undefined>>} Per-text relation arrays
+ */
+export async function mapRelations(texts, instructions, config) {
+  if (!Array.isArray(texts)) {
+    throw new Error(
+      `mapRelations: texts must be an array (got ${texts === null ? 'null' : typeof texts})`
+    );
+  }
+  [instructions, config] = resolveArgs(instructions, config, ['spec']);
+  const { text: instructionText, known, context } = resolveTexts(instructions, ['spec']);
+  const effectiveInstructions = context ? `${instructionText}\n\n${context}` : instructionText;
+
+  const runConfig = nameStep('relations:map', config);
+  const emitter = createProgressEmitter('relations:map', runConfig.onProgress, runConfig);
+  emitter.start();
+  emitter.emit({ event: DomainEvent.input, value: texts });
+
+  try {
+    const { maxParallel, errorPosture } = await getOptions(runConfig, {
+      maxParallel: 3,
+      errorPosture: ErrorPosture.resilient,
+    });
+
+    const spec = known.spec || (await relationSpec(effectiveInstructions, runConfig));
+
+    emitter.emit({ event: DomainEvent.phase, phase: 'extracting-relations', specification: spec });
+    const batchDone = emitter.batch(texts.length);
+
+    const results = new Array(texts.length).fill(undefined);
+    const items = texts.map((source, index) => ({ source, index }));
+
+    await parallel(
+      items,
+      async ({ source, index }) => {
+        try {
+          const result = await extractRelationsWithSpec(source, spec, {
+            ...runConfig,
+            onProgress: scopePhase(runConfig.onProgress, 'apply'),
+          });
+          results[index] = result.items;
+        } catch (error) {
+          emitter.error(error, { itemIndex: index });
+          if (errorPosture === ErrorPosture.strict) throw error;
+        } finally {
+          batchDone(1);
+        }
+      },
+      {
+        maxParallel,
+        errorPosture,
+        label: 'relations items',
+        abortSignal: runConfig.abortSignal,
+      }
+    );
+
+    const failedItems = results.filter((r) => r === undefined).length;
+    if (failedItems === results.length && results.length > 0) {
+      throw new Error(`relations: all ${results.length} texts failed to extract`);
+    }
+
+    const outcome = failedItems > 0 ? Outcome.partial : Outcome.success;
+    emitter.emit({ event: DomainEvent.output, value: results });
+    emitter.complete({
+      totalItems: results.length,
+      successCount: results.length - failedItems,
+      failedItems,
+      outcome,
+    });
+    return results;
+  } catch (err) {
+    emitter.error(err);
+    throw err;
+  }
+}
+
+mapRelations.knownTexts = ['spec'];

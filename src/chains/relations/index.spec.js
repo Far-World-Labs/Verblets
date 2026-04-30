@@ -4,7 +4,9 @@ import extractRelations, {
   relationInstructions,
   parseRDFLiteral,
   parseRelations,
+  mapRelations,
 } from './index.js';
+import llm from '../../lib/llm/index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
   jsonSchema: (name, schema) => ({ type: 'json_schema', json_schema: { name, schema } }),
@@ -32,6 +34,14 @@ vi.mock('../../lib/llm/index.js', () => ({
     }
 
     return Promise.resolve('Mock response');
+  }),
+}));
+
+vi.mock('../../lib/parallel-batch/index.js', () => ({
+  default: vi.fn(async (items, processor) => {
+    for (let i = 0; i < items.length; i++) {
+      await processor(items[i], i);
+    }
   }),
 }));
 
@@ -132,6 +142,29 @@ describe('relations', () => {
         { subject: 'Apple Inc.', predicate: 'competes with', object: 'Microsoft Corporation' },
       ]);
       expect(parsed[0].object).toBe('Microsoft Corporation');
+    });
+  });
+
+  describe('mapRelations', () => {
+    it('extracts relations per text and returns aligned arrays', async () => {
+      const result = await mapRelations(['First text.', 'Second text.'], 'Extract');
+      expect(result).toHaveLength(2);
+      expect(Array.isArray(result[0])).toBe(true);
+      expect(result[0][0]).toMatchObject({ subject: expect.any(String) });
+    });
+
+    it('skips spec generation when bundled', async () => {
+      vi.mocked(llm).mockClear();
+      await mapRelations(['t1', 't2'], { text: 'x', spec: 'reused-spec' });
+      // No spec call — only the per-text extraction calls
+      const specCalls = vi
+        .mocked(llm)
+        .mock.calls.filter(([prompt]) => prompt.includes('Analyze these relation extraction'));
+      expect(specCalls).toHaveLength(0);
+    });
+
+    it('throws when texts is not an array', async () => {
+      await expect(mapRelations('not-an-array', 'x')).rejects.toThrow(/must be an array/);
     });
   });
 });

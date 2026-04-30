@@ -1,3 +1,4 @@
+import callLlm from '../../lib/llm/index.js';
 import listBatch, { determineStyle } from '../../verblets/list-batch/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { createBatches, parallel, retry } from '../../lib/index.js';
@@ -198,6 +199,53 @@ const map = async function (list, instructions, config) {
 map.knownTexts = [];
 
 /**
+ * Transform a single item with a single LLM call.
+ *
+ * The list-form `map` batches via listBatch; this is the per-item escape hatch
+ * for callers who want to drive their own concurrency or compose with another
+ * iterator. Output type defaults to a string (matching the list form's default
+ * schema) but is whatever the LLM produces — pass `responseFormat` in config
+ * for structured output.
+ *
+ * @param {*} item - Item to transform; any shape (objects are JSON-stringified into the prompt)
+ * @param {string|object} instructions - Mapping instructions
+ * @param {object} [config={}] - Configuration options (responseFormat threads through)
+ * @returns {Promise<*>} Transformed value
+ */
+const mapItem = async function mapItem(item, instructions, config) {
+  [instructions, config] = resolveArgs(instructions, config);
+  const { text, context } = resolveTexts(instructions, []);
+  const runConfig = nameStep('map:item', config);
+  const emitter = createProgressEmitter('map:item', runConfig.onProgress, runConfig);
+  emitter.start();
+  emitter.emit({ event: DomainEvent.input, value: item });
+
+  try {
+    const effectiveText = context ? `${text}\n\n${context}` : text;
+    const itemSerialized = typeof item === 'string' ? item : JSON.stringify(item);
+    const prompt = `Transform this item according to the instructions below.
+
+${asXML(effectiveText, { tag: 'transformation-instructions' })}
+
+${asXML(itemSerialized, { tag: 'item' })}`;
+
+    const response = await retry(() => callLlm(prompt, runConfig), {
+      label: 'map:item',
+      config: runConfig,
+    });
+
+    emitter.emit({ event: DomainEvent.output, value: response });
+    emitter.complete({ outcome: Outcome.success });
+    return response;
+  } catch (err) {
+    emitter.error(err);
+    throw err;
+  }
+};
+
+mapItem.knownTexts = [];
+
+/**
  * Streaming map: process a list incrementally, yielding partial results after
  * each batch completes. Batches are processed sequentially (not in parallel)
  * to enable incremental emission with reduced peak memory usage.
@@ -326,5 +374,5 @@ const streamingMap = async function* streamingMap(list, instructions, config) {
 
 streamingMap.knownTexts = [];
 
-export { streamingMap };
+export { streamingMap, mapItem };
 export default map;

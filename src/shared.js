@@ -9,11 +9,17 @@ export { default as number } from './verblets/number/index.js';
 export { default as numberWithUnits } from './verblets/number-with-units/index.js';
 
 // Math
-export { default as scaleItem, scaleSpec, scaleInstructions } from './chains/scale/index.js';
+export {
+  default as scaleItem,
+  mapScale,
+  scaleSpec,
+  scaleInstructions,
+} from './chains/scale/index.js';
 
 // Calibration
 export {
   default as calibrate,
+  mapCalibrate,
   calibrateSpec,
   calibrateInstructions,
 } from './chains/calibrate/index.js';
@@ -63,20 +69,21 @@ export {
 } from './chains/detect-threshold/index.js';
 export {
   default as extractEntities,
+  mapEntities,
   entitySpec,
   entityInstructions,
 } from './chains/entities/index.js';
 export { default as extractBlocks } from './chains/extract-blocks/index.js';
-export { default as filter } from './chains/filter/index.js';
-export { default as find } from './chains/find/index.js';
+export { default as filter, filterItem } from './chains/filter/index.js';
+export { default as find, findItem } from './chains/find/index.js';
 export { default as glossary } from './chains/glossary/index.js';
-export { default as group } from './chains/group/index.js';
+export { default as group, groupItem } from './chains/group/index.js';
 export { default as intersections } from './chains/intersections/index.js';
 export { default as list, generateList } from './chains/list/index.js';
 export { default as listBatch, ListStyle, determineStyle } from './verblets/list-batch/index.js';
 export { default as listExpand } from './verblets/list-expand/index.js';
-export { default as map } from './chains/map/index.js';
-export { default as reduce } from './chains/reduce/index.js';
+export { default as map, mapItem } from './chains/map/index.js';
+export { default as reduce, reduceItem } from './chains/reduce/index.js';
 export { default as score, scoreSpec, scoreItem, scoreInstructions } from './chains/score/index.js';
 export {
   default as scoreMatrix,
@@ -107,6 +114,7 @@ export { default as popReference } from './chains/pop-reference/index.js';
 export { default as questions } from './chains/questions/index.js';
 export {
   default as extractRelations,
+  mapRelations,
   relationSpec,
   parseRDFLiteral,
   parseRelations,

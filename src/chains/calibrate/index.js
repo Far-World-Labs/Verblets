@@ -1,10 +1,11 @@
 import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
+import parallel from '../../lib/parallel-batch/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 import { resolveArgs, resolveTexts } from '../../lib/instruction/index.js';
-import createProgressEmitter from '../../lib/progress/index.js';
-import { DomainEvent, Outcome } from '../../lib/progress/constants.js';
+import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
+import { DomainEvent, Outcome, ErrorPosture } from '../../lib/progress/constants.js';
 import { calibrateSpecificationJsonSchema } from './schemas.js';
 import calibrateResultSchema from './calibrate-result.json' with { type: 'json' };
 
@@ -296,3 +297,97 @@ export default async function calibrate(scan, instructions, config) {
 }
 
 calibrate.knownTexts = ['spec'];
+
+/**
+ * Classify a list of scan results in parallel against one calibration spec.
+ *
+ * The spec is generated once from the entire corpus (so percentile/statistical
+ * thresholds reflect the whole list) and reused for every per-scan apply.
+ * Per-scan failures leave that slot as `undefined` rather than throwing —
+ * matching the partial-outcome contract used by `mapScore`/`mapTags`.
+ *
+ * Per-scan dispatch is parallel rather than batched-into-one-prompt because
+ * the per-scan output is a structured object whose schema doesn't compress
+ * well into an array-of-objects batch response.
+ *
+ * @param {Array<{ flagged: boolean, hits: Array }>} scans - Scan results
+ * @param {string|object} instructions - Calibration instructions (string or bundle with `spec`)
+ * @param {object} [config={}] - Configuration options (`maxParallel`, `errorPosture`)
+ * @returns {Promise<Array<{ severity: string, salience: string, categories: object, summary: string }|undefined>>}
+ */
+export async function mapCalibrate(scans, instructions, config) {
+  validateScans(scans, 'mapCalibrate');
+
+  [instructions, config] = resolveArgs(instructions, config, ['spec']);
+  const { text, known, context } = resolveTexts(instructions, ['spec']);
+  const effectiveInstructions = context ? `${text}\n\n${context}` : text;
+
+  const runConfig = nameStep('calibrate:map', config);
+  const emitter = createProgressEmitter('calibrate:map', runConfig.onProgress, runConfig);
+  emitter.start();
+  emitter.emit({ event: DomainEvent.input, value: scans });
+
+  try {
+    const { maxParallel, errorPosture } = await getOptions(runConfig, {
+      maxParallel: 3,
+      errorPosture: ErrorPosture.resilient,
+    });
+
+    const spec =
+      known.spec ||
+      (await calibrateSpec(scans, {
+        ...runConfig,
+        instructions: effectiveInstructions,
+        onProgress: scopePhase(runConfig.onProgress, 'calibrate:spec'),
+      }));
+
+    emitter.emit({ event: DomainEvent.phase, phase: 'applying-calibrate', specification: spec });
+    const batchDone = emitter.batch(scans.length);
+
+    const results = new Array(scans.length).fill(undefined);
+    const items = scans.map((scan, index) => ({ scan, index }));
+
+    await parallel(
+      items,
+      async ({ scan, index }) => {
+        try {
+          results[index] = await calibrateWithSpec(scan, spec, {
+            ...runConfig,
+            onProgress: scopePhase(runConfig.onProgress, 'calibrate:apply'),
+          });
+        } catch (error) {
+          emitter.error(error, { itemIndex: index });
+          if (errorPosture === ErrorPosture.strict) throw error;
+        } finally {
+          batchDone(1);
+        }
+      },
+      {
+        maxParallel,
+        errorPosture,
+        label: 'calibrate items',
+        abortSignal: runConfig.abortSignal,
+      }
+    );
+
+    const failedItems = results.filter((r) => r === undefined).length;
+    if (failedItems === results.length && results.length > 0) {
+      throw new Error(`calibrate: all ${results.length} scans failed to classify`);
+    }
+
+    const outcome = failedItems > 0 ? Outcome.partial : Outcome.success;
+    emitter.emit({ event: DomainEvent.output, value: results });
+    emitter.complete({
+      totalItems: results.length,
+      successCount: results.length - failedItems,
+      failedItems,
+      outcome,
+    });
+    return results;
+  } catch (err) {
+    emitter.error(err);
+    throw err;
+  }
+}
+
+mapCalibrate.knownTexts = ['spec'];

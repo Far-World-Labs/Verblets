@@ -1,9 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import scaleItem, { scaleSpec, scaleInstructions } from './index.js';
+import scaleItem, { scaleSpec, scaleInstructions, mapScale } from './index.js';
 import llm from '../../lib/llm/index.js';
+import map from '../map/index.js';
 
 vi.mock('../../lib/llm/index.js', async (importOriginal) => ({
   ...(await importOriginal()),
+  default: vi.fn(),
+}));
+
+vi.mock('../map/index.js', () => ({
   default: vi.fn(),
 }));
 
@@ -173,5 +178,49 @@ describe('scaleInstructions', () => {
     const bundle = scaleInstructions({ spec: 'spec', domain: 'temperature' });
 
     expect(bundle.domain).toBe('temperature');
+  });
+});
+
+describe('mapScale', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const mockSpec = { domain: 'd', range: 'r', mapping: 'm' };
+
+  it('generates spec once and routes through the map chain', async () => {
+    vi.mocked(llm).mockResolvedValueOnce(mockSpec);
+    vi.mocked(map).mockResolvedValueOnce([10, 20, 30]);
+
+    const result = await mapScale([1, 2, 3], 'scale 1-3 to 0-30');
+    expect(result).toEqual([10, 20, 30]);
+    expect(llm).toHaveBeenCalledTimes(1);
+    expect(map).toHaveBeenCalledTimes(1);
+    const mapInstructions = vi.mocked(map).mock.calls[0][1];
+    expect(mapInstructions).toContain('<scale-specification>');
+  });
+
+  it('skips spec generation when spec is provided in the bundle', async () => {
+    vi.mocked(map).mockResolvedValueOnce([5, 7]);
+    const result = await mapScale([1, 2], { text: 'ignored', spec: mockSpec });
+    expect(result).toEqual([5, 7]);
+    expect(llm).not.toHaveBeenCalled();
+  });
+
+  it('reports partial outcome when some slots fail', async () => {
+    vi.mocked(map).mockResolvedValueOnce([10, undefined, 30]);
+    const events = [];
+    await mapScale([1, 2, 3], { text: 'x', spec: mockSpec }, { onProgress: (e) => events.push(e) });
+    const complete = events.find((e) => e.event === 'chain:complete');
+    expect(complete.outcome).toBe('partial');
+    expect(complete.failedItems).toBe(1);
+  });
+
+  it('serializes object items into strings before dispatching', async () => {
+    vi.mocked(map).mockResolvedValueOnce([1, 2]);
+    await mapScale([{ a: 1 }, 'plain'], { text: 'x', spec: mockSpec });
+    const list = vi.mocked(map).mock.calls[0][0];
+    expect(list[0]).toBe('{"a":1}');
+    expect(list[1]).toBe('plain');
   });
 });

@@ -1,3 +1,4 @@
+import callLlm from '../../lib/llm/index.js';
 import listBatch, { determineStyle } from '../../verblets/list-batch/index.js';
 import reduce from '../reduce/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
@@ -6,6 +7,7 @@ import { DomainEvent, Outcome, ErrorPosture } from '../../lib/progress/constants
 import { parallel, retry, createBatches } from '../../lib/index.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 import { resolveArgs, resolveTexts } from '../../lib/instruction/index.js';
+import { expectString } from '../../lib/expect-shape/index.js';
 
 const name = 'group';
 
@@ -275,3 +277,76 @@ export default async function group(list, instructions, config) {
 }
 
 group.knownTexts = ['categories'];
+
+/**
+ * Assign a single item to one of the supplied categories with one LLM call.
+ *
+ * The list-form `group` discovers categories then assigns; this is the
+ * assignment-only primitive when the taxonomy is already known. Categories
+ * must be provided via the instruction bundle (`{ categories: 'a, b, c' }`
+ * or an array on `known.categories`). Returns the chosen category name as
+ * a trimmed string; the caller decides whether to validate it against the
+ * supplied list.
+ *
+ * @param {*} item - Item to classify
+ * @param {string|object} instructions - Grouping instructions; bundle must include `categories`
+ * @param {object} [config={}] - Configuration options
+ * @returns {Promise<string>} Assigned category name
+ */
+export async function groupItem(item, instructions, config) {
+  [instructions, config] = resolveArgs(instructions, config, ['categories']);
+  const { text, known, context } = resolveTexts(instructions, ['categories']);
+
+  if (!known.categories) {
+    throw new Error('groupItem: categories must be provided in the instruction bundle');
+  }
+  const categories = Array.isArray(known.categories)
+    ? known.categories
+    : parseCategories(known.categories);
+  if (categories.length === 0) {
+    throw new Error('groupItem: categories list is empty');
+  }
+
+  const runConfig = nameStep('group:item', config);
+  const emitter = createProgressEmitter('group:item', runConfig.onProgress, runConfig);
+  emitter.start();
+  emitter.emit({ event: DomainEvent.input, value: item });
+
+  try {
+    const contextBlock = context ? `\n\n${context}` : '';
+    const itemSerialized = typeof item === 'string' ? item : JSON.stringify(item);
+    const categoryList = categories.join(', ');
+
+    const prompt = `Assign the item below to exactly one of the listed categories.
+
+${asXML(text, { tag: 'grouping-criteria' })}
+
+${asXML(categoryList, { tag: 'categories' })}
+
+${asXML(itemSerialized, { tag: 'item' })}
+
+Return only the chosen category name, exactly as it appears in the categories list.${contextBlock}`;
+
+    const response = await retry(() => callLlm(prompt, runConfig), {
+      label: 'group:item',
+      config: runConfig,
+    });
+
+    const label = expectString(response, {
+      chain: 'group',
+      expected: 'category name from LLM',
+    }).trim();
+    if (!label) {
+      throw new Error('group: LLM returned a blank category name');
+    }
+
+    emitter.emit({ event: DomainEvent.output, value: label });
+    emitter.complete({ outcome: Outcome.success });
+    return label;
+  } catch (err) {
+    emitter.error(err);
+    throw err;
+  }
+}
+
+groupItem.knownTexts = ['categories'];

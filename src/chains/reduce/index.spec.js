@@ -1,7 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import reduce from './index.js';
+import reduce, { reduceItem } from './index.js';
 import listBatch from '../../verblets/list-batch/index.js';
+import callLlm from '../../lib/llm/index.js';
 import { ChainEvent, DomainEvent, OpEvent, Outcome } from '../../lib/progress/constants.js';
+
+vi.mock('../../lib/llm/index.js', async (importOriginal) => ({
+  ...(await importOriginal()),
+  default: vi.fn(),
+}));
 
 vi.mock('../../lib/text-batch/index.js', () => ({
   default: vi.fn((list) => {
@@ -257,5 +263,45 @@ describe('reduce chain', () => {
       expect(batchEvents[0].processedItems).toBe(2);
       expect(batchEvents[1].processedItems).toBe(4);
     });
+  });
+});
+
+describe('reduceItem', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('folds one item into the accumulator via one LLM call', async () => {
+    vi.mocked(callLlm).mockResolvedValueOnce({ accumulator: 'a-b' });
+    const result = await reduceItem('a', 'b', 'concat with dash');
+    expect(result).toBe('a-b');
+    expect(callLlm).toHaveBeenCalledTimes(1);
+    const prompt = vi.mocked(callLlm).mock.calls[0][0];
+    expect(prompt).toContain('<accumulator>');
+    expect(prompt).toContain('<item>');
+  });
+
+  it('returns custom-format result directly without unwrapping', async () => {
+    const customFormat = { type: 'json_schema', json_schema: { name: 'stats', schema: {} } };
+    vi.mocked(callLlm).mockResolvedValueOnce({ sum: 7, count: 2 });
+    const result = await reduceItem({ sum: 5, count: 1 }, 'two', 'add', {
+      responseFormat: customFormat,
+    });
+    expect(result).toEqual({ sum: 7, count: 2 });
+  });
+
+  it('throws when default-schema response is missing accumulator', async () => {
+    vi.mocked(callLlm).mockResolvedValueOnce({});
+    await expect(reduceItem('seed', 'x', 'instructions')).rejects.toThrow(
+      /missing required "accumulator"/
+    );
+  });
+
+  it('throws when custom-format response is null', async () => {
+    const customFormat = { type: 'json_schema', json_schema: { name: 's', schema: {} } };
+    vi.mocked(callLlm).mockResolvedValueOnce(null);
+    await expect(reduceItem('a', 'b', 'x', { responseFormat: customFormat })).rejects.toThrow(
+      /returned null under custom responseFormat/
+    );
   });
 });

@@ -168,4 +168,9 @@ Process exactly ${count} items from the XML list below and return the single bes
 
 find.knownTexts = [];
 
+// Per-item form: a yes/no decision over a single item. find selects the best
+// match within a list; for one item the question collapses to a boolean
+// "does this match", so we re-export bool rather than duplicate it.
+export { default as findItem } from '../../verblets/bool/index.js';
+
 export default find;

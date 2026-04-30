@@ -169,4 +169,9 @@ Process exactly ${count} items from the XML list below and return ${count} yes/n
 
 filter.knownTexts = ['guidance'];
 
+// Per-item form: a yes/no decision over a single item. Re-exporting bool gives
+// callers the smallest LLM building block in the same shape as filter, without
+// duplicating the prompt scaffolding.
+export { default as filterItem } from '../../verblets/bool/index.js';
+
 export default filter;

@@ -1,7 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import map, { streamingMap } from './index.js';
+import map, { streamingMap, mapItem } from './index.js';
 import listBatch from '../../verblets/list-batch/index.js';
+import callLlm from '../../lib/llm/index.js';
 import { OpEvent, ChainEvent, DomainEvent } from '../../lib/progress/constants.js';
+
+vi.mock('../../lib/llm/index.js', async (importOriginal) => ({
+  ...(await importOriginal()),
+  default: vi.fn(),
+}));
 
 vi.mock('../../lib/text-batch/index.js', () => ({
   default: vi.fn((list) => {
@@ -459,5 +465,37 @@ describe('streamingMap', () => {
     expect(completeEvent.successCount).toBe(3);
     expect(completeEvent.failedItems).toBe(0);
     expect(completeEvent.outcome).toBe('success');
+  });
+});
+
+describe('mapItem', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('transforms a single item via one LLM call', async () => {
+    vi.mocked(callLlm).mockResolvedValueOnce('SHOUTED');
+    const result = await mapItem('hello', 'uppercase');
+    expect(result).toBe('SHOUTED');
+    expect(callLlm).toHaveBeenCalledTimes(1);
+    expect(callLlm).toHaveBeenCalledWith(
+      expect.stringContaining('<transformation-instructions>'),
+      expect.any(Object)
+    );
+  });
+
+  it('serializes object items into the prompt', async () => {
+    vi.mocked(callLlm).mockResolvedValueOnce('result');
+    await mapItem({ a: 1 }, 'transform');
+    const prompt = vi.mocked(callLlm).mock.calls[0][0];
+    expect(prompt).toContain('"a":1');
+  });
+
+  it('threads custom responseFormat through to callLlm', async () => {
+    const customFormat = { type: 'json_schema', json_schema: { name: 'x', schema: {} } };
+    vi.mocked(callLlm).mockResolvedValueOnce({ shape: 'object' });
+    await mapItem('item', 'instructions', { responseFormat: customFormat });
+    const cfg = vi.mocked(callLlm).mock.calls[0][1];
+    expect(cfg.responseFormat).toBe(customFormat);
   });
 });

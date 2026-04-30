@@ -1,9 +1,17 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import extractEntities, { entitySpec, entityInstructions } from './index.js';
+import extractEntities, { entitySpec, entityInstructions, mapEntities } from './index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(),
   jsonSchema: (name, schema) => ({ type: 'json_schema', json_schema: { name, schema } }),
+}));
+
+vi.mock('../../lib/parallel-batch/index.js', () => ({
+  default: vi.fn(async (items, processor) => {
+    for (let i = 0; i < items.length; i++) {
+      await processor(items[i], i);
+    }
+  }),
 }));
 
 import llm from '../../lib/llm/index.js';
@@ -69,6 +77,52 @@ describe('entities', () => {
       const bundle = entityInstructions({ spec: 'spec', domain: 'legal contracts' });
 
       expect(bundle.domain).toBe('legal contracts');
+    });
+  });
+
+  describe('mapEntities', () => {
+    it('extracts entities from each text, sharing one spec', async () => {
+      llm
+        .mockResolvedValueOnce('shared spec')
+        .mockResolvedValueOnce({ entities: [{ name: 'Alice', type: 'person' }] })
+        .mockResolvedValueOnce({ entities: [{ name: 'Acme', type: 'company' }] });
+
+      const result = await mapEntities(['Alice works.', 'Acme launched.'], 'Extract');
+      expect(result).toHaveLength(2);
+      expect(result[0].entities[0].name).toBe('Alice');
+      expect(result[1].entities[0].name).toBe('Acme');
+      expect(llm).toHaveBeenCalledTimes(3);
+    });
+
+    it('skips spec generation when bundled', async () => {
+      llm
+        .mockResolvedValueOnce({ entities: [{ name: 'A', type: 'person' }] })
+        .mockResolvedValueOnce({ entities: [{ name: 'B', type: 'person' }] });
+      const result = await mapEntities(['t1', 't2'], { text: 'x', spec: 'reused-spec' });
+      expect(result).toHaveLength(2);
+      expect(llm).toHaveBeenCalledTimes(2);
+    });
+
+    it('returns partial outcome when one text fails', async () => {
+      llm
+        .mockResolvedValueOnce({ entities: [{ name: 'A', type: 'p' }] })
+        .mockRejectedValueOnce(new Error('boom'));
+      const events = [];
+      const result = await mapEntities(
+        ['ok', 'bad'],
+        { text: 'x', spec: 'spec' },
+        { onProgress: (e) => events.push(e), maxAttempts: 1 }
+      );
+      expect(result[0].entities).toHaveLength(1);
+      expect(result[1]).toBeUndefined();
+      const complete = events.find(
+        (e) => e.event === 'chain:complete' && e.step === 'entities:map'
+      );
+      expect(complete.outcome).toBe('partial');
+    });
+
+    it('throws when texts is not an array', async () => {
+      await expect(mapEntities('not-an-array', 'x')).rejects.toThrow(/must be an array/);
     });
   });
 });

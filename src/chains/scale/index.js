@@ -3,12 +3,27 @@ import retry from '../../lib/retry/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
 import { scaleSpecificationJsonSchema } from './schemas.js';
 import scaleResultSchema from './scale-result.json' with { type: 'json' };
+import map from '../map/index.js';
 import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
 import { DomainEvent, Outcome } from '../../lib/progress/constants.js';
 import { nameStep } from '../../lib/context/option.js';
 import { resolveArgs, resolveTexts } from '../../lib/instruction/index.js';
 
 const name = 'scale';
+
+const scaleBatchSchema = {
+  type: 'object',
+  properties: {
+    items: {
+      type: 'array',
+      items: { type: ['number', 'string'] },
+    },
+  },
+  required: ['items'],
+  additionalProperties: false,
+};
+
+const scaleBatchResponseFormat = jsonSchema('scale_batch', scaleBatchSchema);
 
 // ===== Instruction Builder =====
 
@@ -177,3 +192,73 @@ export default async function scaleItem(item, instructions, config) {
 }
 
 scaleItem.knownTexts = ['spec'];
+
+/**
+ * Scale a list of items by applying a scale specification to each.
+ *
+ * Generates the spec once (skipped when supplied via the instruction bundle)
+ * and dispatches batched per-item applications through the `map` chain.
+ * Slots whose batch fails after retries return `undefined` so callers can
+ * distinguish "successfully scaled" from "failed" — matching the partial-
+ * outcome contract used by `mapScore`/`mapTags`.
+ *
+ * @param {Array} list - Items to scale; any shape (objects are stringified per item)
+ * @param {string|object} instructions - Scaling instructions (string or bundle with `spec`)
+ * @param {object} [config={}] - Configuration options
+ * @returns {Promise<Array<number|string|undefined>>} Scaled values aligned with input order
+ */
+export async function mapScale(list, instructions, config) {
+  [instructions, config] = resolveArgs(instructions, config, ['spec']);
+  const { text, known, context } = resolveTexts(instructions, ['spec']);
+  const runConfig = nameStep('scale:map', config);
+  const emitter = createProgressEmitter('scale:map', runConfig.onProgress, runConfig);
+  emitter.start();
+  emitter.emit({ event: DomainEvent.input, value: list });
+
+  try {
+    const effectiveInstructions = context ? `${text}\n\n${context}` : text;
+    const spec =
+      known.spec ||
+      (await scaleSpec(effectiveInstructions, {
+        ...runConfig,
+        onProgress: scopePhase(runConfig.onProgress, 'scale:spec'),
+      }));
+
+    emitter.emit({ event: DomainEvent.phase, phase: 'applying-scale', specification: spec });
+
+    const mapInstructions = `Apply this scale specification to transform each item:
+
+${asXML(spec, { tag: 'scale-specification' })}
+
+Return one scaled value per input item according to the specification range.`;
+
+    const serializedList = list.map((item) =>
+      typeof item === 'object' && item !== null ? JSON.stringify(item) : item
+    );
+
+    const results = await map(serializedList, mapInstructions, {
+      ...runConfig,
+      responseFormat: scaleBatchResponseFormat,
+      onProgress: scopePhase(runConfig.onProgress, 'scale:map'),
+    });
+
+    if (!Array.isArray(results)) {
+      throw new Error(`scale: expected array of scaled values from map (got ${typeof results})`);
+    }
+
+    const failedItems = results.filter((r) => r === undefined).length;
+    const outcome = failedItems > 0 ? Outcome.partial : Outcome.success;
+    emitter.complete({
+      totalItems: results.length,
+      successCount: results.length - failedItems,
+      failedItems,
+      outcome,
+    });
+    return results;
+  } catch (err) {
+    emitter.error(err);
+    throw err;
+  }
+}
+
+mapScale.knownTexts = ['spec'];

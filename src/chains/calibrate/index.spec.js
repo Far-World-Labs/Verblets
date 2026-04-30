@@ -1,10 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import calibrate, { calibrateSpec, calibrateInstructions } from './index.js';
+import calibrate, { calibrateSpec, calibrateInstructions, mapCalibrate } from './index.js';
 import llm from '../../lib/llm/index.js';
 
 vi.mock('../../lib/llm/index.js', async (importOriginal) => ({
   ...(await importOriginal()),
   default: vi.fn(),
+}));
+
+vi.mock('../../lib/parallel-batch/index.js', () => ({
+  default: vi.fn(async (items, processor) => {
+    for (let i = 0; i < items.length; i++) {
+      await processor(items[i], i);
+    }
+  }),
 }));
 
 const mockSpec = {
@@ -161,5 +169,54 @@ describe('calibrate (default export)', () => {
 
     const [applyPrompt] = vi.mocked(llm).mock.calls[0];
     expect(applyPrompt).toContain('<calibration-specification>');
+  });
+});
+
+describe('mapCalibrate', () => {
+  it('classifies a list of scans, generating spec once', async () => {
+    vi.mocked(llm)
+      .mockResolvedValueOnce(mockSpec) // spec
+      .mockResolvedValueOnce(mockResult)
+      .mockResolvedValueOnce(mockResult);
+
+    const scans = [makeScan(['pii-name'], [0.9]), makeScan(['financial-card'], [0.8])];
+    const result = await mapCalibrate(scans, 'Classify privacy risk');
+
+    expect(result).toEqual([mockResult, mockResult]);
+    expect(llm).toHaveBeenCalledTimes(3);
+    const specPrompt = vi.mocked(llm).mock.calls[0][0];
+    expect(specPrompt).toContain('"totalScans": 2');
+  });
+
+  it('skips spec generation when spec provided in bundle', async () => {
+    vi.mocked(llm).mockResolvedValueOnce(mockResult).mockResolvedValueOnce(mockResult);
+    const scans = [makeScan(['pii-name'], [0.9]), makeScan(['pii-name'], [0.7])];
+    const result = await mapCalibrate(scans, { text: 'Classify', spec: mockSpec });
+    expect(result).toEqual([mockResult, mockResult]);
+    expect(llm).toHaveBeenCalledTimes(2);
+  });
+
+  it('returns partial outcome when some apply calls fail', async () => {
+    vi.mocked(llm).mockResolvedValueOnce(mockResult).mockRejectedValueOnce(new Error('boom'));
+    const events = [];
+    const scans = [makeScan(['pii-name'], [0.9]), makeScan(['pii-name'], [0.8])];
+    const result = await mapCalibrate(
+      scans,
+      { text: 'x', spec: mockSpec },
+      { onProgress: (e) => events.push(e), maxAttempts: 1 }
+    );
+    expect(result[0]).toEqual(mockResult);
+    expect(result[1]).toBeUndefined();
+    const complete = events.find((e) => e.event === 'chain:complete' && e.step === 'calibrate:map');
+    expect(complete.outcome).toBe('partial');
+    expect(complete.failedItems).toBe(1);
+  });
+
+  it('throws when all scans fail', async () => {
+    vi.mocked(llm).mockRejectedValue(new Error('boom'));
+    const scans = [makeScan(['pii-name'], [0.9])];
+    await expect(
+      mapCalibrate(scans, { text: 'x', spec: mockSpec }, { maxAttempts: 1 })
+    ).rejects.toThrow(/all 1 scans failed/);
   });
 });
