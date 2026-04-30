@@ -132,7 +132,7 @@ Include every entity that matches the specification. Do not add properties beyon
  * @param {Object} config - Configuration options
  * @returns {Promise<Object>} Object with entities array
  */
-export default async function extractEntities(text, instructions, config) {
+export default async function entityItem(text, instructions, config) {
   [instructions, config] = resolveArgs(instructions, config, ['spec']);
   const { text: instructionText, known, context } = resolveTexts(instructions, ['spec']);
   const runConfig = nameStep(name, config);
@@ -169,35 +169,35 @@ export default async function extractEntities(text, instructions, config) {
   }
 }
 
-extractEntities.knownTexts = ['spec'];
+entityItem.knownTexts = ['spec'];
 
 /**
- * Extract entities from each text in a list, sharing one spec across all calls.
+ * Extract entities from each text in a list with managed concurrency — one LLM
+ * call per text. Sister to `mapEntities`, which packs texts into batched LLM
+ * prompts. Use the parallel form when texts vary widely or batched responses
+ * smear entity types across documents.
  *
  * The spec is generated once (skipped when supplied via the instruction
- * bundle) and reused for every per-text extraction. Per-text dispatch is
- * parallel because the per-call output is a structured object that doesn't
- * compress well into a batched array-of-objects schema. Per-text failures
- * leave that slot as `undefined` rather than throwing — matching the
- * partial-outcome contract used by `mapScore`/`mapTags`.
+ * bundle) and reused for every per-text extraction. Per-text failures leave
+ * that slot as `undefined`; chain reports outcome=partial.
  *
  * @param {string[]} texts - Source texts to extract entities from
  * @param {string|object} instructions - Extraction instructions (string or bundle with `spec`)
  * @param {object} [config={}] - Configuration options (`maxParallel`, `errorPosture`)
  * @returns {Promise<Array<{entities: Array}|undefined>>}
  */
-export async function mapEntities(texts, instructions, config) {
+export async function mapEntitiesParallel(texts, instructions, config) {
   if (!Array.isArray(texts)) {
     throw new Error(
-      `mapEntities: texts must be an array (got ${texts === null ? 'null' : typeof texts})`
+      `mapEntitiesParallel: texts must be an array (got ${texts === null ? 'null' : typeof texts})`
     );
   }
   [instructions, config] = resolveArgs(instructions, config, ['spec']);
   const { text: instructionText, known, context } = resolveTexts(instructions, ['spec']);
   const effectiveInstructions = context ? `${instructionText}\n\n${context}` : instructionText;
 
-  const runConfig = nameStep('entities:map', config);
-  const emitter = createProgressEmitter('entities:map', runConfig.onProgress, runConfig);
+  const runConfig = nameStep('entities:parallel', config);
+  const emitter = createProgressEmitter('entities:parallel', runConfig.onProgress, runConfig);
   emitter.start();
   emitter.emit({ event: DomainEvent.input, value: texts });
 
@@ -263,32 +263,32 @@ export async function mapEntities(texts, instructions, config) {
   }
 }
 
-mapEntities.knownTexts = ['spec'];
+mapEntitiesParallel.knownTexts = ['spec'];
 
 /**
  * Extract entities from each text by packing texts into batched LLM prompts
- * (one call per batch). Sister to `mapEntities`, which dispatches per-text
- * in parallel — use the batched form to amortize per-call overhead when
- * texts are short and homogeneous enough that the LLM can handle them in
- * one prompt without smearing entity types across documents.
+ * (one call per batch). Sister to `mapEntitiesParallel`, which dispatches one
+ * LLM call per text — use the batched form to amortize per-call overhead
+ * when texts are short and homogeneous enough that the LLM can handle them
+ * in one prompt without smearing entity types across documents.
  *
  * @param {string[]} texts - Source texts to extract entities from
  * @param {string|object} instructions - Extraction instructions
  * @param {object} [config={}] - `batchSize`, `maxParallel`, `errorPosture`
  * @returns {Promise<Array<{entities: Array}|undefined>>}
  */
-export async function mapEntitiesBatched(texts, instructions, config) {
+export async function mapEntities(texts, instructions, config) {
   if (!Array.isArray(texts)) {
     throw new Error(
-      `mapEntitiesBatched: texts must be an array (got ${texts === null ? 'null' : typeof texts})`
+      `mapEntities: texts must be an array (got ${texts === null ? 'null' : typeof texts})`
     );
   }
   [instructions, config] = resolveArgs(instructions, config, ['spec']);
   const { text: instructionText, known, context } = resolveTexts(instructions, ['spec']);
   const effectiveInstructions = context ? `${instructionText}\n\n${context}` : instructionText;
 
-  const runConfig = nameStep('entities:batched', config);
-  const emitter = createProgressEmitter('entities:batched', runConfig.onProgress, runConfig);
+  const runConfig = nameStep('entities:map', config);
+  const emitter = createProgressEmitter('entities:map', runConfig.onProgress, runConfig);
   emitter.start();
   emitter.emit({ event: DomainEvent.input, value: texts });
 
@@ -337,4 +337,4 @@ Return one entities object per input text, in the same order. Use an empty entit
   }
 }
 
-mapEntitiesBatched.knownTexts = ['spec'];
+mapEntities.knownTexts = ['spec'];

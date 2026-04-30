@@ -19,9 +19,9 @@ export {
 
 // Calibration
 export {
-  default as calibrate,
+  default as calibrateItem,
   mapCalibrate,
-  mapCalibrateBatched,
+  mapCalibrateParallel,
   calibrateSpec,
   calibrateInstructions,
 } from './chains/calibrate/index.js';
@@ -70,9 +70,9 @@ export {
   calculateStatistics,
 } from './chains/detect-threshold/index.js';
 export {
-  default as extractEntities,
+  default as entityItem,
   mapEntities,
-  mapEntitiesBatched,
+  mapEntitiesParallel,
   entitySpec,
   entityInstructions,
 } from './chains/entities/index.js';
@@ -116,9 +116,9 @@ export { default as people } from './chains/people/index.js';
 export { default as popReference } from './chains/pop-reference/index.js';
 export { default as questions } from './chains/questions/index.js';
 export {
-  default as extractRelations,
+  default as relationItem,
   mapRelations,
-  mapRelationsBatched,
+  mapRelationsParallel,
   relationSpec,
   parseRDFLiteral,
   parseRelations,

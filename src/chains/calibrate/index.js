@@ -287,8 +287,8 @@ export function calibrateInstructions({ spec, text, ...context }) {
  * @param {object} [config]
  * @returns {Promise<{ severity: string, salience: string, categories: object, summary: string }>}
  */
-export default async function calibrate(scan, instructions, config) {
-  validateScans([scan], 'calibrate');
+export default async function calibrateItem(scan, instructions, config) {
+  validateScans([scan], 'calibrateItem');
 
   [instructions, config] = resolveArgs(instructions, config, ['spec']);
   const { text, known, context } = resolveTexts(instructions, ['spec']);
@@ -311,7 +311,7 @@ export default async function calibrate(scan, instructions, config) {
   }
 }
 
-calibrate.knownTexts = ['spec'];
+calibrateItem.knownTexts = ['spec'];
 
 /**
  * Classify a list of scan results in parallel against one calibration spec.
@@ -321,24 +321,23 @@ calibrate.knownTexts = ['spec'];
  * Per-scan failures leave that slot as `undefined` rather than throwing —
  * matching the partial-outcome contract used by `mapScore`/`mapTags`.
  *
- * Per-scan dispatch is parallel rather than batched-into-one-prompt because
- * the per-scan output is a structured object whose schema doesn't compress
- * well into an array-of-objects batch response.
+ * Per-scan dispatch is parallel rather than batched-into-one-prompt; use this
+ * when the per-scan output's structure makes batched-LLM responses unreliable.
  *
  * @param {Array<{ flagged: boolean, hits: Array }>} scans - Scan results
  * @param {string|object} instructions - Calibration instructions (string or bundle with `spec`)
  * @param {object} [config={}] - Configuration options (`maxParallel`, `errorPosture`)
  * @returns {Promise<Array<{ severity: string, salience: string, categories: object, summary: string }|undefined>>}
  */
-export async function mapCalibrate(scans, instructions, config) {
-  validateScans(scans, 'mapCalibrate');
+export async function mapCalibrateParallel(scans, instructions, config) {
+  validateScans(scans, 'mapCalibrateParallel');
 
   [instructions, config] = resolveArgs(instructions, config, ['spec']);
   const { text, known, context } = resolveTexts(instructions, ['spec']);
   const effectiveInstructions = context ? `${text}\n\n${context}` : text;
 
-  const runConfig = nameStep('calibrate:map', config);
-  const emitter = createProgressEmitter('calibrate:map', runConfig.onProgress, runConfig);
+  const runConfig = nameStep('calibrate:parallel', config);
+  const emitter = createProgressEmitter('calibrate:parallel', runConfig.onProgress, runConfig);
   emitter.start();
   emitter.emit({ event: DomainEvent.input, value: scans });
 
@@ -405,33 +404,33 @@ export async function mapCalibrate(scans, instructions, config) {
   }
 }
 
-mapCalibrate.knownTexts = ['spec'];
+mapCalibrateParallel.knownTexts = ['spec'];
 
 /**
- * Classify a list of scans by packing scans into batched LLM prompts (one
- * call per batch). Sister to `mapCalibrate`, which dispatches per-scan in
- * parallel — use the batched form to amortize per-call overhead when scans
- * are uniform enough that the LLM can produce one consistent classification
- * vector per prompt.
+ * Classify a list of scans by packing them into batched LLM prompts (one
+ * call per batch). The classification spec is generated once over the full
+ * corpus and reused across all batches. Sister to `mapCalibrateParallel`,
+ * which sends one LLM call per scan — use the batched form to amortize
+ * per-call overhead when scans are uniform enough that the LLM can produce
+ * one consistent classification vector per prompt.
  *
  * Failed batches leave their slots as `undefined`; chain reports
- * outcome=partial. The classification spec is still generated once over
- * the full corpus.
+ * outcome=partial.
  *
  * @param {Array<{ flagged: boolean, hits: Array }>} scans - Scan results
  * @param {string|object} instructions - Calibration instructions (string or bundle with `spec`)
  * @param {object} [config={}] - `batchSize`, `maxParallel`, `errorPosture`
  * @returns {Promise<Array<object|undefined>>}
  */
-export async function mapCalibrateBatched(scans, instructions, config) {
-  validateScans(scans, 'mapCalibrateBatched');
+export async function mapCalibrate(scans, instructions, config) {
+  validateScans(scans, 'mapCalibrate');
 
   [instructions, config] = resolveArgs(instructions, config, ['spec']);
   const { text, known, context } = resolveTexts(instructions, ['spec']);
   const effectiveInstructions = context ? `${text}\n\n${context}` : text;
 
-  const runConfig = nameStep('calibrate:batched', config);
-  const emitter = createProgressEmitter('calibrate:batched', runConfig.onProgress, runConfig);
+  const runConfig = nameStep('calibrate:map', config);
+  const emitter = createProgressEmitter('calibrate:map', runConfig.onProgress, runConfig);
   emitter.start();
   emitter.emit({ event: DomainEvent.input, value: scans });
 
@@ -487,4 +486,4 @@ Return one classification object per input scan, in the same order.`;
   }
 }
 
-mapCalibrateBatched.knownTexts = ['spec'];
+mapCalibrate.knownTexts = ['spec'];

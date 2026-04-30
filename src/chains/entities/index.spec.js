@@ -1,9 +1,9 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import extractEntities, {
+import entityItem, {
   entitySpec,
   entityInstructions,
   mapEntities,
-  mapEntitiesBatched,
+  mapEntitiesParallel,
 } from './index.js';
 import map from '../map/index.js';
 
@@ -48,7 +48,7 @@ describe('entities', () => {
     });
   });
 
-  describe('extractEntities', () => {
+  describe('entityItem', () => {
     it('chains spec generation and extraction', async () => {
       llm.mockResolvedValueOnce('Specification for extracting companies').mockResolvedValueOnce({
         entities: [
@@ -57,7 +57,7 @@ describe('entities', () => {
         ],
       });
 
-      const result = await extractEntities(
+      const result = await entityItem(
         'Google and Amazon are major tech companies.',
         'Extract all companies'
       );
@@ -69,7 +69,7 @@ describe('entities', () => {
     it('handles empty text', async () => {
       llm.mockResolvedValueOnce('Spec').mockResolvedValueOnce({ entities: [] });
 
-      const result = await extractEntities('', 'Extract any entities');
+      const result = await entityItem('', 'Extract any entities');
 
       expect(result.entities).toEqual([]);
     });
@@ -90,14 +90,14 @@ describe('entities', () => {
     });
   });
 
-  describe('mapEntities', () => {
+  describe('mapEntitiesParallel', () => {
     it('extracts entities from each text, sharing one spec', async () => {
       llm
         .mockResolvedValueOnce('shared spec')
         .mockResolvedValueOnce({ entities: [{ name: 'Alice', type: 'person' }] })
         .mockResolvedValueOnce({ entities: [{ name: 'Acme', type: 'company' }] });
 
-      const result = await mapEntities(['Alice works.', 'Acme launched.'], 'Extract');
+      const result = await mapEntitiesParallel(['Alice works.', 'Acme launched.'], 'Extract');
       expect(result).toHaveLength(2);
       expect(result[0].entities[0].name).toBe('Alice');
       expect(result[1].entities[0].name).toBe('Acme');
@@ -108,7 +108,7 @@ describe('entities', () => {
       llm
         .mockResolvedValueOnce({ entities: [{ name: 'A', type: 'person' }] })
         .mockResolvedValueOnce({ entities: [{ name: 'B', type: 'person' }] });
-      const result = await mapEntities(['t1', 't2'], { text: 'x', spec: 'reused-spec' });
+      const result = await mapEntitiesParallel(['t1', 't2'], { text: 'x', spec: 'reused-spec' });
       expect(result).toHaveLength(2);
       expect(llm).toHaveBeenCalledTimes(2);
     });
@@ -118,7 +118,7 @@ describe('entities', () => {
         .mockResolvedValueOnce({ entities: [{ name: 'A', type: 'p' }] })
         .mockRejectedValueOnce(new Error('boom'));
       const events = [];
-      const result = await mapEntities(
+      const result = await mapEntitiesParallel(
         ['ok', 'bad'],
         { text: 'x', spec: 'spec' },
         { onProgress: (e) => events.push(e), maxAttempts: 1 }
@@ -126,23 +126,23 @@ describe('entities', () => {
       expect(result[0].entities).toHaveLength(1);
       expect(result[1]).toBeUndefined();
       const complete = events.find(
-        (e) => e.event === 'chain:complete' && e.step === 'entities:map'
+        (e) => e.event === 'chain:complete' && e.step === 'entities:parallel'
       );
       expect(complete.outcome).toBe('partial');
     });
 
     it('throws when texts is not an array', async () => {
-      await expect(mapEntities('not-an-array', 'x')).rejects.toThrow(/must be an array/);
+      await expect(mapEntitiesParallel('not-an-array', 'x')).rejects.toThrow(/must be an array/);
     });
   });
 
-  describe('mapEntitiesBatched', () => {
+  describe('mapEntities', () => {
     it('routes through map() with the entities batch responseFormat', async () => {
       vi.mocked(map).mockResolvedValueOnce([
         { entities: [{ name: 'A', type: 'p' }] },
         { entities: [{ name: 'B', type: 'p' }] },
       ]);
-      const result = await mapEntitiesBatched(['t1', 't2'], { text: 'x', spec: 'reused' });
+      const result = await mapEntities(['t1', 't2'], { text: 'x', spec: 'reused' });
       expect(result).toHaveLength(2);
       expect(result[0].entities[0].name).toBe('A');
       const mapConfig = vi.mocked(map).mock.calls[0][2];
@@ -152,12 +152,12 @@ describe('entities', () => {
     it('generates spec when not bundled', async () => {
       llm.mockResolvedValueOnce('shared spec');
       vi.mocked(map).mockResolvedValueOnce([{ entities: [] }]);
-      await mapEntitiesBatched(['t'], 'extract');
+      await mapEntities(['t'], 'extract');
       expect(llm).toHaveBeenCalledTimes(1);
     });
 
     it('throws when texts is not an array', async () => {
-      await expect(mapEntitiesBatched('not-an-array', 'x')).rejects.toThrow(/must be an array/);
+      await expect(mapEntities('not-an-array', 'x')).rejects.toThrow(/must be an array/);
     });
   });
 });

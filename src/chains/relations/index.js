@@ -299,7 +299,7 @@ Example: {"object": "42^^xsd:integer"} NOT {"object": '"42"^^xsd:integer'}`;
  * @param {Object} config - Configuration options
  * @returns {Promise<Array>} Array of relation objects
  */
-export default async function extractRelations(text, instructions, config) {
+export default async function relationItem(text, instructions, config) {
   [instructions, config] = resolveArgs(instructions, config, ['spec']);
   const { text: instructionText, known, context } = resolveTexts(instructions, ['spec']);
   const runConfig = nameStep(name, config);
@@ -321,35 +321,35 @@ export default async function extractRelations(text, instructions, config) {
   }
 }
 
-extractRelations.knownTexts = ['spec'];
+relationItem.knownTexts = ['spec'];
 
 /**
- * Extract relations from each text in a list, sharing one spec across all calls.
+ * Extract relations from each text in a list with managed concurrency — one
+ * LLM call per text. Sister to `mapRelations`, which packs texts into batched
+ * LLM prompts. Use the parallel form when texts vary widely or batched
+ * responses conflate subjects across documents.
  *
  * The spec is generated once (skipped when supplied via the instruction
- * bundle) and reused for every per-text extraction. Per-text dispatch is
- * parallel because the per-call output is a structured object that doesn't
- * compress well into a batched array-of-objects schema. Per-text failures
- * leave that slot as `undefined` rather than throwing — matching the
- * partial-outcome contract used by `mapScore`/`mapTags`.
+ * bundle) and reused for every per-text extraction. Per-text failures leave
+ * that slot as `undefined`; chain reports outcome=partial.
  *
  * @param {string[]} texts - Source texts to extract relations from
  * @param {string|object} instructions - Extraction instructions (string, bundle with `spec`, or object with relations/entities/predicates)
  * @param {object} [config={}] - Configuration options (`maxParallel`, `errorPosture`)
  * @returns {Promise<Array<Array<object>|undefined>>} Per-text relation arrays
  */
-export async function mapRelations(texts, instructions, config) {
+export async function mapRelationsParallel(texts, instructions, config) {
   if (!Array.isArray(texts)) {
     throw new Error(
-      `mapRelations: texts must be an array (got ${texts === null ? 'null' : typeof texts})`
+      `mapRelationsParallel: texts must be an array (got ${texts === null ? 'null' : typeof texts})`
     );
   }
   [instructions, config] = resolveArgs(instructions, config, ['spec']);
   const { text: instructionText, known, context } = resolveTexts(instructions, ['spec']);
   const effectiveInstructions = context ? `${instructionText}\n\n${context}` : instructionText;
 
-  const runConfig = nameStep('relations:map', config);
-  const emitter = createProgressEmitter('relations:map', runConfig.onProgress, runConfig);
+  const runConfig = nameStep('relations:parallel', config);
+  const emitter = createProgressEmitter('relations:parallel', runConfig.onProgress, runConfig);
   emitter.start();
   emitter.emit({ event: DomainEvent.input, value: texts });
 
@@ -411,13 +411,13 @@ export async function mapRelations(texts, instructions, config) {
   }
 }
 
-mapRelations.knownTexts = ['spec'];
+mapRelationsParallel.knownTexts = ['spec'];
 
 /**
  * Extract relations from each text by packing texts into batched LLM prompts
- * (one call per batch). Sister to `mapRelations`, which dispatches per-text
- * in parallel — use the batched form to amortize per-call overhead when
- * texts are short and homogeneous enough that the LLM can produce one
+ * (one call per batch). Sister to `mapRelationsParallel`, which dispatches one
+ * LLM call per text — use the batched form to amortize per-call overhead
+ * when texts are short and homogeneous enough that the LLM can produce one
  * relations vector per prompt without conflating subjects across documents.
  *
  * @param {string[]} texts - Source texts
@@ -425,18 +425,18 @@ mapRelations.knownTexts = ['spec'];
  * @param {object} [config={}] - `batchSize`, `maxParallel`, `errorPosture`
  * @returns {Promise<Array<Array<object>|undefined>>} Per-text relation arrays
  */
-export async function mapRelationsBatched(texts, instructions, config) {
+export async function mapRelations(texts, instructions, config) {
   if (!Array.isArray(texts)) {
     throw new Error(
-      `mapRelationsBatched: texts must be an array (got ${texts === null ? 'null' : typeof texts})`
+      `mapRelations: texts must be an array (got ${texts === null ? 'null' : typeof texts})`
     );
   }
   [instructions, config] = resolveArgs(instructions, config, ['spec']);
   const { text: instructionText, known, context } = resolveTexts(instructions, ['spec']);
   const effectiveInstructions = context ? `${instructionText}\n\n${context}` : instructionText;
 
-  const runConfig = nameStep('relations:batched', config);
-  const emitter = createProgressEmitter('relations:batched', runConfig.onProgress, runConfig);
+  const runConfig = nameStep('relations:map', config);
+  const emitter = createProgressEmitter('relations:map', runConfig.onProgress, runConfig);
   emitter.start();
   emitter.emit({ event: DomainEvent.input, value: texts });
 
@@ -494,4 +494,4 @@ Return one relations object per input text, in the same order. Use an empty rela
   }
 }
 
-mapRelationsBatched.knownTexts = ['spec'];
+mapRelations.knownTexts = ['spec'];

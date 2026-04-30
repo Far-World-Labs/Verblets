@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import calibrate, {
+import calibrateItem, {
   calibrateSpec,
   calibrateInstructions,
   mapCalibrate,
-  mapCalibrateBatched,
+  mapCalibrateParallel,
 } from './index.js';
 import map from '../map/index.js';
 import llm from '../../lib/llm/index.js';
@@ -144,14 +144,14 @@ describe('calibrateInstructions', () => {
   });
 });
 
-describe('calibrate (default export)', () => {
+describe('calibrateItem (default export)', () => {
   it('classifies a scan with spec + apply in one call', async () => {
     vi.mocked(llm)
       .mockResolvedValueOnce(mockSpec) // calibrateSpec call
       .mockResolvedValueOnce(mockResult); // applyCalibrate call
 
     const scan = makeScan(['pii-name', 'financial-card'], [0.9, 0.8]);
-    const result = await calibrate(scan, 'Classify privacy risk');
+    const result = await calibrateItem(scan, 'Classify privacy risk');
 
     expect(result).toEqual(mockResult);
     expect(llm).toHaveBeenCalledTimes(2);
@@ -171,7 +171,7 @@ describe('calibrate (default export)', () => {
     vi.mocked(llm).mockResolvedValueOnce(mockResult);
 
     const scan = makeScan(['pii-name'], [0.9]);
-    const result = await calibrate(scan, { text: 'Classify', spec: mockSpec });
+    const result = await calibrateItem(scan, { text: 'Classify', spec: mockSpec });
 
     expect(result).toEqual(mockResult);
     // Only one LLM call — spec generation skipped
@@ -182,7 +182,7 @@ describe('calibrate (default export)', () => {
   });
 });
 
-describe('mapCalibrate', () => {
+describe('mapCalibrateParallel', () => {
   it('classifies a list of scans, generating spec once', async () => {
     vi.mocked(llm)
       .mockResolvedValueOnce(mockSpec) // spec
@@ -190,7 +190,7 @@ describe('mapCalibrate', () => {
       .mockResolvedValueOnce(mockResult);
 
     const scans = [makeScan(['pii-name'], [0.9]), makeScan(['financial-card'], [0.8])];
-    const result = await mapCalibrate(scans, 'Classify privacy risk');
+    const result = await mapCalibrateParallel(scans, 'Classify privacy risk');
 
     expect(result).toEqual([mockResult, mockResult]);
     expect(llm).toHaveBeenCalledTimes(3);
@@ -201,7 +201,7 @@ describe('mapCalibrate', () => {
   it('skips spec generation when spec provided in bundle', async () => {
     vi.mocked(llm).mockResolvedValueOnce(mockResult).mockResolvedValueOnce(mockResult);
     const scans = [makeScan(['pii-name'], [0.9]), makeScan(['pii-name'], [0.7])];
-    const result = await mapCalibrate(scans, { text: 'Classify', spec: mockSpec });
+    const result = await mapCalibrateParallel(scans, { text: 'Classify', spec: mockSpec });
     expect(result).toEqual([mockResult, mockResult]);
     expect(llm).toHaveBeenCalledTimes(2);
   });
@@ -210,14 +210,16 @@ describe('mapCalibrate', () => {
     vi.mocked(llm).mockResolvedValueOnce(mockResult).mockRejectedValueOnce(new Error('boom'));
     const events = [];
     const scans = [makeScan(['pii-name'], [0.9]), makeScan(['pii-name'], [0.8])];
-    const result = await mapCalibrate(
+    const result = await mapCalibrateParallel(
       scans,
       { text: 'x', spec: mockSpec },
       { onProgress: (e) => events.push(e), maxAttempts: 1 }
     );
     expect(result[0]).toEqual(mockResult);
     expect(result[1]).toBeUndefined();
-    const complete = events.find((e) => e.event === 'chain:complete' && e.step === 'calibrate:map');
+    const complete = events.find(
+      (e) => e.event === 'chain:complete' && e.step === 'calibrate:parallel'
+    );
     expect(complete.outcome).toBe('partial');
     expect(complete.failedItems).toBe(1);
   });
@@ -226,12 +228,12 @@ describe('mapCalibrate', () => {
     vi.mocked(llm).mockRejectedValue(new Error('boom'));
     const scans = [makeScan(['pii-name'], [0.9])];
     await expect(
-      mapCalibrate(scans, { text: 'x', spec: mockSpec }, { maxAttempts: 1 })
+      mapCalibrateParallel(scans, { text: 'x', spec: mockSpec }, { maxAttempts: 1 })
     ).rejects.toThrow(/all 1 scans failed/);
   });
 });
 
-describe('mapCalibrateBatched', () => {
+describe('mapCalibrate', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -239,7 +241,7 @@ describe('mapCalibrateBatched', () => {
   it('routes through the map chain with the batch responseFormat', async () => {
     vi.mocked(map).mockResolvedValueOnce([mockResult, mockResult]);
     const scans = [makeScan(['pii-name'], [0.9]), makeScan(['pii-name'], [0.8])];
-    const result = await mapCalibrateBatched(scans, { text: 'x', spec: mockSpec });
+    const result = await mapCalibrate(scans, { text: 'x', spec: mockSpec });
     expect(result).toEqual([mockResult, mockResult]);
     const mapConfig = vi.mocked(map).mock.calls[0][2];
     expect(mapConfig.responseFormat?.json_schema?.name).toBe('calibrate_batch');
@@ -249,7 +251,7 @@ describe('mapCalibrateBatched', () => {
     vi.mocked(llm).mockResolvedValueOnce(mockSpec);
     vi.mocked(map).mockResolvedValueOnce([mockResult]);
     const scans = [makeScan(['pii-name'], [0.9])];
-    await mapCalibrateBatched(scans, 'classify privacy risk');
+    await mapCalibrate(scans, 'classify privacy risk');
     // spec call only — map() does the per-scan dispatch
     expect(llm).toHaveBeenCalledTimes(1);
     const mapInstructions = vi.mocked(map).mock.calls[0][1];
@@ -260,16 +262,14 @@ describe('mapCalibrateBatched', () => {
     vi.mocked(map).mockResolvedValueOnce([mockResult, undefined]);
     const events = [];
     const scans = [makeScan(['pii-name'], [0.9]), makeScan(['pii-name'], [0.8])];
-    const result = await mapCalibrateBatched(
+    const result = await mapCalibrate(
       scans,
       { text: 'x', spec: mockSpec },
       { onProgress: (e) => events.push(e) }
     );
     expect(result[0]).toEqual(mockResult);
     expect(result[1]).toBeUndefined();
-    const complete = events.find(
-      (e) => e.event === 'chain:complete' && e.step === 'calibrate:batched'
-    );
+    const complete = events.find((e) => e.event === 'chain:complete' && e.step === 'calibrate:map');
     expect(complete.outcome).toBe('partial');
   });
 });
