@@ -1,5 +1,57 @@
 # Changelog
 
+## 0.8.0 (2026-04-30)
+
+### Added
+
+- **score-matrix chain**: evaluate a list of items against a multi-dimensional rubric in one operation. Returns a matrix of scored rationales aligned with the rubric. Anchoring policy (`low`/`med`/`high`) controls how strict the cross-row calibration is.
+- **Three-form list/item API across every list-iterating chain.** Each chain that takes either a single item or a list now exposes all three shapes from the same module:
+  - **per-item function** (`xxxItem`) — single LLM call, ready to drop into your own `pMap`/`pReduce`/streaming.
+  - **parallel-managed orchestrator** (`mapXxxParallel`) — one LLM call per item with bounded concurrency.
+  - **batched-LLM orchestrator** (`mapXxx`) — many items packed into one prompt.
+  Coverage: `map`, `filter`, `find`, `reduce` (no parallel — sequential by definition), `group`, `scale`, `score`, `tags`, `calibrate`, `entities`, `relations`, `pop-reference`, `people`. Per-item entries on `filter` and `find` are re-exports of `verblets/bool`.
+- **`expect-shape` library**: small set of boundary validators (`expectArray`, `expectObject`, `expectString`, `expectNumber`) that surface malformed LLM responses with chain-tagged errors. Integrated across 11 chains so contract violations stop at the chain boundary instead of propagating undefined values into downstream math/strings.
+- **Retry mode presets** (`strict`, `patient`, `persistent`) on `lib/retry/presets.js`. Tunes rate-limit ceiling, credit-exhaustion interval, and overload backoff per mode. Error classification (`lib/retry/error-classification.js`) routes 429s, 5xxs, and credit/overload responses to the right handler with explicit, traced retry events.
+- **Option resolution as a top-level module** (`lib/option/index.js`): `nameStep`, `getOption`, `getOptions`, `withPolicy` are now in one place rather than embedded in `lib/context/option.js`. Decision traces flow through the standard telemetry channel.
+- **Response-format helpers** (`lib/response-format/index.js`): the `jsonSchema(name, schema)` builder plus shape detectors (`isSimpleCollectionSchema`, `isSimpleValueSchema`) used by `callLlm` to auto-unwrap `{ value }` and `{ items: [...] }` envelopes.
+- **Spec coverage** for `lib/context`, `lib/llm`, `lib/parallel-batch`, and most prompt builders. Adds ~14k lines across 30+ new spec files.
+- **CI Node-matrix fix** (`.github/workflows/ci.yml`): only runs the test matrix against Node versions that have actually entered LTS. The previous filter picked up future LTS lines as soon as they appeared in the schedule, several days before `actions/setup-node` could resolve them — every PR check broke when v26 entered the schedule on 2026-04-22. Tightened to require an LTS date in the past.
+
+### Changed (breaking)
+
+- **Naming normalized for `calibrate`, `entities`, `relations`, `people`, `pop-reference`** to match the `xxxItem` / `mapXxx` / `mapXxxParallel` convention used by `score`, `tags`, `scale`:
+  - `extractEntities` → `entityItem`
+  - `extractRelations` → `relationItem`
+  - `peopleList` (default) → `peopleSet`
+  - `popReference` (default) → `popReferenceItem`
+  - `calibrate` (per-item default) → `calibrateItem`
+- **`mapXxxBatched` aliases removed** — the unsuffixed name is the batched-LLM list form everywhere now (matching `mapScore`, `mapTags`, `mapScale`). The old parallel-managed defaults that previously held the unsuffixed name moved to `mapXxxParallel`:
+  - `mapCalibrateBatched` → `mapCalibrate`; old `mapCalibrate` → `mapCalibrateParallel`
+  - `mapEntitiesBatched` → `mapEntities`; old `mapEntities` → `mapEntitiesParallel`
+  - `mapRelationsBatched` → `mapRelations`; old `mapRelations` → `mapRelationsParallel`
+
+### Fixed
+
+- **Map batch overflow corruption**: under-/oversized LLM responses no longer silently corrupt slot alignment in batched maps.
+- **JSON/XML output format conflict** in batch prompts when a custom `responseFormat` was supplied alongside auto-style guidance.
+- **Hardened filter** boundary validation on per-batch decision arrays.
+- **Threaded `init`-time LLM config through every chain** so model overrides set at init no longer get dropped by sub-chains.
+- **`map` total failure** is now surfaced as a chain-level error instead of silently returning an array of `undefined`.
+
+## 0.7.0 (2026-04-26)
+
+### Added
+
+- **`sem.*` semantic state system**: negotiated multimodal embedding pipeline, semantic-state primitives, and the `embed-object-define` / `embed-object-fragment` / `embed-object-refine` chains.
+- **Instruction-as-context**: structured prompt composition via `resolveTexts` / `resolveArgs` that lets bundles carry `text` plus chain-specific known keys (e.g. `spec`, `vocabulary`, `categories`) through any collection chain unchanged.
+- **Automation system**: `RunContext` execution model with `ctx.lib` split, observability hooks, run history, and rule-based model negotiation. Driven by ADRs and specs under `.claude/spec/automation*.md`.
+- **Instance-based `init()`**: each call returns an isolated `ModelService` so two consumers in the same process don't clobber each other's model rules.
+
+### Changed
+
+- README restructured around the embedding surface; `.gitignore` hardened against credential leakage.
+- Repo-root cleanup: docs moved to `.claude/`, spec/ADR/guidelines reorganized.
+
 ## 0.6.3 (2026-04-01)
 
 ### Fixed
