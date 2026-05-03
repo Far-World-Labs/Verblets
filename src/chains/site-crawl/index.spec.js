@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, vi, expect } from 'vitest';
+import { runTable, throws } from '../../lib/examples-runner/index.js';
 
-// Mock playwright-core
 vi.mock('playwright-core', () => {
   const mockPage = () => {
     let urlValue = 'https://example.com';
@@ -35,9 +35,7 @@ vi.mock('playwright-core', () => {
   };
 
   return {
-    chromium: {
-      launch: vi.fn(async () => mockBrowser),
-    },
+    chromium: { launch: vi.fn(async () => mockBrowser) },
     __mockBrowser: mockBrowser,
     __mockContext: mockContext,
     __mockPages: pages,
@@ -68,7 +66,6 @@ vi.mock('../../lib/image-utils/index.js', () => ({
     })[value],
 }));
 
-// Mock the extractor — return predictable page data
 vi.mock('./extractor.js', () => ({
   default: vi.fn(async (page) => {
     const url = page.url();
@@ -106,7 +103,6 @@ vi.mock('./extractor.js', () => ({
   }),
 }));
 
-// Mock cooldown — passthrough visitFn, no delays
 vi.mock('./cooldown.js', () => ({
   DEFAULT_COOLDOWN: {
     baseDelay: 5000,
@@ -116,16 +112,14 @@ vi.mock('./cooldown.js', () => ({
     jitter: 0.2,
   },
   defaultIsBlocked: vi.fn(async () => undefined),
-  visitWithCooldown: vi.fn(
-    async (visitFn, page, url, _emitter, _cooldownOpts, _isBlocked, _hbInterval) => {
-      const pageData = await visitFn(page, url);
-      return { pageData, retries: 0, totalCooldownMs: 0 };
-    }
-  ),
+  visitWithCooldown: vi.fn(async (visitFn, page, url) => ({
+    pageData: await visitFn(page, url),
+    retries: 0,
+    totalCooldownMs: 0,
+  })),
   createHeartbeat: vi.fn(() => ({ stop: vi.fn() })),
 }));
 
-// Mock callLlm for the gate
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(async () => ({
     decisions: [
@@ -143,206 +137,251 @@ import siteCrawl from './index.js';
 import { setBrowserEnabled } from '../web-scrape/state.js';
 import { chromium, __mockPages } from 'playwright-core';
 
-describe('site-crawl', () => {
-  beforeEach(() => {
-    setBrowserEnabled(true);
-    __mockPages.length = 0;
-    vi.clearAllMocks();
-  });
+beforeEach(() => {
+  setBrowserEnabled(true);
+  __mockPages.length = 0;
+  vi.clearAllMocks();
+});
 
-  it('throws when browser is not enabled', async () => {
-    setBrowserEnabled(false);
-    await expect(siteCrawl('https://example.com')).rejects.toThrow('Browser support is disabled');
-  });
+const startUrl = 'https://example.com/';
 
-  it('crawls the start URL and discovers child pages', async () => {
-    const result = await siteCrawl('https://example.com/', { maxPages: 3, gateInterval: 100 });
+const examples = [
+  {
+    name: 'throws when browser is not enabled',
+    inputs: {
+      url: startUrl,
+      preMock: () => setBrowserEnabled(false),
+    },
+    check: throws(/Browser support is disabled/),
+  },
+  {
+    name: 'crawls the start URL and discovers child pages',
+    inputs: { url: startUrl, options: { maxPages: 3, gateInterval: 100 } },
+    check: ({ result }) => {
+      expect(result.pages.length).toBeGreaterThanOrEqual(1);
+      expect(result.pages[0].url).toBe(startUrl);
+      expect(result.graph).toBeDefined();
+      expect(result.apis).toBeDefined();
+      expect(typeof result.cleanup).toBe('function');
+    },
+  },
+  {
+    name: 'respects maxPages limit',
+    inputs: { url: startUrl, options: { maxPages: 2, gateInterval: 100 } },
+    check: ({ result }) => expect(result.pages.length).toBeLessThanOrEqual(2),
+  },
+  {
+    name: 'runs setup callback before crawling',
+    inputs: {
+      url: startUrl,
+      makeSetup: true,
+      options: { maxPages: 1, gateInterval: 100 },
+    },
+    check: ({ result }) => {
+      expect(result.setup).toHaveBeenCalledOnce();
+      expect(result.setup.mock.calls[0][0]).toHaveProperty('goto');
+    },
+  },
+  {
+    name: 'runs teardown callback after crawling',
+    inputs: {
+      url: startUrl,
+      makeTeardown: true,
+      options: { maxPages: 1, gateInterval: 100 },
+    },
+    check: ({ result }) => expect(result.teardown).toHaveBeenCalledOnce(),
+  },
+  {
+    name: 'launches browser with specified engine',
+    inputs: { url: startUrl, options: { maxPages: 1, gateInterval: 100 } },
+    check: () => {
+      expect(chromium.launch).toHaveBeenCalledOnce();
+      expect(chromium.launch).toHaveBeenCalledWith(expect.objectContaining({ headless: true }));
+    },
+  },
+  {
+    name: 'emits progress events',
+    inputs: {
+      url: startUrl,
+      withEvents: true,
+      options: { maxPages: 2, gateInterval: 100 },
+    },
+    check: ({ result }) => {
+      const eventTypes = result.events.map((e) => e.event || e.kind);
+      expect(eventTypes).toContain('browser');
+      expect(eventTypes).toContain('page:start');
+      expect(eventTypes).toContain('page:complete');
+    },
+  },
+  {
+    name: 'builds adjacency graph from discovered links',
+    inputs: { url: startUrl, options: { maxPages: 3, gateInterval: 100 } },
+    check: ({ result }) => {
+      const startLinks = result.graph[startUrl];
+      expect(startLinks).toBeDefined();
+      expect(startLinks).toContain('https://example.com/page-a');
+      expect(startLinks).toContain('https://example.com/page-b');
+      expect(startLinks).not.toContain('https://other.com/external');
+    },
+  },
+  {
+    name: 'reports frontier summary in result',
+    inputs: { url: startUrl, options: { maxPages: 3, gateInterval: 100 } },
+    check: ({ result }) => {
+      expect(result.frontier).toBeDefined();
+      expect(typeof result.frontier.visited).toBe('number');
+      expect(typeof result.frontier.pending).toBe('number');
+      expect(typeof result.frontier.skipped).toBe('number');
+    },
+  },
+  {
+    name: 'calls LLM gate when gateInterval is reached',
+    inputs: { url: startUrl, options: { maxPages: 3, gateInterval: 1 } },
+    check: async () => {
+      const callLlm = (await import('../../lib/llm/index.js')).default;
+      expect(callLlm).toHaveBeenCalled();
+      expect(callLlm.mock.calls[0][0]).toContain('site crawler');
+    },
+  },
+  {
+    name: 'applies LLM gate skip decisions to frontier',
+    inputs: { url: startUrl, options: { maxPages: 5, gateInterval: 1 } },
+    check: ({ result }) => {
+      expect(result.skipped.some((s) => s.reason === 'llm-gate')).toBe(true);
+      expect(result.gateCallCount).toBeGreaterThanOrEqual(1);
+    },
+  },
+  {
+    name: 'throws when gate LLM returns malformed shape (no decisions key)',
+    inputs: {
+      url: startUrl,
+      options: { maxPages: 3, gateInterval: 1 },
+      preMock: async () => {
+        const callLlm = (await import('../../lib/llm/index.js')).default;
+        callLlm.mockResolvedValueOnce({ wrong: 'shape' });
+      },
+    },
+    check: throws(/expected.*decisions/),
+  },
+  {
+    name: 'throws when gate LLM returns null',
+    inputs: {
+      url: startUrl,
+      options: { maxPages: 3, gateInterval: 1 },
+      preMock: async () => {
+        const callLlm = (await import('../../lib/llm/index.js')).default;
+        callLlm.mockResolvedValueOnce(null);
+      },
+    },
+    check: throws(/expected.*decisions/),
+  },
+  {
+    name: 'throws when gate LLM returns non-array decisions',
+    inputs: {
+      url: startUrl,
+      options: { maxPages: 3, gateInterval: 1 },
+      preMock: async () => {
+        const callLlm = (await import('../../lib/llm/index.js')).default;
+        callLlm.mockResolvedValueOnce({ decisions: 'not-array' });
+      },
+    },
+    check: throws(/expected.*decisions/),
+  },
+  {
+    name: 'provides cleanup function',
+    inputs: { url: startUrl, options: { maxPages: 1, gateInterval: 100 } },
+    check: async ({ result }) => {
+      expect(typeof result.cleanup).toBe('function');
+      await result.cleanup();
+    },
+  },
+  {
+    name: 'starts and stops heartbeat around the crawl loop',
+    inputs: { url: startUrl, options: { maxPages: 1, gateInterval: 100 } },
+    check: async () => {
+      const { createHeartbeat } = await import('./cooldown.js');
+      expect(createHeartbeat).toHaveBeenCalledOnce();
+      const stopFn = createHeartbeat.mock.results[0].value.stop;
+      expect(stopFn).toHaveBeenCalledOnce();
+    },
+  },
+  {
+    name: 'passes cooldown config to visitWithCooldown',
+    inputs: {
+      url: startUrl,
+      options: {
+        maxPages: 1,
+        gateInterval: 100,
+        cooldown: { baseDelay: 10000, maxRetries: 3 },
+      },
+    },
+    check: async () => {
+      const { visitWithCooldown } = await import('./cooldown.js');
+      expect(visitWithCooldown).toHaveBeenCalled();
+      const cooldownArg = visitWithCooldown.mock.calls[0][4];
+      expect(cooldownArg).toMatchObject({
+        baseDelay: 10000,
+        maxRetries: 3,
+        backoffFactor: 2,
+      });
+    },
+  },
+  {
+    name: 'passes custom isBlocked to visitWithCooldown',
+    inputs: {
+      url: startUrl,
+      makeIsBlocked: true,
+      options: { maxPages: 1, gateInterval: 100 },
+    },
+    check: async ({ result }) => {
+      const { visitWithCooldown } = await import('./cooldown.js');
+      expect(visitWithCooldown).toHaveBeenCalled();
+      expect(visitWithCooldown.mock.calls[0][5]).toBe(result.isBlocked);
+    },
+  },
+  {
+    name: 'emits heartbeat events with progress data',
+    inputs: {
+      url: startUrl,
+      withEvents: true,
+      options: { maxPages: 2, gateInterval: 100 },
+    },
+    check: async () => {
+      const { createHeartbeat } = await import('./cooldown.js');
+      const getState = createHeartbeat.mock.calls[0][2];
+      const state = getState();
+      expect(typeof state.pagesVisited).toBe('number');
+      expect(typeof state.pending).toBe('number');
+      expect(typeof state.maxPages).toBe('number');
+      expect(state.currentUrl).toBeDefined();
+    },
+  },
+];
 
-    expect(result.pages.length).toBeGreaterThanOrEqual(1);
-    expect(result.pages[0].url).toBe('https://example.com/');
-    expect(result.graph).toBeDefined();
-    expect(result.apis).toBeDefined();
-    expect(typeof result.cleanup).toBe('function');
-  });
-
-  it('respects maxPages limit', async () => {
-    const result = await siteCrawl('https://example.com/', { maxPages: 2, gateInterval: 100 });
-    expect(result.pages.length).toBeLessThanOrEqual(2);
-  });
-
-  it('runs setup callback before crawling', async () => {
-    const setup = vi.fn(async () => undefined);
-    await siteCrawl('https://example.com/', { maxPages: 1, setup, gateInterval: 100 });
-
-    expect(setup).toHaveBeenCalledOnce();
-    // Setup gets called with a page
-    expect(setup.mock.calls[0][0]).toHaveProperty('goto');
-  });
-
-  it('runs teardown callback after crawling', async () => {
-    const teardown = vi.fn(async () => undefined);
-    await siteCrawl('https://example.com/', { maxPages: 1, teardown, gateInterval: 100 });
-
-    expect(teardown).toHaveBeenCalledOnce();
-  });
-
-  it('launches browser with specified engine', async () => {
-    await siteCrawl('https://example.com/', { maxPages: 1, gateInterval: 100 });
-
-    // Default is chromium
-    expect(chromium.launch).toHaveBeenCalledOnce();
-    expect(chromium.launch).toHaveBeenCalledWith(expect.objectContaining({ headless: true }));
-  });
-
-  it('emits progress events', async () => {
+runTable({
+  describe: 'site-crawl',
+  examples,
+  process: async ({
+    url,
+    options,
+    preMock,
+    makeSetup,
+    makeTeardown,
+    makeIsBlocked,
+    withEvents,
+  }) => {
+    if (preMock) await preMock();
+    const setup = makeSetup ? vi.fn(async () => undefined) : undefined;
+    const teardown = makeTeardown ? vi.fn(async () => undefined) : undefined;
+    const isBlocked = makeIsBlocked ? vi.fn(async () => undefined) : undefined;
     const events = [];
-    await siteCrawl('https://example.com/', {
-      maxPages: 2,
-      gateInterval: 100,
-      onProgress: (event) => events.push(event),
+    const value = await siteCrawl(url, {
+      ...options,
+      ...(setup && { setup }),
+      ...(teardown && { teardown }),
+      ...(isBlocked && { isBlocked }),
+      ...(withEvents && { onProgress: (e) => events.push(e) }),
     });
-
-    const eventTypes = events.map((e) => e.event || e.kind);
-    expect(eventTypes).toContain('browser');
-    expect(eventTypes).toContain('page:start');
-    expect(eventTypes).toContain('page:complete');
-  });
-
-  it('builds adjacency graph from discovered links', async () => {
-    const result = await siteCrawl('https://example.com/', { maxPages: 3, gateInterval: 100 });
-
-    // Start page links to page-a and page-b (same-domain, non-anchor)
-    const startLinks = result.graph['https://example.com/'];
-    expect(startLinks).toBeDefined();
-    expect(startLinks).toContain('https://example.com/page-a');
-    expect(startLinks).toContain('https://example.com/page-b');
-    // External link should not appear
-    expect(startLinks).not.toContain('https://other.com/external');
-  });
-
-  it('reports frontier summary in result', async () => {
-    const result = await siteCrawl('https://example.com/', { maxPages: 3, gateInterval: 100 });
-
-    expect(result.frontier).toBeDefined();
-    expect(typeof result.frontier.visited).toBe('number');
-    expect(typeof result.frontier.pending).toBe('number');
-    expect(typeof result.frontier.skipped).toBe('number');
-  });
-
-  it('calls LLM gate when gateInterval is reached', async () => {
-    const callLlm = (await import('../../lib/llm/index.js')).default;
-
-    // gateInterval: 1 means consult after every page
-    await siteCrawl('https://example.com/', { maxPages: 3, gateInterval: 1 });
-
-    // Gate should have been called at least once
-    expect(callLlm).toHaveBeenCalled();
-    expect(callLlm.mock.calls[0][0]).toContain('site crawler');
-  });
-
-  it('applies LLM gate skip decisions to frontier', async () => {
-    // The mock LLM skips /page-b — so page-b should be in skipped
-    const result = await siteCrawl('https://example.com/', { maxPages: 5, gateInterval: 1 });
-
-    // page-b was skipped by LLM gate
-    expect(result.skipped.some((s) => s.reason === 'llm-gate')).toBe(true);
-    // Gate was called, so there should be some gate decisions
-    expect(result.gateCallCount).toBeGreaterThanOrEqual(1);
-  });
-
-  it('throws when gate LLM returns malformed shape (no decisions key)', async () => {
-    const callLlm = (await import('../../lib/llm/index.js')).default;
-    callLlm.mockResolvedValueOnce({ wrong: 'shape' });
-
-    await expect(
-      siteCrawl('https://example.com/', { maxPages: 3, gateInterval: 1 })
-    ).rejects.toThrow(/expected.*decisions/);
-  });
-
-  it('throws when gate LLM returns null', async () => {
-    const callLlm = (await import('../../lib/llm/index.js')).default;
-    callLlm.mockResolvedValueOnce(null);
-
-    await expect(
-      siteCrawl('https://example.com/', { maxPages: 3, gateInterval: 1 })
-    ).rejects.toThrow(/expected.*decisions/);
-  });
-
-  it('throws when gate LLM returns non-array decisions', async () => {
-    const callLlm = (await import('../../lib/llm/index.js')).default;
-    callLlm.mockResolvedValueOnce({ decisions: 'not-array' });
-
-    await expect(
-      siteCrawl('https://example.com/', { maxPages: 3, gateInterval: 1 })
-    ).rejects.toThrow(/expected.*decisions/);
-  });
-
-  it('provides cleanup function', async () => {
-    const result = await siteCrawl('https://example.com/', { maxPages: 1, gateInterval: 100 });
-
-    expect(typeof result.cleanup).toBe('function');
-    await result.cleanup(); // should not throw
-  });
-
-  it('starts and stops heartbeat around the crawl loop', async () => {
-    const { createHeartbeat } = await import('./cooldown.js');
-
-    await siteCrawl('https://example.com/', { maxPages: 1, gateInterval: 100 });
-
-    expect(createHeartbeat).toHaveBeenCalledOnce();
-    // Verify stop was called
-    const stopFn = createHeartbeat.mock.results[0].value.stop;
-    expect(stopFn).toHaveBeenCalledOnce();
-  });
-
-  it('passes cooldown config to visitWithCooldown', async () => {
-    const { visitWithCooldown } = await import('./cooldown.js');
-
-    await siteCrawl('https://example.com/', {
-      maxPages: 1,
-      gateInterval: 100,
-      cooldown: { baseDelay: 10000, maxRetries: 3 },
-    });
-
-    expect(visitWithCooldown).toHaveBeenCalled();
-    const cooldownArg = visitWithCooldown.mock.calls[0][4];
-    expect(cooldownArg.baseDelay).toBe(10000);
-    expect(cooldownArg.maxRetries).toBe(3);
-    // Defaults should be merged in
-    expect(cooldownArg.backoffFactor).toBe(2);
-  });
-
-  it('passes custom isBlocked to visitWithCooldown', async () => {
-    const { visitWithCooldown } = await import('./cooldown.js');
-    const customIsBlocked = vi.fn(async () => undefined);
-
-    await siteCrawl('https://example.com/', {
-      maxPages: 1,
-      gateInterval: 100,
-      isBlocked: customIsBlocked,
-    });
-
-    expect(visitWithCooldown).toHaveBeenCalled();
-    const isBlockedArg = visitWithCooldown.mock.calls[0][5];
-    expect(isBlockedArg).toBe(customIsBlocked);
-  });
-
-  it('emits heartbeat events with progress data', async () => {
-    const events = [];
-    await siteCrawl('https://example.com/', {
-      maxPages: 2,
-      gateInterval: 100,
-      onProgress: (event) => events.push(event),
-    });
-
-    // Heartbeat event types are emitted by the mock via createHeartbeat
-    // We verify the getState callback provides the right shape
-    const { createHeartbeat } = await import('./cooldown.js');
-    const getState = createHeartbeat.mock.calls[0][2];
-    const state = getState();
-    expect(typeof state.pagesVisited).toBe('number');
-    expect(typeof state.pending).toBe('number');
-    expect(typeof state.maxPages).toBe('number');
-    expect(state.currentUrl).toBeDefined();
-  });
+    return { ...value, setup, teardown, isBlocked, events };
+  },
 });
