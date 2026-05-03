@@ -259,22 +259,33 @@ function resolveCheck(example) {
  * Run a table of examples through a processor.
  *
  * @param {object} config
- * @param {string} [config.describe]   Optional `describe` name. Omit to inline rows.
- * @param {Array} config.examples       Example rows (will be expanded by `vary`).
- * @param {Function} config.process     `(inputs) => result | Promise<result>`.
+ * @param {string} [config.describe]    Optional `describe` name. Omit to inline rows.
+ * @param {Array} config.examples        Example rows (will be expanded by `vary`).
+ * @param {Function} config.process      `(inputs) => result | Promise<result>`.
  * @param {Function} [config.beforeEach] Hook run before each row.
+ * @param {Function} [config.it]         Custom `it` (e.g. from `getTestHelpers`
+ *                                       for AI-reporter integration). Defaults
+ *                                       to vitest's `it`.
+ * @param {Function} [config.describeFn] Custom `describe`. Defaults to vitest's.
  *
  * Each row's assertion comes from `row.check` (a `(ctx) => …` function), or
  * a translated `row.want`. Compose checks via `all(...)`, narrow via `when(...)`,
  * or write inline when nothing in the base set fits.
  */
-export function runTable({ describe: describeName, examples, process: processFn, beforeEach }) {
+export function runTable({
+  describe: describeName,
+  examples,
+  process: processFn,
+  beforeEach,
+  it: itFn = vIt,
+  describeFn = vDescribe,
+}) {
   const expanded = expandExamples(examples);
 
   const body = () => {
     if (beforeEach) vBeforeEach(beforeEach);
     for (const ex of expanded) {
-      vIt(ex.name, async () => {
+      itFn(ex.name, async () => {
         const ctx = await runRow(processFn, ex);
         const check = resolveCheck(ex);
         await check(ctx);
@@ -282,7 +293,7 @@ export function runTable({ describe: describeName, examples, process: processFn,
     }
   };
 
-  if (describeName) vDescribe(describeName, body);
+  if (describeName) describeFn(describeName, body);
   else body();
 }
 

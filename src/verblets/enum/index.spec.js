@@ -1,37 +1,28 @@
-import { describe, expect, it, vi } from 'vitest';
-
+import { vi } from 'vitest';
 import enumValue from './index.js';
+import { runTable, equals } from '../../lib/examples-runner/index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
   jsonSchema: (name, schema) => ({ type: 'json_schema', json_schema: { name, schema } }),
   default: vi.fn().mockImplementation((text) => {
-    // When responseFormat is used, auto-unwrapping will return the value directly
-    if (/traffic light/.test(text)) {
-      return 'red';
-    }
+    if (/traffic light/.test(text)) return 'red';
     return 'undefined';
   }),
 }));
 
 const examples = [
   {
-    name: 'Basic usage',
+    name: 'returns the matching enum value',
     inputs: {
       text: 'What is the top color on a traffic light',
-      enum: { green: 1, yellow: 1, red: 1, purple: 1 },
+      enumMap: { green: 1, yellow: 1, red: 1, purple: 1 },
     },
-    want: { result: 'red' },
+    check: equals('red'),
   },
 ];
 
-describe('Enum verblet', () => {
-  examples.forEach((example) => {
-    it(example.name, async () => {
-      const result = await enumValue(example.inputs.text, example.inputs.enum);
-
-      if (example.want.result) {
-        expect(result).toStrictEqual(example.want.result);
-      }
-    });
-  });
+runTable({
+  describe: 'enum verblet',
+  examples,
+  process: ({ text, enumMap }) => enumValue(text, enumMap),
 });

@@ -1,35 +1,26 @@
-import { describe, expect, it, vi } from 'vitest';
-
+import { vi } from 'vitest';
 import number from './index.js';
+import { runTable, equals } from '../../lib/examples-runner/index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
   jsonSchema: (name, schema) => ({ type: 'json_schema', json_schema: { name, schema } }),
   default: vi.fn().mockImplementation((text) => {
-    // When responseFormat is used, auto-unwrapping will return the value directly
-    if (/Everest/.test(text)) {
-      return 29029;
-    }
+    if (/Everest/.test(text)) return 29029;
     return 'undefined';
   }),
 }));
 
 const examples = [
   {
-    name: 'Basic usage',
-    inputs: { text: 'What is the height of Everest in feet' },
-    want: { result: 29029 },
+    name: 'returns the answered number',
+    inputs: 'What is the height of Everest in feet',
+    check: equals(29029),
   },
   {
-    name: 'Unanswerable question',
-    inputs: { text: 'What is the my age in years' },
-    want: { result: undefined },
+    name: 'unanswerable question → undefined',
+    inputs: 'What is the my age in years',
+    check: equals(undefined),
   },
 ];
 
-describe('Number verblet', () => {
-  examples.forEach((example) => {
-    it(example.name, async () => {
-      expect(await number(example.inputs.text)).toStrictEqual(example.want.result);
-    });
-  });
-});
+runTable({ describe: 'number verblet', examples, process: (text) => number(text) });

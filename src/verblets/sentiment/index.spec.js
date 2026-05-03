@@ -1,48 +1,44 @@
-import { describe, it, expect, vi } from 'vitest';
+import { vi } from 'vitest';
 import sentiment from './index.js';
+import { runTable, equals } from '../../lib/examples-runner/index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
   jsonSchema: (name, schema) => ({ type: 'json_schema', json_schema: { name, schema } }),
   default: vi.fn(async (prompt) => {
     if (/fantastic|amazing|wonderful/.test(prompt)) return 'positive';
     if (/worst|terrible|awful/.test(prompt)) return 'negative';
-    if (/okay|fine|average/.test(prompt)) return 'neutral';
     return 'neutral';
   }),
 }));
 
-describe('sentiment', () => {
-  describe('with valid input', () => {
-    it('should classify enthusiastic text as positive', async () => {
-      const result = await sentiment('This is fantastic news!');
-      expect(result).toBe('positive');
-    });
-
-    it('should classify negative expressions as negative', async () => {
-      const result = await sentiment('This is the worst day ever');
-      expect(result).toBe('negative');
-    });
-
-    it('should classify neutral statements as neutral', async () => {
-      const result = await sentiment('The weather is okay today');
-      expect(result).toBe('neutral');
-    });
-  });
-
-  describe('edge cases', () => {
-    it('should handle empty string input', async () => {
-      const result = await sentiment('');
-      expect(result).toBe('neutral');
-    });
-
-    it('should handle single word input', async () => {
-      const result = await sentiment('amazing');
-      expect(result).toBe('positive');
-    });
-
-    it('should handle mixed sentiment text', async () => {
-      const result = await sentiment('The food was amazing but the service was terrible');
+const examples = [
+  {
+    name: 'classifies enthusiastic text as positive',
+    inputs: 'This is fantastic news!',
+    check: equals('positive'),
+  },
+  {
+    name: 'classifies negative expressions as negative',
+    inputs: 'This is the worst day ever',
+    check: equals('negative'),
+  },
+  {
+    name: 'classifies neutral statements as neutral',
+    inputs: 'The weather is okay today',
+    check: equals('neutral'),
+  },
+  { name: 'empty string → neutral', inputs: '', check: equals('neutral') },
+  { name: 'single positive word', inputs: 'amazing', check: equals('positive') },
+  // mixed sentiment is non-deterministic from the LLM perspective; assert
+  // membership in the valid label set.
+  {
+    name: 'mixed sentiment text returns one of the valid labels',
+    inputs: 'The food was amazing but the service was terrible',
+    check: ({ result }) => {
       expect(['positive', 'negative', 'neutral']).toContain(result);
-    });
-  });
-});
+    },
+  },
+];
+
+import { expect } from 'vitest';
+runTable({ describe: 'sentiment', examples, process: (text) => sentiment(text) });

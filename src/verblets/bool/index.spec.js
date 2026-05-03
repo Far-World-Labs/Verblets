@@ -1,38 +1,30 @@
-import { describe, vi } from 'vitest';
+import { vi } from 'vitest';
 import { getTestHelpers } from '../../chains/test-analysis/test-wrappers.js';
+import { runTable, equals } from '../../lib/examples-runner/index.js';
 import bool from './index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
   jsonSchema: (name, schema) => ({ type: 'json_schema', json_schema: { name, schema } }),
   default: vi.fn().mockImplementation((text, options) => {
-    // When responseFormat is used, auto-unwrapping will return the value directly
     const systemPrompt = options?.systemPrompt || '';
-    if (/purple lightsaber/.test(text) || /purple lightsaber/.test(systemPrompt)) {
-      return 'true';
-    }
+    if (/purple lightsaber/.test(text) || /purple lightsaber/.test(systemPrompt)) return 'true';
     return 'false';
   }),
 }));
 
-const { it, expect } = getTestHelpers('bool verblet');
+const { it } = getTestHelpers('bool verblet');
 
 const examples = [
   {
-    name: 'True values',
-    inputs: { text: 'Does Mace Windu have a purple lightsaber' },
-    want: { result: true },
+    name: 'true value',
+    inputs: 'Does Mace Windu have a purple lightsaber',
+    check: equals(true),
   },
   {
-    name: 'False values',
-    inputs: { text: 'Does Mace Windu have a blue lightsaber' },
-    want: { result: false },
+    name: 'false value',
+    inputs: 'Does Mace Windu have a blue lightsaber',
+    check: equals(false),
   },
 ];
 
-describe('bool verblet', () => {
-  examples.forEach((example) => {
-    it(example.name, async () => {
-      expect(await bool(example.inputs.text)).toStrictEqual(example.want.result);
-    });
-  });
-});
+runTable({ describe: 'bool verblet', examples, process: (text) => bool(text), it });
