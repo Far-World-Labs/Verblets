@@ -22,9 +22,16 @@ const examples = [
 runTable({ describe: 'popReferenceItem: result count', examples, process });
 ```
 
-- **`want`** can be a literal value (deep-equal), a function `(varied) => expected` (called per row when `vary` expands), `{ throws: true | string | RegExp }`, or `{ eq: <ref> }` for identity equality.
+- **`want`** matchers (combine freely except `throws`, which is exclusive):
+  - literal value: deep-equal via `toEqual`
+  - function `(varied) => expected`: called per row when `vary` expands, then deep-equal
+  - `{ throws: true | string | RegExp }`: assert sync/async throw, optionally match the message
+  - `{ eq: ref }`: identity equality via `toBe`
+  - `{ contains: x }`: `toContain` (substring, array element, set member)
+  - `{ matches: 'sub' | /re/ }`: `toMatch`
+  - `{ partial: {...} }`: `toMatchObject` for asserting only specific fields of a complex result
 - **`vary`** (optional) declares cross-product axes; `expandExamples` turns one row into N. `inputs` and `want` may also be functions that receive the varied combo.
-- Imperative `it()` blocks remain valid for assertions that don't reduce to want/got compare (e.g. asserting prompt content includes a fragment, or that a mock was called N times). Mix patterns within a file when natural — don't force every assertion into the table.
+- **Distill assertions into the processor's return.** Most "imperative-only" tests collapse: a processor that returns `{ length, outcome, schemaName }` plus `want: { partial: {...} }` covers compound assertions cleanly. Reserve raw `it()` blocks for cases that genuinely don't reduce to want/got compare.
 
 Reference migrations: `src/lib/pave/index.spec.js` (pure utility) and `src/chains/pop-reference/index.spec.js` (LLM-backed chain).
 

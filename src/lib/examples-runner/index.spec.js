@@ -224,3 +224,49 @@ runTable({
     return value;
   },
 });
+
+// `{ contains }` — substring (string) and element (array)
+runTable({
+  describe: 'runTable: contains spec',
+  examples: [
+    { name: 'string contains substring', inputs: 'hello world', want: { contains: 'world' } },
+    { name: 'array contains element', inputs: [1, 2, 3], want: { contains: 2 } },
+  ],
+  process: identityProcessor,
+});
+
+// `{ matches }` — string + RegExp
+runTable({
+  describe: 'runTable: matches spec',
+  examples: [
+    { name: 'matches RegExp', inputs: 'rate limited (429)', want: { matches: /\(\d+\)/ } },
+    { name: 'matches string substring', inputs: 'hello world', want: { matches: 'world' } },
+  ],
+  process: identityProcessor,
+});
+
+// `{ partial }` — toMatchObject
+runTable({
+  describe: 'runTable: partial spec',
+  examples: [
+    {
+      name: 'asserts only specific fields of a complex object',
+      inputs: { a: 1, b: 2, c: 3, nested: { x: 10, y: 20 } },
+      want: { partial: { a: 1, nested: { x: 10 } } },
+    },
+  ],
+  process: identityProcessor,
+});
+
+// Compound matchers combine
+runTable({
+  describe: 'runTable: combined matchers',
+  examples: [
+    {
+      name: 'contains + matches both apply',
+      inputs: 'rate limited (429) on attempt 3',
+      want: { contains: 'rate limited', matches: /\(\d+\)/ },
+    },
+  ],
+  process: identityProcessor,
+});

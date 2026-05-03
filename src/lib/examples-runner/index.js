@@ -16,6 +16,12 @@
  *  - `{ throws: true }`: assert the processor throws (sync or async)
  *  - `{ throws: <string|RegExp> }`: assert the throw message matches
  *  - `{ eq: <value> }`: assert via `toBe` (reference/identity equality)
+ *  - `{ contains: <value> }`: assert via `toContain` (substring, array element, etc.)
+ *  - `{ matches: <string|RegExp> }`: assert via `toMatch`
+ *  - `{ partial: <object> }`: assert via `toMatchObject` (subset match)
+ *
+ * Compound matchers may be combined: `{ contains: 'X', matches: /\d+/ }` runs
+ * both checks. `throws` is exclusive — when set, the other matchers are ignored.
  *
  * `inputs` may be a literal value or a function `(varied) => inputs`.
  * The function form is what makes the future migration painless — when a
@@ -88,12 +94,15 @@ export function expandExamples(examples) {
   return out;
 }
 
+const MATCHER_KEYS = ['eq', 'contains', 'matches', 'partial'];
+
 function isThrowSpec(want) {
   return want && typeof want === 'object' && Object.prototype.hasOwnProperty.call(want, 'throws');
 }
 
-function isEqSpec(want) {
-  return want && typeof want === 'object' && Object.prototype.hasOwnProperty.call(want, 'eq');
+function matcherKeys(want) {
+  if (!want || typeof want !== 'object' || Array.isArray(want)) return [];
+  return MATCHER_KEYS.filter((k) => Object.prototype.hasOwnProperty.call(want, k));
 }
 
 async function assertThrows(thrower, throws) {
@@ -143,10 +152,16 @@ export function runTable({ describe: describeName, examples, process, beforeEach
           return;
         }
         const result = await process(ex.inputs);
-        if (isEqSpec(ex.want)) {
-          vExpect(result).toBe(ex.want.eq);
-        } else {
+        const keys = matcherKeys(ex.want);
+        if (keys.length === 0) {
           vExpect(result).toEqual(ex.want);
+          return;
+        }
+        for (const key of keys) {
+          if (key === 'eq') vExpect(result).toBe(ex.want.eq);
+          else if (key === 'contains') vExpect(result).toContain(ex.want.contains);
+          else if (key === 'matches') vExpect(result).toMatch(ex.want.matches);
+          else if (key === 'partial') vExpect(result).toMatchObject(ex.want.partial);
         }
       });
     }

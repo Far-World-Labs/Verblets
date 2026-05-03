@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, vi } from 'vitest';
 import popReferenceItem, { mapPopReference, mapPopReferenceParallel } from './index.js';
 import {
   popReferenceVariants,
@@ -27,7 +27,7 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
-// ─── popReferenceItem result-shape table ──────────────────────────────────
+// ─── popReferenceItem: result-shape table ─────────────────────────────────
 //
 // Each row stages an LLM response via the pop-reference factory variants
 // (or `popReferenceWithCount` for arbitrary sizes) and asserts on the count
@@ -84,92 +84,174 @@ runTable({
   process: itemCountProcessor,
 });
 
-// ─── popReferenceItem prompt construction ─────────────────────────────────
+// ─── popReferenceItem: prompt construction ────────────────────────────────
 //
-// Prompt-shape assertions don't fit the want/got compare cleanly — they
-// inspect call args, not return values. Kept imperative.
+// The processor returns the prompt that went to the LLM; `want.contains`
+// asserts substring presence, no imperative scaffolding required.
 
-describe('popReferenceItem: prompt construction', () => {
-  it('mentions sources when include is provided', async () => {
-    llm.mockResolvedValue(popReferenceVariants.wellFormed());
-    await popReferenceItem('any sentence', 'desc', { include: ['The Office'] });
-    expect(llm).toHaveBeenCalledWith(expect.stringContaining('<sources>'), expect.any(Object));
-  });
+const promptExamples = [
+  {
+    name: 'mentions sources when include is provided',
+    inputs: { options: { include: ['The Office'] } },
+    want: { contains: '<sources>' },
+  },
+  {
+    name: 'formats weighted sources with focus percentage',
+    inputs: {
+      options: {
+        include: [
+          { reference: 'Internet Memes', percent: 80 },
+          { reference: 'The Office', percent: 20 },
+        ],
+      },
+    },
+    want: { contains: 'Internet Memes (focus 80%)' },
+  },
+  {
+    name: 'respects referencesPerSource',
+    inputs: { options: { referencesPerSource: 3 } },
+    want: { contains: 'Find 3 references per source' },
+  },
+];
 
-  it('formats weighted sources with focus percentage', async () => {
-    llm.mockResolvedValue(popReferenceVariants.wellFormed());
-    await popReferenceItem('any sentence', 'desc', {
-      include: [
-        { reference: 'Internet Memes', percent: 80 },
-        { reference: 'The Office', percent: 20 },
-      ],
-    });
-    expect(llm).toHaveBeenCalledWith(
-      expect.stringContaining('Internet Memes (focus 80%)'),
-      expect.any(Object)
-    );
-  });
+const promptProcessor = async ({ options }) => {
+  llm.mockResolvedValue(popReferenceVariants.wellFormed());
+  await popReferenceItem('any sentence', 'desc', options);
+  return llm.mock.calls[0][0];
+};
 
-  it('respects referencesPerSource', async () => {
-    llm.mockResolvedValue(popReferenceVariants.wellFormed());
-    await popReferenceItem('any sentence', 'desc', { referencesPerSource: 3 });
-    expect(llm).toHaveBeenCalledWith(
-      expect.stringContaining('Find 3 references per source'),
-      expect.any(Object)
-    );
-  });
+runTable({
+  describe: 'popReferenceItem: prompt construction',
+  examples: promptExamples,
+  process: promptProcessor,
 });
 
 // ─── mapPopReferenceParallel ──────────────────────────────────────────────
+//
+// Compound assertions distill into a structured shape — `want.partial`
+// matches only the fields we care about.
 
-describe('mapPopReferenceParallel', () => {
-  it('runs popReferenceItem per sentence with one shared description', async () => {
-    llm
-      .mockResolvedValueOnce(popReferenceWithCount(1))
-      .mockResolvedValueOnce(popReferenceVariants.empty());
-    const result = await mapPopReferenceParallel(['s1', 's2'], 'shared description');
-    expect(result).toHaveLength(2);
-    expect(result[0]).toHaveLength(1);
-    expect(result[1]).toEqual([]);
-    expect(llm).toHaveBeenCalledTimes(2);
-  });
+const parallelExamples = [
+  {
+    name: 'runs popReferenceItem per sentence with one shared description',
+    inputs: {
+      sentences: ['s1', 's2'],
+      description: 'shared description',
+      options: undefined,
+      mockResponses: [() => popReferenceWithCount(1), () => popReferenceVariants.empty()],
+    },
+    want: {
+      partial: {
+        length: 2,
+        firstLength: 1,
+        secondLength: 0,
+        callCount: 2,
+      },
+    },
+  },
+  {
+    name: 'reports partial outcome when one sentence fails',
+    inputs: {
+      sentences: ['ok', 'bad'],
+      description: 'desc',
+      options: { maxAttempts: 1 },
+      mockResponses: [() => popReferenceVariants.empty(), popReferenceVariants.rejected],
+    },
+    want: {
+      partial: {
+        firstLength: 0,
+        secondUndefined: true,
+        outcome: 'partial',
+      },
+    },
+  },
+  {
+    name: 'throws when sentences is not an array',
+    inputs: {
+      sentences: 'not-an-array',
+      description: 'd',
+      options: undefined,
+      mockResponses: [],
+    },
+    want: { throws: 'must be an array' },
+  },
+];
 
-  it('reports partial outcome when one sentence fails', async () => {
-    llm
-      .mockResolvedValueOnce(popReferenceVariants.empty())
-      .mockRejectedValueOnce(new Error('boom'));
-    const events = [];
-    const result = await mapPopReferenceParallel(['ok', 'bad'], 'desc', {
-      maxAttempts: 1,
-      onProgress: (e) => events.push(e),
-    });
-    expect(result[0]).toEqual([]);
-    expect(result[1]).toBeUndefined();
-    const complete = events.find(
-      (e) => e.event === 'chain:complete' && e.step === 'pop-reference:parallel'
-    );
-    expect(complete.outcome).toBe('partial');
+const parallelProcessor = async ({ sentences, description, options, mockResponses }) => {
+  for (const make of mockResponses) {
+    if (make === popReferenceVariants.rejected) {
+      llm.mockRejectedValueOnce(new Error('boom'));
+    } else {
+      llm.mockResolvedValueOnce(make());
+    }
+  }
+  const events = [];
+  const result = await mapPopReferenceParallel(sentences, description, {
+    ...options,
+    onProgress: (e) => events.push(e),
   });
+  const complete = events.find(
+    (e) => e.event === 'chain:complete' && e.step === 'pop-reference:parallel'
+  );
+  return {
+    length: result.length,
+    firstLength: result[0]?.length ?? 0,
+    secondLength: result[1]?.length ?? 0,
+    secondUndefined: result[1] === undefined,
+    callCount: llm.mock.calls.length,
+    outcome: complete?.outcome,
+  };
+};
 
-  it('throws when sentences is not an array', async () => {
-    await expect(mapPopReferenceParallel('not-an-array', 'd')).rejects.toThrow(/must be an array/);
-  });
+runTable({
+  describe: 'mapPopReferenceParallel',
+  examples: parallelExamples,
+  process: parallelProcessor,
 });
 
 // ─── mapPopReference (batched) ────────────────────────────────────────────
 
-describe('mapPopReference (batched)', () => {
-  it('routes through map() with the pop-reference batch responseFormat', async () => {
-    vi.mocked(map).mockResolvedValueOnce([popReferenceWithCount(1), popReferenceVariants.empty()]);
-    const result = await mapPopReference(['s1', 's2'], 'description');
-    expect(result).toHaveLength(2);
-    expect(result[0][0].reference).toBeTruthy();
-    expect(result[1]).toEqual([]);
-    const mapConfig = vi.mocked(map).mock.calls[0][2];
-    expect(mapConfig.responseFormat?.json_schema?.name).toBe('pop_reference_batch');
-  });
+const batchedExamples = [
+  {
+    name: 'routes through map() with the pop-reference batch responseFormat',
+    inputs: {
+      sentences: ['s1', 's2'],
+      description: 'description',
+      mapResults: [popReferenceWithCount(1), popReferenceVariants.empty()],
+    },
+    want: {
+      partial: {
+        length: 2,
+        firstHasReference: true,
+        secondLength: 0,
+        schemaName: 'pop_reference_batch',
+      },
+    },
+  },
+  {
+    name: 'throws when sentences is not an array',
+    inputs: {
+      sentences: 'not-an-array',
+      description: 'd',
+      mapResults: [],
+    },
+    want: { throws: 'must be an array' },
+  },
+];
 
-  it('throws when sentences is not an array', async () => {
-    await expect(mapPopReference('not-an-array', 'd')).rejects.toThrow(/must be an array/);
-  });
+const batchedProcessor = async ({ sentences, description, mapResults }) => {
+  vi.mocked(map).mockResolvedValueOnce(mapResults);
+  const result = await mapPopReference(sentences, description);
+  return {
+    length: result.length,
+    firstHasReference: !!result[0]?.[0]?.reference,
+    secondLength: result[1]?.length ?? 0,
+    schemaName: vi.mocked(map).mock.calls[0]?.[2]?.responseFormat?.json_schema?.name,
+  };
+};
+
+runTable({
+  describe: 'mapPopReference (batched)',
+  examples: batchedExamples,
+  process: batchedProcessor,
 });
