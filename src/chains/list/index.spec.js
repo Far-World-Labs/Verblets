@@ -1,8 +1,8 @@
-import { describe, expect, it, vi } from 'vitest';
+import { vi, expect } from 'vitest';
 import list, { generateList } from './index.js';
+import { runTable } from '../../lib/examples-runner/index.js';
 
-// Inline schema instead of loading from file for browser compatibility
-const getSchema = () => ({
+const evSchema = {
   type: 'object',
   properties: {
     make: { type: 'string' },
@@ -12,7 +12,7 @@ const getSchema = () => ({
     batteryCapacity: { type: 'number', description: 'Battery capacity in kWh' },
     startingCost: { type: 'number', description: 'Starting cost in USD' },
   },
-});
+};
 
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn().mockImplementation((text) => {
@@ -33,66 +33,45 @@ vi.mock('../../lib/llm/index.js', () => ({
   jsonSchema: (name, schema) => ({ type: 'json_schema', json_schema: { name, schema } }),
 }));
 
-const examples = [
-  {
-    name: 'Basic usage',
-    inputs: { description: '2021 EV cars' },
-    want: { listContains: /Model Y/ },
-  },
-  {
-    name: 'Basic usage with schema',
-    inputs: {
-      description: '2021 EV cars',
-      schema: getSchema,
+runTable({
+  describe: 'List verblet',
+  examples: [
+    {
+      name: 'Basic usage',
+      inputs: { description: '2021 EV cars' },
+      check: ({ result }) => expect(result.some((item) => /Model Y/.test(item))).toBe(true),
     },
-    want: { listModelContains: /Model Y/ },
-  },
-];
-
-describe('List verblet', () => {
-  examples.forEach((example) => {
-    it(example.name, async () => {
-      let schema;
-      if (example.inputs.schema) {
-        schema = await example.inputs.schema();
+    {
+      name: 'Basic usage with schema',
+      inputs: { description: '2021 EV cars', schema: evSchema },
+      check: ({ result }) => expect(result.some((item) => /Model Y/.test(item.model))).toBe(true),
+    },
+    {
+      name: 'generateList shouldStop receives actual resultsAll in per-query check',
+      inputs: { useGenerator: true },
+      check: ({ result }) => {
+        expect(result.results.length).toBeGreaterThan(0);
+        const perQueryCalls = result.shouldStopSpy.mock.calls.filter(
+          ([factors]) => factors.result === undefined
+        );
+        expect(perQueryCalls.length).toBeGreaterThan(0);
+        const first = perQueryCalls[0][0];
+        expect(Array.isArray(first.resultsAll)).toBe(true);
+        expect(first.resultsAll.length).toBeGreaterThan(0);
+        expect(Array.isArray(first.resultsNew)).toBe(true);
+        expect(first.resultsNew.length).toBeGreaterThan(0);
+      },
+    },
+  ],
+  process: async ({ description, schema, useGenerator }) => {
+    if (useGenerator) {
+      const shouldStopSpy = vi.fn(({ queryCount }) => queryCount > 1);
+      const results = [];
+      for await (const item of generateList('2021 EV cars', { shouldStop: shouldStopSpy })) {
+        results.push(item);
       }
-      const result = await list(example.inputs.description, {
-        schema,
-      });
-
-      if (example.want.listContains) {
-        expect(result.some((item) => example.want.listContains.test(item))).equals(true);
-      }
-
-      if (example.want.listModelContains) {
-        expect(result.some((item) => example.want.listModelContains.test(item.model))).equals(true);
-      }
-    });
-  });
-
-  it('generateList shouldStop receives actual resultsAll in per-query check', async () => {
-    const shouldStopSpy = vi.fn().mockImplementation(({ queryCount }) => {
-      // Allow first query to complete, stop on second
-      return queryCount > 1;
-    });
-
-    const results = [];
-    for await (const item of generateList('2021 EV cars', { shouldStop: shouldStopSpy })) {
-      results.push(item);
+      return { results, shouldStopSpy };
     }
-
-    expect(results.length).toBeGreaterThan(0);
-
-    // The per-query shouldStop call (result === undefined) should receive the actual resultsAll
-    const perQueryCalls = shouldStopSpy.mock.calls.filter(
-      ([factors]) => factors.result === undefined
-    );
-    expect(perQueryCalls.length).toBeGreaterThan(0);
-
-    const firstPerQueryCall = perQueryCalls[0][0];
-    expect(Array.isArray(firstPerQueryCall.resultsAll)).toBe(true);
-    expect(firstPerQueryCall.resultsAll.length).toBeGreaterThan(0);
-    expect(Array.isArray(firstPerQueryCall.resultsNew)).toBe(true);
-    expect(firstPerQueryCall.resultsNew.length).toBeGreaterThan(0);
-  });
+    return list(description, { schema });
+  },
 });
