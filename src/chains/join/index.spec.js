@@ -1,9 +1,8 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, vi, expect } from 'vitest';
 import join from './index.js';
+import { runTable, contains, all } from '../../lib/examples-runner/index.js';
 
-vi.mock('../../lib/llm/index.js', () => ({
-  default: vi.fn(),
-}));
+vi.mock('../../lib/llm/index.js', () => ({ default: vi.fn() }));
 
 import llm from '../../lib/llm/index.js';
 
@@ -23,26 +22,44 @@ beforeEach(() => {
   });
 });
 
-describe('join chain', () => {
-  it('joins fragments via LLM with transitions', async () => {
-    const result = await join(['Hello', 'world', 'today'], 'Connect with simple words');
-
-    expect(result).toContain('Hello');
-    expect(result).toContain('world');
-    expect(result).toContain('today');
-    expect(llm).toHaveBeenCalled();
-  });
-
-  it('applies windowed processing when configured', async () => {
-    const result = await join(['a', 'b', 'c'], 'Simple connections', { windowSize: 2 });
-
-    expect(result.length).toBeGreaterThan(0);
-    expect(llm).toHaveBeenCalled();
-  });
-
-  it('returns empty string for empty array, raw item for single', async () => {
-    expect(await join([])).toBe('');
-    expect(await join(['only'])).toBe('only');
-    expect(llm).not.toHaveBeenCalled();
-  });
+runTable({
+  describe: 'join chain',
+  examples: [
+    {
+      name: 'joins fragments via LLM with transitions',
+      inputs: { items: ['Hello', 'world', 'today'], instructions: 'Connect with simple words' },
+      check: all(contains('Hello'), contains('world'), contains('today'), () =>
+        expect(llm).toHaveBeenCalled()
+      ),
+    },
+    {
+      name: 'applies windowed processing when configured',
+      inputs: {
+        items: ['a', 'b', 'c'],
+        instructions: 'Simple connections',
+        options: { windowSize: 2 },
+      },
+      check: ({ result }) => {
+        expect(result.length).toBeGreaterThan(0);
+        expect(llm).toHaveBeenCalled();
+      },
+    },
+    {
+      name: 'returns empty string for empty array',
+      inputs: { items: [] },
+      check: ({ result }) => {
+        expect(result).toBe('');
+        expect(llm).not.toHaveBeenCalled();
+      },
+    },
+    {
+      name: 'returns raw item for single-element array',
+      inputs: { items: ['only'] },
+      check: ({ result }) => {
+        expect(result).toBe('only');
+        expect(llm).not.toHaveBeenCalled();
+      },
+    },
+  ],
+  process: ({ items, instructions, options }) => join(items, instructions, options),
 });

@@ -1,5 +1,6 @@
-import { describe, expect, it, vi } from 'vitest';
+import { vi, expect } from 'vitest';
 import { socratic } from './index.js';
+import { runTable } from '../../lib/examples-runner/index.js';
 
 vi.mock('../../lib/llm/index.js', () => {
   let call = 0;
@@ -12,14 +13,23 @@ vi.mock('../../lib/llm/index.js', () => {
   };
 });
 
-describe('socratic chain', () => {
-  it('runs dialogue for specified depth', async () => {
-    const chain = await socratic('topic');
-    const result = await chain.run(2);
-    expect(result).toHaveLength(2);
-    result.forEach((turn) => {
-      expect(turn).toHaveProperty('question');
-      expect(turn).toHaveProperty('answer');
-    });
-  });
+runTable({
+  describe: 'socratic chain',
+  examples: [
+    {
+      name: 'runs dialogue for specified depth',
+      inputs: { topic: 'topic', depth: 2 },
+      check: ({ result }) => {
+        expect(result).toHaveLength(2);
+        for (const turn of result) {
+          expect(turn).toHaveProperty('question');
+          expect(turn).toHaveProperty('answer');
+        }
+      },
+    },
+  ],
+  process: async ({ topic, depth }) => {
+    const chain = await socratic(topic);
+    return chain.run(depth);
+  },
 });
