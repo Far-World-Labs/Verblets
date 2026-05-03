@@ -2,7 +2,8 @@ import group, { groupItem, groupParallel } from './index.js';
 import listBatch from '../../verblets/list-batch/index.js';
 import reduce from '../reduce/index.js';
 import callLlm from '../../lib/llm/index.js';
-import { vi, describe, it, expect, beforeEach } from 'vitest';
+import { vi, beforeEach, expect } from 'vitest';
+import { runTable, equals, contains, all, throws } from '../../lib/examples-runner/index.js';
 
 vi.mock('../../lib/llm/index.js', async (importOriginal) => ({
   ...(await importOriginal()),
@@ -15,9 +16,7 @@ vi.mock('../../verblets/list-batch/index.js', () => ({
   determineStyle: vi.fn(() => 'newline'),
 }));
 
-vi.mock('../reduce/index.js', () => ({
-  default: vi.fn(),
-}));
+vi.mock('../reduce/index.js', () => ({ default: vi.fn() }));
 
 vi.mock('../../lib/text-batch/index.js', () => ({
   default: vi.fn((items, config) => {
@@ -30,150 +29,195 @@ vi.mock('../../lib/text-batch/index.js', () => ({
   }),
 }));
 
-vi.mock('../../lib/retry/index.js', () => ({
-  default: vi.fn(async (fn) => fn()),
-}));
+vi.mock('../../lib/retry/index.js', () => ({ default: vi.fn(async (fn) => fn()) }));
 
-describe('group chain', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+beforeEach(() => vi.clearAllMocks());
 
-  it('discovers categories then assigns items', async () => {
-    const items = ['a', 'bb', 'ccc', 'dddd', 'eeeee'];
+// ─── group (default — discovery + assignment) ─────────────────────────────
 
-    // Mock reduce to return discovered categories
-    reduce.mockResolvedValueOnce('odd, even');
+const groupExamples = [
+  {
+    name: 'discovers categories then assigns items',
+    inputs: {
+      list: ['a', 'bb', 'ccc', 'dddd', 'eeeee'],
+      instructions: 'odd or even',
+      options: { batchSize: 2 },
+      preMock: () => {
+        reduce.mockResolvedValueOnce('odd, even');
+        listBatch
+          .mockResolvedValueOnce(['odd', 'even'])
+          .mockResolvedValueOnce(['odd', 'even'])
+          .mockResolvedValueOnce(['odd']);
+      },
+    },
+    check: all(equals({ odd: ['a', 'ccc', 'eeeee'], even: ['bb', 'dddd'] }), () => {
+      expect(reduce).toHaveBeenCalledTimes(1);
+      expect(reduce).toHaveBeenCalledWith(
+        ['a', 'bb', 'ccc', 'dddd', 'eeeee'],
+        expect.stringContaining('determine what category'),
+        expect.objectContaining({ initial: '' })
+      );
+      expect(listBatch).toHaveBeenCalledTimes(3);
+    }),
+  },
+  {
+    name: 'granularity=low embeds "fewer, broader" guidance',
+    inputs: {
+      list: ['a'],
+      instructions: 'group items',
+      options: { granularity: 'low' },
+      preMock: () => {
+        reduce.mockResolvedValueOnce('broad-category');
+        listBatch.mockResolvedValueOnce(['broad-category']);
+      },
+      returnDiscoveryPrompt: true,
+    },
+    check: all(
+      contains('granularity-guidance'),
+      contains('fewer, broader categories'),
+      contains('Merge aggressively')
+    ),
+  },
+  {
+    name: 'granularity=high embeds "finer-grained" guidance',
+    inputs: {
+      list: ['a'],
+      instructions: 'group items',
+      options: { granularity: 'high' },
+      preMock: () => {
+        reduce.mockResolvedValueOnce('cat-a, cat-b, cat-c');
+        listBatch.mockResolvedValueOnce(['cat-a']);
+      },
+      returnDiscoveryPrompt: true,
+    },
+    check: all(
+      contains('granularity-guidance'),
+      contains('finer-grained'),
+      contains('Preserve subtle distinctions')
+    ),
+  },
+  {
+    name: 'omits granularity guidance when not specified',
+    inputs: {
+      list: ['a'],
+      instructions: 'group items',
+      preMock: () => {
+        reduce.mockResolvedValueOnce('cat-a');
+        listBatch.mockResolvedValueOnce(['cat-a']);
+      },
+      returnDiscoveryPrompt: true,
+    },
+    check: ({ result }) => expect(result).not.toContain('granularity-guidance'),
+  },
+];
 
-    // Mock listBatch for assignment phase - with batchSize=2, we'll have 3 batches
-    listBatch
-      .mockResolvedValueOnce(['odd', 'even']) // First batch: ['a', 'bb']
-      .mockResolvedValueOnce(['odd', 'even']) // Second batch: ['ccc', 'dddd']
-      .mockResolvedValueOnce(['odd']); // Third batch: ['eeeee']
-
-    const result = await group(items, 'odd or even', {
-      batchSize: 2,
-    });
-
-    expect(result).toStrictEqual({ odd: ['a', 'ccc', 'eeeee'], even: ['bb', 'dddd'] });
-
-    // Verify reduce was called for category discovery
-    expect(reduce).toHaveBeenCalledTimes(1);
-    expect(reduce).toHaveBeenCalledWith(
-      items,
-      expect.stringContaining('determine what category'),
-      expect.objectContaining({ initial: '' })
-    );
-
-    // Verify listBatch was called for assignment
-    expect(listBatch).toHaveBeenCalledTimes(3);
-  });
-
-  it('includes granularity guidance in category discovery prompt when set to low', async () => {
-    reduce.mockResolvedValueOnce('broad-category');
-    listBatch.mockResolvedValueOnce(['broad-category']);
-
-    await group(['a'], 'group items', { granularity: 'low' });
-
-    const [, discoveryPrompt] = reduce.mock.calls[0];
-    expect(discoveryPrompt).toContain('granularity-guidance');
-    expect(discoveryPrompt).toContain('fewer, broader categories');
-    expect(discoveryPrompt).toContain('Merge aggressively');
-  });
-
-  it('includes granularity guidance in category discovery prompt when set to high', async () => {
-    reduce.mockResolvedValueOnce('cat-a, cat-b, cat-c');
-    listBatch.mockResolvedValueOnce(['cat-a']);
-
-    await group(['a'], 'group items', { granularity: 'high' });
-
-    const [, discoveryPrompt] = reduce.mock.calls[0];
-    expect(discoveryPrompt).toContain('granularity-guidance');
-    expect(discoveryPrompt).toContain('finer-grained');
-    expect(discoveryPrompt).toContain('Preserve subtle distinctions');
-  });
-
-  it('omits granularity guidance when not specified', async () => {
-    reduce.mockResolvedValueOnce('cat-a');
-    listBatch.mockResolvedValueOnce(['cat-a']);
-
-    await group(['a'], 'group items');
-
-    const [, discoveryPrompt] = reduce.mock.calls[0];
-    expect(discoveryPrompt).not.toContain('granularity-guidance');
-  });
+runTable({
+  describe: 'group chain',
+  examples: groupExamples,
+  process: async ({ list, instructions, options, preMock, returnDiscoveryPrompt }) => {
+    if (preMock) preMock();
+    const result = await group(list, instructions, options);
+    return returnDiscoveryPrompt ? reduce.mock.calls[0][1] : result;
+  },
 });
 
-describe('groupItem', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+// ─── groupItem (per-item) ─────────────────────────────────────────────────
 
-  it('assigns one item to a provided category', async () => {
-    vi.mocked(callLlm).mockResolvedValueOnce('odd');
-    const result = await groupItem('a', { text: 'odd or even', categories: 'odd, even' });
-    expect(result).toBe('odd');
-    expect(callLlm).toHaveBeenCalledTimes(1);
-    const prompt = vi.mocked(callLlm).mock.calls[0][0];
-    expect(prompt).toContain('<categories>');
-    expect(prompt).toContain('odd, even');
-  });
+const groupItemExamples = [
+  {
+    name: 'assigns one item to a provided category and embeds <categories> in prompt',
+    inputs: {
+      item: 'a',
+      bundle: { text: 'odd or even', categories: 'odd, even' },
+      preMock: () => vi.mocked(callLlm).mockResolvedValueOnce('odd'),
+    },
+    check: all(equals('odd'), () => {
+      expect(callLlm).toHaveBeenCalledTimes(1);
+      const prompt = vi.mocked(callLlm).mock.calls[0][0];
+      expect(prompt).toContain('<categories>');
+      expect(prompt).toContain('odd, even');
+    }),
+  },
+  {
+    name: 'accepts categories as an array',
+    inputs: {
+      item: 'cat',
+      bundle: { text: 'classify', categories: ['animals', 'plants', 'minerals'] },
+      preMock: () => vi.mocked(callLlm).mockResolvedValueOnce('animals'),
+    },
+    check: equals('animals'),
+  },
+  {
+    name: 'throws when categories are missing',
+    inputs: { item: 'x', bundle: 'instructions' },
+    check: throws(/categories must be provided/),
+  },
+  {
+    name: 'throws when LLM returns a blank category name',
+    inputs: {
+      item: 'a',
+      bundle: { text: 'classify', categories: 'one, two' },
+      preMock: () => vi.mocked(callLlm).mockResolvedValueOnce('   '),
+    },
+    check: throws(/blank category name/),
+  },
+];
 
-  it('accepts categories as an array', async () => {
-    vi.mocked(callLlm).mockResolvedValueOnce('animals');
-    const result = await groupItem('cat', {
-      text: 'classify',
-      categories: ['animals', 'plants', 'minerals'],
-    });
-    expect(result).toBe('animals');
-  });
-
-  it('throws when categories are not provided', async () => {
-    await expect(groupItem('x', 'instructions')).rejects.toThrow(/categories must be provided/);
-  });
-
-  it('throws when LLM returns a blank category name', async () => {
-    vi.mocked(callLlm).mockResolvedValueOnce('   ');
-    await expect(groupItem('a', { text: 'classify', categories: 'one, two' })).rejects.toThrow(
-      /blank category name/
-    );
-  });
+runTable({
+  describe: 'groupItem',
+  examples: groupItemExamples,
+  process: async ({ item, bundle, preMock }) => {
+    if (preMock) preMock();
+    return groupItem(item, bundle);
+  },
 });
 
-describe('groupParallel', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+// ─── groupParallel ────────────────────────────────────────────────────────
 
-  it('assigns each item using groupItem and aggregates by category', async () => {
-    vi.mocked(callLlm)
-      .mockResolvedValueOnce('odd')
-      .mockResolvedValueOnce('even')
-      .mockResolvedValueOnce('odd');
-    const result = await groupParallel(['a', 'bb', 'ccc'], {
-      text: 'odd or even by length',
-      categories: 'odd, even',
-    });
-    expect(result).toEqual({ odd: ['a', 'ccc'], even: ['bb'] });
-    expect(callLlm).toHaveBeenCalledTimes(3);
-  });
+const groupParallelExamples = [
+  {
+    name: 'assigns each item via groupItem and aggregates by category',
+    inputs: {
+      list: ['a', 'bb', 'ccc'],
+      bundle: { text: 'odd or even by length', categories: 'odd, even' },
+      preMock: () =>
+        vi
+          .mocked(callLlm)
+          .mockResolvedValueOnce('odd')
+          .mockResolvedValueOnce('even')
+          .mockResolvedValueOnce('odd'),
+    },
+    check: all(equals({ odd: ['a', 'ccc'], even: ['bb'] }), () => {
+      expect(callLlm).toHaveBeenCalledTimes(3);
+    }),
+  },
+  {
+    name: 'throws when categories are missing',
+    inputs: { list: ['a'], bundle: 'instructions' },
+    check: throws(/categories must be provided/),
+  },
+  {
+    name: 'empty list → empty object, no LLM call',
+    inputs: { list: [], bundle: { text: 'x', categories: 'one, two' } },
+    check: all(equals({}), () => expect(callLlm).not.toHaveBeenCalled()),
+  },
+  {
+    name: 'throws when every item fails',
+    inputs: {
+      list: ['a', 'b'],
+      bundle: { text: 'x', categories: 'one, two' },
+      options: { maxParallel: 1 },
+      preMock: () => vi.mocked(callLlm).mockResolvedValue('   '),
+    },
+    check: throws(/failed to assign any of 2 items/),
+  },
+];
 
-  it('throws when categories are missing', async () => {
-    await expect(groupParallel(['a'], 'instructions')).rejects.toThrow(
-      /categories must be provided/
-    );
-  });
-
-  it('returns empty object on empty list', async () => {
-    const result = await groupParallel([], { text: 'x', categories: 'one, two' });
-    expect(result).toEqual({});
-    expect(callLlm).not.toHaveBeenCalled();
-  });
-
-  it('throws when every item fails', async () => {
-    vi.mocked(callLlm).mockResolvedValue('   '); // blank category triggers groupItem error
-    await expect(
-      groupParallel(['a', 'b'], { text: 'x', categories: 'one, two' }, { maxParallel: 1 })
-    ).rejects.toThrow(/failed to assign any of 2 items/);
-  });
+runTable({
+  describe: 'groupParallel',
+  examples: groupParallelExamples,
+  process: async ({ list, bundle, options, preMock }) => {
+    if (preMock) preMock();
+    return groupParallel(list, bundle, options);
+  },
 });

@@ -1,19 +1,16 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, expect, vi } from 'vitest';
 import find, { findParallel } from './index.js';
 import listBatch from '../../verblets/list-batch/index.js';
 import bool from '../../verblets/bool/index.js';
+import { runTable, equals, all } from '../../lib/examples-runner/index.js';
 
 vi.mock('../../verblets/list-batch/index.js', () => ({
-  default: vi.fn(async (items) => {
-    return [items[items.length - 1]];
-  }),
+  default: vi.fn(async (items) => [items[items.length - 1]]),
   ListStyle: { AUTO: 'auto', XML: 'xml', NEWLINE: 'newline' },
   determineStyle: vi.fn(() => 'newline'),
 }));
 
-vi.mock('../../verblets/bool/index.js', () => ({
-  default: vi.fn(),
-}));
+vi.mock('../../verblets/bool/index.js', () => ({ default: vi.fn() }));
 
 vi.mock('../../lib/text-batch/index.js', () => ({
   default: vi.fn((items, config) => {
@@ -26,68 +23,102 @@ vi.mock('../../lib/text-batch/index.js', () => ({
   }),
 }));
 
-beforeEach(() => {
-  vi.clearAllMocks();
+beforeEach(() => vi.clearAllMocks());
+
+// ─── batched form ─────────────────────────────────────────────────────────
+
+const findExamples = [
+  {
+    name: 'scans batches to find best item',
+    inputs: { list: ['a', 'b', 'c', 'd'], instructions: 'find', options: { batchSize: 2 } },
+    check: all(equals('b'), () => expect(listBatch).toHaveBeenCalledTimes(2)),
+  },
+  {
+    name: 'returns empty string when no item matches',
+    inputs: {
+      list: ['a', 'b'],
+      instructions: 'find nothing',
+      options: { batchSize: 10 },
+      preMock: () => listBatch.mockResolvedValueOnce([]),
+    },
+    check: equals(''),
+  },
+  {
+    name: 'earliest match wins across parallel batches',
+    inputs: {
+      list: ['a', 'b'],
+      instructions: 'find',
+      options: { batchSize: 1, maxParallel: 2 },
+    },
+    check: equals('a'),
+  },
+  {
+    name: 'silently continues when a batch throws',
+    inputs: {
+      list: ['a', 'b'],
+      instructions: 'find',
+      options: { batchSize: 1, maxParallel: 1 },
+      preMock: () =>
+        listBatch.mockRejectedValueOnce(new Error('batch failed')).mockResolvedValueOnce(['found']),
+    },
+    check: equals('found'),
+  },
+];
+
+runTable({
+  describe: 'find chain',
+  examples: findExamples,
+  process: async ({ list, instructions, options, preMock }) => {
+    if (preMock) preMock();
+    return find(list, instructions, options);
+  },
 });
 
-describe('find chain', () => {
-  it('scans batches to find best item', async () => {
-    const result = await find(['a', 'b', 'c', 'd'], 'find', { batchSize: 2 });
-    expect(result).toBe('b');
-    expect(listBatch).toHaveBeenCalledTimes(2);
-  });
+// ─── parallel form ────────────────────────────────────────────────────────
 
-  it('returns empty string when no item matches', async () => {
-    listBatch.mockResolvedValueOnce([]);
-    const result = await find(['a', 'b'], 'find nothing', { batchSize: 10 });
-    expect(result).toBe('');
-  });
+const parallelExamples = [
+  {
+    name: 'returns the earliest matching item by index',
+    inputs: {
+      list: ['a', 'b', 'c'],
+      preMock: () =>
+        vi
+          .mocked(bool)
+          .mockResolvedValueOnce(false)
+          .mockResolvedValueOnce(true)
+          .mockResolvedValueOnce(true),
+    },
+    check: equals('b'),
+  },
+  {
+    name: 'returns empty string when nothing matches',
+    inputs: {
+      list: ['a', 'b'],
+      preMock: () => vi.mocked(bool).mockResolvedValue(false),
+    },
+    check: equals(''),
+  },
+  {
+    name: 'terminates early once a chunk produces a match',
+    inputs: {
+      list: ['a', 'b', 'c', 'd'],
+      options: { maxParallel: 2 },
+      preMock: () => vi.mocked(bool).mockResolvedValueOnce(true).mockResolvedValueOnce(false),
+    },
+    check: all(equals('a'), () => expect(bool).toHaveBeenCalledTimes(2)),
+  },
+  {
+    name: 'throws when list is not an array',
+    inputs: { list: 'not-an-array' },
+    check: ({ error }) => expect(error?.message).toMatch(/must be an array/),
+  },
+];
 
-  it('returns earliest match when multiple batches find results', async () => {
-    // With batchSize=1 and maxParallel=2, both batches run in parallel
-    // 'a' at index 0 should win over 'b' at index 1
-    const result = await find(['a', 'b'], 'find', { batchSize: 1, maxParallel: 2 });
-    expect(result).toBe('a');
-  });
-
-  it('silently continues when a batch throws', async () => {
-    listBatch.mockRejectedValueOnce(new Error('batch failed')).mockResolvedValueOnce(['found']);
-
-    const result = await find(['a', 'b'], 'find', { batchSize: 1, maxParallel: 1 });
-    expect(result).toBe('found');
-  });
-});
-
-describe('findParallel', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it('returns the earliest matching item by index', async () => {
-    vi.mocked(bool)
-      .mockResolvedValueOnce(false)
-      .mockResolvedValueOnce(true)
-      .mockResolvedValueOnce(true);
-    const result = await findParallel(['a', 'b', 'c'], 'criteria');
-    expect(result).toBe('b');
-  });
-
-  it('returns empty string when nothing matches', async () => {
-    vi.mocked(bool).mockResolvedValue(false);
-    const result = await findParallel(['a', 'b'], 'criteria');
-    expect(result).toBe('');
-  });
-
-  it('terminates early once a chunk produces a match', async () => {
-    vi.mocked(bool).mockResolvedValueOnce(true).mockResolvedValueOnce(false);
-    // chunk 1 (size 2): 'a','b' — 'a' matches, so chunk 2 should never run
-    const result = await findParallel(['a', 'b', 'c', 'd'], 'criteria', { maxParallel: 2 });
-    expect(result).toBe('a');
-    // bool was called twice for the first chunk and that's it
-    expect(bool).toHaveBeenCalledTimes(2);
-  });
-
-  it('throws when list is not an array', async () => {
-    await expect(findParallel('not-an-array', 'x')).rejects.toThrow(/must be an array/);
-  });
+runTable({
+  describe: 'findParallel',
+  examples: parallelExamples,
+  process: async ({ list, options, preMock }) => {
+    if (preMock) preMock();
+    return findParallel(list, 'criteria', options);
+  },
 });

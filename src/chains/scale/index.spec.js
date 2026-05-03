@@ -1,283 +1,309 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { vi, beforeEach, expect } from 'vitest';
 import scaleItem, { scaleSpec, scaleInstructions, mapScale, mapScaleParallel } from './index.js';
 import llm from '../../lib/llm/index.js';
 import map from '../map/index.js';
+import { runTable, equals, partial, all, throws } from '../../lib/examples-runner/index.js';
 
 vi.mock('../../lib/llm/index.js', async (importOriginal) => ({
   ...(await importOriginal()),
   default: vi.fn(),
 }));
 
-vi.mock('../map/index.js', () => ({
-  default: vi.fn(),
-}));
+vi.mock('../map/index.js', () => ({ default: vi.fn() }));
 
 vi.mock('../../lib/parallel-batch/index.js', () => ({
   default: vi.fn(async (items, processor) => {
-    for (let i = 0; i < items.length; i++) {
-      await processor(items[i], i);
-    }
+    for (let i = 0; i < items.length; i++) await processor(items[i], i);
   }),
 }));
 
-describe('scaleItem (default export)', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+beforeEach(() => vi.clearAllMocks());
 
-  it('should scale a numeric value with spec generation', async () => {
-    vi.mocked(llm)
-      .mockResolvedValueOnce({ domain: 'stars 1-5', range: '0-100 quality', mapping: 'linear' })
-      .mockResolvedValueOnce(50);
+const mockSpec = { domain: 'd', range: 'r', mapping: 'm' };
 
-    const prompt = `
-Sample data:
-{ stars: 1 }
-{ stars: 5 }
+// ─── scaleItem ────────────────────────────────────────────────────────────
 
-Range:
-name: quality
-description: 0 means terrible, 100 means amazing
-bounds: [0, 100]
+const scaleItemExamples = [
+  {
+    name: 'scales a numeric value with spec generation',
+    inputs: {
+      item: { stars: 3 },
+      instructions: 'sample mapping',
+      mocks: [{ domain: 'stars 1-5', range: '0-100 quality', mapping: 'linear' }, 50],
+    },
+    check: all(equals(50), () => {
+      expect(llm).toHaveBeenNthCalledWith(
+        1,
+        expect.stringContaining('<scaling-instructions>'),
+        expect.objectContaining({
+          systemPrompt: expect.stringContaining('scale specification generator'),
+        })
+      );
+      expect(llm).toHaveBeenNthCalledWith(
+        2,
+        expect.stringContaining('<scale-specification>'),
+        expect.any(Object)
+      );
+    }),
+  },
+  {
+    name: 'handles text input',
+    inputs: {
+      item: 'excellent',
+      instructions: 'Map sentiment words to a 0-100 scale',
+      mocks: [{ domain: 'sentiment words', range: '0-100', mapping: 'sentiment mapping' }, 75],
+    },
+    check: equals(75),
+  },
+  {
+    name: 'throws when LLM returns object output (schema declares number|string)',
+    inputs: {
+      item: 'very important task',
+      instructions: 'Categorize and provide confidence',
+      mocks: [
+        {
+          domain: 'task descriptions',
+          range: 'confidence and category',
+          mapping: 'categorization',
+        },
+        { confidence: 0.8, category: 'high' },
+      ],
+    },
+    check: throws(/expected number or string/),
+  },
+  {
+    name: 'serializes object inputs into the prompt',
+    inputs: {
+      item: { nested: { value: 123 }, array: [1, 2, 3] },
+      instructions: 'Scale complex objects',
+      mocks: [{ domain: 'complex objects', range: 'scaled values', mapping: 'object scaling' }, 30],
+    },
+    check: () =>
+      expect(llm).toHaveBeenCalledWith(expect.stringContaining('<item>'), expect.any(Object)),
+  },
+  {
+    name: 'skips spec generation when spec provided via instruction bundle',
+    inputs: {
+      item: 4,
+      instructions: { text: 'Scale this', spec: mockSpec },
+      mocks: [75],
+    },
+    check: all(equals(75), () => {
+      expect(llm).toHaveBeenCalledTimes(1);
+      expect(llm).toHaveBeenCalledWith(
+        expect.stringContaining('<scale-specification>'),
+        expect.any(Object)
+      );
+    }),
+  },
+];
 
-Mapping: Map the "stars" field linearly to the quality range.`;
-
-    const result = await scaleItem({ stars: 3 }, prompt);
-
-    expect(result).toBe(50);
-    expect(llm).toHaveBeenNthCalledWith(
-      1,
-      expect.stringContaining('<scaling-instructions>'),
-      expect.objectContaining({
-        systemPrompt: expect.stringContaining('scale specification generator'),
-      })
-    );
-    expect(llm).toHaveBeenNthCalledWith(
-      2,
-      expect.stringContaining('<scale-specification>'),
-      expect.any(Object)
-    );
-  });
-
-  it('should handle text input', async () => {
-    vi.mocked(llm)
-      .mockResolvedValueOnce({
-        domain: 'sentiment words',
-        range: '0-100',
-        mapping: 'sentiment mapping',
-      })
-      .mockResolvedValueOnce(75);
-
-    const result = await scaleItem(
-      'excellent',
-      'Map sentiment words to a 0-100 scale where 0 is negative and 100 is positive'
-    );
-
-    expect(result).toBe(75);
-  });
-
-  it('throws when LLM returns object output (schema declares number|string)', async () => {
-    vi.mocked(llm)
-      .mockResolvedValueOnce({
-        domain: 'task descriptions',
-        range: 'confidence and category',
-        mapping: 'categorization',
-      })
-      .mockResolvedValueOnce({ confidence: 0.8, category: 'high' });
-
-    await expect(
-      scaleItem('very important task', 'Categorize inputs and provide confidence scores')
-    ).rejects.toThrow(/expected number or string/);
-  });
-
-  it('should convert object inputs to JSON strings', async () => {
-    vi.mocked(llm)
-      .mockResolvedValueOnce({
-        domain: 'complex objects',
-        range: 'scaled values',
-        mapping: 'object scaling',
-      })
-      .mockResolvedValueOnce(30);
-
-    await scaleItem({ nested: { value: 123 }, array: [1, 2, 3] }, 'Scale complex objects');
-
-    expect(llm).toHaveBeenCalledWith(expect.stringContaining('<item>'), expect.any(Object));
-  });
+runTable({
+  describe: 'scaleItem',
+  examples: scaleItemExamples,
+  process: async ({ item, instructions, mocks }) => {
+    for (const m of mocks) vi.mocked(llm).mockResolvedValueOnce(m);
+    return scaleItem(item, instructions);
+  },
 });
 
-describe('scaleSpec', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+// ─── scaleSpec ────────────────────────────────────────────────────────────
 
-  it('should generate a scale specification', async () => {
-    vi.mocked(llm).mockResolvedValue({
-      domain: 'Complete domain',
-      range: 'Complete range',
-      mapping: 'Complete mapping',
-    });
-
-    const spec = await scaleSpec('Convert temperatures');
-
-    expect(spec).toEqual({
-      domain: 'Complete domain',
-      range: 'Complete range',
-      mapping: 'Complete mapping',
-    });
-    expect(llm).toHaveBeenCalledWith(
-      expect.stringContaining('Analyze these scaling instructions'),
-      expect.objectContaining({
-        systemPrompt: expect.stringContaining('scale specification generator'),
-      })
-    );
-  });
+runTable({
+  describe: 'scaleSpec',
+  examples: [
+    {
+      name: 'generates a scale specification',
+      inputs: {
+        prompt: 'Convert temperatures',
+        preMock: () =>
+          vi.mocked(llm).mockResolvedValue({
+            domain: 'Complete domain',
+            range: 'Complete range',
+            mapping: 'Complete mapping',
+          }),
+      },
+      check: all(
+        equals({ domain: 'Complete domain', range: 'Complete range', mapping: 'Complete mapping' }),
+        () => {
+          expect(llm).toHaveBeenCalledWith(
+            expect.stringContaining('Analyze these scaling instructions'),
+            expect.objectContaining({
+              systemPrompt: expect.stringContaining('scale specification generator'),
+            })
+          );
+        }
+      ),
+    },
+  ],
+  process: async ({ prompt, preMock }) => {
+    if (preMock) preMock();
+    return scaleSpec(prompt);
+  },
 });
 
-describe('scaleItem', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+// ─── scaleInstructions (pure) ─────────────────────────────────────────────
 
-  it('should scale a single item with spec generation', async () => {
-    vi.mocked(llm)
-      .mockResolvedValueOnce({
-        domain: '1-5',
-        range: '0-100',
-        mapping: 'Linear transformation',
-      })
-      .mockResolvedValueOnce(75);
-
-    const result = await scaleItem(4, 'Map 1-5 to 0-100');
-
-    expect(result).toBe(75);
-    expect(llm).toHaveBeenCalledTimes(2);
-  });
-
-  it('should skip spec generation when spec provided via instruction bundle', async () => {
-    vi.mocked(llm).mockResolvedValueOnce(75);
-
-    const spec = {
-      domain: '1-5',
-      range: '0-100',
-      mapping: 'Linear transformation',
-    };
-    const result = await scaleItem(4, { text: 'Scale this', spec });
-
-    expect(result).toBe(75);
-    // Only one LLM call — spec generation skipped
-    expect(llm).toHaveBeenCalledTimes(1);
-    expect(llm).toHaveBeenCalledWith(
-      expect.stringContaining('<scale-specification>'),
-      expect.any(Object)
-    );
-  });
+runTable({
+  describe: 'scaleInstructions',
+  examples: [
+    {
+      name: 'returns an instruction bundle with spec',
+      inputs: { spec: { domain: 'test', range: 'test', mapping: 'test' } },
+      check: ({ result, inputs }) => {
+        expect(result.text).toContain('scale specification');
+        expect(result.spec).toBe(inputs.spec);
+      },
+    },
+    {
+      name: 'passes through additional context keys',
+      inputs: { spec: 'spec', domain: 'temperature' },
+      check: partial({ domain: 'temperature' }),
+    },
+  ],
+  process: (params) => scaleInstructions(params),
 });
 
-describe('scaleInstructions', () => {
-  it('returns instruction bundle with spec', () => {
-    const spec = { domain: 'test', range: 'test', mapping: 'test' };
-    const bundle = scaleInstructions({ spec });
+// ─── mapScale (batched) ───────────────────────────────────────────────────
 
-    expect(bundle.text).toContain('scale specification');
-    expect(bundle.spec).toBe(spec);
-  });
+const mapScaleExamples = [
+  {
+    name: 'generates spec once and routes through the map chain',
+    inputs: {
+      list: [1, 2, 3],
+      instructions: 'scale 1-3 to 0-30',
+      preMock: () => {
+        vi.mocked(llm).mockResolvedValueOnce(mockSpec);
+        vi.mocked(map).mockResolvedValueOnce([10, 20, 30]);
+      },
+    },
+    check: all(equals([10, 20, 30]), () => {
+      expect(llm).toHaveBeenCalledTimes(1);
+      expect(map).toHaveBeenCalledTimes(1);
+      expect(vi.mocked(map).mock.calls[0][1]).toContain('<scale-specification>');
+    }),
+  },
+  {
+    name: 'skips spec generation when spec is in the bundle',
+    inputs: {
+      list: [1, 2],
+      instructions: { text: 'ignored', spec: mockSpec },
+      preMock: () => vi.mocked(map).mockResolvedValueOnce([5, 7]),
+    },
+    check: all(equals([5, 7]), () => expect(llm).not.toHaveBeenCalled()),
+  },
+  {
+    name: 'reports partial outcome when some slots fail',
+    inputs: {
+      list: [1, 2, 3],
+      instructions: { text: 'x', spec: mockSpec },
+      withEvents: true,
+      preMock: () => vi.mocked(map).mockResolvedValueOnce([10, undefined, 30]),
+    },
+    check: ({ result }) => {
+      const complete = result.events.find((e) => e.event === 'chain:complete');
+      expect(complete.outcome).toBe('partial');
+      expect(complete.failedItems).toBe(1);
+    },
+  },
+  {
+    name: 'serializes object items into strings before dispatch',
+    inputs: {
+      list: [{ a: 1 }, 'plain'],
+      instructions: { text: 'x', spec: mockSpec },
+      preMock: () => vi.mocked(map).mockResolvedValueOnce([1, 2]),
+    },
+    check: () => {
+      const list = vi.mocked(map).mock.calls[0][0];
+      expect(list[0]).toBe('{"a":1}');
+      expect(list[1]).toBe('plain');
+    },
+  },
+];
 
-  it('passes through additional context keys', () => {
-    const bundle = scaleInstructions({ spec: 'spec', domain: 'temperature' });
-
-    expect(bundle.domain).toBe('temperature');
-  });
+runTable({
+  describe: 'mapScale',
+  examples: mapScaleExamples,
+  process: async ({ list, instructions, preMock, withEvents }) => {
+    if (preMock) preMock();
+    if (withEvents) {
+      const events = [];
+      const result = await mapScale(list, instructions, { onProgress: (e) => events.push(e) });
+      return { result, events };
+    }
+    return mapScale(list, instructions);
+  },
 });
 
-describe('mapScale', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+// ─── mapScaleParallel ─────────────────────────────────────────────────────
 
-  const mockSpec = { domain: 'd', range: 'r', mapping: 'm' };
+const mapScaleParallelExamples = [
+  {
+    name: 'runs scaleItem per item with one shared spec',
+    inputs: {
+      list: [1, 2, 3],
+      instructions: 'scale 1-3 to 0-30',
+      mocks: [mockSpec, 10, 20, 30],
+    },
+    check: all(equals([10, 20, 30]), () => expect(llm).toHaveBeenCalledTimes(4)),
+  },
+  {
+    name: 'skips spec generation when bundled',
+    inputs: {
+      list: [1, 2],
+      instructions: { text: 'x', spec: mockSpec },
+      mocks: [5, 7],
+    },
+    check: all(equals([5, 7]), () => expect(llm).toHaveBeenCalledTimes(2)),
+  },
+  {
+    name: 'reports partial outcome when an item fails',
+    inputs: {
+      list: [1, 2],
+      instructions: { text: 'x', spec: mockSpec },
+      mocks: [10],
+      reject: new Error('boom'),
+      options: { maxAttempts: 1 },
+      withEvents: true,
+    },
+    check: ({ result }) => {
+      expect(result.result[0]).toBe(10);
+      expect(result.result[1]).toBeUndefined();
+      const complete = result.events.find(
+        (e) => e.event === 'chain:complete' && e.step === 'scale:parallel'
+      );
+      expect(complete.outcome).toBe('partial');
+    },
+  },
+  {
+    name: 'throws when every item fails',
+    inputs: {
+      list: [1, 2],
+      instructions: { text: 'x', spec: mockSpec },
+      preMock: () => vi.mocked(llm).mockRejectedValue(new Error('boom')),
+      options: { maxAttempts: 1 },
+    },
+    check: throws(/all 2 items failed to scale/),
+  },
+];
 
-  it('generates spec once and routes through the map chain', async () => {
-    vi.mocked(llm).mockResolvedValueOnce(mockSpec);
-    vi.mocked(map).mockResolvedValueOnce([10, 20, 30]);
-
-    const result = await mapScale([1, 2, 3], 'scale 1-3 to 0-30');
-    expect(result).toEqual([10, 20, 30]);
-    expect(llm).toHaveBeenCalledTimes(1);
-    expect(map).toHaveBeenCalledTimes(1);
-    const mapInstructions = vi.mocked(map).mock.calls[0][1];
-    expect(mapInstructions).toContain('<scale-specification>');
-  });
-
-  it('skips spec generation when spec is provided in the bundle', async () => {
-    vi.mocked(map).mockResolvedValueOnce([5, 7]);
-    const result = await mapScale([1, 2], { text: 'ignored', spec: mockSpec });
-    expect(result).toEqual([5, 7]);
-    expect(llm).not.toHaveBeenCalled();
-  });
-
-  it('reports partial outcome when some slots fail', async () => {
-    vi.mocked(map).mockResolvedValueOnce([10, undefined, 30]);
-    const events = [];
-    await mapScale([1, 2, 3], { text: 'x', spec: mockSpec }, { onProgress: (e) => events.push(e) });
-    const complete = events.find((e) => e.event === 'chain:complete');
-    expect(complete.outcome).toBe('partial');
-    expect(complete.failedItems).toBe(1);
-  });
-
-  it('serializes object items into strings before dispatching', async () => {
-    vi.mocked(map).mockResolvedValueOnce([1, 2]);
-    await mapScale([{ a: 1 }, 'plain'], { text: 'x', spec: mockSpec });
-    const list = vi.mocked(map).mock.calls[0][0];
-    expect(list[0]).toBe('{"a":1}');
-    expect(list[1]).toBe('plain');
-  });
-});
-
-describe('mapScaleParallel', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  const mockSpec = { domain: 'd', range: 'r', mapping: 'm' };
-
-  it('runs scaleItem per item with one shared spec', async () => {
-    vi.mocked(llm)
-      .mockResolvedValueOnce(mockSpec) // spec generation
-      .mockResolvedValueOnce(10)
-      .mockResolvedValueOnce(20)
-      .mockResolvedValueOnce(30);
-    const result = await mapScaleParallel([1, 2, 3], 'scale 1-3 to 0-30');
-    expect(result).toEqual([10, 20, 30]);
-    expect(llm).toHaveBeenCalledTimes(4);
-  });
-
-  it('skips spec generation when bundled', async () => {
-    vi.mocked(llm).mockResolvedValueOnce(5).mockResolvedValueOnce(7);
-    const result = await mapScaleParallel([1, 2], { text: 'x', spec: mockSpec });
-    expect(result).toEqual([5, 7]);
-    expect(llm).toHaveBeenCalledTimes(2);
-  });
-
-  it('reports partial outcome when an item fails', async () => {
-    vi.mocked(llm).mockResolvedValueOnce(10).mockRejectedValueOnce(new Error('boom'));
-    const events = [];
-    const result = await mapScaleParallel(
-      [1, 2],
-      { text: 'x', spec: mockSpec },
-      { onProgress: (e) => events.push(e), maxAttempts: 1 }
-    );
-    expect(result[0]).toBe(10);
-    expect(result[1]).toBeUndefined();
-    const complete = events.find(
-      (e) => e.event === 'chain:complete' && e.step === 'scale:parallel'
-    );
-    expect(complete.outcome).toBe('partial');
-  });
-
-  it('throws when every item fails', async () => {
-    vi.mocked(llm).mockRejectedValue(new Error('boom'));
-    await expect(
-      mapScaleParallel([1, 2], { text: 'x', spec: mockSpec }, { maxAttempts: 1 })
-    ).rejects.toThrow(/all 2 items failed to scale/);
-  });
+runTable({
+  describe: 'mapScaleParallel',
+  examples: mapScaleParallelExamples,
+  process: async ({ list, instructions, mocks, reject, preMock, options, withEvents }) => {
+    if (preMock) preMock();
+    if (mocks) {
+      for (const m of mocks) vi.mocked(llm).mockResolvedValueOnce(m);
+      if (reject) vi.mocked(llm).mockRejectedValueOnce(reject);
+    }
+    if (withEvents) {
+      const events = [];
+      const result = await mapScaleParallel(list, instructions, {
+        ...options,
+        onProgress: (e) => events.push(e),
+      });
+      return { result, events };
+    }
+    return mapScaleParallel(list, instructions, options);
+  },
 });
