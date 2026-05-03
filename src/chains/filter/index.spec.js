@@ -1,13 +1,12 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, expect, vi } from 'vitest';
 import { testPromptShapingOption } from '../../lib/test-utils/index.js';
 import filter, { filterParallel } from './index.js';
 import listBatch from '../../verblets/list-batch/index.js';
 import bool from '../../verblets/bool/index.js';
 import { ChainEvent, DomainEvent, OpEvent } from '../../lib/progress/constants.js';
+import { runTable, equals, all, throws } from '../../lib/examples-runner/index.js';
 
-vi.mock('../../verblets/bool/index.js', () => ({
-  default: vi.fn(),
-}));
+vi.mock('../../verblets/bool/index.js', () => ({ default: vi.fn() }));
 
 vi.mock('../../verblets/list-batch/index.js', () => ({
   default: vi.fn(async (items) => {
@@ -29,282 +28,337 @@ vi.mock('../../lib/text-batch/index.js', () => ({
   }),
 }));
 
-vi.mock('../../lib/retry/index.js', () => {
-  const mock = vi.fn(async (fn) => {
+vi.mock('../../lib/retry/index.js', () => ({
+  default: vi.fn(async (fn) => {
     try {
       return await fn();
     } catch {
-      // Retry once on failure
       return await fn();
     }
-  });
-  return { default: mock };
-});
+  }),
+}));
 
-beforeEach(() => {
-  vi.clearAllMocks();
-});
+beforeEach(() => vi.clearAllMocks());
 
-describe('filter', () => {
-  it('filters items in batches', async () => {
-    const result = await filter(['a', 'b', 'c'], 'a', { batchSize: 2 });
-    expect(result).toStrictEqual(['a']);
-    expect(listBatch).toHaveBeenCalledTimes(2);
-  });
+// ─── filter (batched) ─────────────────────────────────────────────────────
 
-  it('throws on undersized LLM response in strict mode (default)', async () => {
-    listBatch.mockImplementation(async (items) => {
-      return items.slice(0, 1).map((item) => (item.includes('a') ? 'yes' : 'no'));
-    });
+const filterExamples = [
+  {
+    name: 'filters items in batches',
+    inputs: { list: ['a', 'b', 'c'], instructions: 'a', options: { batchSize: 2 } },
+    check: all(equals(['a']), () => expect(listBatch).toHaveBeenCalledTimes(2)),
+  },
+  {
+    name: 'throws on undersized LLM response in strict mode (default)',
+    inputs: {
+      list: ['apple', 'banana', 'box'],
+      instructions: 'contains a',
+      options: { batchSize: 10 },
+      preMock: () =>
+        listBatch.mockImplementation(async (items) =>
+          items.slice(0, 1).map((item) => (item.includes('a') ? 'yes' : 'no'))
+        ),
+    },
+    check: throws(/decisions for/),
+  },
+  {
+    name: 'throws on oversized LLM response in strict mode (default)',
+    inputs: {
+      list: ['apple', 'banana'],
+      instructions: 'include all',
+      options: { batchSize: 10 },
+      preMock: () =>
+        listBatch.mockImplementation(async (items) => [...items.map(() => 'yes'), 'yes', 'yes']),
+    },
+    check: throws(/decisions for/),
+  },
+  {
+    name: 'size-mismatch surfaces outcome=partial in resilient mode',
+    inputs: {
+      list: ['apple', 'banana', 'box'],
+      instructions: 'contains a',
+      options: { batchSize: 10, strictness: 'low' },
+      withEvents: true,
+      preMock: () =>
+        listBatch.mockImplementation(async (items) =>
+          items.slice(0, 1).map((item) => (item.includes('a') ? 'yes' : 'no'))
+        ),
+    },
+    check: ({ result }) => {
+      const complete = result.events.find(
+        (e) => e.step === 'filter' && e.event === 'chain:complete'
+      );
+      expect(complete.outcome).toBe('partial');
+    },
+  },
+  {
+    name: 'advances batch progress on resilient failure',
+    inputs: {
+      list: ['a', 'b'],
+      instructions: 'x',
+      options: { batchSize: 10, strictness: 'low' },
+      withEvents: true,
+      preMock: () => listBatch.mockRejectedValue(new Error('fail')),
+    },
+    check: ({ result }) => {
+      const batches = result.events.filter((e) => e.event === 'batch:complete');
+      expect(batches.length).toBeGreaterThan(0);
+    },
+  },
+  {
+    name: 'retries failed batches',
+    inputs: {
+      list: ['FAIL', 'a', 'b'],
+      instructions: 'a',
+      options: { batchSize: 2, maxAttempts: 2 },
+      preMock: () => {
+        let call = 0;
+        listBatch.mockImplementation(async (items) => {
+          call += 1;
+          if (call === 1) throw new Error('fail');
+          return items.map((item) => (item.includes('a') ? 'yes' : 'no'));
+        });
+      },
+    },
+    check: all(equals(['a']), () => expect(listBatch).toHaveBeenCalledTimes(3)),
+  },
+];
 
-    await expect(
-      filter(['apple', 'banana', 'box'], 'contains a', { batchSize: 10 })
-    ).rejects.toThrow(/decisions for/);
-  });
-
-  it('throws on oversized LLM response in strict mode (default)', async () => {
-    listBatch.mockImplementation(async (items) => {
-      return [...items.map(() => 'yes'), 'yes', 'yes'];
-    });
-
-    await expect(filter(['apple', 'banana'], 'include all', { batchSize: 10 })).rejects.toThrow(
-      /decisions for/
-    );
-  });
-
-  it('size-mismatch surfaces outcome=partial in resilient mode', async () => {
-    listBatch.mockImplementation(async (items) => {
-      return items.slice(0, 1).map((item) => (item.includes('a') ? 'yes' : 'no'));
-    });
-
-    const events = [];
-    await filter(['apple', 'banana', 'box'], 'contains a', {
-      batchSize: 10,
-      strictness: 'low',
-      onProgress: (e) => events.push(e),
-    });
-    const complete = events.find((e) => e.step === 'filter' && e.event === 'chain:complete');
-    expect(complete.outcome).toBe('partial');
-  });
-
-  it('advances batch progress on resilient failure', async () => {
-    listBatch.mockRejectedValue(new Error('fail'));
-
-    const events = [];
-    await filter(['a', 'b'], 'x', {
-      batchSize: 10,
-      strictness: 'low',
-      onProgress: (e) => events.push(e),
-    });
-
-    const batchEvents = events.filter((e) => e.event === 'batch:complete');
-    expect(batchEvents.length).toBeGreaterThan(0);
-  });
-
-  it('retries failed batches', async () => {
-    let call = 0;
-    listBatch.mockImplementation(async (items) => {
-      call += 1;
-      if (call === 1) throw new Error('fail');
-      return items.map((item) => (item.includes('a') ? 'yes' : 'no'));
-    });
-
-    const result = await filter(['FAIL', 'a', 'b'], 'a', {
-      batchSize: 2,
-      maxAttempts: 2,
-    });
-    expect(result).toStrictEqual(['a']);
-    expect(listBatch).toHaveBeenCalledTimes(3);
-  });
-
-  testPromptShapingOption('strictness', {
-    invoke: (config) => filter(['apple', 'box'], 'contains a', { batchSize: 10, ...config }),
-    setupMocks: () => {},
-    llmMock: listBatch,
-    markers: { low: 'err on the side of inclusion', high: 'err on the side of exclusion' },
-    promptArgIndex: 1,
-  });
-
-  describe('progress emission', () => {
-    it('emits full lifecycle: start, input, batch progress, output, complete', async () => {
+runTable({
+  describe: 'filter',
+  examples: filterExamples,
+  process: async ({ list, instructions, options, preMock, withEvents }) => {
+    if (preMock) preMock();
+    if (withEvents) {
       const events = [];
-      const result = await filter(['apple', 'banana', 'box'], 'contains a', {
-        batchSize: 10,
+      const value = await filter(list, instructions, {
+        ...options,
         onProgress: (e) => events.push(e),
       });
+      return { value, events };
+    }
+    return filter(list, instructions, options);
+  },
+});
 
-      const chainStart = events.find((e) => e.step === 'filter' && e.event === ChainEvent.start);
-      expect(chainStart).toBeDefined();
-      expect(chainStart.kind).toBe('telemetry');
+testPromptShapingOption('strictness', {
+  invoke: (config) => filter(['apple', 'box'], 'contains a', { batchSize: 10, ...config }),
+  setupMocks: () => {},
+  llmMock: listBatch,
+  markers: { low: 'err on the side of inclusion', high: 'err on the side of exclusion' },
+  promptArgIndex: 1,
+});
 
-      const inputEvent = events.find((e) => e.step === 'filter' && e.event === DomainEvent.input);
-      expect(inputEvent).toBeDefined();
-      expect(inputEvent.kind).toBe('event');
-      expect(inputEvent.value).toEqual(['apple', 'banana', 'box']);
+// ─── filter (progress emission) ───────────────────────────────────────────
+
+const progressExamples = [
+  {
+    name: 'emits full lifecycle: start, input, batch progress, output, complete',
+    inputs: { list: ['apple', 'banana', 'box'], options: { batchSize: 10 } },
+    check: ({ result }) => {
+      const { events, value } = result;
+      const start = events.find((e) => e.step === 'filter' && e.event === ChainEvent.start);
+      expect(start.kind).toBe('telemetry');
+
+      const input = events.find((e) => e.step === 'filter' && e.event === DomainEvent.input);
+      expect(input).toMatchObject({ kind: 'event', value: ['apple', 'banana', 'box'] });
 
       const opStart = events.find(
         (e) => e.step === 'filter' && e.event === OpEvent.start && e.kind === 'operation'
       );
-      expect(opStart).toBeDefined();
-      expect(opStart.totalItems).toBe(3);
-      expect(opStart.totalBatches).toBe(1);
+      expect(opStart).toMatchObject({ totalItems: 3, totalBatches: 1 });
 
       const batchComplete = events.find(
         (e) => e.step === 'filter' && e.event === OpEvent.batchComplete
       );
-      expect(batchComplete).toBeDefined();
-      expect(batchComplete.kind).toBe('operation');
-      expect(batchComplete.processedItems).toBe(3);
+      expect(batchComplete).toMatchObject({ kind: 'operation', processedItems: 3 });
 
-      const opComplete = events.find(
-        (e) => e.step === 'filter' && e.event === OpEvent.complete && e.kind === 'operation'
-      );
-      expect(opComplete).toBeDefined();
+      expect(
+        events.find(
+          (e) => e.step === 'filter' && e.event === OpEvent.complete && e.kind === 'operation'
+        )
+      ).toBeDefined();
 
-      const outputEvent = events.find((e) => e.step === 'filter' && e.event === DomainEvent.output);
-      expect(outputEvent).toBeDefined();
-      expect(outputEvent.kind).toBe('event');
-      expect(outputEvent.value).toEqual(result);
+      const output = events.find((e) => e.step === 'filter' && e.event === DomainEvent.output);
+      expect(output).toMatchObject({ kind: 'event', value });
 
-      const chainComplete = events.find(
-        (e) => e.step === 'filter' && e.event === ChainEvent.complete
-      );
-      expect(chainComplete).toBeDefined();
-      expect(chainComplete.kind).toBe('telemetry');
-      expect(chainComplete.inputCount).toBe(3);
-      expect(chainComplete.outputCount).toBe(result.length);
-      expect(chainComplete.outcome).toBe('success');
-    });
-
-    it('emits events in correct lifecycle order', async () => {
-      const events = [];
-      await filter(['apple', 'box'], 'contains a', {
-        batchSize: 10,
-        onProgress: (e) => events.push(e),
+      const complete = events.find((e) => e.step === 'filter' && e.event === ChainEvent.complete);
+      expect(complete).toMatchObject({
+        kind: 'telemetry',
+        inputCount: 3,
+        outputCount: value.length,
+        outcome: 'success',
       });
+    },
+  },
+  {
+    name: 'emits events in correct lifecycle order',
+    inputs: { list: ['apple', 'box'], options: { batchSize: 10 } },
+    check: ({ result }) => {
+      const names = result.events.map((e) => e.event);
+      const order = [
+        names.indexOf(ChainEvent.start),
+        names.indexOf(DomainEvent.input),
+        names.indexOf(OpEvent.start),
+        names.indexOf(OpEvent.complete),
+        names.indexOf(DomainEvent.output),
+        names.indexOf(ChainEvent.complete),
+      ];
+      for (let i = 1; i < order.length; i++) {
+        expect(order[i - 1]).toBeLessThan(order[i]);
+      }
+    },
+  },
+  {
+    name: 'tracks batch progress across multiple batches',
+    inputs: {
+      list: ['apple', 'banana', 'box', 'avocado', 'cherry'],
+      options: { batchSize: 2 },
+    },
+    check: ({ result }) => {
+      const batches = result.events.filter((e) => e.event === OpEvent.batchComplete);
+      expect(batches.length).toBeGreaterThanOrEqual(2);
+      expect(batches[batches.length - 1].processedItems).toBe(5);
+    },
+  },
+  {
+    name: 'events carry operation path and timestamp',
+    inputs: { list: ['apple'], options: { batchSize: 10 } },
+    check: ({ result }) => {
+      const start = result.events.find((e) => e.step === 'filter' && e.event === ChainEvent.start);
+      expect(start.operation).toBeDefined();
+      expect(start.timestamp).toBeDefined();
+    },
+  },
+];
 
-      const eventNames = events.map((e) => e.event);
-      const startIdx = eventNames.indexOf(ChainEvent.start);
-      const inputIdx = eventNames.indexOf(DomainEvent.input);
-      const opStartIdx = eventNames.indexOf(OpEvent.start);
-      const opCompleteIdx = eventNames.indexOf(OpEvent.complete);
-      const outputIdx = eventNames.indexOf(DomainEvent.output);
-      const completeIdx = eventNames.indexOf(ChainEvent.complete);
-
-      expect(startIdx).toBeLessThan(inputIdx);
-      expect(inputIdx).toBeLessThan(opStartIdx);
-      expect(opStartIdx).toBeLessThan(opCompleteIdx);
-      expect(opCompleteIdx).toBeLessThan(outputIdx);
-      expect(outputIdx).toBeLessThan(completeIdx);
-    });
-
-    it('tracks batch progress across multiple batches', async () => {
-      const events = [];
-      await filter(['apple', 'banana', 'box', 'avocado', 'cherry'], 'contains a', {
-        batchSize: 2,
-        onProgress: (e) => events.push(e),
-      });
-
-      const batchEvents = events.filter((e) => e.event === OpEvent.batchComplete);
-      expect(batchEvents.length).toBeGreaterThanOrEqual(2);
-
-      const lastBatch = batchEvents[batchEvents.length - 1];
-      expect(lastBatch.processedItems).toBe(5);
-    });
-
-    it('respects eventFilter to receive only operation events', async () => {
-      const allEvents = [];
-      const filteredEvents = [];
-      await filter(['apple', 'box'], 'contains a', {
-        batchSize: 10,
-        onProgress: (e) => allEvents.push(e),
-      });
-      await filter(['apple', 'box'], 'contains a', {
-        batchSize: 10,
-        onProgress: (e) => filteredEvents.push(e),
-        eventFilter: (e) => e.kind === 'operation',
-      });
-
-      const nonOperationCount = allEvents.filter((e) => e.kind !== 'operation').length;
-      expect(nonOperationCount).toBeGreaterThan(0);
-
-      expect(filteredEvents.length).toBeGreaterThan(0);
-      expect(filteredEvents.length).toBeLessThan(allEvents.length);
-      expect(filteredEvents.every((e) => e.kind === 'operation')).toBe(true);
-    });
-
-    it('respects eventFilter with kind string shorthand', async () => {
-      const events = [];
-      await filter(['apple', 'box'], 'contains a', {
-        batchSize: 10,
-        onProgress: (e) => events.push(e),
-        eventFilter: 'event',
-      });
-
-      expect(events.length).toBeGreaterThan(0);
-      expect(events.every((e) => e.kind === 'event')).toBe(true);
-
-      const inputEvent = events.find((e) => e.event === DomainEvent.input);
-      expect(inputEvent).toBeDefined();
-      expect(inputEvent.value).toEqual(['apple', 'box']);
-
-      const outputEvent = events.find((e) => e.event === DomainEvent.output);
-      expect(outputEvent).toBeDefined();
-    });
-
-    it('events carry operation path and timestamp', async () => {
-      const events = [];
-      await filter(['apple'], 'contains a', {
-        batchSize: 10,
-        onProgress: (e) => events.push(e),
-      });
-
-      const chainStart = events.find((e) => e.step === 'filter' && e.event === ChainEvent.start);
-      expect(chainStart.operation).toBeDefined();
-      expect(chainStart.timestamp).toBeDefined();
-    });
-  });
-});
-
-describe('filterParallel', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it('keeps items where bool returns true', async () => {
-    vi.mocked(bool)
-      .mockResolvedValueOnce(true)
-      .mockResolvedValueOnce(false)
-      .mockResolvedValueOnce(true);
-    const result = await filterParallel(['a', 'b', 'c'], 'criteria');
-    expect(result).toEqual(['a', 'c']);
-    expect(bool).toHaveBeenCalledTimes(3);
-  });
-
-  it('passes filtering criteria into each per-item question', async () => {
-    vi.mocked(bool).mockResolvedValue(true);
-    await filterParallel(['x'], 'must include letter');
-    const question = vi.mocked(bool).mock.calls[0][0];
-    expect(question).toContain('<filtering-criteria>');
-    expect(question).toContain('must include letter');
-  });
-
-  it('reports partial outcome when an item bool fails', async () => {
-    vi.mocked(bool).mockResolvedValueOnce(true).mockRejectedValueOnce(new Error('boom'));
+runTable({
+  describe: 'filter — progress emission',
+  examples: progressExamples,
+  process: async ({ list, options }) => {
     const events = [];
-    const result = await filterParallel(['a', 'b'], 'x', {
-      maxParallel: 1,
-      strictness: 'low',
+    const value = await filter(list, 'contains a', {
+      ...options,
       onProgress: (e) => events.push(e),
     });
-    expect(result).toEqual(['a']);
-    const complete = events.find(
-      (e) => e.event === 'chain:complete' && e.step === 'filter:parallel'
-    );
-    expect(complete.outcome).toBe('partial');
-  });
+    return { value, events };
+  },
+});
 
-  it('throws when list is not an array', async () => {
-    await expect(filterParallel('not-an-array', 'x')).rejects.toThrow(/must be an array/);
-  });
+// ─── eventFilter behavior (two parallel calls — kept inline) ──────────────
+
+runTable({
+  describe: 'filter — eventFilter',
+  examples: [
+    {
+      name: 'respects eventFilter to receive only operation events',
+      inputs: {},
+      check: async () => {
+        const allEvents = [];
+        const filtered = [];
+        await filter(['apple', 'box'], 'contains a', {
+          batchSize: 10,
+          onProgress: (e) => allEvents.push(e),
+        });
+        await filter(['apple', 'box'], 'contains a', {
+          batchSize: 10,
+          onProgress: (e) => filtered.push(e),
+          eventFilter: (e) => e.kind === 'operation',
+        });
+        expect(allEvents.filter((e) => e.kind !== 'operation').length).toBeGreaterThan(0);
+        expect(filtered.length).toBeGreaterThan(0);
+        expect(filtered.length).toBeLessThan(allEvents.length);
+        expect(filtered.every((e) => e.kind === 'operation')).toBe(true);
+      },
+    },
+    {
+      name: 'respects eventFilter with kind string shorthand',
+      inputs: {},
+      check: async () => {
+        const events = [];
+        await filter(['apple', 'box'], 'contains a', {
+          batchSize: 10,
+          onProgress: (e) => events.push(e),
+          eventFilter: 'event',
+        });
+        expect(events.length).toBeGreaterThan(0);
+        expect(events.every((e) => e.kind === 'event')).toBe(true);
+        expect(events.find((e) => e.event === DomainEvent.input).value).toEqual(['apple', 'box']);
+        expect(events.find((e) => e.event === DomainEvent.output)).toBeDefined();
+      },
+    },
+  ],
+  process: () => undefined,
+});
+
+// ─── filterParallel ───────────────────────────────────────────────────────
+
+const filterParallelExamples = [
+  {
+    name: 'keeps items where bool returns true',
+    inputs: {
+      list: ['a', 'b', 'c'],
+      instructions: 'criteria',
+      preMock: () =>
+        vi
+          .mocked(bool)
+          .mockResolvedValueOnce(true)
+          .mockResolvedValueOnce(false)
+          .mockResolvedValueOnce(true),
+    },
+    check: all(equals(['a', 'c']), () => expect(bool).toHaveBeenCalledTimes(3)),
+  },
+  {
+    name: 'passes filtering criteria into each per-item question',
+    inputs: {
+      list: ['x'],
+      instructions: 'must include letter',
+      preMock: () => vi.mocked(bool).mockResolvedValue(true),
+    },
+    check: () => {
+      const question = vi.mocked(bool).mock.calls[0][0];
+      expect(question).toContain('<filtering-criteria>');
+      expect(question).toContain('must include letter');
+    },
+  },
+  {
+    name: 'reports partial outcome when an item bool fails',
+    inputs: {
+      list: ['a', 'b'],
+      instructions: 'x',
+      options: { maxParallel: 1, strictness: 'low' },
+      withEvents: true,
+      preMock: () =>
+        vi.mocked(bool).mockResolvedValueOnce(true).mockRejectedValueOnce(new Error('boom')),
+    },
+    check: ({ result }) => {
+      expect(result.value).toEqual(['a']);
+      const complete = result.events.find(
+        (e) => e.event === 'chain:complete' && e.step === 'filter:parallel'
+      );
+      expect(complete.outcome).toBe('partial');
+    },
+  },
+  {
+    name: 'throws when list is not an array',
+    inputs: { list: 'not-an-array', instructions: 'x' },
+    check: throws(/must be an array/),
+  },
+];
+
+runTable({
+  describe: 'filterParallel',
+  examples: filterParallelExamples,
+  process: async ({ list, instructions, options, preMock, withEvents }) => {
+    if (preMock) preMock();
+    if (withEvents) {
+      const events = [];
+      const value = await filterParallel(list, instructions, {
+        ...options,
+        onProgress: (e) => events.push(e),
+      });
+      return { value, events };
+    }
+    return filterParallel(list, instructions, options);
+  },
 });
