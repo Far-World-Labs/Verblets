@@ -6,6 +6,37 @@
 - **Use realistic mock responses** - Match actual LLM output formats
 - **Avoid mocking fs in most cases** - Use real file system operations for simpler, more reliable tests
 
+## Preferred shape: table-driven via `runTable`
+
+New specs should use the table-driven runner in `src/lib/examples-runner/` and the fishery factory families in `src/lib/test-utils/factories/`. The `inventory.json` in `.claude/spec/test-inventory/` lists every existing spec and its proposed table group; migrations land module by module.
+
+```js
+import { runTable } from '../../lib/examples-runner/index.js';
+import { popReferenceVariants } from '../../lib/test-utils/factories/pop-reference.js';
+
+const examples = [
+  { name: 'returns the references the LLM produced', inputs: {...}, want: 1 },
+  { name: 'throws on null', inputs: { mockResponse: popReferenceVariants.isNull }, want: { throws: 'object' } },
+];
+
+runTable({ describe: 'popReferenceItem: result count', examples, process });
+```
+
+- **`want`** can be a literal value (deep-equal), a function `(varied) => expected` (called per row when `vary` expands), `{ throws: true | string | RegExp }`, or `{ eq: <ref> }` for identity equality.
+- **`vary`** (optional) declares cross-product axes; `expandExamples` turns one row into N. `inputs` and `want` may also be functions that receive the varied combo.
+- Imperative `it()` blocks remain valid for assertions that don't reduce to want/got compare (e.g. asserting prompt content includes a fragment, or that a mock was called N times). Mix patterns within a file when natural — don't force every assertion into the table.
+
+Reference migrations: `src/lib/pave/index.spec.js` (pure utility) and `src/chains/pop-reference/index.spec.js` (LLM-backed chain).
+
+## Mock factories
+
+Use the fishery-based factory families (`src/lib/test-utils/factories/`) for LLM mock responses, scan-shaped fixtures, and progress-event fixtures. Each chain factory exposes the same variant vocabulary:
+
+- `wellFormed`, `empty`, `isNull`, `undefinedValue`, `malformedShape`, `rejected`
+- `undersized`, `oversized` (when the response shape contains an array)
+
+Don't force a common payload base — chains have different well-formed shapes (`{ references: [...] }`, `{ value: number }`, etc.). Variant *names* align across chains; payload structures stay native to the chain.
+
 ## Test Organization
 - Group tests by input characteristics (clear vs ambiguous)
 - Use descriptive test names that specify expected behavior

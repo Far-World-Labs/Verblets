@@ -92,6 +92,7 @@
     "eslint-plugin-prettier": "^5.5.5",
     "eslint-plugin-unicorn": "^59.0.1",
     "eslint-plugin-vitest": "^0.5.4",
+    "fishery": "^2.4.0",
     "husky": "^8.0.3",
     "install-peerdeps": "^3.0.3",
     "jsdom": "^26.1.0",
