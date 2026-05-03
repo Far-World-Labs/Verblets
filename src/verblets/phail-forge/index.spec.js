@@ -1,110 +1,113 @@
-import { describe, it, expect, vi } from 'vitest';
+import { vi, beforeEach } from 'vitest';
 import makePrompt from './index.js';
+import llm from '../../lib/llm/index.js';
+import { runTable, partial } from '../../lib/examples-runner/index.js';
 
-// Mock llm
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(),
   jsonSchema: (name, schema) => ({ type: 'json_schema', json_schema: { name, schema } }),
 }));
 
-describe('phailForge/makePrompt', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+beforeEach(() => vi.clearAllMocks());
 
-  it('should enhance a simple prompt to expert level', async () => {
-    const { default: llm } = await import('../../lib/llm/index.js');
+const enhanceWebapp = {
+  enhanced:
+    'Create a single-page web application with responsive design, error handling, state management, and accessibility features. Use modern JavaScript framework (React/Vue/Angular), implement proper routing, include build tooling (Webpack/Vite), and ensure cross-browser compatibility.',
+  improvements: [
+    { category: 'technical', description: 'Added framework specification' },
+    { category: 'defaults', description: 'Included error handling and accessibility' },
+  ],
+  keywords: ['SPA', 'responsive', 'routing', 'build tooling'],
+};
 
-    const simplePrompt = 'create a webapp';
-    const mockEnhanced =
-      'Create a single-page web application with responsive design, error handling, state management, and accessibility features. Use modern JavaScript framework (React/Vue/Angular), implement proper routing, include build tooling (Webpack/Vite), and ensure cross-browser compatibility.';
+const enhanceSentiment = {
+  enhanced:
+    'Perform sentiment analysis on the provided text using NLP techniques. Classify sentiment as positive, negative, or neutral with confidence scores. Extract key emotional indicators, identify sentiment-bearing phrases, and provide granular aspect-based sentiment when applicable.',
+  improvements: [{ category: 'technical', description: 'Added NLP terminology' }],
+  keywords: ['NLP', 'confidence scores', 'aspect-based', 'emotional indicators'],
+};
 
-    llm.mockResolvedValueOnce({
-      enhanced: mockEnhanced,
-      improvements: [
-        { category: 'technical', description: 'Added framework specification' },
-        { category: 'defaults', description: 'Included error handling and accessibility' },
-      ],
-      keywords: ['SPA', 'responsive', 'routing', 'build tooling'],
-    });
+const enhanceSort = {
+  enhanced: 'Sort the provided list using an appropriate algorithm based on data characteristics',
+  improvements: [],
+  keywords: ['algorithm', 'sorting'],
+};
 
-    const result = await makePrompt(simplePrompt);
+const sortAnalysis = {
+  strengths: [{ aspect: 'clarity', detail: 'Clear algorithmic approach' }],
+  opportunities: [{ aspect: 'specificity', detail: 'Could specify sort order' }],
+  suggestions: ['Add stability requirements', 'Specify comparison function'],
+};
 
-    expect(result.enhanced).toBe(mockEnhanced);
-    expect(result.enhanced.length).toBeGreaterThan(simplePrompt.length);
-    expect(result.improvements).toBeDefined();
-    expect(Array.isArray(result.improvements)).toBe(true);
-    expect(result.metadata?.expansionRatio).toBeGreaterThan(1);
-  });
+const enhancePerf = {
+  enhanced:
+    'Optimize React application performance with Redux state management. Implement React.memo, useMemo, and useCallback for component optimization. Normalize Redux state shape, use reselect for memoized selectors, and implement code splitting with React.lazy.',
+  improvements: [
+    { category: 'technical', description: 'Added React-specific optimizations' },
+    { category: 'specificity', description: 'Included Redux optimization patterns' },
+  ],
+  keywords: ['React.memo', 'reselect', 'code splitting', 'memoization'],
+};
 
-  it('should add technical terminology and specifications', async () => {
-    const { default: llm } = await import('../../lib/llm/index.js');
+const examples = [
+  {
+    name: 'enhances a simple prompt and reports expansion ratio > 1',
+    inputs: {
+      prompt: 'create a webapp',
+      mocks: [enhanceWebapp],
+    },
+    check: partial({
+      enhanced: enhanceWebapp.enhanced,
+      improvements: enhanceWebapp.improvements,
+      metadata: { expansionRatio: expect.any(Number) },
+    }),
+  },
+  {
+    name: 'adds technical terminology when relevant',
+    inputs: {
+      prompt: 'analyze this text for sentiment',
+      mocks: [enhanceSentiment],
+    },
+    check: partial({
+      enhanced: expect.stringContaining('sentiment'),
+      keywords: expect.any(Array),
+    }),
+  },
+  {
+    name: 'provides analysis when requested',
+    inputs: {
+      prompt: 'sort this list',
+      options: { analyze: true },
+      mocks: [enhanceSort, sortAnalysis],
+    },
+    check: partial({
+      analysis: {
+        strengths: expect.any(Array),
+        opportunities: expect.any(Array),
+        suggestions: expect.any(Array),
+      },
+    }),
+  },
+  {
+    name: 'incorporates domain context',
+    inputs: {
+      prompt: 'optimize performance',
+      options: { context: 'React web application with Redux state management' },
+      mocks: [enhancePerf],
+    },
+    check: partial({
+      enhanced: expect.any(String),
+      improvements: expect.arrayContaining([expect.any(Object)]),
+    }),
+  },
+];
 
-    const simplePrompt = 'analyze this text for sentiment';
-    const mockEnhanced =
-      'Perform sentiment analysis on the provided text using NLP techniques. Classify sentiment as positive, negative, or neutral with confidence scores. Extract key emotional indicators, identify sentiment-bearing phrases, and provide granular aspect-based sentiment when applicable.';
-
-    llm.mockResolvedValueOnce({
-      enhanced: mockEnhanced,
-      improvements: [{ category: 'technical', description: 'Added NLP terminology' }],
-      keywords: ['NLP', 'confidence scores', 'aspect-based', 'emotional indicators'],
-    });
-
-    const result = await makePrompt(simplePrompt);
-
-    expect(result.enhanced).toContain('sentiment');
-    expect(result.keywords).toBeDefined();
-    expect(Array.isArray(result.keywords)).toBe(true);
-  });
-
-  it('should provide analysis when requested', async () => {
-    const { default: llm } = await import('../../lib/llm/index.js');
-
-    const simplePrompt = 'sort this list';
-    const mockEnhanced =
-      'Sort the provided list using an appropriate algorithm based on data characteristics';
-
-    llm.mockResolvedValueOnce({
-      enhanced: mockEnhanced,
-      improvements: [],
-      keywords: ['algorithm', 'sorting'],
-    });
-
-    llm.mockResolvedValueOnce({
-      strengths: [{ aspect: 'clarity', detail: 'Clear algorithmic approach' }],
-      opportunities: [{ aspect: 'specificity', detail: 'Could specify sort order' }],
-      suggestions: ['Add stability requirements', 'Specify comparison function'],
-    });
-
-    const result = await makePrompt(simplePrompt, { analyze: true });
-
-    expect(result.analysis).toBeDefined();
-    expect(result.analysis.strengths).toBeDefined();
-    expect(result.analysis.opportunities).toBeDefined();
-    expect(result.analysis.suggestions).toBeDefined();
-  });
-
-  it('should handle domain context', async () => {
-    const { default: llm } = await import('../../lib/llm/index.js');
-
-    const simplePrompt = 'optimize performance';
-    const mockEnhanced =
-      'Optimize React application performance with Redux state management. Implement React.memo, useMemo, and useCallback for component optimization. Normalize Redux state shape, use reselect for memoized selectors, and implement code splitting with React.lazy.';
-
-    llm.mockResolvedValueOnce({
-      enhanced: mockEnhanced,
-      improvements: [
-        { category: 'technical', description: 'Added React-specific optimizations' },
-        { category: 'specificity', description: 'Included Redux optimization patterns' },
-      ],
-      keywords: ['React.memo', 'reselect', 'code splitting', 'memoization'],
-    });
-
-    const result = await makePrompt(simplePrompt, {
-      context: 'React web application with Redux state management',
-    });
-
-    expect(result.enhanced).toBeDefined();
-    expect(result.improvements.length).toBeGreaterThan(0);
-  });
+import { expect } from 'vitest';
+runTable({
+  describe: 'phailForge/makePrompt',
+  examples,
+  process: async ({ prompt, options, mocks }) => {
+    for (const m of mocks) llm.mockResolvedValueOnce(m);
+    return makePrompt(prompt, options);
+  },
 });

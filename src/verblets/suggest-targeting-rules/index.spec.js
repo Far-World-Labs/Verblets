@@ -1,12 +1,15 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { vi, beforeEach, expect } from 'vitest';
 import suggestTargetingRules, { buildPrompt } from './index.js';
 import callLlm from '../../lib/llm/index.js';
 import { OptionSource } from '../../lib/progress/constants.js';
+import { runTable, equals, contains, all } from '../../lib/examples-runner/index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
   jsonSchema: (name, schema) => ({ type: 'json_schema', json_schema: { name, schema } }),
   default: vi.fn(),
 }));
+
+beforeEach(() => vi.resetAllMocks());
 
 const makeTrace = (overrides = {}) => ({
   option: 'strictness',
@@ -25,120 +28,135 @@ const makeRule = (overrides = {}) => ({
   ...overrides,
 });
 
-describe('suggest-targeting-rules', () => {
-  beforeEach(() => {
-    vi.resetAllMocks();
-  });
+// ─── buildPrompt: pure prompt-shape assertions ───────────────────────────
 
-  describe('buildPrompt', () => {
-    it('includes trace count and trace details', () => {
-      const prompt = buildPrompt([
+const promptExamples = [
+  {
+    name: 'includes trace count and trace details',
+    inputs: { traces: [makeTrace(), makeTrace({ value: 'low', source: OptionSource.fallback })] },
+    check: all(contains('2 total'), contains('option="strictness"'), contains('source="fallback"')),
+  },
+  {
+    name: 'includes policyReturned when present',
+    inputs: { traces: [makeTrace({ policyReturned: 'high' })] },
+    check: contains('policyReturned="high"'),
+  },
+  {
+    name: 'omits policyReturned when undefined',
+    inputs: { traces: [makeTrace({ policyReturned: undefined })] },
+    check: ({ result }) => expect(result).not.toContain('policyReturned'),
+  },
+  {
+    name: 'includes error when present',
+    inputs: { traces: [makeTrace({ error: 'provider down' })] },
+    check: contains('error="provider down"'),
+  },
+  {
+    name: 'appends instruction when provided',
+    inputs: { traces: [makeTrace()], instruction: 'Focus on compliance' },
+    check: contains('Focus on compliance'),
+  },
+  {
+    name: 'omits instruction section when not provided',
+    inputs: { traces: [makeTrace()] },
+    check: ({ result }) => expect(result).not.toContain('Additional guidance'),
+  },
+];
+
+runTable({
+  describe: 'buildPrompt',
+  examples: promptExamples,
+  process: ({ traces, instruction }) => buildPrompt(traces, instruction),
+});
+
+// ─── suggestTargetingRules: behaviour ────────────────────────────────────
+
+const ruleExamples = [
+  {
+    name: 'empty traces → empty array, no LLM call',
+    inputs: { traces: [] },
+    check: all(equals([]), () => expect(callLlm).not.toHaveBeenCalled()),
+  },
+  {
+    name: 'undefined traces → empty array',
+    inputs: { traces: undefined },
+    check: equals([]),
+  },
+  {
+    name: 'returns rules from LLM and embeds traces in prompt',
+    inputs: {
+      traces: [
         makeTrace(),
-        makeTrace({ value: 'low', source: OptionSource.fallback }),
-      ]);
-      expect(prompt).toContain('2 total');
-      expect(prompt).toContain('option="strictness"');
-      expect(prompt).toContain('source="fallback"');
-    });
-
-    it('includes policyReturned when present', () => {
-      const prompt = buildPrompt([makeTrace({ policyReturned: 'high' })]);
-      expect(prompt).toContain('policyReturned="high"');
-    });
-
-    it('omits policyReturned when undefined', () => {
-      const prompt = buildPrompt([makeTrace({ policyReturned: undefined })]);
-      expect(prompt).not.toContain('policyReturned');
-    });
-
-    it('includes error when present', () => {
-      const prompt = buildPrompt([makeTrace({ error: 'provider down' })]);
-      expect(prompt).toContain('error="provider down"');
-    });
-
-    it('appends instruction when provided', () => {
-      const prompt = buildPrompt([makeTrace()], 'Focus on compliance');
-      expect(prompt).toContain('Focus on compliance');
-    });
-
-    it('omits instruction section when not provided', () => {
-      const prompt = buildPrompt([makeTrace()]);
-      expect(prompt).not.toContain('Additional guidance');
-    });
-  });
-
-  describe('suggestTargetingRules', () => {
-    it('returns empty array for empty traces', async () => {
-      const rules = await suggestTargetingRules([]);
-      expect(rules).toEqual([]);
-      expect(callLlm).not.toHaveBeenCalled();
-    });
-
-    it('returns empty array for undefined traces', async () => {
-      const rules = await suggestTargetingRules(undefined);
-      expect(rules).toEqual([]);
-    });
-
-    it('calls LLM with traces and returns rules', async () => {
-      const mockRules = [makeRule()];
-      callLlm.mockResolvedValueOnce({ rules: mockRules });
-
-      const rules = await suggestTargetingRules(
-        [makeTrace(), makeTrace({ source: OptionSource.fallback, policyReturned: undefined })],
-        'Focus on defaults'
-      );
-
-      expect(rules).toEqual(mockRules);
-      expect(callLlm).toHaveBeenCalledTimes(1);
-
+        makeTrace({ source: OptionSource.fallback, policyReturned: undefined }),
+      ],
+      instruction: 'Focus on defaults',
+      preMock: () => callLlm.mockResolvedValueOnce({ rules: [makeRule()] }),
+    },
+    check: all(equals([makeRule()]), () => {
       const [prompt, config] = callLlm.mock.calls[0];
       expect(prompt).toContain('decision traces');
       expect(prompt).toContain('strictness');
       expect(prompt).toContain('Focus on defaults');
       expect(config.responseFormat.json_schema.name).toBe('targeting_rules');
-    });
-
-    it('handles LLM returning bare array', async () => {
-      const bare = [makeRule()];
-      callLlm.mockResolvedValueOnce(bare);
-
-      const rules = await suggestTargetingRules([makeTrace()]);
-      expect(rules).toEqual(bare);
-    });
-
-    it('passes config through to callLlm', async () => {
-      callLlm.mockResolvedValueOnce({ rules: [] });
-
-      await suggestTargetingRules([makeTrace()], undefined, { llm: { fast: true, good: true } });
-
+    }),
+  },
+  {
+    name: 'handles LLM returning a bare array',
+    inputs: {
+      traces: [makeTrace()],
+      preMock: () => callLlm.mockResolvedValueOnce([makeRule()]),
+    },
+    check: equals([makeRule()]),
+  },
+  {
+    name: 'passes config through to callLlm',
+    inputs: {
+      traces: [makeTrace()],
+      options: { llm: { fast: true, good: true } },
+      preMock: () => callLlm.mockResolvedValueOnce({ rules: [] }),
+    },
+    check: () => {
       const config = callLlm.mock.calls[0][1];
       expect(config.llm).toEqual({ fast: true, good: true });
-    });
-
-    it('rule output matches targeting-rule AST shape', async () => {
-      const mockRules = [
-        {
-          clauses: [
-            { attribute: 'domain', op: 'in', values: ['medical', 'financial'] },
-            { attribute: 'plan', op: 'in', values: ['enterprise'] },
+    },
+  },
+  {
+    name: 'rule output preserves targeting-rule AST shape',
+    inputs: {
+      traces: [makeTrace()],
+      preMock: () =>
+        callLlm.mockResolvedValueOnce({
+          rules: [
+            {
+              clauses: [
+                { attribute: 'domain', op: 'in', values: ['medical', 'financial'] },
+                { attribute: 'plan', op: 'in', values: ['enterprise'] },
+              ],
+              option: 'strictness',
+              value: 'high',
+              reasoning: 'Regulated domains on enterprise plans consistently use high strictness',
+            },
           ],
-          option: 'strictness',
-          value: 'high',
-          reasoning: 'Regulated domains on enterprise plans consistently use high strictness',
-        },
-      ];
-      callLlm.mockResolvedValueOnce({ rules: mockRules });
-
-      const rules = await suggestTargetingRules([makeTrace()]);
-
-      expect(rules[0].clauses).toHaveLength(2);
-      expect(rules[0].clauses[0]).toEqual({
+        }),
+    },
+    check: ({ result }) => {
+      expect(result[0].clauses).toHaveLength(2);
+      expect(result[0].clauses[0]).toEqual({
         attribute: 'domain',
         op: 'in',
         values: ['medical', 'financial'],
       });
-      expect(rules[0].option).toBe('strictness');
-      expect(rules[0].value).toBe('high');
-    });
-  });
+      expect(result[0].option).toBe('strictness');
+      expect(result[0].value).toBe('high');
+    },
+  },
+];
+
+runTable({
+  describe: 'suggestTargetingRules',
+  examples: ruleExamples,
+  process: async ({ traces, instruction, options, preMock }) => {
+    if (preMock) preMock();
+    return suggestTargetingRules(traces, instruction, options);
+  },
 });
