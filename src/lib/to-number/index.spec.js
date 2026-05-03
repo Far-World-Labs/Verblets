@@ -1,38 +1,16 @@
-import { describe, expect, it } from 'vitest';
-
 import toNumber from './index.js';
+import { runTable } from '../examples-runner/index.js';
 
-describe('toNumber', () => {
-  it('parses a plain integer', () => {
-    expect(toNumber('42')).toBe(42);
-  });
+const examples = [
+  { name: 'parses a plain integer', inputs: '42', want: 42 },
+  { name: 'parses a decimal number', inputs: '3.14', want: 3.14 },
+  { name: 'extracts a number from surrounding text', inputs: 'The answer is 7', want: 7 },
+  { name: 'strips currency symbols', inputs: '$1234', want: 1234 },
+  { name: '"undefined" string → undefined', inputs: 'undefined', want: undefined },
+  // stripNumeric('hello') returns '', and +'' is 0.
+  { name: 'text with no digits coerces to 0', inputs: 'hello', want: 0 },
+  { name: 'strips "Answer:" prefix', inputs: 'Answer: 99', want: 99 },
+  { name: 'parses zero', inputs: '0', want: 0 },
+];
 
-  it('parses a decimal number', () => {
-    expect(toNumber('3.14')).toBeCloseTo(3.14);
-  });
-
-  it('parses a number with surrounding text', () => {
-    expect(toNumber('The answer is 7')).toBe(7);
-  });
-
-  it('parses a number with currency symbols', () => {
-    expect(toNumber('$1234')).toBe(1234);
-  });
-
-  it('returns undefined for "undefined" string', () => {
-    expect(toNumber('undefined')).toBeUndefined();
-  });
-
-  it('returns NaN-derived 0 for text with no digits (stripNumeric returns empty string)', () => {
-    // stripNumeric('hello') returns '', and +'' is 0
-    expect(toNumber('hello')).toBe(0);
-  });
-
-  it('handles "Answer:" prefix', () => {
-    expect(toNumber('Answer: 99')).toBe(99);
-  });
-
-  it('parses zero', () => {
-    expect(toNumber('0')).toBe(0);
-  });
-});
+runTable({ describe: 'toNumber', examples, process: (input) => toNumber(input) });

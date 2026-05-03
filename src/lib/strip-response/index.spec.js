@@ -1,56 +1,28 @@
-import { describe, expect, it } from 'vitest';
-
 import stripResponse from './index.js';
+import { runTable } from '../examples-runner/index.js';
 
-describe('stripResponse', () => {
-  it('returns a plain string unchanged', () => {
-    expect(stripResponse('hello world')).toBe('hello world');
-  });
+const examples = [
+  { name: 'plain string passes through', inputs: 'hello world', want: 'hello world' },
+  { name: 'strips "Answer:" prefix', inputs: 'Answer: Paris', want: 'Paris' },
+  { name: 'strips lowercase "answer:" prefix', inputs: 'answer: yes', want: 'yes' },
+  { name: 'strips trailing period', inputs: 'Paris.', want: 'Paris' },
+  { name: 'strips trailing comma', inputs: 'Paris,', want: 'Paris' },
+  { name: 'strips surrounding single quotes', inputs: "'hello'", want: 'hello' },
+  { name: 'strips surrounding double quotes', inputs: '"hello"', want: 'hello' },
+  { name: 'JSON object passes through', inputs: '{"key": "value"}', want: '{"key": "value"}' },
+  { name: 'JSON array passes through', inputs: '["a", "b"]', want: '["a", "b"]' },
+  // The regex also strips "answer:" from JSON keys — known quirk preserved.
+  {
+    name: 'extracts after `===` separator and strips "answer" JSON key prefix',
+    inputs: 'Some question\n===========\n{"answer": true}',
+    want: '{"": true}',
+  },
+  {
+    name: 'extracts embedded JSON from surrounding text',
+    inputs: 'The answer is {"key": "value"} as shown',
+    want: { contains: '"key"' },
+  },
+  { name: 'empty string passes through', inputs: '', want: '' },
+];
 
-  it('removes "Answer:" prefix', () => {
-    expect(stripResponse('Answer: Paris')).toBe('Paris');
-  });
-
-  it('removes "answer:" prefix (lowercase)', () => {
-    expect(stripResponse('answer: yes')).toBe('yes');
-  });
-
-  it('strips trailing punctuation', () => {
-    expect(stripResponse('Paris.')).toBe('Paris');
-    expect(stripResponse('Paris,')).toBe('Paris');
-  });
-
-  it('strips surrounding single quotes', () => {
-    expect(stripResponse("'hello'")).toBe('hello');
-  });
-
-  it('strips surrounding double quotes', () => {
-    expect(stripResponse('"hello"')).toBe('hello');
-  });
-
-  it('returns JSON objects as-is when they start the string', () => {
-    const json = '{"key": "value"}';
-    expect(stripResponse(json)).toBe(json);
-  });
-
-  it('returns JSON arrays as-is when they start the string', () => {
-    const json = '["a", "b"]';
-    expect(stripResponse(json)).toBe(json);
-  });
-
-  it('extracts answer section after separator and strips "answer" key prefix', () => {
-    // The regex also strips "answer:" from JSON keys — this is a known behavior
-    const input = 'Some question\n===========\n{"answer": true}';
-    expect(stripResponse(input)).toBe('{"": true}');
-  });
-
-  it('extracts embedded JSON from surrounding text', () => {
-    const input = 'The answer is {"key": "value"} as shown';
-    const result = stripResponse(input);
-    expect(result).toContain('"key"');
-  });
-
-  it('handles empty string', () => {
-    expect(stripResponse('')).toBe('');
-  });
-});
+runTable({ describe: 'stripResponse', examples, process: (input) => stripResponse(input) });

@@ -1,40 +1,18 @@
-import { describe, expect, it } from 'vitest';
-
 import toEnum from './index.js';
+import { runTable } from '../examples-runner/index.js';
 
-describe('toEnum', () => {
-  const colors = { red: 'red', green: 'green', blue: 'blue' };
+const colors = { red: 'red', green: 'green', blue: 'blue' };
 
-  it('matches an exact key', () => {
-    expect(toEnum('red', colors)).toBe('red');
-  });
+const examples = [
+  { name: 'matches an exact key', inputs: 'red', want: 'red' },
+  { name: 'matches uppercase', inputs: 'RED', want: 'red' },
+  { name: 'matches title case', inputs: 'Green', want: 'green' },
+  { name: 'unrecognized → undefined', inputs: 'purple', want: undefined },
+  { name: 'strips surrounding quotes', inputs: '"blue"', want: 'blue' },
+  { name: 'strips trailing punctuation', inputs: 'red.', want: 'red' },
+  { name: 'strips "Answer:" prefix', inputs: 'Answer: green', want: 'green' },
+  { name: 'trims whitespace', inputs: '  blue  ', want: 'blue' },
+  { name: 'empty string → undefined', inputs: '', want: undefined },
+];
 
-  it('matches case-insensitively', () => {
-    expect(toEnum('RED', colors)).toBe('red');
-    expect(toEnum('Green', colors)).toBe('green');
-  });
-
-  it('returns undefined for unrecognized values', () => {
-    expect(toEnum('purple', colors)).toBeUndefined();
-  });
-
-  it('strips surrounding quotes', () => {
-    expect(toEnum('"blue"', colors)).toBe('blue');
-  });
-
-  it('strips trailing punctuation', () => {
-    expect(toEnum('red.', colors)).toBe('red');
-  });
-
-  it('handles "Answer:" prefix', () => {
-    expect(toEnum('Answer: green', colors)).toBe('green');
-  });
-
-  it('handles whitespace', () => {
-    expect(toEnum('  blue  ', colors)).toBe('blue');
-  });
-
-  it('returns undefined for empty string', () => {
-    expect(toEnum('', colors)).toBeUndefined();
-  });
-});
+runTable({ describe: 'toEnum', examples, process: (input) => toEnum(input, colors) });
