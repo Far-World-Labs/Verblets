@@ -1,71 +1,65 @@
-import { describe, expect, it } from 'vitest';
-import { ModelService } from '../../services/llm-model/index.js';
-
 import shortenText from './index.js';
+import { ModelService } from '../../services/llm-model/index.js';
+import { runTable } from '../examples-runner/index.js';
 
 const testMs = new ModelService();
 
+// Pattern for "compound assertion per row, different per row": pass the
+// constraints in `inputs` (regex / max-token / equality), let the processor
+// translate each constraint into a boolean field, and assert the booleans
+// via `partial`. Keeps row-specific knowledge in the row, not the processor.
 const examples = [
   {
-    name: 'Basic usage',
+    name: 'shortens long text within target tokens',
     inputs: {
       text: 'Hello, world! This is a long text for testing the shortenText function.',
       targetTokenCount: 10,
+      startsWith: /^Hello, world!/,
+      endsWith: /Text function\.$/,
+      maxTokens: 40,
     },
-    want: {
-      start: /^Hello, world!/,
-      end: /Text function\.$/,
-      maxLength: 40,
-    },
+    want: { partial: { matchesStart: true, matchesEnd: true, withinTokenLimit: true } },
   },
   {
-    name: 'No trimming needed',
+    name: 'short text passes through unchanged',
     inputs: {
       text: 'This text is short enough.',
       targetTokenCount: 8,
+      expectedResult: 'This text is short enough.',
     },
-    want: {
-      result: 'This text is short enough.',
-    },
+    want: { partial: { matchesExpected: true } },
   },
   {
-    name: 'Minimum characters removal',
+    name: 'respects minCharsToRemove',
     inputs: {
       text: 'This is another test to check the minimum characters removal feature.',
       targetTokenCount: 6,
       minCharsToRemove: 5,
+      startsWith: /^This is/,
+      endsWith: /feature\.$/,
+      maxTokens: 25,
     },
-    want: {
-      start: /^This is/,
-      end: /feature\.$/,
-      maxLength: 25,
-    },
+    want: { partial: { matchesStart: true, matchesEnd: true, withinTokenLimit: true } },
   },
 ];
 
-describe('Shorten text', () => {
-  examples.forEach((example) => {
-    it(example.name, () => {
-      const got = shortenText(example.inputs.text, {
-        modelService: testMs,
-        targetTokenCount: example.inputs.targetTokenCount,
-        minCharsToRemove: example.inputs.minCharsToRemove,
-      });
+const process = ({
+  text,
+  targetTokenCount,
+  minCharsToRemove,
+  startsWith,
+  endsWith,
+  maxTokens,
+  expectedResult,
+}) => {
+  const got = shortenText(text, { modelService: testMs, targetTokenCount, minCharsToRemove });
+  const tokens = testMs.getBestPublicModel().toTokens(got).length;
+  return {
+    matchesStart: !startsWith || startsWith.test(got),
+    matchesEnd: !endsWith || endsWith.test(got),
+    withinTokenLimit: !maxTokens || tokens <= maxTokens,
+    matchesExpected: expectedResult === undefined || got === expectedResult,
+  };
+};
 
-      if (example.want.result) {
-        expect(got).toEqual(example.want.result);
-      }
-      if (example.want.start) {
-        expect(example.want.start.test(got)).toBe(true);
-      }
-      if (example.want.start) {
-        expect(example.want.end.test(got)).toBe(true);
-      }
-      if (example.want.maxLength) {
-        expect(testMs.getBestPublicModel().toTokens(got).length).toBeLessThanOrEqual(
-          example.want.maxLength
-        );
-      }
-    });
-  });
-});
+runTable({ describe: 'shortenText', examples, process });

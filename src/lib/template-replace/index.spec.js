@@ -1,65 +1,68 @@
-import { describe, expect, it } from 'vitest';
 import templateReplace from './index.js';
+import { runTable } from '../examples-runner/index.js';
 
-describe('templateReplace', () => {
-  it('replaces single placeholder', () => {
-    const result = templateReplace('Hello {name}!', { name: 'World' });
-    expect(result).toBe('Hello World!');
-  });
+const examples = [
+  {
+    name: 'replaces single placeholder',
+    inputs: { template: 'Hello {name}!', data: { name: 'World' } },
+    want: 'Hello World!',
+  },
+  {
+    name: 'replaces multiple placeholders',
+    inputs: {
+      template: 'Hello {name}, you are {age} years old',
+      data: { name: 'John', age: 30 },
+    },
+    want: 'Hello John, you are 30 years old',
+  },
+  {
+    name: 'replaces repeated placeholders',
+    inputs: { template: '{name} said "{name} is great"', data: { name: 'Alice' } },
+    want: 'Alice said "Alice is great"',
+  },
+  {
+    name: 'missing data → blank substitution',
+    inputs: { template: 'Hello {name}!', data: {} },
+    want: 'Hello !',
+  },
+  {
+    name: 'custom missing value substitutes',
+    inputs: { template: 'Hello {name}!', data: {}, missing: 'UNKNOWN' },
+    want: 'Hello UNKNOWN!',
+  },
+  {
+    name: 'null value → blank',
+    inputs: { template: 'Value: {value}', data: { value: null } },
+    want: 'Value: ',
+  },
+  {
+    name: 'coerces non-string values',
+    inputs: {
+      template: 'Count: {count}, Active: {active}',
+      data: { count: 42, active: true },
+    },
+    want: 'Count: 42, Active: true',
+  },
+  {
+    name: 'no data → template unchanged',
+    inputs: { template: 'Hello {name}!' },
+    want: 'Hello {name}!',
+  },
+  {
+    name: 'non-object data → template unchanged',
+    inputs: { template: 'Hello {name}!', data: 'not an object' },
+    want: 'Hello {name}!',
+  },
+  { name: 'empty template', inputs: { template: '', data: { name: 'test' } }, want: '' },
+  {
+    name: 'template with no placeholders',
+    inputs: { template: 'Just plain text', data: { name: 'test' } },
+    want: 'Just plain text',
+  },
+];
 
-  it('replaces multiple placeholders', () => {
-    const result = templateReplace('Hello {name}, you are {age} years old', {
-      name: 'John',
-      age: 30,
-    });
-    expect(result).toBe('Hello John, you are 30 years old');
-  });
-
-  it('replaces multiple instances of same placeholder', () => {
-    const result = templateReplace('{name} said "{name} is great"', { name: 'Alice' });
-    expect(result).toBe('Alice said "Alice is great"');
-  });
-
-  it('handles missing data gracefully', () => {
-    const result = templateReplace('Hello {name}!', {});
-    expect(result).toBe('Hello !');
-  });
-
-  it('uses custom missing value when provided', () => {
-    const result = templateReplace('Hello {name}!', {}, 'UNKNOWN');
-    expect(result).toBe('Hello UNKNOWN!');
-  });
-
-  it('handles null/undefined values', () => {
-    const result = templateReplace('Value: {value}', { value: null });
-    expect(result).toBe('Value: ');
-  });
-
-  it('handles non-string values', () => {
-    const result = templateReplace('Count: {count}, Active: {active}', {
-      count: 42,
-      active: true,
-    });
-    expect(result).toBe('Count: 42, Active: true');
-  });
-
-  it('returns original template when no data provided', () => {
-    const result = templateReplace('Hello {name}!');
-    expect(result).toBe('Hello {name}!');
-  });
-
-  it('returns original template when data is not an object', () => {
-    const result = templateReplace('Hello {name}!', 'not an object');
-    expect(result).toBe('Hello {name}!');
-  });
-
-  it('handles empty template', () => {
-    const result = templateReplace('', { name: 'test' });
-    expect(result).toBe('');
-  });
-
-  it('handles template with no placeholders', () => {
-    const result = templateReplace('Just plain text', { name: 'test' });
-    expect(result).toBe('Just plain text');
-  });
+runTable({
+  describe: 'templateReplace',
+  examples,
+  process: ({ template, data, missing }) => templateReplace(template, data, missing),
 });

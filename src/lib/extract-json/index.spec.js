@@ -1,82 +1,69 @@
-import { describe, it, expect } from 'vitest';
 import extractJson from './index.js';
+import { runTable } from '../examples-runner/index.js';
 
-describe('extractJson', () => {
-  it('parses a clean JSON object string', () => {
-    const result = extractJson('{"name":"Alice","age":30}');
-    expect(result).toEqual({ name: 'Alice', age: 30 });
-  });
+const examples = [
+  {
+    name: 'parses a clean JSON object string',
+    inputs: '{"name":"Alice","age":30}',
+    want: { name: 'Alice', age: 30 },
+  },
+  { name: 'parses a clean JSON array string', inputs: '[1, 2, 3]', want: [1, 2, 3] },
+  {
+    name: 'extracts JSON object surrounded by prose',
+    inputs:
+      'Here\'s the result: {"score": 0.85, "label": "positive"} Let me know if you need more.',
+    want: { score: 0.85, label: 'positive' },
+  },
+  {
+    name: 'extracts JSON from markdown code fences',
+    inputs: '```json\n{"items": ["a", "b", "c"]}\n```',
+    want: { items: ['a', 'b', 'c'] },
+  },
+  {
+    name: 'extracts JSON array from mixed text',
+    inputs: 'The categories are: ["health", "finance", "legal"] as identified.',
+    want: ['health', 'finance', 'legal'],
+  },
+  {
+    name: 'handles braces inside string values',
+    inputs: 'Output: {"data": {"text": "use {curly} and [square] brackets"}, "count": 1}',
+    want: { data: { text: 'use {curly} and [square] brackets' }, count: 1 },
+  },
+  {
+    name: 'handles escaped quotes inside JSON strings',
+    inputs: '{"message": "He said \\"hello\\" to them"}',
+    want: { message: 'He said "hello" to them' },
+  },
+  {
+    name: 'handles nested arrays + objects with surrounding prose',
+    inputs: 'Sure, here you go: {"a": [{"b": [1, 2]}, {"c": {"d": 3}}]} — done!',
+    want: { a: [{ b: [1, 2] }, { c: { d: 3 } }] },
+  },
+  {
+    name: 'prefers object over later array',
+    inputs: '{"items": [1, 2]} and also [3, 4]',
+    want: { items: [1, 2] },
+  },
+  {
+    name: 'extracts array when no object is present',
+    inputs: 'Results: ["alpha", "beta", "gamma"] here',
+    want: ['alpha', 'beta', 'gamma'],
+  },
+  {
+    name: 'extracts array of objects via direct parse',
+    inputs: '[{"id": 1}, {"id": 2}]',
+    want: [{ id: 1 }, { id: 2 }],
+  },
+  {
+    name: 'throws when no JSON object or array is found',
+    inputs: 'This is just plain text with no JSON.',
+    want: { throws: 'No JSON object or array found' },
+  },
+  {
+    name: 'throws on unterminated JSON',
+    inputs: '{"open": true, "nested": {',
+    want: { throws: 'Unterminated JSON' },
+  },
+];
 
-  it('parses a clean JSON array string', () => {
-    const result = extractJson('[1, 2, 3]');
-    expect(result).toEqual([1, 2, 3]);
-  });
-
-  it('extracts JSON object with preamble and trailing text', () => {
-    const input =
-      'Here\'s the result: {"score": 0.85, "label": "positive"} Let me know if you need more.';
-    const result = extractJson(input);
-    expect(result).toEqual({ score: 0.85, label: 'positive' });
-  });
-
-  it('extracts JSON from markdown code fences', () => {
-    const input = '```json\n{"items": ["a", "b", "c"]}\n```';
-    const result = extractJson(input);
-    expect(result).toEqual({ items: ['a', 'b', 'c'] });
-  });
-
-  it('extracts a JSON array from mixed text', () => {
-    const input = 'The categories are: ["health", "finance", "legal"] as identified.';
-    const result = extractJson(input);
-    expect(result).toEqual(['health', 'finance', 'legal']);
-  });
-
-  it('handles nested objects with strings containing braces', () => {
-    const input = 'Output: {"data": {"text": "use {curly} and [square] brackets"}, "count": 1}';
-    const result = extractJson(input);
-    expect(result).toEqual({ data: { text: 'use {curly} and [square] brackets' }, count: 1 });
-  });
-
-  it('handles escaped quotes inside JSON strings', () => {
-    const input = '{"message": "He said \\"hello\\" to them"}';
-    const result = extractJson(input);
-    expect(result).toEqual({ message: 'He said "hello" to them' });
-  });
-
-  it('handles nested arrays and objects', () => {
-    const json = '{"a": [{"b": [1, 2]}, {"c": {"d": 3}}]}';
-    const input = `Sure, here you go: ${json} — done!`;
-    const result = extractJson(input);
-    expect(result).toEqual({ a: [{ b: [1, 2] }, { c: { d: 3 } }] });
-  });
-
-  it('throws when no JSON object or array is found', () => {
-    expect(() => extractJson('This is just plain text with no JSON.')).toThrow(
-      'No JSON object or array found in response'
-    );
-  });
-
-  it('throws on unterminated JSON', () => {
-    expect(() => extractJson('{"open": true, "nested": {')).toThrow(
-      'Unterminated JSON in response'
-    );
-  });
-
-  it('prefers object over array when object appears first', () => {
-    const input = '{"items": [1, 2]} and also [3, 4]';
-    const result = extractJson(input);
-    expect(result).toEqual({ items: [1, 2] });
-  });
-
-  it('extracts array when no object is present', () => {
-    const input = 'Results: ["alpha", "beta", "gamma"] here';
-    const result = extractJson(input);
-    expect(result).toEqual(['alpha', 'beta', 'gamma']);
-  });
-
-  it('extracts array of objects via direct parse', () => {
-    const input = '[{"id": 1}, {"id": 2}]';
-    const result = extractJson(input);
-    expect(result).toEqual([{ id: 1 }, { id: 2 }]);
-  });
-});
+runTable({ describe: 'extractJson', examples, process: (input) => extractJson(input) });
