@@ -1,25 +1,35 @@
-import { describe, expect, it } from 'vitest';
-import { expandExamples, runTable } from './index.js';
+import { describe, expect, it, vi } from 'vitest';
+import {
+  expandExamples,
+  runTable,
+  withRunner,
+  equals,
+  eq,
+  contains,
+  matches,
+  partial,
+  length,
+  truthy,
+  falsy,
+  isNull,
+  isUndefined,
+  throws,
+  all,
+  when,
+} from './index.js';
 
 // ─── expandExamples ────────────────────────────────────────────────────────
-//
-// Pure transform — verify cross-product expansion, function-form inputs/want,
-// and pass-through for examples without `vary`.
 
 const expandCases = [
   {
     name: 'pass through when vary is absent',
-    inputs: {
-      examples: [{ name: 'plain', inputs: { a: 1 }, want: { result: 2 } }],
-    },
-    want: [{ name: 'plain', inputs: { a: 1 }, want: { result: 2 }, varied: {} }],
+    inputs: { examples: [{ name: 'plain', inputs: { a: 1 }, want: { result: 2 } }] },
+    want: [{ name: 'plain', inputs: { a: 1 }, want: { result: 2 }, check: undefined, varied: {} }],
   },
   {
     name: 'pass through when vary is empty object',
-    inputs: {
-      examples: [{ name: 'plain', inputs: { a: 1 }, want: 2, vary: {} }],
-    },
-    want: [{ name: 'plain', inputs: { a: 1 }, want: 2, varied: {} }],
+    inputs: { examples: [{ name: 'plain', inputs: { a: 1 }, want: 2, vary: {} }] },
+    want: [{ name: 'plain', inputs: { a: 1 }, want: 2, check: undefined, varied: {} }],
   },
   {
     name: 'expand single-axis vary into N rows',
@@ -34,9 +44,9 @@ const expandCases = [
       ],
     },
     want: [
-      { name: 'increment (x=1)', inputs: { x: 1 }, want: 2, varied: { x: 1 } },
-      { name: 'increment (x=2)', inputs: { x: 2 }, want: 3, varied: { x: 2 } },
-      { name: 'increment (x=3)', inputs: { x: 3 }, want: 4, varied: { x: 3 } },
+      { name: 'increment (x=1)', inputs: { x: 1 }, want: 2, check: undefined, varied: { x: 1 } },
+      { name: 'increment (x=2)', inputs: { x: 2 }, want: 3, check: undefined, varied: { x: 2 } },
+      { name: 'increment (x=3)', inputs: { x: 3 }, want: 4, check: undefined, varied: { x: 3 } },
     ],
   },
   {
@@ -52,68 +62,38 @@ const expandCases = [
       ],
     },
     want: [
-      { name: 'add (a=1, b=10)', inputs: { a: 1, b: 10 }, want: 11, varied: { a: 1, b: 10 } },
-      { name: 'add (a=1, b=20)', inputs: { a: 1, b: 20 }, want: 21, varied: { a: 1, b: 20 } },
-      { name: 'add (a=2, b=10)', inputs: { a: 2, b: 10 }, want: 12, varied: { a: 2, b: 10 } },
-      { name: 'add (a=2, b=20)', inputs: { a: 2, b: 20 }, want: 22, varied: { a: 2, b: 20 } },
-    ],
-  },
-  {
-    name: 'static want reused across all combinations',
-    inputs: {
-      examples: [
-        {
-          name: 'identity is stable',
-          inputs: ({ flag }) => ({ flag }),
-          want: 'always',
-          vary: { flag: [true, false] },
-        },
-      ],
-    },
-    want: [
       {
-        name: 'identity is stable (flag=true)',
-        inputs: { flag: true },
-        want: 'always',
-        varied: { flag: true },
+        name: 'add (a=1, b=10)',
+        inputs: { a: 1, b: 10 },
+        want: 11,
+        check: undefined,
+        varied: { a: 1, b: 10 },
       },
       {
-        name: 'identity is stable (flag=false)',
-        inputs: { flag: false },
-        want: 'always',
-        varied: { flag: false },
+        name: 'add (a=1, b=20)',
+        inputs: { a: 1, b: 20 },
+        want: 21,
+        check: undefined,
+        varied: { a: 1, b: 20 },
+      },
+      {
+        name: 'add (a=2, b=10)',
+        inputs: { a: 2, b: 10 },
+        want: 12,
+        check: undefined,
+        varied: { a: 2, b: 10 },
+      },
+      {
+        name: 'add (a=2, b=20)',
+        inputs: { a: 2, b: 20 },
+        want: 22,
+        check: undefined,
+        varied: { a: 2, b: 20 },
       },
     ],
   },
   {
-    name: 'static inputs reused across all combinations',
-    inputs: {
-      examples: [
-        {
-          name: 'counts',
-          inputs: { items: [1, 2, 3] },
-          want: ({ batchSize }) => ({ items: [1, 2, 3], batchSize }),
-          vary: { batchSize: [1, 5] },
-        },
-      ],
-    },
-    want: [
-      {
-        name: 'counts (batchSize=1)',
-        inputs: { items: [1, 2, 3] },
-        want: { items: [1, 2, 3], batchSize: 1 },
-        varied: { batchSize: 1 },
-      },
-      {
-        name: 'counts (batchSize=5)',
-        inputs: { items: [1, 2, 3] },
-        want: { items: [1, 2, 3], batchSize: 5 },
-        varied: { batchSize: 5 },
-      },
-    ],
-  },
-  {
-    name: 'empty axis values are skipped (cross-product would zero out otherwise)',
+    name: 'empty axis values are skipped',
     inputs: {
       examples: [
         {
@@ -125,8 +105,23 @@ const expandCases = [
       ],
     },
     want: [
-      { name: 'partial (a=1)', inputs: { a: 1 }, want: 1, varied: { a: 1 } },
-      { name: 'partial (a=2)', inputs: { a: 2 }, want: 2, varied: { a: 2 } },
+      { name: 'partial (a=1)', inputs: { a: 1 }, want: 1, check: undefined, varied: { a: 1 } },
+      { name: 'partial (a=2)', inputs: { a: 2 }, want: 2, check: undefined, varied: { a: 2 } },
+    ],
+  },
+  {
+    name: 'check passes through when present',
+    inputs: {
+      examples: [{ name: 'with-check', inputs: 1, check: equals(1) }],
+    },
+    want: [
+      {
+        name: 'with-check',
+        inputs: 1,
+        want: undefined,
+        check: expect.any(Function),
+        varied: {},
+      },
     ],
   },
 ];
@@ -146,11 +141,7 @@ describe('expandExamples', () => {
   });
 });
 
-// ─── runTable: identity, sync, deep-equal ──────────────────────────────────
-//
-// Eats its own dog food: the harness drives a tiny processor with a literal
-// table. If these pass, the runner can drive vitest correctly. We mix
-// throw-spec, eq-spec, deep-equal, and a vary-expanded row.
+// ─── check builders (eat-our-own-dogfood: drive checks of checks via runTable) ──
 
 const sumProcessor = ({ a, b }) => a + b;
 const identityProcessor = (x) => x;
@@ -159,113 +150,163 @@ const throwingProcessor = ({ msg }) => {
 };
 
 runTable({
-  describe: 'runTable: deep-equal default (sync)',
-  examples: [
-    { name: '1 + 2 = 3', inputs: { a: 1, b: 2 }, want: 3 },
-    { name: '0 + 0 = 0', inputs: { a: 0, b: 0 }, want: 0 },
-    { name: 'negatives', inputs: { a: -5, b: 3 }, want: -2 },
-  ],
+  describe: 'check builders: equals',
+  examples: [{ name: 'equals matches deep-equal value', inputs: { a: 1, b: 2 }, check: equals(3) }],
   process: sumProcessor,
 });
 
-// `{ eq }` exercises the toBe path. We use a frozen reference so toEqual would
-// also pass — the spec is verifying the path runs, not distinguishing equality
-// modes. Use cases where toBe vs toEqual diverge live in chain-level specs.
-const SHARED_REF = Object.freeze({ a: 1 });
 runTable({
-  describe: 'runTable: identity equality via { eq } spec',
-  examples: [{ name: 'same reference passes', inputs: SHARED_REF, want: { eq: SHARED_REF } }],
+  describe: 'check builders: eq',
+  examples: [{ name: 'eq matches identity', inputs: 'x', check: eq('x') }],
   process: identityProcessor,
 });
 
 runTable({
-  describe: 'runTable: throws spec accepts true / string / RegExp',
+  describe: 'check builders: contains / matches / partial / length',
   examples: [
-    { name: 'throws=true accepts any error', inputs: { msg: 'boom' }, want: { throws: true } },
+    { name: 'contains substring', inputs: 'hello world', check: contains('world') },
+    { name: 'contains array element', inputs: [1, 2, 3], check: contains(2) },
+    { name: 'matches RegExp', inputs: 'rate limited (429)', check: matches(/\(\d+\)/) },
+    {
+      name: 'partial picks fields',
+      inputs: { a: 1, b: 2, c: 3 },
+      check: partial({ a: 1, c: 3 }),
+    },
+    { name: 'length n', inputs: [1, 2, 3, 4], check: length(4) },
+  ],
+  process: identityProcessor,
+});
+
+runTable({
+  describe: 'check builders: truthy / falsy / isNull / isUndefined',
+  examples: [
+    { name: 'truthy on non-empty string', inputs: 'x', check: truthy() },
+    { name: 'falsy on 0', inputs: 0, check: falsy() },
+    { name: 'isNull on null', inputs: null, check: isNull() },
+    { name: 'isUndefined on undefined', inputs: undefined, check: isUndefined() },
+  ],
+  process: identityProcessor,
+});
+
+runTable({
+  describe: 'check builders: throws',
+  examples: [
+    { name: 'throws=true accepts any error', inputs: { msg: 'boom' }, check: throws(true) },
+    { name: 'throws() with no arg accepts any error', inputs: { msg: 'boom' }, check: throws() },
     {
       name: 'throws=string substring matches',
       inputs: { msg: 'kaboom now' },
-      want: { throws: 'kaboom' },
+      check: throws('kaboom'),
     },
     {
       name: 'throws=regexp matches',
       inputs: { msg: 'rate limited (429)' },
-      want: { throws: /\(\d+\)/ },
+      check: throws(/\(\d+\)/),
     },
   ],
   process: throwingProcessor,
 });
 
 runTable({
-  describe: 'runTable: vary expands rows',
+  describe: 'check builders: all + when',
   examples: [
     {
-      name: 'sum',
-      inputs: ({ a, b }) => ({ a, b }),
-      want: ({ a, b }) => a + b,
-      vary: { a: [1, 2], b: [10, 100] },
+      name: 'all runs every check',
+      inputs: 'rate limited (429)',
+      check: all(contains('rate limited'), matches(/\(\d+\)/)),
     },
+    {
+      name: 'when fires only on matching predicate',
+      inputs: 'noise',
+      check: when((ctx) => ctx.result.includes('rate'), contains('limited')),
+    },
+  ],
+  process: identityProcessor,
+});
+
+// ─── ctx exposure ─────────────────────────────────────────────────────────
+
+runTable({
+  describe: 'ctx is { result, error, inputs, varied }',
+  examples: [
+    {
+      name: 'check sees inputs and result together',
+      inputs: { x: 5 },
+      check: ({ result, inputs }) => {
+        expect(inputs).toEqual({ x: 5 });
+        expect(result).toBe(10);
+      },
+    },
+    {
+      name: 'check sees varied for vary-expanded rows',
+      inputs: ({ multiplier }) => ({ x: multiplier }),
+      vary: { multiplier: [3, 4] },
+      check: ({ result, varied }) => {
+        expect(result).toBe(varied.multiplier * 2);
+      },
+    },
+  ],
+  process: ({ x }) => x * 2,
+});
+
+// ─── backward-compat: want shapes still work ──────────────────────────────
+
+runTable({
+  describe: 'want shapes still work (deep-equal)',
+  examples: [
+    { name: '1 + 2 = 3', inputs: { a: 1, b: 2 }, want: 3 },
+    { name: 'negatives', inputs: { a: -5, b: 3 }, want: -2 },
   ],
   process: sumProcessor,
 });
 
-// async processor coverage
 runTable({
-  describe: 'runTable: async processor',
+  describe: 'want shapes still work (matchers)',
+  examples: [
+    { name: 'eq', inputs: 1, want: { eq: 1 } },
+    { name: 'contains', inputs: 'foobar', want: { contains: 'oo' } },
+    { name: 'matches', inputs: '429', want: { matches: /\d+/ } },
+    { name: 'partial', inputs: { a: 1, b: 2 }, want: { partial: { a: 1 } } },
+    { name: 'throws=true', inputs: { msg: 'boom' }, want: { throws: true } },
+    { name: 'literal undefined', inputs: undefined, want: undefined },
+    { name: 'literal null', inputs: null, want: null },
+  ],
+  process: (x) => (typeof x === 'object' && x?.msg ? throwingProcessor(x) : x),
+});
+
+// ─── curried form ─────────────────────────────────────────────────────────
+
+const sharedProcessor = vi.fn(({ a, b }) => a * b);
+const runShared = withRunner({ process: sharedProcessor });
+
+runShared({
+  describe: 'withRunner: first table',
+  examples: [
+    { name: '2 × 3', inputs: { a: 2, b: 3 }, check: equals(6) },
+    { name: '4 × 5', inputs: { a: 4, b: 5 }, check: equals(20) },
+  ],
+});
+
+runShared({
+  describe: 'withRunner: second table reuses processor',
+  examples: [
+    { name: '0 × n is 0', inputs: { a: 0, b: 99 }, check: equals(0) },
+    { name: '1 × n is n', inputs: { a: 1, b: 7 }, check: equals(7) },
+  ],
+});
+
+// ─── async checks ─────────────────────────────────────────────────────────
+
+runTable({
+  describe: 'check can be async',
   examples: [
     {
-      name: 'awaits the result',
-      inputs: { delay: 1, value: 42 },
-      want: 42,
-    },
-  ],
-  process: async ({ delay, value }) => {
-    await new Promise((r) => setTimeout(r, delay));
-    return value;
-  },
-});
-
-// `{ contains }` — substring (string) and element (array)
-runTable({
-  describe: 'runTable: contains spec',
-  examples: [
-    { name: 'string contains substring', inputs: 'hello world', want: { contains: 'world' } },
-    { name: 'array contains element', inputs: [1, 2, 3], want: { contains: 2 } },
-  ],
-  process: identityProcessor,
-});
-
-// `{ matches }` — string + RegExp
-runTable({
-  describe: 'runTable: matches spec',
-  examples: [
-    { name: 'matches RegExp', inputs: 'rate limited (429)', want: { matches: /\(\d+\)/ } },
-    { name: 'matches string substring', inputs: 'hello world', want: { matches: 'world' } },
-  ],
-  process: identityProcessor,
-});
-
-// `{ partial }` — toMatchObject
-runTable({
-  describe: 'runTable: partial spec',
-  examples: [
-    {
-      name: 'asserts only specific fields of a complex object',
-      inputs: { a: 1, b: 2, c: 3, nested: { x: 10, y: 20 } },
-      want: { partial: { a: 1, nested: { x: 10 } } },
-    },
-  ],
-  process: identityProcessor,
-});
-
-// Compound matchers combine
-runTable({
-  describe: 'runTable: combined matchers',
-  examples: [
-    {
-      name: 'contains + matches both apply',
-      inputs: 'rate limited (429) on attempt 3',
-      want: { contains: 'rate limited', matches: /\(\d+\)/ },
+      name: 'async check awaits',
+      inputs: 'result',
+      check: async (ctx) => {
+        await new Promise((r) => setTimeout(r, 1));
+        expect(ctx.result).toBe('result');
+      },
     },
   ],
   process: identityProcessor,

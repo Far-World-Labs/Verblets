@@ -11,27 +11,76 @@
 New specs should use the table-driven runner in `src/lib/examples-runner/` and the fishery factory families in `src/lib/test-utils/factories/`. The `inventory.json` in `.claude/spec/test-inventory/` lists every existing spec and its proposed table group; migrations land module by module.
 
 ```js
-import { runTable } from '../../lib/examples-runner/index.js';
+import { runTable, equals, contains, throws, all } from '../../lib/examples-runner/index.js';
 import { popReferenceVariants } from '../../lib/test-utils/factories/pop-reference.js';
 
 const examples = [
-  { name: 'returns the references the LLM produced', inputs: {...}, want: 1 },
-  { name: 'throws on null', inputs: { mockResponse: popReferenceVariants.isNull }, want: { throws: 'object' } },
+  { name: 'returns the references the LLM produced', inputs: {...}, check: equals(1) },
+  { name: 'prompt mentions sources', inputs: {...}, check: contains('<sources>') },
+  { name: 'throws on malformed shape', inputs: {...}, check: throws('array') },
+  // Inline checks read the full ctx — { result, error, inputs, varied }.
+  {
+    name: 'compound assertion via inline check',
+    inputs: {...},
+    check: ({ result, inputs }) => {
+      expect(result.length).toBe(2);
+      expect(result[0]).toMatchObject({ source: inputs.expectedSource });
+    },
+  },
 ];
 
-runTable({ describe: 'popReferenceItem: result count', examples, process });
+runTable({ describe: 'popReferenceItem', examples, process });
 ```
 
-- **`want`** matchers (combine freely except `throws`, which is exclusive):
-  - literal value: deep-equal via `toEqual`
-  - function `(varied) => expected`: called per row when `vary` expands, then deep-equal
-  - `{ throws: true | string | RegExp }`: assert sync/async throw, optionally match the message
-  - `{ eq: ref }`: identity equality via `toBe`
-  - `{ contains: x }`: `toContain` (substring, array element, set member)
-  - `{ matches: 'sub' | /re/ }`: `toMatch`
-  - `{ partial: {...} }`: `toMatchObject` for asserting only specific fields of a complex result
-- **`vary`** (optional) declares cross-product axes; `expandExamples` turns one row into N. `inputs` and `want` may also be functions that receive the varied combo.
-- **Distill assertions into the processor's return.** Most "imperative-only" tests collapse: a processor that returns `{ length, outcome, schemaName }` plus `want: { partial: {...} }` covers compound assertions cleanly. Reserve raw `it()` blocks for cases that genuinely don't reduce to want/got compare.
+### `check` — composable assertions
+
+A `check` is `(ctx) => void | Promise<void>` where `ctx = { result, error, inputs, varied }`. The runner calls it once per row and the check uses vitest's `expect` for assertions.
+
+Base check builders exported from `examples-runner`:
+
+| Builder | Asserts on | Vitest equivalent |
+|---|---|---|
+| `equals(v)` | `result` deep-equals `v` | `toEqual(v)` |
+| `eq(v)` | `result === v` | `toBe(v)` |
+| `contains(x)` | `result` contains `x` | `toContain(x)` |
+| `matches(s\|re)` | `result` matches | `toMatch(...)` |
+| `partial(obj)` | `result` matches subset | `toMatchObject(obj)` |
+| `length(n)` | `result.length === n` | `toHaveLength(n)` |
+| `truthy()` / `falsy()` | result truthy/falsy | `toBeTruthy()` / `toBeFalsy()` |
+| `isNull()` / `isUndefined()` | `result` is null/undefined | `toBeNull()` / `toBeUndefined()` |
+| `throws(matcher?)` | processor threw (optionally matching) | `expect(thrower).toThrow(...)` |
+| `all(...checks)` | every check passes against the same ctx | n/a |
+| `when(predicate, check)` | run `check` only if `predicate(ctx)` truthy | n/a |
+
+When nothing in the base set fits, write the check inline — `check: (ctx) => { ... }` — and reach for `expect` directly.
+
+### `want` — legacy/simple shorthand
+
+`want` still works for the most common cases and is translated internally into the matching check. New code can use `want` for quick rows and graduate to `check` when something doesn't fit.
+
+| `want` shape | Translates to |
+|---|---|
+| literal value | `equals(value)` |
+| function `(varied) => v` | called per row, then `equals` |
+| `{ throws: true \| string \| RegExp }` | `throws(matcher)` |
+| `{ eq: v }` | `eq(v)` |
+| `{ contains: x }` | `contains(x)` |
+| `{ matches: x }` | `matches(x)` |
+| `{ partial: obj }` | `partial(obj)` |
+
+### `vary` — cross-product expansion
+
+Optional. Declares axes; `expandExamples` turns one row into N (one per combination). `inputs` and `want` may be functions that receive the varied combo.
+
+### `withRunner` — shared config
+
+When several tables share `process` / `beforeEach`, partial-apply once:
+
+```js
+const runScale = withRunner({ process: scaleProcessor, beforeEach: clearMocks });
+runScale({ describe: 'numbers', examples: numericExamples });
+runScale({ describe: 'strings', examples: stringExamples });
+```
 
 Reference migrations: `src/lib/pave/index.spec.js` (pure utility) and `src/chains/pop-reference/index.spec.js` (LLM-backed chain).
 
