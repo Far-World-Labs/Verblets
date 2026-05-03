@@ -1,11 +1,11 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { vi, beforeEach, expect } from 'vitest';
 import tagVocabulary, {
   generateInitialVocabulary,
   refineVocabulary,
   computeTagStatistics,
 } from './index.js';
+import { runTable, equals, all, throws } from '../../lib/examples-runner/index.js';
 
-// Mock the llm module
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(),
   jsonSchema: (name, schema) => ({ type: 'json_schema', json_schema: { name, schema } }),
@@ -13,248 +13,269 @@ vi.mock('../../lib/llm/index.js', () => ({
 
 import llm from '../../lib/llm/index.js';
 
-describe('tag-vocabulary', () => {
-  const mockItems = [
-    'Pay credit card bill',
-    'Schedule dentist appointment',
-    'Quarterly tax filing',
-    'Buy groceries',
-    'Team meeting at 3pm',
-  ];
+beforeEach(() => vi.clearAllMocks());
 
-  const mockVocabulary = {
-    tags: [
-      { id: 'urgent', label: 'Urgent', description: 'Immediate action needed' },
-      { id: 'financial', label: 'Financial', description: 'Money related' },
-      { id: 'personal', label: 'Personal', description: 'Personal tasks' },
-      { id: 'work', label: 'Work', description: 'Work related' },
-      { id: 'health', label: 'Health', description: 'Health related' },
-    ],
-  };
+const mockItems = [
+  'Pay credit card bill',
+  'Schedule dentist appointment',
+  'Quarterly tax filing',
+  'Buy groceries',
+  'Team meeting at 3pm',
+];
 
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+const mockVocabulary = {
+  tags: [
+    { id: 'urgent', label: 'Urgent', description: 'Immediate action needed' },
+    { id: 'financial', label: 'Financial', description: 'Money related' },
+    { id: 'personal', label: 'Personal', description: 'Personal tasks' },
+    { id: 'work', label: 'Work', description: 'Work related' },
+    { id: 'health', label: 'Health', description: 'Health related' },
+  ],
+};
 
-  describe('computeTagStatistics', () => {
-    it('should compute tag usage statistics', () => {
-      const taggedItems = [
-        ['urgent', 'financial'],
-        ['personal', 'health'],
-        ['financial'],
-        ['work'],
-        ['urgent', 'work'],
-      ];
+// ─── computeTagStatistics ─────────────────────────────────────────────────
 
-      const stats = computeTagStatistics(mockVocabulary, taggedItems);
-
-      expect(stats.stats.totalItems).toBe(5);
-      expect(stats.stats.itemsWithTags).toBe(5);
-      expect(stats.stats.coveragePercent).toBe(100);
-      expect(stats.stats.avgTagsPerItem).toBeCloseTo(1.6); // 8 total tags / 5 items
-      expect(stats.stats.unusedTags).toBe(0);
-
-      expect(stats.mostUsed).toHaveLength(3);
-      expect(stats.mostUsed[0].tag.id).toBe('urgent');
-      expect(stats.mostUsed[0].count).toBe(2);
-
-      expect(stats.leastUsed).toHaveLength(3);
-      expect(stats.problematicItems).toBeDefined();
-    });
-
-    it('should identify problematic items', () => {
-      const taggedItems = [
-        ['urgent', 'financial', 'personal', 'work'], // overtagged
-        [], // untagged
-        ['financial'],
-        ['work'],
-        ['urgent'],
-      ];
-
-      const stats = computeTagStatistics(mockVocabulary, taggedItems, {
-        problematicSampleSize: 2,
-      });
-
-      const untagged = stats.problematicItems.filter((p) => p.type === 'untagged');
-      const overtagged = stats.problematicItems.filter((p) => p.type === 'overtagged');
-
-      expect(untagged).toHaveLength(1);
-      expect(untagged[0].itemIndex).toBe(1);
-
-      expect(overtagged).toHaveLength(1);
-      expect(overtagged[0].itemIndex).toBe(0);
-      expect(overtagged[0].tagCount).toBe(4);
-    });
-
-    it('should handle empty tag arrays', () => {
-      const taggedItems = [[], [], []];
-
-      const stats = computeTagStatistics(mockVocabulary, taggedItems);
-
-      expect(stats.stats.itemsWithTags).toBe(0);
-      expect(stats.stats.coveragePercent).toBe(0);
-      expect(stats.stats.avgTagsPerItem).toBe(0);
-      expect(stats.stats.unusedTags).toBe(5);
-    });
-  });
-
-  describe('generateInitialVocabulary', () => {
-    it('should generate vocabulary from text specification', async () => {
-      llm.mockResolvedValueOnce(mockVocabulary);
-
-      const spec = 'Create tags for task management with urgency and category facets';
-      const result = await generateInitialVocabulary(spec, mockItems.slice(0, 2));
-
-      expect(llm).toHaveBeenCalledWith(
-        expect.stringContaining(spec),
-        expect.objectContaining({
-          responseFormat: expect.objectContaining({
-            type: 'json_schema',
-          }),
-        })
-      );
-      expect(result).toEqual(mockVocabulary);
-    });
-
-    it('should include sample items in generation', async () => {
-      llm.mockResolvedValueOnce(mockVocabulary);
-
-      await generateInitialVocabulary('Task tags', mockItems);
-
-      const call = llm.mock.calls[0][0];
-      expect(call).toContain('Pay credit card bill');
-      expect(call).toContain('sample-items');
-    });
-  });
-
-  describe('refineVocabulary', () => {
-    it('should refine vocabulary based on usage', async () => {
-      const taggedItems = [
-        ['urgent', 'financial'],
-        ['personal'],
-        ['financial'],
-        ['work'],
-        ['urgent', 'work'],
-      ];
-
-      const refinedVocab = {
-        ...mockVocabulary,
-        tags: [
-          ...mockVocabulary.tags.slice(0, 4), // Remove health tag
-          { id: 'routine', label: 'Routine', description: 'Regular tasks' },
+runTable({
+  describe: 'computeTagStatistics',
+  examples: [
+    {
+      name: 'computes tag usage statistics',
+      inputs: {
+        vocab: mockVocabulary,
+        tagged: [
+          ['urgent', 'financial'],
+          ['personal', 'health'],
+          ['financial'],
+          ['work'],
+          ['urgent', 'work'],
         ],
-      };
-
-      llm.mockResolvedValueOnce(refinedVocab);
-
-      const result = await refineVocabulary(mockVocabulary, taggedItems, 'Task management tags');
-
-      const call = llm.mock.calls[0][0];
-      expect(call).toContain('usage-statistics');
-      expect(call).toContain('most-used-tags');
-      expect(call).toContain('least-used-tags');
-      expect(result).toEqual(refinedVocab);
-    });
-
-    it('should include problematic items in refinement', async () => {
-      const taggedItems = [
-        ['urgent', 'financial', 'personal', 'work'], // overtagged
-        [], // untagged
-        ['financial'],
-      ];
-
-      llm.mockResolvedValueOnce(mockVocabulary);
-
-      await refineVocabulary(mockVocabulary, taggedItems, 'Tags');
-
-      const call = llm.mock.calls[0][0];
-      expect(call).toContain('problematic-items');
-      expect(call).toContain('untagged');
-      expect(call).toContain('overtagged');
-    });
-  });
-
-  describe('tagVocabulary', () => {
-    it('should generate and refine vocabulary with tagger', async () => {
-      const mockTagger = vi.fn();
-      const taggedResults = [['urgent', 'financial'], ['personal'], ['financial']];
-
-      llm
-        .mockResolvedValueOnce(mockVocabulary) // generateInitialVocabulary
-        .mockResolvedValueOnce(mockVocabulary); // refineVocabulary
-
-      mockTagger.mockResolvedValueOnce(taggedResults);
-
-      const result = await tagVocabulary('Task tags', mockItems, {
-        tagger: mockTagger,
-        sampleSize: 2,
-      });
-
-      expect(llm).toHaveBeenCalledTimes(2);
-      expect(mockTagger).toHaveBeenCalledWith(mockItems, mockVocabulary);
-      expect(result).toEqual(mockVocabulary);
-    });
-
-    it('should throw error without tagger', async () => {
-      await expect(tagVocabulary('Task tags', mockItems, {})).rejects.toThrow(
-        /tagger function must be provided/
-      );
-    });
-
-    it('should respect sample size', async () => {
-      const mockTagger = vi.fn(() => Promise.resolve([]));
-
-      llm.mockResolvedValueOnce(mockVocabulary).mockResolvedValueOnce(mockVocabulary);
-
-      const longList = Array(100).fill('item');
-      await tagVocabulary('Tags', longList, {
-        tagger: mockTagger,
-        sampleSize: 10,
-      });
-
-      // Check that only 10 sample items were used for initial generation
-      const firstCall = llm.mock.calls[0][0];
-      // The prompt should contain sample-items tag with an array
-      expect(firstCall).toContain('<sample-items>');
-      expect(firstCall).toContain('</sample-items>');
-
-      // Extract and parse the sample items
-      const sampleMatch = firstCall.match(/<sample-items>([\s\S]*?)<\/sample-items>/);
-      expect(sampleMatch).toBeTruthy();
-
-      // The content should be a JSON array of 10 items
-      const sampleContent = JSON.parse(sampleMatch[1]);
-      expect(sampleContent).toHaveLength(10);
-    });
-  });
-
-  describe('integration with tags chain', () => {
-    it('should work with a mock tags chain', async () => {
-      // Simulate a configured tags chain
-      const mockTagsChain = vi.fn(async (items, _vocabulary) => {
-        // Return tag arrays based on simple logic
-        return items.map((item) => {
-          const tags = [];
-          if (item.includes('urgent') || item.includes('bill')) {
-            tags.push('urgent');
-          }
-          if (item.includes('financial') || item.includes('tax')) {
-            tags.push('financial');
-          }
-          return tags;
+      },
+      check: ({ result }) => {
+        expect(result.stats).toMatchObject({
+          totalItems: 5,
+          itemsWithTags: 5,
+          coveragePercent: 100,
+          unusedTags: 0,
         });
-      });
+        expect(result.stats.avgTagsPerItem).toBeCloseTo(1.6);
+        expect(result.mostUsed).toHaveLength(3);
+        expect(result.mostUsed[0]).toMatchObject({ tag: { id: 'urgent' }, count: 2 });
+        expect(result.leastUsed).toHaveLength(3);
+        expect(result.problematicItems).toBeDefined();
+      },
+    },
+    {
+      name: 'identifies problematic items',
+      inputs: {
+        vocab: mockVocabulary,
+        tagged: [
+          ['urgent', 'financial', 'personal', 'work'],
+          [],
+          ['financial'],
+          ['work'],
+          ['urgent'],
+        ],
+        options: { problematicSampleSize: 2 },
+      },
+      check: ({ result }) => {
+        const untagged = result.problematicItems.filter((p) => p.type === 'untagged');
+        const overtagged = result.problematicItems.filter((p) => p.type === 'overtagged');
+        expect(untagged).toHaveLength(1);
+        expect(untagged[0].itemIndex).toBe(1);
+        expect(overtagged).toHaveLength(1);
+        expect(overtagged[0]).toMatchObject({ itemIndex: 0, tagCount: 4 });
+      },
+    },
+    {
+      name: 'handles empty tag arrays',
+      inputs: { vocab: mockVocabulary, tagged: [[], [], []] },
+      check: ({ result }) =>
+        expect(result.stats).toMatchObject({
+          itemsWithTags: 0,
+          coveragePercent: 0,
+          avgTagsPerItem: 0,
+          unusedTags: 5,
+        }),
+    },
+  ],
+  process: ({ vocab, tagged, options }) => computeTagStatistics(vocab, tagged, options),
+});
 
-      llm.mockResolvedValueOnce(mockVocabulary).mockResolvedValueOnce(mockVocabulary);
+// ─── generateInitialVocabulary ────────────────────────────────────────────
 
-      const result = await tagVocabulary(
-        'Categorize by urgency and type',
-        ['urgent task', 'tax filing', 'other item'],
-        { tagger: mockTagsChain }
-      );
+runTable({
+  describe: 'generateInitialVocabulary',
+  examples: [
+    {
+      name: 'generates vocabulary from text specification',
+      inputs: {
+        spec: 'Create tags for task management with urgency and category facets',
+        items: mockItems.slice(0, 2),
+        preMock: () => llm.mockResolvedValueOnce(mockVocabulary),
+      },
+      check: all(equals(mockVocabulary), () =>
+        expect(llm).toHaveBeenCalledWith(
+          expect.stringContaining(
+            'Create tags for task management with urgency and category facets'
+          ),
+          expect.objectContaining({
+            responseFormat: expect.objectContaining({ type: 'json_schema' }),
+          })
+        )
+      ),
+    },
+    {
+      name: 'includes sample items in generation',
+      inputs: {
+        spec: 'Task tags',
+        items: mockItems,
+        preMock: () => llm.mockResolvedValueOnce(mockVocabulary),
+      },
+      check: () => {
+        const prompt = llm.mock.calls[0][0];
+        expect(prompt).toContain('Pay credit card bill');
+        expect(prompt).toContain('sample-items');
+      },
+    },
+  ],
+  process: async ({ spec, items, preMock }) => {
+    if (preMock) preMock();
+    return generateInitialVocabulary(spec, items);
+  },
+});
 
-      expect(mockTagsChain).toHaveBeenCalled();
-      expect(result).toBeDefined();
-    });
-  });
+// ─── refineVocabulary ─────────────────────────────────────────────────────
+
+const refinedVocab = {
+  ...mockVocabulary,
+  tags: [
+    ...mockVocabulary.tags.slice(0, 4),
+    { id: 'routine', label: 'Routine', description: 'Regular tasks' },
+  ],
+};
+
+runTable({
+  describe: 'refineVocabulary',
+  examples: [
+    {
+      name: 'refines vocabulary based on usage',
+      inputs: {
+        vocab: mockVocabulary,
+        tagged: [
+          ['urgent', 'financial'],
+          ['personal'],
+          ['financial'],
+          ['work'],
+          ['urgent', 'work'],
+        ],
+        spec: 'Task management tags',
+        preMock: () => llm.mockResolvedValueOnce(refinedVocab),
+      },
+      check: ({ result }) => {
+        const prompt = llm.mock.calls[0][0];
+        expect(prompt).toContain('usage-statistics');
+        expect(prompt).toContain('most-used-tags');
+        expect(prompt).toContain('least-used-tags');
+        expect(result).toEqual(refinedVocab);
+      },
+    },
+    {
+      name: 'includes problematic items in refinement',
+      inputs: {
+        vocab: mockVocabulary,
+        tagged: [['urgent', 'financial', 'personal', 'work'], [], ['financial']],
+        spec: 'Tags',
+        preMock: () => llm.mockResolvedValueOnce(mockVocabulary),
+      },
+      check: () => {
+        const prompt = llm.mock.calls[0][0];
+        expect(prompt).toContain('problematic-items');
+        expect(prompt).toContain('untagged');
+        expect(prompt).toContain('overtagged');
+      },
+    },
+  ],
+  process: async ({ vocab, tagged, spec, preMock }) => {
+    if (preMock) preMock();
+    return refineVocabulary(vocab, tagged, spec);
+  },
+});
+
+// ─── tagVocabulary (orchestrator) ─────────────────────────────────────────
+
+runTable({
+  describe: 'tagVocabulary',
+  examples: [
+    {
+      name: 'generates and refines vocabulary with tagger',
+      inputs: {
+        spec: 'Task tags',
+        items: mockItems,
+        options: { sampleSize: 2 },
+        preMock: () => {
+          llm.mockResolvedValueOnce(mockVocabulary).mockResolvedValueOnce(mockVocabulary);
+          const tagger = vi.fn();
+          tagger.mockResolvedValueOnce([['urgent', 'financial'], ['personal'], ['financial']]);
+          return tagger;
+        },
+      },
+      check: ({ result }) => {
+        expect(llm).toHaveBeenCalledTimes(2);
+        expect(result.tagger).toHaveBeenCalledWith(mockItems, mockVocabulary);
+        expect(result.value).toEqual(mockVocabulary);
+      },
+    },
+    {
+      name: 'throws without tagger',
+      inputs: { spec: 'Task tags', items: mockItems, options: {} },
+      check: throws(/tagger function must be provided/),
+    },
+    {
+      name: 'respects sample size',
+      inputs: {
+        spec: 'Tags',
+        items: Array(100).fill('item'),
+        options: { sampleSize: 10 },
+        preMock: () => {
+          llm.mockResolvedValueOnce(mockVocabulary).mockResolvedValueOnce(mockVocabulary);
+          return vi.fn(() => Promise.resolve([]));
+        },
+      },
+      check: () => {
+        const prompt = llm.mock.calls[0][0];
+        expect(prompt).toContain('<sample-items>');
+        expect(prompt).toContain('</sample-items>');
+        const sampleMatch = prompt.match(/<sample-items>([\s\S]*?)<\/sample-items>/);
+        expect(sampleMatch).toBeTruthy();
+        expect(JSON.parse(sampleMatch[1])).toHaveLength(10);
+      },
+    },
+    {
+      name: 'works with a mock tags chain',
+      inputs: {
+        spec: 'Categorize by urgency and type',
+        items: ['urgent task', 'tax filing', 'other item'],
+        preMock: () => {
+          llm.mockResolvedValueOnce(mockVocabulary).mockResolvedValueOnce(mockVocabulary);
+          return vi.fn(async (items) =>
+            items.map((item) => {
+              const tags = [];
+              if (item.includes('urgent') || item.includes('bill')) tags.push('urgent');
+              if (item.includes('financial') || item.includes('tax')) tags.push('financial');
+              return tags;
+            })
+          );
+        },
+      },
+      check: ({ result }) => {
+        expect(result.tagger).toHaveBeenCalled();
+        expect(result.value).toBeDefined();
+      },
+    },
+  ],
+  process: async ({ spec, items, options, preMock }) => {
+    const tagger = preMock?.();
+    const value = await tagVocabulary(spec, items, { ...options, tagger });
+    return { value, tagger };
+  },
 });
