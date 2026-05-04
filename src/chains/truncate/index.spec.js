@@ -1,6 +1,6 @@
 import { vi, beforeEach, expect } from 'vitest';
 import truncate from './index.js';
-import { runTable } from '../../lib/examples-runner/index.js';
+import { runTable, applyMocks } from '../../lib/examples-runner/index.js';
 
 vi.mock('../score/index.js', () => ({
   default: vi.fn(),
@@ -19,18 +19,18 @@ runTable({
       inputs: {
         text: 'All content is important and should stay.',
         instructions: 'Remove boring content',
-        mock: () => score.mockResolvedValueOnce([8, 7, 9]),
-        wantFullLength: true,
       },
+      mocks: { score: [[8, 7, 9]] },
+      want: { fullLength: true },
     },
     {
       name: 'truncates when a chunk from the end scores below threshold',
       inputs: {
         text: 'Important content at the beginning. Less important content at the end.',
         instructions: 'Remove boring content',
-        mock: () => score.mockResolvedValueOnce([3]),
-        wantTruncated: true,
       },
+      mocks: { score: [[3]] },
+      want: { truncated: true },
     },
     {
       name: 'strictness=high triggers removal when scores below threshold 7',
@@ -38,9 +38,9 @@ runTable({
         text: 'Short test text.',
         instructions: 'criteria',
         options: { strictness: 'high' },
-        mock: () => score.mockResolvedValueOnce([5, 5, 5]),
-        wantTruncated: true,
       },
+      mocks: { score: [[5, 5, 5]] },
+      want: { truncated: true },
     },
     {
       name: 'strictness=low keeps everything when scores above threshold 4',
@@ -48,9 +48,9 @@ runTable({
         text: 'Short test text.',
         instructions: 'criteria',
         options: { strictness: 'low' },
-        mock: () => score.mockResolvedValueOnce([5, 5, 5]),
-        wantFullLength: true,
       },
+      mocks: { score: [[5, 5, 5]] },
+      want: { fullLength: true },
     },
     {
       name: 'accepts raw number for strictness',
@@ -58,9 +58,9 @@ runTable({
         text: 'Short test text.',
         instructions: 'criteria',
         options: { strictness: 3 },
-        mock: () => score.mockResolvedValueOnce([5, 5, 5]),
-        wantFullLength: true,
       },
+      mocks: { score: [[5, 5, 5]] },
+      want: { fullLength: true },
     },
     {
       name: 'forwards config to score chain',
@@ -68,36 +68,33 @@ runTable({
         text: 'Test text',
         instructions: 'Remove boring content',
         options: { llm: 'custom-model', customOption: 'value' },
-        mock: () => score.mockResolvedValueOnce([8]),
-        wantScoreConfig: { llm: 'custom-model', customOption: 'value' },
       },
+      mocks: { score: [[8]] },
+      want: { scoreConfig: { llm: 'custom-model', customOption: 'value' } },
     },
     {
       name: 'handles single-chunk text',
-      inputs: {
-        text: 'Hi',
-        instructions: 'Remove boring content',
-        mock: () => score.mockResolvedValueOnce([8]),
-        want: 2,
-      },
+      inputs: { text: 'Hi', instructions: 'Remove boring content' },
+      mocks: { score: [[8]] },
+      want: { value: 2 },
     },
   ],
-  process: async ({ text, instructions, options, mock }) => {
-    if (mock) mock();
-    return truncate(text, instructions, options);
+  process: async ({ inputs, mocks }) => {
+    applyMocks(mocks, { score });
+    return truncate(inputs.text, inputs.instructions, inputs.options);
   },
-  expects: ({ result, inputs }) => {
-    if (inputs.wantFullLength) expect(result).toBe(inputs.text.length);
-    if (inputs.wantTruncated) {
+  expects: ({ result, inputs, want }) => {
+    if (want.fullLength) expect(result).toBe(inputs.text.length);
+    if (want.truncated) {
       expect(result).toBeLessThan(inputs.text.length);
       expect(result).toBeGreaterThanOrEqual(0);
     }
-    if ('want' in inputs) expect(result).toBe(inputs.want);
-    if (inputs.wantScoreConfig) {
+    if ('value' in want) expect(result).toBe(want.value);
+    if (want.scoreConfig) {
       expect(score).toHaveBeenCalledWith(
         expect.any(Array),
         expect.stringContaining(inputs.instructions),
-        expect.objectContaining(inputs.wantScoreConfig)
+        expect.objectContaining(want.scoreConfig)
       );
     }
   },

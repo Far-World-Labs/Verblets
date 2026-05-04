@@ -27,12 +27,8 @@ runTable({
   examples: [
     {
       name: 'joins fragments via LLM with transitions',
-      inputs: {
-        items: ['Hello', 'world', 'today'],
-        instructions: 'Connect with simple words',
-        wantContains: ['Hello', 'world', 'today'],
-        wantLlmCalled: true,
-      },
+      inputs: { items: ['Hello', 'world', 'today'], instructions: 'Connect with simple words' },
+      want: { contains: ['Hello', 'world', 'today'], llmCalled: true },
     },
     {
       name: 'applies windowed processing when configured',
@@ -40,27 +36,28 @@ runTable({
         items: ['a', 'b', 'c'],
         instructions: 'Simple connections',
         options: { windowSize: 2 },
-        wantNonEmpty: true,
-        wantLlmCalled: true,
       },
+      want: { nonEmpty: true, llmCalled: true },
     },
     {
       name: 'returns empty string for empty array',
-      inputs: { items: [], want: '', wantNoLlm: true },
+      inputs: { items: [] },
+      want: { value: '', noLlm: true },
     },
     {
       name: 'returns raw item for single-element array',
-      inputs: { items: ['only'], want: 'only', wantNoLlm: true },
+      inputs: { items: ['only'] },
+      want: { value: 'only', noLlm: true },
     },
   ],
-  process: ({ items, instructions, options }) => join(items, instructions, options),
-  expects: ({ result, inputs }) => {
-    if ('want' in inputs) expect(result).toBe(inputs.want);
-    if (inputs.wantContains) {
-      for (const fragment of inputs.wantContains) expect(result).toContain(fragment);
+  process: ({ inputs }) => join(inputs.items, inputs.instructions, inputs.options),
+  expects: ({ result, want }) => {
+    if ('value' in want) expect(result).toBe(want.value);
+    if (want.contains) {
+      for (const fragment of want.contains) expect(result).toContain(fragment);
     }
-    if (inputs.wantNonEmpty) expect(result.length).toBeGreaterThan(0);
-    if (inputs.wantLlmCalled) expect(llm).toHaveBeenCalled();
-    if (inputs.wantNoLlm) expect(llm).not.toHaveBeenCalled();
+    if (want.nonEmpty) expect(result.length).toBeGreaterThan(0);
+    if (want.llmCalled) expect(llm).toHaveBeenCalled();
+    if (want.noLlm) expect(llm).not.toHaveBeenCalled();
   },
 });

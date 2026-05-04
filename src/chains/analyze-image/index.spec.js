@@ -1,6 +1,6 @@
 import { beforeEach, vi, expect } from 'vitest';
 import { ChainEvent, Kind } from '../../lib/progress/constants.js';
-import { runTable } from '../../lib/examples-runner/index.js';
+import { runTable, applyMocks } from '../../lib/examples-runner/index.js';
 
 vi.mock('../../lib/llm/index.js', async () => {
   const actual = await vi.importActual('../../lib/llm/index.js');
@@ -32,30 +32,23 @@ import { imageToBase64, tileImages } from '../../lib/image-utils/index.js';
 
 beforeEach(() => vi.clearAllMocks());
 
-// ─── analyzeImage ──────────────────────────────────────────────────────
-
 runTable({
   describe: 'analyze-image',
   examples: [
     {
       name: 'accepts a single string path and calls imageToBase64 once',
-      inputs: {
-        images: '/photos/cat.png',
-        instructions: 'describe this image',
-        wantToBase64Calls: 1,
-        wantToBase64Args: ['/photos/cat.png'],
-        wantLlmCalls: 1,
-        wantValue: 'Analysis of the image content',
+      inputs: { images: '/photos/cat.png', instructions: 'describe this image' },
+      want: {
+        toBase64Calls: 1,
+        toBase64Args: ['/photos/cat.png'],
+        llmCalls: 1,
+        value: 'Analysis of the image content',
       },
     },
     {
       name: 'accepts an array of paths and calls imageToBase64 for each',
-      inputs: {
-        images: ['/photos/a.png', '/photos/b.png'],
-        instructions: 'compare these',
-        wantToBase64Calls: 2,
-        wantToBase64ArgsAny: ['/photos/a.png', '/photos/b.png'],
-      },
+      inputs: { images: ['/photos/a.png', '/photos/b.png'], instructions: 'compare these' },
+      want: { toBase64Calls: 2, toBase64ArgsAny: ['/photos/a.png', '/photos/b.png'] },
     },
     {
       name: 'accepts an array of { path, label } objects and normalizes correctly',
@@ -65,9 +58,8 @@ runTable({
           { path: '/photos/after.png', label: 'After' },
         ],
         instructions: 'spot the differences',
-        wantToBase64Calls: 2,
-        wantToBase64ArgsAny: ['/photos/before.png', '/photos/after.png'],
       },
+      want: { toBase64Calls: 2, toBase64ArgsAny: ['/photos/before.png', '/photos/after.png'] },
     },
     {
       name: 'tiles multiple images when tile option is true',
@@ -78,10 +70,12 @@ runTable({
         ],
         instructions: 'compare',
         options: { tile: true },
-        wantTileCalls: 1,
-        wantTileArgs: [['/photos/a.png', '/photos/b.png'], { labels: ['A', 'B'] }],
-        wantToBase64Calls: 1,
-        wantToBase64Args: ['/tmp/tile.jpg'],
+      },
+      want: {
+        tileCalls: 1,
+        tileArgs: [['/photos/a.png', '/photos/b.png'], { labels: ['A', 'B'] }],
+        toBase64Calls: 1,
+        toBase64Args: ['/tmp/tile.jpg'],
       },
     },
     {
@@ -90,18 +84,13 @@ runTable({
         images: ['/photos/solo.png'],
         instructions: 'describe',
         options: { tile: true },
-        wantNoTile: true,
-        wantToBase64Calls: 1,
-        wantToBase64Args: ['/photos/solo.png'],
       },
+      want: { noTile: true, toBase64Calls: 1, toBase64Args: ['/photos/solo.png'] },
     },
     {
       name: 'passes instructions as the text content in the vision prompt',
-      inputs: {
-        images: '/photos/cat.png',
-        instructions: 'count the whiskers',
-        wantTextEntry: 'count the whiskers',
-      },
+      inputs: { images: '/photos/cat.png', instructions: 'count the whiskers' },
+      want: { textEntry: 'count the whiskers' },
     },
     {
       name: 'passes runConfig to callLlm with operation path including analyze-image',
@@ -109,18 +98,13 @@ runTable({
         images: '/photos/cat.png',
         instructions: 'describe',
         options: { operation: 'parent' },
-        wantOperationContains: 'analyze-image',
       },
+      want: { operationContains: 'analyze-image' },
     },
     {
       name: 'emits start and complete events via onProgress callback',
-      inputs: {
-        images: '/photos/cat.png',
-        instructions: 'describe',
-        withEvents: true,
-        wantStartAndComplete: true,
-        wantCompleteShape: { imageCount: 1, tiled: false },
-      },
+      inputs: { images: '/photos/cat.png', instructions: 'describe', withEvents: true },
+      want: { startAndComplete: true, completeShape: { imageCount: 1, tiled: false } },
     },
     {
       name: 'emits error event on failure and rethrows',
@@ -129,10 +113,9 @@ runTable({
         instructions: 'describe',
         withEvents: true,
         tolerant: true,
-        mock: () => callLlm.mockRejectedValueOnce(new Error('vision model unavailable')),
-        wantErrorMessage: 'vision model unavailable',
-        wantErrorEventShape: { imageCount: 1 },
       },
+      mocks: { callLlm: [new Error('vision model unavailable')] },
+      want: { errorMessage: 'vision model unavailable', errorEventShape: { imageCount: 1 } },
     },
     {
       name: 'emits tile event with composite dimensions',
@@ -141,7 +124,9 @@ runTable({
         instructions: 'compare',
         options: { tile: true },
         withEvents: true,
-        wantTileEventShape: {
+      },
+      want: {
+        tileEventShape: {
           path: '/tmp/tile.jpg',
           width: 800,
           height: 600,
@@ -150,54 +135,54 @@ runTable({
       },
     },
   ],
-  process: async ({ images, instructions, options, withEvents, tolerant, mock }) => {
-    if (mock) mock();
-    if (withEvents) {
+  process: async ({ inputs, mocks }) => {
+    applyMocks(mocks, { callLlm });
+    if (inputs.withEvents) {
       const events = [];
       let value;
       let error;
       try {
-        value = await analyzeImage(images, instructions, {
-          ...options,
+        value = await analyzeImage(inputs.images, inputs.instructions, {
+          ...inputs.options,
           onProgress: (e) => events.push(e),
         });
       } catch (e) {
-        if (!tolerant) throw e;
+        if (!inputs.tolerant) throw e;
         error = e;
       }
       return { value, events, error };
     }
-    return analyzeImage(images, instructions, options);
+    return analyzeImage(inputs.images, inputs.instructions, inputs.options);
   },
-  expects: ({ result, inputs }) => {
-    if ('wantToBase64Calls' in inputs) {
-      expect(imageToBase64).toHaveBeenCalledTimes(inputs.wantToBase64Calls);
+  expects: ({ result, want }) => {
+    if ('toBase64Calls' in want) {
+      expect(imageToBase64).toHaveBeenCalledTimes(want.toBase64Calls);
     }
-    if (inputs.wantToBase64Args) {
-      expect(imageToBase64).toHaveBeenCalledWith(...inputs.wantToBase64Args);
+    if (want.toBase64Args) {
+      expect(imageToBase64).toHaveBeenCalledWith(...want.toBase64Args);
     }
-    if (inputs.wantToBase64ArgsAny) {
-      for (const arg of inputs.wantToBase64ArgsAny) {
+    if (want.toBase64ArgsAny) {
+      for (const arg of want.toBase64ArgsAny) {
         expect(imageToBase64).toHaveBeenCalledWith(arg);
       }
     }
-    if ('wantLlmCalls' in inputs) expect(callLlm).toHaveBeenCalledTimes(inputs.wantLlmCalls);
-    if ('wantValue' in inputs) expect(result).toBe(inputs.wantValue);
-    if ('wantTileCalls' in inputs) {
-      expect(tileImages).toHaveBeenCalledTimes(inputs.wantTileCalls);
+    if ('llmCalls' in want) expect(callLlm).toHaveBeenCalledTimes(want.llmCalls);
+    if ('value' in want) expect(result).toBe(want.value);
+    if ('tileCalls' in want) {
+      expect(tileImages).toHaveBeenCalledTimes(want.tileCalls);
     }
-    if (inputs.wantTileArgs) expect(tileImages).toHaveBeenCalledWith(...inputs.wantTileArgs);
-    if (inputs.wantNoTile) expect(tileImages).not.toHaveBeenCalled();
-    if (inputs.wantTextEntry) {
+    if (want.tileArgs) expect(tileImages).toHaveBeenCalledWith(...want.tileArgs);
+    if (want.noTile) expect(tileImages).not.toHaveBeenCalled();
+    if (want.textEntry) {
       const contentArray = callLlm.mock.calls[0][0];
       const textEntry = contentArray.find((entry) => entry.type === 'text');
-      expect(textEntry.text).toBe(inputs.wantTextEntry);
+      expect(textEntry.text).toBe(want.textEntry);
     }
-    if (inputs.wantOperationContains) {
+    if (want.operationContains) {
       const runConfig = callLlm.mock.calls[0][1];
-      expect(runConfig.operation).toContain(inputs.wantOperationContains);
+      expect(runConfig.operation).toContain(want.operationContains);
     }
-    if (inputs.wantStartAndComplete) {
+    if (want.startAndComplete) {
       const start = result.events.find(
         (e) => e.kind === Kind.telemetry && e.event === ChainEvent.start
       );
@@ -205,34 +190,32 @@ runTable({
         (e) => e.kind === Kind.telemetry && e.event === ChainEvent.complete
       );
       expect(start).toBeDefined();
-      expect(complete).toMatchObject(inputs.wantCompleteShape);
+      expect(complete).toMatchObject(want.completeShape);
     }
-    if (inputs.wantErrorMessage) {
-      expect(result.error?.message).toBe(inputs.wantErrorMessage);
+    if (want.errorMessage) {
+      expect(result.error?.message).toBe(want.errorMessage);
       const errorEvent = result.events.find(
         (e) => e.kind === Kind.telemetry && e.event === ChainEvent.error
       );
-      expect(errorEvent).toMatchObject(inputs.wantErrorEventShape);
+      expect(errorEvent).toMatchObject(want.errorEventShape);
     }
-    if (inputs.wantTileEventShape) {
+    if (want.tileEventShape) {
       const tileEvents = result.events.filter((e) => e.event === 'tile');
       expect(tileEvents).toHaveLength(1);
-      expect(tileEvents[0]).toMatchObject(inputs.wantTileEventShape);
+      expect(tileEvents[0]).toMatchObject(want.tileEventShape);
     }
   },
 });
 
-// ─── mapDetail ────────────────────────────────────────────────────────
-
 runTable({
   describe: 'mapDetail',
   examples: [
-    { name: 'returns auto for undefined', inputs: { value: undefined, want: 'auto' } },
-    { name: 'returns low for low', inputs: { value: 'low', want: 'low' } },
-    { name: 'returns high for high', inputs: { value: 'high', want: 'high' } },
-    { name: 'returns auto for ultra', inputs: { value: 'ultra', want: 'auto' } },
-    { name: 'returns auto for medium', inputs: { value: 'medium', want: 'auto' } },
+    { name: 'returns auto for undefined', inputs: { value: undefined }, want: { result: 'auto' } },
+    { name: 'returns low for low', inputs: { value: 'low' }, want: { result: 'low' } },
+    { name: 'returns high for high', inputs: { value: 'high' }, want: { result: 'high' } },
+    { name: 'returns auto for ultra', inputs: { value: 'ultra' }, want: { result: 'auto' } },
+    { name: 'returns auto for medium', inputs: { value: 'medium' }, want: { result: 'auto' } },
   ],
-  process: ({ value }) => mapDetail(value),
-  expects: ({ result, inputs }) => expect(result).toEqual(inputs.want),
+  process: ({ inputs }) => mapDetail(inputs.value),
+  expects: ({ result, want }) => expect(result).toEqual(want.result),
 });

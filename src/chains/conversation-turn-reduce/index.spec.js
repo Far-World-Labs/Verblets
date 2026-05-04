@@ -1,7 +1,7 @@
 import { vi, beforeEach, expect } from 'vitest';
 import conversationTurnReduce from './index.js';
 import map from '../map/index.js';
-import { runTable } from '../../lib/examples-runner/index.js';
+import { runTable, applyMocks } from '../../lib/examples-runner/index.js';
 
 vi.mock('../map/index.js', () => ({ default: vi.fn() }));
 
@@ -13,8 +13,6 @@ const baseInput = {
   rules: {},
   llm: 'test',
 };
-
-// ─── core behavior ──────────────────────────────────────────────────────
 
 runTable({
   describe: 'conversationTurnReduce',
@@ -32,8 +30,10 @@ runTable({
           rules: {},
           llm: 'test',
         },
-        mock: () =>
-          map.mockResolvedValueOnce([
+      },
+      mocks: {
+        map: [
+          [
             `I think we should focus on user experience first.
 
 The technical implementation can be refined later, but if we don't nail the UX, we'll lose users regardless of how elegant our code is.`,
@@ -42,68 +42,65 @@ The technical implementation can be refined later, but if we don't nail the UX, 
 From a product perspective, I'd add that we also need to consider market timing. Even with perfect UX, if we're too late to market, competitors might have already established user habits.
 
 What if we do a minimal viable UX first, then iterate?`,
-          ]),
-        wantLength: 2,
-        wantContains: [
+          ],
+        ],
+      },
+      want: {
+        length: 2,
+        contains: [
           { idx: 0, fragments: ['user experience first', 'technical implementation'] },
           { idx: 1, fragments: ['Alice makes a great point', 'minimal viable UX'] },
         ],
-        wantMapCalls: 1,
-        wantMapArgs: ['Alice\nBio: software engineer', 'Bob\nBio: product manager'],
+        mapCalls: 1,
+        mapArgs: ['Alice\nBio: software engineer', 'Bob\nBio: product manager'],
       },
     },
     {
       name: 'handles single speaker',
       inputs: {
         args: { ...baseInput, speakers: [{ id: 'alice', name: 'Alice' }], topic: 'test topic' },
-        mock: () => map.mockResolvedValueOnce(['This is my response to the topic.']),
-        want: ['This is my response to the topic.'],
       },
+      mocks: { map: [['This is my response to the topic.']] },
+      want: { value: ['This is my response to the topic.'] },
     },
     {
       name: 'throws when no speakers provided',
-      inputs: {
-        args: { ...baseInput, speakers: [], topic: 'test topic' },
-        throws: /speakers must be a non-empty array/,
-      },
+      inputs: { args: { ...baseInput, speakers: [], topic: 'test topic' } },
+      want: { throws: /speakers must be a non-empty array/ },
     },
     {
       name: 'throws when no topic provided',
-      inputs: {
-        args: { ...baseInput, speakers: [{ id: 'alice', name: 'Alice' }], topic: '' },
-        throws: /topic is required/,
-      },
+      inputs: { args: { ...baseInput, speakers: [{ id: 'alice', name: 'Alice' }], topic: '' } },
+      want: { throws: /topic is required/ },
     },
   ],
-  process: async ({ args, mock }) => {
-    if (mock) mock();
-    return conversationTurnReduce(args);
+  process: async ({ inputs, mocks }) => {
+    applyMocks(mocks, { map });
+    return conversationTurnReduce(inputs.args);
   },
-  expects: ({ result, error, inputs }) => {
-    if ('throws' in inputs) {
-      expect(error?.message).toMatch(inputs.throws);
+  expects: ({ result, error, want }) => {
+    if (want.throws) {
+      expect(error?.message).toMatch(want.throws);
       return;
     }
     if (error) throw error;
-    if ('want' in inputs) expect(result).toEqual(inputs.want);
-    if ('wantLength' in inputs) expect(result).toHaveLength(inputs.wantLength);
-    if (inputs.wantContains) {
-      for (const { idx, fragments } of inputs.wantContains) {
+    if ('value' in want) expect(result).toEqual(want.value);
+    if ('length' in want) expect(result).toHaveLength(want.length);
+    if (want.contains) {
+      for (const { idx, fragments } of want.contains) {
         for (const fragment of fragments) expect(result[idx]).toContain(fragment);
       }
     }
-    if ('wantMapCalls' in inputs) expect(map).toHaveBeenCalledTimes(inputs.wantMapCalls);
-    if (inputs.wantMapArgs) {
+    if ('mapCalls' in want) expect(map).toHaveBeenCalledTimes(want.mapCalls);
+    if (want.mapArgs) {
       expect(map).toHaveBeenCalledWith(
-        inputs.wantMapArgs,
+        want.mapArgs,
         expect.any(String),
         expect.objectContaining({ llm: 'test' })
       );
     }
   },
 });
-
-// ─── speaker memory integration ─────────────────────────────────────────
 
 runTable({
   describe: 'conversationTurnReduce — speaker memory integration',
@@ -135,8 +132,10 @@ runTable({
           rules: {},
           llm: 'test',
         },
-        mock: () => map.mockResolvedValueOnce(['Alice response', 'Bob response']),
-        wantDescriptions: [
+      },
+      mocks: { map: [['Alice response', 'Bob response']] },
+      want: {
+        descriptions: [
           {
             idx: 0,
             contains: [
@@ -160,17 +159,17 @@ runTable({
           topic: 'test topic',
           speakerMemory: new Map(),
         },
-        mock: () => map.mockResolvedValueOnce(['Alice response']),
-        wantDescriptions: [{ idx: 0, equals: 'Alice', notContains: ['Prior statements:'] }],
       },
+      mocks: { map: [['Alice response']] },
+      want: { descriptions: [{ idx: 0, equals: 'Alice', notContains: ['Prior statements:'] }] },
     },
     {
       name: 'works when speakerMemory is not provided (defaults to empty)',
       inputs: {
         args: { ...baseInput, speakers: [{ id: 'alice', name: 'Alice' }], topic: 'test topic' },
-        mock: () => map.mockResolvedValueOnce(['Alice response']),
-        wantDescriptions: [{ idx: 0, equals: 'Alice', notContains: ['Prior statements:'] }],
       },
+      mocks: { map: [['Alice response']] },
+      want: { descriptions: [{ idx: 0, equals: 'Alice', notContains: ['Prior statements:'] }] },
     },
     {
       name: 'includes consistency instruction when speakers have memory',
@@ -183,19 +182,19 @@ runTable({
             ['alice', [{ id: 'alice', name: 'Alice', comment: 'Prior point', time: '09:00' }]],
           ]),
         },
-        mock: () => map.mockResolvedValueOnce(['Alice response']),
-        wantInstructionsContains: ['maintain consistency', 'prior statements'],
       },
+      mocks: { map: [['Alice response']] },
+      want: { instructionsContains: ['maintain consistency', 'prior statements'] },
     },
   ],
-  process: async ({ args, mock }) => {
-    if (mock) mock();
-    return conversationTurnReduce(args);
+  process: async ({ inputs, mocks }) => {
+    applyMocks(mocks, { map });
+    return conversationTurnReduce(inputs.args);
   },
-  expects: ({ inputs }) => {
-    if (inputs.wantDescriptions) {
+  expects: ({ want }) => {
+    if (want.descriptions) {
       const descriptions = map.mock.calls[0][0];
-      for (const spec of inputs.wantDescriptions) {
+      for (const spec of want.descriptions) {
         if (spec.equals) expect(descriptions[spec.idx]).toBe(spec.equals);
         if (spec.contains) {
           for (const fragment of spec.contains) expect(descriptions[spec.idx]).toContain(fragment);
@@ -207,9 +206,9 @@ runTable({
         }
       }
     }
-    if (inputs.wantInstructionsContains) {
+    if (want.instructionsContains) {
       const instructions = map.mock.calls[0][1];
-      for (const fragment of inputs.wantInstructionsContains) {
+      for (const fragment of want.instructionsContains) {
         expect(instructions).toContain(fragment);
       }
     }

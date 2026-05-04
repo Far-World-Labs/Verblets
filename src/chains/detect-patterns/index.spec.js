@@ -1,6 +1,6 @@
 import { vi, beforeEach, expect } from 'vitest';
 import detectPatterns from './index.js';
-import { runTable } from '../../lib/examples-runner/index.js';
+import { runTable, applyMocks } from '../../lib/examples-runner/index.js';
 
 vi.mock('../reduce/index.js', () => ({ default: vi.fn() }));
 
@@ -19,8 +19,10 @@ runTable({
           { theme: 'light', fontSize: 12 },
         ],
         options: { topN: 2 },
-        mock: () =>
-          reduce.mockResolvedValueOnce([
+      },
+      mocks: {
+        reduce: [
+          [
             {
               type: 'pattern',
               template: { theme: { values: ['dark', 'light'] }, fontSize: { range: [12, 16] } },
@@ -36,8 +38,11 @@ runTable({
               template: { color: { values: ['red'] } },
               count: 1,
             },
-          ]),
-        want: [
+          ],
+        ],
+      },
+      want: {
+        value: [
           { theme: { values: ['dark', 'light'] }, fontSize: { range: [12, 16] } },
           { category: { values: ['books'] }, price: { range: [10, 20] } },
         ],
@@ -45,53 +50,48 @@ runTable({
     },
     {
       name: 'returns empty array for empty input',
-      inputs: { objects: [], mock: () => reduce.mockResolvedValueOnce([]), want: [] },
+      inputs: { objects: [] },
+      mocks: { reduce: [[]] },
+      want: { value: [] },
     },
     {
       name: 'throws on malformed reduce response (not an array)',
-      inputs: {
-        objects: [{ a: 1 }],
-        mock: () => reduce.mockResolvedValueOnce('not an array'),
-        throws: /expected pattern candidates array/,
-      },
+      inputs: { objects: [{ a: 1 }] },
+      mocks: { reduce: ['not an array'] },
+      want: { throws: /expected pattern candidates array/ },
     },
     {
       name: 'throws on non-array input',
-      inputs: { objects: 'not array', throws: /objects must be an array/ },
+      inputs: { objects: 'not array' },
+      want: { throws: /objects must be an array/ },
     },
     {
       name: 'thoroughness low limits capacity in reduce prompt',
-      inputs: {
-        objects: [{ a: 1 }],
-        options: { thoroughness: 'low' },
-        mock: () => reduce.mockResolvedValueOnce([]),
-        wantPromptContains: ['Maximum 20 total items'],
-      },
+      inputs: { objects: [{ a: 1 }], options: { thoroughness: 'low' } },
+      mocks: { reduce: [[]] },
+      want: { promptContains: ['Maximum 20 total items'] },
     },
     {
       name: 'thoroughness high increases capacity in reduce prompt',
-      inputs: {
-        objects: [{ a: 1 }],
-        options: { thoroughness: 'high' },
-        mock: () => reduce.mockResolvedValueOnce([]),
-        wantPromptContains: ['Maximum 100 total items'],
-      },
+      inputs: { objects: [{ a: 1 }], options: { thoroughness: 'high' } },
+      mocks: { reduce: [[]] },
+      want: { promptContains: ['Maximum 100 total items'] },
     },
   ],
-  process: async ({ objects, options, mock }) => {
-    if (mock) mock();
-    return detectPatterns(objects, options);
+  process: async ({ inputs, mocks }) => {
+    applyMocks(mocks, { reduce });
+    return detectPatterns(inputs.objects, inputs.options);
   },
-  expects: ({ result, error, inputs }) => {
-    if ('throws' in inputs) {
-      expect(error?.message).toMatch(inputs.throws);
+  expects: ({ result, error, want }) => {
+    if (want.throws) {
+      expect(error?.message).toMatch(want.throws);
       return;
     }
     if (error) throw error;
-    if ('want' in inputs) expect(result).toEqual(inputs.want);
-    if (inputs.wantPromptContains) {
+    if ('value' in want) expect(result).toEqual(want.value);
+    if (want.promptContains) {
       const prompt = reduce.mock.calls[0][1];
-      for (const fragment of inputs.wantPromptContains) expect(prompt).toContain(fragment);
+      for (const fragment of want.promptContains) expect(prompt).toContain(fragment);
     }
   },
 });

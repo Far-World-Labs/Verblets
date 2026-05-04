@@ -21,17 +21,16 @@ runTable({
   examples: [
     {
       name: 'selects meaning based on context',
-      inputs: {
-        word: 'bank',
-        context: 'withdraw money',
-        wantMeaning: 'financial institution',
-        wantMeanings: ['financial institution', 'edge of a river'],
+      inputs: { word: 'bank', context: 'withdraw money' },
+      want: {
+        meaning: 'financial institution',
+        meanings: ['financial institution', 'edge of a river'],
       },
     },
   ],
-  process: ({ word, context }) => disambiguate(word, context),
-  expects: ({ result, inputs }) => {
-    expect(result.meaning).toBe(inputs.wantMeaning);
-    expect(result.meanings).toEqual(inputs.wantMeanings);
+  process: ({ inputs }) => disambiguate(inputs.word, inputs.context),
+  expects: ({ result, want }) => {
+    expect(result.meaning).toBe(want.meaning);
+    expect(result.meanings).toEqual(want.meanings);
   },
 });

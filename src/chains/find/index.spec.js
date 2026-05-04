@@ -2,7 +2,7 @@ import { beforeEach, expect, vi } from 'vitest';
 import find, { findParallel } from './index.js';
 import listBatch from '../../verblets/list-batch/index.js';
 import bool from '../../verblets/bool/index.js';
-import { runTable } from '../../lib/examples-runner/index.js';
+import { runTable, applyMocks } from '../../lib/examples-runner/index.js';
 
 vi.mock('../../verblets/list-batch/index.js', () => ({
   default: vi.fn(async (items) => [items[items.length - 1]]),
@@ -25,30 +25,19 @@ vi.mock('../../lib/text-batch/index.js', () => ({
 
 beforeEach(() => vi.clearAllMocks());
 
-// ─── batched form ────────────────────────────────────────────────────────
-
 runTable({
   describe: 'find chain',
   examples: [
     {
       name: 'scans batches to find best item',
-      inputs: {
-        list: ['a', 'b', 'c', 'd'],
-        instructions: 'find',
-        options: { batchSize: 2 },
-        want: 'b',
-        wantBatchCalls: 2,
-      },
+      inputs: { list: ['a', 'b', 'c', 'd'], instructions: 'find', options: { batchSize: 2 } },
+      want: { value: 'b', batchCalls: 2 },
     },
     {
       name: 'returns empty string when no item matches',
-      inputs: {
-        list: ['a', 'b'],
-        instructions: 'find nothing',
-        options: { batchSize: 10 },
-        mock: () => listBatch.mockResolvedValueOnce([]),
-        want: '',
-      },
+      inputs: { list: ['a', 'b'], instructions: 'find nothing', options: { batchSize: 10 } },
+      mocks: { listBatch: [[]] },
+      want: { value: '' },
     },
     {
       name: 'earliest match wins across parallel batches',
@@ -56,8 +45,8 @@ runTable({
         list: ['a', 'b'],
         instructions: 'find',
         options: { batchSize: 1, maxParallel: 2 },
-        want: 'a',
       },
+      want: { value: 'a' },
     },
     {
       name: 'silently continues when a batch throws',
@@ -65,68 +54,50 @@ runTable({
         list: ['a', 'b'],
         instructions: 'find',
         options: { batchSize: 1, maxParallel: 1 },
-        mock: () =>
-          listBatch
-            .mockRejectedValueOnce(new Error('batch failed'))
-            .mockResolvedValueOnce(['found']),
-        want: 'found',
       },
+      mocks: { listBatch: [new Error('batch failed'), ['found']] },
+      want: { value: 'found' },
     },
   ],
-  process: async ({ list, instructions, options, mock }) => {
-    if (mock) mock();
-    return find(list, instructions, options);
+  process: async ({ inputs, mocks }) => {
+    applyMocks(mocks, { listBatch });
+    return find(inputs.list, inputs.instructions, inputs.options);
   },
-  expects: ({ result, inputs }) => {
-    if ('want' in inputs) expect(result).toEqual(inputs.want);
-    if ('wantBatchCalls' in inputs) expect(listBatch).toHaveBeenCalledTimes(inputs.wantBatchCalls);
+  expects: ({ result, want }) => {
+    if ('value' in want) expect(result).toEqual(want.value);
+    if ('batchCalls' in want) expect(listBatch).toHaveBeenCalledTimes(want.batchCalls);
   },
 });
-
-// ─── parallel form ───────────────────────────────────────────────────────
 
 runTable({
   describe: 'findParallel — result',
   examples: [
     {
       name: 'returns the earliest matching item by index',
-      inputs: {
-        list: ['a', 'b', 'c'],
-        mock: () =>
-          vi
-            .mocked(bool)
-            .mockResolvedValueOnce(false)
-            .mockResolvedValueOnce(true)
-            .mockResolvedValueOnce(true),
-        want: 'b',
-      },
+      inputs: { list: ['a', 'b', 'c'] },
+      mocks: { bool: [false, true, true] },
+      want: { value: 'b' },
     },
     {
       name: 'returns empty string when nothing matches',
-      inputs: {
-        list: ['a', 'b'],
-        mock: () => vi.mocked(bool).mockResolvedValue(false),
-        want: '',
-      },
+      inputs: { list: ['a', 'b'] },
+      mocks: { bool: [false, false] },
+      want: { value: '' },
     },
     {
       name: 'terminates early once a chunk produces a match',
-      inputs: {
-        list: ['a', 'b', 'c', 'd'],
-        options: { maxParallel: 2 },
-        mock: () => vi.mocked(bool).mockResolvedValueOnce(true).mockResolvedValueOnce(false),
-        want: 'a',
-        wantBoolCalls: 2,
-      },
+      inputs: { list: ['a', 'b', 'c', 'd'], options: { maxParallel: 2 } },
+      mocks: { bool: [true, false] },
+      want: { value: 'a', boolCalls: 2 },
     },
   ],
-  process: async ({ list, options, mock }) => {
-    if (mock) mock();
-    return findParallel(list, 'criteria', options);
+  process: async ({ inputs, mocks }) => {
+    applyMocks(mocks, { bool });
+    return findParallel(inputs.list, 'criteria', inputs.options);
   },
-  expects: ({ result, inputs }) => {
-    expect(result).toEqual(inputs.want);
-    if ('wantBoolCalls' in inputs) expect(bool).toHaveBeenCalledTimes(inputs.wantBoolCalls);
+  expects: ({ result, want }) => {
+    expect(result).toEqual(want.value);
+    if ('boolCalls' in want) expect(bool).toHaveBeenCalledTimes(want.boolCalls);
   },
 });
 
@@ -135,11 +106,12 @@ runTable({
   examples: [
     {
       name: 'throws when list is not an array',
-      inputs: { list: 'not-an-array', throws: /must be an array/ },
+      inputs: { list: 'not-an-array' },
+      want: { throws: /must be an array/ },
     },
   ],
-  process: async ({ list }) => findParallel(list, 'criteria'),
-  expects: ({ error, inputs }) => {
-    expect(error?.message).toMatch(inputs.throws);
+  process: async ({ inputs }) => findParallel(inputs.list, 'criteria'),
+  expects: ({ error, want }) => {
+    expect(error?.message).toMatch(want.throws);
   },
 });

@@ -1,4 +1,4 @@
-import { vi, expect } from 'vitest';
+import { vi, expect, describe, it } from 'vitest';
 import { dismantle, mapVariety } from './index.js';
 import { runTable } from '../../lib/examples-runner/index.js';
 
@@ -17,35 +17,33 @@ runTable({
   examples: [
     {
       name: 'returns a ChainTree with tree and rootName',
-      inputs: { name: 'test', wantRootName: 'test', wantEmptyTree: true },
+      inputs: { name: 'test' },
+      want: { rootName: 'test', emptyTree: true },
     },
   ],
-  process: ({ name }) => dismantle(name),
-  expects: ({ result, inputs }) => {
-    expect(result.rootName).toBe(inputs.wantRootName);
+  process: ({ inputs }) => dismantle(inputs.name),
+  expects: ({ result, want }) => {
+    expect(result.rootName).toBe(want.rootName);
     expect(result).toHaveProperty('tree');
-    if (inputs.wantEmptyTree) expect(result.getTree()).toEqual({});
+    if (want.emptyTree) expect(result.getTree()).toEqual({});
   },
 });
 
-// mapVariety: pure function with simple value mappings.
 runTable({
   describe: 'mapVariety',
   examples: [
-    { name: 'undefined returns default', inputs: { v: undefined, want: undefined } },
-    { name: 'passes through raw numbers', inputs: { v: 0.42, want: 0.42 } },
+    { name: 'undefined returns default', inputs: { v: undefined }, want: { value: undefined } },
+    { name: 'passes through raw numbers', inputs: { v: 0.42 }, want: { value: 0.42 } },
     {
       name: 'unknown string falls back to default',
-      inputs: { v: 'zzz', want: undefined },
+      inputs: { v: 'zzz' },
+      want: { value: undefined },
     },
   ],
-  process: ({ v }) => mapVariety(v),
-  expects: ({ result, inputs }) => expect(result).toEqual(inputs.want),
+  process: ({ inputs }) => mapVariety(inputs.v),
+  expects: ({ result, want }) => expect(result).toEqual(want.value),
 });
 
-// Distinctness/ordering tests (relational, not per-row data) — kept as
-// describe/it because they compare multiple invocations.
-import { describe, it } from 'vitest';
 describe('mapVariety: relational checks', () => {
   it('produces distinct values across levels', () => {
     const values = ['low', 'high'].map(mapVariety);
