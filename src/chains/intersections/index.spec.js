@@ -1,5 +1,5 @@
 import { vi, beforeEach, expect } from 'vitest';
-import { runTable } from '../../lib/examples-runner/index.js';
+import { runTable, applyMocks } from '../../lib/examples-runner/index.js';
 
 vi.mock('../../verblets/commonalities/index.js', () => ({ default: vi.fn() }));
 vi.mock('../../lib/llm/index.js', () => ({
@@ -20,8 +20,6 @@ beforeEach(() => {
   retry.mockImplementation(async (fn) => fn());
 });
 
-// ─── short-circuit returns ───────────────────────────────────────────────
-
 runTable({
   describe: 'intersections (short-circuit)',
   examples: [
@@ -30,14 +28,12 @@ runTable({
     { name: 'empty array input', inputs: { input: [] } },
     { name: 'single item input', inputs: { input: ['only one'] } },
   ],
-  process: ({ input }) => intersections(input),
+  process: ({ inputs }) => intersections(inputs.input),
   expects: ({ result }) => {
     expect(result).toEqual({});
     expect(callLlm).not.toHaveBeenCalled();
   },
 });
-
-// ─── intersections core behavior ────────────────────────────────────────
 
 const validated = {
   'A + B': { combination: ['A', 'B'], description: 'validated', elements: ['v-elem'] },
@@ -50,13 +46,15 @@ runTable({
       name: 'generates all combinations and builds result objects',
       inputs: {
         list: ['A', 'B', 'C'],
-        mock: () => {
+        setup: () => {
           callLlm.mockResolvedValue(['elm1', 'elm2']);
           commonalities.mockResolvedValue(['commonality one', 'commonality two']);
         },
-        wantKeysLength: 4,
-        wantKeysContain: ['A + B', 'A + B + C'],
-        wantEntry: {
+      },
+      want: {
+        keysLength: 4,
+        keysContain: ['A + B', 'A + B + C'],
+        entry: {
           'A + B': {
             combination: ['A', 'B'],
             description: 'commonality one, commonality two',
@@ -69,46 +67,36 @@ runTable({
       name: 'converts non-array commonalities to string description',
       inputs: {
         list: ['A', 'B'],
-        mock: () => commonalities.mockResolvedValue('a single string response'),
-        wantPath: { 'A + B.description': 'a single string response' },
+        setup: () => commonalities.mockResolvedValue('a single string response'),
       },
+      want: { path: { 'A + B.description': 'a single string response' } },
     },
     {
       name: 'respects minSize and maxSize to control combination sizes',
-      inputs: {
-        list: ['A', 'B', 'C', 'D'],
-        options: { minSize: 2, maxSize: 2 },
-        wantKeysLength: 6,
-        wantKeysNotContain: ['A + B + C'],
-      },
+      inputs: { list: ['A', 'B', 'C', 'D'], options: { minSize: 2, maxSize: 2 } },
+      want: { keysLength: 6, keysNotContain: ['A + B + C'] },
     },
     {
       name: 'returns empty when minSize exceeds item count',
-      inputs: { list: ['A', 'B'], options: { minSize: 5 }, want: {}, wantNoLlm: true },
+      inputs: { list: ['A', 'B'], options: { minSize: 5 } },
+      want: { value: {}, noLlm: true },
     },
     {
       name: 'processes combinations in batches',
-      inputs: {
-        list: ['A', 'B', 'C'],
-        options: { batchSize: 2 },
-        wantLlmCalls: 4,
-        wantCommonalitiesCalls: 4,
-      },
+      inputs: { list: ['A', 'B', 'C'], options: { batchSize: 2 } },
+      want: { llmCalls: 4, commonalitiesCalls: 4 },
     },
     {
       name: 'passes json_schema responseFormat to callLlm',
-      inputs: {
-        list: ['A', 'B'],
-        wantSchemaName: 'intersection_elements',
-      },
+      inputs: { list: ['A', 'B'] },
+      want: { schemaName: 'intersection_elements' },
     },
     {
       name: 'includes instructions in prompt and forwards to commonalities',
-      inputs: {
-        list: ['Fruit', 'Red'],
-        instructions: 'Focus on tropical items',
-        wantPromptContains: ['Focus on tropical items'],
-        wantCommonalitiesArg1: 'Focus on tropical items',
+      inputs: { list: ['Fruit', 'Red'], instructions: 'Focus on tropical items' },
+      want: {
+        promptContains: ['Focus on tropical items'],
+        commonalitiesArg1: 'Focus on tropical items',
       },
     },
     {
@@ -116,38 +104,35 @@ runTable({
       inputs: {
         list: ['Fruit', 'Red'],
         instructions: { text: 'Focus on tropical items', region: 'Southeast Asia' },
-        wantPromptContains: ['Focus on tropical items', '<region>', 'Southeast Asia'],
       },
+      want: { promptContains: ['Focus on tropical items', '<region>', 'Southeast Asia'] },
     },
     {
       name: 'filters falsy elements from callLlm response',
       inputs: {
         list: ['A', 'B'],
-        mock: () => callLlm.mockResolvedValue([null, 'valid', undefined, '', 'also valid']),
-        wantPath: { 'A + B.elements': ['valid', 'also valid'] },
+        setup: () => callLlm.mockResolvedValue([null, 'valid', undefined, '', 'also valid']),
       },
+      want: { path: { 'A + B.elements': ['valid', 'also valid'] } },
     },
     {
       name: 'throws when callLlm returns non-array (single combo = total failure)',
-      inputs: {
-        list: ['A', 'B'],
-        mock: () => callLlm.mockResolvedValue('not an array'),
-        throws: /all 1 combinations failed/,
-      },
+      inputs: { list: ['A', 'B'], setup: () => callLlm.mockResolvedValue('not an array') },
+      want: { throws: /all 1 combinations failed/ },
     },
     {
       name: 'throws when every combination fails (no successes to return)',
       inputs: {
         list: ['A', 'B'],
-        mock: () => retry.mockRejectedValue(new Error('LLM call failed')),
-        throws: /all 1 combinations failed/,
+        setup: () => retry.mockRejectedValue(new Error('LLM call failed')),
       },
+      want: { throws: /all 1 combinations failed/ },
     },
     {
       name: 'returns partial results when some combinations succeed',
       inputs: {
         list: ['A', 'B', 'C'],
-        mock: () => {
+        setup: () => {
           let call = 0;
           retry.mockImplementation(async (fn) => {
             call += 1;
@@ -156,120 +141,106 @@ runTable({
           });
           callLlm.mockResolvedValue(['elem']);
         },
-        wantKeysRange: [1, 4],
       },
+      want: { keysRange: [1, 4] },
     },
   ],
-  process: async ({ list, instructions, options, mock }) => {
-    if (mock) mock();
-    return intersections(list, instructions, options);
+  process: async ({ inputs }) => {
+    inputs.setup?.();
+    return intersections(inputs.list, inputs.instructions, inputs.options);
   },
-  expects: ({ result, error, inputs }) => {
-    if ('throws' in inputs) {
-      expect(error?.message).toMatch(inputs.throws);
+  expects: ({ result, error, want }) => {
+    if (want.throws) {
+      expect(error?.message).toMatch(want.throws);
       return;
     }
     if (error) throw error;
-    if ('want' in inputs) expect(result).toEqual(inputs.want);
-    if (inputs.wantNoLlm) expect(callLlm).not.toHaveBeenCalled();
+    if ('value' in want) expect(result).toEqual(want.value);
+    if (want.noLlm) expect(callLlm).not.toHaveBeenCalled();
     const keys = Object.keys(result);
-    if ('wantKeysLength' in inputs) expect(keys).toHaveLength(inputs.wantKeysLength);
-    if (inputs.wantKeysContain) {
-      for (const key of inputs.wantKeysContain) expect(keys).toContain(key);
+    if ('keysLength' in want) expect(keys).toHaveLength(want.keysLength);
+    if (want.keysContain) {
+      for (const key of want.keysContain) expect(keys).toContain(key);
     }
-    if (inputs.wantKeysNotContain) {
-      for (const key of inputs.wantKeysNotContain) expect(keys).not.toContain(key);
+    if (want.keysNotContain) {
+      for (const key of want.keysNotContain) expect(keys).not.toContain(key);
     }
-    if (inputs.wantKeysRange) {
-      expect(keys.length).toBeGreaterThan(inputs.wantKeysRange[0] - 1);
-      expect(keys.length).toBeLessThan(inputs.wantKeysRange[1]);
+    if (want.keysRange) {
+      expect(keys.length).toBeGreaterThan(want.keysRange[0] - 1);
+      expect(keys.length).toBeLessThan(want.keysRange[1]);
     }
-    if (inputs.wantEntry) {
-      for (const [key, shape] of Object.entries(inputs.wantEntry)) {
+    if (want.entry) {
+      for (const [key, shape] of Object.entries(want.entry)) {
         expect(result[key]).toMatchObject(shape);
       }
     }
-    if (inputs.wantPath) {
-      for (const [path, value] of Object.entries(inputs.wantPath)) {
+    if (want.path) {
+      for (const [path, value] of Object.entries(want.path)) {
         const [topKey, ...rest] = path.split('.');
         let actual = result[topKey];
         for (const seg of rest) actual = actual[seg];
         expect(actual).toEqual(value);
       }
     }
-    if (inputs.wantSchemaName) {
+    if (want.schemaName) {
       const config = callLlm.mock.calls[0][1];
       expect(config.responseFormat.type).toBe('json_schema');
-      expect(config.responseFormat.json_schema.name).toBe(inputs.wantSchemaName);
+      expect(config.responseFormat.json_schema.name).toBe(want.schemaName);
     }
-    if ('wantLlmCalls' in inputs) expect(callLlm).toHaveBeenCalledTimes(inputs.wantLlmCalls);
-    if ('wantCommonalitiesCalls' in inputs) {
-      expect(commonalities).toHaveBeenCalledTimes(inputs.wantCommonalitiesCalls);
+    if ('llmCalls' in want) expect(callLlm).toHaveBeenCalledTimes(want.llmCalls);
+    if ('commonalitiesCalls' in want) {
+      expect(commonalities).toHaveBeenCalledTimes(want.commonalitiesCalls);
     }
-    if (inputs.wantCommonalitiesArg1) {
-      expect(commonalities.mock.calls[0][1]).toBe(inputs.wantCommonalitiesArg1);
+    if (want.commonalitiesArg1) {
+      expect(commonalities.mock.calls[0][1]).toBe(want.commonalitiesArg1);
     }
-    if (inputs.wantPromptContains) {
+    if (want.promptContains) {
       const prompt = callLlm.mock.calls[0][0];
-      for (const fragment of inputs.wantPromptContains) expect(prompt).toContain(fragment);
+      for (const fragment of want.promptContains) expect(prompt).toContain(fragment);
     }
   },
 });
-
-// ─── schema validation ──────────────────────────────────────────────────
 
 runTable({
   describe: 'intersections — schema validation',
   examples: [
     {
       name: 'returns validated results when useSchemaValidation is true',
-      inputs: {
-        list: ['A', 'B'],
-        options: { useSchemaValidation: true },
-        mock: () => {
-          callLlm.mockResolvedValueOnce(['elem1']);
-          callLlm.mockResolvedValueOnce({ intersections: validated });
-        },
-        want: validated,
-        wantRetryCalls: 2,
-      },
+      inputs: { list: ['A', 'B'], options: { useSchemaValidation: true } },
+      mocks: { callLlm: [['elem1'], { intersections: validated }] },
+      want: { value: validated, retryCalls: 2 },
     },
     {
       name: 'falls back to original results on validation failure',
-      inputs: {
-        list: ['A', 'B'],
-        options: { useSchemaValidation: true },
-        mock: () => {
-          callLlm.mockResolvedValueOnce(['elem1']);
-          callLlm.mockResolvedValueOnce(['invalid structure']);
-        },
-        wantElements: ['elem1'],
-      },
+      inputs: { list: ['A', 'B'], options: { useSchemaValidation: true } },
+      mocks: { callLlm: [['elem1'], ['invalid structure']] },
+      want: { elements: ['elem1'] },
     },
     {
       name: 'falls back when validation throws',
       inputs: {
         list: ['A', 'B'],
         options: { useSchemaValidation: true },
-        mock: () => {
-          callLlm.mockResolvedValueOnce(['elem1']);
+        setupRetry: () => {
           retry
             .mockImplementationOnce(async (fn) => fn())
             .mockRejectedValueOnce(new Error('validation failed'));
         },
-        wantElements: ['elem1'],
       },
+      mocks: { callLlm: [['elem1']] },
+      want: { elements: ['elem1'] },
     },
   ],
-  process: async ({ list, options, mock }) => {
-    if (mock) mock();
-    return intersections(list, options);
+  process: async ({ inputs, mocks }) => {
+    applyMocks(mocks, { callLlm });
+    inputs.setupRetry?.();
+    return intersections(inputs.list, inputs.options);
   },
-  expects: ({ result, inputs }) => {
-    if ('want' in inputs) expect(result).toEqual(inputs.want);
-    if ('wantRetryCalls' in inputs) expect(retry).toHaveBeenCalledTimes(inputs.wantRetryCalls);
-    if (inputs.wantElements) {
-      expect(result['A + B'].elements).toEqual(inputs.wantElements);
+  expects: ({ result, want }) => {
+    if ('value' in want) expect(result).toEqual(want.value);
+    if ('retryCalls' in want) expect(retry).toHaveBeenCalledTimes(want.retryCalls);
+    if (want.elements) {
+      expect(result['A + B'].elements).toEqual(want.elements);
     }
   },
 });

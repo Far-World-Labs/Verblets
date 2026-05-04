@@ -88,8 +88,8 @@ runTable({
         doc: sampleDocument,
         query: 'coffee and relationships',
         options: { targetSize: 1000, compression: 0.8 },
-        wantBaseline: true,
       },
+      want: { baseline: true },
     },
     {
       name: 'preserves query-relevant content',
@@ -97,28 +97,18 @@ runTable({
         doc: sampleDocument,
         query: 'making coffee for partner',
         options: { targetSize: 800, compression: 0.5 },
-        wantContentLowerContains: 'coffee',
-        wantContentTruthy: true,
       },
+      want: { contentLowerContains: 'coffee', contentTruthy: true },
     },
     {
       name: 'handles empty documents',
-      inputs: {
-        doc: '',
-        query: 'any query',
-        options: {},
-        wantContent: '',
-        wantMetadata: { finalSize: 0, originalSize: 0 },
-      },
+      inputs: { doc: '', query: 'any query', options: {} },
+      want: { content: '', metadata: { finalSize: 0, originalSize: 0 } },
     },
     {
       name: 'handles very short documents',
-      inputs: {
-        doc: 'Just a short sentence.',
-        query: 'test query',
-        options: {},
-        wantContentEqualsDoc: true,
-      },
+      inputs: { doc: 'Just a short sentence.', query: 'test query', options: {} },
+      want: { contentEqualsDoc: true },
     },
     {
       name: 'applies different chunk actions based on relevance',
@@ -126,10 +116,12 @@ runTable({
         doc: sampleDocument,
         query: 'coffee making request',
         options: { targetSize: 1500, compression: 0.8 },
-        wantContentTruthy: true,
-        wantFinalSizeMax: 1500,
-        wantChunksTotalGT: 0,
-        wantTfIdfSelectedGTE: 0,
+      },
+      want: {
+        contentTruthy: true,
+        finalSizeMax: 1500,
+        chunksTotalGT: 0,
+        tfIdfSelectedGTE: 0,
       },
     },
     {
@@ -139,8 +131,8 @@ runTable({
         doc: sampleDocument,
         query: 'relationships',
         options: { targetSize: 1000, compression },
-        wantFinalSizeGTE: 0,
       }),
+      want: { finalSizeGTE: 0 },
     },
     {
       name: 'maintains document structure with XML chunks',
@@ -148,21 +140,13 @@ runTable({
         doc: sampleDocument,
         query: 'comedy show transcript',
         options: { targetSize: 2000 },
-        wantHasContent: true,
-        wantOriginalSizeGT: 0,
-        wantFinalSizeGT: 0,
       },
+      want: { hasContent: true, originalSizeGT: 0, finalSizeGT: 0 },
     },
     {
       name: 'tracks chunk transformations',
-      inputs: {
-        doc: sampleDocument,
-        query: 'video reactions',
-        options: { targetSize: 1200 },
-        wantChunksTotalGT: 0,
-        wantAllocationDefined: true,
-        wantTokensUsedGTE: 0,
-      },
+      inputs: { doc: sampleDocument, query: 'video reactions', options: { targetSize: 1200 } },
+      want: { chunksTotalGT: 0, allocationDefined: true, tokensUsedGTE: 0 },
     },
     {
       name: 'handles custom token budget',
@@ -170,18 +154,13 @@ runTable({
         doc: sampleDocument,
         query: 'test query',
         options: { targetSize: 100, tokenBudget: 500 },
-        wantContentLengthGT: 0,
       },
+      want: { contentLengthGT: 0 },
     },
     {
       name: 'handles custom chunk sizes',
-      inputs: {
-        doc: sampleDocument,
-        query: 'relationships',
-        options: { targetSize: 1500 },
-        wantHasContent: true,
-        wantChunksTotalGT: 0,
-      },
+      inputs: { doc: sampleDocument, query: 'relationships', options: { targetSize: 1500 } },
+      want: { hasContent: true, chunksTotalGT: 0 },
     },
     {
       name: 'handles invalid options gracefully (uses defaults)',
@@ -189,9 +168,8 @@ runTable({
         doc: sampleDocument,
         query: 'test',
         options: { targetSize: -100, chunkSize: -50 },
-        wantHasContent: true,
-        wantContentTruthy: true,
       },
+      want: { hasContent: true, contentTruthy: true },
     },
     {
       name: 'handles very long documents',
@@ -199,14 +177,13 @@ runTable({
         doc: 'This is a test. '.repeat(1000),
         query: 'test content',
         options: { targetSize: 1000 },
-        wantFinalSizeMax: 1500,
-        wantContentTruthy: true,
       },
+      want: { finalSizeMax: 1500, contentTruthy: true },
     },
   ],
-  process: ({ doc, query, options }) => documentShrink(doc, query, options),
-  expects: ({ result, inputs }) => {
-    if (inputs.wantBaseline) {
+  process: ({ inputs }) => documentShrink(inputs.doc, inputs.query, inputs.options),
+  expects: ({ result, inputs, want }) => {
+    if (want.baseline) {
       expect(result.content).toBeTruthy();
       expect(typeof result.content).toBe('string');
       expect(result.metadata.originalSize).toBe(inputs.doc.length);
@@ -214,49 +191,47 @@ runTable({
       expect(result.metadata.finalSize).toBeLessThanOrEqual(result.metadata.originalSize);
       expect(parseFloat(result.metadata.reductionRatio)).toBeGreaterThanOrEqual(0);
     }
-    if (inputs.wantContentLowerContains) {
-      expect(result.content.toLowerCase()).toContain(inputs.wantContentLowerContains);
+    if (want.contentLowerContains) {
+      expect(result.content.toLowerCase()).toContain(want.contentLowerContains);
     }
-    if (inputs.wantContentTruthy) expect(result.content).toBeTruthy();
-    if ('wantContent' in inputs) expect(result.content).toBe(inputs.wantContent);
-    if (inputs.wantMetadata) expect(result.metadata).toMatchObject(inputs.wantMetadata);
-    if (inputs.wantContentEqualsDoc) {
+    if (want.contentTruthy) expect(result.content).toBeTruthy();
+    if ('content' in want) expect(result.content).toBe(want.content);
+    if (want.metadata) expect(result.metadata).toMatchObject(want.metadata);
+    if (want.contentEqualsDoc) {
       expect(result.content).toBe(inputs.doc);
       expect(result.metadata).toMatchObject({
         originalSize: inputs.doc.length,
         finalSize: inputs.doc.length,
       });
     }
-    if (inputs.wantFinalSizeMax !== undefined) {
-      expect(result.metadata.finalSize).toBeLessThanOrEqual(inputs.wantFinalSizeMax);
+    if (want.finalSizeMax !== undefined) {
+      expect(result.metadata.finalSize).toBeLessThanOrEqual(want.finalSizeMax);
     }
-    if (inputs.wantFinalSizeGTE !== undefined) {
-      expect(result.metadata.finalSize).toBeGreaterThanOrEqual(inputs.wantFinalSizeGTE);
+    if (want.finalSizeGTE !== undefined) {
+      expect(result.metadata.finalSize).toBeGreaterThanOrEqual(want.finalSizeGTE);
     }
-    if (inputs.wantChunksTotalGT !== undefined) {
-      expect(result.metadata.chunks.total).toBeGreaterThan(inputs.wantChunksTotalGT);
+    if (want.chunksTotalGT !== undefined) {
+      expect(result.metadata.chunks.total).toBeGreaterThan(want.chunksTotalGT);
     }
-    if (inputs.wantTfIdfSelectedGTE !== undefined) {
-      expect(result.metadata.chunks.tfIdfSelected).toBeGreaterThanOrEqual(
-        inputs.wantTfIdfSelectedGTE
-      );
+    if (want.tfIdfSelectedGTE !== undefined) {
+      expect(result.metadata.chunks.tfIdfSelected).toBeGreaterThanOrEqual(want.tfIdfSelectedGTE);
     }
-    if (inputs.wantHasContent) {
+    if (want.hasContent) {
       expect(result).toHaveProperty('content');
       expect(result).toHaveProperty('metadata');
     }
-    if (inputs.wantOriginalSizeGT !== undefined) {
-      expect(result.metadata.originalSize).toBeGreaterThan(inputs.wantOriginalSizeGT);
+    if (want.originalSizeGT !== undefined) {
+      expect(result.metadata.originalSize).toBeGreaterThan(want.originalSizeGT);
     }
-    if (inputs.wantFinalSizeGT !== undefined) {
-      expect(result.metadata.finalSize).toBeGreaterThan(inputs.wantFinalSizeGT);
+    if (want.finalSizeGT !== undefined) {
+      expect(result.metadata.finalSize).toBeGreaterThan(want.finalSizeGT);
     }
-    if (inputs.wantAllocationDefined) expect(result.metadata.allocation).toBeDefined();
-    if (inputs.wantTokensUsedGTE !== undefined) {
-      expect(result.metadata.tokens.used).toBeGreaterThanOrEqual(inputs.wantTokensUsedGTE);
+    if (want.allocationDefined) expect(result.metadata.allocation).toBeDefined();
+    if (want.tokensUsedGTE !== undefined) {
+      expect(result.metadata.tokens.used).toBeGreaterThanOrEqual(want.tokensUsedGTE);
     }
-    if (inputs.wantContentLengthGT !== undefined) {
-      expect(result.content.length).toBeGreaterThan(inputs.wantContentLengthGT);
+    if (want.contentLengthGT !== undefined) {
+      expect(result.content.length).toBeGreaterThan(want.contentLengthGT);
     }
   },
 });
@@ -266,12 +241,10 @@ runTable({
   examples: [
     {
       name: 'low disables all LLM phases',
-      inputs: {
-        thoroughness: 'low',
-        want: { queryExpansion: false, llmScoring: false, llmCompression: false },
-      },
+      inputs: { thoroughness: 'low' },
+      want: { value: { queryExpansion: false, llmScoring: false, llmCompression: false } },
     },
   ],
-  process: ({ thoroughness }) => mapThoroughness(thoroughness),
-  expects: ({ result, inputs }) => expect(result).toMatchObject(inputs.want),
+  process: ({ inputs }) => mapThoroughness(inputs.thoroughness),
+  expects: ({ result, want }) => expect(result).toMatchObject(want.value),
 });

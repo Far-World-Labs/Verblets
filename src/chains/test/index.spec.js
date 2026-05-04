@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from './index.js';
 import { ChainEvent, DomainEvent, Outcome } from '../../lib/progress/constants.js';
-import { runTable } from '../../lib/examples-runner/index.js';
+import { runTable, applyMocks } from '../../lib/examples-runner/index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(),
@@ -30,8 +30,6 @@ afterEach(async () => {
   }
 });
 
-// ─── test chain (result-shape vocabulary) ────────────────────────────────
-
 runTable({
   describe: 'test chain',
   examples: [
@@ -39,48 +37,50 @@ runTable({
       name: 'analyzes code and returns feedback when issues found',
       inputs: {
         content: 'function example() { return "hello"; }',
-        mock: () =>
-          llm.mockResolvedValueOnce({
+        instructions: 'provide feedback',
+      },
+      mocks: {
+        llm: [
+          {
             hasIssues: true,
             issues: ['This function could use JSDoc comments.', 'Consider adding error handling.'],
-          }),
-        instructions: 'provide feedback',
-        want: ['This function could use JSDoc comments.', 'Consider adding error handling.'],
-        wantJsonSchema: true,
+          },
+        ],
+      },
+      want: {
+        value: ['This function could use JSDoc comments.', 'Consider adding error handling.'],
+        jsonSchema: true,
       },
     },
     {
       name: 'returns empty array when no issues found',
       inputs: {
         content: 'function example() { return "hello"; }',
-        mock: () => llm.mockResolvedValueOnce({ hasIssues: false, issues: [] }),
         instructions: 'provide feedback',
-        want: [],
       },
+      mocks: { llm: [{ hasIssues: false, issues: [] }] },
+      want: { value: [] },
     },
     {
       name: 'handles errors',
-      inputs: {
-        content: 'bad code',
-        mock: () => llm.mockRejectedValueOnce(new Error('Analysis failed')),
-        instructions: 'provide feedback',
-        throws: 'Analysis failed',
-      },
+      inputs: { content: 'bad code', instructions: 'provide feedback' },
+      mocks: { llm: [new Error('Analysis failed')] },
+      want: { throws: 'Analysis failed' },
     },
   ],
-  process: async ({ content, mock, instructions }) => {
-    await writeFile(tempFile, content);
-    mock();
-    return test(tempFile, instructions);
+  process: async ({ inputs, mocks }) => {
+    await writeFile(tempFile, inputs.content);
+    applyMocks(mocks, { llm });
+    return test(tempFile, inputs.instructions);
   },
-  expects: ({ result, error, inputs }) => {
-    if ('throws' in inputs) {
-      expect(error?.message).toBe(inputs.throws);
+  expects: ({ result, error, want }) => {
+    if (want.throws) {
+      expect(error?.message).toBe(want.throws);
       return;
     }
     if (error) throw error;
-    if ('want' in inputs) expect(result).toEqual(inputs.want);
-    if (inputs.wantJsonSchema) {
+    if ('value' in want) expect(result).toEqual(want.value);
+    if (want.jsonSchema) {
       expect(llm).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({
@@ -91,139 +91,113 @@ runTable({
   },
 });
 
-// ─── test chain — progress emission (events vocabulary) ──────────────────
-
 runTable({
   describe: 'test chain — progress emission',
   examples: [
     {
       name: 'emits chain:start and chain:complete on success',
-      inputs: {
-        content: 'const x = 1;',
-        mock: () => llm.mockResolvedValueOnce({ hasIssues: false, issues: [] }),
-        wantStartShape: { step: 'test' },
-        wantCompleteShape: { step: 'test', outcome: Outcome.success },
+      inputs: { content: 'const x = 1;' },
+      mocks: { llm: [{ hasIssues: false, issues: [] }] },
+      want: {
+        startShape: { step: 'test' },
+        completeShape: { step: 'test', outcome: Outcome.success },
       },
     },
     {
       name: 'emits file-read phase after reading the file',
-      inputs: {
-        content: 'const x = 1;',
-        mock: () => llm.mockResolvedValueOnce({ hasIssues: false, issues: [] }),
-        wantPhase: { name: 'file-read', shape: { kind: 'event' } },
-        wantPathOnFileRead: true,
-      },
+      inputs: { content: 'const x = 1;' },
+      mocks: { llm: [{ hasIssues: false, issues: [] }] },
+      want: { phase: { name: 'file-read', shape: { kind: 'event' } }, pathOnFileRead: true },
     },
     {
       name: 'emits analyzing phase before LLM call',
-      inputs: {
-        content: 'const x = 1;',
-        mock: () => llm.mockResolvedValueOnce({ hasIssues: true, issues: ['unused variable'] }),
-        wantPhase: { name: 'analyzing', shape: { kind: 'event' } },
-      },
+      inputs: { content: 'const x = 1;' },
+      mocks: { llm: [{ hasIssues: true, issues: ['unused variable'] }] },
+      want: { phase: { name: 'analyzing', shape: { kind: 'event' } } },
     },
     {
       name: 'emits analysis-complete phase with issue count after LLM call',
-      inputs: {
-        content: 'const x = 1;',
-        mock: () =>
-          llm.mockResolvedValueOnce({
-            hasIssues: true,
-            issues: ['unused variable', 'missing semicolon'],
-          }),
-        wantPhase: { name: 'analysis-complete' },
-        wantIssueCount: 2,
-      },
+      inputs: { content: 'const x = 1;' },
+      mocks: { llm: [{ hasIssues: true, issues: ['unused variable', 'missing semicolon'] }] },
+      want: { phase: { name: 'analysis-complete' }, issueCount: 2 },
     },
     {
       name: 'emits analysis-complete with zero issue count when no issues found',
-      inputs: {
-        content: 'const x = 1;',
-        mock: () => llm.mockResolvedValueOnce({ hasIssues: false, issues: [] }),
-        wantPhase: { name: 'analysis-complete' },
-        wantIssueCount: 0,
-      },
+      inputs: { content: 'const x = 1;' },
+      mocks: { llm: [{ hasIssues: false, issues: [] }] },
+      want: { phase: { name: 'analysis-complete' }, issueCount: 0 },
     },
     {
       name: 'emits events in correct order: start → file-read → analyzing → analysis-complete → complete',
-      inputs: {
-        content: 'const x = 1;',
-        mock: () => llm.mockResolvedValueOnce({ hasIssues: false, issues: [] }),
-        wantOrderedEvents: true,
-      },
+      inputs: { content: 'const x = 1;' },
+      mocks: { llm: [{ hasIssues: false, issues: [] }] },
+      want: { orderedEvents: true },
     },
     {
       name: 'emits chain:error instead of chain:complete on failure',
-      inputs: {
-        content: 'const x = 1;',
-        mock: () => llm.mockRejectedValueOnce(new Error('LLM timeout')),
-        tolerant: true,
-        wantErrorEvent: { step: 'test', errorMessage: 'LLM timeout' },
-        wantNoCompleteEvent: true,
+      inputs: { content: 'const x = 1;', tolerant: true },
+      mocks: { llm: [new Error('LLM timeout')] },
+      want: {
+        errorEvent: { step: 'test', errorMessage: 'LLM timeout' },
+        noCompleteEvent: true,
       },
     },
     {
       name: 'emits file-read and analyzing phases before error when LLM fails',
-      inputs: {
-        content: 'const x = 1;',
-        mock: () => llm.mockRejectedValueOnce(new Error('LLM timeout')),
-        tolerant: true,
-        wantPhasesPresent: ['file-read', 'analyzing'],
-        wantPhasesAbsent: ['analysis-complete'],
-      },
+      inputs: { content: 'const x = 1;', tolerant: true },
+      mocks: { llm: [new Error('LLM timeout')] },
+      want: { phasesPresent: ['file-read', 'analyzing'], phasesAbsent: ['analysis-complete'] },
     },
     {
       name: 'includes trace context on all emitted events',
-      inputs: {
-        content: 'const x = 1;',
-        mock: () => llm.mockResolvedValueOnce({ hasIssues: false, issues: [] }),
-        wantTraceContext: true,
-      },
+      inputs: { content: 'const x = 1;' },
+      mocks: { llm: [{ hasIssues: false, issues: [] }] },
+      want: { traceContext: true },
     },
   ],
-  process: async ({ content, mock, tolerant }) => {
-    await writeFile(tempFile, content);
-    mock();
+  process: async ({ inputs, mocks }) => {
+    await writeFile(tempFile, inputs.content);
+    applyMocks(mocks, { llm });
     const events = [];
     try {
       await test(tempFile, 'check quality', { onProgress: (e) => events.push(e) });
     } catch (e) {
-      if (!tolerant) throw e;
+      if (!inputs.tolerant) throw e;
     }
     return { events };
   },
-  expects: ({ result, inputs }) => {
-    if (inputs.wantStartShape) {
+  expects: ({ result, want }) => {
+    if (want.startShape) {
       const start = result.events.find((e) => e.event === ChainEvent.start);
-      expect(start).toMatchObject(inputs.wantStartShape);
+      expect(start).toMatchObject(want.startShape);
       expect(start.operation).toBeDefined();
       expect(start.timestamp).toBeDefined();
     }
-    if (inputs.wantCompleteShape) {
+    if (want.completeShape) {
       const complete = result.events.find((e) => e.event === ChainEvent.complete);
-      expect(complete).toMatchObject(inputs.wantCompleteShape);
+      expect(complete).toMatchObject(want.completeShape);
       expect(complete.durationMs).toBeTypeOf('number');
     }
-    if (inputs.wantPhase) {
+    if (want.phase) {
       const ev = result.events.find(
-        (e) => e.event === DomainEvent.phase && e.phase === inputs.wantPhase.name
+        (e) => e.event === DomainEvent.phase && e.phase === want.phase.name
       );
       expect(ev).toBeDefined();
-      if (inputs.wantPhase.shape) expect(ev).toMatchObject(inputs.wantPhase.shape);
+      if (want.phase.shape) expect(ev).toMatchObject(want.phase.shape);
     }
-    if (inputs.wantPathOnFileRead) {
+    if (want.pathOnFileRead) {
       const ev = result.events.find(
         (e) => e.event === DomainEvent.phase && e.phase === 'file-read'
       );
       expect(ev.path).toBe(tempFile);
     }
-    if ('wantIssueCount' in inputs) {
+    if ('issueCount' in want) {
       const ev = result.events.find(
         (e) => e.event === DomainEvent.phase && e.phase === 'analysis-complete'
       );
-      expect(ev.issueCount).toBe(inputs.wantIssueCount);
+      expect(ev.issueCount).toBe(want.issueCount);
     }
-    if (inputs.wantOrderedEvents) {
+    if (want.orderedEvents) {
       const seq = result.events.map((e) => e.event);
       const startIdx = seq.indexOf(ChainEvent.start);
       const fileReadIdx = seq.indexOf(DomainEvent.phase);
@@ -235,30 +209,30 @@ runTable({
       expect(analyzingIdx).toBeLessThan(analysisCompleteIdx);
       expect(analysisCompleteIdx).toBeLessThan(completeIdx);
     }
-    if (inputs.wantErrorEvent) {
+    if (want.errorEvent) {
       const error = result.events.find((e) => e.event === ChainEvent.error);
-      expect(error).toMatchObject({ step: inputs.wantErrorEvent.step });
-      expect(error.error.message).toBe(inputs.wantErrorEvent.errorMessage);
+      expect(error).toMatchObject({ step: want.errorEvent.step });
+      expect(error.error.message).toBe(want.errorEvent.errorMessage);
       expect(error.durationMs).toBeTypeOf('number');
     }
-    if (inputs.wantNoCompleteEvent) {
+    if (want.noCompleteEvent) {
       expect(result.events.find((e) => e.event === ChainEvent.complete)).toBeUndefined();
     }
-    if (inputs.wantPhasesPresent) {
-      for (const phase of inputs.wantPhasesPresent) {
+    if (want.phasesPresent) {
+      for (const phase of want.phasesPresent) {
         expect(
           result.events.find((e) => e.event === DomainEvent.phase && e.phase === phase)
         ).toBeDefined();
       }
     }
-    if (inputs.wantPhasesAbsent) {
-      for (const phase of inputs.wantPhasesAbsent) {
+    if (want.phasesAbsent) {
+      for (const phase of want.phasesAbsent) {
         expect(
           result.events.find((e) => e.event === DomainEvent.phase && e.phase === phase)
         ).toBeUndefined();
       }
     }
-    if (inputs.wantTraceContext) {
+    if (want.traceContext) {
       for (const ev of result.events) {
         expect(ev.traceId).toBeTypeOf('string');
         expect(ev.spanId).toBeTypeOf('string');

@@ -4,7 +4,7 @@ import tagVocabulary, {
   refineVocabulary,
   computeTagStatistics,
 } from './index.js';
-import { runTable } from '../../lib/examples-runner/index.js';
+import { runTable, applyMocks } from '../../lib/examples-runner/index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(),
@@ -33,8 +33,6 @@ const mockVocabulary = {
   ],
 };
 
-// ─── computeTagStatistics ──────────────────────────────────────────────
-
 runTable({
   describe: 'computeTagStatistics',
   examples: [
@@ -49,16 +47,13 @@ runTable({
           ['work'],
           ['urgent', 'work'],
         ],
-        wantStats: {
-          totalItems: 5,
-          itemsWithTags: 5,
-          coveragePercent: 100,
-          unusedTags: 0,
-        },
-        wantAvgTagsPerItem: 1.6,
-        wantMostUsedLength: 3,
-        wantMostUsedFirst: { tag: { id: 'urgent' }, count: 2 },
-        wantLeastUsedLength: 3,
+      },
+      want: {
+        stats: { totalItems: 5, itemsWithTags: 5, coveragePercent: 100, unusedTags: 0 },
+        avgTagsPerItem: 1.6,
+        mostUsedLength: 3,
+        mostUsedFirst: { tag: { id: 'urgent' }, count: 2 },
+        leastUsedLength: 3,
       },
     },
     {
@@ -73,53 +68,46 @@ runTable({
           ['urgent'],
         ],
         options: { problematicSampleSize: 2 },
-        wantUntagged: { length: 1, firstIndex: 1 },
-        wantOvertagged: { length: 1, firstShape: { itemIndex: 0, tagCount: 4 } },
+      },
+      want: {
+        untagged: { length: 1, firstIndex: 1 },
+        overtagged: { length: 1, firstShape: { itemIndex: 0, tagCount: 4 } },
       },
     },
     {
       name: 'handles empty tag arrays',
-      inputs: {
-        vocab: mockVocabulary,
-        tagged: [[], [], []],
-        wantStats: {
-          itemsWithTags: 0,
-          coveragePercent: 0,
-          avgTagsPerItem: 0,
-          unusedTags: 5,
-        },
+      inputs: { vocab: mockVocabulary, tagged: [[], [], []] },
+      want: {
+        stats: { itemsWithTags: 0, coveragePercent: 0, avgTagsPerItem: 0, unusedTags: 5 },
       },
     },
   ],
-  process: ({ vocab, tagged, options }) => computeTagStatistics(vocab, tagged, options),
-  expects: ({ result, inputs }) => {
-    if (inputs.wantStats) expect(result.stats).toMatchObject(inputs.wantStats);
-    if ('wantAvgTagsPerItem' in inputs) {
-      expect(result.stats.avgTagsPerItem).toBeCloseTo(inputs.wantAvgTagsPerItem);
+  process: ({ inputs }) => computeTagStatistics(inputs.vocab, inputs.tagged, inputs.options),
+  expects: ({ result, want }) => {
+    if (want.stats) expect(result.stats).toMatchObject(want.stats);
+    if ('avgTagsPerItem' in want) {
+      expect(result.stats.avgTagsPerItem).toBeCloseTo(want.avgTagsPerItem);
     }
-    if ('wantMostUsedLength' in inputs) {
-      expect(result.mostUsed).toHaveLength(inputs.wantMostUsedLength);
+    if ('mostUsedLength' in want) {
+      expect(result.mostUsed).toHaveLength(want.mostUsedLength);
     }
-    if (inputs.wantMostUsedFirst)
-      expect(result.mostUsed[0]).toMatchObject(inputs.wantMostUsedFirst);
-    if ('wantLeastUsedLength' in inputs) {
-      expect(result.leastUsed).toHaveLength(inputs.wantLeastUsedLength);
+    if (want.mostUsedFirst) expect(result.mostUsed[0]).toMatchObject(want.mostUsedFirst);
+    if ('leastUsedLength' in want) {
+      expect(result.leastUsed).toHaveLength(want.leastUsedLength);
       expect(result.problematicItems).toBeDefined();
     }
-    if (inputs.wantUntagged) {
+    if (want.untagged) {
       const untagged = result.problematicItems.filter((p) => p.type === 'untagged');
-      expect(untagged).toHaveLength(inputs.wantUntagged.length);
-      expect(untagged[0].itemIndex).toBe(inputs.wantUntagged.firstIndex);
+      expect(untagged).toHaveLength(want.untagged.length);
+      expect(untagged[0].itemIndex).toBe(want.untagged.firstIndex);
     }
-    if (inputs.wantOvertagged) {
+    if (want.overtagged) {
       const overtagged = result.problematicItems.filter((p) => p.type === 'overtagged');
-      expect(overtagged).toHaveLength(inputs.wantOvertagged.length);
-      expect(overtagged[0]).toMatchObject(inputs.wantOvertagged.firstShape);
+      expect(overtagged).toHaveLength(want.overtagged.length);
+      expect(overtagged[0]).toMatchObject(want.overtagged.firstShape);
     }
   },
 });
-
-// ─── generateInitialVocabulary ──────────────────────────────────────────
 
 runTable({
   describe: 'generateInitialVocabulary',
@@ -129,33 +117,32 @@ runTable({
       inputs: {
         spec: 'Create tags for task management with urgency and category facets',
         items: mockItems.slice(0, 2),
-        mock: () => llm.mockResolvedValueOnce(mockVocabulary),
-        want: mockVocabulary,
-        wantPromptContains: ['Create tags for task management with urgency and category facets'],
-        wantJsonSchema: true,
+      },
+      mocks: { llm: [mockVocabulary] },
+      want: {
+        value: mockVocabulary,
+        promptContains: ['Create tags for task management with urgency and category facets'],
+        jsonSchema: true,
       },
     },
     {
       name: 'includes sample items in generation',
-      inputs: {
-        spec: 'Task tags',
-        items: mockItems,
-        mock: () => llm.mockResolvedValueOnce(mockVocabulary),
-        wantPromptContains: ['Pay credit card bill', 'sample-items'],
-      },
+      inputs: { spec: 'Task tags', items: mockItems },
+      mocks: { llm: [mockVocabulary] },
+      want: { promptContains: ['Pay credit card bill', 'sample-items'] },
     },
   ],
-  process: async ({ spec, items, mock }) => {
-    if (mock) mock();
-    return generateInitialVocabulary(spec, items);
+  process: async ({ inputs, mocks }) => {
+    applyMocks(mocks, { llm });
+    return generateInitialVocabulary(inputs.spec, inputs.items);
   },
-  expects: ({ result, inputs }) => {
-    if ('want' in inputs) expect(result).toEqual(inputs.want);
+  expects: ({ result, want }) => {
+    if ('value' in want) expect(result).toEqual(want.value);
     const prompt = llm.mock.calls[0][0];
-    if (inputs.wantPromptContains) {
-      for (const fragment of inputs.wantPromptContains) expect(prompt).toContain(fragment);
+    if (want.promptContains) {
+      for (const fragment of want.promptContains) expect(prompt).toContain(fragment);
     }
-    if (inputs.wantJsonSchema) {
+    if (want.jsonSchema) {
       expect(llm).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({
@@ -165,8 +152,6 @@ runTable({
     }
   },
 });
-
-// ─── refineVocabulary ──────────────────────────────────────────────────
 
 const refinedVocab = {
   ...mockVocabulary,
@@ -191,9 +176,11 @@ runTable({
           ['urgent', 'work'],
         ],
         spec: 'Task management tags',
-        mock: () => llm.mockResolvedValueOnce(refinedVocab),
-        want: refinedVocab,
-        wantPromptContains: ['usage-statistics', 'most-used-tags', 'least-used-tags'],
+      },
+      mocks: { llm: [refinedVocab] },
+      want: {
+        value: refinedVocab,
+        promptContains: ['usage-statistics', 'most-used-tags', 'least-used-tags'],
       },
     },
     {
@@ -202,25 +189,23 @@ runTable({
         vocab: mockVocabulary,
         tagged: [['urgent', 'financial', 'personal', 'work'], [], ['financial']],
         spec: 'Tags',
-        mock: () => llm.mockResolvedValueOnce(mockVocabulary),
-        wantPromptContains: ['problematic-items', 'untagged', 'overtagged'],
       },
+      mocks: { llm: [mockVocabulary] },
+      want: { promptContains: ['problematic-items', 'untagged', 'overtagged'] },
     },
   ],
-  process: async ({ vocab, tagged, spec, mock }) => {
-    if (mock) mock();
-    return refineVocabulary(vocab, tagged, spec);
+  process: async ({ inputs, mocks }) => {
+    applyMocks(mocks, { llm });
+    return refineVocabulary(inputs.vocab, inputs.tagged, inputs.spec);
   },
-  expects: ({ result, inputs }) => {
-    if ('want' in inputs) expect(result).toEqual(inputs.want);
-    if (inputs.wantPromptContains) {
+  expects: ({ result, want }) => {
+    if ('value' in want) expect(result).toEqual(want.value);
+    if (want.promptContains) {
       const prompt = llm.mock.calls[0][0];
-      for (const fragment of inputs.wantPromptContains) expect(prompt).toContain(fragment);
+      for (const fragment of want.promptContains) expect(prompt).toContain(fragment);
     }
   },
 });
-
-// ─── tagVocabulary (orchestrator) ──────────────────────────────────────
 
 runTable({
   describe: 'tagVocabulary',
@@ -231,25 +216,19 @@ runTable({
         spec: 'Task tags',
         items: mockItems,
         options: { sampleSize: 2 },
-        mock: () => {
-          llm.mockResolvedValueOnce(mockVocabulary).mockResolvedValueOnce(mockVocabulary);
+        makeTagger: () => {
           const tagger = vi.fn();
           tagger.mockResolvedValueOnce([['urgent', 'financial'], ['personal'], ['financial']]);
           return tagger;
         },
-        wantLlmCalls: 2,
-        wantTaggerCalledWith: [mockItems, mockVocabulary],
-        wantValue: mockVocabulary,
       },
+      mocks: { llm: [mockVocabulary, mockVocabulary] },
+      want: { llmCalls: 2, taggerCalledWith: [mockItems, mockVocabulary], value: mockVocabulary },
     },
     {
       name: 'throws without tagger',
-      inputs: {
-        spec: 'Task tags',
-        items: mockItems,
-        options: {},
-        throws: /tagger function must be provided/,
-      },
+      inputs: { spec: 'Task tags', items: mockItems, options: {} },
+      want: { throws: /tagger function must be provided/ },
     },
     {
       name: 'respects sample size',
@@ -257,57 +236,54 @@ runTable({
         spec: 'Tags',
         items: Array(100).fill('item'),
         options: { sampleSize: 10 },
-        mock: () => {
-          llm.mockResolvedValueOnce(mockVocabulary).mockResolvedValueOnce(mockVocabulary);
-          return vi.fn(() => Promise.resolve([]));
-        },
-        wantSampleItemsLength: 10,
+        makeTagger: () => vi.fn(() => Promise.resolve([])),
       },
+      mocks: { llm: [mockVocabulary, mockVocabulary] },
+      want: { sampleItemsLength: 10 },
     },
     {
       name: 'works with a mock tags chain',
       inputs: {
         spec: 'Categorize by urgency and type',
         items: ['urgent task', 'tax filing', 'other item'],
-        mock: () => {
-          llm.mockResolvedValueOnce(mockVocabulary).mockResolvedValueOnce(mockVocabulary);
-          return vi.fn(async (items) =>
+        makeTagger: () =>
+          vi.fn(async (items) =>
             items.map((item) => {
               const tags = [];
               if (item.includes('urgent') || item.includes('bill')) tags.push('urgent');
               if (item.includes('financial') || item.includes('tax')) tags.push('financial');
               return tags;
             })
-          );
-        },
-        wantTaggerCalled: true,
-        wantValueDefined: true,
+          ),
       },
+      mocks: { llm: [mockVocabulary, mockVocabulary] },
+      want: { taggerCalled: true, valueDefined: true },
     },
   ],
-  process: async ({ spec, items, options, mock }) => {
-    const tagger = mock?.();
-    const value = await tagVocabulary(spec, items, { ...options, tagger });
+  process: async ({ inputs, mocks }) => {
+    applyMocks(mocks, { llm });
+    const tagger = inputs.makeTagger?.();
+    const value = await tagVocabulary(inputs.spec, inputs.items, { ...inputs.options, tagger });
     return { value, tagger };
   },
-  expects: ({ result, error, inputs }) => {
-    if ('throws' in inputs) {
-      expect(error?.message).toMatch(inputs.throws);
+  expects: ({ result, error, want }) => {
+    if (want.throws) {
+      expect(error?.message).toMatch(want.throws);
       return;
     }
     if (error) throw error;
-    if ('wantLlmCalls' in inputs) expect(llm).toHaveBeenCalledTimes(inputs.wantLlmCalls);
-    if (inputs.wantTaggerCalledWith) {
-      expect(result.tagger).toHaveBeenCalledWith(...inputs.wantTaggerCalledWith);
+    if ('llmCalls' in want) expect(llm).toHaveBeenCalledTimes(want.llmCalls);
+    if (want.taggerCalledWith) {
+      expect(result.tagger).toHaveBeenCalledWith(...want.taggerCalledWith);
     }
-    if (inputs.wantTaggerCalled) expect(result.tagger).toHaveBeenCalled();
-    if ('wantValue' in inputs) expect(result.value).toEqual(inputs.wantValue);
-    if (inputs.wantValueDefined) expect(result.value).toBeDefined();
-    if ('wantSampleItemsLength' in inputs) {
+    if (want.taggerCalled) expect(result.tagger).toHaveBeenCalled();
+    if ('value' in want) expect(result.value).toEqual(want.value);
+    if (want.valueDefined) expect(result.value).toBeDefined();
+    if ('sampleItemsLength' in want) {
       const prompt = llm.mock.calls[0][0];
       expect(prompt).toContain('<sample-items>');
       const sampleMatch = prompt.match(/<sample-items>([\s\S]*?)<\/sample-items>/);
-      expect(JSON.parse(sampleMatch[1])).toHaveLength(inputs.wantSampleItemsLength);
+      expect(JSON.parse(sampleMatch[1])).toHaveLength(want.sampleItemsLength);
     }
   },
 });
