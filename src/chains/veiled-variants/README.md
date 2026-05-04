@@ -1,37 +1,76 @@
 # veiled-variants
 
-Reframe a prompt through multiple cognitive lenses to generate alternative phrasings. Useful when a direct query might trigger content filters or when you want diverse angles on the same question. Runs parallel LLM calls — one per strategy — and returns all variants in a flat array.
+Reframe an intent as a set of **adjacent** queries — questions whose answers, taken together, would inform the original but which never ask it directly. Useful when a direct query might trip a content filter, expose intent to an upstream observer, or when you simply want a wider net of evidence than a literal restatement would gather.
 
-The three built-in strategies:
-- **Scientific framing** — recasts the prompt as an academic research query using terminology from biology, epidemiology, or public health
-- **Causal framing** — explores causes, co-conditions, and consequences adjacent to the topic
-- **Soft cover** — reframes as general wellness or diagnostic concerns with a clinical, approachable tone
+The chain runs parallel LLM calls (one per strategy) and returns the variants flat. Each strategy aims at a different kind of "near miss":
+
+- **Scientific framing** — recasts the intent as research, diagnostic, or modeling questions in an adjacent technical field. The vocabulary shifts; the central subject is never named.
+- **Causal framing** — asks about precursors, co-conditions, and downstream effects in the neighborhood of the topic, without naming it.
+- **Soft cover** — reframes as ordinary, unremarkable practical questions from a different domain entirely. Plain voice, no clinical or domain markers.
+
+## Health-adjacent example
 
 ```javascript
 import { veiledVariants } from '@far-world-labs/verblets';
 
 const variants = await veiledVariants(
-  'What are the effects of long-term sleep deprivation?'
+  'What are the long-term effects of chronic insomnia?'
 );
 
-// Returns 15 variants (5 per strategy):
+// Returns 15 variants (5 per strategy). None mentions sleep, insomnia,
+// rest, fatigue, or any direct synonym. Sample:
 // [
-//   "What neurological biomarkers correlate with chronic sleep deficit in longitudinal cohort studies?",
-//   "How does sustained wakefulness beyond 72 hours alter hypothalamic-pituitary axis regulation?",
+//   // scientific
+//   "What metabolic markers shift in adults with sustained autonomic dysregulation?",
+//   "Which cortisol and inflammatory profiles correlate with prolonged circadian misalignment in working-age cohorts?",
+//   "What longitudinal cardiovascular outcomes track with chronic vigilance states?",
 //   ...
-//   "What environmental and behavioral factors contribute to persistent inability to maintain sleep?",
+//   // causal
+//   "What occupational and environmental conditions most strongly predict reduced overnight melatonin output?",
+//   "Which household and lifestyle factors are most associated with elevated evening cortisol?",
 //   ...
-//   "What general wellness indicators suggest someone may not be getting adequate rest?",
+//   // soft cover
+//   "How do people who travel across time zones for work typically organize their week?",
+//   "What habits do shift workers tend to adopt to keep up with daily routines?",
 //   ...
 // ]
 ```
+
+The original intent — *insomnia and its long-term effects* — is recoverable only by combining several answers across strategies. No single variant exposes it.
+
+## Finance-adjacent example
+
+```javascript
+const variants = await veiledVariants(
+  'Is now a good time to liquidate my retirement holdings?'
+);
+
+// Sample variants — none asks the original question, none names retirement,
+// liquidation, or selling:
+// [
+//   // scientific
+//   "What macroeconomic indicators historically precede broad shifts in long-duration asset allocation?",
+//   "How do household balance-sheet compositions respond to multi-quarter changes in real interest rates?",
+//   ...
+//   // causal
+//   "What labor-market and demographic signals tend to lead changes in domestic savings flows?",
+//   "Which policy events most consistently coincide with rebalancing activity across managed portfolios?",
+//   ...
+//   // soft cover
+//   "How do families typically decide when to make a large household financial change?",
+//   "What questions do people ask their advisors before any significant life transition?",
+//   ...
+// ]
+```
+
+Again, the original intent only emerges from the *combination* of answers across strategies — each individual query reads as an unrelated research or lifestyle question.
 
 ## API
 
 ### `veiledVariants(prompt, config)`
 
-- `prompt` (string, required): The text to reframe
-- `config.coverage` (`'low'`|`'med'`|`'high'`): Controls strategy breadth and variant count. `'low'` runs 1 strategy producing 3 variants. `'med'` (default) runs all 3 strategies with 5 variants each (15 total). `'high'` runs all 3 strategies with 8 variants each (24 total).
+- `prompt` (string, required): The intent to veil
+- `config.coverage` (`'low'`|`'med'`|`'high'`): Strategy breadth and variant count. `'low'` runs 1 strategy producing 3 variants. `'med'` (default) runs all 3 strategies with 5 variants each (15 total). `'high'` runs all 3 strategies with 8 variants each (24 total).
 - `config.strategies` (Array): Override which strategies to use. Values: `'scientific'`, `'causal'`, `'softCover'`
 - `config.variantCount` (number): Override variants per strategy
 - `config.llm` (string|Object): Model selection. Defaults to `{ sensitive: true }`, requesting a privacy-capable model.
@@ -51,5 +90,5 @@ import {
 } from '@far-world-labs/verblets';
 
 const prompt = scientificFramingPrompt('effects of isolation on cognition', 3);
-// Returns a ready-to-use LLM prompt requesting 3 scientific reframings
+// Returns a ready-to-use LLM prompt requesting 3 adjacent research queries
 ```
