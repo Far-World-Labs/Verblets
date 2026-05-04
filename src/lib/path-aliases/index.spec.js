@@ -14,9 +14,9 @@ runTable({
   examples: [
     {
       name: 'basic usage',
-      inputs: {
-        sequences: ['foo/bar/baz.js', 'foo/biz/baz.js', 'foo/biz/qux.js'],
-        want: sortedEntries({
+      inputs: { sequences: ['foo/bar/baz.js', 'foo/biz/baz.js', 'foo/biz/qux.js'] },
+      want: {
+        value: sortedEntries({
           'foo/bar/baz.js': 'bar/baz.js',
           'foo/biz/baz.js': 'biz/baz.js',
           'foo/biz/qux.js': 'qux.js',
@@ -25,10 +25,9 @@ runTable({
     },
     {
       name: 'deeper conflict',
-      inputs: {
-        sequences: ['a/y/x/w/v.js', 'b/y/z/w/v.js'],
-        delimiter: '/',
-        want: sortedEntries({
+      inputs: { sequences: ['a/y/x/w/v.js', 'b/y/z/w/v.js'], delimiter: '/' },
+      want: {
+        value: sortedEntries({
           'a/y/x/w/v.js': 'x/w/v.js',
           'b/y/z/w/v.js': 'z/w/v.js',
         }),
@@ -36,10 +35,9 @@ runTable({
     },
     {
       name: 'no delimiter conflict',
-      inputs: {
-        sequences: ['192.168.0.1', '192.168.1.1', '10.0.0.1'],
-        delimiter: '.',
-        want: sortedEntries({
+      inputs: { sequences: ['192.168.0.1', '192.168.1.1', '10.0.0.1'], delimiter: '.' },
+      want: {
+        value: sortedEntries({
           '192.168.0.1': '168.0.1',
           '192.168.1.1': '1.1',
           '10.0.0.1': '0.0.1',
@@ -47,8 +45,8 @@ runTable({
       },
     },
   ],
-  process: ({ sequences, delimiter }) => sortedEntries(alias(sequences, delimiter)),
-  expects: ({ result, inputs }) => expect(result).toEqual(inputs.want),
+  process: ({ inputs }) => sortedEntries(alias(inputs.sequences, inputs.delimiter)),
+  expects: ({ result, want }) => expect(result).toEqual(want.value),
 });
 
 // `testAdvice`-driven tests are imperative because they're discovered at

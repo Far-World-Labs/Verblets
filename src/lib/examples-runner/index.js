@@ -1,21 +1,20 @@
 /**
  * Table-driven examples runner.
  *
- * Each `runTable` call declares:
- *   - `examples` — rows of `{ name, inputs, vary? }`
- *   - `process(inputs)` — the function under test (may throw)
- *   - `expects(ctx)` — the table's assertion vocabulary, where
- *      `ctx = { result, error, inputs, varied }`
+ * Each row is `{ name, inputs, mocks?, want?, vary? }`:
+ *   - `inputs`  — args to the function under test
+ *   - `mocks`   — declarative mock data (e.g. `{ llm: [val, val, err] }`)
+ *   - `want`    — declarative expected outcome (e.g. `{ value, length, throws }`)
+ *   - `vary`    — cross-product axes (one row → N rows)
  *
- * The discipline: a single `expects` defines what this table checks. Rows
- * differ only in what they put in `inputs` — including control properties
- * (e.g. `want`, `throws`, `wantBatchCalls`) that `expects` reads to decide
- * which assertions fire. If a row needs assertions outside the table's
- * vocabulary, it belongs in a separate `runTable` call.
+ * `runTable` declares one `expects(ctx)` function — its assertion vocabulary —
+ * with `ctx = { result, error, inputs, mocks, want, varied }`. Rows differ
+ * only in their data; rows whose assertion needs don't share a vocabulary
+ * belong in a separate `runTable` call.
  *
- * `vary` cross-products its axes into one row per combination. `inputs`
- * may be a function `(varied) => inputs` so each combination gets a
- * freshly-built object.
+ * `process({ inputs, mocks })` runs the function under test. It's responsible
+ * for translating `mocks` data into actual mock-fn calls (the runner is
+ * agnostic to which mock library you use).
  */
 
 import { describe as vDescribe, it as vIt, beforeEach as vBeforeEach } from 'vitest';
@@ -45,14 +44,20 @@ function resolveField(field, varied) {
 
 /**
  * Cross-product `vary` axes into one row per combination. Examples without
- * `vary` (or empty axes) pass through unchanged. Returns a new array.
+ * `vary` (or empty axes) pass through unchanged.
  */
 export function expandExamples(examples) {
   const out = [];
   for (const ex of examples) {
     const axes = ex.vary ? Object.entries(ex.vary).filter(([, vs]) => vs && vs.length) : [];
     if (axes.length === 0) {
-      out.push({ name: ex.name, inputs: resolveField(ex.inputs, {}), varied: {} });
+      out.push({
+        name: ex.name,
+        inputs: resolveField(ex.inputs, {}),
+        mocks: resolveField(ex.mocks, {}),
+        want: resolveField(ex.want, {}),
+        varied: {},
+      });
       continue;
     }
     const combos = cartesian(axes.map(([, vs]) => vs));
@@ -61,6 +66,8 @@ export function expandExamples(examples) {
       out.push({
         name: `${ex.name} (${suffixFromVaried(varied)})`,
         inputs: resolveField(ex.inputs, varied),
+        mocks: resolveField(ex.mocks, varied),
+        want: resolveField(ex.want, varied),
         varied,
       });
     }
@@ -72,11 +79,42 @@ async function runRow(processFn, example) {
   let result;
   let error;
   try {
-    result = await processFn(example.inputs);
+    result = await processFn({ inputs: example.inputs, mocks: example.mocks });
   } catch (e) {
     error = e;
   }
-  return { result, error, inputs: example.inputs, varied: example.varied };
+  return {
+    result,
+    error,
+    inputs: example.inputs,
+    mocks: example.mocks,
+    want: example.want,
+    varied: example.varied,
+  };
+}
+
+/**
+ * Apply a `mocks` data block to a registry of mock functions.
+ *
+ * Each entry under `data` keys a mock-name to a sequence of values. Each
+ * value is queued via `mockResolvedValueOnce`, except `Error` instances
+ * which are queued via `mockRejectedValueOnce`.
+ *
+ *   applyMocks({ llm: [spec, result, new Error('boom')] }, { llm });
+ *
+ * Authors call this from their `process` function with their file's mock
+ * registry. The runner is agnostic.
+ */
+export function applyMocks(data, registry) {
+  if (!data) return;
+  for (const [name, sequence] of Object.entries(data)) {
+    const fn = registry[name];
+    if (!fn) throw new Error(`applyMocks: unknown mock "${name}"`);
+    for (const value of sequence) {
+      if (value instanceof Error) fn.mockRejectedValueOnce(value);
+      else fn.mockResolvedValueOnce(value);
+    }
+  }
 }
 
 /**
@@ -84,12 +122,11 @@ async function runRow(processFn, example) {
  *
  * @param {object} config
  * @param {string} [config.describe]    Optional `describe` name.
- * @param {Array} config.examples        Row definitions.
- * @param {Function} config.process      `(inputs) => result | Promise<result>`.
- * @param {Function} config.expects      `(ctx) => void | Promise<void>` — the
- *                                       table-level assertion vocabulary.
+ * @param {Array} config.examples       Row definitions.
+ * @param {Function} config.process     `({ inputs, mocks }) => result`.
+ * @param {Function} config.expects     `(ctx) => void` — table assertion vocabulary.
  * @param {Function} [config.beforeEach] Hook run before each row.
- * @param {Function} [config.it]         Custom `it` (e.g. from `getTestHelpers`).
+ * @param {Function} [config.it]         Custom `it` (e.g. AI-reporter).
  * @param {Function} [config.describeFn] Custom `describe`.
  */
 export function runTable({
@@ -120,11 +157,7 @@ export function runTable({
 
 /**
  * Curry common config (`process`, `expects`, `beforeEach`) for reuse across
- * multiple tables. Each invocation passes the per-table `describe` + `examples`.
- *
- *   const runScale = withRunner({ process, expects, beforeEach });
- *   runScale({ describe: 'numbers', examples: numericExamples });
- *   runScale({ describe: 'strings', examples: stringExamples });
+ * multiple tables.
  */
 export function withRunner(common) {
   return (rest) => runTable({ ...common, ...rest });

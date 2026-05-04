@@ -18,10 +18,10 @@ runTable({
       inputs: {
         text: 'What is the top color on a traffic light',
         enumMap: { green: 1, yellow: 1, red: 1, purple: 1 },
-        want: 'red',
       },
+      want: { value: 'red' },
     },
   ],
-  process: ({ text, enumMap }) => enumValue(text, enumMap),
-  expects: ({ result, inputs }) => expect(result).toEqual(inputs.want),
+  process: ({ inputs }) => enumValue(inputs.text, inputs.enumMap),
+  expects: ({ result, want }) => expect(result).toEqual(want.value),
 });

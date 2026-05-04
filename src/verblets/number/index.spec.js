@@ -15,13 +15,15 @@ runTable({
   examples: [
     {
       name: 'returns the answered number',
-      inputs: { text: 'What is the height of Everest in feet', want: 29029 },
+      inputs: { text: 'What is the height of Everest in feet' },
+      want: { value: 29029 },
     },
     {
       name: 'unanswerable question → undefined',
-      inputs: { text: 'What is the my age in years', want: undefined },
+      inputs: { text: 'What is the my age in years' },
+      want: { value: undefined },
     },
   ],
-  process: ({ text }) => number(text),
-  expects: ({ result, inputs }) => expect(result).toEqual(inputs.want),
+  process: ({ inputs }) => number(inputs.text),
+  expects: ({ result, want }) => expect(result).toEqual(want.value),
 });

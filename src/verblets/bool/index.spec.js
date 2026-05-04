@@ -19,14 +19,16 @@ runTable({
   examples: [
     {
       name: 'true value',
-      inputs: { text: 'Does Mace Windu have a purple lightsaber', want: true },
+      inputs: { text: 'Does Mace Windu have a purple lightsaber' },
+      want: { value: true },
     },
     {
       name: 'false value',
-      inputs: { text: 'Does Mace Windu have a blue lightsaber', want: false },
+      inputs: { text: 'Does Mace Windu have a blue lightsaber' },
+      want: { value: false },
     },
   ],
-  process: ({ text }) => bool(text),
-  expects: ({ result, inputs }) => expect(result).toEqual(inputs.want),
+  process: ({ inputs }) => bool(inputs.text),
+  expects: ({ result, want }) => expect(result).toEqual(want.value),
   it,
 });

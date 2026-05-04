@@ -1,7 +1,7 @@
 import { vi, beforeEach, expect } from 'vitest';
 import makePrompt from './index.js';
 import llm from '../../lib/llm/index.js';
-import { runTable } from '../../lib/examples-runner/index.js';
+import { runTable, applyMocks } from '../../lib/examples-runner/index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(),
@@ -54,10 +54,10 @@ runTable({
   examples: [
     {
       name: 'enhances a simple prompt and reports expansion ratio > 1',
-      inputs: {
-        prompt: 'create a webapp',
-        mocks: [enhanceWebapp],
-        want: {
+      inputs: { prompt: 'create a webapp' },
+      mocks: { llm: [enhanceWebapp] },
+      want: {
+        partial: {
           enhanced: enhanceWebapp.enhanced,
           improvements: enhanceWebapp.improvements,
           metadata: { expansionRatio: expect.any(Number) },
@@ -66,10 +66,10 @@ runTable({
     },
     {
       name: 'adds technical terminology when relevant',
-      inputs: {
-        prompt: 'analyze this text for sentiment',
-        mocks: [enhanceSentiment],
-        want: {
+      inputs: { prompt: 'analyze this text for sentiment' },
+      mocks: { llm: [enhanceSentiment] },
+      want: {
+        partial: {
           enhanced: expect.stringContaining('sentiment'),
           keywords: expect.any(Array),
         },
@@ -77,11 +77,10 @@ runTable({
     },
     {
       name: 'provides analysis when requested',
-      inputs: {
-        prompt: 'sort this list',
-        options: { analyze: true },
-        mocks: [enhanceSort, sortAnalysis],
-        want: {
+      inputs: { prompt: 'sort this list', options: { analyze: true } },
+      mocks: { llm: [enhanceSort, sortAnalysis] },
+      want: {
+        partial: {
           analysis: {
             strengths: expect.any(Array),
             opportunities: expect.any(Array),
@@ -95,17 +94,19 @@ runTable({
       inputs: {
         prompt: 'optimize performance',
         options: { context: 'React web application with Redux state management' },
-        mocks: [enhancePerf],
-        want: {
+      },
+      mocks: { llm: [enhancePerf] },
+      want: {
+        partial: {
           enhanced: expect.any(String),
           improvements: expect.arrayContaining([expect.any(Object)]),
         },
       },
     },
   ],
-  process: async ({ prompt, options, mocks }) => {
-    for (const m of mocks) llm.mockResolvedValueOnce(m);
-    return makePrompt(prompt, options);
+  process: async ({ inputs, mocks }) => {
+    applyMocks(mocks, { llm });
+    return makePrompt(inputs.prompt, inputs.options);
   },
-  expects: ({ result, inputs }) => expect(result).toMatchObject(inputs.want),
+  expects: ({ result, want }) => expect(result).toMatchObject(want.partial),
 });

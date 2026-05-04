@@ -83,13 +83,13 @@ describe('popReferenceResponseFactory', () => {
 runTable({
   describe: 'popReferenceWithCount',
   examples: [
-    { name: 'count=0', inputs: { count: 0, want: 0 } },
-    { name: 'count=1', inputs: { count: 1, want: 1 } },
-    { name: 'count=3', inputs: { count: 3, want: 3 } },
-    { name: 'count=7', inputs: { count: 7, want: 7 } },
+    { name: 'count=0', inputs: { count: 0 }, want: { length: 0 } },
+    { name: 'count=1', inputs: { count: 1 }, want: { length: 1 } },
+    { name: 'count=3', inputs: { count: 3 }, want: { length: 3 } },
+    { name: 'count=7', inputs: { count: 7 }, want: { length: 7 } },
   ],
-  process: ({ count }) => popReferenceWithCount(count).references.length,
-  expects: ({ result, inputs }) => expect(result).toBe(inputs.want),
+  process: ({ inputs }) => popReferenceWithCount(inputs.count).references.length,
+  expects: ({ result, want }) => expect(result).toBe(want.length),
 });
 
 // ─── variants vocabulary (LlmMockResponse contract) ────────────────────────
@@ -107,9 +107,13 @@ const expectedVariantKeys = [
 
 runTable({
   describe: 'popReferenceVariants — every variant exposed as function',
-  examples: expectedVariantKeys.map((key) => ({ name: `exposes ${key}`, inputs: { key } })),
-  process: ({ key }) => typeof popReferenceVariants[key],
-  expects: ({ result }) => expect(result).toBe('function'),
+  examples: expectedVariantKeys.map((key) => ({
+    name: `exposes ${key}`,
+    inputs: { key },
+    want: { type: 'function' },
+  })),
+  process: ({ inputs }) => typeof popReferenceVariants[inputs.key],
+  expects: ({ result, want }) => expect(result).toBe(want.type),
 });
 
 describe('popReferenceVariants — value shape', () => {
@@ -159,13 +163,16 @@ runTable({
   examples: [
     {
       name: 'throws when base is not a fishery Factory',
-      inputs: { args: { base: null }, throws: 'fishery Factory' },
+      inputs: { args: { base: null } },
+      want: { throws: 'fishery Factory' },
     },
     {
       name: 'returns full variants when arrayKey is set with makeArrayItem',
       inputs: {
         args: { base: exampleBase, arrayKey: 'items', makeArrayItem: () => ({ id: 2 }) },
-        want: [
+      },
+      want: {
+        value: [
           'empty',
           'isNull',
           'malformedShape',
@@ -179,22 +186,22 @@ runTable({
     },
     {
       name: 'omits size variants when arrayKey is null',
-      inputs: {
-        args: { base: exampleBase, arrayKey: null },
-        want: ['empty', 'isNull', 'malformedShape', 'rejected', 'undefinedValue', 'wellFormed'],
+      inputs: { args: { base: exampleBase, arrayKey: null } },
+      want: {
+        value: ['empty', 'isNull', 'malformedShape', 'rejected', 'undefinedValue', 'wellFormed'],
       },
     },
   ],
-  process: ({ args }) => {
-    const result = makeResponseVariants(args);
+  process: ({ inputs }) => {
+    const result = makeResponseVariants(inputs.args);
     return Object.keys(result).sort();
   },
-  expects: ({ result, error, inputs }) => {
-    if ('throws' in inputs) {
-      expect(error?.message).toContain(inputs.throws);
+  expects: ({ result, error, want }) => {
+    if ('throws' in want) {
+      expect(error?.message).toContain(want.throws);
       return;
     }
     if (error) throw error;
-    expect(result).toEqual(inputs.want);
+    expect(result).toEqual(want.value);
   },
 });

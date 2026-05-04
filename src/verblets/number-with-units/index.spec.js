@@ -17,26 +17,20 @@ runTable({
   examples: [
     {
       name: 'extracts height measurement',
-      inputs: {
-        text: 'What is the height of Everest in feet',
-        want: { value: 29029, unit: 'feet' },
-      },
+      inputs: { text: 'What is the height of Everest in feet' },
+      want: { value: { value: 29029, unit: 'feet' } },
     },
     {
       name: 'extracts speed measurement',
-      inputs: {
-        text: 'What is the speed of light in meters per second',
-        want: { value: 299792458, unit: 'meters per second' },
-      },
+      inputs: { text: 'What is the speed of light in meters per second' },
+      want: { value: { value: 299792458, unit: 'meters per second' } },
     },
     {
       name: 'extracts temperature measurement',
-      inputs: {
-        text: 'What is normal body temperature in Fahrenheit',
-        want: { value: 98.6, unit: 'Fahrenheit' },
-      },
+      inputs: { text: 'What is normal body temperature in Fahrenheit' },
+      want: { value: { value: 98.6, unit: 'Fahrenheit' } },
     },
   ],
-  process: ({ text }) => numberWithUnits(text),
-  expects: ({ result, inputs }) => expect(result).toEqual(inputs.want),
+  process: ({ inputs }) => numberWithUnits(inputs.text),
+  expects: ({ result, want }) => expect(result).toEqual(want.value),
 });

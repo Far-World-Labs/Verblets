@@ -15,10 +15,15 @@ runTable({
   examples: [
     {
       name: 'generates a descriptive name',
-      inputs: { text: 'Dataset of weather pattern observations', want: 'BlueSkies' },
+      inputs: { text: 'Dataset of weather pattern observations' },
+      want: { value: 'BlueSkies' },
     },
-    { name: 'returns undefined when unsure', inputs: { text: '???', want: undefined } },
+    {
+      name: 'returns undefined when unsure',
+      inputs: { text: '???' },
+      want: { value: undefined },
+    },
   ],
-  process: ({ text }) => name(text),
-  expects: ({ result, inputs }) => expect(result).toEqual(inputs.want),
+  process: ({ inputs }) => name(inputs.text),
+  expects: ({ result, want }) => expect(result).toEqual(want.value),
 });

@@ -16,31 +16,32 @@ runTable({
   examples: [
     {
       name: 'classifies enthusiastic text as positive',
-      inputs: { text: 'This is fantastic news!', want: 'positive' },
+      inputs: { text: 'This is fantastic news!' },
+      want: { value: 'positive' },
     },
     {
       name: 'classifies negative expressions as negative',
-      inputs: { text: 'This is the worst day ever', want: 'negative' },
+      inputs: { text: 'This is the worst day ever' },
+      want: { value: 'negative' },
     },
     {
       name: 'classifies neutral statements as neutral',
-      inputs: { text: 'The weather is okay today', want: 'neutral' },
+      inputs: { text: 'The weather is okay today' },
+      want: { value: 'neutral' },
     },
-    { name: 'empty string → neutral', inputs: { text: '', want: 'neutral' } },
-    { name: 'single positive word', inputs: { text: 'amazing', want: 'positive' } },
+    { name: 'empty string → neutral', inputs: { text: '' }, want: { value: 'neutral' } },
+    { name: 'single positive word', inputs: { text: 'amazing' }, want: { value: 'positive' } },
     // mixed sentiment is non-deterministic from the LLM perspective; assert
     // membership in the valid label set.
     {
       name: 'mixed sentiment text returns one of the valid labels',
-      inputs: {
-        text: 'The food was amazing but the service was terrible',
-        wantOneOf: ['positive', 'negative', 'neutral'],
-      },
+      inputs: { text: 'The food was amazing but the service was terrible' },
+      want: { oneOf: ['positive', 'negative', 'neutral'] },
     },
   ],
-  process: ({ text }) => sentiment(text),
-  expects: ({ result, inputs }) => {
-    if ('want' in inputs) expect(result).toEqual(inputs.want);
-    if ('wantOneOf' in inputs) expect(inputs.wantOneOf).toContain(result);
+  process: ({ inputs }) => sentiment(inputs.text),
+  expects: ({ result, want }) => {
+    if ('value' in want) expect(result).toEqual(want.value);
+    if ('oneOf' in want) expect(want.oneOf).toContain(result);
   },
 });

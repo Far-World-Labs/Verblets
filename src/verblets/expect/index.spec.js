@@ -33,20 +33,18 @@ runTable({
   examples: [
     {
       name: 'passes on exact equality',
-      inputs: { actual: 'hello', op: 'toEqual', arg: 'hello', want: true },
+      inputs: { actual: 'hello', op: 'toEqual', arg: 'hello' },
+      want: { value: true },
     },
     {
       name: 'passes on constraint match',
-      inputs: {
-        actual: 'Hello world!',
-        op: 'toSatisfy',
-        arg: 'Is this a greeting?',
-        want: true,
-      },
+      inputs: { actual: 'Hello world!', op: 'toSatisfy', arg: 'Is this a greeting?' },
+      want: { value: true },
     },
     {
       name: 'fails on non-matching values',
-      inputs: { actual: 'goodbye', op: 'toEqual', arg: 'hello', want: false },
+      inputs: { actual: 'goodbye', op: 'toEqual', arg: 'hello' },
+      want: { value: false },
     },
     {
       name: 'validates content quality',
@@ -54,8 +52,8 @@ runTable({
         actual: 'This is a well-written, professional email with proper grammar.',
         op: 'toSatisfy',
         arg: 'Is this text professional and grammatically correct?',
-        want: true,
       },
+      want: { value: true },
     },
     {
       name: 'validates data structures',
@@ -63,8 +61,8 @@ runTable({
         actual: { name: 'John Doe', age: 30, city: 'New York' },
         op: 'toSatisfy',
         arg: 'Does this person data look realistic?',
-        want: true,
       },
+      want: { value: true },
     },
     {
       name: 'validates business logic',
@@ -72,28 +70,26 @@ runTable({
         actual: 'Increase marketing budget by 20% for next quarter to expand market reach',
         op: 'toSatisfy',
         arg: 'Is this recommendation specific and actionable?',
-        want: true,
       },
+      want: { value: true },
     },
     {
       name: 'throws by default on failure',
-      inputs: {
-        actual: 'hello',
-        op: 'toEqual',
-        arg: 'goodbye',
-        throwsOnFail: true,
-        throws: 'LLM assertion failed',
-      },
+      inputs: { actual: 'hello', op: 'toEqual', arg: 'goodbye', throwsOnFail: true },
+      want: { throws: 'LLM assertion failed' },
     },
   ],
-  process: async ({ actual, op, arg, throwsOnFail }) =>
-    aiExpect(actual)[op](arg, throwsOnFail ? undefined : { throws: false }),
-  expects: ({ result, error, inputs }) => {
-    if ('throws' in inputs) {
-      expect(error?.message).toContain(inputs.throws);
+  process: async ({ inputs }) =>
+    aiExpect(inputs.actual)[inputs.op](
+      inputs.arg,
+      inputs.throwsOnFail ? undefined : { throws: false }
+    ),
+  expects: ({ result, error, want }) => {
+    if ('throws' in want) {
+      expect(error?.message).toContain(want.throws);
       return;
     }
     if (error) throw error;
-    if ('want' in inputs) expect(result).toEqual(inputs.want);
+    if ('value' in want) expect(result).toEqual(want.value);
   },
 });

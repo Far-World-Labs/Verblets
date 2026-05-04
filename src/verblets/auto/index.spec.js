@@ -1,7 +1,7 @@
 import { vi, expect } from 'vitest';
 import auto from './index.js';
 import callLlm from '../../lib/llm/index.js';
-import { runTable } from '../../lib/examples-runner/index.js';
+import { runTable, applyMocks } from '../../lib/examples-runner/index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn().mockImplementation((text, config) => {
@@ -23,9 +23,9 @@ runTable({
   examples: [
     {
       name: 'returns tool call result when a function matches',
-      inputs: {
-        text: 'find restaurants nearby',
-        want: {
+      inputs: { text: 'find restaurants nearby' },
+      want: {
+        partial: {
           noMatch: false,
           name: 'testFunction',
           arguments: { query: 'find restaurants nearby' },
@@ -38,9 +38,10 @@ runTable({
       inputs: {
         text: 'vague input',
         options: { defaultFunction: 'fallback', defaultArguments: { mode: 'safe' } },
-        preMock: () =>
-          callLlm.mockImplementationOnce(() => 'I cannot determine the right function'),
-        want: {
+      },
+      mocks: { callLlm: ['I cannot determine the right function'] },
+      want: {
+        partial: {
           noMatch: true,
           name: 'fallback',
           arguments: { mode: 'safe' },
@@ -49,11 +50,11 @@ runTable({
       },
     },
   ],
-  process: async ({ text, options, preMock }) => {
-    if (preMock) preMock();
-    return auto(text, options);
+  process: async ({ inputs, mocks }) => {
+    applyMocks(mocks, { callLlm });
+    return auto(inputs.text, inputs.options);
   },
-  expects: ({ result, inputs }) => expect(result).toMatchObject(inputs.want),
+  expects: ({ result, want }) => expect(result).toMatchObject(want.partial),
 });
 
 // ─── LLM call inspection (different vocabulary, separate block) ───────────
@@ -74,17 +75,17 @@ runTable({
             },
           },
         },
-        wantTools: [{ name: 'customAction' }],
       },
+      want: { tools: [{ name: 'customAction' }] },
     },
   ],
-  process: async ({ text, options }) => auto(text, options),
-  expects: ({ inputs }) => {
+  process: async ({ inputs }) => auto(inputs.text, inputs.options),
+  expects: ({ want }) => {
     const lastCall = callLlm.mock.calls[callLlm.mock.calls.length - 1];
     const tools = lastCall[1].tools;
-    expect(tools).toHaveLength(inputs.wantTools.length);
-    for (let i = 0; i < inputs.wantTools.length; i++) {
-      expect(tools[i].function.name).toBe(inputs.wantTools[i].name);
+    expect(tools).toHaveLength(want.tools.length);
+    for (let i = 0; i < want.tools.length; i++) {
+      expect(tools[i].function.name).toBe(want.tools[i].name);
     }
   },
 });

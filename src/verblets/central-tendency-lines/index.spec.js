@@ -1,7 +1,7 @@
 import { vi, beforeEach, expect } from 'vitest';
 import centralTendency from './index.js';
 import llm from '../../lib/llm/index.js';
-import { runTable } from '../../lib/examples-runner/index.js';
+import { runTable, applyMocks } from '../../lib/examples-runner/index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
   jsonSchema: (name, schema) => ({ type: 'json_schema', json_schema: { name, schema } }),
@@ -23,29 +23,27 @@ runTable({
   examples: [
     {
       name: 'rejects empty string item',
-      inputs: {
-        item: '',
-        seedItems: ['seed1', 'seed2'],
-        throws: 'Item must be a non-empty string',
-      },
+      inputs: { item: '', seedItems: ['seed1', 'seed2'] },
+      want: { throws: 'Item must be a non-empty string' },
     },
     {
       name: 'rejects null item',
-      inputs: { item: null, seedItems: ['seed1', 'seed2'], throws: 'null is not allowed' },
+      inputs: { item: null, seedItems: ['seed1', 'seed2'] },
+      want: { throws: 'null is not allowed' },
     },
     {
       name: 'rejects empty seedItems array',
-      inputs: { item: 'item', seedItems: [], throws: 'seedItems must be a non-empty array' },
+      inputs: { item: 'item', seedItems: [] },
+      want: { throws: 'seedItems must be a non-empty array' },
     },
     {
       name: 'rejects null seedItems',
-      inputs: { item: 'item', seedItems: null, throws: 'seedItems must be a non-empty array' },
+      inputs: { item: 'item', seedItems: null },
+      want: { throws: 'seedItems must be a non-empty array' },
     },
   ],
-  process: ({ item, seedItems }) => centralTendency(item, seedItems),
-  expects: ({ error, inputs }) => {
-    expect(error?.message).toContain(inputs.throws);
-  },
+  process: ({ inputs }) => centralTendency(inputs.item, inputs.seedItems),
+  expects: ({ error, want }) => expect(error?.message).toContain(want.throws),
 });
 
 // ─── result + config forwarding ───────────────────────────────────────────
@@ -63,21 +61,24 @@ runTable({
           coreFeatures: ['feathers', 'beak', 'lays eggs'],
           llm: { fast: true, good: true, cheap: true },
         },
-        want: happyResponse,
-        wantPromptContains: 'Evaluate how central',
-        wantLlmConfig: { llm: { fast: true, good: true, cheap: true } },
+      },
+      mocks: { llm: [happyResponse] },
+      want: {
+        value: happyResponse,
+        promptContains: 'Evaluate how central',
+        llmConfig: { llm: { fast: true, good: true, cheap: true } },
       },
     },
   ],
-  process: async ({ item, seedItems, config }) => {
-    llm.mockResolvedValue(happyResponse);
-    return centralTendency(item, seedItems, config);
+  process: async ({ inputs, mocks }) => {
+    applyMocks(mocks, { llm });
+    return centralTendency(inputs.item, inputs.seedItems, inputs.config);
   },
-  expects: ({ result, inputs }) => {
-    expect(result).toEqual(inputs.want);
+  expects: ({ result, want }) => {
+    expect(result).toEqual(want.value);
     expect(llm).toHaveBeenCalledWith(
-      expect.stringContaining(inputs.wantPromptContains),
-      expect.objectContaining(inputs.wantLlmConfig)
+      expect.stringContaining(want.promptContains),
+      expect.objectContaining(want.llmConfig)
     );
   },
 });
@@ -96,7 +97,10 @@ runTable({
           context: 'Bird evaluation context',
           coreFeatures: ['feathers', 'beak', 'flight'],
         },
-        wantContains: [
+      },
+      mocks: { llm: [{ score: 0.7, reason: 'r', confidence: 0.8 }] },
+      want: {
+        contains: [
           '<context>\nBird evaluation context\n</context>',
           '<core-features>\nfeathers, beak, flight\n</core-features>',
           '<seed-items>\nsparrow, bluejay\n</seed-items>',
@@ -104,14 +108,12 @@ runTable({
       },
     },
   ],
-  process: async ({ item, seedItems, config }) => {
-    llm.mockResolvedValue({ score: 0.7, reason: 'r', confidence: 0.8 });
-    await centralTendency(item, seedItems, config);
+  process: async ({ inputs, mocks }) => {
+    applyMocks(mocks, { llm });
+    await centralTendency(inputs.item, inputs.seedItems, inputs.config);
     return llm.mock.calls[0][0];
   },
-  expects: ({ result, inputs }) => {
-    for (const fragment of inputs.wantContains) {
-      expect(result).toContain(fragment);
-    }
+  expects: ({ result, want }) => {
+    for (const fragment of want.contains) expect(result).toContain(fragment);
   },
 });

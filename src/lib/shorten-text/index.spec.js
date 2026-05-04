@@ -5,10 +5,7 @@ import { runTable } from '../examples-runner/index.js';
 
 const testMs = new ModelService();
 
-// Each row carries the constraints it cares about (`startsWith`, `endsWith`,
-// `maxTokens`, or `expectedResult`). The processor translates them to boolean
-// fields; `expects` asserts every present check is true. A row that doesn't
-// supply a constraint simply omits it.
+// Each row carries the constraints it cares about under `want`.
 runTable({
   describe: 'shortenText',
   examples: [
@@ -17,6 +14,8 @@ runTable({
       inputs: {
         text: 'Hello, world! This is a long text for testing the shortenText function.',
         targetTokenCount: 10,
+      },
+      want: {
         startsWith: /^Hello, world!/,
         endsWith: /Text function\.$/,
         maxTokens: 40,
@@ -24,11 +23,8 @@ runTable({
     },
     {
       name: 'short text passes through unchanged',
-      inputs: {
-        text: 'This text is short enough.',
-        targetTokenCount: 8,
-        expectedResult: 'This text is short enough.',
-      },
+      inputs: { text: 'This text is short enough.', targetTokenCount: 8 },
+      want: { value: 'This text is short enough.' },
     },
     {
       name: 'respects minCharsToRemove',
@@ -36,22 +32,28 @@ runTable({
         text: 'This is another test to check the minimum characters removal feature.',
         targetTokenCount: 6,
         minCharsToRemove: 5,
+      },
+      want: {
         startsWith: /^This is/,
         endsWith: /feature\.$/,
         maxTokens: 25,
       },
     },
   ],
-  process: ({ text, targetTokenCount, minCharsToRemove }) => {
-    const got = shortenText(text, { modelService: testMs, targetTokenCount, minCharsToRemove });
+  process: ({ inputs }) => {
+    const got = shortenText(inputs.text, {
+      modelService: testMs,
+      targetTokenCount: inputs.targetTokenCount,
+      minCharsToRemove: inputs.minCharsToRemove,
+    });
     const tokens = testMs.getBestPublicModel().toTokens(got).length;
     return { got, tokens };
   },
-  expects: ({ result, inputs }) => {
+  expects: ({ result, want }) => {
     const { got, tokens } = result;
-    if (inputs.startsWith) expect(got).toMatch(inputs.startsWith);
-    if (inputs.endsWith) expect(got).toMatch(inputs.endsWith);
-    if (inputs.maxTokens !== undefined) expect(tokens).toBeLessThanOrEqual(inputs.maxTokens);
-    if (inputs.expectedResult !== undefined) expect(got).toBe(inputs.expectedResult);
+    if (want.startsWith) expect(got).toMatch(want.startsWith);
+    if (want.endsWith) expect(got).toMatch(want.endsWith);
+    if (want.maxTokens !== undefined) expect(tokens).toBeLessThanOrEqual(want.maxTokens);
+    if ('value' in want) expect(got).toBe(want.value);
   },
 });
