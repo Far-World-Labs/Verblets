@@ -1,29 +1,39 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, vi, expect } from 'vitest';
 import filterAmbiguous from './index.js';
 import score from '../score/index.js';
 import list from '../list/index.js';
+import { runTable, applyMocks } from '../../lib/examples-runner/index.js';
 
 vi.mock('../score/index.js');
+vi.mock('../list/index.js', () => ({ default: vi.fn() }));
 
-vi.mock('../list/index.js', () => ({
-  default: vi.fn(),
-}));
+beforeEach(() => vi.clearAllMocks());
 
-beforeEach(() => {
-  vi.clearAllMocks();
-});
-
-describe('filterAmbiguous chain', () => {
-  it('returns scored ambiguous terms', async () => {
-    score
-      .mockResolvedValueOnce([1, 9]) // sentence scores
-      .mockResolvedValueOnce([8, 3]); // term scores
-    list.mockResolvedValueOnce(['alpha', 'beta']).mockResolvedValueOnce([]);
-
-    const result = await filterAmbiguous('s1\ns2', { topN: 1 });
-
-    expect(result).toStrictEqual([{ term: 'alpha', sentence: 's2', score: 8 }]);
+runTable({
+  describe: 'filterAmbiguous chain',
+  examples: [
+    {
+      name: 'returns scored ambiguous terms',
+      inputs: { text: 's1\ns2', options: { topN: 1 } },
+      mocks: {
+        score: [
+          [1, 9],
+          [8, 3],
+        ],
+        list: [['alpha', 'beta'], []],
+      },
+      want: {
+        value: [{ term: 'alpha', sentence: 's2', score: 8 }],
+      },
+    },
+  ],
+  process: async ({ inputs, mocks }) => {
+    applyMocks(mocks, { score, list });
+    return filterAmbiguous(inputs.text, inputs.options);
+  },
+  expects: ({ result, want }) => {
+    expect(result).toEqual(want.value);
     expect(score).toHaveBeenCalled();
     expect(list).toHaveBeenCalled();
-  });
+  },
 });

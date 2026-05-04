@@ -1,58 +1,39 @@
-import { describe, expect as vitestExpect, it, vi, beforeEach, afterEach } from 'vitest';
-import { expectSimple, expect, expectWithUncertainty } from './index.js';
-import { mapAdvice } from './index.js';
+import { vi, beforeEach, afterEach, expect as vitestExpect } from 'vitest';
+import { expectSimple, expect, expectWithUncertainty, mapAdvice } from './index.js';
 import { longTestTimeout } from '../../constants/common.js';
 import { setTestEnv, saveTestEnv } from './test-utils.js';
 import { debug } from '../../lib/debug/index.js';
+import { runTable } from '../../lib/examples-runner/index.js';
 
-// Mock the llm function to avoid actual API calls
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn().mockImplementation((config) => {
-    // Handle both string and object API
     const prompt = typeof config === 'string' ? config : config.messages?.[0]?.content || '';
-
-    // Debug log to see what prompt is being sent
     debug('LLM mock received:', `${prompt.substring(0, 200)}...`);
 
-    // Handle module identification request
     if (prompt.includes('identify the import path of the function or module under test')) {
       return './index.js';
     }
-
-    // Handle advice generation
     if (prompt.includes('Provide debugging advice')) {
       return 'Test advice: values do not match';
     }
-
-    // Handle current format: "Does the value satisfy the constraints?"
     if (prompt.includes('Does the value satisfy the constraints?')) {
-      // Extract value, expected, and constraints from XML format
       const valueMatch = prompt.match(/<value>(.+?)<\/value>/s);
       const expectedMatch = prompt.match(/<expected>(.+?)<\/expected>/s);
       const constraintsMatch = prompt.match(/<constraints>(.+?)<\/constraints>/s);
-
       const actual = valueMatch?.[1];
-      const expected = expectedMatch?.[1];
+      const expectedRaw = expectedMatch?.[1];
       const constraint = constraintsMatch?.[1];
 
-      // Normalize values by removing quotes if present
-      const normalize = (value) => {
-        if (!value) return '';
-        return value.replace(/^"|"$/g, '');
-      };
-
+      const normalize = (value) => (value ? value.replace(/^"|"$/g, '') : '');
       const actualNorm = normalize(actual);
-      const expectedNorm = normalize(expected);
+      const expectedNorm = normalize(expectedRaw);
 
-      // Handle equality checks - return boolean since we're using responseFormat
-      if (expected && constraint?.includes('same identity or meaning')) {
+      if (expectedRaw && constraint?.includes('same identity or meaning')) {
         return actualNorm === expectedNorm;
       }
 
-      // Handle constraint-based validations
       if (constraint) {
-        // Map of constraint patterns to their validation logic
-        const constraintValidators = {
+        const validators = {
           'Is this a greeting?': () => actualNorm === 'Hello world!',
           'Is this text professional and grammatically correct?': () =>
             prompt.includes('well-written, professional email'),
@@ -67,17 +48,11 @@ vi.mock('../../lib/llm/index.js', () => ({
             prompt.includes('firstName') && prompt.includes('fullName'),
           'Is this an engaging and creative start to a story?': () => true,
         };
-
-        // Find and execute the matching validator
-        for (const [pattern, validator] of Object.entries(constraintValidators)) {
-          if (constraint.includes(pattern)) {
-            return validator();
-          }
+        for (const [pattern, validator] of Object.entries(validators)) {
+          if (constraint.includes(pattern)) return validator();
         }
       }
     }
-
-    // Handle uncertainty assessment
     if (prompt.includes('Assess the uncertainty')) {
       return {
         confidence: 0.85,
@@ -85,369 +60,300 @@ vi.mock('../../lib/llm/index.js', () => ({
         unknowns: ['semantic ambiguity'],
       };
     }
-
-    // Default to false for unmatched cases
     return false;
   }),
 }));
 
-describe('expect chain', () => {
-  let restoreEnv;
+let restoreEnv;
 
-  beforeEach(() => {
-    restoreEnv = saveTestEnv('VERBLETS_LLM_EXPECT_MODE');
-  });
-
-  afterEach(() => {
-    if (restoreEnv) {
-      restoreEnv();
-    }
-  });
-
-  describe('Enhanced API', () => {
-    it(
-      'should return structured results in none mode',
-      async () => {
-        setTestEnv('VERBLETS_LLM_EXPECT_MODE', 'none');
-
-        const [passed, details] = await expect('hello', 'hello');
-
-        vitestExpect(passed).toBe(true);
-        vitestExpect(details).toHaveProperty('passed', true);
-        vitestExpect(details).toHaveProperty('advice');
-        vitestExpect(details).toHaveProperty('file');
-        vitestExpect(details).toHaveProperty('line');
-      },
-      longTestTimeout
-    );
-
-    it(
-      'should handle failed assertions in none mode',
-      async () => {
-        setTestEnv('VERBLETS_LLM_EXPECT_MODE', 'none');
-
-        const [passed, details] = await expect('hello', 'goodbye');
-
-        vitestExpect(passed).toBe(false);
-        vitestExpect(details.passed).toBe(false);
-        vitestExpect(details).toHaveProperty('advice');
-        vitestExpect(details).toHaveProperty('file');
-        vitestExpect(details).toHaveProperty('line');
-      },
-      longTestTimeout
-    );
-
-    it(
-      'should throw errors in error mode',
-      async () => {
-        // Set environment variable before using expect
-        setTestEnv('VERBLETS_LLM_EXPECT_MODE', 'error');
-
-        // Expect the promise to reject with the error
-        await vitestExpect(expect('hello', 'goodbye')).rejects.toThrow('LLM assertion failed');
-      },
-      longTestTimeout
-    );
-
-    it(
-      'should log in info mode',
-      async () => {
-        setTestEnv('VERBLETS_LLM_EXPECT_MODE', 'info');
-        const consoleSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
-
-        const [passed] = await expect('hello', 'goodbye');
-
-        vitestExpect(passed).toBe(false);
-        vitestExpect(consoleSpy).toHaveBeenCalledWith(
-          vitestExpect.stringContaining('LLM assertion failed')
-        );
-
-        consoleSpy.mockRestore();
-      },
-      longTestTimeout
-    );
-
-    it(
-      'should handle constraint-based validation',
-      async () => {
-        setTestEnv('VERBLETS_LLM_EXPECT_MODE', 'none');
-
-        const [passed, details] = await expect('Hello world!', undefined, 'Is this a greeting?');
-
-        vitestExpect(passed).toBe(true);
-        vitestExpect(details.passed).toBe(true);
-      },
-      longTestTimeout
-    );
-
-    it(
-      'should validate content quality',
-      async () => {
-        const [passed, details] = await expect(
-          'This is a well-written, professional email with proper grammar and clear intent.',
-          undefined,
-          'Is this text professional and grammatically correct?'
-        );
-
-        vitestExpect(passed).toBe(true);
-        vitestExpect(details).toHaveProperty('file');
-        vitestExpect(details).toHaveProperty('line');
-      },
-      longTestTimeout
-    );
-
-    it(
-      'should validate data structures',
-      async () => {
-        const [passed] = await expect(
-          { name: 'John Doe', age: 30, city: 'New York' },
-          undefined,
-          'Does this person data look realistic?'
-        );
-
-        vitestExpect(passed).toBe(true);
-      },
-      longTestTimeout
-    );
-
-    it(
-      'should handle business logic validation',
-      async () => {
-        const [passed] = await expect(
-          'Increase marketing budget by 20% for next quarter to expand market reach',
-          undefined,
-          'Is this recommendation specific and actionable?'
-        );
-
-        vitestExpect(passed).toBe(true);
-      },
-      longTestTimeout
-    );
-
-    it('should throw error when neither expected nor constraint provided', async () => {
-      await vitestExpect(async () => {
-        await expect('test value');
-      }).rejects.toThrow('Either expected value or constraint must be provided');
-    });
-  });
-
-  describe('Simple API (backward compatibility)', () => {
-    it(
-      'should pass for exact equality',
-      async () => {
-        const result = await expectSimple('hello', 'hello');
-        vitestExpect(result).toBe(true);
-      },
-      longTestTimeout
-    );
-
-    it(
-      'should pass for constraint-based validation',
-      async () => {
-        const result = await expectSimple('Hello world!', undefined, 'Is this a greeting?');
-        vitestExpect(result).toBe(true);
-      },
-      longTestTimeout
-    );
-
-    it(
-      'should fail for non-matching values',
-      async () => {
-        const result = await expectSimple('goodbye', 'hello');
-        vitestExpect(result).toBe(false);
-      },
-      longTestTimeout
-    );
-
-    it(
-      'should validate content quality',
-      async () => {
-        const result = await expectSimple(
-          'This is a well-written, professional email with proper grammar.',
-          undefined,
-          'Is this text professional and grammatically correct?'
-        );
-        vitestExpect(result).toBe(true);
-      },
-      longTestTimeout
-    );
-  });
-
-  describe('Environment variable handling', () => {
-    it(
-      'should default to none mode when env var is not set',
-      async () => {
-        setTestEnv('VERBLETS_LLM_EXPECT_MODE', undefined);
-
-        const [passed] = await expect('hello', 'goodbye');
-        vitestExpect(passed).toBe(false);
-        // Should not throw in none mode
-      },
-      longTestTimeout
-    );
-
-    it(
-      'should handle invalid env var values',
-      async () => {
-        setTestEnv('VERBLETS_LLM_EXPECT_MODE', 'invalid');
-
-        const [passed] = await expect('hello', 'goodbye');
-        vitestExpect(passed).toBe(false);
-        // Should default to none mode and not throw
-      },
-      longTestTimeout
-    );
-  });
-
-  describe('Advanced features', () => {
-    it(
-      'should provide file and line information',
-      async () => {
-        const [, details] = await expect('hello', 'hello');
-
-        vitestExpect(details.file).toBeDefined();
-        vitestExpect(details.line).toBeTypeOf('number');
-        vitestExpect(details.line).toBeGreaterThanOrEqual(0);
-      },
-      longTestTimeout
-    );
-
-    it(
-      'should handle complex object comparisons',
-      async () => {
-        const userProfile = {
-          name: 'Alice Johnson',
-          skills: ['JavaScript', 'Python', 'React'],
-          experience: '5 years',
-          level: 'Senior Developer',
-        };
-
-        const [passed] = await expect(
-          userProfile,
-          undefined,
-          'Does this profile represent an experienced software developer with modern skills?'
-        );
-
-        vitestExpect(passed).toBe(true);
-      },
-      longTestTimeout
-    );
-
-    it(
-      'should validate creative content',
-      async () => {
-        const storyOpening =
-          'Once upon a time, in a land far away, there lived a brave knight who embarked on a quest to save the kingdom from an ancient curse.';
-
-        const [passed] = await expect(
-          storyOpening,
-          undefined,
-          'Is this story opening engaging and sets up a clear adventure narrative?'
-        );
-
-        vitestExpect(passed).toBe(true);
-      },
-      longTestTimeout
-    );
-  });
+beforeEach(() => {
+  restoreEnv = saveTestEnv('VERBLETS_LLM_EXPECT_MODE');
 });
 
-describe('expectWithUncertainty', () => {
-  let restoreEnv;
+afterEach(() => {
+  if (restoreEnv) restoreEnv();
+});
 
-  beforeEach(() => {
-    restoreEnv = saveTestEnv('VERBLETS_LLM_EXPECT_MODE');
-  });
-
-  afterEach(() => {
-    if (restoreEnv) {
-      restoreEnv();
-    }
-  });
-
-  it(
-    'returns uncertainty data with confidence interval on passing assertion',
-    async () => {
-      setTestEnv('VERBLETS_LLM_EXPECT_MODE', 'none');
-
-      const [passed, details] = await expectWithUncertainty(
-        'Hello world!',
-        undefined,
-        'Is this a greeting?'
-      );
-
-      vitestExpect(passed).toBe(true);
-      vitestExpect(details.uncertainty).toBeDefined();
-      vitestExpect(details.uncertainty.confidence).toBeTypeOf('number');
-      vitestExpect(details.uncertainty.confidence).toBe(0.85);
-      vitestExpect(details.uncertainty.confidenceInterval).toBeDefined();
-      vitestExpect(details.uncertainty.confidenceInterval.low).toBeTypeOf('number');
-      vitestExpect(details.uncertainty.confidenceInterval.high).toBeTypeOf('number');
-      vitestExpect(details.uncertainty.confidenceInterval.low).toBeLessThanOrEqual(
-        details.uncertainty.confidenceInterval.high
-      );
+runTable({
+  describe: 'expect chain - Enhanced API',
+  examples: [
+    {
+      name: 'returns structured results in none mode',
+      inputs: { args: ['hello', 'hello'], env: 'none' },
+      want: { passed: true, hasDetailsAdvice: true, hasFileLine: true, detailsPassed: true },
     },
-    longTestTimeout
-  );
+    {
+      name: 'handles failed assertions in none mode',
+      inputs: { args: ['hello', 'goodbye'], env: 'none' },
+      want: { passed: false, hasDetailsAdvice: true, hasFileLine: true, detailsPassed: false },
+    },
+    {
+      name: 'throws errors in error mode',
+      inputs: { args: ['hello', 'goodbye'], env: 'error' },
+      want: { throws: /LLM assertion failed/ },
+    },
+    {
+      name: 'logs in info mode',
+      inputs: { args: ['hello', 'goodbye'], env: 'info', withConsoleSpy: true },
+      want: { passed: false, consoleSpyContains: 'LLM assertion failed' },
+    },
+    {
+      name: 'handles constraint-based validation',
+      inputs: { args: ['Hello world!', undefined, 'Is this a greeting?'], env: 'none' },
+      want: { passed: true, detailsPassed: true },
+    },
+    {
+      name: 'validates content quality',
+      inputs: {
+        args: [
+          'This is a well-written, professional email with proper grammar and clear intent.',
+          undefined,
+          'Is this text professional and grammatically correct?',
+        ],
+      },
+      want: { passed: true, hasFileLine: true },
+    },
+    {
+      name: 'validates data structures',
+      inputs: {
+        args: [
+          { name: 'John Doe', age: 30, city: 'New York' },
+          undefined,
+          'Does this person data look realistic?',
+        ],
+      },
+      want: { passed: true },
+    },
+    {
+      name: 'handles business logic validation',
+      inputs: {
+        args: [
+          'Increase marketing budget by 20% for next quarter to expand market reach',
+          undefined,
+          'Is this recommendation specific and actionable?',
+        ],
+      },
+      want: { passed: true },
+    },
+    {
+      name: 'throws when neither expected nor constraint provided',
+      inputs: { args: ['test value'] },
+      want: { throws: /Either expected value or constraint must be provided/ },
+    },
+    {
+      name: 'provides file and line information',
+      inputs: { args: ['hello', 'hello'] },
+      want: { fileAndLine: true },
+    },
+    {
+      name: 'handles complex object comparisons',
+      inputs: {
+        args: [
+          {
+            name: 'Alice Johnson',
+            skills: ['JavaScript', 'Python', 'React'],
+            experience: '5 years',
+            level: 'Senior Developer',
+          },
+          undefined,
+          'Does this profile represent an experienced software developer with modern skills?',
+        ],
+      },
+      want: { passed: true },
+    },
+    {
+      name: 'validates creative content',
+      inputs: {
+        args: [
+          'Once upon a time, in a land far away, there lived a brave knight who embarked on a quest to save the kingdom from an ancient curse.',
+          undefined,
+          'Is this story opening engaging and sets up a clear adventure narrative?',
+        ],
+      },
+      want: { passed: true },
+    },
+  ],
+  process: async ({ inputs }) => {
+    if (inputs.env !== undefined) setTestEnv('VERBLETS_LLM_EXPECT_MODE', inputs.env);
+    let consoleSpy;
+    let consoleSpyCalls;
+    if (inputs.withConsoleSpy) {
+      consoleSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
+    }
+    const [passed, details] = await expect(...inputs.args);
+    if (consoleSpy) {
+      consoleSpyCalls = [...consoleSpy.mock.calls];
+      consoleSpy.mockRestore();
+    }
+    return { passed, details, consoleSpyCalls };
+  },
+  expects: ({ result, error, want }) => {
+    if (want.throws) {
+      vitestExpect(error?.message).toMatch(want.throws);
+      return;
+    }
+    if (error) throw error;
+    if ('passed' in want) vitestExpect(result.passed).toBe(want.passed);
+    if ('detailsPassed' in want) vitestExpect(result.details.passed).toBe(want.detailsPassed);
+    if (want.hasDetailsAdvice) vitestExpect(result.details).toHaveProperty('advice');
+    if (want.hasFileLine) {
+      vitestExpect(result.details).toHaveProperty('file');
+      vitestExpect(result.details).toHaveProperty('line');
+    }
+    if (want.fileAndLine) {
+      vitestExpect(result.details.file).toBeDefined();
+      vitestExpect(result.details.line).toBeTypeOf('number');
+      vitestExpect(result.details.line).toBeGreaterThanOrEqual(0);
+    }
+    if (want.consoleSpyContains) {
+      const matched = result.consoleSpyCalls.some(
+        ([msg]) => typeof msg === 'string' && msg.includes(want.consoleSpyContains)
+      );
+      vitestExpect(matched).toBe(true);
+    }
+  },
+});
 
-  it(
-    'returns unknown flags on failing assertion',
-    async () => {
-      setTestEnv('VERBLETS_LLM_EXPECT_MODE', 'none');
+runTable({
+  describe: 'expect chain - Simple API (backward compatibility)',
+  examples: [
+    {
+      name: 'passes for exact equality',
+      inputs: { args: ['hello', 'hello'] },
+      want: { value: true },
+    },
+    {
+      name: 'passes for constraint-based validation',
+      inputs: { args: ['Hello world!', undefined, 'Is this a greeting?'] },
+      want: { value: true },
+    },
+    {
+      name: 'fails for non-matching values',
+      inputs: { args: ['goodbye', 'hello'] },
+      want: { value: false },
+    },
+    {
+      name: 'validates content quality',
+      inputs: {
+        args: [
+          'This is a well-written, professional email with proper grammar.',
+          undefined,
+          'Is this text professional and grammatically correct?',
+        ],
+      },
+      want: { value: true },
+    },
+  ],
+  process: ({ inputs }) => expectSimple(...inputs.args),
+  expects: ({ result, want }) => vitestExpect(result).toEqual(want.value),
+});
 
-      const [passed, details] = await expectWithUncertainty('hello', 'goodbye');
+runTable({
+  describe: 'expect chain - Environment variable handling',
+  examples: [
+    {
+      name: 'defaults to none mode when env var is not set',
+      inputs: { env: undefined, args: ['hello', 'goodbye'] },
+      want: { passed: false },
+    },
+    {
+      name: 'handles invalid env var values',
+      inputs: { env: 'invalid', args: ['hello', 'goodbye'] },
+      want: { passed: false },
+    },
+  ],
+  process: async ({ inputs }) => {
+    setTestEnv('VERBLETS_LLM_EXPECT_MODE', inputs.env);
+    const [passed, details] = await expect(...inputs.args);
+    return { passed, details };
+  },
+  expects: ({ result, want }) => vitestExpect(result.passed).toBe(want.passed),
+});
 
-      vitestExpect(passed).toBe(false);
-      vitestExpect(details.uncertainty).toBeDefined();
+runTable({
+  describe: 'expectWithUncertainty',
+  examples: [
+    {
+      name: 'returns uncertainty data with confidence interval on passing assertion',
+      inputs: { args: ['Hello world!', undefined, 'Is this a greeting?'], env: 'none' },
+      want: { confidenceInterval: true, confidence: 0.85, passed: true },
+    },
+    {
+      name: 'returns unknown flags on failing assertion',
+      inputs: { args: ['hello', 'goodbye'], env: 'none' },
+      want: { unknowns: true, passed: false },
+    },
+    {
+      name: 'preserves original expect output fields alongside uncertainty',
+      inputs: { args: ['hello', 'hello'], env: 'none' },
+      want: { allFields: true },
+    },
+    {
+      name: 'emits uncertainty progress events via onProgress callback',
+      inputs: { args: ['hello', 'hello'], env: 'none', withEvents: true },
+      want: { uncertaintyEvent: true },
+    },
+  ],
+  process: async ({ inputs }) => {
+    setTestEnv('VERBLETS_LLM_EXPECT_MODE', inputs.env);
+    if (inputs.withEvents) {
+      const events = [];
+      const [passed, details] = await expectWithUncertainty(...inputs.args, undefined, {
+        onProgress: (event) => events.push(event),
+      });
+      return { passed, details, events };
+    }
+    const [passed, details] = await expectWithUncertainty(...inputs.args);
+    return { passed, details };
+  },
+  expects: ({ result, want }) => {
+    const { passed, details } = result;
+    if ('passed' in want) vitestExpect(passed).toBe(want.passed);
+    if (want.confidenceInterval) {
+      vitestExpect(details.uncertainty.confidence).toBe(want.confidence);
+      const ci = details.uncertainty.confidenceInterval;
+      vitestExpect(ci.low).toBeTypeOf('number');
+      vitestExpect(ci.high).toBeTypeOf('number');
+      vitestExpect(ci.low).toBeLessThanOrEqual(ci.high);
+    }
+    if (want.unknowns) {
       vitestExpect(details.uncertainty.unknowns).toBeInstanceOf(Array);
       vitestExpect(details.uncertainty.unknowns.length).toBeGreaterThan(0);
       vitestExpect(details.uncertainty.unknowns[0]).toBeTypeOf('string');
-    },
-    longTestTimeout
-  );
-
-  it(
-    'preserves original expect output fields alongside uncertainty',
-    async () => {
-      setTestEnv('VERBLETS_LLM_EXPECT_MODE', 'none');
-
-      const [passed, details] = await expectWithUncertainty('hello', 'hello');
-
+    }
+    if (want.allFields) {
       vitestExpect(passed).toBe(true);
       vitestExpect(details.passed).toBe(true);
       vitestExpect(details.file).toBeDefined();
       vitestExpect(details.line).toBeTypeOf('number');
       vitestExpect(details.uncertainty).toBeDefined();
-    },
-    longTestTimeout
-  );
-
-  it(
-    'emits uncertainty progress events via onProgress callback',
-    async () => {
-      setTestEnv('VERBLETS_LLM_EXPECT_MODE', 'none');
-      const events = [];
-
-      await expectWithUncertainty('hello', 'hello', undefined, {
-        onProgress: (event) => events.push(event),
-      });
-
-      const uncertaintyEvent = events.find((e) => e.event === 'uncertainty');
-      vitestExpect(uncertaintyEvent).toBeDefined();
-      vitestExpect(uncertaintyEvent.confidence).toBeTypeOf('number');
-      vitestExpect(uncertaintyEvent.confidenceInterval).toBeDefined();
-      vitestExpect(uncertaintyEvent.unknowns).toBeInstanceOf(Array);
-    },
-    longTestTimeout
-  );
+    }
+    if (want.uncertaintyEvent) {
+      const ev = result.events.find((e) => e.event === 'uncertainty');
+      vitestExpect(ev).toBeDefined();
+      vitestExpect(ev.confidence).toBeTypeOf('number');
+      vitestExpect(ev.confidenceInterval).toBeDefined();
+      vitestExpect(ev.unknowns).toBeInstanceOf(Array);
+    }
+  },
 });
 
-describe('mapAdvice', () => {
-  it('maps low to introspection disabled', () => {
-    vitestExpect(mapAdvice('low')).toEqual({ introspection: false });
-  });
-
-  it('maps high to introspection enabled', () => {
-    vitestExpect(mapAdvice('high')).toEqual({ introspection: true });
-  });
+runTable({
+  describe: 'mapAdvice',
+  examples: [
+    {
+      name: 'maps low to introspection disabled',
+      inputs: { v: 'low' },
+      want: { value: { introspection: false } },
+    },
+    {
+      name: 'maps high to introspection enabled',
+      inputs: { v: 'high' },
+      want: { value: { introspection: true } },
+    },
+  ],
+  process: ({ inputs }) => mapAdvice(inputs.v),
+  expects: ({ result, want }) => vitestExpect(result).toEqual(want.value),
 });
+
+void longTestTimeout;

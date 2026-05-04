@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, vi, expect } from 'vitest';
 import { ErrorPosture, ChainEvent, DomainEvent } from '../../lib/progress/constants.js';
+import { runTable } from '../../lib/examples-runner/index.js';
 
-// Mock playwright-core
 vi.mock('playwright-core', () => {
   const mockPage = () => {
     let urlValue = 'https://example.com';
@@ -17,7 +17,7 @@ vi.mock('playwright-core', () => {
       evaluate: vi.fn(async () => undefined),
       waitForTimeout: vi.fn(async () => undefined),
       textContent: vi.fn(async () => 'some text'),
-      $$eval: vi.fn(async (_sel, _fn) => ['item 1', 'item 2']),
+      $$eval: vi.fn(async () => ['item 1', 'item 2']),
       close: vi.fn(async () => undefined),
     };
   };
@@ -38,12 +38,8 @@ vi.mock('playwright-core', () => {
   };
 
   return {
-    chromium: {
-      launch: vi.fn(async () => mockBrowser),
-    },
-    firefox: {
-      launch: vi.fn(async () => mockBrowser),
-    },
+    chromium: { launch: vi.fn(async () => mockBrowser) },
+    firefox: { launch: vi.fn(async () => mockBrowser) },
     __mockBrowser: mockBrowser,
     __mockContext: mockContext,
     __mockPages: pages,
@@ -93,665 +89,803 @@ beforeEach(() => {
   setBrowserEnabled(true);
 });
 
-describe('web-scrape', () => {
-  it('throws when browser is not enabled', async () => {
-    setBrowserEnabled(false);
-    const step = async () => ({ action: 'done' });
-    await expect(webScrape('https://example.com', step)).rejects.toThrow(
-      'Browser support is disabled'
-    );
-  });
+const doneStep = async () => ({ action: 'done' });
 
-  describe('input validation', () => {
-    it('throws on null urls', async () => {
-      const step = async () => ({ action: 'done' });
-      await expect(webScrape(null, step)).rejects.toThrow();
-    });
+runTable({
+  describe: 'web-scrape — browser disabled',
+  examples: [
+    {
+      name: 'throws when browser is not enabled',
+      inputs: { setupMock: () => setBrowserEnabled(false) },
+      want: { throws: /Browser support is disabled/ },
+    },
+  ],
+  process: async ({ inputs }) => {
+    inputs.setupMock?.();
+    return webScrape('https://example.com', doneStep);
+  },
+  expects: ({ error, want }) => {
+    if (want.throws) expect(error?.message).toMatch(want.throws);
+  },
+});
 
-    it('throws on undefined urls', async () => {
-      const step = async () => ({ action: 'done' });
-      await expect(webScrape(undefined, step)).rejects.toThrow();
-    });
+runTable({
+  describe: 'web-scrape — input validation',
+  examples: [
+    { name: 'throws on null urls', inputs: { args: [null, doneStep] }, want: { throws: true } },
+    {
+      name: 'throws on undefined urls',
+      inputs: { args: [undefined, doneStep] },
+      want: { throws: true },
+    },
+    {
+      name: 'throws on empty array',
+      inputs: { args: [[], doneStep] },
+      want: { throws: /at least one URL/ },
+    },
+    {
+      name: 'throws on empty string url',
+      inputs: { args: ['', doneStep] },
+      want: { throws: /non-empty "url"/ },
+    },
+    {
+      name: 'throws on object without url field',
+      inputs: { args: [[{ step: doneStep }], doneStep] },
+      want: { throws: /non-empty "url"/ },
+    },
+    {
+      name: 'throws on null inside array',
+      inputs: { args: [[null, 'https://example.com'], doneStep] },
+      want: { throws: /string or .* object/ },
+    },
+    {
+      name: 'throws on missing step (and no per-URL step)',
+      inputs: { args: ['https://example.com'] },
+      want: { throws: /step must be a function/ },
+    },
+    {
+      name: 'throws on non-function step',
+      inputs: { args: ['https://example.com', 'not-fn'] },
+      want: { throws: /step must be a function/ },
+    },
+    {
+      name: 'accepts per-URL step without top-level step',
+      inputs: { args: [[{ url: 'https://example.com', step: doneStep }]] },
+      want: { defined: true },
+    },
+  ],
+  process: ({ inputs }) => webScrape(...inputs.args),
+  expects: ({ result, error, want }) => {
+    if (want.throws) {
+      if (want.throws === true) expect(error).toBeDefined();
+      else expect(error?.message).toMatch(want.throws);
+      return;
+    }
+    if (error) throw error;
+    if (want.defined) expect(result).toBeDefined();
+  },
+});
 
-    it('throws on empty array', async () => {
-      const step = async () => ({ action: 'done' });
-      await expect(webScrape([], step)).rejects.toThrow(/at least one URL/);
-    });
-
-    it('throws on empty string url', async () => {
-      const step = async () => ({ action: 'done' });
-      await expect(webScrape('', step)).rejects.toThrow(/non-empty "url"/);
-    });
-
-    it('throws on object without url field', async () => {
-      const step = async () => ({ action: 'done' });
-      await expect(webScrape([{ step }], step)).rejects.toThrow(/non-empty "url"/);
-    });
-
-    it('throws on null inside array', async () => {
-      const step = async () => ({ action: 'done' });
-      await expect(webScrape([null, 'https://example.com'], step)).rejects.toThrow(
-        /string or .* object/
-      );
-    });
-
-    it('throws on missing step (and no per-URL step)', async () => {
-      await expect(webScrape('https://example.com')).rejects.toThrow(/step must be a function/);
-    });
-
-    it('throws on non-function step', async () => {
-      await expect(webScrape('https://example.com', 'not-fn')).rejects.toThrow(
-        /step must be a function/
-      );
-    });
-
-    it('accepts per-URL step without top-level step', async () => {
-      const step = async () => ({ action: 'done' });
-      const result = await webScrape([{ url: 'https://example.com', step }]);
-      expect(result).toBeDefined();
-    });
-  });
-
-  it('processes a single URL with a one-step callback', async () => {
-    const step = vi.fn(async (ctx) => {
-      expect(ctx.url).toBe('https://example.com');
-      expect(ctx.stepNumber).toBe(0);
-      expect(ctx.screenshotPath).toBeDefined();
-      expect(typeof ctx.query).toBe('function');
-      expect(typeof ctx.queryAll).toBe('function');
-      expect(typeof ctx.queryJson).toBe('function');
-      expect(ctx.page).toBeDefined();
-      return { action: 'done', data: { title: 'Example' } };
-    });
-
-    const result = await webScrape('https://example.com', step);
-
-    expect(result.url).toBe('https://example.com');
-    expect(result.data).toEqual({ title: 'Example' });
-    expect(result.steps).toBe(1);
-    expect(result.screenshots).toHaveLength(1);
-    expect(typeof result.cleanup).toBe('function');
-    expect(step).toHaveBeenCalledTimes(1);
-  });
-
-  it('returns a single result object for single URL (not array)', async () => {
-    const step = async () => ({ action: 'done', data: 'single' });
-    const result = await webScrape('https://example.com', step);
-
-    expect(Array.isArray(result)).toBe(false);
-    expect(result.data).toBe('single');
-  });
-
-  it('returns an array of results for multiple URLs', async () => {
-    const step = async (ctx) => ({ action: 'done', data: ctx.url });
-    const results = await webScrape(['https://a.com', 'https://b.com'], step);
-
-    expect(Array.isArray(results)).toBe(true);
-    expect(results).toHaveLength(2);
-    expect(results[0].url).toBe('https://a.com');
-    expect(results[1].url).toBe('https://b.com');
-  });
-
-  it('executes multiple steps in the inner loop', async () => {
-    const step = vi.fn(async (ctx) => {
-      if (ctx.stepNumber === 0) return { action: 'click', selector: '.btn' };
-      if (ctx.stepNumber === 1) return { action: 'scroll', direction: 'down' };
-      return { action: 'done', data: 'finished' };
-    });
-
-    const result = await webScrape('https://example.com', step);
-
-    expect(step).toHaveBeenCalledTimes(3);
-    expect(result.steps).toBe(3);
-    expect(result.data).toBe('finished');
-    expect(result.screenshots).toHaveLength(3);
-  });
-
-  it('passes previousAction to subsequent step calls', async () => {
-    const actions = [];
-    const step = async (ctx) => {
-      actions.push(ctx.previousAction);
-      if (ctx.stepNumber === 0) return { action: 'click', selector: '#btn' };
-      return { action: 'done' };
-    };
-
-    await webScrape('https://example.com', step);
-
-    expect(actions[0]).toBeUndefined();
-    expect(actions[1]).toEqual({ action: 'click', selector: '#btn' });
-  });
-
-  it('provides working query helpers on step context', async () => {
-    const step = async (ctx) => {
-      const text = await ctx.query('.title');
-      const items = await ctx.queryAll('.item');
-      expect(text).toBe('some text');
-      expect(items).toEqual(['item 1', 'item 2']);
-      return { action: 'done', data: { text, items } };
-    };
-
-    const result = await webScrape('https://example.com', step);
-    expect(result.data.text).toBe('some text');
-  });
-
-  it('accumulator persists across steps', async () => {
-    const step = async (ctx) => {
-      if (ctx.stepNumber === 0) {
-        ctx.accumulator.count = 1;
-        return { action: 'wait', ms: 100 };
-      }
-      ctx.accumulator.count += 1;
-      return { action: 'done', data: ctx.accumulator };
-    };
-
-    const result = await webScrape('https://example.com', step);
-    expect(result.data.count).toBe(2);
-  });
-
-  it('caps inner loop at maxSteps', async () => {
-    const step = async () => ({ action: 'wait', ms: 10 });
-    const result = await webScrape('https://example.com', step, { maxSteps: 3 });
-
-    expect(result.steps).toBe(3);
-  });
-
-  it('runs setup callback before URL processing', async () => {
-    const order = [];
-    const setup = vi.fn(async (page) => {
-      order.push('setup');
-      await page.goto('https://example.com/login');
-    });
-    const step = async () => {
-      order.push('step');
-      return { action: 'done' };
-    };
-
-    await webScrape('https://example.com', step, { setup });
-
-    expect(setup).toHaveBeenCalledTimes(1);
-    expect(order).toEqual(['setup', 'step']);
-  });
-
-  it('runs teardown callback after URL processing', async () => {
-    const order = [];
-    const teardown = vi.fn(async () => {
-      order.push('teardown');
-    });
-    const step = async () => {
-      order.push('step');
-      return { action: 'done' };
-    };
-
-    await webScrape('https://example.com', step, { teardown });
-
-    expect(teardown).toHaveBeenCalledTimes(1);
-    expect(order).toEqual(['step', 'teardown']);
-  });
-
-  it('teardown does not throw on error (best-effort)', async () => {
-    const teardown = vi.fn(async () => {
-      throw new Error('teardown failed');
-    });
-    const step = async () => ({ action: 'done', data: 'ok' });
-
-    const result = await webScrape('https://example.com', step, { teardown });
-    expect(result.data).toBe('ok');
-  });
-
-  it('accepts per-URL step overrides', async () => {
-    const defaultStep = vi.fn(async () => ({ action: 'done', data: 'default' }));
-    const customStep = vi.fn(async () => ({ action: 'done', data: 'custom' }));
-
-    const results = await webScrape(
-      [{ url: 'https://a.com', step: customStep }, { url: 'https://b.com' }],
-      defaultStep
-    );
-
-    expect(results[0].data).toBe('custom');
-    expect(results[1].data).toBe('default');
-    expect(customStep).toHaveBeenCalledTimes(1);
-    expect(defaultStep).toHaveBeenCalledTimes(1);
-  });
-
-  it('applies imageShrink to screenshots', async () => {
-    const step = async () => ({ action: 'done' });
-    await webScrape('https://example.com', step, { imageShrink: 'low' });
-
-    expect(resizeImage).toHaveBeenCalledTimes(1);
-    expect(resizeImage).toHaveBeenCalledWith(expect.stringContaining('.png'), {
-      width: 300,
-      quality: 60,
-      format: 'jpeg',
-      outputDir: '/tmp/verblets-scrape-mock',
-    });
-  });
-
-  it('passes outputDir to createTempDir when configured', async () => {
-    const step = async () => ({ action: 'done' });
-    await webScrape('https://example.com', step, { outputDir: '/custom/output' });
-
-    expect(createTempDir).toHaveBeenCalledWith('web-scrape', '/custom/output');
-  });
-
-  it('passes chain name without outputDir by default', async () => {
-    const step = async () => ({ action: 'done' });
-    await webScrape('https://example.com', step);
-
-    expect(createTempDir).toHaveBeenCalledWith('web-scrape', undefined);
-  });
-
-  it('does not resize when imageShrink is not set', async () => {
-    const step = async () => ({ action: 'done' });
-    await webScrape('https://example.com', step);
-
-    expect(resizeImage).not.toHaveBeenCalled();
-  });
-
-  it('tiles screenshots when tile option is true and multiple steps', async () => {
-    const step = async (ctx) => {
-      if (ctx.stepNumber < 2) return { action: 'wait', ms: 10 };
-      return { action: 'done' };
-    };
-
-    const result = await webScrape('https://example.com', step, { tile: true });
-
-    expect(tileImages).toHaveBeenCalledTimes(1);
-    expect(result.tile).toBe('/tmp/tile.jpg');
-  });
-
-  it('does not tile when only one screenshot', async () => {
-    const step = async () => ({ action: 'done' });
-    const result = await webScrape('https://example.com', step, { tile: true });
-
-    expect(tileImages).not.toHaveBeenCalled();
-    expect(result.tile).toBeUndefined();
-  });
-
-  it('emits progress events through the full lifecycle', async () => {
+runTable({
+  describe: 'web-scrape',
+  examples: [
+    {
+      name: 'processes a single URL with a one-step callback',
+      inputs: {
+        makeStep: () =>
+          vi.fn(async (ctx) => {
+            expect(ctx.url).toBe('https://example.com');
+            expect(ctx.stepNumber).toBe(0);
+            expect(ctx.screenshotPath).toBeDefined();
+            expect(typeof ctx.query).toBe('function');
+            expect(typeof ctx.queryAll).toBe('function');
+            expect(typeof ctx.queryJson).toBe('function');
+            expect(ctx.page).toBeDefined();
+            return { action: 'done', data: { title: 'Example' } };
+          }),
+      },
+      want: { singleStep: true },
+    },
+    {
+      name: 'returns a single result object for single URL (not array)',
+      inputs: { makeStep: () => async () => ({ action: 'done', data: 'single' }) },
+      want: { singleObj: 'single' },
+    },
+    {
+      name: 'returns an array of results for multiple URLs',
+      inputs: {
+        urls: ['https://a.com', 'https://b.com'],
+        makeStep: () => async (ctx) => ({ action: 'done', data: ctx.url }),
+      },
+      want: { arrayLength: 2, urls: ['https://a.com', 'https://b.com'] },
+    },
+    {
+      name: 'executes multiple steps in the inner loop',
+      inputs: {
+        makeStep: () =>
+          vi.fn(async (ctx) => {
+            if (ctx.stepNumber === 0) return { action: 'click', selector: '.btn' };
+            if (ctx.stepNumber === 1) return { action: 'scroll', direction: 'down' };
+            return { action: 'done', data: 'finished' };
+          }),
+      },
+      want: { stepCalls: 3, totalSteps: 3, finalData: 'finished', screenshotsLen: 3 },
+    },
+    {
+      name: 'passes previousAction to subsequent step calls',
+      inputs: {
+        makeStep: () => {
+          const captured = [];
+          const fn = async (ctx) => {
+            captured.push(ctx.previousAction);
+            if (ctx.stepNumber === 0) return { action: 'click', selector: '#btn' };
+            return { action: 'done' };
+          };
+          fn.captured = captured;
+          return fn;
+        },
+      },
+      want: { previousActions: [undefined, { action: 'click', selector: '#btn' }] },
+    },
+    {
+      name: 'provides working query helpers on step context',
+      inputs: {
+        makeStep: () => async (ctx) => {
+          const text = await ctx.query('.title');
+          const items = await ctx.queryAll('.item');
+          expect(text).toBe('some text');
+          expect(items).toEqual(['item 1', 'item 2']);
+          return { action: 'done', data: { text, items } };
+        },
+      },
+      want: { queriedText: 'some text' },
+    },
+    {
+      name: 'accumulator persists across steps',
+      inputs: {
+        makeStep: () => async (ctx) => {
+          if (ctx.stepNumber === 0) {
+            ctx.accumulator.count = 1;
+            return { action: 'wait', ms: 100 };
+          }
+          ctx.accumulator.count += 1;
+          return { action: 'done', data: ctx.accumulator };
+        },
+      },
+      want: { accCount: 2 },
+    },
+    {
+      name: 'caps inner loop at maxSteps',
+      inputs: {
+        makeStep: () => async () => ({ action: 'wait', ms: 10 }),
+        options: { maxSteps: 3 },
+      },
+      want: { totalSteps: 3 },
+    },
+    {
+      name: 'runs setup callback before URL processing',
+      inputs: {
+        makeStep: () => {
+          const order = [];
+          const fn = async () => {
+            order.push('step');
+            return { action: 'done' };
+          };
+          fn.order = order;
+          return fn;
+        },
+        makeOptions: (step) => {
+          const setup = vi.fn(async (page) => {
+            step.order.push('setup');
+            await page.goto('https://example.com/login');
+          });
+          return { setup, _setup: setup };
+        },
+      },
+      want: { setupCalled: true, order: ['setup', 'step'] },
+    },
+    {
+      name: 'runs teardown callback after URL processing',
+      inputs: {
+        makeStep: () => {
+          const order = [];
+          const fn = async () => {
+            order.push('step');
+            return { action: 'done' };
+          };
+          fn.order = order;
+          return fn;
+        },
+        makeOptions: (step) => {
+          const teardown = vi.fn(async () => {
+            step.order.push('teardown');
+          });
+          return { teardown, _teardown: teardown };
+        },
+      },
+      want: { teardownCalled: true, order: ['step', 'teardown'] },
+    },
+    {
+      name: 'teardown does not throw on error (best-effort)',
+      inputs: {
+        makeStep: () => async () => ({ action: 'done', data: 'ok' }),
+        makeOptions: () => ({
+          teardown: vi.fn(async () => {
+            throw new Error('teardown failed');
+          }),
+        }),
+      },
+      want: { value: 'ok' },
+    },
+    {
+      name: 'accepts per-URL step overrides',
+      inputs: {
+        makeStep: () => {
+          const defaultStep = vi.fn(async () => ({ action: 'done', data: 'default' }));
+          const customStep = vi.fn(async () => ({ action: 'done', data: 'custom' }));
+          return Object.assign(defaultStep, { customStep });
+        },
+        buildArgs: (step) => [
+          [{ url: 'https://a.com', step: step.customStep }, { url: 'https://b.com' }],
+          step,
+        ],
+      },
+      want: { perUrlOverride: true },
+    },
+    {
+      name: 'applies imageShrink to screenshots',
+      inputs: { makeStep: () => doneStep, options: { imageShrink: 'low' } },
+      want: { resizeCallShape: true },
+    },
+    {
+      name: 'passes outputDir to createTempDir when configured',
+      inputs: { makeStep: () => doneStep, options: { outputDir: '/custom/output' } },
+      want: { tempDirArgs: ['web-scrape', '/custom/output'] },
+    },
+    {
+      name: 'passes chain name without outputDir by default',
+      inputs: { makeStep: () => doneStep },
+      want: { tempDirArgs: ['web-scrape', undefined] },
+    },
+    {
+      name: 'does not resize when imageShrink is not set',
+      inputs: { makeStep: () => doneStep },
+      want: { noResize: true },
+    },
+    {
+      name: 'tiles screenshots when tile option is true and multiple steps',
+      inputs: {
+        makeStep: () => async (ctx) => {
+          if (ctx.stepNumber < 2) return { action: 'wait', ms: 10 };
+          return { action: 'done' };
+        },
+        options: { tile: true },
+      },
+      want: { tilingCalled: true, tilePath: '/tmp/tile.jpg' },
+    },
+    {
+      name: 'does not tile when only one screenshot',
+      inputs: { makeStep: () => doneStep, options: { tile: true } },
+      want: { noTiling: true, tileUndefined: true },
+    },
+    {
+      name: 'emits progress events through the full lifecycle',
+      inputs: {
+        withEvents: true,
+        makeStep: () => async (ctx) => {
+          if (ctx.stepNumber === 0) return { action: 'click', selector: '.btn' };
+          return { action: 'done' };
+        },
+      },
+      want: { progressLifecycle: true },
+    },
+    {
+      name: 'handles URL errors in resilient mode',
+      inputs: {
+        urls: ['https://ok.com', 'https://fail.com'],
+        makeStep: () => async (ctx) => {
+          if (ctx.url === 'https://fail.com') throw new Error('page crashed');
+          return { action: 'done', data: 'ok' };
+        },
+        options: { errorPosture: ErrorPosture.resilient },
+      },
+      want: { resilientResults: true },
+    },
+    {
+      name: 'always closes browser even on error',
+      inputs: {
+        makeStep: () => async () => {
+          throw new Error('fatal');
+        },
+        options: { errorPosture: ErrorPosture.strict },
+        tolerant: true,
+      },
+      want: { fatalError: 'fatal', browserClosed: true },
+    },
+    {
+      name: 'launches browser with headless option',
+      inputs: { makeStep: () => doneStep, options: { headless: false } },
+      want: { headlessFalse: true },
+    },
+    {
+      name: 'provides urlIndex on step context (single URL = 0)',
+      inputs: {
+        makeStep: () => {
+          const captured = {};
+          const fn = async (ctx) => {
+            captured.urlIndex = ctx.urlIndex;
+            return { action: 'done' };
+          };
+          fn.captured = captured;
+          return fn;
+        },
+      },
+      want: { urlIndex: 0 },
+    },
+    {
+      name: 'provides correct urlIndex for each URL in a batch',
+      inputs: {
+        urls: ['https://a.com', 'https://b.com', 'https://c.com'],
+        makeStep: () => {
+          const indices = [];
+          const fn = async (ctx) => {
+            indices.push(ctx.urlIndex);
+            return { action: 'done' };
+          };
+          fn.indices = indices;
+          return fn;
+        },
+      },
+      want: { urlIndices: [0, 1, 2] },
+    },
+    {
+      name: 'keep: false excludes screenshot from result but steps count unchanged',
+      inputs: {
+        makeStep: () =>
+          vi.fn(async (ctx) => {
+            if (ctx.stepNumber === 0) return { action: 'click', selector: '.btn', keep: false };
+            if (ctx.stepNumber === 1) return { action: 'scroll', direction: 'down', keep: false };
+            return { action: 'done', data: 'finished' };
+          }),
+      },
+      want: { totalSteps: 3, screenshotsLen: 1 },
+    },
+    {
+      name: 'screenshotFilter filters screenshots by config callback',
+      inputs: {
+        makeStep: () =>
+          vi.fn(async (ctx) => {
+            if (ctx.stepNumber < 2) return { action: 'wait', ms: 10 };
+            return { action: 'done' };
+          }),
+        options: { screenshotFilter: ({ stepNumber }) => stepNumber > 0 },
+      },
+      want: { totalSteps: 3, screenshotsLen: 2 },
+    },
+    {
+      name: 'keep and screenshotFilter both must agree (AND logic)',
+      inputs: {
+        makeStep: () =>
+          vi.fn(async (ctx) => {
+            if (ctx.stepNumber === 0) return { action: 'wait', ms: 10, keep: true };
+            if (ctx.stepNumber === 1) return { action: 'wait', ms: 10, keep: false };
+            return { action: 'done' };
+          }),
+        options: { screenshotFilter: () => true },
+      },
+      want: { totalSteps: 3, screenshotsLen: 2 },
+    },
+    {
+      name: 'screenshot filenames include url index and step number',
+      inputs: { makeStep: () => doneStep },
+      want: { screenshotPath: /url-0-step-0-/ },
+    },
+    {
+      name: 'tiles with labels when tile option is true',
+      inputs: {
+        makeStep: () => async (ctx) => {
+          if (ctx.stepNumber < 2) return { action: 'wait', ms: 10 };
+          return { action: 'done' };
+        },
+        options: { tile: true },
+      },
+      want: { tileLabels: ['0.0', '0.1', '0.2'] },
+    },
+    {
+      name: 'provides captureNetwork as a function on context',
+      inputs: {
+        makeStep: () => {
+          const captured = {};
+          const fn = async (ctx) => {
+            captured.has = typeof ctx.captureNetwork === 'function';
+            return { action: 'done' };
+          };
+          fn.captured = captured;
+          return fn;
+        },
+      },
+      want: { captureNetworkAvailable: true },
+    },
+    {
+      name: 'passes per-URL data through to ctx.data',
+      inputs: {
+        makeStep: () => {
+          const captured = {};
+          const fn = async (ctx) => {
+            captured.data = ctx.data;
+            return { action: 'done' };
+          };
+          fn.captured = captured;
+          return fn;
+        },
+        buildArgs: (step) => [
+          [
+            {
+              url: 'https://example.com',
+              data: { token: 'abc123', prefs: { theme: 'dark' } },
+            },
+          ],
+          step,
+        ],
+      },
+      want: { capturedData: { token: 'abc123', prefs: { theme: 'dark' } } },
+    },
+    {
+      name: 'ctx.data defaults to empty object when entry has no data',
+      inputs: {
+        makeStep: () => {
+          const captured = {};
+          const fn = async (ctx) => {
+            captured.data = ctx.data;
+            return { action: 'done' };
+          };
+          fn.captured = captured;
+          return fn;
+        },
+      },
+      want: { capturedData: {} },
+    },
+    {
+      name: 'injects localStorage entries before first step',
+      inputs: {
+        makeStep: () => doneStep,
+        buildArgs: (step) => [
+          [
+            {
+              url: 'https://example.com',
+              inject: { localStorage: { authToken: 'xyz', lang: 'en' } },
+            },
+          ],
+          step,
+        ],
+      },
+      want: { evaluateArg1: { authToken: 'xyz', lang: 'en' } },
+    },
+    {
+      name: 'skips localStorage injection when inject is not set',
+      inputs: { makeStep: () => doneStep },
+      want: { noInjection: true },
+    },
+    {
+      name: 'provides localStorage as a function on context',
+      inputs: {
+        makeStep: () => {
+          const captured = {};
+          const fn = async (ctx) => {
+            captured.has = typeof ctx.localStorage === 'function';
+            return { action: 'done' };
+          };
+          fn.captured = captured;
+          return fn;
+        },
+      },
+      want: { localStorageAvailable: true },
+    },
+    {
+      name: 'each URL in batch gets its own data',
+      inputs: {
+        makeStep: () => {
+          const captured = [];
+          const fn = async (ctx) => {
+            captured.push(ctx.data);
+            return { action: 'done' };
+          };
+          fn.captured = captured;
+          return fn;
+        },
+        buildArgs: (step) => [
+          [
+            { url: 'https://a.com', data: { id: 1 } },
+            { url: 'https://b.com', data: { id: 2 } },
+            { url: 'https://c.com' },
+          ],
+          step,
+        ],
+      },
+      want: { capturedDataList: [{ id: 1 }, { id: 2 }, {}] },
+    },
+    {
+      name: 'eval action with into stores return value in accumulator',
+      inputs: {
+        makeStep: () => {
+          const captured = {};
+          let callCount = 0;
+          const fn = async (ctx) => {
+            callCount += 1;
+            if (callCount === 1) {
+              return {
+                action: 'eval',
+                fn: () => ({ title: 'Hello', count: 42 }),
+                into: 'extracted',
+              };
+            }
+            captured.acc = { ...ctx.accumulator };
+            return { action: 'done', data: ctx.accumulator };
+          };
+          fn.captured = captured;
+          return fn;
+        },
+      },
+      want: { hasAccProperty: 'extracted' },
+    },
+    {
+      name: 'eval action without into does not modify accumulator',
+      inputs: {
+        makeStep: () => {
+          const captured = {};
+          let callCount = 0;
+          const fn = async (ctx) => {
+            callCount += 1;
+            if (callCount === 1) return { action: 'eval', fn: () => 'discarded' };
+            captured.acc = { ...ctx.accumulator };
+            return { action: 'done' };
+          };
+          fn.captured = captured;
+          return fn;
+        },
+      },
+      want: { accEmpty: true },
+    },
+    {
+      name: 'uses browserEngine config to select browser type',
+      inputs: { makeStep: () => doneStep, options: { browserEngine: 'firefox' } },
+      want: { firefoxLaunched: true },
+    },
+    {
+      name: 'supports async generator step functions',
+      inputs: {
+        makeStep: () => {
+          const captured = [];
+          async function* genStep(ctx) {
+            captured.push({ step: ctx.stepNumber, url: ctx.url });
+            ctx = yield { action: 'click', selector: '.btn' };
+            captured.push({ step: ctx.stepNumber, url: ctx.url });
+            ctx = yield { action: 'wait', ms: 100 };
+            captured.push({ step: ctx.stepNumber });
+            yield { action: 'done', data: { total: captured.length } };
+          }
+          genStep.captured = captured;
+          return genStep;
+        },
+      },
+      want: {
+        totalSteps: 3,
+        finalData: { total: 3 },
+        capturedSteps: [
+          { step: 0, url: 'https://example.com' },
+          { step: 1, url: 'https://example.com' },
+          { step: 2 },
+        ],
+        screenshotsLen: 3,
+      },
+    },
+    {
+      name: 'generator can branch on accumulator state',
+      inputs: {
+        makeStep: () => {
+          async function* genStep(ctx) {
+            ctx = yield { action: 'eval', fn: () => ({ hasThing: true }), into: 'check' };
+            if (ctx.accumulator.check?.hasThing) {
+              ctx = yield { action: 'wait', ms: 50 };
+            }
+            yield {
+              action: 'done',
+              data: { branched: !!ctx.accumulator.check?.hasThing },
+            };
+          }
+          return genStep;
+        },
+      },
+      want: { finalData: { branched: false }, totalSteps: 2 },
+    },
+    {
+      name: 'generator early return produces done action',
+      inputs: {
+        makeStep: () => {
+          // eslint-disable-next-line require-yield
+          async function* genStep() {
+            return { earlyExit: true };
+          }
+          return genStep;
+        },
+      },
+      want: { finalData: { earlyExit: true }, totalSteps: 1 },
+    },
+  ],
+  process: async ({ inputs }) => {
+    const step = inputs.makeStep();
+    const opts = { ...(inputs.options ?? {}), ...(inputs.makeOptions?.(step) ?? {}) };
     const events = [];
-    const step = async (ctx) => {
-      if (ctx.stepNumber === 0) return { action: 'click', selector: '.btn' };
-      return { action: 'done' };
-    };
+    if (inputs.withEvents) opts.onProgress = (e) => events.push(e);
 
-    await webScrape('https://example.com', step, {
-      onProgress: (e) => events.push(e),
-    });
+    const args = inputs.buildArgs
+      ? inputs.buildArgs(step)
+      : [inputs.urls ?? 'https://example.com', step, opts];
+    if (!inputs.buildArgs && Object.keys(opts).length === 0) args.pop();
 
-    const eventNames = events.map((e) => e.event);
-    const stepNames = events.filter((e) => e.stepName).map((e) => e.stepName);
-    expect(eventNames).toContain(ChainEvent.start);
-    expect(eventNames).toContain(DomainEvent.step);
-    expect(eventNames).toContain(ChainEvent.complete);
-    expect(stepNames).toContain('browser');
-    expect(stepNames).toContain('url:start');
-    expect(stepNames).toContain('url:complete');
-
-    const actionSteps = events.filter((e) => e.event === 'step' && e.action);
-    expect(actionSteps).toHaveLength(2);
-    expect(actionSteps[0].action).toBe('click');
-    expect(actionSteps[1].action).toBe('done');
-  });
-
-  it('handles URL errors in resilient mode', async () => {
-    const step = async (ctx) => {
-      if (ctx.url === 'https://fail.com') throw new Error('page crashed');
-      return { action: 'done', data: 'ok' };
-    };
-
-    const results = await webScrape(['https://ok.com', 'https://fail.com'], step, {
-      errorPosture: ErrorPosture.resilient,
-    });
-
-    expect(results[0].data).toBe('ok');
-    expect(results[1].error).toBe('page crashed');
-    expect(results[1].data).toBeUndefined();
-  });
-
-  it('always closes browser even on error', async () => {
-    const step = async () => {
-      throw new Error('fatal');
-    };
-
-    await expect(
-      webScrape('https://example.com', step, { errorPosture: ErrorPosture.strict })
-    ).rejects.toThrow('fatal');
-
-    const { chromium: pw } = await import('playwright-core');
-    const browser = await pw.launch.mock.results[0].value;
-    expect(browser.close).toHaveBeenCalled();
-  });
-
-  it('launches browser with headless option', async () => {
-    const step = async () => ({ action: 'done' });
-    await webScrape('https://example.com', step, { headless: false });
-
-    expect(chromium.launch).toHaveBeenCalledWith({ headless: false });
-  });
-
-  it('provides urlIndex on step context (single URL = 0)', async () => {
-    let capturedIndex;
-    const step = async (ctx) => {
-      capturedIndex = ctx.urlIndex;
-      return { action: 'done' };
-    };
-
-    await webScrape('https://example.com', step);
-    expect(capturedIndex).toBe(0);
-  });
-
-  it('provides correct urlIndex for each URL in a batch', async () => {
-    const indices = [];
-    const step = async (ctx) => {
-      indices.push(ctx.urlIndex);
-      return { action: 'done' };
-    };
-
-    await webScrape(['https://a.com', 'https://b.com', 'https://c.com'], step);
-    expect(indices).toEqual([0, 1, 2]);
-  });
-
-  it('keep: false excludes screenshot from result but steps count unchanged', async () => {
-    const step = vi.fn(async (ctx) => {
-      if (ctx.stepNumber === 0) return { action: 'click', selector: '.btn', keep: false };
-      if (ctx.stepNumber === 1) return { action: 'scroll', direction: 'down', keep: false };
-      return { action: 'done', data: 'finished' };
-    });
-
-    const result = await webScrape('https://example.com', step);
-
-    expect(result.steps).toBe(3);
-    // Only step 2 (done) kept — steps 0 and 1 had keep: false
-    expect(result.screenshots).toHaveLength(1);
-  });
-
-  it('screenshotFilter filters screenshots by config callback', async () => {
-    const step = vi.fn(async (ctx) => {
-      if (ctx.stepNumber < 2) return { action: 'wait', ms: 10 };
-      return { action: 'done' };
-    });
-
-    const result = await webScrape('https://example.com', step, {
-      screenshotFilter: ({ stepNumber }) => stepNumber > 0,
-    });
-
-    expect(result.steps).toBe(3);
-    // Step 0 filtered out, steps 1 and 2 kept
-    expect(result.screenshots).toHaveLength(2);
-  });
-
-  it('keep and screenshotFilter both must agree (AND logic)', async () => {
-    const step = vi.fn(async (ctx) => {
-      if (ctx.stepNumber === 0) return { action: 'wait', ms: 10, keep: true };
-      if (ctx.stepNumber === 1) return { action: 'wait', ms: 10, keep: false };
-      return { action: 'done' };
-    });
-
-    const result = await webScrape('https://example.com', step, {
-      // Filter keeps all, but action keep: false on step 1 should still exclude it
-      screenshotFilter: () => true,
-    });
-
-    expect(result.steps).toBe(3);
-    // Step 0: keep=true, filter=true → kept
-    // Step 1: keep=false, filter=true → excluded
-    // Step 2: keep=true (default), filter=true → kept
-    expect(result.screenshots).toHaveLength(2);
-  });
-
-  it('screenshot filenames include url index and step number', async () => {
-    const step = async () => ({ action: 'done' });
-    await webScrape('https://example.com', step);
-
-    const page = __mockPages[0];
-    const screenshotCall = page.screenshot.mock.calls[0][0];
-    expect(screenshotCall.path).toMatch(/url-0-step-0-/);
-  });
-
-  it('tiles with labels when tile option is true', async () => {
-    const step = async (ctx) => {
-      if (ctx.stepNumber < 2) return { action: 'wait', ms: 10 };
-      return { action: 'done' };
-    };
-
-    await webScrape('https://example.com', step, { tile: true });
-
-    expect(tileImages).toHaveBeenCalledTimes(1);
-    expect(tileImages).toHaveBeenCalledWith(expect.any(Array), {
-      labels: ['0.0', '0.1', '0.2'],
-      outputDir: '/tmp/verblets-scrape-mock',
-    });
-  });
-
-  it('provides captureNetwork as a function on context', async () => {
-    let hasCaptureNetwork = false;
-    const step = async (ctx) => {
-      hasCaptureNetwork = typeof ctx.captureNetwork === 'function';
-      return { action: 'done' };
-    };
-
-    await webScrape('https://example.com', step);
-    expect(hasCaptureNetwork).toBe(true);
-  });
-
-  it('passes per-URL data through to ctx.data', async () => {
-    let capturedData;
-    const step = async (ctx) => {
-      capturedData = ctx.data;
-      return { action: 'done' };
-    };
-
-    await webScrape(
-      [{ url: 'https://example.com', data: { token: 'abc123', prefs: { theme: 'dark' } } }],
-      step
-    );
-
-    expect(capturedData).toEqual({ token: 'abc123', prefs: { theme: 'dark' } });
-  });
-
-  it('ctx.data defaults to empty object when entry has no data', async () => {
-    let capturedData;
-    const step = async (ctx) => {
-      capturedData = ctx.data;
-      return { action: 'done' };
-    };
-
-    await webScrape('https://example.com', step);
-    expect(capturedData).toEqual({});
-  });
-
-  it('injects localStorage entries before first step', async () => {
-    const step = async () => ({ action: 'done' });
-
-    await webScrape(
-      [{ url: 'https://example.com', inject: { localStorage: { authToken: 'xyz', lang: 'en' } } }],
-      step
-    );
-
-    // The work page (index 1: setup=none so index 0 is work page) should have evaluate called
-    // for localStorage injection before the step loop
-    const workPage = __mockPages[0];
-    const evaluateCalls = workPage.evaluate.mock.calls;
-    // First evaluate call is the injection
-    expect(evaluateCalls.length).toBeGreaterThanOrEqual(1);
-    expect(evaluateCalls[0][1]).toEqual({ authToken: 'xyz', lang: 'en' });
-  });
-
-  it('skips localStorage injection when inject is not set', async () => {
-    const step = async () => ({ action: 'done' });
-    await webScrape('https://example.com', step);
-
-    // No evaluate calls for injection on the work page
-    const workPage = __mockPages[0];
-    // evaluate may be called by step context helpers but not for injection
-    // The injection call passes an object as second arg — check none do
-    const injectionCalls = workPage.evaluate.mock.calls.filter(
-      (call) => call[1] && typeof call[1] === 'object' && !Array.isArray(call[1])
-    );
-    expect(injectionCalls).toHaveLength(0);
-  });
-
-  it('provides localStorage as a function on context', async () => {
-    let hasLocalStorage = false;
-    const step = async (ctx) => {
-      hasLocalStorage = typeof ctx.localStorage === 'function';
-      return { action: 'done' };
-    };
-
-    await webScrape('https://example.com', step);
-    expect(hasLocalStorage).toBe(true);
-  });
-
-  it('each URL in batch gets its own data', async () => {
-    const captured = [];
-    const step = async (ctx) => {
-      captured.push(ctx.data);
-      return { action: 'done' };
-    };
-
-    await webScrape(
-      [
-        { url: 'https://a.com', data: { id: 1 } },
-        { url: 'https://b.com', data: { id: 2 } },
-        { url: 'https://c.com' },
-      ],
-      step
-    );
-
-    expect(captured[0]).toEqual({ id: 1 });
-    expect(captured[1]).toEqual({ id: 2 });
-    expect(captured[2]).toEqual({});
-  });
-
-  it('eval action with into stores return value in accumulator', async () => {
-    const pages = (await import('playwright-core')).__mockPages;
-    pages.length = 0;
-
-    let capturedAccumulator;
-    let callCount = 0;
-    const step = async (ctx) => {
-      callCount++;
-      if (callCount === 1) {
-        // First step: eval that returns data into accumulator
-        return { action: 'eval', fn: () => ({ title: 'Hello', count: 42 }), into: 'extracted' };
-      }
-      // Second step: check accumulator has the data
-      capturedAccumulator = { ...ctx.accumulator };
-      return { action: 'done', data: ctx.accumulator };
-    };
-
-    // Make evaluate return the function's result
-    await (async () => {
-      const pw = await import('playwright-core');
-      pw.__mockPages.length = 0;
-      const r = await webScrape('https://example.com', step);
-      // The mock evaluate returns undefined by default — set it up
-      return r;
-    })();
-
-    // eval was called; the into path stores whatever evaluate returned
-    // With mock, evaluate returns undefined, so accumulator.extracted = undefined
-    expect(capturedAccumulator).toHaveProperty('extracted');
-  });
-
-  it('eval action without into does not modify accumulator', async () => {
-    let capturedAccumulator;
-    let callCount = 0;
-    const step = async (ctx) => {
-      callCount++;
-      if (callCount === 1) {
-        return { action: 'eval', fn: () => 'discarded' };
-      }
-      capturedAccumulator = { ...ctx.accumulator };
-      return { action: 'done' };
-    };
-
-    await webScrape('https://example.com', step);
-    expect(Object.keys(capturedAccumulator)).toHaveLength(0);
-  });
-
-  it('resize action is accepted as valid', async () => {
-    const pages = (await import('playwright-core')).__mockPages;
-    pages.length = 0;
-
-    // resize calls page.setViewportSize — mock doesn't have it, will throw
-    // but we can verify it doesn't fail validation
-    const { validateAction } = await import('./actions.js');
-    expect(() => validateAction({ action: 'resize', width: 375 })).not.toThrow();
-  });
-
-  it('uses browserEngine config to select browser type', async () => {
-    const step = async () => ({ action: 'done' });
-    await webScrape('https://example.com', step, { browserEngine: 'firefox' });
-
-    expect(firefox.launch).toHaveBeenCalledTimes(1);
-    expect(chromium.launch).not.toHaveBeenCalled();
-  });
-
-  it('supports async generator step functions', async () => {
-    const captured = [];
-
-    async function* genStep(ctx) {
-      // Step 0: initial ctx comes as function argument
-      captured.push({ step: ctx.stepNumber, url: ctx.url });
-      ctx = yield { action: 'click', selector: '.btn' };
-
-      // Step 1: updated ctx sent via generator.next(ctx)
-      captured.push({ step: ctx.stepNumber, url: ctx.url });
-      ctx = yield { action: 'wait', ms: 100 };
-
-      // Step 2: done
-      captured.push({ step: ctx.stepNumber });
-      yield { action: 'done', data: { total: captured.length } };
+    let value;
+    let error;
+    try {
+      value = await webScrape(...args);
+    } catch (e) {
+      if (!inputs.tolerant) throw e;
+      error = e;
     }
-
-    const result = await webScrape('https://example.com', genStep);
-
-    expect(result.steps).toBe(3);
-    expect(result.data).toEqual({ total: 3 });
-    expect(captured).toEqual([
-      { step: 0, url: 'https://example.com' },
-      { step: 1, url: 'https://example.com' },
-      { step: 2 },
-    ]);
-    expect(result.screenshots).toHaveLength(3);
-  });
-
-  it('generator can branch on accumulator state', async () => {
-    const pages = (await import('playwright-core')).__mockPages;
-    pages.length = 0;
-
-    async function* genStep(ctx) {
-      // eval stores into accumulator — mock evaluate returns { hasThing: true }
-      ctx = yield { action: 'eval', fn: () => ({ hasThing: true }), into: 'check' };
-
-      // Branch based on accumulator (populated by web-scrape after eval)
-      if (ctx.accumulator.check?.hasThing) {
-        ctx = yield { action: 'wait', ms: 50 };
-      }
-      yield { action: 'done', data: { branched: !!ctx.accumulator.check?.hasThing } };
+    return { value, error, step, options: opts, events };
+  },
+  expects: async ({ result, want }) => {
+    if (want.singleStep) {
+      expect(result.value).toMatchObject({
+        url: 'https://example.com',
+        data: { title: 'Example' },
+        steps: 1,
+      });
+      expect(result.value.screenshots).toHaveLength(1);
+      expect(typeof result.value.cleanup).toBe('function');
+      expect(result.step).toHaveBeenCalledTimes(1);
     }
-
-    // Configure mock evaluate to return the eval function's intended result
-    const result = await (async () => {
-      const r = await webScrape('https://example.com', genStep);
-      return r;
-    })();
-
-    // Mock evaluate returns undefined, so branch is NOT taken — 2 steps: eval, done
-    expect(result.data).toEqual({ branched: false });
-    expect(result.steps).toBe(2);
-  });
-
-  it('generator early return produces done action', async () => {
-    /* eslint-disable require-yield, no-unused-vars */
-    async function* genStep(_ctx) {
-      return { earlyExit: true };
+    if (want.singleObj !== undefined) {
+      expect(Array.isArray(result.value)).toBe(false);
+      expect(result.value.data).toBe(want.singleObj);
     }
-    /* eslint-enable require-yield, no-unused-vars */
+    if (want.arrayLength) {
+      expect(Array.isArray(result.value)).toBe(true);
+      expect(result.value).toHaveLength(want.arrayLength);
+      want.urls.forEach((u, i) => expect(result.value[i].url).toBe(u));
+    }
+    if ('stepCalls' in want) expect(result.step).toHaveBeenCalledTimes(want.stepCalls);
+    if ('totalSteps' in want) expect(result.value.steps).toBe(want.totalSteps);
+    if ('finalData' in want) expect(result.value.data).toEqual(want.finalData);
+    if ('screenshotsLen' in want) {
+      expect(result.value.screenshots).toHaveLength(want.screenshotsLen);
+    }
+    if (want.previousActions) {
+      expect(result.step.captured[0]).toBeUndefined();
+      expect(result.step.captured[1]).toEqual(want.previousActions[1]);
+    }
+    if (want.queriedText) expect(result.value.data.text).toBe(want.queriedText);
+    if (want.accCount !== undefined) expect(result.value.data.count).toBe(want.accCount);
+    if (want.setupCalled) {
+      expect(result.options._setup).toHaveBeenCalledTimes(1);
+      expect(result.step.order).toEqual(want.order);
+    }
+    if (want.teardownCalled) {
+      expect(result.options._teardown).toHaveBeenCalledTimes(1);
+      expect(result.step.order).toEqual(want.order);
+    }
+    if ('value' in want) expect(result.value.data).toBe(want.value);
+    if (want.perUrlOverride) {
+      expect(result.value[0].data).toBe('custom');
+      expect(result.value[1].data).toBe('default');
+      expect(result.step.customStep).toHaveBeenCalledTimes(1);
+      expect(result.step).toHaveBeenCalledTimes(1);
+    }
+    if (want.resizeCallShape) {
+      expect(resizeImage).toHaveBeenCalledTimes(1);
+      expect(resizeImage).toHaveBeenCalledWith(expect.stringContaining('.png'), {
+        width: 300,
+        quality: 60,
+        format: 'jpeg',
+        outputDir: '/tmp/verblets-scrape-mock',
+      });
+    }
+    if (want.tempDirArgs) {
+      expect(createTempDir).toHaveBeenCalledWith(...want.tempDirArgs);
+    }
+    if (want.noResize) expect(resizeImage).not.toHaveBeenCalled();
+    if (want.tilingCalled) {
+      expect(tileImages).toHaveBeenCalledTimes(1);
+      expect(result.value.tile).toBe(want.tilePath);
+    }
+    if (want.noTiling) {
+      expect(tileImages).not.toHaveBeenCalled();
+      expect(result.value.tile).toBeUndefined();
+    }
+    if (want.progressLifecycle) {
+      const eventNames = result.events.map((e) => e.event);
+      expect(eventNames).toContain(ChainEvent.start);
+      expect(eventNames).toContain(DomainEvent.step);
+      expect(eventNames).toContain(ChainEvent.complete);
+      const stepNames = result.events.filter((e) => e.stepName).map((e) => e.stepName);
+      expect(stepNames).toContain('browser');
+      expect(stepNames).toContain('url:start');
+      expect(stepNames).toContain('url:complete');
+      const actionSteps = result.events.filter((e) => e.event === 'step' && e.action);
+      expect(actionSteps).toHaveLength(2);
+      expect(actionSteps[0].action).toBe('click');
+      expect(actionSteps[1].action).toBe('done');
+    }
+    if (want.resilientResults) {
+      expect(result.value[0].data).toBe('ok');
+      expect(result.value[1].error).toBe('page crashed');
+      expect(result.value[1].data).toBeUndefined();
+    }
+    if (want.fatalError) {
+      expect(result.error?.message).toBe(want.fatalError);
+      const { chromium: pw } = await import('playwright-core');
+      const browser = await pw.launch.mock.results[0].value;
+      expect(browser.close).toHaveBeenCalled();
+    }
+    if (want.headlessFalse) expect(chromium.launch).toHaveBeenCalledWith({ headless: false });
+    if ('urlIndex' in want) expect(result.step.captured.urlIndex).toBe(want.urlIndex);
+    if (want.urlIndices) expect(result.step.indices).toEqual(want.urlIndices);
+    if (want.screenshotPath) {
+      const page = __mockPages[0];
+      const screenshotCall = page.screenshot.mock.calls[0][0];
+      expect(screenshotCall.path).toMatch(want.screenshotPath);
+    }
+    if (want.tileLabels) {
+      expect(tileImages).toHaveBeenCalledTimes(1);
+      expect(tileImages).toHaveBeenCalledWith(expect.any(Array), {
+        labels: want.tileLabels,
+        outputDir: '/tmp/verblets-scrape-mock',
+      });
+    }
+    if (want.captureNetworkAvailable) expect(result.step.captured.has).toBe(true);
+    if (want.localStorageAvailable) expect(result.step.captured.has).toBe(true);
+    if (want.capturedData !== undefined) {
+      expect(result.step.captured.data).toEqual(want.capturedData);
+    }
+    if (want.capturedDataList) {
+      want.capturedDataList.forEach((d, i) => {
+        expect(result.step.captured[i]).toEqual(d);
+      });
+    }
+    if (want.evaluateArg1) {
+      const workPage = __mockPages[0];
+      const evaluateCalls = workPage.evaluate.mock.calls;
+      expect(evaluateCalls.length).toBeGreaterThanOrEqual(1);
+      expect(evaluateCalls[0][1]).toEqual(want.evaluateArg1);
+    }
+    if (want.noInjection) {
+      const workPage = __mockPages[0];
+      const injectionCalls = workPage.evaluate.mock.calls.filter(
+        (call) => call[1] && typeof call[1] === 'object' && !Array.isArray(call[1])
+      );
+      expect(injectionCalls).toHaveLength(0);
+    }
+    if (want.hasAccProperty) {
+      expect(result.step.captured.acc).toHaveProperty(want.hasAccProperty);
+    }
+    if (want.accEmpty) expect(Object.keys(result.step.captured.acc)).toHaveLength(0);
+    if (want.firefoxLaunched) {
+      expect(firefox.launch).toHaveBeenCalledTimes(1);
+      expect(chromium.launch).not.toHaveBeenCalled();
+    }
+    if (want.capturedSteps) expect(result.step.captured).toEqual(want.capturedSteps);
+  },
+});
 
-    const result = await webScrape('https://example.com', genStep);
-    expect(result.data).toEqual({ earlyExit: true });
-    expect(result.steps).toBe(1);
-  });
+runTable({
+  describe: 'web-scrape — action validation',
+  examples: [
+    { name: 'resize action is accepted as valid', inputs: {}, want: { resizeAccepted: true } },
+  ],
+  process: () => undefined,
+  expects: async ({ want }) => {
+    if (want.resizeAccepted) {
+      const { validateAction } = await import('./actions.js');
+      expect(() => validateAction({ action: 'resize', width: 375 })).not.toThrow();
+    }
+  },
 });

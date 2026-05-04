@@ -1,6 +1,6 @@
-import { describe, expect, it, vi } from 'vitest';
-
+import { vi, expect } from 'vitest';
 import sort, { useTestSortPrompt } from './index.js';
+import { runTable } from '../../lib/examples-runner/index.js';
 
 useTestSortPrompt();
 
@@ -72,41 +72,34 @@ vi.mock('../../lib/llm/index.js', () => ({
   jsonSchema: (name, schema) => ({ type: 'json_schema', json_schema: { name, schema } }),
 }));
 
-const examples = [
-  {
-    name: 'Basic usage',
-    inputs: {
-      options: { by: 'alphabetically', iterations: 3, extremeK, batchSize },
-      list: [...unsortedStrings],
+runTable({
+  describe: 'Sort',
+  examples: [
+    {
+      name: 'Basic usage',
+      inputs: {
+        list: [...unsortedStrings],
+        options: { by: 'alphabetically', iterations: 3, extremeK, batchSize },
+      },
+      want: {
+        highest: unsortedStrings.toSorted(byAB).slice(0, extremeK * 3),
+        lowest: unsortedStrings.toSorted(byAB).slice(-(extremeK * 3)),
+      },
     },
-    want: {
-      highest: unsortedStrings.toSorted(byAB).slice(0, extremeK * 3),
-      lowest: unsortedStrings.toSorted(byAB).slice(-(extremeK * 3)),
+    {
+      name: 'Empty list',
+      inputs: { list: [], options: { by: 'alphabetically', extremeK, batchSize } },
+      want: { highest: [], lowest: [] },
     },
+  ],
+  process: ({ inputs }) =>
+    sort(inputs.list, inputs.options.by, {
+      model: { budgetTokens: () => ({ completion: 0 }) },
+      ...inputs.options,
+    }),
+  expects: ({ result, inputs, want }) => {
+    const iterations = inputs.options.iterations ?? 1;
+    expect(result.slice(0, extremeK * iterations)).toEqual(want.highest);
+    expect(result.slice(-(extremeK * iterations))).toEqual(want.lowest);
   },
-  {
-    name: 'Empty list',
-    inputs: {
-      options: { by: 'alphabetically', extremeK, batchSize },
-      list: [],
-    },
-    want: {
-      highest: [],
-      lowest: [],
-    },
-  },
-];
-
-describe('Sort', () => {
-  examples.forEach((example) => {
-    it(example.name, async () => {
-      const iterations = example.inputs.options.iterations ?? 1;
-      const result = await sort(example.inputs.list, example.inputs.options.by, {
-        model: { budgetTokens: () => ({ completion: 0 }) },
-        ...example.inputs.options,
-      });
-      expect(result.slice(0, extremeK * iterations)).toStrictEqual(example.want.highest);
-      expect(result.slice(-(extremeK * iterations))).toStrictEqual(example.want.lowest);
-    });
-  });
 });

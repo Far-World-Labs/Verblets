@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { Factory } from 'fishery';
 import {
   popReferenceFactory,
   popReferenceMatchFactory,
@@ -10,9 +11,8 @@ import {
 import { runTable } from '../../examples-runner/index.js';
 
 // ─── pop-reference factories ───────────────────────────────────────────────
-//
-// Verify each fishery factory produces the documented shape, sequence
-// counters advance, and overrides take effect.
+// Each factory is a relational test (sequence advances, override replaces)
+// that doesn't reduce to a single result/want compare — kept as describe/it.
 
 describe('popReferenceMatchFactory', () => {
   it('builds a match with text, start, end', () => {
@@ -78,17 +78,21 @@ describe('popReferenceResponseFactory', () => {
   });
 });
 
-describe('popReferenceWithCount', () => {
-  it.each([0, 1, 3, 7])('produces a response with %i references', (n) => {
-    expect(popReferenceWithCount(n).references).toHaveLength(n);
-  });
+// ─── popReferenceWithCount: parameterized via runTable ────────────────────
+
+runTable({
+  describe: 'popReferenceWithCount',
+  examples: [
+    { name: 'count=0', inputs: { count: 0 }, want: { length: 0 } },
+    { name: 'count=1', inputs: { count: 1 }, want: { length: 1 } },
+    { name: 'count=3', inputs: { count: 3 }, want: { length: 3 } },
+    { name: 'count=7', inputs: { count: 7 }, want: { length: 7 } },
+  ],
+  process: ({ inputs }) => popReferenceWithCount(inputs.count).references.length,
+  expects: ({ result, want }) => expect(result).toBe(want.length),
 });
 
 // ─── variants vocabulary (LlmMockResponse contract) ────────────────────────
-//
-// The variants share names across chains, even when the payload shapes differ.
-// These tests pin the contract for pop-reference; other chains will have
-// equivalent specs using the same expected variant keys.
 
 const expectedVariantKeys = [
   'wellFormed',
@@ -101,11 +105,18 @@ const expectedVariantKeys = [
   'oversized',
 ];
 
-describe('popReferenceVariants', () => {
-  it.each(expectedVariantKeys)('exposes %s', (key) => {
-    expect(typeof popReferenceVariants[key]).toBe('function');
-  });
+runTable({
+  describe: 'popReferenceVariants — every variant exposed as function',
+  examples: expectedVariantKeys.map((key) => ({
+    name: `exposes ${key}`,
+    inputs: { key },
+    want: { type: 'function' },
+  })),
+  process: ({ inputs }) => typeof popReferenceVariants[inputs.key],
+  expects: ({ result, want }) => expect(result).toBe(want.type),
+});
 
+describe('popReferenceVariants — value shape', () => {
   it('wellFormed returns the documented response shape', () => {
     const r = popReferenceVariants.wellFormed();
     expect(Array.isArray(r.references)).toBe(true);
@@ -143,51 +154,54 @@ describe('popReferenceVariants', () => {
   });
 });
 
-// ─── makeResponseVariants helper itself ────────────────────────────────────
-//
-// Driven through runTable: confirms the helper rejects bad inputs and
-// produces every expected variant key when the inputs are good.
-
-import { Factory } from 'fishery';
+// ─── makeResponseVariants helper ───────────────────────────────────────────
 
 const exampleBase = Factory.define(() => ({ items: [{ id: 1 }] }));
 
-const variantsBuilderCases = [
-  {
-    name: 'throws when base is not a fishery Factory',
-    inputs: { base: null },
-    want: { throws: 'fishery Factory' },
-  },
-  {
-    name: 'returns base variants when arrayKey is set with makeArrayItem',
-    inputs: { base: exampleBase, arrayKey: 'items', makeArrayItem: () => ({ id: 2 }) },
-    // Object.keys().sort() — alphabetical
-    want: [
-      'empty',
-      'isNull',
-      'malformedShape',
-      'oversized',
-      'rejected',
-      'undefinedValue',
-      'undersized',
-      'wellFormed',
-    ],
-  },
-  {
-    name: 'omits size variants when arrayKey is null',
-    inputs: { base: exampleBase, arrayKey: null },
-    want: ['empty', 'isNull', 'malformedShape', 'rejected', 'undefinedValue', 'wellFormed'],
-  },
-];
-
 runTable({
   describe: 'makeResponseVariants',
-  examples: variantsBuilderCases,
-  process: (inputs) => {
-    const result = makeResponseVariants(inputs);
+  examples: [
+    {
+      name: 'throws when base is not a fishery Factory',
+      inputs: { args: { base: null } },
+      want: { throws: 'fishery Factory' },
+    },
+    {
+      name: 'returns full variants when arrayKey is set with makeArrayItem',
+      inputs: {
+        args: { base: exampleBase, arrayKey: 'items', makeArrayItem: () => ({ id: 2 }) },
+      },
+      want: {
+        value: [
+          'empty',
+          'isNull',
+          'malformedShape',
+          'oversized',
+          'rejected',
+          'undefinedValue',
+          'undersized',
+          'wellFormed',
+        ],
+      },
+    },
+    {
+      name: 'omits size variants when arrayKey is null',
+      inputs: { args: { base: exampleBase, arrayKey: null } },
+      want: {
+        value: ['empty', 'isNull', 'malformedShape', 'rejected', 'undefinedValue', 'wellFormed'],
+      },
+    },
+  ],
+  process: ({ inputs }) => {
+    const result = makeResponseVariants(inputs.args);
     return Object.keys(result).sort();
   },
+  expects: ({ result, error, want }) => {
+    if ('throws' in want) {
+      expect(error?.message).toContain(want.throws);
+      return;
+    }
+    if (error) throw error;
+    expect(result).toEqual(want.value);
+  },
 });
-
-// The first case is a throw spec; the second/third assert sorted-key arrays —
-// align the want arrays with sort order.

@@ -1,4 +1,5 @@
-import { describe, it, expect, vi } from 'vitest';
+import { vi, expect } from 'vitest';
+import { runTable, applyMocks } from '../../lib/examples-runner/index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(async () => ({
@@ -23,85 +24,91 @@ vi.mock('../../lib/llm/index.js', () => ({
   jsonSchema: vi.fn((name, schema) => ({ type: 'json_schema', json_schema: { name, schema } })),
 }));
 
-vi.mock('../../lib/retry/index.js', () => ({
-  default: vi.fn((fn) => fn()),
-}));
+vi.mock('../../lib/retry/index.js', () => ({ default: vi.fn((fn) => fn()) }));
 
 const { default: define, compareSchemas } = await import('./index.js');
 const callLlm = (await import('../../lib/llm/index.js')).default;
+const { jsonSchema } = await import('../../lib/llm/index.js');
 
-describe('define', () => {
-  it('returns a schema with projections and properties', async () => {
-    const schema = await define({
-      exampleTexts: [
-        'The invoice is still wrong.',
-        'Legal thinks the retention language is risky.',
-      ],
-    });
+const lastPrompt = () => callLlm.mock.calls.at(-1)[0];
+const lastOptions = () => callLlm.mock.calls.at(-1)[1];
 
-    expect(schema.projections).toHaveLength(2);
-    expect(schema.projections[0].projectionName).toBe('billing');
-    expect(schema.properties).toHaveLength(1);
-    expect(schema.properties[0].propertyName).toBe('urgency');
-  });
-
-  it('does not include _poles in the returned schema', async () => {
-    const schema = await define({ exampleTexts: ['test'] });
-    expect(schema._poles).toBeUndefined();
-  });
-
-  it('passes example texts into the prompt', async () => {
-    await define({ exampleTexts: ['Invoice overdue', 'Policy violation'] });
-
-    const prompt = callLlm.mock.calls.at(-1)[0];
-    expect(prompt).toContain('Invoice overdue');
-    expect(prompt).toContain('Policy violation');
-  });
-
-  it('includes seed projection names in the prompt when provided', async () => {
-    await define({
-      exampleTexts: ['test'],
-      projectionNames: ['billing', 'timeline'],
-    });
-
-    const prompt = callLlm.mock.calls.at(-1)[0];
-    expect(prompt).toContain('billing');
-    expect(prompt).toContain('timeline');
-    expect(prompt).toContain('Suggested projection names');
-  });
-
-  it('includes seed property names in the prompt when provided', async () => {
-    await define({
-      exampleTexts: ['test'],
-      propertyNames: ['urgency', 'complianceRisk'],
-    });
-
-    const prompt = callLlm.mock.calls.at(-1)[0];
-    expect(prompt).toContain('urgency');
-    expect(prompt).toContain('complianceRisk');
-    expect(prompt).toContain('Suggested property names');
-  });
-
-  it('uses jsonSchema for structured output', async () => {
-    const { jsonSchema } = await import('../../lib/llm/index.js');
-    await define({ exampleTexts: ['test'] });
-
-    expect(jsonSchema).toHaveBeenCalledWith('sem_define', expect.any(Object));
-    const llmOptions = callLlm.mock.calls.at(-1)[1];
-    expect(llmOptions.responseFormat).toBeDefined();
-  });
-
-  it('sets temperature to 0', async () => {
-    await define({ exampleTexts: ['test'] });
-    const llmOptions = callLlm.mock.calls.at(-1)[1];
-    expect(llmOptions.temperature).toBe(0);
-  });
-
-  it('propagates config to nameStep', async () => {
-    await define({ exampleTexts: ['test'] }, { traceId: 'trace-123' });
-    const llmOptions = callLlm.mock.calls.at(-1)[1];
-    expect(llmOptions.traceId).toBe('trace-123');
-  });
+runTable({
+  describe: 'define',
+  examples: [
+    {
+      name: 'returns a schema with projections and properties',
+      inputs: {
+        args: {
+          exampleTexts: [
+            'The invoice is still wrong.',
+            'Legal thinks the retention language is risky.',
+          ],
+        },
+      },
+      want: {
+        projectionsLength: 2,
+        firstProjectionName: 'billing',
+        propertiesLength: 1,
+        firstPropertyName: 'urgency',
+      },
+    },
+    {
+      name: 'does not include _poles in the returned schema',
+      inputs: { args: { exampleTexts: ['test'] } },
+      want: { noPoles: true },
+    },
+    {
+      name: 'passes example texts into the prompt',
+      inputs: { args: { exampleTexts: ['Invoice overdue', 'Policy violation'] } },
+      want: { promptContains: ['Invoice overdue', 'Policy violation'] },
+    },
+    {
+      name: 'includes seed projection names in the prompt when provided',
+      inputs: { args: { exampleTexts: ['test'], projectionNames: ['billing', 'timeline'] } },
+      want: { promptContains: ['billing', 'timeline', 'Suggested projection names'] },
+    },
+    {
+      name: 'includes seed property names in the prompt when provided',
+      inputs: { args: { exampleTexts: ['test'], propertyNames: ['urgency', 'complianceRisk'] } },
+      want: { promptContains: ['urgency', 'complianceRisk', 'Suggested property names'] },
+    },
+    {
+      name: 'uses jsonSchema for structured output',
+      inputs: { args: { exampleTexts: ['test'] } },
+      want: { schemaName: 'sem_define', responseFormatDefined: true },
+    },
+    {
+      name: 'sets temperature to 0',
+      inputs: { args: { exampleTexts: ['test'] } },
+      want: { temperature: 0 },
+    },
+    {
+      name: 'propagates config to nameStep',
+      inputs: { args: { exampleTexts: ['test'] }, config: { traceId: 'trace-123' } },
+      want: { traceId: 'trace-123' },
+    },
+  ],
+  process: ({ inputs }) => define(inputs.args, inputs.config),
+  expects: ({ result, want }) => {
+    if ('projectionsLength' in want) {
+      expect(result.projections).toHaveLength(want.projectionsLength);
+      expect(result.projections[0].projectionName).toBe(want.firstProjectionName);
+      expect(result.properties).toHaveLength(want.propertiesLength);
+      expect(result.properties[0].propertyName).toBe(want.firstPropertyName);
+    }
+    if (want.noPoles) expect(result._poles).toBeUndefined();
+    if (want.promptContains) {
+      const prompt = lastPrompt();
+      for (const fragment of want.promptContains) expect(prompt).toContain(fragment);
+    }
+    if (want.schemaName) {
+      expect(jsonSchema).toHaveBeenCalledWith(want.schemaName, expect.any(Object));
+    }
+    if (want.responseFormatDefined) expect(lastOptions().responseFormat).toBeDefined();
+    if ('temperature' in want) expect(lastOptions().temperature).toBe(want.temperature);
+    if (want.traceId) expect(lastOptions().traceId).toBe(want.traceId);
+  },
 });
 
 const billingProjection = { projectionName: 'billing', description: 'invoices, charges, refunds' };
@@ -130,226 +137,258 @@ const riskProperty = {
   projectionWeights: { compliance: 0.9 },
 };
 
-describe('compareSchemas', () => {
-  it('identifies full overlap when schemas are identical', async () => {
-    callLlm.mockResolvedValueOnce({
-      projections: {
-        overlapping: [
-          {
-            nameA: 'billing',
-            nameB: 'billing',
-            semanticSimilarity: 'high',
-            rationale: 'Identical projection covering financial transactions',
-          },
-          {
-            nameA: 'compliance',
-            nameB: 'compliance',
-            semanticSimilarity: 'high',
-            rationale: 'Identical projection covering legal and policy',
-          },
-        ],
-        uniqueToA: [],
-        uniqueToB: [],
+const identicalResponse = {
+  projections: {
+    overlapping: [
+      {
+        nameA: 'billing',
+        nameB: 'billing',
+        semanticSimilarity: 'high',
+        rationale: 'Identical projection covering financial transactions',
       },
-      properties: {
-        overlapping: [
-          {
-            nameA: 'urgency',
-            nameB: 'urgency',
-            semanticSimilarity: 'high',
-            rationale: 'Identical property',
-            valueRangeDivergence: 'none',
-          },
-        ],
-        uniqueToA: [],
-        uniqueToB: [],
+      {
+        nameA: 'compliance',
+        nameB: 'compliance',
+        semanticSimilarity: 'high',
+        rationale: 'Identical projection covering legal and policy',
       },
-      summary: 'Schemas are identical.',
-    });
-
-    const schema = {
-      projections: [billingProjection, complianceProjection],
-      properties: [urgencyProperty],
-    };
-
-    const report = await compareSchemas(schema, schema);
-
-    expect(report.projections.overlapping).toHaveLength(2);
-    expect(report.projections.overlapping[0].semanticSimilarity).toBe('high');
-    expect(report.projections.uniqueToA).toHaveLength(0);
-    expect(report.projections.uniqueToB).toHaveLength(0);
-    expect(report.properties.overlapping).toHaveLength(1);
-    expect(report.properties.uniqueToA).toHaveLength(0);
-    expect(report.properties.uniqueToB).toHaveLength(0);
-    expect(report.summary).toBe('Schemas are identical.');
-  });
-
-  it('identifies partial overlap between schemas', async () => {
-    callLlm.mockResolvedValueOnce({
-      projections: {
-        overlapping: [
-          {
-            nameA: 'billing',
-            nameB: 'billing',
-            semanticSimilarity: 'high',
-            rationale: 'Both cover financial transactions',
-          },
-        ],
-        uniqueToA: [complianceProjection],
-        uniqueToB: [sentimentProjection],
+    ],
+    uniqueToA: [],
+    uniqueToB: [],
+  },
+  properties: {
+    overlapping: [
+      {
+        nameA: 'urgency',
+        nameB: 'urgency',
+        semanticSimilarity: 'high',
+        rationale: 'Identical property',
+        valueRangeDivergence: 'none',
       },
-      properties: {
-        overlapping: [],
-        uniqueToA: [urgencyProperty],
-        uniqueToB: [riskProperty],
+    ],
+    uniqueToA: [],
+    uniqueToB: [],
+  },
+  summary: 'Schemas are identical.',
+};
+
+const partialResponse = {
+  projections: {
+    overlapping: [
+      {
+        nameA: 'billing',
+        nameB: 'billing',
+        semanticSimilarity: 'high',
+        rationale: 'Both cover financial transactions',
       },
-      summary: 'Schemas share billing but diverge on secondary concerns.',
-    });
+    ],
+    uniqueToA: [complianceProjection],
+    uniqueToB: [sentimentProjection],
+  },
+  properties: { overlapping: [], uniqueToA: [urgencyProperty], uniqueToB: [riskProperty] },
+  summary: 'Schemas share billing but diverge on secondary concerns.',
+};
 
-    const schemaA = {
-      projections: [billingProjection, complianceProjection],
-      properties: [urgencyProperty],
-    };
-    const schemaB = {
-      projections: [billingProjection, sentimentProjection],
-      properties: [riskProperty],
-    };
+const divergentResponse = {
+  projections: {
+    overlapping: [],
+    uniqueToA: [billingProjection],
+    uniqueToB: [sentimentProjection],
+  },
+  properties: { overlapping: [], uniqueToA: [urgencyProperty], uniqueToB: [riskProperty] },
+  summary: 'Schemas cover entirely different domains.',
+};
 
-    const report = await compareSchemas(schemaA, schemaB);
+const emptyResponse = {
+  projections: { overlapping: [], uniqueToA: [], uniqueToB: [] },
+  properties: { overlapping: [], uniqueToA: [], uniqueToB: [] },
+  summary: 'Both schemas are empty.',
+};
 
-    expect(report.projections.overlapping).toHaveLength(1);
-    expect(report.projections.overlapping[0].nameA).toBe('billing');
-    expect(report.projections.uniqueToA).toHaveLength(1);
-    expect(report.projections.uniqueToA[0].projectionName).toBe('compliance');
-    expect(report.projections.uniqueToB).toHaveLength(1);
-    expect(report.projections.uniqueToB[0].projectionName).toBe('sentiment');
-    expect(report.properties.uniqueToA[0].propertyName).toBe('urgency');
-    expect(report.properties.uniqueToB[0].propertyName).toBe('riskLevel');
-  });
+const promptResponse = {
+  projections: {
+    overlapping: [],
+    uniqueToA: [billingProjection],
+    uniqueToB: [sentimentProjection],
+  },
+  properties: { overlapping: [], uniqueToA: [], uniqueToB: [] },
+  summary: 'Different domains.',
+};
 
-  it('reports all projections and properties as divergent when schemas share nothing', async () => {
-    callLlm.mockResolvedValueOnce({
-      projections: {
-        overlapping: [],
-        uniqueToA: [billingProjection],
-        uniqueToB: [sentimentProjection],
+const blankResponse = {
+  projections: { overlapping: [], uniqueToA: [], uniqueToB: [] },
+  properties: { overlapping: [], uniqueToA: [], uniqueToB: [] },
+  summary: 'Empty.',
+};
+
+const comparedResponse = {
+  projections: { overlapping: [], uniqueToA: [], uniqueToB: [] },
+  properties: { overlapping: [], uniqueToA: [], uniqueToB: [] },
+  summary: 'Compared.',
+};
+
+runTable({
+  describe: 'compareSchemas',
+  examples: [
+    {
+      name: 'identifies full overlap when schemas are identical',
+      inputs: {
+        schemaA: {
+          projections: [billingProjection, complianceProjection],
+          properties: [urgencyProperty],
+        },
+        schemaB: null,
       },
-      properties: {
-        overlapping: [],
-        uniqueToA: [urgencyProperty],
-        uniqueToB: [riskProperty],
+      mocks: { callLlm: [identicalResponse] },
+      want: {
+        overlappingLengths: { projections: 2, properties: 1 },
+        uniqueLengths: { projectionsA: 0, projectionsB: 0, propertiesA: 0, propertiesB: 0 },
+        firstProjectionSimilarity: 'high',
+        summary: 'Schemas are identical.',
       },
-      summary: 'Schemas cover entirely different domains.',
-    });
-
-    const schemaA = { projections: [billingProjection], properties: [urgencyProperty] };
-    const schemaB = { projections: [sentimentProjection], properties: [riskProperty] };
-
-    const report = await compareSchemas(schemaA, schemaB);
-
-    expect(report.projections.overlapping).toHaveLength(0);
-    expect(report.projections.uniqueToA).toHaveLength(1);
-    expect(report.projections.uniqueToB).toHaveLength(1);
-    expect(report.properties.overlapping).toHaveLength(0);
-    expect(report.properties.uniqueToA).toHaveLength(1);
-    expect(report.properties.uniqueToB).toHaveLength(1);
-  });
-
-  it('handles empty projections and properties gracefully', async () => {
-    callLlm.mockResolvedValueOnce({
-      projections: { overlapping: [], uniqueToA: [], uniqueToB: [] },
-      properties: { overlapping: [], uniqueToA: [], uniqueToB: [] },
-      summary: 'Both schemas are empty.',
-    });
-
-    const empty = { projections: [], properties: [] };
-    const report = await compareSchemas(empty, empty);
-
-    expect(report.projections.overlapping).toHaveLength(0);
-    expect(report.projections.uniqueToA).toHaveLength(0);
-    expect(report.projections.uniqueToB).toHaveLength(0);
-    expect(report.properties.overlapping).toHaveLength(0);
-    expect(report.summary).toBe('Both schemas are empty.');
-  });
-
-  it('throws when schemas are missing projections or properties', async () => {
-    await expect(compareSchemas({}, {})).rejects.toThrow(
-      /must have projections and properties arrays/
-    );
-  });
-
-  it('includes both schemas in the prompt', async () => {
-    callLlm.mockResolvedValueOnce({
-      projections: {
-        overlapping: [],
-        uniqueToA: [billingProjection],
-        uniqueToB: [sentimentProjection],
+    },
+    {
+      name: 'identifies partial overlap between schemas',
+      inputs: {
+        schemaA: {
+          projections: [billingProjection, complianceProjection],
+          properties: [urgencyProperty],
+        },
+        schemaB: {
+          projections: [billingProjection, sentimentProjection],
+          properties: [riskProperty],
+        },
       },
-      properties: { overlapping: [], uniqueToA: [], uniqueToB: [] },
-      summary: 'Different domains.',
-    });
-
-    await compareSchemas(
-      { projections: [billingProjection], properties: [] },
-      { projections: [sentimentProjection], properties: [] }
-    );
-
-    const prompt = callLlm.mock.calls.at(-1)[0];
-    expect(prompt).toContain('Schema A');
-    expect(prompt).toContain('Schema B');
-    expect(prompt).toContain('billing');
-    expect(prompt).toContain('sentiment');
-  });
-
-  it('uses sem_compare jsonSchema for structured output', async () => {
-    const { jsonSchema } = await import('../../lib/llm/index.js');
-    callLlm.mockResolvedValueOnce({
-      projections: { overlapping: [], uniqueToA: [], uniqueToB: [] },
-      properties: { overlapping: [], uniqueToA: [], uniqueToB: [] },
-      summary: 'Empty.',
-    });
-
-    await compareSchemas({ projections: [], properties: [] }, { projections: [], properties: [] });
-
-    expect(jsonSchema).toHaveBeenCalledWith('sem_compare', expect.any(Object));
-    const llmOptions = callLlm.mock.calls.at(-1)[1];
-    expect(llmOptions.responseFormat).toBeDefined();
-    expect(llmOptions.temperature).toBe(0);
-  });
-
-  it('propagates config through', async () => {
-    callLlm.mockResolvedValueOnce({
-      projections: { overlapping: [], uniqueToA: [], uniqueToB: [] },
-      properties: { overlapping: [], uniqueToA: [], uniqueToB: [] },
-      summary: 'Empty.',
-    });
-
-    await compareSchemas(
-      { projections: [], properties: [] },
-      { projections: [], properties: [] },
-      { traceId: 'compare-trace-1' }
-    );
-
-    const llmOptions = callLlm.mock.calls.at(-1)[1];
-    expect(llmOptions.traceId).toBe('compare-trace-1');
-  });
-
-  it('formats property value ranges in the prompt', async () => {
-    callLlm.mockResolvedValueOnce({
-      projections: { overlapping: [], uniqueToA: [], uniqueToB: [] },
-      properties: { overlapping: [], uniqueToA: [], uniqueToB: [] },
-      summary: 'Compared.',
-    });
-
-    await compareSchemas(
-      { projections: [], properties: [urgencyProperty] },
-      { projections: [], properties: [riskProperty] }
-    );
-
-    const prompt = callLlm.mock.calls.at(-1)[0];
-    expect(prompt).toContain('urgency');
-    expect(prompt).toContain('continuous');
-    expect(prompt).toContain('riskLevel');
-    expect(prompt).toContain('categorical');
-  });
+      mocks: { callLlm: [partialResponse] },
+      want: {
+        overlappingLengths: { projections: 1 },
+        firstOverlappingNameA: 'billing',
+        uniqueAName: 'compliance',
+        uniqueBName: 'sentiment',
+        uniqueAPropertyName: 'urgency',
+        uniqueBPropertyName: 'riskLevel',
+      },
+    },
+    {
+      name: 'reports all projections and properties as divergent when schemas share nothing',
+      inputs: {
+        schemaA: { projections: [billingProjection], properties: [urgencyProperty] },
+        schemaB: { projections: [sentimentProjection], properties: [riskProperty] },
+      },
+      mocks: { callLlm: [divergentResponse] },
+      want: {
+        overlappingLengths: { projections: 0, properties: 0 },
+        uniqueLengths: { projectionsA: 1, projectionsB: 1, propertiesA: 1, propertiesB: 1 },
+      },
+    },
+    {
+      name: 'handles empty projections and properties gracefully',
+      inputs: {
+        schemaA: { projections: [], properties: [] },
+        schemaB: { projections: [], properties: [] },
+      },
+      mocks: { callLlm: [emptyResponse] },
+      want: { overlappingLengths: { projections: 0 }, summary: 'Both schemas are empty.' },
+    },
+    {
+      name: 'throws when schemas are missing projections or properties',
+      inputs: { schemaA: {}, schemaB: {} },
+      want: { throws: /must have projections and properties arrays/ },
+    },
+    {
+      name: 'includes both schemas in the prompt',
+      inputs: {
+        schemaA: { projections: [billingProjection], properties: [] },
+        schemaB: { projections: [sentimentProjection], properties: [] },
+      },
+      mocks: { callLlm: [promptResponse] },
+      want: { promptContains: ['Schema A', 'Schema B', 'billing', 'sentiment'] },
+    },
+    {
+      name: 'uses sem_compare jsonSchema for structured output',
+      inputs: {
+        schemaA: { projections: [], properties: [] },
+        schemaB: { projections: [], properties: [] },
+      },
+      mocks: { callLlm: [blankResponse] },
+      want: { schemaName: 'sem_compare', responseFormatDefined: true, temperature: 0 },
+    },
+    {
+      name: 'propagates config through',
+      inputs: {
+        schemaA: { projections: [], properties: [] },
+        schemaB: { projections: [], properties: [] },
+        config: { traceId: 'compare-trace-1' },
+      },
+      mocks: { callLlm: [blankResponse] },
+      want: { traceId: 'compare-trace-1' },
+    },
+    {
+      name: 'formats property value ranges in the prompt',
+      inputs: {
+        schemaA: { projections: [], properties: [urgencyProperty] },
+        schemaB: { projections: [], properties: [riskProperty] },
+      },
+      mocks: { callLlm: [comparedResponse] },
+      want: { promptContains: ['urgency', 'continuous', 'riskLevel', 'categorical'] },
+    },
+  ],
+  process: async ({ inputs, mocks }) => {
+    applyMocks(mocks, { callLlm });
+    return compareSchemas(inputs.schemaA, inputs.schemaB ?? inputs.schemaA, inputs.config);
+  },
+  expects: ({ result, error, want }) => {
+    if (want.throws) {
+      expect(error?.message).toMatch(want.throws);
+      return;
+    }
+    if (error) throw error;
+    if (want.overlappingLengths) {
+      const ol = want.overlappingLengths;
+      if ('projections' in ol) {
+        expect(result.projections.overlapping).toHaveLength(ol.projections);
+      }
+      if ('properties' in ol) {
+        expect(result.properties.overlapping).toHaveLength(ol.properties);
+      }
+    }
+    if (want.uniqueLengths) {
+      const ul = want.uniqueLengths;
+      if ('projectionsA' in ul) expect(result.projections.uniqueToA).toHaveLength(ul.projectionsA);
+      if ('projectionsB' in ul) expect(result.projections.uniqueToB).toHaveLength(ul.projectionsB);
+      if ('propertiesA' in ul) expect(result.properties.uniqueToA).toHaveLength(ul.propertiesA);
+      if ('propertiesB' in ul) expect(result.properties.uniqueToB).toHaveLength(ul.propertiesB);
+    }
+    if (want.firstProjectionSimilarity) {
+      expect(result.projections.overlapping[0].semanticSimilarity).toBe(
+        want.firstProjectionSimilarity
+      );
+    }
+    if (want.firstOverlappingNameA) {
+      expect(result.projections.overlapping[0].nameA).toBe(want.firstOverlappingNameA);
+    }
+    if (want.uniqueAName) {
+      expect(result.projections.uniqueToA[0].projectionName).toBe(want.uniqueAName);
+    }
+    if (want.uniqueBName) {
+      expect(result.projections.uniqueToB[0].projectionName).toBe(want.uniqueBName);
+    }
+    if (want.uniqueAPropertyName) {
+      expect(result.properties.uniqueToA[0].propertyName).toBe(want.uniqueAPropertyName);
+    }
+    if (want.uniqueBPropertyName) {
+      expect(result.properties.uniqueToB[0].propertyName).toBe(want.uniqueBPropertyName);
+    }
+    if (want.summary) expect(result.summary).toBe(want.summary);
+    if (want.promptContains) {
+      const prompt = lastPrompt();
+      for (const fragment of want.promptContains) expect(prompt).toContain(fragment);
+    }
+    if (want.schemaName) {
+      expect(jsonSchema).toHaveBeenCalledWith(want.schemaName, expect.any(Object));
+    }
+    if (want.responseFormatDefined) expect(lastOptions().responseFormat).toBeDefined();
+    if ('temperature' in want) expect(lastOptions().temperature).toBe(want.temperature);
+    if (want.traceId) expect(lastOptions().traceId).toBe(want.traceId);
+  },
 });

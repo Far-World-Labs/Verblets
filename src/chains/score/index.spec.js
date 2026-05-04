@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, vi, expect } from 'vitest';
 import score, {
   scoreItem,
   scoreSpec,
@@ -12,244 +12,275 @@ import listBatch from '../../verblets/list-batch/index.js';
 import createBatches from '../../lib/text-batch/index.js';
 import filter from '../filter/index.js';
 import { ChainEvent, DomainEvent, OpEvent } from '../../lib/progress/constants.js';
+import { runTable } from '../../lib/examples-runner/index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(),
   jsonSchema: (name, schema) => ({ type: 'json_schema', json_schema: { name, schema } }),
 }));
 
-vi.mock('../scale/index.js', () => ({
-  scaleSpec: vi.fn(),
-}));
-
-vi.mock('../../verblets/list-batch/index.js', () => ({
-  default: vi.fn(),
-}));
-
-vi.mock('../../lib/text-batch/index.js', () => ({
-  default: vi.fn(),
-}));
-
+vi.mock('../scale/index.js', () => ({ scaleSpec: vi.fn() }));
+vi.mock('../../verblets/list-batch/index.js', () => ({ default: vi.fn() }));
+vi.mock('../../lib/text-batch/index.js', () => ({ default: vi.fn() }));
 vi.mock('../../lib/parallel-batch/index.js', () => ({
   default: vi.fn(async (items, processor) => {
-    for (let i = 0; i < items.length; i++) {
-      await processor(items[i], i);
-    }
+    for (let i = 0; i < items.length; i++) await processor(items[i], i);
   }),
   parallelBatch: vi.fn(),
 }));
-
-vi.mock('../filter/index.js', () => ({
-  default: vi.fn(),
-}));
-
-vi.mock('../reduce/index.js', () => ({
-  default: vi.fn(),
-}));
-
-vi.mock('../find/index.js', () => ({
-  default: vi.fn(),
-}));
-
-vi.mock('../group/index.js', () => ({
-  default: vi.fn(),
-}));
+vi.mock('../filter/index.js', () => ({ default: vi.fn() }));
+vi.mock('../reduce/index.js', () => ({ default: vi.fn() }));
+vi.mock('../find/index.js', () => ({ default: vi.fn() }));
+vi.mock('../group/index.js', () => ({ default: vi.fn() }));
 
 beforeEach(() => {
   vi.clearAllMocks();
-  // Reset persistent mockReturnValue from previous tests
   createBatches.mockReset();
   listBatch.mockReset();
 });
 
-describe('score chain', () => {
-  const mockSpec = {
-    domain: 'text items',
-    range: '0-10 numeric score',
-    mapping: 'length-based scoring',
-  };
+const mockSpec = {
+  domain: 'text items',
+  range: '0-10 numeric score',
+  mapping: 'length-based scoring',
+};
 
-  describe('default export', () => {
-    it('scores a list of items via listBatch', async () => {
-      scaleSpec.mockResolvedValueOnce(mockSpec);
-      createBatches.mockReturnValueOnce([{ items: ['a', 'bb', 'ccc'], startIndex: 0 }]);
-      listBatch.mockResolvedValueOnce([1, 2, 3]);
-
-      const result = await score(['a', 'bb', 'ccc'], 'score by length');
-
+runTable({
+  describe: 'score chain',
+  examples: [
+    {
+      name: 'scores a list of items via listBatch',
+      inputs: {
+        list: ['a', 'bb', 'ccc'],
+        instructions: 'score by length',
+        setupMock: () => {
+          scaleSpec.mockResolvedValueOnce(mockSpec);
+          createBatches.mockReturnValueOnce([{ items: ['a', 'bb', 'ccc'], startIndex: 0 }]);
+          listBatch.mockResolvedValueOnce([1, 2, 3]);
+        },
+      },
+      want: { value: [1, 2, 3], scaleSpecCalled: true, listBatchScoreSpec: true },
+    },
+    {
+      name: 'skips scoreSpec when spec is provided via instruction object',
+      inputs: {
+        list: ['x', 'y'],
+        instructions: { text: 'ignored instructions', spec: mockSpec },
+        setupMock: () => {
+          createBatches.mockReturnValueOnce([{ items: ['x', 'y'], startIndex: 0 }]);
+          listBatch.mockResolvedValueOnce([5, 8]);
+        },
+      },
+      want: { value: [5, 8], scaleSpecNotCalled: true, listBatchScoreSpec: true },
+    },
+    {
+      name: 'handles multiple batches with anchoring',
+      inputs: {
+        list: ['a', 'b', 'c', 'd'],
+        instructions: 'score items',
+        setupMock: () => {
+          scaleSpec.mockResolvedValueOnce(mockSpec);
+          createBatches.mockReturnValueOnce([
+            { items: ['a', 'b'], startIndex: 0 },
+            { items: ['c', 'd'], startIndex: 2 },
+          ]);
+          listBatch.mockResolvedValueOnce([2, 8]).mockResolvedValueOnce([5, 3]);
+        },
+      },
+      want: { value: [2, 8, 5, 3], listBatchCalls: 2, secondPromptContains: 'scoring-anchors' },
+    },
+    {
+      name: 'retries items when LLM returns fewer scores than items',
+      inputs: {
+        list: ['a', 'b', 'c'],
+        instructions: 'score items',
+        setupMock: () => {
+          scaleSpec.mockResolvedValueOnce(mockSpec);
+          createBatches
+            .mockReturnValueOnce([{ items: ['a', 'b', 'c'], startIndex: 0 }])
+            .mockReturnValueOnce([{ items: ['c'], startIndex: 0 }]);
+          listBatch.mockResolvedValueOnce([4, 7]).mockResolvedValueOnce([6]);
+        },
+      },
+      want: { value: [4, 7, 6], listBatchCalls: 2 },
+    },
+    {
+      name: 'contains errors per batch without throwing',
+      inputs: {
+        list: ['a', 'b', 'c', 'd'],
+        instructions: 'score items',
+        setupMock: () => {
+          scaleSpec.mockResolvedValueOnce(mockSpec);
+          createBatches.mockReturnValueOnce([
+            { items: ['a', 'b'], startIndex: 0 },
+            { items: ['c', 'd'], startIndex: 2 },
+          ]);
+          listBatch.mockResolvedValueOnce([3, 9]).mockRejectedValueOnce(new Error('500'));
+          createBatches
+            .mockReturnValueOnce([{ items: ['c', 'd'], startIndex: 0 }])
+            .mockReturnValueOnce([{ items: ['c', 'd'], startIndex: 0 }]);
+          listBatch.mockRejectedValueOnce(new Error('500')).mockRejectedValueOnce(new Error('500'));
+        },
+      },
+      want: { partialContents: { 0: 3, 1: 9, 2: undefined, 3: undefined } },
+    },
+    {
+      name: 'processes oversized items in isolated single-item batches',
+      inputs: {
+        list: ['normal', 'oversized-item'],
+        instructions: 'score items',
+        setupMock: () => {
+          scaleSpec.mockResolvedValueOnce(mockSpec);
+          createBatches.mockReturnValueOnce([
+            { items: ['normal'], startIndex: 0 },
+            { items: ['oversized-item'], startIndex: 1 },
+          ]);
+          listBatch.mockResolvedValueOnce([7]).mockResolvedValueOnce([3]);
+          createBatches.mockReturnValueOnce([]).mockReturnValueOnce([]);
+        },
+      },
+      want: { value: [7, 3], listBatchCalls: 2 },
+    },
+  ],
+  process: async ({ inputs }) => {
+    inputs.setupMock?.();
+    return score(inputs.list, inputs.instructions);
+  },
+  expects: ({ result, want }) => {
+    if ('value' in want) expect(result).toEqual(want.value);
+    if ('listBatchCalls' in want) expect(listBatch).toHaveBeenCalledTimes(want.listBatchCalls);
+    if (want.scaleSpecCalled) {
       expect(scaleSpec).toHaveBeenCalledWith(
-        'score by length',
+        expect.any(String),
         expect.objectContaining({ now: expect.any(Date) })
       );
+    }
+    if (want.scaleSpecNotCalled) expect(scaleSpec).not.toHaveBeenCalled();
+    if (want.listBatchScoreSpec) {
       expect(listBatch).toHaveBeenCalledWith(
-        ['a', 'bb', 'ccc'],
+        expect.any(Array),
         expect.stringContaining('score-specification'),
         expect.any(Object)
       );
-      expect(result).toEqual([1, 2, 3]);
-    });
+    }
+    if (want.secondPromptContains) {
+      expect(listBatch.mock.calls[1][1]).toContain(want.secondPromptContains);
+    }
+    if (want.partialContents) {
+      for (const [idx, value] of Object.entries(want.partialContents)) {
+        if (value === undefined) {
+          expect(result[Number(idx)]).toBeUndefined();
+        } else {
+          expect(result[Number(idx)]).toBe(value);
+        }
+      }
+    }
+  },
+});
 
-    it('skips scoreSpec when spec is provided via instruction object', async () => {
-      createBatches.mockReturnValueOnce([{ items: ['x', 'y'], startIndex: 0 }]);
-      listBatch.mockResolvedValueOnce([5, 8]);
+runTable({
+  describe: 'scoreSpec',
+  examples: [{ name: 'is an alias for scaleSpec', inputs: {}, want: { aliasOf: scaleSpec } }],
+  process: () => undefined,
+  expects: ({ want }) => {
+    if (want.aliasOf) expect(scoreSpec).toBe(want.aliasOf);
+  },
+});
 
-      const result = await score(['x', 'y'], { text: 'ignored instructions', spec: mockSpec });
-
-      expect(scaleSpec).not.toHaveBeenCalled();
-      expect(listBatch).toHaveBeenCalledWith(
-        ['x', 'y'],
-        expect.stringContaining('score-specification'),
+runTable({
+  describe: 'scoreItem',
+  examples: [
+    {
+      name: 'scores a single item',
+      inputs: {
+        item: 'test item',
+        instructions: 'score by length',
+        setupMock: () => {
+          scaleSpec.mockResolvedValueOnce(mockSpec);
+          llm.mockResolvedValueOnce(7);
+        },
+      },
+      want: { value: 7, llmContains: 'test item' },
+    },
+  ],
+  process: async ({ inputs }) => {
+    inputs.setupMock?.();
+    return scoreItem(inputs.item, inputs.instructions);
+  },
+  expects: ({ result, inputs, want }) => {
+    expect(scaleSpec).toHaveBeenCalledWith(inputs.instructions, {});
+    if (want.llmContains) {
+      expect(llm).toHaveBeenCalledWith(
+        expect.stringContaining(want.llmContains),
         expect.any(Object)
       );
-      expect(result).toEqual([5, 8]);
-    });
+    }
+    expect(result).toBe(want.value);
+  },
+});
 
-    it('handles multiple batches with anchoring', async () => {
-      scaleSpec.mockResolvedValueOnce(mockSpec);
-      createBatches.mockReturnValueOnce([
-        { items: ['a', 'b'], startIndex: 0 },
-        { items: ['c', 'd'], startIndex: 2 },
-      ]);
-      listBatch
-        .mockResolvedValueOnce([2, 8]) // first batch
-        .mockResolvedValueOnce([5, 3]); // second batch
+runTable({
+  describe: 'scoreInstructions',
+  examples: [
+    {
+      name: 'returns instruction bundle with spec',
+      inputs: { spec: mockSpec },
+      want: { textContains: 'score specification' },
+    },
+    {
+      name: 'allows text override',
+      inputs: { spec: mockSpec, text: 'Custom scoring' },
+      want: { matches: { text: 'Custom scoring', spec: mockSpec } },
+    },
+    {
+      name: 'passes through additional context keys',
+      inputs: { spec: mockSpec, domain: 'medical records' },
+      want: { matches: { spec: mockSpec, domain: 'medical records' } },
+    },
+    {
+      name: 'includes anchors when provided',
+      inputs: { spec: mockSpec, anchors: 'anchor data' },
+      want: { matches: { anchors: 'anchor data' } },
+    },
+  ],
+  process: ({ inputs }) => scoreInstructions(inputs),
+  expects: ({ result, inputs, want }) => {
+    if (want.textContains) {
+      expect(result.text).toContain(want.textContains);
+      expect(result.spec).toBe(inputs.spec);
+    }
+    if (want.matches) expect(result).toMatchObject(want.matches);
+  },
+});
 
-      const result = await score(['a', 'b', 'c', 'd'], 'score items');
-
-      expect(listBatch).toHaveBeenCalledTimes(2);
-      // Second batch prompt should contain scoring anchors from first batch
-      const secondCallPrompt = listBatch.mock.calls[1][1];
-      expect(secondCallPrompt).toContain('scoring-anchors');
-      expect(result).toEqual([2, 8, 5, 3]);
-    });
-
-    it('retries items when LLM returns fewer scores than items', async () => {
-      scaleSpec.mockResolvedValueOnce(mockSpec);
-      createBatches
-        .mockReturnValueOnce([{ items: ['a', 'b', 'c'], startIndex: 0 }]) // initial pass
-        .mockReturnValueOnce([{ items: ['c'], startIndex: 0 }]); // retry pass
-      listBatch
-        .mockResolvedValueOnce([4, 7]) // initial: only 2 of 3 scores
-        .mockResolvedValueOnce([6]); // retry: fills in missing
-
-      const result = await score(['a', 'b', 'c'], 'score items');
-
-      expect(listBatch).toHaveBeenCalledTimes(2);
-      expect(result).toEqual([4, 7, 6]);
-    });
-
-    it('contains errors per batch without throwing', async () => {
-      scaleSpec.mockResolvedValueOnce(mockSpec);
-      // Initial pass: 2 batches, second fails
-      createBatches.mockReturnValueOnce([
-        { items: ['a', 'b'], startIndex: 0 },
-        { items: ['c', 'd'], startIndex: 2 },
-      ]);
-      listBatch
-        .mockResolvedValueOnce([3, 9]) // first batch succeeds
-        .mockRejectedValueOnce(new Error('500')); // second batch fails (retry exhausted)
-
-      // Retry passes: failed items rebatched, still fail
-      createBatches
-        .mockReturnValueOnce([{ items: ['c', 'd'], startIndex: 0 }])
-        .mockReturnValueOnce([{ items: ['c', 'd'], startIndex: 0 }]);
-      listBatch.mockRejectedValueOnce(new Error('500')).mockRejectedValueOnce(new Error('500'));
-
-      const result = await score(['a', 'b', 'c', 'd'], 'score items');
-
-      // First batch succeeded, second batch items remain undefined after retries
-      expect(result[0]).toBe(3);
-      expect(result[1]).toBe(9);
-      expect(result[2]).toBeUndefined();
-      expect(result[3]).toBeUndefined();
-    });
-
-    it('processes oversized items in isolated single-item batches', async () => {
-      scaleSpec.mockResolvedValueOnce(mockSpec);
-      // Oversized item gets its own batch — no skip, just isolated
-      createBatches.mockReturnValueOnce([
-        { items: ['normal'], startIndex: 0 },
-        { items: ['oversized-item'], startIndex: 1 },
-      ]);
-      listBatch.mockResolvedValueOnce([7]).mockResolvedValueOnce([3]);
-
-      // Retry passes: both items already scored
-      createBatches.mockReturnValueOnce([]).mockReturnValueOnce([]);
-
-      const result = await score(['normal', 'oversized-item'], 'score items');
-
-      expect(listBatch).toHaveBeenCalledTimes(2);
-      expect(result[0]).toBe(7);
-      expect(result[1]).toBe(3);
-    });
-  });
-
-  describe('scoreSpec', () => {
-    it('is an alias for scaleSpec', () => {
-      expect(scoreSpec).toBe(scaleSpec);
-    });
-  });
-
-  describe('scoreItem', () => {
-    it('scores a single item', async () => {
-      scaleSpec.mockResolvedValueOnce(mockSpec);
-      llm.mockResolvedValueOnce(7); // llm auto-unwraps single value property
-
-      const result = await scoreItem('test item', 'score by length');
-
-      expect(scaleSpec).toHaveBeenCalledWith('score by length', {});
-      expect(llm).toHaveBeenCalledWith(expect.stringContaining('test item'), expect.any(Object));
-      expect(result).toBe(7);
-    });
-  });
-
-  describe('scoreInstructions', () => {
-    it('returns instruction bundle with spec', () => {
-      const bundle = scoreInstructions({ spec: mockSpec });
-
-      expect(bundle.text).toContain('score specification');
-      expect(bundle.spec).toBe(mockSpec);
-    });
-
-    it('allows text override', () => {
-      const bundle = scoreInstructions({ spec: mockSpec, text: 'Custom scoring' });
-
-      expect(bundle.text).toBe('Custom scoring');
-      expect(bundle.spec).toBe(mockSpec);
-    });
-
-    it('passes through additional context keys', () => {
-      const bundle = scoreInstructions({ spec: mockSpec, domain: 'medical records' });
-
-      expect(bundle.spec).toBe(mockSpec);
-      expect(bundle.domain).toBe('medical records');
-    });
-
-    it('includes anchors when provided', () => {
-      const bundle = scoreInstructions({ spec: mockSpec, anchors: 'anchor data' });
-
-      expect(bundle.anchors).toBe('anchor data');
-    });
-  });
-
-  describe('integration with collection chains', () => {
-    it('scoreInstructions bundle works with filter chain', async () => {
+runTable({
+  describe: 'score — integration with collection chains',
+  examples: [
+    {
+      name: 'scoreInstructions bundle works with filter chain',
+      inputs: {},
+      want: { filterIntegration: true },
+    },
+  ],
+  process: () => undefined,
+  expects: async ({ want }) => {
+    if (want.filterIntegration) {
       filter.mockResolvedValueOnce(['item1', 'item3']);
-
       const bundle = scoreInstructions({ spec: mockSpec });
       const items = ['item1', 'item2', 'item3'];
-
       const filtered = await filter(items, bundle);
-
       expect(filter).toHaveBeenCalledWith(items, expect.objectContaining({ spec: mockSpec }));
       expect(filtered).toEqual(['item1', 'item3']);
-    });
-  });
+    }
+  },
+});
 
-  describe('anchoring option', () => {
-    it.each([
-      {
-        level: 'low',
+runTable({
+  describe: 'score — anchoring option',
+  examples: [
+    {
+      name: 'anchoring=low omits anchors in second batch',
+      inputs: {
         items: ['a', 'b', 'c', 'd'],
         batches: [
           { items: ['a', 'b'], startIndex: 0 },
@@ -259,10 +290,13 @@ describe('score chain', () => {
           [2, 8],
           [5, 3],
         ],
-        expectAnchors: false,
+        anchoring: 'low',
       },
-      {
-        level: 'high',
+      want: { secondPromptNotContains: 'scoring-anchors' },
+    },
+    {
+      name: 'anchoring=high includes anchors in second batch',
+      inputs: {
         items: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'],
         batches: [
           { items: ['a', 'b', 'c', 'd', 'e', 'f'], startIndex: 0 },
@@ -272,35 +306,121 @@ describe('score chain', () => {
           [1, 3, 5, 7, 8, 10],
           [4, 6],
         ],
-        expectAnchors: true,
+        anchoring: 'high',
       },
-    ])(
-      'anchoring $level $expectAnchors anchors in second batch',
-      async ({ level, items, batches, scores, expectAnchors }) => {
-        scaleSpec.mockResolvedValueOnce(mockSpec);
-        createBatches.mockReturnValueOnce(batches);
-        scores.forEach((s) => listBatch.mockResolvedValueOnce(s));
+      want: { secondPromptContains: 'scoring-anchors' },
+    },
+  ],
+  process: async ({ inputs }) => {
+    scaleSpec.mockResolvedValueOnce(mockSpec);
+    createBatches.mockReturnValueOnce(inputs.batches);
+    for (const s of inputs.scores) listBatch.mockResolvedValueOnce(s);
+    return score(inputs.items, 'score items', { anchoring: inputs.anchoring });
+  },
+  expects: ({ want }) => {
+    const secondPrompt = listBatch.mock.calls[1][1];
+    if (want.secondPromptContains) expect(secondPrompt).toContain(want.secondPromptContains);
+    if (want.secondPromptNotContains) {
+      expect(secondPrompt).not.toContain(want.secondPromptNotContains);
+    }
+  },
+});
 
-        await score(items, 'score items', { anchoring: level });
-
-        const secondCallPrompt = listBatch.mock.calls[1][1];
-        if (expectAnchors) {
-          expect(secondCallPrompt).toContain('scoring-anchors');
-        } else {
-          expect(secondCallPrompt).not.toContain('scoring-anchors');
-        }
-      }
-    );
-  });
-
-  describe('scoreItemWithUncertainty', () => {
-    it('returns score with uncertainty metadata', async () => {
-      scaleSpec.mockResolvedValueOnce(mockSpec);
-      llm.mockResolvedValueOnce({ value: 7, confidence: 0.9, unknowns: ['subjective criteria'] });
-
-      const result = await scoreItemWithUncertainty('test item', 'score by quality');
-
-      expect(scaleSpec).toHaveBeenCalledWith('score by quality', {});
+runTable({
+  describe: 'scoreItemWithUncertainty',
+  examples: [
+    {
+      name: 'returns score with uncertainty metadata',
+      inputs: {
+        item: 'test item',
+        instructions: 'score by quality',
+        setupMock: () => {
+          scaleSpec.mockResolvedValueOnce(mockSpec);
+          llm.mockResolvedValueOnce({
+            value: 7,
+            confidence: 0.9,
+            unknowns: ['subjective criteria'],
+          });
+        },
+      },
+      want: {
+        score: 7,
+        uncertainty: { confidence: 0.9, unknowns: ['subjective criteria'] },
+        llmCalledWithUncertainty: true,
+      },
+    },
+    {
+      name: 'returns empty unknowns when LLM reports no uncertainty',
+      inputs: {
+        item: 'obvious item',
+        instructions: 'score by length',
+        setupMock: () => {
+          scaleSpec.mockResolvedValueOnce(mockSpec);
+          llm.mockResolvedValueOnce({ value: 10, confidence: 1.0, unknowns: [] });
+        },
+      },
+      want: { score: 10, uncertainty: { confidence: 1.0, unknowns: [] } },
+    },
+    {
+      name: 'skips scoreSpec when spec is provided via instruction object',
+      inputs: {
+        item: 'item',
+        instructions: { text: 'instructions', spec: mockSpec },
+        setupMock: () =>
+          llm.mockResolvedValueOnce({
+            value: 5,
+            confidence: 0.7,
+            unknowns: ['ambiguous context'],
+          }),
+      },
+      want: { score: 5, uncertaintyUnknowns: ['ambiguous context'], scaleSpecNotCalled: true },
+    },
+    {
+      name: 'emits uncertainty progress events',
+      inputs: {
+        item: 'item',
+        instructions: 'instructions',
+        withEvents: true,
+        setupMock: () => {
+          scaleSpec.mockResolvedValueOnce(mockSpec);
+          llm.mockResolvedValueOnce({ value: 6, confidence: 0.8, unknowns: ['edge case'] });
+        },
+      },
+      want: { uncertaintyEvent: { confidence: 0.8, unknowns: ['edge case'] } },
+    },
+    {
+      name: 'emits chain lifecycle events',
+      inputs: {
+        item: 'item',
+        instructions: 'instructions',
+        withEvents: true,
+        setupMock: () => {
+          scaleSpec.mockResolvedValueOnce(mockSpec);
+          llm.mockResolvedValueOnce({ value: 4, confidence: 0.6, unknowns: [] });
+        },
+      },
+      want: { lifecycleEvents: true },
+    },
+  ],
+  process: async ({ inputs }) => {
+    inputs.setupMock?.();
+    if (inputs.withEvents) {
+      const events = [];
+      const value = await scoreItemWithUncertainty(inputs.item, inputs.instructions, {
+        onProgress: (e) => events.push(e),
+      });
+      return { ...value, events };
+    }
+    return scoreItemWithUncertainty(inputs.item, inputs.instructions);
+  },
+  expects: ({ result, want }) => {
+    if (want.score !== undefined) expect(result.score).toBe(want.score);
+    if (want.uncertainty) expect(result.uncertainty).toMatchObject(want.uncertainty);
+    if (want.uncertaintyUnknowns) {
+      expect(result.uncertainty.unknowns).toEqual(want.uncertaintyUnknowns);
+    }
+    if (want.scaleSpecNotCalled) expect(scaleSpec).not.toHaveBeenCalled();
+    if (want.llmCalledWithUncertainty) {
       expect(llm).toHaveBeenCalledWith(
         expect.stringContaining('test item'),
         expect.objectContaining({
@@ -310,373 +430,359 @@ describe('score chain', () => {
           }),
         })
       );
-      expect(result.score).toBe(7);
-      expect(result.uncertainty).toBeDefined();
-      expect(result.uncertainty.confidence).toBe(0.9);
-      expect(result.uncertainty.unknowns).toEqual(['subjective criteria']);
-    });
+    }
+    if (want.uncertaintyEvent) {
+      const ev = result.events.find((e) => e.event === 'uncertainty');
+      expect(ev).toMatchObject(want.uncertaintyEvent);
+    }
+    if (want.lifecycleEvents) {
+      expect(result.events.find((e) => e.event === 'chain:start')).toBeDefined();
+      expect(result.events.find((e) => e.event === 'chain:complete')).toBeDefined();
+    }
+  },
+});
 
-    it('returns empty unknowns when LLM reports no uncertainty', async () => {
-      scaleSpec.mockResolvedValueOnce(mockSpec);
-      llm.mockResolvedValueOnce({ value: 10, confidence: 1.0, unknowns: [] });
-
-      const result = await scoreItemWithUncertainty('obvious item', 'score by length');
-
-      expect(result.score).toBe(10);
-      expect(result.uncertainty.confidence).toBe(1.0);
-      expect(result.uncertainty.unknowns).toEqual([]);
-    });
-
-    it('skips scoreSpec when spec is provided via instruction object', async () => {
-      llm.mockResolvedValueOnce({ value: 5, confidence: 0.7, unknowns: ['ambiguous context'] });
-
-      const result = await scoreItemWithUncertainty('item', {
-        text: 'instructions',
-        spec: mockSpec,
-      });
-
-      expect(scaleSpec).not.toHaveBeenCalled();
-      expect(result.score).toBe(5);
-      expect(result.uncertainty.unknowns).toEqual(['ambiguous context']);
-    });
-
-    it('emits uncertainty progress events', async () => {
-      scaleSpec.mockResolvedValueOnce(mockSpec);
-      llm.mockResolvedValueOnce({ value: 6, confidence: 0.8, unknowns: ['edge case'] });
-
+runTable({
+  describe: 'iterativeScoreLoop',
+  examples: [
+    {
+      name: 'performs a single iteration when maxIterations is 1',
+      inputs: {
+        list: ['a', 'b'],
+        instructions: 'score quality',
+        options: { maxIterations: 1 },
+        makeRefine: () => vi.fn(),
+        setupMock: () => {
+          scaleSpec.mockResolvedValueOnce(mockSpec);
+          createBatches.mockReturnValueOnce([{ items: ['a', 'b'], startIndex: 0 }]);
+          listBatch.mockResolvedValueOnce([3, 7]);
+        },
+      },
+      want: {
+        value: { items: ['a', 'b'], scores: [3, 7], iterations: 1 },
+        refineNotCalled: true,
+        scaleSpecOnce: true,
+      },
+    },
+    {
+      name: 'performs multiple iterations calling refine between scoring passes',
+      inputs: {
+        list: ['a', 'b'],
+        instructions: 'score quality',
+        options: { maxIterations: 2 },
+        makeRefine: () => vi.fn().mockResolvedValueOnce(['a-v2', 'b-v2']),
+        setupMock: () => {
+          scaleSpec.mockResolvedValueOnce(mockSpec);
+          createBatches.mockReturnValueOnce([{ items: ['a', 'b'], startIndex: 0 }]);
+          listBatch.mockResolvedValueOnce([3, 4]);
+          createBatches.mockReturnValueOnce([{ items: ['a-v2', 'b-v2'], startIndex: 0 }]);
+          listBatch.mockResolvedValueOnce([7, 8]);
+        },
+      },
+      want: {
+        refineCalledWith: [['a', 'b'], [3, 4], { iteration: 1, averageScore: 3.5 }],
+        value: { items: ['a-v2', 'b-v2'], scores: [7, 8], iterations: 2 },
+      },
+    },
+    {
+      name: 'terminates early when scores converge below threshold',
+      inputs: {
+        list: ['a', 'b'],
+        instructions: 'score quality',
+        options: { maxIterations: 5, convergenceThreshold: 0.01 },
+        makeRefine: () => vi.fn().mockResolvedValueOnce(['a-v2', 'b-v2']),
+        setupMock: () => {
+          scaleSpec.mockResolvedValueOnce(mockSpec);
+          createBatches.mockReturnValueOnce([{ items: ['a', 'b'], startIndex: 0 }]);
+          listBatch.mockResolvedValueOnce([5, 5]);
+          createBatches.mockReturnValueOnce([{ items: ['a-v2', 'b-v2'], startIndex: 0 }]);
+          listBatch.mockResolvedValueOnce([5.004, 5.004]);
+        },
+      },
+      want: { iterations: 2, refineOnce: true, listBatchCalls: 2 },
+    },
+    {
+      name: 'throws when refine function is missing from config',
+      inputs: { list: ['a'], instructions: 'score quality', noRefine: true },
+      want: { throws: /iterativeScoreLoop requires a refine function/ },
+    },
+    {
+      name: 'propagates errors thrown by the refine function',
+      inputs: {
+        list: ['a'],
+        instructions: 'score quality',
+        options: { maxIterations: 2 },
+        makeRefine: () => vi.fn().mockRejectedValueOnce(new Error('refinement failed')),
+        setupMock: () => {
+          scaleSpec.mockResolvedValueOnce(mockSpec);
+          createBatches.mockReturnValueOnce([{ items: ['a'], startIndex: 0 }]);
+          listBatch.mockResolvedValueOnce([3]);
+        },
+      },
+      want: { throws: /refinement failed/ },
+    },
+    {
+      name: 'emits progress events for each iteration phase',
+      inputs: {
+        list: ['a'],
+        instructions: 'score quality',
+        options: { maxIterations: 2 },
+        makeRefine: () => vi.fn().mockResolvedValueOnce(['a-v2']),
+        withEvents: true,
+        setupMock: () => {
+          scaleSpec.mockResolvedValueOnce(mockSpec);
+          createBatches.mockReturnValueOnce([{ items: ['a'], startIndex: 0 }]);
+          listBatch.mockResolvedValueOnce([5]);
+          createBatches.mockReturnValueOnce([{ items: ['a-v2'], startIndex: 0 }]);
+          listBatch.mockResolvedValueOnce([8]);
+        },
+      },
+      want: { progressEvents: true },
+    },
+    {
+      name: 'emits converged phase event when terminating early',
+      inputs: {
+        list: ['a'],
+        instructions: 'score quality',
+        options: { maxIterations: 5, convergenceThreshold: 0.01 },
+        makeRefine: () => vi.fn().mockResolvedValueOnce(['a-v2']),
+        withEvents: true,
+        setupMock: () => {
+          scaleSpec.mockResolvedValueOnce(mockSpec);
+          createBatches
+            .mockReturnValueOnce([{ items: ['a'], startIndex: 0 }])
+            .mockReturnValueOnce([{ items: ['a-v2'], startIndex: 0 }]);
+          listBatch.mockResolvedValueOnce([5]).mockResolvedValueOnce([5.001]);
+        },
+      },
+      want: { convergedAt: 2 },
+    },
+    {
+      name: 'generates spec once and reuses it across iterations',
+      inputs: {
+        list: ['a'],
+        instructions: 'score quality',
+        options: { maxIterations: 2 },
+        makeRefine: () => vi.fn().mockResolvedValueOnce(['a-v2']),
+        setupMock: () => {
+          scaleSpec.mockResolvedValueOnce(mockSpec);
+          createBatches
+            .mockReturnValueOnce([{ items: ['a'], startIndex: 0 }])
+            .mockReturnValueOnce([{ items: ['a-v2'], startIndex: 0 }]);
+          listBatch.mockResolvedValueOnce([3]).mockResolvedValueOnce([7]);
+        },
+      },
+      want: { scaleSpecOnce: true },
+    },
+    {
+      name: 'skips spec generation when spec is provided via instruction bundle',
+      inputs: {
+        list: ['a'],
+        instructions: { text: 'score quality', spec: mockSpec },
+        options: { maxIterations: 1 },
+        makeRefine: () => vi.fn(),
+        setupMock: () => {
+          createBatches.mockReturnValueOnce([{ items: ['a'], startIndex: 0 }]);
+          listBatch.mockResolvedValueOnce([5]);
+        },
+      },
+      want: { scaleSpecNotCalled: true },
+    },
+  ],
+  process: async ({ inputs }) => {
+    inputs.setupMock?.();
+    const refine = inputs.noRefine ? undefined : inputs.makeRefine?.();
+    const cfg = inputs.noRefine ? undefined : { ...inputs.options, refine };
+    if (inputs.withEvents) {
       const events = [];
-      await scoreItemWithUncertainty('item', 'instructions', {
+      const value = await iterativeScoreLoop(inputs.list, inputs.instructions, {
+        ...cfg,
         onProgress: (e) => events.push(e),
       });
-
-      const uncertaintyEvent = events.find((e) => e.event === 'uncertainty');
-      expect(uncertaintyEvent).toBeDefined();
-      expect(uncertaintyEvent.confidence).toBe(0.8);
-      expect(uncertaintyEvent.unknowns).toEqual(['edge case']);
-    });
-
-    it('emits chain lifecycle events', async () => {
-      scaleSpec.mockResolvedValueOnce(mockSpec);
-      llm.mockResolvedValueOnce({ value: 4, confidence: 0.6, unknowns: [] });
-
-      const events = [];
-      await scoreItemWithUncertainty('item', 'instructions', {
-        onProgress: (e) => events.push(e),
-      });
-
-      const startEvent = events.find((e) => e.event === 'chain:start');
-      const completeEvent = events.find((e) => e.event === 'chain:complete');
-      expect(startEvent).toBeDefined();
-      expect(completeEvent).toBeDefined();
-    });
-  });
-
-  describe('iterativeScoreLoop', () => {
-    it('performs a single iteration when maxIterations is 1', async () => {
-      scaleSpec.mockResolvedValueOnce(mockSpec);
-      createBatches.mockReturnValueOnce([{ items: ['a', 'b'], startIndex: 0 }]);
-      listBatch.mockResolvedValueOnce([3, 7]);
-
-      const refine = vi.fn();
-      const result = await iterativeScoreLoop(['a', 'b'], 'score quality', {
-        refine,
-        maxIterations: 1,
-      });
-
-      expect(result.items).toEqual(['a', 'b']);
-      expect(result.scores).toEqual([3, 7]);
-      expect(result.iterations).toBe(1);
-      expect(refine).not.toHaveBeenCalled();
-      expect(scaleSpec).toHaveBeenCalledOnce();
-    });
-
-    it('performs multiple iterations calling refine between scoring passes', async () => {
-      scaleSpec.mockResolvedValueOnce(mockSpec);
-      // Iteration 0: score original items
-      createBatches.mockReturnValueOnce([{ items: ['a', 'b'], startIndex: 0 }]);
-      listBatch.mockResolvedValueOnce([3, 4]);
-      // Iteration 1: score refined items
-      createBatches.mockReturnValueOnce([{ items: ['a-v2', 'b-v2'], startIndex: 0 }]);
-      listBatch.mockResolvedValueOnce([7, 8]);
-
-      const refine = vi.fn().mockResolvedValueOnce(['a-v2', 'b-v2']);
-      const result = await iterativeScoreLoop(['a', 'b'], 'score quality', {
-        refine,
-        maxIterations: 2,
-      });
-
-      expect(refine).toHaveBeenCalledOnce();
-      expect(refine).toHaveBeenCalledWith(
-        ['a', 'b'],
-        [3, 4],
-        expect.objectContaining({ iteration: 1, averageScore: 3.5 })
-      );
-      expect(result.items).toEqual(['a-v2', 'b-v2']);
-      expect(result.scores).toEqual([7, 8]);
-      expect(result.iterations).toBe(2);
-    });
-
-    it('terminates early when scores converge below threshold', async () => {
-      scaleSpec.mockResolvedValueOnce(mockSpec);
-      // Iteration 0: avg = 5.0
-      createBatches.mockReturnValueOnce([{ items: ['a', 'b'], startIndex: 0 }]);
-      listBatch.mockResolvedValueOnce([5, 5]);
-      // Iteration 1: avg = 5.004 — delta 0.004 < threshold 0.01
-      createBatches.mockReturnValueOnce([{ items: ['a-v2', 'b-v2'], startIndex: 0 }]);
-      listBatch.mockResolvedValueOnce([5.004, 5.004]);
-
-      const refine = vi.fn().mockResolvedValueOnce(['a-v2', 'b-v2']);
-      const result = await iterativeScoreLoop(['a', 'b'], 'score quality', {
-        refine,
-        maxIterations: 5,
-        convergenceThreshold: 0.01,
-      });
-
-      expect(result.iterations).toBe(2);
-      expect(refine).toHaveBeenCalledOnce();
-      expect(listBatch).toHaveBeenCalledTimes(2);
-    });
-
-    it('throws when refine function is missing from config', async () => {
-      await expect(iterativeScoreLoop(['a'], 'score quality')).rejects.toThrow(
-        'iterativeScoreLoop requires a refine function'
-      );
-    });
-
-    it('propagates errors thrown by the refine function', async () => {
-      scaleSpec.mockResolvedValueOnce(mockSpec);
-      createBatches.mockReturnValueOnce([{ items: ['a'], startIndex: 0 }]);
-      listBatch.mockResolvedValueOnce([3]);
-
-      const refine = vi.fn().mockRejectedValueOnce(new Error('refinement failed'));
-
-      await expect(
-        iterativeScoreLoop(['a'], 'score quality', { refine, maxIterations: 2 })
-      ).rejects.toThrow('refinement failed');
-    });
-
-    it('emits progress events for each iteration phase', async () => {
-      scaleSpec.mockResolvedValueOnce(mockSpec);
-      // Iteration 0
-      createBatches.mockReturnValueOnce([{ items: ['a'], startIndex: 0 }]);
-      listBatch.mockResolvedValueOnce([5]);
-      // Iteration 1
-      createBatches.mockReturnValueOnce([{ items: ['a-v2'], startIndex: 0 }]);
-      listBatch.mockResolvedValueOnce([8]);
-
-      const events = [];
-      const refine = vi.fn().mockResolvedValueOnce(['a-v2']);
-      await iterativeScoreLoop(['a'], 'score quality', {
-        refine,
-        maxIterations: 2,
-        onProgress: (e) => events.push(e),
-      });
-
-      const loopEvents = events.filter((e) => e.step === 'score:refine-loop');
-
-      const chainStart = loopEvents.find((e) => e.event === 'chain:start');
-      expect(chainStart).toBeDefined();
-
-      const specPhase = loopEvents.find(
-        (e) => e.event === 'phase' && e.phase === 'generating-specification'
-      );
-      expect(specPhase).toBeDefined();
-
+      return { value, refine, events };
+    }
+    const value = await iterativeScoreLoop(inputs.list, inputs.instructions, cfg);
+    return { value, refine };
+  },
+  expects: ({ result, error, want }) => {
+    if (want.throws) {
+      expect(error?.message).toMatch(want.throws);
+      return;
+    }
+    if (error) throw error;
+    if (want.value) expect(result.value).toMatchObject(want.value);
+    if (want.refineNotCalled) expect(result.refine).not.toHaveBeenCalled();
+    if (want.scaleSpecOnce) expect(scaleSpec).toHaveBeenCalledOnce();
+    if (want.scaleSpecNotCalled) expect(scaleSpec).not.toHaveBeenCalled();
+    if (want.refineCalledWith) {
+      const [arg0, arg1, arg2] = want.refineCalledWith;
+      expect(result.refine).toHaveBeenCalledOnce();
+      expect(result.refine).toHaveBeenCalledWith(arg0, arg1, expect.objectContaining(arg2));
+    }
+    if (want.iterations !== undefined) expect(result.value.iterations).toBe(want.iterations);
+    if (want.refineOnce) expect(result.refine).toHaveBeenCalledOnce();
+    if (want.listBatchCalls) expect(listBatch).toHaveBeenCalledTimes(want.listBatchCalls);
+    if (want.progressEvents) {
+      const loopEvents = result.events.filter((e) => e.step === 'score:refine-loop');
+      expect(loopEvents.find((e) => e.event === 'chain:start')).toBeDefined();
+      expect(
+        loopEvents.find((e) => e.event === 'phase' && e.phase === 'generating-specification')
+      ).toBeDefined();
       const scoringTicks = loopEvents.filter(
         (e) => e.event === 'chain:tick' && e.phase === 'scoring'
       );
       expect(scoringTicks).toHaveLength(2);
       expect(scoringTicks[0].iteration).toBe(0);
       expect(scoringTicks[1].iteration).toBe(1);
-
       const scoredTicks = loopEvents.filter(
         (e) => e.event === 'chain:tick' && e.phase === 'scored'
       );
       expect(scoredTicks).toHaveLength(2);
       expect(scoredTicks[0].averageScore).toBe(5);
       expect(scoredTicks[1].averageScore).toBe(8);
-
-      const refiningTick = loopEvents.find(
-        (e) => e.event === 'chain:tick' && e.phase === 'refining'
-      );
-      expect(refiningTick).toBeDefined();
-
-      const chainComplete = loopEvents.find((e) => e.event === 'chain:complete');
-      expect(chainComplete).toBeDefined();
-      expect(chainComplete.totalIterations).toBe(2);
-    });
-
-    it('emits converged phase event when terminating early', async () => {
-      scaleSpec.mockResolvedValueOnce(mockSpec);
-      createBatches
-        .mockReturnValueOnce([{ items: ['a'], startIndex: 0 }])
-        .mockReturnValueOnce([{ items: ['a-v2'], startIndex: 0 }]);
-      listBatch.mockResolvedValueOnce([5]).mockResolvedValueOnce([5.001]);
-
-      const events = [];
-      const refine = vi.fn().mockResolvedValueOnce(['a-v2']);
-      await iterativeScoreLoop(['a'], 'score quality', {
-        refine,
-        maxIterations: 5,
-        convergenceThreshold: 0.01,
-        onProgress: (e) => events.push(e),
-      });
-
-      const convergedEvent = events.find(
+      expect(
+        loopEvents.find((e) => e.event === 'chain:tick' && e.phase === 'refining')
+      ).toBeDefined();
+      const complete = loopEvents.find((e) => e.event === 'chain:complete');
+      expect(complete.totalIterations).toBe(2);
+    }
+    if (want.convergedAt !== undefined) {
+      const ev = result.events.find(
         (e) => e.step === 'score:refine-loop' && e.event === 'phase' && e.phase === 'converged'
       );
-      expect(convergedEvent).toBeDefined();
-      expect(convergedEvent.iteration).toBe(2);
-    });
+      expect(ev).toMatchObject({ iteration: want.convergedAt });
+    }
+  },
+});
 
-    it('generates spec once and reuses it across iterations', async () => {
-      scaleSpec.mockResolvedValueOnce(mockSpec);
-      createBatches
-        .mockReturnValueOnce([{ items: ['a'], startIndex: 0 }])
-        .mockReturnValueOnce([{ items: ['a-v2'], startIndex: 0 }]);
-      listBatch.mockResolvedValueOnce([3]).mockResolvedValueOnce([7]);
-
-      const refine = vi.fn().mockResolvedValueOnce(['a-v2']);
-      await iterativeScoreLoop(['a'], 'score quality', { refine, maxIterations: 2 });
-
-      expect(scaleSpec).toHaveBeenCalledOnce();
-    });
-
-    it('skips spec generation when spec is provided via instruction bundle', async () => {
-      createBatches.mockReturnValueOnce([{ items: ['a'], startIndex: 0 }]);
-      listBatch.mockResolvedValueOnce([5]);
-
-      const refine = vi.fn();
-      await iterativeScoreLoop(
-        ['a'],
-        { text: 'score quality', spec: mockSpec },
-        {
-          refine,
-          maxIterations: 1,
-        }
-      );
-
-      expect(scaleSpec).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('progress emission', () => {
-    it('mapScore emits full lifecycle: start, input, phases, batch progress, complete', async () => {
-      scaleSpec.mockResolvedValueOnce(mockSpec);
-      createBatches.mockReturnValueOnce([{ items: ['a', 'b', 'c'], startIndex: 0 }]);
-      listBatch.mockResolvedValueOnce([1, 2, 3]);
-
-      const events = [];
-      await score(['a', 'b', 'c'], 'score by length', {
-        onProgress: (e) => events.push(e),
-      });
-
-      const chainStart = events.find((e) => e.step === 'score' && e.event === ChainEvent.start);
-      expect(chainStart).toBeDefined();
-      expect(chainStart.kind).toBe('telemetry');
-
-      const inputEvent = events.find((e) => e.step === 'score' && e.event === DomainEvent.input);
-      expect(inputEvent).toBeDefined();
-      expect(inputEvent.kind).toBe('event');
-      expect(inputEvent.value).toEqual(['a', 'b', 'c']);
-
-      const specPhase = events.find(
-        (e) => e.event === DomainEvent.phase && e.phase === 'generating-specification'
-      );
-      expect(specPhase).toBeDefined();
-
-      const scoringPhase = events.find(
+runTable({
+  describe: 'score — progress emission',
+  examples: [
+    {
+      name: 'mapScore emits full lifecycle: start, input, phases, batch progress, complete',
+      inputs: {
+        list: ['a', 'b', 'c'],
+        instructions: 'score by length',
+        setupMock: () => {
+          scaleSpec.mockResolvedValueOnce(mockSpec);
+          createBatches.mockReturnValueOnce([{ items: ['a', 'b', 'c'], startIndex: 0 }]);
+          listBatch.mockResolvedValueOnce([1, 2, 3]);
+        },
+      },
+      want: { fullLifecycle: { items: ['a', 'b', 'c'], total: 3 } },
+    },
+    {
+      name: 'mapScore reports partial outcome when items remain unscored',
+      inputs: {
+        list: ['a', 'b'],
+        instructions: 'score items',
+        setupMock: () => {
+          scaleSpec.mockResolvedValueOnce(mockSpec);
+          createBatches
+            .mockReturnValueOnce([{ items: ['a', 'b'], startIndex: 0 }])
+            .mockReturnValueOnce([{ items: ['b'], startIndex: 0 }])
+            .mockReturnValueOnce([{ items: ['b'], startIndex: 0 }]);
+          listBatch.mockResolvedValueOnce([5]).mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+        },
+      },
+      want: { complete: { outcome: 'partial', failedItems: 1, successCount: 1 } },
+    },
+    {
+      name: 'mapScore emits anchors-established phase when multi-batch',
+      inputs: {
+        list: ['a', 'b', 'c', 'd'],
+        instructions: 'score items',
+        setupMock: () => {
+          scaleSpec.mockResolvedValueOnce(mockSpec);
+          createBatches.mockReturnValueOnce([
+            { items: ['a', 'b'], startIndex: 0 },
+            { items: ['c', 'd'], startIndex: 2 },
+          ]);
+          listBatch.mockResolvedValueOnce([2, 8]).mockResolvedValueOnce([5, 3]);
+        },
+      },
+      want: { anchorsEstablished: true },
+    },
+    {
+      name: 'events carry trace context when config provides traceId',
+      inputs: {
+        list: ['a'],
+        instructions: 'score items',
+        setupMock: () => {
+          scaleSpec.mockResolvedValueOnce(mockSpec);
+          createBatches.mockReturnValueOnce([{ items: ['a'], startIndex: 0 }]);
+          listBatch.mockResolvedValueOnce([7]);
+        },
+      },
+      want: { traceContext: true },
+    },
+  ],
+  process: async ({ inputs }) => {
+    inputs.setupMock?.();
+    const events = [];
+    await score(inputs.list, inputs.instructions, { onProgress: (e) => events.push(e) });
+    return { events };
+  },
+  expects: ({ result, want }) => {
+    if (want.fullLifecycle) {
+      const start = result.events.find((e) => e.step === 'score' && e.event === ChainEvent.start);
+      expect(start).toMatchObject({ kind: 'telemetry' });
+      const input = result.events.find((e) => e.step === 'score' && e.event === DomainEvent.input);
+      expect(input).toMatchObject({ kind: 'event', value: want.fullLifecycle.items });
+      expect(
+        result.events.find(
+          (e) => e.event === DomainEvent.phase && e.phase === 'generating-specification'
+        )
+      ).toBeDefined();
+      const scoring = result.events.find(
         (e) => e.event === DomainEvent.phase && e.phase === 'scoring-items'
       );
-      expect(scoringPhase).toBeDefined();
-      expect(scoringPhase.specification).toBeDefined();
-
-      const opStart = events.find(
+      expect(scoring.specification).toBeDefined();
+      const opStart = result.events.find(
         (e) => e.step === 'score' && e.event === OpEvent.start && e.kind === 'operation'
       );
-      expect(opStart).toBeDefined();
-      expect(opStart.totalItems).toBe(3);
-      expect(opStart.totalBatches).toBe(1);
-
-      const batchComplete = events.find(
+      expect(opStart).toMatchObject({ totalItems: want.fullLifecycle.total, totalBatches: 1 });
+      const batchComplete = result.events.find(
         (e) => e.step === 'score' && e.event === OpEvent.batchComplete
       );
-      expect(batchComplete).toBeDefined();
-      expect(batchComplete.kind).toBe('operation');
-      expect(batchComplete.totalItems).toBe(3);
-      expect(batchComplete.processedItems).toBe(3);
-
-      const opComplete = events.find(
-        (e) => e.step === 'score' && e.event === OpEvent.complete && e.kind === 'operation'
-      );
-      expect(opComplete).toBeDefined();
-
-      const chainComplete = events.find(
+      expect(batchComplete).toMatchObject({
+        kind: 'operation',
+        totalItems: want.fullLifecycle.total,
+        processedItems: want.fullLifecycle.total,
+      });
+      expect(
+        result.events.find(
+          (e) => e.step === 'score' && e.event === OpEvent.complete && e.kind === 'operation'
+        )
+      ).toBeDefined();
+      const complete = result.events.find(
         (e) => e.step === 'score' && e.event === ChainEvent.complete
       );
-      expect(chainComplete).toBeDefined();
-      expect(chainComplete.kind).toBe('telemetry');
-      expect(chainComplete.totalItems).toBe(3);
-      expect(chainComplete.successCount).toBe(3);
-      expect(chainComplete.failedItems).toBe(0);
-      expect(chainComplete.outcome).toBe('success');
-    });
-
-    it('mapScore reports partial outcome when items remain unscored', async () => {
-      scaleSpec.mockResolvedValueOnce(mockSpec);
-      createBatches
-        .mockReturnValueOnce([{ items: ['a', 'b'], startIndex: 0 }])
-        .mockReturnValueOnce([{ items: ['b'], startIndex: 0 }])
-        .mockReturnValueOnce([{ items: ['b'], startIndex: 0 }]);
-      listBatch.mockResolvedValueOnce([5]).mockResolvedValueOnce([]).mockResolvedValueOnce([]);
-
-      const events = [];
-      await score(['a', 'b'], 'score items', {
-        onProgress: (e) => events.push(e),
+      expect(complete).toMatchObject({
+        kind: 'telemetry',
+        totalItems: want.fullLifecycle.total,
+        successCount: want.fullLifecycle.total,
+        failedItems: 0,
+        outcome: 'success',
       });
-
-      const chainComplete = events.find(
+    }
+    if (want.complete) {
+      const complete = result.events.find(
         (e) => e.step === 'score' && e.event === ChainEvent.complete
       );
-      expect(chainComplete).toBeDefined();
-      expect(chainComplete.outcome).toBe('partial');
-      expect(chainComplete.failedItems).toBe(1);
-      expect(chainComplete.successCount).toBe(1);
-    });
-
-    it('mapScore emits anchors-established phase when multi-batch', async () => {
-      scaleSpec.mockResolvedValueOnce(mockSpec);
-      createBatches.mockReturnValueOnce([
-        { items: ['a', 'b'], startIndex: 0 },
-        { items: ['c', 'd'], startIndex: 2 },
-      ]);
-      listBatch.mockResolvedValueOnce([2, 8]).mockResolvedValueOnce([5, 3]);
-
-      const events = [];
-      await score(['a', 'b', 'c', 'd'], 'score items', {
-        onProgress: (e) => events.push(e),
-      });
-
-      const anchorsPhase = events.find(
+      expect(complete).toMatchObject(want.complete);
+    }
+    if (want.anchorsEstablished) {
+      const ev = result.events.find(
         (e) => e.event === DomainEvent.phase && e.phase === 'anchors-established'
       );
-      expect(anchorsPhase).toBeDefined();
-      expect(anchorsPhase.anchors).toBeDefined();
-    });
-
-    it('events carry trace context when config provides traceId', async () => {
-      scaleSpec.mockResolvedValueOnce(mockSpec);
-      createBatches.mockReturnValueOnce([{ items: ['a'], startIndex: 0 }]);
-      listBatch.mockResolvedValueOnce([7]);
-
-      const events = [];
-      await score(['a'], 'score items', {
-        onProgress: (e) => events.push(e),
-      });
-
-      const chainStart = events.find((e) => e.step === 'score' && e.event === ChainEvent.start);
-      expect(chainStart.operation).toBeDefined();
-      expect(chainStart.timestamp).toBeDefined();
-    });
-  });
+      expect(ev).toBeDefined();
+      expect(ev.anchors).toBeDefined();
+    }
+    if (want.traceContext) {
+      const start = result.events.find((e) => e.step === 'score' && e.event === ChainEvent.start);
+      expect(start.operation).toBeDefined();
+      expect(start.timestamp).toBeDefined();
+    }
+  },
 });

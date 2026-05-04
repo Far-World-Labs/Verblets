@@ -1,13 +1,13 @@
-import { describe, it, expect, vi } from 'vitest';
+import { vi, expect } from 'vitest';
 import Conversation from './index.js';
+import { runTable } from '../../lib/examples-runner/index.js';
 
 let llmMock;
 vi.mock('../../lib/llm/index.js', () => ({
   default: (...args) => llmMock(...args),
 }));
-llmMock = vi.fn(async (_prompt) => 'ok');
+llmMock = vi.fn(async () => 'ok');
 
-// Mock the conversationTurnReduce to avoid slow reduce chain calls
 let conversationTurnReduceMock;
 vi.mock('../conversation-turn-reduce/index.js', () => ({
   default: vi.fn(async (args) => {
@@ -16,18 +16,8 @@ vi.mock('../conversation-turn-reduce/index.js', () => ({
   }),
 }));
 
-// Mock retry to avoid any potential delays
-vi.mock('../../lib/retry/index.js', () => {
-  const mock = vi.fn(async (fn) => fn());
-  return { default: mock };
-});
-
-// Mock reduce chain to prevent cascading calls
-vi.mock('../reduce/index.js', () => ({
-  default: vi.fn(async () => 'mocked reduce result'),
-}));
-
-// Mock list-batch to prevent LLM calls
+vi.mock('../../lib/retry/index.js', () => ({ default: vi.fn(async (fn) => fn()) }));
+vi.mock('../reduce/index.js', () => ({ default: vi.fn(async () => 'mocked reduce result') }));
 vi.mock('../../verblets/list-batch/index.js', () => ({
   default: vi.fn(async () => ['mocked', 'batch', 'result']),
   ListStyle: { AUTO: 'auto', XML: 'xml', NEWLINE: 'newline' },
@@ -36,236 +26,278 @@ vi.mock('../../verblets/list-batch/index.js', () => ({
 
 const makeSpeak = () => vi.fn(async ({ speaker }) => `${speaker.id} speaks`);
 
-describe('Conversation', () => {
-  it('basic conversation with multiple speakers', async () => {
-    const speakFn = makeSpeak();
-    const speakers = [
-      { id: 'a', name: 'A' },
-      { id: 'b', name: 'B' },
-    ];
-    const chain = new Conversation('test topic', speakers, {
-      rules: { shouldContinue: (r) => r < 5 },
-      speakFn,
-    });
-    const messages = await chain.run();
-    expect(messages.length).toBeGreaterThan(0); // At least some messages
-    expect(messages.some((m) => m.id === 'a')).toBe(true);
-    expect(messages.some((m) => m.id === 'b')).toBe(true);
-  });
-
-  it('custom turnPolicy respected', async () => {
-    const speakFn = makeSpeak();
-    const speakers = [{ id: 'a' }, { id: 'b' }];
-    const rules = {
-      shouldContinue: (r) => r < 2,
-      turnPolicy: (r) => (r % 2 === 0 ? ['a'] : ['b']),
-    };
-    const chain = new Conversation('test topic', speakers, { rules, speakFn });
-    const messages = await chain.run();
-    // order should alternate a then b
-    expect(messages.map((m) => m.id)).toEqual(['a', 'b']);
-  });
-
-  it('bio text appears in prompts', async () => {
-    const speakers = [{ id: 'expert', bio: 'expert bio' }];
-    const chain = new Conversation('test topic', speakers, {
-      rules: { shouldContinue: (r) => r < 1 },
-    });
-    llmMock.mockClear();
-    await chain.run();
-    // Check that the bio is passed to conversationTurnReduce
-    expect(conversationTurnReduceMock).toBeDefined();
-    expect(conversationTurnReduceMock.speakers).toBeDefined();
-    expect(conversationTurnReduceMock.speakers[0].bio).toBe('expert bio');
-  });
-
-  it('handles single speaker conversation', async () => {
-    const speakFn = makeSpeak();
-    const speakers = [{ id: 'a' }];
-    const chain = new Conversation('test topic', speakers, {
-      rules: { shouldContinue: (r) => r < 2 },
-      speakFn,
-    });
-    const messages = await chain.run();
-    expect(messages.length).toBeGreaterThan(0);
-    expect(messages.every((m) => m.id === 'a')).toBe(true);
-  });
-
-  it('bulk speak function is used when provided', async () => {
-    const bulkSpeakFn = vi.fn(async ({ speakers }) => speakers.map((s) => `${s.id} bulk`));
-    const speakers = [{ id: 'a' }, { id: 'b' }];
-    const chain = new Conversation('test topic', speakers, {
-      rules: { shouldContinue: (r) => r < 1 },
-      bulkSpeakFn,
-    });
-    const messages = await chain.run();
-    expect(bulkSpeakFn).toHaveBeenCalled();
-    expect(messages.some((m) => m.comment.includes('bulk'))).toBe(true);
-  });
-
-  it('handles empty turn policy gracefully', async () => {
-    const speakFn = makeSpeak();
-    const speakers = [{ id: 'a' }, { id: 'b' }];
-    const rules = {
-      shouldContinue: (r) => r < 1,
-      turnPolicy: () => [], // Empty turn policy
-    };
-    const chain = new Conversation('test topic', speakers, { rules, speakFn });
-    const messages = await chain.run();
-    // Should fall back to default sampling policy
-    expect(messages.length).toBeGreaterThan(0);
-  });
-
-  it('turn policy can access conversation history', async () => {
-    const speakFn = makeSpeak();
-    const speakers = [{ id: 'a' }, { id: 'b' }];
-
-    let historyReceived;
-    const rules = {
-      shouldContinue: (r) => r < 2,
-      turnPolicy: (round, history) => {
-        historyReceived = history;
-        return round === 0 ? ['a'] : ['b'];
+runTable({
+  describe: 'Conversation',
+  examples: [
+    {
+      name: 'basic conversation with multiple speakers',
+      inputs: {
+        speakers: [
+          { id: 'a', name: 'A' },
+          { id: 'b', name: 'B' },
+        ],
+        rules: { shouldContinue: (r) => r < 5 },
+        useSpeak: true,
       },
-    };
-
-    const chain = new Conversation('test topic', speakers, { rules, speakFn });
-    await chain.run();
-
-    // History should have been passed to turn policy
-    expect(historyReceived).toBeDefined();
-    expect(Array.isArray(historyReceived)).toBe(true);
-  });
-
-  it('uses default 3 rounds when no shouldContinue provided', async () => {
-    const speakFn = makeSpeak();
-    const speakers = [{ id: 'a' }];
-    const chain = new Conversation('test topic', speakers, { speakFn });
-    const messages = await chain.run();
-
-    // Should run for 3 rounds by default
-    expect(messages.length).toBeGreaterThan(0);
-    expect(messages.length).toBeLessThanOrEqual(15); // 3 rounds * max 5 speakers
-  });
-
-  it('uses default turn policy when none provided', async () => {
-    const speakFn = makeSpeak();
-    const speakers = [{ id: 'a' }, { id: 'b' }];
-    const chain = new Conversation('test topic', speakers, {
-      rules: { shouldContinue: (r) => r < 1 },
-      speakFn,
-    });
-    const messages = await chain.run();
-
-    // Should use default probabilistic sampling
-    expect(messages.length).toBeGreaterThan(0);
-    expect(messages.length).toBeLessThanOrEqual(5); // Max 5 speakers per round
-  });
-
-  describe('speaker memory', () => {
-    it('accumulates per-speaker memory across rounds', async () => {
-      const speakFn = makeSpeak();
-      const speakers = [
-        { id: 'a', name: 'A' },
-        { id: 'b', name: 'B' },
-      ];
-      const chain = new Conversation('test topic', speakers, {
-        rules: {
-          shouldContinue: (r) => r < 3,
-          turnPolicy: () => ['a', 'b'],
-        },
-        speakFn,
-      });
-      await chain.run();
-
-      expect(chain.speakerMemory.has('a')).toBe(true);
-      expect(chain.speakerMemory.has('b')).toBe(true);
-      expect(chain.speakerMemory.get('a')).toHaveLength(3);
-      expect(chain.speakerMemory.get('b')).toHaveLength(3);
-      chain.speakerMemory.get('a').forEach((m) => {
-        expect(m.id).toBe('a');
-        expect(m.comment).toBe('a speaks');
-      });
-    });
-
-    it('passes speakerMemory to bulkSpeakFn (conversationTurnReduce)', async () => {
-      const speakers = [{ id: 'x', name: 'X' }];
-      const chain = new Conversation('test topic', speakers, {
+      want: { messageCountAtLeast: 1, someMessageIds: ['a', 'b'] },
+    },
+    {
+      name: 'custom turnPolicy respected',
+      inputs: {
+        speakers: [{ id: 'a' }, { id: 'b' }],
         rules: {
           shouldContinue: (r) => r < 2,
-          turnPolicy: () => ['x'],
+          turnPolicy: (r) => (r % 2 === 0 ? ['a'] : ['b']),
         },
-      });
-      await chain.run();
-
-      // Second call to conversationTurnReduce should have received memory from round 0
-      expect(conversationTurnReduceMock.speakerMemory).toBeDefined();
+        useSpeak: true,
+      },
+      want: { messageIds: ['a', 'b'] },
+    },
+    {
+      name: 'bio text appears in prompts',
+      inputs: {
+        speakers: [{ id: 'expert', bio: 'expert bio' }],
+        rules: { shouldContinue: (r) => r < 1 },
+        clearLlm: true,
+      },
+      want: { turnReduceBio: 'expert bio' },
+    },
+    {
+      name: 'handles single speaker conversation',
+      inputs: {
+        speakers: [{ id: 'a' }],
+        rules: { shouldContinue: (r) => r < 2 },
+        useSpeak: true,
+      },
+      want: { messageCountAtLeast: 1, allMessageId: 'a' },
+    },
+    {
+      name: 'bulk speak function is used when provided',
+      inputs: {
+        speakers: [{ id: 'a' }, { id: 'b' }],
+        rules: { shouldContinue: (r) => r < 1 },
+        makeBulkSpeak: () => vi.fn(async ({ speakers }) => speakers.map((s) => `${s.id} bulk`)),
+      },
+      want: { bulkSpeakCalled: true, someMessageContains: 'bulk' },
+    },
+    {
+      name: 'handles empty turn policy gracefully',
+      inputs: {
+        speakers: [{ id: 'a' }, { id: 'b' }],
+        rules: { shouldContinue: (r) => r < 1, turnPolicy: () => [] },
+        useSpeak: true,
+      },
+      want: { messageCountAtLeast: 1 },
+    },
+    {
+      name: 'turn policy can access conversation history',
+      inputs: {
+        speakers: [{ id: 'a' }, { id: 'b' }],
+        makeRules: () => {
+          const captured = {};
+          return {
+            rules: {
+              shouldContinue: (r) => r < 2,
+              turnPolicy: (round, history) => {
+                captured.history = history;
+                return round === 0 ? ['a'] : ['b'];
+              },
+            },
+            captured,
+          };
+        },
+        useSpeak: true,
+      },
+      want: { historyArray: true },
+    },
+    {
+      name: 'uses default 3 rounds when no shouldContinue provided',
+      inputs: { speakers: [{ id: 'a' }], useSpeak: true },
+      want: { messageCountAtLeast: 1, messageCountAtMost: 15 },
+    },
+    {
+      name: 'uses default turn policy when none provided',
+      inputs: {
+        speakers: [{ id: 'a' }, { id: 'b' }],
+        rules: { shouldContinue: (r) => r < 1 },
+        useSpeak: true,
+      },
+      want: { messageCountAtLeast: 1, messageCountAtMost: 5 },
+    },
+    {
+      name: 'accumulates per-speaker memory across rounds',
+      inputs: {
+        speakers: [
+          { id: 'a', name: 'A' },
+          { id: 'b', name: 'B' },
+        ],
+        rules: { shouldContinue: (r) => r < 3, turnPolicy: () => ['a', 'b'] },
+        useSpeak: true,
+      },
+      want: {
+        speakerMemoryHas: ['a', 'b'],
+        speakerMemoryLengths: { a: 3, b: 3 },
+        speakerMemoryShape: { a: { id: 'a', comment: 'a speaks' } },
+      },
+    },
+    {
+      name: 'passes speakerMemory to bulkSpeakFn (conversationTurnReduce)',
+      inputs: {
+        speakers: [{ id: 'x', name: 'X' }],
+        rules: { shouldContinue: (r) => r < 2, turnPolicy: () => ['x'] },
+      },
+      want: { turnReduceMemoryIsMap: true },
+    },
+    {
+      name: 'passes speakerMemory snapshot to speakFn',
+      inputs: {
+        speakers: [{ id: 'a', name: 'A' }],
+        rules: { shouldContinue: (r) => r < 2, turnPolicy: () => ['a'] },
+        makeSpeakFn: () => {
+          const captured = {};
+          const fn = vi.fn(async ({ speaker, speakerMemory }) => {
+            captured.memory = speakerMemory;
+            return `${speaker.id} speaks`;
+          });
+          return { fn, captured };
+        },
+      },
+      want: { capturedMemoryGet: { a: { length: 1, firstComment: 'a speaks' } } },
+    },
+    {
+      name: 'provides isolated memory snapshots per round',
+      inputs: {
+        speakers: [{ id: 'a', name: 'A' }],
+        rules: { shouldContinue: (r) => r < 3, turnPolicy: () => ['a'] },
+        makeBulkSpeak: () => {
+          const snapshots = [];
+          const fn = vi.fn(async ({ speakers, speakerMemory }) => {
+            snapshots.push(new Map([...speakerMemory].map(([k, v]) => [k, v.slice()])));
+            return speakers.map((s) => `${s.id} round`);
+          });
+          return { fn, snapshots };
+        },
+      },
+      want: { snapshotSizes: [0, 1, 2] },
+    },
+    {
+      name: 'only tracks speakers who have spoken',
+      inputs: {
+        speakers: [
+          { id: 'a', name: 'A' },
+          { id: 'b', name: 'B' },
+        ],
+        rules: { shouldContinue: (r) => r < 2, turnPolicy: () => ['a'] },
+        useSpeak: true,
+      },
+      want: { speakerMemoryHas: ['a'], speakerMemoryHasNot: ['b'] },
+    },
+  ],
+  process: async ({ inputs }) => {
+    if (inputs.clearLlm) llmMock.mockClear();
+    let speakFn;
+    let bulkSpeakFn;
+    let speakCaptured;
+    let snapshots;
+    if (inputs.useSpeak) speakFn = makeSpeak();
+    else if (inputs.makeSpeakFn) {
+      const r = inputs.makeSpeakFn();
+      speakFn = r.fn;
+      speakCaptured = r.captured;
+    }
+    if (inputs.makeBulkSpeak) {
+      const r = inputs.makeBulkSpeak();
+      if (typeof r === 'function') bulkSpeakFn = r;
+      else {
+        bulkSpeakFn = r.fn;
+        snapshots = r.snapshots;
+      }
+    }
+    let actualRules = inputs.rules;
+    let rulesCaptured;
+    if (inputs.makeRules) {
+      const r = inputs.makeRules();
+      actualRules = r.rules;
+      rulesCaptured = r.captured;
+    }
+    const chain = new Conversation('test topic', inputs.speakers, {
+      ...(actualRules ? { rules: actualRules } : {}),
+      ...(speakFn ? { speakFn } : {}),
+      ...(bulkSpeakFn ? { bulkSpeakFn } : {}),
+    });
+    const messages = await chain.run();
+    return { messages, chain, speakCaptured, rulesCaptured, snapshots, bulkSpeakFn };
+  },
+  expects: ({ result, want }) => {
+    const { messages, chain, speakCaptured, rulesCaptured, snapshots, bulkSpeakFn } = result;
+    if ('messageCountAtLeast' in want) {
+      expect(messages.length).toBeGreaterThanOrEqual(want.messageCountAtLeast);
+    }
+    if ('messageCountAtMost' in want) {
+      expect(messages.length).toBeLessThanOrEqual(want.messageCountAtMost);
+    }
+    if (want.someMessageIds) {
+      for (const id of want.someMessageIds) {
+        expect(messages.some((m) => m.id === id)).toBe(true);
+      }
+    }
+    if (want.messageIds) {
+      expect(messages.map((m) => m.id)).toEqual(want.messageIds);
+    }
+    if (want.allMessageId) {
+      expect(messages.every((m) => m.id === want.allMessageId)).toBe(true);
+    }
+    if (want.turnReduceBio) {
+      expect(conversationTurnReduceMock).toBeDefined();
+      expect(conversationTurnReduceMock.speakers[0].bio).toBe(want.turnReduceBio);
+    }
+    if (want.bulkSpeakCalled) expect(bulkSpeakFn).toHaveBeenCalled();
+    if (want.someMessageContains) {
+      expect(messages.some((m) => m.comment.includes(want.someMessageContains))).toBe(true);
+    }
+    if (want.historyArray) {
+      expect(rulesCaptured.history).toBeDefined();
+      expect(Array.isArray(rulesCaptured.history)).toBe(true);
+    }
+    if (want.speakerMemoryHas) {
+      for (const id of want.speakerMemoryHas) {
+        expect(chain.speakerMemory.has(id)).toBe(true);
+      }
+    }
+    if (want.speakerMemoryHasNot) {
+      for (const id of want.speakerMemoryHasNot) {
+        expect(chain.speakerMemory.has(id)).toBe(false);
+      }
+    }
+    if (want.speakerMemoryLengths) {
+      for (const [id, len] of Object.entries(want.speakerMemoryLengths)) {
+        expect(chain.speakerMemory.get(id)).toHaveLength(len);
+      }
+    }
+    if (want.speakerMemoryShape) {
+      for (const [id, shape] of Object.entries(want.speakerMemoryShape)) {
+        for (const m of chain.speakerMemory.get(id)) {
+          expect(m).toMatchObject(shape);
+        }
+      }
+    }
+    if (want.turnReduceMemoryIsMap) {
       expect(conversationTurnReduceMock.speakerMemory).toBeInstanceOf(Map);
-    });
-
-    it('passes speakerMemory snapshot to speakFn', async () => {
-      let receivedMemory;
-      const speakFn = vi.fn(async ({ speaker, speakerMemory }) => {
-        receivedMemory = speakerMemory;
-        return `${speaker.id} speaks`;
+    }
+    if (want.capturedMemoryGet) {
+      for (const [id, shape] of Object.entries(want.capturedMemoryGet)) {
+        const memory = speakCaptured.memory;
+        expect(memory).toBeInstanceOf(Map);
+        const entries = memory.get(id);
+        expect(entries).toHaveLength(shape.length);
+        if (shape.firstComment) expect(entries[0].comment).toBe(shape.firstComment);
+      }
+    }
+    if (want.snapshotSizes) {
+      want.snapshotSizes.forEach((n, i) => {
+        if (n === 0) expect(snapshots[i].size).toBe(0);
+        else expect(snapshots[i].get('a')).toHaveLength(n);
       });
-      const speakers = [{ id: 'a', name: 'A' }];
-      const chain = new Conversation('test topic', speakers, {
-        rules: {
-          shouldContinue: (r) => r < 2,
-          turnPolicy: () => ['a'],
-        },
-        speakFn,
-      });
-      await chain.run();
-
-      // On the second round, speakFn should receive memory with round 0's message
-      expect(receivedMemory).toBeInstanceOf(Map);
-      expect(receivedMemory.get('a')).toHaveLength(1);
-      expect(receivedMemory.get('a')[0].comment).toBe('a speaks');
-    });
-
-    it('provides isolated memory snapshots per round', async () => {
-      const memorySnapshots = [];
-      const bulkSpeakFn = vi.fn(async ({ speakers, speakerMemory }) => {
-        memorySnapshots.push(new Map([...speakerMemory].map(([k, v]) => [k, v.slice()])));
-        return speakers.map((s) => `${s.id} round`);
-      });
-      const speakers = [{ id: 'a', name: 'A' }];
-      const chain = new Conversation('test topic', speakers, {
-        rules: {
-          shouldContinue: (r) => r < 3,
-          turnPolicy: () => ['a'],
-        },
-        bulkSpeakFn,
-      });
-      await chain.run();
-
-      // Round 0: no prior memory
-      expect(memorySnapshots[0].size).toBe(0);
-      // Round 1: memory from round 0
-      expect(memorySnapshots[1].get('a')).toHaveLength(1);
-      // Round 2: memory from rounds 0 and 1
-      expect(memorySnapshots[2].get('a')).toHaveLength(2);
-    });
-
-    it('only tracks speakers who have spoken', async () => {
-      const speakFn = makeSpeak();
-      const speakers = [
-        { id: 'a', name: 'A' },
-        { id: 'b', name: 'B' },
-      ];
-      const chain = new Conversation('test topic', speakers, {
-        rules: {
-          shouldContinue: (r) => r < 2,
-          turnPolicy: () => ['a'],
-        },
-        speakFn,
-      });
-      await chain.run();
-
-      expect(chain.speakerMemory.has('a')).toBe(true);
-      expect(chain.speakerMemory.has('b')).toBe(false);
-    });
-  });
+    }
+  },
 });

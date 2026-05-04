@@ -1,4 +1,5 @@
-import { describe, it, expect, vi } from 'vitest';
+import { vi, expect } from 'vitest';
+import { runTable } from '../../lib/examples-runner/index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(async () => ({
@@ -35,9 +36,7 @@ vi.mock('../../lib/llm/index.js', () => ({
   jsonSchema: vi.fn((name, schema) => ({ type: 'json_schema', json_schema: { name, schema } })),
 }));
 
-vi.mock('../../lib/retry/index.js', () => ({
-  default: vi.fn((fn) => fn()),
-}));
+vi.mock('../../lib/retry/index.js', () => ({ default: vi.fn((fn) => fn()) }));
 
 const { default: refine } = await import('./index.js');
 const callLlm = (await import('../../lib/llm/index.js')).default;
@@ -67,56 +66,63 @@ const studySet = {
   noteText: 'These cluster together but current properties do not explain why.',
 };
 
-describe('refine', () => {
-  it('returns a revised schema with new projections and properties', async () => {
-    const schema = await refine({ schema: existingSchema, studySet });
-
-    expect(schema.projections).toHaveLength(3);
-    const names = schema.projections.map((p) => p.projectionName);
-    expect(names).toContain('launchExposure');
-
-    expect(schema.properties).toHaveLength(2);
-    const propNames = schema.properties.map((p) => p.propertyName);
-    expect(propNames).toContain('launchCriticality');
-  });
-
-  it('does not include _poles in the returned schema', async () => {
-    const schema = await refine({ schema: existingSchema, studySet });
-    expect(schema._poles).toBeUndefined();
-  });
-
-  it('passes current schema into the prompt', async () => {
-    await refine({ schema: existingSchema, studySet });
-
-    const prompt = callLlm.mock.calls.at(-1)[0];
-    expect(prompt).toContain('billing');
-    expect(prompt).toContain('compliance');
-    expect(prompt).toContain('urgency');
-  });
-
-  it('passes study set details into the prompt', async () => {
-    await refine({ schema: existingSchema, studySet });
-
-    const prompt = callLlm.mock.calls.at(-1)[0];
-    expect(prompt).toContain('ticket:4812');
-    expect(prompt).toContain('ticket:4921');
-    expect(prompt).toContain('ticket:4993');
-    expect(prompt).toContain('cluster together but current properties do not explain why');
-  });
-
-  it('includes property weights and ranges in the prompt', async () => {
-    await refine({ schema: existingSchema, studySet });
-
-    const prompt = callLlm.mock.calls.at(-1)[0];
-    expect(prompt).toContain('not urgent');
-    expect(prompt).toContain('critical');
-    expect(prompt).toContain('billing:0.3');
-  });
-
-  it('propagates config to callLlm', async () => {
-    await refine({ schema: existingSchema, studySet }, { traceId: 'trace-xyz' });
-
-    const llmOptions = callLlm.mock.calls.at(-1)[1];
-    expect(llmOptions.traceId).toBe('trace-xyz');
-  });
+runTable({
+  describe: 'refine',
+  examples: [
+    {
+      name: 'returns a revised schema with new projections and properties',
+      inputs: {},
+      want: {
+        projectionsLength: 3,
+        projectionsContain: 'launchExposure',
+        propertiesLength: 2,
+        propertiesContain: 'launchCriticality',
+      },
+    },
+    { name: 'does not include _poles in the returned schema', inputs: {}, want: { noPoles: true } },
+    {
+      name: 'passes current schema into the prompt',
+      inputs: {},
+      want: { promptContains: ['billing', 'compliance', 'urgency'] },
+    },
+    {
+      name: 'passes study set details into the prompt',
+      inputs: {},
+      want: {
+        promptContains: [
+          'ticket:4812',
+          'ticket:4921',
+          'ticket:4993',
+          'cluster together but current properties do not explain why',
+        ],
+      },
+    },
+    {
+      name: 'includes property weights and ranges in the prompt',
+      inputs: {},
+      want: { promptContains: ['not urgent', 'critical', 'billing:0.3'] },
+    },
+    {
+      name: 'propagates config to callLlm',
+      inputs: { config: { traceId: 'trace-xyz' } },
+      want: { traceId: 'trace-xyz' },
+    },
+  ],
+  process: ({ inputs }) => refine({ schema: existingSchema, studySet }, inputs.config),
+  expects: ({ result, want }) => {
+    if ('projectionsLength' in want) {
+      expect(result.projections).toHaveLength(want.projectionsLength);
+      expect(result.projections.map((p) => p.projectionName)).toContain(want.projectionsContain);
+      expect(result.properties).toHaveLength(want.propertiesLength);
+      expect(result.properties.map((p) => p.propertyName)).toContain(want.propertiesContain);
+    }
+    if (want.noPoles) expect(result._poles).toBeUndefined();
+    if (want.promptContains) {
+      const prompt = callLlm.mock.calls.at(-1)[0];
+      for (const fragment of want.promptContains) expect(prompt).toContain(fragment);
+    }
+    if (want.traceId) {
+      expect(callLlm.mock.calls.at(-1)[1].traceId).toBe(want.traceId);
+    }
+  },
 });
