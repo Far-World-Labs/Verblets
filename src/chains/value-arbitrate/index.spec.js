@@ -2,7 +2,7 @@ import { vi, beforeEach, expect } from 'vitest';
 import valueArbitrate from './index.js';
 import callLlm from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
-import { runTable, equals, all, throws } from '../../lib/examples-runner/index.js';
+import { runTable } from '../../lib/examples-runner/index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
   jsonSchema: (name, schema) => ({ type: 'json_schema', json_schema: { name, schema } }),
@@ -25,9 +25,10 @@ beforeEach(() => {
   retry.mockImplementation(async (fn) => fn());
 });
 
-const expectNoLlm = () => () => expect(callLlm).not.toHaveBeenCalled();
-
-// ─── single-value: must-floor enforcement ────────────────────────────────
+const checkValue = (result, want) => {
+  if ('value' in want) expect(result).toEqual(want.value);
+  if (want.noLlm) expect(callLlm).not.toHaveBeenCalled();
+};
 
 runTable({
   describe: 'valueArbitrate — must-floor enforcement',
@@ -35,7 +36,7 @@ runTable({
     {
       name: 'returns the must value when a single must is the only signal',
       inputs: { signals: [signal('legal-floor', 'standard', 'must')] },
-      check: all(equals('standard'), expectNoLlm()),
+      want: { value: 'standard', noLlm: true },
     },
     {
       name: 'takes the most restrictive must when multiple musts disagree',
@@ -45,12 +46,12 @@ runTable({
           signal('compliance', 'strict', 'must'),
         ],
       },
-      check: all(equals('strict'), expectNoLlm()),
+      want: { value: 'strict', noLlm: true },
     },
     {
       name: 'returns the most restrictive value when must is at the maximum',
       inputs: { signals: [signal('lockdown', 'maximum', 'must')] },
-      check: all(equals('maximum'), expectNoLlm()),
+      want: { value: 'maximum', noLlm: true },
     },
     {
       name: 'eliminates candidates below the must-floor before may-mediation',
@@ -61,13 +62,12 @@ runTable({
           signal('safety', 'strict', 'may', { weight: 0.8 }),
         ],
       },
-      check: all(equals('strict'), expectNoLlm()),
+      want: { value: 'strict', noLlm: true },
     },
   ],
-  process: ({ signals }) => valueArbitrate(signals, {}, VALUES),
+  process: ({ inputs }) => valueArbitrate(inputs.signals, {}, VALUES),
+  expects: ({ result, want }) => checkValue(result, want),
 });
-
-// ─── may-mediation ───────────────────────────────────────────────────────
 
 runTable({
   describe: 'valueArbitrate — may-mediation',
@@ -80,7 +80,7 @@ runTable({
           signal('safety', 'standard', 'may', { weight: 0.7 }),
         ],
       },
-      check: all(equals('standard'), expectNoLlm()),
+      want: { value: 'standard', noLlm: true },
     },
     {
       name: 'calls AI to mediate when mays disagree',
@@ -95,18 +95,13 @@ runTable({
             prompt: 'elevated risk for flagged segments',
           }),
         ],
-        preMock: () => callLlm.mockResolvedValueOnce('standard'),
+        setupMock: () => callLlm.mockResolvedValueOnce('standard'),
       },
-      check: all(equals('standard'), () => {
-        expect(callLlm).toHaveBeenCalledTimes(1);
-        const promptArg = callLlm.mock.calls[0][0];
-        expect(promptArg).toContain('product');
-        expect(promptArg).toContain('safety');
-        expect(promptArg).toContain('lighter touch');
-        expect(promptArg).toContain('elevated risk');
-        expect(promptArg).toContain('0.3');
-        expect(promptArg).toContain('0.7');
-      }),
+      want: {
+        value: 'standard',
+        llmCalls: 1,
+        promptContains: ['product', 'safety', 'lighter touch', 'elevated risk', '0.3', '0.7'],
+      },
     },
     {
       name: 'includes weights and prompt context in mediation prompt',
@@ -115,24 +110,24 @@ runTable({
           signal('a', 'standard', 'may', { weight: 0.4, prompt: 'context-a' }),
           signal('b', 'strict', 'may', { weight: 0.6, prompt: 'context-b' }),
         ],
-        preMock: () => callLlm.mockResolvedValueOnce('strict'),
+        setupMock: () => callLlm.mockResolvedValueOnce('strict'),
       },
-      check: () => {
-        const promptArg = callLlm.mock.calls[0][0];
-        expect(promptArg).toContain('weight: 0.4');
-        expect(promptArg).toContain('weight: 0.6');
-        expect(promptArg).toContain('context-a');
-        expect(promptArg).toContain('context-b');
-      },
+      want: { promptContains: ['weight: 0.4', 'weight: 0.6', 'context-a', 'context-b'] },
     },
   ],
-  process: async ({ signals, preMock }) => {
-    if (preMock) preMock();
-    return valueArbitrate(signals, {}, VALUES);
+  process: async ({ inputs }) => {
+    inputs.setupMock?.();
+    return valueArbitrate(inputs.signals, {}, VALUES);
+  },
+  expects: ({ result, want }) => {
+    if ('value' in want) expect(result).toEqual(want.value);
+    if ('llmCalls' in want) expect(callLlm).toHaveBeenCalledTimes(want.llmCalls);
+    if (want.promptContains) {
+      const prompt = callLlm.mock.calls[0][0];
+      for (const fragment of want.promptContains) expect(prompt).toContain(fragment);
+    }
   },
 });
-
-// ─── combined must + may ────────────────────────────────────────────────
 
 runTable({
   describe: 'valueArbitrate — combined must + may',
@@ -145,10 +140,9 @@ runTable({
           signal('product', 'minimal', 'may', { weight: 0.3 }),
           signal('safety', 'strict', 'may', { weight: 0.6 }),
         ],
-        preMock: () => callLlm.mockResolvedValueOnce('strict'),
+        setupMock: () => callLlm.mockResolvedValueOnce('strict'),
       },
-      check: ({ result }) =>
-        expect(VALUES.indexOf(result)).toBeGreaterThanOrEqual(VALUES.indexOf('standard')),
+      want: { atLeastStandard: true },
     },
     {
       name: 'skips AI when must-floor leaves only one candidate',
@@ -159,16 +153,21 @@ runTable({
           signal('safety', 'standard', 'may'),
         ],
       },
-      check: all(equals('maximum'), expectNoLlm()),
+      want: { value: 'maximum', noLlm: true },
     },
   ],
-  process: async ({ signals, preMock }) => {
-    if (preMock) preMock();
-    return valueArbitrate(signals, {}, VALUES);
+  process: async ({ inputs }) => {
+    inputs.setupMock?.();
+    return valueArbitrate(inputs.signals, {}, VALUES);
+  },
+  expects: ({ result, want }) => {
+    if ('value' in want) expect(result).toEqual(want.value);
+    if (want.noLlm) expect(callLlm).not.toHaveBeenCalled();
+    if (want.atLeastStandard) {
+      expect(VALUES.indexOf(result)).toBeGreaterThanOrEqual(VALUES.indexOf('standard'));
+    }
   },
 });
-
-// ─── signal evaluation ──────────────────────────────────────────────────
 
 runTable({
   describe: 'valueArbitrate — signal evaluation',
@@ -187,10 +186,7 @@ runTable({
           };
         },
       },
-      check: ({ result }) => {
-        expect(result.valueFnA).toHaveBeenCalledWith(result.ctx);
-        expect(result.valueFnB).toHaveBeenCalledWith(result.ctx);
-      },
+      want: { signalsCalledWithCtx: true },
     },
     {
       name: 'handles async signal value functions',
@@ -205,17 +201,23 @@ runTable({
           ],
         }),
       },
-      check: ({ result }) => expect(result.value).toBe('strict'),
+      want: { value: 'strict' },
     },
   ],
-  process: async ({ ctx = {}, makeSignals }) => {
-    const built = makeSignals();
+  process: async ({ inputs }) => {
+    const built = inputs.makeSignals();
+    const ctx = inputs.ctx ?? {};
     const value = await valueArbitrate(built.signals, ctx, VALUES);
     return { ...built, ctx, value };
   },
+  expects: ({ result, want }) => {
+    if (want.signalsCalledWithCtx) {
+      expect(result.valueFnA).toHaveBeenCalledWith(result.ctx);
+      expect(result.valueFnB).toHaveBeenCalledWith(result.ctx);
+    }
+    if ('value' in want) expect(result.value).toBe(want.value);
+  },
 });
-
-// ─── deterministic fast path ─────────────────────────────────────────────
 
 runTable({
   describe: 'valueArbitrate — deterministic fast path',
@@ -223,20 +225,19 @@ runTable({
     {
       name: 'returns the floor value when no mays exist',
       inputs: { signals: [signal('legal', 'standard', 'must')] },
-      check: all(equals('standard'), expectNoLlm()),
+      want: { value: 'standard', noLlm: true },
     },
     {
       name: 'returns first candidate when no mays have opinions in candidate space',
       inputs: {
         signals: [signal('legal', 'strict', 'must'), signal('product', 'minimal', 'may')],
       },
-      check: all(equals('strict'), expectNoLlm()),
+      want: { value: 'strict', noLlm: true },
     },
   ],
-  process: ({ signals }) => valueArbitrate(signals, {}, VALUES),
+  process: ({ inputs }) => valueArbitrate(inputs.signals, {}, VALUES),
+  expects: ({ result, want }) => checkValue(result, want),
 });
-
-// ─── edge cases ─────────────────────────────────────────────────────────
 
 runTable({
   describe: 'valueArbitrate — edge cases',
@@ -244,29 +245,26 @@ runTable({
     {
       name: 'throws when signals array is empty',
       inputs: { signals: [], values: VALUES },
-      check: throws(/valueArbitrate requires at least one signal/),
+      want: { throws: /valueArbitrate requires at least one signal/ },
     },
     {
       name: 'throws when values array is empty',
       inputs: { signals: [signal('a', 'x', 'may')], values: [] },
-      check: throws(/valueArbitrate requires at least one value/),
+      want: { throws: /valueArbitrate requires at least one value/ },
     },
     {
       name: 'handles a single value in the values array',
-      inputs: {
-        signals: [signal('only', 'locked', 'must')],
-        values: ['locked'],
-      },
-      check: equals('locked'),
+      inputs: { signals: [signal('only', 'locked', 'must')], values: ['locked'] },
+      want: { value: 'locked' },
     },
     {
       name: 'throws when AI returns a value not in the candidates',
       inputs: {
         signals: [signal('a', 'minimal', 'may'), signal('b', 'standard', 'may')],
         values: VALUES,
-        preMock: () => callLlm.mockResolvedValue('nonsense'),
+        setupMock: () => callLlm.mockResolvedValue('nonsense'),
       },
-      check: throws(/not in candidates/),
+      want: { throws: /not in candidates/ },
     },
     {
       name: 'works with numeric values',
@@ -274,7 +272,7 @@ runTable({
         signals: [signal('plan-limit', 1000, 'must')],
         values: [100, 500, 1000, 5000],
       },
-      check: all(equals(1000), expectNoLlm()),
+      want: { value: 1000, noLlm: true },
     },
     {
       name: 'throws when a must signal resolves to a value not in the values array',
@@ -282,16 +280,22 @@ runTable({
         signals: [signal('bogus-must', 'unknown', 'must'), signal('preference', 'standard', 'may')],
         values: VALUES,
       },
-      check: throws(/not in values/),
+      want: { throws: /not in values/ },
     },
   ],
-  process: async ({ signals, values, preMock }) => {
-    if (preMock) preMock();
-    return valueArbitrate(signals, {}, values);
+  process: async ({ inputs }) => {
+    inputs.setupMock?.();
+    return valueArbitrate(inputs.signals, {}, inputs.values);
+  },
+  expects: ({ result, error, want }) => {
+    if (want.throws) {
+      expect(error?.message).toMatch(want.throws);
+      return;
+    }
+    if (error) throw error;
+    checkValue(result, want);
   },
 });
-
-// ─── config threading + responseFormat ──────────────────────────────────
 
 runTable({
   describe: 'valueArbitrate — config threading',
@@ -301,26 +305,18 @@ runTable({
       inputs: {
         signals: [signal('a', 'minimal', 'may'), signal('b', 'standard', 'may')],
         config: { llm: 'reasoning' },
-        preMock: () => callLlm.mockResolvedValueOnce('standard'),
+        setupMock: () => callLlm.mockResolvedValueOnce('standard'),
       },
-      check: () => {
-        expect(retry).toHaveBeenCalledTimes(1);
-        const opts = retry.mock.calls[0][1];
-        expect(opts.label).toBe('value-arbitrate');
-        expect(opts.config).toBeDefined();
-      },
+      want: { retryCalled: true, retryLabel: 'value-arbitrate' },
     },
     {
       name: 'passes instruction to mediation prompt',
       inputs: {
         signals: [signal('a', 'standard', 'may'), signal('b', 'strict', 'may')],
         config: { instruction: 'Prefer stricter values in uncertain conditions' },
-        preMock: () => callLlm.mockResolvedValueOnce('strict'),
+        setupMock: () => callLlm.mockResolvedValueOnce('strict'),
       },
-      check: () =>
-        expect(callLlm.mock.calls[0][0]).toContain(
-          'Prefer stricter values in uncertain conditions'
-        ),
+      want: { promptContains: 'Prefer stricter values in uncertain conditions' },
     },
     {
       name: 'sends a JSON schema constraining to candidate values',
@@ -330,25 +326,33 @@ runTable({
           signal('a', 'strict', 'may'),
           signal('b', 'maximum', 'may'),
         ],
-        preMock: () => callLlm.mockResolvedValueOnce('strict'),
+        setupMock: () => callLlm.mockResolvedValueOnce('strict'),
       },
-      check: () => {
-        const config = callLlm.mock.calls[0][1];
-        expect(config.responseFormat.json_schema.schema.properties.value.enum).toEqual([
-          'standard',
-          'strict',
-          'maximum',
-        ]);
-      },
+      want: { schemaEnum: ['standard', 'strict', 'maximum'] },
     },
   ],
-  process: async ({ signals, config, preMock }) => {
-    if (preMock) preMock();
-    return valueArbitrate(signals, {}, VALUES, config);
+  process: async ({ inputs }) => {
+    inputs.setupMock?.();
+    return valueArbitrate(inputs.signals, {}, VALUES, inputs.config);
+  },
+  expects: ({ want }) => {
+    if (want.retryCalled) {
+      expect(retry).toHaveBeenCalledTimes(1);
+      const opts = retry.mock.calls[0][1];
+      expect(opts.label).toBe(want.retryLabel);
+      expect(opts.config).toBeDefined();
+    }
+    if (want.promptContains) {
+      expect(callLlm.mock.calls[0][0]).toContain(want.promptContains);
+    }
+    if (want.schemaEnum) {
+      const config = callLlm.mock.calls[0][1];
+      expect(config.responseFormat.json_schema.schema.properties.value.enum).toEqual(
+        want.schemaEnum
+      );
+    }
   },
 });
-
-// ─── multi-value: per-dimension must enforcement ────────────────────────
 
 const DIMS = [
   { name: 'verification', values: ['light', 'standard', 'thorough', 'maximum'] },
@@ -363,7 +367,7 @@ runTable({
       inputs: {
         signals: [signal('compliance', { verification: 'standard', logging: 'verbose' }, 'must')],
       },
-      check: all(equals(['standard', 'verbose']), expectNoLlm()),
+      want: { value: ['standard', 'verbose'], noLlm: true },
     },
     {
       name: 'takes most restrictive must per dimension when musts disagree',
@@ -373,20 +377,19 @@ runTable({
           signal('compliance', { verification: 'thorough', logging: 'verbose' }, 'must'),
         ],
       },
-      check: all(equals(['thorough', 'verbose']), expectNoLlm()),
+      want: { value: ['thorough', 'verbose'], noLlm: true },
     },
     {
       name: 'returns most restrictive value when must is at the maximum per dimension',
       inputs: {
         signals: [signal('lockdown', { verification: 'maximum', logging: 'full' }, 'must')],
       },
-      check: all(equals(['maximum', 'full']), expectNoLlm()),
+      want: { value: ['maximum', 'full'], noLlm: true },
     },
   ],
-  process: ({ signals }) => valueArbitrate(signals, {}, DIMS),
+  process: ({ inputs }) => valueArbitrate(inputs.signals, {}, DIMS),
+  expects: ({ result, want }) => checkValue(result, want),
 });
-
-// ─── multi-value: may-mediation across dimensions ───────────────────────
 
 runTable({
   describe: 'valueArbitrate (multi) — may-mediation across dimensions',
@@ -403,7 +406,7 @@ runTable({
           }),
         ],
       },
-      check: all(equals(['standard', 'verbose']), expectNoLlm()),
+      want: { value: ['standard', 'verbose'], noLlm: true },
     },
     {
       name: 'calls AI to mediate when mays disagree across dimensions',
@@ -418,17 +421,19 @@ runTable({
             prompt: 'elevated risk segment',
           }),
         ],
-        preMock: () =>
+        setupMock: () =>
           callLlm.mockResolvedValueOnce({ verification: 'standard', logging: 'verbose' }),
       },
-      check: all(equals(['standard', 'verbose']), () => {
-        expect(callLlm).toHaveBeenCalledTimes(1);
-        const prompt = callLlm.mock.calls[0][0];
-        expect(prompt).toContain('DIMENSION "verification"');
-        expect(prompt).toContain('DIMENSION "logging"');
-        expect(prompt).toContain('minimize friction');
-        expect(prompt).toContain('elevated risk');
-      }),
+      want: {
+        value: ['standard', 'verbose'],
+        llmCalls: 1,
+        promptContains: [
+          'DIMENSION "verification"',
+          'DIMENSION "logging"',
+          'minimize friction',
+          'elevated risk',
+        ],
+      },
     },
     {
       name: 'only mediates dimensions that actually disagree',
@@ -441,15 +446,14 @@ runTable({
             weight: 0.6,
           }),
         ],
-        preMock: () => callLlm.mockResolvedValueOnce({ logging: 'verbose' }),
+        setupMock: () => callLlm.mockResolvedValueOnce({ logging: 'verbose' }),
       },
-      check: all(equals(['standard', 'verbose']), () => {
-        expect(callLlm).toHaveBeenCalledTimes(1);
-        const schema = callLlm.mock.calls[0][1].responseFormat.json_schema.schema;
-        expect(schema.properties).toHaveProperty('logging');
-        expect(schema.properties).not.toHaveProperty('verification');
-        expect(schema.required).toEqual(['logging']);
-      }),
+      want: {
+        value: ['standard', 'verbose'],
+        llmCalls: 1,
+        schemaHasLogging: true,
+        schemaNoVerification: true,
+      },
     },
     {
       name: 'includes weights and prompts in multi-dimension mediation prompt',
@@ -464,25 +468,34 @@ runTable({
             prompt: 'context-b',
           }),
         ],
-        preMock: () =>
+        setupMock: () =>
           callLlm.mockResolvedValueOnce({ verification: 'standard', logging: 'verbose' }),
       },
-      check: () => {
-        const prompt = callLlm.mock.calls[0][0];
-        expect(prompt).toContain('weight: 0.3');
-        expect(prompt).toContain('weight: 0.7');
-        expect(prompt).toContain('context-a');
-        expect(prompt).toContain('context-b');
-      },
+      want: { promptContains: ['weight: 0.3', 'weight: 0.7', 'context-a', 'context-b'] },
     },
   ],
-  process: async ({ signals, preMock }) => {
-    if (preMock) preMock();
-    return valueArbitrate(signals, {}, DIMS);
+  process: async ({ inputs }) => {
+    inputs.setupMock?.();
+    return valueArbitrate(inputs.signals, {}, DIMS);
+  },
+  expects: ({ result, want }) => {
+    if ('value' in want) expect(result).toEqual(want.value);
+    if ('llmCalls' in want) expect(callLlm).toHaveBeenCalledTimes(want.llmCalls);
+    if (want.promptContains) {
+      const prompt = callLlm.mock.calls[0][0];
+      for (const fragment of want.promptContains) expect(prompt).toContain(fragment);
+    }
+    if (want.schemaHasLogging) {
+      const schema = callLlm.mock.calls[0][1].responseFormat.json_schema.schema;
+      expect(schema.properties).toHaveProperty('logging');
+      expect(schema.required).toEqual(['logging']);
+    }
+    if (want.schemaNoVerification) {
+      const schema = callLlm.mock.calls[0][1].responseFormat.json_schema.schema;
+      expect(schema.properties).not.toHaveProperty('verification');
+    }
   },
 });
-
-// ─── multi-value: combined must + may ───────────────────────────────────
 
 runTable({
   describe: 'valueArbitrate (multi) — combined must + may across dimensions',
@@ -499,14 +512,9 @@ runTable({
             weight: 0.7,
           }),
         ],
-        preMock: () => callLlm.mockResolvedValueOnce({ verification: 'thorough' }),
+        setupMock: () => callLlm.mockResolvedValueOnce({ verification: 'thorough' }),
       },
-      check: ({ result }) => {
-        expect(result[1]).toBe('verbose');
-        expect(DIMS[0].values.indexOf(result[0])).toBeGreaterThanOrEqual(
-          DIMS[0].values.indexOf('standard')
-        );
-      },
+      want: { secondVerbose: true, firstAtLeastStandard: true },
     },
     {
       name: 'skips AI when must-floor leaves one candidate per dimension',
@@ -516,16 +524,24 @@ runTable({
           signal('product', { verification: 'light', logging: 'minimal' }, 'may'),
         ],
       },
-      check: all(equals(['maximum', 'full']), expectNoLlm()),
+      want: { value: ['maximum', 'full'], noLlm: true },
     },
   ],
-  process: async ({ signals, preMock }) => {
-    if (preMock) preMock();
-    return valueArbitrate(signals, {}, DIMS);
+  process: async ({ inputs }) => {
+    inputs.setupMock?.();
+    return valueArbitrate(inputs.signals, {}, DIMS);
+  },
+  expects: ({ result, want }) => {
+    if ('value' in want) expect(result).toEqual(want.value);
+    if (want.noLlm) expect(callLlm).not.toHaveBeenCalled();
+    if (want.secondVerbose) expect(result[1]).toBe('verbose');
+    if (want.firstAtLeastStandard) {
+      expect(DIMS[0].values.indexOf(result[0])).toBeGreaterThanOrEqual(
+        DIMS[0].values.indexOf('standard')
+      );
+    }
   },
 });
-
-// ─── multi-value: cross-value constraints ───────────────────────────────
 
 runTable({
   describe: 'valueArbitrate (multi) — cross-value constraints',
@@ -547,7 +563,7 @@ runTable({
           ],
         },
       },
-      check: all(equals(['thorough', 'verbose']), expectNoLlm()),
+      want: { value: ['thorough', 'verbose'], noLlm: true },
     },
     {
       name: 'does not raise floor when constraint does not trigger',
@@ -566,7 +582,7 @@ runTable({
           ],
         },
       },
-      check: all(equals(['light', 'minimal']), expectNoLlm()),
+      want: { value: ['light', 'minimal'], noLlm: true },
     },
     {
       name: 'ignores constraint that requires value below existing must-floor',
@@ -576,7 +592,7 @@ runTable({
           constraints: [{ name: 'reduce-logging', enforce: () => ({ logging: 'minimal' }) }],
         },
       },
-      check: all(equals(['maximum', 'full']), expectNoLlm()),
+      want: { value: ['maximum', 'full'], noLlm: true },
     },
     {
       name: 'preserves existing selection when constraint raises floor below it',
@@ -598,7 +614,7 @@ runTable({
           ],
         },
       },
-      check: equals(['thorough', 'full']),
+      want: { value: ['thorough', 'full'] },
     },
     {
       name: 'applies multiple constraints in sequence',
@@ -632,22 +648,21 @@ runTable({
           ],
         },
       },
-      check: all(equals(['standard', 'verbose', '90d']), expectNoLlm()),
+      want: { value: ['standard', 'verbose', '90d'], noLlm: true },
     },
   ],
-  process: async ({ signals, config, useThreeDims }) => {
-    const dims = useThreeDims
+  process: async ({ inputs }) => {
+    const dims = inputs.useThreeDims
       ? [
           { name: 'verification', values: ['light', 'standard', 'thorough', 'maximum'] },
           { name: 'logging', values: ['minimal', 'verbose', 'full'] },
           { name: 'retention', values: ['7d', '30d', '90d', '365d'] },
         ]
       : DIMS;
-    return valueArbitrate(signals, {}, dims, config);
+    return valueArbitrate(inputs.signals, {}, dims, inputs.config);
   },
+  expects: ({ result, want }) => checkValue(result, want),
 });
-
-// ─── multi-value: partial signals ───────────────────────────────────────
 
 runTable({
   describe: 'valueArbitrate (multi) — partial signals',
@@ -660,7 +675,7 @@ runTable({
           signal('observability', { logging: 'verbose' }, 'must'),
         ],
       },
-      check: all(equals(['standard', 'verbose']), expectNoLlm()),
+      want: { value: ['standard', 'verbose'], noLlm: true },
     },
     {
       name: 'uses full candidate range for dimensions with no signals',
@@ -670,21 +685,25 @@ runTable({
           signal('a', { logging: 'minimal' }, 'may'),
           signal('b', { logging: 'verbose' }, 'may'),
         ],
-        preMock: () => callLlm.mockResolvedValueOnce({ logging: 'verbose' }),
+        setupMock: () => callLlm.mockResolvedValueOnce({ logging: 'verbose' }),
       },
-      check: ({ result }) => {
-        expect(result[0]).toBe('standard');
-        expect(result[1]).toBe('verbose');
-      },
+      want: { positions: { 0: 'standard', 1: 'verbose' } },
     },
   ],
-  process: async ({ signals, preMock }) => {
-    if (preMock) preMock();
-    return valueArbitrate(signals, {}, DIMS);
+  process: async ({ inputs }) => {
+    inputs.setupMock?.();
+    return valueArbitrate(inputs.signals, {}, DIMS);
+  },
+  expects: ({ result, want }) => {
+    if ('value' in want) expect(result).toEqual(want.value);
+    if (want.noLlm) expect(callLlm).not.toHaveBeenCalled();
+    if (want.positions) {
+      for (const [idx, value] of Object.entries(want.positions)) {
+        expect(result[Number(idx)]).toBe(value);
+      }
+    }
   },
 });
-
-// ─── multi-value: signal evaluation + edge cases ────────────────────────
 
 runTable({
   describe: 'valueArbitrate (multi) — signal evaluation',
@@ -707,16 +726,19 @@ runTable({
           };
         },
       },
-      check: ({ result }) => {
-        expect(result.valueFnA).toHaveBeenCalledWith(result.ctx);
-        expect(result.valueFnB).toHaveBeenCalledWith(result.ctx);
-      },
+      want: { signalsCalledWithCtx: true },
     },
   ],
-  process: async ({ ctx, makeSignals }) => {
-    const built = makeSignals();
-    await valueArbitrate(built.signals, ctx, DIMS);
-    return { ...built, ctx };
+  process: async ({ inputs }) => {
+    const built = inputs.makeSignals();
+    await valueArbitrate(built.signals, inputs.ctx, DIMS);
+    return { ...built, ctx: inputs.ctx };
+  },
+  expects: ({ result, want }) => {
+    if (want.signalsCalledWithCtx) {
+      expect(result.valueFnA).toHaveBeenCalledWith(result.ctx);
+      expect(result.valueFnB).toHaveBeenCalledWith(result.ctx);
+    }
   },
 });
 
@@ -731,9 +753,10 @@ runTable({
           signal('b', { verification: 'standard', logging: 'verbose' }, 'may'),
         ],
         dims: DIMS,
-        preMock: () => callLlm.mockResolvedValue({ verification: 'nonsense', logging: 'garbage' }),
+        setupMock: () =>
+          callLlm.mockResolvedValue({ verification: 'nonsense', logging: 'garbage' }),
       },
-      check: throws(/not in candidates/),
+      want: { throws: /not in candidates/ },
     },
     {
       name: 'works with numeric dimension values',
@@ -744,7 +767,7 @@ runTable({
           { name: 'timeout', values: [1000, 5000, 30000] },
         ],
       },
-      check: all(equals([10, 5000]), expectNoLlm()),
+      want: { value: [10, 5000], noLlm: true },
     },
     {
       name: 'returns array of selected values in dimension order',
@@ -756,16 +779,22 @@ runTable({
           { name: 'gamma', values: ['g1', 'g2', 'g3'] },
         ],
       },
-      check: equals(['a2', 'b1', 'g3']),
+      want: { value: ['a2', 'b1', 'g3'] },
     },
   ],
-  process: async ({ signals, dims, preMock }) => {
-    if (preMock) preMock();
-    return valueArbitrate(signals, {}, dims);
+  process: async ({ inputs }) => {
+    inputs.setupMock?.();
+    return valueArbitrate(inputs.signals, {}, inputs.dims);
+  },
+  expects: ({ result, error, want }) => {
+    if (want.throws) {
+      expect(error?.message).toMatch(want.throws);
+      return;
+    }
+    if (error) throw error;
+    checkValue(result, want);
   },
 });
-
-// ─── multi-value: config threading + responseFormat ─────────────────────
 
 runTable({
   describe: 'valueArbitrate (multi) — config threading',
@@ -778,15 +807,10 @@ runTable({
           signal('b', { verification: 'standard', logging: 'verbose' }, 'may'),
         ],
         config: { llm: 'reasoning' },
-        preMock: () =>
+        setupMock: () =>
           callLlm.mockResolvedValueOnce({ verification: 'standard', logging: 'verbose' }),
       },
-      check: () => {
-        expect(retry).toHaveBeenCalledTimes(1);
-        const opts = retry.mock.calls[0][1];
-        expect(opts.label).toBe('value-arbitrate');
-        expect(opts.config).toBeDefined();
-      },
+      want: { retryCalled: true, retryLabel: 'value-arbitrate' },
     },
     {
       name: 'passes instruction to multi-dimension mediation prompt',
@@ -796,13 +820,10 @@ runTable({
           signal('b', { verification: 'standard', logging: 'verbose' }, 'may'),
         ],
         config: { instruction: 'Prefer stricter values in uncertain conditions' },
-        preMock: () =>
+        setupMock: () =>
           callLlm.mockResolvedValueOnce({ verification: 'standard', logging: 'verbose' }),
       },
-      check: () =>
-        expect(callLlm.mock.calls[0][0]).toContain(
-          'Prefer stricter values in uncertain conditions'
-        ),
+      want: { promptContains: 'Prefer stricter values in uncertain conditions' },
     },
     {
       name: 'sends a JSON schema with per-dimension enum constraints',
@@ -812,20 +833,36 @@ runTable({
           signal('a', { verification: 'thorough', logging: 'full' }, 'may'),
           signal('b', { verification: 'maximum', logging: 'verbose' }, 'may'),
         ],
-        preMock: () =>
+        setupMock: () =>
           callLlm.mockResolvedValueOnce({ verification: 'thorough', logging: 'verbose' }),
       },
-      check: () => {
-        const config = callLlm.mock.calls[0][1];
-        const schema = config.responseFormat.json_schema.schema;
-        expect(schema.properties.verification.enum).toEqual(['standard', 'thorough', 'maximum']);
-        expect(schema.properties.logging.enum).toEqual(['verbose', 'full']);
-        expect(config.responseFormat.json_schema.name).toBe('value_arbitrate_multi');
+      want: {
+        verificationEnum: ['standard', 'thorough', 'maximum'],
+        loggingEnum: ['verbose', 'full'],
+        schemaName: 'value_arbitrate_multi',
       },
     },
   ],
-  process: async ({ signals, config, preMock }) => {
-    if (preMock) preMock();
-    return valueArbitrate(signals, {}, DIMS, config);
+  process: async ({ inputs }) => {
+    inputs.setupMock?.();
+    return valueArbitrate(inputs.signals, {}, DIMS, inputs.config);
+  },
+  expects: ({ want }) => {
+    if (want.retryCalled) {
+      expect(retry).toHaveBeenCalledTimes(1);
+      const opts = retry.mock.calls[0][1];
+      expect(opts.label).toBe(want.retryLabel);
+      expect(opts.config).toBeDefined();
+    }
+    if (want.promptContains) {
+      expect(callLlm.mock.calls[0][0]).toContain(want.promptContains);
+    }
+    if (want.verificationEnum) {
+      const config = callLlm.mock.calls[0][1];
+      const schema = config.responseFormat.json_schema.schema;
+      expect(schema.properties.verification.enum).toEqual(want.verificationEnum);
+      expect(schema.properties.logging.enum).toEqual(want.loggingEnum);
+      expect(config.responseFormat.json_schema.name).toBe(want.schemaName);
+    }
   },
 });

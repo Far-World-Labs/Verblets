@@ -1,5 +1,5 @@
 import { beforeEach, vi, expect } from 'vitest';
-import { runTable, throws } from '../../lib/examples-runner/index.js';
+import { runTable } from '../../lib/examples-runner/index.js';
 
 vi.mock('playwright-core', () => {
   const mockPage = () => {
@@ -145,208 +145,221 @@ beforeEach(() => {
 
 const startUrl = 'https://example.com/';
 
-const examples = [
-  {
-    name: 'throws when browser is not enabled',
-    inputs: {
-      url: startUrl,
-      preMock: () => setBrowserEnabled(false),
+runTable({
+  describe: 'site-crawl',
+  examples: [
+    {
+      name: 'throws when browser is not enabled',
+      inputs: { url: startUrl, setupMock: () => setBrowserEnabled(false) },
+      want: { throws: /Browser support is disabled/ },
     },
-    check: throws(/Browser support is disabled/),
+    {
+      name: 'crawls the start URL and discovers child pages',
+      inputs: { url: startUrl, options: { maxPages: 3, gateInterval: 100 } },
+      want: { hasFirstPage: true, hasGraph: true, hasApis: true, hasCleanup: true },
+    },
+    {
+      name: 'respects maxPages limit',
+      inputs: { url: startUrl, options: { maxPages: 2, gateInterval: 100 } },
+      want: { pagesAtMost: 2 },
+    },
+    {
+      name: 'runs setup callback before crawling',
+      inputs: { url: startUrl, makeSetup: true, options: { maxPages: 1, gateInterval: 100 } },
+      want: { setupCalled: true },
+    },
+    {
+      name: 'runs teardown callback after crawling',
+      inputs: { url: startUrl, makeTeardown: true, options: { maxPages: 1, gateInterval: 100 } },
+      want: { teardownCalled: true },
+    },
+    {
+      name: 'launches browser with specified engine',
+      inputs: { url: startUrl, options: { maxPages: 1, gateInterval: 100 } },
+      want: { browserLaunched: true },
+    },
+    {
+      name: 'emits progress events',
+      inputs: { url: startUrl, withEvents: true, options: { maxPages: 2, gateInterval: 100 } },
+      want: { eventTypes: ['browser', 'page:start', 'page:complete'] },
+    },
+    {
+      name: 'builds adjacency graph from discovered links',
+      inputs: { url: startUrl, options: { maxPages: 3, gateInterval: 100 } },
+      want: { graphHas: true },
+    },
+    {
+      name: 'reports frontier summary in result',
+      inputs: { url: startUrl, options: { maxPages: 3, gateInterval: 100 } },
+      want: { frontierShape: true },
+    },
+    {
+      name: 'calls LLM gate when gateInterval is reached',
+      inputs: { url: startUrl, options: { maxPages: 3, gateInterval: 1 } },
+      want: { llmGateCalled: true },
+    },
+    {
+      name: 'applies LLM gate skip decisions to frontier',
+      inputs: { url: startUrl, options: { maxPages: 5, gateInterval: 1 } },
+      want: { skippedByGate: true },
+    },
+    {
+      name: 'throws when gate LLM returns malformed shape (no decisions key)',
+      inputs: {
+        url: startUrl,
+        options: { maxPages: 3, gateInterval: 1 },
+        setupMock: async () => {
+          const callLlm = (await import('../../lib/llm/index.js')).default;
+          callLlm.mockResolvedValueOnce({ wrong: 'shape' });
+        },
+      },
+      want: { throws: /expected.*decisions/ },
+    },
+    {
+      name: 'throws when gate LLM returns null',
+      inputs: {
+        url: startUrl,
+        options: { maxPages: 3, gateInterval: 1 },
+        setupMock: async () => {
+          const callLlm = (await import('../../lib/llm/index.js')).default;
+          callLlm.mockResolvedValueOnce(null);
+        },
+      },
+      want: { throws: /expected.*decisions/ },
+    },
+    {
+      name: 'throws when gate LLM returns non-array decisions',
+      inputs: {
+        url: startUrl,
+        options: { maxPages: 3, gateInterval: 1 },
+        setupMock: async () => {
+          const callLlm = (await import('../../lib/llm/index.js')).default;
+          callLlm.mockResolvedValueOnce({ decisions: 'not-array' });
+        },
+      },
+      want: { throws: /expected.*decisions/ },
+    },
+    {
+      name: 'provides cleanup function',
+      inputs: { url: startUrl, options: { maxPages: 1, gateInterval: 100 } },
+      want: { cleanupCallable: true },
+    },
+    {
+      name: 'starts and stops heartbeat around the crawl loop',
+      inputs: { url: startUrl, options: { maxPages: 1, gateInterval: 100 } },
+      want: { heartbeatLifecycle: true },
+    },
+    {
+      name: 'passes cooldown config to visitWithCooldown',
+      inputs: {
+        url: startUrl,
+        options: {
+          maxPages: 1,
+          gateInterval: 100,
+          cooldown: { baseDelay: 10000, maxRetries: 3 },
+        },
+      },
+      want: { cooldownConfig: { baseDelay: 10000, maxRetries: 3, backoffFactor: 2 } },
+    },
+    {
+      name: 'passes custom isBlocked to visitWithCooldown',
+      inputs: { url: startUrl, makeIsBlocked: true, options: { maxPages: 1, gateInterval: 100 } },
+      want: { customIsBlocked: true },
+    },
+    {
+      name: 'emits heartbeat events with progress data',
+      inputs: { url: startUrl, withEvents: true, options: { maxPages: 2, gateInterval: 100 } },
+      want: { heartbeatState: true },
+    },
+  ],
+  process: async ({ inputs }) => {
+    if (inputs.setupMock) await inputs.setupMock();
+    const setup = inputs.makeSetup ? vi.fn(async () => undefined) : undefined;
+    const teardown = inputs.makeTeardown ? vi.fn(async () => undefined) : undefined;
+    const isBlocked = inputs.makeIsBlocked ? vi.fn(async () => undefined) : undefined;
+    const events = [];
+    const value = await siteCrawl(inputs.url, {
+      ...inputs.options,
+      ...(setup && { setup }),
+      ...(teardown && { teardown }),
+      ...(isBlocked && { isBlocked }),
+      ...(inputs.withEvents && { onProgress: (e) => events.push(e) }),
+    });
+    return { ...value, setup, teardown, isBlocked, events };
   },
-  {
-    name: 'crawls the start URL and discovers child pages',
-    inputs: { url: startUrl, options: { maxPages: 3, gateInterval: 100 } },
-    check: ({ result }) => {
+  expects: async ({ result, error, want }) => {
+    if (want.throws) {
+      expect(error?.message).toMatch(want.throws);
+      return;
+    }
+    if (error) throw error;
+    if (want.hasFirstPage) {
       expect(result.pages.length).toBeGreaterThanOrEqual(1);
       expect(result.pages[0].url).toBe(startUrl);
-      expect(result.graph).toBeDefined();
-      expect(result.apis).toBeDefined();
-      expect(typeof result.cleanup).toBe('function');
-    },
-  },
-  {
-    name: 'respects maxPages limit',
-    inputs: { url: startUrl, options: { maxPages: 2, gateInterval: 100 } },
-    check: ({ result }) => expect(result.pages.length).toBeLessThanOrEqual(2),
-  },
-  {
-    name: 'runs setup callback before crawling',
-    inputs: {
-      url: startUrl,
-      makeSetup: true,
-      options: { maxPages: 1, gateInterval: 100 },
-    },
-    check: ({ result }) => {
+    }
+    if (want.hasGraph) expect(result.graph).toBeDefined();
+    if (want.hasApis) expect(result.apis).toBeDefined();
+    if (want.hasCleanup) expect(typeof result.cleanup).toBe('function');
+    if (want.pagesAtMost !== undefined) {
+      expect(result.pages.length).toBeLessThanOrEqual(want.pagesAtMost);
+    }
+    if (want.setupCalled) {
       expect(result.setup).toHaveBeenCalledOnce();
       expect(result.setup.mock.calls[0][0]).toHaveProperty('goto');
-    },
-  },
-  {
-    name: 'runs teardown callback after crawling',
-    inputs: {
-      url: startUrl,
-      makeTeardown: true,
-      options: { maxPages: 1, gateInterval: 100 },
-    },
-    check: ({ result }) => expect(result.teardown).toHaveBeenCalledOnce(),
-  },
-  {
-    name: 'launches browser with specified engine',
-    inputs: { url: startUrl, options: { maxPages: 1, gateInterval: 100 } },
-    check: () => {
+    }
+    if (want.teardownCalled) expect(result.teardown).toHaveBeenCalledOnce();
+    if (want.browserLaunched) {
       expect(chromium.launch).toHaveBeenCalledOnce();
       expect(chromium.launch).toHaveBeenCalledWith(expect.objectContaining({ headless: true }));
-    },
-  },
-  {
-    name: 'emits progress events',
-    inputs: {
-      url: startUrl,
-      withEvents: true,
-      options: { maxPages: 2, gateInterval: 100 },
-    },
-    check: ({ result }) => {
+    }
+    if (want.eventTypes) {
       const eventTypes = result.events.map((e) => e.event || e.kind);
-      expect(eventTypes).toContain('browser');
-      expect(eventTypes).toContain('page:start');
-      expect(eventTypes).toContain('page:complete');
-    },
-  },
-  {
-    name: 'builds adjacency graph from discovered links',
-    inputs: { url: startUrl, options: { maxPages: 3, gateInterval: 100 } },
-    check: ({ result }) => {
+      for (const t of want.eventTypes) expect(eventTypes).toContain(t);
+    }
+    if (want.graphHas) {
       const startLinks = result.graph[startUrl];
       expect(startLinks).toBeDefined();
       expect(startLinks).toContain('https://example.com/page-a');
       expect(startLinks).toContain('https://example.com/page-b');
       expect(startLinks).not.toContain('https://other.com/external');
-    },
-  },
-  {
-    name: 'reports frontier summary in result',
-    inputs: { url: startUrl, options: { maxPages: 3, gateInterval: 100 } },
-    check: ({ result }) => {
+    }
+    if (want.frontierShape) {
       expect(result.frontier).toBeDefined();
       expect(typeof result.frontier.visited).toBe('number');
       expect(typeof result.frontier.pending).toBe('number');
       expect(typeof result.frontier.skipped).toBe('number');
-    },
-  },
-  {
-    name: 'calls LLM gate when gateInterval is reached',
-    inputs: { url: startUrl, options: { maxPages: 3, gateInterval: 1 } },
-    check: async () => {
+    }
+    if (want.llmGateCalled) {
       const callLlm = (await import('../../lib/llm/index.js')).default;
       expect(callLlm).toHaveBeenCalled();
       expect(callLlm.mock.calls[0][0]).toContain('site crawler');
-    },
-  },
-  {
-    name: 'applies LLM gate skip decisions to frontier',
-    inputs: { url: startUrl, options: { maxPages: 5, gateInterval: 1 } },
-    check: ({ result }) => {
+    }
+    if (want.skippedByGate) {
       expect(result.skipped.some((s) => s.reason === 'llm-gate')).toBe(true);
       expect(result.gateCallCount).toBeGreaterThanOrEqual(1);
-    },
-  },
-  {
-    name: 'throws when gate LLM returns malformed shape (no decisions key)',
-    inputs: {
-      url: startUrl,
-      options: { maxPages: 3, gateInterval: 1 },
-      preMock: async () => {
-        const callLlm = (await import('../../lib/llm/index.js')).default;
-        callLlm.mockResolvedValueOnce({ wrong: 'shape' });
-      },
-    },
-    check: throws(/expected.*decisions/),
-  },
-  {
-    name: 'throws when gate LLM returns null',
-    inputs: {
-      url: startUrl,
-      options: { maxPages: 3, gateInterval: 1 },
-      preMock: async () => {
-        const callLlm = (await import('../../lib/llm/index.js')).default;
-        callLlm.mockResolvedValueOnce(null);
-      },
-    },
-    check: throws(/expected.*decisions/),
-  },
-  {
-    name: 'throws when gate LLM returns non-array decisions',
-    inputs: {
-      url: startUrl,
-      options: { maxPages: 3, gateInterval: 1 },
-      preMock: async () => {
-        const callLlm = (await import('../../lib/llm/index.js')).default;
-        callLlm.mockResolvedValueOnce({ decisions: 'not-array' });
-      },
-    },
-    check: throws(/expected.*decisions/),
-  },
-  {
-    name: 'provides cleanup function',
-    inputs: { url: startUrl, options: { maxPages: 1, gateInterval: 100 } },
-    check: async ({ result }) => {
+    }
+    if (want.cleanupCallable) {
       expect(typeof result.cleanup).toBe('function');
       await result.cleanup();
-    },
-  },
-  {
-    name: 'starts and stops heartbeat around the crawl loop',
-    inputs: { url: startUrl, options: { maxPages: 1, gateInterval: 100 } },
-    check: async () => {
+    }
+    if (want.heartbeatLifecycle) {
       const { createHeartbeat } = await import('./cooldown.js');
       expect(createHeartbeat).toHaveBeenCalledOnce();
       const stopFn = createHeartbeat.mock.results[0].value.stop;
       expect(stopFn).toHaveBeenCalledOnce();
-    },
-  },
-  {
-    name: 'passes cooldown config to visitWithCooldown',
-    inputs: {
-      url: startUrl,
-      options: {
-        maxPages: 1,
-        gateInterval: 100,
-        cooldown: { baseDelay: 10000, maxRetries: 3 },
-      },
-    },
-    check: async () => {
+    }
+    if (want.cooldownConfig) {
       const { visitWithCooldown } = await import('./cooldown.js');
       expect(visitWithCooldown).toHaveBeenCalled();
       const cooldownArg = visitWithCooldown.mock.calls[0][4];
-      expect(cooldownArg).toMatchObject({
-        baseDelay: 10000,
-        maxRetries: 3,
-        backoffFactor: 2,
-      });
-    },
-  },
-  {
-    name: 'passes custom isBlocked to visitWithCooldown',
-    inputs: {
-      url: startUrl,
-      makeIsBlocked: true,
-      options: { maxPages: 1, gateInterval: 100 },
-    },
-    check: async ({ result }) => {
+      expect(cooldownArg).toMatchObject(want.cooldownConfig);
+    }
+    if (want.customIsBlocked) {
       const { visitWithCooldown } = await import('./cooldown.js');
       expect(visitWithCooldown).toHaveBeenCalled();
       expect(visitWithCooldown.mock.calls[0][5]).toBe(result.isBlocked);
-    },
-  },
-  {
-    name: 'emits heartbeat events with progress data',
-    inputs: {
-      url: startUrl,
-      withEvents: true,
-      options: { maxPages: 2, gateInterval: 100 },
-    },
-    check: async () => {
+    }
+    if (want.heartbeatState) {
       const { createHeartbeat } = await import('./cooldown.js');
       const getState = createHeartbeat.mock.calls[0][2];
       const state = getState();
@@ -354,34 +367,6 @@ const examples = [
       expect(typeof state.pending).toBe('number');
       expect(typeof state.maxPages).toBe('number');
       expect(state.currentUrl).toBeDefined();
-    },
-  },
-];
-
-runTable({
-  describe: 'site-crawl',
-  examples,
-  process: async ({
-    url,
-    options,
-    preMock,
-    makeSetup,
-    makeTeardown,
-    makeIsBlocked,
-    withEvents,
-  }) => {
-    if (preMock) await preMock();
-    const setup = makeSetup ? vi.fn(async () => undefined) : undefined;
-    const teardown = makeTeardown ? vi.fn(async () => undefined) : undefined;
-    const isBlocked = makeIsBlocked ? vi.fn(async () => undefined) : undefined;
-    const events = [];
-    const value = await siteCrawl(url, {
-      ...options,
-      ...(setup && { setup }),
-      ...(teardown && { teardown }),
-      ...(isBlocked && { isBlocked }),
-      ...(withEvents && { onProgress: (e) => events.push(e) }),
-    });
-    return { ...value, setup, teardown, isBlocked, events };
+    }
   },
 });
