@@ -1,6 +1,6 @@
-import { vi } from 'vitest';
+import { vi, expect } from 'vitest';
 import name from './index.js';
-import { runTable, equals } from '../../lib/examples-runner/index.js';
+import { runTable } from '../../lib/examples-runner/index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
   jsonSchema: (n, schema) => ({ type: 'json_schema', json_schema: { name: n, schema } }),
@@ -10,13 +10,15 @@ vi.mock('../../lib/llm/index.js', () => ({
   }),
 }));
 
-const examples = [
-  {
-    name: 'generates a descriptive name',
-    inputs: 'Dataset of weather pattern observations',
-    check: equals('BlueSkies'),
-  },
-  { name: 'returns undefined when unsure', inputs: '???', check: equals(undefined) },
-];
-
-runTable({ describe: 'name verblet', examples, process: (text) => name(text) });
+runTable({
+  describe: 'name verblet',
+  examples: [
+    {
+      name: 'generates a descriptive name',
+      inputs: { text: 'Dataset of weather pattern observations', want: 'BlueSkies' },
+    },
+    { name: 'returns undefined when unsure', inputs: { text: '???', want: undefined } },
+  ],
+  process: ({ text }) => name(text),
+  expects: ({ result, inputs }) => expect(result).toEqual(inputs.want),
+});

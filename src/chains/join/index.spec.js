@@ -1,6 +1,6 @@
 import { beforeEach, vi, expect } from 'vitest';
 import join from './index.js';
-import { runTable, contains, all } from '../../lib/examples-runner/index.js';
+import { runTable } from '../../lib/examples-runner/index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({ default: vi.fn() }));
 
@@ -27,10 +27,12 @@ runTable({
   examples: [
     {
       name: 'joins fragments via LLM with transitions',
-      inputs: { items: ['Hello', 'world', 'today'], instructions: 'Connect with simple words' },
-      check: all(contains('Hello'), contains('world'), contains('today'), () =>
-        expect(llm).toHaveBeenCalled()
-      ),
+      inputs: {
+        items: ['Hello', 'world', 'today'],
+        instructions: 'Connect with simple words',
+        wantContains: ['Hello', 'world', 'today'],
+        wantLlmCalled: true,
+      },
     },
     {
       name: 'applies windowed processing when configured',
@@ -38,28 +40,27 @@ runTable({
         items: ['a', 'b', 'c'],
         instructions: 'Simple connections',
         options: { windowSize: 2 },
-      },
-      check: ({ result }) => {
-        expect(result.length).toBeGreaterThan(0);
-        expect(llm).toHaveBeenCalled();
+        wantNonEmpty: true,
+        wantLlmCalled: true,
       },
     },
     {
       name: 'returns empty string for empty array',
-      inputs: { items: [] },
-      check: ({ result }) => {
-        expect(result).toBe('');
-        expect(llm).not.toHaveBeenCalled();
-      },
+      inputs: { items: [], want: '', wantNoLlm: true },
     },
     {
       name: 'returns raw item for single-element array',
-      inputs: { items: ['only'] },
-      check: ({ result }) => {
-        expect(result).toBe('only');
-        expect(llm).not.toHaveBeenCalled();
-      },
+      inputs: { items: ['only'], want: 'only', wantNoLlm: true },
     },
   ],
   process: ({ items, instructions, options }) => join(items, instructions, options),
+  expects: ({ result, inputs }) => {
+    if ('want' in inputs) expect(result).toBe(inputs.want);
+    if (inputs.wantContains) {
+      for (const fragment of inputs.wantContains) expect(result).toContain(fragment);
+    }
+    if (inputs.wantNonEmpty) expect(result.length).toBeGreaterThan(0);
+    if (inputs.wantLlmCalled) expect(llm).toHaveBeenCalled();
+    if (inputs.wantNoLlm) expect(llm).not.toHaveBeenCalled();
+  },
 });

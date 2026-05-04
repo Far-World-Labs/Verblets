@@ -1,6 +1,6 @@
 import { vi, expect } from 'vitest';
 import { dismantle, mapVariety } from './index.js';
-import { runTable, equals, isUndefined } from '../../lib/examples-runner/index.js';
+import { runTable } from '../../lib/examples-runner/index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn().mockImplementation((text) => {
@@ -17,40 +17,42 @@ runTable({
   examples: [
     {
       name: 'returns a ChainTree with tree and rootName',
-      inputs: { name: 'test' },
-      check: ({ result }) => {
-        expect(result.rootName).toBe('test');
-        expect(result).toHaveProperty('tree');
-        expect(result.getTree()).toStrictEqual({});
-      },
+      inputs: { name: 'test', wantRootName: 'test', wantEmptyTree: true },
     },
   ],
   process: ({ name }) => dismantle(name),
+  expects: ({ result, inputs }) => {
+    expect(result.rootName).toBe(inputs.wantRootName);
+    expect(result).toHaveProperty('tree');
+    if (inputs.wantEmptyTree) expect(result.getTree()).toEqual({});
+  },
 });
 
+// mapVariety: pure function with simple value mappings.
 runTable({
   describe: 'mapVariety',
   examples: [
-    {
-      name: 'produces distinct values across levels',
-      inputs: {},
-      check: () => {
-        const values = ['low', 'high'].map(mapVariety);
-        expect(new Set(values).size).toBe(2);
-      },
-    },
-    {
-      name: 'low < high',
-      inputs: {},
-      check: () => expect(mapVariety('low')).toBeLessThan(mapVariety('high')),
-    },
-    { name: 'undefined returns default', inputs: { v: undefined }, check: isUndefined() },
-    { name: 'passes through raw numbers', inputs: { v: 0.42 }, check: equals(0.42) },
+    { name: 'undefined returns default', inputs: { v: undefined, want: undefined } },
+    { name: 'passes through raw numbers', inputs: { v: 0.42, want: 0.42 } },
     {
       name: 'unknown string falls back to default',
-      inputs: { v: 'zzz' },
-      check: ({ result }) => expect(result).toBe(mapVariety(undefined)),
+      inputs: { v: 'zzz', want: undefined },
     },
   ],
   process: ({ v }) => mapVariety(v),
+  expects: ({ result, inputs }) => expect(result).toEqual(inputs.want),
+});
+
+// Distinctness/ordering tests (relational, not per-row data) — kept as
+// describe/it because they compare multiple invocations.
+import { describe, it } from 'vitest';
+describe('mapVariety: relational checks', () => {
+  it('produces distinct values across levels', () => {
+    const values = ['low', 'high'].map(mapVariety);
+    expect(new Set(values).size).toBe(2);
+  });
+
+  it('low < high', () => {
+    expect(mapVariety('low')).toBeLessThan(mapVariety('high'));
+  });
 });

@@ -6,7 +6,7 @@ import entityItem, {
   mapEntitiesParallel,
 } from './index.js';
 import map from '../map/index.js';
-import { runTable, equals, all, partial, throws } from '../../lib/examples-runner/index.js';
+import { runTable } from '../../lib/examples-runner/index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(),
@@ -25,7 +25,7 @@ import llm from '../../lib/llm/index.js';
 
 beforeEach(() => vi.clearAllMocks());
 
-// ─── entitySpec ───────────────────────────────────────────────────────────
+// ─── entitySpec ──────────────────────────────────────────────────────────
 
 runTable({
   describe: 'entitySpec',
@@ -34,25 +34,29 @@ runTable({
       name: 'generates entity specification from instructions',
       inputs: {
         instructions: 'Extract people, companies, and locations',
-        preMock: () => llm.mockResolvedValueOnce('Extract people, companies, and locations'),
+        mock: () => llm.mockResolvedValueOnce('Extract people, companies, and locations'),
+        want: 'Extract people, companies, and locations',
+        wantPromptContains: 'Extract people, companies, and locations',
+        wantSystemContains: 'entity specification generator',
       },
-      check: all(equals('Extract people, companies, and locations'), () =>
-        expect(llm).toHaveBeenCalledWith(
-          expect.stringContaining('Extract people, companies, and locations'),
-          expect.objectContaining({
-            systemPrompt: expect.stringContaining('entity specification generator'),
-          })
-        )
-      ),
     },
   ],
-  process: async ({ instructions, preMock }) => {
-    if (preMock) preMock();
+  process: async ({ instructions, mock }) => {
+    if (mock) mock();
     return entitySpec(instructions);
+  },
+  expects: ({ result, inputs }) => {
+    expect(result).toEqual(inputs.want);
+    expect(llm).toHaveBeenCalledWith(
+      expect.stringContaining(inputs.wantPromptContains),
+      expect.objectContaining({
+        systemPrompt: expect.stringContaining(inputs.wantSystemContains),
+      })
+    );
   },
 });
 
-// ─── entityItem ───────────────────────────────────────────────────────────
+// ─── entityItem ──────────────────────────────────────────────────────────
 
 runTable({
   describe: 'entityItem',
@@ -62,7 +66,7 @@ runTable({
       inputs: {
         text: 'Google and Amazon are major tech companies.',
         instructions: 'Extract all companies',
-        preMock: () =>
+        mock: () =>
           llm
             .mockResolvedValueOnce('Specification for extracting companies')
             .mockResolvedValueOnce({
@@ -71,10 +75,8 @@ runTable({
                 { name: 'Amazon', type: 'company' },
               ],
             }),
-      },
-      check: ({ result }) => {
-        expect(llm).toHaveBeenCalledTimes(2);
-        expect(result.entities).toHaveLength(2);
+        wantLlmCalls: 2,
+        wantEntitiesLength: 2,
       },
     },
     {
@@ -82,40 +84,49 @@ runTable({
       inputs: {
         text: '',
         instructions: 'Extract any entities',
-        preMock: () => llm.mockResolvedValueOnce('Spec').mockResolvedValueOnce({ entities: [] }),
+        mock: () => llm.mockResolvedValueOnce('Spec').mockResolvedValueOnce({ entities: [] }),
+        wantEntities: [],
       },
-      check: ({ result }) => expect(result.entities).toEqual([]),
     },
   ],
-  process: async ({ text, instructions, preMock }) => {
-    if (preMock) preMock();
+  process: async ({ text, instructions, mock }) => {
+    if (mock) mock();
     return entityItem(text, instructions);
+  },
+  expects: ({ result, inputs }) => {
+    if ('wantLlmCalls' in inputs) expect(llm).toHaveBeenCalledTimes(inputs.wantLlmCalls);
+    if ('wantEntitiesLength' in inputs) {
+      expect(result.entities).toHaveLength(inputs.wantEntitiesLength);
+    }
+    if (inputs.wantEntities) expect(result.entities).toEqual(inputs.wantEntities);
   },
 });
 
-// ─── entityInstructions ───────────────────────────────────────────────────
+// ─── entityInstructions ──────────────────────────────────────────────────
 
 runTable({
   describe: 'entityInstructions',
   examples: [
     {
       name: 'returns instruction bundle with spec',
-      inputs: { spec: 'Entity specification' },
-      check: ({ result, inputs }) => {
-        expect(result.text).toContain('entity specification');
-        expect(result.spec).toBe(inputs.spec);
-      },
+      inputs: { spec: 'Entity specification', wantTextContains: 'entity specification' },
     },
     {
       name: 'passes through additional context keys',
-      inputs: { spec: 'spec', domain: 'legal contracts' },
-      check: partial({ domain: 'legal contracts' }),
+      inputs: { spec: 'spec', domain: 'legal contracts', want: { domain: 'legal contracts' } },
     },
   ],
   process: (params) => entityInstructions(params),
+  expects: ({ result, inputs }) => {
+    if (inputs.wantTextContains) {
+      expect(result.text).toContain(inputs.wantTextContains);
+      expect(result.spec).toBe(inputs.spec);
+    }
+    if ('want' in inputs) expect(result).toMatchObject(inputs.want);
+  },
 });
 
-// ─── mapEntitiesParallel ──────────────────────────────────────────────────
+// ─── mapEntitiesParallel ─────────────────────────────────────────────────
 
 runTable({
   describe: 'mapEntitiesParallel',
@@ -125,17 +136,14 @@ runTable({
       inputs: {
         texts: ['Alice works.', 'Acme launched.'],
         instructions: 'Extract',
-        preMock: () =>
+        mock: () =>
           llm
             .mockResolvedValueOnce('shared spec')
             .mockResolvedValueOnce({ entities: [{ name: 'Alice', type: 'person' }] })
             .mockResolvedValueOnce({ entities: [{ name: 'Acme', type: 'company' }] }),
-      },
-      check: ({ result }) => {
-        expect(result).toHaveLength(2);
-        expect(result[0].entities[0].name).toBe('Alice');
-        expect(result[1].entities[0].name).toBe('Acme');
-        expect(llm).toHaveBeenCalledTimes(3);
+        wantLength: 2,
+        wantNames: ['Alice', 'Acme'],
+        wantLlmCalls: 3,
       },
     },
     {
@@ -143,14 +151,12 @@ runTable({
       inputs: {
         texts: ['t1', 't2'],
         instructions: { text: 'x', spec: 'reused-spec' },
-        preMock: () =>
+        mock: () =>
           llm
             .mockResolvedValueOnce({ entities: [{ name: 'A', type: 'person' }] })
             .mockResolvedValueOnce({ entities: [{ name: 'B', type: 'person' }] }),
-      },
-      check: ({ result }) => {
-        expect(result).toHaveLength(2);
-        expect(llm).toHaveBeenCalledTimes(2);
+        wantLength: 2,
+        wantLlmCalls: 2,
       },
     },
     {
@@ -160,28 +166,20 @@ runTable({
         instructions: { text: 'x', spec: 'spec' },
         options: { maxAttempts: 1 },
         withEvents: true,
-        preMock: () =>
+        mock: () =>
           llm
             .mockResolvedValueOnce({ entities: [{ name: 'A', type: 'p' }] })
             .mockRejectedValueOnce(new Error('boom')),
-      },
-      check: ({ result }) => {
-        expect(result.value[0].entities).toHaveLength(1);
-        expect(result.value[1]).toBeUndefined();
-        const complete = result.events.find(
-          (e) => e.event === 'chain:complete' && e.step === 'entities:parallel'
-        );
-        expect(complete.outcome).toBe('partial');
+        wantPartialOutcome: true,
       },
     },
     {
       name: 'throws when texts is not an array',
-      inputs: { texts: 'not-an-array', instructions: 'x' },
-      check: throws(/must be an array/),
+      inputs: { texts: 'not-an-array', instructions: 'x', throws: /must be an array/ },
     },
   ],
-  process: async ({ texts, instructions, options, preMock, withEvents }) => {
-    if (preMock) preMock();
+  process: async ({ texts, instructions, options, mock, withEvents }) => {
+    if (mock) mock();
     if (withEvents) {
       const events = [];
       const value = await mapEntitiesParallel(texts, instructions, {
@@ -192,9 +190,31 @@ runTable({
     }
     return mapEntitiesParallel(texts, instructions, options);
   },
+  expects: ({ result, error, inputs }) => {
+    if ('throws' in inputs) {
+      expect(error?.message).toMatch(inputs.throws);
+      return;
+    }
+    if (error) throw error;
+    if ('wantLength' in inputs) expect(result).toHaveLength(inputs.wantLength);
+    if (inputs.wantNames) {
+      inputs.wantNames.forEach((name, i) => {
+        expect(result[i].entities[0].name).toBe(name);
+      });
+    }
+    if ('wantLlmCalls' in inputs) expect(llm).toHaveBeenCalledTimes(inputs.wantLlmCalls);
+    if (inputs.wantPartialOutcome) {
+      expect(result.value[0].entities).toHaveLength(1);
+      expect(result.value[1]).toBeUndefined();
+      const complete = result.events.find(
+        (e) => e.event === 'chain:complete' && e.step === 'entities:parallel'
+      );
+      expect(complete.outcome).toBe('partial');
+    }
+  },
 });
 
-// ─── mapEntities ──────────────────────────────────────────────────────────
+// ─── mapEntities ─────────────────────────────────────────────────────────
 
 runTable({
   describe: 'mapEntities',
@@ -204,19 +224,16 @@ runTable({
       inputs: {
         texts: ['t1', 't2'],
         instructions: { text: 'x', spec: 'reused' },
-        preMock: () =>
+        mock: () =>
           vi
             .mocked(map)
             .mockResolvedValueOnce([
               { entities: [{ name: 'A', type: 'p' }] },
               { entities: [{ name: 'B', type: 'p' }] },
             ]),
-      },
-      check: ({ result }) => {
-        expect(result).toHaveLength(2);
-        expect(result[0].entities[0].name).toBe('A');
-        const mapConfig = vi.mocked(map).mock.calls[0][2];
-        expect(mapConfig.responseFormat?.json_schema?.name).toBe('entities_batch');
+        wantLength: 2,
+        wantFirstName: 'A',
+        wantSchemaName: 'entities_batch',
       },
     },
     {
@@ -224,21 +241,34 @@ runTable({
       inputs: {
         texts: ['t'],
         instructions: 'extract',
-        preMock: () => {
+        mock: () => {
           llm.mockResolvedValueOnce('shared spec');
           vi.mocked(map).mockResolvedValueOnce([{ entities: [] }]);
         },
+        wantLlmCalls: 1,
       },
-      check: () => expect(llm).toHaveBeenCalledTimes(1),
     },
     {
       name: 'throws when texts is not an array',
-      inputs: { texts: 'not-an-array', instructions: 'x' },
-      check: throws(/must be an array/),
+      inputs: { texts: 'not-an-array', instructions: 'x', throws: /must be an array/ },
     },
   ],
-  process: async ({ texts, instructions, preMock }) => {
-    if (preMock) preMock();
+  process: async ({ texts, instructions, mock }) => {
+    if (mock) mock();
     return mapEntities(texts, instructions);
+  },
+  expects: ({ result, error, inputs }) => {
+    if ('throws' in inputs) {
+      expect(error?.message).toMatch(inputs.throws);
+      return;
+    }
+    if (error) throw error;
+    if ('wantLength' in inputs) expect(result).toHaveLength(inputs.wantLength);
+    if (inputs.wantFirstName) expect(result[0].entities[0].name).toBe(inputs.wantFirstName);
+    if (inputs.wantSchemaName) {
+      const mapConfig = vi.mocked(map).mock.calls[0][2];
+      expect(mapConfig.responseFormat?.json_schema?.name).toBe(inputs.wantSchemaName);
+    }
+    if ('wantLlmCalls' in inputs) expect(llm).toHaveBeenCalledTimes(inputs.wantLlmCalls);
   },
 });

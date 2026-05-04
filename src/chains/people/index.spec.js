@@ -2,7 +2,7 @@ import { vi, beforeEach, expect } from 'vitest';
 import peopleSet, { mapPeopleSet, mapPeopleSetParallel } from './index.js';
 import llm from '../../lib/llm/index.js';
 import map from '../map/index.js';
-import { runTable, equals, all, throws } from '../../lib/examples-runner/index.js';
+import { runTable } from '../../lib/examples-runner/index.js';
 
 beforeEach(() => vi.clearAllMocks());
 
@@ -27,69 +27,77 @@ vi.mock('../../lib/parallel-batch/index.js', () => ({
 
 vi.mock('../map/index.js', () => ({ default: vi.fn() }));
 
-// ─── peopleSet ────────────────────────────────────────────────────────────
+// ─── peopleSet ──────────────────────────────────────────────────────────
 
 runTable({
   describe: 'peopleSet (default)',
   examples: [
     {
       name: 'returns the people array from LLM response with count in prompt',
-      inputs: { description: 'experienced bakers', count: 5 },
-      check: ({ result }) => {
-        expect(result).toHaveLength(3);
-        expect(result[0]).toEqual({
+      inputs: {
+        description: 'experienced bakers',
+        count: 5,
+        wantLength: 3,
+        wantFirst: {
           name: 'Alice Smith',
           bio: 'Experienced baker specializing in sourdough',
           age: 32,
-        });
-        const prompt = llm.mock.calls[0][0];
-        expect(prompt).toContain('5');
-        expect(prompt).toContain('experienced bakers');
+        },
+        wantPromptContains: ['5', 'experienced bakers'],
       },
     },
     {
       name: 'defaults count to 3 when not specified',
-      inputs: { description: 'teachers' },
-      check: () => expect(llm.mock.calls[0][0]).toContain('3 people'),
+      inputs: { description: 'teachers', wantPromptContains: ['3 people'] },
     },
     {
       name: 'throws when count is 0',
-      inputs: { description: 'x', count: 0 },
-      check: throws(/positive integer/),
+      inputs: { description: 'x', count: 0, throws: /positive integer/ },
     },
     {
       name: 'throws when count is negative',
-      inputs: { description: 'x', count: -1 },
-      check: throws(/positive integer/),
+      inputs: { description: 'x', count: -1, throws: /positive integer/ },
     },
     {
       name: 'throws when count is non-integer',
-      inputs: { description: 'x', count: 1.5 },
-      check: throws(/positive integer/),
+      inputs: { description: 'x', count: 1.5, throws: /positive integer/ },
     },
   ],
   process: ({ description, count }) => peopleSet(description, count),
+  expects: ({ result, error, inputs }) => {
+    if ('throws' in inputs) {
+      expect(error?.message).toMatch(inputs.throws);
+      return;
+    }
+    if (error) throw error;
+    if ('wantLength' in inputs) expect(result).toHaveLength(inputs.wantLength);
+    if (inputs.wantFirst) expect(result[0]).toEqual(inputs.wantFirst);
+    if (inputs.wantPromptContains) {
+      const prompt = llm.mock.calls[0][0];
+      for (const fragment of inputs.wantPromptContains) expect(prompt).toContain(fragment);
+    }
+  },
 });
 
-// ─── mapPeopleSetParallel ─────────────────────────────────────────────────
+// ─── mapPeopleSetParallel ───────────────────────────────────────────────
 
 runTable({
   describe: 'mapPeopleSetParallel',
   examples: [
     {
       name: 'runs peopleSet per description with one shared count',
-      inputs: { descriptions: ['founders', 'engineers'], options: { count: 2 } },
-      check: ({ result }) => {
-        expect(result).toHaveLength(2);
-        expect(Array.isArray(result[0])).toBe(true);
-        expect(llm).toHaveBeenCalledTimes(2);
-        expect(llm.mock.calls[0][0]).toContain('2 people');
+      inputs: {
+        descriptions: ['founders', 'engineers'],
+        options: { count: 2 },
+        wantLength: 2,
+        wantFirstIsArray: true,
+        wantLlmCalls: 2,
+        wantPromptContains: ['2 people'],
       },
     },
     {
       name: 'throws when descriptions is not an array',
-      inputs: { descriptions: 'not-an-array' },
-      check: throws(/must be an array/),
+      inputs: { descriptions: 'not-an-array', throws: /must be an array/ },
     },
     {
       name: 'reports partial outcome when one description fails',
@@ -97,23 +105,17 @@ runTable({
         descriptions: ['ok', 'bad'],
         options: { maxAttempts: 1 },
         withEvents: true,
-        preMock: () =>
+        mock: () =>
           llm
             .mockResolvedValueOnce({ people: [{ name: 'A' }] })
             .mockRejectedValueOnce(new Error('boom')),
-      },
-      check: ({ result }) => {
-        expect(result.value[0]).toEqual([{ name: 'A' }]);
-        expect(result.value[1]).toBeUndefined();
-        const complete = result.events.find(
-          (e) => e.event === 'chain:complete' && e.step === 'people:parallel'
-        );
-        expect(complete.outcome).toBe('partial');
+        wantValue: [[{ name: 'A' }], undefined],
+        wantOutcome: 'partial',
       },
     },
   ],
-  process: async ({ descriptions, options, preMock, withEvents }) => {
-    if (preMock) preMock();
+  process: async ({ descriptions, options, mock, withEvents }) => {
+    if (mock) mock();
     if (withEvents) {
       const events = [];
       const value = await mapPeopleSetParallel(descriptions, {
@@ -124,9 +126,33 @@ runTable({
     }
     return mapPeopleSetParallel(descriptions, options);
   },
+  expects: ({ result, error, inputs }) => {
+    if ('throws' in inputs) {
+      expect(error?.message).toMatch(inputs.throws);
+      return;
+    }
+    if (error) throw error;
+    if ('wantLength' in inputs) expect(result).toHaveLength(inputs.wantLength);
+    if (inputs.wantFirstIsArray) expect(Array.isArray(result[0])).toBe(true);
+    if ('wantLlmCalls' in inputs) expect(llm).toHaveBeenCalledTimes(inputs.wantLlmCalls);
+    if (inputs.wantPromptContains) {
+      const prompt = llm.mock.calls[0][0];
+      for (const fragment of inputs.wantPromptContains) expect(prompt).toContain(fragment);
+    }
+    if (inputs.wantValue) {
+      expect(result.value[0]).toEqual(inputs.wantValue[0]);
+      expect(result.value[1]).toBeUndefined();
+    }
+    if (inputs.wantOutcome) {
+      const complete = result.events.find(
+        (e) => e.event === 'chain:complete' && e.step === 'people:parallel'
+      );
+      expect(complete.outcome).toBe(inputs.wantOutcome);
+    }
+  },
 });
 
-// ─── mapPeopleSet (batched) ───────────────────────────────────────────────
+// ─── mapPeopleSet (batched) ─────────────────────────────────────────────
 
 runTable({
   describe: 'mapPeopleSet (batched)',
@@ -135,35 +161,45 @@ runTable({
       name: 'routes through map() with the people batch responseFormat',
       inputs: {
         descriptions: ['founders', 'engineers'],
-        preMock: () =>
+        mock: () =>
           vi
             .mocked(map)
             .mockResolvedValueOnce([{ people: [{ name: 'A' }] }, { people: [{ name: 'B' }] }]),
+        want: [[{ name: 'A' }], [{ name: 'B' }]],
+        wantSchemaName: 'people_batch',
       },
-      check: all(equals([[{ name: 'A' }], [{ name: 'B' }]]), () => {
-        const mapConfig = vi.mocked(map).mock.calls[0][2];
-        expect(mapConfig.responseFormat?.json_schema?.name).toBe('people_batch');
-      }),
     },
     {
       name: 'serializes object descriptions before dispatching',
       inputs: {
         descriptions: [{ text: 'founders', _ctx: 'extra context' }],
-        preMock: () => vi.mocked(map).mockResolvedValueOnce([{ people: [{ name: 'X' }] }]),
-      },
-      check: () => {
-        const list = vi.mocked(map).mock.calls[0][0];
-        expect(list[0]).toContain('founders');
+        mock: () => vi.mocked(map).mockResolvedValueOnce([{ people: [{ name: 'X' }] }]),
+        wantFirstListContains: 'founders',
       },
     },
     {
       name: 'throws when descriptions is not an array',
-      inputs: { descriptions: 'not-an-array' },
-      check: throws(/must be an array/),
+      inputs: { descriptions: 'not-an-array', throws: /must be an array/ },
     },
   ],
-  process: async ({ descriptions, preMock }) => {
-    if (preMock) preMock();
+  process: async ({ descriptions, mock }) => {
+    if (mock) mock();
     return mapPeopleSet(descriptions);
+  },
+  expects: ({ result, error, inputs }) => {
+    if ('throws' in inputs) {
+      expect(error?.message).toMatch(inputs.throws);
+      return;
+    }
+    if (error) throw error;
+    if ('want' in inputs) expect(result).toEqual(inputs.want);
+    if (inputs.wantSchemaName) {
+      const mapConfig = vi.mocked(map).mock.calls[0][2];
+      expect(mapConfig.responseFormat?.json_schema?.name).toBe(inputs.wantSchemaName);
+    }
+    if (inputs.wantFirstListContains) {
+      const list = vi.mocked(map).mock.calls[0][0];
+      expect(list[0]).toContain(inputs.wantFirstListContains);
+    }
   },
 });

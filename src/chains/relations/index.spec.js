@@ -9,7 +9,7 @@ import relationItem, {
 } from './index.js';
 import llm from '../../lib/llm/index.js';
 import map from '../map/index.js';
-import { runTable, equals, partial, throws } from '../../lib/examples-runner/index.js';
+import { runTable } from '../../lib/examples-runner/index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
   jsonSchema: (name, schema) => ({ type: 'json_schema', json_schema: { name, schema } }),
@@ -44,15 +44,17 @@ vi.mock('../../lib/parallel-batch/index.js', () => ({
 
 vi.mock('../map/index.js', () => ({ default: vi.fn() }));
 
-// ─── relationSpec ─────────────────────────────────────────────────────────
+// ─── relationSpec ────────────────────────────────────────────────────────
 
 runTable({
   describe: 'relationSpec',
   examples: [
     {
       name: 'generates spec from string instructions',
-      inputs: { instructions: 'Extract causal relationships' },
-      check: equals('Extract subject-predicate-object relationships from text'),
+      inputs: {
+        instructions: 'Extract causal relationships',
+        want: 'Extract subject-predicate-object relationships from text',
+      },
     },
     {
       name: 'handles object instructions with entities and predicates',
@@ -62,14 +64,15 @@ runTable({
           entities: [{ name: 'Apple', canonical: 'Apple Inc.' }],
           predicates: ['manages', 'reports to'],
         },
+        want: 'Extract subject-predicate-object relationships from text',
       },
-      check: equals('Extract subject-predicate-object relationships from text'),
     },
   ],
   process: ({ instructions }) => relationSpec(instructions),
+  expects: ({ result, inputs }) => expect(result).toEqual(inputs.want),
 });
 
-// ─── relationItem ─────────────────────────────────────────────────────────
+// ─── relationItem ────────────────────────────────────────────────────────
 
 runTable({
   describe: 'relationItem',
@@ -80,76 +83,80 @@ runTable({
         text: 'Amazon acquired Whole Foods for $13.7 billion.',
         instructions: 'Extract acquisitions',
       },
-      check: ({ result }) => expect(result.length).toBeGreaterThan(0),
     },
   ],
   process: ({ text, instructions }) => relationItem(text, instructions),
+  expects: ({ result }) => expect(result.length).toBeGreaterThan(0),
 });
 
-// ─── relationInstructions ─────────────────────────────────────────────────
+// ─── relationInstructions ────────────────────────────────────────────────
 
 runTable({
   describe: 'relationInstructions',
   examples: [
     {
       name: 'returns instruction bundle with spec',
-      inputs: { spec: 'Relation specification' },
-      check: ({ result }) => {
-        expect(result.text).toContain('relation specification');
-        expect(result.spec).toBe('Relation specification');
+      inputs: {
+        spec: 'Relation specification',
+        wantTextContains: 'relation specification',
       },
     },
     {
       name: 'passes through additional context keys',
-      inputs: { spec: 'spec', entityContext: 'known entities' },
-      check: partial({ entityContext: 'known entities' }),
+      inputs: {
+        spec: 'spec',
+        entityContext: 'known entities',
+        want: { entityContext: 'known entities' },
+      },
     },
   ],
   process: (params) => relationInstructions(params),
+  expects: ({ result, inputs }) => {
+    if (inputs.wantTextContains) {
+      expect(result.text).toContain(inputs.wantTextContains);
+      expect(result.spec).toBe(inputs.spec);
+    }
+    if ('want' in inputs) expect(result).toMatchObject(inputs.want);
+  },
 });
 
-// ─── parseRDFLiteral ──────────────────────────────────────────────────────
+// ─── parseRDFLiteral ─────────────────────────────────────────────────────
 
 runTable({
   describe: 'parseRDFLiteral',
   examples: [
-    { name: 'integer', inputs: { value: '42^^xsd:integer' }, check: equals(42) },
-    { name: 'negative integer', inputs: { value: '-100^^xsd:int' }, check: equals(-100) },
-    { name: 'decimal', inputs: { value: '3.14^^xsd:decimal' }, check: equals(3.14) },
-    { name: 'double', inputs: { value: '1.5e10^^xsd:double' }, check: equals(1.5e10) },
-    { name: 'true boolean', inputs: { value: 'true^^xsd:boolean' }, check: equals(true) },
-    { name: 'false boolean', inputs: { value: 'false^^xsd:boolean' }, check: equals(false) },
-    {
-      name: 'string',
-      inputs: { value: 'hello world^^xsd:string' },
-      check: equals('hello world'),
-    },
+    { name: 'integer', inputs: { value: '42^^xsd:integer', want: 42 } },
+    { name: 'negative integer', inputs: { value: '-100^^xsd:int', want: -100 } },
+    { name: 'decimal', inputs: { value: '3.14^^xsd:decimal', want: 3.14 } },
+    { name: 'double', inputs: { value: '1.5e10^^xsd:double', want: 1.5e10 } },
+    { name: 'true boolean', inputs: { value: 'true^^xsd:boolean', want: true } },
+    { name: 'false boolean', inputs: { value: 'false^^xsd:boolean', want: false } },
+    { name: 'string', inputs: { value: 'hello world^^xsd:string', want: 'hello world' } },
     {
       name: 'date literal',
-      inputs: { value: '2024-01-15^^xsd:date' },
-      check: ({ result }) => {
-        expect(result instanceof Date).toBe(true);
-        expect(result.toISOString()).toBe('2024-01-15T00:00:00.000Z');
-      },
+      inputs: { value: '2024-01-15^^xsd:date', wantIso: '2024-01-15T00:00:00.000Z' },
     },
     {
       name: 'dateTime literal',
-      inputs: { value: '2024-01-15T14:30:00Z^^xsd:dateTime' },
-      check: ({ result }) => expect(result.toISOString()).toBe('2024-01-15T14:30:00.000Z'),
+      inputs: { value: '2024-01-15T14:30:00Z^^xsd:dateTime', wantIso: '2024-01-15T14:30:00.000Z' },
     },
-    {
-      name: 'leaves plain string unchanged',
-      inputs: { value: 'Apple Inc.' },
-      check: equals('Apple Inc.'),
-    },
-    { name: 'leaves number unchanged', inputs: { value: 42 }, check: equals(42) },
-    { name: 'leaves null unchanged', inputs: { value: null }, check: equals(null) },
-    { name: 'leaves undefined unchanged', inputs: { value: undefined }, check: equals(undefined) },
+    { name: 'leaves plain string unchanged', inputs: { value: 'Apple Inc.', want: 'Apple Inc.' } },
+    { name: 'leaves number unchanged', inputs: { value: 42, want: 42 } },
+    { name: 'leaves null unchanged', inputs: { value: null, want: null } },
+    { name: 'leaves undefined unchanged', inputs: { value: undefined, want: undefined } },
   ],
   process: ({ value }) => parseRDFLiteral(value),
+  expects: ({ result, inputs }) => {
+    if (inputs.wantIso) {
+      expect(result instanceof Date).toBe(true);
+      expect(result.toISOString()).toBe(inputs.wantIso);
+      return;
+    }
+    expect(result).toEqual(inputs.want);
+  },
 });
 
-// ─── parseRelations ───────────────────────────────────────────────────────
+// ─── parseRelations ──────────────────────────────────────────────────────
 
 runTable({
   describe: 'parseRelations',
@@ -167,12 +174,11 @@ runTable({
             metadata: { price: '3000000000^^xsd:decimal', year: '2014^^xsd:integer' },
           },
         ],
-      },
-      check: ({ result }) => {
-        expect(result[0].object).toBe(383000000000);
-        expect(result[1].object).toBe(true);
-        expect(result[2].metadata.price).toBe(3000000000);
-        expect(result[2].metadata.year).toBe(2014);
+        wantParsed: {
+          0: { object: 383000000000 },
+          1: { object: true },
+          2: { metadata: { price: 3000000000, year: 2014 } },
+        },
       },
     },
     {
@@ -181,25 +187,31 @@ runTable({
         relations: [
           { subject: 'Apple Inc.', predicate: 'competes with', object: 'Microsoft Corporation' },
         ],
+        wantParsed: { 0: { object: 'Microsoft Corporation' } },
       },
-      check: ({ result }) => expect(result[0].object).toBe('Microsoft Corporation'),
     },
   ],
   process: ({ relations }) => parseRelations(relations),
+  expects: ({ result, inputs }) => {
+    for (const [idx, shape] of Object.entries(inputs.wantParsed)) {
+      expect(result[Number(idx)]).toMatchObject(shape);
+    }
+  },
 });
 
-// ─── mapRelationsParallel ─────────────────────────────────────────────────
+// ─── mapRelationsParallel ────────────────────────────────────────────────
 
 runTable({
   describe: 'mapRelationsParallel',
   examples: [
     {
       name: 'extracts relations per text and returns aligned arrays',
-      inputs: { texts: ['First text.', 'Second text.'], instructions: 'Extract' },
-      check: ({ result }) => {
-        expect(result).toHaveLength(2);
-        expect(Array.isArray(result[0])).toBe(true);
-        expect(result[0][0]).toMatchObject({ subject: expect.any(String) });
+      inputs: {
+        texts: ['First text.', 'Second text.'],
+        instructions: 'Extract',
+        wantLength: 2,
+        wantFirstIsArray: true,
+        wantFirstFirstHasSubject: true,
       },
     },
     {
@@ -207,28 +219,40 @@ runTable({
       inputs: {
         texts: ['t1', 't2'],
         instructions: { text: 'x', spec: 'reused-spec' },
-        preMock: () => vi.mocked(llm).mockClear(),
-      },
-      check: () => {
-        const specCalls = vi
-          .mocked(llm)
-          .mock.calls.filter(([prompt]) => prompt.includes('Analyze these relation extraction'));
-        expect(specCalls).toHaveLength(0);
+        mock: () => vi.mocked(llm).mockClear(),
+        wantNoSpecCalls: true,
       },
     },
     {
       name: 'throws when texts is not an array',
-      inputs: { texts: 'not-an-array', instructions: 'x' },
-      check: throws(/must be an array/),
+      inputs: { texts: 'not-an-array', instructions: 'x', throws: /must be an array/ },
     },
   ],
-  process: async ({ texts, instructions, preMock }) => {
-    if (preMock) preMock();
+  process: async ({ texts, instructions, mock }) => {
+    if (mock) mock();
     return mapRelationsParallel(texts, instructions);
+  },
+  expects: ({ result, error, inputs }) => {
+    if ('throws' in inputs) {
+      expect(error?.message).toMatch(inputs.throws);
+      return;
+    }
+    if (error) throw error;
+    if ('wantLength' in inputs) expect(result).toHaveLength(inputs.wantLength);
+    if (inputs.wantFirstIsArray) expect(Array.isArray(result[0])).toBe(true);
+    if (inputs.wantFirstFirstHasSubject) {
+      expect(result[0][0]).toMatchObject({ subject: expect.any(String) });
+    }
+    if (inputs.wantNoSpecCalls) {
+      const specCalls = vi
+        .mocked(llm)
+        .mock.calls.filter(([prompt]) => prompt.includes('Analyze these relation extraction'));
+      expect(specCalls).toHaveLength(0);
+    }
   },
 });
 
-// ─── mapRelations ─────────────────────────────────────────────────────────
+// ─── mapRelations ────────────────────────────────────────────────────────
 
 runTable({
   describe: 'mapRelations',
@@ -238,20 +262,15 @@ runTable({
       inputs: {
         texts: ['t1', 't2'],
         instructions: { text: 'x', spec: 'reused' },
-        preMock: () =>
+        mock: () =>
           vi
             .mocked(map)
             .mockResolvedValueOnce([
               { relations: [{ subject: 'A', predicate: 'is', object: 'thing' }] },
               { relations: [] },
             ]),
-      },
-      check: ({ result }) => {
-        expect(result).toHaveLength(2);
-        expect(result[0]).toEqual([{ subject: 'A', predicate: 'is', object: 'thing' }]);
-        expect(result[1]).toEqual([]);
-        const mapConfig = vi.mocked(map).mock.calls[0][2];
-        expect(mapConfig.responseFormat?.json_schema?.name).toBe('relation_batch');
+        want: [[{ subject: 'A', predicate: 'is', object: 'thing' }], []],
+        wantSchemaName: 'relation_batch',
       },
     },
     {
@@ -259,23 +278,37 @@ runTable({
       inputs: {
         texts: ['t1'],
         instructions: { text: 'x', spec: 'reused' },
-        preMock: () =>
+        mock: () =>
           vi
             .mocked(map)
             .mockResolvedValueOnce([
               { relations: [{ subject: 'X', predicate: 'count', object: '42^^xsd:integer' }] },
             ]),
+        wantParsedObject: 42,
       },
-      check: ({ result }) => expect(result[0][0].object).toBe(42),
     },
     {
       name: 'throws when texts is not an array',
-      inputs: { texts: 'not-an-array', instructions: 'x' },
-      check: throws(/must be an array/),
+      inputs: { texts: 'not-an-array', instructions: 'x', throws: /must be an array/ },
     },
   ],
-  process: async ({ texts, instructions, preMock }) => {
-    if (preMock) preMock();
+  process: async ({ texts, instructions, mock }) => {
+    if (mock) mock();
     return mapRelations(texts, instructions);
+  },
+  expects: ({ result, error, inputs }) => {
+    if ('throws' in inputs) {
+      expect(error?.message).toMatch(inputs.throws);
+      return;
+    }
+    if (error) throw error;
+    if ('want' in inputs) expect(result).toEqual(inputs.want);
+    if (inputs.wantSchemaName) {
+      const mapConfig = vi.mocked(map).mock.calls[0][2];
+      expect(mapConfig.responseFormat?.json_schema?.name).toBe(inputs.wantSchemaName);
+    }
+    if ('wantParsedObject' in inputs) {
+      expect(result[0][0].object).toBe(inputs.wantParsedObject);
+    }
   },
 });

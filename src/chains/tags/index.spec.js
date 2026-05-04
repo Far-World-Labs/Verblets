@@ -1,6 +1,6 @@
 import { vi, beforeEach, expect } from 'vitest';
 import tagItem, { tagSpec, mapTags, tagInstructions } from './index.js';
-import { runTable, equals, all, partial } from '../../lib/examples-runner/index.js';
+import { runTable } from '../../lib/examples-runner/index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(),
@@ -23,7 +23,7 @@ const mockVocabulary = {
   facet: 'task categories',
 };
 
-// ─── tagSpec ──────────────────────────────────────────────────────────────
+// ─── tagSpec ─────────────────────────────────────────────────────────────
 
 runTable({
   describe: 'tagSpec',
@@ -32,25 +32,29 @@ runTable({
       name: 'generates tag specification from instructions',
       inputs: {
         instructions: 'Tag by priority and type',
-        preMock: () => llm.mockResolvedValueOnce('Tag items based on urgency and category'),
+        mock: () => llm.mockResolvedValueOnce('Tag items based on urgency and category'),
+        want: 'Tag items based on urgency and category',
+        wantPromptContains: 'Tag by priority and type',
+        wantSystemContains: 'tag specification generator',
       },
-      check: all(equals('Tag items based on urgency and category'), () =>
-        expect(llm).toHaveBeenCalledWith(
-          expect.stringContaining('Tag by priority and type'),
-          expect.objectContaining({
-            systemPrompt: expect.stringContaining('tag specification generator'),
-          })
-        )
-      ),
     },
   ],
-  process: async ({ instructions, preMock }) => {
-    if (preMock) preMock();
+  process: async ({ instructions, mock }) => {
+    if (mock) mock();
     return tagSpec(instructions);
+  },
+  expects: ({ result, inputs }) => {
+    expect(result).toEqual(inputs.want);
+    expect(llm).toHaveBeenCalledWith(
+      expect.stringContaining(inputs.wantPromptContains),
+      expect.objectContaining({
+        systemPrompt: expect.stringContaining(inputs.wantSystemContains),
+      })
+    );
   },
 });
 
-// ─── tagItem ──────────────────────────────────────────────────────────────
+// ─── tagItem ─────────────────────────────────────────────────────────────
 
 runTable({
   describe: 'tagItem',
@@ -60,19 +64,23 @@ runTable({
       inputs: {
         item: 'Call mom',
         bundle: { text: 'Tag personal items', vocabulary: mockVocabulary },
-        preMock: () =>
-          llm.mockResolvedValueOnce('Generated spec').mockResolvedValueOnce(['personal']),
+        mock: () => llm.mockResolvedValueOnce('Generated spec').mockResolvedValueOnce(['personal']),
+        want: ['personal'],
+        wantLlmCalls: 2,
       },
-      check: all(equals(['personal']), () => expect(llm).toHaveBeenCalledTimes(2)),
     },
   ],
-  process: async ({ item, bundle, preMock }) => {
-    if (preMock) preMock();
+  process: async ({ item, bundle, mock }) => {
+    if (mock) mock();
     return tagItem(item, bundle);
+  },
+  expects: ({ result, inputs }) => {
+    expect(result).toEqual(inputs.want);
+    expect(llm).toHaveBeenCalledTimes(inputs.wantLlmCalls);
   },
 });
 
-// ─── mapTags ──────────────────────────────────────────────────────────────
+// ─── mapTags ─────────────────────────────────────────────────────────────
 
 runTable({
   describe: 'mapTags',
@@ -82,54 +90,73 @@ runTable({
       inputs: {
         items: ['Task 1', 'Task 2', 'Task 3'],
         bundle: { text: 'Tag all tasks', vocabulary: mockVocabulary },
-        preMock: () => {
+        mock: () => {
           llm.mockResolvedValueOnce('Generated spec');
           map.mockResolvedValueOnce([['urgent'], ['financial', 'personal'], []]);
         },
+        want: [['urgent'], ['financial', 'personal'], []],
+        wantLlmCalls: 1,
       },
-      check: all(equals([['urgent'], ['financial', 'personal'], []]), () => {
-        expect(llm).toHaveBeenCalledTimes(1);
-        expect(map).toHaveBeenCalledWith(
-          ['Task 1', 'Task 2', 'Task 3'],
-          expect.any(String),
-          expect.objectContaining({
-            responseFormat: expect.objectContaining({ type: 'json_schema' }),
-          })
-        );
-      }),
     },
   ],
-  process: async ({ items, bundle, preMock }) => {
-    if (preMock) preMock();
+  process: async ({ items, bundle, mock }) => {
+    if (mock) mock();
     return mapTags(items, bundle);
+  },
+  expects: ({ result, inputs }) => {
+    expect(result).toEqual(inputs.want);
+    expect(llm).toHaveBeenCalledTimes(inputs.wantLlmCalls);
+    expect(map).toHaveBeenCalledWith(
+      inputs.items,
+      expect.any(String),
+      expect.objectContaining({
+        responseFormat: expect.objectContaining({ type: 'json_schema' }),
+      })
+    );
   },
 });
 
-// ─── tagInstructions ──────────────────────────────────────────────────────
+// ─── tagInstructions ─────────────────────────────────────────────────────
 
 runTable({
   describe: 'tagInstructions',
   examples: [
     {
       name: 'returns instruction bundle with spec and vocabulary',
-      inputs: { spec: 'Test spec', vocabulary: mockVocabulary },
-      check: ({ result, inputs }) => {
-        expect(result.text).toContain('tag specification');
-        expect(result.spec).toBe(inputs.spec);
-        expect(result.vocabulary).toBe(inputs.vocabulary);
-        expect(result.vocabularyMode).toBe('strict');
+      inputs: {
+        spec: 'Test spec',
+        vocabulary: mockVocabulary,
+        wantTextContains: 'tag specification',
+        wantBundle: true,
       },
     },
     {
       name: 'allows vocabulary mode override',
-      inputs: { spec: 'Test spec', vocabulary: mockVocabulary, vocabularyMode: 'open' },
-      check: partial({ vocabularyMode: 'open' }),
+      inputs: {
+        spec: 'Test spec',
+        vocabulary: mockVocabulary,
+        vocabularyMode: 'open',
+        want: { vocabularyMode: 'open' },
+      },
     },
     {
       name: 'passes through additional context keys',
-      inputs: { spec: 'spec', vocabulary: mockVocabulary, domain: 'customer support' },
-      check: partial({ domain: 'customer support' }),
+      inputs: {
+        spec: 'spec',
+        vocabulary: mockVocabulary,
+        domain: 'customer support',
+        want: { domain: 'customer support' },
+      },
     },
   ],
   process: (params) => tagInstructions(params),
+  expects: ({ result, inputs }) => {
+    if (inputs.wantBundle) {
+      expect(result.text).toContain(inputs.wantTextContains);
+      expect(result.spec).toBe(inputs.spec);
+      expect(result.vocabulary).toBe(inputs.vocabulary);
+      expect(result.vocabularyMode).toBe('strict');
+    }
+    if ('want' in inputs) expect(result).toMatchObject(inputs.want);
+  },
 });

@@ -7,7 +7,7 @@ import calibrateItem, {
 } from './index.js';
 import map from '../map/index.js';
 import llm from '../../lib/llm/index.js';
-import { runTable, equals, partial, all, throws } from '../../lib/examples-runner/index.js';
+import { runTable } from '../../lib/examples-runner/index.js';
 
 vi.mock('../../lib/llm/index.js', async (importOriginal) => ({
   ...(await importOriginal()),
@@ -51,110 +51,126 @@ const makeScan = (categories, scores) => ({
 
 beforeEach(() => vi.clearAllMocks());
 
-// ─── calibrateSpec ────────────────────────────────────────────────────────
-
-const calibrateSpecExamples = [
-  {
-    name: 'computes statistics from scans and passes to LLM with schema',
-    inputs: {
-      scans: [
-        makeScan(['pii-name', 'financial-card'], [0.9, 0.8]),
-        makeScan(['pii-name'], [0.7]),
-        makeScan([], []),
-      ],
-      preMock: () => vi.mocked(llm).mockResolvedValueOnce(mockSpec),
-    },
-    check: all(equals(mockSpec), () => {
-      const [prompt, options] = vi.mocked(llm).mock.calls[0];
-      expect(prompt).toContain('<scan-statistics>');
-      expect(prompt).toContain('"totalScans": 3');
-      expect(prompt).toContain('"flaggedScans": 2');
-      expect(prompt).toContain('"flaggedPercent": 67');
-      expect(prompt).toContain('"pii-name"');
-      expect(prompt).toContain('"financial-card"');
-      expect(prompt).not.toContain('<classification-instructions>');
-      expect(options.systemPrompt).toContain('calibration specification generator');
-    }),
-  },
-  {
-    name: 'includes instructions when provided',
-    inputs: {
-      scans: [makeScan(['pii-name'], [0.9])],
-      options: { instructions: 'Classify privacy risk in medical records' },
-      preMock: () => vi.mocked(llm).mockResolvedValueOnce(mockSpec),
-    },
-    check: () => {
-      const [prompt] = vi.mocked(llm).mock.calls[0];
-      expect(prompt).toContain('<classification-instructions>');
-      expect(prompt).toContain('Classify privacy risk in medical records');
-    },
-  },
-  {
-    name: 'handles empty scans array',
-    inputs: { scans: [], preMock: () => vi.mocked(llm).mockResolvedValueOnce(mockSpec) },
-    check: () => {
-      const [prompt] = vi.mocked(llm).mock.calls[0];
-      expect(prompt).toContain('"totalScans": 0');
-      expect(prompt).toContain('"flaggedScans": 0');
-      expect(prompt).toContain('"flaggedPercent": 0');
-    },
-  },
-  {
-    name: 'sensitivity posture markers',
-    vary: {
-      sensitivity: [
-        { value: 'low', marker: 'conservative', shouldContain: true },
-        { value: 'high', marker: 'sensitive', shouldContain: true },
-        { value: undefined, marker: 'Classification posture', shouldContain: false },
-      ],
-    },
-    inputs: ({ sensitivity }) => ({
-      scans: [makeScan(['pii-name'], [0.9])],
-      options: sensitivity.value ? { sensitivity: sensitivity.value } : undefined,
-      preMock: () => vi.mocked(llm).mockResolvedValueOnce(mockSpec),
-      _expectation: sensitivity,
-    }),
-    check: ({ inputs }) => {
-      const [prompt] = vi.mocked(llm).mock.calls[0];
-      const { marker, shouldContain } = inputs._expectation;
-      if (shouldContain) expect(prompt).toContain(marker);
-      else expect(prompt).not.toContain(marker);
-    },
-  },
-];
+// ─── calibrateSpec ───────────────────────────────────────────────────────
 
 runTable({
   describe: 'calibrateSpec',
-  examples: calibrateSpecExamples,
-  process: async ({ scans, options, preMock }) => {
-    if (preMock) preMock();
+  examples: [
+    {
+      name: 'computes statistics from scans and passes to LLM with schema',
+      inputs: {
+        scans: [
+          makeScan(['pii-name', 'financial-card'], [0.9, 0.8]),
+          makeScan(['pii-name'], [0.7]),
+          makeScan([], []),
+        ],
+        mock: () => vi.mocked(llm).mockResolvedValueOnce(mockSpec),
+        want: mockSpec,
+        wantPromptContains: [
+          '<scan-statistics>',
+          '"totalScans": 3',
+          '"flaggedScans": 2',
+          '"flaggedPercent": 67',
+          '"pii-name"',
+          '"financial-card"',
+        ],
+        wantPromptNotContains: ['<classification-instructions>'],
+        wantSystemContains: 'calibration specification generator',
+      },
+    },
+    {
+      name: 'includes instructions when provided',
+      inputs: {
+        scans: [makeScan(['pii-name'], [0.9])],
+        options: { instructions: 'Classify privacy risk in medical records' },
+        mock: () => vi.mocked(llm).mockResolvedValueOnce(mockSpec),
+        wantPromptContains: [
+          '<classification-instructions>',
+          'Classify privacy risk in medical records',
+        ],
+      },
+    },
+    {
+      name: 'handles empty scans array',
+      inputs: {
+        scans: [],
+        mock: () => vi.mocked(llm).mockResolvedValueOnce(mockSpec),
+        wantPromptContains: ['"totalScans": 0', '"flaggedScans": 0', '"flaggedPercent": 0'],
+      },
+    },
+    {
+      name: 'sensitivity=low embeds conservative posture',
+      inputs: {
+        scans: [makeScan(['pii-name'], [0.9])],
+        options: { sensitivity: 'low' },
+        mock: () => vi.mocked(llm).mockResolvedValueOnce(mockSpec),
+        wantPromptContains: ['conservative'],
+      },
+    },
+    {
+      name: 'sensitivity=high embeds sensitive posture',
+      inputs: {
+        scans: [makeScan(['pii-name'], [0.9])],
+        options: { sensitivity: 'high' },
+        mock: () => vi.mocked(llm).mockResolvedValueOnce(mockSpec),
+        wantPromptContains: ['sensitive'],
+      },
+    },
+    {
+      name: 'no sensitivity → no posture marker',
+      inputs: {
+        scans: [makeScan(['pii-name'], [0.9])],
+        mock: () => vi.mocked(llm).mockResolvedValueOnce(mockSpec),
+        wantPromptNotContains: ['Classification posture'],
+      },
+    },
+  ],
+  process: async ({ scans, options, mock }) => {
+    if (mock) mock();
     return calibrateSpec(scans, options);
+  },
+  expects: ({ result, inputs }) => {
+    if ('want' in inputs) expect(result).toEqual(inputs.want);
+    const [prompt, options] = vi.mocked(llm).mock.calls[0];
+    if (inputs.wantPromptContains) {
+      for (const fragment of inputs.wantPromptContains) expect(prompt).toContain(fragment);
+    }
+    if (inputs.wantPromptNotContains) {
+      for (const fragment of inputs.wantPromptNotContains) {
+        expect(prompt).not.toContain(fragment);
+      }
+    }
+    if (inputs.wantSystemContains) {
+      expect(options.systemPrompt).toContain(inputs.wantSystemContains);
+    }
   },
 });
 
-// ─── calibrateInstructions ────────────────────────────────────────────────
+// ─── calibrateInstructions ───────────────────────────────────────────────
 
 runTable({
   describe: 'calibrateInstructions',
   examples: [
     {
       name: 'returns instruction bundle with spec',
-      inputs: { spec: mockSpec },
-      check: ({ result, inputs }) => {
-        expect(result.text).toContain('calibration specification');
-        expect(result.spec).toBe(inputs.spec);
-      },
+      inputs: { spec: mockSpec, wantTextContains: 'calibration specification' },
     },
     {
       name: 'passes through additional context keys',
-      inputs: { spec: mockSpec, domain: 'medical records' },
-      check: partial({ domain: 'medical records' }),
+      inputs: { spec: mockSpec, domain: 'medical records', want: { domain: 'medical records' } },
     },
   ],
   process: (params) => calibrateInstructions(params),
+  expects: ({ result, inputs }) => {
+    if (inputs.wantTextContains) {
+      expect(result.text).toContain(inputs.wantTextContains);
+      expect(result.spec).toBe(inputs.spec);
+    }
+    if ('want' in inputs) expect(result).toMatchObject(inputs.want);
+  },
 });
 
-// ─── calibrateItem ────────────────────────────────────────────────────────
+// ─── calibrateItem ───────────────────────────────────────────────────────
 
 runTable({
   describe: 'calibrateItem',
@@ -164,40 +180,45 @@ runTable({
       inputs: {
         scan: makeScan(['pii-name', 'financial-card'], [0.9, 0.8]),
         instructions: 'Classify privacy risk',
-        preMock: () =>
+        mock: () =>
           vi.mocked(llm).mockResolvedValueOnce(mockSpec).mockResolvedValueOnce(mockResult),
+        want: mockResult,
+        wantLlmCalls: 2,
+        wantNthPromptContains: {
+          1: ['<classification-instructions>', 'Classify privacy risk'],
+          2: ['<calibration-specification>', '<scan-result>'],
+        },
       },
-      check: all(equals(mockResult), () => {
-        expect(llm).toHaveBeenCalledTimes(2);
-        const [specPrompt] = vi.mocked(llm).mock.calls[0];
-        expect(specPrompt).toContain('<classification-instructions>');
-        expect(specPrompt).toContain('Classify privacy risk');
-        const [applyPrompt] = vi.mocked(llm).mock.calls[1];
-        expect(applyPrompt).toContain('<calibration-specification>');
-        expect(applyPrompt).toContain('<scan-result>');
-      }),
     },
     {
       name: 'skips spec generation when spec provided via instruction bundle',
       inputs: {
         scan: makeScan(['pii-name'], [0.9]),
         instructions: { text: 'Classify', spec: mockSpec },
-        preMock: () => vi.mocked(llm).mockResolvedValueOnce(mockResult),
+        mock: () => vi.mocked(llm).mockResolvedValueOnce(mockResult),
+        want: mockResult,
+        wantLlmCalls: 1,
+        wantNthPromptContains: { 1: ['<calibration-specification>'] },
       },
-      check: all(equals(mockResult), () => {
-        expect(llm).toHaveBeenCalledTimes(1);
-        const [applyPrompt] = vi.mocked(llm).mock.calls[0];
-        expect(applyPrompt).toContain('<calibration-specification>');
-      }),
     },
   ],
-  process: async ({ scan, instructions, preMock }) => {
-    if (preMock) preMock();
+  process: async ({ scan, instructions, mock }) => {
+    if (mock) mock();
     return calibrateItem(scan, instructions);
+  },
+  expects: ({ result, inputs }) => {
+    expect(result).toEqual(inputs.want);
+    expect(llm).toHaveBeenCalledTimes(inputs.wantLlmCalls);
+    if (inputs.wantNthPromptContains) {
+      for (const [n, fragments] of Object.entries(inputs.wantNthPromptContains)) {
+        const [prompt] = vi.mocked(llm).mock.calls[Number(n) - 1];
+        for (const fragment of fragments) expect(prompt).toContain(fragment);
+      }
+    }
   },
 });
 
-// ─── mapCalibrateParallel ─────────────────────────────────────────────────
+// ─── mapCalibrateParallel ────────────────────────────────────────────────
 
 runTable({
   describe: 'mapCalibrateParallel',
@@ -207,27 +228,27 @@ runTable({
       inputs: {
         scans: [makeScan(['pii-name'], [0.9]), makeScan(['financial-card'], [0.8])],
         instructions: 'Classify privacy risk',
-        preMock: () =>
+        mock: () =>
           vi
             .mocked(llm)
             .mockResolvedValueOnce(mockSpec)
             .mockResolvedValueOnce(mockResult)
             .mockResolvedValueOnce(mockResult),
+        want: [mockResult, mockResult],
+        wantLlmCalls: 3,
+        wantFirstPromptContains: ['"totalScans": 2'],
       },
-      check: all(equals([mockResult, mockResult]), () => {
-        expect(llm).toHaveBeenCalledTimes(3);
-        expect(vi.mocked(llm).mock.calls[0][0]).toContain('"totalScans": 2');
-      }),
     },
     {
       name: 'skips spec generation when spec provided in bundle',
       inputs: {
         scans: [makeScan(['pii-name'], [0.9]), makeScan(['pii-name'], [0.7])],
         instructions: { text: 'Classify', spec: mockSpec },
-        preMock: () =>
+        mock: () =>
           vi.mocked(llm).mockResolvedValueOnce(mockResult).mockResolvedValueOnce(mockResult),
+        want: [mockResult, mockResult],
+        wantLlmCalls: 2,
       },
-      check: all(equals([mockResult, mockResult]), () => expect(llm).toHaveBeenCalledTimes(2)),
     },
     {
       name: 'returns partial outcome when some apply calls fail',
@@ -236,16 +257,11 @@ runTable({
         instructions: { text: 'x', spec: mockSpec },
         options: { maxAttempts: 1 },
         withEvents: true,
-        preMock: () =>
+        mock: () =>
           vi.mocked(llm).mockResolvedValueOnce(mockResult).mockRejectedValueOnce(new Error('boom')),
-      },
-      check: ({ result }) => {
-        expect(result.value[0]).toEqual(mockResult);
-        expect(result.value[1]).toBeUndefined();
-        const complete = result.events.find(
-          (e) => e.event === 'chain:complete' && e.step === 'calibrate:parallel'
-        );
-        expect(complete).toMatchObject({ outcome: 'partial', failedItems: 1 });
+        wantValue: [mockResult, undefined],
+        wantOutcome: 'partial',
+        wantFailedItems: 1,
       },
     },
     {
@@ -254,13 +270,13 @@ runTable({
         scans: [makeScan(['pii-name'], [0.9])],
         instructions: { text: 'x', spec: mockSpec },
         options: { maxAttempts: 1 },
-        preMock: () => vi.mocked(llm).mockRejectedValue(new Error('boom')),
+        mock: () => vi.mocked(llm).mockRejectedValue(new Error('boom')),
+        throws: /all 1 scans failed/,
       },
-      check: throws(/all 1 scans failed/),
     },
   ],
-  process: async ({ scans, instructions, options, preMock, withEvents }) => {
-    if (preMock) preMock();
+  process: async ({ scans, instructions, options, mock, withEvents }) => {
+    if (mock) mock();
     if (withEvents) {
       const events = [];
       const value = await mapCalibrateParallel(scans, instructions, {
@@ -271,9 +287,35 @@ runTable({
     }
     return mapCalibrateParallel(scans, instructions, options);
   },
+  expects: ({ result, error, inputs }) => {
+    if ('throws' in inputs) {
+      expect(error?.message).toMatch(inputs.throws);
+      return;
+    }
+    if (error) throw error;
+    if ('want' in inputs) expect(result).toEqual(inputs.want);
+    if ('wantLlmCalls' in inputs) expect(llm).toHaveBeenCalledTimes(inputs.wantLlmCalls);
+    if (inputs.wantFirstPromptContains) {
+      const prompt = vi.mocked(llm).mock.calls[0][0];
+      for (const fragment of inputs.wantFirstPromptContains) expect(prompt).toContain(fragment);
+    }
+    if (inputs.wantValue) {
+      expect(result.value[0]).toEqual(inputs.wantValue[0]);
+      expect(result.value[1]).toBeUndefined();
+    }
+    if (inputs.wantOutcome) {
+      const complete = result.events.find(
+        (e) => e.event === 'chain:complete' && e.step === 'calibrate:parallel'
+      );
+      expect(complete).toMatchObject({
+        outcome: inputs.wantOutcome,
+        ...(inputs.wantFailedItems !== undefined && { failedItems: inputs.wantFailedItems }),
+      });
+    }
+  },
 });
 
-// ─── mapCalibrate ─────────────────────────────────────────────────────────
+// ─── mapCalibrate ────────────────────────────────────────────────────────
 
 runTable({
   describe: 'mapCalibrate',
@@ -283,26 +325,22 @@ runTable({
       inputs: {
         scans: [makeScan(['pii-name'], [0.9]), makeScan(['pii-name'], [0.8])],
         instructions: { text: 'x', spec: mockSpec },
-        preMock: () => vi.mocked(map).mockResolvedValueOnce([mockResult, mockResult]),
+        mock: () => vi.mocked(map).mockResolvedValueOnce([mockResult, mockResult]),
+        want: [mockResult, mockResult],
+        wantSchemaName: 'calibrate_batch',
       },
-      check: all(equals([mockResult, mockResult]), () => {
-        const mapConfig = vi.mocked(map).mock.calls[0][2];
-        expect(mapConfig.responseFormat?.json_schema?.name).toBe('calibrate_batch');
-      }),
     },
     {
       name: 'generates spec once when not bundled',
       inputs: {
         scans: [makeScan(['pii-name'], [0.9])],
         instructions: 'classify privacy risk',
-        preMock: () => {
+        mock: () => {
           vi.mocked(llm).mockResolvedValueOnce(mockSpec);
           vi.mocked(map).mockResolvedValueOnce([mockResult]);
         },
-      },
-      check: () => {
-        expect(llm).toHaveBeenCalledTimes(1);
-        expect(vi.mocked(map).mock.calls[0][1]).toContain('<calibration-specification>');
+        wantLlmCalls: 1,
+        wantMapInstructionsContains: '<calibration-specification>',
       },
     },
     {
@@ -311,20 +349,14 @@ runTable({
         scans: [makeScan(['pii-name'], [0.9]), makeScan(['pii-name'], [0.8])],
         instructions: { text: 'x', spec: mockSpec },
         withEvents: true,
-        preMock: () => vi.mocked(map).mockResolvedValueOnce([mockResult, undefined]),
-      },
-      check: ({ result }) => {
-        expect(result.value[0]).toEqual(mockResult);
-        expect(result.value[1]).toBeUndefined();
-        const complete = result.events.find(
-          (e) => e.event === 'chain:complete' && e.step === 'calibrate:map'
-        );
-        expect(complete.outcome).toBe('partial');
+        mock: () => vi.mocked(map).mockResolvedValueOnce([mockResult, undefined]),
+        wantValue: [mockResult, undefined],
+        wantOutcome: 'partial',
       },
     },
   ],
-  process: async ({ scans, instructions, preMock, withEvents }) => {
-    if (preMock) preMock();
+  process: async ({ scans, instructions, mock, withEvents }) => {
+    if (mock) mock();
     if (withEvents) {
       const events = [];
       const value = await mapCalibrate(scans, instructions, {
@@ -333,5 +365,26 @@ runTable({
       return { value, events };
     }
     return mapCalibrate(scans, instructions);
+  },
+  expects: ({ result, inputs }) => {
+    if ('want' in inputs) expect(result).toEqual(inputs.want);
+    if ('wantLlmCalls' in inputs) expect(llm).toHaveBeenCalledTimes(inputs.wantLlmCalls);
+    if (inputs.wantSchemaName) {
+      const mapConfig = vi.mocked(map).mock.calls[0][2];
+      expect(mapConfig.responseFormat?.json_schema?.name).toBe(inputs.wantSchemaName);
+    }
+    if (inputs.wantMapInstructionsContains) {
+      expect(vi.mocked(map).mock.calls[0][1]).toContain(inputs.wantMapInstructionsContains);
+    }
+    if (inputs.wantValue) {
+      expect(result.value[0]).toEqual(inputs.wantValue[0]);
+      expect(result.value[1]).toBeUndefined();
+    }
+    if (inputs.wantOutcome) {
+      const complete = result.events.find(
+        (e) => e.event === 'chain:complete' && e.step === 'calibrate:map'
+      );
+      expect(complete.outcome).toBe(inputs.wantOutcome);
+    }
   },
 });

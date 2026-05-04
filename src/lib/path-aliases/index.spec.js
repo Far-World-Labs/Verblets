@@ -9,47 +9,46 @@ vi.mock('../../chains/test-advice/index.js', () => ({ default: vi.fn() }));
 // so deep-equal compares the sets, not the iteration order.
 const sortedEntries = (obj) => Object.entries(obj).toSorted(([a], [b]) => a.localeCompare(b));
 
-const examples = [
-  {
-    name: 'basic usage',
-    inputs: {
-      sequences: ['foo/bar/baz.js', 'foo/biz/baz.js', 'foo/biz/qux.js'],
-    },
-    want: sortedEntries({
-      'foo/bar/baz.js': 'bar/baz.js',
-      'foo/biz/baz.js': 'biz/baz.js',
-      'foo/biz/qux.js': 'qux.js',
-    }),
-  },
-  {
-    name: 'deeper conflict',
-    inputs: {
-      sequences: ['a/y/x/w/v.js', 'b/y/z/w/v.js'],
-      delimiter: '/',
-    },
-    want: sortedEntries({
-      'a/y/x/w/v.js': 'x/w/v.js',
-      'b/y/z/w/v.js': 'z/w/v.js',
-    }),
-  },
-  {
-    name: 'no delimiter conflict',
-    inputs: {
-      sequences: ['192.168.0.1', '192.168.1.1', '10.0.0.1'],
-      delimiter: '.',
-    },
-    want: sortedEntries({
-      '192.168.0.1': '168.0.1',
-      '192.168.1.1': '1.1',
-      '10.0.0.1': '0.0.1',
-    }),
-  },
-];
-
 runTable({
   describe: 'path-aliases',
-  examples,
+  examples: [
+    {
+      name: 'basic usage',
+      inputs: {
+        sequences: ['foo/bar/baz.js', 'foo/biz/baz.js', 'foo/biz/qux.js'],
+        want: sortedEntries({
+          'foo/bar/baz.js': 'bar/baz.js',
+          'foo/biz/baz.js': 'biz/baz.js',
+          'foo/biz/qux.js': 'qux.js',
+        }),
+      },
+    },
+    {
+      name: 'deeper conflict',
+      inputs: {
+        sequences: ['a/y/x/w/v.js', 'b/y/z/w/v.js'],
+        delimiter: '/',
+        want: sortedEntries({
+          'a/y/x/w/v.js': 'x/w/v.js',
+          'b/y/z/w/v.js': 'z/w/v.js',
+        }),
+      },
+    },
+    {
+      name: 'no delimiter conflict',
+      inputs: {
+        sequences: ['192.168.0.1', '192.168.1.1', '10.0.0.1'],
+        delimiter: '.',
+        want: sortedEntries({
+          '192.168.0.1': '168.0.1',
+          '192.168.1.1': '1.1',
+          '10.0.0.1': '0.0.1',
+        }),
+      },
+    },
+  ],
   process: ({ sequences, delimiter }) => sortedEntries(alias(sequences, delimiter)),
+  expects: ({ result, inputs }) => expect(result).toEqual(inputs.want),
 });
 
 // `testAdvice`-driven tests are imperative because they're discovered at

@@ -1,5 +1,5 @@
 import { vi, beforeEach, expect } from 'vitest';
-import { runTable, throws } from '../../lib/examples-runner/index.js';
+import { runTable } from '../../lib/examples-runner/index.js';
 
 vi.mock('../../verblets/commonalities/index.js', () => ({ default: vi.fn() }));
 vi.mock('../../lib/llm/index.js', () => ({
@@ -20,7 +20,7 @@ beforeEach(() => {
   retry.mockImplementation(async (fn) => fn());
 });
 
-// ─── short-circuit returns ────────────────────────────────────────────────
+// ─── short-circuit returns ───────────────────────────────────────────────
 
 runTable({
   describe: 'intersections (short-circuit)',
@@ -29,17 +29,19 @@ runTable({
     { name: 'non-array input', inputs: { input: 'not an array' } },
     { name: 'empty array input', inputs: { input: [] } },
     { name: 'single item input', inputs: { input: ['only one'] } },
-  ].map((row) => ({
-    ...row,
-    check: ({ result }) => {
-      expect(result).toStrictEqual({});
-      expect(callLlm).not.toHaveBeenCalled();
-    },
-  })),
+  ],
   process: ({ input }) => intersections(input),
+  expects: ({ result }) => {
+    expect(result).toEqual({});
+    expect(callLlm).not.toHaveBeenCalled();
+  },
 });
 
-// ─── core behavior ────────────────────────────────────────────────────────
+// ─── intersections core behavior ────────────────────────────────────────
+
+const validated = {
+  'A + B': { combination: ['A', 'B'], description: 'validated', elements: ['v-elem'] },
+};
 
 runTable({
   describe: 'intersections chain',
@@ -48,71 +50,65 @@ runTable({
       name: 'generates all combinations and builds result objects',
       inputs: {
         list: ['A', 'B', 'C'],
-        preMock: () => {
+        mock: () => {
           callLlm.mockResolvedValue(['elm1', 'elm2']);
           commonalities.mockResolvedValue(['commonality one', 'commonality two']);
         },
-      },
-      check: ({ result }) => {
-        const keys = Object.keys(result);
-        expect(keys).toHaveLength(4);
-        expect(keys).toContain('A + B');
-        expect(keys).toContain('A + B + C');
-        expect(result['A + B']).toMatchObject({
-          combination: ['A', 'B'],
-          description: 'commonality one, commonality two',
-          elements: ['elm1', 'elm2'],
-        });
+        wantKeysLength: 4,
+        wantKeysContain: ['A + B', 'A + B + C'],
+        wantEntry: {
+          'A + B': {
+            combination: ['A', 'B'],
+            description: 'commonality one, commonality two',
+            elements: ['elm1', 'elm2'],
+          },
+        },
       },
     },
     {
       name: 'converts non-array commonalities to string description',
       inputs: {
         list: ['A', 'B'],
-        preMock: () => commonalities.mockResolvedValue('a single string response'),
+        mock: () => commonalities.mockResolvedValue('a single string response'),
+        wantPath: { 'A + B.description': 'a single string response' },
       },
-      check: ({ result }) => expect(result['A + B'].description).toBe('a single string response'),
     },
     {
       name: 'respects minSize and maxSize to control combination sizes',
-      inputs: { list: ['A', 'B', 'C', 'D'], options: { minSize: 2, maxSize: 2 } },
-      check: ({ result }) => {
-        const keys = Object.keys(result);
-        expect(keys).toHaveLength(6);
-        expect(keys).not.toContain('A + B + C');
+      inputs: {
+        list: ['A', 'B', 'C', 'D'],
+        options: { minSize: 2, maxSize: 2 },
+        wantKeysLength: 6,
+        wantKeysNotContain: ['A + B + C'],
       },
     },
     {
       name: 'returns empty when minSize exceeds item count',
-      inputs: { list: ['A', 'B'], options: { minSize: 5 } },
-      check: ({ result }) => {
-        expect(result).toStrictEqual({});
-        expect(callLlm).not.toHaveBeenCalled();
-      },
+      inputs: { list: ['A', 'B'], options: { minSize: 5 }, want: {}, wantNoLlm: true },
     },
     {
       name: 'processes combinations in batches',
-      inputs: { list: ['A', 'B', 'C'], options: { batchSize: 2 } },
-      check: () => {
-        expect(callLlm).toHaveBeenCalledTimes(4);
-        expect(commonalities).toHaveBeenCalledTimes(4);
+      inputs: {
+        list: ['A', 'B', 'C'],
+        options: { batchSize: 2 },
+        wantLlmCalls: 4,
+        wantCommonalitiesCalls: 4,
       },
     },
     {
       name: 'passes json_schema responseFormat to callLlm',
-      inputs: { list: ['A', 'B'] },
-      check: () => {
-        const config = callLlm.mock.calls[0][1];
-        expect(config.responseFormat.type).toBe('json_schema');
-        expect(config.responseFormat.json_schema.name).toBe('intersection_elements');
+      inputs: {
+        list: ['A', 'B'],
+        wantSchemaName: 'intersection_elements',
       },
     },
     {
       name: 'includes instructions in prompt and forwards to commonalities',
-      inputs: { list: ['Fruit', 'Red'], instructions: 'Focus on tropical items' },
-      check: () => {
-        expect(callLlm.mock.calls[0][0]).toContain('Focus on tropical items');
-        expect(commonalities.mock.calls[0][1]).toBe('Focus on tropical items');
+      inputs: {
+        list: ['Fruit', 'Red'],
+        instructions: 'Focus on tropical items',
+        wantPromptContains: ['Focus on tropical items'],
+        wantCommonalitiesArg1: 'Focus on tropical items',
       },
     },
     {
@@ -120,43 +116,38 @@ runTable({
       inputs: {
         list: ['Fruit', 'Red'],
         instructions: { text: 'Focus on tropical items', region: 'Southeast Asia' },
-      },
-      check: () => {
-        expect(callLlm.mock.calls[0][0]).toContain('Focus on tropical items');
-        expect(callLlm.mock.calls[0][0]).toContain('<region>');
-        expect(callLlm.mock.calls[0][0]).toContain('Southeast Asia');
+        wantPromptContains: ['Focus on tropical items', '<region>', 'Southeast Asia'],
       },
     },
     {
       name: 'filters falsy elements from callLlm response',
       inputs: {
         list: ['A', 'B'],
-        preMock: () => callLlm.mockResolvedValue([null, 'valid', undefined, '', 'also valid']),
+        mock: () => callLlm.mockResolvedValue([null, 'valid', undefined, '', 'also valid']),
+        wantPath: { 'A + B.elements': ['valid', 'also valid'] },
       },
-      check: ({ result }) =>
-        expect(result['A + B'].elements).toStrictEqual(['valid', 'also valid']),
     },
     {
       name: 'throws when callLlm returns non-array (single combo = total failure)',
       inputs: {
         list: ['A', 'B'],
-        preMock: () => callLlm.mockResolvedValue('not an array'),
+        mock: () => callLlm.mockResolvedValue('not an array'),
+        throws: /all 1 combinations failed/,
       },
-      check: throws(/all 1 combinations failed/),
     },
     {
       name: 'throws when every combination fails (no successes to return)',
       inputs: {
         list: ['A', 'B'],
-        preMock: () => retry.mockRejectedValue(new Error('LLM call failed')),
+        mock: () => retry.mockRejectedValue(new Error('LLM call failed')),
+        throws: /all 1 combinations failed/,
       },
-      check: throws(/all 1 combinations failed/),
     },
     {
       name: 'returns partial results when some combinations succeed',
       inputs: {
         list: ['A', 'B', 'C'],
-        preMock: () => {
+        mock: () => {
           let call = 0;
           retry.mockImplementation(async (fn) => {
             call += 1;
@@ -165,74 +156,120 @@ runTable({
           });
           callLlm.mockResolvedValue(['elem']);
         },
-      },
-      check: ({ result }) => {
-        const keys = Object.keys(result);
-        expect(keys.length).toBeGreaterThan(0);
-        expect(keys.length).toBeLessThan(4);
+        wantKeysRange: [1, 4],
       },
     },
   ],
-  process: async ({ list, instructions, options, preMock }) => {
-    if (preMock) preMock();
+  process: async ({ list, instructions, options, mock }) => {
+    if (mock) mock();
     return intersections(list, instructions, options);
+  },
+  expects: ({ result, error, inputs }) => {
+    if ('throws' in inputs) {
+      expect(error?.message).toMatch(inputs.throws);
+      return;
+    }
+    if (error) throw error;
+    if ('want' in inputs) expect(result).toEqual(inputs.want);
+    if (inputs.wantNoLlm) expect(callLlm).not.toHaveBeenCalled();
+    const keys = Object.keys(result);
+    if ('wantKeysLength' in inputs) expect(keys).toHaveLength(inputs.wantKeysLength);
+    if (inputs.wantKeysContain) {
+      for (const key of inputs.wantKeysContain) expect(keys).toContain(key);
+    }
+    if (inputs.wantKeysNotContain) {
+      for (const key of inputs.wantKeysNotContain) expect(keys).not.toContain(key);
+    }
+    if (inputs.wantKeysRange) {
+      expect(keys.length).toBeGreaterThan(inputs.wantKeysRange[0] - 1);
+      expect(keys.length).toBeLessThan(inputs.wantKeysRange[1]);
+    }
+    if (inputs.wantEntry) {
+      for (const [key, shape] of Object.entries(inputs.wantEntry)) {
+        expect(result[key]).toMatchObject(shape);
+      }
+    }
+    if (inputs.wantPath) {
+      for (const [path, value] of Object.entries(inputs.wantPath)) {
+        const [topKey, ...rest] = path.split('.');
+        let actual = result[topKey];
+        for (const seg of rest) actual = actual[seg];
+        expect(actual).toEqual(value);
+      }
+    }
+    if (inputs.wantSchemaName) {
+      const config = callLlm.mock.calls[0][1];
+      expect(config.responseFormat.type).toBe('json_schema');
+      expect(config.responseFormat.json_schema.name).toBe(inputs.wantSchemaName);
+    }
+    if ('wantLlmCalls' in inputs) expect(callLlm).toHaveBeenCalledTimes(inputs.wantLlmCalls);
+    if ('wantCommonalitiesCalls' in inputs) {
+      expect(commonalities).toHaveBeenCalledTimes(inputs.wantCommonalitiesCalls);
+    }
+    if (inputs.wantCommonalitiesArg1) {
+      expect(commonalities.mock.calls[0][1]).toBe(inputs.wantCommonalitiesArg1);
+    }
+    if (inputs.wantPromptContains) {
+      const prompt = callLlm.mock.calls[0][0];
+      for (const fragment of inputs.wantPromptContains) expect(prompt).toContain(fragment);
+    }
   },
 });
 
-// ─── schema validation ───────────────────────────────────────────────────
+// ─── schema validation ──────────────────────────────────────────────────
 
 runTable({
   describe: 'intersections — schema validation',
   examples: [
-    (() => {
-      const validated = {
-        'A + B': { combination: ['A', 'B'], description: 'validated', elements: ['v-elem'] },
-      };
-      return {
-        name: 'returns validated results when useSchemaValidation is true',
-        inputs: {
-          list: ['A', 'B'],
-          options: { useSchemaValidation: true },
-          preMock: () => {
-            callLlm.mockResolvedValueOnce(['elem1']);
-            callLlm.mockResolvedValueOnce({ intersections: validated });
-          },
+    {
+      name: 'returns validated results when useSchemaValidation is true',
+      inputs: {
+        list: ['A', 'B'],
+        options: { useSchemaValidation: true },
+        mock: () => {
+          callLlm.mockResolvedValueOnce(['elem1']);
+          callLlm.mockResolvedValueOnce({ intersections: validated });
         },
-        check: ({ result }) => {
-          expect(result).toStrictEqual(validated);
-          expect(retry).toHaveBeenCalledTimes(2);
-        },
-      };
-    })(),
+        want: validated,
+        wantRetryCalls: 2,
+      },
+    },
     {
       name: 'falls back to original results on validation failure',
       inputs: {
         list: ['A', 'B'],
         options: { useSchemaValidation: true },
-        preMock: () => {
+        mock: () => {
           callLlm.mockResolvedValueOnce(['elem1']);
           callLlm.mockResolvedValueOnce(['invalid structure']);
         },
+        wantElements: ['elem1'],
       },
-      check: ({ result }) => expect(result['A + B'].elements).toStrictEqual(['elem1']),
     },
     {
       name: 'falls back when validation throws',
       inputs: {
         list: ['A', 'B'],
         options: { useSchemaValidation: true },
-        preMock: () => {
+        mock: () => {
           callLlm.mockResolvedValueOnce(['elem1']);
           retry
             .mockImplementationOnce(async (fn) => fn())
             .mockRejectedValueOnce(new Error('validation failed'));
         },
+        wantElements: ['elem1'],
       },
-      check: ({ result }) => expect(result['A + B'].elements).toStrictEqual(['elem1']),
     },
   ],
-  process: async ({ list, options, preMock }) => {
-    if (preMock) preMock();
+  process: async ({ list, options, mock }) => {
+    if (mock) mock();
     return intersections(list, options);
+  },
+  expects: ({ result, inputs }) => {
+    if ('want' in inputs) expect(result).toEqual(inputs.want);
+    if ('wantRetryCalls' in inputs) expect(retry).toHaveBeenCalledTimes(inputs.wantRetryCalls);
+    if (inputs.wantElements) {
+      expect(result['A + B'].elements).toEqual(inputs.wantElements);
+    }
   },
 });

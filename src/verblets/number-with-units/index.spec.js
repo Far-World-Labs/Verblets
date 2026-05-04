@@ -1,6 +1,6 @@
-import { vi } from 'vitest';
+import { vi, expect } from 'vitest';
 import numberWithUnits from './index.js';
-import { runTable, equals } from '../../lib/examples-runner/index.js';
+import { runTable } from '../../lib/examples-runner/index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
   jsonSchema: (name, schema) => ({ type: 'json_schema', json_schema: { name, schema } }),
@@ -12,26 +12,31 @@ vi.mock('../../lib/llm/index.js', () => ({
   }),
 }));
 
-const examples = [
-  {
-    name: 'extracts height measurement',
-    inputs: 'What is the height of Everest in feet',
-    check: equals({ value: 29029, unit: 'feet' }),
-  },
-  {
-    name: 'extracts speed measurement',
-    inputs: 'What is the speed of light in meters per second',
-    check: equals({ value: 299792458, unit: 'meters per second' }),
-  },
-  {
-    name: 'extracts temperature measurement',
-    inputs: 'What is normal body temperature in Fahrenheit',
-    check: equals({ value: 98.6, unit: 'Fahrenheit' }),
-  },
-];
-
 runTable({
   describe: 'numberWithUnits',
-  examples,
-  process: (text) => numberWithUnits(text),
+  examples: [
+    {
+      name: 'extracts height measurement',
+      inputs: {
+        text: 'What is the height of Everest in feet',
+        want: { value: 29029, unit: 'feet' },
+      },
+    },
+    {
+      name: 'extracts speed measurement',
+      inputs: {
+        text: 'What is the speed of light in meters per second',
+        want: { value: 299792458, unit: 'meters per second' },
+      },
+    },
+    {
+      name: 'extracts temperature measurement',
+      inputs: {
+        text: 'What is normal body temperature in Fahrenheit',
+        want: { value: 98.6, unit: 'Fahrenheit' },
+      },
+    },
+  ],
+  process: ({ text }) => numberWithUnits(text),
+  expects: ({ result, inputs }) => expect(result).toEqual(inputs.want),
 });

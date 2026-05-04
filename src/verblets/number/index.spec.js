@@ -1,6 +1,6 @@
-import { vi } from 'vitest';
+import { vi, expect } from 'vitest';
 import number from './index.js';
-import { runTable, equals } from '../../lib/examples-runner/index.js';
+import { runTable } from '../../lib/examples-runner/index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
   jsonSchema: (name, schema) => ({ type: 'json_schema', json_schema: { name, schema } }),
@@ -10,17 +10,18 @@ vi.mock('../../lib/llm/index.js', () => ({
   }),
 }));
 
-const examples = [
-  {
-    name: 'returns the answered number',
-    inputs: 'What is the height of Everest in feet',
-    check: equals(29029),
-  },
-  {
-    name: 'unanswerable question → undefined',
-    inputs: 'What is the my age in years',
-    check: equals(undefined),
-  },
-];
-
-runTable({ describe: 'number verblet', examples, process: (text) => number(text) });
+runTable({
+  describe: 'number verblet',
+  examples: [
+    {
+      name: 'returns the answered number',
+      inputs: { text: 'What is the height of Everest in feet', want: 29029 },
+    },
+    {
+      name: 'unanswerable question → undefined',
+      inputs: { text: 'What is the my age in years', want: undefined },
+    },
+  ],
+  process: ({ text }) => number(text),
+  expects: ({ result, inputs }) => expect(result).toEqual(inputs.want),
+});

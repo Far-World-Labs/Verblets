@@ -6,7 +6,7 @@ vi.mock('../score/index.js', () => ({ default: vi.fn() }));
 import collectTerms from './index.js';
 import list from '../list/index.js';
 import score from '../score/index.js';
-import { runTable, equals, all } from '../../lib/examples-runner/index.js';
+import { runTable } from '../../lib/examples-runner/index.js';
 
 beforeEach(() => vi.clearAllMocks());
 
@@ -18,19 +18,22 @@ runTable({
       inputs: {
         text: 'p1\n\np2',
         options: { chunkLen: 2, topN: 2 },
-        preMock: () => {
+        mock: () => {
           list.mockResolvedValueOnce(['alpha', 'beta']).mockResolvedValueOnce(['beta', 'gamma']);
           score.mockResolvedValue([8, 9, 7]);
         },
+        want: ['beta', 'alpha'],
+        wantListCalls: 2,
       },
-      check: all(equals(['beta', 'alpha']), () => {
-        expect(list).toHaveBeenCalledTimes(2);
-        expect(score).toHaveBeenCalled();
-      }),
     },
   ],
-  process: async ({ text, options, preMock }) => {
-    if (preMock) preMock();
+  process: async ({ text, options, mock }) => {
+    if (mock) mock();
     return collectTerms(text, options);
+  },
+  expects: ({ result, inputs }) => {
+    expect(result).toEqual(inputs.want);
+    expect(list).toHaveBeenCalledTimes(inputs.wantListCalls);
+    expect(score).toHaveBeenCalled();
   },
 });

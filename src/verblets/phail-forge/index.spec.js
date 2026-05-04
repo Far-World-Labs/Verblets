@@ -1,7 +1,7 @@
-import { vi, beforeEach } from 'vitest';
+import { vi, beforeEach, expect } from 'vitest';
 import makePrompt from './index.js';
 import llm from '../../lib/llm/index.js';
-import { runTable, partial } from '../../lib/examples-runner/index.js';
+import { runTable } from '../../lib/examples-runner/index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(),
@@ -49,65 +49,63 @@ const enhancePerf = {
   keywords: ['React.memo', 'reselect', 'code splitting', 'memoization'],
 };
 
-const examples = [
-  {
-    name: 'enhances a simple prompt and reports expansion ratio > 1',
-    inputs: {
-      prompt: 'create a webapp',
-      mocks: [enhanceWebapp],
-    },
-    check: partial({
-      enhanced: enhanceWebapp.enhanced,
-      improvements: enhanceWebapp.improvements,
-      metadata: { expansionRatio: expect.any(Number) },
-    }),
-  },
-  {
-    name: 'adds technical terminology when relevant',
-    inputs: {
-      prompt: 'analyze this text for sentiment',
-      mocks: [enhanceSentiment],
-    },
-    check: partial({
-      enhanced: expect.stringContaining('sentiment'),
-      keywords: expect.any(Array),
-    }),
-  },
-  {
-    name: 'provides analysis when requested',
-    inputs: {
-      prompt: 'sort this list',
-      options: { analyze: true },
-      mocks: [enhanceSort, sortAnalysis],
-    },
-    check: partial({
-      analysis: {
-        strengths: expect.any(Array),
-        opportunities: expect.any(Array),
-        suggestions: expect.any(Array),
-      },
-    }),
-  },
-  {
-    name: 'incorporates domain context',
-    inputs: {
-      prompt: 'optimize performance',
-      options: { context: 'React web application with Redux state management' },
-      mocks: [enhancePerf],
-    },
-    check: partial({
-      enhanced: expect.any(String),
-      improvements: expect.arrayContaining([expect.any(Object)]),
-    }),
-  },
-];
-
-import { expect } from 'vitest';
 runTable({
   describe: 'phailForge/makePrompt',
-  examples,
+  examples: [
+    {
+      name: 'enhances a simple prompt and reports expansion ratio > 1',
+      inputs: {
+        prompt: 'create a webapp',
+        mocks: [enhanceWebapp],
+        want: {
+          enhanced: enhanceWebapp.enhanced,
+          improvements: enhanceWebapp.improvements,
+          metadata: { expansionRatio: expect.any(Number) },
+        },
+      },
+    },
+    {
+      name: 'adds technical terminology when relevant',
+      inputs: {
+        prompt: 'analyze this text for sentiment',
+        mocks: [enhanceSentiment],
+        want: {
+          enhanced: expect.stringContaining('sentiment'),
+          keywords: expect.any(Array),
+        },
+      },
+    },
+    {
+      name: 'provides analysis when requested',
+      inputs: {
+        prompt: 'sort this list',
+        options: { analyze: true },
+        mocks: [enhanceSort, sortAnalysis],
+        want: {
+          analysis: {
+            strengths: expect.any(Array),
+            opportunities: expect.any(Array),
+            suggestions: expect.any(Array),
+          },
+        },
+      },
+    },
+    {
+      name: 'incorporates domain context',
+      inputs: {
+        prompt: 'optimize performance',
+        options: { context: 'React web application with Redux state management' },
+        mocks: [enhancePerf],
+        want: {
+          enhanced: expect.any(String),
+          improvements: expect.arrayContaining([expect.any(Object)]),
+        },
+      },
+    },
+  ],
   process: async ({ prompt, options, mocks }) => {
     for (const m of mocks) llm.mockResolvedValueOnce(m);
     return makePrompt(prompt, options);
   },
+  expects: ({ result, inputs }) => expect(result).toMatchObject(inputs.want),
 });

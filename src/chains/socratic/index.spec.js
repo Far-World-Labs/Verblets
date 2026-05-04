@@ -18,18 +18,18 @@ runTable({
   examples: [
     {
       name: 'runs dialogue for specified depth',
-      inputs: { topic: 'topic', depth: 2 },
-      check: ({ result }) => {
-        expect(result).toHaveLength(2);
-        for (const turn of result) {
-          expect(turn).toHaveProperty('question');
-          expect(turn).toHaveProperty('answer');
-        }
-      },
+      inputs: { topic: 'topic', depth: 2, wantTurns: 2 },
     },
   ],
   process: async ({ topic, depth }) => {
     const chain = await socratic(topic);
     return chain.run(depth);
+  },
+  expects: ({ result, inputs }) => {
+    expect(result).toHaveLength(inputs.wantTurns);
+    for (const turn of result) {
+      expect(turn).toHaveProperty('question');
+      expect(turn).toHaveProperty('answer');
+    }
   },
 });

@@ -1,7 +1,7 @@
 import { vi, beforeEach, expect } from 'vitest';
 import themes from './index.js';
 import reduce from '../reduce/index.js';
-import { runTable, equals, all } from '../../lib/examples-runner/index.js';
+import { runTable } from '../../lib/examples-runner/index.js';
 
 vi.mock('../reduce/index.js', () => ({ default: vi.fn() }));
 
@@ -15,20 +15,17 @@ runTable({
       inputs: {
         text: 'paragraph one\n\nparagraph two',
         options: { batchSize: 1, topN: 2 },
-        preMock: () => reduce.mockResolvedValueOnce('a, b, c').mockResolvedValueOnce('a, c'),
+        mock: () => reduce.mockResolvedValueOnce('a, b, c').mockResolvedValueOnce('a, c'),
+        want: ['a', 'c'],
+        wantReduceCalls: 2,
       },
-      check: all(equals(['a', 'c']), () => expect(reduce).toHaveBeenCalledTimes(2)),
     },
     {
       name: 'splits text on double newlines into paragraphs',
       inputs: {
         text: 'first\n\nsecond\n\nthird',
-        preMock: () => reduce.mockResolvedValueOnce('theme').mockResolvedValueOnce('theme'),
-      },
-      check: () => {
-        const firstCallList = reduce.mock.calls[0][0];
-        expect(firstCallList).toHaveLength(3);
-        expect(firstCallList.toSorted()).toStrictEqual(['first', 'second', 'third']);
+        mock: () => reduce.mockResolvedValueOnce('theme').mockResolvedValueOnce('theme'),
+        wantFirstListSorted: ['first', 'second', 'third'],
       },
     },
     {
@@ -36,52 +33,73 @@ runTable({
       inputs: {
         text: 'x\n\ny',
         options: { topN: 2 },
-        preMock: () => reduce.mockResolvedValueOnce('a, b, c').mockResolvedValueOnce('a, b'),
+        mock: () => reduce.mockResolvedValueOnce('a, b, c').mockResolvedValueOnce('a, b'),
+        wantSecondPromptContains: ['top 2'],
       },
-      check: () => expect(reduce.mock.calls[1][1]).toContain('top 2'),
     },
     {
       name: 'omits topN limit when not specified',
       inputs: {
         text: 'x\n\ny',
-        preMock: () => reduce.mockResolvedValueOnce('a, b').mockResolvedValueOnce('a, b'),
-      },
-      check: () => {
-        const refine = reduce.mock.calls[1][1];
-        expect(refine).toContain('Return all meaningful themes');
-        expect(refine).not.toContain('top');
+        mock: () => reduce.mockResolvedValueOnce('a, b').mockResolvedValueOnce('a, b'),
+        wantSecondPromptContains: ['Return all meaningful themes'],
+        wantSecondPromptNotContains: ['top'],
       },
     },
     {
       name: 'feeds first pass themes as list into second reduce',
       inputs: {
         text: 'x\n\ny',
-        preMock: () =>
+        mock: () =>
           reduce.mockResolvedValueOnce('alpha, beta, gamma').mockResolvedValueOnce('alpha, gamma'),
+        wantSecondList: ['alpha', 'beta', 'gamma'],
       },
-      check: () => expect(reduce.mock.calls[1][0]).toStrictEqual(['alpha', 'beta', 'gamma']),
     },
     {
       name: 'filters empty strings from comma-split results',
       inputs: {
         text: 'x\n\ny',
-        preMock: () => reduce.mockResolvedValueOnce('a,, b, ,c').mockResolvedValueOnce('a,, ,c'),
+        mock: () => reduce.mockResolvedValueOnce('a,, b, ,c').mockResolvedValueOnce('a,, ,c'),
+        want: ['a', 'c'],
       },
-      check: equals(['a', 'c']),
     },
     {
       name: 'handles single paragraph text',
       inputs: {
         text: 'just one paragraph',
-        preMock: () => reduce.mockResolvedValueOnce('solo').mockResolvedValueOnce('solo'),
+        mock: () => reduce.mockResolvedValueOnce('solo').mockResolvedValueOnce('solo'),
+        want: ['solo'],
+        wantFirstList: ['just one paragraph'],
       },
-      check: all(equals(['solo']), () =>
-        expect(reduce.mock.calls[0][0]).toStrictEqual(['just one paragraph'])
-      ),
     },
   ],
-  process: async ({ text, options, preMock }) => {
-    if (preMock) preMock();
+  process: async ({ text, options, mock }) => {
+    if (mock) mock();
     return themes(text, options);
+  },
+  expects: ({ result, inputs }) => {
+    if ('want' in inputs) expect(result).toEqual(inputs.want);
+    if ('wantReduceCalls' in inputs) expect(reduce).toHaveBeenCalledTimes(inputs.wantReduceCalls);
+    if (inputs.wantFirstListSorted) {
+      const firstCallList = reduce.mock.calls[0][0];
+      expect(firstCallList).toHaveLength(inputs.wantFirstListSorted.length);
+      expect(firstCallList.toSorted()).toStrictEqual(inputs.wantFirstListSorted);
+    }
+    if (inputs.wantFirstList) {
+      expect(reduce.mock.calls[0][0]).toStrictEqual(inputs.wantFirstList);
+    }
+    if (inputs.wantSecondList) {
+      expect(reduce.mock.calls[1][0]).toStrictEqual(inputs.wantSecondList);
+    }
+    if (inputs.wantSecondPromptContains) {
+      const refine = reduce.mock.calls[1][1];
+      for (const fragment of inputs.wantSecondPromptContains) expect(refine).toContain(fragment);
+    }
+    if (inputs.wantSecondPromptNotContains) {
+      const refine = reduce.mock.calls[1][1];
+      for (const fragment of inputs.wantSecondPromptNotContains) {
+        expect(refine).not.toContain(fragment);
+      }
+    }
   },
 });

@@ -1,6 +1,6 @@
 import { vi, expect } from 'vitest';
 import toObject from './index.js';
-import { runTable, equals } from '../../lib/examples-runner/index.js';
+import { runTable } from '../../lib/examples-runner/index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn().mockImplementation((text) => {
@@ -29,19 +29,20 @@ runTable({
   examples: [
     {
       name: 'parses text into an object',
-      inputs: { text: 'test' },
-      check: equals({}),
+      inputs: { text: 'test', want: {} },
     },
     {
       name: 'returns parsed object matching schema',
-      inputs: { text: 'valid-schema', schema: objectSchema },
-      check: equals({ key: 'value' }),
+      inputs: { text: 'valid-schema', schema: objectSchema, want: { key: 'value' } },
     },
     {
       name: 'attempts repair when result has extra properties',
-      inputs: { text: 'invalid-schema', schema: strictSchema },
-      check: ({ result }) => expect(result).toHaveProperty('key'),
+      inputs: { text: 'invalid-schema', schema: strictSchema, hasKey: 'key' },
     },
   ],
   process: ({ text, schema }) => toObject(text, schema),
+  expects: ({ result, inputs }) => {
+    if ('want' in inputs) expect(result).toEqual(inputs.want);
+    if (inputs.hasKey) expect(result).toHaveProperty(inputs.hasKey);
+  },
 });

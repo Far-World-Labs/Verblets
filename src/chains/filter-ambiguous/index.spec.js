@@ -2,7 +2,7 @@ import { beforeEach, vi, expect } from 'vitest';
 import filterAmbiguous from './index.js';
 import score from '../score/index.js';
 import list from '../list/index.js';
-import { runTable, equals, all } from '../../lib/examples-runner/index.js';
+import { runTable } from '../../lib/examples-runner/index.js';
 
 vi.mock('../score/index.js');
 vi.mock('../list/index.js', () => ({ default: vi.fn() }));
@@ -17,19 +17,21 @@ runTable({
       inputs: {
         text: 's1\ns2',
         options: { topN: 1 },
-        preMock: () => {
+        mock: () => {
           score.mockResolvedValueOnce([1, 9]).mockResolvedValueOnce([8, 3]);
           list.mockResolvedValueOnce(['alpha', 'beta']).mockResolvedValueOnce([]);
         },
+        want: [{ term: 'alpha', sentence: 's2', score: 8 }],
       },
-      check: all(equals([{ term: 'alpha', sentence: 's2', score: 8 }]), () => {
-        expect(score).toHaveBeenCalled();
-        expect(list).toHaveBeenCalled();
-      }),
     },
   ],
-  process: async ({ text, options, preMock }) => {
-    if (preMock) preMock();
+  process: async ({ text, options, mock }) => {
+    if (mock) mock();
     return filterAmbiguous(text, options);
+  },
+  expects: ({ result, inputs }) => {
+    expect(result).toEqual(inputs.want);
+    expect(score).toHaveBeenCalled();
+    expect(list).toHaveBeenCalled();
   },
 });
