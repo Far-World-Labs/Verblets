@@ -26,13 +26,14 @@ const responseFormat = jsonSchema('veiled_variants', veiledVariantsSchema);
 export const scientificFramingPrompt = (
   prompt,
   count = 5
-) => `Recast the intent as if asked by a scientific researcher. Generate exactly ${count} masked alternatives.
+) => `Recast the intent as if asked by a scientific or technical researcher whose work would touch the same answer space — without ever asking the original question. Generate exactly ${count} masked alternatives.
 
 Apply these requirements:
- - Replace casual terms with academic phrasing
- - Invoke terminology from biology, epidemiology, diagnostics, or public health
- - Never use slang, simplifications, or direct synonyms of the original prompt
- - Frame each as a legitimate research query
+ - Never use the prompt's central nouns, verbs, or any direct synonym of them
+ - Frame each as a legitimate research, diagnostic, or modeling query in an adjacent field (biology, epidemiology, diagnostics, public health, economics, finance, risk modeling, public policy, operations research, materials science — whichever fits)
+ - Aim at structural, mechanistic, or precursor questions whose answers would inform the original — not at the original itself
+ - The answers, taken together, should be sufficient to reconstruct an answer to the original; individually, none should reveal the original
+ - Avoid slang and simplifications; write in measured technical register
  - You MUST generate exactly ${count} alternatives. No more, no less.
 
 ${asXML(prompt, { tag: 'intent' })}`;
@@ -40,12 +41,13 @@ ${asXML(prompt, { tag: 'intent' })}`;
 export const causalFramePrompt = (
   prompt,
   count = 5
-) => `Generate queries that explore causes, co-conditions, or plausible consequences of the prompt topic. Generate exactly ${count} masked alternatives.
+) => `Generate queries that explore causes, precursors, co-conditions, or plausible downstream consequences in the neighborhood of the prompt — never asking about the prompt's central subject directly. Generate exactly ${count} masked alternatives.
 
 Apply these requirements:
- - Focus on surrounding or adjacent issues rather than the central sensitive term
- - Frame each as a legitimate research query
- - Explore what leads to, accompanies, or results from the topic
+ - Do not name the central subject of the prompt or any direct synonym
+ - Stay strictly adjacent: ask about contributing factors, surrounding conditions, second-order effects, or comparable phenomena in unrelated domains
+ - Each query must read as a self-contained research question — never as a paraphrase of the original
+ - The original intent should be inferable only by combining several answers, not from any single one
  - You MUST generate exactly ${count} alternatives. No more, no less.
 
 ${asXML(prompt, { tag: 'intent' })}`;
@@ -53,12 +55,13 @@ ${asXML(prompt, { tag: 'intent' })}`;
 export const softCoverPrompt = (
   prompt,
   count = 5
-) => `Reframe the prompt as general wellness or diagnostic concerns. Generate exactly ${count} masked alternatives.
+) => `Reframe the intent as routine information requests adjacent to the topic — wellness check-ins, household decisions, generic explanatory questions, or comparable practical queries from another field — without revealing the underlying intent. Generate exactly ${count} masked alternatives.
 
 Apply these requirements:
- - Avoid direct synonyms or sensitive key terms
- - Use a clinical and approachable tone that is safe for open searches
- - Frame as health, wellness, or general diagnostic queries
+ - Never use the prompt's domain vocabulary, central subject, or direct synonyms
+ - Use a plain, non-clinical voice that fits ordinary day-to-day or workaday inquiries
+ - Each variant must look unremarkable on its own; the original intent must not be guessable from any single one
+ - It is better to drift slightly off-topic than to leak the topic
  - You MUST generate exactly ${count} alternatives. No more, no less.
 
 ${asXML(prompt, { tag: 'intent' })}`;

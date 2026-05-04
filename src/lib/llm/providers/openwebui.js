@@ -1,52 +1,33 @@
 /**
  * OpenWebUI / Ollama provider adapter.
- * OpenAI-compatible API with minor differences:
- *   - Some models don't support structured output (response_format)
- *   - Endpoint paths may differ slightly
+ *
+ * Wraps the OpenAI request/response shape — OpenWebUI exposes an OpenAI-compatible
+ * surface — and layers in two host-specific concerns:
+ *   - `think: false` and `keep_alive: '30m'` body fields
+ *   - Stripping `<think>…</think>` reasoning blocks from responses (Qwen3 et al.)
  */
+
+import * as openai from './openai.js';
+
+const HOST_FIELDS = { think: false, keep_alive: '30m' };
 
 export const buildRequest = (apiUrl, apiKey, endpoint, requestConfig) => {
-  const url = `${apiUrl}${endpoint}`;
-
-  const headers = {
-    'Content-Type': 'application/json',
+  const { url, fetchOptions } = openai.buildRequest(apiUrl, apiKey, endpoint, requestConfig);
+  const body = JSON.parse(fetchOptions.body);
+  const merged = { ...body, ...HOST_FIELDS };
+  return {
+    url,
+    fetchOptions: { ...fetchOptions, body: JSON.stringify(merged) },
   };
-
-  if (apiKey) {
-    headers.Authorization = `Bearer ${apiKey}`;
-  }
-
-  // Convert camelCase responseFormat to snake_case response_format for OpenAI-compatible API
-  const { responseFormat, ...rest } = requestConfig;
-  const ollamaConfig = {
-    ...rest,
-    ...(responseFormat ? { response_format: responseFormat } : {}),
-    think: false,
-    keep_alive: '30m',
-  };
-
-  const fetchOptions = {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(ollamaConfig),
-  };
-
-  return { url, fetchOptions };
 };
 
-/**
- * Strip `<think>…</think>` reasoning blocks emitted by models like Qwen3.
- * These blocks appear at the start of the content and are not part of the
- * actual answer.  The regex is non-greedy so it handles multiple blocks and
- * avoids clobbering legitimate content.
- */
 const stripThinkTags = (text) => text.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
 
-// OpenWebUI returns OpenAI-compatible responses — strip thinking blocks
 export const parseResponse = (json) => {
-  const content = json?.choices?.[0]?.message?.content;
+  const parsed = openai.parseResponse(json);
+  const content = parsed?.choices?.[0]?.message?.content;
   if (typeof content === 'string' && content.includes('<think>')) {
-    json.choices[0].message.content = stripThinkTags(content);
+    parsed.choices[0].message.content = stripThinkTags(content);
   }
-  return json;
+  return parsed;
 };

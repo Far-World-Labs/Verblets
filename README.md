@@ -42,7 +42,7 @@ const { filter, map, bool, llm } = init({
   embed: true,            // enable local embedding model
   redis: redisClient,     // pre-configured Redis client for caching
   models: {               // extend the model catalog (additive)
-    'my-llama': { provider: 'openai', apiUrl: 'http://localhost:11434/v1', endpoint: '/chat/completions', maxContextWindow: 8192, maxOutputTokens: 4096 },
+    'my-llama': { provider: 'openwebui', apiUrl: 'http://localhost:11434/', endpoint: 'v1/chat/completions', maxContextWindow: 8192, maxOutputTokens: 4096 },
   },
   rules: [                // override negotiation rules (first match wins)
     { match: { sensitive: true, good: true }, use: 'my-llama' },
