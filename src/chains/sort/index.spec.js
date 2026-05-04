@@ -80,13 +80,8 @@ runTable({
       inputs: {
         list: [...unsortedStrings],
         options: { by: 'alphabetically', iterations: 3, extremeK, batchSize },
-        expectedHighest: unsortedStrings.toSorted(byAB).slice(0, extremeK * 3),
-        expectedLowest: unsortedStrings.toSorted(byAB).slice(-(extremeK * 3)),
-      },
-      check: ({ result, inputs }) => {
-        const iterations = inputs.options.iterations ?? 1;
-        expect(result.slice(0, extremeK * iterations)).toStrictEqual(inputs.expectedHighest);
-        expect(result.slice(-(extremeK * iterations))).toStrictEqual(inputs.expectedLowest);
+        wantHighest: unsortedStrings.toSorted(byAB).slice(0, extremeK * 3),
+        wantLowest: unsortedStrings.toSorted(byAB).slice(-(extremeK * 3)),
       },
     },
     {
@@ -94,13 +89,8 @@ runTable({
       inputs: {
         list: [],
         options: { by: 'alphabetically', extremeK, batchSize },
-        expectedHighest: [],
-        expectedLowest: [],
-      },
-      check: ({ result, inputs }) => {
-        const iterations = inputs.options.iterations ?? 1;
-        expect(result.slice(0, extremeK * iterations)).toStrictEqual(inputs.expectedHighest);
-        expect(result.slice(-(extremeK * iterations))).toStrictEqual(inputs.expectedLowest);
+        wantHighest: [],
+        wantLowest: [],
       },
     },
   ],
@@ -109,4 +99,9 @@ runTable({
       model: { budgetTokens: () => ({ completion: 0 }) },
       ...options,
     }),
+  expects: ({ result, inputs }) => {
+    const iterations = inputs.options.iterations ?? 1;
+    expect(result.slice(0, extremeK * iterations)).toEqual(inputs.wantHighest);
+    expect(result.slice(-(extremeK * iterations))).toEqual(inputs.wantLowest);
+  },
 });

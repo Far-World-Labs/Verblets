@@ -1,5 +1,5 @@
 import { vi, expect } from 'vitest';
-import { runTable, equals, length, all } from '../../lib/examples-runner/index.js';
+import { runTable } from '../../lib/examples-runner/index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(),
@@ -18,7 +18,7 @@ runTable({
       name: 'returns 15 masked queries from 3 framing strategies',
       inputs: {
         intent: 'secret',
-        preMock: () => {
+        mock: () => {
           let call = 0;
           callLlm.mockImplementation(() => {
             call += 1;
@@ -27,9 +27,7 @@ runTable({
             return ['w1', 'w2', 'w3', 'w4', 'w5'];
           });
         },
-      },
-      check: all(
-        equals([
+        want: [
           's1',
           's2',
           's3',
@@ -45,59 +43,68 @@ runTable({
           'w3',
           'w4',
           'w5',
-        ]),
-        () => {
-          expect(callLlm).toHaveBeenCalledTimes(3);
-          for (const [prompt] of callLlm.mock.calls) {
-            expect(prompt).toContain('<intent>');
-          }
-        }
-      ),
+        ],
+        wantLlmCalls: 3,
+        wantEveryPromptContains: '<intent>',
+      },
     },
     {
       name: 'uses only 1 strategy with coverage low',
       inputs: {
         intent: 'secret',
         options: { coverage: 'low' },
-        preMock: () => {
+        mock: () => {
           callLlm.mockClear();
           callLlm.mockResolvedValue(['v1', 'v2', 'v3']);
         },
+        wantLength: 3,
+        wantLlmCalls: 1,
       },
-      check: all(length(3), () => expect(callLlm).toHaveBeenCalledTimes(1)),
     },
     {
       name: 'generates more variants per strategy with coverage high',
       inputs: {
         intent: 'secret',
         options: { coverage: 'high' },
-        preMock: () => {
+        mock: () => {
           callLlm.mockClear();
           callLlm.mockResolvedValue(['v1', 'v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8']);
         },
+        wantLength: 24,
+        wantLlmCalls: 3,
+        wantEveryPromptMatches: /\b8\b/,
       },
-      check: all(length(24), () => {
-        expect(callLlm).toHaveBeenCalledTimes(3);
-        for (const [prompt] of callLlm.mock.calls) {
-          expect(prompt).toMatch(/\b8\b/);
-        }
-      }),
     },
     {
       name: 'allows explicit strategies to override coverage',
       inputs: {
         intent: 'secret',
         options: { coverage: 'low', strategies: ['causal', 'softCover'] },
-        preMock: () => {
+        mock: () => {
           callLlm.mockClear();
           callLlm.mockResolvedValue(['v1', 'v2', 'v3']);
         },
+        wantLlmCalls: 2,
       },
-      check: () => expect(callLlm).toHaveBeenCalledTimes(2),
     },
   ],
-  process: async ({ intent, options, preMock }) => {
-    if (preMock) preMock();
+  process: async ({ intent, options, mock }) => {
+    if (mock) mock();
     return veiledVariants(intent, options);
+  },
+  expects: ({ result, inputs }) => {
+    if ('want' in inputs) expect(result).toEqual(inputs.want);
+    if ('wantLength' in inputs) expect(result).toHaveLength(inputs.wantLength);
+    if ('wantLlmCalls' in inputs) expect(callLlm).toHaveBeenCalledTimes(inputs.wantLlmCalls);
+    if (inputs.wantEveryPromptContains) {
+      for (const [prompt] of callLlm.mock.calls) {
+        expect(prompt).toContain(inputs.wantEveryPromptContains);
+      }
+    }
+    if (inputs.wantEveryPromptMatches) {
+      for (const [prompt] of callLlm.mock.calls) {
+        expect(prompt).toMatch(inputs.wantEveryPromptMatches);
+      }
+    }
   },
 });

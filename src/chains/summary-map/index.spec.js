@@ -48,73 +48,48 @@ const codeText = `import numpy as np
 def rabin_karp_search(pattern, text, prime=101):
 `;
 
-// ─── SummaryMap (parametric scenarios) ────────────────────────────────────
-
-const summaryExamples = [
-  {
-    name: 'Basic usage',
-    inputs: {
-      targetTokens: 100,
-      keys: [
-        { key: 'example.text', value: legalText, weight: 1, type: 'text' },
-        { key: 'example.code', value: codeText, weight: 0.5, type: 'code' },
-      ],
-      wants: [
-        { key: 'example.text', resultLength: 50, budget: [60, 80] },
-        { key: 'example.code', resultLength: 25, budget: [20, 40] },
-      ],
-    },
-    check: ({ result }) => assertScenario(result),
-  },
-  {
-    name: 'Model options and sensitivity',
-    inputs: {
-      targetTokens: 50,
-      llmConfig: { fast: true, good: true },
-      keys: [
-        {
-          key: 'example.text',
-          value: legalText,
-          weight: 1,
-          type: 'text',
-          sensitivity: { blacklist: 'names' },
-        },
-        { key: 'example.code', value: codeText, weight: 0.5, type: 'code' },
-      ],
-      wants: [
-        { key: 'example.text', resultLength: 50 },
-        { key: 'example.code', resultLength: 25 },
-      ],
-      assertSensitive: true,
-    },
-    check: ({ result, inputs }) => {
-      assertScenario(result);
-      if (inputs.assertSensitive) {
-        const sensitiveCall = llm.mock.calls.find((c) => c[1]?.sensitive === true);
-        expect(sensitiveCall).toBeTruthy();
-      }
-    },
-  },
-];
-
-function assertScenario({ tree, wants, map }) {
-  for (const want of wants) {
-    let value = tree;
-    for (const seg of want.key.split('.')) value = value[seg];
-    expect(typeof value).toBe('string');
-    expect(value.length).toBeLessThanOrEqual(want.resultLength);
-    if (want.budget) {
-      const { budgets } = map.calculateBudgets();
-      const found = budgets.find((b) => b.key === want.key);
-      expect(found.budget).gt(want.budget[0]);
-      expect(found.budget).lt(want.budget[1]);
-    }
-  }
-}
+// ─── SummaryMap (parametric scenarios) ──────────────────────────────────
 
 runTable({
   describe: 'Summary map',
-  examples: summaryExamples,
+  examples: [
+    {
+      name: 'Basic usage',
+      inputs: {
+        targetTokens: 100,
+        keys: [
+          { key: 'example.text', value: legalText, weight: 1, type: 'text' },
+          { key: 'example.code', value: codeText, weight: 0.5, type: 'code' },
+        ],
+        wants: [
+          { key: 'example.text', resultLength: 50, budget: [60, 80] },
+          { key: 'example.code', resultLength: 25, budget: [20, 40] },
+        ],
+      },
+    },
+    {
+      name: 'Model options and sensitivity',
+      inputs: {
+        targetTokens: 50,
+        llmConfig: { fast: true, good: true },
+        keys: [
+          {
+            key: 'example.text',
+            value: legalText,
+            weight: 1,
+            type: 'text',
+            sensitivity: { blacklist: 'names' },
+          },
+          { key: 'example.code', value: codeText, weight: 0.5, type: 'code' },
+        ],
+        wants: [
+          { key: 'example.text', resultLength: 50 },
+          { key: 'example.code', resultLength: 25 },
+        ],
+        wantSensitiveCall: true,
+      },
+    },
+  ],
   process: async ({ targetTokens, llmConfig, keys, wants }) => {
     vi.clearAllMocks();
     const map = new SummaryMap({
@@ -126,63 +101,81 @@ runTable({
     const tree = entries.reduce((acc, [k, v]) => pave(acc, k, v), {});
     return { tree, wants, map };
   },
+  expects: ({ result, inputs }) => {
+    for (const want of result.wants) {
+      let value = result.tree;
+      for (const seg of want.key.split('.')) value = value[seg];
+      expect(typeof value).toBe('string');
+      expect(value.length).toBeLessThanOrEqual(want.resultLength);
+      if (want.budget) {
+        const { budgets } = result.map.calculateBudgets();
+        const found = budgets.find((b) => b.key === want.key);
+        expect(found.budget).gt(want.budget[0]);
+        expect(found.budget).lt(want.budget[1]);
+      }
+    }
+    if (inputs.wantSensitiveCall) {
+      const sensitiveCall = llm.mock.calls.find((c) => c[1]?.sensitive === true);
+      expect(sensitiveCall).toBeTruthy();
+    }
+  },
 });
 
-// ─── single-method behaviors ──────────────────────────────────────────────
+// ─── single-method behaviors (different vocabularies — split into rows
+// that each declare their own check via control flag) ──────────────────
 
 runTable({
   describe: 'SummaryMap — single-method behaviors',
   examples: [
-    {
-      name: 'get() returns summarized value for a key that was set',
-      inputs: {},
-      check: async () => {
-        vi.clearAllMocks();
-        const map = new SummaryMap({ targetTokens: 100 });
-        map.set('example.text', {
-          key: 'example.text',
-          value: legalText,
-          weight: 1,
-          type: 'text',
-        });
-        const result = await map.get('example.text');
-        expect(result).not.toBeNull();
-        expect(typeof result).toBe('string');
-      },
-    },
+    { name: 'get() returns summarized value for a key that was set', inputs: { case: 'getSet' } },
     {
       name: 'get() returns undefined for a key that was never set',
-      inputs: {},
-      check: () => {
-        const map = new SummaryMap({ targetTokens: 100 });
-        expect(map.get('nonexistent')).toBeUndefined();
-      },
+      inputs: { case: 'getMissing' },
     },
-    {
-      name: 'build() assembles cached entries as XML context',
-      inputs: {},
-      check: async () => {
-        vi.clearAllMocks();
-        const map = new SummaryMap({ targetTokens: 100 });
-        map.set('knowledge', { key: 'knowledge', value: legalText, weight: 1, type: 'text' });
-        map.set('code', { key: 'code', value: codeText, weight: 0.5, type: 'code' });
-        const result = await map.build();
-        expect(result).toContain('<knowledge>');
-        expect(result).toContain('</knowledge>');
-        expect(result).toContain('<code>');
-        expect(result).toContain('</code>');
-        expect(result).toMatch(/<\/code>\n\n<knowledge>/);
-      },
-    },
+    { name: 'build() assembles cached entries as XML context', inputs: { case: 'build' } },
     {
       name: 'buildStale() returns empty string before cache fill',
-      inputs: {},
-      check: () => {
-        const map = new SummaryMap({ targetTokens: 100 });
-        map.set('a', { key: 'a', value: 'text', weight: 1 });
-        expect(map.buildStale()).toBe('');
-      },
+      inputs: { case: 'buildStale' },
     },
   ],
-  process: () => undefined,
+  process: async ({ case: caseName }) => {
+    vi.clearAllMocks();
+    if (caseName === 'getSet') {
+      const map = new SummaryMap({ targetTokens: 100 });
+      map.set('example.text', { key: 'example.text', value: legalText, weight: 1, type: 'text' });
+      return { case: caseName, value: await map.get('example.text') };
+    }
+    if (caseName === 'getMissing') {
+      const map = new SummaryMap({ targetTokens: 100 });
+      return { case: caseName, value: map.get('nonexistent') };
+    }
+    if (caseName === 'build') {
+      const map = new SummaryMap({ targetTokens: 100 });
+      map.set('knowledge', { key: 'knowledge', value: legalText, weight: 1, type: 'text' });
+      map.set('code', { key: 'code', value: codeText, weight: 0.5, type: 'code' });
+      return { case: caseName, value: await map.build() };
+    }
+    if (caseName === 'buildStale') {
+      const map = new SummaryMap({ targetTokens: 100 });
+      map.set('a', { key: 'a', value: 'text', weight: 1 });
+      return { case: caseName, value: map.buildStale() };
+    }
+    return undefined;
+  },
+  expects: ({ result }) => {
+    if (result.case === 'getSet') {
+      expect(result.value).not.toBeNull();
+      expect(typeof result.value).toBe('string');
+    } else if (result.case === 'getMissing') {
+      expect(result.value).toBeUndefined();
+    } else if (result.case === 'build') {
+      expect(result.value).toContain('<knowledge>');
+      expect(result.value).toContain('</knowledge>');
+      expect(result.value).toContain('<code>');
+      expect(result.value).toContain('</code>');
+      expect(result.value).toMatch(/<\/code>\n\n<knowledge>/);
+    } else if (result.case === 'buildStale') {
+      expect(result.value).toBe('');
+    }
+  },
 });

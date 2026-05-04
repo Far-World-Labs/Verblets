@@ -1,6 +1,6 @@
 import { beforeEach, vi, expect } from 'vitest';
 import split, { buildPrompt } from './index.js';
-import { runTable, equals, contains, all } from '../../lib/examples-runner/index.js';
+import { runTable } from '../../lib/examples-runner/index.js';
 
 const DELIM = '---763927459---';
 
@@ -22,7 +22,7 @@ vi.mock('../../lib/llm/index.js', () => ({
 
 beforeEach(() => vi.clearAllMocks());
 
-// ─── split (structural mode) ──────────────────────────────────────────────
+// ─── split (structural + semantic modes share an equality vocabulary) ───
 
 runTable({
   describe: 'split chain',
@@ -33,8 +33,8 @@ runTable({
         text: 'alpha beta gamma delta',
         instructions: 'before "gamma"',
         config: { delimiter: DELIM },
+        want: ['alpha beta', 'gamma delta'],
       },
-      check: equals(['alpha beta', 'gamma delta']),
     },
     {
       name: 'chunks long text and joins before splitting',
@@ -42,8 +42,8 @@ runTable({
         text: 'alpha beta gamma delta epsilon',
         instructions: 'before "delta"',
         config: { delimiter: DELIM, chunkLen: 20 },
+        want: ['alpha beta gamma', 'delta epsilon'],
       },
-      check: equals(['alpha beta gamma', 'delta epsilon']),
     },
     {
       name: 'handles multiple split points',
@@ -51,26 +51,17 @@ runTable({
         text: 'alpha beta gamma delta epsilon',
         instructions: 'before "beta" or "delta"',
         config: { delimiter: DELIM },
+        want: ['alpha', 'beta gamma', 'delta epsilon'],
       },
-      check: equals(['alpha', 'beta gamma', 'delta epsilon']),
     },
-  ],
-  process: ({ text, instructions, config }) => split(text, instructions, config),
-});
-
-// ─── split (semantic mode) ────────────────────────────────────────────────
-
-runTable({
-  describe: 'semantic split mode',
-  examples: [
     {
       name: 'splits text on topic changes when mode is semantic',
       inputs: {
         text: 'alpha beta gamma delta epsilon',
         instructions: 'before "gamma"',
         config: { delimiter: DELIM, mode: 'semantic' },
+        want: ['alpha beta', 'gamma delta epsilon'],
       },
-      check: equals(['alpha beta', 'gamma delta epsilon']),
     },
     {
       name: 'preserves original text exactly in semantic mode',
@@ -78,8 +69,8 @@ runTable({
         text: 'alpha beta gamma delta',
         instructions: 'before "gamma"',
         config: { delimiter: DELIM, mode: 'semantic' },
+        wantJoinedEqualsText: true,
       },
-      check: ({ result, inputs }) => expect(result.join(' ')).toBe(inputs.text),
     },
     {
       name: 'handles multiple semantic split points',
@@ -87,8 +78,8 @@ runTable({
         text: 'alpha beta gamma delta epsilon',
         instructions: 'before "beta" or "delta"',
         config: { delimiter: DELIM, mode: 'semantic' },
+        want: ['alpha', 'beta gamma', 'delta epsilon'],
       },
-      check: equals(['alpha', 'beta gamma', 'delta epsilon']),
     },
     {
       name: 'respects chunking constraints in semantic mode',
@@ -96,8 +87,8 @@ runTable({
         text: 'alpha beta gamma delta epsilon',
         instructions: 'before "delta"',
         config: { delimiter: DELIM, mode: 'semantic', chunkLen: 20 },
+        want: ['alpha beta gamma', 'delta epsilon'],
       },
-      check: equals(['alpha beta gamma', 'delta epsilon']),
     },
     {
       name: 'defaults to structural mode when mode is not specified',
@@ -105,24 +96,30 @@ runTable({
         text: 'alpha beta gamma delta',
         instructions: 'before "gamma"',
         config: { delimiter: DELIM },
+        want: ['alpha beta', 'gamma delta'],
       },
-      check: equals(['alpha beta', 'gamma delta']),
     },
   ],
   process: ({ text, instructions, config }) => split(text, instructions, config),
+  expects: ({ result, inputs }) => {
+    if ('want' in inputs) expect(result).toEqual(inputs.want);
+    if (inputs.wantJoinedEqualsText) expect(result.join(' ')).toBe(inputs.text);
+  },
 });
 
-// ─── buildPrompt ──────────────────────────────────────────────────────────
+// ─── buildPrompt ────────────────────────────────────────────────────────
 
 runTable({
   describe: 'buildPrompt',
   examples: [
     {
       name: 'includes structural rules by default',
-      inputs: { text: 'some text', instructions: 'split here', options: undefined },
-      check: ({ result }) => {
-        expect(result).toContain('natural break points');
-        expect(result).not.toContain('semantic boundaries');
+      inputs: {
+        text: 'some text',
+        instructions: 'split here',
+        options: undefined,
+        wantContains: ['natural break points'],
+        wantNotContains: ['semantic boundaries'],
       },
     },
     {
@@ -131,13 +128,13 @@ runTable({
         text: 'some text',
         instructions: 'split here',
         options: { mode: 'semantic' },
+        wantContains: [
+          'semantic boundaries',
+          'meaning, topic, or argument shifts',
+          'Ignore structural markers',
+        ],
+        wantNotContains: ['natural break points'],
       },
-      check: all(
-        contains('semantic boundaries'),
-        contains('meaning, topic, or argument shifts'),
-        contains('Ignore structural markers'),
-        ({ result }) => expect(result).not.toContain('natural break points')
-      ),
     },
     {
       name: 'includes structural rules when mode is structural',
@@ -145,10 +142,8 @@ runTable({
         text: 'some text',
         instructions: 'split here',
         options: { mode: 'structural' },
-      },
-      check: ({ result }) => {
-        expect(result).toContain('natural break points');
-        expect(result).not.toContain('semantic boundaries');
+        wantContains: ['natural break points'],
+        wantNotContains: ['semantic boundaries'],
       },
     },
     {
@@ -157,8 +152,8 @@ runTable({
         text: 'some text',
         instructions: 'split here',
         options: { mode: 'semantic', targetSplitCount: 5 },
+        wantContains: ['approximately 5 sections', 'semantic boundaries'],
       },
-      check: all(contains('approximately 5 sections'), contains('semantic boundaries')),
     },
     {
       name: 'includes previous context in semantic mode',
@@ -166,9 +161,17 @@ runTable({
         text: 'some text',
         instructions: 'split here',
         options: { mode: 'semantic', previousContent: 'earlier content here' },
+        wantContains: ['<previous-context>', 'earlier content here'],
       },
-      check: all(contains('<previous-context>'), contains('earlier content here')),
     },
   ],
   process: ({ text, instructions, options }) => buildPrompt(text, instructions, DELIM, options),
+  expects: ({ result, inputs }) => {
+    if (inputs.wantContains) {
+      for (const fragment of inputs.wantContains) expect(result).toContain(fragment);
+    }
+    if (inputs.wantNotContains) {
+      for (const fragment of inputs.wantNotContains) expect(result).not.toContain(fragment);
+    }
+  },
 });

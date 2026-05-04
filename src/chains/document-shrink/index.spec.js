@@ -1,6 +1,6 @@
 import { vi, expect } from 'vitest';
 import documentShrink, { mapThoroughness } from './index.js';
-import { runTable, partial } from '../../lib/examples-runner/index.js';
+import { runTable } from '../../lib/examples-runner/index.js';
 
 vi.mock('../questions/index.js', () => ({
   default: vi.fn(async (text) => {
@@ -79,164 +79,199 @@ Coffee preferences can reveal personality traits. Some prefer bold espresso, oth
 
 In conclusion, both coffee and relationships benefit from patience and attention to detail.`;
 
-// ─── documentShrink ───────────────────────────────────────────────────────
-
-const examples = [
-  {
-    name: 'reduces a document to target size',
-    inputs: {
-      doc: sampleDocument,
-      query: 'coffee and relationships',
-      options: { targetSize: 1000, compression: 0.8 },
+runTable({
+  describe: 'documentShrink',
+  examples: [
+    {
+      name: 'reduces a document to target size',
+      inputs: {
+        doc: sampleDocument,
+        query: 'coffee and relationships',
+        options: { targetSize: 1000, compression: 0.8 },
+        wantBaseline: true,
+      },
     },
-    check: ({ result }) => {
+    {
+      name: 'preserves query-relevant content',
+      inputs: {
+        doc: sampleDocument,
+        query: 'making coffee for partner',
+        options: { targetSize: 800, compression: 0.5 },
+        wantContentLowerContains: 'coffee',
+        wantContentTruthy: true,
+      },
+    },
+    {
+      name: 'handles empty documents',
+      inputs: {
+        doc: '',
+        query: 'any query',
+        options: {},
+        wantContent: '',
+        wantMetadata: { finalSize: 0, originalSize: 0 },
+      },
+    },
+    {
+      name: 'handles very short documents',
+      inputs: {
+        doc: 'Just a short sentence.',
+        query: 'test query',
+        options: {},
+        wantContentEqualsDoc: true,
+      },
+    },
+    {
+      name: 'applies different chunk actions based on relevance',
+      inputs: {
+        doc: sampleDocument,
+        query: 'coffee making request',
+        options: { targetSize: 1500, compression: 0.8 },
+        wantContentTruthy: true,
+        wantFinalSizeMax: 1500,
+        wantChunksTotalGT: 0,
+        wantTfIdfSelectedGTE: 0,
+      },
+    },
+    {
+      name: 'respects compression setting',
+      vary: { compression: ['low', 'high'] },
+      inputs: ({ compression }) => ({
+        doc: sampleDocument,
+        query: 'relationships',
+        options: { targetSize: 1000, compression },
+        wantFinalSizeGTE: 0,
+      }),
+    },
+    {
+      name: 'maintains document structure with XML chunks',
+      inputs: {
+        doc: sampleDocument,
+        query: 'comedy show transcript',
+        options: { targetSize: 2000 },
+        wantHasContent: true,
+        wantOriginalSizeGT: 0,
+        wantFinalSizeGT: 0,
+      },
+    },
+    {
+      name: 'tracks chunk transformations',
+      inputs: {
+        doc: sampleDocument,
+        query: 'video reactions',
+        options: { targetSize: 1200 },
+        wantChunksTotalGT: 0,
+        wantAllocationDefined: true,
+        wantTokensUsedGTE: 0,
+      },
+    },
+    {
+      name: 'handles custom token budget',
+      inputs: {
+        doc: sampleDocument,
+        query: 'test query',
+        options: { targetSize: 100, tokenBudget: 500 },
+        wantContentLengthGT: 0,
+      },
+    },
+    {
+      name: 'handles custom chunk sizes',
+      inputs: {
+        doc: sampleDocument,
+        query: 'relationships',
+        options: { targetSize: 1500 },
+        wantHasContent: true,
+        wantChunksTotalGT: 0,
+      },
+    },
+    {
+      name: 'handles invalid options gracefully (uses defaults)',
+      inputs: {
+        doc: sampleDocument,
+        query: 'test',
+        options: { targetSize: -100, chunkSize: -50 },
+        wantHasContent: true,
+        wantContentTruthy: true,
+      },
+    },
+    {
+      name: 'handles very long documents',
+      inputs: {
+        doc: 'This is a test. '.repeat(1000),
+        query: 'test content',
+        options: { targetSize: 1000 },
+        wantFinalSizeMax: 1500,
+        wantContentTruthy: true,
+      },
+    },
+  ],
+  process: ({ doc, query, options }) => documentShrink(doc, query, options),
+  expects: ({ result, inputs }) => {
+    if (inputs.wantBaseline) {
       expect(result.content).toBeTruthy();
       expect(typeof result.content).toBe('string');
-      expect(result.metadata.originalSize).toBe(sampleDocument.length);
+      expect(result.metadata.originalSize).toBe(inputs.doc.length);
       expect(result.metadata.finalSize).toBe(result.content.length);
       expect(result.metadata.finalSize).toBeLessThanOrEqual(result.metadata.originalSize);
       expect(parseFloat(result.metadata.reductionRatio)).toBeGreaterThanOrEqual(0);
-    },
-  },
-  {
-    name: 'preserves query-relevant content',
-    inputs: {
-      doc: sampleDocument,
-      query: 'making coffee for partner',
-      options: { targetSize: 800, compression: 0.5 },
-    },
-    check: ({ result }) => {
-      expect(result.content.toLowerCase()).toContain('coffee');
-      expect(result.content).toBeTruthy();
-    },
-  },
-  {
-    name: 'handles empty documents',
-    inputs: { doc: '', query: 'any query', options: {} },
-    check: ({ result }) => {
-      expect(result.content).toBe('');
-      expect(result.metadata).toMatchObject({ finalSize: 0, originalSize: 0 });
-    },
-  },
-  {
-    name: 'handles very short documents',
-    inputs: { doc: 'Just a short sentence.', query: 'test query', options: {} },
-    check: ({ result, inputs }) => {
+    }
+    if (inputs.wantContentLowerContains) {
+      expect(result.content.toLowerCase()).toContain(inputs.wantContentLowerContains);
+    }
+    if (inputs.wantContentTruthy) expect(result.content).toBeTruthy();
+    if ('wantContent' in inputs) expect(result.content).toBe(inputs.wantContent);
+    if (inputs.wantMetadata) expect(result.metadata).toMatchObject(inputs.wantMetadata);
+    if (inputs.wantContentEqualsDoc) {
       expect(result.content).toBe(inputs.doc);
       expect(result.metadata).toMatchObject({
         originalSize: inputs.doc.length,
         finalSize: inputs.doc.length,
       });
-    },
-  },
-  {
-    name: 'applies different chunk actions based on relevance',
-    inputs: {
-      doc: sampleDocument,
-      query: 'coffee making request',
-      options: { targetSize: 1500, compression: 0.8 },
-    },
-    check: ({ result }) => {
-      expect(result.content).toBeTruthy();
-      expect(result.metadata.finalSize).toBeLessThanOrEqual(1500);
-      expect(result.metadata.chunks.total).toBeGreaterThan(0);
-      expect(result.metadata.chunks.tfIdfSelected).toBeGreaterThanOrEqual(0);
-    },
-  },
-  {
-    name: 'respects compression setting',
-    vary: { compression: ['low', 'high'] },
-    inputs: ({ compression }) => ({
-      doc: sampleDocument,
-      query: 'relationships',
-      options: { targetSize: 1000, compression },
-    }),
-    check: ({ result }) => {
-      expect(result.metadata.finalSize).toBeGreaterThanOrEqual(0);
-    },
-  },
-  {
-    name: 'maintains document structure with XML chunks',
-    inputs: {
-      doc: sampleDocument,
-      query: 'comedy show transcript',
-      options: { targetSize: 2000 },
-    },
-    check: ({ result }) => {
+    }
+    if (inputs.wantFinalSizeMax !== undefined) {
+      expect(result.metadata.finalSize).toBeLessThanOrEqual(inputs.wantFinalSizeMax);
+    }
+    if (inputs.wantFinalSizeGTE !== undefined) {
+      expect(result.metadata.finalSize).toBeGreaterThanOrEqual(inputs.wantFinalSizeGTE);
+    }
+    if (inputs.wantChunksTotalGT !== undefined) {
+      expect(result.metadata.chunks.total).toBeGreaterThan(inputs.wantChunksTotalGT);
+    }
+    if (inputs.wantTfIdfSelectedGTE !== undefined) {
+      expect(result.metadata.chunks.tfIdfSelected).toBeGreaterThanOrEqual(
+        inputs.wantTfIdfSelectedGTE
+      );
+    }
+    if (inputs.wantHasContent) {
       expect(result).toHaveProperty('content');
       expect(result).toHaveProperty('metadata');
-      expect(result.metadata.originalSize).toBeGreaterThan(0);
-      expect(result.metadata.finalSize).toBeGreaterThan(0);
-    },
+    }
+    if (inputs.wantOriginalSizeGT !== undefined) {
+      expect(result.metadata.originalSize).toBeGreaterThan(inputs.wantOriginalSizeGT);
+    }
+    if (inputs.wantFinalSizeGT !== undefined) {
+      expect(result.metadata.finalSize).toBeGreaterThan(inputs.wantFinalSizeGT);
+    }
+    if (inputs.wantAllocationDefined) expect(result.metadata.allocation).toBeDefined();
+    if (inputs.wantTokensUsedGTE !== undefined) {
+      expect(result.metadata.tokens.used).toBeGreaterThanOrEqual(inputs.wantTokensUsedGTE);
+    }
+    if (inputs.wantContentLengthGT !== undefined) {
+      expect(result.content.length).toBeGreaterThan(inputs.wantContentLengthGT);
+    }
   },
-  {
-    name: 'tracks chunk transformations',
-    inputs: { doc: sampleDocument, query: 'video reactions', options: { targetSize: 1200 } },
-    check: ({ result }) => {
-      expect(result.metadata.chunks.total).toBeGreaterThan(0);
-      expect(result.metadata.allocation).toBeDefined();
-      expect(result.metadata.tokens.used).toBeGreaterThanOrEqual(0);
-    },
-  },
-  {
-    name: 'handles custom token budget',
-    inputs: {
-      doc: sampleDocument,
-      query: 'test query',
-      options: { targetSize: 100, tokenBudget: 500 },
-    },
-    check: ({ result }) => expect(result.content.length).toBeGreaterThan(0),
-  },
-  {
-    name: 'handles custom chunk sizes',
-    inputs: { doc: sampleDocument, query: 'relationships', options: { targetSize: 1500 } },
-    check: ({ result }) => {
-      expect(result).toHaveProperty('content');
-      expect(result.metadata.chunks.total).toBeGreaterThan(0);
-    },
-  },
-  {
-    name: 'handles invalid options gracefully (uses defaults)',
-    inputs: {
-      doc: sampleDocument,
-      query: 'test',
-      options: { targetSize: -100, chunkSize: -50 },
-    },
-    check: ({ result }) => {
-      expect(result).toHaveProperty('content');
-      expect(result.content).toBeTruthy();
-    },
-  },
-  {
-    name: 'handles very long documents',
-    inputs: {
-      doc: 'This is a test. '.repeat(1000),
-      query: 'test content',
-      options: { targetSize: 1000 },
-    },
-    check: ({ result }) => {
-      expect(result.metadata.finalSize).toBeLessThanOrEqual(1500);
-      expect(result.content).toBeTruthy();
-    },
-  },
-];
-
-runTable({
-  describe: 'documentShrink',
-  examples,
-  process: ({ doc, query, options }) => documentShrink(doc, query, options),
 });
-
-// ─── mapThoroughness ──────────────────────────────────────────────────────
 
 runTable({
   describe: 'mapThoroughness',
   examples: [
     {
       name: 'low disables all LLM phases',
-      inputs: { thoroughness: 'low' },
-      check: partial({ queryExpansion: false, llmScoring: false, llmCompression: false }),
+      inputs: {
+        thoroughness: 'low',
+        want: { queryExpansion: false, llmScoring: false, llmCompression: false },
+      },
     },
   ],
   process: ({ thoroughness }) => mapThoroughness(thoroughness),
+  expects: ({ result, inputs }) => expect(result).toMatchObject(inputs.want),
 });

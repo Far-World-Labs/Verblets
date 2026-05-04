@@ -40,9 +40,6 @@ const schema = {
   properties: [],
 };
 
-const lastPrompt = () => callLlm.mock.calls.at(-1)[0];
-const lastOptions = () => callLlm.mock.calls.at(-1)[1];
-
 runTable({
   describe: 'fragment',
   examples: [
@@ -55,47 +52,33 @@ runTable({
             text: 'The invoice is still wrong. Legal thinks the retention language is risky.',
           },
         ],
-      },
-      check: ({ result }) => {
-        expect(result).toHaveLength(1);
-        expect(result[0].fragmentSetId).toBe('fs:ticket:1');
-        expect(result[0].fragments).toHaveLength(2);
-        const billing = result[0].fragments.find((f) => f.projectionName === 'billing');
-        expect(billing).toMatchObject({
+        wantLength: 1,
+        wantFragmentSetId: 'fs:ticket:1',
+        wantFragmentsLength: 2,
+        wantBilling: {
           text: 'The invoice is still wrong.',
           fragmentKind: 'literal',
           sourceIds: ['ticket:1'],
-        });
-        expect(billing.fragmentId).toBeTruthy();
+        },
       },
     },
     {
       name: 'passes projection descriptions into the prompt',
-      inputs: { sourceTexts: [{ sourceId: 's1', text: 'test' }] },
-      check: () => {
-        const prompt = lastPrompt();
-        expect(prompt).toContain('billing');
-        expect(prompt).toContain('invoices and charges');
-        expect(prompt).toContain('compliance');
-        expect(prompt).toContain('legal and policy');
+      inputs: {
+        sourceTexts: [{ sourceId: 's1', text: 'test' }],
+        wantPromptContains: ['billing', 'invoices and charges', 'compliance', 'legal and policy'],
       },
     },
     {
       name: 'passes source text into the prompt',
-      inputs: { sourceTexts: [{ sourceId: 'ticket:99', text: 'Overcharged by $500' }] },
-      check: () => {
-        const prompt = lastPrompt();
-        expect(prompt).toContain('Overcharged by $500');
-        expect(prompt).toContain('ticket:99');
+      inputs: {
+        sourceTexts: [{ sourceId: 'ticket:99', text: 'Overcharged by $500' }],
+        wantPromptContains: ['Overcharged by $500', 'ticket:99'],
       },
     },
     {
       name: 'assigns unique fragment IDs',
-      inputs: { sourceTexts: [{ sourceId: 's1', text: 'test' }] },
-      check: ({ result }) => {
-        const ids = result[0].fragments.map((f) => f.fragmentId);
-        expect(new Set(ids).size).toBe(ids.length);
-      },
+      inputs: { sourceTexts: [{ sourceId: 's1', text: 'test' }], wantUniqueIds: true },
     },
     {
       name: 'batches large source sets',
@@ -104,33 +87,54 @@ runTable({
           sourceId: `s:${i}`,
           text: `Text ${i}`,
         })),
-        preMock: () => parallel.mockClear(),
-      },
-      check: () => {
-        expect(parallel).toHaveBeenCalled();
-        const batches = parallel.mock.calls[0][0];
-        expect(batches).toHaveLength(3);
-        expect(batches[0]).toHaveLength(5);
-        expect(batches[1]).toHaveLength(5);
-        expect(batches[2]).toHaveLength(2);
+        mock: () => parallel.mockClear(),
+        wantBatchLengths: [5, 5, 2],
       },
     },
     {
       name: 'handles single source text without batching issues',
-      inputs: { sourceTexts: [{ sourceId: 's1', text: 'Single item' }] },
-      check: ({ result }) => expect(result).toHaveLength(1),
+      inputs: { sourceTexts: [{ sourceId: 's1', text: 'Single item' }], wantLength: 1 },
     },
     {
       name: 'propagates config to callLlm',
       inputs: {
         sourceTexts: [{ sourceId: 's1', text: 'test' }],
         config: { traceId: 'trace-abc' },
+        wantTraceId: 'trace-abc',
       },
-      check: () => expect(lastOptions().traceId).toBe('trace-abc'),
     },
   ],
-  process: async ({ sourceTexts, config, preMock }) => {
-    if (preMock) preMock();
+  process: async ({ sourceTexts, config, mock }) => {
+    if (mock) mock();
     return fragment({ sourceTexts, schema }, config);
+  },
+  expects: ({ result, inputs }) => {
+    if ('wantLength' in inputs) expect(result).toHaveLength(inputs.wantLength);
+    if (inputs.wantFragmentSetId) expect(result[0].fragmentSetId).toBe(inputs.wantFragmentSetId);
+    if ('wantFragmentsLength' in inputs) {
+      expect(result[0].fragments).toHaveLength(inputs.wantFragmentsLength);
+    }
+    if (inputs.wantBilling) {
+      const billing = result[0].fragments.find((f) => f.projectionName === 'billing');
+      expect(billing).toMatchObject(inputs.wantBilling);
+      expect(billing.fragmentId).toBeTruthy();
+    }
+    if (inputs.wantPromptContains) {
+      const prompt = callLlm.mock.calls.at(-1)[0];
+      for (const fragment of inputs.wantPromptContains) expect(prompt).toContain(fragment);
+    }
+    if (inputs.wantUniqueIds) {
+      const ids = result[0].fragments.map((f) => f.fragmentId);
+      expect(new Set(ids).size).toBe(ids.length);
+    }
+    if (inputs.wantBatchLengths) {
+      expect(parallel).toHaveBeenCalled();
+      const batches = parallel.mock.calls[0][0];
+      expect(batches).toHaveLength(inputs.wantBatchLengths.length);
+      inputs.wantBatchLengths.forEach((n, i) => expect(batches[i]).toHaveLength(n));
+    }
+    if (inputs.wantTraceId) {
+      expect(callLlm.mock.calls.at(-1)[1].traceId).toBe(inputs.wantTraceId);
+    }
   },
 });

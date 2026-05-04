@@ -1,4 +1,4 @@
-import { vi, expect } from 'vitest';
+import { vi } from 'vitest';
 import setInterval from './index.js';
 import { runTable } from '../../lib/examples-runner/index.js';
 
@@ -17,6 +17,10 @@ const date = (await import('../date/index.js')).default;
 const numberWithUnits = (await import('../../verblets/number-with-units/index.js')).default;
 const number = (await import('../../verblets/number/index.js')).default;
 
+// Each row's `run` IS the test logic — assertions live inside `run` because
+// fake-timer interleaving can't be expressed declaratively. The processor
+// runs the row's run() and the table-level expects is a no-op (the run
+// function itself enforces correctness via expect()).
 runTable({
   describe: 'setInterval',
   examples: [
@@ -24,7 +28,7 @@ runTable({
       name: 'runs callback with dynamic delays',
       inputs: {
         prompt: 'prompt',
-        preMock: () => {
+        mock: () => {
           llm.mockResolvedValueOnce('1 second').mockResolvedValueOnce('2 seconds');
           numberWithUnits
             .mockResolvedValueOnce({ value: 1, unit: 'second' })
@@ -32,7 +36,7 @@ runTable({
           date.mockResolvedValue(undefined);
           number.mockResolvedValue(undefined);
         },
-        run: async ({ getData, stop }) => {
+        run: async ({ getData, stop, expect }) => {
           await Promise.resolve();
           await vi.advanceTimersByTimeAsync(0);
           expect(getData).toHaveBeenCalledTimes(1);
@@ -44,20 +48,19 @@ runTable({
           await vi.runOnlyPendingTimersAsync();
         },
       },
-      check: () => {},
     },
     {
       name: 'interpolates variables from getData results in prompt',
       inputs: {
         prompt: 'Current stress: {stress}, mood: {mood}. Wait time?',
         getData: () => ({ stress: 85, mood: 'anxious' }),
-        preMock: () => {
+        mock: () => {
           llm.mockResolvedValueOnce('1 second');
           numberWithUnits.mockResolvedValueOnce({ value: 1, unit: 'second' });
           date.mockResolvedValue(undefined);
           number.mockResolvedValue(undefined);
         },
-        run: async ({ stop }) => {
+        run: async ({ stop, expect }) => {
           await Promise.resolve();
           await vi.advanceTimersByTimeAsync(0);
           expect(llm).toHaveBeenCalledWith(
@@ -68,19 +71,18 @@ runTable({
           await vi.runOnlyPendingTimersAsync();
         },
       },
-      check: () => {},
     },
     {
       name: 'prevents new timers after stop is called',
       inputs: {
         prompt: 'prompt',
-        preMock: () => {
+        mock: () => {
           llm.mockResolvedValueOnce('1 second');
           numberWithUnits.mockResolvedValueOnce({ value: 1, unit: 'second' });
           date.mockResolvedValue(undefined);
           number.mockResolvedValue(undefined);
         },
-        run: async ({ getData, stop }) => {
+        run: async ({ getData, stop, expect }) => {
           await Promise.resolve();
           await vi.advanceTimersByTimeAsync(0);
           expect(getData).toHaveBeenCalledTimes(1);
@@ -90,13 +92,17 @@ runTable({
           await vi.runOnlyPendingTimersAsync();
         },
       },
-      check: () => {},
     },
   ],
-  process: async ({ prompt, getData: dataValue, preMock, run }) => {
-    if (preMock) preMock();
+  process: async ({ prompt, getData: dataValue, mock, run }) => {
+    if (mock) mock();
     const getData = vi.fn().mockResolvedValue(dataValue ?? 'test data');
     const stop = setInterval({ prompt, getData });
-    await run({ getData, stop });
+    const { expect } = await import('vitest');
+    await run({ getData, stop, expect });
+  },
+  expects: () => {
+    // Per-row run() handles all assertions inline — fake-timer interleaving
+    // doesn't reduce to a single assertion vocabulary.
   },
 });

@@ -38,29 +38,19 @@ runTable({
   examples: [
     {
       name: 'Basic usage',
-      inputs: { description: '2021 EV cars' },
-      check: ({ result }) => expect(result.some((item) => /Model Y/.test(item))).toBe(true),
+      inputs: { description: '2021 EV cars', wantSomeItemMatches: /Model Y/ },
     },
     {
       name: 'Basic usage with schema',
-      inputs: { description: '2021 EV cars', schema: evSchema },
-      check: ({ result }) => expect(result.some((item) => /Model Y/.test(item.model))).toBe(true),
+      inputs: {
+        description: '2021 EV cars',
+        schema: evSchema,
+        wantSomeModelMatches: /Model Y/,
+      },
     },
     {
       name: 'generateList shouldStop receives actual resultsAll in per-query check',
-      inputs: { useGenerator: true },
-      check: ({ result }) => {
-        expect(result.results.length).toBeGreaterThan(0);
-        const perQueryCalls = result.shouldStopSpy.mock.calls.filter(
-          ([factors]) => factors.result === undefined
-        );
-        expect(perQueryCalls.length).toBeGreaterThan(0);
-        const first = perQueryCalls[0][0];
-        expect(Array.isArray(first.resultsAll)).toBe(true);
-        expect(first.resultsAll.length).toBeGreaterThan(0);
-        expect(Array.isArray(first.resultsNew)).toBe(true);
-        expect(first.resultsNew.length).toBeGreaterThan(0);
-      },
+      inputs: { useGenerator: true, wantGeneratorPerQueryShape: true },
     },
   ],
   process: async ({ description, schema, useGenerator }) => {
@@ -73,5 +63,25 @@ runTable({
       return { results, shouldStopSpy };
     }
     return list(description, { schema });
+  },
+  expects: ({ result, inputs }) => {
+    if (inputs.wantSomeItemMatches) {
+      expect(result.some((item) => inputs.wantSomeItemMatches.test(item))).toBe(true);
+    }
+    if (inputs.wantSomeModelMatches) {
+      expect(result.some((item) => inputs.wantSomeModelMatches.test(item.model))).toBe(true);
+    }
+    if (inputs.wantGeneratorPerQueryShape) {
+      expect(result.results.length).toBeGreaterThan(0);
+      const perQueryCalls = result.shouldStopSpy.mock.calls.filter(
+        ([factors]) => factors.result === undefined
+      );
+      expect(perQueryCalls.length).toBeGreaterThan(0);
+      const first = perQueryCalls[0][0];
+      expect(Array.isArray(first.resultsAll)).toBe(true);
+      expect(first.resultsAll.length).toBeGreaterThan(0);
+      expect(Array.isArray(first.resultsNew)).toBe(true);
+      expect(first.resultsNew.length).toBeGreaterThan(0);
+    }
   },
 });
