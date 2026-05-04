@@ -26,9 +26,6 @@ vi.mock('../../verblets/list-batch/index.js', () => ({
 
 const makeSpeak = () => vi.fn(async ({ speaker }) => `${speaker.id} speaks`);
 
-// One block — every row's `expects` runs the same vocabulary, lit up by
-// control flags on inputs (wantMessageCount, wantMessageIds,
-// wantTurnReduceBio, wantSpeakerMemoryHas, etc.).
 runTable({
   describe: 'Conversation',
   examples: [
@@ -41,9 +38,8 @@ runTable({
         ],
         rules: { shouldContinue: (r) => r < 5 },
         useSpeak: true,
-        wantMessageCountAtLeast: 1,
-        wantSomeMessageIds: ['a', 'b'],
       },
+      want: { messageCountAtLeast: 1, someMessageIds: ['a', 'b'] },
     },
     {
       name: 'custom turnPolicy respected',
@@ -54,17 +50,17 @@ runTable({
           turnPolicy: (r) => (r % 2 === 0 ? ['a'] : ['b']),
         },
         useSpeak: true,
-        wantMessageIds: ['a', 'b'],
       },
+      want: { messageIds: ['a', 'b'] },
     },
     {
       name: 'bio text appears in prompts',
       inputs: {
         speakers: [{ id: 'expert', bio: 'expert bio' }],
         rules: { shouldContinue: (r) => r < 1 },
-        mock: () => llmMock.mockClear(),
-        wantTurnReduceBio: 'expert bio',
+        clearLlm: true,
       },
+      want: { turnReduceBio: 'expert bio' },
     },
     {
       name: 'handles single speaker conversation',
@@ -72,9 +68,8 @@ runTable({
         speakers: [{ id: 'a' }],
         rules: { shouldContinue: (r) => r < 2 },
         useSpeak: true,
-        wantMessageCountAtLeast: 1,
-        wantAllMessageId: 'a',
       },
+      want: { messageCountAtLeast: 1, allMessageId: 'a' },
     },
     {
       name: 'bulk speak function is used when provided',
@@ -82,9 +77,8 @@ runTable({
         speakers: [{ id: 'a' }, { id: 'b' }],
         rules: { shouldContinue: (r) => r < 1 },
         makeBulkSpeak: () => vi.fn(async ({ speakers }) => speakers.map((s) => `${s.id} bulk`)),
-        wantBulkSpeakCalled: true,
-        wantSomeMessageContains: 'bulk',
       },
+      want: { bulkSpeakCalled: true, someMessageContains: 'bulk' },
     },
     {
       name: 'handles empty turn policy gracefully',
@@ -92,8 +86,8 @@ runTable({
         speakers: [{ id: 'a' }, { id: 'b' }],
         rules: { shouldContinue: (r) => r < 1, turnPolicy: () => [] },
         useSpeak: true,
-        wantMessageCountAtLeast: 1,
       },
+      want: { messageCountAtLeast: 1 },
     },
     {
       name: 'turn policy can access conversation history',
@@ -113,17 +107,13 @@ runTable({
           };
         },
         useSpeak: true,
-        wantHistoryArray: true,
       },
+      want: { historyArray: true },
     },
     {
       name: 'uses default 3 rounds when no shouldContinue provided',
-      inputs: {
-        speakers: [{ id: 'a' }],
-        useSpeak: true,
-        wantMessageCountAtLeast: 1,
-        wantMessageCountAtMost: 15,
-      },
+      inputs: { speakers: [{ id: 'a' }], useSpeak: true },
+      want: { messageCountAtLeast: 1, messageCountAtMost: 15 },
     },
     {
       name: 'uses default turn policy when none provided',
@@ -131,11 +121,9 @@ runTable({
         speakers: [{ id: 'a' }, { id: 'b' }],
         rules: { shouldContinue: (r) => r < 1 },
         useSpeak: true,
-        wantMessageCountAtLeast: 1,
-        wantMessageCountAtMost: 5,
       },
+      want: { messageCountAtLeast: 1, messageCountAtMost: 5 },
     },
-    // Speaker memory:
     {
       name: 'accumulates per-speaker memory across rounds',
       inputs: {
@@ -145,9 +133,11 @@ runTable({
         ],
         rules: { shouldContinue: (r) => r < 3, turnPolicy: () => ['a', 'b'] },
         useSpeak: true,
-        wantSpeakerMemoryHas: ['a', 'b'],
-        wantSpeakerMemoryLengths: { a: 3, b: 3 },
-        wantSpeakerMemoryShape: { a: { id: 'a', comment: 'a speaks' } },
+      },
+      want: {
+        speakerMemoryHas: ['a', 'b'],
+        speakerMemoryLengths: { a: 3, b: 3 },
+        speakerMemoryShape: { a: { id: 'a', comment: 'a speaks' } },
       },
     },
     {
@@ -155,8 +145,8 @@ runTable({
       inputs: {
         speakers: [{ id: 'x', name: 'X' }],
         rules: { shouldContinue: (r) => r < 2, turnPolicy: () => ['x'] },
-        wantTurnReduceMemoryIsMap: true,
       },
+      want: { turnReduceMemoryIsMap: true },
     },
     {
       name: 'passes speakerMemory snapshot to speakFn',
@@ -171,8 +161,8 @@ runTable({
           });
           return { fn, captured };
         },
-        wantCapturedMemoryGet: { a: { length: 1, firstComment: 'a speaks' } },
       },
+      want: { capturedMemoryGet: { a: { length: 1, firstComment: 'a speaks' } } },
     },
     {
       name: 'provides isolated memory snapshots per round',
@@ -187,8 +177,8 @@ runTable({
           });
           return { fn, snapshots };
         },
-        wantSnapshotSizes: [0, 1, 2],
       },
+      want: { snapshotSizes: [0, 1, 2] },
     },
     {
       name: 'only tracks speakers who have spoken',
@@ -199,39 +189,38 @@ runTable({
         ],
         rules: { shouldContinue: (r) => r < 2, turnPolicy: () => ['a'] },
         useSpeak: true,
-        wantSpeakerMemoryHas: ['a'],
-        wantSpeakerMemoryHasNot: ['b'],
       },
+      want: { speakerMemoryHas: ['a'], speakerMemoryHasNot: ['b'] },
     },
   ],
-  process: async ({ speakers, rules, useSpeak, makeSpeakFn, makeBulkSpeak, makeRules, mock }) => {
-    if (mock) mock();
+  process: async ({ inputs }) => {
+    if (inputs.clearLlm) llmMock.mockClear();
     let speakFn;
     let bulkSpeakFn;
     let speakCaptured;
     let snapshots;
-    if (useSpeak) speakFn = makeSpeak();
-    else if (makeSpeakFn) {
-      const r = makeSpeakFn();
+    if (inputs.useSpeak) speakFn = makeSpeak();
+    else if (inputs.makeSpeakFn) {
+      const r = inputs.makeSpeakFn();
       speakFn = r.fn;
       speakCaptured = r.captured;
     }
-    if (makeBulkSpeak) {
-      const r = makeBulkSpeak();
+    if (inputs.makeBulkSpeak) {
+      const r = inputs.makeBulkSpeak();
       if (typeof r === 'function') bulkSpeakFn = r;
       else {
         bulkSpeakFn = r.fn;
         snapshots = r.snapshots;
       }
     }
-    let actualRules = rules;
+    let actualRules = inputs.rules;
     let rulesCaptured;
-    if (makeRules) {
-      const r = makeRules();
+    if (inputs.makeRules) {
+      const r = inputs.makeRules();
       actualRules = r.rules;
       rulesCaptured = r.captured;
     }
-    const chain = new Conversation('test topic', speakers, {
+    const chain = new Conversation('test topic', inputs.speakers, {
       ...(actualRules ? { rules: actualRules } : {}),
       ...(speakFn ? { speakFn } : {}),
       ...(bulkSpeakFn ? { bulkSpeakFn } : {}),
@@ -239,64 +228,64 @@ runTable({
     const messages = await chain.run();
     return { messages, chain, speakCaptured, rulesCaptured, snapshots, bulkSpeakFn };
   },
-  expects: ({ result, inputs }) => {
+  expects: ({ result, want }) => {
     const { messages, chain, speakCaptured, rulesCaptured, snapshots, bulkSpeakFn } = result;
-    if ('wantMessageCountAtLeast' in inputs) {
-      expect(messages.length).toBeGreaterThanOrEqual(inputs.wantMessageCountAtLeast);
+    if ('messageCountAtLeast' in want) {
+      expect(messages.length).toBeGreaterThanOrEqual(want.messageCountAtLeast);
     }
-    if ('wantMessageCountAtMost' in inputs) {
-      expect(messages.length).toBeLessThanOrEqual(inputs.wantMessageCountAtMost);
+    if ('messageCountAtMost' in want) {
+      expect(messages.length).toBeLessThanOrEqual(want.messageCountAtMost);
     }
-    if (inputs.wantSomeMessageIds) {
-      for (const id of inputs.wantSomeMessageIds) {
+    if (want.someMessageIds) {
+      for (const id of want.someMessageIds) {
         expect(messages.some((m) => m.id === id)).toBe(true);
       }
     }
-    if (inputs.wantMessageIds) {
-      expect(messages.map((m) => m.id)).toEqual(inputs.wantMessageIds);
+    if (want.messageIds) {
+      expect(messages.map((m) => m.id)).toEqual(want.messageIds);
     }
-    if (inputs.wantAllMessageId) {
-      expect(messages.every((m) => m.id === inputs.wantAllMessageId)).toBe(true);
+    if (want.allMessageId) {
+      expect(messages.every((m) => m.id === want.allMessageId)).toBe(true);
     }
-    if (inputs.wantTurnReduceBio) {
+    if (want.turnReduceBio) {
       expect(conversationTurnReduceMock).toBeDefined();
-      expect(conversationTurnReduceMock.speakers[0].bio).toBe(inputs.wantTurnReduceBio);
+      expect(conversationTurnReduceMock.speakers[0].bio).toBe(want.turnReduceBio);
     }
-    if (inputs.wantBulkSpeakCalled) expect(bulkSpeakFn).toHaveBeenCalled();
-    if (inputs.wantSomeMessageContains) {
-      expect(messages.some((m) => m.comment.includes(inputs.wantSomeMessageContains))).toBe(true);
+    if (want.bulkSpeakCalled) expect(bulkSpeakFn).toHaveBeenCalled();
+    if (want.someMessageContains) {
+      expect(messages.some((m) => m.comment.includes(want.someMessageContains))).toBe(true);
     }
-    if (inputs.wantHistoryArray) {
+    if (want.historyArray) {
       expect(rulesCaptured.history).toBeDefined();
       expect(Array.isArray(rulesCaptured.history)).toBe(true);
     }
-    if (inputs.wantSpeakerMemoryHas) {
-      for (const id of inputs.wantSpeakerMemoryHas) {
+    if (want.speakerMemoryHas) {
+      for (const id of want.speakerMemoryHas) {
         expect(chain.speakerMemory.has(id)).toBe(true);
       }
     }
-    if (inputs.wantSpeakerMemoryHasNot) {
-      for (const id of inputs.wantSpeakerMemoryHasNot) {
+    if (want.speakerMemoryHasNot) {
+      for (const id of want.speakerMemoryHasNot) {
         expect(chain.speakerMemory.has(id)).toBe(false);
       }
     }
-    if (inputs.wantSpeakerMemoryLengths) {
-      for (const [id, len] of Object.entries(inputs.wantSpeakerMemoryLengths)) {
+    if (want.speakerMemoryLengths) {
+      for (const [id, len] of Object.entries(want.speakerMemoryLengths)) {
         expect(chain.speakerMemory.get(id)).toHaveLength(len);
       }
     }
-    if (inputs.wantSpeakerMemoryShape) {
-      for (const [id, shape] of Object.entries(inputs.wantSpeakerMemoryShape)) {
+    if (want.speakerMemoryShape) {
+      for (const [id, shape] of Object.entries(want.speakerMemoryShape)) {
         for (const m of chain.speakerMemory.get(id)) {
           expect(m).toMatchObject(shape);
         }
       }
     }
-    if (inputs.wantTurnReduceMemoryIsMap) {
+    if (want.turnReduceMemoryIsMap) {
       expect(conversationTurnReduceMock.speakerMemory).toBeInstanceOf(Map);
     }
-    if (inputs.wantCapturedMemoryGet) {
-      for (const [id, shape] of Object.entries(inputs.wantCapturedMemoryGet)) {
+    if (want.capturedMemoryGet) {
+      for (const [id, shape] of Object.entries(want.capturedMemoryGet)) {
         const memory = speakCaptured.memory;
         expect(memory).toBeInstanceOf(Map);
         const entries = memory.get(id);
@@ -304,8 +293,8 @@ runTable({
         if (shape.firstComment) expect(entries[0].comment).toBe(shape.firstComment);
       }
     }
-    if (inputs.wantSnapshotSizes) {
-      inputs.wantSnapshotSizes.forEach((n, i) => {
+    if (want.snapshotSizes) {
+      want.snapshotSizes.forEach((n, i) => {
         if (n === 0) expect(snapshots[i].size).toBe(0);
         else expect(snapshots[i].get('a')).toHaveLength(n);
       });

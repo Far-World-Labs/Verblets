@@ -3,7 +3,7 @@ import reduce, { reduceItem } from './index.js';
 import listBatch from '../../verblets/list-batch/index.js';
 import callLlm from '../../lib/llm/index.js';
 import { ChainEvent, DomainEvent, OpEvent, Outcome } from '../../lib/progress/constants.js';
-import { runTable } from '../../lib/examples-runner/index.js';
+import { runTable, applyMocks } from '../../lib/examples-runner/index.js';
 
 vi.mock('../../lib/llm/index.js', async (importOriginal) => ({
   ...(await importOriginal()),
@@ -52,30 +52,18 @@ const statsFormat = {
   },
 };
 
-// ─── reduce (batched) ────────────────────────────────────────────────────
-
 runTable({
   describe: 'reduce chain',
   examples: [
     {
       name: 'reduces in batches',
-      inputs: {
-        list: ['a', 'b', 'c', 'd'],
-        instructions: 'join',
-        options: { batchSize: 2 },
-        want: 'a-b-c-d',
-        wantBatchCalls: 2,
-      },
+      inputs: { list: ['a', 'b', 'c', 'd'], instructions: 'join', options: { batchSize: 2 } },
+      want: { value: 'a-b-c-d', batchCalls: 2 },
     },
     {
       name: 'uses initial value',
-      inputs: {
-        list: ['x', 'y'],
-        instructions: 'join',
-        options: { initial: '0', batchSize: 2 },
-        want: '0-x-y',
-        wantBatchCalls: 1,
-      },
+      inputs: { list: ['x', 'y'], instructions: 'join', options: { initial: '0', batchSize: 2 } },
+      want: { value: '0-x-y', batchCalls: 1 },
     },
     {
       name: 'uses initial value with more elements',
@@ -83,9 +71,8 @@ runTable({
         list: ['x', 'y', 'z'],
         instructions: 'join',
         options: { initial: '0', batchSize: 2 },
-        want: '0-x-y-z',
-        wantBatchCalls: 2,
       },
+      want: { value: '0-x-y-z', batchCalls: 2 },
     },
     {
       name: 'returns custom-format result directly without unwrapping accumulator',
@@ -93,9 +80,9 @@ runTable({
         list: ['a', 'b'],
         instructions: 'sum values',
         options: { batchSize: 2, responseFormat: statsFormat, initial: { sum: 0, count: 0 } },
-        mock: () => listBatch.mockResolvedValueOnce({ sum: 10, count: 2 }),
-        want: { sum: 10, count: 2 },
       },
+      mocks: { listBatch: [{ sum: 10, count: 2 }] },
+      want: { value: { sum: 10, count: 2 } },
     },
     {
       name: 'passes custom responseFormat through to listBatch',
@@ -103,9 +90,9 @@ runTable({
         list: ['a'],
         instructions: 'sum',
         options: { batchSize: 2, responseFormat: statsFormat },
-        mock: () => listBatch.mockResolvedValueOnce({ sum: 5, count: 1 }),
-        wantResponseFormat: statsFormat,
       },
+      mocks: { listBatch: [{ sum: 5, count: 1 }] },
+      want: { responseFormat: statsFormat },
     },
     {
       name: 'chains accumulator across batches with custom format',
@@ -113,46 +100,43 @@ runTable({
         list: ['a', 'b', 'c', 'd'],
         instructions: 'sum values',
         options: { batchSize: 2, responseFormat: statsFormat, initial: { sum: 0, count: 0 } },
-        mock: () =>
-          listBatch
-            .mockResolvedValueOnce({ sum: 3, count: 2 })
-            .mockResolvedValueOnce({ sum: 8, count: 4 }),
-        want: { sum: 8, count: 4 },
-        wantBatchCalls: 2,
-        wantSecondPromptContains: '"sum":',
       },
+      mocks: {
+        listBatch: [
+          { sum: 3, count: 2 },
+          { sum: 8, count: 4 },
+        ],
+      },
+      want: { value: { sum: 8, count: 4 }, batchCalls: 2, secondPromptContains: '"sum":' },
     },
   ],
-  process: async ({ list, instructions, options, mock }) => {
-    if (mock) mock();
-    return reduce(list, instructions, options);
+  process: async ({ inputs, mocks }) => {
+    applyMocks(mocks, { listBatch });
+    return reduce(inputs.list, inputs.instructions, inputs.options);
   },
-  expects: ({ result, inputs }) => {
-    if ('want' in inputs) expect(result).toEqual(inputs.want);
-    if ('wantBatchCalls' in inputs) {
-      expect(listBatch).toHaveBeenCalledTimes(inputs.wantBatchCalls);
+  expects: ({ result, want }) => {
+    if ('value' in want) expect(result).toEqual(want.value);
+    if ('batchCalls' in want) {
+      expect(listBatch).toHaveBeenCalledTimes(want.batchCalls);
     }
-    if (inputs.wantResponseFormat) {
-      expect(listBatch.mock.calls[0][2].responseFormat).toBe(inputs.wantResponseFormat);
+    if (want.responseFormat) {
+      expect(listBatch.mock.calls[0][2].responseFormat).toBe(want.responseFormat);
     }
-    if (inputs.wantSecondPromptContains) {
-      expect(listBatch.mock.calls[1][1]).toContain(inputs.wantSecondPromptContains);
+    if (want.secondPromptContains) {
+      expect(listBatch.mock.calls[1][1]).toContain(want.secondPromptContains);
     }
   },
 });
-
-// ─── reduce (progress events) ────────────────────────────────────────────
 
 runTable({
   describe: 'reduce — incremental batch progress',
   examples: [
     {
       name: 'emits batch:complete events as each batch finishes',
-      inputs: {
-        list: ['a', 'b', 'c', 'd', 'e'],
-        options: { batchSize: 2 },
-        wantBatchEvents: 3,
-        wantBatchProgressions: [
+      inputs: { list: ['a', 'b', 'c', 'd', 'e'], options: { batchSize: 2 } },
+      want: {
+        batchEvents: 3,
+        batchProgressions: [
           { processedItems: 2, totalItems: 5 },
           { processedItems: 4 },
           { processedItems: 5 },
@@ -161,19 +145,14 @@ runTable({
     },
     {
       name: 'reports progress ratio on each batch event',
-      inputs: {
-        list: ['a', 'b', 'c', 'd'],
-        options: { batchSize: 2 },
-        wantBatchEvents: 2,
-        wantBatchRatios: [0.5, 1.0],
-      },
+      inputs: { list: ['a', 'b', 'c', 'd'], options: { batchSize: 2 } },
+      want: { batchEvents: 2, batchRatios: [0.5, 1.0] },
     },
     {
       name: 'brackets batch processing with operation start and complete',
-      inputs: {
-        list: ['a', 'b', 'c', 'd'],
-        options: { batchSize: 2 },
-        wantOpEvents: [
+      inputs: { list: ['a', 'b', 'c', 'd'], options: { batchSize: 2 } },
+      want: {
+        opEvents: [
           { event: OpEvent.start, totalItems: 4, totalBatches: 2 },
           { event: OpEvent.complete, totalItems: 4 },
         ],
@@ -181,22 +160,20 @@ runTable({
     },
     {
       name: 'emits full lifecycle: start → input → batch:complete → output → complete',
-      inputs: { list: ['a', 'b', 'c'], options: { batchSize: 2 }, wantLifecycle: true },
+      inputs: { list: ['a', 'b', 'c'], options: { batchSize: 2 } },
+      want: { lifecycle: true },
     },
     {
       name: 'complete event reports batch and item counts with success outcome',
-      inputs: {
-        list: ['a', 'b', 'c', 'd'],
-        options: { batchSize: 2 },
-        wantComplete: { totalItems: 4, totalBatches: 2, outcome: Outcome.success },
-      },
+      inputs: { list: ['a', 'b', 'c', 'd'], options: { batchSize: 2 } },
+      want: { complete: { totalItems: 4, totalBatches: 2, outcome: Outcome.success } },
     },
     {
       name: 'threads accumulator through batches with incremental tracking',
       inputs: {
         list: ['a', 'b', 'c', 'd'],
         options: { batchSize: 2, initial: 'start' },
-        mock: () => {
+        setupAcc: () => {
           const seen = [];
           listBatch.mockImplementation(async (items, instructions) => {
             const accMatch = instructions.match(/<accumulator>(.*?)<\/accumulator>/s);
@@ -207,45 +184,47 @@ runTable({
           });
           return seen;
         },
-        wantValue: 'start-a-b-c-d',
-        wantAccumulators: ['start-a-b', 'start-a-b-c-d'],
-        wantBatchEvents: 2,
-        wantBatchProgressions: [{ processedItems: 2 }, { processedItems: 4 }],
+      },
+      want: {
+        value: 'start-a-b-c-d',
+        accumulators: ['start-a-b', 'start-a-b-c-d'],
+        batchEvents: 2,
+        batchProgressions: [{ processedItems: 2 }, { processedItems: 4 }],
       },
     },
   ],
-  process: async ({ list, options, mock }) => {
-    const accumulators = mock ? mock() : undefined;
+  process: async ({ inputs }) => {
+    const accumulators = inputs.setupAcc?.();
     const events = [];
-    const value = await reduce(list, 'join', {
-      ...options,
+    const value = await reduce(inputs.list, 'join', {
+      ...inputs.options,
       onProgress: (e) => events.push(e),
     });
     return { value, events, accumulators };
   },
-  expects: ({ result, inputs }) => {
+  expects: ({ result, want }) => {
     const batches = result.events.filter(
       (e) => e.step === 'reduce' && e.event === OpEvent.batchComplete
     );
-    if ('wantBatchEvents' in inputs) expect(batches).toHaveLength(inputs.wantBatchEvents);
-    if (inputs.wantBatchProgressions) {
-      inputs.wantBatchProgressions.forEach((shape, i) => {
+    if ('batchEvents' in want) expect(batches).toHaveLength(want.batchEvents);
+    if (want.batchProgressions) {
+      want.batchProgressions.forEach((shape, i) => {
         expect(batches[i]).toMatchObject(shape);
       });
     }
-    if (inputs.wantBatchRatios) {
-      inputs.wantBatchRatios.forEach((ratio, i) => {
+    if (want.batchRatios) {
+      want.batchRatios.forEach((ratio, i) => {
         expect(batches[i].progress).toBeCloseTo(ratio);
       });
     }
-    if (inputs.wantOpEvents) {
+    if (want.opEvents) {
       const ops = result.events.filter(
         (e) => e.step === 'reduce' && (e.event === OpEvent.start || e.event === OpEvent.complete)
       );
-      expect(ops).toHaveLength(inputs.wantOpEvents.length);
-      inputs.wantOpEvents.forEach((shape, i) => expect(ops[i]).toMatchObject(shape));
+      expect(ops).toHaveLength(want.opEvents.length);
+      want.opEvents.forEach((shape, i) => expect(ops[i]).toMatchObject(shape));
     }
-    if (inputs.wantLifecycle) {
+    if (want.lifecycle) {
       const names = result.events.filter((e) => e.step === 'reduce').map((e) => e.event);
       expect(names[0]).toBe(ChainEvent.start);
       expect(names).toContain(DomainEvent.input);
@@ -258,35 +237,27 @@ runTable({
       expect(batchIdx).toBeGreaterThan(inputIdx);
       expect(batchIdx).toBeLessThan(outputIdx);
     }
-    if (inputs.wantComplete) {
+    if (want.complete) {
       const complete = result.events.find(
         (e) => e.step === 'reduce' && e.event === ChainEvent.complete
       );
-      expect(complete).toMatchObject(inputs.wantComplete);
+      expect(complete).toMatchObject(want.complete);
     }
-    if ('wantValue' in inputs) expect(result.value).toBe(inputs.wantValue);
-    if (inputs.wantAccumulators) {
-      expect(result.accumulators).toEqual(inputs.wantAccumulators);
+    if ('value' in want) expect(result.value).toBe(want.value);
+    if (want.accumulators) {
+      expect(result.accumulators).toEqual(want.accumulators);
     }
   },
 });
-
-// ─── reduceItem ──────────────────────────────────────────────────────────
 
 runTable({
   describe: 'reduceItem',
   examples: [
     {
       name: 'folds one item into the accumulator via one LLM call',
-      inputs: {
-        acc: 'a',
-        item: 'b',
-        instructions: 'concat with dash',
-        mock: () => vi.mocked(callLlm).mockResolvedValueOnce({ accumulator: 'a-b' }),
-        want: 'a-b',
-        wantLlmCalls: 1,
-        wantPromptContains: ['<accumulator>', '<item>'],
-      },
+      inputs: { acc: 'a', item: 'b', instructions: 'concat with dash' },
+      mocks: { callLlm: [{ accumulator: 'a-b' }] },
+      want: { value: 'a-b', llmCalls: 1, promptContains: ['<accumulator>', '<item>'] },
     },
     {
       name: 'returns custom-format result directly without unwrapping',
@@ -297,19 +268,15 @@ runTable({
         options: {
           responseFormat: { type: 'json_schema', json_schema: { name: 'stats', schema: {} } },
         },
-        mock: () => vi.mocked(callLlm).mockResolvedValueOnce({ sum: 7, count: 2 }),
-        want: { sum: 7, count: 2 },
       },
+      mocks: { callLlm: [{ sum: 7, count: 2 }] },
+      want: { value: { sum: 7, count: 2 } },
     },
     {
       name: 'throws when default-schema response is missing accumulator',
-      inputs: {
-        acc: 'seed',
-        item: 'x',
-        instructions: 'instructions',
-        mock: () => vi.mocked(callLlm).mockResolvedValueOnce({}),
-        throws: /missing required "accumulator"/,
-      },
+      inputs: { acc: 'seed', item: 'x', instructions: 'instructions' },
+      mocks: { callLlm: [{}] },
+      want: { throws: /missing required "accumulator"/ },
     },
     {
       name: 'throws when custom-format response is null',
@@ -320,26 +287,26 @@ runTable({
         options: {
           responseFormat: { type: 'json_schema', json_schema: { name: 's', schema: {} } },
         },
-        mock: () => vi.mocked(callLlm).mockResolvedValueOnce(null),
-        throws: /returned null under custom responseFormat/,
       },
+      mocks: { callLlm: [null] },
+      want: { throws: /returned null under custom responseFormat/ },
     },
   ],
-  process: async ({ acc, item, instructions, options, mock }) => {
-    if (mock) mock();
-    return reduceItem(acc, item, instructions, options);
+  process: async ({ inputs, mocks }) => {
+    applyMocks(mocks, { callLlm });
+    return reduceItem(inputs.acc, inputs.item, inputs.instructions, inputs.options);
   },
-  expects: ({ result, error, inputs }) => {
-    if ('throws' in inputs) {
-      expect(error?.message).toMatch(inputs.throws);
+  expects: ({ result, error, want }) => {
+    if (want.throws) {
+      expect(error?.message).toMatch(want.throws);
       return;
     }
     if (error) throw error;
-    if ('want' in inputs) expect(result).toEqual(inputs.want);
-    if ('wantLlmCalls' in inputs) expect(callLlm).toHaveBeenCalledTimes(inputs.wantLlmCalls);
-    if (inputs.wantPromptContains) {
+    if ('value' in want) expect(result).toEqual(want.value);
+    if ('llmCalls' in want) expect(callLlm).toHaveBeenCalledTimes(want.llmCalls);
+    if (want.promptContains) {
       const prompt = vi.mocked(callLlm).mock.calls[0][0];
-      for (const fragment of inputs.wantPromptContains) expect(prompt).toContain(fragment);
+      for (const fragment of want.promptContains) expect(prompt).toContain(fragment);
     }
   },
 });

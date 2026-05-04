@@ -39,25 +39,23 @@ beforeEach(() => {
   });
 });
 
-// ─── mapEnrichment ─────────────────────────────────────────────────────
-
 runTable({
   describe: 'mapEnrichment',
   examples: [
     {
       name: 'low maps to extraction-only',
-      inputs: { v: 'low', want: { llmDedup: false, knowledgeBase: false, enrichMap: false } },
+      inputs: { v: 'low' },
+      want: { value: { llmDedup: false, knowledgeBase: false, enrichMap: false } },
     },
     {
       name: 'high maps to full pipeline',
-      inputs: { v: 'high', want: { llmDedup: true, knowledgeBase: true, enrichMap: true } },
+      inputs: { v: 'high' },
+      want: { value: { llmDedup: true, knowledgeBase: true, enrichMap: true } },
     },
   ],
-  process: ({ v }) => mapEnrichment(v),
-  expects: ({ result, inputs }) => expect(result).toEqual(inputs.want),
+  process: ({ inputs }) => mapEnrichment(inputs.v),
+  expects: ({ result, want }) => expect(result).toEqual(want.value),
 });
-
-// ─── timeline ──────────────────────────────────────────────────────────
 
 runTable({
   describe: 'timeline',
@@ -68,14 +66,16 @@ runTable({
         text: 'Founded in 2010. Funded in March 2012.',
         instructions: undefined,
         options: { enrichment: 'low' },
-        mock: () =>
+        setupMock: () =>
           llm.mockResolvedValueOnce({
             events: [
               { timestamp: '2010', name: 'Company founded' },
               { timestamp: '2012-03', name: 'First funding' },
             ],
           }),
-        want: [
+      },
+      want: {
+        value: [
           { timestamp: '2010', name: 'Company founded' },
           { timestamp: '2012-03', name: 'First funding' },
         ],
@@ -83,28 +83,27 @@ runTable({
     },
     {
       name: 'passes systemPrompt to llm',
-      inputs: {
-        text: 'some text',
-        mock: () => llm.mockResolvedValueOnce({ events: [] }),
-        wantLlmCalledWith: ['some text', 'Extract timeline events'],
-      },
+      inputs: { text: 'some text', setupMock: () => llm.mockResolvedValueOnce({ events: [] }) },
+      want: { llmCalledWith: ['some text', 'Extract timeline events'] },
     },
     {
       name: 'incorporates string instructions into extraction systemPrompt',
       inputs: {
         text: 'some text',
         instructions: 'Focus on political events',
-        mock: () => llm.mockResolvedValueOnce({ events: [] }),
-        wantSystemPromptContains: ['Focus on political events', 'Extract timeline events'],
+        setupMock: () => llm.mockResolvedValueOnce({ events: [] }),
       },
+      want: { systemPromptContains: ['Focus on political events', 'Extract timeline events'] },
     },
     {
       name: 'wires instruction bundle context into extraction prompt',
       inputs: {
         text: 'some text',
         instructions: { text: 'Focus on politics', domain: 'US history' },
-        mock: () => llm.mockResolvedValueOnce({ events: [] }),
-        wantSystemPromptContains: [
+        setupMock: () => llm.mockResolvedValueOnce({ events: [] }),
+      },
+      want: {
+        systemPromptContains: [
           '<domain>',
           'US history',
           'Focus on politics',
@@ -117,27 +116,28 @@ runTable({
       inputs: {
         text: 'a'.repeat(5000),
         instructions: { chunkSize: 1500 },
-        mock: () => {
+        setupMock: () => {
           chunkSentences.mockReturnValueOnce(['chunk1', 'chunk2', 'chunk3']);
           llm.mockResolvedValue({ events: [] });
         },
-        wantChunkSentencesCalledWith: { chunkSize: 1500 },
-        wantLlmCalls: 3,
       },
+      want: { chunkSentencesCalledWith: { chunkSize: 1500 }, llmCalls: 3 },
     },
     {
       name: 'merges results from multiple chunks',
       inputs: {
         text: 'text',
         options: { chunkSize: 100, enrichment: 'low' },
-        mock: () => {
+        setupMock: () => {
           chunkSentences.mockReturnValueOnce(['chunk1', 'chunk2']);
           llm
             .mockResolvedValueOnce({ events: [{ timestamp: '2020', name: 'Event 1' }] })
             .mockResolvedValueOnce({ events: [{ timestamp: '2021', name: 'Event 2' }] });
         },
-        wantLength: 2,
-        wantContainsEqual: [
+      },
+      want: {
+        length: 2,
+        containsEqual: [
           { timestamp: '2020', name: 'Event 1' },
           { timestamp: '2021', name: 'Event 2' },
         ],
@@ -148,21 +148,21 @@ runTable({
       inputs: {
         text: 'text',
         options: { enrichment: 'low' },
-        mock: () => {
+        setupMock: () => {
           chunkSentences.mockReturnValueOnce(['chunk1', 'chunk2']);
           llm
             .mockResolvedValueOnce({ events: [{ timestamp: '2020-01-01', name: 'Same Event' }] })
             .mockResolvedValueOnce({ events: [{ timestamp: '2020-01-01', name: 'same event' }] });
         },
-        want: [{ timestamp: '2020-01-01', name: 'Same Event' }],
       },
+      want: { value: [{ timestamp: '2020-01-01', name: 'Same Event' }] },
     },
     {
       name: 'sorts ISO dates correctly',
       inputs: {
         text: 'text',
         options: { enrichment: 'low' },
-        mock: () =>
+        setupMock: () =>
           llm.mockResolvedValueOnce({
             events: [
               { timestamp: '2023-12-01', name: 'December' },
@@ -170,15 +170,15 @@ runTable({
               { timestamp: '2023-06-30', name: 'June' },
             ],
           }),
-        wantNamesOrder: ['January', 'June', 'December'],
       },
+      want: { namesOrder: ['January', 'June', 'December'] },
     },
     {
       name: 'places parseable dates before non-parseable ones',
       inputs: {
         text: 'text',
         options: { enrichment: 'low' },
-        mock: () =>
+        setupMock: () =>
           llm.mockResolvedValueOnce({
             events: [
               { timestamp: 'sometime later', name: 'Vague' },
@@ -186,7 +186,9 @@ runTable({
               { timestamp: 'in the beginning', name: 'Story' },
             ],
           }),
-        wantOrder: [
+      },
+      want: {
+        order: [
           { idx: 0, name: 'Precise' },
           { idx: 1, timestamp: 'sometime later' },
           { idx: 2, timestamp: 'in the beginning' },
@@ -198,40 +200,41 @@ runTable({
       inputs: {
         text: 'text',
         options: { enrichment: 'low' },
-        mock: () => {
+        setupMock: () => {
           chunkSentences.mockReturnValueOnce(['c1', 'c2', 'c3']);
           llm
             .mockResolvedValueOnce({ events: [{ timestamp: '2023', name: 'Good' }] })
             .mockResolvedValueOnce({ events: [] })
             .mockRejectedValueOnce(new Error('API error'));
         },
-        want: [{ timestamp: '2023', name: 'Good' }],
       },
+      want: { value: [{ timestamp: '2023', name: 'Good' }] },
     },
     {
       name: 'returns empty array when no events found',
-      inputs: { text: 'text', mock: () => llm.mockResolvedValueOnce({ events: [] }), want: [] },
+      inputs: { text: 'text', setupMock: () => llm.mockResolvedValueOnce({ events: [] }) },
+      want: { value: [] },
     },
     {
       name: 'throws when all chunks fail extraction',
       inputs: {
         text: 'text',
         options: { enrichment: 'low' },
-        mock: () => {
+        setupMock: () => {
           chunkSentences.mockReturnValueOnce(['c1', 'c2']);
           llm
             .mockRejectedValueOnce(new Error('API error 1'))
             .mockRejectedValueOnce(new Error('API error 2'));
         },
-        throws: /all 2 chunks failed/,
       },
+      want: { throws: /all 2 chunks failed/ },
     },
     {
       name: 'maintains relative order for non-date timestamps',
       inputs: {
         text: 'text',
         options: { enrichment: 'low' },
-        mock: () =>
+        setupMock: () =>
           llm.mockResolvedValueOnce({
             events: [
               { timestamp: 'first', name: 'A' },
@@ -239,39 +242,37 @@ runTable({
               { timestamp: 'finally', name: 'C' },
             ],
           }),
-        wantNamesOrder: ['A', 'B', 'C'],
       },
+      want: { namesOrder: ['A', 'B', 'C'] },
     },
     {
       name: 'skips LLM dedup call when enrichment is low',
       inputs: {
         text: 'text',
         instructions: { enrichment: 'low' },
-        mock: () =>
+        setupMock: () =>
           llm.mockResolvedValueOnce({
             events: [
               { timestamp: '2023-01-01', name: 'Event A' },
               { timestamp: '2023-06-15', name: 'Event B' },
             ],
           }),
-        wantLlmCalls: 1,
-        wantLength: 2,
       },
+      want: { llmCalls: 1, length: 2 },
     },
     {
       name: 'makes dedup LLM call with default enrichment',
       inputs: {
         text: 'text',
-        mock: () => {
+        setupMock: () => {
           const events = [
             { timestamp: '2023-01-01', name: 'Event A' },
             { timestamp: '2023-06-15', name: 'Event B' },
           ];
           llm.mockResolvedValueOnce({ events }).mockResolvedValueOnce({ events });
         },
-        wantLlmCalls: 2,
-        wantLength: 2,
       },
+      want: { llmCalls: 2, length: 2 },
     },
     {
       name: 'controls parallelism with maxParallel',
@@ -279,7 +280,7 @@ runTable({
         text: 'text',
         options: { maxParallel: 2, enrichment: 'low' },
         tracker: { active: 0, max: 0 },
-        mock(tracker) {
+        setupMock(tracker) {
           chunkSentences.mockReturnValueOnce(['c1', 'c2', 'c3', 'c4', 'c5']);
           llm.mockImplementation(() => {
             tracker.active += 1;
@@ -292,68 +293,66 @@ runTable({
             );
           });
         },
-        wantTrackerMaxAtMost: 2,
       },
+      want: { trackerMaxAtMost: 2 },
     },
   ],
-  process: async ({ text, instructions, options, mock, tracker }) => {
-    if (mock) mock(tracker);
-    return timeline(text, instructions, options);
+  process: async ({ inputs }) => {
+    inputs.setupMock?.(inputs.tracker);
+    return timeline(inputs.text, inputs.instructions, inputs.options);
   },
-  expects: ({ result, error, inputs }) => {
-    if ('throws' in inputs) {
-      expect(error?.message).toMatch(inputs.throws);
+  expects: ({ result, error, inputs, want }) => {
+    if (want.throws) {
+      expect(error?.message).toMatch(want.throws);
       return;
     }
     if (error) throw error;
-    if ('want' in inputs) expect(result).toEqual(inputs.want);
-    if ('wantLength' in inputs) expect(result).toHaveLength(inputs.wantLength);
-    if (inputs.wantContainsEqual) {
-      for (const item of inputs.wantContainsEqual) expect(result).toContainEqual(item);
+    if ('value' in want) expect(result).toEqual(want.value);
+    if ('length' in want) expect(result).toHaveLength(want.length);
+    if (want.containsEqual) {
+      for (const item of want.containsEqual) expect(result).toContainEqual(item);
     }
-    if (inputs.wantNamesOrder) {
-      expect(result.map((e) => e.name)).toEqual(inputs.wantNamesOrder);
+    if (want.namesOrder) {
+      expect(result.map((e) => e.name)).toEqual(want.namesOrder);
     }
-    if (inputs.wantOrder) {
-      for (const spec of inputs.wantOrder) {
+    if (want.order) {
+      for (const spec of want.order) {
         const item = result[spec.idx];
         if (spec.name) expect(item.name).toBe(spec.name);
         if (spec.timestamp) expect(item.timestamp).toBe(spec.timestamp);
       }
     }
-    if (inputs.wantLlmCalledWith) {
+    if (want.llmCalledWith) {
       expect(llm).toHaveBeenCalledWith(
-        inputs.wantLlmCalledWith[0],
+        want.llmCalledWith[0],
         expect.objectContaining({
-          systemPrompt: expect.stringContaining(inputs.wantLlmCalledWith[1]),
+          systemPrompt: expect.stringContaining(want.llmCalledWith[1]),
         })
       );
     }
-    if (inputs.wantSystemPromptContains) {
+    if (want.systemPromptContains) {
       const systemPrompt = llm.mock.calls[0][1].systemPrompt;
-      for (const fragment of inputs.wantSystemPromptContains) {
+      for (const fragment of want.systemPromptContains) {
         expect(systemPrompt).toContain(fragment);
       }
     }
-    if (inputs.wantChunkSentencesCalledWith) {
+    if (want.chunkSentencesCalledWith) {
       expect(chunkSentences).toHaveBeenCalledWith(
         inputs.text,
-        inputs.wantChunkSentencesCalledWith.chunkSize,
+        want.chunkSentencesCalledWith.chunkSize,
         { overlap: 200 }
       );
     }
-    if ('wantLlmCalls' in inputs) expect(llm).toHaveBeenCalledTimes(inputs.wantLlmCalls);
-    if ('wantTrackerMaxAtMost' in inputs) {
-      expect(inputs.tracker.max).toBeLessThanOrEqual(inputs.wantTrackerMaxAtMost);
+    if ('llmCalls' in want) expect(llm).toHaveBeenCalledTimes(want.llmCalls);
+    if ('trackerMaxAtMost' in want) {
+      expect(inputs.tracker.max).toBeLessThanOrEqual(want.trackerMaxAtMost);
     }
   },
 });
 
-// ─── progress callback ───────────────────────────────────────────────
-
 runTable({
   describe: 'timeline — progress callback',
-  examples: [{ name: 'calls progress callback at each stage', inputs: {} }],
+  examples: [{ name: 'calls progress callback at each stage', inputs: {}, want: {} }],
   process: async () => {
     const progressCallback = vi.fn();
     chunkSentences.mockReturnValueOnce(['c1', 'c2', 'c3']);
