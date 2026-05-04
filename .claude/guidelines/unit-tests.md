@@ -82,6 +82,10 @@ runScale({ describe: 'numbers', examples: numericExamples });
 runScale({ describe: 'strings', examples: stringExamples });
 ```
 
+### Distill assertions into the processor's return
+
+Most "imperative-only" tests collapse: a processor that returns `{ length, outcome, schemaName }` plus `check: partial({...})` covers compound assertions cleanly. Reserve inline `(ctx) => {...}` checks for cases that genuinely don't reduce to a single shape compare.
+
 Reference migrations: `src/lib/pave/index.spec.js` (pure utility) and `src/chains/pop-reference/index.spec.js` (LLM-backed chain).
 
 ## Mock factories
