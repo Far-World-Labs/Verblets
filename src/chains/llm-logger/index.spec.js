@@ -1,7 +1,7 @@
 import { beforeEach, afterEach, vi, expect } from 'vitest';
 import { createLLMLogger, createConsoleWriter, createFileWriter } from './index.js';
 import { resetLogger } from '../../lib/logger-service/index.js';
-import { runTable, throws } from '../../lib/examples-runner/index.js';
+import { runTable } from '../../lib/examples-runner/index.js';
 
 vi.useFakeTimers();
 
@@ -20,30 +20,13 @@ afterEach(() => {
   resetLogger();
 });
 
-// ─── Logger Creation ──────────────────────────────────────────────────────
-
 runTable({
   describe: 'LLM Logger - Logger Creation',
   examples: [
     {
       name: 'creates logger with default configuration',
       inputs: {},
-      check: ({ result }) => {
-        for (const key of [
-          'log',
-          'info',
-          'warn',
-          'error',
-          'debug',
-          'trace',
-          'fatal',
-          'ringBuffer',
-          'flush',
-          'clear',
-        ]) {
-          expect(result).toHaveProperty(key);
-        }
-      },
+      want: { hasAllMethods: true },
     },
     {
       name: 'creates logger with custom configuration',
@@ -54,39 +37,42 @@ runTable({
           lanes: [{ laneId: 'test', writer: createConsoleWriter('[TEST] ') }],
         },
       },
-      check: ({ result }) => {
-        const config = result.getConfig();
-        expect(config.ringBufferSize).toBe(500);
-        expect(config.flushInterval).toBe(50);
-        expect(config.lanes).toHaveLength(1);
-        expect(config.lanes[0].laneId).toBe('test');
+      want: {
+        customConfig: { ringBufferSize: 500, flushInterval: 50, laneCount: 1, laneId: 'test' },
       },
     },
   ],
-  process: ({ config }) => createLLMLogger(config),
+  process: ({ inputs }) => createLLMLogger(inputs.config),
+  expects: ({ result, want }) => {
+    if (want.hasAllMethods) {
+      for (const key of [
+        'log',
+        'info',
+        'warn',
+        'error',
+        'debug',
+        'trace',
+        'fatal',
+        'ringBuffer',
+        'flush',
+        'clear',
+      ]) {
+        expect(result).toHaveProperty(key);
+      }
+    }
+    if (want.customConfig) {
+      const config = result.getConfig();
+      expect(config.ringBufferSize).toBe(want.customConfig.ringBufferSize);
+      expect(config.flushInterval).toBe(want.customConfig.flushInterval);
+      expect(config.lanes).toHaveLength(want.customConfig.laneCount);
+      expect(config.lanes[0].laneId).toBe(want.customConfig.laneId);
+    }
+  },
 });
-
-// ─── Global Logger Service Integration ───────────────────────────────────
 
 runTable({
   describe: 'LLM Logger - Global Logger Service Integration',
-  examples: [
-    {
-      name: 'works as global logger',
-      inputs: {},
-      check: () => {
-        expect(mockConsoleLog).toHaveBeenCalledWith(
-          expect.stringContaining('[GLOBAL] {"data":"test log"')
-        );
-        expect(mockConsoleLog).toHaveBeenCalledWith(
-          expect.stringContaining('[GLOBAL] {"data":"test info"')
-        );
-        expect(mockConsoleLog).toHaveBeenCalledWith(
-          expect.stringContaining('[GLOBAL] {"data":"test error"')
-        );
-      },
-    },
-  ],
+  examples: [{ name: 'works as global logger', inputs: {}, want: { globalCalls: true } }],
   process: async () => {
     const logger = createLLMLogger({
       immediateFlush: true,
@@ -101,9 +87,20 @@ runTable({
     error('test error');
     await vi.advanceTimersByTimeAsync(150);
   },
+  expects: ({ want }) => {
+    if (want.globalCalls) {
+      expect(mockConsoleLog).toHaveBeenCalledWith(
+        expect.stringContaining('[GLOBAL] {"data":"test log"')
+      );
+      expect(mockConsoleLog).toHaveBeenCalledWith(
+        expect.stringContaining('[GLOBAL] {"data":"test info"')
+      );
+      expect(mockConsoleLog).toHaveBeenCalledWith(
+        expect.stringContaining('[GLOBAL] {"data":"test error"')
+      );
+    }
+  },
 });
-
-// ─── Ring Buffer Operations ──────────────────────────────────────────────
 
 runTable({
   describe: 'LLM Logger - Ring Buffer Operations',
@@ -111,30 +108,25 @@ runTable({
     {
       name: 'stores logs in ring buffer',
       inputs: { ringBufferSize: 10, entries: ['test 1', 'test 2', 'test 3'] },
-      check: ({ result }) => {
-        const all = result.ringBuffer.all();
-        expect(all).toHaveLength(3);
-        expect(all.map((l) => l.raw)).toEqual(['test 1', 'test 2', 'test 3']);
-      },
+      want: { length: 3, raws: ['test 1', 'test 2', 'test 3'] },
     },
     {
       name: 'handles ring buffer overflow',
       inputs: { ringBufferSize: 2, entries: ['test 1', 'test 2', 'test 3'] },
-      check: ({ result }) => {
-        const all = result.ringBuffer.all();
-        expect(all).toHaveLength(2);
-        expect(all.map((l) => l.raw)).toEqual(['test 2', 'test 3']);
-      },
+      want: { length: 2, raws: ['test 2', 'test 3'] },
     },
   ],
-  process: ({ ringBufferSize, entries }) => {
-    const logger = createLLMLogger({ ringBufferSize, lanes: [] });
-    for (const entry of entries) logger.log(entry);
+  process: ({ inputs }) => {
+    const logger = createLLMLogger({ ringBufferSize: inputs.ringBufferSize, lanes: [] });
+    for (const entry of inputs.entries) logger.log(entry);
     return logger;
   },
+  expects: ({ result, want }) => {
+    const all = result.ringBuffer.all();
+    if ('length' in want) expect(all).toHaveLength(want.length);
+    if (want.raws) expect(all.map((l) => l.raw)).toEqual(want.raws);
+  },
 });
-
-// ─── Lane Processing ─────────────────────────────────────────────────────
 
 runTable({
   describe: 'LLM Logger - Lane Processing',
@@ -142,14 +134,7 @@ runTable({
     {
       name: 'processes logs through multiple lanes (filtered)',
       inputs: {},
-      check: ({ result }) => {
-        expect(result.errorWriter).toHaveBeenCalledWith([
-          expect.objectContaining({ level: 'error', data: 'error message' }),
-        ]);
-        expect(result.infoWriter).toHaveBeenCalledWith([
-          expect.objectContaining({ level: 'info', data: 'info message' }),
-        ]);
-      },
+      want: { filteredLanes: true },
     },
   ],
   process: async () => {
@@ -176,6 +161,16 @@ runTable({
     await vi.advanceTimersByTimeAsync(150);
     return { errorWriter, infoWriter };
   },
+  expects: ({ result, want }) => {
+    if (want.filteredLanes) {
+      expect(result.errorWriter).toHaveBeenCalledWith([
+        expect.objectContaining({ level: 'error', data: 'error message' }),
+      ]);
+      expect(result.infoWriter).toHaveBeenCalledWith([
+        expect.objectContaining({ level: 'info', data: 'info message' }),
+      ]);
+    }
+  },
 });
 
 runTable({
@@ -184,15 +179,7 @@ runTable({
     {
       name: 'handles lanes without filters (receives all logs)',
       inputs: {},
-      check: ({ result }) => {
-        expect(result.allWriter).toHaveBeenCalledTimes(2);
-        expect(result.allWriter).toHaveBeenCalledWith([
-          expect.objectContaining({ level: 'log', data: 'string log' }),
-        ]);
-        expect(result.allWriter).toHaveBeenCalledWith([
-          expect.objectContaining({ level: 'info', type: 'object log' }),
-        ]);
-      },
+      want: { allWriterCalledTwice: true },
     },
   ],
   process: async () => {
@@ -206,9 +193,18 @@ runTable({
     await vi.advanceTimersByTimeAsync(150);
     return { allWriter };
   },
+  expects: ({ result, want }) => {
+    if (want.allWriterCalledTwice) {
+      expect(result.allWriter).toHaveBeenCalledTimes(2);
+      expect(result.allWriter).toHaveBeenCalledWith([
+        expect.objectContaining({ level: 'log', data: 'string log' }),
+      ]);
+      expect(result.allWriter).toHaveBeenCalledWith([
+        expect.objectContaining({ level: 'info', type: 'object log' }),
+      ]);
+    }
+  },
 });
-
-// ─── File Context Tracking ───────────────────────────────────────────────
 
 runTable({
   describe: 'LLM Logger - File Context Tracking',
@@ -216,13 +212,7 @@ runTable({
     {
       name: 'captures file context for log entries',
       inputs: {},
-      check: ({ result }) => {
-        const logs = result.ringBuffer.all();
-        expect(logs).toHaveLength(1);
-        const fileContext = logs[0].meta.get('fileContext');
-        expect(fileContext).toHaveProperty('filePath');
-        expect(typeof fileContext.line).toBe('number');
-      },
+      want: { fileContext: true },
     },
   ],
   process: () => {
@@ -230,33 +220,29 @@ runTable({
     logger.log('test with context');
     return logger;
   },
+  expects: ({ result, want }) => {
+    if (want.fileContext) {
+      const logs = result.ringBuffer.all();
+      expect(logs).toHaveLength(1);
+      const fileContext = logs[0].meta.get('fileContext');
+      expect(fileContext).toHaveProperty('filePath');
+      expect(typeof fileContext.line).toBe('number');
+    }
+  },
 });
-
-// ─── Utility Methods ─────────────────────────────────────────────────────
 
 runTable({
   describe: 'LLM Logger - Utility Methods',
   examples: [
-    {
-      name: 'flushes all lanes manually',
-      inputs: {},
-      check: ({ result }) => {
-        expect(result.writer).toHaveBeenCalledWith([
-          expect.objectContaining({ level: 'log', data: 'test message' }),
-        ]);
-      },
-    },
+    { name: 'flushes all lanes manually', inputs: {}, want: { flushed: true } },
     {
       name: 'clears ring buffer and lane buffers',
       inputs: { clearMode: true },
-      check: ({ result }) => {
-        expect(result.beforeSize).toBe(2);
-        expect(result.afterSize).toBe(0);
-      },
+      want: { cleared: true },
     },
   ],
-  process: ({ clearMode }) => {
-    if (clearMode) {
+  process: ({ inputs }) => {
+    if (inputs.clearMode) {
       const logger = createLLMLogger();
       logger.log('test 1');
       logger.log('test 2');
@@ -270,71 +256,50 @@ runTable({
     logger.flush();
     return { writer };
   },
+  expects: ({ result, want }) => {
+    if (want.flushed) {
+      expect(result.writer).toHaveBeenCalledWith([
+        expect.objectContaining({ level: 'log', data: 'test message' }),
+      ]);
+    }
+    if (want.cleared) {
+      expect(result.beforeSize).toBe(2);
+      expect(result.afterSize).toBe(0);
+    }
+  },
 });
-
-// ─── Writer Functions ────────────────────────────────────────────────────
 
 runTable({
   describe: 'LLM Logger - Writer Functions',
   examples: [
-    {
-      name: 'console writer outputs with prefix',
-      inputs: {},
-      check: () => {
-        const writer = createConsoleWriter('[TEST] ');
-        writer(['message 1', 'message 2']);
-        expect(mockConsoleLog).toHaveBeenCalledWith('[TEST] message 1');
-        expect(mockConsoleLog).toHaveBeenCalledWith('[TEST] message 2');
-      },
-    },
-    {
-      name: 'file writer shows placeholder output',
-      inputs: {},
-      check: () => {
-        const writer = createFileWriter('/tmp/test.log');
-        writer(['line 1', 'line 2', 'line 3']);
-        expect(mockConsoleLog).toHaveBeenCalledWith('[FILE:/tmp/test.log] 3 lines');
-      },
-    },
+    { name: 'console writer outputs with prefix', inputs: {}, want: { console: true } },
+    { name: 'file writer shows placeholder output', inputs: {}, want: { file: true } },
   ],
   process: () => undefined,
+  expects: ({ want }) => {
+    if (want.console) {
+      const writer = createConsoleWriter('[TEST] ');
+      writer(['message 1', 'message 2']);
+      expect(mockConsoleLog).toHaveBeenCalledWith('[TEST] message 1');
+      expect(mockConsoleLog).toHaveBeenCalledWith('[TEST] message 2');
+    }
+    if (want.file) {
+      const writer = createFileWriter('/tmp/test.log');
+      writer(['line 1', 'line 2', 'line 3']);
+      expect(mockConsoleLog).toHaveBeenCalledWith('[FILE:/tmp/test.log] 3 lines');
+    }
+  },
 });
-
-// ─── Complex Scenarios ───────────────────────────────────────────────────
 
 runTable({
   describe: 'LLM Logger - Complex Scenarios',
   examples: [
-    {
-      name: 'handles mixed data types',
-      inputs: { mode: 'mixed' },
-      check: ({ result }) => {
-        expect(result.writer).toHaveBeenCalledWith([
-          expect.objectContaining({ level: 'log', data: 'string' }),
-        ]);
-        expect(result.writer).toHaveBeenCalledWith([
-          expect.objectContaining({ level: 'log', object: 'data' }),
-        ]);
-        expect(result.writer).toHaveBeenCalledWith([
-          expect.objectContaining({ level: 'log', data: 123 }),
-        ]);
-        expect(result.writer).toHaveBeenCalledWith([
-          expect.objectContaining({ level: 'log', data: null }),
-        ]);
-      },
-    },
-    {
-      name: 'handles high-volume logging',
-      inputs: { mode: 'volume' },
-      check: ({ result }) => {
-        expect(result.writer).toHaveBeenCalledTimes(50);
-        expect(result.logger.ringBuffer.size()).toBe(50);
-      },
-    },
+    { name: 'handles mixed data types', inputs: { mode: 'mixed' }, want: { mixed: true } },
+    { name: 'handles high-volume logging', inputs: { mode: 'volume' }, want: { volume: 50 } },
   ],
-  process: async ({ mode }) => {
+  process: async ({ inputs }) => {
     const writer = vi.fn();
-    if (mode === 'mixed') {
+    if (inputs.mode === 'mixed') {
       const logger = createLLMLogger({
         immediateFlush: true,
         lanes: [{ laneId: 'mixed', writer }],
@@ -355,9 +320,27 @@ runTable({
     await vi.advanceTimersByTimeAsync(200);
     return { writer, logger };
   },
+  expects: ({ result, want }) => {
+    if (want.mixed) {
+      expect(result.writer).toHaveBeenCalledWith([
+        expect.objectContaining({ level: 'log', data: 'string' }),
+      ]);
+      expect(result.writer).toHaveBeenCalledWith([
+        expect.objectContaining({ level: 'log', object: 'data' }),
+      ]);
+      expect(result.writer).toHaveBeenCalledWith([
+        expect.objectContaining({ level: 'log', data: 123 }),
+      ]);
+      expect(result.writer).toHaveBeenCalledWith([
+        expect.objectContaining({ level: 'log', data: null }),
+      ]);
+    }
+    if (want.volume) {
+      expect(result.writer).toHaveBeenCalledTimes(want.volume);
+      expect(result.logger.ringBuffer.size()).toBe(want.volume);
+    }
+  },
 });
-
-// ─── Configuration Validation ────────────────────────────────────────────
 
 runTable({
   describe: 'LLM Logger - Configuration validation',
@@ -365,33 +348,38 @@ runTable({
     {
       name: 'throws when lane is missing writer function',
       inputs: { config: { lanes: [{ laneId: 'main' }] } },
-      check: throws(/writer function/),
+      want: { throws: /writer function/ },
     },
     {
       name: 'throws when lane writer is not a function',
       inputs: { config: { lanes: [{ laneId: 'main', writer: 'not-fn' }] } },
-      check: throws(/writer function/),
+      want: { throws: /writer function/ },
     },
     {
       name: 'throws when processor is missing processorId',
       inputs: { config: { processors: [{ process: vi.fn() }] } },
-      check: throws(/processorId/),
+      want: { throws: /processorId/ },
     },
     {
       name: 'throws when processor processorId is empty string',
       inputs: { config: { processors: [{ processorId: '', process: vi.fn() }] } },
-      check: throws(/processorId/),
+      want: { throws: /processorId/ },
     },
     {
       name: 'throws when processor.process is not a function',
       inputs: { config: { processors: [{ processorId: 'p1', process: 'not-fn' }] } },
-      check: throws(/process function/),
+      want: { throws: /process function/ },
     },
     {
       name: 'throws when processor.process is missing',
       inputs: { config: { processors: [{ processorId: 'p1' }] } },
-      check: throws(/process function/),
+      want: { throws: /process function/ },
     },
   ],
-  process: ({ config }) => createLLMLogger(config),
+  process: ({ inputs }) => createLLMLogger(inputs.config),
+  expects: ({ error, want }) => {
+    if (want.throws) {
+      expect(error?.message).toMatch(want.throws);
+    }
+  },
 });

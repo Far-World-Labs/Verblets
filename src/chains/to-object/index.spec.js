@@ -29,20 +29,23 @@ runTable({
   examples: [
     {
       name: 'parses text into an object',
-      inputs: { text: 'test', want: {} },
+      inputs: { text: 'test' },
+      want: { value: {} },
     },
     {
       name: 'returns parsed object matching schema',
-      inputs: { text: 'valid-schema', schema: objectSchema, want: { key: 'value' } },
+      inputs: { text: 'valid-schema', schema: objectSchema },
+      want: { value: { key: 'value' } },
     },
     {
       name: 'attempts repair when result has extra properties',
-      inputs: { text: 'invalid-schema', schema: strictSchema, hasKey: 'key' },
+      inputs: { text: 'invalid-schema', schema: strictSchema },
+      want: { hasKey: 'key' },
     },
   ],
-  process: ({ text, schema }) => toObject(text, schema),
-  expects: ({ result, inputs }) => {
-    if ('want' in inputs) expect(result).toEqual(inputs.want);
-    if (inputs.hasKey) expect(result).toHaveProperty(inputs.hasKey);
+  process: ({ inputs }) => toObject(inputs.text, inputs.schema),
+  expects: ({ result, want }) => {
+    if ('value' in want) expect(result).toEqual(want.value);
+    if (want.hasKey) expect(result).toHaveProperty(want.hasKey);
   },
 });
