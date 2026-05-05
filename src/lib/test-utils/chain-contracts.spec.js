@@ -103,6 +103,8 @@ const harness = {
     invokeWith: (instructions, config) => date(instructions, { rigor: 'low', ...config }),
     findInPrompts: (marker) =>
       callLlm.mock.calls.some(([p]) => typeof p === 'string' && p.includes(marker)),
+    llmCallsite: () => callLlm,
+    llmCallsiteConfigArg: 1,
   },
   calibrate: {
     fn: calibrate,
@@ -114,6 +116,8 @@ const harness = {
       callLlm.mock.calls.some(([p]) => typeof p === 'string' && p.includes(marker)),
     invokeWithKnownKey: (config) =>
       calibrate(makeScan(['pii']), { text: 'classify', spec: calibrateSpec }, config),
+    llmCallsite: () => callLlm,
+    llmCallsiteConfigArg: 1,
   },
   map: {
     fn: map,
@@ -123,6 +127,8 @@ const harness = {
     invokeWith: (instructions, config) => map(['a'], instructions, { batchSize: 1, ...config }),
     findInPrompts: (marker) =>
       listBatch.mock.calls.some(([, p]) => typeof p === 'string' && p.includes(marker)),
+    llmCallsite: () => listBatch,
+    llmCallsiteConfigArg: 2,
   },
   'veiled-variants': {
     fn: veiledVariants,
@@ -133,6 +139,8 @@ const harness = {
       veiledVariants(instructions, { coverage: 'low', ...config }),
     findInPrompts: (marker) =>
       callLlm.mock.calls.some(([p]) => typeof p === 'string' && p.includes(marker)),
+    llmCallsite: () => callLlm,
+    llmCallsiteConfigArg: 1,
   },
 };
 
@@ -321,5 +329,139 @@ runTable({
   },
   expects: ({ result, want }) => {
     expect(result).toBe(want.llmCalls);
+  },
+});
+
+// ─── 6. onProgress is optional (no consumer is forced to subscribe) ─────
+
+runTable({
+  describe: 'chain interface — onProgress is optional',
+  examples: [
+    {
+      name: 'date',
+      inputs: { kind: 'date' },
+      mocks: { callLlm: ['2024-03-05'], bool: [true] },
+      want: { completes: true },
+    },
+    {
+      name: 'calibrate',
+      inputs: { kind: 'calibrate' },
+      mocks: { callLlm: [calibrateSpec, calibrateResult] },
+      want: { completes: true },
+    },
+    {
+      name: 'map',
+      inputs: { kind: 'map' },
+      mocks: { listBatch: [['a-x']] },
+      want: { completes: true },
+    },
+    {
+      name: 'veiled-variants',
+      inputs: { kind: 'veiled-variants' },
+      mocks: { callLlm: [['a', 'b', 'c']] },
+      want: { completes: true },
+    },
+  ],
+  process: async ({ inputs, mocks }) => {
+    applyMocks(mocks, mockRegistry);
+    // Invoke with an empty config — no onProgress, no abortSignal, nothing.
+    // The chain must still complete and return a non-undefined value.
+    const value = await harness[inputs.kind].invoke({});
+    return value !== undefined;
+  },
+  expects: ({ result, want }) => {
+    expect(result).toBe(want.completes);
+  },
+});
+
+// ─── 7. Lifecycle ordering: chain:start precedes chain:complete ─────────
+
+runTable({
+  describe: 'chain interface — lifecycle event ordering',
+  examples: [
+    {
+      name: 'date',
+      inputs: { kind: 'date' },
+      mocks: { callLlm: ['2024-03-05'], bool: [true] },
+      want: { startBeforeComplete: true },
+    },
+    {
+      name: 'calibrate',
+      inputs: { kind: 'calibrate' },
+      mocks: { callLlm: [calibrateSpec, calibrateResult] },
+      want: { startBeforeComplete: true },
+    },
+    {
+      name: 'map',
+      inputs: { kind: 'map' },
+      mocks: { listBatch: [['a-x']] },
+      want: { startBeforeComplete: true },
+    },
+    {
+      name: 'veiled-variants',
+      inputs: { kind: 'veiled-variants' },
+      mocks: { callLlm: [['a', 'b', 'c']] },
+      want: { startBeforeComplete: true },
+    },
+  ],
+  process: async ({ inputs, mocks }) => {
+    applyMocks(mocks, mockRegistry);
+    const events = [];
+    await harness[inputs.kind].invoke({ onProgress: (e) => events.push(e) });
+    const { step } = harness[inputs.kind];
+    const startIdx = events.findIndex((e) => e.step === step && e.event === 'chain:start');
+    const completeIdx = events.findIndex((e) => e.step === step && e.event === 'chain:complete');
+    return { startIdx, completeIdx };
+  },
+  expects: ({ result }) => {
+    expect(result.startIdx).toBeGreaterThanOrEqual(0);
+    expect(result.completeIdx).toBeGreaterThanOrEqual(0);
+    expect(result.startIdx).toBeLessThan(result.completeIdx);
+  },
+});
+
+// ─── 8. llm config threads through to the LLM callsite ──────────────────
+
+const llmMarker = { sensitive: true, marker: 'llm-thread-test' };
+
+runTable({
+  describe: 'chain interface — llm config threads through',
+  examples: [
+    {
+      name: 'date',
+      inputs: { kind: 'date' },
+      mocks: { callLlm: ['2024-03-05'], bool: [true] },
+      want: { reaches: true },
+    },
+    {
+      name: 'calibrate',
+      inputs: { kind: 'calibrate' },
+      mocks: { callLlm: [calibrateSpec, calibrateResult] },
+      want: { reaches: true },
+    },
+    {
+      name: 'map',
+      inputs: { kind: 'map' },
+      mocks: { listBatch: [['a-x']] },
+      want: { reaches: true },
+    },
+    {
+      name: 'veiled-variants',
+      inputs: { kind: 'veiled-variants' },
+      mocks: { callLlm: [['a', 'b', 'c']] },
+      want: { reaches: true },
+    },
+  ],
+  process: async ({ inputs, mocks }) => {
+    applyMocks(mocks, mockRegistry);
+    await harness[inputs.kind].invoke({ llm: llmMarker });
+    const { llmCallsite, llmCallsiteConfigArg } = harness[inputs.kind];
+    return llmCallsite().mock.calls.some((args) => {
+      const cfg = args[llmCallsiteConfigArg];
+      return cfg?.llm?.marker === llmMarker.marker;
+    });
+  },
+  expects: ({ result, want }) => {
+    expect(result).toBe(want.reaches);
   },
 });
