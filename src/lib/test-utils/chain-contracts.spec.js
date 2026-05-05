@@ -87,9 +87,16 @@ const calibrateResult = {
   summary: 'Contains PII',
 };
 
-// Each row supplies enough to drive the same three contract assertions
-// (knownTexts shape, success lifecycle, failure lifecycle) without leaking
-// chain-specific behavior into this file.
+// Each row supplies enough to drive the cross-cutting contract assertions
+// without leaking chain-specific behavior into this file.
+//
+// `invoke(config)` is the canonical success-path call.
+// `invokeWith(instructions, config)` swaps the chain's instructions / prompt
+//   slot — used by the bundle-context contract to verify that all chains
+//   accept both a string and an object-form `{ text, ...context }` instruction
+//   bundle through `resolveTexts`.
+// `findInPrompts(marker)` searches every prompt seen by the chain's primary
+//   LLM proxy (callLlm directly, or listBatch for batched chains).
 const chains = [
   {
     name: 'date',
@@ -97,8 +104,11 @@ const chains = [
     expectedKnownTexts: [],
     fn: date,
     invoke: (config) => date('March 5 2024', { rigor: 'low', ...config }),
+    invokeWith: (instructions, config) => date(instructions, { rigor: 'low', ...config }),
+    findInPrompts: (marker) =>
+      callLlm.mock.calls.some(([prompt]) => typeof prompt === 'string' && prompt.includes(marker)),
     setupSuccess: () => {
-      callLlm.mockResolvedValueOnce('2024-03-05');
+      callLlm.mockResolvedValue('2024-03-05');
       bool.mockResolvedValue(true);
     },
     setupFailure: () => {
@@ -111,11 +121,26 @@ const chains = [
     expectedKnownTexts: ['spec'],
     fn: calibrate,
     invoke: (config) => calibrate(makeScan(['pii']), 'classify', config),
+    invokeWith: (instructions, config) => calibrate(makeScan(['pii']), instructions, config),
+    findInPrompts: (marker) =>
+      callLlm.mock.calls.some(([prompt]) => typeof prompt === 'string' && prompt.includes(marker)),
     setupSuccess: () => {
       callLlm.mockResolvedValueOnce(calibrateSpec).mockResolvedValueOnce(calibrateResult);
     },
     setupFailure: () => {
       callLlm.mockRejectedValueOnce(new Error('LLM failure'));
+    },
+    // Known-key skip: when the bundle includes `spec`, calibrate skips Pass 1
+    // (spec generation) and makes exactly one LLM call instead of two.
+    knownKey: {
+      key: 'spec',
+      value: calibrateSpec,
+      invoke: (config) =>
+        calibrate(makeScan(['pii']), { text: 'classify', spec: calibrateSpec }, config),
+      setupOnce: () => {
+        callLlm.mockResolvedValueOnce(calibrateResult);
+      },
+      expectedLlmCalls: 1,
     },
   },
   {
@@ -124,8 +149,13 @@ const chains = [
     expectedKnownTexts: [],
     fn: map,
     invoke: (config) => map(['a'], 'transform', { batchSize: 1, ...config }),
+    invokeWith: (instructions, config) => map(['a'], instructions, { batchSize: 1, ...config }),
+    findInPrompts: (marker) =>
+      listBatch.mock.calls.some(
+        ([, prompt]) => typeof prompt === 'string' && prompt.includes(marker)
+      ),
     setupSuccess: () => {
-      listBatch.mockResolvedValueOnce(['a-x']);
+      listBatch.mockResolvedValue(['a-x']);
     },
     setupFailure: () => {
       listBatch.mockRejectedValue(new Error('LLM failure'));
@@ -137,6 +167,10 @@ const chains = [
     expectedKnownTexts: [],
     fn: veiledVariants,
     invoke: (config) => veiledVariants('test prompt', { coverage: 'low', ...config }),
+    invokeWith: (instructions, config) =>
+      veiledVariants(instructions, { coverage: 'low', ...config }),
+    findInPrompts: (marker) =>
+      callLlm.mock.calls.some(([prompt]) => typeof prompt === 'string' && prompt.includes(marker)),
     setupSuccess: () => {
       callLlm.mockResolvedValue(['a', 'b', 'c']);
     },
@@ -145,6 +179,8 @@ const chains = [
     },
   },
 ];
+
+const knownKeyChains = chains.filter((c) => c.knownKey);
 
 beforeEach(() => {
   vi.resetAllMocks();
@@ -193,6 +229,35 @@ describe('chain interface — failure lifecycle emits chain:error', () => {
       expect(caught).toBeInstanceOf(Error);
       const errorEvent = events.find((e) => e.step === step && e.event === 'chain:error');
       expect(errorEvent).toBeDefined();
+    }
+  );
+});
+
+// All chains route their primary text through `resolveTexts`, so passing a
+// `{ text, ...context }` bundle must be equivalent to passing the string
+// alone — and any extra context keys must reach the LLM prompt as XML.
+describe('chain interface — instruction bundle accepted in place of string', () => {
+  it.each(chains.map((c) => [c.name, c]))(
+    '%s: accepts an object-form bundle and embeds context in the prompt',
+    async (_name, { invokeWith, setupSuccess, findInPrompts }) => {
+      setupSuccess();
+      const marker = 'context-marker-2c8e1f';
+      await invokeWith({ text: 'instruction text', extraContext: marker }, {});
+      expect(findInPrompts(marker)).toBe(true);
+    }
+  );
+});
+
+// Chains that declare a known-text key (`spec`, `anchors`, …) must skip the
+// LLM call that would normally derive that artifact when it is supplied via
+// the bundle. Verified by counting LLM calls.
+describe('chain interface — known-text bundle key skips its derivation call', () => {
+  it.each(knownKeyChains.map((c) => [c.name, c]))(
+    '%s: supplying %p in the bundle skips the derivation LLM call',
+    async (_name, { knownKey }) => {
+      knownKey.setupOnce();
+      await knownKey.invoke({});
+      expect(callLlm).toHaveBeenCalledTimes(knownKey.expectedLlmCalls);
     }
   );
 });
