@@ -759,3 +759,156 @@ runTable({
     expect(typeof result.error.type).toBe('string');
   },
 });
+
+// ─── 15. Every emitted event carries trace context (traceId, spanId,
+//        libraryName) ─────────────────────────────────────────────────────
+
+runTable({
+  describe: 'chain interface — events carry traceId / spanId / libraryName',
+  examples: [
+    {
+      name: 'date',
+      inputs: { kind: 'date' },
+      mocks: { callLlm: ['2024-03-05'], bool: [true] },
+      want: {},
+    },
+    {
+      name: 'calibrate',
+      inputs: { kind: 'calibrate' },
+      mocks: { callLlm: [calibrateSpec, calibrateResult] },
+      want: {},
+    },
+    {
+      name: 'map',
+      inputs: { kind: 'map' },
+      mocks: { listBatch: [['a-x']] },
+      want: {},
+    },
+    {
+      name: 'veiled-variants',
+      inputs: { kind: 'veiled-variants' },
+      mocks: { callLlm: [['a', 'b', 'c']] },
+      want: {},
+    },
+  ],
+  process: async ({ inputs, mocks }) => {
+    applyMocks(mocks, mockRegistry);
+    const events = [];
+    await harness[inputs.kind].invoke({ onProgress: (e) => events.push(e) });
+    return events;
+  },
+  expects: ({ result }) => {
+    expect(result.length).toBeGreaterThan(0);
+    for (const ev of result) {
+      expect(typeof ev.traceId).toBe('string');
+      expect(ev.traceId.length).toBeGreaterThan(0);
+      expect(typeof ev.spanId).toBe('string');
+      expect(ev.spanId.length).toBeGreaterThan(0);
+      expect(ev.libraryName).toBe('verblets');
+    }
+  },
+});
+
+// ─── 16. spanId is consistent within a single invocation ────────────────
+
+runTable({
+  describe: 'chain interface — spanId is consistent within an invocation',
+  examples: [
+    {
+      name: 'date',
+      inputs: { kind: 'date' },
+      mocks: { callLlm: ['2024-03-05'], bool: [true] },
+      want: {},
+    },
+    {
+      name: 'calibrate',
+      inputs: { kind: 'calibrate' },
+      mocks: { callLlm: [calibrateSpec, calibrateResult] },
+      want: {},
+    },
+    {
+      name: 'map',
+      inputs: { kind: 'map' },
+      mocks: { listBatch: [['a-x']] },
+      want: {},
+    },
+    {
+      name: 'veiled-variants',
+      inputs: { kind: 'veiled-variants' },
+      mocks: { callLlm: [['a', 'b', 'c']] },
+      want: {},
+    },
+  ],
+  process: async ({ inputs, mocks }) => {
+    applyMocks(mocks, mockRegistry);
+    const events = [];
+    await harness[inputs.kind].invoke({ onProgress: (e) => events.push(e) });
+    const { step } = harness[inputs.kind];
+    // Restrict to the chain's own emitter step — sub-emitters (e.g.
+    // calibrate:spec inside calibrate) own different spans, which is
+    // expected and tested elsewhere.
+    return events.filter((e) => e.step === step).map((e) => e.spanId);
+  },
+  expects: ({ result }) => {
+    expect(result.length).toBeGreaterThan(0);
+    expect(new Set(result).size).toBe(1);
+  },
+});
+
+// ─── 17. spanId differs across consecutive invocations ──────────────────
+
+runTable({
+  describe: 'chain interface — spanId differs across invocations',
+  examples: [
+    {
+      name: 'date',
+      inputs: { kind: 'date' },
+      mocks: {
+        callLlm: ['2024-03-05', '2024-03-05'],
+        bool: [true, true],
+      },
+      want: {},
+    },
+    {
+      name: 'calibrate',
+      inputs: { kind: 'calibrate' },
+      mocks: {
+        callLlm: [calibrateSpec, calibrateResult, calibrateSpec, calibrateResult],
+      },
+      want: {},
+    },
+    {
+      name: 'map',
+      inputs: { kind: 'map' },
+      mocks: { listBatch: [['a-x'], ['a-x']] },
+      want: {},
+    },
+    {
+      name: 'veiled-variants',
+      inputs: { kind: 'veiled-variants' },
+      mocks: {
+        callLlm: [
+          ['a', 'b', 'c'],
+          ['a', 'b', 'c'],
+        ],
+      },
+      want: {},
+    },
+  ],
+  process: async ({ inputs, mocks }) => {
+    applyMocks(mocks, mockRegistry);
+    const eventsA = [];
+    const eventsB = [];
+    await harness[inputs.kind].invoke({ onProgress: (e) => eventsA.push(e) });
+    await harness[inputs.kind].invoke({ onProgress: (e) => eventsB.push(e) });
+    const { step } = harness[inputs.kind];
+    const spanA = eventsA.find((e) => e.step === step)?.spanId;
+    const spanB = eventsB.find((e) => e.step === step)?.spanId;
+    return { spanA, spanB };
+  },
+  expects: ({ result }) => {
+    expect(result.spanA).toBeDefined();
+    expect(result.spanB).toBeDefined();
+    expect(result.spanA).not.toBe(result.spanB);
+  },
+});
