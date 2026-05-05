@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, expect, vi } from 'vitest';
+import { runTable, applyMocks } from '../examples-runner/index.js';
 
 // ==========================================
 // Centralized Chain Interface Contract Tests
@@ -6,17 +7,18 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 //
 // Stress-test files in /tmp historically asserted the same cross-cutting
 // concerns over and over per chain: knownTexts shape, chain:start/complete
-// emission on success, chain:error emission on LLM failure. This spec
-// folds those interface contracts into table-driven tests across a small
-// set of representative chains spanning the four common shapes:
+// emission on success, chain:error emission on LLM failure, instruction
+// bundle acceptance, and known-key skip. This spec folds those interface
+// contracts into example-based table-driven tests across a small set of
+// representative chains spanning the four common shapes:
 //
 //   - single LLM call           → date
 //   - two-pass (spec + apply)   → calibrate
 //   - batched list processing   → map
 //   - parallel multi-strategy   → veiled-variants
 //
-// Chain-specific BEHAVIOR (e.g. statistics aggregation, anchor handling)
-// belongs in the chain's own spec.
+// Each row is a self-describing example: { name, inputs, mocks, want }.
+// Chain-specific behavior belongs in each chain's own spec.
 // ==========================================
 
 vi.mock('../llm/index.js', async (importOriginal) => ({
@@ -64,6 +66,8 @@ const calibrate = (await import('../../chains/calibrate/index.js')).default;
 const map = (await import('../../chains/map/index.js')).default;
 const veiledVariants = (await import('../../chains/veiled-variants/index.js')).default;
 
+const mockRegistry = { callLlm, bool, listBatch };
+
 const makeScan = (categories = []) => ({
   flagged: categories.length > 0,
   hits: categories.map((category) => ({
@@ -87,177 +91,235 @@ const calibrateResult = {
   summary: 'Contains PII',
 };
 
-// Each row supplies enough to drive the cross-cutting contract assertions
-// without leaking chain-specific behavior into this file.
-//
-// `invoke(config)` is the canonical success-path call.
-// `invokeWith(instructions, config)` swaps the chain's instructions / prompt
-//   slot — used by the bundle-context contract to verify that all chains
-//   accept both a string and an object-form `{ text, ...context }` instruction
-//   bundle through `resolveTexts`.
-// `findInPrompts(marker)` searches every prompt seen by the chain's primary
-//   LLM proxy (callLlm directly, or listBatch for batched chains).
-const chains = [
-  {
-    name: 'date',
+// Per-chain glue — kept separate from the example rows so the rows stay
+// pure data ({ inputs, mocks, want }). The `kind` discriminator on each row
+// looks up its harness here.
+const harness = {
+  date: {
+    fn: date,
     step: 'date',
     expectedKnownTexts: [],
-    fn: date,
     invoke: (config) => date('March 5 2024', { rigor: 'low', ...config }),
     invokeWith: (instructions, config) => date(instructions, { rigor: 'low', ...config }),
     findInPrompts: (marker) =>
-      callLlm.mock.calls.some(([prompt]) => typeof prompt === 'string' && prompt.includes(marker)),
-    setupSuccess: () => {
-      callLlm.mockResolvedValue('2024-03-05');
-      bool.mockResolvedValue(true);
-    },
-    setupFailure: () => {
-      callLlm.mockRejectedValueOnce(new Error('LLM failure'));
-    },
+      callLlm.mock.calls.some(([p]) => typeof p === 'string' && p.includes(marker)),
   },
-  {
-    name: 'calibrate',
+  calibrate: {
+    fn: calibrate,
     step: 'calibrate',
     expectedKnownTexts: ['spec'],
-    fn: calibrate,
     invoke: (config) => calibrate(makeScan(['pii']), 'classify', config),
     invokeWith: (instructions, config) => calibrate(makeScan(['pii']), instructions, config),
     findInPrompts: (marker) =>
-      callLlm.mock.calls.some(([prompt]) => typeof prompt === 'string' && prompt.includes(marker)),
-    setupSuccess: () => {
-      callLlm.mockResolvedValueOnce(calibrateSpec).mockResolvedValueOnce(calibrateResult);
-    },
-    setupFailure: () => {
-      callLlm.mockRejectedValueOnce(new Error('LLM failure'));
-    },
-    // Known-key skip: when the bundle includes `spec`, calibrate skips Pass 1
-    // (spec generation) and makes exactly one LLM call instead of two.
-    knownKey: {
-      key: 'spec',
-      value: calibrateSpec,
-      invoke: (config) =>
-        calibrate(makeScan(['pii']), { text: 'classify', spec: calibrateSpec }, config),
-      setupOnce: () => {
-        callLlm.mockResolvedValueOnce(calibrateResult);
-      },
-      expectedLlmCalls: 1,
-    },
+      callLlm.mock.calls.some(([p]) => typeof p === 'string' && p.includes(marker)),
+    invokeWithKnownKey: (config) =>
+      calibrate(makeScan(['pii']), { text: 'classify', spec: calibrateSpec }, config),
   },
-  {
-    name: 'map',
+  map: {
+    fn: map,
     step: 'map',
     expectedKnownTexts: [],
-    fn: map,
     invoke: (config) => map(['a'], 'transform', { batchSize: 1, ...config }),
     invokeWith: (instructions, config) => map(['a'], instructions, { batchSize: 1, ...config }),
     findInPrompts: (marker) =>
-      listBatch.mock.calls.some(
-        ([, prompt]) => typeof prompt === 'string' && prompt.includes(marker)
-      ),
-    setupSuccess: () => {
-      listBatch.mockResolvedValue(['a-x']);
-    },
-    setupFailure: () => {
-      listBatch.mockRejectedValue(new Error('LLM failure'));
-    },
+      listBatch.mock.calls.some(([, p]) => typeof p === 'string' && p.includes(marker)),
   },
-  {
-    name: 'veiled-variants',
+  'veiled-variants': {
+    fn: veiledVariants,
     step: 'veiled-variants',
     expectedKnownTexts: [],
-    fn: veiledVariants,
     invoke: (config) => veiledVariants('test prompt', { coverage: 'low', ...config }),
     invokeWith: (instructions, config) =>
       veiledVariants(instructions, { coverage: 'low', ...config }),
     findInPrompts: (marker) =>
-      callLlm.mock.calls.some(([prompt]) => typeof prompt === 'string' && prompt.includes(marker)),
-    setupSuccess: () => {
-      callLlm.mockResolvedValue(['a', 'b', 'c']);
-    },
-    setupFailure: () => {
-      callLlm.mockRejectedValue(new Error('LLM failure'));
-    },
+      callLlm.mock.calls.some(([p]) => typeof p === 'string' && p.includes(marker)),
   },
-];
-
-const knownKeyChains = chains.filter((c) => c.knownKey);
+};
 
 beforeEach(() => {
   vi.resetAllMocks();
 });
 
-describe('chain interface — knownTexts shape', () => {
-  it.each(chains.map((c) => [c.name, c]))(
-    '%s: exports knownTexts as a string array of expected shape',
-    (_name, { fn, expectedKnownTexts }) => {
-      expect(Array.isArray(fn.knownTexts)).toBe(true);
-      for (const key of fn.knownTexts) expect(typeof key).toBe('string');
-      expect(fn.knownTexts).toEqual(expectedKnownTexts);
-    }
-  );
+// ─── 1. knownTexts shape ─────────────────────────────────────────────────
+
+runTable({
+  describe: 'chain interface — knownTexts shape',
+  examples: [
+    { name: 'date', inputs: { kind: 'date' }, want: { knownTexts: [] } },
+    { name: 'calibrate', inputs: { kind: 'calibrate' }, want: { knownTexts: ['spec'] } },
+    { name: 'map', inputs: { kind: 'map' }, want: { knownTexts: [] } },
+    { name: 'veiled-variants', inputs: { kind: 'veiled-variants' }, want: { knownTexts: [] } },
+  ],
+  process: ({ inputs }) => harness[inputs.kind].fn.knownTexts,
+  expects: ({ result, want }) => {
+    expect(Array.isArray(result)).toBe(true);
+    for (const key of result) expect(typeof key).toBe('string');
+    expect(result).toEqual(want.knownTexts);
+  },
 });
 
-describe('chain interface — success lifecycle emits chain:start and chain:complete', () => {
-  it.each(chains.map((c) => [c.name, c]))(
-    '%s: emits chain:start and chain:complete under its step name',
-    async (_name, { step, invoke, setupSuccess }) => {
-      setupSuccess();
-      const events = [];
-      await invoke({ onProgress: (e) => events.push(e) });
-      const start = events.find((e) => e.step === step && e.event === 'chain:start');
-      const complete = events.find((e) => e.step === step && e.event === 'chain:complete');
-      expect(start).toBeDefined();
-      expect(complete).toBeDefined();
-    }
-  );
+// ─── 2. Success lifecycle emits chain:start + chain:complete ────────────
+
+runTable({
+  describe: 'chain interface — success lifecycle',
+  examples: [
+    {
+      name: 'date',
+      inputs: { kind: 'date' },
+      mocks: { callLlm: ['2024-03-05'], bool: [true] },
+      want: { step: 'date' },
+    },
+    {
+      name: 'calibrate',
+      inputs: { kind: 'calibrate' },
+      mocks: { callLlm: [calibrateSpec, calibrateResult] },
+      want: { step: 'calibrate' },
+    },
+    {
+      name: 'map',
+      inputs: { kind: 'map' },
+      mocks: { listBatch: [['a-x']] },
+      want: { step: 'map' },
+    },
+    {
+      name: 'veiled-variants',
+      inputs: { kind: 'veiled-variants' },
+      mocks: { callLlm: [['a', 'b', 'c']] },
+      want: { step: 'veiled-variants' },
+    },
+  ],
+  process: async ({ inputs, mocks }) => {
+    applyMocks(mocks, mockRegistry);
+    const events = [];
+    await harness[inputs.kind].invoke({ onProgress: (e) => events.push(e) });
+    return events;
+  },
+  expects: ({ result, want }) => {
+    const start = result.find((e) => e.step === want.step && e.event === 'chain:start');
+    const complete = result.find((e) => e.step === want.step && e.event === 'chain:complete');
+    expect(start).toBeDefined();
+    expect(complete).toBeDefined();
+  },
 });
 
-describe('chain interface — failure lifecycle emits chain:error', () => {
-  it.each(chains.map((c) => [c.name, c]))(
-    '%s: rejects and emits chain:error when the LLM fails',
-    async (_name, { step, invoke, setupFailure }) => {
-      setupFailure();
-      const events = [];
-      let caught;
-      try {
-        await invoke({ onProgress: (e) => events.push(e), maxAttempts: 1 });
-      } catch (e) {
-        caught = e;
-      }
-      // Contract: the chain rejects with an Error (the message may be
-      // aggregated or wrapped by chains that batch — that's chain-specific).
-      expect(caught).toBeInstanceOf(Error);
-      const errorEvent = events.find((e) => e.step === step && e.event === 'chain:error');
-      expect(errorEvent).toBeDefined();
+// ─── 3. Failure lifecycle emits chain:error ─────────────────────────────
+
+const llmFailure = new Error('LLM failure');
+
+runTable({
+  describe: 'chain interface — failure lifecycle',
+  examples: [
+    {
+      name: 'date',
+      inputs: { kind: 'date' },
+      mocks: { callLlm: [llmFailure] },
+      want: { step: 'date' },
+    },
+    {
+      name: 'calibrate',
+      inputs: { kind: 'calibrate' },
+      mocks: { callLlm: [llmFailure] },
+      want: { step: 'calibrate' },
+    },
+    {
+      name: 'map',
+      inputs: { kind: 'map' },
+      mocks: { listBatch: [llmFailure] },
+      want: { step: 'map' },
+    },
+    {
+      name: 'veiled-variants',
+      inputs: { kind: 'veiled-variants' },
+      mocks: { callLlm: [llmFailure] },
+      want: { step: 'veiled-variants' },
+    },
+  ],
+  process: async ({ inputs, mocks }) => {
+    applyMocks(mocks, mockRegistry);
+    const events = [];
+    let error;
+    try {
+      await harness[inputs.kind].invoke({
+        onProgress: (e) => events.push(e),
+        maxAttempts: 1,
+      });
+    } catch (e) {
+      error = e;
     }
-  );
+    return { events, error };
+  },
+  expects: ({ result, want }) => {
+    // Contract: rejects with an Error (the message may be aggregated or
+    // wrapped by chains that batch — that's chain-specific).
+    expect(result.error).toBeInstanceOf(Error);
+    const errorEvent = result.events.find((e) => e.step === want.step && e.event === 'chain:error');
+    expect(errorEvent).toBeDefined();
+  },
 });
 
-// All chains route their primary text through `resolveTexts`, so passing a
-// `{ text, ...context }` bundle must be equivalent to passing the string
-// alone — and any extra context keys must reach the LLM prompt as XML.
-describe('chain interface — instruction bundle accepted in place of string', () => {
-  it.each(chains.map((c) => [c.name, c]))(
-    '%s: accepts an object-form bundle and embeds context in the prompt',
-    async (_name, { invokeWith, setupSuccess, findInPrompts }) => {
-      setupSuccess();
-      const marker = 'context-marker-2c8e1f';
-      await invokeWith({ text: 'instruction text', extraContext: marker }, {});
-      expect(findInPrompts(marker)).toBe(true);
-    }
-  );
+// ─── 4. Instruction bundle accepted in place of string ──────────────────
+
+const contextMarker = 'context-marker-2c8e1f';
+
+runTable({
+  describe: 'chain interface — instruction bundle accepted in place of string',
+  examples: [
+    {
+      name: 'date',
+      inputs: { kind: 'date' },
+      mocks: { callLlm: ['2024-03-05', '2024-03-05'], bool: [true] },
+      want: { contextEmbedded: true },
+    },
+    {
+      name: 'calibrate',
+      inputs: { kind: 'calibrate' },
+      mocks: { callLlm: [calibrateSpec, calibrateResult] },
+      want: { contextEmbedded: true },
+    },
+    {
+      name: 'map',
+      inputs: { kind: 'map' },
+      mocks: { listBatch: [['a-x']] },
+      want: { contextEmbedded: true },
+    },
+    {
+      name: 'veiled-variants',
+      inputs: { kind: 'veiled-variants' },
+      mocks: { callLlm: [['a', 'b', 'c']] },
+      want: { contextEmbedded: true },
+    },
+  ],
+  process: async ({ inputs, mocks }) => {
+    applyMocks(mocks, mockRegistry);
+    await harness[inputs.kind].invokeWith(
+      { text: 'instruction text', extraContext: contextMarker },
+      {}
+    );
+    return harness[inputs.kind].findInPrompts(contextMarker);
+  },
+  expects: ({ result, want }) => {
+    expect(result).toBe(want.contextEmbedded);
+  },
 });
 
-// Chains that declare a known-text key (`spec`, `anchors`, …) must skip the
-// LLM call that would normally derive that artifact when it is supplied via
-// the bundle. Verified by counting LLM calls.
-describe('chain interface — known-text bundle key skips its derivation call', () => {
-  it.each(knownKeyChains.map((c) => [c.name, c]))(
-    '%s: supplying %p in the bundle skips the derivation LLM call',
-    async (_name, { knownKey }) => {
-      knownKey.setupOnce();
-      await knownKey.invoke({});
-      expect(callLlm).toHaveBeenCalledTimes(knownKey.expectedLlmCalls);
-    }
-  );
+// ─── 5. Known-text bundle key skips its derivation call ─────────────────
+
+runTable({
+  describe: 'chain interface — known-text bundle key skips its derivation call',
+  examples: [
+    {
+      name: 'calibrate (spec)',
+      inputs: { kind: 'calibrate', knownKey: 'spec' },
+      mocks: { callLlm: [calibrateResult] },
+      want: { llmCalls: 1 },
+    },
+  ],
+  process: async ({ inputs, mocks }) => {
+    applyMocks(mocks, mockRegistry);
+    await harness[inputs.kind].invokeWithKnownKey({});
+    return callLlm.mock.calls.length;
+  },
+  expects: ({ result, want }) => {
+    expect(result).toBe(want.llmCalls);
+  },
 });
