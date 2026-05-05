@@ -912,3 +912,181 @@ runTable({
     expect(result.spanA).not.toBe(result.spanB);
   },
 });
+
+// ─── 18. chain:start event shape ────────────────────────────────────────
+
+runTable({
+  describe: 'chain interface — chain:start event shape',
+  examples: [
+    {
+      name: 'date',
+      inputs: { kind: 'date' },
+      mocks: { callLlm: ['2024-03-05'], bool: [true] },
+      want: {},
+    },
+    {
+      name: 'calibrate',
+      inputs: { kind: 'calibrate' },
+      mocks: { callLlm: [calibrateSpec, calibrateResult] },
+      want: {},
+    },
+    {
+      name: 'map',
+      inputs: { kind: 'map' },
+      mocks: { listBatch: [['a-x']] },
+      want: {},
+    },
+    {
+      name: 'veiled-variants',
+      inputs: { kind: 'veiled-variants' },
+      mocks: { callLlm: [['a', 'b', 'c']] },
+      want: {},
+    },
+  ],
+  process: async ({ inputs, mocks }) => {
+    applyMocks(mocks, mockRegistry);
+    const events = [];
+    await harness[inputs.kind].invoke({ onProgress: (e) => events.push(e) });
+    const { step } = harness[inputs.kind];
+    return events.find((e) => e.step === step && e.event === 'chain:start');
+  },
+  expects: ({ result }) => {
+    expect(result).toBeDefined();
+    expect(result.kind).toBe('telemetry');
+    // chain:start fires before any work is done — there's no outcome,
+    // no duration, and no error to report yet.
+    expect(result.statusCode).toBeUndefined();
+    expect(result.durationMs).toBeUndefined();
+    expect(result.error).toBeUndefined();
+  },
+});
+
+// ─── 19. Lifecycle exclusivity: complete and error never both fire ──────
+
+runTable({
+  describe: 'chain interface — lifecycle exclusivity (complete XOR error)',
+  examples: [
+    {
+      name: 'date — success',
+      inputs: { kind: 'date' },
+      mocks: { callLlm: ['2024-03-05'], bool: [true] },
+      want: { hasComplete: true, hasError: false },
+    },
+    {
+      name: 'date — failure',
+      inputs: { kind: 'date' },
+      mocks: { callLlm: [llmFailure] },
+      want: { hasComplete: false, hasError: true },
+    },
+    {
+      name: 'calibrate — success',
+      inputs: { kind: 'calibrate' },
+      mocks: { callLlm: [calibrateSpec, calibrateResult] },
+      want: { hasComplete: true, hasError: false },
+    },
+    {
+      name: 'calibrate — failure',
+      inputs: { kind: 'calibrate' },
+      mocks: { callLlm: [llmFailure] },
+      want: { hasComplete: false, hasError: true },
+    },
+    {
+      name: 'map — success',
+      inputs: { kind: 'map' },
+      mocks: { listBatch: [['a-x']] },
+      want: { hasComplete: true, hasError: false },
+    },
+    {
+      name: 'map — failure',
+      inputs: { kind: 'map' },
+      mocks: { listBatch: [llmFailure] },
+      want: { hasComplete: false, hasError: true },
+    },
+    {
+      name: 'veiled-variants — success',
+      inputs: { kind: 'veiled-variants' },
+      mocks: { callLlm: [['a', 'b', 'c']] },
+      want: { hasComplete: true, hasError: false },
+    },
+    {
+      name: 'veiled-variants — failure',
+      inputs: { kind: 'veiled-variants' },
+      mocks: { callLlm: [llmFailure] },
+      want: { hasComplete: false, hasError: true },
+    },
+  ],
+  process: async ({ inputs, mocks }) => {
+    applyMocks(mocks, mockRegistry);
+    const events = [];
+    try {
+      await harness[inputs.kind].invoke({
+        onProgress: (e) => events.push(e),
+        maxAttempts: 1,
+      });
+    } catch {
+      // failure rows swallow here — exclusivity is asserted on events
+    }
+    const { step } = harness[inputs.kind];
+    return {
+      hasComplete: events.some((e) => e.step === step && e.event === 'chain:complete'),
+      hasError: events.some((e) => e.step === step && e.event === 'chain:error'),
+    };
+  },
+  expects: ({ result, want }) => {
+    expect(result.hasComplete).toBe(want.hasComplete);
+    expect(result.hasError).toBe(want.hasError);
+  },
+});
+
+// ─── 20. Failure-path ordering: chain:start precedes chain:error ────────
+
+runTable({
+  describe: 'chain interface — chain:start precedes chain:error on failure',
+  examples: [
+    {
+      name: 'date',
+      inputs: { kind: 'date' },
+      mocks: { callLlm: [llmFailure] },
+      want: {},
+    },
+    {
+      name: 'calibrate',
+      inputs: { kind: 'calibrate' },
+      mocks: { callLlm: [llmFailure] },
+      want: {},
+    },
+    {
+      name: 'map',
+      inputs: { kind: 'map' },
+      mocks: { listBatch: [llmFailure] },
+      want: {},
+    },
+    {
+      name: 'veiled-variants',
+      inputs: { kind: 'veiled-variants' },
+      mocks: { callLlm: [llmFailure] },
+      want: {},
+    },
+  ],
+  process: async ({ inputs, mocks }) => {
+    applyMocks(mocks, mockRegistry);
+    const events = [];
+    try {
+      await harness[inputs.kind].invoke({
+        onProgress: (e) => events.push(e),
+        maxAttempts: 1,
+      });
+    } catch {
+      // expected
+    }
+    const { step } = harness[inputs.kind];
+    const startIdx = events.findIndex((e) => e.step === step && e.event === 'chain:start');
+    const errorIdx = events.findIndex((e) => e.step === step && e.event === 'chain:error');
+    return { startIdx, errorIdx };
+  },
+  expects: ({ result }) => {
+    expect(result.startIdx).toBeGreaterThanOrEqual(0);
+    expect(result.errorIdx).toBeGreaterThanOrEqual(0);
+    expect(result.startIdx).toBeLessThan(result.errorIdx);
+  },
+});
