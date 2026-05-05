@@ -610,3 +610,152 @@ runTable({
     }
   },
 });
+
+// ─── 12. Caller's config object is not mutated ──────────────────────────
+
+runTable({
+  describe: 'chain interface — does not mutate caller config',
+  examples: [
+    {
+      name: 'date',
+      inputs: { kind: 'date' },
+      mocks: { callLlm: ['2024-03-05'], bool: [true] },
+      want: {},
+    },
+    {
+      name: 'calibrate',
+      inputs: { kind: 'calibrate' },
+      mocks: { callLlm: [calibrateSpec, calibrateResult] },
+      want: {},
+    },
+    {
+      name: 'map',
+      inputs: { kind: 'map' },
+      mocks: { listBatch: [['a-x']] },
+      want: {},
+    },
+    {
+      name: 'veiled-variants',
+      inputs: { kind: 'veiled-variants' },
+      mocks: { callLlm: [['a', 'b', 'c']] },
+      want: {},
+    },
+  ],
+  process: async ({ inputs, mocks }) => {
+    applyMocks(mocks, mockRegistry);
+    const config = { llm: { fast: true }, customKey: 'preserve-me' };
+    const before = JSON.parse(JSON.stringify(config));
+    await harness[inputs.kind].invoke(config);
+    return { config, before };
+  },
+  expects: ({ result }) => {
+    // Caller-visible keys must survive untouched. The chain may add internal
+    // bookkeeping keys (operation, now, …) under nameStep, but those keys
+    // weren't present before, so the original keys must still match.
+    for (const key of Object.keys(result.before)) {
+      expect(result.config[key]).toEqual(result.before[key]);
+    }
+  },
+});
+
+// ─── 13. chain:complete event shape ─────────────────────────────────────
+
+runTable({
+  describe: 'chain interface — chain:complete event shape',
+  examples: [
+    {
+      name: 'date',
+      inputs: { kind: 'date' },
+      mocks: { callLlm: ['2024-03-05'], bool: [true] },
+      want: {},
+    },
+    {
+      name: 'calibrate',
+      inputs: { kind: 'calibrate' },
+      mocks: { callLlm: [calibrateSpec, calibrateResult] },
+      want: {},
+    },
+    {
+      name: 'map',
+      inputs: { kind: 'map' },
+      mocks: { listBatch: [['a-x']] },
+      want: {},
+    },
+    {
+      name: 'veiled-variants',
+      inputs: { kind: 'veiled-variants' },
+      mocks: { callLlm: [['a', 'b', 'c']] },
+      want: {},
+    },
+  ],
+  process: async ({ inputs, mocks }) => {
+    applyMocks(mocks, mockRegistry);
+    const events = [];
+    await harness[inputs.kind].invoke({ onProgress: (e) => events.push(e) });
+    const { step } = harness[inputs.kind];
+    return events.find((e) => e.step === step && e.event === 'chain:complete');
+  },
+  expects: ({ result }) => {
+    expect(result).toBeDefined();
+    expect(result.kind).toBe('telemetry');
+    expect(result.statusCode).toBe('ok');
+    expect(typeof result.durationMs).toBe('number');
+    expect(result.durationMs).toBeGreaterThanOrEqual(0);
+  },
+});
+
+// ─── 14. chain:error event shape ────────────────────────────────────────
+
+runTable({
+  describe: 'chain interface — chain:error event shape',
+  examples: [
+    {
+      name: 'date',
+      inputs: { kind: 'date' },
+      mocks: { callLlm: [llmFailure] },
+      want: {},
+    },
+    {
+      name: 'calibrate',
+      inputs: { kind: 'calibrate' },
+      mocks: { callLlm: [llmFailure] },
+      want: {},
+    },
+    {
+      name: 'map',
+      inputs: { kind: 'map' },
+      mocks: { listBatch: [llmFailure] },
+      want: {},
+    },
+    {
+      name: 'veiled-variants',
+      inputs: { kind: 'veiled-variants' },
+      mocks: { callLlm: [llmFailure] },
+      want: {},
+    },
+  ],
+  process: async ({ inputs, mocks }) => {
+    applyMocks(mocks, mockRegistry);
+    const events = [];
+    try {
+      await harness[inputs.kind].invoke({
+        onProgress: (e) => events.push(e),
+        maxAttempts: 1,
+      });
+    } catch {
+      // expected
+    }
+    const { step } = harness[inputs.kind];
+    return events.find((e) => e.step === step && e.event === 'chain:error');
+  },
+  expects: ({ result }) => {
+    expect(result).toBeDefined();
+    expect(result.kind).toBe('telemetry');
+    expect(result.statusCode).toBe('error');
+    expect(typeof result.durationMs).toBe('number');
+    expect(result.error).toBeDefined();
+    expect(typeof result.error.message).toBe('string');
+    expect(result.error.message.length).toBeGreaterThan(0);
+    expect(typeof result.error.type).toBe('string');
+  },
+});
