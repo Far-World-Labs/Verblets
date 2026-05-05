@@ -105,6 +105,8 @@ const harness = {
       callLlm.mock.calls.some(([p]) => typeof p === 'string' && p.includes(marker)),
     llmCallsite: () => callLlm,
     llmCallsiteConfigArg: 1,
+    primaryInput: () => 'March 5 2024',
+    invokeWithInput: (input, config) => date(input, { rigor: 'low', ...config }),
   },
   calibrate: {
     fn: calibrate,
@@ -118,6 +120,8 @@ const harness = {
       calibrate(makeScan(['pii']), { text: 'classify', spec: calibrateSpec }, config),
     llmCallsite: () => callLlm,
     llmCallsiteConfigArg: 1,
+    primaryInput: () => makeScan(['pii']),
+    invokeWithInput: (input, config) => calibrate(input, 'classify', config),
   },
   map: {
     fn: map,
@@ -129,6 +133,8 @@ const harness = {
       listBatch.mock.calls.some(([, p]) => typeof p === 'string' && p.includes(marker)),
     llmCallsite: () => listBatch,
     llmCallsiteConfigArg: 2,
+    primaryInput: () => ['a', 'b'],
+    invokeWithInput: (input, config) => map(input, 'transform', { batchSize: 2, ...config }),
   },
   'veiled-variants': {
     fn: veiledVariants,
@@ -141,6 +147,8 @@ const harness = {
       callLlm.mock.calls.some(([p]) => typeof p === 'string' && p.includes(marker)),
     llmCallsite: () => callLlm,
     llmCallsiteConfigArg: 1,
+    primaryInput: () => 'test prompt',
+    invokeWithInput: (input, config) => veiledVariants(input, { coverage: 'low', ...config }),
   },
 };
 
@@ -463,5 +471,142 @@ runTable({
   },
   expects: ({ result, want }) => {
     expect(result).toBe(want.reaches);
+  },
+});
+
+// ─── 9. abortSignal threads through to the LLM callsite ─────────────────
+
+runTable({
+  describe: 'chain interface — abortSignal threads through',
+  examples: [
+    {
+      name: 'date',
+      inputs: { kind: 'date' },
+      mocks: { callLlm: ['2024-03-05'], bool: [true] },
+      want: { reaches: true },
+    },
+    {
+      name: 'calibrate',
+      inputs: { kind: 'calibrate' },
+      mocks: { callLlm: [calibrateSpec, calibrateResult] },
+      want: { reaches: true },
+    },
+    {
+      name: 'map',
+      inputs: { kind: 'map' },
+      mocks: { listBatch: [['a-x']] },
+      want: { reaches: true },
+    },
+    {
+      name: 'veiled-variants',
+      inputs: { kind: 'veiled-variants' },
+      mocks: { callLlm: [['a', 'b', 'c']] },
+      want: { reaches: true },
+    },
+  ],
+  process: async ({ inputs, mocks }) => {
+    applyMocks(mocks, mockRegistry);
+    const ctrl = new AbortController();
+    await harness[inputs.kind].invoke({ abortSignal: ctrl.signal });
+    const { llmCallsite, llmCallsiteConfigArg } = harness[inputs.kind];
+    return llmCallsite().mock.calls.some((args) => {
+      const cfg = args[llmCallsiteConfigArg];
+      return cfg?.abortSignal === ctrl.signal;
+    });
+  },
+  expects: ({ result, want }) => {
+    expect(result).toBe(want.reaches);
+  },
+});
+
+// ─── 10. Inputs are not mutated ──────────────────────────────────────────
+
+runTable({
+  describe: 'chain interface — does not mutate primary input',
+  examples: [
+    {
+      name: 'date',
+      inputs: { kind: 'date' },
+      mocks: { callLlm: ['2024-03-05'], bool: [true] },
+      want: {},
+    },
+    {
+      name: 'calibrate',
+      inputs: { kind: 'calibrate' },
+      mocks: { callLlm: [calibrateSpec, calibrateResult] },
+      want: {},
+    },
+    {
+      name: 'map',
+      inputs: { kind: 'map' },
+      mocks: { listBatch: [['a-x', 'b-x']] },
+      want: {},
+    },
+    {
+      name: 'veiled-variants',
+      inputs: { kind: 'veiled-variants' },
+      mocks: { callLlm: [['a', 'b', 'c']] },
+      want: {},
+    },
+  ],
+  process: async ({ inputs, mocks }) => {
+    applyMocks(mocks, mockRegistry);
+    const input = harness[inputs.kind].primaryInput();
+    const before = JSON.parse(JSON.stringify(input));
+    await harness[inputs.kind].invokeWithInput(input, {});
+    return { input, before };
+  },
+  expects: ({ result }) => {
+    expect(result.input).toEqual(result.before);
+  },
+});
+
+// ─── 11. Every emitted progress event carries trace metadata ────────────
+
+runTable({
+  describe: 'chain interface — emitted events carry trace metadata',
+  examples: [
+    {
+      name: 'date',
+      inputs: { kind: 'date' },
+      mocks: { callLlm: ['2024-03-05'], bool: [true] },
+      want: {},
+    },
+    {
+      name: 'calibrate',
+      inputs: { kind: 'calibrate' },
+      mocks: { callLlm: [calibrateSpec, calibrateResult] },
+      want: {},
+    },
+    {
+      name: 'map',
+      inputs: { kind: 'map' },
+      mocks: { listBatch: [['a-x']] },
+      want: {},
+    },
+    {
+      name: 'veiled-variants',
+      inputs: { kind: 'veiled-variants' },
+      mocks: { callLlm: [['a', 'b', 'c']] },
+      want: {},
+    },
+  ],
+  process: async ({ inputs, mocks }) => {
+    applyMocks(mocks, mockRegistry);
+    const events = [];
+    await harness[inputs.kind].invoke({ onProgress: (e) => events.push(e) });
+    return events;
+  },
+  expects: ({ result }) => {
+    expect(result.length).toBeGreaterThan(0);
+    // Every event must identify its kind, the chain step, and the event
+    // name — these are the fields downstream consumers (loggers, span
+    // builders, telemetry pipes) rely on.
+    for (const ev of result) {
+      expect(typeof ev.kind).toBe('string');
+      expect(typeof ev.step).toBe('string');
+      expect(typeof ev.event).toBe('string');
+      expect(typeof ev.operation).toBe('string');
+    }
   },
 });
