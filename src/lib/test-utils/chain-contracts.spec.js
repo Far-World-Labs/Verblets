@@ -1090,3 +1090,136 @@ runTable({
     expect(result.startIdx).toBeLessThan(result.errorIdx);
   },
 });
+
+// ─── 21. Event `kind` is in the canonical enum ──────────────────────────
+
+const KIND_ENUM = new Set(['telemetry', 'event', 'operation']);
+
+runTable({
+  describe: 'chain interface — event kind enum',
+  examples: [
+    {
+      name: 'date',
+      inputs: { kind: 'date' },
+      mocks: { callLlm: ['2024-03-05'], bool: [true] },
+      want: {},
+    },
+    {
+      name: 'calibrate',
+      inputs: { kind: 'calibrate' },
+      mocks: { callLlm: [calibrateSpec, calibrateResult] },
+      want: {},
+    },
+    {
+      name: 'map',
+      inputs: { kind: 'map' },
+      mocks: { listBatch: [['a-x']] },
+      want: {},
+    },
+    {
+      name: 'veiled-variants',
+      inputs: { kind: 'veiled-variants' },
+      mocks: { callLlm: [['a', 'b', 'c']] },
+      want: {},
+    },
+  ],
+  process: async ({ inputs, mocks }) => {
+    applyMocks(mocks, mockRegistry);
+    const events = [];
+    await harness[inputs.kind].invoke({ onProgress: (e) => events.push(e) });
+    return events.map((e) => e.kind);
+  },
+  expects: ({ result }) => {
+    expect(result.length).toBeGreaterThan(0);
+    for (const kind of result) expect(KIND_ENUM.has(kind)).toBe(true);
+  },
+});
+
+// ─── 22. traceId is consistent within an invocation ─────────────────────
+
+runTable({
+  describe: 'chain interface — traceId consistent within an invocation',
+  examples: [
+    {
+      name: 'date',
+      inputs: { kind: 'date' },
+      mocks: { callLlm: ['2024-03-05'], bool: [true] },
+      want: {},
+    },
+    {
+      name: 'calibrate',
+      inputs: { kind: 'calibrate' },
+      mocks: { callLlm: [calibrateSpec, calibrateResult] },
+      want: {},
+    },
+    {
+      name: 'map',
+      inputs: { kind: 'map' },
+      mocks: { listBatch: [['a-x']] },
+      want: {},
+    },
+    {
+      name: 'veiled-variants',
+      inputs: { kind: 'veiled-variants' },
+      mocks: { callLlm: [['a', 'b', 'c']] },
+      want: {},
+    },
+  ],
+  process: async ({ inputs, mocks }) => {
+    applyMocks(mocks, mockRegistry);
+    const events = [];
+    await harness[inputs.kind].invoke({ onProgress: (e) => events.push(e) });
+    return events.map((e) => e.traceId);
+  },
+  expects: ({ result }) => {
+    expect(result.length).toBeGreaterThan(0);
+    expect(new Set(result).size).toBe(1);
+  },
+});
+
+// ─── 23. chain:complete carries an `outcome` field ──────────────────────
+
+runTable({
+  describe: 'chain interface — chain:complete includes an outcome',
+  examples: [
+    {
+      name: 'date',
+      inputs: { kind: 'date' },
+      mocks: { callLlm: ['2024-03-05'], bool: [true] },
+      want: {},
+    },
+    {
+      name: 'calibrate',
+      inputs: { kind: 'calibrate' },
+      mocks: { callLlm: [calibrateSpec, calibrateResult] },
+      want: {},
+    },
+    {
+      name: 'map',
+      inputs: { kind: 'map' },
+      mocks: { listBatch: [['a-x']] },
+      want: {},
+    },
+    {
+      name: 'veiled-variants',
+      inputs: { kind: 'veiled-variants' },
+      mocks: { callLlm: [['a', 'b', 'c']] },
+      want: {},
+    },
+  ],
+  process: async ({ inputs, mocks }) => {
+    applyMocks(mocks, mockRegistry);
+    const events = [];
+    await harness[inputs.kind].invoke({ onProgress: (e) => events.push(e) });
+    const { step } = harness[inputs.kind];
+    return events.find((e) => e.step === step && e.event === 'chain:complete');
+  },
+  expects: ({ result }) => {
+    expect(result).toBeDefined();
+    // Outcome is one of the canonical enum values used by the rest of
+    // the codebase (success | partial | degraded | failure). Consumers
+    // discriminate on this field for SLO and alerting.
+    expect(typeof result.outcome).toBe('string');
+    expect(result.outcome.length).toBeGreaterThan(0);
+  },
+});
