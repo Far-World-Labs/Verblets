@@ -18,9 +18,13 @@ export const CLUSTER_DEFAULTS = Object.freeze({
   geometrySkipRatio: 0.15,
   // Non-heading word count below which a cluster is structural debris
   minClusterContent: 20,
+  // Below this chunk count, clustering is unreliable — treat as single topic
+  minChunksForClustering: 4,
+  // Cap on pairwise samples for threshold derivation (full pairwise below this)
+  maxDistanceSamples: 500,
 });
 
-function samplePairwiseDistances(vectors, maxSamples = 500) {
+function samplePairwiseDistances(vectors, maxSamples) {
   const n = vectors.length;
   const distances = [];
 
@@ -53,12 +57,26 @@ function deriveThreshold(sortedDistances, percentile) {
 // produce arbitrary groupings rather than meaningful topics.
 function shouldSkipClustering(sortedDistances, skipRatio) {
   if (sortedDistances.length === 0) return true;
-  const median = sortedDistances[Math.floor(sortedDistances.length / 2)];
+  const median = quantile(sortedDistances, 0.5);
   if (median === 0) return true;
-  const q25 = sortedDistances[Math.floor(sortedDistances.length * 0.25)];
-  const q75 = sortedDistances[Math.floor(sortedDistances.length * 0.75)];
-  const iqr = q75 - q25;
+  const iqr = quantile(sortedDistances, 0.75) - quantile(sortedDistances, 0.25);
   return iqr / median < skipRatio;
+}
+
+function quantile(sorted, q) {
+  return sorted[Math.floor(sorted.length * q)] ?? 0;
+}
+
+function computeDistanceStats(sorted) {
+  const q25 = quantile(sorted, 0.25);
+  const q75 = quantile(sorted, 0.75);
+  return {
+    mean: sorted.reduce((s, d) => s + d, 0) / (sorted.length || 1),
+    median: quantile(sorted, 0.5),
+    q25,
+    q75,
+    iqr: q75 - q25,
+  };
 }
 
 // --- Agglomerative clustering ---
@@ -145,20 +163,15 @@ export default async function inventory(chunks, embeddingService, tuning = {}) {
   const embedded = chunks.map((c, i) => ({ ...c, vector: vectors[i] }));
   const headings = embedded.filter((c) => c.type === CONTENT_TYPES.heading);
 
-  const distances = samplePairwiseDistances(vectors);
+  const distances = samplePairwiseDistances(vectors, t.maxDistanceSamples);
   const sorted = distances.toSorted((a, b) => a - b);
 
-  const distanceStats = {
-    mean: sorted.reduce((s, d) => s + d, 0) / (sorted.length || 1),
-    median: sorted[Math.floor(sorted.length / 2)] ?? 0,
-    q25: sorted[Math.floor(sorted.length * 0.25)] ?? 0,
-    q75: sorted[Math.floor(sorted.length * 0.75)] ?? 0,
-    iqr:
-      (sorted[Math.floor(sorted.length * 0.75)] ?? 0) -
-      (sorted[Math.floor(sorted.length * 0.25)] ?? 0),
-  };
+  const distanceStats = computeDistanceStats(sorted);
 
-  if (shouldSkipClustering(sorted, t.geometrySkipRatio) || embedded.length <= 3) {
+  if (
+    shouldSkipClustering(sorted, t.geometrySkipRatio) ||
+    embedded.length < t.minChunksForClustering
+  ) {
     const singleCluster = buildCluster(embedded, 0);
     return {
       chunks: embedded,

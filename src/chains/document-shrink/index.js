@@ -17,8 +17,11 @@ const name = 'document-shrink';
 // --- Tuning defaults (all injectable via config.tuning) ---
 
 export const TUNING_DEFAULTS = Object.freeze({
+  // --- Units ---
   charsPerWord: 8,
   maxTargetWords: 2000,
+
+  // --- Budget allocation ---
   // Clusters below this budget get a mention line instead of a reduce call
   mentionThreshold: 30,
   minClusterBudget: 20,
@@ -28,6 +31,7 @@ export const TUNING_DEFAULTS = Object.freeze({
   // 0.6 means a cluster 10x larger gets ~4x budget, not 10x.
   allocationExponent: 0.6,
 
+  // --- Mode multipliers ---
   densityHigh: 1.3,
   densityMedium: 1.0,
   densityLow: 0.7,
@@ -37,20 +41,40 @@ export const TUNING_DEFAULTS = Object.freeze({
   previewCoreWeight: 1.2,
   previewPeripheralWeight: 0.8,
 
-  // Scoring weights (must sum to 1.0)
-  weightTfidf: 0.2,
+  // --- Chunk selection scoring (must sum to 1.0) ---
+  weightLabel: 0.2,
   weightCentroid: 0.2,
   weightCoverage: 0.4,
   weightType: 0.1,
   weightPosition: 0.1,
+  // Minimum word length for label matching (skip "of", "the", etc.)
+  labelMinWordLength: 3,
+  // Type preference scores by content type
+  typeProse: 0.8,
+  typeProseUnderPressure: 1.0,
+  typeCode: 0.6,
+  typeHeading: 0.9,
+  typeOther: 0.5,
+  // Budget ratio above which prose gets full preference
+  typePressureThreshold: 0.7,
+  // Position decay: front-of-document gets up to this much bonus
+  positionDecay: 0.3,
 
+  // --- Coverage and validation ---
   headingCoverageThreshold: 0.75,
+  // Below this budget, use reconstruction-loss selection instead of greedy scoring
   reconstructionLossThreshold: 25,
-
   coverageDriftThreshold: 0.7,
   autoRetryBudgetMultiplier: 1.5,
   autoRetryCoverageThreshold: 0.8,
+  validatePreviewChars: 800,
 
+  // --- Reduce batching ---
+  reduceBatchMinChunks: 3,
+  reduceBatchSize: 3,
+  reduceMaxParallel: 3,
+
+  // --- Characterize ---
   representativesPerCluster: 3,
   excerptMaxChars: 200,
 });
@@ -273,12 +297,12 @@ function allocate(inv, targetWords, headingWords, mode, queryEmbedding, backgrou
 
 // --- Phase 5: Select (coarse pool, blended diversity) ---
 
-function buildLabelMatcher(clusterLabel) {
+function buildLabelMatcher(clusterLabel, minWordLength) {
   const labelWords = new Set(
     clusterLabel
       .toLowerCase()
       .split(/\s+/)
-      .filter((w) => w.length > 2)
+      .filter((w) => w.length >= minWordLength)
   );
   if (labelWords.size === 0) return () => 0;
   return (chunkProxy) => {
@@ -291,18 +315,19 @@ function buildLabelMatcher(clusterLabel) {
   };
 }
 
-function typePreference(type, budgetPressure) {
-  if (budgetPressure > 0.7 && type === CONTENT_TYPES.prose) return 1.0;
-  if (type === CONTENT_TYPES.prose) return 0.8;
-  if (type === CONTENT_TYPES.code) return 0.6;
-  if (type === CONTENT_TYPES.heading) return 0.9;
-  return 0.5;
+function typePreference(type, budgetPressure, t) {
+  if (budgetPressure > t.typePressureThreshold && type === CONTENT_TYPES.prose)
+    return t.typeProseUnderPressure;
+  if (type === CONTENT_TYPES.prose) return t.typeProse;
+  if (type === CONTENT_TYPES.code) return t.typeCode;
+  if (type === CONTENT_TYPES.heading) return t.typeHeading;
+  return t.typeOther;
 }
 
-function positionScore(position, docLength) {
-  if (docLength === 0) return 0.5;
+function positionScore(position, docLength, decay) {
+  if (docLength === 0) return 1 - decay / 2;
   const normalized = position / docLength;
-  return 1 - normalized * 0.3;
+  return 1 - normalized * decay;
 }
 
 // Smoothly transitions from heading-oriented to inter-chunk diversity as headings
@@ -349,7 +374,7 @@ function selectForCluster(cluster, allHeadings, docLength, t) {
     (h) => cosineSimilarity(h.vector, cluster.centroid) >= t.headingCoverageThreshold
   );
 
-  const scoreLabel = buildLabelMatcher(cluster.label || '');
+  const scoreLabel = buildLabelMatcher(cluster.label || '', t.labelMinWordLength);
   const selected = [];
   const coveredHeadings = new Set();
   let wordsUsed = 0;
@@ -365,11 +390,11 @@ function selectForCluster(cluster, allHeadings, docLength, t) {
       const label = scoreLabel(chunk.proxy);
       const centroid = cosineSimilarity(chunk.vector, cluster.centroid);
       const coverage = blendedCoverage(chunk.vector, clusterHeadings, coveredHeadings, selected);
-      const tp = typePreference(chunk.type, budgetPressure);
-      const ps = positionScore(chunk.position, docLength);
+      const tp = typePreference(chunk.type, budgetPressure, t);
+      const ps = positionScore(chunk.position, docLength, t.positionDecay);
 
       const score =
-        label * t.weightTfidf +
+        label * t.weightLabel +
         centroid * t.weightCentroid +
         coverage * t.weightCoverage +
         tp * t.weightType +
@@ -508,7 +533,7 @@ async function reduce(selection, inv, config, t, p) {
     .filter((g) => g.chunks.length > 0)
     .map((g) => ({ group: g, texts: g.chunks.map((c) => c.text) }));
 
-  const batched = batchSmallReductions(reductionInputs);
+  const batched = batchSmallReductions(reductionInputs, t);
 
   const reduced = await parallelBatch(
     batched,
@@ -523,7 +548,7 @@ async function reduce(selection, inv, config, t, p) {
       });
       return { group: batch.group, text: reducedText };
     },
-    { maxParallel: 3, errorPosture: ErrorPosture.resilient }
+    { maxParallel: t.reduceMaxParallel, errorPosture: ErrorPosture.resilient }
   );
 
   const sections = (reduced || []).filter(Boolean).toSorted((a, b) => {
@@ -601,14 +626,14 @@ async function reduce(selection, inv, config, t, p) {
   return { content, mentions };
 }
 
-function batchSmallReductions(inputs) {
+function batchSmallReductions(inputs, t) {
   const result = [];
   let pending = [];
 
   for (const input of inputs) {
-    if (input.texts.length <= 3) {
+    if (input.texts.length <= t.reduceBatchMinChunks) {
       pending.push(input);
-      if (pending.length >= 3) {
+      if (pending.length >= t.reduceBatchSize) {
         result.push(mergeReductions(pending));
         pending = [];
       }
@@ -652,7 +677,7 @@ async function validate(result, inv, config, t, p) {
   const driftWarning = similarity < t.coverageDriftThreshold;
 
   const clusterLabels = inv.clusters.map((cc) => cc.label).join(', ');
-  const preview = result.content.slice(0, 800);
+  const preview = result.content.slice(0, t.validatePreviewChars);
 
   const missingCheck = await llm(p.validate(clusterLabels, preview), {
     ...config,
