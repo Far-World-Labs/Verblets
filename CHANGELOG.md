@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.7.1 (2026-05-16)
+
+### Added
+
+- **document-shrink v2**: Rewritten compression chain using local embeddings + agglomerative clustering for topic-aware budget allocation. Replaces the v1 heuristic approach with coverage-preserving multi-topic compression.
+- **cluster-chunks** (`src/lib/cluster-chunks`): Embedding-based topic discovery via agglomerative clustering with percentile-derived thresholds. Model-agnostic, zero LLM calls.
+- **segment** (`src/lib/segment`): Document segmentation with pluggable heading detectors (hash, multi-hash, all-caps, org-star, underline). Exported via shared.js.
+- **Runt merger**: Post-clustering pass that absorbs heading-only fragments and tiny debris clusters into nearest viable neighbor. Eliminates budget waste from degenerate singleton clusters.
+- **Embedding batch cap**: ONNX runtime arena memory bounded at 64 texts per inference call regardless of document size (prevents unbounded RSS growth from monotonic arena allocation).
+- New exports: `documentShrinkTuning`, `documentShrinkPrompts`, `mapMode`, `mapDetail`, `documentShrinkV1`, `segment`, `CONTENT_TYPES`, heading detectors.
+
+### Fixed
+
+- Large document memory explosion: RSS grew to 4.5GB+ on sequential processing because ONNX arena allocator never released native memory. Batched embedding caps peak at ~500MB.
+- Multi-topic coverage: v1 chain collapsed 48K multi-topic documents to single-topic output (e.g., only FastAPI from a Python frameworks entry). v2 preserves all topics proportionally via heading-diversity scoring.
+- Budget arithmetic: topic bonus no longer inflates from structural debris clusters. Coverage metric now reflects real topic representation (1.0 across all tested configs).
+
 ## 0.6.3 (2026-04-01)
 
 ### Fixed
