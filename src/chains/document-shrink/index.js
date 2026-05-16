@@ -10,7 +10,7 @@ import { cosineSimilarity } from '../../lib/pure/index.js';
 import { parallelBatch } from '../../lib/parallel-batch/index.js';
 import llm, { jsonSchema } from '../../lib/llm/index.js';
 import segment, { CONTENT_TYPES } from '../../lib/segment/index.js';
-import inventory from '../../lib/cluster-chunks/index.js';
+import inventory, { computeCentroid } from '../../lib/cluster-chunks/index.js';
 
 const name = 'document-shrink';
 
@@ -18,10 +18,12 @@ const name = 'document-shrink';
 
 export const TUNING_DEFAULTS = Object.freeze({
   // --- Units ---
-  charsPerWord: 8,
+  charsPerWord: 7,
   maxTargetWords: 2000,
 
   // --- Budget allocation ---
+  // Heading reservation capped at this fraction of target words
+  maxHeadingBudgetRatio: 0.25,
   // Clusters below this budget get a mention line instead of a reduce call
   mentionThreshold: 30,
   minClusterBudget: 20,
@@ -53,7 +55,8 @@ export const TUNING_DEFAULTS = Object.freeze({
   typeProse: 0.8,
   typeProseUnderPressure: 1.0,
   typeCode: 0.6,
-  typeHeading: 0.9,
+  typeTabular: 0.3,
+  typeList: 0.4,
   typeOther: 0.5,
   // Budget ratio above which prose gets full preference
   typePressureThreshold: 0.7,
@@ -93,14 +96,17 @@ export const PROMPT_DEFAULTS = Object.freeze({
   reduce: (clusterLabel, budgetWords) =>
     `${
       clusterLabel
-        ? `Reduce the following excerpts about "${clusterLabel}" to ${budgetWords} words.`
-        : `Reduce the following excerpts to ${budgetWords} words.`
-    }\n\nRules:\n` +
-    `- Keep every specific name, tool, command, or pattern mentioned\n` +
-    `- Drop examples, elaboration, and hedging\n` +
+        ? `Rewrite the following excerpts about "${clusterLabel}" into ${budgetWords} words of dense, accurate text.`
+        : `Rewrite the following excerpts into ${budgetWords} words of dense, accurate text.`
+    }\n\n` +
+    `Rules:\n` +
+    `- Keep every specific name, tool, command, API, or pattern\n` +
+    `- Expand abbreviations and add full concept names for terse references\n` +
+    `- Summarize repetitive data (tables, parameter lists) by describing the schema and count; keep at most 2 representative rows and omit the rest entirely\n` +
     `- Drop generic statements that could apply to any topic\n` +
+    `- Do not add information that is not present or directly implied by the excerpts\n` +
     `- Use dense clause-chaining (semicolons), not bullet lists\n` +
-    `- Preserve the heading structure markers\n\n` +
+    `- Preserve heading structure markers\n\n` +
     `Excerpts:`,
 
   assembly:
@@ -327,7 +333,8 @@ function typePreference(type, budgetPressure, t) {
     return t.typeProseUnderPressure;
   if (type === CONTENT_TYPES.prose) return t.typeProse;
   if (type === CONTENT_TYPES.code) return t.typeCode;
-  if (type === CONTENT_TYPES.heading) return t.typeHeading;
+  if (type === CONTENT_TYPES.tabular) return t.typeTabular;
+  if (type === CONTENT_TYPES.list) return t.typeList;
   return t.typeOther;
 }
 
@@ -438,13 +445,13 @@ function selectByReconstructionLoss(candidates, budget) {
   let totalWords = remaining.reduce((s, c) => s + c.wordCount, 0);
 
   while (remaining.length > 1 && totalWords > budget) {
-    const currentMean = computeMeanVector(remaining.map((c) => c.vector));
+    const currentMean = computeCentroid(remaining.map((c) => c.vector));
     let worstIdx = -1;
     let minLoss = Infinity;
 
     for (let i = 0; i < remaining.length; i++) {
       const without = remaining.filter((_, j) => j !== i);
-      const newMean = computeMeanVector(without.map((c) => c.vector));
+      const newMean = computeCentroid(without.map((c) => c.vector));
       const loss = 1 - cosineSimilarity(currentMean, newMean);
       if (loss < minLoss) {
         minLoss = loss;
@@ -457,20 +464,6 @@ function selectByReconstructionLoss(candidates, budget) {
   }
 
   return remaining;
-}
-
-function computeMeanVector(vectors) {
-  if (vectors.length === 0) return null;
-  const dim = vectors[0].length;
-  const mean = new Float32Array(dim);
-  for (const v of vectors) {
-    for (let i = 0; i < dim; i++) mean[i] += v[i];
-  }
-  let norm = 0;
-  for (let i = 0; i < dim; i++) norm += mean[i] * mean[i];
-  norm = Math.sqrt(norm);
-  if (norm > 0) for (let i = 0; i < dim; i++) mean[i] /= norm;
-  return mean;
 }
 
 function select(inv, t) {
@@ -619,7 +612,7 @@ async function reduce(selection, inv, config, t, p) {
         overview,
         sections: sections.map((s) => ({
           label: s.group.cluster.label,
-          weight: s.group.cluster.budget / totalWords,
+          weight: (s.group.cluster.budget || 0) / totalWords,
           text: s.text,
           representative: s.group.chunks[0]?.text?.slice(0, t.excerptMaxChars),
         })),
@@ -665,10 +658,11 @@ function batchSmallReductions(inputs, t) {
 }
 
 function mergeReductions(inputs) {
+  const labels = inputs.map((i) => i.group.cluster.label).filter(Boolean);
   return {
     group: inputs[0].group,
     texts: inputs.flatMap((i) => i.texts),
-    label: inputs.map((i) => i.group.cluster.label).join(' + '),
+    label: labels.length > 0 ? labels.join(' + ') : undefined,
     budgetWords: inputs.reduce((s, i) => s + i.group.cluster.budget, 0),
   };
 }
@@ -676,7 +670,7 @@ function mergeReductions(inputs) {
 // --- Phase 7: Validate ---
 
 async function validate(result, inv, config, t, p) {
-  const originalMean = computeMeanVector(inv.chunks.map((c) => c.vector));
+  const originalMean = computeCentroid(inv.chunks.map((c) => c.vector));
   if (!originalMean) return { ...result, validation: { coverageScore: 1, driftWarning: false } };
 
   const [outputVector] = await embedBatch([result.content], {
@@ -686,22 +680,27 @@ async function validate(result, inv, config, t, p) {
   const similarity = cosineSimilarity(outputVector, originalMean);
   const driftWarning = similarity < t.coverageDriftThreshold;
 
-  const clusterLabels = inv.clusters.map((cc) => cc.label).join(', ');
-  const preview = result.content.slice(0, t.validatePreviewChars);
+  const clusterLabels = inv.clusters
+    .map((cc) => cc.label)
+    .filter(Boolean)
+    .join(', ');
 
-  const missingCheck = await llm(p.validate(clusterLabels, preview), {
-    ...config,
-    fast: true,
-    cheap: true,
-    onProgress: scopePhase(config.onProgress, 'validate'),
-  });
-
-  const missingTopics = missingCheck.toLowerCase().includes('none')
-    ? []
-    : missingCheck
-        .split(/[,\n]/)
-        .map((s) => s.trim())
-        .filter(Boolean);
+  let missingTopics = [];
+  if (clusterLabels.length > 0) {
+    const preview = result.content.slice(0, t.validatePreviewChars);
+    const missingCheck = await llm(p.validate(clusterLabels, preview), {
+      ...config,
+      fast: true,
+      cheap: true,
+      onProgress: scopePhase(config.onProgress, 'validate'),
+    });
+    missingTopics = missingCheck.toLowerCase().includes('none')
+      ? []
+      : missingCheck
+          .split(/[,\n]/)
+          .map((s) => s.trim())
+          .filter(Boolean);
+  }
 
   return {
     ...result,
@@ -765,7 +764,7 @@ export default async function documentShrink(document, config = {}) {
     }
 
     const totalDocWords = chunks.reduce((s, c) => s + c.wordCount, 0);
-    if (totalDocWords <= targetWords) {
+    if (totalDocWords <= targetWords && document.length <= targetSize) {
       emitter.complete({ outcome: Outcome.success });
       return {
         content: document,
@@ -783,8 +782,12 @@ export default async function documentShrink(document, config = {}) {
     emitter.emit({ event: DomainEvent.phase, phase: 'characterize' });
     await characterize(inv, runConfig, t, p);
 
-    // Reserve heading words before allocation
-    const headingWords = inv.headings.reduce((s, h) => s + h.wordCount, 0);
+    // Reserve heading words before allocation, capped to prevent headings from starving content
+    const rawHeadingWords = inv.headings.reduce((s, h) => s + h.wordCount, 0);
+    const headingWords = Math.min(
+      rawHeadingWords,
+      Math.floor(targetWords * t.maxHeadingBudgetRatio)
+    );
 
     emitter.emit({ event: DomainEvent.phase, phase: 'allocate' });
     const queryEmbedding =
@@ -823,10 +826,10 @@ export default async function documentShrink(document, config = {}) {
     const metadata = {
       originalSize: document.length,
       finalSize: result.content.length,
-      compressionRatio: (1 - result.content.length / document.length).toFixed(2),
+      compressionRatio: 1 - result.content.length / document.length,
       topicCount: inv.clusters.length,
       coverageScore: selection.coverageScore,
-      clusterLabels: inv.clusters.map((cc) => cc.label),
+      clusterLabels: inv.clusters.map((cc) => cc.label).filter(Boolean),
       ...(result.validation || {}),
       ...(result.structured ? { structured: result.structured } : {}),
     };
