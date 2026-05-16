@@ -74,6 +74,10 @@ export const TUNING_DEFAULTS = Object.freeze({
   reduceBatchSize: 3,
   reduceMaxParallel: 3,
 
+  // --- Orphan heading injection ---
+  // Maximum orphan headings as a ratio of selected content chunks
+  orphanRatio: 0.5,
+
   // --- Characterize ---
   representativesPerCluster: 3,
   excerptMaxChars: 200,
@@ -87,14 +91,17 @@ export const PROMPT_DEFAULTS = Object.freeze({
     'For each group, output: label (3-8 words), contentKind, density (high/medium/low), isCore (main topic or peripheral).\n',
 
   reduce: (clusterLabel, budgetWords) =>
-    `Reduce the following excerpts about "${clusterLabel}" to ${budgetWords} words.\n\n` +
-    'Rules:\n' +
-    '- Keep every specific name, tool, command, or pattern mentioned\n' +
-    '- Drop examples, elaboration, and hedging\n' +
-    '- Drop generic statements that could apply to any topic\n' +
-    '- Use dense clause-chaining (semicolons), not bullet lists\n' +
-    '- Preserve the heading structure markers\n\n' +
-    'Excerpts:',
+    `${
+      clusterLabel
+        ? `Reduce the following excerpts about "${clusterLabel}" to ${budgetWords} words.`
+        : `Reduce the following excerpts to ${budgetWords} words.`
+    }\n\nRules:\n` +
+    `- Keep every specific name, tool, command, or pattern mentioned\n` +
+    `- Drop examples, elaboration, and hedging\n` +
+    `- Drop generic statements that could apply to any topic\n` +
+    `- Use dense clause-chaining (semicolons), not bullet lists\n` +
+    `- Preserve the heading structure markers\n\n` +
+    `Excerpts:`,
 
   assembly:
     'Assemble these topic summaries into a coherent compressed document.\n' +
@@ -204,7 +211,7 @@ function pickRepresentatives(cluster, n) {
 async function characterize(inv, config, t, p) {
   if (inv.clusters.length <= 1) {
     const cluster = inv.clusters[0];
-    cluster.label = cluster.headingPaths[0] || 'Main content';
+    cluster.label = undefined;
     cluster.contentKind = 'mixed';
     cluster.density = 'medium';
     cluster.isCore = true;
@@ -544,7 +551,7 @@ async function reduce(selection, inv, config, t, p) {
         ...config,
         fast: true,
         cheap: true,
-        onProgress: scopePhase(config.onProgress, `reduce:${batch.label}`),
+        onProgress: scopePhase(config.onProgress, `reduce:${batch.label || 'main'}`),
       });
       return { group: batch.group, text: reducedText };
     },
@@ -557,19 +564,22 @@ async function reduce(selection, inv, config, t, p) {
     return posA - posB;
   });
 
-  // Inject orphan headings not covered by any selected chunk
-  const selectedPositions = new Set();
-  for (const [, chunks] of selection.selectedByCluster) {
-    for (const c of chunks) selectedPositions.add(c.position);
-  }
-  const orphanHeadings = selection.headings
+  // Inject orphan headings capped to avoid flooding output with bare markers
+  const allSelected = [...selection.selectedByCluster.values()].flat();
+  const selectedPositions = new Set(allSelected.map((c) => c.position));
+  const maxOrphans = Math.max(1, Math.floor(allSelected.length * t.orphanRatio));
+
+  const orphans = selection.headings
     .filter((h) => !selectedPositions.has(h.position) && !selection.coveredHeadings.has(h.position))
-    .map((h) => ({
-      group: { chunks: [h], cluster: { label: h.text.trim() } },
-      text: h.text.trim(),
-    }));
-  if (orphanHeadings.length > 0) {
-    sections.push(...orphanHeadings);
+    .slice(0, maxOrphans);
+
+  if (orphans.length > 0) {
+    sections.push(
+      ...orphans.map((h) => ({
+        group: { chunks: [h], cluster: { label: h.text.trim() } },
+        text: h.text.trim(),
+      }))
+    );
     sections.sort((a, b) => {
       const posA = a.group?.chunks[0]?.position ?? 0;
       const posB = b.group?.chunks[0]?.position ?? 0;
