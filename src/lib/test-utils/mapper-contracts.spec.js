@@ -27,13 +27,12 @@ import { mapCoverage } from '../../chains/veiled-variants/index.js';
 import { mapEnrichment } from '../../chains/timeline/index.js';
 import { mapRigor } from '../../chains/date/index.js';
 import { mapAdvice } from '../../chains/expect/index.js';
-import { mapThoroughness as mapDocShrinkThoroughness } from '../../chains/document-shrink/index.js';
 
 // --- Numeric mappers (low/med/high → number, undefined → default, raw number → passthrough) ---
 import { mapStrictness as mapTruncateStrictness } from '../../chains/truncate/index.js';
+import { mapDetail as mapDocShrinkDetail } from '../../chains/document-shrink/index.js';
 import { mapSummaryDetail } from '../../chains/summary-map/index.js';
 import { mapExploration } from '../../chains/questions/index.js';
-import { mapCompression, mapRanking } from '../../chains/document-shrink/index.js';
 
 // --- String mappers (low/med/high → string|undefined, undefined → undefined) ---
 import { mapAbstraction } from '../../verblets/embed-step-back/index.js';
@@ -63,15 +62,13 @@ const objectMappers = [
   ['mapEnrichment', mapEnrichment],
   ['mapRigor', mapRigor],
   ['mapAdvice', mapAdvice],
-  ['mapDocShrinkThoroughness', mapDocShrinkThoroughness],
 ];
 
 const numericMappers = [
   ['mapTruncateStrictness', mapTruncateStrictness, 'asc'],
   ['mapSummaryDetail', mapSummaryDetail, 'desc'],
   ['mapExploration', mapExploration, 'asc'],
-  ['mapCompression', mapCompression, 'desc'],
-  ['mapRanking', mapRanking, 'asc'],
+  ['mapDocShrinkDetail', mapDocShrinkDetail, 'asc'],
 ];
 
 const stringMappers = [

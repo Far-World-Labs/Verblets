@@ -106,7 +106,13 @@ export { default as Conversation } from './chains/conversation/index.js';
 export { default as conversationTurnReduce } from './chains/conversation-turn-reduce/index.js';
 export { default as disambiguate, getMeanings } from './chains/disambiguate/index.js';
 export { default as ChainTree, dismantle, simplifyTree } from './chains/dismantle/index.js';
-export { default as documentShrink } from './chains/document-shrink/index.js';
+export {
+  default as documentShrink,
+  mapMode,
+  mapDetail,
+  TUNING_DEFAULTS as documentShrinkTuning,
+  PROMPT_DEFAULTS as documentShrinkPrompts,
+} from './chains/document-shrink/index.js';
 export { default as fillMissing } from './verblets/fill-missing/index.js';
 export { default as filterAmbiguous } from './chains/filter-ambiguous/index.js';
 export { default as join } from './chains/join/index.js';
@@ -195,6 +201,16 @@ export {
 // Library Helpers (documented in README)
 export { default as combinations, rangeCombinations } from './lib/combinations/index.js';
 export { default as chunkSentences } from './lib/chunk-sentences/index.js';
+export {
+  default as segment,
+  hashHeading,
+  multiHashHeading,
+  allCapsHeading,
+  orgStarHeading,
+  underlineHeading,
+  CONTENT_TYPES,
+  DEFAULT_HEADING_DETECTORS,
+} from './lib/segment/index.js';
 export { debug } from './lib/debug/index.js';
 export { default as createBatches } from './lib/text-batch/index.js';
 export { default as llm, jsonSchema } from './lib/llm/index.js';
