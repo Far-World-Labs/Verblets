@@ -128,7 +128,7 @@ export const mapMode = (value) => {
   return MODES[value] ?? MODES.landscape;
 };
 
-const DETAIL_LEVELS = { low: 0.5, high: 2.0 };
+const DETAIL_LEVELS = { low: 0.5, med: 1.0, high: 2.0 };
 
 export const mapDetail = (value) => {
   if (value === undefined) return 1.0;
