@@ -98,7 +98,6 @@ export {
   TUNING_DEFAULTS as documentShrinkTuning,
   PROMPT_DEFAULTS as documentShrinkPrompts,
 } from './chains/document-shrink/index.js';
-export { default as documentShrinkV1 } from './chains/document-shrink-v1/index.js';
 export { default as fillMissing } from './verblets/fill-missing/index.js';
 export { default as filterAmbiguous } from './chains/filter-ambiguous/index.js';
 export { default as join } from './chains/join/index.js';
