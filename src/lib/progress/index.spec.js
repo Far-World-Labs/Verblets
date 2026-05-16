@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import createProgressEmitter, { scopePhase, traceId, spanId } from './index.js';
 import {
@@ -417,6 +417,154 @@ describe('createProgressEmitter', () => {
     it('spanId returns 16 hex chars', () => {
       const id = spanId();
       expect(id).toMatch(/^[0-9a-f]{16}$/);
+    });
+  });
+
+  describe('eventFilter', () => {
+    it('filters events by predicate function', () => {
+      const events = [];
+      const emitter = createProgressEmitter('test', (e) => events.push(e), {
+        eventFilter: (e) => e.kind === Kind.telemetry,
+      });
+
+      emitter.start();
+      emitter.emit({ event: DomainEvent.phase, phase: 'test' });
+      emitter.progress({ event: OpEvent.start });
+      emitter.metrics({ event: TelemetryEvent.llmCall });
+
+      expect(events).toHaveLength(2);
+      expect(events[0].event).toBe(ChainEvent.start);
+      expect(events[1].event).toBe(TelemetryEvent.llmCall);
+      expect(events.every((e) => e.kind === Kind.telemetry)).toBe(true);
+    });
+
+    it('filters events by kind string shorthand', () => {
+      const events = [];
+      const emitter = createProgressEmitter('test', (e) => events.push(e), {
+        eventFilter: Kind.operation,
+      });
+
+      emitter.start();
+      emitter.emit({ event: DomainEvent.phase });
+      emitter.progress({ event: OpEvent.start });
+
+      expect(events).toHaveLength(1);
+      expect(events[0].kind).toBe(Kind.operation);
+      expect(events[0].event).toBe(OpEvent.start);
+    });
+
+    it('passes all events when no filter is specified', () => {
+      const events = [];
+      const emitter = createProgressEmitter('test', (e) => events.push(e));
+
+      emitter.start();
+      emitter.emit({ event: DomainEvent.phase });
+      emitter.progress({ event: OpEvent.start });
+      emitter.metrics({ event: TelemetryEvent.llmCall });
+
+      expect(events).toHaveLength(4);
+    });
+
+    it('dispatches event when filter throws (safe default)', () => {
+      const events = [];
+      const emitter = createProgressEmitter('test', (e) => events.push(e), {
+        eventFilter: () => {
+          throw new Error('filter broke');
+        },
+      });
+
+      emitter.emit({ event: DomainEvent.phase });
+
+      expect(events).toHaveLength(1);
+      expect(events[0].event).toBe(DomainEvent.phase);
+    });
+
+    it('logs warning when filter throws', () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const emitter = createProgressEmitter('test', () => {}, {
+        eventFilter: () => {
+          throw new Error('bad filter');
+        },
+      });
+
+      emitter.emit({ event: DomainEvent.phase });
+
+      expect(warn).toHaveBeenCalledWith('[progress] eventFilter error:', 'bad filter');
+      warn.mockRestore();
+    });
+
+    it('filter receives the enriched event with timestamp and base fields', () => {
+      const filterCalls = [];
+      const emitter = createProgressEmitter('test', () => {}, {
+        operation: 'parent/test',
+        eventFilter: (e) => {
+          filterCalls.push(e);
+          return true;
+        },
+      });
+
+      emitter.emit({ event: DomainEvent.phase });
+
+      expect(filterCalls).toHaveLength(1);
+      expect(filterCalls[0].timestamp).toBeDefined();
+      expect(filterCalls[0].step).toBe('test');
+      expect(filterCalls[0].operation).toBe('parent/test');
+      expect(filterCalls[0].kind).toBe(Kind.event);
+    });
+
+    it('applies filter to batch progress events', () => {
+      const events = [];
+      const emitter = createProgressEmitter('map', (e) => events.push(e), {
+        eventFilter: (e) => e.kind === Kind.event,
+      });
+      const done = emitter.batch(10);
+      done(5);
+
+      expect(events).toHaveLength(0);
+    });
+
+    it('applies filter to complete and error events', () => {
+      const events = [];
+      const emitter = createProgressEmitter('test', (e) => events.push(e), {
+        eventFilter: (e) => e.event === ChainEvent.error,
+      });
+
+      emitter.complete({ items: 5 });
+      emitter.error(new Error('fail'));
+
+      expect(events).toHaveLength(1);
+      expect(events[0].event).toBe(ChainEvent.error);
+    });
+
+    it('ignores non-function non-string filter values', () => {
+      const events = [];
+      const emitter = createProgressEmitter('test', (e) => events.push(e), {
+        eventFilter: 42,
+      });
+
+      emitter.emit({ event: DomainEvent.phase });
+
+      expect(events).toHaveLength(1);
+    });
+
+    it('works with absent callback and filter', () => {
+      const emitter = createProgressEmitter('test', undefined, {
+        eventFilter: Kind.telemetry,
+      });
+      expect(() => emitter.emit({ event: DomainEvent.phase })).not.toThrow();
+    });
+
+    it('filters measure and uncertainty events', () => {
+      const events = [];
+      const emitter = createProgressEmitter('test', (e) => events.push(e), {
+        eventFilter: (e) => e.kind === Kind.event,
+      });
+
+      emitter.measure({ metric: 'test', value: 1 });
+      emitter.uncertainty({ confidence: 0.8 });
+
+      expect(events).toHaveLength(1);
+      expect(events[0].event).toBe(DomainEvent.uncertainty);
     });
   });
 });

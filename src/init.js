@@ -42,6 +42,7 @@ export default function init(options = {}) {
     embedRules,
     policy,
     runtimeProvider,
+    llm,
   } = options;
 
   const errors = validate();
@@ -86,7 +87,12 @@ export default function init(options = {}) {
   context.setApplication(observeApplication());
   context.setProviders(observeProviders());
 
-  const baseConfig = { modelService, embeddingService, getRedis };
+  const baseConfig = {
+    modelService,
+    embeddingService,
+    getRedis,
+    ...(llm !== undefined ? { llm } : {}),
+  };
 
   // Wrap every shared export with config injection.
   // Skip keys that shouldn't be wrapped: return-property collisions, constants,

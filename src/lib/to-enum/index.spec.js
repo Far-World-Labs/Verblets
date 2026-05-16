@@ -1,40 +1,42 @@
-import { describe, expect, it } from 'vitest';
-
+import { expect } from 'vitest';
 import toEnum from './index.js';
+import { runTable } from '../examples-runner/index.js';
 
-describe('toEnum', () => {
-  const colors = { red: 'red', green: 'green', blue: 'blue' };
+const colors = { red: 'red', green: 'green', blue: 'blue' };
 
-  it('matches an exact key', () => {
-    expect(toEnum('red', colors)).toBe('red');
-  });
-
-  it('matches case-insensitively', () => {
-    expect(toEnum('RED', colors)).toBe('red');
-    expect(toEnum('Green', colors)).toBe('green');
-  });
-
-  it('returns undefined for unrecognized values', () => {
-    expect(toEnum('purple', colors)).toBeUndefined();
-  });
-
-  it('strips surrounding quotes', () => {
-    expect(toEnum('"blue"', colors)).toBe('blue');
-  });
-
-  it('strips trailing punctuation', () => {
-    expect(toEnum('red.', colors)).toBe('red');
-  });
-
-  it('handles "Answer:" prefix', () => {
-    expect(toEnum('Answer: green', colors)).toBe('green');
-  });
-
-  it('handles whitespace', () => {
-    expect(toEnum('  blue  ', colors)).toBe('blue');
-  });
-
-  it('returns undefined for empty string', () => {
-    expect(toEnum('', colors)).toBeUndefined();
-  });
+runTable({
+  describe: 'toEnum',
+  examples: [
+    { name: 'matches an exact key', inputs: { value: 'red' }, want: { value: 'red' } },
+    { name: 'matches uppercase', inputs: { value: 'RED' }, want: { value: 'red' } },
+    {
+      name: 'matches title case',
+      inputs: { value: 'Green' },
+      want: { value: 'green' },
+    },
+    {
+      name: 'unrecognized → undefined',
+      inputs: { value: 'purple' },
+      want: { value: undefined },
+    },
+    {
+      name: 'strips surrounding quotes',
+      inputs: { value: '"blue"' },
+      want: { value: 'blue' },
+    },
+    {
+      name: 'strips trailing punctuation',
+      inputs: { value: 'red.' },
+      want: { value: 'red' },
+    },
+    {
+      name: 'strips "Answer:" prefix',
+      inputs: { value: 'Answer: green' },
+      want: { value: 'green' },
+    },
+    { name: 'trims whitespace', inputs: { value: '  blue  ' }, want: { value: 'blue' } },
+    { name: 'empty string → undefined', inputs: { value: '' }, want: { value: undefined } },
+  ],
+  process: ({ inputs }) => toEnum(inputs.value, colors),
+  expects: ({ result, want }) => expect(result).toEqual(want.value),
 });

@@ -35,6 +35,23 @@ const getRandomSubset = (list, value) => {
   return listShuffled.slice(0, numItems);
 };
 
+const parseGeneratedQuestions = (results) => {
+  if (!Array.isArray(results)) {
+    throw new Error(`questions: expected array from generation LLM (got ${typeof results})`);
+  }
+  return results.filter((q) => typeof q === 'string' && q.length > 0);
+};
+
+const parseSelectedQuestion = (selected) => {
+  const question = selected?.question;
+  if (typeof question !== 'string' || question.length === 0) {
+    throw new Error(
+      `questions: pick-interesting LLM did not return { question: string } (got ${JSON.stringify(selected)})`
+    );
+  }
+  return question;
+};
+
 const pickInterestingQuestion = (originalQuestion, { existing = [] }) => {
   const existingJoined = existing.map((item) => ` - ${item}`).join('\n');
 
@@ -116,7 +133,7 @@ const generateQuestions = async function* generateQuestionsGenerator(text, confi
             config: runConfig,
           }
         );
-        textSelected = selectedResult.question;
+        textSelected = parseSelectedQuestion(selectedResult);
         drilldownResults.push(textSelected);
       }
 
@@ -130,12 +147,13 @@ const generateQuestions = async function* generateQuestionsGenerator(text, confi
       };
 
       // eslint-disable-next-line no-await-in-loop
-      const results = await retry(() => callLlm(promptCreated, llmConfig), {
+      const rawResults = await retry(() => callLlm(promptCreated, llmConfig), {
         label: 'questions-generate',
         config: runConfig,
       });
+      const results = parseGeneratedQuestions(rawResults);
       const resultsNew = getRandomSubset(results, searchBreadth);
-      if (searchBreadth < 0.5) {
+      if (searchBreadth < 0.5 && resultsNew.length > 0) {
         const randomIndex = Math.floor(Math.random() * resultsNew.length);
         textSelected = resultsNew[randomIndex];
       }
@@ -154,6 +172,16 @@ const generateQuestions = async function* generateQuestionsGenerator(text, confi
           resultsAllMap[result] = true;
           resultsAll.push(result);
           yield result;
+        }
+      }
+
+      // Stop check at end of round prevents infinite loops when every result
+      // is a duplicate (resultsNewUnique empty) — without this, attempts keeps
+      // incrementing but shouldStop is never evaluated.
+      if (!isDone) {
+        // eslint-disable-next-line no-await-in-loop
+        if (await shouldStop(undefined, resultsAll, resultsNew, attempts)) {
+          isDone = true;
         }
       }
     }

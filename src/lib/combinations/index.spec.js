@@ -1,96 +1,114 @@
-import { describe, it, expect } from 'vitest';
-
+import { describe, expect, it } from 'vitest';
 import combinations, { rangeCombinations } from './index.js';
+import { runTable } from '../examples-runner/index.js';
 
-describe('combinations', () => {
-  it('generates pairwise combinations', () => {
-    const result = combinations(['a', 'b', 'c'], 2);
-    expect(result).toStrictEqual([
-      ['a', 'b'],
-      ['a', 'c'],
-      ['b', 'c'],
-    ]);
-  });
-
-  it('generates triples', () => {
-    const result = combinations([1, 2, 3, 4], 3);
-    expect(result).toStrictEqual([
-      [1, 2, 3],
-      [1, 2, 4],
-      [1, 3, 4],
-      [2, 3, 4],
-    ]);
-  });
-
-  it('generates single-element combinations', () => {
-    const result = combinations(['x', 'y', 'z'], 1);
-    expect(result).toStrictEqual([['x'], ['y'], ['z']]);
-  });
-
-  it('returns single combination when size equals array length', () => {
-    const result = combinations([1, 2, 3], 3);
-    expect(result).toStrictEqual([[1, 2, 3]]);
-  });
-
-  it('returns empty array when size exceeds array length', () => {
-    const result = combinations([1, 2], 5);
-    expect(result).toStrictEqual([]);
-  });
-
-  it('returns empty array for empty input', () => {
-    expect(combinations([], 2)).toStrictEqual([]);
-  });
-
-  it('returns empty array for size 0', () => {
-    expect(combinations([1, 2, 3], 0)).toStrictEqual([]);
-  });
-
-  it('returns empty array for non-array input', () => {
-    expect(combinations('not-array', 2)).toStrictEqual([]);
-  });
-
-  it('defaults size to 2', () => {
-    const result = combinations(['a', 'b', 'c']);
-    expect(result).toStrictEqual([
-      ['a', 'b'],
-      ['a', 'c'],
-      ['b', 'c'],
-    ]);
-  });
+runTable({
+  describe: 'combinations',
+  examples: [
+    {
+      name: 'pairwise combinations',
+      inputs: { items: ['a', 'b', 'c'], size: 2 },
+      want: {
+        value: [
+          ['a', 'b'],
+          ['a', 'c'],
+          ['b', 'c'],
+        ],
+      },
+    },
+    {
+      name: 'triples',
+      inputs: { items: [1, 2, 3, 4], size: 3 },
+      want: {
+        value: [
+          [1, 2, 3],
+          [1, 2, 4],
+          [1, 3, 4],
+          [2, 3, 4],
+        ],
+      },
+    },
+    {
+      name: 'single-element combinations',
+      inputs: { items: ['x', 'y', 'z'], size: 1 },
+      want: { value: [['x'], ['y'], ['z']] },
+    },
+    {
+      name: 'size equals array length → single combination',
+      inputs: { items: [1, 2, 3], size: 3 },
+      want: { value: [[1, 2, 3]] },
+    },
+    {
+      name: 'size exceeds array length → empty',
+      inputs: { items: [1, 2], size: 5 },
+      want: { value: [] },
+    },
+    { name: 'empty input → empty', inputs: { items: [], size: 2 }, want: { value: [] } },
+    { name: 'size 0 → empty', inputs: { items: [1, 2, 3], size: 0 }, want: { value: [] } },
+    {
+      name: 'non-array input → empty',
+      inputs: { items: 'not-array', size: 2 },
+      want: { value: [] },
+    },
+    {
+      name: 'defaults size to 2',
+      inputs: { items: ['a', 'b', 'c'], size: undefined },
+      want: {
+        value: [
+          ['a', 'b'],
+          ['a', 'c'],
+          ['b', 'c'],
+        ],
+      },
+    },
+  ],
+  process: ({ inputs }) => combinations(inputs.items, inputs.size),
+  expects: ({ result, want }) => expect(result).toEqual(want.value),
 });
 
-describe('rangeCombinations', () => {
-  it('generates combinations of varying sizes', () => {
-    const result = rangeCombinations(['a', 'b', 'c']);
-    expect(result).toStrictEqual([
-      ['a', 'b'],
-      ['a', 'c'],
-      ['b', 'c'],
-      ['a', 'b', 'c'],
-    ]);
-  });
+runTable({
+  describe: 'rangeCombinations',
+  examples: [
+    {
+      name: 'all sizes ≥ default minSize',
+      inputs: { items: ['a', 'b', 'c'] },
+      want: {
+        value: [
+          ['a', 'b'],
+          ['a', 'c'],
+          ['b', 'c'],
+          ['a', 'b', 'c'],
+        ],
+      },
+    },
+    {
+      name: 'respects minSize',
+      inputs: { items: [1, 2, 3], minSize: 3 },
+      want: { value: [[1, 2, 3]] },
+    },
+    {
+      name: 'respects maxSize',
+      inputs: { items: [1, 2, 3, 4], minSize: 2, maxSize: 2 },
+      want: {
+        value: [
+          [1, 2],
+          [1, 3],
+          [1, 4],
+          [2, 3],
+          [2, 4],
+          [3, 4],
+        ],
+      },
+    },
+    { name: 'non-array input → empty', inputs: { items: null }, want: { value: [] } },
+  ],
+  process: ({ inputs }) => rangeCombinations(inputs.items, inputs.minSize, inputs.maxSize),
+  expects: ({ result, want }) => expect(result).toEqual(want.value),
+});
 
-  it('respects minSize parameter', () => {
-    const result = rangeCombinations([1, 2, 3], 3);
-    expect(result).toStrictEqual([[1, 2, 3]]);
-  });
-
-  it('respects maxSize parameter', () => {
-    const result = rangeCombinations([1, 2, 3, 4], 2, 2);
-    expect(result).toStrictEqual([
-      [1, 2],
-      [1, 3],
-      [1, 4],
-      [2, 3],
-      [2, 4],
-      [3, 4],
-    ]);
-  });
-
-  it('returns empty array for non-array input', () => {
-    expect(rangeCombinations(null)).toStrictEqual([]);
-  });
-
+// `caps maxSize at array length` is a relational assertion (one call vs
+// another), not a literal want — kept as a focused imperative check.
+describe('rangeCombinations: maxSize cap', () => {
   it('caps maxSize at array length', () => {
     const withCap = rangeCombinations([1, 2], 1, 100);
     const withoutCap = rangeCombinations([1, 2], 1, 2);

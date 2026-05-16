@@ -20,6 +20,21 @@ const qs = await questions(
 // ]
 ```
 
+### Routing through a privacy-capable model
+
+For text that should not be sent to a cloud model — clinical notes, internal incident write-ups, anything you'd rather keep local — pass `llm: { sensitive: true }`. The library routes the call to whichever model your rules map sensitive traffic to (typically a local Ollama / OpenWebUI host):
+
+```javascript
+const qs = await questions(
+  patientNoteText,
+  {
+    exploration: 'low',
+    shouldStop: (q, all) => all.length > 10,
+    llm: { sensitive: true },
+  }
+);
+```
+
 ## API
 
 ### `questions(text, config?)`

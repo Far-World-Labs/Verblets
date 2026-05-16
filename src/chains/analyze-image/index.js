@@ -25,12 +25,36 @@ export const mapDetail = (value) => ({ low: 'low', high: 'high' })[value] ?? 'au
 
 /**
  * Normalize images input to array of { path, label?, url? } objects.
+ * Validates each entry has a non-empty path string at the boundary —
+ * downstream code (imageToBase64, tileImages) crashes deep on missing or
+ * malformed path values.
  * @param {string|string[]|Array<{path: string, label?: string, url?: string}>} images
  * @returns {Array<{path: string, label?: string, url?: string}>}
  */
 const normalizeImages = (images) => {
+  if (images === null || images === undefined) {
+    throw new Error(
+      `analyze-image: images must be provided (got ${images === null ? 'null' : 'undefined'})`
+    );
+  }
   const list = Array.isArray(images) ? images : [images];
-  return list.map((item) => (typeof item === 'string' ? { path: item } : item));
+  if (list.length === 0) {
+    throw new Error('analyze-image: at least one image is required');
+  }
+  return list.map((item, i) => {
+    const normalized = typeof item === 'string' ? { path: item } : item;
+    if (!normalized || typeof normalized !== 'object') {
+      throw new Error(
+        `analyze-image: image at index ${i} must be a string path or { path, ... } object (got ${
+          item === null ? 'null' : typeof item
+        })`
+      );
+    }
+    if (typeof normalized.path !== 'string' || normalized.path.length === 0) {
+      throw new Error(`analyze-image: image at index ${i} requires a non-empty "path" string`);
+    }
+    return normalized;
+  });
 };
 
 /**

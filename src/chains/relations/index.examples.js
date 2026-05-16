@@ -1,5 +1,5 @@
 import { describe } from 'vitest';
-import extractRelations, { relationSpec, relationInstructions } from './index.js';
+import relationItem, { relationSpec, relationInstructions } from './index.js';
 import map from '../map/index.js';
 import filter from '../filter/index.js';
 import { techCompanyArticle, historicalNarrative } from '../entities/sample-text.js';
@@ -21,10 +21,7 @@ describe.skipIf(!isHighBudget)('[high] relations examples', () => {
     'extracts business relations from text',
     async () => {
       const text = techChunks[1];
-      const result = await extractRelations(
-        text,
-        'Extract business relationships and partnerships'
-      );
+      const result = await relationItem(text, 'Extract business relationships and partnerships');
 
       expect(Array.isArray(result)).toBe(true);
       expect(result.length).toBeGreaterThan(0);
@@ -46,7 +43,7 @@ describe.skipIf(!isHighBudget)('[high] relations examples', () => {
     The company was founded on April 1, 1976.
     Apple has 164,000 employees worldwide.`;
 
-      const result = await extractRelations(text, {
+      const result = await relationItem(text, {
         relations: 'Extract company metrics and dates as precise values',
         predicates: ['revenue', 'founded on', 'employee count'],
       });
@@ -106,7 +103,7 @@ describe.skipIf(!isHighBudget)('[high] relations examples', () => {
   );
 });
 
-describe.skipIf(!isMediumBudget)('[medium] extractRelations with instruction bundle', () => {
+describe.skipIf(!isMediumBudget)('[medium] relationItem with instruction bundle', () => {
   it(
     'extracts relations with pre-generated spec',
     async () => {
@@ -118,7 +115,7 @@ describe.skipIf(!isMediumBudget)('[medium] extractRelations with instruction bun
       expect(typeof spec).toBe('string');
       expect(spec.length).toBeGreaterThan(0);
 
-      const result = await extractRelations(historyChunks[7], { text: 'Extract relations', spec });
+      const result = await relationItem(historyChunks[7], { text: 'Extract relations', spec });
 
       expect(Array.isArray(result)).toBe(true);
       expect(result.length).toBeGreaterThan(0);

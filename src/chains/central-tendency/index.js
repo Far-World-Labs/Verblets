@@ -86,13 +86,24 @@ export default async function centralTendency(items, seedItems, config = {}) {
       onProgress: scopePhase(runConfig.onProgress, 'map:evaluation'),
     });
 
+    const isValid = (r) => r && typeof r === 'object' && typeof r.score === 'number';
+    const successCount = results.filter(isValid).length;
+    const failureCount = results.length - successCount;
+
+    if (successCount === 0) {
+      throw new Error(`central-tendency: all ${results.length} items failed evaluation`);
+    }
+
     const resultMeta = {
       totalItems: results.length,
-      successCount: results.filter((r) => r != null).length,
-      failureCount: results.filter((r) => r == null).length,
+      successCount,
+      failureCount,
     };
     emitter.emit({ event: DomainEvent.output, value: results });
-    emitter.complete({ outcome: Outcome.success, ...resultMeta });
+    emitter.complete({
+      outcome: failureCount > 0 ? Outcome.partial : Outcome.success,
+      ...resultMeta,
+    });
 
     return results;
   } catch (err) {

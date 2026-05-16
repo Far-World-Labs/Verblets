@@ -73,7 +73,11 @@ async function toMs(text, config = {}) {
   }
   const n = await number(clean, config);
   if (typeof n === 'number') return n;
-  return 0;
+  // Returning 0 here would silently schedule an immediate re-tick — a tight
+  // loop that sidesteps the consecutiveErrors safety net (since the tick
+  // technically "succeeded" with a 0ms delay). Throw instead so the catch
+  // block records a tick-error and the tolerance mechanism can terminate.
+  throw new Error(`set-interval: could not parse "${clean}" as a delay or future date`);
 }
 
 const DEFAULT_MAX_CONSECUTIVE_ERRORS = 5;
@@ -101,7 +105,19 @@ export default function setInterval({
   llm,
   ...options
 } = {}) {
+  if (typeof getData !== 'function') {
+    throw new Error(
+      `set-interval: getData must be a function (got ${getData === null ? 'null' : typeof getData})`
+    );
+  }
   const { text: prompt, context: bundleContext } = resolveTexts(rawPrompt, []);
+  if (typeof prompt !== 'string' || prompt.length === 0) {
+    throw new Error(
+      `set-interval: prompt must be a non-empty string (got ${
+        prompt === null ? 'null' : typeof prompt
+      })`
+    );
+  }
   const config = nameStep(name, { llm, ...options });
   const emitter = createProgressEmitter(name, config.onProgress, config);
   emitter.start();

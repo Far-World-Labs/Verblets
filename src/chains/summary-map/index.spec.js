@@ -1,62 +1,41 @@
-import { describe, expect, it, vi } from 'vitest';
+import { vi, expect } from 'vitest';
 import pave from '../../lib/pave/index.js';
 import SummaryMap from './index.js';
 import llm from '../../lib/llm/index.js';
+import { runTable } from '../../lib/examples-runner/index.js';
 
-vi.mock('../../services/llm-model/index.js', () => ({
-  default: {
-    negotiateModel: vi.fn().mockReturnValue({ name: 'test-model' }),
-    getBestPublicModel: vi.fn().mockReturnValue({
-      name: 'test-model',
-      tokenizer: (text) => text.split(' '),
-      maxContextWindow: 128000,
-      maxOutputTokens: 16384,
-      maxTokens: 16384,
-      toTokens(text) {
-        return this.tokenizer(text);
-      },
-      budgetTokens(text, { completionMax = Infinity } = {}) {
-        const prompt = this.toTokens(text).length;
-        const total = this.maxContextWindow;
-        const completion = Math.min(Math.min(total - prompt, this.maxOutputTokens), completionMax);
-        return {
-          completion,
-          prompt,
-          total,
-        };
-      },
-    }),
-    getModel: vi.fn().mockReturnValue({
-      name: 'test-model',
-      tokenizer: (text) => text.split(' '),
-      maxContextWindow: 128000,
-      maxOutputTokens: 16384,
-      maxTokens: 16384,
-      toTokens(text) {
-        return this.tokenizer(text);
-      },
-      budgetTokens(text, { completionMax = Infinity } = {}) {
-        const prompt = this.toTokens(text).length;
-        const total = this.maxContextWindow;
-        const completion = Math.min(Math.min(total - prompt, this.maxOutputTokens), completionMax);
-        return {
-          completion,
-          prompt,
-          total,
-        };
-      },
-    }),
-  },
-}));
+vi.mock('../../services/llm-model/index.js', () => {
+  const modelStub = {
+    name: 'test-model',
+    tokenizer: (text) => text.split(' '),
+    maxContextWindow: 128000,
+    maxOutputTokens: 16384,
+    maxTokens: 16384,
+    toTokens(text) {
+      return this.tokenizer(text);
+    },
+    budgetTokens(text, { completionMax = Infinity } = {}) {
+      const prompt = this.toTokens(text).length;
+      const total = this.maxContextWindow;
+      const completion = Math.min(Math.min(total - prompt, this.maxOutputTokens), completionMax);
+      return { completion, prompt, total };
+    },
+  };
+  return {
+    default: {
+      negotiateModel: vi.fn().mockReturnValue({ name: 'test-model' }),
+      getBestPublicModel: vi.fn().mockReturnValue(modelStub),
+      getModel: vi.fn().mockReturnValue(modelStub),
+    },
+  };
+});
 
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn().mockImplementation((text) => {
     if (/Pursuant to the adjudication/.test(text)) {
       return '01234567890123456789012345678901234567890123456789';
     }
-    if (/rabin_karp_search/.test(text)) {
-      return '0123456789012345678901234';
-    }
+    if (/rabin_karp_search/.test(text)) return '0123456789012345678901234';
     return 'undefined';
   }),
 }));
@@ -69,127 +48,143 @@ const codeText = `import numpy as np
 def rabin_karp_search(pattern, text, prime=101):
 `;
 
-const examples = [
-  {
-    name: 'Basic usage',
-    inputs: {
-      targetTokens: 100,
-      keys: [
-        { key: 'example.text', value: legalText, weight: 1, type: 'text' },
-        { key: 'example.code', value: codeText, weight: 0.5, type: 'code' },
-      ],
+runTable({
+  describe: 'Summary map',
+  examples: [
+    {
+      name: 'Basic usage',
+      inputs: {
+        targetTokens: 100,
+        keys: [
+          { key: 'example.text', value: legalText, weight: 1, type: 'text' },
+          { key: 'example.code', value: codeText, weight: 0.5, type: 'code' },
+        ],
+      },
+      want: {
+        entries: [
+          { key: 'example.text', resultLength: 50, budget: [60, 80] },
+          { key: 'example.code', resultLength: 25, budget: [20, 40] },
+        ],
+      },
     },
-    wants: [
-      { key: 'example.text', resultLength: 50, budget: [60, 80] },
-      { key: 'example.code', resultLength: 25, budget: [20, 40] },
-    ],
-  },
-  {
-    name: 'Model options and sensitivity',
-    inputs: {
-      targetTokens: 50,
-      llm: { fast: true, good: true },
-      keys: [
-        {
-          key: 'example.text',
-          value: legalText,
-          weight: 1,
-          type: 'text',
-          sensitivity: { blacklist: 'names' },
-        },
-        { key: 'example.code', value: codeText, weight: 0.5, type: 'code' },
-      ],
+    {
+      name: 'Model options and sensitivity',
+      inputs: {
+        targetTokens: 50,
+        llmConfig: { fast: true, good: true },
+        keys: [
+          {
+            key: 'example.text',
+            value: legalText,
+            weight: 1,
+            type: 'text',
+            sensitivity: { blacklist: 'names' },
+          },
+          { key: 'example.code', value: codeText, weight: 0.5, type: 'code' },
+        ],
+      },
+      want: {
+        entries: [
+          { key: 'example.text', resultLength: 50 },
+          { key: 'example.code', resultLength: 25 },
+        ],
+        sensitiveCall: true,
+      },
     },
-    wants: [
-      { key: 'example.text', resultLength: 50 },
-      { key: 'example.code', resultLength: 25 },
-    ],
-  },
-];
-
-describe('Summary map', () => {
-  examples.forEach((example) => {
-    it(example.name, async () => {
-      vi.clearAllMocks();
-      const map = new SummaryMap({
-        targetTokens: example.inputs.targetTokens,
-        ...(example.inputs.llm && { llm: example.inputs.llm }),
-      });
-
-      for (const input of example.inputs.keys) {
-        map.set(input.key, input);
-      }
-
-      const entries = Array.from(await map.entries());
-      const result = entries.reduce((acc, [k, v]) => pave(acc, k, v), {});
-
-      for (const want of example.wants) {
-        let value = result;
-
-        // Navigate the result object using the key segments
-        for (const keySegment of want.key.split('.')) {
-          value = value[keySegment];
-        }
-
-        expect(typeof value).toBe('string');
-
-        // Check if the length of the value is within the expected range
-        expect(value.length).toBeLessThanOrEqual(want.resultLength);
-
-        if (want.budget) {
-          const { budgets } = map.calculateBudgets();
-          const found = budgets.find((b) => b.key === want.key);
-          expect(found.budget).gt(want.budget[0]);
-          expect(found.budget).lt(want.budget[1]);
-        }
-      }
-
-      if (example.name === 'Model options and sensitivity') {
-        const callWithSensitive = llm.mock.calls.find((c) => c[1]?.sensitive === true);
-        expect(callWithSensitive).toBeTruthy();
-      }
+  ],
+  process: async ({ inputs }) => {
+    vi.clearAllMocks();
+    const map = new SummaryMap({
+      targetTokens: inputs.targetTokens,
+      ...(inputs.llmConfig && { llm: inputs.llmConfig }),
     });
-  });
+    for (const entry of inputs.keys) map.set(entry.key, entry);
+    const entries = Array.from(await map.entries());
+    const tree = entries.reduce((acc, [k, v]) => pave(acc, k, v), {});
+    return { tree, map };
+  },
+  expects: ({ result, want }) => {
+    for (const entry of want.entries) {
+      let value = result.tree;
+      for (const seg of entry.key.split('.')) value = value[seg];
+      expect(typeof value).toBe('string');
+      expect(value.length).toBeLessThanOrEqual(entry.resultLength);
+      if (entry.budget) {
+        const { budgets } = result.map.calculateBudgets();
+        const found = budgets.find((b) => b.key === entry.key);
+        expect(found.budget).gt(entry.budget[0]);
+        expect(found.budget).lt(entry.budget[1]);
+      }
+    }
+    if (want.sensitiveCall) {
+      const sensitiveCall = llm.mock.calls.find((c) => c[1]?.sensitive === true);
+      expect(sensitiveCall).toBeTruthy();
+    }
+  },
+});
 
-  it('get() returns summarized value for a key that was set', async () => {
+runTable({
+  describe: 'SummaryMap — single-method behaviors',
+  examples: [
+    {
+      name: 'get() returns summarized value for a key that was set',
+      inputs: { case: 'getSet' },
+      want: { case: 'getSet' },
+    },
+    {
+      name: 'get() returns undefined for a key that was never set',
+      inputs: { case: 'getMissing' },
+      want: { case: 'getMissing' },
+    },
+    {
+      name: 'build() assembles cached entries as XML context',
+      inputs: { case: 'build' },
+      want: { case: 'build' },
+    },
+    {
+      name: 'buildStale() returns empty string before cache fill',
+      inputs: { case: 'buildStale' },
+      want: { case: 'buildStale' },
+    },
+  ],
+  process: async ({ inputs }) => {
     vi.clearAllMocks();
-    const map = new SummaryMap({ targetTokens: 100 });
-    map.set('example.text', { key: 'example.text', value: legalText, weight: 1, type: 'text' });
-
-    const result = await map.get('example.text');
-
-    expect(result).not.toBeNull();
-    expect(typeof result).toBe('string');
-  });
-
-  it('get() returns null for a key that was never set', async () => {
-    const map = new SummaryMap({ targetTokens: 100 });
-
-    const result = map.get('nonexistent');
-
-    expect(result).toBeUndefined();
-  });
-
-  it('build() assembles cached entries as XML context', async () => {
-    vi.clearAllMocks();
-    const map = new SummaryMap({ targetTokens: 100 });
-    map.set('knowledge', { key: 'knowledge', value: legalText, weight: 1, type: 'text' });
-    map.set('code', { key: 'code', value: codeText, weight: 0.5, type: 'code' });
-
-    const result = await map.build();
-
-    expect(result).toContain('<knowledge>');
-    expect(result).toContain('</knowledge>');
-    expect(result).toContain('<code>');
-    expect(result).toContain('</code>');
-    // Entries separated by double newline (cache is weight-sorted: code first)
-    expect(result).toMatch(/<\/code>\n\n<knowledge>/);
-  });
-
-  it('buildStale() returns empty string before cache fill', () => {
-    const map = new SummaryMap({ targetTokens: 100 });
-    map.set('a', { key: 'a', value: 'text', weight: 1 });
-
-    expect(map.buildStale()).toBe('');
-  });
+    if (inputs.case === 'getSet') {
+      const map = new SummaryMap({ targetTokens: 100 });
+      map.set('example.text', { key: 'example.text', value: legalText, weight: 1, type: 'text' });
+      return { value: await map.get('example.text') };
+    }
+    if (inputs.case === 'getMissing') {
+      const map = new SummaryMap({ targetTokens: 100 });
+      return { value: map.get('nonexistent') };
+    }
+    if (inputs.case === 'build') {
+      const map = new SummaryMap({ targetTokens: 100 });
+      map.set('knowledge', { key: 'knowledge', value: legalText, weight: 1, type: 'text' });
+      map.set('code', { key: 'code', value: codeText, weight: 0.5, type: 'code' });
+      return { value: await map.build() };
+    }
+    if (inputs.case === 'buildStale') {
+      const map = new SummaryMap({ targetTokens: 100 });
+      map.set('a', { key: 'a', value: 'text', weight: 1 });
+      return { value: map.buildStale() };
+    }
+    return undefined;
+  },
+  expects: ({ result, want }) => {
+    if (want.case === 'getSet') {
+      expect(result.value).not.toBeNull();
+      expect(typeof result.value).toBe('string');
+    } else if (want.case === 'getMissing') {
+      expect(result.value).toBeUndefined();
+    } else if (want.case === 'build') {
+      expect(result.value).toContain('<knowledge>');
+      expect(result.value).toContain('</knowledge>');
+      expect(result.value).toContain('<code>');
+      expect(result.value).toContain('</code>');
+      expect(result.value).toMatch(/<\/code>\n\n<knowledge>/);
+    } else if (want.case === 'buildStale') {
+      expect(result.value).toBe('');
+    }
+  },
 });

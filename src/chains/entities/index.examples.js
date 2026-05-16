@@ -1,5 +1,5 @@
 import { describe } from 'vitest';
-import extractEntities, { entitySpec, entityInstructions } from './index.js';
+import entityItem, { entitySpec, entityInstructions } from './index.js';
 import map from '../map/index.js';
 import filter from '../filter/index.js';
 import { techCompanyArticle } from './sample-text.js';
@@ -15,7 +15,7 @@ describe('entities examples', () => {
     'extracts entities from text',
     async () => {
       const text = chunks[1];
-      const result = await extractEntities(text, 'Extract companies and people');
+      const result = await entityItem(text, 'Extract companies and people');
 
       expect(result).toHaveProperty('entities');
       expect(Array.isArray(result.entities)).toBe(true);
@@ -29,14 +29,14 @@ describe('entities examples', () => {
   );
 
   it(
-    'extracts entities with pre-generated spec via extractEntities',
+    'extracts entities with pre-generated spec via entityItem',
     async () => {
       const spec = await entitySpec('Extract companies, people, and locations');
 
       expect(typeof spec).toBe('string');
       expect(spec.length).toBeGreaterThan(0);
 
-      const result = await extractEntities(chunks[0], { text: 'Extract entities', spec });
+      const result = await entityItem(chunks[0], { text: 'Extract entities', spec });
 
       expect(result).toHaveProperty('entities');
       expect(Array.isArray(result.entities)).toBe(true);

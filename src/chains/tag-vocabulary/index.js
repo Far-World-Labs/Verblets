@@ -6,6 +6,7 @@ import createProgressEmitter from '../../lib/progress/index.js';
 import { DomainEvent, Outcome } from '../../lib/progress/constants.js';
 import { nameStep } from '../../lib/context/option.js';
 import { resolveTexts } from '../../lib/instruction/index.js';
+import { expectArray, expectObject } from '../../lib/expect-shape/index.js';
 
 const name = 'tag-vocabulary';
 
@@ -53,9 +54,14 @@ export function computeTagStatistics(vocabulary, taggedItems, options = {}) {
   const mostUsed = sortedTags.slice(0, topN);
   const leastUsed = sortedTags.slice(-bottomN);
 
-  // Calculate coverage statistics
-  const itemsWithTags = taggedItems.filter((tags) => tags && tags.length > 0).length;
-  const totalTagAssignments = taggedItems.reduce((sum, tags) => sum + (tags ? tags.length : 0), 0);
+  // Calculate coverage statistics. Use Array.isArray consistently so a
+  // malformed tag entry (e.g. a string) doesn't inflate counts here when
+  // the tag-counting loop above already filtered it out.
+  const itemsWithTags = taggedItems.filter((tags) => Array.isArray(tags) && tags.length > 0).length;
+  const totalTagAssignments = taggedItems.reduce(
+    (sum, tags) => sum + (Array.isArray(tags) ? tags.length : 0),
+    0
+  );
   const avgTagsPerItem = taggedItems.length > 0 ? totalTagAssignments / taggedItems.length : 0;
 
   const stats = {
@@ -117,6 +123,14 @@ export function computeTagStatistics(vocabulary, taggedItems, options = {}) {
 
 // ===== Core Functions =====
 
+const validateVocabResponse = (response, label) => {
+  expectObject(response, { chain: 'tag-vocabulary', expected: `object from ${label} LLM` });
+  expectArray(response.tags, {
+    chain: 'tag-vocabulary',
+    expected: `tags array from ${label} LLM`,
+  });
+};
+
 /**
  * Generate initial tag vocabulary from specification and sample items
  * @param {string} tagSystemSpec - Tag system specification text (may include hierarchy details, constraints, initial vocabulary)
@@ -156,6 +170,7 @@ The vocabulary should be complete enough to categorize diverse items along the i
     }
   );
 
+  validateVocabResponse(response, 'initial-vocabulary');
   return response;
 }
 
@@ -211,6 +226,7 @@ Return an improved vocabulary that provides better coverage and clearer distinct
     }
   );
 
+  validateVocabResponse(response, 'refine-vocabulary');
   return response;
 }
 
@@ -222,6 +238,11 @@ Return an improved vocabulary that provides better coverage and clearer distinct
  * @returns {Promise<Object>} Final refined tag vocabulary
  */
 export default async function tagVocabulary(tagSystemSpec, items, config = {}) {
+  if (!Array.isArray(items)) {
+    throw new Error(
+      `tag-vocabulary: items must be an array (got ${items === null ? 'null' : typeof items})`
+    );
+  }
   const { text: specText, known, context } = resolveTexts(tagSystemSpec, ['initialVocab']);
   const effectiveSpec = context ? `${specText}\n\n${context}` : specText;
   const runConfig = nameStep(name, config);
@@ -231,15 +252,22 @@ export default async function tagVocabulary(tagSystemSpec, items, config = {}) {
   try {
     const { tagger, sampleSize = 50 } = runConfig;
 
-    if (!tagger) {
-      throw new Error('A tagger function must be provided in config');
+    if (typeof tagger !== 'function') {
+      throw new Error(
+        `tag-vocabulary: a tagger function must be provided in config (got ${
+          tagger === null ? 'null' : typeof tagger
+        })`
+      );
     }
 
     let initialVocab;
 
     if (known.initialVocab) {
-      // Known initialVocab provided — skip generation phase
+      // Known initialVocab provided — skip generation phase. JSON.parse throws
+      // on malformed input; validate the shape so downstream code can trust
+      // .tags exists.
       initialVocab = JSON.parse(known.initialVocab);
+      validateVocabResponse(initialVocab, 'known.initialVocab');
     } else {
       // Sample items for vocabulary generation
       const sampleItems = items.slice(0, Math.min(sampleSize, items.length));
@@ -260,6 +288,13 @@ export default async function tagVocabulary(tagSystemSpec, items, config = {}) {
     });
 
     const taggedItems = await tagger(items, initialVocab);
+    if (!Array.isArray(taggedItems)) {
+      throw new Error(
+        `tag-vocabulary: tagger must return an array of tag arrays (got ${
+          taggedItems === null ? 'null' : typeof taggedItems
+        })`
+      );
+    }
     const statistics = computeTagStatistics(initialVocab, taggedItems);
 
     emitter.emit({ event: DomainEvent.step, stepName: 'refine-vocabulary', statistics });

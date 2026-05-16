@@ -88,7 +88,12 @@ const calculateCodeWindow = (
  * @param {Object} config - Options including maxAttempts
  */
 export default async function analyzeTestError(logs, config = {}) {
-  if (Array.isArray(logs) && logs.length > 0 && Array.isArray(logs[0])) {
+  if (!Array.isArray(logs)) {
+    throw new Error(
+      `test-analyzer: logs must be an array (got ${logs === null ? 'null' : typeof logs})`
+    );
+  }
+  if (logs.length > 0 && Array.isArray(logs[0])) {
     return parallelBatch(logs, (logGroup) => analyzeTestError(logGroup, config), {
       maxParallel: 3,
       errorPosture: ErrorPosture.resilient,
@@ -201,6 +206,14 @@ Discussion:
       label: 'test-analyzer',
       config: runConfig,
     });
+
+    if (typeof response !== 'string') {
+      throw new Error(
+        `test-analyzer: expected string from analysis LLM (got ${
+          response === null ? 'null' : typeof response
+        })`
+      );
+    }
 
     const result = response.trim();
     emitter.emit({ event: DomainEvent.output, value: result });

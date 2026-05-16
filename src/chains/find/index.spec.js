@@ -1,14 +1,16 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import find from './index.js';
+import { beforeEach, expect, vi } from 'vitest';
+import find, { findParallel } from './index.js';
 import listBatch from '../../verblets/list-batch/index.js';
+import bool from '../../verblets/bool/index.js';
+import { runTable, applyMocks } from '../../lib/examples-runner/index.js';
 
 vi.mock('../../verblets/list-batch/index.js', () => ({
-  default: vi.fn(async (items) => {
-    return [items[items.length - 1]];
-  }),
+  default: vi.fn(async (items) => [items[items.length - 1]]),
   ListStyle: { AUTO: 'auto', XML: 'xml', NEWLINE: 'newline' },
   determineStyle: vi.fn(() => 'newline'),
 }));
+
+vi.mock('../../verblets/bool/index.js', () => ({ default: vi.fn() }));
 
 vi.mock('../../lib/text-batch/index.js', () => ({
   default: vi.fn((items, config) => {
@@ -21,34 +23,95 @@ vi.mock('../../lib/text-batch/index.js', () => ({
   }),
 }));
 
-beforeEach(() => {
-  vi.clearAllMocks();
+beforeEach(() => vi.clearAllMocks());
+
+runTable({
+  describe: 'find chain',
+  examples: [
+    {
+      name: 'scans batches to find best item',
+      inputs: { list: ['a', 'b', 'c', 'd'], instructions: 'find', options: { batchSize: 2 } },
+      want: { value: 'b', batchCalls: 2 },
+    },
+    {
+      name: 'returns empty string when no item matches',
+      inputs: { list: ['a', 'b'], instructions: 'find nothing', options: { batchSize: 10 } },
+      mocks: { listBatch: [[]] },
+      want: { value: '' },
+    },
+    {
+      name: 'earliest match wins across parallel batches',
+      inputs: {
+        list: ['a', 'b'],
+        instructions: 'find',
+        options: { batchSize: 1, maxParallel: 2 },
+      },
+      want: { value: 'a' },
+    },
+    {
+      name: 'silently continues when a batch throws',
+      inputs: {
+        list: ['a', 'b'],
+        instructions: 'find',
+        options: { batchSize: 1, maxParallel: 1 },
+      },
+      mocks: { listBatch: [new Error('batch failed'), ['found']] },
+      want: { value: 'found' },
+    },
+  ],
+  process: async ({ inputs, mocks }) => {
+    applyMocks(mocks, { listBatch });
+    return find(inputs.list, inputs.instructions, inputs.options);
+  },
+  expects: ({ result, want }) => {
+    if ('value' in want) expect(result).toEqual(want.value);
+    if ('batchCalls' in want) expect(listBatch).toHaveBeenCalledTimes(want.batchCalls);
+  },
 });
 
-describe('find chain', () => {
-  it('scans batches to find best item', async () => {
-    const result = await find(['a', 'b', 'c', 'd'], 'find', { batchSize: 2 });
-    expect(result).toBe('b');
-    expect(listBatch).toHaveBeenCalledTimes(2);
-  });
+runTable({
+  describe: 'findParallel — result',
+  examples: [
+    {
+      name: 'returns the earliest matching item by index',
+      inputs: { list: ['a', 'b', 'c'] },
+      mocks: { bool: [false, true, true] },
+      want: { value: 'b' },
+    },
+    {
+      name: 'returns empty string when nothing matches',
+      inputs: { list: ['a', 'b'] },
+      mocks: { bool: [false, false] },
+      want: { value: '' },
+    },
+    {
+      name: 'terminates early once a chunk produces a match',
+      inputs: { list: ['a', 'b', 'c', 'd'], options: { maxParallel: 2 } },
+      mocks: { bool: [true, false] },
+      want: { value: 'a', boolCalls: 2 },
+    },
+  ],
+  process: async ({ inputs, mocks }) => {
+    applyMocks(mocks, { bool });
+    return findParallel(inputs.list, 'criteria', inputs.options);
+  },
+  expects: ({ result, want }) => {
+    expect(result).toEqual(want.value);
+    if ('boolCalls' in want) expect(bool).toHaveBeenCalledTimes(want.boolCalls);
+  },
+});
 
-  it('returns empty string when no item matches', async () => {
-    listBatch.mockResolvedValueOnce([]);
-    const result = await find(['a', 'b'], 'find nothing', { batchSize: 10 });
-    expect(result).toBe('');
-  });
-
-  it('returns earliest match when multiple batches find results', async () => {
-    // With batchSize=1 and maxParallel=2, both batches run in parallel
-    // 'a' at index 0 should win over 'b' at index 1
-    const result = await find(['a', 'b'], 'find', { batchSize: 1, maxParallel: 2 });
-    expect(result).toBe('a');
-  });
-
-  it('silently continues when a batch throws', async () => {
-    listBatch.mockRejectedValueOnce(new Error('batch failed')).mockResolvedValueOnce(['found']);
-
-    const result = await find(['a', 'b'], 'find', { batchSize: 1, maxParallel: 1 });
-    expect(result).toBe('found');
-  });
+runTable({
+  describe: 'findParallel — validation',
+  examples: [
+    {
+      name: 'throws when list is not an array',
+      inputs: { list: 'not-an-array' },
+      want: { throws: /must be an array/ },
+    },
+  ],
+  process: async ({ inputs }) => findParallel(inputs.list, 'criteria'),
+  expects: ({ error, want }) => {
+    expect(error?.message).toMatch(want.throws);
+  },
 });

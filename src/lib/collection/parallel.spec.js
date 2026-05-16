@@ -35,7 +35,7 @@ describe('parallel collection utilities', () => {
       expect(fn).toHaveBeenCalledTimes(5);
     });
 
-    it('fills undefined on error in resilient mode', async () => {
+    it('emits undefined for failed slots in resilient mode', async () => {
       const fn = vi.fn(async (item) => {
         if (item === 2) throw new Error('fail');
         return item * 10;

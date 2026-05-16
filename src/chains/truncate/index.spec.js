@@ -1,5 +1,6 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { vi, beforeEach, expect } from 'vitest';
 import truncate from './index.js';
+import { runTable, applyMocks } from '../../lib/examples-runner/index.js';
 
 vi.mock('../score/index.js', () => ({
   default: vi.fn(),
@@ -8,70 +9,93 @@ vi.mock('../score/index.js', () => ({
 
 import score from '../score/index.js';
 
-beforeEach(() => {
-  vi.clearAllMocks();
-});
+beforeEach(() => vi.clearAllMocks());
 
-describe('truncate', () => {
-  it('returns full length when all chunks score above threshold', async () => {
-    score.mockResolvedValueOnce([8, 7, 9]);
-    const text = 'All content is important and should stay.';
-    const result = await truncate(text, 'Remove boring content');
-    expect(result).toBe(text.length);
-  });
-
-  it('truncates when a chunk from the end scores below threshold', async () => {
-    // Chunks scored in reverse (end → start). Score of 3 < default threshold 6.
-    score.mockResolvedValueOnce([3]);
-    const text = 'Important content at the beginning. Less important content at the end.';
-    const result = await truncate(text, 'Remove boring content');
-    expect(result).toBeLessThan(text.length);
-    expect(result).toBeGreaterThanOrEqual(0);
-  });
-
-  it('strictness option controls the removal threshold', async () => {
-    // All scores are 5 — below high strictness (7), but above low strictness (4)
-    score.mockResolvedValueOnce([5, 5, 5]);
-    const text = 'Short test text.';
-
-    const highResult = await truncate(text, 'criteria', { strictness: 'high' });
-    // With high strictness (threshold 7), score 5 < 7 triggers removal
-    expect(highResult).toBeLessThan(text.length);
-
-    score.mockResolvedValueOnce([5, 5, 5]);
-    const lowResult = await truncate(text, 'criteria', { strictness: 'low' });
-    // With low strictness (threshold 4), score 5 > 4 keeps everything
-    expect(lowResult).toBe(text.length);
-  });
-
-  it('accepts raw number for strictness', async () => {
-    score.mockResolvedValueOnce([5, 5, 5]);
-    const text = 'Short test text.';
-    const result = await truncate(text, 'criteria', { strictness: 3 });
-    // Score 5 > threshold 3, keeps everything
-    expect(result).toBe(text.length);
-  });
-
-  it('forwards config to score chain', async () => {
-    score.mockResolvedValueOnce([8]);
-    await truncate('Test text', 'Remove boring content', {
-      llm: 'custom-model',
-      customOption: 'value',
-    });
-
-    expect(score).toHaveBeenCalledWith(
-      expect.any(Array),
-      expect.stringContaining('Remove boring content'),
-      expect.objectContaining({
-        llm: 'custom-model',
-        customOption: 'value',
-      })
-    );
-  });
-
-  it('handles single-chunk text', async () => {
-    score.mockResolvedValueOnce([8]);
-    const result = await truncate('Hi', 'Remove boring content');
-    expect(result).toBe(2);
-  });
+runTable({
+  describe: 'truncate',
+  examples: [
+    {
+      name: 'returns full length when all chunks score above threshold',
+      inputs: {
+        text: 'All content is important and should stay.',
+        instructions: 'Remove boring content',
+      },
+      mocks: { score: [[8, 7, 9]] },
+      want: { fullLength: true },
+    },
+    {
+      name: 'truncates when a chunk from the end scores below threshold',
+      inputs: {
+        text: 'Important content at the beginning. Less important content at the end.',
+        instructions: 'Remove boring content',
+      },
+      mocks: { score: [[3]] },
+      want: { truncated: true },
+    },
+    {
+      name: 'strictness=high triggers removal when scores below threshold 7',
+      inputs: {
+        text: 'Short test text.',
+        instructions: 'criteria',
+        options: { strictness: 'high' },
+      },
+      mocks: { score: [[5, 5, 5]] },
+      want: { truncated: true },
+    },
+    {
+      name: 'strictness=low keeps everything when scores above threshold 4',
+      inputs: {
+        text: 'Short test text.',
+        instructions: 'criteria',
+        options: { strictness: 'low' },
+      },
+      mocks: { score: [[5, 5, 5]] },
+      want: { fullLength: true },
+    },
+    {
+      name: 'accepts raw number for strictness',
+      inputs: {
+        text: 'Short test text.',
+        instructions: 'criteria',
+        options: { strictness: 3 },
+      },
+      mocks: { score: [[5, 5, 5]] },
+      want: { fullLength: true },
+    },
+    {
+      name: 'forwards config to score chain',
+      inputs: {
+        text: 'Test text',
+        instructions: 'Remove boring content',
+        options: { llm: 'custom-model', customOption: 'value' },
+      },
+      mocks: { score: [[8]] },
+      want: { scoreConfig: { llm: 'custom-model', customOption: 'value' } },
+    },
+    {
+      name: 'handles single-chunk text',
+      inputs: { text: 'Hi', instructions: 'Remove boring content' },
+      mocks: { score: [[8]] },
+      want: { value: 2 },
+    },
+  ],
+  process: async ({ inputs, mocks }) => {
+    applyMocks(mocks, { score });
+    return truncate(inputs.text, inputs.instructions, inputs.options);
+  },
+  expects: ({ result, inputs, want }) => {
+    if (want.fullLength) expect(result).toBe(inputs.text.length);
+    if (want.truncated) {
+      expect(result).toBeLessThan(inputs.text.length);
+      expect(result).toBeGreaterThanOrEqual(0);
+    }
+    if ('value' in want) expect(result).toBe(want.value);
+    if (want.scoreConfig) {
+      expect(score).toHaveBeenCalledWith(
+        expect.any(Array),
+        expect.stringContaining(inputs.instructions),
+        expect.objectContaining(want.scoreConfig)
+      );
+    }
+  },
 });

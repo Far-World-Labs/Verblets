@@ -71,6 +71,10 @@ Keep it concise and actionable.`;
       }
     );
 
+    if (typeof response !== 'string' || response.length === 0) {
+      throw new Error(`tags: expected non-empty string from spec LLM (got ${typeof response})`);
+    }
+
     emitter.complete({ outcome: Outcome.success });
     return response;
   } catch (err) {
@@ -88,6 +92,12 @@ Keep it concise and actionable.`;
  * @returns {Promise<Array>} Array of tag IDs
  */
 async function tagWithSpec(item, spec, vocabulary, config = {}) {
+  if (!vocabulary || !Array.isArray(vocabulary.tags)) {
+    throw new Error(
+      'tags: vocabulary with a tags array is required (pass via instruction bundle or config)'
+    );
+  }
+
   const runConfig = nameStep(`${name}:apply`, config);
   const applyEmitter = createProgressEmitter(`${name}:apply`, runConfig.onProgress, runConfig);
   applyEmitter.start();
@@ -130,11 +140,13 @@ Do NOT return tag labels, descriptions, or full tag objects - ONLY the string ID
     );
 
     // llm auto-unwraps {items: [...]} to just the array
-    const result = Array.isArray(response) ? response : [];
+    if (!Array.isArray(response)) {
+      throw new Error(`tags: expected tag-id array from apply LLM (got ${typeof response})`);
+    }
 
     applyEmitter.complete({ outcome: Outcome.success });
 
-    return result;
+    return response;
   } catch (err) {
     applyEmitter.error(err);
     throw err;
@@ -156,7 +168,14 @@ export default async function tagItem(item, instructions, config) {
   const vocabulary = known.vocabulary;
   const effectiveInstructions = context ? `${text}\n\n${context}` : text;
   const spec = known.spec || (await tagSpec(effectiveInstructions, config));
-  return tagWithSpec(item, spec, vocabulary, config);
+  // vocabularyMode from the bundle must flow into the config tagWithSpec reads
+  // via getOptions. Without this hop, bundle-provided "open" was silently
+  // overridden by the strict default.
+  const downstreamConfig =
+    known.vocabularyMode !== undefined
+      ? { ...config, vocabularyMode: known.vocabularyMode }
+      : config;
+  return tagWithSpec(item, spec, vocabulary, downstreamConfig);
 }
 
 /**
@@ -175,6 +194,11 @@ export async function mapTags(list, instructions, config) {
   try {
     const { text, known, context } = resolveTexts(instructions, KNOWN_KEYS);
     const vocabulary = known.vocabulary;
+    if (!vocabulary || !Array.isArray(vocabulary.tags)) {
+      throw new Error(
+        'tags: vocabulary with a tags array is required (pass via instruction bundle or config)'
+      );
+    }
     const vocabularyMode =
       known.vocabularyMode ??
       (await getOptions(runConfig, { vocabularyMode: 'strict' })).vocabularyMode;
@@ -208,6 +232,20 @@ Return empty array when no tags apply.`,
     // Map will return array of tag arrays directly
     const results = await map(serializedList, mapInstr, mapConfig);
     batchDone(serializedList.length);
+
+    if (!Array.isArray(results)) {
+      throw new Error(`tags: expected array of tag arrays from map (got ${typeof results})`);
+    }
+
+    // Total-failure detection: every entry malformed (not an array).
+    // Count valid (array-shaped) entries — empty arrays count as success
+    // (no tags applied is a legitimate result).
+    if (results.length > 0) {
+      const validCount = results.filter((r) => Array.isArray(r)).length;
+      if (validCount === 0) {
+        throw new Error(`tags: all ${results.length} items returned malformed tag arrays`);
+      }
+    }
 
     emitter.complete({ outcome: Outcome.success });
     return results;

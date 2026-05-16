@@ -1,82 +1,88 @@
-import { describe, it, expect } from 'vitest';
+import { expect } from 'vitest';
 import extractJson from './index.js';
+import { runTable } from '../examples-runner/index.js';
 
-describe('extractJson', () => {
-  it('parses a clean JSON object string', () => {
-    const result = extractJson('{"name":"Alice","age":30}');
-    expect(result).toEqual({ name: 'Alice', age: 30 });
-  });
-
-  it('parses a clean JSON array string', () => {
-    const result = extractJson('[1, 2, 3]');
-    expect(result).toEqual([1, 2, 3]);
-  });
-
-  it('extracts JSON object with preamble and trailing text', () => {
-    const input =
-      'Here\'s the result: {"score": 0.85, "label": "positive"} Let me know if you need more.';
-    const result = extractJson(input);
-    expect(result).toEqual({ score: 0.85, label: 'positive' });
-  });
-
-  it('extracts JSON from markdown code fences', () => {
-    const input = '```json\n{"items": ["a", "b", "c"]}\n```';
-    const result = extractJson(input);
-    expect(result).toEqual({ items: ['a', 'b', 'c'] });
-  });
-
-  it('extracts a JSON array from mixed text', () => {
-    const input = 'The categories are: ["health", "finance", "legal"] as identified.';
-    const result = extractJson(input);
-    expect(result).toEqual(['health', 'finance', 'legal']);
-  });
-
-  it('handles nested objects with strings containing braces', () => {
-    const input = 'Output: {"data": {"text": "use {curly} and [square] brackets"}, "count": 1}';
-    const result = extractJson(input);
-    expect(result).toEqual({ data: { text: 'use {curly} and [square] brackets' }, count: 1 });
-  });
-
-  it('handles escaped quotes inside JSON strings', () => {
-    const input = '{"message": "He said \\"hello\\" to them"}';
-    const result = extractJson(input);
-    expect(result).toEqual({ message: 'He said "hello" to them' });
-  });
-
-  it('handles nested arrays and objects', () => {
-    const json = '{"a": [{"b": [1, 2]}, {"c": {"d": 3}}]}';
-    const input = `Sure, here you go: ${json} — done!`;
-    const result = extractJson(input);
-    expect(result).toEqual({ a: [{ b: [1, 2] }, { c: { d: 3 } }] });
-  });
-
-  it('throws when no JSON object or array is found', () => {
-    expect(() => extractJson('This is just plain text with no JSON.')).toThrow(
-      'No JSON object or array found in response'
-    );
-  });
-
-  it('throws on unterminated JSON', () => {
-    expect(() => extractJson('{"open": true, "nested": {')).toThrow(
-      'Unterminated JSON in response'
-    );
-  });
-
-  it('prefers object over array when object appears first', () => {
-    const input = '{"items": [1, 2]} and also [3, 4]';
-    const result = extractJson(input);
-    expect(result).toEqual({ items: [1, 2] });
-  });
-
-  it('extracts array when no object is present', () => {
-    const input = 'Results: ["alpha", "beta", "gamma"] here';
-    const result = extractJson(input);
-    expect(result).toEqual(['alpha', 'beta', 'gamma']);
-  });
-
-  it('extracts array of objects via direct parse', () => {
-    const input = '[{"id": 1}, {"id": 2}]';
-    const result = extractJson(input);
-    expect(result).toEqual([{ id: 1 }, { id: 2 }]);
-  });
+runTable({
+  describe: 'extractJson',
+  examples: [
+    {
+      name: 'parses a clean JSON object string',
+      inputs: { value: '{"name":"Alice","age":30}' },
+      want: { value: { name: 'Alice', age: 30 } },
+    },
+    {
+      name: 'parses a clean JSON array string',
+      inputs: { value: '[1, 2, 3]' },
+      want: { value: [1, 2, 3] },
+    },
+    {
+      name: 'extracts JSON object surrounded by prose',
+      inputs: {
+        value:
+          'Here\'s the result: {"score": 0.85, "label": "positive"} Let me know if you need more.',
+      },
+      want: { value: { score: 0.85, label: 'positive' } },
+    },
+    {
+      name: 'extracts JSON from markdown code fences',
+      inputs: { value: '```json\n{"items": ["a", "b", "c"]}\n```' },
+      want: { value: { items: ['a', 'b', 'c'] } },
+    },
+    {
+      name: 'extracts JSON array from mixed text',
+      inputs: { value: 'The categories are: ["health", "finance", "legal"] as identified.' },
+      want: { value: ['health', 'finance', 'legal'] },
+    },
+    {
+      name: 'handles braces inside string values',
+      inputs: {
+        value: 'Output: {"data": {"text": "use {curly} and [square] brackets"}, "count": 1}',
+      },
+      want: { value: { data: { text: 'use {curly} and [square] brackets' }, count: 1 } },
+    },
+    {
+      name: 'handles escaped quotes inside JSON strings',
+      inputs: { value: '{"message": "He said \\"hello\\" to them"}' },
+      want: { value: { message: 'He said "hello" to them' } },
+    },
+    {
+      name: 'handles nested arrays + objects with surrounding prose',
+      inputs: { value: 'Sure, here you go: {"a": [{"b": [1, 2]}, {"c": {"d": 3}}]} — done!' },
+      want: { value: { a: [{ b: [1, 2] }, { c: { d: 3 } }] } },
+    },
+    {
+      name: 'prefers object over later array',
+      inputs: { value: '{"items": [1, 2]} and also [3, 4]' },
+      want: { value: { items: [1, 2] } },
+    },
+    {
+      name: 'extracts array when no object is present',
+      inputs: { value: 'Results: ["alpha", "beta", "gamma"] here' },
+      want: { value: ['alpha', 'beta', 'gamma'] },
+    },
+    {
+      name: 'extracts array of objects via direct parse',
+      inputs: { value: '[{"id": 1}, {"id": 2}]' },
+      want: { value: [{ id: 1 }, { id: 2 }] },
+    },
+    {
+      name: 'throws when no JSON object or array is found',
+      inputs: { value: 'This is just plain text with no JSON.' },
+      want: { throws: 'No JSON object or array found' },
+    },
+    {
+      name: 'throws on unterminated JSON',
+      inputs: { value: '{"open": true, "nested": {' },
+      want: { throws: 'Unterminated JSON' },
+    },
+  ],
+  process: ({ inputs }) => extractJson(inputs.value),
+  expects: ({ result, error, want }) => {
+    if ('throws' in want) {
+      expect(error?.message).toContain(want.throws);
+      return;
+    }
+    if (error) throw error;
+    expect(result).toEqual(want.value);
+  },
 });

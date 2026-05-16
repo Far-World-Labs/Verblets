@@ -36,7 +36,7 @@ const scores = await score(articles, {
 const scores = await score(articles, { text: 'Rate persuasiveness 0-10', spec: priorSpec });
 ```
 
-Each chain exports a `knownTexts` property listing the keys it recognizes. See [the ADR](../../docs/adr/2026-04-12-instruction-as-context.md) for the full known-key table and pipeline capture patterns.
+Each chain exports a `knownTexts` property listing the keys it recognizes. See [the ADR](../../.claude/adr/2026-04-12-instruction-as-context.md) for the full known-key table and pipeline capture patterns.
 
 ## List Operations
 

@@ -1,5 +1,6 @@
-import { describe, expect, it, vi } from 'vitest';
+import { vi, expect } from 'vitest';
 import disambiguate from './index.js';
+import { runTable } from '../../lib/examples-runner/index.js';
 
 vi.mock('../../lib/llm/index.js', () => ({
   default: vi.fn(async (prompt) => {
@@ -12,15 +13,24 @@ vi.mock('../../lib/llm/index.js', () => ({
 }));
 
 vi.mock('../score/index.js', () => ({
-  default: vi.fn(async (list) => {
-    return list.map((item, index) => (index === 0 ? 9 : 1)); // First item gets highest score
-  }),
+  default: vi.fn(async (list) => list.map((_, i) => (i === 0 ? 9 : 1))),
 }));
 
-describe('disambiguate chain', () => {
-  it('selects meaning based on context', async () => {
-    const result = await disambiguate('bank', 'withdraw money');
-    expect(result.meaning).toBe('financial institution');
-    expect(result.meanings).toStrictEqual(['financial institution', 'edge of a river']);
-  });
+runTable({
+  describe: 'disambiguate chain',
+  examples: [
+    {
+      name: 'selects meaning based on context',
+      inputs: { word: 'bank', context: 'withdraw money' },
+      want: {
+        meaning: 'financial institution',
+        meanings: ['financial institution', 'edge of a river'],
+      },
+    },
+  ],
+  process: ({ inputs }) => disambiguate(inputs.word, inputs.context),
+  expects: ({ result, want }) => {
+    expect(result.meaning).toBe(want.meaning);
+    expect(result.meanings).toEqual(want.meanings);
+  },
 });

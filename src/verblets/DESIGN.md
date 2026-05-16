@@ -14,7 +14,7 @@ Each verblet directory contains:
 
 ## Structured Output
 
-Pass `responseFormat` flat on the config object alongside other options. callLlm handles JSON parsing and auto-unwraps `{ value }` and `{ items }` wrappers. See [JSON Schema Guidelines](../../.claude/guidelines/JSON_SCHEMAS.md) for schema design patterns, collection conventions, and common mistakes.
+Pass `responseFormat` flat on the config object alongside other options. callLlm handles JSON parsing and auto-unwraps `{ value }` and `{ items }` wrappers. See [JSON Schema Guidelines](../../.claude/guidelines/json-schemas.md) for schema design patterns, collection conventions, and common mistakes.
 
 ```javascript
 import callLlm from '../../lib/llm/index.js';
@@ -58,7 +58,7 @@ All verblets export a `knownTexts` property (typically `[]`).
 
 ## Config System
 
-Verblets participate in the same config system as chains (see [option resolution](../../docs/option-resolution.md)). The difference: verblets typically have 1-2 options, so they use `getOption` directly rather than `getOptions` batch resolution.
+Verblets participate in the same config system as chains (see [option resolution](../../.claude/docs/option-resolution.md)). The difference: verblets typically have 1-2 options, so they use `getOption` directly rather than `getOptions` batch resolution.
 
 ```javascript
 import callLlm from '../../lib/llm/index.js';
@@ -131,15 +131,15 @@ export default async function sentiment(text, config = {}) {
 
 ## Documentation
 
-README is optional for verblets with a single parameter and obvious behavior. Required when there are multiple config options, non-obvious edge cases, or custom schemas. See [DOCUMENTATION.md](../../.claude/guidelines/DOCUMENTATION.md) for structure and quality standards.
+README is optional for verblets with a single parameter and obvious behavior. Required when there are multiple config options, non-obvious edge cases, or custom schemas. See [documentation.md](../../.claude/guidelines/documentation.md) for structure and quality standards.
 
 ## Testing
 
-**Unit tests** (`index.spec.js`): mock `callLlm`, verify the prompt contains expected content and `responseFormat` is passed. **Integration tests** (`index.examples.js`): real LLM calls with vitest test wrappers. See [example test conventions](../../docs/example-test-conventions.md).
+**Unit tests** (`index.spec.js`): mock `callLlm`, verify the prompt contains expected content and `responseFormat` is passed. **Integration tests** (`index.examples.js`): real LLM calls with vitest test wrappers. See [example test conventions](../../.claude/guidelines/example-tests.md).
 
 ## Anti-Patterns
 
-- Embedding schemas in prompts instead of using `responseFormat` (see [JSON Schema Guidelines](../../.claude/guidelines/JSON_SCHEMAS.md))
+- Embedding schemas in prompts instead of using `responseFormat` (see [JSON Schema Guidelines](../../.claude/guidelines/json-schemas.md))
 - Nesting model keys under `modelOptions` — pass `responseFormat`, `temperature`, etc. flat on config
 - Extracting `llm` from config to re-pass — callLlm resolves it automatically
 - Assembling prompts with template literals and `${contextBlock}` suffixes — use `parts.filter(Boolean).join('\n\n')`

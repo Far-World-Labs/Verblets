@@ -39,6 +39,11 @@ const ALL_INSTRUCTIONS = [
 ];
 
 export default async function testAdvice(path, config = {}) {
+  if (typeof path !== 'string' || path.length === 0) {
+    throw new Error(
+      `test-advice: path must be a non-empty string (got ${path === null ? 'null' : typeof path})`
+    );
+  }
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
@@ -64,8 +69,19 @@ export default async function testAdvice(path, config = {}) {
       }
     );
 
-    const results = batchResults.flat();
-    emitter.complete({ outcome: Outcome.success, totalIssues: results.length });
+    const validBatches = batchResults.filter(Array.isArray);
+    const failedInstructions = ALL_INSTRUCTIONS.length - validBatches.length;
+
+    if (validBatches.length === 0) {
+      throw new Error(`test-advice: all ${ALL_INSTRUCTIONS.length} instructions failed`);
+    }
+
+    const results = validBatches.flat();
+    emitter.complete({
+      outcome: failedInstructions > 0 ? Outcome.partial : Outcome.success,
+      totalIssues: results.length,
+      failedInstructions,
+    });
     return results;
   } catch (err) {
     emitter.error(err);

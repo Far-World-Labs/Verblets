@@ -1,49 +1,46 @@
-import { describe, expect, it } from 'vitest';
-
+import { expect } from 'vitest';
 import toBool from './index.js';
+import { runTable } from '../examples-runner/index.js';
 
-describe('toBool', () => {
-  it('returns true for "true"', () => {
-    expect(toBool('true')).toBe(true);
-  });
-
-  it('returns true for "True"', () => {
-    expect(toBool('True')).toBe(true);
-  });
-
-  it('returns true for "TRUE"', () => {
-    expect(toBool('TRUE')).toBe(true);
-  });
-
-  it('returns false for "false"', () => {
-    expect(toBool('false')).toBe(false);
-  });
-
-  it('returns false for "False"', () => {
-    expect(toBool('False')).toBe(false);
-  });
-
-  it('returns false for "FALSE"', () => {
-    expect(toBool('FALSE')).toBe(false);
-  });
-
-  it('returns undefined for ambiguous input', () => {
-    expect(toBool('maybe')).toBeUndefined();
-  });
-
-  it('returns undefined for empty string', () => {
-    expect(toBool('')).toBeUndefined();
-  });
-
-  it('handles "Answer: true" prefix', () => {
-    expect(toBool('Answer: true')).toBe(true);
-  });
-
-  it('handles surrounding quotes', () => {
-    expect(toBool('"true"')).toBe(true);
-  });
-
-  it('handles whitespace', () => {
-    expect(toBool('  true  ')).toBe(true);
-  });
+runTable({
+  describe: 'toBool',
+  examples: [
+    { name: '"true" → true', inputs: { value: 'true' }, want: { value: true } },
+    {
+      name: '"True" → true (case-insensitive)',
+      inputs: { value: 'True' },
+      want: { value: true },
+    },
+    { name: '"TRUE" → true (uppercase)', inputs: { value: 'TRUE' }, want: { value: true } },
+    { name: '"false" → false', inputs: { value: 'false' }, want: { value: false } },
+    {
+      name: '"False" → false (case-insensitive)',
+      inputs: { value: 'False' },
+      want: { value: false },
+    },
+    {
+      name: '"FALSE" → false (uppercase)',
+      inputs: { value: 'FALSE' },
+      want: { value: false },
+    },
+    {
+      name: 'ambiguous string → undefined',
+      inputs: { value: 'maybe' },
+      want: { value: undefined },
+    },
+    { name: 'empty string → undefined', inputs: { value: '' }, want: { value: undefined } },
+    {
+      name: 'strips "Answer:" prefix',
+      inputs: { value: 'Answer: true' },
+      want: { value: true },
+    },
+    {
+      name: 'strips surrounding quotes',
+      inputs: { value: '"true"' },
+      want: { value: true },
+    },
+    { name: 'trims whitespace', inputs: { value: '  true  ' }, want: { value: true } },
+  ],
+  process: ({ inputs }) => toBool(inputs.value),
+  expects: ({ result, want }) => expect(result).toEqual(want.value),
 });

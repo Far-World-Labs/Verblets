@@ -196,17 +196,24 @@ async function processBulkChunk(
     };
     const response = await reduce(chunk, prompt, reduceConfig);
 
-    const resultArray = response.results || response;
+    // Schema declares { results: [...] } as required. `response.results
+    // || response` would fall through to the wrapper object and either
+    // pass it through or hit the else branch silently. Resolve via ??
+    // and surface invalid shapes via the failure path with named reason.
+    const resultArray = Array.isArray(response) ? response : response?.results;
 
     let parsedResults = [];
     if (Array.isArray(resultArray)) {
       parsedResults = resultArray;
     } else {
-      // If we don't get an array, create failure results for this chunk
+      // Reduce returned a shape we can't parse — turn the chunk into
+      // failure results so processing continues. The reason string
+      // names the actual contract violation.
+      const got = response === null ? 'null' : typeof response;
       parsedResults = chunk.map((item) => ({
         path: item,
         passed: false,
-        reason: 'Invalid response format',
+        reason: `Invalid bulk response shape (expected array or { results: [] }, got ${got})`,
       }));
     }
 

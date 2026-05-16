@@ -49,6 +49,9 @@ export const mapFidelity = (value) => {
  * @returns {Promise<string>} Single result as dictated by prompt
  */
 export default async function join(list, prompt, config) {
+  if (!Array.isArray(list)) {
+    throw new Error(`join: list must be an array (got ${list === null ? 'null' : typeof list})`);
+  }
   [prompt, config] = resolveArgs(prompt, config);
   prompt ??= 'Combine these into a coherent single output.';
   if (list.length === 0) return '';
@@ -100,24 +103,38 @@ Important: This is part of a larger sequence. Join these fragments while being m
 
         batchDone(1);
 
-        return {
-          content: result || window.fragments.join(' '),
-          window,
-        };
+        // Return whatever the LLM produced (may be falsy/non-string).
+        // The aggregator below distinguishes valid from failed and
+        // surfaces partial outcome rather than silently substituting
+        // a fake-joined fallback string.
+        return { content: result, window };
       },
       { maxParallel: 3, errorPosture: ErrorPosture.resilient, abortSignal: runConfig.abortSignal }
     );
 
-    // Filter valid results
-    const validResults = windowResults.filter((r) => r.content && r.content.trim());
+    const validResults = windowResults.filter(
+      (r) => r?.content && typeof r.content === 'string' && r.content.trim()
+    );
+    const failedWindows = windows.length - validResults.length;
+
+    if (validResults.length === 0) {
+      const err = new Error(`join: all ${windows.length} windows failed to process`);
+      emitter.error(err);
+      throw err;
+    }
 
     if (validResults.length === 1) {
-      emitter.complete({ outcome: Outcome.success, windows: windows.length });
+      emitter.complete({
+        outcome: failedWindows > 0 ? Outcome.partial : Outcome.success,
+        windows: windows.length,
+        failedWindows,
+      });
       return validResults[0].content;
     }
 
     // Stitch operation: preserve terminals, only process overlapping sections
     let stitchedResult = validResults[0].content;
+    let failedStitches = 0;
 
     for (let i = 1; i < validResults.length; i++) {
       emitter.emit({
@@ -163,7 +180,14 @@ Add necessary connecting words, prepositions, conjunctions, or other filler text
           config: runConfig,
         });
 
-        stitchedResult = stitchResult || stitchedResult;
+        // If stitch returned falsy/non-string, keep the previous result and
+        // count the failure. Caller sees partial outcome instead of a
+        // success that silently dropped a stitch decision.
+        if (typeof stitchResult === 'string' && stitchResult.trim()) {
+          stitchedResult = stitchResult;
+        } else {
+          failedStitches += 1;
+        }
       } else {
         // No overlap - simple join
         const joinStyleBlock = styleHint
@@ -185,11 +209,21 @@ Add necessary connecting words, prepositions, conjunctions, or other filler text
           config: runConfig,
         });
 
-        stitchedResult = joinResult || stitchedResult;
+        if (typeof joinResult === 'string' && joinResult.trim()) {
+          stitchedResult = joinResult;
+        } else {
+          failedStitches += 1;
+        }
       }
     }
 
-    emitter.complete({ outcome: Outcome.success, windows: windows.length });
+    const hasFailures = failedWindows > 0 || failedStitches > 0;
+    emitter.complete({
+      outcome: hasFailures ? Outcome.partial : Outcome.success,
+      windows: windows.length,
+      failedWindows,
+      failedStitches,
+    });
 
     return stitchedResult;
   } catch (err) {

@@ -17,25 +17,30 @@ const name = 'conversation-turn-reduce';
  * @param {Array} options.history - Array of previous messages
  * @param {Object} options.rules - Conversation rules including customPrompt
  * @param {string|Object} options.llm - LLM configuration (resolved by callLlm)
- * @returns {Promise<Array<string>>} Array of responses, one per speaker
+ * @returns {Promise<Array>} Array of responses aligned with speaker order; undefined slots for speakers whose response failed all retries
  */
 export default async function conversationTurnReduce({
   speakers,
   topic,
   bundleContext: parentContext = '',
   history = [],
+  speakerMemory = new Map(),
   rules = {},
   ...options
 }) {
   const { text: topicText, context: ownContext } = resolveTexts(topic, []);
   const bundleContext = [parentContext, ownContext].filter(Boolean).join('\n\n');
 
-  if (!speakers || speakers.length === 0) {
-    throw new Error('At least one speaker is required');
+  if (!Array.isArray(speakers) || speakers.length === 0) {
+    throw new Error(
+      `conversation-turn-reduce: speakers must be a non-empty array (got ${
+        speakers === null ? 'null' : typeof speakers
+      })`
+    );
   }
 
   if (!topicText) {
-    throw new Error('Topic is required');
+    throw new Error('conversation-turn-reduce: topic is required');
   }
 
   const runConfig = nameStep(name, options);
@@ -65,6 +70,11 @@ export default async function conversationTurnReduce({
       const parts = [speakerName];
       if (speaker.bio) parts.push(`Bio: ${speaker.bio}`);
       if (speaker.agenda) parts.push(`Agenda: ${speaker.agenda}`);
+      const priorStatements = speakerMemory.get?.(speaker.id) ?? [];
+      if (priorStatements.length > 0) {
+        const formatted = priorStatements.map((m) => `[${m.time}] ${m.comment}`).join('\n');
+        parts.push(`Prior statements:\n${formatted}`);
+      }
       return parts.join('\n');
     });
 
@@ -72,7 +82,7 @@ export default async function conversationTurnReduce({
     const instructionParts = [
       'Given a speaker description, generate their response to the conversation.',
       baseContext,
-      'For the speaker described in the input, provide their response to the topic. The response should reflect their role, bio, and agenda if provided.',
+      'For the speaker described in the input, provide their response to the topic. The response should reflect their role, bio, and agenda if provided. If prior statements are included, maintain consistency with positions and claims the speaker has already made.',
       bundleContext,
     ];
     const instructions = instructionParts.filter(Boolean).join('\n\n');
@@ -85,8 +95,23 @@ export default async function conversationTurnReduce({
     });
     batchDone(speakers.length);
 
+    // map returns positionally-aligned results with undefined slots for
+    // failed speakers. Surface the partial-vs-total distinction honestly:
+    // total failure throws (no usable conversation), partial reports
+    // failedSpeakers and outcome=partial.
+    const failedSpeakers = result.filter((r) => r === undefined).length;
+    if (failedSpeakers === speakers.length) {
+      throw new Error(
+        `conversation-turn-reduce: all ${speakers.length} speakers failed to respond`
+      );
+    }
+
     emitter.emit({ event: DomainEvent.output, value: result });
-    emitter.complete({ outcome: Outcome.success, speakers: speakers.length });
+    emitter.complete({
+      outcome: failedSpeakers > 0 ? Outcome.partial : Outcome.success,
+      speakers: speakers.length,
+      failedSpeakers,
+    });
     return result;
   } catch (err) {
     emitter.error(err);

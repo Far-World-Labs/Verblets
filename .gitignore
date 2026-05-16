@@ -31,3 +31,6 @@ coverage/
 
 # Long-running automation scripts and their output
 automations/
+
+# Local stress-test runner config (loads /tmp/*.test.mjs)
+.tmp.vitest.stress.config.mjs

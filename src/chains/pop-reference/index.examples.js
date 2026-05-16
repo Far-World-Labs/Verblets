@@ -1,15 +1,15 @@
 import { describe } from 'vitest';
-import popReference from './index.js';
+import popReferenceItem from './index.js';
 import { longTestTimeout } from '../../constants/common.js';
 import { getTestHelpers } from '../test-analysis/test-wrappers.js';
 
 const { it, expect, aiExpect } = getTestHelpers('Pop reference chain');
 
-describe('popReference examples', () => {
+describe('popReferenceItem examples', () => {
   it(
     'finds references for a decision moment',
     async () => {
-      const result = await popReference(
+      const result = await popReferenceItem(
         'She finally made a decision after months of doubt',
         'pivotal moment of choosing clarity over comfort'
       );
@@ -32,7 +32,7 @@ describe('popReference examples', () => {
   it(
     'filters to specified sources',
     async () => {
-      const result = await popReference(
+      const result = await popReferenceItem(
         'The meeting dragged on with everyone avoiding the real issue',
         'workplace dysfunction and avoidance',
         { include: ['The Office', 'Parks and Recreation', 'Silicon Valley'] }
@@ -53,7 +53,7 @@ describe('popReference examples', () => {
   it(
     'supports weighted sources',
     async () => {
-      const result = await popReference(
+      const result = await popReferenceItem(
         'They had to choose between safety and adventure',
         'life-changing decision between comfort and growth',
         {

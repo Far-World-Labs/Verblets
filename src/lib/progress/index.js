@@ -33,7 +33,7 @@
  */
 
 import libraryVersion from '../version/index.js';
-import { Kind, StatusCode, ChainEvent, OpEvent } from './constants.js';
+import { Kind, StatusCode, ChainEvent, OpEvent, DomainEvent } from './constants.js';
 
 /** Generate a random hex ID. 16 chars for spanId, 32 for traceId. */
 function hexId(bytes) {
@@ -77,6 +77,27 @@ function send(callback, data) {
   }
 }
 
+function normalizeFilter(eventFilter) {
+  if (typeof eventFilter === 'function') return eventFilter;
+  if (typeof eventFilter === 'string') return (event) => event.kind === eventFilter;
+  return undefined;
+}
+
+function applyEventFilter(callback, eventFilter) {
+  const predicate = normalizeFilter(eventFilter);
+  if (!predicate || !callback || typeof callback !== 'function') return callback;
+  return (event) => {
+    let pass;
+    try {
+      pass = predicate(event);
+    } catch (err) {
+      console.warn('[progress] eventFilter error:', err?.message ?? err);
+      pass = true;
+    }
+    if (pass) callback(event);
+  };
+}
+
 /**
  * Create a progress emitter bound to a named operation.
  * Does not emit on construction — call start() explicitly.
@@ -89,13 +110,15 @@ function send(callback, data) {
  * @param {string} [options.traceId] - Trace correlation ID (propagated from nameStep)
  * @param {string} [options.spanId] - Span ID for this emitter's lifecycle
  * @param {string} [options.parentSpanId] - Span ID of the calling chain
+ * @param {Function|string} [options.eventFilter] - Predicate or kind string to filter events before dispatch
  * @returns {{ start, emit, progress, metrics, complete, error, batch }}
  */
 export default function createProgressEmitter(
   name,
   callback,
-  { operation, now, traceId: tid, spanId: sid, parentSpanId: psid } = {}
+  { operation, now, traceId: tid, spanId: sid, parentSpanId: psid, eventFilter } = {}
 ) {
+  const cb = applyEventFilter(callback, eventFilter);
   const startTime = now;
 
   // Trace context — present on every event when available
@@ -111,19 +134,19 @@ export default function createProgressEmitter(
 
   const emitter = {
     start() {
-      send(callback, { kind: Kind.telemetry, ...base, event: ChainEvent.start });
+      send(cb, { kind: Kind.telemetry, ...base, event: ChainEvent.start });
     },
 
     emit(data = {}) {
-      send(callback, { kind: Kind.event, ...base, ...data });
+      send(cb, { kind: Kind.event, ...base, ...data });
     },
 
     progress(data = {}) {
-      send(callback, { kind: Kind.operation, ...base, ...data });
+      send(cb, { kind: Kind.operation, ...base, ...data });
     },
 
     metrics(data = {}) {
-      send(callback, { kind: Kind.telemetry, ...base, ...data });
+      send(cb, { kind: Kind.telemetry, ...base, ...data });
     },
 
     /**
@@ -134,13 +157,22 @@ export default function createProgressEmitter(
      * @param {{ metric: string, value: number, [key: string]: * }} data
      */
     measure(data = {}) {
-      send(callback, { kind: Kind.telemetry, ...base, ...data });
+      send(cb, { kind: Kind.telemetry, ...base, ...data });
+    },
+
+    /**
+     * Emit structured uncertainty data as a domain event.
+     *
+     * @param {{ confidence?: number, confidenceInterval?: { low: number, high: number }, unknowns?: string[], [key: string]: * }} data
+     */
+    uncertainty(data = {}) {
+      send(cb, { kind: Kind.event, ...base, event: DomainEvent.uncertainty, ...data });
     },
 
     complete(meta = {}) {
       const { durationMs: explicit, ...rest } = meta;
       const durationMs = explicit ?? (startTime ? Date.now() - startTime.getTime() : undefined);
-      send(callback, {
+      send(cb, {
         kind: Kind.telemetry,
         ...base,
         event: ChainEvent.complete,
@@ -153,7 +185,7 @@ export default function createProgressEmitter(
     error(err, meta = {}) {
       const { durationMs: explicit, ...rest } = meta;
       const durationMs = explicit ?? (startTime ? Date.now() - startTime.getTime() : undefined);
-      send(callback, {
+      send(cb, {
         kind: Kind.telemetry,
         ...base,
         event: ChainEvent.error,

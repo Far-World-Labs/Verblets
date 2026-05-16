@@ -18,16 +18,16 @@ Lead with what makes the module distinctive. Show natural language parameters �
 
 Use defaults in examples. Don't complicate the first example with bulk processing configuration or model selection unless that's the module's primary purpose. List non-functional benefits (parallel processing, batching) after core capabilities.
 
-Generic model configuration (temperature, maxTokens, llm selection) belongs in [docs/configuration.md](../docs/configuration.md), not in individual module READMEs. Include an "Advanced Usage" section only when the module has genuinely specialized configuration beyond standard model options.
+Generic model configuration (temperature, maxTokens, llm selection) belongs in [configuration.md](../docs/configuration.md), not in individual module READMEs. Include an "Advanced Usage" section only when the module has genuinely specialized configuration beyond standard model options.
 
-Cross-cutting subsystems have their own centralized documentation in `docs/`. Module READMEs should reference these rather than re-explaining common behaviors:
+Cross-cutting subsystems have their own centralized documentation in `.claude/docs/`. Module READMEs should reference these rather than re-explaining common behaviors:
 
 - [Configuration](../docs/configuration.md) — model selection, capabilities, model parameters
 - [Option Resolution](../docs/option-resolution.md) — `nameStep`, `getOptions`, `getOption`, `withPolicy`, mappers, policy
 - [Batching](../docs/batching.md) — auto-sizing, `parallelBatch`, `batchSize`/`maxParallel`
 - [Progress Tracking](../docs/progress-tracking.md) — `onProgress`, `createProgressEmitter`, `scopePhase`, event lifecycle
 - [Retry](../docs/retry.md) — config-aware retries, retryable errors, abort signal
-- [JSON Schemas](JSON_SCHEMAS.md) — `response_format`, schema design, auto-unwrapping
+- [JSON Schemas](json-schemas.md) — `response_format`, schema design, auto-unwrapping
 
 ### Common mistakes
 

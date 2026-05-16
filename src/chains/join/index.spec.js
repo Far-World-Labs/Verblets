@@ -1,9 +1,8 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, vi, expect } from 'vitest';
 import join from './index.js';
+import { runTable } from '../../lib/examples-runner/index.js';
 
-vi.mock('../../lib/llm/index.js', () => ({
-  default: vi.fn(),
-}));
+vi.mock('../../lib/llm/index.js', () => ({ default: vi.fn() }));
 
 import llm from '../../lib/llm/index.js';
 
@@ -23,26 +22,42 @@ beforeEach(() => {
   });
 });
 
-describe('join chain', () => {
-  it('joins fragments via LLM with transitions', async () => {
-    const result = await join(['Hello', 'world', 'today'], 'Connect with simple words');
-
-    expect(result).toContain('Hello');
-    expect(result).toContain('world');
-    expect(result).toContain('today');
-    expect(llm).toHaveBeenCalled();
-  });
-
-  it('applies windowed processing when configured', async () => {
-    const result = await join(['a', 'b', 'c'], 'Simple connections', { windowSize: 2 });
-
-    expect(result.length).toBeGreaterThan(0);
-    expect(llm).toHaveBeenCalled();
-  });
-
-  it('returns empty string for empty array, raw item for single', async () => {
-    expect(await join([])).toBe('');
-    expect(await join(['only'])).toBe('only');
-    expect(llm).not.toHaveBeenCalled();
-  });
+runTable({
+  describe: 'join chain',
+  examples: [
+    {
+      name: 'joins fragments via LLM with transitions',
+      inputs: { items: ['Hello', 'world', 'today'], instructions: 'Connect with simple words' },
+      want: { contains: ['Hello', 'world', 'today'], llmCalled: true },
+    },
+    {
+      name: 'applies windowed processing when configured',
+      inputs: {
+        items: ['a', 'b', 'c'],
+        instructions: 'Simple connections',
+        options: { windowSize: 2 },
+      },
+      want: { nonEmpty: true, llmCalled: true },
+    },
+    {
+      name: 'returns empty string for empty array',
+      inputs: { items: [] },
+      want: { value: '', noLlm: true },
+    },
+    {
+      name: 'returns raw item for single-element array',
+      inputs: { items: ['only'] },
+      want: { value: 'only', noLlm: true },
+    },
+  ],
+  process: ({ inputs }) => join(inputs.items, inputs.instructions, inputs.options),
+  expects: ({ result, want }) => {
+    if ('value' in want) expect(result).toBe(want.value);
+    if (want.contains) {
+      for (const fragment of want.contains) expect(result).toContain(fragment);
+    }
+    if (want.nonEmpty) expect(result.length).toBeGreaterThan(0);
+    if (want.llmCalled) expect(llm).toHaveBeenCalled();
+    if (want.noLlm) expect(llm).not.toHaveBeenCalled();
+  },
 });

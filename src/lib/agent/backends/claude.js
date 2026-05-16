@@ -33,6 +33,10 @@ function resolveClaudeBinary() {
 export function buildCliArgs(opts, instruction) {
   const args = [resolveClaudeBinary(), '--print', '--output-format', 'stream-json', '--verbose'];
 
+  if (opts.skipPermissions) {
+    args.push('--dangerously-skip-permissions');
+  }
+
   if (opts.maxTurns) {
     args.push('--max-turns', String(opts.maxTurns));
   }
@@ -41,13 +45,18 @@ export function buildCliArgs(opts, instruction) {
     args.push('--system-prompt', opts.systemPrompt);
   }
 
-  if (opts.allowedTools?.length) {
-    const mapped = opts.allowedTools.map((t) => TOOL_MAP[t] || t).join(',');
-    args.push('--allowedTools', mapped);
+  if (!opts.allowedTools?.length) {
+    throw new Error('Claude backend requires non-empty allowedTools');
   }
+  const mapped = opts.allowedTools.map((t) => TOOL_MAP[t] || t).join(',');
+  args.push('--tools', mapped);
 
   if (opts.model) {
     args.push('--model', opts.model);
+  }
+
+  if (opts.effort) {
+    args.push('--effort', opts.effort);
   }
 
   args.push('-p', instruction);
@@ -58,13 +67,13 @@ export function buildCliArgs(opts, instruction) {
 export function parseOutput(raw) {
   const lines = raw.split('\n').filter(Boolean);
   const messages = [];
+  let malformedLines = 0;
 
   for (const line of lines) {
     try {
-      const parsed = JSON.parse(line);
-      messages.push(parsed);
+      messages.push(JSON.parse(line));
     } catch {
-      // non-JSON output line
+      malformedLines += 1;
     }
   }
 
@@ -84,8 +93,10 @@ export function parseOutput(raw) {
     costUsd: resultMessage?.total_cost_usd,
     numTurns: resultMessage?.num_turns,
     isError: resultMessage?.is_error,
+    ...(malformedLines > 0 && { malformedLines }),
     messages,
-    rawOutput: raw.slice(0, 10_000),
+    rawOutput: raw.slice(0, 200_000),
+    rawOutputTruncated: raw.length > 200_000,
   };
 }
 

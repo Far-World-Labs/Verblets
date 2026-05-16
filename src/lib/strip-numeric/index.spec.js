@@ -1,38 +1,44 @@
-import { describe, expect, it } from 'vitest';
-
+import { expect } from 'vitest';
 import stripNumeric from './index.js';
+import { runTable } from '../examples-runner/index.js';
 
-describe('stripNumeric', () => {
-  it('returns digits from a plain number string', () => {
-    expect(stripNumeric('42')).toBe('42');
-  });
-
-  it('preserves decimal points', () => {
-    expect(stripNumeric('3.14')).toBe('3.14');
-  });
-
-  it('strips non-numeric characters', () => {
-    expect(stripNumeric('$1,234.56')).toBe('1234.56');
-  });
-
-  it('removes "Answer:" prefix', () => {
-    expect(stripNumeric('Answer: 7')).toBe('7');
-  });
-
-  it('removes "answer:" prefix (lowercase)', () => {
-    expect(stripNumeric('answer: 99')).toBe('99');
-  });
-
-  it('extracts number from surrounding text', () => {
-    expect(stripNumeric('The value is 42 units')).toBe('42');
-  });
-
-  it('returns empty string when no digits present', () => {
-    expect(stripNumeric('no numbers here')).toBe('');
-  });
-
-  it('handles negative sign by stripping it', () => {
-    // stripNumeric only keeps digits and dots
-    expect(stripNumeric('-5')).toBe('5');
-  });
+runTable({
+  describe: 'stripNumeric',
+  examples: [
+    { name: 'plain number string', inputs: { value: '42' }, want: { value: '42' } },
+    {
+      name: 'preserves decimal points',
+      inputs: { value: '3.14' },
+      want: { value: '3.14' },
+    },
+    {
+      name: 'strips currency + commas',
+      inputs: { value: '$1,234.56' },
+      want: { value: '1234.56' },
+    },
+    {
+      name: 'strips "Answer:" prefix',
+      inputs: { value: 'Answer: 7' },
+      want: { value: '7' },
+    },
+    {
+      name: 'strips lowercase "answer:" prefix',
+      inputs: { value: 'answer: 99' },
+      want: { value: '99' },
+    },
+    {
+      name: 'extracts from surrounding text',
+      inputs: { value: 'The value is 42 units' },
+      want: { value: '42' },
+    },
+    {
+      name: 'no digits → empty string',
+      inputs: { value: 'no numbers here' },
+      want: { value: '' },
+    },
+    // stripNumeric only keeps digits and dots — the negative sign is dropped.
+    { name: 'drops negative sign', inputs: { value: '-5' }, want: { value: '5' } },
+  ],
+  process: ({ inputs }) => stripNumeric(inputs.value),
+  expects: ({ result, want }) => expect(result).toEqual(want.value),
 });

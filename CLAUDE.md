@@ -6,6 +6,44 @@
 
 AI-powered functions that accept natural language instructions to transform and process data.
 
+### Documentation
+
+#### Specs
+
+- **[spec/spec-conventions.md](spec/spec-conventions.md)** — How to write specs: two-layer split (timeless/impl), length and file organization, specification techniques (constraints, decision criteria, shape declarations, corrective notes), why not examples, generic spec kinds.
+- **[spec/automation.md](spec/automation.md)** / **[.impl.md](spec/automation.impl.md)** — Automation execution model: RunContext shape, ctx.lib split, storage domains and API, observability, run history, composition, termination.
+- **[spec/error-policy.md](spec/error-policy.md)** — How chains handle anomalous input and failed work: caller-config errors throw, external-service failures respect errorPosture, liberal-input acceptance stays silent. Severity vocabulary (Outcome, Level, ErrorPosture), decision criteria, boundary validation, strictness-modifier override.
+- **[spec/discovery-philosophy.md](spec/discovery-philosophy.md)** — How hypothesis discovery works: the library as standard library for people's lives. Three horizons (technical patterns elevated to meaning, activities people already do, functions hiding in other fields).
+
+#### Docs
+
+- **[docs/configuration.md](docs/configuration.md)** — Consumer-facing: init, model selection (string/capability/explicit), model parameters, batch/retry config, chain-specific dials, policy, structured output.
+- **[docs/option-resolution.md](docs/option-resolution.md)** — Author-facing: nameStep, createProgressEmitter, getOptions, getOption, withPolicy, mappers, override keys, resolution order.
+- **[docs/batching.md](docs/batching.md)** — Auto-sizing via createBatches, parallelBatch concurrency, error postures (strict/resilient), batch object shape.
+- **[docs/retry.md](docs/retry.md)** — Config-aware retry: retryable error detection (429/5xx), linear delay scaling, abort signal, progress events.
+- **[docs/progress-tracking.md](docs/progress-tracking.md)** — Event taxonomy (event/operation/telemetry/logging), createProgressEmitter lifecycle, batch progress, phase scoping, domain events, event shape.
+
+#### Reference
+
+- **[reference/configuration-philosophy.md](reference/configuration-philosophy.md)** — General essays: code/deploy/runtime config trade-offs, context attributes as policy vocabulary, permanent flags as strategic options.
+- **[reference/dynamic-configuration.md](reference/dynamic-configuration.md)** — Long-form guide: AI-powered configuration with policy functions, OpenFeature, classify policies, decision tracing, valueArbitrate, feedback loops.
+
+#### ADRs
+
+- **[adr/2026-03-18-option-value-vocabulary.md](adr/2026-03-18-option-value-vocabulary.md)** — Unified low/high vocabulary, pure mapper functions, fused resolve+map, three mapper shapes.
+- **[adr/2026-03-19-resolve-all-and-eval-context.md](adr/2026-03-19-resolve-all-and-eval-context.md)** — Batch resolution via getOptions, withPolicy marker, override key flattening.
+- **[adr/2026-03-30-event-vocabulary-normalization.md](adr/2026-03-30-event-vocabulary-normalization.md)** — Normalized naming across 54 chains: segmentation nouns, pipeline stages, outcomes.
+- **[adr/2026-04-12-instruction-as-context.md](adr/2026-04-12-instruction-as-context.md)** — resolveTexts normalization, unknown keys as XML context, known keys table, collectEventsWith.
+
+#### Guidelines
+
+- **[guidelines/](guidelines/)** — Standards enforced by architecture tests: [code quality](guidelines/code-quality.md), [prompts](guidelines/prompts.md), [JSON schemas](guidelines/json-schemas.md), [unit tests](guidelines/unit-tests.md), [example tests](guidelines/example-tests.md), [architecture tests](guidelines/architecture-tests.md), [documentation](guidelines/documentation.md).
+
+#### Design
+
+- **[src/chains/DESIGN.md](src/chains/DESIGN.md)** — Chain implementation patterns.
+- **[src/verblets/DESIGN.md](src/verblets/DESIGN.md)** — Verblet implementation patterns.
+
 ### Project-Specific Rules
 - **Never use null** - Convert to undefined at boundaries (JSON, Redis, LLM responses)
 - **Use responseFormat with JSON schemas** - The llm module auto-unwraps `value` and `items`

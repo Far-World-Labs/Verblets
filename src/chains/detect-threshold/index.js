@@ -12,9 +12,13 @@ import { resolveArgs, resolveTexts } from '../../lib/instruction/index.js';
 const name = 'detect-threshold';
 
 export function calculateStatistics(data, targetProperty) {
+  // Filter to finite numbers only. The previous filter let null through
+  // (null !== undefined, and isNaN(null) is false because null coerces
+  // to 0), which then sorted into the dataset and skewed mean/median/
+  // stdDev. Strings and booleans had similar coercion paths.
   const values = data
     .map((item) => item[targetProperty])
-    .filter((v) => v !== undefined && !isNaN(v))
+    .filter((v) => typeof v === 'number' && Number.isFinite(v))
     .toSorted((a, b) => a - b);
 
   if (values.length === 0) {
@@ -230,19 +234,32 @@ Return threshold candidates with their rationales.`;
       }
     );
 
-    // Validate and fix threshold values to be within data range
-    if (result.thresholdCandidates) {
-      result.thresholdCandidates = result.thresholdCandidates.filter((candidate) => {
-        // Ensure threshold value is within the data range
-        if (candidate.value < stats.min || candidate.value > stats.max) {
-          debug(
-            `Threshold value ${candidate.value} is outside data range [${stats.min}, ${stats.max}]`
-          );
-          return false;
-        }
-        return true;
-      });
+    // Schema declares thresholdCandidates as required. A malformed response
+    // would either crash on .filter (if missing) or silently mutate a
+    // non-object on line below. Throw at the boundary instead.
+    if (!result || typeof result !== 'object' || Array.isArray(result)) {
+      throw new Error(
+        `detect-threshold: expected object from final LLM (got ${
+          result === null ? 'null' : typeof result
+        })`
+      );
     }
+    if (!Array.isArray(result.thresholdCandidates)) {
+      throw new Error(
+        `detect-threshold: LLM response missing required "thresholdCandidates" array (got ${typeof result.thresholdCandidates})`
+      );
+    }
+
+    // Drop threshold candidates whose value is outside the observed data range
+    result.thresholdCandidates = result.thresholdCandidates.filter((candidate) => {
+      if (candidate.value < stats.min || candidate.value > stats.max) {
+        debug(
+          `Threshold value ${candidate.value} is outside data range [${stats.min}, ${stats.max}]`
+        );
+        return false;
+      }
+      return true;
+    });
 
     // Add distribution analysis
     result.distributionAnalysis = {

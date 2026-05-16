@@ -16,10 +16,10 @@ import path from 'path';
 
 // Load prompt guidelines with fallback
 try {
-  const guidelinesPath = path.join(process.cwd(), '.claude/guidelines/PROMPTS.md');
+  const guidelinesPath = path.join(process.cwd(), '.claude/guidelines/prompts.md');
   fs.readFileSync(guidelinesPath, 'utf8');
 } catch (error) {
-  console.warn('Could not load PROMPTS.md guidelines:', error.message);
+  console.warn('Could not load prompts.md guidelines:', error.message);
 }
 
 // ========================================

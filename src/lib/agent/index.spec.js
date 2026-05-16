@@ -1,12 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 import * as claudeBackend from './backends/claude.js';
-import * as openaiBackend from './backends/openai.js';
 import { mapAllowedTools, DEFAULT_TOOLS, TOOL_CATEGORIES } from './tools.js';
 
 // ── tools.js ──
 
 describe('mapAllowedTools', () => {
+  it('returns DEFAULT_TOOLS for undefined', () => {
+    expect(mapAllowedTools(undefined)).toEqual(DEFAULT_TOOLS);
+  });
+
   it('returns all categories for "all"', () => {
     expect(mapAllowedTools('all')).toEqual(TOOL_CATEGORIES);
   });
@@ -19,9 +22,25 @@ describe('mapAllowedTools', () => {
     expect(mapAllowedTools('safe')).toEqual(DEFAULT_TOOLS);
   });
 
-  it('passes through array values unchanged', () => {
+  it('passes through valid array values unchanged', () => {
     const custom = ['read', 'bash'];
     expect(mapAllowedTools(custom)).toBe(custom);
+  });
+
+  it('throws on empty array', () => {
+    expect(() => mapAllowedTools([])).toThrow(/empty array is not supported/);
+  });
+
+  it('throws on unknown category', () => {
+    expect(() => mapAllowedTools(['read', 'mystery'])).toThrow(/unknown category: mystery/);
+  });
+
+  it('throws on non-array, non-string input', () => {
+    expect(() => mapAllowedTools(42)).toThrow(/expected an array/);
+  });
+
+  it('throws on unknown string preset', () => {
+    expect(() => mapAllowedTools('bogus')).toThrow(/expected an array/);
   });
 });
 
@@ -30,7 +49,7 @@ describe('mapAllowedTools', () => {
 describe('claude backend', () => {
   describe('buildCliArgs', () => {
     it('produces minimal args with defaults', () => {
-      const args = claudeBackend.buildCliArgs({ allowedTools: [] }, 'do something');
+      const args = claudeBackend.buildCliArgs({ allowedTools: ['read'] }, 'do something');
       expect(args[0]).toContain('claude');
       expect(args).toContain('--print');
       expect(args).toContain('--output-format');
@@ -40,7 +59,7 @@ describe('claude backend', () => {
     });
 
     it('includes --max-turns when set', () => {
-      const args = claudeBackend.buildCliArgs({ maxTurns: 25, allowedTools: [] }, 'task');
+      const args = claudeBackend.buildCliArgs({ maxTurns: 25, allowedTools: ['read'] }, 'task');
       const idx = args.indexOf('--max-turns');
       expect(idx).toBeGreaterThan(-1);
       expect(args[idx + 1]).toBe('25');
@@ -48,7 +67,7 @@ describe('claude backend', () => {
 
     it('includes --system-prompt when set', () => {
       const args = claudeBackend.buildCliArgs(
-        { systemPrompt: 'be concise', allowedTools: [] },
+        { systemPrompt: 'be concise', allowedTools: ['read'] },
         'task'
       );
       const idx = args.indexOf('--system-prompt');
@@ -56,9 +75,9 @@ describe('claude backend', () => {
       expect(args[idx + 1]).toBe('be concise');
     });
 
-    it('maps allowedTools through TOOL_MAP', () => {
+    it('maps allowedTools through TOOL_MAP to --tools flag', () => {
       const args = claudeBackend.buildCliArgs({ allowedTools: ['read', 'write', 'bash'] }, 'task');
-      const idx = args.indexOf('--allowedTools');
+      const idx = args.indexOf('--tools');
       expect(idx).toBeGreaterThan(-1);
       expect(args[idx + 1]).toContain('Read');
       expect(args[idx + 1]).toContain('Write');
@@ -67,12 +86,45 @@ describe('claude backend', () => {
 
     it('includes --model when set', () => {
       const args = claudeBackend.buildCliArgs(
-        { model: 'claude-sonnet-4-5-20250514', allowedTools: [] },
+        { model: 'claude-sonnet-4-5-20250514', allowedTools: ['read'] },
         'task'
       );
       const idx = args.indexOf('--model');
       expect(idx).toBeGreaterThan(-1);
       expect(args[idx + 1]).toBe('claude-sonnet-4-5-20250514');
+    });
+
+    it('includes --effort when set', () => {
+      const args = claudeBackend.buildCliArgs({ effort: 'high', allowedTools: ['read'] }, 'task');
+      const idx = args.indexOf('--effort');
+      expect(idx).toBeGreaterThan(-1);
+      expect(args[idx + 1]).toBe('high');
+    });
+
+    it('omits --effort when not set', () => {
+      const args = claudeBackend.buildCliArgs({ allowedTools: ['read'] }, 'task');
+      expect(args).not.toContain('--effort');
+    });
+
+    it('includes --dangerously-skip-permissions when skipPermissions is true', () => {
+      const args = claudeBackend.buildCliArgs(
+        { skipPermissions: true, allowedTools: ['read'] },
+        'task'
+      );
+      expect(args).toContain('--dangerously-skip-permissions');
+    });
+
+    it('omits --dangerously-skip-permissions when skipPermissions is false', () => {
+      const args = claudeBackend.buildCliArgs(
+        { skipPermissions: false, allowedTools: ['read'] },
+        'task'
+      );
+      expect(args).not.toContain('--dangerously-skip-permissions');
+    });
+
+    it('does not include --bare', () => {
+      const args = claudeBackend.buildCliArgs({ allowedTools: ['read'] }, 'task');
+      expect(args).not.toContain('--bare');
     });
   });
 
@@ -185,34 +237,11 @@ describe('claude backend', () => {
       expect(result.summary).toBe('ok');
     });
 
-    it('truncates rawOutput to 10k chars', () => {
-      const long = 'x'.repeat(20_000);
+    it('truncates rawOutput to 200k chars', () => {
+      const long = 'x'.repeat(300_000);
       const result = claudeBackend.parseOutput(long);
-      expect(result.rawOutput.length).toBe(10_000);
+      expect(result.rawOutput.length).toBe(200_000);
     });
-  });
-});
-
-// ── openai backend ──
-
-describe('openai backend', () => {
-  it('produces basic args with instruction', () => {
-    const args = openaiBackend.buildCliArgs({}, 'build feature');
-    expect(args[0]).toBe('codex');
-    expect(args).toContain('build feature');
-  });
-
-  it('includes --model when set', () => {
-    const args = openaiBackend.buildCliArgs({ model: 'o3' }, 'task');
-    expect(args).toContain('--model');
-    expect(args).toContain('o3');
-  });
-
-  it('parseOutput returns stub shape', () => {
-    const result = openaiBackend.parseOutput('some output');
-    expect(result.summary).toBe('some output');
-    expect(result.filesModified).toEqual([]);
-    expect(result.filesCreated).toEqual([]);
   });
 });
 

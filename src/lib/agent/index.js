@@ -16,14 +16,12 @@ import { homedir } from 'node:os';
 
 import { nameStep, getOption, getOptions, withPolicy } from '../context/option.js';
 import createProgressEmitter from '../progress/index.js';
-import { mapAllowedTools, DEFAULT_TOOLS } from './tools.js';
+import { mapAllowedTools } from './tools.js';
 
 import * as claudeBackend from './backends/claude.js';
-import * as openaiBackend from './backends/openai.js';
 
 const BACKENDS = {
   claude: claudeBackend,
-  openai: openaiBackend,
 };
 
 export default async function callAgent(instruction, config = {}) {
@@ -32,16 +30,15 @@ export default async function callAgent(instruction, config = {}) {
   emitter.start({ instruction: instruction.slice(0, 200) });
 
   const opts = await getOptions(runConfig, {
-    maxTurns: 10,
+    maxTurns: undefined,
     cwd: undefined,
     systemPrompt: undefined,
     model: undefined,
+    effort: undefined,
+    skipPermissions: false,
     backend: 'claude',
     allowedTools: withPolicy(mapAllowedTools),
   });
-
-  const allowedTools = Array.isArray(opts.allowedTools) ? opts.allowedTools : DEFAULT_TOOLS;
-  const resolvedOpts = { ...opts, allowedTools };
 
   const backend = BACKENDS[opts.backend];
   if (!backend) {
@@ -49,9 +46,9 @@ export default async function callAgent(instruction, config = {}) {
     throw new Error(`Unknown agent backend: ${opts.backend}`);
   }
 
-  const args = backend.buildCliArgs(resolvedOpts, instruction);
+  const args = backend.buildCliArgs(opts, instruction);
 
-  emitter.emit({ event: 'agent:exec', backend: opts.backend, maxTurns: opts.maxTurns });
+  emitter.emit({ event: 'agent:exec', backend: opts.backend, model: opts.model });
 
   const requestTimeout = await getOption('requestTimeout', runConfig, 300_000);
   let raw;
@@ -67,6 +64,12 @@ export default async function callAgent(instruction, config = {}) {
   }
 
   const result = backend.parseOutput(raw);
+
+  if (result.isError) {
+    const message = result.summary || 'agent reported an error';
+    emitter.error({ message, type: 'agent-error' });
+    throw new Error(`Agent: ${message}`);
+  }
 
   emitter.complete({
     filesModified: result.filesModified.length,
@@ -97,8 +100,10 @@ function agentEnv() {
   return env;
 }
 
+const SIGKILL_GRACE_MS = 5000;
+
 function execCliAgent(args, { cwd, timeout, abortSignal }) {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolveOutput, reject) => {
     const [cmd, ...cmdArgs] = args;
     const child = spawn(cmd, cmdArgs, {
       cwd,
@@ -109,13 +114,19 @@ function execCliAgent(args, { cwd, timeout, abortSignal }) {
     const stdoutChunks = [];
     const stderrChunks = [];
     let settled = false;
+    let killTimer;
+
+    const escalateKill = () => {
+      child.kill('SIGTERM');
+      killTimer = setTimeout(() => child.kill('SIGKILL'), SIGKILL_GRACE_MS);
+    };
 
     child.stdout.on('data', (chunk) => stdoutChunks.push(chunk));
     child.stderr.on('data', (chunk) => stderrChunks.push(chunk));
 
     const timer = timeout
       ? setTimeout(() => {
-          child.kill('SIGTERM');
+          escalateKill();
           if (!settled) {
             settled = true;
             reject(new Error(`Agent timed out after ${timeout}ms`));
@@ -125,30 +136,30 @@ function execCliAgent(args, { cwd, timeout, abortSignal }) {
 
     child.on('close', (code) => {
       if (timer) clearTimeout(timer);
+      if (killTimer) clearTimeout(killTimer);
       if (settled) return;
       settled = true;
 
-      const stdout = Buffer.concat(stdoutChunks).toString();
-      const stderr = Buffer.concat(stderrChunks).toString();
-
-      if (code !== 0 && !stdout.trim()) {
+      if (code !== 0) {
+        const stderr = Buffer.concat(stderrChunks).toString();
         const message = stderr?.trim() || `exit code ${code}`;
         reject(new Error(`Agent exited with code ${code}: ${message}`));
-      } else {
-        resolve(stdout);
+        return;
       }
+
+      resolveOutput(Buffer.concat(stdoutChunks).toString());
     });
 
     if (abortSignal) {
       const onAbort = () => {
-        child.kill('SIGTERM');
+        escalateKill();
         if (!settled) {
           settled = true;
           reject(new Error('Agent execution aborted'));
         }
       };
       if (abortSignal.aborted) {
-        child.kill('SIGTERM');
+        escalateKill();
         settled = true;
         reject(new Error('Agent execution aborted'));
       } else {

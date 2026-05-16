@@ -116,7 +116,17 @@ const consultGate = async (frontier, pages, budget, config) => {
     temperature: 0.2,
   });
 
-  const decisions = result?.decisions || [];
+  // Schema declares decisions as a required array. `|| []` only handled the
+  // missing-field case — a non-array decisions (e.g. a string) would
+  // survive and crash the for-of below iterating chars. Validate honestly.
+  if (!result || typeof result !== 'object' || !Array.isArray(result.decisions)) {
+    throw new Error(
+      `site-crawl: expected { decisions: [] } from gate LLM (got ${
+        result === null ? 'null' : typeof result
+      })`
+    );
+  }
+  const { decisions } = result;
   const explore = [];
   const skip = [];
 

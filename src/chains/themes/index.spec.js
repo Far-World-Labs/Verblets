@@ -1,66 +1,88 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { vi, beforeEach, expect } from 'vitest';
 import themes from './index.js';
 import reduce from '../reduce/index.js';
+import { runTable, applyMocks } from '../../lib/examples-runner/index.js';
 
-vi.mock('../reduce/index.js', () => ({
-  default: vi.fn(),
-}));
+vi.mock('../reduce/index.js', () => ({ default: vi.fn() }));
 
-beforeEach(() => {
-  vi.clearAllMocks();
-});
+beforeEach(() => vi.clearAllMocks());
 
-describe('themes chain', () => {
-  it('reduces in two passes and returns trimmed themes', async () => {
-    reduce.mockResolvedValueOnce('a, b, c').mockResolvedValueOnce('a, c');
-    const text = 'paragraph one\n\nparagraph two';
-    const result = await themes(text, { batchSize: 1, topN: 2 });
-    expect(result).toStrictEqual(['a', 'c']);
-    expect(reduce).toHaveBeenCalledTimes(2);
-  });
-
-  it('splits text on double newlines into paragraphs', async () => {
-    reduce.mockResolvedValueOnce('theme').mockResolvedValueOnce('theme');
-    await themes('first\n\nsecond\n\nthird');
-    // First call receives the shuffled paragraphs as list
-    const firstCallList = reduce.mock.calls[0][0];
-    expect(firstCallList).toHaveLength(3);
-    expect(firstCallList.toSorted()).toStrictEqual(['first', 'second', 'third']);
-  });
-
-  it('passes topN to the refinement prompt', async () => {
-    reduce.mockResolvedValueOnce('a, b, c').mockResolvedValueOnce('a, b');
-    await themes('x\n\ny', { topN: 2 });
-    const refinePrompt = reduce.mock.calls[1][1];
-    expect(refinePrompt).toContain('top 2');
-  });
-
-  it('omits topN limit when not specified', async () => {
-    reduce.mockResolvedValueOnce('a, b').mockResolvedValueOnce('a, b');
-    await themes('x\n\ny');
-    const refinePrompt = reduce.mock.calls[1][1];
-    expect(refinePrompt).toContain('Return all meaningful themes');
-    expect(refinePrompt).not.toContain('top');
-  });
-
-  it('feeds first pass themes as list into second reduce', async () => {
-    reduce.mockResolvedValueOnce('alpha, beta, gamma').mockResolvedValueOnce('alpha, gamma');
-    await themes('x\n\ny');
-    const secondCallList = reduce.mock.calls[1][0];
-    expect(secondCallList).toStrictEqual(['alpha', 'beta', 'gamma']);
-  });
-
-  it('filters empty strings from comma-split results', async () => {
-    reduce.mockResolvedValueOnce('a,, b, ,c').mockResolvedValueOnce('a,, ,c');
-    const result = await themes('x\n\ny');
-    expect(result).toStrictEqual(['a', 'c']);
-  });
-
-  it('handles single paragraph text', async () => {
-    reduce.mockResolvedValueOnce('solo').mockResolvedValueOnce('solo');
-    const result = await themes('just one paragraph');
-    expect(result).toStrictEqual(['solo']);
-    const firstCallList = reduce.mock.calls[0][0];
-    expect(firstCallList).toStrictEqual(['just one paragraph']);
-  });
+runTable({
+  describe: 'themes chain',
+  examples: [
+    {
+      name: 'reduces in two passes and returns trimmed themes',
+      inputs: { text: 'paragraph one\n\nparagraph two', options: { batchSize: 1, topN: 2 } },
+      mocks: { reduce: ['a, b, c', 'a, c'] },
+      want: { value: ['a', 'c'], reduceCalls: 2 },
+    },
+    {
+      name: 'splits text on double newlines into paragraphs',
+      inputs: { text: 'first\n\nsecond\n\nthird' },
+      mocks: { reduce: ['theme', 'theme'] },
+      want: { firstListSorted: ['first', 'second', 'third'] },
+    },
+    {
+      name: 'passes topN to the refinement prompt',
+      inputs: { text: 'x\n\ny', options: { topN: 2 } },
+      mocks: { reduce: ['a, b, c', 'a, b'] },
+      want: { secondPromptContains: ['top 2'] },
+    },
+    {
+      name: 'omits topN limit when not specified',
+      inputs: { text: 'x\n\ny' },
+      mocks: { reduce: ['a, b', 'a, b'] },
+      want: {
+        secondPromptContains: ['Return all meaningful themes'],
+        secondPromptNotContains: ['top'],
+      },
+    },
+    {
+      name: 'feeds first pass themes as list into second reduce',
+      inputs: { text: 'x\n\ny' },
+      mocks: { reduce: ['alpha, beta, gamma', 'alpha, gamma'] },
+      want: { secondList: ['alpha', 'beta', 'gamma'] },
+    },
+    {
+      name: 'filters empty strings from comma-split results',
+      inputs: { text: 'x\n\ny' },
+      mocks: { reduce: ['a,, b, ,c', 'a,, ,c'] },
+      want: { value: ['a', 'c'] },
+    },
+    {
+      name: 'handles single paragraph text',
+      inputs: { text: 'just one paragraph' },
+      mocks: { reduce: ['solo', 'solo'] },
+      want: { value: ['solo'], firstList: ['just one paragraph'] },
+    },
+  ],
+  process: async ({ inputs, mocks }) => {
+    applyMocks(mocks, { reduce });
+    return themes(inputs.text, inputs.options);
+  },
+  expects: ({ result, want }) => {
+    if ('value' in want) expect(result).toEqual(want.value);
+    if ('reduceCalls' in want) expect(reduce).toHaveBeenCalledTimes(want.reduceCalls);
+    if (want.firstListSorted) {
+      const firstCallList = reduce.mock.calls[0][0];
+      expect(firstCallList).toHaveLength(want.firstListSorted.length);
+      expect(firstCallList.toSorted()).toStrictEqual(want.firstListSorted);
+    }
+    if (want.firstList) {
+      expect(reduce.mock.calls[0][0]).toStrictEqual(want.firstList);
+    }
+    if (want.secondList) {
+      expect(reduce.mock.calls[1][0]).toStrictEqual(want.secondList);
+    }
+    if (want.secondPromptContains) {
+      const refine = reduce.mock.calls[1][1];
+      for (const fragment of want.secondPromptContains) expect(refine).toContain(fragment);
+    }
+    if (want.secondPromptNotContains) {
+      const refine = reduce.mock.calls[1][1];
+      for (const fragment of want.secondPromptNotContains) {
+        expect(refine).not.toContain(fragment);
+      }
+    }
+  },
 });

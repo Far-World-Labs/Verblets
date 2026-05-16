@@ -1,7 +1,8 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { vi, beforeEach, expect } from 'vitest';
 import glossary from './index.js';
 import map from '../map/index.js';
 import sort from '../sort/index.js';
+import { runTable, applyMocks } from '../../lib/examples-runner/index.js';
 
 vi.mock('../map/index.js', () => ({
   default: vi.fn(() =>
@@ -9,47 +10,61 @@ vi.mock('../map/index.js', () => ({
   ),
 }));
 
-vi.mock('../sort/index.js', () => ({
-  default: vi.fn((list) => Promise.resolve(list)),
-}));
+vi.mock('../sort/index.js', () => ({ default: vi.fn((list) => Promise.resolve(list)) }));
 
-beforeEach(() => {
-  vi.clearAllMocks();
-});
+beforeEach(() => vi.clearAllMocks());
 
-describe('glossary', () => {
-  it('collects unique terms from map results', async () => {
-    const result = await glossary('para1\n\npara2', { maxTerms: 5 });
-    expect(result).toStrictEqual(['qubits', 'entanglement', 'decoherence']);
-  });
-
-  it('limits output to maxTerms', async () => {
-    const result = await glossary('para1\n\npara2', { maxTerms: 2 });
-    expect(result).toHaveLength(2);
-  });
-
-  it('returns empty array for empty text', async () => {
-    expect(await glossary('')).toStrictEqual([]);
-    expect(await glossary('  ')).toStrictEqual([]);
-    expect(map).not.toHaveBeenCalled();
-  });
-
-  it('passes sortBy criteria to sort', async () => {
-    await glossary('some text here.', { sortBy: 'alphabetical' });
-    const sortCriteria = sort.mock.calls[0][1];
-    expect(sortCriteria).toBe('alphabetical');
-  });
-
-  it('deduplicates terms across chunks', async () => {
-    // Mock returns 'qubits' in both chunks
-    const result = await glossary('para1\n\npara2');
-    const qubitCount = result.filter((t) => t === 'qubits').length;
-    expect(qubitCount).toBe(1);
-  });
-
-  it('skips non-string and falsy terms', async () => {
-    map.mockResolvedValueOnce([{ terms: ['valid', null, undefined, '', 42] }]);
-    const result = await glossary('some text here.');
-    expect(result).toStrictEqual(['valid']);
-  });
+runTable({
+  describe: 'glossary',
+  examples: [
+    {
+      name: 'collects unique terms from map results',
+      inputs: { text: 'para1\n\npara2', options: { maxTerms: 5 } },
+      want: { value: ['qubits', 'entanglement', 'decoherence'] },
+    },
+    {
+      name: 'limits output to maxTerms',
+      inputs: { text: 'para1\n\npara2', options: { maxTerms: 2 } },
+      want: { length: 2 },
+    },
+    {
+      name: 'returns empty array for empty string',
+      inputs: { text: '' },
+      want: { value: [], noMap: true },
+    },
+    {
+      name: 'returns empty array for whitespace text',
+      inputs: { text: '  ' },
+      want: { value: [], noMap: true },
+    },
+    {
+      name: 'passes sortBy criteria to sort',
+      inputs: { text: 'some text here.', options: { sortBy: 'alphabetical' } },
+      want: { sortBy: 'alphabetical' },
+    },
+    {
+      name: 'deduplicates terms across chunks',
+      inputs: { text: 'para1\n\npara2' },
+      want: { qubitsCount: 1 },
+    },
+    {
+      name: 'skips non-string and falsy terms',
+      inputs: { text: 'some text here.' },
+      mocks: { map: [[{ terms: ['valid', null, undefined, '', 42] }]] },
+      want: { value: ['valid'] },
+    },
+  ],
+  process: async ({ inputs, mocks }) => {
+    applyMocks(mocks, { map });
+    return glossary(inputs.text, inputs.options);
+  },
+  expects: ({ result, want }) => {
+    if ('value' in want) expect(result).toEqual(want.value);
+    if ('length' in want) expect(result).toHaveLength(want.length);
+    if (want.noMap) expect(map).not.toHaveBeenCalled();
+    if (want.sortBy) expect(sort.mock.calls[0][1]).toBe(want.sortBy);
+    if ('qubitsCount' in want) {
+      expect(result.filter((t) => t === 'qubits').length).toBe(want.qubitsCount);
+    }
+  },
 });

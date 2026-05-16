@@ -1,5 +1,12 @@
-import { describe, it, expect } from 'vitest';
-import { normalizeInstruction, resolveArgs, resolveTexts } from './index.js';
+import { describe, it, expect, beforeEach } from 'vitest';
+import {
+  normalizeInstruction,
+  resolveArgs,
+  resolveTexts,
+  registerTemplate,
+  getTemplate,
+  listTemplates,
+} from './index.js';
 
 describe('normalizeInstruction', () => {
   it('wraps a string in { text }', () => {
@@ -84,6 +91,56 @@ describe('resolveArgs', () => {
   it('ignores knownKeys when text is already present', () => {
     const bundle = { text: 'do X', vocabulary: { tags: [] } };
     expect(resolveArgs(bundle, undefined, ['vocabulary'])).toEqual([bundle, {}]);
+  });
+});
+
+describe('template registry', () => {
+  beforeEach(() => {
+    for (const key of listTemplates()) {
+      registerTemplate(key, undefined);
+    }
+  });
+
+  it('registers and retrieves a string template', () => {
+    registerTemplate('greeting', 'Hello, summarize the following');
+    expect(getTemplate('greeting')).toBe('Hello, summarize the following');
+  });
+
+  it('registers and retrieves an object template', () => {
+    const instruction = { text: 'Analyze this', domain: 'finance' };
+    registerTemplate('analyze-finance', instruction);
+    expect(getTemplate('analyze-finance')).toBe(instruction);
+  });
+
+  it('returns undefined for an unknown key', () => {
+    expect(getTemplate('nonexistent')).toBeUndefined();
+  });
+
+  it('lists all registered template keys', () => {
+    registerTemplate('a', 'first');
+    registerTemplate('b', 'second');
+    registerTemplate('c', 'third');
+    expect(listTemplates()).toEqual(['a', 'b', 'c']);
+  });
+
+  it('returns an empty list when no templates are registered', () => {
+    expect(listTemplates()).toEqual([]);
+  });
+
+  it('overwrites a template when re-registered with the same key', () => {
+    registerTemplate('draft', 'version 1');
+    registerTemplate('draft', 'version 2');
+    expect(getTemplate('draft')).toBe('version 2');
+    expect(listTemplates()).toEqual(['draft']);
+  });
+
+  it('works with resolveTexts for composing instructions', () => {
+    registerTemplate('summary-prompt', { text: 'Summarize concisely', audience: 'executives' });
+    const template = getTemplate('summary-prompt');
+    const result = resolveTexts(template, []);
+    expect(result.text).toBe('Summarize concisely');
+    expect(result.context).toContain('<audience>');
+    expect(result.context).toContain('executives');
   });
 });
 

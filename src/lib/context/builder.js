@@ -6,6 +6,9 @@
  * Short-lived kinds (request, content) are set via withX() which returns new builders.
  */
 
+import createProgressEmitter from '../progress/index.js';
+import { DomainEvent } from '../progress/constants.js';
+
 function freezeDeep(obj) {
   if (obj == null || typeof obj !== 'object') return obj;
   Object.freeze(obj);
@@ -17,7 +20,7 @@ function freezeDeep(obj) {
   return obj;
 }
 
-function builderFrom(state) {
+function builderFrom(state, onProgress, traceContext) {
   return {
     setApplication(attrs) {
       state.application = { key: 'default', ...attrs };
@@ -30,17 +33,19 @@ function builderFrom(state) {
     },
 
     withRequest(attrs) {
-      return builderFrom({
-        ...state,
-        request: { key: 'default', ...attrs },
-      });
+      return builderFrom(
+        { ...state, request: { key: 'default', ...attrs } },
+        onProgress,
+        traceContext
+      );
     },
 
     withContent(attrs) {
-      return builderFrom({
-        ...state,
-        content: { key: 'default', ...attrs },
-      });
+      return builderFrom(
+        { ...state, content: { key: 'default', ...attrs } },
+        onProgress,
+        traceContext
+      );
     },
 
     build() {
@@ -53,16 +58,24 @@ function builderFrom(state) {
         }
         snapshot[kind] = copy;
       }
+      const emitter = createProgressEmitter('context-builder', onProgress, traceContext);
+      emitter.emit({ event: DomainEvent.output, kinds: Object.keys(snapshot) });
       return freezeDeep(snapshot);
     },
   };
 }
 
-export function createContextBuilder() {
-  return builderFrom({
-    application: undefined,
-    providers: undefined,
-    request: undefined,
-    content: undefined,
-  });
+export function createContextBuilder({
+  onProgress,
+  operation,
+  traceId,
+  spanId,
+  parentSpanId,
+  now,
+} = {}) {
+  return builderFrom(
+    { application: undefined, providers: undefined, request: undefined, content: undefined },
+    onProgress,
+    { operation, traceId, spanId, parentSpanId, now }
+  );
 }

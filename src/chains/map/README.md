@@ -26,6 +26,18 @@ const explanations = await map(
 // ]
 ```
 
+### Mapping sensitive items through a privacy-capable model
+
+When the items themselves are sensitive — patient charts, customer support transcripts, internal HR notes — pass `llm: { sensitive: true }` and the library routes the batch to whichever model your rules have designated for sensitive traffic (typically a local Ollama / OpenWebUI host). The map shape and batching behavior are unchanged:
+
+```javascript
+const summaries = await map(
+  supportTranscripts,
+  'Summarize the customer\'s issue in one sentence, omitting names and account numbers',
+  { llm: { sensitive: true } }
+);
+```
+
 ## API
 
 ### `map(list, instructions, config?)`

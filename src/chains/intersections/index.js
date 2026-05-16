@@ -42,13 +42,31 @@ Focus on items that genuinely exist in the intersection of all categories.`;
 };
 
 /**
- * Parse elements from LLM response
+ * Parse elements from LLM response. Throws on malformed response so the
+ * caller's task-level catch counts the combo as failed.
  */
 const parseElements = (elements) => {
-  if (Array.isArray(elements)) {
-    return elements.filter(Boolean);
+  if (!Array.isArray(elements)) {
+    throw new Error(
+      `intersections: expected array from LLM elements response (got ${typeof elements})`
+    );
   }
-  return [];
+  return elements.filter(Boolean);
+};
+
+/**
+ * Coerce commonalities result to a description string. Handles array (join),
+ * string (passthrough), and missing/null (empty string) — explicitly avoids
+ * the `String(undefined)` → "undefined" silent fabrication.
+ */
+const formatCommonalitiesDescription = (intersectionItems) => {
+  if (Array.isArray(intersectionItems)) {
+    return intersectionItems.join(', ');
+  }
+  if (typeof intersectionItems === 'string') {
+    return intersectionItems;
+  }
+  return '';
 };
 
 /**
@@ -78,17 +96,12 @@ const processCombo = async (combo, instructionText, context, config = {}) => {
     { maxParallel: 2, abortSignal: config?.abortSignal }
   );
 
-  const elementList = parseElements(elementsResponse);
-  const description = Array.isArray(intersectionItems)
-    ? intersectionItems.join(', ')
-    : String(intersectionItems);
-
   return {
     key: comboKey,
     intersection: {
       combination: combo,
-      description,
-      elements: elementList,
+      description: formatCommonalitiesDescription(intersectionItems),
+      elements: parseElements(elementsResponse),
     },
   };
 };
@@ -152,10 +165,19 @@ export default async function intersections(items, instructions, config) {
       }
     );
 
+    let succeededCombos = 0;
     for (const result of batchResults) {
       if (result) {
         results[result.key] = result.intersection;
+        succeededCombos += 1;
       }
+    }
+
+    // Total-failure detection: every combination errored.
+    if (succeededCombos === 0) {
+      const err = new Error(`intersections: all ${allCombinations.length} combinations failed`);
+      emitter.error(err);
+      throw err;
     }
 
     // Validate results with JSON schema if enabled

@@ -1,74 +1,119 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { vi, beforeEach, expect } from 'vitest';
 import centralTendency from './index.js';
+import llm from '../../lib/llm/index.js';
+import { runTable, applyMocks } from '../../lib/examples-runner/index.js';
 
-// Mock the LLM service
 vi.mock('../../lib/llm/index.js', () => ({
   jsonSchema: (name, schema) => ({ type: 'json_schema', json_schema: { name, schema } }),
   default: vi.fn(),
 }));
 
-import llm from '../../lib/llm/index.js';
+beforeEach(() => vi.clearAllMocks());
 
-describe('centralTendency', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+const happyResponse = {
+  score: 0.85,
+  reason: 'High feature overlap with seed items',
+  confidence: 0.9,
+};
 
-  it.each([
-    ['empty string item', '', ['seed1', 'seed2'], 'Item must be a non-empty string'],
-    ['null item', null, ['seed1', 'seed2'], 'null is not allowed'],
-    ['empty seedItems array', 'item', [], 'seedItems must be a non-empty array'],
-    ['null seedItems', 'item', null, 'seedItems must be a non-empty array'],
-  ])('rejects %s', async (_label, item, seedItems, expectedError) => {
-    await expect(centralTendency(item, seedItems)).rejects.toThrow(expectedError);
-  });
+// ─── input validation ────────────────────────────────────────────────────
 
-  it('evaluates centrality with config object', async () => {
-    const mockResponse = {
-      score: 0.85,
-      reason: 'High feature overlap with seed items',
-      confidence: 0.9,
-    };
+runTable({
+  describe: 'centralTendency — input validation',
+  examples: [
+    {
+      name: 'rejects empty string item',
+      inputs: { item: '', seedItems: ['seed1', 'seed2'] },
+      want: { throws: 'Item must be a non-empty string' },
+    },
+    {
+      name: 'rejects null item',
+      inputs: { item: null, seedItems: ['seed1', 'seed2'] },
+      want: { throws: 'null is not allowed' },
+    },
+    {
+      name: 'rejects empty seedItems array',
+      inputs: { item: 'item', seedItems: [] },
+      want: { throws: 'seedItems must be a non-empty array' },
+    },
+    {
+      name: 'rejects null seedItems',
+      inputs: { item: 'item', seedItems: null },
+      want: { throws: 'seedItems must be a non-empty array' },
+    },
+  ],
+  process: ({ inputs }) => centralTendency(inputs.item, inputs.seedItems),
+  expects: ({ error, want }) => expect(error?.message).toContain(want.throws),
+});
 
-    llm.mockResolvedValue(mockResponse);
+// ─── result + config forwarding ───────────────────────────────────────────
 
-    const result = await centralTendency('robin', ['sparrow', 'bluejay', 'cardinal'], {
-      context: 'Evaluate based on typical bird characteristics',
-      coreFeatures: ['feathers', 'beak', 'lays eggs'],
-      llm: { fast: true, good: true, cheap: true },
-    });
-
-    expect(result).toEqual({
-      score: 0.85,
-      reason: 'High feature overlap with seed items',
-      confidence: 0.9,
-    });
-
+runTable({
+  describe: 'centralTendency — result and config forwarding',
+  examples: [
+    {
+      name: 'returns the LLM response and forwards llm config',
+      inputs: {
+        item: 'robin',
+        seedItems: ['sparrow', 'bluejay', 'cardinal'],
+        config: {
+          context: 'Evaluate based on typical bird characteristics',
+          coreFeatures: ['feathers', 'beak', 'lays eggs'],
+          llm: { fast: true, good: true, cheap: true },
+        },
+      },
+      mocks: { llm: [happyResponse] },
+      want: {
+        value: happyResponse,
+        promptContains: 'Evaluate how central',
+        llmConfig: { llm: { fast: true, good: true, cheap: true } },
+      },
+    },
+  ],
+  process: async ({ inputs, mocks }) => {
+    applyMocks(mocks, { llm });
+    return centralTendency(inputs.item, inputs.seedItems, inputs.config);
+  },
+  expects: ({ result, want }) => {
+    expect(result).toEqual(want.value);
     expect(llm).toHaveBeenCalledWith(
-      expect.stringContaining('Evaluate how central'),
-      expect.objectContaining({
-        llm: { fast: true, good: true, cheap: true },
-      })
+      expect.stringContaining(want.promptContains),
+      expect.objectContaining(want.llmConfig)
     );
-  });
+  },
+});
 
-  it('builds correct prompt with context and core features', async () => {
-    const mockResponse = {
-      score: 0.7,
-      reason: 'Test result',
-      confidence: 0.8,
-    };
+// ─── prompt construction ─────────────────────────────────────────────────
 
-    llm.mockResolvedValue(mockResponse);
-
-    await centralTendency('robin', ['sparrow', 'bluejay'], {
-      context: 'Bird evaluation context',
-      coreFeatures: ['feathers', 'beak', 'flight'],
-    });
-
-    const calledPrompt = llm.mock.calls[0][0];
-    expect(calledPrompt).toContain('<context>\nBird evaluation context\n</context>');
-    expect(calledPrompt).toContain('<core-features>\nfeathers, beak, flight\n</core-features>');
-    expect(calledPrompt).toContain('<seed-items>\nsparrow, bluejay\n</seed-items>');
-  });
+runTable({
+  describe: 'centralTendency — prompt construction',
+  examples: [
+    {
+      name: 'embeds context, core-features, and seed-items in the prompt',
+      inputs: {
+        item: 'robin',
+        seedItems: ['sparrow', 'bluejay'],
+        config: {
+          context: 'Bird evaluation context',
+          coreFeatures: ['feathers', 'beak', 'flight'],
+        },
+      },
+      mocks: { llm: [{ score: 0.7, reason: 'r', confidence: 0.8 }] },
+      want: {
+        contains: [
+          '<context>\nBird evaluation context\n</context>',
+          '<core-features>\nfeathers, beak, flight\n</core-features>',
+          '<seed-items>\nsparrow, bluejay\n</seed-items>',
+        ],
+      },
+    },
+  ],
+  process: async ({ inputs, mocks }) => {
+    applyMocks(mocks, { llm });
+    await centralTendency(inputs.item, inputs.seedItems, inputs.config);
+    return llm.mock.calls[0][0];
+  },
+  expects: ({ result, want }) => {
+    for (const fragment of want.contains) expect(result).toContain(fragment);
+  },
 });

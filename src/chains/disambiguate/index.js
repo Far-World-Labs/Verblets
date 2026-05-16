@@ -7,6 +7,7 @@ import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
 import { DomainEvent, Outcome } from '../../lib/progress/constants.js';
 import { nameStep } from '../../lib/context/option.js';
 import { resolveArgs, resolveTexts } from '../../lib/instruction/index.js';
+import { expectArray } from '../../lib/expect-shape/index.js';
 
 const name = 'disambiguate';
 
@@ -38,14 +39,19 @@ export const getMeanings = async (term, config = {}) => {
     }
   );
 
-  const resultArray = response?.meanings || response;
-  return Array.isArray(resultArray) ? resultArray.filter(Boolean) : [];
+  // Schema returns { meanings: [...] }; some models drop the wrapper and
+  // return a bare array. Accept both, then validate it really is one.
+  const resultArray = expectArray(response?.meanings ?? response, {
+    chain: 'disambiguate',
+    expected: 'meanings array from LLM',
+  });
+  return resultArray.filter(Boolean);
 };
 
 export default async function disambiguate(term, instructions, config) {
   [instructions, config] = resolveArgs(instructions, config);
   const { text: contextText, context: xmlContext } = resolveTexts(instructions, []);
-  const effectiveContext = xmlContext ? `${xmlContext}\n\n${contextText}` : contextText;
+  const effectiveContext = xmlContext ? `${contextText}\n\n${xmlContext}` : contextText;
   const runConfig = nameStep(name, config);
   const emitter = createProgressEmitter(name, runConfig.onProgress, runConfig);
   emitter.start();
@@ -57,6 +63,10 @@ export default async function disambiguate(term, instructions, config) {
       ...runConfig,
       onProgress: scopePhase(runConfig.onProgress, 'meanings'),
     });
+
+    if (meanings.length === 0) {
+      throw new Error(`disambiguate: no meanings extracted for term "${term}"`);
+    }
 
     emitter.emit({
       event: DomainEvent.step,
@@ -75,15 +85,15 @@ export default async function disambiguate(term, instructions, config) {
       }
     );
 
-    let bestIndex = 0;
-    let bestScore = scores[0];
+    const valid = scores
+      .map((score, index) => ({ score, index }))
+      .filter(({ score }) => typeof score === 'number');
 
-    for (let i = 1; i < scores.length; i++) {
-      if (scores[i] > bestScore) {
-        bestScore = scores[i];
-        bestIndex = i;
-      }
+    if (valid.length === 0) {
+      throw new Error(`disambiguate: no meanings could be scored for term "${term}"`);
     }
+
+    const bestIndex = valid.reduce((best, x) => (x.score > best.score ? x : best)).index;
 
     emitter.complete({ outcome: Outcome.success });
 

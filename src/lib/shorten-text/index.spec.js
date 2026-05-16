@@ -1,71 +1,59 @@
-import { describe, expect, it } from 'vitest';
-import { ModelService } from '../../services/llm-model/index.js';
-
+import { expect } from 'vitest';
 import shortenText from './index.js';
+import { ModelService } from '../../services/llm-model/index.js';
+import { runTable } from '../examples-runner/index.js';
 
 const testMs = new ModelService();
 
-const examples = [
-  {
-    name: 'Basic usage',
-    inputs: {
-      text: 'Hello, world! This is a long text for testing the shortenText function.',
-      targetTokenCount: 10,
+// Each row carries the constraints it cares about under `want`.
+runTable({
+  describe: 'shortenText',
+  examples: [
+    {
+      name: 'shortens long text within target tokens',
+      inputs: {
+        text: 'Hello, world! This is a long text for testing the shortenText function.',
+        targetTokenCount: 10,
+      },
+      want: {
+        startsWith: /^Hello, world!/,
+        endsWith: /Text function\.$/,
+        maxTokens: 40,
+      },
     },
-    want: {
-      start: /^Hello, world!/,
-      end: /Text function\.$/,
-      maxLength: 40,
+    {
+      name: 'short text passes through unchanged',
+      inputs: { text: 'This text is short enough.', targetTokenCount: 8 },
+      want: { value: 'This text is short enough.' },
     },
-  },
-  {
-    name: 'No trimming needed',
-    inputs: {
-      text: 'This text is short enough.',
-      targetTokenCount: 8,
+    {
+      name: 'respects minCharsToRemove',
+      inputs: {
+        text: 'This is another test to check the minimum characters removal feature.',
+        targetTokenCount: 6,
+        minCharsToRemove: 5,
+      },
+      want: {
+        startsWith: /^This is/,
+        endsWith: /feature\.$/,
+        maxTokens: 25,
+      },
     },
-    want: {
-      result: 'This text is short enough.',
-    },
-  },
-  {
-    name: 'Minimum characters removal',
-    inputs: {
-      text: 'This is another test to check the minimum characters removal feature.',
-      targetTokenCount: 6,
-      minCharsToRemove: 5,
-    },
-    want: {
-      start: /^This is/,
-      end: /feature\.$/,
-      maxLength: 25,
-    },
-  },
-];
-
-describe('Shorten text', () => {
-  examples.forEach((example) => {
-    it(example.name, () => {
-      const got = shortenText(example.inputs.text, {
-        modelService: testMs,
-        targetTokenCount: example.inputs.targetTokenCount,
-        minCharsToRemove: example.inputs.minCharsToRemove,
-      });
-
-      if (example.want.result) {
-        expect(got).toEqual(example.want.result);
-      }
-      if (example.want.start) {
-        expect(example.want.start.test(got)).toBe(true);
-      }
-      if (example.want.start) {
-        expect(example.want.end.test(got)).toBe(true);
-      }
-      if (example.want.maxLength) {
-        expect(testMs.getBestPublicModel().toTokens(got).length).toBeLessThanOrEqual(
-          example.want.maxLength
-        );
-      }
+  ],
+  process: ({ inputs }) => {
+    const got = shortenText(inputs.text, {
+      modelService: testMs,
+      targetTokenCount: inputs.targetTokenCount,
+      minCharsToRemove: inputs.minCharsToRemove,
     });
-  });
+    const tokens = testMs.getBestPublicModel().toTokens(got).length;
+    return { got, tokens };
+  },
+  expects: ({ result, want }) => {
+    const { got, tokens } = result;
+    if (want.startsWith) expect(got).toMatch(want.startsWith);
+    if (want.endsWith) expect(got).toMatch(want.endsWith);
+    if (want.maxTokens !== undefined) expect(tokens).toBeLessThanOrEqual(want.maxTokens);
+    if ('value' in want) expect(got).toBe(want.value);
+  },
 });

@@ -1,11 +1,37 @@
 import callLlm, { jsonSchema } from '../../lib/llm/index.js';
 import retry from '../../lib/retry/index.js';
+import parallel from '../../lib/parallel-batch/index.js';
+import map from '../map/index.js';
 import { asXML } from '../../prompts/wrap-variable.js';
-import createProgressEmitter from '../../lib/progress/index.js';
-import { DomainEvent, Outcome } from '../../lib/progress/constants.js';
+import createProgressEmitter, { scopePhase } from '../../lib/progress/index.js';
+import { DomainEvent, Outcome, ErrorPosture } from '../../lib/progress/constants.js';
 import { nameStep, getOptions, withPolicy } from '../../lib/context/option.js';
 import { resolveArgs, resolveTexts } from '../../lib/instruction/index.js';
+import { expectArray, expectObject } from '../../lib/expect-shape/index.js';
 import relationResultSchema from './relation-result.json' with { type: 'json' };
+
+// Per-text result uses `relations` rather than `items` so the outer schema can
+// keep its own `items` wrapper that the LLM auto-unwraps cleanly.
+const relationBatchSchema = {
+  type: 'object',
+  properties: {
+    items: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          relations: relationResultSchema.properties.items,
+        },
+        required: ['relations'],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ['items'],
+  additionalProperties: false,
+};
+
+const relationBatchResponseFormat = jsonSchema('relation_batch', relationBatchSchema);
 
 const name = 'relations';
 
@@ -98,6 +124,22 @@ export function parseRelations(relations) {
         )
       : relation.metadata,
   }));
+}
+
+/**
+ * Validate the LLM extraction response and unwrap to a plain items array.
+ * Throws on malformed shapes — the schema is the contract; silent fallback
+ * to [] hides corrupt LLM output and produces garbage downstream.
+ */
+function parseExtractedRelations(response) {
+  const items = expectArray(Array.isArray(response) ? response : response?.items, {
+    chain: 'relations',
+    expected: '{ items: [] } or array from extraction LLM',
+  });
+  for (const item of items) {
+    expectObject(item, { chain: 'relations', expected: 'relation object in items' });
+  }
+  return parseRelations(items);
 }
 
 // ===== Core Functions =====
@@ -247,18 +289,7 @@ Example: {"object": "42^^xsd:integer"} NOT {"object": '"42"^^xsd:integer'}`;
     }
   );
 
-  // Handle auto-unwrapped response (llm unwraps simple collection schemas)
-  // If response is an array, it's already the items array
-  if (Array.isArray(response)) {
-    return { items: parseRelations(response) };
-  }
-
-  // Otherwise handle as normal object with items property
-  if (response && response.items) {
-    response.items = parseRelations(response.items);
-  }
-
-  return response;
+  return { items: parseExtractedRelations(response) };
 }
 
 /**
@@ -268,7 +299,7 @@ Example: {"object": "42^^xsd:integer"} NOT {"object": '"42"^^xsd:integer'}`;
  * @param {Object} config - Configuration options
  * @returns {Promise<Array>} Array of relation objects
  */
-export default async function extractRelations(text, instructions, config) {
+export default async function relationItem(text, instructions, config) {
   [instructions, config] = resolveArgs(instructions, config, ['spec']);
   const { text: instructionText, known, context } = resolveTexts(instructions, ['spec']);
   const runConfig = nameStep(name, config);
@@ -280,15 +311,187 @@ export default async function extractRelations(text, instructions, config) {
     const spec = known.spec || (await relationSpec(effectiveInstructions, runConfig));
     emitter.emit({ event: DomainEvent.phase, phase: 'applying-relations', specification: spec });
     const result = await extractRelationsWithSpec(text, spec, runConfig);
-    const items = result.items || [];
 
     emitter.complete({ outcome: Outcome.success });
 
-    return items;
+    return result.items;
   } catch (err) {
     emitter.error(err);
     throw err;
   }
 }
 
-extractRelations.knownTexts = ['spec'];
+relationItem.knownTexts = ['spec'];
+
+/**
+ * Extract relations from each text in a list with managed concurrency — one
+ * LLM call per text. Sister to `mapRelations`, which packs texts into batched
+ * LLM prompts. Use the parallel form when texts vary widely or batched
+ * responses conflate subjects across documents.
+ *
+ * The spec is generated once (skipped when supplied via the instruction
+ * bundle) and reused for every per-text extraction. Per-text failures leave
+ * that slot as `undefined`; chain reports outcome=partial.
+ *
+ * @param {string[]} texts - Source texts to extract relations from
+ * @param {string|object} instructions - Extraction instructions (string, bundle with `spec`, or object with relations/entities/predicates)
+ * @param {object} [config={}] - Configuration options (`maxParallel`, `errorPosture`)
+ * @returns {Promise<Array<Array<object>|undefined>>} Per-text relation arrays
+ */
+export async function mapRelationsParallel(texts, instructions, config) {
+  if (!Array.isArray(texts)) {
+    throw new Error(
+      `mapRelationsParallel: texts must be an array (got ${texts === null ? 'null' : typeof texts})`
+    );
+  }
+  [instructions, config] = resolveArgs(instructions, config, ['spec']);
+  const { text: instructionText, known, context } = resolveTexts(instructions, ['spec']);
+  const effectiveInstructions = context ? `${instructionText}\n\n${context}` : instructionText;
+
+  const runConfig = nameStep('relations:parallel', config);
+  const emitter = createProgressEmitter('relations:parallel', runConfig.onProgress, runConfig);
+  emitter.start();
+  emitter.emit({ event: DomainEvent.input, value: texts });
+
+  try {
+    const { maxParallel, errorPosture } = await getOptions(runConfig, {
+      maxParallel: 3,
+      errorPosture: ErrorPosture.resilient,
+    });
+
+    const spec = known.spec || (await relationSpec(effectiveInstructions, runConfig));
+
+    emitter.emit({ event: DomainEvent.phase, phase: 'extracting-relations', specification: spec });
+    const batchDone = emitter.batch(texts.length);
+
+    const results = new Array(texts.length).fill(undefined);
+    const items = texts.map((source, index) => ({ source, index }));
+
+    await parallel(
+      items,
+      async ({ source, index }) => {
+        try {
+          const result = await extractRelationsWithSpec(source, spec, {
+            ...runConfig,
+            onProgress: scopePhase(runConfig.onProgress, 'apply'),
+          });
+          results[index] = result.items;
+        } catch (error) {
+          emitter.error(error, { itemIndex: index });
+          if (errorPosture === ErrorPosture.strict) throw error;
+        } finally {
+          batchDone(1);
+        }
+      },
+      {
+        maxParallel,
+        errorPosture,
+        label: 'relations items',
+        abortSignal: runConfig.abortSignal,
+      }
+    );
+
+    const failedItems = results.filter((r) => r === undefined).length;
+    if (failedItems === results.length && results.length > 0) {
+      throw new Error(`relations: all ${results.length} texts failed to extract`);
+    }
+
+    const outcome = failedItems > 0 ? Outcome.partial : Outcome.success;
+    emitter.emit({ event: DomainEvent.output, value: results });
+    emitter.complete({
+      totalItems: results.length,
+      successCount: results.length - failedItems,
+      failedItems,
+      outcome,
+    });
+    return results;
+  } catch (err) {
+    emitter.error(err);
+    throw err;
+  }
+}
+
+mapRelationsParallel.knownTexts = ['spec'];
+
+/**
+ * Extract relations from each text by packing texts into batched LLM prompts
+ * (one call per batch). Sister to `mapRelationsParallel`, which dispatches one
+ * LLM call per text — use the batched form to amortize per-call overhead
+ * when texts are short and homogeneous enough that the LLM can produce one
+ * relations vector per prompt without conflating subjects across documents.
+ *
+ * @param {string[]} texts - Source texts
+ * @param {string|object} instructions - Extraction instructions
+ * @param {object} [config={}] - `batchSize`, `maxParallel`, `errorPosture`
+ * @returns {Promise<Array<Array<object>|undefined>>} Per-text relation arrays
+ */
+export async function mapRelations(texts, instructions, config) {
+  if (!Array.isArray(texts)) {
+    throw new Error(
+      `mapRelations: texts must be an array (got ${texts === null ? 'null' : typeof texts})`
+    );
+  }
+  [instructions, config] = resolveArgs(instructions, config, ['spec']);
+  const { text: instructionText, known, context } = resolveTexts(instructions, ['spec']);
+  const effectiveInstructions = context ? `${instructionText}\n\n${context}` : instructionText;
+
+  const runConfig = nameStep('relations:map', config);
+  const emitter = createProgressEmitter('relations:map', runConfig.onProgress, runConfig);
+  emitter.start();
+  emitter.emit({ event: DomainEvent.input, value: texts });
+
+  try {
+    const spec = known.spec || (await relationSpec(effectiveInstructions, runConfig));
+
+    emitter.emit({ event: DomainEvent.phase, phase: 'extracting-relations', specification: spec });
+
+    const mapInstructions = `Apply the relation specification to each input text and extract relations for every one.
+
+${asXML(spec, { tag: 'relation-specification' })}
+
+For each text, return an object with a "relations" array. Every relation has:
+- subject: canonical-form string
+- predicate: relationship label
+- object: canonical entity string OR an RDF literal (e.g. "42^^xsd:integer", "true^^xsd:boolean")
+- metadata: optional additional context
+
+Return one relations object per input text, in the same order. Use an empty relations array when the text contains nothing matching the specification.`;
+
+    const results = await map(texts, mapInstructions, {
+      ...runConfig,
+      responseFormat: relationBatchResponseFormat,
+      onProgress: scopePhase(runConfig.onProgress, 'relations:map'),
+    });
+
+    if (!Array.isArray(results)) {
+      throw new Error(`relations: expected array of results from map (got ${typeof results})`);
+    }
+
+    // Each per-text entry is { relations: [...] }; unwrap to bare arrays and
+    // apply parseRelations so RDF literals are converted to JS primitives.
+    const parsed = results.map((entry) => {
+      if (entry === undefined) return undefined;
+      expectObject(entry, { chain: 'relations', expected: 'per-text result object' });
+      const relations = expectArray(entry.relations, {
+        chain: 'relations',
+        expected: '"relations" array on per-text result',
+      });
+      return parseRelations(relations);
+    });
+
+    const failedItems = parsed.filter((r) => r === undefined).length;
+    const outcome = failedItems > 0 ? Outcome.partial : Outcome.success;
+    emitter.complete({
+      totalItems: parsed.length,
+      successCount: parsed.length - failedItems,
+      failedItems,
+      outcome,
+    });
+    return parsed;
+  } catch (err) {
+    emitter.error(err);
+    throw err;
+  }
+}
+
+mapRelations.knownTexts = ['spec'];
